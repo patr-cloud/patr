@@ -47,8 +47,43 @@
     "query": "INSERT INTO user_unverified_personal_email( local, domain_id, user_id, verification_token_hash, verification_token_expiry ) VALUES ($1, $2, $3, $4, $5) ON CONFLICT(local, domain_id) DO UPDATE SET user_id = EXCLUDED.user_id, verification_token_hash = EXCLUDED.verification_token_hash, verification_token_expiry = EXCLUDED.verification_token_expiry;"
   },
 <<<<<<< HEAD
+<<<<<<< HEAD
   "03984abcca588da3a9b753795bb20462c2732f7cc535813f2617ce4b3af13365": {
 =======
+=======
+  "02f5586e875e7d5e8e2ee0615d12686aacb17e47952a6f6d3a3148d331c0ac8c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "message",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "created",
+          "ordinal": 2,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT upload_id as \"id: _\", message, created FROM static_site_deploy_history WHERE upload_id = $1;"
+  },
+>>>>>>> sqlx prepare
   "04637f0002f8b35c66035ffc13af3098078cb56bca807610e29285eca722cc29": {
 >>>>>>> feat: reverting static site and storing the upload history
     "describe": {
@@ -1731,6 +1766,7 @@
     "query": "SELECT user_id as \"user_id: _\", workspace_id as \"workspace_id: _\", role_id as \"role_id: _\" FROM workspace_user WHERE workspace_id = $1;"
   },
 <<<<<<< HEAD
+<<<<<<< HEAD
   "26638ca6cf7d15b8aa4e671bb29c3a0cbdd4ade10afdca92a26cc1fa756d6434": {
 =======
   "266a1c952223fefd2a2e0fa2d9ea716b06e7f2a79829fd7bb129dc70f0bcaaa7": {
@@ -1745,6 +1781,8 @@
     },
     "query": "SELECT user_id as \"user_id: _\", workspace_id as \"workspace_id: _\", role_id as \"role_id: _\" FROM workspace_user WHERE workspace_id = $1;"
   },
+=======
+>>>>>>> sqlx prepare
   "28c3a8d03871bb820d4ea57bc7ded4e77e4aa8c0fd19556827bc401e16648cac": {
     "describe": {
       "columns": [],
@@ -4722,7 +4760,55 @@
         "Left": []
       }
     },
+<<<<<<< HEAD
     "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\" FROM managed_url WHERE sub_domain NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
+=======
+    "query": "CREATE INDEX role_permissions_resource_idx_role_id_resource_id ON role_permissions_resource (role_id, resource_id);"
+  },
+  "86da166d78d720baa27481d402b8f31a8e589c8da416d4cf8f17ef67a4e6f899": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Text",
+          "Int8"
+        ]
+      }
+    },
+    "query": "INSERT INTO docker_registry_repository_tag( repository_id, tag, manifest_digest, last_updated ) VALUES ($1, $2, $3, $4) ON CONFLICT(repository_id, tag) DO UPDATE SET manifest_digest = $3, last_updated = $4;"
+  },
+  "87aaa173b0e7a4b548d5e7889fe2f3b04a6b6fdbfbd56e458ac7c2fa86d0c871": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Text",
+          "Int8"
+        ]
+      }
+    },
+    "query": "INSERT INTO static_site_deploy_history( upload_id, static_site_id, message, created ) VALUES ($1, $2, $3, $4);"
+  },
+  "87bca736fca728f58dad62df4bc2c4973eaad8c008f9b456c629907210a26ce3": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "DELETE FROM personal_email WHERE user_id = $1 AND local = $2 AND domain_id = $3;"
+>>>>>>> sqlx prepare
   },
   "72d8cd05f53c2978750dff7afcbecdd5b308a8351a2677f7c6406a327532f375": {
     "describe": {
@@ -9945,6 +10031,38 @@
     },
     "query": "UPDATE \"user\" SET first_name = $1 WHERE id = $2;"
   },
+  "e659710d734f3aaeeace4afae1280529080ebc3357b59be36fd4b7e06e5bd524": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "message",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "created",
+          "ordinal": 2,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT upload_id as \"id: _\", message, created FROM static_site_deploy_history WHERE static_site_id = $1;"
+  },
   "e67c1e6f96aec49750ea347b36199d17f7e58efbff15d77a740c47a6deae9db5": {
     "describe": {
       "columns": [],
@@ -11303,15 +11421,24 @@
     },
     "query": "UPDATE deployment SET min_horizontal_scale = $1 WHERE id = $2;"
   },
+<<<<<<< HEAD
   "fc4c352e3336bc9fe042f89c376d37071ad35b83c92c15f98e89dae664c29f62": {
     "describe": {
       "columns": [
         {
           "name": "id: Uuid",
+=======
+  "fca2d51db48ab21fb6079d435e9cd7565e32473b149672b8e716a41a43566cac": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+>>>>>>> sqlx prepare
           "ordinal": 0,
           "type_info": "Uuid"
         },
         {
+<<<<<<< HEAD
           "name": "username",
           "ordinal": 1,
           "type_info": "Varchar"
@@ -11380,11 +11507,22 @@
           "name": "sign_up_coupon",
           "ordinal": 14,
           "type_info": "Text"
+=======
+          "name": "message",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "created",
+          "ordinal": 2,
+          "type_info": "Int8"
+>>>>>>> sqlx prepare
         }
       ],
       "nullable": [
         false,
         false,
+<<<<<<< HEAD
         false,
         false,
         false,
@@ -11406,6 +11544,17 @@
       }
     },
     "query": "SELECT \"user\".id as \"id: Uuid\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: Uuid\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id LEFT JOIN user_phone_number ON user_phone_number.user_id = \"user\".id LEFT JOIN phone_number_country_code ON phone_number_country_code.country_code = user_phone_number.country_code WHERE \"user\".username = $1 OR CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( business_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( '+', phone_number_country_code.phone_code, user_phone_number.number ) = $1;"
+=======
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT upload_id as \"id: _\", message, created FROM static_site_deploy_history WHERE static_site_id = $1 ORDER BY created DESC LIMIT 1;"
+>>>>>>> sqlx prepare
   },
   "fcda3a3e1abdd1cb97ed8554b73b6896b41ecc9bb81964ef2f663ed869131151": {
     "describe": {
