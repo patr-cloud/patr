@@ -173,17 +173,17 @@ pub async fn initialize_rbac_pre(
 	// Roles that have permissions on a resource type
 	query!(
 		r#"
-		CREATE TABLE role_permissions_resource_type(
+		CREATE TABLE role_allow_permissions_resource_type(
 			role_id UUID
-				CONSTRAINT role_permissions_resource_type_fk_role_id
+				CONSTRAINT role_allow_permissions_resource_type_fk_role_id
 					REFERENCES role(id),
 			permission_id UUID
-				CONSTRAINT role_permissions_resource_type_fk_permission_id
+				CONSTRAINT role_allow_permissions_resource_type_fk_permission_id
 					REFERENCES permission(id),
 			resource_type_id UUID
-				CONSTRAINT role_permissions_resource_type_fk_resource_type_id
+				CONSTRAINT role_allow_permissions_resource_type_fk_resource_type_id
 					REFERENCES resource_type(id),
-			CONSTRAINT role_permissions_resource_type_pk
+			CONSTRAINT role_allow_permissions_resource_type_pk
 				PRIMARY KEY(role_id, permission_id, resource_type_id)
 		);
 		"#
@@ -194,9 +194,9 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE INDEX
-			role_permissions_resource_type_idx_role_id
+			role_allow_permissions_resource_type_idx_role_id
 		ON
-			role_permissions_resource_type
+			role_allow_permissions_resource_type
 		(role_id);
 		"#
 	)
@@ -206,9 +206,9 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE INDEX
-			role_permissions_resource_type_idx_role_id_resource_type_id
+			role_allow_permissions_resource_type_idx_roleid_resourcetypeid
 		ON
-			role_permissions_resource_type
+			role_allow_permissions_resource_type
 		(role_id, resource_type_id);
 		"#
 	)
@@ -218,17 +218,17 @@ pub async fn initialize_rbac_pre(
 	// Roles that have permissions on a specific resource
 	query!(
 		r#"
-		CREATE TABLE role_permissions_resource(
+		CREATE TABLE role_allow_permissions_resource(
 			role_id UUID
-				CONSTRAINT role_permissions_resource_fk_role_id
+				CONSTRAINT role_allow_permissions_resource_fk_role_id
 					REFERENCES role(id),
 			permission_id UUID
-				CONSTRAINT role_permissions_resource_fk_permission_id
+				CONSTRAINT role_allow_permissions_resource_fk_permission_id
 					REFERENCES permission(id),
 			resource_id UUID
-				CONSTRAINT role_permissions_resource_fk_resource_id
+				CONSTRAINT role_allow_permissions_resource_fk_resource_id
 					REFERENCES resource(id),
-			CONSTRAINT role_permissions_resource_pk
+			CONSTRAINT role_allow_permissions_resource_pk
 				PRIMARY KEY(role_id, permission_id, resource_id)
 		);
 		"#
@@ -239,9 +239,9 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE INDEX
-			role_permissions_resource_idx_role_id
+			role_allow_permissions_resource_idx_role_id
 		ON
-			role_permissions_resource
+			role_allow_permissions_resource
 		(role_id);
 		"#
 	)
@@ -251,9 +251,9 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE INDEX
-			role_permissions_resource_idx_role_id_resource_id
+			role_allow_permissions_resource_idx_role_id_resource_id
 		ON
-			role_permissions_resource
+			role_allow_permissions_resource
 		(role_id, resource_id);
 		"#
 	)
@@ -351,7 +351,7 @@ pub async fn get_all_workspace_roles_for_user(
 				permission_id as "permission_id: Uuid",
 				resource_id as "resource_id: Uuid"
 			FROM
-				role_permissions_resource
+				role_allow_permissions_resource
 			WHERE
 				role_id = $1;
 			"#,
@@ -366,7 +366,7 @@ pub async fn get_all_workspace_roles_for_user(
 				permission_id as "permission_id: Uuid",
 				resource_type_id as "resource_type_id: Uuid"
 			FROM
-				role_permissions_resource_type
+				role_allow_permissions_resource_type
 			WHERE
 				role_id = $1;
 			"#,

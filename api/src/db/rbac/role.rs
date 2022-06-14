@@ -122,13 +122,13 @@ pub async fn get_permissions_on_resources_for_role(
 			name,
 			description
 		FROM
-			role_permissions_resource
+			role_allow_permissions_resource
 		INNER JOIN
 			permission
 		ON
-			role_permissions_resource.permission_id = permission.id
+			role_allow_permissions_resource.permission_id = permission.id
 		WHERE
-			role_permissions_resource.role_id = $1;
+			role_allow_permissions_resource.role_id = $1;
 		"#,
 		role_id as _
 	)
@@ -165,13 +165,13 @@ pub async fn get_permissions_on_resource_types_for_role(
 			name,
 			description
 		FROM
-			role_permissions_resource_type
+			role_allow_permissions_resource_type
 		INNER JOIN
 			permission
 		ON
-			role_permissions_resource_type.permission_id = permission.id
+			role_allow_permissions_resource_type.permission_id = permission.id
 		WHERE
-			role_permissions_resource_type.role_id = $1;
+			role_allow_permissions_resource_type.role_id = $1;
 		"#,
 		role_id as _
 	)
@@ -200,7 +200,7 @@ pub async fn remove_all_permissions_for_role(
 	query!(
 		r#"
 		DELETE FROM
-			role_permissions_resource
+			role_allow_permissions_resource
 		WHERE
 			role_id = $1;
 		"#,
@@ -212,7 +212,7 @@ pub async fn remove_all_permissions_for_role(
 	query!(
 		r#"
 		DELETE FROM
-			role_permissions_resource_type
+			role_allow_permissions_resource_type
 		WHERE
 			role_id = $1;
 		"#,
@@ -234,7 +234,7 @@ pub async fn insert_resource_permissions_for_role(
 			query!(
 				r#"
 				INSERT INTO
-					role_permissions_resource(
+					role_allow_permissions_resource(
 						role_id,
 						permission_id,
 						resource_id
@@ -263,7 +263,7 @@ pub async fn insert_resource_type_permissions_for_role(
 			query!(
 				r#"
 				INSERT INTO
-					role_permissions_resource_type(
+					role_allow_permissions_resource_type(
 						role_id,
 						permission_id,
 						resource_type_id
