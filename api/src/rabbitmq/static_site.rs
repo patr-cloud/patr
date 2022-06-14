@@ -90,7 +90,7 @@ pub(super) async fn process_request(
 			.await
 		}
 		StaticSiteRequestData::UploadSite {
-			workspace_id: _,
+			workspace_id,
 			static_site_id,
 			upload_id,
 			file,
@@ -100,11 +100,14 @@ pub(super) async fn process_request(
 				"request_id: {} - Received a upload static site request",
 				request_id
 			);
-			service::upload_static_site_files_to_s3(
+
+			update_static_site_and_db_status(
 				connection,
-				&file,
+				&workspace_id,
 				&static_site_id,
 				&upload_id,
+				Some(&file),
+				&StaticSiteDetails {},
 				config,
 				&request_id,
 			)
