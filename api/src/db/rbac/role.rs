@@ -107,9 +107,9 @@ pub async fn get_role_by_id(
 	.await
 }
 
-/// For a given role, what permissions does it have and on what resources?
+/// For a given role, what permissions are allowed on what resources?
 /// Returns a HashMap of Resource -> Permission[]
-pub async fn get_permissions_on_resources_for_role(
+pub async fn get_allowed_permissions_on_resources_for_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &Uuid,
 ) -> Result<HashMap<Uuid, Vec<Permission>>, sqlx::Error> {
@@ -150,9 +150,52 @@ pub async fn get_permissions_on_resources_for_role(
 	Ok(permissions)
 }
 
-/// For a given role, what permissions does it have and on what resources types?
+/// For a given role, what permissions are blocked on what resources?
+/// Returns a HashMap of Resource -> Permission[]
+pub async fn get_blocked_permissions_on_resources_for_role(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	role_id: &Uuid,
+) -> Result<HashMap<Uuid, Vec<Permission>>, sqlx::Error> {
+	let mut permissions = HashMap::<Uuid, Vec<Permission>>::new();
+	let rows = query!(
+		r#"
+		SELECT
+			permission_id as "permission_id: Uuid",
+			resource_id as "resource_id: Uuid",
+			name,
+			description
+		FROM
+			role_block_permissions_resource
+		INNER JOIN
+			permission
+		ON
+			role_block_permissions_resource.permission_id = permission.id
+		WHERE
+			role_block_permissions_resource.role_id = $1;
+		"#,
+		role_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	for row in rows {
+		let permission = Permission {
+			id: row.permission_id,
+			name: row.name,
+			description: row.description,
+		};
+		permissions
+			.entry(row.resource_id)
+			.or_insert_with(Vec::new)
+			.push(permission);
+	}
+
+	Ok(permissions)
+}
+
+/// For a given role, what permissions are allowed on what resources types?
 /// Returns a HashMap of ResourceType -> Permission[]
-pub async fn get_permissions_on_resource_types_for_role(
+pub async fn get_allowed_permissions_on_resource_types_for_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &Uuid,
 ) -> Result<HashMap<Uuid, Vec<Permission>>, sqlx::Error> {
@@ -200,6 +243,18 @@ pub async fn remove_all_permissions_for_role(
 	query!(
 		r#"
 		DELETE FROM
+			role_block_permissions_resource
+		WHERE
+			role_id = $1;
+		"#,
+		role_id as _
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DELETE FROM
 			role_allow_permissions_resource
 		WHERE
 			role_id = $1;
@@ -224,7 +279,36 @@ pub async fn remove_all_permissions_for_role(
 	Ok(())
 }
 
-pub async fn insert_resource_permissions_for_role(
+pub async fn insert_blocked_resource_permissions_for_role(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	role_id: &Uuid,
+	resource_permissions: &BTreeMap<Uuid, Vec<Uuid>>,
+) -> Result<(), sqlx::Error> {
+	for (resource_id, permissions) in resource_permissions {
+		for permission_id in permissions {
+			query!(
+				r#"
+				INSERT INTO
+					role_block_permissions_resource(
+						role_id,
+						permission_id,
+						resource_id
+					)
+				VALUES
+					($1, $2, $3);
+				"#,
+				role_id as _,
+				permission_id as _,
+				resource_id as _,
+			)
+			.execute(&mut *connection)
+			.await?;
+		}
+	}
+	Ok(())
+}
+
+pub async fn insert_allowed_resource_permissions_for_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &Uuid,
 	resource_permissions: &BTreeMap<Uuid, Vec<Uuid>>,
@@ -253,7 +337,7 @@ pub async fn insert_resource_permissions_for_role(
 	Ok(())
 }
 
-pub async fn insert_resource_type_permissions_for_role(
+pub async fn insert_allowed_resource_type_permissions_for_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &Uuid,
 	resource_type_permissions: &BTreeMap<Uuid, Vec<Uuid>>,

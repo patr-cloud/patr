@@ -284,6 +284,16 @@
     },
     "query": "SELECT CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) as \"email!: String\" FROM personal_email INNER JOIN domain ON personal_email.domain_id = domain.id WHERE personal_email.user_id = $1;"
   },
+  "09015fb85fcebe302fb0c32843a530217bb0b1ff74698d9ed967731ece8ad442": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE INDEX role_block_permissions_resource_idx_role_id_resource_id ON role_block_permissions_resource(role_id, resource_id);"
+  },
   "0a99a795783bd682faac118e140bb40890bcecc424254bf651823cb42022b1ec": {
     "describe": {
       "columns": [
@@ -1296,6 +1306,44 @@
     },
     "query": "CREATE TYPE MANAGED_DATABASE_STATUS AS ENUM( 'creating', /* Started the creation of database */ 'running', /* Database is running successfully */ 'stopped', /* Database is stopped by the user */ 'errored', /* Database encountered errors */ 'deleted' /* Database is deled by the user */ );"
   },
+  "2021815d9247db2d38747827622c31a0306f6eb4ce644f738748209e43fd261e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "permission_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "resource_id: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "description",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT permission_id as \"permission_id: Uuid\", resource_id as \"resource_id: Uuid\", name, description FROM role_block_permissions_resource INNER JOIN permission ON role_block_permissions_resource.permission_id = permission.id WHERE role_block_permissions_resource.role_id = $1;"
+  },
   "2051f9929ae7b78d7594f0451130cc67700bb81d54c7df6191ddeb29eed577af": {
     "describe": {
       "columns": [],
@@ -2044,6 +2092,18 @@
       }
     },
     "query": "INSERT INTO user_phone_number( user_id, country_code, number ) VALUES ($1, $2, $3);"
+  },
+  "3400b411586ba7f65b1c04a2f3d12aef6b8474e15340848a4ecc7beeff28792d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "DELETE FROM role_block_permissions_resource WHERE role_id = $1;"
   },
   "34a6c091329abb7322f4583844fc2bcd5a5d8a6b610da77113647a6583bff569": {
     "describe": {
@@ -3449,6 +3509,16 @@
       }
     },
     "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id: _\", workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.nameserver_type as \"nameserver_type: _\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE domain.id = $1 AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
+  },
+  "6a355da516330978dae916bd5a9c43fcb5bf563fa99ea8f17c71964ae0ccc036": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE INDEX role_block_permissions_resource_idx_role_id ON role_block_permissions_resource(role_id);"
   },
   "6ad2f021500f77e5ac540f128fc071c0aead61d48db51dc32132ccba1a2120ab": {
     "describe": {
@@ -5402,6 +5472,16 @@
       }
     },
     "query": "SELECT \"user\".id as \"id: Uuid\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: Uuid\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number FROM \"user\" INNER JOIN workspace_user ON \"user\".id = workspace_user.user_id WHERE workspace_user.role_id = $1;"
+  },
+  "a2c258d215f2e397a398d9a3f0c6157f0eb039bbc672dc1943ca46bf3a4abedd": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE role_block_permissions_resource( role_id UUID CONSTRAINT role_block_permissions_resource_fk_role_id REFERENCES role(id), permission_id UUID CONSTRAINT role_block_permissions_resource_fk_permission_id REFERENCES permission(id), resource_id UUID CONSTRAINT role_block_permissions_resource_fk_resource_id REFERENCES resource(id), CONSTRAINT role_block_permissions_resource_pk PRIMARY KEY(role_id, permission_id, resource_id) );"
   },
   "a2e1d9b0667bd4c17de5a665257204e9a1067cf78f13dd2897e07318f7a097bc": {
     "describe": {
@@ -8847,6 +8927,20 @@
       }
     },
     "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ), CONSTRAINT deployment_chk_image_tag_is_valid CHECK( image_tag != '' ) );"
+  },
+  "f7ce5b52d6707873c6ef3cb55d5d718da30d16d0dec3d2f8674896deb68deae9": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO role_block_permissions_resource( role_id, permission_id, resource_id ) VALUES ($1, $2, $3);"
   },
   "f8b70ccc8687361430f17086e79357a1d2d97c79f40fabd3f39d44ffe7d95cba": {
     "describe": {

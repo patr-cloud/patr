@@ -39,6 +39,7 @@ pub(super) async fn migrate(
 	update_deployment_with_probe_column(&mut *connection, config).await?;
 	add_workspace_credit_column(&mut *connection, config).await?;
 	rename_role_permissions_resource_tables(&mut *connection, config).await?;
+	rbac_related_migrations(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -503,6 +504,17 @@ pub async fn add_workspace_credit_column(
 	Ok(())
 }
 
+async fn rbac_related_migrations(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+) -> Result<(), Error> {
+	rename_role_permissions_resource_tables(&mut *connection, config).await?;
+	create_role_block_permissions_resource_table(&mut *connection, config)
+		.await?;
+
+	Ok(())
+}
+
 async fn rename_role_permissions_resource_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
@@ -525,6 +537,55 @@ async fn rename_role_permissions_resource_tables(
 
 	query!(r#"ALTER INDEX role_permissions_resource_idx_role_id RENAME TO role_allow_permissions_resource_idx_role_id;"#).execute(&mut *connection).await?;
 	query!(r#"ALTER INDEX role_permissions_resource_idx_role_id_resource_id RENAME TO role_allow_permissions_resource_idx_role_id_resource_id;"#).execute(&mut *connection).await?;
+
+	Ok(())
+}
+
+async fn create_role_block_permissions_resource_table(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		CREATE TABLE role_block_permissions_resource(
+			role_id UUID
+				CONSTRAINT role_block_permissions_resource_fk_role_id
+					REFERENCES role(id),
+			permission_id UUID
+				CONSTRAINT role_block_permissions_resource_fk_permission_id
+					REFERENCES permission(id),
+			resource_id UUID
+				CONSTRAINT role_block_permissions_resource_fk_resource_id
+					REFERENCES resource(id),
+			CONSTRAINT role_block_permissions_resource_pk
+				PRIMARY KEY(role_id, permission_id, resource_id)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			role_block_permissions_resource_idx_role_id
+		ON
+			role_block_permissions_resource(role_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			role_block_permissions_resource_idx_role_id_resource_id
+		ON
+			role_block_permissions_resource(role_id, resource_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }

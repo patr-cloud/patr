@@ -260,6 +260,48 @@ pub async fn initialize_rbac_pre(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		CREATE TABLE role_block_permissions_resource(
+			role_id UUID
+				CONSTRAINT role_block_permissions_resource_fk_role_id
+					REFERENCES role(id),
+			permission_id UUID
+				CONSTRAINT role_block_permissions_resource_fk_permission_id
+					REFERENCES permission(id),
+			resource_id UUID
+				CONSTRAINT role_block_permissions_resource_fk_resource_id
+					REFERENCES resource(id),
+			CONSTRAINT role_block_permissions_resource_pk
+				PRIMARY KEY(role_id, permission_id, resource_id)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			role_block_permissions_resource_idx_role_id
+		ON
+			role_block_permissions_resource(role_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			role_block_permissions_resource_idx_role_id_resource_id
+		ON
+			role_block_permissions_resource(role_id, resource_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
