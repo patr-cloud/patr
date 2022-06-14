@@ -113,7 +113,7 @@ case $1 in
         docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api bash -c "source .env && cargo populate"
     ;;
     prepare)
-        docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api bash -c "source .env && cd api && cargo sqlx prepare"
+        docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api bash -c "source .env && cargo sqlx prepare --merged"
     ;;
     psql)
         docker-compose -f $baseDir/docker-compose.yml exec postgres psql -U $DATABASE_USERNAME -d $DATABASE_NAME
