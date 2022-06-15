@@ -42,6 +42,7 @@ pub struct WorkspaceAuditLog {
 	pub success: bool,
 }
 
+#[derive(Debug, Clone)]
 pub struct WorkspaceCredits {
 	pub workspace_id: Uuid,
 	pub credits: f64,
@@ -576,6 +577,31 @@ pub async fn get_credits_for_workspace(
 			workspace_id = $1;
 		"#,
 		workspace_id as _
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn get_credit_info(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	payment_method_id: &str,
+) -> Result<Option<WorkspaceCredits>, sqlx::Error> {
+	query_as!(
+		WorkspaceCredits,
+		r#"
+		SELECT
+			workspace_credits.workspace_id as "workspace_id: _",
+			workspace_credits.credits as "credits: _",
+			workspace_credits.metadata as "metadata: _"
+		FROM
+			workspace_credits
+		WHERE
+			workspace_id = $1 AND
+			metadata ->> 'payment_method_id' = $2;
+		"#,
+		workspace_id as _,
+		payment_method_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await
