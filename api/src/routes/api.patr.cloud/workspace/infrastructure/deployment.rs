@@ -1239,12 +1239,6 @@ async fn revert_deployment(
 	let image_digest =
 		context.get_param(request_keys::DIGEST).unwrap().to_string();
 
-	let ip_address = api_patr_cloud::get_request_ip_address(&context);
-
-	let user_id = context.get_token_data().unwrap().user.id.clone();
-
-	let login_id = context.get_token_data().unwrap().login_id.clone();
-
 	let config = context.get_state().config.clone();
 	log::trace!("request_id: {} - Getting deployment id from db", request_id);
 	let deployment = db::get_deployment_by_id(
@@ -1260,6 +1254,8 @@ async fn revert_deployment(
 		request_id
 	);
 
+	// Check if the digest is present or not in the deployment_deploy_history
+	// table
 	db::get_deployment_image_digest_by_digest(
 		context.get_database_connection(),
 		&image_digest,
@@ -1276,29 +1272,22 @@ async fn revert_deployment(
 		)
 		.await?;
 
-	let metadata = DeploymentMetadata::UpdateImage {
-		digest: image_digest.clone(),
-	};
-
 	log::trace!(
 		"request_id: {} - queuing revert the deployment request",
 		request_id
 	);
-	service::queue_revert_deployment(
+
+	service::queue_update_deployment_image(
 		context.get_database_connection(),
 		&workspace_id,
-		&deployment.id,
+		&deployment_id,
 		&deployment.name,
 		&deployment.registry,
-		&deployment.image_tag,
 		&image_digest,
+		&deployment.image_tag,
 		&deployment.region,
 		&deployment.machine_type,
 		&deployment_running_details,
-		&user_id,
-		&login_id,
-		&ip_address,
-		&metadata,
 		&config,
 		&request_id,
 	)
