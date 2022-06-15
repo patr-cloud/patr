@@ -1062,7 +1062,8 @@ pub async fn update_deployment_details(
 					deployment
 				SET
 					startup_probe_port = NULL,
-					startup_probe_path = NULL
+					startup_probe_path = NULL,
+					startup_probe_port_type = NULL
 				WHERE
 					id = $1;
 				"#,
@@ -1077,7 +1078,8 @@ pub async fn update_deployment_details(
 					deployment
 				SET
 					startup_probe_port = $1,
-					startup_probe_path = $2
+					startup_probe_path = $2,
+					startup_probe_port_type = 'http'
 				WHERE
 					id = $3;
 				"#,
@@ -1098,7 +1100,8 @@ pub async fn update_deployment_details(
 					deployment
 				SET
 					liveness_probe_port = NULL,
-					liveness_probe_path = NULL
+					liveness_probe_path = NULL,
+					liveness_probe_port_type = NULL
 				WHERE
 					id = $1;
 				"#,
@@ -1113,7 +1116,8 @@ pub async fn update_deployment_details(
 					deployment
 				SET
 					liveness_probe_port = $1,
-					liveness_probe_path = $2
+					liveness_probe_path = $2,
+					liveness_probe_port_type = 'http'
 				WHERE
 					id = $3;
 				"#,

@@ -202,20 +202,6 @@
     },
     "query": "CREATE TABLE secret( id UUID CONSTRAINT secret_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)), workspace_id UUID NOT NULL, deployment_id UUID, /* For deployment specific secrets */ CONSTRAINT secret_uq_workspace_id_name UNIQUE(workspace_id, name) );"
   },
-  "07985dc63f7b6fbeea31026f2e45b0ad8b12e69e2c61e1a4db898812106977e1": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int4",
-          "Varchar",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET liveness_probe_port = $1, liveness_probe_path = $2 WHERE id = $3;"
-  },
   "07aac19835c6180a151a944003e5e014a8ba26aac47a3122cc32bf5c9be6af26": {
     "describe": {
       "columns": [
@@ -841,18 +827,6 @@
     },
     "query": "SELECT id as \"id: _\", name, description FROM permission;"
   },
-  "1786316b9e200a6e83d31f3d9a70576a40cc0accf7a658a72e7a6d51a2f3fa64": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET startup_probe_port = NULL, startup_probe_path = NULL WHERE id = $1;"
-  },
   "1815e0c66b5645f7e4994f135c7d0622d3219c98297eab447d4cadf9bed4a1f4": {
     "describe": {
       "columns": [],
@@ -1365,18 +1339,6 @@
       }
     },
     "query": "UPDATE deployment SET machine_type = $1 WHERE id = $2;"
-  },
-  "23a3a70943c68db89b1b01c4b5eb0797df04a77c3bf25dfe643145ddf8ca9c53": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET liveness_probe_port = NULL, liveness_probe_path = NULL WHERE id = $1;"
   },
   "241d2d5275d061fa9f24043adb72590b240a691cf68bf703dc63546fa7705ec8": {
     "describe": {
@@ -2782,6 +2744,20 @@
     },
     "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE resource_id = $1 AND ( metadata ->> 'action' = 'create' OR metadata ->> 'action' = 'start' OR metadata ->> 'action' = 'stop' OR metadata ->> 'action' = 'updateImage' );"
   },
+  "53c9cc7a1548b6f80df7fb7be780e672f0533fd16e004785adf9459fe01c6942": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Varchar",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE deployment SET startup_probe_port = $1, startup_probe_path = $2, startup_probe_port_type = 'http' WHERE id = $3;"
+  },
   "5571b74fc5da17a2cbb423295f3499aa3c3ef78fd04e659cf57acac7a2b88a18": {
     "describe": {
       "columns": [
@@ -2895,6 +2871,20 @@
       }
     },
     "query": "ALTER TABLE \"user\" ADD CONSTRAINT user_fk_id_recovery_email_local_recovery_email_domain_id FOREIGN KEY( id, recovery_email_local, recovery_email_domain_id ) REFERENCES personal_email( user_id, local, domain_id ) DEFERRABLE INITIALLY IMMEDIATE;"
+  },
+  "57b549b7b18cc6d4e2699673c10e7c3adb2f360cc0f04091cb305eba93c01d5f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Varchar",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE deployment SET liveness_probe_port = $1, liveness_probe_path = $2, liveness_probe_port_type = 'http' WHERE id = $3;"
   },
   "583cdcacd5ff86e4093cc4703f12424220ff0d0b0dec468cf60a81d00e1894eb": {
     "describe": {
@@ -3850,6 +3840,18 @@
       }
     },
     "query": "INSERT INTO resource_type( id, name, description ) VALUES ($1, $2, $3);"
+  },
+  "778e09a22d58ff86e1694225ce8353fe2da88eef1384fd509386f99df8e155cb": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE deployment SET startup_probe_port = NULL, startup_probe_path = NULL, startup_probe_port_type = NULL WHERE id = $1;"
   },
   "799f1b78ac4c1bd45251b83af9dea7179be61357e5241533c66406c1cf0b60de": {
     "describe": {
@@ -4946,6 +4948,18 @@
       }
     },
     "query": "CREATE TABLE role_permissions_resource( role_id UUID CONSTRAINT role_permissions_resource_fk_role_id REFERENCES role(id), permission_id UUID CONSTRAINT role_permissions_resource_fk_permission_id REFERENCES permission(id), resource_id UUID CONSTRAINT role_permissions_resource_fk_resource_id REFERENCES resource(id), CONSTRAINT role_permissions_resource_pk PRIMARY KEY(role_id, permission_id, resource_id) );"
+  },
+  "9e6df600d397b8aa8ea872e84291a8e54970942b1930a3210791dcbd000a7ded": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE deployment SET liveness_probe_port = NULL, liveness_probe_path = NULL, liveness_probe_port_type = NULL WHERE id = $1;"
   },
   "9e700afbaa2bcee044788a11c5b123d5cad8158dbc54ef99c35d20dfb72c6dd3": {
     "describe": {
@@ -7526,20 +7540,6 @@
       }
     },
     "query": "SELECT \"user\".id as \"id: Uuid\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: Uuid\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number FROM \"user\" WHERE username = $1;"
-  },
-  "e151d6ff3fcf2aeb7aead9fb1f6f2a40fb4a6151a6f9c49e8c28991dddd81389": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int4",
-          "Varchar",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET startup_probe_port = $1, startup_probe_path = $2 WHERE id = $3;"
   },
   "e2e4acb7753330bf806aae68b144fa483eb41b7c18cb10b1812164daa8e3326c": {
     "describe": {
