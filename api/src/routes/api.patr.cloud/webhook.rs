@@ -28,7 +28,7 @@ use crate::{
 		Error,
 		ErrorData,
 		EveContext,
-		EveMiddleware,
+		EveMiddleware, get_current_time_millis,
 	},
 };
 
@@ -294,6 +294,7 @@ async fn notification_handler(
 					&deployment.id,
 					repository_id,
 					&target.digest,
+					get_current_time_millis(),
 				)
 				.await?;
 			}

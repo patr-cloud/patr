@@ -496,7 +496,7 @@ async fn add_table_deployment_image_digest(
 					REFERENCES docker_registry_repository(id),
 			message TEXT,
 			created BIGINT NOT NULL
-				CONSTRAINT static_site_deploy_history_chk_created_unsigned CHECK(
+				CONSTRAINT deployment_deploy_history_chk_created_unsigned CHECK(
 						created >= 0
 				),
 			CONSTRAINT deployment_image_digest_pk

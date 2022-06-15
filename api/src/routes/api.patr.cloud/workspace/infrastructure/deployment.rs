@@ -55,6 +55,7 @@ use crate::{
 	utils::{
 		constants::request_keys,
 		get_current_time,
+		get_current_time_millis,
 		Error,
 		ErrorData,
 		EveContext,
@@ -114,7 +115,7 @@ pub fn create_sub_app(
 	);
 
 	app.get(
-		"/:deploymentId/digest",
+		"/:deploymentId/deploy-history",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::deployment::LIST,
@@ -295,7 +296,7 @@ pub fn create_sub_app(
 
 	// revert the deployment
 	app.post(
-		"/:deploymentId/revert/:digest",
+		"/:deploymentId/deploy-history/:digest/revert",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::deployment::EDIT,
@@ -881,8 +882,9 @@ async fn create_deployment(
 	context.commit_database_transaction().await?;
 
 	if deploy_on_create {
-		let repository_id = registry.as_patr_registry();
-		if let Some(repository_id) = repository_id {
+		if let DeploymentRegistry::PatrRegistry { repository_id, .. } =
+			&registry
+		{
 			let digest = db::get_latest_digest_for_docker_repository(
 				context.get_database_connection(),
 				repository_id,
@@ -895,6 +897,7 @@ async fn create_deployment(
 					&id,
 					repository_id,
 					&digest,
+					get_current_time_millis(),
 				)
 				.await?;
 			}
@@ -1081,8 +1084,9 @@ async fn start_deployment(
 		)
 		.await?;
 
-	let repository_id = deployment.registry.as_patr_registry();
-	if let Some(repository_id) = repository_id {
+	if let DeploymentRegistry::PatrRegistry { repository_id, .. } =
+		&deployment.registry
+	{
 		let digest = db::get_latest_digest_for_docker_repository(
 			context.get_database_connection(),
 			repository_id,
@@ -1105,6 +1109,7 @@ async fn start_deployment(
 					&deployment_id,
 					repository_id,
 					&digest,
+					get_current_time_millis(),
 				)
 				.await?;
 			}
@@ -1234,7 +1239,6 @@ async fn revert_deployment(
 	let image_digest =
 		context.get_param(request_keys::DIGEST).unwrap().to_string();
 
-	println!("image digest - {}", image_digest);
 	let ip_address = api_patr_cloud::get_request_ip_address(&context);
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();

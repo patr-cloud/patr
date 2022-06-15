@@ -54,7 +54,6 @@ pub struct DeploymentDeployHistory {
 	pub image_digest: String,
 	pub created: i64,
 }
-
 pub struct DeploymentEnvironmentVariable {
 	pub deployment_id: Uuid,
 	pub name: String,
@@ -348,7 +347,7 @@ pub async fn initialize_deployment_pre(
 					REFERENCES docker_registry_repository(id),
 			message TEXT,
 			created BIGINT NOT NULL
-				CONSTRAINT static_site_deploy_history_chk_created_unsigned CHECK(
+				CONSTRAINT deployment_deploy_history_chk_created_unsigned CHECK(
 						created >= 0
 				),
 			CONSTRAINT deployment_image_digest_pk
@@ -1364,6 +1363,7 @@ pub async fn add_digest_to_deployment_deploy_history(
 	deployment_id: &Uuid,
 	repository_id: &Uuid,
 	digest: &str,
+	created: u64,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1372,14 +1372,16 @@ pub async fn add_digest_to_deployment_deploy_history(
 				deployment_id,
 				image_digest,
 				repository_id,
-				message
+				message,
+				created
 			)
 		VALUES
-			($1, $2, $3, NULL);
+			($1, $2, $3, NULL, $4);
 		"#,
 		deployment_id as _,
 		digest as _,
 		repository_id as _,
+		created as i64
 	)
 	.execute(&mut *connection)
 	.await
