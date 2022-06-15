@@ -53,14 +53,27 @@ pub async fn add_personal_email_to_be_verified_for_user(
 			.body(error!(EMAIL_TAKEN).to_string())?;
 	}
 
+	let user = match db::get_user_by_user_id(connection, user_id).await? {
+		Some(username) => username,
+		None => {
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()))
+		}
+	};
+
 	let otp = service::generate_new_otp();
 
 	let token_expiry =
 		get_current_time_millis() + service::get_join_token_expiry();
 	let verification_token = service::hash(otp.as_bytes())?;
 
-	service::send_email_verification_otp(email_address.to_string(), &otp)
-		.await?;
+	service::send_email_verification_otp(
+		email_address.to_string(),
+		&otp,
+		&user.username,
+	)
+	.await?;
 
 	// split email into 2 parts and get domain_id
 	let (email_local, personal_domain_id) =

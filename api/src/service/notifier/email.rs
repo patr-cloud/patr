@@ -46,6 +46,7 @@ pub async fn send_user_verification_otp(
 #[template_path = "assets/emails/forgot-password/template.json"]
 struct ForgotPasswordEmail {
 	otp: String,
+	username: String,
 }
 
 /// # Description
@@ -66,10 +67,12 @@ struct ForgotPasswordEmail {
 pub async fn send_forgot_password_otp(
 	email: Mailbox,
 	otp: &str,
+	username: &str,
 ) -> Result<(), Error> {
 	send_email(
 		ForgotPasswordEmail {
 			otp: otp.to_string(),
+			username: username.to_string(),
 		},
 		email,
 		None,
@@ -80,7 +83,9 @@ pub async fn send_forgot_password_otp(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/password-reset-notification/template.json"]
-struct PasswordResetEmail {}
+struct PasswordResetEmail {
+	username: String,
+}
 
 /// # Description
 /// This function is used to send the password reset notification
@@ -96,9 +101,12 @@ struct PasswordResetEmail {}
 /// [`Mailbox`]: Mailbox
 pub async fn send_user_reset_password_notification(
 	email: Mailbox,
+	username: &str,
 ) -> Result<(), Error> {
 	send_email(
-		PasswordResetEmail {},
+		PasswordResetEmail {
+			username: username.to_string(),
+		},
 		email,
 		None,
 		"Patr successful password change",
@@ -108,7 +116,9 @@ pub async fn send_user_reset_password_notification(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/password-changed-notification/template.json"]
-struct PasswordChangedEmail {}
+struct PasswordChangedEmail {
+	username: String,
+}
 
 /// # Description
 /// This function is used to send the password changed notification
@@ -122,14 +132,24 @@ struct PasswordChangedEmail {}
 /// error
 pub async fn send_password_changed_notification(
 	email: Mailbox,
+	username: &str,
 ) -> Result<(), Error> {
-	send_email(PasswordChangedEmail {}, email, None, "Patr password change")
-		.await
+	send_email(
+		PasswordChangedEmail {
+			username: username.to_string(),
+		},
+		email,
+		None,
+		"Patr password change",
+	)
+	.await
 }
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/sign-up-completed/template.json"]
-struct SignUpCompletedEmail {}
+struct SignUpCompletedEmail {
+	username: String,
+}
 
 /// # Description
 /// This function is used to send the sign up complete notification
@@ -141,13 +161,26 @@ struct SignUpCompletedEmail {}
 /// # Returns
 /// This function returns `Result<(), Error>` containing an empty response or an
 /// error
-pub async fn send_sign_up_completed_email(email: Mailbox) -> Result<(), Error> {
-	send_email(SignUpCompletedEmail {}, email, None, "Welcome to Patr").await
+pub async fn send_sign_up_completed_email(
+	email: Mailbox,
+	username: &str,
+) -> Result<(), Error> {
+	send_email(
+		SignUpCompletedEmail {
+			username: username.to_string(),
+		},
+		email,
+		None,
+		"Welcome to Patr",
+	)
+	.await
 }
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/recovery-email-notification/template.json"]
-struct RecoveryNotificationEmail {}
+struct RecoveryNotificationEmail {
+	username: String,
+}
 
 /// # Description
 /// This function is used to send the registration info to back up email of the
@@ -162,15 +195,24 @@ struct RecoveryNotificationEmail {}
 /// error
 pub async fn send_recovery_registration_mail(
 	email: Mailbox,
+	username: &str,
 ) -> Result<(), Error> {
-	send_email(RecoveryNotificationEmail {}, email, None, "Welcome to Patr")
-		.await
+	send_email(
+		RecoveryNotificationEmail {
+			username: username.to_string(),
+		},
+		email,
+		None,
+		"Welcome to Patr",
+	)
+	.await
 }
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/add-new-email-notification/template.json"]
 struct AddEmailVerificationEmail {
 	otp: String,
+	username: String,
 }
 
 /// # Description
@@ -190,9 +232,11 @@ struct AddEmailVerificationEmail {
 pub async fn send_email_verification_otp(
 	email: Mailbox,
 	otp: &str,
+	username: &str,
 ) -> Result<(), Error> {
 	send_email(
 		AddEmailVerificationEmail {
+			username: username.to_string(),
 			otp: otp.to_string(),
 		},
 		email,
