@@ -42,6 +42,12 @@ pub struct WorkspaceAuditLog {
 	pub success: bool,
 }
 
+pub struct WorkspaceCredits {
+	pub workspace_id: Uuid,
+	pub credits: f64,
+	pub metadata: serde_json::Value,
+}
+
 pub async fn initialize_workspaces_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
@@ -140,6 +146,18 @@ pub async fn initialize_workspaces_pre(
 					login_id IS NOT NULL
 				)
 			)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE workspace_credits(
+			workspace_id UUID NOT NULL CONSTRAINT workspace_credits_pk PRIMARY KEY,
+			credits DECIMAL(15,6) NOT NULL DEFAULT 0,
+			metadata JSON NOT NULL
 		);
 		"#
 	)
@@ -511,5 +529,54 @@ pub async fn get_resource_audit_logs(
 		resource_id as _
 	)
 	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn add_credits_to_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	credits: f64,
+	metadata: &serde_json::Value,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			workspace_credits
+			(
+				workspace_id,
+				credits,
+				metadata
+			)
+		VALUES
+			($1, $2, $3);
+		"#,
+		workspace_id as _,
+		credits as _,
+		metadata,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_credits_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Option<WorkspaceCredits>, sqlx::Error> {
+	query_as!(
+		WorkspaceCredits,
+		r#"
+		SELECT
+			workspace_credits.workspace_id as "workspace_id: _",
+			workspace_credits.credits as "credits: _",
+			workspace_credits.metadata as "metadata: _"
+		FROM
+			workspace_credits
+		WHERE
+			workspace_id = $1;
+		"#,
+		workspace_id as _
+	)
+	.fetch_optional(&mut *connection)
 	.await
 }

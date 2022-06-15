@@ -1,11 +1,13 @@
 use api_models::{
 	models::workspace::billing::{
+		AddCreditsRequest,
 		AddPaymentSourceResponse,
 		Address,
 		Card,
 		GetBillingAddressResponse,
 		GetCardDetailsResponse,
 		GetCreditBalanceResponse,
+		GetCreditsResponse,
 		GetSubscriptionsResponse,
 		HostedPage,
 		PaymentSource,
@@ -239,6 +241,68 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(get_billing_address)),
+		],
+	);
+
+	sub_app.get(
+		"/add-credits",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(add_credits)),
+		],
+	);
+
+	sub_app.get(
+		"/get-credits",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_credit_balance)),
 		],
 	);
 
@@ -685,5 +749,61 @@ async fn get_billing_address(
 		};
 
 	context.success(GetBillingAddressResponse { address });
+	Ok(context)
+}
+
+async fn add_credits(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	let AddCreditsRequest {
+		credits,
+		payment_id,
+		..
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let metadata = serde_json::from_str(&format!(
+		r#"
+		{{
+			"payment_id": {}
+		}}
+	"#,
+		payment_id
+	))?;
+
+	db::add_credits_to_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+		credits,
+		&metadata,
+	)
+	.await?;
+
+	Ok(context)
+}
+
+async fn get_credit_balance(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	let credits = db::get_credits_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.status(400)
+	.body(error!(WRONG_PARAMETERS).to_string())?
+	.credits;
+
+	context.success(GetCreditsResponse { credits });
 	Ok(context)
 }
