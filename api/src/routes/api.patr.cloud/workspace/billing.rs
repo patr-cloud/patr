@@ -1,9 +1,11 @@
 use api_models::{
 	models::workspace::billing::{
 		AddCreditsRequest,
+		AddCreditsResponse,
 		AddPaymentSourceResponse,
 		Address,
 		Card,
+		ConfirmPaymentRequest,
 		GetBillingAddressResponse,
 		GetCardDetailsResponse,
 		GetCreditBalanceResponse,
@@ -244,7 +246,7 @@ pub fn create_sub_app(
 		],
 	);
 
-	sub_app.get(
+	sub_app.post(
 		"/add-credits",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
@@ -303,6 +305,37 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(get_credit_balance)),
+		],
+	);
+
+	sub_app.post(
+		"/confirm-payment",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(confirm_payment)),
 		],
 	);
 
@@ -759,32 +792,24 @@ async fn add_credits(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let AddCreditsRequest {
-		credits,
-		payment_id,
-		..
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let AddCreditsRequest { credits, .. } =
+		context
+			.get_body_as()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let metadata = serde_json::from_str(&format!(
-		r#"
-		{{
-			"payment_id": {}
-		}}
-	"#,
-		payment_id
-	))?;
-
-	db::add_credits_to_workspace(
+	let config = context.get_state().config.clone();
+	let secret_id = service::add_credits_to_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 		credits,
-		&metadata,
+		&config,
 	)
 	.await?;
 
+	context.success(AddCreditsResponse {
+		client_secret: secret_id,
+	});
 	Ok(context)
 }
 
@@ -805,5 +830,32 @@ async fn get_credit_balance(
 	.credits;
 
 	context.success(GetCreditsResponse { credits });
+	Ok(context)
+}
+
+async fn confirm_payment(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	let ConfirmPaymentRequest {
+		payment_method_id, ..
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let config = context.get_state().config.clone();
+
+	service::confirm_payment_method(
+		context.get_database_connection(),
+		&workspace_id,
+		&payment_method_id,
+		&config,
+	)
+	.await?;
+
 	Ok(context)
 }

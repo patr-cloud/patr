@@ -5,6 +5,7 @@
 //!
 //! [`App`]: App
 mod auth;
+mod billing;
 mod docker_registry;
 mod domain;
 mod infrastructure;
@@ -17,6 +18,7 @@ mod workspace;
 
 pub use self::{
 	auth::*,
+	billing::*,
 	docker_registry::*,
 	domain::*,
 	infrastructure::*,
