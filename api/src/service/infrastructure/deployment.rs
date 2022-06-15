@@ -4,6 +4,7 @@ use api_models::{
 	models::workspace::infrastructure::deployment::{
 		Deployment,
 		DeploymentMetrics,
+		DeploymentProbe,
 		DeploymentRegistry,
 		DeploymentRunningDetails,
 		EnvironmentVariableValue,
@@ -120,6 +121,7 @@ pub async fn create_deployment_in_workspace(
 	.await?;
 	log::trace!("request_id: {} - Created resource", request_id);
 
+	db::begin_deferred_constraints(connection).await?;
 	match registry {
 		DeploymentRegistry::PatrRegistry {
 			registry: _,
@@ -138,6 +140,8 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.deploy_on_push,
 				deployment_running_details.min_horizontal_scale,
 				deployment_running_details.max_horizontal_scale,
+				deployment_running_details.startup_probe.as_ref(),
+				deployment_running_details.liveness_probe.as_ref(),
 			)
 			.await?;
 		}
@@ -159,6 +163,8 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.deploy_on_push,
 				deployment_running_details.min_horizontal_scale,
 				deployment_running_details.max_horizontal_scale,
+				deployment_running_details.startup_probe.as_ref(),
+				deployment_running_details.liveness_probe.as_ref(),
 			)
 			.await?;
 		}
@@ -177,6 +183,7 @@ pub async fn create_deployment_in_workspace(
 		)
 		.await?;
 	}
+	db::end_deferred_constraints(connection).await?;
 
 	for (key, value) in &deployment_running_details.environment_variables {
 		log::trace!(
@@ -254,6 +261,7 @@ pub async fn get_deployment_container_logs(
 	Ok(logs)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn update_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
@@ -265,6 +273,8 @@ pub async fn update_deployment(
 	max_horizontal_scale: Option<u16>,
 	ports: Option<&BTreeMap<u16, ExposedPortType>>,
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
+	startup_probe: Option<&DeploymentProbe>,
+	liveness_probe: Option<&DeploymentProbe>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -273,18 +283,8 @@ pub async fn update_deployment(
 		request_id,
 		deployment_id
 	);
-	db::update_deployment_details(
-		connection,
-		deployment_id,
-		name,
-		region,
-		machine_type,
-		deploy_on_push,
-		min_horizontal_scale,
-		max_horizontal_scale,
-	)
-	.await?;
 
+	db::begin_deferred_constraints(connection).await?;
 	if let Some(ports) = ports {
 		if ports.is_empty() {
 			return Err(Error::empty()
@@ -296,7 +296,6 @@ pub async fn update_deployment(
 			"request_id: {} - Updating deployment ports in the database",
 			request_id
 		);
-		db::begin_deferred_constraints(connection).await?;
 		db::remove_all_exposed_ports_for_deployment(connection, deployment_id)
 			.await?;
 		for (port, exposed_port_type) in ports {
@@ -308,8 +307,21 @@ pub async fn update_deployment(
 			)
 			.await?;
 		}
-		db::end_deferred_constraints(connection).await?;
 	}
+	db::update_deployment_details(
+		connection,
+		deployment_id,
+		name,
+		region,
+		machine_type,
+		deploy_on_push,
+		min_horizontal_scale,
+		max_horizontal_scale,
+		startup_probe,
+		liveness_probe,
+	)
+	.await?;
+	db::end_deferred_constraints(connection).await?;
 
 	if let Some(environment_variables) = environment_variables {
 		log::trace!(
@@ -371,6 +383,10 @@ pub async fn get_full_deployment_config(
 		deploy_on_push,
 		min_horizontal_scale,
 		max_horizontal_scale,
+		startup_probe_port,
+		startup_probe_path,
+		liveness_probe_port,
+		liveness_probe_path,
 	) = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.and_then(|deployment| {
@@ -399,6 +415,10 @@ pub async fn get_full_deployment_config(
 				deployment.deploy_on_push,
 				deployment.min_horizontal_scale as u16,
 				deployment.max_horizontal_scale as u16,
+				deployment.startup_probe_port,
+				deployment.startup_probe_path,
+				deployment.liveness_probe_port,
+				deployment.liveness_probe_path,
 			))
 		})
 		.status(404)
@@ -468,6 +488,14 @@ pub async fn get_full_deployment_config(
 			max_horizontal_scale,
 			ports,
 			environment_variables,
+			startup_probe: startup_probe_port
+				.map(|port| port as u16)
+				.zip(startup_probe_path)
+				.map(|(port, path)| DeploymentProbe { path, port }),
+			liveness_probe: liveness_probe_port
+				.map(|port| port as u16)
+				.zip(liveness_probe_path)
+				.map(|(port, path)| DeploymentProbe { path, port }),
 		},
 	))
 }
