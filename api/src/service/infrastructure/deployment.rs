@@ -101,13 +101,16 @@ pub async fn create_deployment_in_workspace(
 		"request_id: {} - Checking if the resource limit is reached",
 		request_id
 	);
-
 	if billing::resource_limit_crossed(connection, workspace_id).await? {
 		return Err(Error::empty()
 			.status(200)
 			.body(error!(RESOURCE_LIMIT_REACHED).to_string()));
 	}
 
+	log::trace!(
+		"request_id: {} - Checking if the product limit is reached",
+		request_id
+	);
 	if billing::deployment_limit_crossed(connection, workspace_id).await? {
 		return Err(Error::empty()
 			.status(200)

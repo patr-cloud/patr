@@ -2,7 +2,7 @@ use api_models::utils::{DateTime, Uuid};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use crate::{query, query_as, Database};
+use crate::{db, query, query_as, Database};
 
 mod billing;
 mod ci;
@@ -32,6 +32,7 @@ pub struct Workspace {
 	pub stripe_customer_id: String,
 	pub primary_payment_method: Option<String>,
 	pub address_id: Option<Uuid>,
+	pub resource_limit_id: Option<Uuid>,
 }
 
 pub struct WorkspaceAuditLog {
@@ -90,7 +91,7 @@ pub async fn initialize_workspaces_pre(
 					)
 				),
 			address_id UUID,
-			resource_limit_id UUID NOT NULL,
+			resource_limit_id UUID,
 			stripe_customer_id TEXT NOT NULL 
 				CONSTRAINT workspace_uq_stripe_customer_id UNIQUE,
 			primary_payment_method TEXT
@@ -346,7 +347,8 @@ pub async fn get_workspace_info(
 			alert_emails as "alert_emails!: _",
 			stripe_customer_id,
 			primary_payment_method,
-			address_id as "address_id: _"
+			address_id as "address_id: _",
+			resource_limit_id as "resource_limit_id: _"
 		FROM
 			workspace
 		WHERE
@@ -373,7 +375,8 @@ pub async fn get_workspace_by_name(
 			alert_emails as "alert_emails!: _",
 			stripe_customer_id,
 			primary_payment_method,
-			address_id as "address_id: _"
+			address_id as "address_id: _",
+			resource_limit_id as "resource_limit_id: _"
 		FROM
 			workspace
 		WHERE
@@ -399,7 +402,8 @@ pub async fn get_all_workspaces(
 			alert_emails as "alert_emails!: _",
 			stripe_customer_id,
 			primary_payment_method,
-			address_id as "address_id: _"
+			address_id as "address_id: _",
+			resource_limit_id as "resource_limit_id: _"
 		FROM
 			workspace
 		WHERE
@@ -735,6 +739,78 @@ pub async fn update_billing_address(
 	.map(|_| ())
 }
 
+pub async fn add_billing_address(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	address: &Address,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			address
+		(
+			id,
+			first_name,
+			last_name,
+			address_line_1,
+			address_line_2,
+			address_line_3,
+			city,
+			state,
+			zip,
+			country
+		)
+		VALUES
+		(
+			$1,
+			$2,
+			$3,
+			$4,
+			$5,
+			$6,
+			$7,
+			$8,
+			$9,
+			$10
+		);
+		"#,
+		address.id as _,
+		address.first_name,
+		address.last_name,
+		address.address_line_1,
+		address.address_line_2,
+		address.address_line_3,
+		address.city,
+		address.state,
+		address.zip,
+		address.country,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn add_billing_address_to_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	address_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace
+		SET
+			address_id = $2
+		WHERE
+			id = $1;
+		"#,
+		workspace_id as _,
+		address_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn delete_billing_address_from_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
@@ -776,6 +852,57 @@ pub async fn delete_billing_address(
 pub async fn get_total_billable_resource_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<i32, sqlx::Error> {
-	Ok(5 as i32)
+) -> Result<u64, sqlx::Error> {
+	let deployment_count =
+		db::get_deployment_count_in_workspace(&mut *connection, workspace_id)
+			.await?;
+	let database_count =
+		db::get_database_count_in_workspace(&mut *connection, workspace_id)
+			.await?;
+	let static_site_count =
+		db::get_static_site_count_in_workspace(&mut *connection, workspace_id)
+			.await?;
+	let managed_urls_count =
+		db::get_managed_url_count_in_workspace(&mut *connection, workspace_id)
+			.await?;
+	let secrets_count =
+		db::get_secret_count_in_workspace(&mut *connection, workspace_id)
+			.await?;
+	let domains_count =
+		db::get_domain_count_in_workspace(&mut *connection, workspace_id)
+			.await?;
+
+	Ok(deployment_count +
+		database_count +
+		static_site_count +
+		managed_urls_count +
+		secrets_count +
+		domains_count)
+}
+
+pub async fn generate_new_address_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Uuid, sqlx::Error> {
+	loop {
+		let uuid = Uuid::new_v4();
+
+		let exists = query!(
+			r#"
+			SELECT
+				*
+			FROM
+				address
+			WHERE
+				id = $1;
+			"#,
+			uuid as _
+		)
+		.fetch_optional(&mut *connection)
+		.await?
+		.is_some();
+
+		if !exists {
+			break Ok(uuid);
+		}
+	}
 }

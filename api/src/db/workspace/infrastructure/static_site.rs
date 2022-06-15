@@ -26,7 +26,6 @@ pub async fn initialize_static_site_pre(
 				),
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
 			workspace_id UUID NOT NULL,
-			billable_service_id UUID NOT NULL,
 			CONSTRAINT deployment_static_site_uq_name_workspace_id
 				UNIQUE(name, workspace_id),
 			CONSTRAINT deployment_static_site_uq_id_workspace_id

@@ -286,6 +286,7 @@ pub struct InvoiceEmail {
 	month: String,
 	year: String,
 	price_distribution: String,
+	credits_used: String,
 	total_cost: String,
 }
 
@@ -294,6 +295,7 @@ pub async fn send_invoice_email(
 	month: String,
 	year: String,
 	price_distribution: String,
+	credits_used: String,
 	total_cost: String,
 ) -> Result<(), Error> {
 	send_email(
@@ -301,6 +303,7 @@ pub async fn send_invoice_email(
 			month,
 			year,
 			price_distribution,
+			credits_used,
 			total_cost,
 		},
 		email,

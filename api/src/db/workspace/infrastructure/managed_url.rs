@@ -65,7 +65,6 @@ pub async fn initialize_managed_url_pre(
 			static_site_id UUID,
 			url TEXT,
 			workspace_id UUID NOT NULL,
-			billable_service_id UUID NOT NULL,
 			CONSTRAINT managed_url_uq_sub_domain_domain_id_path UNIQUE(
 				sub_domain, domain_id, path
 			),

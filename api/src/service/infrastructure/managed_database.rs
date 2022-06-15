@@ -151,6 +151,9 @@ pub async fn create_managed_database_in_workspace(
 		}
 	}
 
+	// service::create_billable_service_for_managed_database(connection,
+	// workspace_id, &database_id, true).await?;
+
 	Ok(database_id)
 }
 

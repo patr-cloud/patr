@@ -220,7 +220,6 @@ pub async fn initialize_managed_database_pre(
 			workspace_id UUID NOT NULL,
 			digitalocean_db_id TEXT
 				CONSTRAINT managed_database_uq_digitalocean_db_id UNIQUE,
-			billable_service_id UUID NOT NULL,
 			CONSTRAINT managed_database_uq_name_workspace_id
 				UNIQUE(name, workspace_id)
 		);

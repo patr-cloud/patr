@@ -155,15 +155,14 @@ async fn create_resource_and_product_limits_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 ) -> Result<(), Error> {
-	log::trace!("Creating initial resource and product limits for workspace");
 	// temporarily hardcoding the limits for the workspace
 	let resource_limit_id =
 		db::generate_new_resource_limit_id(connection).await?;
 	db::create_resource_limit(
 		connection,
 		&resource_limit_id,
-		&workspace_id,
-		20 as u32,
+		workspace_id,
+		20_u32,
 	)
 	.await?;
 
@@ -174,7 +173,7 @@ async fn create_resource_and_product_limits_for_workspace(
 
 	db::create_product_limit(
 		connection,
-		&workspace_id,
+		workspace_id,
 		&deployment_product.id,
 		1,
 	)
@@ -187,7 +186,7 @@ async fn create_resource_and_product_limits_for_workspace(
 
 	db::create_product_limit(
 		connection,
-		&workspace_id,
+		workspace_id,
 		&static_site_product.id,
 		5,
 	)
@@ -200,7 +199,7 @@ async fn create_resource_and_product_limits_for_workspace(
 
 	db::create_product_limit(
 		connection,
-		&workspace_id,
+		workspace_id,
 		&managed_database_product.id,
 		0,
 	)
@@ -213,7 +212,7 @@ async fn create_resource_and_product_limits_for_workspace(
 
 	db::create_product_limit(
 		connection,
-		&workspace_id,
+		workspace_id,
 		&managed_url_product.id,
 		10,
 	)
@@ -223,14 +222,14 @@ async fn create_resource_and_product_limits_for_workspace(
 		.await?
 		.status(500)?;
 
-	db::create_product_limit(connection, &workspace_id, &secret_product.id, 5)
+	db::create_product_limit(connection, workspace_id, &secret_product.id, 5)
 		.await?;
 
 	let domain_product = db::get_product_info_by_name(connection, "domain")
 		.await?
 		.status(500)?;
 
-	db::create_product_limit(connection, &workspace_id, &domain_product.id, 1)
+	db::create_product_limit(connection, workspace_id, &domain_product.id, 1)
 		.await?;
 
 	Ok(())

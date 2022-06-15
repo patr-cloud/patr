@@ -278,7 +278,6 @@ pub async fn create_user_join_request(
 					.status(200)
 					.body(error!(EMAIL_TAKEN).to_string())?;
 			}
-
 			// extract the email_local and domain name from it
 			// split email into 2 parts and get domain_id
 			let (email_local, domain_id) =

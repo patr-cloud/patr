@@ -116,7 +116,7 @@ pub enum StaticSiteRequestData {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(tag = "resource", rename_all = "camelCase")]
+#[serde(tag = "action", rename_all = "camelCase")]
 #[allow(clippy::large_enum_variant)]
 pub enum WorkspaceRequestData {
 	ProcessWorkspace {

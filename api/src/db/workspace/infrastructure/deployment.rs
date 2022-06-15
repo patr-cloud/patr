@@ -7,7 +7,7 @@ use api_models::{
 };
 
 use crate::{
-	db::{self, Plans, WorkspaceAuditLog},
+	db::{self, WorkspaceAuditLog},
 	models::deployment::{
 		DefaultDeploymentRegion,
 		DEFAULT_DEPLOYMENT_REGIONS,
@@ -28,7 +28,7 @@ pub struct DeploymentMachineType {
 	pub id: Uuid,
 	pub cpu_count: i16,
 	pub memory_count: i32,
-	pub plan_id: Option<Uuid>,
+	pub plan_name: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -122,8 +122,8 @@ pub async fn initialize_deployment_pre(
 			id UUID CONSTRAINT deployment_machint_type_pk PRIMARY KEY,
 			cpu_count SMALLINT NOT NULL,
 			memory_count INTEGER NOT NULL /* Multiples of 0.25 GB */,
-			plan_id UUID 
-				CONSTRAINT deployment_machine_type_uq_plan_id UNIQUE
+			plan_name TEXT 
+				CONSTRAINT deployment_machine_type_uq_plan_name UNIQUE
 		);
 		"#
 	)
@@ -301,7 +301,7 @@ pub async fn initialize_deployment_post(
 	.execute(&mut *connection)
 	.await?;
 
-	for (cpu_count, memory_count) in DEFAULT_MACHINE_TYPES {
+	for (cpu_count, memory_count, plan_name) in DEFAULT_MACHINE_TYPES {
 		let machine_type_id =
 			db::generate_new_resource_id(&mut *connection).await?;
 		query!(
@@ -310,29 +310,20 @@ pub async fn initialize_deployment_post(
 				deployment_machine_type(
 					id,
 					cpu_count,
-					memory_count
+					memory_count,
+					plan_name
 				)
 			VALUES
-				($1, $2, $3);
+				($1, $2, $3, $4);
 			"#,
 			machine_type_id as _,
 			cpu_count,
-			memory_count
+			memory_count,
+			plan_name,
 		)
 		.execute(&mut *connection)
 		.await?;
 	}
-
-	query!(
-		r#"
-		ALTER TABLE
-			deployment_machine_type
-		ADD CONSTRAINT deployment_machine_type_fk_plan_id
-		FOREIGN KEY(plan_id) REFERENCES plans(id);
-	"#
-	)
-	.execute(&mut *connection)
-	.await?;
 
 	for continent in DEFAULT_DEPLOYMENT_REGIONS.iter() {
 		let region_id =
@@ -633,6 +624,38 @@ pub async fn get_running_deployments_for_workspace(
 	.await
 }
 
+pub async fn get_all_deployments_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Vec<Deployment>, sqlx::Error> {
+	query_as!(
+		Deployment,
+		r#"
+		SELECT
+			id as "id: _",
+			name::TEXT as "name!: _",
+			registry,
+			repository_id as "repository_id: _",
+			image_name,
+			image_tag,
+			status as "status: _",
+			workspace_id as "workspace_id: _",
+			region as "region: _",
+			min_horizontal_scale,
+			max_horizontal_scale,
+			machine_type as "machine_type: _",
+			deploy_on_push
+		FROM
+			deployment
+		WHERE
+			workspace_id = $1;
+		"#,
+		workspace_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
 pub async fn get_deployment_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
@@ -659,6 +682,38 @@ pub async fn get_deployment_by_id(
 		WHERE
 			id = $1 AND
 			status != 'deleted';
+		"#,
+		deployment_id as _
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn get_deployment_by_id_all_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+) -> Result<Option<Deployment>, sqlx::Error> {
+	query_as!(
+		Deployment,
+		r#"
+		SELECT
+			id as "id: _",
+			name::TEXT as "name!: _",
+			registry,
+			repository_id as "repository_id: _",
+			image_name,
+			image_tag,
+			status as "status: _",
+			workspace_id as "workspace_id: _",
+			region as "region: _",
+			min_horizontal_scale,
+			max_horizontal_scale,
+			machine_type as "machine_type: _",
+			deploy_on_push
+		FROM
+			deployment
+		WHERE
+			id = $1;
 		"#,
 		deployment_id as _
 	)
@@ -1010,7 +1065,7 @@ pub async fn get_all_deployment_machine_types(
 			id as "id: _",
 			cpu_count,
 			memory_count,
-			plan_id as "plan_id: _"
+			plan_name as "plan_name: _"
 		FROM
 			deployment_machine_type;
 		"#
@@ -1166,40 +1221,13 @@ pub async fn get_deployment_machine_type_by_id(
 			id as "id!: _",
 			cpu_count,
 			memory_count,
-			plan_id as "plan_id: _"
+			plan_name as "plan_name: _"
 		FROM
 			deployment_machine_type
 		WHERE
 			id = $1;
 		"#,
 		id as _
-	)
-	.fetch_optional(&mut *connection)
-	.await
-}
-
-pub async fn get_plan_by_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	id: &Uuid,
-) -> Result<Option<Plans>, sqlx::Error> {
-	query_as!(
-		Plans,
-		r#"
-		SELECT
-			id as "id!: _",
-			name,
-			description,
-			plan_type as "plan_type!: _",
-			product_info_id as "product_info_id!: _",
-			price as "price!: _",
-			quantity,
-			workspace_id as "workspace_id!: _"
-		FROM
-			plans
-		WHERE
-			id = $1;
-	"#,
-		id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await

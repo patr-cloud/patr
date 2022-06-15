@@ -134,7 +134,6 @@ pub async fn initialize_domain_pre(
 			type RESOURCE_OWNER_TYPE NOT NULL,
 			tld TEXT NOT NULL CONSTRAINT domain_fk_tld
 					REFERENCES domain_tld(tld),
-			billable_service_id UUID NOT NULL,
 			CONSTRAINT domain_uq_name_tld UNIQUE(name, tld),
 			CONSTRAINT domain_chk_max_domain_name_length CHECK(
 				(LENGTH(name) + LENGTH(tld)) < 255

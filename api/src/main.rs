@@ -69,9 +69,6 @@ async fn async_main() -> Result<(), EveError> {
 
 	let rabbitmq = rabbitmq::create_rabbitmq_pool(&config).await?;
 
-	log::debug!("Enqueuing billing tasks");
-	rabbitmq::queue_process_payment(&config).await?;
-
 	log::debug!("Rabbitmq pool initialised");
 
 	let app = App {
@@ -86,6 +83,9 @@ async fn async_main() -> Result<(), EveError> {
 
 	service::initialize(&app);
 	log::debug!("Service initialized");
+
+	log::debug!("Enqueuing billing tasks");
+	rabbitmq::queue_process_payment(&app.config).await?;
 
 	scheduler::initialize_jobs(&app);
 	log::debug!("Schedulers initialized");

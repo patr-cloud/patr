@@ -52,12 +52,50 @@ pub struct LastSetupError {
 	pub r#type: String,
 }
 
+/*
+
+{
+  "id": "seti_1LAwObSFDPAh3GrIkTkk1xWP",
+  "object": "setup_intent",
+  "application": null,
+  "cancellation_reason": null,
+  "client_secret": "seti_1LAwObSFDPAh3GrIkTkk1xWP_secret_LshoEaa3rxrxikJVVsHPGPTFfj1w19O",
+  "created": 1655300193,
+  "customer": "cus_LsZMayManrccQT",
+  "description": null,
+  "flow_directions": null,
+  "last_setup_error": null,
+  "latest_attempt": null,
+  "livemode": false,
+  "mandate": null,
+  "metadata": {
+  },
+  "next_action": null,
+  "on_behalf_of": null,
+  "payment_method": null,
+  "payment_method_options": {
+    "card": {
+      "mandate_options": null,
+      "network": null,
+      "request_three_d_secure": "automatic"
+    }
+  },
+  "payment_method_types": [
+    "card"
+  ],
+  "single_use_mandate": null,
+  "status": "requires_payment_method",
+  "usage": "off_session"
+}
+
+*/
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct PaymentIntentObject {
 	pub id: String,
 	pub client_secret: String,
-	pub customer: Option<StripeCustomer>,
+	pub customer: Option<String>,
 	pub description: Option<String>,
 	pub last_setup_error: Option<LastSetupError>,
 	pub payment_method: Option<PaymentMethod>,

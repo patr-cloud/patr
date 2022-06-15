@@ -56,6 +56,37 @@ pub fn create_sub_app(
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.post(
+		"/billing-address",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(add_billing_address)),
+		],
+	);
+
+	sub_app.post(
 		"/update-billing-address",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
@@ -337,6 +368,31 @@ pub fn create_sub_app(
 	sub_app
 }
 
+async fn add_billing_address(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let UpdateBillingAddressRequest {
+		address_details, ..
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	service::add_billing_address(
+		context.get_database_connection(),
+		&workspace_id,
+		address_details,
+	)
+	.await?;
+
+	context.success(UpdateBillingAddressResponse {});
+	Ok(context)
+}
+
 /// # Description
 /// This function is used to update the workspace details
 /// required inputs:
@@ -575,7 +631,7 @@ async fn add_card_details(
 
 	let config = context.get_state().config.clone();
 
-	let client_secret = service::add_card_details(&workspace_id, &config)
+	let client_secret = service::add_card_details(context.get_database_connection(), &workspace_id, &config)
 		.await?
 		.client_secret;
 
@@ -733,34 +789,10 @@ async fn add_coupon_to_workspace(
 			.status(400)
 			.body(error!(INVALID_COUPON).to_string())?;
 
-	let current_coupon = db::get_active_coupon_by_id(
+	service::add_coupon_to_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		&coupon.id,
-	)
-	.await?;
-
-	if let Some(current_coupon) = current_coupon {
-		if current_coupon.remaining_usage == 0 {
-			return Error::as_result()
-				.status(400)
-				.body(error!(COUPON_USED).to_string())?;
-		}
-
-		db::update_active_coupon_usage(
-			context.get_database_connection(),
-			&coupon.id,
-			&workspace_id,
-			&current_coupon.remaining_usage - 1,
-		)
-		.await?;
-	}
-
-	db::add_coupon_to_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-		&coupon.id,
-		&coupon.num_usage,
+		&coupon,
 	)
 	.await?;
 

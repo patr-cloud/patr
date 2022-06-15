@@ -45,7 +45,18 @@ pub(super) async fn process_request(
 				config,
 				&request_id,
 			)
-			.await
+			.await?;
+
+			//create here
+			service::create_billable_service_for_static_site(
+				connection,
+				&workspace_id,
+				&static_site_id,
+				true,
+			)
+			.await?;
+
+			Ok(())
 		}
 		StaticSiteRequestData::Start {
 			workspace_id,

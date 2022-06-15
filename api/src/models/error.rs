@@ -64,6 +64,7 @@ pub mod id {
 	pub const PRODUCT_LIMIT_CROSSED: &str = "productLimitCrossed";
 	pub const RESOURCE_LIMIT_REACHED: &str = "resourceLimitReached";
 	pub const ADDRESS_NOT_FOUND: &str = "addressNotFound";
+	pub const ADDRESS_ALREADY_EXISTS: &str = "addressAlreadyExists";
 }
 
 #[allow(dead_code)]
@@ -191,4 +192,5 @@ pub mod message {
 	pub const RESOURCE_LIMIT_REACHED: &str =
 		"You have reached the limit of the maximum number resources allowed for your workspace";
 	pub const ADDRESS_NOT_FOUND: &str = "The address does not exist";
+	pub const ADDRESS_ALREADY_EXISTS: &str = "The address already exists, update the current one or delete and create a new one";
 }

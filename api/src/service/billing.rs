@@ -1,13 +1,13 @@
-use api_models::utils::Uuid;
+use api_models::utils::{DateTime, Uuid};
 use chrono::Utc;
 use eve_rs::AsError;
 use reqwest::Client;
 
 use crate::{
-	db::{self, PlanType},
+	db::{self, Coupon, PlanType, TransactionType},
 	error,
 	models::{deployment, ProductLimits},
-	utils::{free_limits::free_limits, settings::Settings, Error},
+	utils::{limits::free_limits, settings::Settings, Error},
 	Database,
 };
 
@@ -17,20 +17,85 @@ pub async fn create_billable_service_for_deployment(
 	deployment_id: &Uuid,
 	active: bool,
 ) -> Result<Uuid, Error> {
-	let deployment = db::get_deployment_by_id(connection, &deployment_id)
-		.await?
-		.status(500)?;
+	log::trace!("deployment id: {}", deployment_id.as_str());
 
-	let plan_id = db::get_deployment_machine_type_by_id(
+	let deployment =
+		db::get_deployment_by_id_all_status(connection, deployment_id)
+			.await?
+			.status(500)?;
+
+	log::trace!("TEST2");
+
+	let plan_name = db::get_deployment_machine_type_by_id(
 		connection,
 		&deployment.machine_type,
 	)
 	.await?
 	.status(500)?
-	.plan_id
+	.plan_name
 	.status(500)?;
 
-	let plan_info = db::get_plan_by_id(connection, &plan_id)
+	log::trace!("PLAN NAME: {}", plan_name);
+
+	log::trace!("PLAN INFO: {}", workspace_id);
+
+	log::trace!("TEST3");
+
+	let plan_info = db::get_plan_by_name(connection, &plan_name, workspace_id)
+		.await?
+		.status(500)?;
+
+	log::trace!("TEST4");
+
+	let billable_service_id =
+		db::generate_new_billable_service_id(connection).await?;
+
+	log::trace!("TEST5");
+
+	db::create_billable_service(
+		connection,
+		&billable_service_id,
+		&plan_info.id,
+		workspace_id,
+		plan_info.price,
+		Some(deployment.min_horizontal_scale as i32),
+		&plan_info.product_info_id,
+		deployment_id,
+		Utc::now().into(),
+		active,
+	)
+	.await?;
+
+	log::trace!("billable service created");
+
+	Ok(billable_service_id)
+}
+
+pub async fn create_billable_service_for_static_site(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	static_site_id: &Uuid,
+	active: bool,
+) -> Result<Uuid, Error> {
+	let static_site = db::get_static_site_by_id(connection, static_site_id)
+		.await?
+		.status(500)?;
+
+	let static_site_product_id =
+		db::get_product_info_by_name(connection, "static-site")
+			.await?
+			.status(500)?
+			.id;
+
+	let active_plan = db::get_active_plan_for_product_in_workspace(
+		connection,
+		workspace_id,
+		&static_site_product_id,
+	)
+	.await?
+	.status(500)?;
+
+	let plan_info = db::get_plan_by_id(connection, &active_plan.plan_id)
 		.await?
 		.status(500)?;
 
@@ -41,11 +106,11 @@ pub async fn create_billable_service_for_deployment(
 		connection,
 		&billable_service_id,
 		&plan_info.id,
-		&workspace_id,
+		workspace_id,
 		plan_info.price,
-		Some(deployment.min_horizontal_scale as i32),
+		None,
 		&plan_info.product_info_id,
-		deployment_id,
+		static_site_id,
 		Utc::now().into(),
 		active,
 	)
@@ -178,7 +243,7 @@ pub async fn delete_payment_method(
 			.body(error!(CHANGE_PRIMARY_PAYMENT_METHOD).to_string())?;
 	}
 
-	db::delete_payment_method(connection, &payment_method_id).await?;
+	db::delete_payment_method(connection, payment_method_id).await?;
 
 	let client = Client::new();
 
@@ -537,6 +602,8 @@ pub async fn initialize_plans_for_workspace(
 	)
 	.await?;
 
+	
+
 	Ok(())
 }
 
@@ -544,15 +611,20 @@ pub async fn resource_limit_crossed(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 ) -> Result<bool, Error> {
+	log::trace!("getting total resources from db");
 	let total_resources =
 		db::get_total_billable_resource_in_workspace(connection, workspace_id)
 			.await?;
 
+	log::trace!("getting resource limit from the db");
 	let resource_limit = db::get_resource_limit(connection, workspace_id)
 		.await?
 		.status(500)?;
 
-	if total_resources == resource_limit.max_resources {
+	log::trace!("total resources: {}", total_resources);
+	log::trace!("resource limit: {}", resource_limit.max_resources);
+	log::trace!("comparing total resources to resource limit");
+	if total_resources >= resource_limit.max_resources as u64 {
 		return Ok(true);
 	}
 
@@ -566,14 +638,16 @@ pub async fn deployment_limit_crossed(
 	let deployments =
 		db::get_deployments_for_workspace(connection, workspace_id).await?;
 
+	log::trace!("getting product info by id");
 	let deployment_product_id =
 		db::get_product_info_by_name(connection, "deployment")
 			.await?
 			.status(500)?
 			.id;
 
+	log::trace!("getting product limits");
 	let deployment_limits =
-		db::get_product_limit(connection, &deployment_product_id)
+		db::get_product_limit(connection, workspace_id, &deployment_product_id)
 			.await?
 			.status(500)?;
 
@@ -612,6 +686,58 @@ async fn deployment_free_limit_crossed(
 	Ok(false)
 }
 
+pub async fn add_coupon_to_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	coupon: &Coupon,
+) -> Result<(), Error> {
+	let current_coupon =
+		db::get_active_coupon_by_id(connection, &coupon.id, &workspace_id)
+			.await?;
+
+	if let Some(current_coupon) = current_coupon {
+		if current_coupon.remaining_usage == 0 {
+			return Error::as_result()
+				.status(400)
+				.body(error!(COUPON_USED).to_string())?;
+		}
+
+		db::update_active_coupon_usage(
+			connection,
+			&coupon.id,
+			&workspace_id,
+			&current_coupon.remaining_usage - 1,
+		)
+		.await?;
+	}
+
+	db::add_coupon_to_workspace(
+		connection,
+		&workspace_id,
+		&coupon.id,
+		&coupon.num_usage,
+	)
+	.await?;
+
+	let transaction_id = db::generate_new_transaction_id(connection).await?;
+
+	db::create_transaction(
+		connection,
+		&transaction_id,
+		None,
+		&TransactionType::Onetime,
+		None,
+		coupon.credits,
+		None,
+		&workspace_id,
+		&DateTime::from(Utc::now()),
+		Some(&coupon.id),
+		false,
+	)
+	.await?;
+
+	Ok(())
+}
 async fn static_site_free_limit_crossed(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,

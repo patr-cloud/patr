@@ -43,7 +43,7 @@ pub struct Plans {
 	pub product_info_id: Uuid,
 	pub price: f64,
 	pub quantity: Option<i32>,
-	pub workspace_id: String,
+	pub workspace_id: Uuid,
 }
 
 pub struct BillableServiceUsage {
@@ -51,7 +51,7 @@ pub struct BillableServiceUsage {
 	pub plan_id: Uuid,
 	pub workspace_id: Uuid,
 	pub price: f64,
-	pub quantity: i32,
+	pub quantity: Option<i32>,
 	pub product_info_id: Uuid,
 	pub total_price: f64,
 	pub resource_id: Uuid,
@@ -98,6 +98,12 @@ pub struct ResourceLimit {
 
 pub struct Credits {
 	pub credits: f64,
+}
+
+pub struct ActivePlan {
+	pub product_id: Uuid,
+	pub plan_id: Uuid,
+	pub workspace_id: Uuid,
 }
 
 pub async fn initialize_billing_pre(
@@ -211,7 +217,7 @@ pub async fn initialize_billing_pre(
 		r#"
 		CREATE TABLE IF NOT EXISTS transactions(
 			id UUID CONSTRAINT transactions_pk PRIMARY KEY,
-			product_info_id UUID NOT NULL,
+			product_info_id UUID,
 			transaction_type TRANSACTION_TYPE NOT NULL,
 			workspace_id UUID NOT NULL,
 			date TIMESTAMPTZ NOT NULL,
@@ -261,8 +267,8 @@ pub async fn initialize_billing_pre(
 			id UUID CONSTRAINT resource_usage_pk PRIMARY KEY,
 			product_info_id UUID NOT NULL,
 			max_limit INTEGER NOT NULL,
-			workspace_id UUID NOT NULL
-				CONSTRAINT product_limits_uq_workspace_id UNIQUE
+			workspace_id UUID NOT NULL,
+			CONSTRAINT product_limits_uq_product_info_id_workspace_id UNIQUE (product_info_id, workspace_id)
 		);
 	"#
 	)
@@ -289,6 +295,19 @@ pub async fn initialize_billing_pre(
 			workspace_id UUID NOT NULL,
 			remaining_usage INTEGER NOT NULL,
 			CONSTRAINT active_coupons_pk PRIMARY KEY (coupon_id, workspace_id)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS active_plans(
+			product_id UUID NOT NULL,
+			plan_id UUID NOT NULL,
+			workspace_id UUID NOT NULL,
+			CONSTRAINT active_plans_pk PRIMARY KEY (product_id, workspace_id)
 		);
 		"#
 	)
@@ -449,6 +468,20 @@ pub async fn initialize_billing_post(
 		ALTER TABLE active_coupons
 		ADD CONSTRAINT active_coupons_fk_workspace_id
 		FOREIGN KEY(workspace_id) REFERENCES workspace(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE active_plans
+		ADD CONSTRAINT active_plans_fk_id_workspace_id
+		FOREIGN KEY(plan_id) REFERENCES plans(id),
+		ADD CONSTRAINT active_plans_fk_workspace_id
+		FOREIGN KEY(workspace_id) REFERENCES workspace(id),
+		ADD CONSTRAINT active_plans_fk_product_id
+		FOREIGN KEY(product_id) REFERENCES product_info(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -756,10 +789,10 @@ pub async fn get_billable_services(
 			billable_service.id as "id!: _",
 			billable_service.plan_id as "plan_id!: _",
 			billable_service.workspace_id as "workspace_id!: _",
-			billable_service.price as "price!: _",
+			billable_service.price::FLOAT8 as "price!: _",
 			billable_service.quantity,
 			billable_service.product_info_id as "product_info_id!: _",
-			billable_service.total_price as "total_price!: _",
+			billable_service.total_price::FLOAT8 as "total_price!: _",
 			billable_service.resource_id as "resource_id!: _",
 			billable_service.date as "date!: _",
 			billable_service.active,
@@ -851,7 +884,7 @@ pub async fn get_payment_methods_for_workspace(
 pub async fn create_transaction(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	id: &Uuid,
-	product_info_id: &Uuid,
+	product_info_id: Option<&Uuid>,
 	transaction_type: &TransactionType,
 	plan_id: Option<&Uuid>,
 	amount: f64,
@@ -1221,7 +1254,7 @@ pub async fn get_coupon_by_name(
 			id as "id!: _",
 			name,
 			description,
-			credits as "credits!: _",
+			credits::FLOAT8 as "credits!: _",
 			valid_from as "valid_from!: _",
 			valid_till as "valid_till!: _",
 			num_usage as "num_usage!: _"
@@ -1261,6 +1294,7 @@ pub async fn get_resource_limit(
 pub async fn get_product_limit(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
+	product_info_id: &Uuid,
 ) -> Result<Option<ProductLimit>, sqlx::Error> {
 	query_as!(
 		ProductLimit,
@@ -1273,9 +1307,11 @@ pub async fn get_product_limit(
 		FROM
 			product_limits
 		WHERE
-			workspace_id = $1;
+			workspace_id = $1 AND
+			product_info_id = $2;
 		"#,
 		workspace_id as _,
+		product_info_id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -1289,7 +1325,7 @@ pub async fn get_credit_balance(
 		Credits,
 		r#"
 		SELECT
-			credits as "credits!: _"
+			credits::FLOAT8 as "credits!: _"
 		FROM
 			credits
 		WHERE
@@ -1298,5 +1334,87 @@ pub async fn get_credit_balance(
 		workspace_id as _,
 	)
 	.fetch_one(&mut *connection)
+	.await
+}
+
+pub async fn get_active_plan_for_product_in_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	product_info_id: &Uuid,
+) -> Result<Option<ActivePlan>, sqlx::Error> {
+	query_as!(
+		ActivePlan,
+		r#"
+		SELECT
+			product_id as "product_id!: _",
+			plan_id as "plan_id!: _",
+			workspace_id as "workspace_id!: _"
+		FROM
+			active_plans
+		WHERE
+			workspace_id = $1 AND
+			product_id = $2;
+		"#,
+		workspace_id as _,
+		product_info_id as _,
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn get_plan_by_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+) -> Result<Option<Plans>, sqlx::Error> {
+	query_as!(
+		Plans,
+		r#"
+		SELECT
+			id as "id!: _",
+			name,
+			description,
+			plan_type as "plan_type!: _",
+			product_info_id as "product_info_id!: _",
+			price::FLOAT8 as "price!: _",
+			quantity,
+			workspace_id as "workspace_id!: _"
+		FROM
+			plans
+		WHERE
+			id = $1;
+		"#,
+		id as _,
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn get_plan_by_name(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	name: &str,
+	workspace_id: &Uuid,
+) -> Result<Option<Plans>, sqlx::Error> {
+	query_as!(
+		Plans,
+		r#"
+		SELECT
+			id as "id!: _",
+			name,
+			description,
+			plan_type as "plan_type!: _",
+			product_info_id as "product_info_id!: _",
+			price::FLOAT8 as "price!: _",
+			quantity,
+			workspace_id as "workspace_id!: _"
+		FROM
+			plans
+		WHERE
+			name = $1 AND
+			workspace_id = $2;
+		"#,
+		name,
+		workspace_id as _,
+	)
+	.fetch_optional(&mut *connection)
 	.await
 }

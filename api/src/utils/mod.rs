@@ -2,7 +2,7 @@ mod eve_context;
 mod eve_middlewares;
 
 pub mod constants;
-pub mod free_limits;
+pub mod limits;
 pub mod logger;
 pub mod settings;
 pub mod validator;

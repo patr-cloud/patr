@@ -21,7 +21,6 @@ pub async fn initialize_secret_pre(
 				CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)),
 			workspace_id UUID NOT NULL,
 			deployment_id UUID, /* For deployment specific secrets */
-			billable_service_id UUID NOT NULL,
 			CONSTRAINT secret_uq_workspace_id_name UNIQUE(workspace_id, name)
 		);
 		"#

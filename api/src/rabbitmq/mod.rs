@@ -190,7 +190,7 @@ pub(super) async fn queue_process_payment(
 
 	service::send_message_to_rabbit_mq(
 		&RequestMessage::Workspace(WorkspaceRequestData::ProcessWorkspace {
-			month: current_month.into(),
+			month: current_month,
 			year: current_year,
 		}),
 		config,
@@ -225,8 +225,8 @@ pub(super) async fn queue_generate_invoice_for_workspace(
 
 	service::send_message_to_rabbit_mq(
 		&RequestMessage::Workspace(WorkspaceRequestData::GenerateInvoice {
-			month,
-			year,
+			month: 6,
+			year: 2022,
 			workspace,
 		}),
 		config,

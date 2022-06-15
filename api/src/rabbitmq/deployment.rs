@@ -84,6 +84,14 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
+			let _ = service::create_billable_service_for_deployment(
+				connection,
+				&workspace_id,
+				&deployment.id,
+				true,
+			)
+			.await?;
+
 			update_deployment_and_db_status(
 				connection,
 				&workspace_id,
@@ -124,6 +132,14 @@ pub(super) async fn process_request(
 				&request_id,
 				&serde_json::to_value(DeploymentMetadata::Start {})?,
 				true,
+				true,
+			)
+			.await?;
+
+			let _ = service::create_billable_service_for_deployment(
+				connection,
+				&workspace_id,
+				&deployment.id,
 				true,
 			)
 			.await?;
@@ -171,6 +187,14 @@ pub(super) async fn process_request(
 				&request_id,
 				&serde_json::to_value(DeploymentMetadata::Start {})?,
 				false,
+				true,
+			)
+			.await?;
+
+			let _ = service::create_billable_service_for_deployment(
+				connection,
+				&workspace_id,
+				&deployment.id,
 				true,
 			)
 			.await?;
@@ -325,6 +349,10 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
+			log::trace!(
+				"request_id: {} - creating billable service for deployment",
+				request_id
+			);
 			let _ = service::create_billable_service_for_deployment(
 				connection,
 				&workspace_id,
@@ -393,14 +421,6 @@ async fn update_deployment_and_db_status(
 					connection,
 					&deployment.id,
 					&status,
-				)
-				.await?;
-
-				let _ = service::create_billable_service_for_deployment(
-					connection,
-					&workspace_id,
-					&deployment.id,
-					true,
 				)
 				.await?;
 

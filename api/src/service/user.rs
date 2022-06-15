@@ -8,7 +8,7 @@ use reqwest::Client;
 use crate::{
 	db::{self, User},
 	error,
-	models::PaymentIntentObject,
+	models::{PaymentIntentObject, PaymentMethodStatus, PaymentMethodUsage},
 	service,
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
@@ -461,6 +461,57 @@ pub async fn update_billing_address(
 	Ok(())
 }
 
+pub async fn add_billing_address(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	address_details: Address,
+) -> Result<(), Error> {
+	if address_details.address_line2.is_none() &&
+		address_details.address_line3.is_some()
+	{
+		return Error::as_result()
+			.status(400)
+			.body(error!(ADDRESS_LINE_3_NOT_ALLOWED).to_string())?;
+	}
+
+	if db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?
+		.address_id
+		.is_some()
+	{
+		return Error::as_result()
+			.status(400)
+			.body(error!(ADDRESS_ALREADY_EXISTS).to_string())?;
+	}
+
+	let address_id = db::generate_new_address_id(connection).await?;
+
+	let address_details = &db::Address {
+		id: address_id.clone(),
+		first_name: address_details.first_name,
+		last_name: address_details.last_name,
+		address_line_1: address_details.address_line1,
+		address_line_2: address_details.address_line2,
+		address_line_3: address_details.address_line3,
+		city: address_details.city,
+		state: address_details.state,
+		zip: address_details.zip,
+		country: address_details.country,
+	};
+
+	db::add_billing_address(connection, address_details).await?;
+
+	db::add_billing_address_to_workspace(
+		connection,
+		&workspace_id,
+		&address_id,
+	)
+	.await?;
+
+	Ok(())
+}
+
 pub async fn get_card_details(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
@@ -496,10 +547,16 @@ pub async fn get_card_details(
 }
 
 pub async fn add_card_details(
+	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	config: &Settings,
 ) -> Result<PaymentIntentObject, Error> {
 	let client = Client::new();
+
+	let stripe_customer_id = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?
+		.stripe_customer_id;
 
 	let password: Option<String> = None;
 
@@ -507,7 +564,7 @@ pub async fn add_card_details(
 		.post("https://api.stripe.com/v1/setup_intents")
 		.basic_auth(&config.stripe.secret_key, password)
 		.query(&[
-			("customer", workspace_id.as_str()),
+			("customer", stripe_customer_id.as_str()),
 			// for now only accepting cards, other payment methods will be
 			// accepted at later point of time
 			("payment_method_types[]", "card"),

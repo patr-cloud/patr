@@ -411,6 +411,7 @@ pub async fn send_invoice_email(
 	year: i32,
 	user_id: &Uuid,
 	price_distribution: HashMap<Uuid, (i64, f64, i32, String, &String)>,
+	credits_used: Option<f64>,
 	total_cost: f64,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, user_id)
@@ -459,6 +460,7 @@ pub async fn send_invoice_email(
 		month,
 		year.to_string(),
 		price_distribution,
+		credits_used.unwrap_or(0f64).to_string(),
 		total_cost.to_string(),
 	)
 	.await
