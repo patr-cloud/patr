@@ -368,6 +368,16 @@
     },
     "query": "INSERT INTO resource( id, name, resource_type_id, owner_id, created ) VALUES ($1, $2, $3, $4, $5);"
   },
+  "0cbee2e41259506e57231034c37f15d55a4a970394cfb3d5b16531574001e1f6": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "DROP TRIGGER IF EXISTS role_allow_permissions_resource_check_trigger ON role_allow_permissions_resource;"
+  },
   "0d262a2cdb70f0c2af1b7b788df13c6d6da8ce31fd6172023a0490f6cbda6d94": {
     "describe": {
       "columns": [],
@@ -1197,7 +1207,7 @@
         true,
         true,
         true,
-        true
+        false
       ],
       "parameters": {
         "Left": []
@@ -2396,7 +2406,7 @@
         true,
         true,
         true,
-        true
+        false
       ],
       "parameters": {
         "Left": []
@@ -2490,6 +2500,16 @@
       }
     },
     "query": "CREATE TABLE user_phone_number( user_id UUID NOT NULL CONSTRAINT user_phone_number_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, country_code CHAR(2) NOT NULL CONSTRAINT user_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_phone_number_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), number VARCHAR(15) NOT NULL CONSTRAINT user_phone_number_chk_number_valid CHECK( LENGTH(number) >= 7 AND LENGTH(number) <= 15 AND CAST(number AS BIGINT) > 0 ), CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number), CONSTRAINT user_phone_number_uq_user_id_country_code_number UNIQUE(user_id, country_code, number) );"
+  },
+  "452e5315f86ffcb3d79783f546126e4770ee58c6bdfa68f39f5ab5e4fadf4c06": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE OR REPLACE FUNCTION validate_permission_to_resource_mapping( permission_name TEXT, resource_type_name TEXT ) RETURNS BOOLEAN AS $$ SELECT CASE resource_type_name WHEN 'workspace' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::domain::list', 'workspace::domain::add', 'workspace::infrastructure::deployment::list', 'workspace::infrastructure::deployment::create', 'workspace::infrastructure::managedUrl::list', 'workspace::infrastructure::managedUrl::create', 'workspace::infrastructure::managedDatabase::create', 'workspace::infrastructure::managedDatabase::list', 'workspace::dockerRegistry::create', 'workspace::dockerRegistry::list', 'workspace::secret::list', 'workspace::secret::create', 'workspace::infrastructure::staticSite::list', 'workspace::infrastructure::staticSite::create', 'workspace::infrastructure::upgradePath::list', 'workspace::infrastructure::upgradePath::create', 'workspace::rbac::role::list', 'workspace::rbac::role::create', 'workspace::rbac::role::edit', 'workspace::rbac::role::delete', 'workspace::rbac::user::list', 'workspace::rbac::user::add', 'workspace::rbac::user::remove', 'workspace::rbac::user::updateRoles', 'workspace::edit', 'workspace::delete', 'workspace::ci::github::connect', 'workspace::ci::github::activate', 'workspace::ci::github::deactivate', 'workspace::ci::github::viewBuilds', 'workspace::ci::github::restartBuilds', 'workspace::ci::github::disconnect' ] ) THEN TRUE ELSE FALSE END ) WHEN 'domain' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::domain::viewDetails', 'workspace::domain::verify', 'workspace::domain::delete', 'workspace::domain::dnsRecord::list', 'workspace::domain::dnsRecord::add' ] ) THEN TRUE ELSE FALSE END ) WHEN 'dnsRecord' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::domain::dnsRecord::edit', 'workspace::domain::dnsRecord::delete' ] ) THEN TRUE ELSE FALSE END ) WHEN 'dockerRepository' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::dockerRegistry::delete', 'workspace::dockerRegistry::info', 'workspace::dockerRegistry::push', 'workspace::dockerRegistry::pull' ] ) THEN TRUE ELSE FALSE END ) WHEN 'managedDatabase' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::infrastructure::managedDatabase::delete', 'workspace::infrastructure::managedDatabase::info' ] ) THEN TRUE ELSE FALSE END ) WHEN 'deployment' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::infrastructure::deployment::info', 'workspace::infrastructure::deployment::delete', 'workspace::infrastructure::deployment::edit' ] ) THEN TRUE ELSE FALSE END ) WHEN 'staticSite' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::infrastructure::staticSite::info', 'workspace::infrastructure::staticSite::delete', 'workspace::infrastructure::staticSite::edit' ] ) THEN TRUE ELSE FALSE END ) WHEN 'deploymentUpgradePath' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::infrastructure::upgradePath::info', 'workspace::infrastructure::upgradePath::delete', 'workspace::infrastructure::upgradePath::edit' ] ) THEN TRUE ELSE FALSE END ) WHEN 'managedUrl' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::infrastructure::managedUrl::edit', 'workspace::infrastructure::managedUrl::delete' ] ) THEN TRUE ELSE FALSE END ) WHEN 'secret' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::secret::edit', 'workspace::secret::delete' ] ) THEN TRUE ELSE FALSE END ) ELSE FALSE END; $$ LANGUAGE SQL IMMUTABLE STRICT;"
   },
   "465499cd312427f9daac7b5b6a05aa0c4e266f2e44e2a880626698aee28a2577": {
     "describe": {
@@ -4652,6 +4672,16 @@
     },
     "query": "DELETE FROM personal_email WHERE user_id = $1 AND local = $2 AND domain_id = $3;"
   },
+  "88c569d77c6d4d7c6fd503d94e636e006eea6afeb37a70e3e0a6b15702cbe1f6": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TRIGGER role_allow_permissions_resource_type_check_trigger BEFORE INSERT OR UPDATE ON role_allow_permissions_resource_type FOR EACH ROW EXECUTE FUNCTION role_allow_permissions_resource_type_check();"
+  },
   "8ba7e810211002c1b6033836493c2f48f72dbf7718a0ee8571cf200f07bbeb4d": {
     "describe": {
       "columns": [
@@ -4763,6 +4793,16 @@
     },
     "query": "DELETE FROM deployment_environment_variable WHERE deployment_id = $1;"
   },
+  "8db9c88dcf168479d80d98ac4369db2ab2587b73c6a2cc3a388fc55e347b1f7a": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE OR REPLACE FUNCTION role_allow_permissions_resource_type_check() RETURNS TRIGGER AS $$ DECLARE permission_name TEXT; resource_type_name TEXT; BEGIN SELECT permission.name INTO permission_name FROM permission WHERE permission.id = NEW.permission_id; SELECT resource_type.name INTO resource_type_name FROM resource_type WHERE resource_type.id = NEW.resource_type_id; IF validate_permission_to_resource_mapping(permission_name, resource_type_name) THEN RETURN NEW; END IF; RAISE EXCEPTION 'Invalid permission is provided for resource'; END $$ LANGUAGE PLPGSQL;"
+  },
   "8e7433b1af4c66de9bc7eba31cb2639190f235a410264641ba86b0cd6890c736": {
     "describe": {
       "columns": [],
@@ -4832,6 +4872,16 @@
       }
     },
     "query": "SELECT workspace_credits.workspace_id as \"workspace_id: _\", workspace_credits.credits as \"credits!: _\", workspace_credits.metadata as \"metadata: _\", workspace_credits.date as \"date: _\" FROM workspace_credits WHERE workspace_id = $1;"
+  },
+  "904c56947846d9c24269c0c837927563548a164c8e25dd3e29469e0b8425035e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE OR REPLACE FUNCTION role_block_permissions_resource_check() RETURNS TRIGGER AS $$ DECLARE permission_name TEXT; resource_type_name TEXT; BEGIN SELECT permission.name INTO permission_name FROM permission WHERE permission.id = NEW.permission_id; SELECT resource_type.name INTO resource_type_name FROM resource_type JOIN resource ON resource.resource_type_id = resource_type.id WHERE resource.id = NEW.resource_id; IF validate_permission_to_resource_mapping(permission_name, resource_type_name) THEN RETURN NEW; END IF; RAISE EXCEPTION 'Invalid permission is provided for resource'; END $$ LANGUAGE PLPGSQL;"
   },
   "950e9b68ae5974afe26208b12498d2863660e67871aa2ad387b54a03255d339d": {
     "describe": {
@@ -5173,16 +5223,6 @@
       }
     },
     "query": "CREATE TABLE permission( id UUID CONSTRAINT permission_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT permission_uq_name UNIQUE, description VARCHAR(500) NOT NULL );"
-  },
-  "9e3736b6e5d9a9db4281d8ce42a2fa507275cbb428769ab441069341dc304212": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE role_permissions_resource( role_id UUID CONSTRAINT role_permissions_resource_fk_role_id REFERENCES role(id), permission_id UUID CONSTRAINT role_permissions_resource_fk_permission_id REFERENCES permission(id), resource_id UUID CONSTRAINT role_permissions_resource_fk_resource_id REFERENCES resource(id), CONSTRAINT role_permissions_resource_pk PRIMARY KEY(role_id, permission_id, resource_id) );"
   },
   "9e6df600d397b8aa8ea872e84291a8e54970942b1930a3210791dcbd000a7ded": {
     "describe": {
@@ -5701,6 +5741,16 @@
     },
     "query": "DELETE FROM password_reset_request WHERE user_id = $1;"
   },
+  "a8bfb9344d997c3139202f73145fdab9d031af1b260b522fcb996ea7f8eba8e8": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "DROP TRIGGER IF EXISTS role_block_permissions_resource_check_trigger ON role_block_permissions_resource;"
+  },
   "a96073b72c29dee2028e0e62e6896f294cd6e6aae843c2de17db78b35b7a3a6c": {
     "describe": {
       "columns": [],
@@ -6155,6 +6205,16 @@
     },
     "query": "UPDATE user_login SET token_expiry = $1, last_activity = $2 WHERE login_id = $3;"
   },
+  "b33e361873ed104c0235ee8ced2f776a01e87e77f7b5ea6e4da499aca0985cb7": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE OR REPLACE FUNCTION role_allow_permissions_resource_check() RETURNS TRIGGER AS $$ DECLARE permission_name TEXT; resource_type_name TEXT; BEGIN SELECT permission.name INTO permission_name FROM permission WHERE permission.id = NEW.permission_id; SELECT resource_type.name INTO resource_type_name FROM resource_type JOIN resource ON resource.resource_type_id = resource_type.id WHERE resource.id = NEW.resource_id; IF validate_permission_to_resource_mapping(permission_name, resource_type_name) THEN RETURN NEW; END IF; RAISE EXCEPTION 'Invalid permission is provided for resource'; END $$ LANGUAGE PLPGSQL;"
+  },
   "b47eedf97c7d77d6c60a68960460d37a161858459255a2a8d09b3a69d080b70f": {
     "describe": {
       "columns": [
@@ -6375,6 +6435,16 @@
       }
     },
     "query": "SET CONSTRAINTS ALL DEFERRED;"
+  },
+  "b8a3c08e65e107c824882e46e05ddb9e7a671f0cc3db09642f0b283a0e1dc3ba": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TRIGGER role_block_permissions_resource_check_trigger BEFORE INSERT OR UPDATE ON role_block_permissions_resource FOR EACH ROW EXECUTE FUNCTION role_block_permissions_resource_check();"
   },
   "b9152ca043c03160c4d78ea054b408b083e9b10d0617b67443a71180265b3e79": {
     "describe": {
@@ -7849,6 +7919,16 @@
     },
     "query": "SELECT \"user\".id as \"id: Uuid\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: Uuid\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number FROM \"user\" WHERE username = $1;"
   },
+  "e200cfc85519617a7a88666f18a5343a58ecf9d774a0970403bc7b7212bd40b6": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TRIGGER role_allow_permissions_resource_check_trigger BEFORE INSERT OR UPDATE ON role_allow_permissions_resource FOR EACH ROW EXECUTE FUNCTION role_allow_permissions_resource_check();"
+  },
   "e2e4acb7753330bf806aae68b144fa483eb41b7c18cb10b1812164daa8e3326c": {
     "describe": {
       "columns": [],
@@ -8894,6 +8974,16 @@
     },
     "query": "WITH RECURSIVE managed_url_list AS ( SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id WHERE managed_url.static_site_id = $1 AND managed_url.url_type = 'proxy_to_static_site' UNION ALL SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id JOIN managed_url_list ON managed_url.url LIKE CONCAT( managed_url.sub_domain, '.', domain.name, '.', domain.tld, CASE managed_url.path WHEN '/' THEN '%' ELSE CONCAT(managed_url.path, '%') END ) WHERE managed_url.url_type = 'redirect' OR managed_url.url_type = 'proxy_url' ) SELECT id as \"id!: _\", sub_domain as \"sub_domain!: _\", domain_id as \"domain_id!: _\", path as \"path!: _\", url_type as \"url_type!: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id!: _\" FROM managed_url_list WHERE managed_url_list.workspace_id = $2 AND managed_url_list.sub_domain NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
   },
+  "f6406e1dec28e6609039ab64f24b2b67325f2e4274897f82c721b6a6aade073f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "DROP TRIGGER IF EXISTS role_allow_permissions_resource_type_check_trigger ON role_allow_permissions_resource_type;"
+  },
   "f677f0f49f5509a73a29aa93a7525c287fdc8601417c0b671f6a2848cdcc1265": {
     "describe": {
       "columns": [],
@@ -8905,54 +8995,6 @@
       }
     },
     "query": "DELETE FROM role WHERE id = $1;"
-  },
-  "f6cc8d79f2c2f52757cc15fd59ac42c6d1ea67fc8232fed1260895a5d418492a": {
-    "describe": {
-      "columns": [
-        {
-          "name": "permission_id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "resource_id: Uuid",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "description",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT permission_id as \"permission_id: Uuid\", resource_id as \"resource_id: Uuid\", name, description FROM role_permissions_resource INNER JOIN permission ON role_permissions_resource.permission_id = permission.id WHERE role_permissions_resource.role_id = $1;"
-  },
-  "f6fd226a2dbddcdaa814f0e47874e447b759180761627cdc941cbe554a07abe5": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ), CONSTRAINT deployment_chk_image_tag_is_valid CHECK( image_tag != '' ) );"
   },
   "f7ce5b52d6707873c6ef3cb55d5d718da30d16d0dec3d2f8674896deb68deae9": {
     "describe": {

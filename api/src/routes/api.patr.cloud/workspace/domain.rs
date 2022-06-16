@@ -325,14 +325,14 @@ pub fn create_sub_app(
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let domain_id_string =
+					let dns_record_id =
 						context.get_param(request_keys::RECORD_ID).unwrap();
-					let domain_id = Uuid::parse_str(domain_id_string)
+					let dns_record_id = Uuid::parse_str(dns_record_id)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&domain_id,
+						&dns_record_id,
 					)
 					.await?
 					.filter(|value| value.owner_id == workspace_id);
@@ -362,14 +362,14 @@ pub fn create_sub_app(
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let domain_id_string =
+					let dns_record_id =
 						context.get_param(request_keys::RECORD_ID).unwrap();
-					let domain_id = Uuid::parse_str(domain_id_string)
+					let dns_record_id = Uuid::parse_str(dns_record_id)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&domain_id,
+						&dns_record_id,
 					)
 					.await?
 					.filter(|value| value.owner_id == workspace_id);
