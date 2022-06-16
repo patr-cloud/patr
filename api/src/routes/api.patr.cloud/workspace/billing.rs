@@ -830,7 +830,7 @@ async fn get_credits(
 	.into_iter()
 	.map(|credits| WorkspaceCredits {
 		workspace_id: credits.workspace_id,
-		credits: credits.credits,
+		credits: credits.credits as f64,
 		metadata: credits.metadata,
 		date: credits.date,
 	})

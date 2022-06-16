@@ -26,7 +26,7 @@ pub async fn add_credits_to_workspace(
 		.post("https://api.stripe.com/v1/payment_intents")
 		.basic_auth(&config.stripe.secret_key, password)
 		.form(&PaymentIntent {
-			amount: credits,
+			amount: credits * 10,
 			currency: "usd".to_string(),
 			description: "Patr charge: Additional credits".to_string(),
 			customer: config.stripe.customer_id.clone(),
@@ -68,15 +68,15 @@ pub async fn confirm_payment_method(
 			.await?
 			.status(500)?;
 
-	let payment_method_id = payment_info
+	let payment_id = payment_info
 		.clone()
 		.metadata
-		.get("payment_method_id")
+		.get("payment_intent_id")
 		.and_then(|value| value.as_str())
 		.and_then(|c| c.parse::<String>().ok())
 		.status(500)?;
 
-	if payment_intent_id != payment_method_id {
+	if payment_intent_id != payment_id {
 		return Error::as_result()
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -97,85 +97,23 @@ pub async fn confirm_payment_method(
 		.await?;
 
 	let metadata = json!({
-		"payment_intent_id": payment_intent_object.id,
+		"payment_intent_id": payment_intent_object.id.clone(),
 		"status": payment_intent_object.status
 	});
 
-	db::update_workspace_credit_metadata(connection, workspace_id, &metadata)
-		.await?;
+	db::update_workspace_credit_metadata(
+		connection,
+		workspace_id,
+		&metadata,
+		&payment_intent_object.id,
+	)
+	.await?;
 
 	if payment_intent_object.status != Some(PaymentMethodStatus::Succeeded) &&
-		payment_intent_object.amount == payment_info.credits
+		payment_intent_object.amount == payment_info.credits as f64
 	{
 		return Ok(false);
 	}
 
 	Ok(true)
 }
-
-/*
-
-{
-  "id": "pi_3LBGI8SFDPAh3GrI09zgntSo",
-  "object": "payment_intent",
-  "amount": 500,
-  "amount_capturable": 0,
-  "amount_details": {
-	"tip": {
-	}
-  },
-  "amount_received": 0,
-  "application": null,
-  "application_fee_amount": null,
-  "automatic_payment_methods": null,
-  "canceled_at": null,
-  "cancellation_reason": null,
-  "capture_method": "automatic",
-  "charges": {
-	"object": "list",
-	"data": [
-
-	],
-	"has_more": false,
-	"total_count": 0,
-	"url": "/v1/charges?payment_intent=pi_3LBGI8SFDPAh3GrI09zgntSo"
-  },
-  "client_secret": "pi_3LBGI8SFDPAh3GrI09zgntSo_secret_mI3Ht4TFefkJu2ITNizJ4OhsC",
-  "confirmation_method": "automatic",
-  "created": 1655376672,
-  "currency": "usd",
-  "customer": null,
-  "description": null,
-  "invoice": null,
-  "last_payment_error": null,
-  "livemode": false,
-  "metadata": {
-  },
-  "next_action": null,
-  "on_behalf_of": null,
-  "payment_method": null,
-  "payment_method_options": {
-	"card": {
-	  "installments": null,
-	  "mandate_options": null,
-	  "network": null,
-	  "request_three_d_secure": "automatic"
-	}
-  },
-  "payment_method_types": [
-	"card"
-  ],
-  "processing": null,
-  "receipt_email": null,
-  "review": null,
-  "setup_future_usage": null,
-  "shipping": null,
-  "source": null,
-  "statement_descriptor": null,
-  "statement_descriptor_suffix": null,
-  "status": "requires_payment_method",
-  "transfer_data": null,
-  "transfer_group": null
-}
-
-*/

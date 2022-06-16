@@ -1565,6 +1565,45 @@
       "nullable": []
     }
   },
+  "2a1b46f5920bd1ac4a0582eab19c1275b00e3ff5db75a3061073a0942808a442": {
+    "query": "SELECT workspace_credits.workspace_id as \"workspace_id: _\", workspace_credits.credits::INT8 as \"credits!: _\", workspace_credits.metadata as \"metadata: _\", workspace_credits.date as \"date: _\" FROM workspace_credits WHERE workspace_id = $1 AND metadata ->> 'payment_intent_id' = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "workspace_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "credits!: _",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 2,
+          "name": "metadata: _",
+          "type_info": "Json"
+        },
+        {
+          "ordinal": 3,
+          "name": "date: _",
+          "type_info": "Timestamptz"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        null,
+        false,
+        false
+      ]
+    }
+  },
   "2a338d8661b637bcd06f1f98e6fb4128d9d922f739630f04204c7817dd6071b4": {
     "query": "UPDATE role SET name = $1 WHERE id = $2;",
     "describe": {
@@ -2515,6 +2554,44 @@
       ]
     }
   },
+  "4ca0dee19faa1986de13efbe2586a53fc887918cde5fd579d7fd0cdbb103844a": {
+    "query": "SELECT workspace_credits.workspace_id as \"workspace_id: _\", workspace_credits.credits::INT8 as \"credits!: _\", workspace_credits.metadata as \"metadata: _\", workspace_credits.date as \"date: _\" FROM workspace_credits WHERE workspace_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "workspace_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "credits!: _",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 2,
+          "name": "metadata: _",
+          "type_info": "Json"
+        },
+        {
+          "ordinal": 3,
+          "name": "date: _",
+          "type_info": "Timestamptz"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        null,
+        false,
+        false
+      ]
+    }
+  },
   "4d4d3f0596fa4cb76250545fe274ac8edb6d56fd4a60d7f5b3085280ea880105": {
     "query": "UPDATE managed_database SET digitalocean_db_id = $1 WHERE id = $2;",
     "describe": {
@@ -3248,45 +3325,6 @@
       "nullable": []
     }
   },
-  "62931f8d6ea7ddb31b154839554d90d96f4aa612b0043eaf00401e3cb9e8e918": {
-    "query": "SELECT workspace_credits.workspace_id as \"workspace_id: _\", workspace_credits.credits::FLOAT8 as \"credits!: _\", workspace_credits.metadata as \"metadata: _\", workspace_credits.date as \"date: _\" FROM workspace_credits WHERE workspace_id = $1 AND metadata ->> 'payment_method_id' = $2;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "workspace_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "credits!: _",
-          "type_info": "Float8"
-        },
-        {
-          "ordinal": 2,
-          "name": "metadata: _",
-          "type_info": "Json"
-        },
-        {
-          "ordinal": 3,
-          "name": "date: _",
-          "type_info": "Timestamptz"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        null,
-        false,
-        false
-      ]
-    }
-  },
   "629c00298724c7b118fa471652c112c774ebc0c0d08a288c41c1cf7b9a27b5f9": {
     "query": "SELECT COUNT(*) as \"count!\" FROM managed_database INNER JOIN workspace ON managed_database.workspace_id = workspace.id WHERE status = 'deleted' AND workspace.super_admin_id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );",
     "describe": {
@@ -3363,19 +3401,6 @@
       "columns": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "691d5e86f8c43a2d5fe85a7c4055208e2eb1d581eeb01e0767463234c3686b0d": {
-    "query": "UPDATE workspace_credits SET metadata = $1 WHERE workspace_id = $2;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Json",
-          "Uuid"
-        ]
       },
       "nullable": []
     }
@@ -6570,44 +6595,6 @@
       "nullable": []
     }
   },
-  "c1fca4e841d1da78ff575a3f623626d18640b0848f04d6745f329efbd3a6e511": {
-    "query": "SELECT workspace_credits.workspace_id as \"workspace_id: _\", workspace_credits.credits as \"credits: _\", workspace_credits.metadata as \"metadata: _\", workspace_credits.date as \"date: _\" FROM workspace_credits WHERE workspace_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "workspace_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "credits: _",
-          "type_info": "Numeric"
-        },
-        {
-          "ordinal": 2,
-          "name": "metadata: _",
-          "type_info": "Json"
-        },
-        {
-          "ordinal": 3,
-          "name": "date: _",
-          "type_info": "Timestamptz"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "c4926f8d59dc7bc4e9ee1f2472a6362d47d65337c1644b6a0487cd9318d28d11": {
     "query": "SELECT COUNT(*) as \"count!\" FROM \"user\" WHERE id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );",
     "describe": {
@@ -6675,6 +6662,20 @@
           "Int8",
           "Bool",
           "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "c78aafcf00e784c3995d6648005cea14117df4310d5828d9386aa9ce20f9f3d8": {
+    "query": "UPDATE workspace_credits SET metadata = $1 WHERE workspace_id = $2 AND metadata ->> 'payment_intent_id' = $3;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Json",
+          "Uuid",
+          "Text"
         ]
       },
       "nullable": []

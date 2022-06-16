@@ -40,7 +40,7 @@ pub struct PaymentIntentObject {
 	pub customer: Option<String>,
 	pub description: Option<String>,
 	pub last_setup_error: Option<LastSetupError>,
-	pub payment_method: Option<PaymentMethod>,
+	pub payment_method: Option<String>,
 	pub payment_method_types: Vec<String>,
 	pub status: Option<PaymentMethodStatus>,
 	pub usage: Option<PaymentMethodUsage>,
