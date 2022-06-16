@@ -324,7 +324,7 @@ pub async fn update_kubernetes_managed_url(
 					(
 						"nginx.ingress.kubernetes.io/temporal-redirect"
 							.to_string(),
-						url.clone(),
+						format!("https://{}", url),
 					),
 					(
 						"cert-manager.io/cluster-issuer".to_string(),
