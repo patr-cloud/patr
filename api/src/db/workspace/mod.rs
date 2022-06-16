@@ -230,6 +230,16 @@ pub async fn initialize_workspaces_post(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE workspace_credits
+		ADD CONSTRAINT workspace_credits_fk_workspace_id
+		FOREIGN KEY(workspace_id) REFERENCES workspace(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	domain::initialize_domain_post(connection).await?;
 	docker_registry::initialize_docker_registry_post(connection).await?;
 	secret::initialize_secret_post(connection).await?;

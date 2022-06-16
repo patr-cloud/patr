@@ -37,6 +37,7 @@ pub(super) async fn migrate(
 	reset_permission_order(&mut *connection, config).await?;
 	add_hpa_to_existing_deployments(&mut *connection, config).await?;
 	update_deployment_with_probe_column(&mut *connection, config).await?;
+	add_workspace_credit_column(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -473,6 +474,27 @@ async fn update_deployment_with_probe_column(
 					liveness_probe_port_type = 'http'
 				);
 		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn add_workspace_credit_column(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		CREATE TABLE workspace_credits(
+			workspace_id UUID NOT NULL CONSTRAINT workspace_credits_pk PRIMARY KEY,
+			credits DECIMAL(15,6) NOT NULL DEFAULT 0,
+			metadata JSON NOT NULL,
+			date TIMESTAMPTZ NOT NULL,
+			ADD CONSTRAINT workspace_credits_fk_workspace_id FOREIGN KEY (workspace_id) REFERENCES workspace(id)
+		);
+		"#,
 	)
 	.execute(&mut *connection)
 	.await?;
