@@ -492,7 +492,7 @@ pub async fn add_workspace_credit_column(
 			credits DECIMAL(15,6) NOT NULL DEFAULT 0,
 			metadata JSON NOT NULL,
 			date TIMESTAMPTZ NOT NULL,
-			ADD CONSTRAINT workspace_credits_fk_workspace_id FOREIGN KEY (workspace_id) REFERENCES workspace(id)
+			CONSTRAINT workspace_credits_fk_workspace_id FOREIGN KEY (workspace_id) REFERENCES workspace(id)
 		);
 		"#,
 	)
