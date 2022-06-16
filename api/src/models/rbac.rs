@@ -243,3 +243,6 @@ pub mod resource_types {
 	pub const CI_REPO: &str = "ciRepo";
 	pub const CI_RUNNER: &str = "ciRunner";
 }
+
+// TODO: add hint or comment that if any resource_type name or permission name
+// is updated, it should also be updated in role validation triggers in db
