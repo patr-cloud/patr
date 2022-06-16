@@ -171,5 +171,5 @@ pub mod message {
 		"You have some resources present in the workspace. Please delete them before proceeding to delete your workspace";
 	pub const ADDRESS_LINE_3_NOT_ALLOWED: &str =
 		"Address line 3 is not allowed if address line 2 is not provided";
-	pub const PAYMENT_FAILED: &str = "Payment failed, please try again";
+	pub const PAYMENT_FAILED: &str = "Payment failed, please try again. In case your money was deducted, it will be refunded back to your account in 7 working days";
 }

@@ -98,7 +98,7 @@ pub async fn confirm_payment_method(
 		payment_intent_object.amount == payment_info.credits
 	{
 		return Error::as_result()
-			.status(400)
+			.status(200)
 			.body(error!(PAYMENT_FAILED).to_string())?;
 	}
 

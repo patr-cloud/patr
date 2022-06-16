@@ -18,6 +18,7 @@ use api_models::{
 		SubscriptionItem,
 		UpdateBillingInfoRequest,
 		UpdateBillingInfoResponse,
+		WorkspaceCredits,
 	},
 	utils::Uuid,
 };
@@ -304,7 +305,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(get_credit_balance)),
+			EveMiddleware::CustomFunction(pin_fn!(get_credits)),
 		],
 	);
 
@@ -813,7 +814,7 @@ async fn add_credits(
 	Ok(context)
 }
 
-async fn get_credit_balance(
+async fn get_credits(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -825,9 +826,14 @@ async fn get_credit_balance(
 		&workspace_id,
 	)
 	.await?
-	.status(400)
-	.body(error!(WRONG_PARAMETERS).to_string())?
-	.credits;
+	.into_iter()
+	.map(|credits| WorkspaceCredits {
+		workspace_id: credits.workspace_id,
+		credits: credits.credits,
+		metadata: credits.metadata,
+		date: credits.date,
+	})
+	.collect();
 
 	context.success(GetCreditsResponse { credits });
 	Ok(context)
@@ -841,7 +847,7 @@ async fn confirm_payment(
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
 	let ConfirmPaymentRequest {
-		payment_method_id, ..
+		payment_intent_id, ..
 	} = context
 		.get_body_as()
 		.status(400)
@@ -852,7 +858,7 @@ async fn confirm_payment(
 	service::confirm_payment_method(
 		context.get_database_connection(),
 		&workspace_id,
-		&payment_method_id,
+		&payment_intent_id,
 		&config,
 	)
 	.await?;
