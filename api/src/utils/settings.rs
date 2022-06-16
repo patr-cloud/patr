@@ -19,11 +19,11 @@ pub fn parse_config() -> Settings {
 		"prod" | "production" => Config::builder()
 			.add_source(File::with_name("config/prod").required(false))
 			.set_default("environment", "production")
-			.expect("unable to set environment to develop"),
+			.expect("unable to set environment to production"),
 		"dev" | "development" => Config::builder()
 			.add_source(File::with_name("config/dev").required(false))
 			.set_default("environment", "development")
-			.expect("unable to set environment to develop"),
+			.expect("unable to set environment to development"),
 		_ => {
 			panic!("Unknown running environment found!");
 		}
@@ -39,26 +39,34 @@ pub fn parse_config() -> Settings {
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
 	pub port: u16,
+	#[serde(alias = "bindaddress")]
 	pub bind_address: IpAddr,
+	#[serde(alias = "basepath")]
 	pub base_path: String,
+	#[serde(alias = "passwordpepper")]
 	pub password_pepper: String,
+	#[serde(alias = "jwtsecret")]
 	pub jwt_secret: String,
 	pub environment: RunningEnvironment,
 	pub s3: S3Settings,
 	pub database: DatabaseSettings,
-	pub mongodb: MongoDbSettings,
 	pub redis: RedisSettings,
 	pub email: EmailSettings,
 	pub twilio: TwilioSettings,
 	pub cloudflare: CloudflareSettings,
+	#[serde(alias = "dockerregistry")]
 	pub docker_registry: DockerRegistrySettings,
 	pub digitalocean: Digitalocean,
 	pub kubernetes: KubernetesSettings,
 	pub prometheus: PrometheusSettings,
 	pub chargebee: ChargebeeSettings,
+	#[serde(alias = "rabbitmq")]
 	pub rabbit_mq: RabbitMqSettings,
 	pub vault: VaultSettings,
+	pub loki: LokiSettings,
 	pub mailchimp: MailchimpSettings,
+	pub github: GithubSettings,
+	pub drone: DroneSettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -79,17 +87,7 @@ pub struct DatabaseSettings {
 	pub user: String,
 	pub password: String,
 	pub database: String,
-	pub connection_limit: u32,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MongoDbSettings {
-	pub host: String,
-	pub port: u16,
-	pub user: Option<String>,
-	pub password: Option<String>,
-	pub database: String,
+	#[serde(alias = "connectionlimit")]
 	pub connection_limit: u32,
 }
 
@@ -101,6 +99,7 @@ pub struct RedisSettings {
 	pub user: Option<String>,
 	pub password: Option<String>,
 	pub database: Option<u8>,
+	#[serde(alias = "connectionlimit")]
 	pub connection_limit: u32,
 	pub secure: bool,
 }
@@ -109,7 +108,9 @@ pub struct RedisSettings {
 #[serde(rename_all = "camelCase")]
 pub struct TwilioSettings {
 	pub username: String,
+	#[serde(alias = "accesstoken")]
 	pub access_token: String,
+	#[serde(alias = "fromnumber")]
 	pub from_number: String,
 }
 
@@ -127,8 +128,11 @@ pub struct EmailSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CloudflareSettings {
+	#[serde(alias = "accountid")]
 	pub account_id: String,
+	#[serde(alias = "accountemail")]
 	pub account_email: String,
+	#[serde(alias = "apitoken")]
 	pub api_token: String,
 }
 
@@ -142,19 +146,25 @@ pub enum RunningEnvironment {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DockerRegistrySettings {
+	#[serde(alias = "servicename")]
 	pub service_name: String,
 	pub issuer: String,
+	#[serde(alias = "registryurl")]
 	pub registry_url: String,
+	#[serde(alias = "privatekey")]
 	pub private_key: String,
+	#[serde(alias = "publickey")]
 	pub public_key: String,
-	#[serde(deserialize_with = "base64_to_byte_array")]
+	#[serde(deserialize_with = "base64_to_byte_array", alias = "publickeyder")]
 	pub public_key_der: Vec<u8>,
+	#[serde(alias = "authorizationheader")]
 	pub authorization_header: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Digitalocean {
+	#[serde(alias = "apikey")]
 	pub api_key: String,
 	pub registry: String,
 }
@@ -175,16 +185,28 @@ impl Display for RunningEnvironment {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct KubernetesSettings {
+	#[serde(alias = "certificateauthoritydata")]
 	pub certificate_authority_data: String,
+	#[serde(alias = "clustername")]
 	pub cluster_name: String,
+	#[serde(alias = "clusterurl")]
 	pub cluster_url: String,
+	#[serde(alias = "authname")]
 	pub auth_name: String,
+	#[serde(alias = "authusername")]
 	pub auth_username: String,
+	#[serde(alias = "authtoken")]
 	pub auth_token: String,
+	#[serde(alias = "contextname")]
 	pub context_name: String,
+	#[serde(alias = "certissuerhttp")]
 	pub cert_issuer_http: String,
+	#[serde(alias = "certissuerdns")]
 	pub cert_issuer_dns: String,
+	#[serde(alias = "staticsiteproxyservice")]
 	pub static_site_proxy_service: String,
+	#[serde(alias = "alertwebhooksecret")]
+	pub alert_webhook_secret: String,
 }
 
 fn base64_to_byte_array<'de, D>(value: D) -> Result<Vec<u8>, D::Error>
@@ -207,11 +229,15 @@ pub struct PrometheusSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChargebeeSettings {
+	#[serde(alias = "apikey")]
 	pub api_key: String,
 	pub url: String,
+	#[serde(alias = "creditamount")]
 	pub credit_amount: String,
 	pub description: String,
+	#[serde(alias = "gatewayid")]
 	pub gateway_id: String,
+	#[serde(alias = "redirecturl")]
 	pub redirect_url: String,
 }
 
@@ -234,7 +260,32 @@ pub struct VaultSettings {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct LokiSettings {
+	pub host: String,
+	pub username: String,
+	pub password: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MailchimpSettings {
+	#[serde(alias = "apikey")]
 	pub api_key: String,
+	#[serde(alias = "listid")]
 	pub list_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DroneSettings {
+	pub url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GithubSettings {
+	#[serde(alias = "clientid")]
+	pub client_id: String,
+	#[serde(alias = "clientsecret")]
+	pub client_secret: String,
 }

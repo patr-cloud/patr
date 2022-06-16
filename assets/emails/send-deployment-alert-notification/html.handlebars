@@ -29,13 +29,25 @@
           </tr>
           <tr>
             <td style="padding:10px 20px;color:#ffa500;font-size:18px;">
-              Hello
-              {{username}},
+              Hello there,
             </td>
           </tr>
           <tr>
             <td style="padding:10px 20px;color:#ffffff">
-              This email has been set as the backup email for your Patr account
+              An Event has taken place in your deployment:
+              <ul>
+                <li>Workspace : {{workspace_name}}</li>
+                <li>Deployment : {{deployment_name}}</li>
+                <li>Message : {{message}}</li>
+              </ul>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 20px 10px 20px;color:#ffffff">
+              To check out the logs for the deployment
+              <a href="https://app.patr.cloud/deployment/{{deployment_id}}">
+                click here
+              </a>
             </td>
           </tr>
           <tr>

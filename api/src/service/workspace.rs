@@ -76,6 +76,7 @@ pub async fn create_workspace(
 	workspace_name: &str,
 	super_admin_id: &Uuid,
 	allow_personal_workspaces: bool,
+	alert_emails: &[String],
 	config: &Settings,
 ) -> Result<Uuid, Error> {
 	if !is_workspace_name_allowed(
@@ -106,11 +107,13 @@ pub async fn create_workspace(
 		get_current_time_millis(),
 	)
 	.await?;
+
 	db::create_workspace(
 		connection,
 		&resource_id,
 		workspace_name,
 		super_admin_id,
+		alert_emails,
 	)
 	.await?;
 	db::end_deferred_constraints(connection).await?;

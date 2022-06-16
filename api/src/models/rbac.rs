@@ -138,6 +138,21 @@ pub mod permissions {
 			}
 		}
 
+		pub mod ci {
+			pub mod github {
+				pub const CONNECT: &str = "workspace::ci::github::connect";
+				pub const ACTIVATE: &str = "workspace::ci::github::activate";
+				pub const DEACTIVATE: &str =
+					"workspace::ci::github::deactivate";
+				pub const VIEW_BUILDS: &str =
+					"workspace::ci::github::viewBuilds";
+				pub const RESTART_BUILDS: &str =
+					"workspace::ci::github::restartBuilds";
+				pub const DISCONNECT: &str =
+					"workspace::ci::github::disconnect";
+			}
+		}
+
 		pub const EDIT: &str = "workspace::edit";
 		pub const DELETE: &str = "workspace::delete";
 	}

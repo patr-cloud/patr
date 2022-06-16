@@ -4,6 +4,7 @@ use eve_rs::AsError;
 use crate::{
 	db::{self, User, UserToSignUp},
 	error,
+	models::deployment::KubernetesEventData,
 	utils::Error,
 	Database,
 };
@@ -32,12 +33,18 @@ pub async fn send_sign_up_complete_notification(
 	welcome_email: Option<String>,
 	recovery_email: Option<String>,
 	recovery_phone_number: Option<String>,
+	username: &str,
 ) -> Result<(), Error> {
 	if let Some(welcome_email) = welcome_email {
-		email::send_sign_up_completed_email(welcome_email.parse()?).await?;
+		email::send_sign_up_completed_email(welcome_email.parse()?, username)
+			.await?;
 	}
 	if let Some(recovery_email) = recovery_email {
-		email::send_recovery_registration_mail(recovery_email.parse()?).await?;
+		email::send_recovery_registration_mail(
+			recovery_email.parse()?,
+			username,
+		)
+		.await?;
 	}
 	if let Some(phone_number) = recovery_phone_number {
 		sms::send_recovery_registration_sms(&phone_number).await?;
@@ -59,8 +66,9 @@ pub async fn send_sign_up_complete_notification(
 pub async fn send_email_verification_otp(
 	new_email: String,
 	otp: &str,
+	username: &str,
 ) -> Result<(), Error> {
-	email::send_email_verification_otp(new_email.parse()?, otp).await
+	email::send_email_verification_otp(new_email.parse()?, otp, username).await
 }
 
 /// # Description
@@ -167,7 +175,11 @@ pub async fn send_password_changed_notification(
 			&recovery_email_local,
 		)
 		.await?;
-		email::send_password_changed_notification(email.parse()?).await?;
+		email::send_password_changed_notification(
+			email.parse()?,
+			&user.username,
+		)
+		.await?;
 	}
 	// check if phone number is given as a recovery
 	if let Some((phone_country_code, phone_number)) = user
@@ -222,7 +234,11 @@ pub async fn send_user_reset_password_notification(
 			&recovery_email_local,
 		)
 		.await?;
-		email::send_user_reset_password_notification(email.parse()?).await?;
+		email::send_user_reset_password_notification(
+			email.parse()?,
+			&user.username,
+		)
+		.await?;
 	}
 	Ok(())
 }
@@ -264,7 +280,8 @@ pub async fn send_forgot_password_otp(
 			)
 			.await?;
 			// send email
-			email::send_forgot_password_otp(email.parse()?, otp).await
+			email::send_forgot_password_otp(email.parse()?, otp, &user.username)
+				.await
 		}
 		PreferredRecoveryOption::RecoveryPhoneNumber => {
 			let phone_number = get_user_phone_number(
@@ -338,4 +355,64 @@ async fn get_user_phone_number(
 			.body(error!(SERVER_ERROR).to_string())?;
 	let phone_number = format!("+{}{}", country_code.phone_code, phone_number);
 	Ok(phone_number)
+}
+
+/// # Description
+/// This function is used to send alert to the user
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `workspace_name` - a Uuid containing id of the workspace
+/// * `deployment_id` - a Uuid containing id of the deployment
+/// * `deployment_name` - a string containing name of the deployment
+/// * `message` - a string containing message of the alert
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
+pub async fn send_alert_email(
+	workspace_name: &str,
+	deployment_id: &Uuid,
+	deployment_name: &str,
+	message: &str,
+	alert_emails: &[String],
+) -> Result<(), Error> {
+	// send email
+	for email in alert_emails {
+		email::send_alert_email(
+			email.parse()?,
+			workspace_name,
+			deployment_id,
+			deployment_name,
+			message,
+		)
+		.await?;
+	}
+
+	Ok(())
+}
+
+/// # Description
+/// This function is used to send alert to the patr's support email
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `workspace_name` - a Uuid containing id of the workspace
+/// * `deployment_id` - a Uuid containing id of the deployment
+/// * `deployment_name` - a string containing name of the deployment
+/// * `event_data` - an object containing all the details of the event
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
+pub async fn send_alert_email_to_patr(
+	event_data: KubernetesEventData,
+) -> Result<(), Error> {
+	// send email
+	email::send_alert_email_to_patr("postmaster@vicara.co".parse()?, event_data)
+		.await
 }

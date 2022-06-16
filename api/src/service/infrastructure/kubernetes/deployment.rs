@@ -10,20 +10,24 @@ use api_models::{
 	},
 	utils::Uuid,
 };
-use chrono::Utc;
 use eve_rs::AsError;
 use k8s_openapi::{
 	api::{
 		apps::v1::{Deployment as K8sDeployment, DeploymentSpec},
+		autoscaling::v1::{
+			CrossVersionObjectReference,
+			HorizontalPodAutoscaler,
+			HorizontalPodAutoscalerSpec,
+		},
 		core::v1::{
 			Container,
 			ContainerPort,
 			EnvVar,
-			Event,
+			HTTPGetAction,
 			LocalObjectReference,
-			Pod,
 			PodSpec,
 			PodTemplateSpec,
+			Probe,
 			ResourceRequirements,
 			Service,
 			ServicePort,
@@ -48,7 +52,7 @@ use k8s_openapi::{
 	},
 };
 use kube::{
-	api::{DeleteParams, ListParams, LogParams, Patch, PatchParams},
+	api::{DeleteParams, Patch, PatchParams},
 	core::{ErrorResponse, ObjectMeta},
 	Api,
 	Error as KubeError,
@@ -57,7 +61,7 @@ use kube::{
 use crate::{
 	db,
 	error,
-	models::deployment::{self, DeploymentBuildLog},
+	models::deployment::{self},
 	utils::{constants::request_keys, settings::Settings, Error},
 	Database,
 };
@@ -202,6 +206,36 @@ pub async fn update_kubernetes_deployment(
 								})
 								.collect::<Vec<_>>(),
 						),
+						startup_probe: running_details
+							.startup_probe
+							.as_ref()
+							.map(|probe| Probe {
+								http_get: Some(HTTPGetAction {
+									path: Some(probe.path.clone()),
+									port: IntOrString::Int(probe.port as i32),
+									scheme: Some("HTTP".to_string()),
+									..HTTPGetAction::default()
+								}),
+								failure_threshold: Some(15),
+								period_seconds: Some(10),
+								timeout_seconds: Some(3),
+								..Probe::default()
+							}),
+						liveness_probe: running_details
+							.startup_probe
+							.as_ref()
+							.map(|probe| Probe {
+								http_get: Some(HTTPGetAction {
+									path: Some(probe.path.clone()),
+									port: IntOrString::Int(probe.port as i32),
+									scheme: Some("HTTP".to_string()),
+									..HTTPGetAction::default()
+								}),
+								failure_threshold: Some(15),
+								period_seconds: Some(10),
+								timeout_seconds: Some(3),
+								..Probe::default()
+							}),
 						env: Some(
 							running_details
 								.environment_variables
@@ -280,10 +314,7 @@ pub async fn update_kubernetes_deployment(
 			&PatchParams::apply(&format!("deployment-{}", deployment.id)),
 			&Patch::Apply(kubernetes_deployment),
 		)
-		.await?
-		.status
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.await?;
 
 	let kubernetes_service = Service {
 		metadata: ObjectMeta {
@@ -313,8 +344,8 @@ pub async fn update_kubernetes_deployment(
 
 	// Create the service defined above
 	log::trace!("request_id: {} - creating ClusterIp service", request_id);
-	let service_api: Api<Service> =
-		Api::namespaced(kubernetes_client.clone(), namespace);
+	let service_api =
+		Api::<Service>::namespaced(kubernetes_client.clone(), namespace);
 
 	service_api
 		.patch(
@@ -322,10 +353,45 @@ pub async fn update_kubernetes_deployment(
 			&PatchParams::apply(&format!("service-{}", deployment.id)),
 			&Patch::Apply(kubernetes_service),
 		)
-		.await?
-		.status
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.await?;
+
+	// HPA - horizontal pod autoscaler
+	let kubernetes_hpa = HorizontalPodAutoscaler {
+		metadata: ObjectMeta {
+			name: Some(format!("hpa-{}", deployment.id)),
+			namespace: Some(namespace.to_string()),
+			..ObjectMeta::default()
+		},
+		spec: Some(HorizontalPodAutoscalerSpec {
+			scale_target_ref: CrossVersionObjectReference {
+				api_version: Some("apps/v1".to_string()),
+				kind: "Deployment".to_string(),
+				name: format!("deployment-{}", deployment.id),
+			},
+			min_replicas: Some(running_details.min_horizontal_scale.into()),
+			max_replicas: running_details.max_horizontal_scale.into(),
+			target_cpu_utilization_percentage: Some(80),
+		}),
+		..HorizontalPodAutoscaler::default()
+	};
+
+	// Create the HPA defined above
+	log::trace!(
+		"request_id: {} - creating horizontal pod autoscalar",
+		request_id
+	);
+	let hpa_api = Api::<HorizontalPodAutoscaler>::namespaced(
+		kubernetes_client.clone(),
+		namespace,
+	);
+
+	hpa_api
+		.patch(
+			&format!("hpa-{}", deployment.id),
+			&PatchParams::apply(&format!("hpa-{}", deployment.id)),
+			&Patch::Apply(kubernetes_hpa),
+		)
+		.await?;
 
 	let annotations = [
 		(
@@ -395,8 +461,7 @@ pub async fn update_kubernetes_deployment(
 
 	// Create the ingress defined above
 	log::trace!("request_id: {} - creating ingress", request_id);
-	let ingress_api: Api<Ingress> =
-		Api::namespaced(kubernetes_client, namespace);
+	let ingress_api = Api::<Ingress>::namespaced(kubernetes_client, namespace);
 
 	ingress_api
 		.patch(
@@ -404,10 +469,7 @@ pub async fn update_kubernetes_deployment(
 			&PatchParams::apply(&format!("ingress-{}", deployment.id)),
 			&Patch::Apply(kubernetes_ingress),
 		)
-		.await?
-		.status
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.await?;
 
 	log::trace!("request_id: {} - deployment created", request_id);
 
@@ -498,6 +560,36 @@ pub async fn delete_kubernetes_deployment(
 		);
 	}
 
+	if super::hpa_exists(
+		deployment_id,
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.await?
+	{
+		log::trace!(
+			"request_id: {} - hpa exists as hpa-{}",
+			request_id,
+			deployment_id
+		);
+
+		log::trace!("request_id: {} - deleting the hpa", request_id);
+
+		Api::<HorizontalPodAutoscaler>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
+		.delete(&format!("hpa-{}", deployment_id), &DeleteParams::default())
+		.await?;
+	} else {
+		log::trace!(
+			"request_id: {} - No hpa found with name hpa-{} in namespace: {}",
+			request_id,
+			deployment_id,
+			workspace_id,
+		);
+	}
+
 	if super::ingress_exists(
 		deployment_id,
 		kubernetes_client.clone(),
@@ -531,148 +623,6 @@ pub async fn delete_kubernetes_deployment(
 		request_id
 	);
 	Ok(())
-}
-
-pub async fn get_container_logs(
-	workspace_id: &Uuid,
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<String, Error> {
-	// TODO: interact with prometheus to get the logs
-
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
-
-	log::trace!(
-		"request_id: {} - retreiving deployment info from db",
-		request_id
-	);
-
-	// TODO: change log to stream_log when eve gets websockets
-	// TODO: change customise LogParams for different types of logs
-	// TODO: this is a temporary log retrieval method, use prometheus to get the
-	// logs
-	let pod_api =
-		Api::<Pod>::namespaced(kubernetes_client, workspace_id.as_str());
-
-	let pod_name = pod_api
-		.list(&ListParams {
-			label_selector: Some(format!(
-				"{}={}",
-				request_keys::DEPLOYMENT_ID,
-				deployment_id
-			)),
-			..ListParams::default()
-		})
-		.await?
-		.items
-		.into_iter()
-		.next()
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?
-		.metadata
-		.name
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let deployment_logs =
-		pod_api.logs(&pod_name, &LogParams::default()).await?;
-
-	log::trace!("request_id: {} - logs retreived successfully!", request_id);
-	Ok(deployment_logs)
-}
-
-pub async fn get_deployment_build_logs(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<Vec<DeploymentBuildLog>, Error> {
-	log::trace!(
-		"request_id: {} - Checking if deployment exists or not",
-		request_id
-	);
-	let _ = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-	// TODO: interact with prometheus to get the logs
-
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
-
-	// TODO: change log to stream_log when eve gets websockets
-	// TODO: change customise LogParams for different types of logs
-	// TODO: this is a temporary log retrieval method, use prometheus to get the
-	// logs
-	log::trace!(
-		"request_id: {} - Getting the events from kubernetes",
-		request_id
-	);
-	let pod_api = Api::<Pod>::namespaced(
-		kubernetes_client.clone(),
-		workspace_id.as_str(),
-	);
-
-	let event_api =
-		Api::<Event>::namespaced(kubernetes_client, workspace_id.as_str());
-
-	let pod_names = pod_api
-		.list(&ListParams {
-			label_selector: Some(format!(
-				"{}={}",
-				request_keys::DEPLOYMENT_ID,
-				deployment_id
-			)),
-			..ListParams::default()
-		})
-		.await?
-		.items
-		.into_iter()
-		.map(|pod| {
-			if let Some(pod_name) = pod.metadata.name {
-				pod_name
-			} else {
-				"deployment-0".to_string()
-			}
-		})
-		.enumerate();
-
-	let mut deployment_build_logs = Vec::new();
-
-	for (pod_number, pod_name) in pod_names {
-		let list_params = ListParams::default()
-			.fields(&format!("involvedObject.name={}", pod_name));
-		let pod_events = event_api.list(&list_params).await?;
-
-		if pod_events.items.is_empty() {
-			deployment_build_logs.push(DeploymentBuildLog {
-				pod: format!("pod-{}", pod_number + 1),
-				logs: vec!["No logs found".to_string()],
-			});
-		} else {
-			let logs = pod_events
-				.into_iter()
-				.map(|event| {
-					if let (Some(message), Some(timestamp)) =
-						(event.message, event.metadata.creation_timestamp)
-					{
-						format!("{} - {}", timestamp.0, message)
-					} else {
-						format!("{} - failed to get the build log", Utc::now())
-					}
-				})
-				.collect::<Vec<String>>();
-
-			deployment_build_logs.push(DeploymentBuildLog {
-				pod: format!("pod-{}", pod_number + 1),
-				logs,
-			});
-		}
-	}
-
-	log::trace!("request_id: {} - logs retreived successfully!", request_id);
-	Ok(deployment_build_logs)
 }
 
 // TODO: add the logic of errored deployment

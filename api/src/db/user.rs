@@ -2663,7 +2663,8 @@ pub async fn get_all_workspaces_for_user(
 			workspace.id as "id: _",
 			workspace.name::TEXT as "name!: _",
 			workspace.super_admin_id as "super_admin_id: _",
-			workspace.active
+			workspace.active,
+			workspace.alert_emails
 		FROM
 			workspace
 		LEFT JOIN

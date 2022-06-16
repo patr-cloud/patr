@@ -394,6 +394,7 @@ async fn join(
 		join_user.welcome_email_to,
 		join_user.recovery_email_to,
 		join_user.recovery_phone_number_to,
+		&username,
 	)
 	.await?;
 

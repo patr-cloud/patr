@@ -1,5 +1,6 @@
 /target
 /api/target
+/target-dev
 /log
 
 # temp files for Drive testing
@@ -9,6 +10,7 @@
 /config/*
 !/config/*.sample.*
 .env
+.localData
 
 # JetBrains Stuff
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
@@ -94,6 +96,3 @@ dump.rdb
 vicara-api.iml
 
 .optic
-
-assets/deployer/dev.registry.yml
-assets/deployer/prod.registry.yml
