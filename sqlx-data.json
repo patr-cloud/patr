@@ -1463,6 +1463,45 @@
       ]
     }
   },
+  "24cdac4c47dc30159eac579b221a40c103296be632755ce0474813d148589b58": {
+    "query": "SELECT workspace_credits.workspace_id as \"workspace_id: _\", workspace_credits.credits as \"credits!: _\", workspace_credits.metadata as \"metadata: _\", workspace_credits.date as \"date: _\" FROM workspace_credits WHERE workspace_id = $1 AND metadata ->> 'payment_intent_id' = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "workspace_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "credits!: _",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 2,
+          "name": "metadata: _",
+          "type_info": "Json"
+        },
+        {
+          "ordinal": 3,
+          "name": "date: _",
+          "type_info": "Timestamptz"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "25eafab4c0a9b0440ac9cdf11910ccd6be067d8ef4ed4132d555dd9e0d57f949": {
     "query": "SELECT login_id as \"login_id: Uuid\", refresh_token, token_expiry, user_id as \"user_id: Uuid\", last_login, last_activity FROM user_login WHERE user_id = $1;",
     "describe": {
@@ -1563,45 +1602,6 @@
         "Left": []
       },
       "nullable": []
-    }
-  },
-  "2a1b46f5920bd1ac4a0582eab19c1275b00e3ff5db75a3061073a0942808a442": {
-    "query": "SELECT workspace_credits.workspace_id as \"workspace_id: _\", workspace_credits.credits::INT8 as \"credits!: _\", workspace_credits.metadata as \"metadata: _\", workspace_credits.date as \"date: _\" FROM workspace_credits WHERE workspace_id = $1 AND metadata ->> 'payment_intent_id' = $2;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "workspace_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "credits!: _",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 2,
-          "name": "metadata: _",
-          "type_info": "Json"
-        },
-        {
-          "ordinal": 3,
-          "name": "date: _",
-          "type_info": "Timestamptz"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        null,
-        false,
-        false
-      ]
     }
   },
   "2a338d8661b637bcd06f1f98e6fb4128d9d922f739630f04204c7817dd6071b4": {
@@ -2554,44 +2554,6 @@
       ]
     }
   },
-  "4ca0dee19faa1986de13efbe2586a53fc887918cde5fd579d7fd0cdbb103844a": {
-    "query": "SELECT workspace_credits.workspace_id as \"workspace_id: _\", workspace_credits.credits::INT8 as \"credits!: _\", workspace_credits.metadata as \"metadata: _\", workspace_credits.date as \"date: _\" FROM workspace_credits WHERE workspace_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "workspace_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "credits!: _",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 2,
-          "name": "metadata: _",
-          "type_info": "Json"
-        },
-        {
-          "ordinal": 3,
-          "name": "date: _",
-          "type_info": "Timestamptz"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        null,
-        false,
-        false
-      ]
-    }
-  },
   "4d4d3f0596fa4cb76250545fe274ac8edb6d56fd4a60d7f5b3085280ea880105": {
     "query": "UPDATE managed_database SET digitalocean_db_id = $1 WHERE id = $2;",
     "describe": {
@@ -3078,7 +3040,7 @@
       "parameters": {
         "Left": [
           "Uuid",
-          "Numeric",
+          "Int8",
           "Json",
           "Timestamptz"
         ]
@@ -4688,6 +4650,44 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "8f5f9cb58805c3d0790adc2c465cf1062fa75a3fd1ea7784dd8b89c54ec21e04": {
+    "query": "SELECT workspace_credits.workspace_id as \"workspace_id: _\", workspace_credits.credits as \"credits!: _\", workspace_credits.metadata as \"metadata: _\", workspace_credits.date as \"date: _\" FROM workspace_credits WHERE workspace_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "workspace_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "credits!: _",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 2,
+          "name": "metadata: _",
+          "type_info": "Json"
+        },
+        {
+          "ordinal": 3,
+          "name": "date: _",
+          "type_info": "Timestamptz"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ]
     }
   },
   "950e9b68ae5974afe26208b12498d2863660e67871aa2ad387b54a03255d339d": {

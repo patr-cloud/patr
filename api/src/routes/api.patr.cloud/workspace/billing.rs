@@ -804,7 +804,7 @@ async fn add_credits(
 	let secret_id = service::add_credits_to_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		credits as u32,
+		credits,
 		&config,
 	)
 	.await?;
@@ -830,7 +830,7 @@ async fn get_credits(
 	.into_iter()
 	.map(|credits| WorkspaceCredits {
 		workspace_id: credits.workspace_id,
-		credits: credits.credits as f64,
+		credits: credits.credits as u32,
 		metadata: credits.metadata,
 		date: credits.date,
 	})
