@@ -47,6 +47,7 @@ pub struct WorkspaceCredits {
 	pub workspace_id: Uuid,
 	pub credits: f64,
 	pub metadata: serde_json::Value,
+	pub date: DateTime<Utc>,
 }
 
 pub async fn initialize_workspaces_pre(
@@ -158,7 +159,8 @@ pub async fn initialize_workspaces_pre(
 		CREATE TABLE workspace_credits(
 			workspace_id UUID NOT NULL CONSTRAINT workspace_credits_pk PRIMARY KEY,
 			credits DECIMAL(15,6) NOT NULL DEFAULT 0,
-			metadata JSON NOT NULL
+			metadata JSON NOT NULL,
+			date TIMESTAMPTZ NOT NULL
 		);
 		"#
 	)
@@ -542,8 +544,7 @@ pub async fn add_credits_to_workspace(
 	query!(
 		r#"
 		INSERT INTO
-			workspace_credits
-			(
+			workspace_credits(
 				workspace_id,
 				credits,
 				metadata
@@ -563,14 +564,15 @@ pub async fn add_credits_to_workspace(
 pub async fn get_credits_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<Option<WorkspaceCredits>, sqlx::Error> {
+) -> Result<Vec<WorkspaceCredits>, sqlx::Error> {
 	query_as!(
 		WorkspaceCredits,
 		r#"
 		SELECT
 			workspace_credits.workspace_id as "workspace_id: _",
 			workspace_credits.credits as "credits: _",
-			workspace_credits.metadata as "metadata: _"
+			workspace_credits.metadata as "metadata: _",
+			workspace_credits.date as "date: _"
 		FROM
 			workspace_credits
 		WHERE
@@ -578,7 +580,7 @@ pub async fn get_credits_for_workspace(
 		"#,
 		workspace_id as _
 	)
-	.fetch_optional(&mut *connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
@@ -592,8 +594,9 @@ pub async fn get_credit_info(
 		r#"
 		SELECT
 			workspace_credits.workspace_id as "workspace_id: _",
-			workspace_credits.credits as "credits: _",
-			workspace_credits.metadata as "metadata: _"
+			workspace_credits.credits::FLOAT8 as "credits!: _",
+			workspace_credits.metadata as "metadata: _",
+			workspace_credits.date as "date: _"
 		FROM
 			workspace_credits
 		WHERE
