@@ -6,6 +6,7 @@ use api_models::{
 		Address,
 		Card,
 		ConfirmPaymentRequest,
+		ConfirmPaymentResponse,
 		GetBillingAddressResponse,
 		GetCardDetailsResponse,
 		GetCreditBalanceResponse,
@@ -18,7 +19,7 @@ use api_models::{
 		SubscriptionItem,
 		UpdateBillingInfoRequest,
 		UpdateBillingInfoResponse,
-		WorkspaceCredits, ConfirmPaymentResponse,
+		WorkspaceCredits,
 	},
 	utils::Uuid,
 };
@@ -803,7 +804,7 @@ async fn add_credits(
 	let secret_id = service::add_credits_to_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		credits,
+		credits as u32,
 		&config,
 	)
 	.await?;

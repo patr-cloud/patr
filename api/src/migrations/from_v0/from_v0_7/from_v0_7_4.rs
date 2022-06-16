@@ -489,7 +489,7 @@ pub async fn add_workspace_credit_column(
 		r#"
 		CREATE TABLE workspace_credits(
 			workspace_id UUID NOT NULL,
-			credits DECIMAL(15,6) NOT NULL DEFAULT 0,
+			credits BIGINT NOT NULL DEFAULT 0,
 			metadata JSON NOT NULL,
 			date TIMESTAMPTZ NOT NULL,
 			CONSTRAINT workspace_credits_fk_workspace_id FOREIGN KEY (workspace_id) REFERENCES workspace(id)

@@ -158,7 +158,7 @@ pub async fn initialize_workspaces_pre(
 		r#"
 		CREATE TABLE workspace_credits(
 			workspace_id UUID NOT NULL,
-			credits DECIMAL(15,6) NOT NULL DEFAULT 0,
+			credits BIGINT NOT NULL DEFAULT 0,
 			metadata JSON NOT NULL,
 			date TIMESTAMPTZ NOT NULL
 		);
@@ -548,8 +548,9 @@ pub async fn get_resource_audit_logs(
 pub async fn add_credits_to_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	credits: f64,
+	credits: i64,
 	metadata: &serde_json::Value,
+	date: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -557,14 +558,16 @@ pub async fn add_credits_to_workspace(
 			workspace_credits(
 				workspace_id,
 				credits,
-				metadata
+				metadata,
+				date
 			)
 		VALUES
-			($1, $2, $3);
+			($1, $2, $3, $4);
 		"#,
 		workspace_id as _,
 		credits as _,
 		metadata,
+		date as _,
 	)
 	.execute(&mut *connection)
 	.await

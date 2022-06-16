@@ -122,6 +122,7 @@
 	},
 	"stripe": {
 		"publishableKey": "pk_test_123",
-		"secretKey": "sk_test_123"
+		"secretKey": "sk_test_123",
+		"customer_id": "cus_12345"
 	}
 }

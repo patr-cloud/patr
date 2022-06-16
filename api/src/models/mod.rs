@@ -42,8 +42,8 @@ pub struct PaymentIntentObject {
 	pub last_setup_error: Option<LastSetupError>,
 	pub payment_method: Option<PaymentMethod>,
 	pub payment_method_types: Vec<String>,
-	pub status: PaymentMethodStatus,
-	pub usage: PaymentMethodUsage,
+	pub status: Option<PaymentMethodStatus>,
+	pub usage: Option<PaymentMethodUsage>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -123,10 +123,10 @@ pub struct AutomaticPaymentMethods {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct PaymentIntent {
-	pub amount: f64,
+	pub amount: u32,
 	pub currency: String,
-	// TODO: find a method to send payment_method_types array
-	pub automatic_payment_methods: Option<AutomaticPaymentMethods>,
+	pub description: String,
+	pub customer: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
