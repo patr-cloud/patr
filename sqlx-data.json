@@ -5997,6 +5997,16 @@
       "nullable": []
     }
   },
+  "b3fdde321a0f0513b610f993fcac46b5d54a102490ee81255c45d8b87688b998": {
+    "query": "CREATE TABLE workspace_credits( workspace_id UUID NOT NULL, credits DECIMAL(15,6) NOT NULL DEFAULT 0, metadata JSON NOT NULL, date TIMESTAMPTZ NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "b47eedf97c7d77d6c60a68960460d37a161858459255a2a8d09b3a69d080b70f": {
     "query": "SELECT login_id as \"login_id: Uuid\", refresh_token, token_expiry, user_id as \"user_id: Uuid\", last_login, last_activity FROM user_login WHERE login_id = $1 AND user_id = $2;",
     "describe": {
@@ -7468,16 +7478,6 @@
   },
   "de74ae7f29c027a8f87b7ddea32144fd590d3e4591e17fdc8f5fc80afcf1f299": {
     "query": "ALTER TABLE docker_registry_repository ADD CONSTRAINT docker_registry_repository_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "deb5bace77a54b532c9cb0ae4cd924aa41d6e90aaebf9ad3a19e1186204a54c6": {
-    "query": "CREATE TABLE workspace_credits( workspace_id UUID NOT NULL CONSTRAINT workspace_credits_pk PRIMARY KEY, credits DECIMAL(15,6) NOT NULL DEFAULT 0, metadata JSON NOT NULL, date TIMESTAMPTZ NOT NULL );",
     "describe": {
       "columns": [],
       "parameters": {
