@@ -3352,6 +3352,19 @@
       "nullable": []
     }
   },
+  "691d5e86f8c43a2d5fe85a7c4055208e2eb1d581eeb01e0767463234c3686b0d": {
+    "query": "UPDATE workspace_credits SET metadata = $1 WHERE workspace_id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Json",
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "696bdaf6f707eea875bebce9c7b5f9ed6aee64eafcaf520113320625f71f988c": {
     "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id: _\", workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.nameserver_type as \"nameserver_type: _\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE domain.id = $1 AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );",
     "describe": {

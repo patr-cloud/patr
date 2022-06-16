@@ -18,7 +18,7 @@ use api_models::{
 		SubscriptionItem,
 		UpdateBillingInfoRequest,
 		UpdateBillingInfoResponse,
-		WorkspaceCredits,
+		WorkspaceCredits, ConfirmPaymentResponse,
 	},
 	utils::Uuid,
 };
@@ -855,7 +855,7 @@ async fn confirm_payment(
 
 	let config = context.get_state().config.clone();
 
-	service::confirm_payment_method(
+	let success = service::confirm_payment_method(
 		context.get_database_connection(),
 		&workspace_id,
 		&payment_intent_id,
@@ -863,5 +863,10 @@ async fn confirm_payment(
 	)
 	.await?;
 
+	if success {
+		context.success(ConfirmPaymentResponse {});
+	} else {
+		context.json(error!(PAYMENT_FAILED));
+	}
 	Ok(context)
 }

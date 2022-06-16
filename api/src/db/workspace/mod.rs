@@ -619,3 +619,25 @@ pub async fn get_credit_info(
 	.fetch_optional(&mut *connection)
 	.await
 }
+
+pub async fn update_workspace_credit_metadata(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	metadata: &serde_json::Value,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace_credits
+		SET
+			metadata = $1
+		WHERE
+			workspace_id = $2;
+		"#,
+		metadata as _,
+		workspace_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
