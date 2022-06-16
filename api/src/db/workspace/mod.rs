@@ -583,7 +583,7 @@ pub async fn get_credits_for_workspace(
 		r#"
 		SELECT
 			workspace_credits.workspace_id as "workspace_id: _",
-			workspace_credits.credits::INT8 as "credits!: _",
+			workspace_credits.credits as "credits!: _",
 			workspace_credits.metadata as "metadata: _",
 			workspace_credits.date as "date: _"
 		FROM
@@ -607,7 +607,7 @@ pub async fn get_credit_info(
 		r#"
 		SELECT
 			workspace_credits.workspace_id as "workspace_id: _",
-			workspace_credits.credits::INT8 as "credits!: _",
+			workspace_credits.credits as "credits!: _",
 			workspace_credits.metadata as "metadata: _",
 			workspace_credits.date as "date: _"
 		FROM
