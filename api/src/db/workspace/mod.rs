@@ -45,7 +45,7 @@ pub struct WorkspaceAuditLog {
 #[derive(Debug, Clone)]
 pub struct WorkspaceCredits {
 	pub workspace_id: Uuid,
-	pub credits: f64,
+	pub credits: i64,
 	pub metadata: serde_json::Value,
 	pub date: DateTime<Utc>,
 }
@@ -583,7 +583,7 @@ pub async fn get_credits_for_workspace(
 		r#"
 		SELECT
 			workspace_credits.workspace_id as "workspace_id: _",
-			workspace_credits.credits as "credits: _",
+			workspace_credits.credits::INT8 as "credits!: _",
 			workspace_credits.metadata as "metadata: _",
 			workspace_credits.date as "date: _"
 		FROM
@@ -607,14 +607,14 @@ pub async fn get_credit_info(
 		r#"
 		SELECT
 			workspace_credits.workspace_id as "workspace_id: _",
-			workspace_credits.credits::FLOAT8 as "credits!: _",
+			workspace_credits.credits::INT8 as "credits!: _",
 			workspace_credits.metadata as "metadata: _",
 			workspace_credits.date as "date: _"
 		FROM
 			workspace_credits
 		WHERE
 			workspace_id = $1 AND
-			metadata ->> 'payment_method_id' = $2;
+			metadata ->> 'payment_intent_id' = $2;
 		"#,
 		workspace_id as _,
 		payment_method_id as _
@@ -627,6 +627,7 @@ pub async fn update_workspace_credit_metadata(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	metadata: &serde_json::Value,
+	payment_method_id: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -635,10 +636,12 @@ pub async fn update_workspace_credit_metadata(
 		SET
 			metadata = $1
 		WHERE
-			workspace_id = $2;
+			workspace_id = $2 AND
+			metadata ->> 'payment_intent_id' = $3;
 		"#,
 		metadata as _,
-		workspace_id as _
+		workspace_id as _,
+		payment_method_id as _
 	)
 	.execute(&mut *connection)
 	.await
