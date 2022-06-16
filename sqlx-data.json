@@ -13044,6 +13044,16 @@
     },
   "ba9bd7a1dc576127a8132d0fbada1e9242c2b2b8441f29a131eed0537bbbdfc8": {
   },
+  "b8a3c08e65e107c824882e46e05ddb9e7a671f0cc3db09642f0b283a0e1dc3ba": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+    "query": "ALTER TABLE deployment ADD CONSTRAINT deployment_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);"
+    },
+  "ba9bd7a1dc576127a8132d0fbada1e9242c2b2b8441f29a131eed0537bbbdfc8": {
+  },
   "b9152ca043c03160c4d78ea054b408b083e9b10d0617b67443a71180265b3e79": {
     "describe": {
       "columns": [],
@@ -14113,6 +14123,7 @@
         true,
         false,
         true,
+        false,
         false,
         false,
         false,
