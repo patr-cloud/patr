@@ -42,7 +42,7 @@ pub async fn add_credits_to_workspace(
 		.await?;
 
 	let metadata = json!({
-		"payment_method_id": payment_intent_object.id,
+		"payment_intent_id": payment_intent_object.id,
 		"status": payment_intent_object.status
 	});
 
@@ -57,7 +57,7 @@ pub async fn confirm_payment_method(
 	workspace_id: &Uuid,
 	payment_intent_id: &str,
 	config: &Settings,
-) -> Result<(), Error> {
+) -> Result<bool, Error> {
 	let client = Client::new();
 	let password: Option<String> = None;
 
@@ -94,13 +94,19 @@ pub async fn confirm_payment_method(
 		.json::<PaymentIntentObject>()
 		.await?;
 
+	let metadata = json!({
+		"payment_intent_id": payment_intent_object.id,
+		"status": payment_intent_object.status
+	});
+
+	db::update_workspace_credit_metadata(connection, workspace_id, &metadata)
+		.await?;
+
 	if payment_intent_object.status != PaymentMethodStatus::Succeeded &&
 		payment_intent_object.amount == payment_info.credits
 	{
-		return Error::as_result()
-			.status(200)
-			.body(error!(PAYMENT_FAILED).to_string())?;
+		return Ok(false);
 	}
 
-	Ok(())
+	Ok(true)
 }
