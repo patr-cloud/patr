@@ -296,4 +296,5 @@ pub struct GithubSettings {
 pub struct StripeSettings {
 	pub secret_key: String,
 	pub publishable_key: String,
+	pub customer_id: String,
 }

@@ -2994,6 +2994,21 @@
       ]
     }
   },
+  "5883ee5382239beb838df20c13d0b14e2012eef101c741d69b279bc93110ee4e": {
+    "query": "INSERT INTO workspace_credits( workspace_id, credits, metadata, date ) VALUES ($1, $2, $3, $4);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Numeric",
+          "Json",
+          "Timestamptz"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "5b11baccc8d40205e1054eb75997aea9d3c398b6ec3cfe6fb75811da2915f2ee": {
     "query": "SELECT manifest_digest, size, created FROM docker_registry_repository_manifest WHERE repository_id = $1;",
     "describe": {
@@ -3962,20 +3977,6 @@
       "nullable": []
     }
   },
-  "7a80e5e17632604f75e494c97b560caeb9afa8507148a2e0c62a41467268aacf": {
-    "query": "INSERT INTO workspace_credits( workspace_id, credits, metadata ) VALUES ($1, $2, $3);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Numeric",
-          "Json"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "7b4f1a65db5e2653a606942aae5d1f08356267032e46f7f1e5f96e026ef41ac4": {
     "query": "SELECT username, account_type as \"account_type: ResourceType\", password, first_name, last_name, recovery_email_local, recovery_email_domain_id as \"recovery_email_domain_id: Uuid\", recovery_phone_country_code, recovery_phone_number, business_email_local, CASE WHEN business_domain_name IS NULL THEN NULL ELSE CONCAT(business_domain_name, '.', business_domain_tld) END as \"business_domain_name: String\", business_name, otp_hash, otp_expiry FROM user_to_sign_up WHERE business_domain_name = $1;",
     "describe": {
@@ -4873,6 +4874,16 @@
           "Varchar",
           "Uuid"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "999c6d99e64ea91f2f9496cfb2be0d453e6191c92a1a5a6a8230eef7ad0b6ad8": {
+    "query": "CREATE TABLE workspace_credits( workspace_id UUID NOT NULL, credits BIGINT NOT NULL DEFAULT 0, metadata JSON NOT NULL, date TIMESTAMPTZ NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -6006,16 +6017,6 @@
           "Int8",
           "Uuid"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "b3fdde321a0f0513b610f993fcac46b5d54a102490ee81255c45d8b87688b998": {
-    "query": "CREATE TABLE workspace_credits( workspace_id UUID NOT NULL, credits DECIMAL(15,6) NOT NULL DEFAULT 0, metadata JSON NOT NULL, date TIMESTAMPTZ NOT NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
