@@ -3207,38 +3207,6 @@
       "nullable": []
     }
   },
-  "60f5bb900bf41363df60dafeb2a5f58c73bab3d290304f40578839f620e48088": {
-    "query": "SELECT workspace_credits.workspace_id as \"workspace_id: _\", workspace_credits.credits as \"credits: _\", workspace_credits.metadata as \"metadata: _\" FROM workspace_credits WHERE workspace_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "workspace_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "credits: _",
-          "type_info": "Numeric"
-        },
-        {
-          "ordinal": 2,
-          "name": "metadata: _",
-          "type_info": "Json"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "61459ad9f96ec14221d1f72ea908e87f7d66f49747ddc186048cdf37ec5cf318": {
     "query": "UPDATE managed_database SET host = $1, port = $2, username = $3, password = $4 WHERE id = $5;",
     "describe": {
@@ -3263,6 +3231,45 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "62931f8d6ea7ddb31b154839554d90d96f4aa612b0043eaf00401e3cb9e8e918": {
+    "query": "SELECT workspace_credits.workspace_id as \"workspace_id: _\", workspace_credits.credits::FLOAT8 as \"credits!: _\", workspace_credits.metadata as \"metadata: _\", workspace_credits.date as \"date: _\" FROM workspace_credits WHERE workspace_id = $1 AND metadata ->> 'payment_method_id' = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "workspace_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "credits!: _",
+          "type_info": "Float8"
+        },
+        {
+          "ordinal": 2,
+          "name": "metadata: _",
+          "type_info": "Json"
+        },
+        {
+          "ordinal": 3,
+          "name": "date: _",
+          "type_info": "Timestamptz"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        null,
+        false,
+        false
+      ]
     }
   },
   "629c00298724c7b118fa471652c112c774ebc0c0d08a288c41c1cf7b9a27b5f9": {
@@ -3937,6 +3944,20 @@
           "Varchar",
           "Text",
           "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "7a80e5e17632604f75e494c97b560caeb9afa8507148a2e0c62a41467268aacf": {
+    "query": "INSERT INTO workspace_credits( workspace_id, credits, metadata ) VALUES ($1, $2, $3);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Numeric",
+          "Json"
         ]
       },
       "nullable": []
@@ -5336,16 +5357,6 @@
       ]
     }
   },
-  "a46bd23ec359fbf2a165b92acabbe58ac3b2372cdf3f28f080003e3dc75883a9": {
-    "query": "CREATE TABLE workspace_credits( workspace_id UUID NOT NULL CONSTRAINT workspace_credits_pk PRIMARY KEY, credits DECIMAL(15,6) NOT NULL DEFAULT 0, metadata JSON NOT NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "a4a2f1cf647e8612f0b461bc85e215e590fc186f0ef948c3d2c2786e7c7fd50f": {
     "query": "SELECT * FROM permission WHERE id = $1;",
     "describe": {
@@ -6340,39 +6351,6 @@
       "nullable": []
     }
   },
-  "bd837e5f042532369a38e7b3bff4bcb44ac051889535c319f562e4c2113320bc": {
-    "query": "SELECT workspace_credits.workspace_id as \"workspace_id: _\", workspace_credits.credits as \"credits: _\", workspace_credits.metadata as \"metadata: _\" FROM workspace_credits WHERE workspace_id = $1 AND metadata ->> 'payment_method_id' = $2;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "workspace_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "credits: _",
-          "type_info": "Numeric"
-        },
-        {
-          "ordinal": 2,
-          "name": "metadata: _",
-          "type_info": "Json"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "bd83965fd0b7b287d29629e4684f9365fea18339c9481b6cfed8140407d46a81": {
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path FROM deployment WHERE name = $1 AND workspace_id = $2 AND status != 'deleted';",
     "describe": {
@@ -6568,18 +6546,42 @@
       "nullable": []
     }
   },
-  "c21827347eb4433ac9050e16d606e2beb7af02ac3bcf0f8ee47d611ad9307f54": {
-    "query": "INSERT INTO workspace_credits ( workspace_id, credits, metadata ) VALUES ($1, $2, $3);",
+  "c1fca4e841d1da78ff575a3f623626d18640b0848f04d6745f329efbd3a6e511": {
+    "query": "SELECT workspace_credits.workspace_id as \"workspace_id: _\", workspace_credits.credits as \"credits: _\", workspace_credits.metadata as \"metadata: _\", workspace_credits.date as \"date: _\" FROM workspace_credits WHERE workspace_id = $1;",
     "describe": {
-      "columns": [],
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "workspace_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "credits: _",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 2,
+          "name": "metadata: _",
+          "type_info": "Json"
+        },
+        {
+          "ordinal": 3,
+          "name": "date: _",
+          "type_info": "Timestamptz"
+        }
+      ],
       "parameters": {
         "Left": [
-          "Uuid",
-          "Numeric",
-          "Json"
+          "Uuid"
         ]
       },
-      "nullable": []
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ]
     }
   },
   "c4926f8d59dc7bc4e9ee1f2472a6362d47d65337c1644b6a0487cd9318d28d11": {
@@ -7046,6 +7048,16 @@
       "nullable": []
     }
   },
+  "d9403e1ceb62847e8bbca2d31fbb0afc16c8ce1cb802be0d6be6940017d1e9d4": {
+    "query": "ALTER TABLE workspace_credits ADD CONSTRAINT workspace_credits_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "d9ab542f26064cd3798be53f2c1c85e109ef352cbd69f38ada8f317426cd404c": {
     "query": "UPDATE managed_url SET sub_domain = $2 WHERE id = $1;",
     "describe": {
@@ -7456,6 +7468,16 @@
   },
   "de74ae7f29c027a8f87b7ddea32144fd590d3e4591e17fdc8f5fc80afcf1f299": {
     "query": "ALTER TABLE docker_registry_repository ADD CONSTRAINT docker_registry_repository_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "deb5bace77a54b532c9cb0ae4cd924aa41d6e90aaebf9ad3a19e1186204a54c6": {
+    "query": "CREATE TABLE workspace_credits( workspace_id UUID NOT NULL CONSTRAINT workspace_credits_pk PRIMARY KEY, credits DECIMAL(15,6) NOT NULL DEFAULT 0, metadata JSON NOT NULL, date TIMESTAMPTZ NOT NULL );",
     "describe": {
       "columns": [],
       "parameters": {
