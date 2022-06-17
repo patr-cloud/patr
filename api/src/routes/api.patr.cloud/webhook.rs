@@ -348,7 +348,7 @@ async fn deployment_alert(
 	log::trace!("request_id: {} - Parsing the kubernetes events", request_id);
 	let kube_events: KubernetesEventData = serde_json::from_str(&body)?;
 
-	match kube_events.message {
+	match &kube_events.message {
 		message
 			if message.contains("Back-off restarting failed container") ||
 				message.contains("CrashLoopBackOff") =>
@@ -448,13 +448,23 @@ async fn deployment_alert(
 			)
 			.await?;
 		}
-		_ => {
+		message
+			if [
+				"NetworkUnavailable",
+				"MemoryPressure",
+				"DiskPressure",
+				"PIDPressure",
+			]
+			.into_iter()
+			.any(|item| message.contains(item)) =>
+		{
 			log::trace!(
 				"request_id: {} - Sending the alert to the patr alert email",
 				request_id
 			);
 			service::send_alert_email_to_patr(kube_events).await?;
 		}
+		_ => (),
 	}
 
 	Ok(context)
