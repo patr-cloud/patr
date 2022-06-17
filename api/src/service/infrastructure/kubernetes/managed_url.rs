@@ -32,6 +32,7 @@ use kube::{
 	Api,
 };
 use tokio::time;
+use redis::AsyncCommands;
 
 use crate::{
 	db,
@@ -108,7 +109,10 @@ pub async fn update_kubernetes_managed_url(
 							}),
 							..Default::default()
 						},
-						path: Some(managed_url.path.to_string()),
+						path: Some(format!(
+							"{}/{}",
+							managed_url.path, ".well-known/patr/cert-file"
+						)),
 						path_type: Some("Prefix".to_string()),
 					}],
 				}),
@@ -149,7 +153,10 @@ pub async fn update_kubernetes_managed_url(
 							}),
 							..Default::default()
 						},
-						path: Some(managed_url.path.to_string()),
+						path: Some(format!(
+							"{}/{}",
+							managed_url.path, ".well-known/patr/cert-file"
+						)),
 						path_type: Some("Prefix".to_string()),
 					}],
 				}),
@@ -228,7 +235,10 @@ pub async fn update_kubernetes_managed_url(
 								}),
 								..Default::default()
 							},
-							path: Some(managed_url.path.to_string()),
+							path: Some(format!(
+								"{}/{}",
+								managed_url.path, ".well-known/patr/cert-file"
+							)),
 							path_type: Some("Prefix".to_string()),
 						}],
 					}),
@@ -313,7 +323,10 @@ pub async fn update_kubernetes_managed_url(
 								}),
 								..Default::default()
 							},
-							path: Some(managed_url.path.to_string()),
+							path: Some(format!(
+								"{}/{}",
+								managed_url.path, ".well-known/patr/cert-file"
+							)),
 							path_type: Some("Prefix".to_string()),
 						}],
 					}),
@@ -399,6 +412,38 @@ pub async fn update_kubernetes_managed_url(
 		.status
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
+
+	// Randomly generate a secret content for the TLS certificate
+	let verification_string = Uuid::new_v4();
+
+	// Put content and ingress in the Redis
+	let app = service::get_app();
+	let mut redis = app.redis.clone();
+
+	redis
+		.set(
+			format!("verfification-{}", managed_url.id.to_string()),
+			verification_string.to_string(),
+		)
+		.await?;
+
+	// Make a request to verfication route
+	let verification_response = reqwest::get(format!("http://localhost:3006/workspace/{}/infrastructure/managed-url/{}/verify", workspace_id, managed_url.id)).await?;
+
+	// If response comes back same a content, then request TLS certificate from
+	// letsencrypt If not do not make a request to letsencrypt because of
+	// letsencrypt rate limit
+	let verification_response_body = verification_response.text().await?;
+	if verification_response_body != verification_string.to_string() {
+		// Managed URL it not verified
+		// Schedule a job to make a verify the managed URL after some time
+		todo!()
+	} else {
+		// Generate a new certificate for managed URL
+		todo!()
+	}
+	// Managed URL is verified return verified
+
 	log::trace!("request_id: {} - managed URL created", request_id);
 	Ok(())
 }
