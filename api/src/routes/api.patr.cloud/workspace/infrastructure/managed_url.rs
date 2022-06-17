@@ -13,6 +13,7 @@ use api_models::{
 	utils::Uuid,
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use redis::AsyncCommands;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -96,6 +97,38 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(create_managed_url)),
+		],
+	);
+
+	// Create a new managed URL
+	app.post(
+		"/:managedUrlId/verify",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::infrastructure::managed_url::CREATE,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(verify_managed_url)),
 		],
 	);
 
@@ -313,6 +346,31 @@ async fn update_managed_url(
 	.await?;
 
 	context.success(UpdateManagedUrlResponse {});
+	Ok(context)
+}
+
+async fn verify_managed_url(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let managed_url_id = Uuid::parse_str(
+		context.get_param(request_keys::MANAGED_URL_ID).unwrap(),
+	)
+	.unwrap();
+
+	let redis = context.get_redis_connection();
+
+	let verification_secret: String = redis
+		.get(format!("verification-{}", managed_url_id))
+		.await?;
+
+	println!("verification_secret: {}", verification_secret);
+
+	context.success(VerifyManagedUrlResponse {
+		verification_secret: verification_secret.clone(),
+	});
+
+	// context.success(UpdateManagedUrlResponse {});
 	Ok(context)
 }
 
