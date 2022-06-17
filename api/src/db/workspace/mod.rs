@@ -3,6 +3,7 @@ use chrono::Utc;
 
 use crate::{query, query_as, Database};
 
+mod billing;
 mod ci;
 mod docker_registry;
 mod domain;
@@ -11,6 +12,7 @@ mod metrics;
 mod secret;
 
 pub use self::{
+	billing::*,
 	ci::*,
 	docker_registry::*,
 	domain::*,
@@ -171,6 +173,7 @@ pub async fn initialize_workspaces_pre(
 	docker_registry::initialize_docker_registry_pre(connection).await?;
 	secret::initialize_secret_pre(connection).await?;
 	infrastructure::initialize_infrastructure_pre(connection).await?;
+	billing::initialize_billing_pre(connection).await?;
 
 	Ok(())
 }
@@ -244,6 +247,7 @@ pub async fn initialize_workspaces_post(
 	docker_registry::initialize_docker_registry_post(connection).await?;
 	secret::initialize_secret_post(connection).await?;
 	infrastructure::initialize_infrastructure_post(connection).await?;
+	billing::initialize_billing_post(connection).await?;
 
 	Ok(())
 }
