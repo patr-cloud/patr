@@ -519,6 +519,7 @@ async fn rbac_related_migrations(
 	// project related changes
 	add_resource_type_and_permissions_for_projects(&mut *connection, config)
 		.await?;
+	create_project_tables(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -1394,6 +1395,61 @@ async fn add_resource_type_and_permissions_for_projects(
 			ELSE FALSE
 		END;
 		$$ LANGUAGE SQL IMMUTABLE STRICT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn create_project_tables(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		CREATE TABLE project (
+			id UUID
+				CONSTRAINT project_pk PRIMARY KEY,
+			workspace_id UUID NOT NULL
+				CONSTRAINT project_fk_workspace_id REFERENCES workspace(id),
+			name CITEXT NOT NULL,
+			description VARCHAR(500) NOT NULL,
+
+			CONSTRAINT project_uq_workspace_id_name
+				UNIQUE (workspace_id, name),
+			CONSTRAINT project_fk_id_workspace_id
+				FOREIGN KEY (id, workspace_id)
+					REFERENCES resource(id, owner_id)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE workspace_or_project (
+			id UUID
+				CONSTRAINT workspace_or_project_pk PRIMARY KEY,
+			workspace_id UUID
+				CONSTRAINT workspace_or_project_fk_workspace_id REFERENCES workspace(id),
+			project_id UUID
+				CONSTRAINT workspace_or_project_fk_project_id REFERENCES project(id),
+			CONSTRAINT workspace_or_project_chk_id CHECK (
+				(
+					workspace_id IS NOT NULL
+					AND project_id IS NULL
+					AND id = workspace_id
+				)
+				OR (
+					workspace_id IS NULL
+					AND project_id IS NOT NULL
+					AND id = workspace_id
+				)
+			)
+		);
 		"#
 	)
 	.execute(&mut *connection)
