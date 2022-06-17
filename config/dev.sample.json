@@ -119,5 +119,10 @@
 	"github": {
 		"clientId": "app-client-id",
 		"clientSecret": "app-client-secret"
+	},
+	"stripe": {
+		"publishableKey": "pk_test_123",
+		"secretKey": "sk_test_123",
+		"customerId": "cus_12345"
 	}
 }

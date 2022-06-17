@@ -67,6 +67,7 @@ pub struct Settings {
 	pub mailchimp: MailchimpSettings,
 	pub github: GithubSettings,
 	pub drone: DroneSettings,
+	pub stripe: StripeSettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -288,4 +289,12 @@ pub struct GithubSettings {
 	pub client_id: String,
 	#[serde(alias = "clientsecret")]
 	pub client_secret: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StripeSettings {
+	pub secret_key: String,
+	pub publishable_key: String,
+	pub customer_id: String,
 }
