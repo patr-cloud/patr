@@ -4779,6 +4779,16 @@
       ]
     }
   },
+  "94039495e57614d48923e3a8d643dbef0e7f80460b8be135da32e5a29c1d947f": {
+    "query": "CREATE TABLE IF NOT EXISTS managed_database_payment_history( id UUID CONSTRAINT managed_database_payment_history_pk PRIMARY KEY, workspace_id UUID NOT NULL, database_id UUID NOT NULL, db_plan UUID NOT NULL, start_time TIMESTAMPTZ NOT NULL, deletion_time TIMESTAMPTZ NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "950e9b68ae5974afe26208b12498d2863660e67871aa2ad387b54a03255d339d": {
     "query": "INSERT INTO role( id, name, description, owner_id ) VALUES ($1, $2, $3, $4);",
     "describe": {
@@ -8783,16 +8793,6 @@
       "nullable": [
         null
       ]
-    }
-  },
-  "f23a1cd7a41e4a8dd8f2be09b1ac91f12b1e55ce41e4c09ae033091e7b5a0743": {
-    "query": "CREATE TABLE IF NOT EXISTS managed_database_payment_history( id UUID CONSTRAINT managed_database_pk PRIMARY KEY, workspace_id UUID NOT NULL, database_id UUID NOT NULL, db_plan UUID NOT NULL, start_time TIMESTAMPTZ NOT NULL, deletion_time TIMESTAMPTZ NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
     }
   },
   "f39f35664495c1605a1f36e9a5a7597392c9143ea0afd6c73a6267770e1b6bbd": {

@@ -76,7 +76,7 @@ pub async fn initialize_billing_pre(
 	query!(
 		r#"
         CREATE TABLE IF NOT EXISTS managed_database_payment_history(
-            id UUID CONSTRAINT managed_database_pk PRIMARY KEY,
+            id UUID CONSTRAINT managed_database_payment_history_pk PRIMARY KEY,
             workspace_id UUID NOT NULL,
             database_id UUID NOT NULL,
             db_plan UUID NOT NULL,
