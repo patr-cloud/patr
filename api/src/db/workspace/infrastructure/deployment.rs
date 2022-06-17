@@ -443,10 +443,10 @@ pub async fn create_deployment_with_internal_registry(
 				$10,
 				$11,
 				$12,
-				'http',
 				$13,
 				$14,
-				'http'
+				$15,
+				$16
 			);
 		"#,
 		id as _,
@@ -461,8 +461,10 @@ pub async fn create_deployment_with_internal_registry(
 		deploy_on_push,
 		startup_probe.map(|probe| probe.port as i32),
 		startup_probe.map(|probe| probe.path.as_str()),
+		startup_probe.map(|_| ExposedPortType::Http) as _,
 		liveness_probe.map(|probe| probe.port as i32),
 		liveness_probe.map(|probe| probe.path.as_str()),
+		liveness_probe.map(|_| ExposedPortType::Http) as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -505,8 +507,10 @@ pub async fn create_deployment_with_external_registry(
 				deploy_on_push,
 				startup_probe_port,
 				startup_probe_path,
+				startup_probe_port_type,
 				liveness_probe_port,
-				liveness_probe_path
+				liveness_probe_path,
+				liveness_probe_port_type
 			)
 		VALUES
 			(
@@ -526,7 +530,9 @@ pub async fn create_deployment_with_external_registry(
 				$12,
 				$13,
 				$14,
-				$15
+				$15,
+				$16,
+				$17
 			);
 		"#,
 		id as _,
@@ -542,8 +548,10 @@ pub async fn create_deployment_with_external_registry(
 		deploy_on_push,
 		startup_probe.map(|probe| probe.port as i32),
 		startup_probe.map(|probe| probe.path.as_str()),
+		startup_probe.map(|_| ExposedPortType::Http) as _,
 		liveness_probe.map(|probe| probe.port as i32),
 		liveness_probe.map(|probe| probe.path.as_str()),
+		liveness_probe.map(|_| ExposedPortType::Http) as _,
 	)
 	.execute(&mut *connection)
 	.await
