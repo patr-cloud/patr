@@ -14,14 +14,29 @@ pub static PERMISSIONS: OnceCell<HashMap<String, Uuid>> = OnceCell::new();
 #[serde(rename_all = "camelCase")]
 pub struct WorkspacePermissions {
 	pub is_super_admin: bool,
-	/// Given a resource, what and all permissions restricted on it
+	/// For a resource, what and all permissions restricted on it
 	pub blocked_resources: HashMap<Uuid, Vec<Uuid>>,
-	/// Given a resource, what and all allowed permissions do you have on it
+	/// For a resource, what and all allowed permissions do you have on it
 	pub allowed_resources: HashMap<Uuid, Vec<Uuid>>,
-	/// Given a resource type, what and all allowed permissions do you have on
-	/// it
+	/// For a resource type, what and all allowed permissions do you have on it
 	pub allowed_resource_types: HashMap<Uuid, Vec<Uuid>>,
 }
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// If there is any create/update/delete operations done in
+// 		- permission name
+// 		- resource type name
+// 		- permission to resource mapping
+//
+// then, the `validate_permission_to_resource_mapping` postgres function should
+// be updated accordingly, the corresponding database triggers for the following
+// tables should be updated
+// 		- role_block_permissions_resource
+// 		- role_allow_permissions_resource
+// 		- role_allow_permissions_resource_type
+//
+//////////////////////////////////////////////////////////////////////////////
 
 #[api_macros::iterable_module(consts, recursive = true)]
 pub mod permissions {
@@ -153,6 +168,16 @@ pub mod permissions {
 			}
 		}
 
+		// TODO: remove this once used
+		#[allow(dead_code)]
+		pub mod project {
+			pub const LIST: &str = "workspace::project::list";
+			pub const CREATE: &str = "workspace::project::create";
+			pub const INFO: &str = "workspace::project::info";
+			pub const DELETE: &str = "workspace::project::delete";
+			pub const EDIT: &str = "workspace::project::edit";
+		}
+
 		pub const EDIT: &str = "workspace::edit";
 		pub const DELETE: &str = "workspace::delete";
 	}
@@ -171,7 +196,5 @@ pub mod resource_types {
 	pub const DEPLOYMENT_UPGRADE_PATH: &str = "deploymentUpgradePath";
 	pub const MANAGED_URL: &str = "managedUrl";
 	pub const SECRET: &str = "secret";
+	pub const PROJECT: &str = "project";
 }
-
-// TODO: add hint or comment that if any resource_type name or permission name
-// is updated, it should also be updated in role validation triggers in db

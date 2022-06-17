@@ -421,7 +421,10 @@ async fn add_validation_for_permissions_on_resource(
 							'workspace::ci::github::deactivate',
 							'workspace::ci::github::viewBuilds',
 							'workspace::ci::github::restartBuilds',
-							'workspace::ci::github::disconnect'
+							'workspace::ci::github::disconnect',
+
+							'workspace::project::list',
+							'workspace::project::create'
 						]
 					) THEN TRUE
 					ELSE FALSE
@@ -530,6 +533,18 @@ async fn add_validation_for_permissions_on_resource(
 						ARRAY [
 							'workspace::secret::edit',
 							'workspace::secret::delete'
+						]
+					) THEN TRUE
+					ELSE FALSE
+				END
+			)
+			WHEN 'project' THEN (
+				CASE
+					WHEN permission_name = ANY (
+						ARRAY [
+							'workspace::project::info'
+							'workspace::project::delete'
+							'workspace::project::edit'
 						]
 					) THEN TRUE
 					ELSE FALSE
