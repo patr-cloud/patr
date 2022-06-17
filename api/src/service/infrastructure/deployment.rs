@@ -4,6 +4,7 @@ use api_models::{
 	models::workspace::infrastructure::deployment::{
 		Deployment,
 		DeploymentMetrics,
+		DeploymentProbe,
 		DeploymentRegistry,
 		DeploymentRunningDetails,
 		EnvironmentVariableValue,
@@ -14,16 +15,16 @@ use api_models::{
 	utils::{constants, StringifiedU16, Uuid},
 };
 use eve_rs::AsError;
+use k8s_openapi::api::core::v1::Event;
 use reqwest::Client;
 
 use crate::{
 	db,
 	error,
 	models::{
-		deployment::{PrometheusResponse, Subscription},
+		deployment::{Logs, PrometheusResponse, Subscription},
 		rbac,
 	},
-	service::infrastructure::kubernetes,
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
@@ -120,6 +121,7 @@ pub async fn create_deployment_in_workspace(
 	.await?;
 	log::trace!("request_id: {} - Created resource", request_id);
 
+	db::begin_deferred_constraints(connection).await?;
 	match registry {
 		DeploymentRegistry::PatrRegistry {
 			registry: _,
@@ -138,6 +140,8 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.deploy_on_push,
 				deployment_running_details.min_horizontal_scale,
 				deployment_running_details.max_horizontal_scale,
+				deployment_running_details.startup_probe.as_ref(),
+				deployment_running_details.liveness_probe.as_ref(),
 			)
 			.await?;
 		}
@@ -159,6 +163,8 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.deploy_on_push,
 				deployment_running_details.min_horizontal_scale,
 				deployment_running_details.max_horizontal_scale,
+				deployment_running_details.startup_probe.as_ref(),
+				deployment_running_details.liveness_probe.as_ref(),
 			)
 			.await?;
 		}
@@ -177,6 +183,7 @@ pub async fn create_deployment_in_workspace(
 		)
 		.await?;
 	}
+	db::end_deferred_constraints(connection).await?;
 
 	for (key, value) in &deployment_running_details.environment_variables {
 		log::trace!(
@@ -223,6 +230,8 @@ pub async fn create_deployment_in_workspace(
 pub async fn get_deployment_container_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
+	start_time: u64,
+	end_time: u64,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<String, Error> {
@@ -237,18 +246,22 @@ pub async fn get_deployment_container_logs(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let logs = kubernetes::get_container_logs(
+	let logs = get_container_logs(
 		&deployment.workspace_id,
 		deployment_id,
+		start_time,
+		end_time,
 		config,
 		request_id,
 	)
 	.await?;
+
 	log::trace!("request_id: {} - Logs retreived successfully", request_id);
 
 	Ok(logs)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn update_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
@@ -260,6 +273,8 @@ pub async fn update_deployment(
 	max_horizontal_scale: Option<u16>,
 	ports: Option<&BTreeMap<u16, ExposedPortType>>,
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
+	startup_probe: Option<&DeploymentProbe>,
+	liveness_probe: Option<&DeploymentProbe>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -268,18 +283,8 @@ pub async fn update_deployment(
 		request_id,
 		deployment_id
 	);
-	db::update_deployment_details(
-		connection,
-		deployment_id,
-		name,
-		region,
-		machine_type,
-		deploy_on_push,
-		min_horizontal_scale,
-		max_horizontal_scale,
-	)
-	.await?;
 
+	db::begin_deferred_constraints(connection).await?;
 	if let Some(ports) = ports {
 		if ports.is_empty() {
 			return Err(Error::empty()
@@ -291,7 +296,6 @@ pub async fn update_deployment(
 			"request_id: {} - Updating deployment ports in the database",
 			request_id
 		);
-		db::begin_deferred_constraints(connection).await?;
 		db::remove_all_exposed_ports_for_deployment(connection, deployment_id)
 			.await?;
 		for (port, exposed_port_type) in ports {
@@ -303,8 +307,21 @@ pub async fn update_deployment(
 			)
 			.await?;
 		}
-		db::end_deferred_constraints(connection).await?;
 	}
+	db::update_deployment_details(
+		connection,
+		deployment_id,
+		name,
+		region,
+		machine_type,
+		deploy_on_push,
+		min_horizontal_scale,
+		max_horizontal_scale,
+		startup_probe,
+		liveness_probe,
+	)
+	.await?;
+	db::end_deferred_constraints(connection).await?;
 
 	if let Some(environment_variables) = environment_variables {
 		log::trace!(
@@ -366,6 +383,10 @@ pub async fn get_full_deployment_config(
 		deploy_on_push,
 		min_horizontal_scale,
 		max_horizontal_scale,
+		startup_probe_port,
+		startup_probe_path,
+		liveness_probe_port,
+		liveness_probe_path,
 	) = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.and_then(|deployment| {
@@ -394,6 +415,10 @@ pub async fn get_full_deployment_config(
 				deployment.deploy_on_push,
 				deployment.min_horizontal_scale as u16,
 				deployment.max_horizontal_scale as u16,
+				deployment.startup_probe_port,
+				deployment.startup_probe_path,
+				deployment.liveness_probe_port,
+				deployment.liveness_probe_path,
 			))
 		})
 		.status(404)
@@ -463,6 +488,14 @@ pub async fn get_full_deployment_config(
 			max_horizontal_scale,
 			ports,
 			environment_variables,
+			startup_probe: startup_probe_port
+				.map(|port| port as u16)
+				.zip(startup_probe_path)
+				.map(|(port, path)| DeploymentProbe { path, port }),
+			liveness_probe: liveness_probe_port
+				.map(|port| port as u16)
+				.zip(liveness_probe_path)
+				.map(|(port, path)| DeploymentProbe { path, port }),
 		},
 	))
 }
@@ -811,6 +844,7 @@ async fn start_subscription(
 		request_id,
 		deployment_id
 	);
+
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(500)
@@ -897,4 +931,99 @@ async fn update_subscription(
 	}
 
 	Ok(())
+}
+
+async fn get_container_logs(
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	start_time: u64,
+	end_time: u64,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<String, Error> {
+	log::trace!(
+		"request_id: {} - Getting container logs for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+	let client = Client::new();
+	let logs = client.get(format!("https://{}/loki/api/v1/query_range?direction=BACKWARD&query={{container=\"deployment-{}\",namespace=\"{}\"}}&start={}&end={}", config.loki.host, deployment_id, workspace_id, start_time, end_time))
+				.basic_auth(&config.loki.username, Some(&config.loki.password))
+				.send()
+				.await?
+				.json::<Logs>()
+				.await?
+				.data
+				.result;
+
+	let mut combined_build_logs = Vec::new();
+
+	for result in logs {
+		for value in result.values {
+			let (time_stamp, log) =
+				(value[0].parse::<u64>()?, value[1].clone());
+			combined_build_logs.push((time_stamp, log));
+		}
+	}
+
+	combined_build_logs.sort_by(|a, b| a.0.cmp(&b.0));
+
+	let mut logs = String::new();
+
+	for log in combined_build_logs {
+		logs.push_str(format!("{}\n", log.1).as_str());
+	}
+
+	Ok(logs)
+}
+
+pub async fn get_deployment_build_logs(
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	start_time: u64,
+	end_time: u64,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<Vec<Event>, Error> {
+	log::trace!(
+		"request_id: {} - Getting build logs for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+	let client = Client::new();
+	let logs = client.get(format!("https://{}/loki/api/v1/query_range?direction=BACKWARD&query={{app=\"eventrouter\",namespace=\"{}\"}}&start={}&end={}", config.loki.host, workspace_id, start_time, end_time))
+				.basic_auth(&config.loki.username, Some(&config.loki.password))
+				.send()
+				.await?
+				.json::<Logs>()
+				.await?
+				.data
+				.result;
+
+	// TODO: you will get only one element in result array. From that result
+	// array get the element and parse that json and from that json filter the
+	// logs.
+
+	let result = logs.into_iter().next().status(500)?;
+
+	let mut combined_build_logs = Vec::new();
+
+	for value in result.values {
+		let kube_event = value.into_iter().next().status(500)?;
+
+		let kube_event: Event = serde_json::from_str(kube_event.as_str())?;
+
+		let namespace =
+			kube_event.clone().metadata.namespace.status(500)?.clone();
+		let deployment_name =
+			kube_event.clone().metadata.name.status(500)?.clone();
+
+		if namespace == workspace_id.to_string() &&
+			deployment_name == format!("deployment-{}", deployment_id)
+		{
+			combined_build_logs.push(kube_event);
+		}
+	}
+
+	Ok(combined_build_logs)
 }

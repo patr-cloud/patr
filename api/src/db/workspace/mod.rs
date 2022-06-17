@@ -3,6 +3,7 @@ use chrono::Utc;
 
 use crate::{query, query_as, Database};
 
+mod ci;
 mod docker_registry;
 mod domain;
 mod infrastructure;
@@ -10,6 +11,7 @@ mod metrics;
 mod secret;
 
 pub use self::{
+	ci::*,
 	docker_registry::*,
 	domain::*,
 	infrastructure::*,
@@ -22,6 +24,7 @@ pub struct Workspace {
 	pub name: String,
 	pub super_admin_id: Uuid,
 	pub active: bool,
+	pub alert_emails: Vec<String>,
 }
 
 pub struct WorkspaceAuditLog {
@@ -39,6 +42,14 @@ pub struct WorkspaceAuditLog {
 	pub success: bool,
 }
 
+#[derive(Debug, Clone)]
+pub struct WorkspaceCredits {
+	pub workspace_id: Uuid,
+	pub credits: i64,
+	pub metadata: serde_json::Value,
+	pub date: DateTime<Utc>,
+}
+
 pub async fn initialize_workspaces_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
@@ -53,7 +64,19 @@ pub async fn initialize_workspaces_pre(
 			super_admin_id UUID NOT NULL
 				CONSTRAINT workspace_fk_super_admin_id
 					REFERENCES "user"(id),
-			active BOOLEAN NOT NULL DEFAULT FALSE
+			active BOOLEAN NOT NULL DEFAULT FALSE,
+			alert_emails VARCHAR(320) [] NOT NULL,
+			drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE,
+			drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null
+				CHECK(
+					(
+						drone_username IS NULL AND
+						drone_token IS NULL
+					) OR (
+						drone_username IS NOT NULL AND
+						drone_token IS NOT NULL
+					)
+				)
 		);
 		"#
 	)
@@ -131,6 +154,19 @@ pub async fn initialize_workspaces_pre(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		CREATE TABLE workspace_credits(
+			workspace_id UUID NOT NULL,
+			credits BIGINT NOT NULL DEFAULT 0,
+			metadata JSON NOT NULL,
+			date TIMESTAMPTZ NOT NULL
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	domain::initialize_domain_pre(connection).await?;
 	docker_registry::initialize_docker_registry_pre(connection).await?;
 	secret::initialize_secret_pre(connection).await?;
@@ -194,6 +230,16 @@ pub async fn initialize_workspaces_post(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE workspace_credits
+		ADD CONSTRAINT workspace_credits_fk_workspace_id
+		FOREIGN KEY(workspace_id) REFERENCES workspace(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	domain::initialize_domain_post(connection).await?;
 	docker_registry::initialize_docker_registry_post(connection).await?;
 	secret::initialize_secret_post(connection).await?;
@@ -207,6 +253,7 @@ pub async fn create_workspace(
 	workspace_id: &Uuid,
 	name: &str,
 	super_admin_id: &Uuid,
+	alert_emails: &[String],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -215,15 +262,19 @@ pub async fn create_workspace(
 				id,
 				name,
 				super_admin_id,
-				active
+				active,
+				alert_emails,
+				drone_username,
+				drone_token
 			)
 		VALUES
-			($1, $2, $3, $4);
+			($1, $2, $3, $4, $5, NULL, NULL);
 		"#,
 		workspace_id as _,
 		name as _,
 		super_admin_id as _,
 		true,
+		alert_emails as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -242,7 +293,8 @@ pub async fn get_workspace_info(
 			id as "id: _",
 			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
-			active
+			active,
+			alert_emails as "alert_emails!: _"
 		FROM
 			workspace
 		WHERE
@@ -265,7 +317,8 @@ pub async fn get_workspace_by_name(
 			id as "id: _",
 			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
-			active
+			active,
+			alert_emails as "alert_emails!: _"
 		FROM
 			workspace
 		WHERE
@@ -297,6 +350,49 @@ pub async fn update_workspace_name(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn update_workspace_info(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	name: Option<String>,
+	alert_emails: Option<Vec<String>>,
+) -> Result<(), sqlx::Error> {
+	if let Some(name) = name {
+		query!(
+			r#"
+			UPDATE
+				workspace
+			SET
+				name = $1
+			WHERE
+				id = $2;
+			"#,
+			name as _,
+			workspace_id as _,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	if let Some(alert_emails) = alert_emails {
+		query!(
+			r#"
+			UPDATE
+				workspace
+			SET
+				alert_emails = $1
+			WHERE
+				id = $2;
+			"#,
+			alert_emails as _,
+			workspace_id as _,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	Ok(())
 }
 
 pub async fn create_workspace_audit_log(
@@ -447,4 +543,107 @@ pub async fn get_resource_audit_logs(
 	)
 	.fetch_all(&mut *connection)
 	.await
+}
+
+pub async fn add_credits_to_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	credits: i64,
+	metadata: &serde_json::Value,
+	date: DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			workspace_credits(
+				workspace_id,
+				credits,
+				metadata,
+				date
+			)
+		VALUES
+			($1, $2, $3, $4);
+		"#,
+		workspace_id as _,
+		credits as _,
+		metadata,
+		date as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_credits_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Vec<WorkspaceCredits>, sqlx::Error> {
+	query_as!(
+		WorkspaceCredits,
+		r#"
+		SELECT
+			workspace_credits.workspace_id as "workspace_id: _",
+			workspace_credits.credits as "credits!: _",
+			workspace_credits.metadata as "metadata: _",
+			workspace_credits.date as "date: _"
+		FROM
+			workspace_credits
+		WHERE
+			workspace_id = $1;
+		"#,
+		workspace_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn get_credit_info(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	payment_method_id: &str,
+) -> Result<Option<WorkspaceCredits>, sqlx::Error> {
+	query_as!(
+		WorkspaceCredits,
+		r#"
+		SELECT
+			workspace_credits.workspace_id as "workspace_id: _",
+			workspace_credits.credits as "credits!: _",
+			workspace_credits.metadata as "metadata: _",
+			workspace_credits.date as "date: _"
+		FROM
+			workspace_credits
+		WHERE
+			workspace_id = $1 AND
+			metadata ->> 'payment_intent_id' = $2;
+		"#,
+		workspace_id as _,
+		payment_method_id as _
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn update_workspace_credit_metadata(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	metadata: &serde_json::Value,
+	payment_method_id: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace_credits
+		SET
+			metadata = $1
+		WHERE
+			workspace_id = $2 AND
+			metadata ->> 'payment_intent_id' = $3;
+		"#,
+		metadata as _,
+		workspace_id as _,
+		payment_method_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }

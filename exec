@@ -1,0 +1,136 @@
+#!/bin/bash
+
+function initialize-repo() {
+    read -p "Do you want to initialize a local k8s cluster for you? (y/N): " isClusterRequired
+
+    if [ $isClusterRequired == "y" ]; then
+        # Make sure kind and kubectl are installed
+        kind --version
+        if [ $? -ne 0 ]; then
+            echo "kind not installed. Please install it from https://kind.sigs.k8s.io/docs/user/quick-start/"
+            exit 1
+        fi
+
+        kubectl config view > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo "kubectl not installed. Please install it before proceeding"
+            exit 1
+        fi
+    fi
+
+    if [ ! -f "$baseDir/assets/patr/certs/ecdsa.key.pem" ]; then
+        echo "Generating ECDSA keys for Docker Registry"
+        currentDir=$(pwd)
+        cd $baseDir/assets/patr
+        $baseDir/assets/patr/how\ to\ ecdsa.sh
+        cd $currentDir
+        echo "Keys generated"
+    fi
+
+    if [ ! -f "$baseDir/.env" ]; then
+        echo "Creating .env file"
+        cp $baseDir/.env.sample $baseDir/.env
+        echo "Please edit the 'User Variables' section of the .env file as per your local values"
+        exit 0
+    fi
+
+    if [ $isClusterRequired == "y" ]; then
+        clusterName=""
+        chars=abcdefghijklmnopqrstuvwxyz
+        for i in {1..8} ; do
+            clusterName="${clusterName}${chars:RANDOM%${#chars}:1}"
+        done
+        echo "Your cluster has been assigned a random name: $clusterName"
+        kind create cluster --name $clusterName --config $baseDir/assets/patr/kind-config.yml
+        echo "KIND_CLUSTER_NAME=$clusterName" > $baseDir/.localData
+        echo "Cluster 'kind-$clusterName' created"
+
+        echo "Setting up nginx ingress controller"
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml --context kind-$clusterName
+        echo "nginx ingress controller setup"
+
+        echo "Waiting for ingress controller to start"
+        kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --context kind-$clusterName --timeout=-1s
+        echo "nginx ingress controller ready"
+
+        echo "Setting up your kubernetes variables"
+        kubernetesCertificateAuthorityData=$(kubectl config view --output json --raw | jq ".clusters | map(select(.name == \"kind-$clusterName\")) | .[0].cluster[\"certificate-authority-data\"]")
+        kubernetesClusterName=kind-$clusterName
+        kubernetesClusterUrl=$(kubectl config view --output json --raw | jq ".clusters | map(select(.name == \"kind-$clusterName\")) | .[0].cluster.server" | sed s/127.0.0.1/127.0.1.1/)
+        kubernetesClusterAuthName=kind-$clusterName
+        kubernetesClusterAuthUsername=kind-$clusterName
+        kubernetesClusterContextName=kind-$clusterName
+        sed -i "s/APP_KUBERNETES_CERTIFICATEAUTHORITYDATA=\"\"/APP_KUBERNETES_CERTIFICATEAUTHORITYDATA=$kubernetesCertificateAuthorityData/" .env
+        sed -i "s/APP_KUBERNETES_CLUSTERNAME=\"\"/APP_KUBERNETES_CLUSTERNAME=$kubernetesClusterName/" .env
+        sed -i "s/APP_KUBERNETES_CLUSTERURL=\"\"/APP_KUBERNETES_CLUSTERURL=$kubernetesClusterUrl/" .env
+        sed -i "s/APP_KUBERNETES_AUTHNAME=\"\"/APP_KUBERNETES_AUTHNAME=$kubernetesClusterAuthName/" .env
+        sed -i "s/APP_KUBERNETES_AUTHUSERNAME=\"\"/APP_KUBERNETES_AUTHUSERNAME=$kubernetesClusterAuthUsername/" .env
+        sed -i "s/APP_KUBERNETES_CONTEXTNAME=\"\"/APP_KUBERNETES_CONTEXTNAME=$kubernetesClusterContextName/" .env
+        echo ".env file updated with kubernetes variables"
+    else
+        echo "Skipping cluster creation"
+    fi
+}
+
+baseDir=$(dirname $0)
+
+if [ ! -f "${baseDir}/.env" ]; then
+    echo "Missing .env file. Copy the .env.sample file to .env and edit it."
+    exit 1
+fi
+
+if [ ! -f "$baseDir/.localData" ]; then
+    read -p "Your repository has not been initialized yet. Do you want to initialize it now? (y/N): " answer
+    if [ "$answer" == "y" ]; then
+        initialize-repo
+    else
+        echo "Please initialize your repository with ./exec init before continuing"
+        exit 1
+    fi
+fi
+
+source $baseDir/.env
+source $baseDir/.localData
+export RUNNING_USER="$UID:$UID"
+
+case $1 in
+    down | stop)
+        docker-compose -f $baseDir/docker-compose.yml down
+    ;;
+    init)
+        initialize-repo
+    ;;
+    run)
+        docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api
+    ;;
+    bash)
+        RUNNING_USER=root docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api bash
+    ;;
+    build)
+        docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api bash -c "source .env && cargo build"
+    ;;
+    populate)
+        docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api bash -c "source .env && cargo populate"
+    ;;
+    prepare)
+        docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api bash -c "source .env && cargo sqlx prepare --merged"
+    ;;
+    psql)
+        docker-compose -f $baseDir/docker-compose.yml exec postgres psql -U $DATABASE_USERNAME -d $DATABASE_NAME
+    ;;
+    dbdump | dump | pg_dump | pgdump)
+        dumpFile=$baseDir/"${2:-dbdump.sql}"
+        docker-compose -f $baseDir/docker-compose.yml exec postgres pg_dump -U $DATABASE_USERNAME -d $DATABASE_NAME > $dumpFile
+    ;;
+    cleardb | clear-db | resetdb | reset-db)
+        docker-compose -f $baseDir/docker-compose.yml exec postgres psql -U $DATABASE_USERNAME -d "postgres" -c "\set AUTOCOMMIT on\nDROP DATABASE \"$DATABASE_NAME\"; CREATE DATABASE \"$DATABASE_NAME\";"
+        echo "Database cleared"
+    ;;
+    restore)
+        docker-compose -f $baseDir/docker-compose.yml exec -T postgres psql -U $DATABASE_USERNAME -d $DATABASE_NAME < $2
+    ;;
+    *)
+        echo "Unknown command '$1'"
+        exit 1
+    ;;
+esac

@@ -1,0 +1,175 @@
+version: '3'
+
+networks:
+  vpc:
+
+services:
+  minio:
+    container_name: s3
+    image: minio/minio:RELEASE.2022-06-02T02-11-04Z
+    restart: always
+    hostname: ${S3_HOST}
+    command: minio server /data --console-address ":9001"
+    user: ${RUNNING_USER}
+    networks:
+      - vpc
+    ports:
+      - ${S3_PORT}:9001
+    environment:
+      - MINIO_ROOT_USER=${S3_KEY}
+      - MINIO_ROOT_PASSWORD=${S3_SECRET}
+    volumes:
+      - ./target-dev/s3:/data
+
+  postgres:
+    container_name: database
+    image: postgis/postgis:13-master
+    restart: always
+    hostname: ${DATABASE_HOST}
+    user: ${RUNNING_USER}
+    networks:
+      - vpc
+    environment:
+      - POSTGRES_USER=${DATABASE_USERNAME}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_DB=${DATABASE_NAME}
+      - PGDATA=/var/lib/postgresql/data
+    volumes:
+      - ./target-dev/postgres:/var/lib/postgresql/data
+
+  redis:
+    container_name: cache
+    image: redis:7
+    restart: always
+    hostname: ${REDIS_HOST}
+    user: ${RUNNING_USER}
+    networks:
+      - vpc
+
+  docker-registry:
+    container_name: registry
+    image: registry:2
+    restart: always
+    hostname: ${REGISTRY_HOST}
+    user: ${RUNNING_USER}
+    networks:
+      - vpc
+    ports:
+      - ${REGISTRY_PORT}:5000
+    environment:
+      - REGISTRY_VERSION=0.1
+      - REGISTRY_LOG_FORMATTER=text
+      - REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=redis
+      - REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/data
+      - REGISTRY_STORAGE_DELETE_ENABLED=true
+      - REGISTRY_HTTP_ADDR="0.0.0.0:5000"
+      - REGISTRY_HTTP_SECRET="keyboard cat"
+      - REGISTRY_REDIS_ADDR=${REDIS_HOST}:6379
+      - REGISTRY_REDIS_DB=2
+      - REGISTRY_REDIS_POOL_MAXIDLE=16
+      - REGISTRY_REDIS_POOL_MAXACTIVE=64
+      - REGISTRY_REDIS_POOL_IDLETIMEOUT=300s
+      - REGISTRY_AUTH_TOKEN_REALM=http://${API_HOST}:${API_PORT}/auth/docker-registry-token
+      - REGISTRY_AUTH_TOKEN_SERVICE=${APP_DOCKERREGISTRY_SERVICENAME}
+      - REGISTRY_AUTH_TOKEN_ISSUER=${APP_DOCKERREGISTRY_ISSUER}
+      - REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE=/certs/ecdsa.pubkey.crt
+      - REGISTRY_NOTIFICATIONS_ENDPOINTS_EVENTS_INCLUDEREFERENCES=true
+      - REGISTRY_NOTIFICATIONS_ENDPOINTS=${REGISTRY_APP_ENDPOINT}
+    volumes:
+      - ./target-dev/registry:/data
+      - ./assets/patr/certs:/certs
+
+  rabbitmq:
+    container_name: message-queue
+    image: rabbitmq:3-management
+    restart: always
+    hostname: ${RABBITMQ_HOST}
+    user: ${RUNNING_USER}
+    networks:
+      - vpc
+    ports:
+      - ${RABBITMQ_MANAGEMENT_PORT}:15672
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+    volumes:
+      - ./target-dev/rabbitmq:/var/lib/rabbitmq
+
+  vault:
+    container_name: vault
+    image: vault:latest
+    restart: always
+    hostname: ${VAULT_HOST}
+    user: ${RUNNING_USER}
+    networks:
+      - vpc
+    ports:
+      - ${VAULT_PORT}:${VAULT_PORT}
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=${VAULT_TOKEN}
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:${VAULT_PORT}
+
+  drone:
+    container_name: drone
+    image: drone/drone:2
+    restart: always
+    hostname: ${DRONE_HOST}
+    user: ${RUNNING_USER}
+    networks:
+      - vpc
+    ports:
+      - ${DRONE_PORT}:80
+    environment:
+      - DRONE_GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - DRONE_GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - DRONE_RPC_SECRET=keyboardcat
+      - DRONE_SERVER_HOST=drone.patr.cloud
+      - DRONE_SERVER_PROTO=http
+    volumes:
+      - ./target-dev/drone:/data
+
+  drone-runner:
+    container_name: drone-runner
+    image: drone/drone-runner-docker:1
+    restart: always
+    hostname: drone-runner
+    networks:
+      - vpc
+    environment:
+      - DRONE_RPC_HOST=${DRONE_HOST}
+      - DRONE_RPC_PROTO=http
+      - DRONE_RUNNER_CAPACITY=1
+      - DRONE_RUNNER_NAME="drone-runner"
+      - DRONE_RPC_SECRET=keyboardcat
+      - DRONE_LOGS_DEBUG=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  api:
+    container_name: api
+    image: "rust:1"
+    restart: "no"
+    hostname: ${API_HOST}
+    user: ${RUNNING_USER}
+    working_dir: /app
+    command: bash -c "source .env && cargo run"
+    env_file:
+      - .env
+    environment:
+      - CARGO_TARGET_DIR=./target-dev/cargo
+    depends_on:
+      - minio
+      - postgres
+      - redis
+      - docker-registry
+      - rabbitmq
+      - vault
+      - drone
+      - drone-runner
+    networks:
+      - vpc
+    ports:
+      - ${API_PORT}:${API_PORT}
+    volumes:
+      - .:/app
+      - ${HOME}/.cargo/:/usr/local/cargo/

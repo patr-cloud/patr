@@ -77,7 +77,8 @@
 		"contextName": "",
 		"certIssuerHttp": "letsencrypt-staging",
 		"certIssuerDns": "letsencrypt-staging-dns",
-		"staticSiteProxyService": "proxy-static-site-service.default.svc.cluster.local"
+		"staticSiteProxyService": "proxy-static-site-service.default.svc.cluster.local",
+		"alertWebhookSecret": "<auth-header>"
 	},
 	"prometheus": {
 		"host": "prometheus.samyakgangwal.com",
@@ -103,8 +104,25 @@
 		"address": "https://vault.example.com",
 		"token": "<vault token>"
 	},
+	"loki": {
+		"host": "prometheus.samyakgangwal.com",
+		"username": "admin",
+		"password": "admin"
+	},
 	"mailchimp": {
 		"apiKey": "example-api-key",
 		"listId": "example-list-id"
+	},
+	"drone": {
+		"url": "drone-ip"
+	},
+	"github": {
+		"clientId": "app-client-id",
+		"clientSecret": "app-client-secret"
+	},
+	"stripe": {
+		"publishableKey": "pk_test_123",
+		"secretKey": "sk_test_123",
+		"customerId": "cus_12345"
 	}
 }

@@ -596,7 +596,13 @@ pub async fn generate_access_token(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	db::set_login_expiry(connection, &user_login.login_id, iat, exp).await?;
+	db::set_login_expiry(
+		connection,
+		&user_login.login_id,
+		iat,
+		iat + service::get_refresh_token_expiry(),
+	)
+	.await?;
 
 	let user = ExposedUserData {
 		id,
@@ -850,6 +856,19 @@ pub async fn join_user(
 	let recovery_email_to; // Send "this email is a recovery email for ..." here
 	let recovery_phone_number_to; // Notify this phone that it's a recovery phone number
 
+	let recovery_emails: Vec<String> = if let Some((email_local, domain_id)) =
+		recovery_email_local.zip(recovery_email_domain_id)
+	{
+		let domain = db::get_personal_domain_by_id(connection, domain_id)
+			.await?
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+		vec![format!("{}@{}", email_local, domain.name)]
+	} else {
+		vec![]
+	};
+
 	// For an business, create the workspace and domain
 	if user_data.account_type.is_business() {
 		let workspace_id = service::create_workspace(
@@ -857,6 +876,7 @@ pub async fn join_user(
 			user_data.business_name.as_ref().unwrap(),
 			&user_id,
 			false,
+			&recovery_emails,
 			config,
 		)
 		.await?;
@@ -981,6 +1001,7 @@ pub async fn join_user(
 		&personal_workspace_name,
 		&user_id,
 		true,
+		&recovery_emails,
 		config,
 	)
 	.await?;

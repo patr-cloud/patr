@@ -454,7 +454,8 @@ pub async fn get_all_workspace_roles_for_user(
 			id as "id: _",
 			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
-			active
+			active,
+			alert_emails
 		FROM
 			workspace
 		WHERE
