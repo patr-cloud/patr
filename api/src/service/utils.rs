@@ -145,7 +145,7 @@ pub fn sample_data_not_allowed_in_release_mode() {
 ///
 /// # Returns
 /// returns a string containing a 6 digit One-Time-Password
-#[cfg(release)]
+#[cfg(not(debug_assertions))]
 pub fn generate_new_otp() -> String {
 	use rand::Rng;
 
@@ -172,7 +172,7 @@ pub fn generate_new_otp() -> String {
 ///
 /// # Returns
 /// returns a string containing a 6 digit One-Time-Password (000000)
-#[cfg(not(release))]
+#[cfg(debug_assertions)]
 pub fn generate_new_otp() -> String {
 	"000-000".to_string()
 }
