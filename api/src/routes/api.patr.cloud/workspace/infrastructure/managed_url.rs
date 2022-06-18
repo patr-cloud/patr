@@ -14,6 +14,7 @@ use api_models::{
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use redis::AsyncCommands;
+use serde::{Deserialize, Serialize};
 
 use crate::{
 	app::{create_eve_app, App},
@@ -349,6 +350,12 @@ async fn update_managed_url(
 	Ok(context)
 }
 
+// TODO this is temp struct
+#[derive(Debug, Serialize, Deserialize)]
+pub struct VerifyManagedUrlResponse {
+	pub verification_secret: String,
+}
+
 async fn verify_managed_url(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -367,10 +374,9 @@ async fn verify_managed_url(
 	println!("verification_secret: {}", verification_secret);
 
 	context.success(VerifyManagedUrlResponse {
-		verification_secret: verification_secret.clone(),
+		verification_secret
 	});
 
-	// context.success(UpdateManagedUrlResponse {});
 	Ok(context)
 }
 

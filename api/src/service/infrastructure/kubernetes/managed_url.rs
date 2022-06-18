@@ -35,7 +35,7 @@ use tokio::time;
 use redis::AsyncCommands;
 
 use crate::{
-	db,
+	db::{self, WorkspaceDomain},
 	error,
 	service::{self, infrastructure::kubernetes},
 	utils::{settings::Settings, Error},
@@ -414,7 +414,7 @@ pub async fn update_kubernetes_managed_url(
 		.body(error!(SERVER_ERROR).to_string())?;
 
 	// Randomly generate a secret content for the TLS certificate
-	let verification_string = Uuid::new_v4();
+	let verification_secret = Uuid::new_v4();
 
 	// Put content and ingress in the Redis
 	let app = service::get_app();
@@ -422,28 +422,21 @@ pub async fn update_kubernetes_managed_url(
 
 	redis
 		.set(
-			format!("verfification-{}", managed_url.id.to_string()),
-			verification_string.to_string(),
+			format!("verfification-{}", managed_url.id),
+			verification_secret.to_string(),
 		)
 		.await?;
 
-	// Make a request to verfication route
-	let verification_response = reqwest::get(format!("http://localhost:3006/workspace/{}/infrastructure/managed-url/{}/verify", workspace_id, managed_url.id)).await?;
-
-	// If response comes back same a content, then request TLS certificate from
-	// letsencrypt If not do not make a request to letsencrypt because of
-	// letsencrypt rate limit
-	let verification_response_body = verification_response.text().await?;
-	if verification_response_body != verification_string.to_string() {
-		// Managed URL it not verified
-		// Schedule a job to make a verify the managed URL after some time
-		todo!()
-	} else {
-		// Generate a new certificate for managed URL
-		todo!()
-	}
-	// Managed URL is verified return verified
-
+	verify_managed_url(
+		workspace_id,
+		&domain,
+		managed_url,
+		&host,
+		verification_secret.as_str(),
+		config,
+		request_id,
+	)
+	.await?;
 	log::trace!("request_id: {} - managed URL created", request_id);
 	Ok(())
 }
@@ -526,4 +519,153 @@ pub async fn delete_kubernetes_managed_url(
 		request_id
 	);
 	Ok(())
+}
+
+pub async fn verify_managed_url(
+	workspace_id: &Uuid,
+	domain: &WorkspaceDomain,
+	managed_url: &ManagedUrl,
+	host: &str,
+	verification_secret: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let namespace = workspace_id.as_str();
+
+	let secret_name = format!(
+		"tls-{}",
+		if domain.is_ns_internal() {
+			&domain.id
+		} else {
+			&managed_url.id
+		}
+	);
+	let secret_exists = super::secret_exists(
+		&secret_name,
+		kubernetes_client.clone(),
+		namespace,
+	)
+	.await?;
+
+	let (ingress, annotations) = (
+			IngressRule {
+				host: Some(host.to_string()),
+				http: Some(HTTPIngressRuleValue {
+					paths: vec![HTTPIngressPath {
+						backend: IngressBackend {
+							service: Some(IngressServiceBackend {
+								name: format!("service-verify-{}", managed_url.id),
+								port: Some(ServiceBackendPort {
+									number: Some(80),
+									..ServiceBackendPort::default()
+								}),
+							}),
+							..Default::default()
+						},
+						path: Some("/.well-known/patr/cert-file".to_string()),
+						path_type: Some("Prefix".to_string()),
+					}],
+				}),
+			},
+			[
+				(
+					"kubernetes.io/ingress.class".to_string(),
+					"nginx".to_string(),
+				),
+				(
+					"nginx.ingress.kubernetes.io/temporal-redirect"
+						.to_string(),
+					format!("http://localhost:3006/workspace/{}/infrastructure/managed-url/{}/verify", workspace_id, managed_url.id),
+				),
+				(
+					"cert-manager.io/cluster-issuer".to_string(),
+					if domain.is_ns_internal() {
+						config.kubernetes.cert_issuer_dns.clone()
+					} else {
+						config.kubernetes.cert_issuer_http.clone()
+					},
+				),
+			]
+			.into_iter()
+			.collect(),
+	);
+
+	let kubernetes_ingress = Ingress {
+		metadata: ObjectMeta {
+			name: Some(format!("ingress-verify-{}", managed_url.id)),
+			annotations: Some(annotations),
+			..ObjectMeta::default()
+		},
+		spec: Some(IngressSpec {
+			rules: Some(vec![ingress]),
+			tls: if secret_exists {
+				Some(vec![IngressTLS {
+					hosts: if domain.is_ns_internal() {
+						Some(vec![
+							format!("*.{}", domain.name),
+							domain.name.clone(),
+						])
+					} else {
+						Some(vec![host.to_string()])
+					},
+					secret_name: Some(secret_name),
+				}])
+			} else {
+				None
+			},
+			..IngressSpec::default()
+		}),
+		..Ingress::default()
+	};
+	// Create the ingress defined above
+	log::trace!(
+		"request_id: {} - creating verification string ingress",
+		request_id
+	);
+	let ingress_api: Api<Ingress> =
+		Api::namespaced(kubernetes_client, namespace);
+	ingress_api
+		.patch(
+			&format!("ingress-verify-{}", managed_url.id),
+			&PatchParams::apply(&format!("ingress-verify-{}", managed_url.id)),
+			&Patch::Apply(kubernetes_ingress),
+		)
+		.await?;
+
+	let verification_response =
+		reqwest::get(format!("https://{}/.well-known/patr/cert-file", host))
+			.await?
+			.text()
+			.await?;
+
+	if verification_response != verification_secret {
+		log::error!(
+			"request_id: {} - verification string mismatch, scheduling for re-verification",
+			request_id
+		);
+		// Schedule a job to verify the managed URL again
+		ingress_api
+			.delete(
+				&format!("ingress-verify-{}", managed_url.id),
+				&DeleteParams::default(),
+			)
+			.await?;
+
+		// Verification string mismatch
+		Ok(())
+	} else {
+		// Create certificate for the managed URL
+		log::error!("request_id: {} - Managed URL verified", request_id);
+		ingress_api
+			.delete(
+				&format!("ingress-verify-{}", managed_url.id),
+				&DeleteParams::default(),
+			)
+			.await?;
+
+		// Create certificate for the managed URL
+
+		Ok(())
+	}
 }

@@ -138,6 +138,10 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 			if let Status::Active = response.result.status {
 				// Create certs below
 			} else {
+				// Unverified for more then 7 days and if so, delete the domain
+				// permanently TODO date check
+				// TODO if greater then 7 days, delete the domain permanently
+				// TODO if smaller then 7 days continue with the next domain
 				continue;
 			}
 
