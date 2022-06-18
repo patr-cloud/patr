@@ -181,6 +181,60 @@ async fn notification_handler(
 			continue;
 		};
 
+		/*
+
+			User creates a deployment:
+			- Store when it was created
+			- Store any updates to the deployment in case the user updates it
+
+			End of the month, setting up rabbit mq to charge the user for the resources.
+			Calculate the total bill based on the resources consumed for the month.
+				in that task a bill will be calculated
+				applying coupons and using credit card to pay the bill
+			Create a payment intent for that amount and store the payment intent ID in the database.
+			Schedule a RabbitMQ job to charge the user.
+
+			In the next job, if the payment method is not present then calculate bill if the bill is greater than 0
+		 email to patr for the bill and status.
+
+		 4. and charged from the user's account
+		 5. handling of errors such as carderror -> store payment attempt -> if payment intent succeded
+		 6. charge is other queue) -> if payment intent failed -> store payment attempt -> if payment intent succeded
+		 7. sending user the invoice
+		 8. creating transaction entries on db
+
+
+		0. If the payment method is not present enforce free limits
+		1 -> it will check for resource limit and product limit
+		2 -> throw error limit crossed
+
+		deployment -> limit check -> create first entry of transaction;
+
+		update deployment -> limit check -> create second entry of transaction;
+		same for all other resource
+
+		scheduler -> transaction hourly update
+
+			*/
+
+		/*
+
+				1. emailing invoice to the user
+		2. payment failed and success emails
+		2. Routes:
+		 - add billing address (update stripe with the users billing address)
+		 - Get credits on account
+		 - Get current bill
+		 - Add payment method
+		3. Periodically update their balance in a separate table
+		4. Redis locks for making payments (only one payment per workspace at a time)
+		5. Updating the resource usages when the resources are changed
+		6. Limiting the resource during the resource creation
+		7. Generating PDF invoice
+		8. Update frontend
+
+				*/
+
 		let current_time = get_current_time_millis();
 
 		log::trace!(

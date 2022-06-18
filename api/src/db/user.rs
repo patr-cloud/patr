@@ -118,6 +118,7 @@ pub async fn initialize_users_pre(
 					recovery_phone_country_code = UPPER(recovery_phone_country_code)
 				),
 			recovery_phone_number VARCHAR(15),
+			workspace_limit INTEGER NOT NULL,
 
 			CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id
 				UNIQUE(recovery_email_local, recovery_email_domain_id),
@@ -2664,7 +2665,17 @@ pub async fn get_all_workspaces_for_user(
 			workspace.name::TEXT as "name!: _",
 			workspace.super_admin_id as "super_admin_id: _",
 			workspace.active,
-			workspace.alert_emails
+			workspace.alert_emails,
+			workspace.payment_type as "payment_type!: _",
+			workspace.default_payment_method_id as "default_payment_method_id: _",
+			workspace.deployment_limit,
+			workspace.static_site_limit,
+			workspace.database_limit,
+			workspace.managed_url_limit,
+			workspace.secret_limit,
+			workspace.domain_limit,
+			workspace.volume_limit,
+			workspace.stripe_customer_id
 		FROM
 			workspace
 		LEFT JOIN

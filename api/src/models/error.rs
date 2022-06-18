@@ -57,6 +57,14 @@ pub mod id {
 	pub const CANNOT_DELETE_WORKSPACE: &str = "cannotDeleteWorkspace";
 	pub const ADDRESS_LINE_3_NOT_ALLOWED: &str = "addressLine3NotAllowed";
 	pub const PAYMENT_FAILED: &str = "paymentFailed";
+	pub const RESOURCE_LIMIT_EXCEEDED: &str = "resourceLimitExceeded";
+	pub const DEPLOYMENT_LIMIT_EXCEEDED: &str = "deploymentLimitExceeded";
+	pub const STATIC_SITE_LIMIT_EXCEEDED: &str = "staticSiteLimitExceeded";
+	pub const DATABASE_LIMIT_EXCEEDED: &str = "databaseLimitExceeded";
+	pub const MANAGED_URL_LIMIT_EXCEEDED: &str = "managedUrlLimitExceeded";
+	pub const SECRET_LIMIT_EXCEEDED: &str = "secretLimitExceeded";
+	pub const REPOSITORY_SIZE_LIMIT_EXCEEDED: &str =
+		"repositorySizeLimitExceeded";
 }
 
 #[allow(dead_code)]
@@ -172,4 +180,11 @@ pub mod message {
 	pub const ADDRESS_LINE_3_NOT_ALLOWED: &str =
 		"Address line 3 is not allowed if address line 2 is not provided";
 	pub const PAYMENT_FAILED: &str = "Payment failed, please try again. In case your money was deducted, it will be refunded back to your account in 7 working days";
+	pub const RESOURCE_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number resources allowed for your workspace, contact support to increase the limit";
+	pub const DEPLOYMENT_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number deployments allowed for your workspace, contact support to increase the limit";
+	pub const STATIC_SITE_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number static sites allowed for your workspace, contact support to increase the limit";
+	pub const DATABASE_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number databases allowed for your workspace, contact support to increase the limit";
+	pub const MANAGED_URL_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number managed URLs allowed for your workspace, contact support to increase the limit";
+	pub const SECRET_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number secrets allowed for your workspace, contact support to increase the limit";
+	pub const REPOSITORY_SIZE_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum size of repositories allowed for your workspace, contact support to increase the limit";
 }

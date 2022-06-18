@@ -123,7 +123,7 @@ pub struct AutomaticPaymentMethods {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct PaymentIntent {
-	pub amount: u32,
+	pub amount: u64,
 	pub currency: String,
 	pub description: String,
 	pub customer: String,

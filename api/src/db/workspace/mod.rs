@@ -21,12 +21,23 @@ pub use self::{
 	secret::*,
 };
 
+#[derive(Debug, Clone)]
 pub struct Workspace {
 	pub id: Uuid,
 	pub name: String,
 	pub super_admin_id: Uuid,
 	pub active: bool,
 	pub alert_emails: Vec<String>,
+	pub payment_type: PaymentType,
+	pub default_payment_method_id: Option<String>,
+	pub deployment_limit: i32,
+	pub static_site_limit: i32,
+	pub database_limit: i32,
+	pub managed_url_limit: i32,
+	pub secret_limit: i32,
+	pub domain_limit: i32,
+	pub volume_limit: i64,
+	pub stripe_customer_id: String,
 }
 
 pub struct WorkspaceAuditLog {
@@ -44,6 +55,13 @@ pub struct WorkspaceAuditLog {
 	pub success: bool,
 }
 
+#[derive(sqlx::Type)]
+#[sqlx(type_name = "PAYMENT_TYPE", rename_all = "lowercase")]
+pub enum PaymentType {
+	Card,
+	Enterprise,
+}
+
 #[derive(Debug, Clone)]
 pub struct WorkspaceCredits {
 	pub workspace_id: Uuid,
@@ -56,6 +74,18 @@ pub async fn initialize_workspaces_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing workspace tables");
+
+	query!(
+		r#"
+		CREATE TYPE PAYMENT_TYPE AS ENUM(
+			'card',
+			'enterprise'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	query!(
 		r#"
 		CREATE TABLE workspace(
@@ -78,7 +108,17 @@ pub async fn initialize_workspaces_pre(
 						drone_username IS NOT NULL AND
 						drone_token IS NOT NULL
 					)
-				)
+				),
+			payment_type PAYMENT_TYPE,
+			default_payment_method_id TEXT,
+			deployment_limit INTEGER NOT NULL,
+			static_site_limit INTEGER NOT NULL,
+			database_limit INTEGER NOT NULL,
+			managed_url_limit INTEGER NOT NULL,
+			secret_limit INTEGER NOT NULL,
+			domain_limit INTEGER NOT NULL,
+			volume_limit BIGINT NOT NULL,
+			stripe_customer_id TEXT NOT NULL
 		);
 		"#
 	)
@@ -243,6 +283,17 @@ pub async fn initialize_workspaces_post(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE workspace
+		ADD CONSTRAINT workspace_default_payment_method_id_fk
+		FOREIGN KEY (default_payment_method_id) REFERENCES payment_method(id)
+		DEFERRABLE INITIALLY DEFERRED;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	domain::initialize_domain_post(connection).await?;
 	docker_registry::initialize_docker_registry_post(connection).await?;
 	secret::initialize_secret_post(connection).await?;
@@ -298,7 +349,18 @@ pub async fn get_workspace_info(
 			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
 			active,
-			alert_emails as "alert_emails!: _"
+			alert_emails as "alert_emails!: _",
+			payment_type as "payment_type!: _",
+			default_payment_method_id as "default_payment_method_id: _",
+			deployment_limit,
+			static_site_limit,
+			database_limit,
+			managed_url_limit,
+			secret_limit,
+			domain_limit,
+			volume_limit,
+			stripe_customer_id
+
 		FROM
 			workspace
 		WHERE
@@ -322,7 +384,17 @@ pub async fn get_workspace_by_name(
 			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
 			active,
-			alert_emails as "alert_emails!: _"
+			alert_emails as "alert_emails!: _",
+			payment_type as "payment_type!: _",
+			default_payment_method_id as "default_payment_method_id: _",
+			deployment_limit,
+			static_site_limit,
+			database_limit,
+			managed_url_limit,
+			secret_limit,
+			domain_limit,
+			volume_limit,
+			stripe_customer_id
 		FROM
 			workspace
 		WHERE
@@ -395,7 +467,6 @@ pub async fn update_workspace_info(
 		.execute(&mut *connection)
 		.await?;
 	}
-
 	Ok(())
 }
 
@@ -650,4 +721,66 @@ pub async fn update_workspace_credit_metadata(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn get_all_workspaces(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<Workspace>, sqlx::Error> {
+	query_as!(
+		Workspace,
+		r#"
+		SELECT DISTINCT
+			workspace.id as "id: _",
+			workspace.name::TEXT as "name!: _",
+			workspace.super_admin_id as "super_admin_id: _",
+			workspace.active,
+			alert_emails as "alert_emails!: _",
+			payment_type as "payment_type!: _",
+			default_payment_method_id as "default_payment_method_id: _",
+			deployment_limit,
+			static_site_limit,
+			database_limit,
+			managed_url_limit,
+			secret_limit,
+			domain_limit,
+			volume_limit,
+			stripe_customer_id
+		FROM
+			workspace
+		WHERE
+			workspace.name NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
+		"#,
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn get_resource_limit_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<u32, sqlx::Error> {
+	query!(
+		r#"
+		SELECT (
+				deployment_limit +
+				database_limit +
+				static_site_limit +
+				managed_url_limit +
+				domain_limit +
+				secret_limit
+			) as "limit: i32"
+		FROM
+			workspace
+		WHERE
+			workspace.id = $1;
+		"#,
+		workspace_id as _,
+	)
+	.fetch_one(&mut *connection)
+	.await
+	.map(|row| row.limit as u32)
 }

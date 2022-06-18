@@ -40,6 +40,20 @@ pub async fn create_new_managed_url_in_workspace(
 		.await?
 		.status(500)?;
 
+	log::trace!("request_id: {} - Checking resource limit", request_id);
+	if super::resource_limit_crossed(connection, workspace_id).await? {
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	log::trace!("request_id: {} - Checking managed_url limit", request_id);
+	if managed_url_limit_crossed(connection, workspace_id).await? {
+		return Error::as_result()
+			.status(400)
+			.body(error!(MANAGED_URL_LIMIT_EXCEEDED).to_string())?;
+	}
+
 	log::trace!("request_id: {} - Creating resource.", request_id);
 	db::create_resource(
 		connection,

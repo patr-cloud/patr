@@ -75,6 +75,20 @@ pub async fn create_managed_database_in_workspace(
 	};
 	let num_nodes = num_nodes.unwrap_or(1);
 
+	log::trace!("request_id: {} - Checking resource limit", request_id);
+	if super::resource_limit_crossed(connection, workspace_id).await? {
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	log::trace!("request_id: {} - Checking database limit", request_id);
+	if database_limit_crossed(connection, workspace_id).await? {
+		return Error::as_result()
+			.status(400)
+			.body(error!(DATABASE_LIMIT_EXCEEDED).to_string())?;
+	}
+
 	db::create_resource(
 		connection,
 		&database_id,

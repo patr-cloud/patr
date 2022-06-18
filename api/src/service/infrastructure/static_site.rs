@@ -49,6 +49,21 @@ pub async fn create_static_site_in_workspace(
 	}
 
 	let static_site_id = db::generate_new_resource_id(connection).await?;
+
+	log::trace!("request_id: {} - Checking resource limit", request_id);
+	if super::resource_limit_crossed(connection, workspace_id).await? {
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	log::trace!("request_id: {} - Checking static site limit", request_id);
+	if static_site_limit_crossed(connection, workspace_id).await? {
+		return Error::as_result()
+			.status(400)
+			.body(error!(STATIC_SITE_LIMIT_EXCEEDED).to_string())?;
+	}
+
 	log::trace!("request_id: {} - creating static site resource", request_id);
 	db::create_resource(
 		connection,

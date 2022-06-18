@@ -24,6 +24,20 @@ pub async fn create_new_secret_in_workspace(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
+	log::trace!("request_id: {} - Checking resource limit", request_id);
+	if super::resource_limit_crossed(connection, workspace_id).await? {
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	log::trace!("request_id: {} - Checking secret limit", request_id);
+	if secret_limit_crossed(connection, workspace_id).await? {
+		return Error::as_result()
+			.status(400)
+			.body(error!(SECRET_LIMIT_EXCEEDED).to_string())?;
+	}
+
 	let resource_id = db::generate_new_resource_id(connection).await?;
 
 	log::trace!("request_id: {} - Creating resource", request_id);

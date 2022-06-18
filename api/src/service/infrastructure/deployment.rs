@@ -106,6 +106,21 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
+	log::trace!("request_id: {} - Checking resource limit", request_id);
+
+	if super::resource_limit_crossed(connection, workspace_id).await? {
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	log::trace!("request_id: {} - Checking deployment limit", request_id);
+	if deployment_limit_crossed(connection, workspace_id).await? {
+		return Error::as_result()
+			.status(400)
+			.body(error!(DEPLOYMENT_LIMIT_EXCEEDED).to_string())?;
+	}
+
 	db::create_resource(
 		connection,
 		&deployment_id,

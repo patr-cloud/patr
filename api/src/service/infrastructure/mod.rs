@@ -22,6 +22,7 @@ pub use self::{
 use crate::{
 	db::{self, ManagedDatabaseStatus},
 	service,
+	Database,
 };
 
 async fn update_managed_database_status(
@@ -60,4 +61,45 @@ async fn update_managed_database_credentials_for_database(
 	.await?;
 
 	Ok(())
+}
+
+pub async fn resource_limit_crossed(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<bool, sqlx::Error> {
+	let mut current_resource: usize;
+
+	let current_resource = current_resource +
+		db::get_deployments_for_workspace(connection, workspace_id)
+			.await?
+			.len();
+
+	let current_resource = current_resource +
+		db::get_static_sites_for_workspace(connection, workspace_id)
+			.await?
+			.len();
+
+	let current_resource = current_resource +
+		db::get_all_database_clusters_for_workspace(connection, workspace_id)
+			.await?
+			.len();
+
+	let current_resource = current_resource +
+		db::get_all_managed_urls_in_workspace(connection, workspace_id)
+			.await?
+			.len();
+
+	let current_resource = current_resource +
+		db::get_all_secrets_in_workspace(connection, workspace_id)
+			.await?
+			.len();
+
+	let resource_limit =
+		db::get_resource_limit_for_workspace(connection, workspace_id).await?;
+
+	if current_resource + 1 > resource_limit {
+		true
+	}
+
+	Ok(false)
 }
