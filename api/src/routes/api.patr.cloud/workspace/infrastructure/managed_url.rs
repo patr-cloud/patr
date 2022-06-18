@@ -17,7 +17,7 @@ use redis::AsyncCommands;
 
 use crate::{
 	app::{create_eve_app, App},
-	db::{self, ManagedUrlType as DbManagedUrlType},
+	db::{self, ManagedUrlType as DbManagedUrlType, VerifyManagedUrlResponse},
 	error,
 	models::rbac::permissions,
 	pin_fn,
@@ -367,10 +367,9 @@ async fn verify_managed_url(
 	println!("verification_secret: {}", verification_secret);
 
 	context.success(VerifyManagedUrlResponse {
-		verification_secret: verification_secret.clone(),
+		verification_secret,
 	});
 
-	// context.success(UpdateManagedUrlResponse {});
 	Ok(context)
 }
 

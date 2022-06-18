@@ -103,24 +103,18 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 	log::trace!("request_id: {} - Verifying unverified domains", request_id);
 	let config = super::CONFIG.get().unwrap();
 	let mut connection = config.database.acquire().await?;
-
 	let settings = config.config.clone();
-
 	let unverified_domains =
 		db::get_all_unverified_domains(&mut connection).await?;
-
 	let client = service::get_cloudflare_client(&config.config).await?;
-
 	for (unverified_domain, zone_identifier) in unverified_domains {
 		let mut connection = connection.begin().await?;
-
 		let workspace_id =
 			db::get_resource_by_id(&mut connection, &unverified_domain.id)
 				.await?
 				.status(500)
 				.body(error!(SERVER_ERROR).to_string())?
 				.owner_id;
-
 		if let (Some(zone_identifier), true) =
 			(zone_identifier, unverified_domain.is_ns_internal())
 		{
@@ -143,7 +137,6 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					&request_id,
 				)
 				.await?;
-
 				// Domain is now verified
 				db::update_workspace_domain_status(
 					&mut connection,
@@ -171,7 +164,6 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					// 	unverified_domain.name,
 					// );
 				}
-
 				connection.commit().await?;
 			} else {
 				let last_unverified = Utc::now()
@@ -194,7 +186,6 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 						)
 						.await?;
 					}
-
 					// Delete all the dns record before deleting the domain
 					let dns_records = db::get_dns_records_by_domain_id(
 						&mut connection,
@@ -229,7 +220,6 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 						&request_id,
 					)
 					.await?;
-
 					connection.commit().await?;
 				} else {
 					continue;
@@ -245,17 +235,14 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 				&request_id,
 			)
 			.await?;
-
 			if !response {
 				log::error!(
 					"Could not verify domain `{}`",
 					unverified_domain.name
 				);
-
 				let last_unverified = Utc::now()
 					.signed_duration_since(unverified_domain.last_unverified);
 				let last_unverified_days = last_unverified.num_days();
-
 				if last_unverified_days > 7 {
 					// Delete all managed url before deleting the domain
 					let managed_urls = db::get_all_managed_urls_for_domain(
@@ -273,7 +260,6 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 						)
 						.await?;
 					}
-
 					// Delete the domain
 					service::delete_domain_in_workspace(
 						&mut connection,
@@ -288,7 +274,6 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 			}
 		}
 	}
-
 	Ok(())
 }
 

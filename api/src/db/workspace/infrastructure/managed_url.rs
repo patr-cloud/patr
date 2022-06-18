@@ -23,6 +23,9 @@ pub struct ManagedUrl {
 	pub url: Option<String>,
 	pub workspace_id: Uuid,
 }
+pub struct VerifyManagedUrlResponse {
+	pub verification_secret: String,
+}
 
 pub async fn initialize_managed_url_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
