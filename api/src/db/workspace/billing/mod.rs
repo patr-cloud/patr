@@ -44,6 +44,18 @@ pub async fn initialize_billing_pre(
 	.execute(&mut *connection)
 	.await?;
 
+
+	query!(
+		r#"
+		CREATE TYPE DOMAIN_PLAN AS ENUM(
+			'free',
+			'unlimited'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	query!(
 		r#"
         CREATE TABLE IF NOT EXISTS deployment_payment_history(
