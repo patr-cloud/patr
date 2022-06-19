@@ -17,6 +17,7 @@ pub use self::{
 	domain::*,
 	infrastructure::*,
 	metrics::*,
+	project::*,
 	secret::*,
 };
 

@@ -928,13 +928,25 @@ async fn create_project_tables(
 				CONSTRAINT project_fk_workspace_id REFERENCES workspace(id),
 			name CITEXT NOT NULL,
 			description VARCHAR(500) NOT NULL,
+			deleted BOOLEAN NOT NULL DEFAULT FALSE,
 
-			CONSTRAINT project_uq_workspace_id_name
-				UNIQUE (workspace_id, name),
 			CONSTRAINT project_fk_id_workspace_id
 				FOREIGN KEY (id, workspace_id)
 					REFERENCES resource(id, owner_id)
 		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			project_uq_idx_name_workspace_id
+		ON
+			project(name, workspace_id)
+		WHERE
+			deleted IS FALSE;
 		"#
 	)
 	.execute(&mut *connection)

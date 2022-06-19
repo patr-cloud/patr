@@ -39,6 +39,7 @@ mod ci;
 mod docker_registry;
 mod domain;
 mod infrastructure;
+mod project;
 #[path = "rbac/mod.rs"]
 mod rbac_routes;
 mod secret;
@@ -124,6 +125,7 @@ pub fn create_sub_app(
 	sub_app.use_sub_app("/:workspaceId/billing", billing::create_sub_app(app));
 	sub_app.use_sub_app("/:workspaceId/rbac", rbac_routes::create_sub_app(app));
 	sub_app.use_sub_app("/:workspaceId/secret", secret::create_sub_app(app));
+	sub_app.use_sub_app("/:workspaceId/project", project::create_sub_app(app));
 	sub_app.use_sub_app("/:workspaceId/ci", ci::create_sub_app(app));
 
 	sub_app.delete(

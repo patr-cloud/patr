@@ -168,8 +168,6 @@ pub mod permissions {
 			}
 		}
 
-		// TODO: remove this once used
-		#[allow(dead_code)]
 		pub mod project {
 			pub const LIST: &str = "workspace::project::list";
 			pub const CREATE: &str = "workspace::project::create";

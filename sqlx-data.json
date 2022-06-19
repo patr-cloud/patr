@@ -402,6 +402,16 @@
     },
     "query": "INSERT INTO password_reset_request( user_id, token, token_expiry ) VALUES ($1, $2, $3) ON CONFLICT(user_id) DO UPDATE SET token = EXCLUDED.token, token_expiry = EXCLUDED.token_expiry;"
   },
+  "0df061781f1be3c43739ce3c4e3fd1f524e306694a788d5d9699a8654558a911": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE UNIQUE INDEX project_uq_idx_name_workspace_id ON project(name, workspace_id) WHERE deleted IS FALSE;"
+  },
   "102ae14f2d65ea1b82c065b152f7ddcac5b4a45730487d829481831e0ec0c191": {
     "describe": {
       "columns": [
@@ -2491,6 +2501,18 @@
     },
     "query": "ALTER TABLE deployment ADD CONSTRAINT deployment_fk_deployment_id_startup_port_startup_port_type FOREIGN KEY (id, startup_probe_port, startup_probe_port_type) REFERENCES deployment_exposed_port(deployment_id, port, port_type) DEFERRABLE INITIALLY IMMEDIATE, ADD CONSTRAINT deployment_fk_deployment_id_liveness_port_liveness_port_type FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type) REFERENCES deployment_exposed_port(deployment_id, port, port_type) DEFERRABLE INITIALLY IMMEDIATE;"
   },
+  "440466f95044d382cc05b54f2b08ece654638ef6441b773d80bb743977c21994": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE project SET deleted = TRUE WHERE id = $1;"
+  },
   "4473fad035c7e0e8c1466af8dae29925137071c56c7b8827b37fa3c6ee5505f5": {
     "describe": {
       "columns": [],
@@ -3492,16 +3514,6 @@
     },
     "query": "ALTER TABLE managed_url ADD CONSTRAINT managed_url_fk_domain_id FOREIGN KEY(domain_id) REFERENCES workspace_domain(id), ADD CONSTRAINT managed_url_fk_domain_id_workspace_id FOREIGN KEY(domain_id, workspace_id) REFERENCES resource(id, owner_id), ADD CONSTRAINT managed_url_fk_deployment_id_port FOREIGN KEY(deployment_id, port) REFERENCES deployment_exposed_port(deployment_id, port) DEFERRABLE INITIALLY IMMEDIATE, ADD CONSTRAINT managed_url_fk_deployment_id_workspace_id FOREIGN KEY(deployment_id, workspace_id) REFERENCES deployment(id, workspace_id), ADD CONSTRAINT managed_url_fk_static_site_id_workspace_id FOREIGN KEY(static_site_id, workspace_id) REFERENCES deployment_static_site(id, workspace_id), ADD CONSTRAINT managed_url_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);"
   },
-  "68223729c6d5ba0d0ef24b7f8512f3ed28563fb5c08573a9bb48e0e437eeb6fe": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE project ( id UUID CONSTRAINT project_pk PRIMARY KEY, workspace_id UUID NOT NULL CONSTRAINT project_fk_workspace_id REFERENCES workspace(id), name CITEXT NOT NULL, description VARCHAR(500) NOT NULL, CONSTRAINT project_uq_workspace_id_name UNIQUE (workspace_id, name) );"
-  },
   "696bdaf6f707eea875bebce9c7b5f9ed6aee64eafcaf520113320625f71f988c": {
     "describe": {
       "columns": [
@@ -4005,6 +4017,25 @@
       }
     },
     "query": "SELECT permission_id as \"permission_id: Uuid\", resource_type_id as \"resource_type_id: Uuid\" FROM role_allow_permissions_resource_type WHERE role_id = $1;"
+  },
+  "72d03ed1722914f591efa72a7f58bd2ebecf212c2b7789d6d83180e43e32849b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          },
+          "Varchar"
+        ]
+      }
+    },
+    "query": "UPDATE project SET name = COALESCE($2, name), description = COALESCE($3, description) WHERE id = $1;"
   },
   "737d2bec853fc049071993d090838da713f3f24ca972cba74b45aa0318ccdf7d": {
     "describe": {
@@ -4727,6 +4758,44 @@
     },
     "query": "SELECT port, port_type as \"port_type: ExposedPortType\" FROM deployment_exposed_port WHERE deployment_id = $1;"
   },
+  "8c4f784183c6919f3676ab04fc0fede91f8a41ec639c9c4fd12b523989ac0386": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "description!: _",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        null,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", workspace_id as \"workspace_id: _\", name::TEXT as \"name!: _\", description as \"description!: _\" FROM project WHERE ( workspace_id = $1 AND deleted IS FALSE );"
+  },
   "8d0a4c011fc58624c93d87270ff0cc7db7a41927801b42f826871cc11a37ce02": {
     "describe": {
       "columns": [
@@ -4892,6 +4961,44 @@
       }
     },
     "query": "CREATE OR REPLACE FUNCTION role_block_permissions_resource_check() RETURNS TRIGGER AS $$ DECLARE permission_name TEXT; resource_type_name TEXT; BEGIN SELECT permission.name INTO permission_name FROM permission WHERE permission.id = NEW.permission_id; SELECT resource_type.name INTO resource_type_name FROM resource_type JOIN resource ON resource.resource_type_id = resource_type.id WHERE resource.id = NEW.resource_id; IF validate_permission_to_resource_mapping(permission_name, resource_type_name) THEN RETURN NEW; END IF; RAISE EXCEPTION 'Invalid permission is provided for resource'; END $$ LANGUAGE PLPGSQL;"
+  },
+  "93b08740790bce19a06764b060b8efe08d699c384669b3001ed91a2ff5b10766": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "description!: _",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        null,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", workspace_id as \"workspace_id: _\", name::TEXT as \"name!: _\", description as \"description!: _\" FROM project WHERE ( id = $1 AND deleted IS FALSE );"
   },
   "950e9b68ae5974afe26208b12498d2863660e67871aa2ad387b54a03255d339d": {
     "describe": {
@@ -5125,6 +5232,16 @@
       }
     },
     "query": "CREATE TABLE workspace_credits( workspace_id UUID NOT NULL, credits BIGINT NOT NULL DEFAULT 0, metadata JSON NOT NULL, date TIMESTAMPTZ NOT NULL );"
+  },
+  "99af4a772d5363ba0f67dd0d3a94ba74d858df803efc1eab7f3c5a66a1c088d5": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE project ( id UUID CONSTRAINT project_pk PRIMARY KEY, workspace_id UUID NOT NULL CONSTRAINT project_fk_workspace_id REFERENCES workspace(id), name CITEXT NOT NULL, description VARCHAR(500) NOT NULL, deleted BOOLEAN NOT NULL DEFAULT FALSE );"
   },
   "9a3de7f88487616a70b025316dfa10b5ec412d40d7c15567e0dd9d19c369a3c1": {
     "describe": {
@@ -8846,6 +8963,26 @@
       }
     },
     "query": "SELECT COUNT(*) as \"count!\" FROM user_to_sign_up;"
+  },
+  "f11590d62d2e70b00f3c635cd0e113d6adacf5df4bcf6a7aff980d428c5e1d1c": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          },
+          "Varchar"
+        ]
+      }
+    },
+    "query": "INSERT INTO project ( id, workspace_id, name, description ) VALUES ($1, $2, $3, $4);"
   },
   "f39f35664495c1605a1f36e9a5a7597392c9143ea0afd6c73a6267770e1b6bbd": {
     "describe": {
