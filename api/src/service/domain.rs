@@ -284,6 +284,82 @@ pub async fn add_domain_to_workspace(
 }
 
 /// # Description
+/// This function transfers the domain ownership from user to patr
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `domain_name` - a string which contains domain name of user's personal
+///   email id
+///
+/// # Returns
+/// This function returns Result<(), Error> containing succes or
+/// an error
+///
+///[`Transaction`]: Transaction
+
+pub async fn transfer_domain_to_patr(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_workspace_id: &Uuid,
+	domain: &str,
+	config: &Settings,
+	_request_id: &Uuid,
+) -> Result<(), Error> {
+	let client = get_cloudflare_client(config).await?;
+
+	let domain = db::get_domain_by_name(connection, domain)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	// create zone
+	let zone_identifier = client
+		.request(&CreateZone {
+			params: CreateZoneParams {
+				name: domain.name.as_str(),
+				jump_start: Some(false),
+				account: AccountId {
+					id: &config.cloudflare.account_id,
+				},
+				// Full because the DNS record
+				zone_type: Some(Type::Full),
+			},
+		})
+		.await?
+		.result
+		.id;
+
+	let user_controlled_domain =
+		db::get_user_controlled_domain_by_name(connection, &domain.id).await?;
+
+	// Insert into patr_controlled_domains
+	db::add_patr_controlled_domain(
+		connection,
+		&user_controlled_domain.domain_id,
+		&zone_identifier,
+	)
+	.await?;
+
+	// Delete from user_controlled_domains
+	// TODO - check if deleting this will mess up something else
+	db::delete_user_contolled_domain(
+		connection,
+		&user_controlled_domain.domain_id,
+	)
+	.await?;
+
+	// Update workspace_domain with with nameserver_typea as internal
+	db::update_workspace_domain_nameserver_type(
+		connection,
+		&user_controlled_domain.domain_id,
+	)
+	.await?;
+
+	// TODO - manage certs and secrets
+
+	Ok(())
+}
+
+/// # Description
 /// This function checks if the domain is verified or not
 ///
 /// # Arguments

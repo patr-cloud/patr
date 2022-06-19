@@ -44,6 +44,11 @@ pub struct PatrControlledDomain {
 	pub zone_identifier: String,
 }
 
+pub struct UserControlledDomain {
+	pub domain_id: Uuid,
+	pub nameserver_type: DomainNameserverType,
+}
+
 #[derive(sqlx::Type, PartialEq)]
 #[sqlx(type_name = "DNS_RECORD_TYPE", rename_all = "UPPERCASE")]
 #[allow(clippy::upper_case_acronyms)]
@@ -498,6 +503,27 @@ pub async fn add_user_controlled_domain(
 	.map(|_| ())
 }
 
+pub async fn get_user_controlled_domain_by_name(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+) -> Result<UserControlledDomain, sqlx::Error> {
+	query_as!(
+		UserControlledDomain,
+		r#"
+		SELECT
+			domain_id as "domain_id!: _",
+			nameserver_type as "nameserver_type!: DomainNameserverType"
+		FROM
+			user_controlled_domain
+		WHERE
+			domain_id = $1
+		"#,
+		domain_id as _,
+	)
+	.fetch_one(&mut *connection)
+	.await
+}
+
 pub async fn get_domains_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
@@ -696,6 +722,44 @@ pub async fn delete_personal_domain(
 			id = $1;
 		"#,
 		domain_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn delete_user_contolled_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			user_controlled_domain
+		WHERE
+			domain_id = $1;
+		"#,
+		domain_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_workspace_domain_nameserver_type(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace_domain
+		SET
+			nameserver_type = 'internal'
+		WHERE
+			id = $1;
+		"#,
+		domain_id as _,
 	)
 	.execute(&mut *connection)
 	.await

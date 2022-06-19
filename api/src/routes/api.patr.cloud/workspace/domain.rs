@@ -12,6 +12,7 @@ use api_models::{
 		GetDomainInfoResponse,
 		GetDomainsForWorkspaceResponse,
 		PatrDomainDnsRecord,
+		TransferDomainResponse,
 		UpdateDomainDnsRecordRequest,
 		UpdateDomainDnsRecordResponse,
 		VerifyDomainResponse,
@@ -116,6 +117,37 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(add_domain_to_workspace)),
+		],
+	);
+
+	// Transfer user controller domain to patr controller domain
+	app.post(
+		"/:domain/transfer",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::domain::ADD,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(transfer_domain_to_patr)),
 		],
 	);
 
@@ -528,6 +560,32 @@ async fn add_domain_to_workspace(
 	);
 	context.success(AddDomainResponse { id: domain_id });
 
+	Ok(context)
+}
+
+async fn transfer_domain_to_patr(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let config = context.get_state().config.clone();
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Adding domain to workspace", request_id);
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+
+	let domain = context.get_param(request_keys::DOMAIN).unwrap().clone();
+
+	service::transfer_domain_to_patr(
+		context.get_database_connection(),
+		&workspace_id,
+		domain.as_str(),
+		&config,
+		&request_id,
+	)
+	.await?;
+
+	context.success(TransferDomainResponse {});
 	Ok(context)
 }
 
