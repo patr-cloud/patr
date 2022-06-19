@@ -2197,16 +2197,6 @@
     },
     "query": "CREATE TABLE phone_number_country_code( country_code CHAR(2) CONSTRAINT phone_number_country_code_pk PRIMARY KEY CONSTRAINT phone_number_country_code_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), phone_code VARCHAR(5) NOT NULL, country_name VARCHAR(80) NOT NULL );"
   },
-  "375851a6c96a63400e292a40356956e011889f9dd89199947f370ec767d1e436": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE OR REPLACE FUNCTION validate_permission_to_resource_mapping( permission_name TEXT, resource_type_name TEXT ) RETURNS BOOLEAN AS $$ SELECT CASE resource_type_name WHEN 'workspace' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::domain::list', 'workspace::domain::add', 'workspace::infrastructure::deployment::list', 'workspace::infrastructure::deployment::create', 'workspace::infrastructure::managedUrl::list', 'workspace::infrastructure::managedUrl::create', 'workspace::infrastructure::managedDatabase::create', 'workspace::infrastructure::managedDatabase::list', 'workspace::dockerRegistry::create', 'workspace::dockerRegistry::list', 'workspace::secret::list', 'workspace::secret::create', 'workspace::infrastructure::staticSite::list', 'workspace::infrastructure::staticSite::create', 'workspace::infrastructure::upgradePath::list', 'workspace::infrastructure::upgradePath::create', 'workspace::rbac::role::list', 'workspace::rbac::role::create', 'workspace::rbac::role::edit', 'workspace::rbac::role::delete', 'workspace::rbac::user::list', 'workspace::rbac::user::add', 'workspace::rbac::user::remove', 'workspace::rbac::user::updateRoles', 'workspace::edit', 'workspace::delete', 'workspace::ci::github::connect', 'workspace::ci::github::activate', 'workspace::ci::github::deactivate', 'workspace::ci::github::viewBuilds', 'workspace::ci::github::restartBuilds', 'workspace::ci::github::disconnect', 'workspace::project::list', 'workspace::project::create' ] ) THEN TRUE ELSE FALSE END ) WHEN 'domain' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::domain::viewDetails', 'workspace::domain::verify', 'workspace::domain::delete', 'workspace::domain::dnsRecord::list', 'workspace::domain::dnsRecord::add' ] ) THEN TRUE ELSE FALSE END ) WHEN 'dnsRecord' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::domain::dnsRecord::edit', 'workspace::domain::dnsRecord::delete' ] ) THEN TRUE ELSE FALSE END ) WHEN 'dockerRepository' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::dockerRegistry::delete', 'workspace::dockerRegistry::info', 'workspace::dockerRegistry::push', 'workspace::dockerRegistry::pull' ] ) THEN TRUE ELSE FALSE END ) WHEN 'managedDatabase' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::infrastructure::managedDatabase::delete', 'workspace::infrastructure::managedDatabase::info' ] ) THEN TRUE ELSE FALSE END ) WHEN 'deployment' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::infrastructure::deployment::info', 'workspace::infrastructure::deployment::delete', 'workspace::infrastructure::deployment::edit' ] ) THEN TRUE ELSE FALSE END ) WHEN 'staticSite' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::infrastructure::staticSite::info', 'workspace::infrastructure::staticSite::delete', 'workspace::infrastructure::staticSite::edit' ] ) THEN TRUE ELSE FALSE END ) WHEN 'deploymentUpgradePath' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::infrastructure::upgradePath::info', 'workspace::infrastructure::upgradePath::delete', 'workspace::infrastructure::upgradePath::edit' ] ) THEN TRUE ELSE FALSE END ) WHEN 'managedUrl' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::infrastructure::managedUrl::edit', 'workspace::infrastructure::managedUrl::delete' ] ) THEN TRUE ELSE FALSE END ) WHEN 'secret' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::secret::edit', 'workspace::secret::delete' ] ) THEN TRUE ELSE FALSE END ) WHEN 'project' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::project::info' 'workspace::project::delete' 'workspace::project::edit' ] ) THEN TRUE ELSE FALSE END ) ELSE FALSE END; $$ LANGUAGE SQL IMMUTABLE STRICT;"
-  },
   "37fda78be3fc16338fc75ea255eae29b98d91a1d3a1ca38e09eec11c7948bbee": {
     "describe": {
       "columns": [],
@@ -2682,6 +2672,16 @@
       }
     },
     "query": "DELETE FROM workspace_domain WHERE id = $1;"
+  },
+  "504b9696a8cd3b76ba5fe1906380f03e404b5fdae61c9747d671f09539a6597f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE OR REPLACE FUNCTION validate_permission_to_resource_mapping( permission_name TEXT, resource_type_name TEXT ) RETURNS BOOLEAN AS $$ SELECT CASE resource_type_name WHEN 'workspace' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::domain::list', 'workspace::domain::add', 'workspace::infrastructure::deployment::list', 'workspace::infrastructure::deployment::create', 'workspace::infrastructure::managedUrl::list', 'workspace::infrastructure::managedUrl::create', 'workspace::infrastructure::managedDatabase::create', 'workspace::infrastructure::managedDatabase::list', 'workspace::dockerRegistry::create', 'workspace::dockerRegistry::list', 'workspace::secret::list', 'workspace::secret::create', 'workspace::infrastructure::staticSite::list', 'workspace::infrastructure::staticSite::create', 'workspace::infrastructure::upgradePath::list', 'workspace::infrastructure::upgradePath::create', 'workspace::rbac::role::list', 'workspace::rbac::role::create', 'workspace::rbac::role::edit', 'workspace::rbac::role::delete', 'workspace::rbac::user::list', 'workspace::rbac::user::add', 'workspace::rbac::user::remove', 'workspace::rbac::user::updateRoles', 'workspace::edit', 'workspace::delete', 'workspace::ci::github::connect', 'workspace::ci::github::activate', 'workspace::ci::github::deactivate', 'workspace::ci::github::viewBuilds', 'workspace::ci::github::restartBuilds', 'workspace::ci::github::disconnect', 'workspace::project::list', 'workspace::project::create' ] ) THEN TRUE ELSE FALSE END ) WHEN 'domain' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::domain::viewDetails', 'workspace::domain::verify', 'workspace::domain::delete', 'workspace::domain::dnsRecord::list', 'workspace::domain::dnsRecord::add' ] ) THEN TRUE ELSE FALSE END ) WHEN 'dnsRecord' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::domain::dnsRecord::edit', 'workspace::domain::dnsRecord::delete' ] ) THEN TRUE ELSE FALSE END ) WHEN 'dockerRepository' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::dockerRegistry::delete', 'workspace::dockerRegistry::info', 'workspace::dockerRegistry::push', 'workspace::dockerRegistry::pull' ] ) THEN TRUE ELSE FALSE END ) WHEN 'managedDatabase' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::infrastructure::managedDatabase::delete', 'workspace::infrastructure::managedDatabase::info' ] ) THEN TRUE ELSE FALSE END ) WHEN 'deployment' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::infrastructure::deployment::info', 'workspace::infrastructure::deployment::delete', 'workspace::infrastructure::deployment::edit' ] ) THEN TRUE ELSE FALSE END ) WHEN 'staticSite' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::infrastructure::staticSite::info', 'workspace::infrastructure::staticSite::delete', 'workspace::infrastructure::staticSite::edit' ] ) THEN TRUE ELSE FALSE END ) WHEN 'deploymentUpgradePath' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::infrastructure::upgradePath::info', 'workspace::infrastructure::upgradePath::delete', 'workspace::infrastructure::upgradePath::edit' ] ) THEN TRUE ELSE FALSE END ) WHEN 'managedUrl' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::infrastructure::managedUrl::edit', 'workspace::infrastructure::managedUrl::delete' ] ) THEN TRUE ELSE FALSE END ) WHEN 'secret' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::secret::edit', 'workspace::secret::delete' ] ) THEN TRUE ELSE FALSE END ) WHEN 'project' THEN ( CASE WHEN permission_name = ANY ( ARRAY [ 'workspace::project::info', 'workspace::project::delete', 'workspace::project::edit' ] ) THEN TRUE ELSE FALSE END ) ELSE FALSE END; $$ LANGUAGE SQL IMMUTABLE STRICT;"
   },
   "510b40ae4968d28bb479ba8f9ca0e0688c93ad867da9ea79f24d80b460d32b98": {
     "describe": {
@@ -3491,6 +3491,16 @@
       }
     },
     "query": "ALTER TABLE managed_url ADD CONSTRAINT managed_url_fk_domain_id FOREIGN KEY(domain_id) REFERENCES workspace_domain(id), ADD CONSTRAINT managed_url_fk_domain_id_workspace_id FOREIGN KEY(domain_id, workspace_id) REFERENCES resource(id, owner_id), ADD CONSTRAINT managed_url_fk_deployment_id_port FOREIGN KEY(deployment_id, port) REFERENCES deployment_exposed_port(deployment_id, port) DEFERRABLE INITIALLY IMMEDIATE, ADD CONSTRAINT managed_url_fk_deployment_id_workspace_id FOREIGN KEY(deployment_id, workspace_id) REFERENCES deployment(id, workspace_id), ADD CONSTRAINT managed_url_fk_static_site_id_workspace_id FOREIGN KEY(static_site_id, workspace_id) REFERENCES deployment_static_site(id, workspace_id), ADD CONSTRAINT managed_url_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);"
+  },
+  "68223729c6d5ba0d0ef24b7f8512f3ed28563fb5c08573a9bb48e0e437eeb6fe": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE project ( id UUID CONSTRAINT project_pk PRIMARY KEY, workspace_id UUID NOT NULL CONSTRAINT project_fk_workspace_id REFERENCES workspace(id), name CITEXT NOT NULL, description VARCHAR(500) NOT NULL, CONSTRAINT project_uq_workspace_id_name UNIQUE (workspace_id, name) );"
   },
   "696bdaf6f707eea875bebce9c7b5f9ed6aee64eafcaf520113320625f71f988c": {
     "describe": {
@@ -5095,6 +5105,16 @@
       }
     },
     "query": "UPDATE \"user\" SET location = $1 WHERE id = $2;"
+  },
+  "98a1ab3a89f2ab059bba39253ccc61018fa7a2a5fec22cf4a17f410e0eac1605": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "ALTER TABLE project ADD CONSTRAINT project_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);"
   },
   "999c6d99e64ea91f2f9496cfb2be0d453e6191c92a1a5a6a8230eef7ad0b6ad8": {
     "describe": {

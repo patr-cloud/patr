@@ -542,8 +542,8 @@ async fn add_validation_for_permissions_on_resource(
 				CASE
 					WHEN permission_name = ANY (
 						ARRAY [
-							'workspace::project::info'
-							'workspace::project::delete'
+							'workspace::project::info',
+							'workspace::project::delete',
 							'workspace::project::edit'
 						]
 					) THEN TRUE
