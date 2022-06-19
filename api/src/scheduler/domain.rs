@@ -3,7 +3,7 @@ use api_models::{
 		ManagedUrl,
 		ManagedUrlType,
 	},
-	utils::Uuid,
+	utils::{get_current_time_millis, Uuid},
 };
 use cloudflare::{
 	endpoints::zone::{self, Status},
@@ -138,6 +138,59 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 			if let Status::Active = response.result.status {
 				// Create certs below
 			} else {
+				let unverified_domain_age = unverified_domain.last_verified -
+					get_current_time_millis() as i64;
+				let age_threshold = 604800000_i64; // 7 days
+				if unverified_domain_age > age_threshold {
+					// Delete all managed url before deleting the domain
+					let managed_urls = db::get_all_managed_urls_for_domain(
+						&mut connection,
+						&unverified_domain.id,
+					)
+					.await?;
+					if !managed_urls.is_empty() {
+						for managed_url in managed_urls {
+							service::delete_managed_url(
+								&mut connection,
+								&workspace_id,
+								&managed_url.id,
+								&settings,
+								&request_id,
+							)
+							.await?;
+						}
+					}
+
+					// Delete all the dns record before deleting the domain
+					let dns_records = db::get_dns_records_by_domain_id(
+						&mut connection,
+						&unverified_domain.id,
+					)
+					.await?;
+					if !dns_records.is_empty() {
+						for dns_record in dns_records {
+							service::delete_patr_domain_dns_record(
+								&mut connection,
+								&unverified_domain.id,
+								&dns_record.id,
+								&settings,
+								&request_id,
+							)
+							.await?;
+						}
+					}
+					// Delete the domain
+					service::delete_domain_in_workspace(
+						&mut connection,
+						&workspace_id,
+						&unverified_domain.id,
+						&settings,
+						&request_id,
+					)
+					.await?;
+				} else {
+					continue;
+				}
 				continue;
 			}
 
@@ -160,6 +213,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 				&mut connection,
 				&unverified_domain.id,
 				true,
+				Some(get_current_time_millis() as i64),
 			)
 			.await?;
 			let notification_email = db::get_notification_email_for_domain(
@@ -260,6 +314,8 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 	let config = super::CONFIG.get().unwrap();
 	let mut connection = config.database.begin().await?;
 
+	let settings = config.config.clone();
+
 	let verified_domains =
 		db::get_all_verified_domains(&mut connection).await?;
 
@@ -280,6 +336,14 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 			// TODO delete the domain altogether or add to cloudflare?
 			continue;
 		};
+
+		let workspace_id =
+			db::get_resource_by_id(&mut connection, &verified_domain.id)
+				.await?
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?
+				.owner_id;
+
 		let response = client
 			.request(&zone::ZoneDetails {
 				identifier: &zone_identifier,
@@ -294,8 +358,65 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 			&mut connection,
 			&verified_domain.id,
 			false,
+			None,
 		)
 		.await?;
+
+		let unverified_domain_age =
+			verified_domain.last_verified - get_current_time_millis() as i64;
+		let age_threshold = 604800000_i64; // 7 days
+
+		if unverified_domain_age > age_threshold {
+			// Domain is too old to be verified again
+
+			// Delete all managed url for domain
+			let managed_urls = db::get_all_managed_urls_for_domain(
+				&mut connection,
+				&verified_domain.id,
+			)
+			.await?;
+			if !managed_urls.is_empty() {
+				for managed_url in managed_urls {
+					service::delete_managed_url(
+						&mut connection,
+						&workspace_id,
+						&managed_url.id,
+						&settings,
+						&request_id,
+					)
+					.await?;
+				}
+			}
+
+			// Delete all the dns record before deleting the domain
+			let dns_records = db::get_dns_records_by_domain_id(
+				&mut connection,
+				&verified_domain.id,
+			)
+			.await?;
+			if !dns_records.is_empty() {
+				for dns_record in dns_records {
+					service::delete_patr_domain_dns_record(
+						&mut connection,
+						&verified_domain.id,
+						&dns_record.id,
+						&settings,
+						&request_id,
+					)
+					.await?;
+				}
+			}
+			// Delete the domain
+			service::delete_domain_in_workspace(
+				&mut connection,
+				&workspace_id,
+				&verified_domain.id,
+				&settings,
+				&request_id,
+			)
+			.await?;
+		}
+
 		let notification_email = db::get_notification_email_for_domain(
 			&mut connection,
 			&verified_domain.id,
