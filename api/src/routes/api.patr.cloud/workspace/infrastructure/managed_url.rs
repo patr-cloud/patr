@@ -364,8 +364,6 @@ async fn verify_managed_url(
 		.get(format!("verification-{}", managed_url_id))
 		.await?;
 
-	println!("verification_secret: {}", verification_secret);
-
 	context.success(VerifyManagedUrlResponse {
 		verification_secret,
 	});
