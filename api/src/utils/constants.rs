@@ -22,6 +22,7 @@ pub mod request_keys {
 	pub const DETAIL: &str = "detail";
 	pub const TOKEN: &str = "token";
 	pub const DOMAIN_ID: &str = "domainId";
+	pub const DOMAIN: &str = "domain";
 	pub const WORKSPACE_ID: &str = "workspaceId";
 	pub const NAME: &str = "name";
 	pub const ID: &str = "id";
