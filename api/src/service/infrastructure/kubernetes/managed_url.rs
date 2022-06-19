@@ -655,7 +655,6 @@ pub async fn verify_managed_url(
 		// Verification string mismatch
 		Ok(())
 	} else {
-		// Create certificate for the managed URL
 		log::error!("request_id: {} - Managed URL verified", request_id);
 		ingress_api
 			.delete(
@@ -665,6 +664,13 @@ pub async fn verify_managed_url(
 			.await?;
 
 		// Create certificate for the managed URL
+		update_kubernetes_managed_url(
+			&workspace_id,
+			&managed_url,
+			&config,
+			&request_id
+		)
+		.await?;
 
 		Ok(())
 	}
