@@ -31,6 +31,35 @@ pub async fn initialize_project_pre(
 	.execute(&mut *connection)
 	.await?;
 
+	// create resource_group table
+	query!(
+		r#"
+		CREATE TABLE resource_group(
+			id UUID
+				CONSTRAINT resource_group_pk PRIMARY KEY,
+			workspace_id UUID
+				CONSTRAINT resource_group_fk_workspace_id REFERENCES workspace(id),
+			project_id UUID
+				CONSTRAINT resource_group_fk_project_id REFERENCES project(id),
+
+			CONSTRAINT resource_group_chk_id CHECK (
+				(
+					workspace_id IS NOT NULL
+					AND project_id IS NULL
+					AND id = workspace_id
+				)
+				OR (
+					workspace_id IS NULL
+					AND project_id IS NOT NULL
+					AND id = workspace_id
+				)
+			)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
