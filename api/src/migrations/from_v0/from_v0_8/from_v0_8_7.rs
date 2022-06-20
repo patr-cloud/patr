@@ -494,9 +494,7 @@ async fn add_last_unverified_column_to_workspace_domain(
 	query!(
 		r#"
 		ALTER TABLE workspace_domain
-		ADD COLUMN last_unverified TIMESTAMPTZ NOT NULL
-		CONSTRAINT workspace_domain_chk_size_unsigned
-		CHECK(last_unverified >= 0);
+		ADD COLUMN last_unverified TIMESTAMPTZ NOT NULL;
 		"#
 	)
 	.execute(&mut *connection)
