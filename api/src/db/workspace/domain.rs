@@ -503,7 +503,7 @@ pub async fn add_user_controlled_domain(
 	.map(|_| ())
 }
 
-pub async fn get_user_controlled_domain_by_name(
+pub async fn get_user_controlled_domain_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 ) -> Result<UserControlledDomain, sqlx::Error> {

@@ -122,7 +122,7 @@ pub fn create_sub_app(
 
 	// Transfer user controller domain to patr controller domain
 	app.post(
-		"/:domain/transfer",
+		"/:domainId/transfer",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::domain::ADD,
@@ -574,12 +574,14 @@ async fn transfer_domain_to_patr(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let domain = context.get_param(request_keys::DOMAIN).unwrap().clone();
+	let domain_id =
+		Uuid::parse_str(context.get_param(request_keys::DOMAIN_ID).unwrap())
+			.unwrap();
 
 	service::transfer_domain_to_patr(
 		context.get_database_connection(),
 		&workspace_id,
-		domain.as_str(),
+		&domain_id,
 		&config,
 		&request_id,
 	)
