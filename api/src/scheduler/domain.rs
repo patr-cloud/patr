@@ -58,11 +58,11 @@ pub(super) fn refresh_domain_tld_list_job() -> Job {
 }
 
 // Every 2 hour
-pub(super) fn verify_transferred_domain_to_patr_job() -> Job {
+pub(super) fn verify_transfer_domain_to_patr_job() -> Job {
 	Job::new(
 		String::from("Verify transferred domain to Patr"),
 		"0 0 1/2 * * *".parse().unwrap(),
-		|| Box::pin(verify_transferred_domain_to_patr()),
+		|| Box::pin(verify_transfer_domain_to_patr()),
 	)
 }
 
@@ -221,7 +221,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					)
 					.await?;
 					// Delete the certificate for the domain
-					service::delete_certificates_for_domain(
+					service::delete_certificate(
 						&workspace_id,
 						&format!("certificate-{}", unverified_domain.id),
 						&format!("tls-{}", unverified_domain.id),
@@ -534,7 +534,7 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 	Ok(())
 }
 
-async fn verify_transferred_domain_to_patr() -> Result<(), Error> {
+async fn verify_transfer_domain_to_patr() -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Verifying unverified domains", request_id);
 	let config = super::CONFIG.get().unwrap();
@@ -542,12 +542,12 @@ async fn verify_transferred_domain_to_patr() -> Result<(), Error> {
 
 	let settings = config.config.clone();
 
-	let unverified_transferred_domains =
-		db::get_all_unverified_transferred_domains(&mut connection).await?;
+	let unverified_transfer_domains =
+		db::get_all_unverified_transfer_domains(&mut connection).await?;
 
 	let client = service::get_cloudflare_client(&config.config).await?;
 
-	for unverified_domain in unverified_transferred_domains {
+	for unverified_domain in unverified_transfer_domains {
 		let mut connection = connection.begin().await?;
 
 		let workspace_id =
@@ -568,8 +568,15 @@ async fn verify_transferred_domain_to_patr() -> Result<(), Error> {
 			continue;
 		}
 
+		// Delete transfer domain from workspace domain
+		db::delete_transfer_domain_from_workspace_domain(
+			&mut connection,
+			&unverified_domain.id,
+		)
+		.await?;
+
 		// Delete user_transferring_domain_to_patr
-		db::delete_user_transferred_domain_by_id(
+		db::delete_user_transfer_domain_by_id(
 			&mut connection,
 			&unverified_domain.id,
 		)
@@ -594,6 +601,7 @@ async fn verify_transferred_domain_to_patr() -> Result<(), Error> {
 			&mut connection,
 			&unverified_domain.id,
 			true,
+			Utc::now(),
 		)
 		.await?;
 
@@ -668,6 +676,7 @@ async fn verify_transferred_domain_to_patr() -> Result<(), Error> {
 								ManagedUrlType::Redirect { url: url.url? }
 							}
 						},
+						is_configured: url.is_configured,
 					})
 				})
 				.collect::<Vec<ManagedUrl>>();
@@ -695,6 +704,7 @@ async fn verify_transferred_domain_to_patr() -> Result<(), Error> {
 				}
 			}
 		} else {
+			connection.commit().await?;
 			continue;
 		}
 
@@ -710,12 +720,7 @@ async fn verify_transferred_domain_to_patr() -> Result<(), Error> {
 				"You might have a dangling resource for the domain"
 			);
 		} else {
-			// TODO change this to notifier
-			// mailer::send_domain_verified_mail(
-			// 	config.config.clone(),
-			// 	notification_email.unwrap(),
-			// 	unverified_domain.name,
-			// );
+			// Notify user about domain verified
 		}
 
 		connection.commit().await?;

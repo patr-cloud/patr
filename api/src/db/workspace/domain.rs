@@ -28,6 +28,7 @@ pub struct WorkspaceDomain {
 	pub is_verified: bool,
 	pub nameserver_type: DomainNameserverType,
 	pub last_unverified: DateTime<Utc>,
+	pub transfer_domain: Option<Uuid>,
 }
 
 impl WorkspaceDomain {
@@ -194,12 +195,22 @@ pub async fn initialize_domain_pre(
 					domain_type = 'business'
 				),
 			is_verified BOOLEAN NOT NULL,
-			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL,
 			last_unverified TIMESTAMPTZ NOT NULL,
+			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL,
+			transfer_domain UUID,
 			CONSTRAINT workspace_domain_uq_id_nameserver_type
 				UNIQUE(id, nameserver_type),
 			CONSTRAINT workspace_domain_fk_id_domain_type
-				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
+				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type),
+			CONSTRAINT workspace_domain_chk_transfer_domain_ext CHECK(
+				(
+					transfer_domain IS NULL AND
+					nameserver_type = 'internal'
+				) OR
+				(
+					nameserver_type = 'external'
+				)
+			)
 		);
 		"#
 	)
@@ -259,14 +270,14 @@ pub async fn initialize_domain_pre(
 		r#"
 		CREATE TABLE user_transferring_domain_to_patr(
 			domain_id UUID NOT NULL
-				CONSTRAINT user_transferred_domain_pk PRIMARY KEY,
+				CONSTRAINT user_transfer_domain_pk PRIMARY KEY,
 			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL
-				CONSTRAINT user_transferred_domain_chk_nameserver_type CHECK(
+				CONSTRAINT user_transfer_domain_chk_nameserver_type CHECK(
 					nameserver_type = 'external'
 				),
 			zone_identifier TEXT NOT NULL,
 			is_verified BOOLEAN NOT NULL,
-			CONSTRAINT user_transferred_domain_fk_domain_id_nameserver_type
+			CONSTRAINT user_transfer_domain_fk_domain_id_nameserver_type
 				FOREIGN KEY(domain_id)REFERENCES
 					user_controlled_domain(domain_id)
 		);
@@ -356,6 +367,16 @@ pub async fn initialize_domain_post(
 		ALTER TABLE patr_domain_dns_record
 		ADD CONSTRAINT patr_domain_dns_record_fk_id
 		FOREIGN KEY(id) REFERENCES resource(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace_domain
+		ADD CONSTRAINT workspace_domain_fk_transfer_domain
+		FOREIGN KEY (transfer_domain) REFERENCES user_transferring_domain_to_patr(domain_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -462,7 +483,7 @@ pub async fn add_to_workspace_domain(
 		"#,
 		domain_id as _,
 		nameserver_type as _,
-		last_unverified as _
+		last_unverified as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -569,7 +590,8 @@ pub async fn get_domains_for_workspace(
 			workspace_domain.domain_type as "domain_type: _",
 			workspace_domain.is_verified,
 			workspace_domain.nameserver_type as "nameserver_type: _",
-			workspace_domain.last_unverified as "last_unverified!"
+			workspace_domain.last_unverified as "last_unverified!",
+			workspace_domain.transfer_domain as "transfer_domain: _"
 		FROM
 			domain
 		INNER JOIN
@@ -606,7 +628,8 @@ pub async fn get_all_unverified_domains(
 			workspace_domain.is_verified as "is_verified!",
 			workspace_domain.nameserver_type as "nameserver_type!: DomainNameserverType",
 			workspace_domain.last_unverified as "last_unverified!",
-			patr_controlled_domain.zone_identifier as "zone_identifier?"
+			patr_controlled_domain.zone_identifier as "zone_identifier?",
+			workspace_domain.transfer_domain as "transfer_domain: Uuid"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -638,6 +661,7 @@ pub async fn get_all_unverified_domains(
 				is_verified: row.is_verified,
 				nameserver_type: row.nameserver_type,
 				last_unverified: row.last_unverified,
+				transfer_domain: row.transfer_domain,
 			},
 			row.zone_identifier,
 		)
@@ -659,7 +683,8 @@ pub async fn get_all_verified_domains(
 			workspace_domain.is_verified as "is_verified!",
 			workspace_domain.nameserver_type as "nameserver_type!: DomainNameserverType",
 			workspace_domain.last_unverified as "last_unverified!",
-			patr_controlled_domain.zone_identifier as "zone_identifier?"
+			patr_controlled_domain.zone_identifier as "zone_identifier?",
+			workspace_domain.transfer_domain as "transfer_domain: Uuid"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -691,6 +716,7 @@ pub async fn get_all_verified_domains(
 				is_verified: row.is_verified,
 				nameserver_type: row.nameserver_type,
 				last_unverified: row.last_unverified,
+				transfer_domain: row.transfer_domain,
 			},
 			row.zone_identifier,
 		)
@@ -803,6 +829,48 @@ pub async fn update_workspace_domain_nameserver_type(
 	.map(|_| ())
 }
 
+pub async fn delete_transfer_domain_from_workspace_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace_domain
+		SET
+			transfer_domain = NULL
+		WHERE
+			id = $1;
+		"#,
+		domain_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_workspace_domain_transfer_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+	transfer_domain: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace_domain
+		SET
+			transfer_domain = $1
+		WHERE
+			id = $2;
+		"#,
+		domain_id as _,
+		transfer_domain as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn update_generic_domain_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
@@ -876,7 +944,8 @@ pub async fn get_workspace_domain_by_id(
 			workspace_domain.domain_type as "domain_type: _",
 			workspace_domain.is_verified,
 			workspace_domain.nameserver_type as "nameserver_type: _",
-			workspace_domain.last_unverified as "last_unverified!: _"
+			workspace_domain.last_unverified as "last_unverified!: _",
+			workspace_domain.transfer_domain as "transfer_domain: _"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -1290,10 +1359,78 @@ pub async fn add_to_user_transferring_domain_to_patr(
 				is_verified
 			)
 		VALUES
-			($1, 'internal', $2, false);
+			($1, 'external', $2, false);
 		"#,
 		domain_id as _,
 		zone_identifier,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_user_transferring_domain_to_patr(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+) -> Result<Option<UserTransferredDomain>, sqlx::Error> {
+	query_as!(
+		UserTransferredDomain,
+		r#"
+		SELECT
+			user_transferring_domain_to_patr.domain_id as "id!: _",
+			user_transferring_domain_to_patr.zone_identifier as "zone_identifier!",
+			CONCAT(domain.name, '.', domain.tld) as "name!"
+		FROM
+			user_transferring_domain_to_patr
+		LEFT JOIN
+			domain
+		ON
+			domain.id = user_transferring_domain_to_patr.domain_id
+		WHERE
+			user_transferring_domain_to_patr.domain_id = $1;
+		"#,
+		domain_id as _
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn get_all_unverified_transfer_domains(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<UserTransferredDomain>, sqlx::Error> {
+	query_as!(
+		UserTransferredDomain,
+		r#"
+		SELECT
+			user_transferring_domain_to_patr.domain_id as "id!: _",
+			user_transferring_domain_to_patr.zone_identifier as "zone_identifier!",
+			CONCAT(domain.name, '.', domain.tld) as "name!"
+		FROM
+			user_transferring_domain_to_patr
+		LEFT JOIN
+			domain
+		ON
+			domain.id = user_transferring_domain_to_patr.domain_id
+		WHERE
+			is_verified = false;
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn delete_user_transfer_domain_by_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM 
+			user_transferring_domain_to_patr
+		WHERE
+			domain_id = $1;
+		"#,
+		domain_id as _,
 	)
 	.execute(&mut *connection)
 	.await

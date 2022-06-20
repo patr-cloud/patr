@@ -310,6 +310,14 @@ pub async fn transfer_domain_to_patr(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
+	let tld = domain.name.split_once('.').status(500)?;
+
+	if ["cf", "ga", "gq", "ml", "tk"].contains(&tld.1) {
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(INVALID_DOMAIN_NAME).to_string()));
+	}
+
 	// create zone
 	let zone_identifier = client
 		.request(&CreateZone {
@@ -330,7 +338,7 @@ pub async fn transfer_domain_to_patr(
 	let user_controlled_domain =
 		db::get_user_controlled_domain_by_id(connection, &domain.id).await?;
 
-	// Add to user_transferred_domains
+	// Add to user_transfer_domains and schedular will take care after that
 	db::add_to_user_transferring_domain_to_patr(
 		connection,
 		&user_controlled_domain.domain_id,
@@ -338,9 +346,12 @@ pub async fn transfer_domain_to_patr(
 	)
 	.await?;
 
-	// TODO - can give user a message that transfer is ongoing please wait
-
-	// TODO - manage certs and secrets
+	db::update_workspace_domain_transfer_domain(
+		connection,
+		&user_controlled_domain.domain_id,
+		&user_controlled_domain.domain_id,
+	)
+	.await?;
 
 	Ok(())
 }
@@ -409,6 +420,75 @@ pub async fn is_domain_verified(
 				domain_id,
 				true,
 				&Utc::now(),
+			)
+			.await?;
+
+			log::trace!("request_id: {} - Creating wild card certiifcate for internal domain", request_id);
+			infrastructure::create_certificates(
+				workspace_id,
+				&format!("certificate-{}", domain_id),
+				&format!("tls-{}", domain_id),
+				vec![format!("*.{}", domain.name), domain.name.clone()],
+				true,
+				config,
+				request_id,
+			)
+			.await?;
+			log::trace!("request_id: {} - Domain verified", request_id);
+			return Ok(true);
+		}
+
+		Ok(false)
+	} else if domain.transfer_domain.is_some() {
+		log::trace!("request_id: {} - Domain is being transferred", request_id);
+		let client = get_cloudflare_client(config).await?;
+
+		let zone_identifier =
+			db::get_user_transferring_domain_to_patr(connection, domain_id)
+				.await?
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?
+				.zone_identifier;
+
+		log::trace!("request_id: {} - Checking if zone is active", request_id);
+		let zone = client
+			.request(&ZoneDetails {
+				identifier: &zone_identifier,
+			})
+			.await?;
+
+		if let Status::Active = zone.result.status {
+			log::trace!("request_id: {} - Zone is active", request_id);
+			log::trace!(
+				"request_id: {} - Updating domain verification status",
+				request_id
+			);
+
+			db::delete_transfer_domain_from_workspace_domain(
+				connection, domain_id,
+			)
+			.await?;
+
+			db::delete_user_transfer_domain_by_id(connection, domain_id)
+				.await?;
+
+			db::delete_user_contolled_domain(connection, domain_id).await?;
+
+			db::update_workspace_domain_nameserver_type(connection, domain_id)
+				.await?;
+
+			db::add_patr_controlled_domain(
+				connection,
+				domain_id,
+				&zone_identifier,
+			)
+			.await?;
+
+			db::update_workspace_domain_status(
+				connection,
+				domain_id,
+				true,
+				Utc::now(),
 			)
 			.await?;
 
