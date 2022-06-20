@@ -4,6 +4,7 @@ use api_models::{
 	models::workspace::domain::DomainNameserverType,
 	utils::{ResourceType, Uuid},
 };
+use chrono::{DateTime, Utc};
 use eve_rs::AsError;
 
 use crate::{error, query, query_as, utils::Error, Database};
@@ -26,7 +27,7 @@ pub struct WorkspaceDomain {
 	pub domain_type: ResourceType,
 	pub is_verified: bool,
 	pub nameserver_type: DomainNameserverType,
-	pub last_verified: i64,
+	pub last_unverified: DateTime<Utc>,
 }
 
 impl WorkspaceDomain {
@@ -183,10 +184,7 @@ pub async fn initialize_domain_pre(
 				),
 			is_verified BOOLEAN NOT NULL,
 			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL,
-			last_verified BIGINT NOT NULL
-				CONSTRAINT
-					workspace_domain_chk_size_unsigned
-						CHECK(last_verified >= 0),
+			last_unverified TIMESTAMPTZ NOT NULL,
 			CONSTRAINT workspace_domain_uq_id_nameserver_type
 				UNIQUE(id, nameserver_type),
 			CONSTRAINT workspace_domain_fk_id_domain_type
@@ -416,6 +414,7 @@ pub async fn add_to_workspace_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	nameserver_type: &DomainNameserverType,
+	last_unverified: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -424,13 +423,15 @@ pub async fn add_to_workspace_domain(
 				id,
 				domain_type,
 				is_verified,
-				nameserver_type
+				nameserver_type,
+				last_unverified
 			)
 		VALUES
-			($1, 'business', FALSE, $2);
+			($1, 'business', FALSE, $2, $3);
 		"#,
 		domain_id as _,
-		nameserver_type as _
+		nameserver_type as _,
+		last_unverified as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -516,7 +517,7 @@ pub async fn get_domains_for_workspace(
 			workspace_domain.domain_type as "domain_type: _",
 			workspace_domain.is_verified,
 			workspace_domain.nameserver_type as "nameserver_type: _",
-			workspace_domain.last_verified as "last_verified!"
+			workspace_domain.last_unverified as "last_unverified!"
 		FROM
 			domain
 		INNER JOIN
@@ -552,7 +553,7 @@ pub async fn get_all_unverified_domains(
 			workspace_domain.domain_type as "domain_type!: ResourceType",
 			workspace_domain.is_verified as "is_verified!",
 			workspace_domain.nameserver_type as "nameserver_type!: DomainNameserverType",
-			workspace_domain.last_verified as "last_verified!",
+			workspace_domain.last_unverified as "last_unverified!",
 			patr_controlled_domain.zone_identifier as "zone_identifier?"
 		FROM
 			workspace_domain
@@ -584,7 +585,7 @@ pub async fn get_all_unverified_domains(
 				domain_type: row.domain_type,
 				is_verified: row.is_verified,
 				nameserver_type: row.nameserver_type,
-				last_verified: row.last_verified,
+				last_unverified: row.last_unverified,
 			},
 			row.zone_identifier,
 		)
@@ -605,7 +606,7 @@ pub async fn get_all_verified_domains(
 			workspace_domain.domain_type as "domain_type!: ResourceType",
 			workspace_domain.is_verified as "is_verified!",
 			workspace_domain.nameserver_type as "nameserver_type!: DomainNameserverType",
-			workspace_domain.last_verified as "last_verified!",
+			workspace_domain.last_unverified as "last_unverified!",
 			patr_controlled_domain.zone_identifier as "zone_identifier?"
 		FROM
 			workspace_domain
@@ -637,7 +638,7 @@ pub async fn get_all_verified_domains(
 				domain_type: row.domain_type,
 				is_verified: row.is_verified,
 				nameserver_type: row.nameserver_type,
-				last_verified: row.last_verified,
+				last_unverified: row.last_unverified,
 			},
 			row.zone_identifier,
 		)
@@ -785,7 +786,7 @@ pub async fn get_workspace_domain_by_id(
 			workspace_domain.domain_type as "domain_type: _",
 			workspace_domain.is_verified,
 			workspace_domain.nameserver_type as "nameserver_type: _",
-			workspace_domain.last_verified as "last_verified!: _"
+			workspace_domain.last_unverified as "last_unverified!: _"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -1053,7 +1054,7 @@ pub async fn update_workspace_domain_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	is_verified: bool,
-	last_verified: Option<i64>,
+	last_unverified: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1061,13 +1062,13 @@ pub async fn update_workspace_domain_status(
 			workspace_domain
 		SET
 			is_verified = $2,
-			last_verified = $3
+			last_unverified = $3
 		WHERE
 			id = $1;
 		"#,
 		domain_id as _,
 		is_verified,
-		last_verified.map(|x| x),
+		last_unverified as _,
 	)
 	.execute(&mut *connection)
 	.await
