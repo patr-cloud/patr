@@ -299,13 +299,13 @@ pub async fn add_domain_to_workspace(
 pub async fn transfer_domain_to_patr(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_workspace_id: &Uuid,
-	domain: &str,
+	domain_id: &Uuid,
 	config: &Settings,
 	_request_id: &Uuid,
 ) -> Result<(), Error> {
 	let client = get_cloudflare_client(config).await?;
 
-	let domain = db::get_domain_by_name(connection, domain)
+	let domain = db::get_workspace_domain_by_id(connection, domain_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
@@ -328,18 +328,9 @@ pub async fn transfer_domain_to_patr(
 		.id;
 
 	let user_controlled_domain =
-		db::get_user_controlled_domain_by_name(connection, &domain.id).await?;
-
-	// Insert into patr_controlled_domains
-	db::add_patr_controlled_domain(
-		connection,
-		&user_controlled_domain.domain_id,
-		&zone_identifier,
-	)
-	.await?;
+		db::get_user_controlled_domain_by_id(connection, &domain.id).await?;
 
 	// Delete from user_controlled_domains
-	// TODO - check if deleting this will mess up something else
 	db::delete_user_contolled_domain(
 		connection,
 		&user_controlled_domain.domain_id,
@@ -352,6 +343,19 @@ pub async fn transfer_domain_to_patr(
 		&user_controlled_domain.domain_id,
 	)
 	.await?;
+
+	// Insert into patr_controlled_domains
+	db::add_patr_controlled_domain(
+		connection,
+		&user_controlled_domain.domain_id,
+		&zone_identifier,
+	)
+	.await?;
+
+	// Check it any managed urld is present for this domain
+	// If no managed URL is present then delete create a certificate for this
+	// domain If yes then schedule it for verification and till then don't
+	// delete the certificate for managed URL
 
 	// TODO - manage certs and secrets
 
