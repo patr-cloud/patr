@@ -182,7 +182,7 @@ pub async fn get_kubernetes_certificate_status(
 
 	let kubernetes_client = super::get_kubernetes_config(config).await?;
 
-	let _certificate = Api::<DynamicObject>::namespaced_with(
+	let certificate = Api::<DynamicObject>::namespaced_with(
 		kubernetes_client,
 		namespace,
 		&certificate_resource,
@@ -190,8 +190,20 @@ pub async fn get_kubernetes_certificate_status(
 	.get(&certificate_name)
 	.await?;
 
-	// TODO - check if certificate is ready
-	// For now sending true as response
+	let certificate_status = certificate
+		.data
+		.get("status")
+		.and_then(|condition| condition.get("type"));
+	let certificate_type = if let Some(certificate_status) = certificate_status
+	{
+		certificate_status.to_string()
+	} else {
+		"".to_string()
+	};
 
-	Ok(true)
+	if &certificate_type == "Ready" {
+		Ok(true)
+	} else {
+		Ok(false)
+	}
 }
