@@ -23,16 +23,10 @@ use crate::{
 	db,
 	error,
 	models::{
-		deployment::{self, Logs, PrometheusResponse},
+		deployment::{Logs, PrometheusResponse},
 		rbac,
 	},
-	utils::{
-		constants::free_limits,
-		get_current_time_millis,
-		settings::Settings,
-		validator,
-		Error,
-	},
+	utils::{settings::Settings, validator, Error},
 	Database,
 };
 
@@ -137,6 +131,8 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(DEPLOYMENT_LIMIT_EXCEEDED).to_string())?;
 	}
 
+	let created_time = Utc::now();
+
 	db::create_resource(
 		connection,
 		&deployment_id,
@@ -147,7 +143,7 @@ pub async fn create_deployment_in_workspace(
 			.get(rbac::resource_types::DEPLOYMENT)
 			.unwrap(),
 		workspace_id,
-		get_current_time_millis(),
+		created_time.timestamp_millis() as u64,
 	)
 	.await?;
 	log::trace!("request_id: {} - Created resource", request_id);
@@ -245,12 +241,13 @@ pub async fn create_deployment_in_workspace(
 		.await?;
 	}
 
-	start_deployment_subscription(
+	db::start_deployment_usage_history(
 		connection,
-		&deployment_id,
 		workspace_id,
-		config,
-		request_id,
+		&deployment_id,
+		&machine_type,
+		deployment_running_details.min_horizontal_scale as i32,
+		&DateTime::from(created_time),
 	)
 	.await?;
 
@@ -306,7 +303,6 @@ pub async fn update_deployment(
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
-	active: bool,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -393,15 +389,6 @@ pub async fn update_deployment(
 		"request_id: {} - Deployment updated in the database",
 		request_id
 	);
-
-	update_deployment_subscription(
-		connection,
-		workspace_id,
-		deployment_id,
-		config,
-		request_id,
-	)
-	.await?;
 
 	Ok(())
 }
@@ -828,169 +815,6 @@ pub async fn get_deployment_metrics(
 	Ok(metric_response)
 }
 
-pub async fn stop_deployment_subscription(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Stopping subscription for deployment with id: {}",
-		request_id,
-		deployment_id
-	);
-
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let stop_time = &DateTime::from(Utc::now());
-
-	let deployment_payment_history_id = if let Some(payment_history_id) =
-		deployment.deployment_payment_history_id
-	{
-		payment_history_id
-	} else {
-		return Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string());
-	};
-
-	let deployment_payment_history = db::get_deployment_payment_history_id(
-		connection,
-		&deployment_payment_history_id,
-	)
-	.await?
-	.status(500)
-	.body(error!(SERVER_ERROR).to_string())?;
-
-	db::update_with_stop_deployment_payment_history(
-		connection,
-		&deployment_payment_history_id,
-		&deployment.machine_type,
-		deployment.min_horizontal_scale as i32,
-		Some(stop_time),
-	)
-	.await?;
-
-	Ok(())
-}
-
-async fn start_deployment_subscription(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	workspace_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Starting subscription for deployment with id: {}",
-		request_id,
-		deployment_id
-	);
-
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-	let deplo_payment_hist =
-		db::generate_new_deployment_payment_history_id(connection).await?;
-
-	db::add_deployment_payment_history(
-		connection,
-		&deplo_payment_hist,
-		workspace_id,
-		&deployment.id,
-		&deployment.machine_type,
-		deployment.min_horizontal_scale as i32,
-		&DateTime::from(Utc::now()),
-		None,
-	)
-	.await?;
-
-	db::update_deployment_with_payment_history_id(
-		connection,
-		&deployment.id,
-		&deplo_payment_hist,
-	)
-	.await?;
-
-	Ok(())
-}
-
-async fn update_deployment_subscription(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Updating subscription for deployment with id: {}",
-		request_id,
-		deployment_id
-	);
-
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let stop_time = &DateTime::from(Utc::now());
-
-	let deployment_payment_history_id = if let Some(payment_history_id) =
-		deployment.deployment_payment_history_id
-	{
-		payment_history_id
-	} else {
-		return Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string());
-	};
-
-	let deployment_payment_history = db::get_deployment_payment_history_id(
-		connection,
-		&deployment_payment_history_id,
-	)
-	.await?
-	.status(500)
-	.body(error!(SERVER_ERROR).to_string())?;
-
-	db::update_with_stop_deployment_payment_history(
-		connection,
-		&deployment_payment_history_id,
-		&deployment.machine_type,
-		deployment.min_horizontal_scale as i32,
-		Some(stop_time),
-	)
-	.await?;
-
-	let deplo_payment_hist =
-		db::generate_new_deployment_payment_history_id(connection).await?;
-
-	db::add_deployment_payment_history(
-		connection,
-		&deplo_payment_hist,
-		workspace_id,
-		&deployment.id,
-		&deployment.machine_type,
-		deployment.min_horizontal_scale as i32,
-		&stop_time,
-		None,
-	)
-	.await?;
-
-	db::update_deployment_with_payment_history_id(
-		connection,
-		&deployment.id,
-		&deplo_payment_hist,
-	)
-	.await?;
-
-	Ok(())
-}
-
 async fn get_container_logs(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
@@ -1102,29 +926,10 @@ async fn deployment_limit_crossed(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	let (cpu_count, memory_count) = deployment::MACHINE_TYPES
-		.get()
-		.unwrap()
-		.get(machine_type)
-		.unwrap_or(&(1, 2));
-
-	let workspace_info = db::get_workspace_info(connection, workspace_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
 	let current_deployments =
 		db::get_deployments_for_workspace(connection, workspace_id)
 			.await?
 			.len();
-
-	if &(current_deployments as i32) == free_limits::FREE_DEPLOYMENTS &&
-		cpu_count == free_limits::FREE_CPU &&
-		memory_count == free_limits::FREE_MEMORY &&
-		workspace_info.default_payment_method_id.is_none()
-	{
-		return Ok(false);
-	}
 
 	log::trace!(
 		"request_id: {} - Checking if deployment limits are crossed",

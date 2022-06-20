@@ -8,7 +8,7 @@ use reqwest::Client;
 use serde_json::json;
 
 use crate::{
-	db::{self, Transaction},
+	db::{self, DomainPlan, ManagedDatabasePlan, StaticSitePlan},
 	error,
 	models::{PaymentIntent, PaymentIntentObject, PaymentMethodStatus},
 	utils::{settings::Settings, Error},
@@ -134,14 +134,14 @@ pub async fn calculate_total_bill_for_workspace_till(
 	)
 	.await?;
 
-	let db_usages = db::get_all_database_usage(
+	let database_usages = db::get_all_database_usage(
 		&mut *connection,
 		&workspace_id,
 		&DateTime::from(month_start_date.clone()),
 	)
 	.await?;
 
-	let static_site_usages = db::get_all_static_site_usages(
+	let static_sites_usages = db::get_all_static_site_usages(
 		&mut *connection,
 		&workspace_id,
 		&DateTime::from(month_start_date.clone()),
@@ -178,10 +178,10 @@ pub async fn calculate_total_bill_for_workspace_till(
 
 	let mut deployment_bill = 0;
 	for deployment_usage in deployment_usages {
-		let hours = (deployment_usage.stop_time.into().unwrap_or(till_date) -
+		let hours = (deployment_usage.stop_time.map(|st| chrono::DateTime::from(st)).unwrap_or(till_date) -
 			deployment_usage.start_time)
 			.num_hours();
-		let monthly_price = match deployment_usage.plan {
+		let monthly_price = match deployment_usage.machine_type {
 			DeploymentPlan::Nano => {
 				if deployment_usage.num_instance == 1 {
 					// TODO free deployment
@@ -204,16 +204,23 @@ pub async fn calculate_total_bill_for_workspace_till(
 
 	let mut database_bill = 0;
 	for database_usage in database_usages {
-		let hours = (database_usage.stop_time.unwrap_or(till_date) -
+		let hours = (database_usage.deletion_time.unwrap_or(till_date) -
 			database_usage.start_time)
 			.num_hours();
-		let monthly_price = match database_usage.plan {
+		let monthly_price = match database_usage.db_plan {
 			// TODO update this
-			DatabasePlan::Nano => 5,
-			DatabasePlan::Micro => 10,
-			DatabasePlan::Small => 20,
-			DatabasePlan::Medium => 40,
-			DatabasePlan::Large => 80,
+			ManagedDatabasePlan::Nano => 15,
+			ManagedDatabasePlan::Micro => 30,
+			ManagedDatabasePlan::Medium => 60,
+			ManagedDatabasePlan::Large => 120,
+			ManagedDatabasePlan::Xlarge => 240,
+			ManagedDatabasePlan::Xxlarge => 480,
+			ManagedDatabasePlan::Mammoth => 960,
+			_ => {
+				return Error::as_result()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
+			}
 		};
 		database_bill += if hours > 720 {
 			monthly_price
@@ -227,10 +234,10 @@ pub async fn calculate_total_bill_for_workspace_till(
 		let hours = (static_sites_usage.stop_time.unwrap_or(till_date) -
 			static_sites_usage.start_time)
 			.num_hours();
-		let monthly_price = match static_sites_usage.plan {
-			StaticSitesPlan::Free => 0,
-			StaticSitesPlan::Pro => 5,
-			StaticSitesPlan::Unlimited => 10,
+		let monthly_price = match static_sites_usage.static_site_plan {
+			StaticSitePlan::Free => 0,
+			StaticSitePlan::Pro => 5,
+			StaticSitePlan::Unlimited => 10,
 		};
 		static_sites_bill += if hours > 720 {
 			monthly_price
@@ -299,7 +306,7 @@ pub async fn calculate_total_bill_for_workspace_till(
 		let monthly_price = if secrets_usage.secret_count <= 3 {
 			0
 		} else {
-			(secrets_usage.secret_count / 100).ceil() * 10
+			(secrets_usage.secret_count / 100f32).ceil() * 10
 		};
 		secrets_bill += if hours > 720 {
 			monthly_price
@@ -388,19 +395,4 @@ pub async fn get_credits_for_workspace(
 	// TODO: if credits are negative do something
 
 	Ok(credits as u64)
-}
-
-pub async fn get_current_bill(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	start_date: DateTime<Utc>,
-	end_date: DateTime<Utc>,
-) -> Result<u64, Error> {
-	let total_bill = super::calculate_total_bill_for_workspace_till(
-		&mut *connection,
-		&workspace.id,
-		&month_start_date,
-		&next_month_start_date,
-	)
-	.await?;
 }

@@ -5,6 +5,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use chrono::Utc;
 use eve_rs::AsError;
 
 use super::kubernetes;
@@ -14,8 +15,6 @@ use crate::{
 	models::rbac,
 	service,
 	utils::{
-		constants::free_limits,
-		get_current_time_millis,
 		settings::Settings,
 		Error,
 	},
@@ -61,6 +60,7 @@ pub async fn create_new_managed_url_in_workspace(
 			.body(error!(MANAGED_URL_LIMIT_EXCEEDED).to_string())?;
 	}
 
+	let creation_time = Utc::now();
 	log::trace!("request_id: {} - Creating resource.", request_id);
 	db::create_resource(
 		connection,
@@ -72,7 +72,7 @@ pub async fn create_new_managed_url_in_workspace(
 			.get(rbac::resource_types::MANAGED_URL)
 			.unwrap(),
 		workspace_id,
-		get_current_time_millis(),
+		creation_time.timestamp_millis(),
 	)
 	.await?;
 
@@ -162,6 +162,18 @@ pub async fn create_new_managed_url_in_workspace(
 			.await?;
 		}
 	}
+
+	let num_managed_urls =
+		db::get_all_managed_urls_in_workspace(connection, workspace_id)
+			.await?
+			.len();
+	db::update_managed_url_usage_history(
+		connection,
+		workspace_id,
+		num_managed_urls,
+		&creation_time,
+	)
+	.await?;
 
 	log::trace!(
 		"request_id: {} - Updating managed url on Kubernetes.",
@@ -371,6 +383,18 @@ pub async fn delete_managed_url(
 	)
 	.await?;
 
+	let num_managed_urls =
+		db::get_all_managed_urls_in_workspace(connection, workspace_id)
+			.await?
+			.len();
+	db::update_managed_url_usage_history(
+		connection,
+		workspace_id,
+		num_managed_urls,
+		&Utc::now(),
+	)
+	.await?;
+
 	log::trace!(
 		"request_id: {} - Deleting managed url on Kubernetes.",
 		request_id
@@ -424,22 +448,10 @@ async fn managed_url_limit_crossed(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	let workspace_info = db::get_workspace_info(connection, workspace_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
 	let current_managed_urls =
 		db::get_all_managed_urls_in_workspace(connection, workspace_id)
 			.await?
 			.len();
-
-	if &(current_managed_urls as i32) >= free_limits::FREE_MANAGED_URLS &&
-		workspace_info.default_payment_method_id.is_none()
-	{
-		log::trace!("request_id: {} - Free limits are crossed", request_id);
-		return Ok(true);
-	}
 
 	log::trace!(
 		"request_id: {} - Checking if deployment limits are crossed",

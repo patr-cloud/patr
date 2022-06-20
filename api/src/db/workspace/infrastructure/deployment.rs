@@ -48,7 +48,6 @@ pub struct Deployment {
 	pub startup_probe_path: Option<String>,
 	pub liveness_probe_port: Option<i32>,
 	pub liveness_probe_path: Option<String>,
-	pub deployment_payment_history_id: Option<Uuid>,
 }
 
 pub struct DeploymentEnvironmentVariable {
@@ -175,7 +174,6 @@ pub async fn initialize_deployment_pre(
 			liveness_probe_port INTEGER,
 			liveness_probe_path VARCHAR(255),
 			liveness_probe_port_type EXPOSED_PORT_TYPE,
-			deployment_payment_history_id UUID,
 			CONSTRAINT deployment_fk_repository_id_workspace_id
 				FOREIGN KEY(repository_id, workspace_id)
 					REFERENCES docker_registry_repository(id, workspace_id),
@@ -596,8 +594,7 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 			deployment.startup_probe_port,
 			deployment.startup_probe_path,
 			deployment.liveness_probe_port,
-			deployment.liveness_probe_path,
-			deployment.deployment_payment_history_id as "deployment_payment_history_id: _"
+			deployment.liveness_probe_path
 		FROM
 			deployment
 		LEFT JOIN
@@ -651,8 +648,7 @@ pub async fn get_deployments_by_repository_id(
 			startup_probe_port,
 			startup_probe_path,
 			liveness_probe_port,
-			liveness_probe_path,
-			deployment_payment_history_id as "deployment_payment_history_id: _"
+			liveness_probe_path
 		FROM
 			deployment
 		WHERE
@@ -689,8 +685,7 @@ pub async fn get_deployments_for_workspace(
 			startup_probe_port,
 			startup_probe_path,
 			liveness_probe_port,
-			liveness_probe_path,
-			deployment_payment_history_id as "deployment_payment_history_id: _"
+			liveness_probe_path
 		FROM
 			deployment
 		WHERE
@@ -727,8 +722,7 @@ pub async fn get_deployment_by_id(
 			startup_probe_port,
 			startup_probe_path,
 			liveness_probe_port,
-			liveness_probe_path,
-			deployment_payment_history_id as "deployment_payment_history_id: _"
+			liveness_probe_path
 		FROM
 			deployment
 		WHERE
@@ -766,8 +760,7 @@ pub async fn get_deployment_by_name_in_workspace(
 			startup_probe_port,
 			startup_probe_path,
 			liveness_probe_port,
-			liveness_probe_path,
-			deployment_payment_history_id as "deployment_payment_history_id: _"
+			liveness_probe_path
 		FROM
 			deployment
 		WHERE
@@ -1310,27 +1303,4 @@ pub async fn get_build_events_for_deployment(
 	)
 	.fetch_all(&mut *connection)
 	.await
-}
-
-pub async fn update_deployment_with_payment_history_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	payment_history_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			deployment
-		SET
-			deployment_payment_history_id = $2
-		WHERE
-			id = $1;
-		"#,
-		deployment_id as _,
-		payment_history_id as _
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
 }

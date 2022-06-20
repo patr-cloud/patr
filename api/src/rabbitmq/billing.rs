@@ -1,9 +1,13 @@
-use std::ops::{Add, Sub};
+use std::{
+	ops::{Add, Sub},
+	time::Duration,
+};
 
 use api_models::utils::DateTime;
-use chrono::{Duration, TimeZone, Utc};
+use chrono::{TimeZone, Utc};
 use eve_rs::AsError;
 use reqwest::Client;
+use tokio::time;
 
 use crate::{
 	db::{self, PaymentStatus, TransactionType},
@@ -159,14 +163,21 @@ pub(super) async fn process_request(
 				return Ok(());
 			} else if last_transaction.payment_status == PaymentStatus::Failed {
 				// Check timestamp
-				if Utc::now().sub(last_transaction.date).num_hours().abs() > 24
+				if Utc::now()
+					.sub({
+						let chrono_date: chrono::DateTime<Utc> =
+							last_transaction.date.into();
+						chrono_date
+					})
+					.num_hours()
+					.abs() > 24
 				{
 					// It's been more than 24 hours since the last transaction
 					// attempt
 				} else {
 					// It's been less than 24 hours since the last transaction
 					// attempt Wait for a while and requeue this task
-					tokio::time::sleep(Duration::minutes(5)).await;
+					time::sleep(Duration::from_millis(60_000)).await;
 					return Error::as_result()
 						.status(500)
 						.body(error!(SERVER_ERROR).to_string())?;
@@ -217,7 +228,7 @@ pub(super) async fn process_request(
 				last_transaction.month,
 				last_transaction.amount,
 				Some(&payment_intent_id),
-				Utc::now().into(),
+				&(Utc::now().into()),
 				&TransactionType::Payment,
 				&PaymentStatus::Success,
 			)

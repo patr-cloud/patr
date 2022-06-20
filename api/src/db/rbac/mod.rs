@@ -468,7 +468,8 @@ pub async fn get_all_workspace_roles_for_user(
 			domain_limit,
 			volume_limit,
 			stripe_customer_id,
-			address_id as "address_id: _"
+			address_id as "address_id: _",
+			amount_due
 		FROM
 			workspace
 		WHERE

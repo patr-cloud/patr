@@ -147,7 +147,6 @@ pub struct ManagedDatabase {
 	pub password: String,
 	pub workspace_id: Uuid,
 	pub digitalocean_db_id: Option<String>,
-	pub database_payment_history_id: Option<Uuid>,
 }
 
 pub async fn initialize_managed_database_pre(
@@ -220,10 +219,7 @@ pub async fn initialize_managed_database_pre(
 			password TEXT NOT NULL,
 			workspace_id UUID NOT NULL,
 			digitalocean_db_id TEXT
-				CONSTRAINT managed_database_uq_digitalocean_db_id UNIQUE,
-			database_payment_history_id UUID,
-			CONSTRAINT managed_database_uq_name_workspace_id
-				UNIQUE(name, workspace_id)
+				CONSTRAINT managed_database_uq_digitalocean_db_id UNIQUE
 		);
 		"#
 	)
@@ -461,8 +457,7 @@ pub async fn get_all_database_clusters_for_workspace(
 			username,
 			password,
 			workspace_id as "workspace_id: _",
-			digitalocean_db_id,
-			database_payment_history_id as "database_payment_history_id: _"
+			digitalocean_db_id
 		FROM
 			managed_database
 		WHERE
@@ -497,8 +492,7 @@ pub async fn get_managed_database_by_id(
 			username,
 			password,
 			workspace_id as "workspace_id: _",
-			digitalocean_db_id,
-			database_payment_history_id as "database_payment_history_id: _"
+			digitalocean_db_id
 		FROM
 			managed_database
 		WHERE

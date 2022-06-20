@@ -1,6 +1,6 @@
 use std::ops::DerefMut;
 
-use api_models::utils::{DateTime, Uuid};
+use api_models::utils::Uuid;
 use chrono::Utc;
 use eve_rs::AsError;
 
@@ -17,13 +17,7 @@ use crate::{
 		self,
 		infrastructure::{aws, digitalocean},
 	},
-	utils::{
-		constants::free_limits,
-		get_current_time_millis,
-		settings::Settings,
-		validator,
-		Error,
-	},
+	utils::{settings::Settings, validator, Error},
 	Database,
 };
 
@@ -98,6 +92,8 @@ pub async fn create_managed_database_in_workspace(
 			.body(error!(DATABASE_LIMIT_EXCEEDED).to_string())?;
 	}
 
+	let creation_time = Utc::now();
+
 	db::create_resource(
 		connection,
 		&database_id,
@@ -108,7 +104,16 @@ pub async fn create_managed_database_in_workspace(
 			.get(rbac::resource_types::MANAGED_DATABASE)
 			.unwrap(),
 		workspace_id,
-		get_current_time_millis(),
+		creation_time.timestamp_millis() as u64,
+	)
+	.await?;
+
+	db::start_database_usage_history(
+		connection,
+		&workspace_id,
+		&database_id,
+		database_plan,
+		&creation_time,
 	)
 	.await?;
 
@@ -241,6 +246,13 @@ pub async fn delete_managed_database(
 		&ManagedDatabaseStatus::Deleted,
 	)
 	.await?;
+
+	db::stop_database_usage_history(
+		connection,
+		database_id,
+		&Utc::now().into(),
+	)
+	.await?;
 	Ok(())
 }
 
@@ -297,22 +309,10 @@ async fn database_limit_crossed(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	let workspace_info = db::get_workspace_info(connection, workspace_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
 	let current_databases =
 		db::get_all_database_clusters_for_workspace(connection, workspace_id)
 			.await?
 			.len();
-
-	if &(current_databases as i32) >= free_limits::FREE_MANAGED_DATABASE &&
-		workspace_info.default_payment_method_id.is_none()
-	{
-		log::trace!("request_id: {} - Free limits are crossed", request_id);
-		return Ok(true);
-	}
 
 	log::trace!(
 		"request_id: {} - Checking if database limits are crossed",
@@ -323,163 +323,4 @@ async fn database_limit_crossed(
 	}
 
 	Ok(false)
-}
-
-pub async fn stop_database_subscription(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	database_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Stopping subscription for database with id: {}",
-		request_id,
-		database_id
-	);
-
-	let database = db::get_managed_database_by_id(connection, database_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let stop_time = &DateTime::from(Utc::now());
-
-	let database_payment_history_id = if let Some(payment_history_id) =
-		database.database_payment_history_id
-	{
-		payment_history_id
-	} else {
-		return Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string());
-	};
-
-	let database_payment_history = db::get_managed_database_payment_history_id(
-		connection,
-		&database_payment_history_id,
-	)
-	.await?
-	.status(500)
-	.body(error!(SERVER_ERROR).to_string())?;
-
-	db::update_with_stop_database_payment_history(
-		connection,
-		&database_payment_history_id,
-		Some(stop_time),
-	)
-	.await?;
-
-	Ok(())
-}
-
-async fn start_database_subscription(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	database_id: &Uuid,
-	workspace_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Starting subscription for database with id: {}",
-		request_id,
-		database_id
-	);
-
-	let database = db::get_managed_database_by_id(connection, database_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let db_payment_hist =
-		db::generate_new_database_payment_history_id(connection).await?;
-
-	db::add_database_payment_history(
-		connection,
-		&db_payment_hist,
-		workspace_id,
-		&database.id,
-		&database.database_plan,
-		&DateTime::from(Utc::now()),
-		None,
-	)
-	.await?;
-
-	db::update_database_with_payment_history_id(
-		connection,
-		&deployment.id,
-		&db_payment_hist,
-	)
-	.await?;
-
-	Ok(())
-}
-
-async fn update_database_subscription(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Updating subscription for deployment with id: {}",
-		request_id,
-		deployment_id
-	);
-
-	let database = db::get_managed_database_by_id(connection, database_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let stop_time = &DateTime::from(Utc::now());
-
-	let database_payment_history_id = if let Some(payment_history_id) =
-		database.database_payment_history_id
-	{
-		payment_history_id
-	} else {
-		return Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string());
-	};
-
-	let database_payment_history = db::get_deployment_payment_history_id(
-		connection,
-		&database_payment_history_id,
-	)
-	.await?
-	.status(500)
-	.body(error!(SERVER_ERROR).to_string())?;
-
-	db::update_with_stop_database_payment_history(
-		connection,
-		&database_payment_history_id,
-		Some(stop_time),
-	)
-	.await?;
-
-	let db_payment_hist =
-		db::generate_new_deployment_payment_history_id(connection).await?;
-
-	db::add_database_payment_history(
-		connection,
-		&db_payment_hist,
-		workspace_id,
-		&deployment.id,
-		&deployment.machine_type,
-		deployment.min_horizontal_scale as i32,
-		&stop_time,
-		None,
-	)
-	.await?;
-
-	db::update_database_with_payment_history_id(
-		connection,
-		&database.id,
-		&db_payment_hist,
-	)
-	.await?;
-
-	Ok(())
 }

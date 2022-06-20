@@ -42,6 +42,7 @@ pub struct Workspace {
 	pub volume_limit: i64,
 	pub stripe_customer_id: String,
 	pub address_id: Option<Uuid>,
+	pub amount_due: i64,
 }
 
 pub struct WorkspaceAuditLog {
@@ -136,7 +137,8 @@ pub async fn initialize_workspaces_pre(
 			domain_limit INTEGER NOT NULL,
 			volume_limit BIGINT NOT NULL,
 			stripe_customer_id TEXT NOT NULL,
-			address_id UUID
+			address_id UUID,
+			amount_due BIGINT NOT NULL
 		);
 		"#
 	)
@@ -436,8 +438,8 @@ pub async fn get_workspace_info(
 			domain_limit,
 			volume_limit,
 			stripe_customer_id,
-			address_id as "address_id: _"
-
+			address_id as "address_id: _",
+			amount_due
 		FROM
 			workspace
 		WHERE
@@ -474,7 +476,8 @@ pub async fn get_workspace_by_name(
 			domain_limit,
 			volume_limit,
 			stripe_customer_id,
-			address_id as "address_id: _"
+			address_id as "address_id: _",
+			amount_due
 		FROM
 			workspace
 		WHERE
@@ -804,7 +807,8 @@ pub async fn get_all_workspaces(
 			workspace.domain_limit,
 			workspace.volume_limit,
 			workspace.stripe_customer_id,
-			workspace.address_id as "address_id: _"
+			workspace.address_id as "address_id: _",
+			workspace.amount_due
 		FROM
 			workspace
 		WHERE

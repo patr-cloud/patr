@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
-use api_models::utils::Uuid;
+use api_models::utils::{Uuid, DateTime};
+use chrono::Utc;
 use eve_rs::AsError;
 use vaultrs::{
 	client::{VaultClient, VaultClientSettingsBuilder},
@@ -13,8 +14,6 @@ use crate::{
 	error,
 	models::rbac,
 	utils::{
-		constants::free_limits,
-		get_current_time_millis,
 		settings::Settings,
 		Error,
 	},
@@ -47,6 +46,7 @@ pub async fn create_new_secret_in_workspace(
 
 	let resource_id = db::generate_new_resource_id(connection).await?;
 
+	let creation_time = Utc::now();
 	log::trace!("request_id: {} - Creating resource", request_id);
 	db::create_resource(
 		connection,
@@ -58,17 +58,28 @@ pub async fn create_new_secret_in_workspace(
 			.get(rbac::resource_types::SECRET)
 			.unwrap(),
 		workspace_id,
-		get_current_time_millis(),
+		creation_time.timestamp_millis(),
 	)
 	.await?;
 
 	log::trace!("request_id: {} - Creating database entry", request_id);
-
 	db::create_new_secret_in_workspace(
 		connection,
 		&resource_id,
 		name,
 		workspace_id,
+	)
+	.await?;
+
+	let secret_count =
+		db::get_all_secrets_in_workspace(connection, workspace_id)
+			.await?
+			.len();
+	db::update_secret_usage_history(
+		connection,
+		workspace_id,
+		&(secret_count as i32),
+		&creation_time,
 	)
 	.await?;
 
@@ -108,6 +119,7 @@ pub async fn create_new_secret_for_deployment(
 ) -> Result<Uuid, Error> {
 	let resource_id = db::generate_new_resource_id(connection).await?;
 
+	let creation_time = Utc::now();
 	log::trace!("request_id: {} - Creating resource", request_id);
 	db::create_resource(
 		connection,
@@ -119,18 +131,29 @@ pub async fn create_new_secret_for_deployment(
 			.get(rbac::resource_types::SECRET)
 			.unwrap(),
 		workspace_id,
-		get_current_time_millis(),
+		creation_time.timestamp_millis(),
 	)
 	.await?;
 
 	log::trace!("request_id: {} - Creating database entry", request_id);
-
 	db::create_new_secret_for_deployment(
 		connection,
 		&resource_id,
 		name,
 		workspace_id,
 		deployment_id,
+	)
+	.await?;
+
+	let secret_count =
+		db::get_all_secrets_in_workspace(connection, workspace_id)
+			.await?
+			.len();
+	db::update_secret_usage_history(
+		connection,
+		workspace_id,
+		&(secret_count as i32),
+		&creation_time,
 	)
 	.await?;
 
@@ -282,6 +305,18 @@ pub async fn delete_secret_in_workspace(
 	)
 	.await?;
 
+	let secret_count =
+		db::get_all_secrets_in_workspace(connection, workspace_id)
+			.await?
+			.len();
+	db::update_secret_usage_history(
+		connection,
+		workspace_id,
+		secret_count,
+		&DateTime::from(Utc::now()),
+	)
+	.await?;
+
 	log::trace!(
 		"request_id: {} - Deleted secret with id: {} from databae",
 		request_id,
@@ -306,22 +341,10 @@ async fn secret_limit_crossed(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	let workspace_info = db::get_workspace_info(connection, workspace_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
 	let current_secrets =
 		db::get_all_secrets_in_workspace(connection, workspace_id)
 			.await?
 			.len();
-
-	if &(current_secrets as i32) >= free_limits::FREE_MANAGED_URLS &&
-		workspace_info.default_payment_method_id.is_none()
-	{
-		log::trace!("request_id: {} - Free limits are crossed", request_id);
-		return Ok(true);
-	}
 
 	log::trace!(
 		"request_id: {} - Checking if secret limits are crossed",

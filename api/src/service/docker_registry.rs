@@ -1,4 +1,5 @@
-use api_models::utils::Uuid;
+use api_models::utils::{Uuid, DateTime};
+use chrono::Utc;
 use eve_rs::AsError;
 
 use crate::{
@@ -58,6 +59,20 @@ pub async fn delete_docker_repository_image(
 	log::trace!("request_id: {} - Deleting docker repository image with digest: {} from the database", request_id, digest);
 	db::delete_docker_repository_image(connection, repository_id, digest)
 		.await?;
+
+	let total_storage =
+		db::get_total_size_of_docker_repositories_for_workspace(
+			connection,
+			&repository.workspace_id,
+		)
+		.await?;
+	db::update_docker_repo_usage_history(
+		connection,
+		&repository.workspace_id,
+		&(total_storage as i64),
+		&DateTime::from(Utc::now()),
+	)
+	.await?;
 
 	let god_user =
 		db::get_user_by_user_id(connection, rbac::GOD_USER_ID.get().unwrap())

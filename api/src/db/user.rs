@@ -2678,7 +2678,8 @@ pub async fn get_all_workspaces_for_user(
 			workspace.domain_limit,
 			workspace.volume_limit,
 			workspace.stripe_customer_id,
-			workspace.address_id as "address_id: _"
+			workspace.address_id as "address_id: _",
+			workspace.amount_due
 		FROM
 			workspace
 		LEFT JOIN

@@ -67,6 +67,7 @@ pub mod id {
 		"repositorySizeLimitExceeded";
 	pub const ADDRESS_ALREADY_EXISTS: &str = "addressAlreadyExists";
 	pub const ADDRESS_NOT_FOUND: &str = "addressNotFound";
+	pub const DOMAIN_LIMIT_EXCEEDED: &str = "domainLimitExceeded";
 }
 
 #[allow(dead_code)]
@@ -193,4 +194,5 @@ pub mod message {
 		"The address already exists, please use a different address";
 	pub const ADDRESS_NOT_FOUND: &str =
 		"The address does not exist, please add a new address";
+	pub const DOMAIN_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number domains allowed for your workspace, contact support to increase the limit";
 }

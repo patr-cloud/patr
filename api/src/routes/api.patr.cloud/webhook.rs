@@ -1,7 +1,8 @@
 use api_models::{
 	models::workspace::infrastructure::deployment::DeploymentStatus,
-	utils::Uuid,
+	utils::{Uuid, DateTime},
 };
+use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::json;
 
@@ -19,7 +20,6 @@ use crate::{
 	service,
 	utils::{
 		constants::request_keys,
-		get_current_time_millis,
 		Error,
 		ErrorData,
 		EveContext,
@@ -233,12 +233,13 @@ async fn notification_handler(
 		7. Generating PDF invoice
 		8. Update frontend
 		9. Migrations
+		10. stripe wobhook for payment status
 
 		workspace
 
 		*/
 
-		let current_time = get_current_time_millis();
+		let current_time = Utc::now();
 
 		log::trace!(
 			"request_id: {} - Creating docker repository digest",
@@ -257,7 +258,21 @@ async fn notification_handler(
 				})
 				.map(|reference| reference.size)
 				.sum(),
-			current_time,
+			current_time.timestamp_millis() as u64,
+		)
+		.await?;
+
+		let total_storage =
+			db::get_total_size_of_docker_repositories_for_workspace(
+				context.get_database_connection(),
+				&workspace.id,
+			)
+			.await?;
+		db::update_docker_repo_usage_history(
+			context.get_database_connection(),
+			&workspace.id,
+			&(total_storage as i64),
+			&DateTime::from(current_time),
 		)
 		.await?;
 
@@ -274,7 +289,7 @@ async fn notification_handler(
 			&repository.id,
 			&target.tag,
 			&target.digest,
-			current_time,
+			current_time.timestamp_millis() as u64,
 		)
 		.await?;
 

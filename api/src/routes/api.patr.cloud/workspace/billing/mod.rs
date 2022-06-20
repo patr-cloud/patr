@@ -993,11 +993,15 @@ async fn get_current_bill(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let workspace_bill = service::get_current_bill(
+	let workspace = db::get_workspace_info(
 		context.get_database_connection(),
 		&workspace_id,
 	)
-	.await?;
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
+
+	// Send current bill as response
 
 	Ok(context)
 }
