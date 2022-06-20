@@ -332,7 +332,7 @@ pub(super) async fn migrate(
 			ADD COLUMN
 				amount_due DOUBLE PRECISION NOT NULL
 				DEFAULT 0;
-		"#,
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;

@@ -49,6 +49,12 @@ pub struct UserControlledDomain {
 	pub nameserver_type: DomainNameserverType,
 }
 
+pub struct UserTransferredDomain {
+	pub id: Uuid,
+	pub zone_identifier: String,
+	pub name: String,
+}
+
 #[derive(sqlx::Type, PartialEq)]
 #[sqlx(type_name = "DNS_RECORD_TYPE", rename_all = "UPPERCASE")]
 #[allow(clippy::upper_case_acronyms)]
@@ -240,6 +246,26 @@ pub async fn initialize_domain_pre(
 			CONSTRAINT user_controlled_domain_fk_domain_id_nameserver_type
 				FOREIGN KEY(domain_id, nameserver_type)	REFERENCES
 					workspace_domain(id, nameserver_type)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_transferring_domain_to_patr(
+			domain_id UUID NOT NULL
+				CONSTRAINT user_transferred_domain_pk PRIMARY KEY,
+			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL
+				CONSTRAINT user_transferred_domain_chk_nameserver_type CHECK(
+					nameserver_type = 'external'
+				),
+			zone_identifier TEXT NOT NULL,
+			is_verified BOOLEAN NOT NULL,
+			CONSTRAINT user_transferred_domain_fk_domain_id_nameserver_type
+				FOREIGN KEY(domain_id)REFERENCES
+					user_controlled_domain(domain_id)
 		);
 		"#
 	)
@@ -1242,6 +1268,73 @@ pub async fn update_dns_record_identifier(
 		"#,
 		record_identifier,
 		record_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn add_to_user_transferring_domain_to_patr(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+	zone_identifier: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			user_transferring_domain_to_patr(
+				domain_id,
+				nameserver_type,
+				zone_identifier,
+				is_verified
+			)
+		VALUES
+			($1, 'internal', $2, false);
+		"#,
+		domain_id as _,
+		zone_identifier,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_all_unverified_transferred_domains(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<UserTransferredDomain>, sqlx::Error> {
+	query_as!(
+		UserTransferredDomain,
+		r#"
+		SELECT
+			user_transferring_domain_to_patr.domain_id as "id!: _",
+			user_transferring_domain_to_patr.zone_identifier as "zone_identifier!",
+			CONCAT(domain.name, '.', domain.tld) as "name!"
+		FROM
+			user_transferring_domain_to_patr
+		LEFT JOIN
+			domain
+		ON
+			domain.id = user_transferring_domain_to_patr.domain_id
+		WHERE
+			is_verified = false;
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn delete_user_transferred_domain_by_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM 
+			user_transferring_domain_to_patr
+		WHERE
+			domain_id = $1;
+		"#,
+		domain_id as _,
 	)
 	.execute(&mut *connection)
 	.await
