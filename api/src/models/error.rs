@@ -65,6 +65,8 @@ pub mod id {
 	pub const SECRET_LIMIT_EXCEEDED: &str = "secretLimitExceeded";
 	pub const REPOSITORY_SIZE_LIMIT_EXCEEDED: &str =
 		"repositorySizeLimitExceeded";
+	pub const ADDRESS_ALREADY_EXISTS: &str = "addressAlreadyExists";
+	pub const ADDRESS_NOT_FOUND: &str = "addressNotFound";
 }
 
 #[allow(dead_code)]
@@ -187,4 +189,8 @@ pub mod message {
 	pub const MANAGED_URL_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number managed URLs allowed for your workspace, contact support to increase the limit";
 	pub const SECRET_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number secrets allowed for your workspace, contact support to increase the limit";
 	pub const REPOSITORY_SIZE_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum size of repositories allowed for your workspace, contact support to increase the limit";
+	pub const ADDRESS_ALREADY_EXISTS: &str =
+		"The address already exists, please use a different address";
+	pub const ADDRESS_NOT_FOUND: &str =
+		"The address does not exist, please add a new address";
 }

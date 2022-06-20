@@ -3,6 +3,7 @@ use api_models::utils::{DateTime, Uuid};
 use chrono::Utc;
 use sqlx::query_as;
 
+use super::ManagedDatabasePlan;
 use crate::Database;
 
 pub struct DeploymentPaymentHistory {
@@ -76,6 +77,11 @@ pub struct Transaction {
 	pub payment_status: PaymentStatus,
 }
 
+pub struct PaymentMethod {
+	pub id: String,
+	pub workspace_id: Uuid,
+}
+
 #[derive(sqlx::Type)]
 #[sqlx(type_name = "TRANSACTION_TYPE", rename_all = "lowercase")]
 pub enum TransactionType {
@@ -84,7 +90,7 @@ pub enum TransactionType {
 	Payment,
 }
 
-#[derive(sqlx::Type)]
+#[derive(sqlx::Type, PartialEq)]
 #[sqlx(type_name = "PAYMENT_STATUS", rename_all = "lowercase")]
 pub enum PaymentStatus {
 	Pending,
@@ -599,8 +605,8 @@ pub async fn create_transactions(
 	amount: i64,
 	payment_intent_id: Option<&str>,
 	date: &DateTime<Utc>,
-	transaction_type: TransactionType,
-	payment_status: PaymentStatus,
+	transaction_type: &TransactionType,
+	payment_status: &PaymentStatus,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -695,4 +701,296 @@ pub async fn get_last_bill_for_workspace(
 	)
 	.fetch_optional(&mut *connection)
 	.await
+}
+
+pub async fn get_payment_methods_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Vec<PaymentMethod>, sqlx::Error> {
+	query_as!(
+		PaymentMethod,
+		r#"
+		SELECT
+			id,
+			workspace_id as "workspace_id!: _"
+		FROM
+			payment_method
+		WHERE
+			workspace_id = $1;
+		"#,
+		workspace_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn get_credits_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Vec<Transaction>, sqlx::Error> {
+	query_as!(
+		Transaction,
+		r#"
+		SELECT
+			id as "id: _",
+			month,
+			amount,
+			payment_intent_id,
+			date as "date: _",
+			workspace_id as "workspace_id: _",
+			transaction_type as "transaction_type: _",
+			payment_status as "payment_status: _"
+		FROM
+			transactions
+		WHERE
+			workspace_id = $1 AND
+			transaction_type = 'credits';
+		"#,
+		workspace_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn generate_new_deployment_payment_history_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Uuid, sqlx::Error> {
+	loop {
+		let uuid = Uuid::new_v4();
+
+		let exists = query!(
+			r#"
+			SELECT
+				id
+			FROM
+				deployment_payment_history
+			WHERE
+				id = $1;
+			"#,
+			uuid as _
+		)
+		.fetch_optional(&mut *connection)
+		.await?
+		.is_some();
+
+		if !exists {
+			break Ok(uuid);
+		}
+	}
+}
+
+pub async fn add_deployment_payment_history(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	machine_type: &Uuid,
+	num_instance: i32,
+	start_time: &DateTime<Utc>,
+	stop_time: Option<&DateTime<Utc>>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			deployment_payment_history
+			(
+				id,
+				workspace_id,
+				deployment_id,
+				machine_type,
+				num_instance,
+				start_time,
+				stop_time
+			)
+		VALUES
+			(
+				$1,
+				$2,
+				$3,
+				$4,
+				$5,
+				$6,
+				$7
+			);
+		"#,
+		id as _,
+		workspace_id as _,
+		deployment_id as _,
+		machine_type as _,
+		num_instance as _,
+		start_time as _,
+		stop_time as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_with_stop_deployment_payment_history(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_payment_history_id: &Uuid,
+	machine_type: &Uuid,
+	min_horizontal_scale: i32,
+	stop_time: Option<&DateTime<Utc>>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE deployment_payment_history
+		SET
+			machine_type = $2,
+			num_instance = $3,
+			stop_time = $4
+		WHERE
+			id = $1;
+		"#,
+		deployment_payment_history_id as _,
+		machine_type as _,
+		min_horizontal_scale as _,
+		stop_time as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_deployment_payment_history_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+) -> Result<Option<DeploymentPaymentHistory>, sqlx::Error> {
+	query_as!(
+		DeploymentPaymentHistory,
+		r#"
+		SELECT
+			id as "id: _",
+			workspace_id as "workspace_id: _",
+			deployment_id as "deployment_id: _",
+			machine_type as "machine_type: _",
+			num_instance,
+			start_time as "start_time: _",
+			stop_time as "stop_time: _"
+		FROM
+			deployment_payment_history
+		WHERE
+			id = $1;
+		"#,
+		id as _
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn get_managed_database_payment_history_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+) -> Result<Option<ManagedDatabasePaymentHistory>, sqlx::Error> {
+	query_as!(
+		ManagedDatabasePaymentHistory,
+		r#"
+		SELECT
+			id as "id: _",
+			workspace_id as "workspace_id: _",
+			database_id as "database_id: _",
+			db_plan as "db_plan: _",
+			start_time as "start_time: _",
+			deletion_time as "deletion_time: _"
+		FROM
+			managed_database_payment_history
+		WHERE
+			id = $1;
+		"#,
+		id as _
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn update_with_stop_database_payment_history(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	database_payment_history_id: &Uuid,
+	stop_time: Option<&DateTime<Utc>>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE deployment_payment_history
+		SET
+			stop_time = $2
+		WHERE
+			id = $1;
+		"#,
+		database_payment_history_id as _,
+		stop_time as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn generate_new_database_payment_history_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Uuid, sqlx::Error> {
+	loop {
+		let uuid = Uuid::new_v4();
+
+		let exists = query!(
+			r#"
+			SELECT
+				id
+			FROM
+				managed_database_payment_history
+			WHERE
+				id = $1;
+			"#,
+			uuid as _
+		)
+		.fetch_optional(&mut *connection)
+		.await?
+		.is_some();
+
+		if !exists {
+			break Ok(uuid);
+		}
+	}
+}
+
+pub async fn add_database_payment_history(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+	workspace_id: &Uuid,
+	database_id: &Uuid,
+	db_plan: &ManagedDatabasePlan,
+	start_time: &DateTime<Utc>,
+	deletion_time: Option<&DateTime<Utc>>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			managed_database_payment_history
+			(
+				id,
+				workspace_id,
+				database_id,
+				db_plan,
+				start_time,
+				deletion_time
+			)
+		VALUES
+			(
+				$1,
+				$2,
+				$3,
+				$4,
+				$5,
+				$6
+			);
+		"#,
+		id as _,
+		workspace_id as _,
+		database_id as _,
+		db_plan as _,
+		start_time as _,
+		deletion_time as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }

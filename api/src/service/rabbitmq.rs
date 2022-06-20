@@ -147,6 +147,14 @@ pub async fn queue_stop_deployment(
 	)
 	.await?;
 
+	service::stop_deployment_subscription(
+		connection,
+		&deployment_id,
+		&config,
+		&request_id,
+	)
+	.await?;
+
 	send_message_to_rabbit_mq(
 		&RequestMessage::Deployment(DeploymentRequestData::Stop {
 			workspace_id: workspace_id.clone(),

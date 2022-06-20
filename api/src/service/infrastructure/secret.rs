@@ -12,7 +12,12 @@ use crate::{
 	db,
 	error,
 	models::rbac,
-	utils::{get_current_time_millis, settings::Settings, Error},
+	utils::{
+		constants::free_limits,
+		get_current_time_millis,
+		settings::Settings,
+		Error,
+	},
 	Database,
 };
 
@@ -25,14 +30,16 @@ pub async fn create_new_secret_in_workspace(
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	log::trace!("request_id: {} - Checking resource limit", request_id);
-	if super::resource_limit_crossed(connection, workspace_id).await? {
+	if super::resource_limit_crossed(connection, workspace_id, request_id)
+		.await?
+	{
 		return Error::as_result()
 			.status(400)
 			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
 	}
 
 	log::trace!("request_id: {} - Checking secret limit", request_id);
-	if secret_limit_crossed(connection, workspace_id).await? {
+	if secret_limit_crossed(connection, workspace_id, request_id).await? {
 		return Error::as_result()
 			.status(400)
 			.body(error!(SECRET_LIMIT_EXCEEDED).to_string())?;
@@ -282,4 +289,47 @@ pub async fn delete_secret_in_workspace(
 	);
 
 	Ok(())
+}
+
+async fn secret_limit_crossed(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	request_id: &Uuid,
+) -> Result<bool, Error> {
+	log::trace!(
+		"request_id: {} - Checking if free limits are crossed",
+		request_id
+	);
+
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let workspace_info = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let current_secrets =
+		db::get_all_secrets_in_workspace(connection, workspace_id)
+			.await?
+			.len();
+
+	if &(current_secrets as i32) >= free_limits::FREE_MANAGED_URLS &&
+		workspace_info.default_payment_method_id.is_none()
+	{
+		log::trace!("request_id: {} - Free limits are crossed", request_id);
+		return Ok(true);
+	}
+
+	log::trace!(
+		"request_id: {} - Checking if secret limits are crossed",
+		request_id
+	);
+	if current_secrets + 1 > workspace.secret_limit as usize {
+		return Ok(true);
+	}
+
+	Ok(false)
 }

@@ -13,7 +13,12 @@ use crate::{
 	error,
 	models::rbac,
 	service,
-	utils::{get_current_time_millis, settings::Settings, Error},
+	utils::{
+		constants::free_limits,
+		get_current_time_millis,
+		settings::Settings,
+		Error,
+	},
 	Database,
 };
 
@@ -41,14 +46,16 @@ pub async fn create_new_managed_url_in_workspace(
 		.status(500)?;
 
 	log::trace!("request_id: {} - Checking resource limit", request_id);
-	if super::resource_limit_crossed(connection, workspace_id).await? {
+	if super::resource_limit_crossed(connection, workspace_id, request_id)
+		.await?
+	{
 		return Error::as_result()
 			.status(400)
 			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
 	}
 
 	log::trace!("request_id: {} - Checking managed_url limit", request_id);
-	if managed_url_limit_crossed(connection, workspace_id).await? {
+	if managed_url_limit_crossed(connection, workspace_id, request_id).await? {
 		return Error::as_result()
 			.status(400)
 			.body(error!(MANAGED_URL_LIMIT_EXCEEDED).to_string())?;
@@ -400,4 +407,47 @@ pub async fn delete_managed_url(
 	log::trace!("request_id: {} - ManagedUrl Deleted.", request_id);
 
 	Ok(())
+}
+
+async fn managed_url_limit_crossed(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	request_id: &Uuid,
+) -> Result<bool, Error> {
+	log::trace!(
+		"request_id: {} - Checking if free limits are crossed",
+		request_id
+	);
+
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let workspace_info = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let current_managed_urls =
+		db::get_all_managed_urls_in_workspace(connection, workspace_id)
+			.await?
+			.len();
+
+	if &(current_managed_urls as i32) >= free_limits::FREE_MANAGED_URLS &&
+		workspace_info.default_payment_method_id.is_none()
+	{
+		log::trace!("request_id: {} - Free limits are crossed", request_id);
+		return Ok(true);
+	}
+
+	log::trace!(
+		"request_id: {} - Checking if deployment limits are crossed",
+		request_id
+	);
+	if current_managed_urls + 1 > workspace.managed_url_limit as usize {
+		return Ok(true);
+	}
+
+	Ok(false)
 }

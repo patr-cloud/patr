@@ -2666,6 +2666,8 @@ pub async fn get_all_workspaces_for_user(
 			workspace.super_admin_id as "super_admin_id: _",
 			workspace.active,
 			workspace.alert_emails,
+			workspace.drone_username,
+			workspace.drone_token,
 			workspace.payment_type as "payment_type!: _",
 			workspace.default_payment_method_id as "default_payment_method_id: _",
 			workspace.deployment_limit,
@@ -2675,7 +2677,8 @@ pub async fn get_all_workspaces_for_user(
 			workspace.secret_limit,
 			workspace.domain_limit,
 			workspace.volume_limit,
-			workspace.stripe_customer_id
+			workspace.stripe_customer_id,
+			workspace.address_id as "address_id: _"
 		FROM
 			workspace
 		LEFT JOIN

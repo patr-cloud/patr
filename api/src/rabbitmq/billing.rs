@@ -9,7 +9,6 @@ use crate::{
 	db::{self, PaymentStatus, TransactionType},
 	error,
 	models::{
-		deployment,
 		rabbitmq::WorkspaceRequestData,
 		PaymentIntent,
 		PaymentIntentObject,
@@ -119,8 +118,8 @@ pub(super) async fn process_request(
 				&DateTime::from(
 					next_month_start_date.add(chrono::Duration::nanoseconds(1)),
 				), // 1st of next month,
-				TransactionType::Bill,
-				PaymentStatus::Success,
+				&TransactionType::Bill,
+				&PaymentStatus::Success,
 			)
 			.await?;
 
@@ -197,10 +196,10 @@ pub(super) async fn process_request(
 					connection,
 					&workspace_id,
 					&transaction_id,
-					month as i32,
-					total_bill as i64,
+					last_transaction.month,
+					last_transaction.amount,
 					Some(&payment_intent_id),
-					Utc::now().into(),
+					&DateTime::from(Utc::now()),
 					&TransactionType::Payment,
 					&PaymentStatus::Failed,
 				)
@@ -215,8 +214,8 @@ pub(super) async fn process_request(
 				connection,
 				&workspace_id,
 				&transaction_id,
-				month as i32,
-				total_bill as i64,
+				last_transaction.month,
+				last_transaction.amount,
 				Some(&payment_intent_id),
 				Utc::now().into(),
 				&TransactionType::Payment,

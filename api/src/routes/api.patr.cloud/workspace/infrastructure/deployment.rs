@@ -1143,7 +1143,13 @@ async fn delete_deployment(
 	)
 	.await;
 
-	service::cancel_subscription(&deployment_id, &config, &request_id).await?;
+	service::stop_deployment_subscription(
+		context.get_database_connection(),
+		&deployment_id,
+		&config,
+		&request_id,
+	)
+	.await?;
 
 	context.success(DeleteDeploymentResponse {});
 	Ok(context)
@@ -1244,8 +1250,25 @@ async fn update_deployment(
 		liveness_probe: liveness_probe.clone(),
 	};
 
+	let (deployment, workspace_id, _, deployment_running_details) =
+		service::get_full_deployment_config(
+			context.get_database_connection(),
+			&deployment_id,
+			&request_id,
+		)
+		.await?;
+
+	let active = if deployment.status != DeploymentStatus::Stopped ||
+		deployment.status != DeploymentStatus::Deleted
+	{
+		true
+	} else {
+		false
+	};
+
 	service::update_deployment(
 		context.get_database_connection(),
+		&workspace_id,
 		&deployment_id,
 		name,
 		region.as_ref(),
@@ -1264,20 +1287,13 @@ async fn update_deployment(
 		environment_variables.as_ref(),
 		startup_probe.as_ref(),
 		liveness_probe.as_ref(),
+		active,
 		&config,
 		&request_id,
 	)
 	.await?;
 
 	context.commit_database_transaction().await?;
-
-	let (deployment, workspace_id, _, deployment_running_details) =
-		service::get_full_deployment_config(
-			context.get_database_connection(),
-			&deployment_id,
-			&request_id,
-		)
-		.await?;
 
 	match &deployment.status {
 		DeploymentStatus::Stopped |

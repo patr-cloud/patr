@@ -143,3 +143,14 @@ pub struct CardNetworks {
 	pub available: Vec<String>,
 	pub preferred: Option<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub struct StripeAddress {
+	city: String,
+	country: String,
+	line1: String,
+	line2: Option<String>,
+	postal_code: String,
+	state: String,
+}

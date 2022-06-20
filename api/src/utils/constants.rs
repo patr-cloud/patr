@@ -62,3 +62,15 @@ pub mod request_keys {
 	pub const STAGE: &str = "stage";
 	pub const STEP: &str = "step";
 }
+
+pub mod free_limits {
+	pub const FREE_DEPLOYMENTS: &i32 = &1;
+	pub const FREE_CPU: &i16 = &1;
+	pub const FREE_MEMORY: &i32 = &1;
+	pub const FREE_STATIC_SITES: &i32 = &5;
+	pub const FREE_MANAGED_DATABASE: &i32 = &0;
+	pub const FREE_MANAGED_URLS: &i32 = &10;
+	pub const FREE_SECRETS: &i32 = &5;
+	pub const FREE_DOMAINS: &i32 = &1;
+	pub const FREE_STORAGE: &i64 = &10;
+}

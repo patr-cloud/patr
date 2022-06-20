@@ -13,7 +13,13 @@ use crate::{
 	error,
 	models::rbac,
 	service::{self},
-	utils::{get_current_time_millis, settings::Settings, validator, Error},
+	utils::{
+		constants::free_limits,
+		get_current_time_millis,
+		settings::Settings,
+		validator,
+		Error,
+	},
 	Database,
 };
 
@@ -51,14 +57,16 @@ pub async fn create_static_site_in_workspace(
 	let static_site_id = db::generate_new_resource_id(connection).await?;
 
 	log::trace!("request_id: {} - Checking resource limit", request_id);
-	if super::resource_limit_crossed(connection, workspace_id).await? {
+	if super::resource_limit_crossed(connection, workspace_id, request_id)
+		.await?
+	{
 		return Error::as_result()
 			.status(400)
 			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
 	}
 
 	log::trace!("request_id: {} - Checking static site limit", request_id);
-	if static_site_limit_crossed(connection, workspace_id).await? {
+	if static_site_limit_crossed(connection, workspace_id, request_id).await? {
 		return Error::as_result()
 			.status(400)
 			.body(error!(STATIC_SITE_LIMIT_EXCEEDED).to_string())?;
@@ -448,4 +456,47 @@ fn get_mime_type_from_file_name(file_extension: &str) -> &str {
 		"wmv" => "video/x-ms-wmv",
 		_ => "application/octet-stream",
 	}
+}
+
+async fn static_site_limit_crossed(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	request_id: &Uuid,
+) -> Result<bool, Error> {
+	log::trace!(
+		"request_id: {} - Checking if free limits are crossed",
+		request_id
+	);
+
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let workspace_info = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let current_static_sites =
+		db::get_all_secrets_in_workspace(connection, workspace_id)
+			.await?
+			.len();
+
+	if &(current_static_sites as i32) >= free_limits::FREE_STATIC_SITES &&
+		workspace_info.default_payment_method_id.is_none()
+	{
+		log::trace!("request_id: {} - Free limits are crossed", request_id);
+		return Ok(true);
+	}
+
+	log::trace!(
+		"request_id: {} - Checking if static site limits are crossed",
+		request_id
+	);
+	if current_static_sites + 1 > workspace.static_site_limit as usize {
+		return Ok(true);
+	}
+
+	Ok(false)
 }

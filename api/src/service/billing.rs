@@ -1,11 +1,14 @@
-use api_models::utils::{DateTime, Uuid};
+use api_models::{
+	models::workspace::billing::PaymentMethod,
+	utils::{DateTime, Uuid},
+};
 use chrono::Utc;
 use eve_rs::AsError;
 use reqwest::Client;
 use serde_json::json;
 
 use crate::{
-	db,
+	db::{self, Transaction},
 	error,
 	models::{PaymentIntent, PaymentIntentObject, PaymentMethodStatus},
 	utils::{settings::Settings, Error},
@@ -26,7 +29,7 @@ pub async fn add_credits_to_workspace(
 		.post("https://api.stripe.com/v1/payment_intents")
 		.basic_auth(&config.stripe.secret_key, password)
 		.form(&PaymentIntent {
-			amount: credits * 10,
+			amount: (credits * 10) as u64,
 			currency: "usd".to_string(),
 			description: "Patr charge: Additional credits".to_string(),
 			customer: config.stripe.customer_id.clone(),
@@ -312,4 +315,92 @@ pub async fn calculate_total_bill_for_workspace_till(
 		docker_repository_bill +
 		domains_bill +
 		secrets_bill)
+}
+
+pub async fn add_card_details(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	config: &Settings,
+) -> Result<PaymentIntentObject, Error> {
+	let client = Client::new();
+	let stripe_customer_id = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?
+		.stripe_customer_id;
+	let password: Option<String> = None;
+	client
+		.post("https://api.stripe.com/v1/setup_intents")
+		.basic_auth(&config.stripe.secret_key, password)
+		.query(&[
+			("customer", stripe_customer_id.as_str()),
+			// for now only accepting cards, other payment methods will be
+			// accepted at later point of time
+			("payment_method_types[]", "card"),
+		])
+		.send()
+		.await?
+		.json::<PaymentIntentObject>()
+		.await
+		.map_err(|e| e.into())
+}
+
+pub async fn get_card_details(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	config: &Settings,
+) -> Result<Vec<PaymentMethod>, Error> {
+	let payment_source_list =
+		db::get_payment_methods_for_workspace(connection, workspace_id).await?;
+
+	let mut cards = Vec::new();
+	let client = Client::new();
+	for payment_source in payment_source_list {
+		let url = format!(
+			"https://api.stripe.com/v1/payment_methods/{}",
+			payment_source.id
+		);
+		let password: Option<String> = None;
+		let card_details = client
+			.get(&url)
+			.basic_auth(&config.stripe.secret_key, password)
+			.send()
+			.await?
+			.json::<PaymentMethod>()
+			.await?;
+		cards.push(card_details);
+	}
+	Ok(cards)
+}
+
+pub async fn get_credits_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<u64, Error> {
+	let transactions =
+		db::get_credits_for_workspace(connection, &workspace_id).await?;
+
+	let mut credits = 0;
+
+	for transaction in transactions {
+		credits += transaction.amount;
+	}
+
+	// TODO: if credits are negative do something
+
+	Ok(credits as u64)
+}
+
+pub async fn get_current_bill(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	start_date: DateTime<Utc>,
+	end_date: DateTime<Utc>,
+) -> Result<u64, Error> {
+	let total_bill = super::calculate_total_bill_for_workspace_till(
+		&mut *connection,
+		&workspace.id,
+		&month_start_date,
+		&next_month_start_date,
+	)
+	.await?;
 }
