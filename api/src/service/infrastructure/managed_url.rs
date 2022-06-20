@@ -411,7 +411,7 @@ pub async fn delete_managed_url(
 			"request_id: {} - Deleting certificate for external managed url",
 			request_id
 		);
-		service::delete_certificates_for_domain(
+		service::delete_certificate(
 			workspace_id,
 			&certificate_name,
 			&secret_name,

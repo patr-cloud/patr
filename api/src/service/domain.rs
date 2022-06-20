@@ -330,32 +330,15 @@ pub async fn transfer_domain_to_patr(
 	let user_controlled_domain =
 		db::get_user_controlled_domain_by_id(connection, &domain.id).await?;
 
-	// Delete from user_controlled_domains
-	db::delete_user_contolled_domain(
-		connection,
-		&user_controlled_domain.domain_id,
-	)
-	.await?;
-
-	// Update workspace_domain with with nameserver_typea as internal
-	db::update_workspace_domain_nameserver_type(
-		connection,
-		&user_controlled_domain.domain_id,
-	)
-	.await?;
-
-	// Insert into patr_controlled_domains
-	db::add_patr_controlled_domain(
+	// Add to user_transferred_domains
+	db::add_to_user_transferring_domain_to_patr(
 		connection,
 		&user_controlled_domain.domain_id,
 		&zone_identifier,
 	)
 	.await?;
 
-	// Check it any managed urld is present for this domain
-	// If no managed URL is present then delete create a certificate for this
-	// domain If yes then schedule it for verification and till then don't
-	// delete the certificate for managed URL
+	// TODO - can give user a message that transfer is ongoing please wait
 
 	// TODO - manage certs and secrets
 
@@ -894,7 +877,7 @@ pub async fn delete_domain_in_workspace(
 			"request_id: {} - Deleting the certificate from db",
 			request_id
 		);
-		infrastructure::delete_certificates_for_domain(
+		infrastructure::delete_certificate(
 			workspace_id,
 			&certificate_name,
 			&secret_name,

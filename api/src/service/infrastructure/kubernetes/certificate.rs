@@ -94,7 +94,7 @@ pub async fn create_certificates(
 	Ok(())
 }
 
-pub async fn delete_certificates_for_domain(
+pub async fn delete_certificate(
 	workspace_id: &Uuid,
 	certificate_name: &str,
 	secret_name: &str,
@@ -164,4 +164,34 @@ pub async fn is_kubernetes_certificate_secret_exists(
 	let namespace = workspace_id.as_str();
 
 	Ok(super::secret_exists(secret_name, kubernetes_client, namespace).await?)
+}
+
+pub async fn get_kubernetes_certificate_status(
+	domain_id: &Uuid,
+	namespace: &str,
+	config: &Settings,
+) -> Result<bool, Error> {
+	let certificate_name = format!("certificate-{}", domain_id);
+	let certificate_resource = ApiResource {
+		group: "cert-manager.io".to_string(),
+		version: "v1".to_string(),
+		api_version: "cert-manager.io/v1".to_string(),
+		kind: "certificate".to_string(),
+		plural: "certificates".to_string(),
+	};
+
+	let kubernetes_client = super::get_kubernetes_config(config).await?;
+
+	let _certificate = Api::<DynamicObject>::namespaced_with(
+		kubernetes_client,
+		namespace,
+		&certificate_resource,
+	)
+	.get(&certificate_name)
+	.await?;
+
+	// TODO - check if certificate is ready
+	// For now sending true as response
+
+	Ok(true)
 }

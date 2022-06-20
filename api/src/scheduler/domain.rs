@@ -57,6 +57,15 @@ pub(super) fn refresh_domain_tld_list_job() -> Job {
 	)
 }
 
+// Every 2 hour
+pub(super) fn verify_transferred_domain_to_patr_job() -> Job {
+	Job::new(
+		String::from("Verify transferred domain to Patr"),
+		"0 0 1/2 * * *".parse().unwrap(),
+		|| Box::pin(verify_transferred_domain_to_patr()),
+	)
+}
+
 pub async fn refresh_domain_tld_list() -> Result<(), Error> {
 	let mut connection = super::CONFIG.get().unwrap().database.begin().await?;
 	let data =
@@ -520,6 +529,196 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 			// );
 		}
 		// TODO delete certificates and managed urls after 3 days
+	}
+
+	Ok(())
+}
+
+async fn verify_transferred_domain_to_patr() -> Result<(), Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Verifying unverified domains", request_id);
+	let config = super::CONFIG.get().unwrap();
+	let mut connection = config.database.acquire().await?;
+
+	let settings = config.config.clone();
+
+	let unverified_transferred_domains =
+		db::get_all_unverified_transferred_domains(&mut connection).await?;
+
+	let client = service::get_cloudflare_client(&config.config).await?;
+
+	for unverified_domain in unverified_transferred_domains {
+		let mut connection = connection.begin().await?;
+
+		let workspace_id =
+			db::get_resource_by_id(&mut connection, &unverified_domain.id)
+				.await?
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?
+				.owner_id;
+		let response = client
+			.request(&zone::ZoneDetails {
+				identifier: &unverified_domain.zone_identifier,
+			})
+			.await?;
+
+		if let Status::Active = response.result.status {
+			// Create certs below
+		} else {
+			continue;
+		}
+
+		// Delete user_transferring_domain_to_patr
+		db::delete_user_transferred_domain_by_id(
+			&mut connection,
+			&unverified_domain.id,
+		)
+		.await?;
+
+		// Delete user_controlled_domain
+		db::delete_user_contolled_domain(
+			&mut connection,
+			&unverified_domain.id,
+		)
+		.await?;
+
+		// Update ns type for workspace_domain
+		db::update_workspace_domain_nameserver_type(
+			&mut connection,
+			&unverified_domain.id,
+		)
+		.await?;
+
+		// Domain verified
+		db::update_workspace_domain_status(
+			&mut connection,
+			&unverified_domain.id,
+			true,
+		)
+		.await?;
+
+		// Domain is now verified add to patr controlled domain
+		db::add_patr_controlled_domain(
+			&mut connection,
+			&unverified_domain.id,
+			&unverified_domain.zone_identifier,
+		)
+		.await?;
+
+		service::create_certificates(
+			&workspace_id,
+			&format!("certificate-{}", unverified_domain.id),
+			&format!("tls-{}", unverified_domain.id),
+			vec![
+				format!("*.{}", unverified_domain.name),
+				unverified_domain.name.clone(),
+			],
+			true,
+			&settings,
+			&request_id,
+		)
+		.await?;
+
+		let managed_urls_count = db::get_active_managed_url_count_for_domain(
+			&mut connection,
+			&unverified_domain.id,
+		)
+		.await?;
+
+		if managed_urls_count > 0 {
+			// Wait for k8s verification is done for create certificate
+			// If done delete certificate for existing managed urls and
+			// Use new certificate for domain for managed urls
+			let is_certificate_ready =
+				service::get_kubernetes_certificate_status(
+					&unverified_domain.id,
+					workspace_id.as_str(),
+					&settings,
+				)
+				.await?;
+			if is_certificate_ready {
+				let managed_urls = db::get_all_managed_urls_for_domain(
+					&mut connection,
+					&unverified_domain.id,
+				)
+				.await?
+				.into_iter()
+				.filter_map(|url| {
+					Some(ManagedUrl {
+						id: url.id,
+						sub_domain: url.sub_domain,
+						domain_id: url.domain_id,
+						path: url.path,
+						url_type: match url.url_type {
+							DbManagedUrlType::ProxyToDeployment => {
+								ManagedUrlType::ProxyDeployment {
+									deployment_id: url.deployment_id?,
+									port: url.port? as u16,
+								}
+							}
+							DbManagedUrlType::ProxyToStaticSite => {
+								ManagedUrlType::ProxyStaticSite {
+									static_site_id: url.static_site_id?,
+								}
+							}
+							DbManagedUrlType::ProxyUrl => {
+								ManagedUrlType::ProxyUrl { url: url.url? }
+							}
+							DbManagedUrlType::Redirect => {
+								ManagedUrlType::Redirect { url: url.url? }
+							}
+						},
+					})
+				})
+				.collect::<Vec<ManagedUrl>>();
+
+				// Delete certificate for existing managed urls
+				for managed_url in &managed_urls {
+					service::delete_certificate(
+						&workspace_id,
+						&format!("certificate-{}", managed_url.id),
+						&format!("tls-{}", managed_url.id),
+						&settings,
+						&request_id,
+					)
+					.await?;
+				}
+				// Update managed_urls with new certificate
+				for managed_url in managed_urls {
+					service::update_kubernetes_managed_url(
+						&workspace_id,
+						&managed_url,
+						&settings,
+						&request_id,
+					)
+					.await?;
+				}
+			}
+		} else {
+			continue;
+		}
+
+		let notification_email = db::get_notification_email_for_domain(
+			&mut connection,
+			&unverified_domain.id,
+		)
+		.await?;
+		if notification_email.is_none() {
+			log::error!(
+				"Notification email for domain `{}` is None. {}",
+				unverified_domain.name,
+				"You might have a dangling resource for the domain"
+			);
+		} else {
+			// TODO change this to notifier
+			// mailer::send_domain_verified_mail(
+			// 	config.config.clone(),
+			// 	notification_email.unwrap(),
+			// 	unverified_domain.name,
+			// );
+		}
+
+		connection.commit().await?;
 	}
 
 	Ok(())
