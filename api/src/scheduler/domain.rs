@@ -488,6 +488,7 @@ async fn verify_transferred_domain_to_patr() -> Result<(), Error> {
 				}
 			}
 		} else {
+			connection.commit().await?;
 			continue;
 		}
 

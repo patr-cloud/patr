@@ -4,6 +4,7 @@ use api_models::{
 	models::workspace::domain::DomainNameserverType,
 	utils::{ResourceType, Uuid},
 };
+use chrono::{DateTime, Utc};
 use eve_rs::AsError;
 
 use crate::{error, query, query_as, utils::Error, Database};
@@ -442,6 +443,7 @@ pub async fn add_to_workspace_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	nameserver_type: &DomainNameserverType,
+	last_unverified: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -450,13 +452,15 @@ pub async fn add_to_workspace_domain(
 				id,
 				domain_type,
 				is_verified,
-				nameserver_type
+				nameserver_type,
+				last_unverified
 			)
 		VALUES
-			($1, 'business', FALSE, $2);
+			($1, 'business', FALSE, $2, $3);
 		"#,
 		domain_id as _,
-		nameserver_type as _
+		nameserver_type as _,
+		last_unverified as _,
 	)
 	.execute(&mut *connection)
 	.await

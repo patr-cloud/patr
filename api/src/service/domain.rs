@@ -214,8 +214,13 @@ pub async fn add_domain_to_workspace(
 	.await?;
 
 	log::trace!("request_id: {} - Adding domain to workspace", request_id);
-	db::add_to_workspace_domain(connection, &domain_id, nameserver_type)
-		.await?;
+	db::add_to_workspace_domain(
+		connection,
+		&domain_id,
+		nameserver_type,
+		Utc::now(),
+	)
+	.await?;
 
 	let domain_plan =
 		match db::get_domains_for_workspace(connection, workspace_id)
