@@ -222,7 +222,7 @@ pub async fn calculate_total_bill_for_workspace_till(
 	)
 	.await?;
 
-	let mut managed_url_bill = get_managed_url_usage_and_bill(
+	let managed_url_bill = get_managed_url_usage_and_bill(
 		connection,
 		workspace_id,
 		month_start_date,
@@ -230,7 +230,7 @@ pub async fn calculate_total_bill_for_workspace_till(
 	)
 	.await?;
 
-	let mut docker_repository_bill = get_docker_repo_usage_and_bill(
+	let docker_repository_bill = get_docker_repo_usage_and_bill(
 		connection,
 		workspace_id,
 		month_start_date,
@@ -391,7 +391,8 @@ pub async fn get_deployment_usage_and_bill(
 				hours as u64 * (monthly_price / 720)
 			};
 		}
-		deployment_usage_bill.insert(deployment.id, (deployment_bill, hours as u64));
+		deployment_usage_bill
+			.insert(deployment.id, (deployment_bill, hours as u64));
 	}
 
 	Ok(deployment_usage_bill)
@@ -596,6 +597,8 @@ pub async fn get_docker_repo_usage_and_bill(
 			hours as u64 * (monthly_price / 720)
 		};
 	}
+
+	Ok(docker_repository_bill)
 }
 
 pub async fn get_domain_usage_and_bill(

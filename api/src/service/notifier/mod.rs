@@ -461,6 +461,18 @@ pub async fn send_invoice_email(
 
 	let year = start_date.year();
 
+	let deployment_usage = deployment_usage
+		.into_iter()
+		.map(|(k, (bill, hours))| format!("{}-{}-{}", k, bill, hours))
+		.collect::<Vec<String>>()
+		.join("\n");
+
+	let database_usage = database_usage
+		.into_iter()
+		.map(|(k, (bill, hours))| format!("{}-{}-{}", k, bill, hours))
+		.collect::<Vec<String>>()
+		.join("\n");
+
 	email::send_invoice_email(
 		user_email.parse()?,
 		workspace_name.to_string(),

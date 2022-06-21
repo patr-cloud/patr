@@ -427,9 +427,9 @@ where
 #[template_path = "assets/emails/invoice-email/template.json"]
 pub struct InvoiceEmail {
 	workspace_name: String,
-	deployment_usage: HashMap<Uuid, (u64, u64)>,
+	deployment_usage: String,
 	static_site_usage_bill: u64,
-	database_usage: HashMap<Uuid, (u64, u64)>,
+	database_usage: String,
 	managed_url_usage_bill: u64,
 	secret_usage_bill: u64,
 	docker_repo_usage_bill: u64,
@@ -441,9 +441,9 @@ pub struct InvoiceEmail {
 pub async fn send_invoice_email(
 	email: Mailbox,
 	workspace_name: String,
-	deployment_usage: HashMap<Uuid, (u64, u64)>,
+	deployment_usage: String,
 	static_site_usage_bill: u64,
-	database_usage: HashMap<Uuid, (u64, u64)>,
+	database_usage: String,
 	managed_url_usage_bill: u64,
 	secret_usage_bill: u64,
 	docker_repo_usage_bill: u64,

@@ -9,6 +9,7 @@ use crate::{app::App, utils::Error};
 
 static CONFIG: OnceCell<App> = OnceCell::new();
 
+pub mod billing;
 pub mod domain;
 
 pub fn initialize_jobs(app: &App) {
