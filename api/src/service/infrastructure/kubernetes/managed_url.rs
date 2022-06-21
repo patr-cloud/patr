@@ -109,10 +109,7 @@ pub async fn update_kubernetes_managed_url(
 							}),
 							..Default::default()
 						},
-						path: Some(format!(
-							"{}/{}",
-							managed_url.path, ".well-known/patr/cert-file"
-						)),
+						path: Some(managed_url.path.to_string()),
 						path_type: Some("Prefix".to_string()),
 					}],
 				}),
@@ -153,10 +150,7 @@ pub async fn update_kubernetes_managed_url(
 							}),
 							..Default::default()
 						},
-						path: Some(format!(
-							"{}/{}",
-							managed_url.path, ".well-known/patr/cert-file"
-						)),
+						path: Some(managed_url.path.to_string()),
 						path_type: Some("Prefix".to_string()),
 					}],
 				}),
@@ -235,10 +229,7 @@ pub async fn update_kubernetes_managed_url(
 								}),
 								..Default::default()
 							},
-							path: Some(format!(
-								"{}/{}",
-								managed_url.path, ".well-known/patr/cert-file"
-							)),
+							path: Some(managed_url.path.to_string()),
 							path_type: Some("Prefix".to_string()),
 						}],
 					}),
@@ -323,10 +314,7 @@ pub async fn update_kubernetes_managed_url(
 								}),
 								..Default::default()
 							},
-							path: Some(format!(
-								"{}/{}",
-								managed_url.path, ".well-known/patr/cert-file"
-							)),
+							path: Some(managed_url.path.to_string()),
 							path_type: Some("Prefix".to_string()),
 						}],
 					}),
@@ -413,30 +401,34 @@ pub async fn update_kubernetes_managed_url(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	// Randomly generate a secret content for the TLS certificate
-	let verification_secret = Uuid::new_v4();
+	if domain.is_ns_internal() {
+		// Randomly generate a secret content for the TLS certificate
+		let verification_secret = Uuid::new_v4();
 
-	// Put content and ingress in the Redis
-	let app = service::get_app();
-	let mut redis = app.redis.clone();
+		// Put content and ingress in the Redis
+		let app = service::get_app();
+		let mut redis = app.redis.clone();
 
-	redis
-		.set(
-			format!("verfification-{}", managed_url.id),
-			verification_secret.to_string(),
+		redis
+			.set(
+				format!("verfification-{}", managed_url.id),
+				verification_secret.to_string(),
+			)
+			.await?;
+
+		println!("verification_secret - {}", verification_secret);
+		verify_managed_url(
+			workspace_id,
+			&domain,
+			managed_url,
+			&host,
+			verification_secret.as_str(),
+			config,
+			request_id,
 		)
 		.await?;
+	}
 
-	verify_managed_url(
-		workspace_id,
-		&domain,
-		managed_url,
-		&host,
-		verification_secret.as_str(),
-		config,
-		request_id,
-	)
-	.await?;
 	log::trace!("request_id: {} - managed URL created", request_id);
 	Ok(())
 }
@@ -576,7 +568,7 @@ pub async fn verify_managed_url(
 				(
 					"nginx.ingress.kubernetes.io/temporal-redirect"
 						.to_string(),
-					format!("http://localhost:3006/workspace/{}/infrastructure/managed-url/{}/verify", workspace_id, managed_url.id),
+					format!("http://{}:{}/workspace/{}/infrastructure/managed-url/{}/verify", config.bind_address, config.port, workspace_id, managed_url.id),
 				),
 				(
 					"cert-manager.io/cluster-issuer".to_string(),
@@ -638,7 +630,7 @@ pub async fn verify_managed_url(
 			.await?
 			.text()
 			.await?;
-
+	println!("verification_response - {}", verification_response);
 	if verification_response != verification_secret {
 		log::error!(
 			"request_id: {} - verification string mismatch, scheduling for re-verification",
@@ -664,11 +656,14 @@ pub async fn verify_managed_url(
 			.await?;
 
 		// Create certificate for the managed URL
-		update_kubernetes_managed_url(
-			&workspace_id,
-			&managed_url,
-			&config,
-			&request_id
+		service::create_certificates(
+			workspace_id,
+			&format!("certificate-{}", domain.id),
+			&format!("tls-{}", &domain.id),
+			vec![format!("{}.{}", managed_url.sub_domain, domain.name)],
+			true,
+			config,
+			request_id,
 		)
 		.await?;
 
