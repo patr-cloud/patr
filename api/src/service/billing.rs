@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use api_models::{
 	models::workspace::billing::PaymentMethod,
 	utils::{DateTime, Uuid},
@@ -10,7 +12,12 @@ use serde_json::json;
 use crate::{
 	db::{self, DomainPlan, ManagedDatabasePlan, StaticSitePlan},
 	error,
-	models::{PaymentIntent, PaymentIntentObject, PaymentMethodStatus},
+	models::{
+		deployment,
+		PaymentIntent,
+		PaymentIntentObject,
+		PaymentMethodStatus,
+	},
 	utils::{settings::Settings, Error},
 	Database,
 };
@@ -141,48 +148,23 @@ pub async fn calculate_total_bill_for_workspace_till(
 	)
 	.await?;
 
-	let static_sites_usages = db::get_all_static_site_usages(
-		&mut *connection,
-		&workspace_id,
-		&DateTime::from(month_start_date.clone()),
-	)
-	.await?;
-
-	let managed_url_usages = db::get_all_managed_url_usages(
-		&mut *connection,
-		&workspace_id,
-		&DateTime::from(month_start_date.clone()),
-	)
-	.await?;
-
-	let docker_repository_usages = db::get_all_docker_repository_usages(
-		&mut *connection,
-		&workspace_id,
-		&DateTime::from(month_start_date.clone()),
-	)
-	.await?;
-
-	let domains_usages = db::get_all_domains_usages(
-		&mut *connection,
-		&workspace_id,
-		&DateTime::from(month_start_date.clone()),
-	)
-	.await?;
-
-	let secrets_usages = db::get_all_secrets_usages(
-		&mut *connection,
-		&workspace_id,
-		&DateTime::from(month_start_date.clone()),
-	)
-	.await?;
-
 	let mut deployment_bill = 0;
 	for deployment_usage in deployment_usages {
-		let hours = (deployment_usage.stop_time.map(|st| chrono::DateTime::from(st)).unwrap_or(till_date) -
-			deployment_usage.start_time)
-			.num_hours();
-		let monthly_price = match deployment_usage.machine_type {
-			DeploymentPlan::Nano => {
+		let hours = (deployment_usage
+			.stop_time
+			.map(|st| chrono::DateTime::from(st))
+			.unwrap_or(till_date.clone()) -
+			chrono::DateTime::from(deployment_usage.start_time))
+		.num_hours();
+
+		let (cpu_count, memory_count) = deployment::MACHINE_TYPES
+			.get()
+			.unwrap()
+			.get(&deployment_usage.machine_type)
+			.unwrap_or(&(1, 2));
+
+		let monthly_price = match (cpu_count, memory_count) {
+			(1, 2) => {
 				if deployment_usage.num_instance == 1 {
 					// TODO free deployment
 					0
@@ -190,23 +172,26 @@ pub async fn calculate_total_bill_for_workspace_till(
 					5
 				}
 			}
-			DeploymentPlan::Micro => 10,
-			DeploymentPlan::Small => 20,
-			DeploymentPlan::Medium => 40,
-			DeploymentPlan::Large => 80,
+			(1, 4) => 10,
+			(1, 8) => 20,
+			(2, 8) => 40,
+			(4, 32) => 80,
 		};
 		deployment_bill += if hours > 720 {
 			monthly_price
 		} else {
-			hours * (monthly_price / 720)
+			hours as u64 * (monthly_price / 720)
 		};
 	}
 
 	let mut database_bill = 0;
 	for database_usage in database_usages {
-		let hours = (database_usage.deletion_time.unwrap_or(till_date) -
-			database_usage.start_time)
-			.num_hours();
+		let hours = (database_usage
+			.deletion_time
+			.map(|st| chrono::DateTime::from(st))
+			.unwrap_or(till_date.clone()) -
+			chrono::DateTime::from(database_usage.start_time))
+		.num_hours();
 		let monthly_price = match database_usage.db_plan {
 			// TODO update this
 			ManagedDatabasePlan::Nano => 15,
@@ -225,95 +210,49 @@ pub async fn calculate_total_bill_for_workspace_till(
 		database_bill += if hours > 720 {
 			monthly_price
 		} else {
-			hours * (monthly_price / 720)
+			hours as u64 * (monthly_price / 720)
 		};
 	}
 
-	let mut static_sites_bill = 0;
-	for static_sites_usage in static_sites_usages {
-		let hours = (static_sites_usage.stop_time.unwrap_or(till_date) -
-			static_sites_usage.start_time)
-			.num_hours();
-		let monthly_price = match static_sites_usage.static_site_plan {
-			StaticSitePlan::Free => 0,
-			StaticSitePlan::Pro => 5,
-			StaticSitePlan::Unlimited => 10,
-		};
-		static_sites_bill += if hours > 720 {
-			monthly_price
-		} else {
-			hours * (monthly_price / 720)
-		};
-	}
+	let static_sites_bill = get_static_site_usage_and_bill(
+		connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
 
-	let mut managed_url_bill = 0;
-	for managed_url_usage in managed_url_usages {
-		let hours = (managed_url_usage.stop_time.unwrap_or(till_date) -
-			managed_url_usage.start_time)
-			.num_hours();
-		let monthly_price = if managed_url_usage.url_count <= 10 {
-			0
-		} else {
-			(managed_url_usage.url_count / 100).ceil() * 10
-		};
-		managed_url_bill += if hours > 720 {
-			monthly_price
-		} else {
-			hours * (monthly_price / 720)
-		};
-	}
+	let mut managed_url_bill = get_managed_url_usage_and_bill(
+		connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
 
-	let mut docker_repository_bill = 0;
-	for docker_repository_usage in docker_repository_usages {
-		let hours = (docker_repository_usage.stop_time.unwrap_or(till_date) -
-			docker_repository_usage.start_time)
-			.num_hours();
-		let monthly_price = if docker_repository_usage.storage <= 10 {
-			0
-		} else if docker_repository_usage.storage <= 10 {
-			10
-		} else {
-			docker_repository_usage.storage * 0.1f64;
-		};
-		docker_repository_bill += if hours > 720 {
-			monthly_price
-		} else {
-			hours * (monthly_price / 720)
-		};
-	}
+	let mut docker_repository_bill = get_docker_repo_usage_and_bill(
+		connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
 
-	let mut domains_bill = 0;
-	for domains_usage in domains_usages {
-		let hours = (domains_usage.stop_time.unwrap_or(till_date) -
-			domains_usage.start_time)
-			.num_hours();
-		let monthly_price = match domains_usage.domain_plan {
-			DomainPlan::Free => 0,
-			DomainPlan::Unlimited => 10,
-		};
-		domains_bill += if hours > 720 {
-			monthly_price
-		} else {
-			hours * (monthly_price / 720)
-		};
-	}
+	let domains_bill = get_domain_usage_and_bill(
+		connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
 
-	let mut secrets_bill = 0;
-	for secrets_usage in secrets_usages {
-		let hours = (secrets_usage.stop_time.unwrap_or(till_date) -
-			secrets_usage.start_time)
-			.num_hours();
-		let monthly_price = if secrets_usage.secret_count <= 3 {
-			0
-		} else {
-			(secrets_usage.secret_count / 100f32).ceil() * 10
-		};
-		secrets_bill += if hours > 720 {
-			monthly_price
-		} else {
-			hours * (monthly_price / 720)
-		};
-	}
+	let secrets_bill = get_secret_usage_and_bill(
+		connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
 
 	Ok(deployment_bill +
 		database_bill +
@@ -395,4 +334,301 @@ pub async fn get_credits_for_workspace(
 	// TODO: if credits are negative do something
 
 	Ok(credits as u64)
+}
+
+pub async fn get_deployment_usage_and_bill(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	month_start_date: &chrono::DateTime<Utc>,
+	till_date: &chrono::DateTime<Utc>,
+) -> Result<HashMap<Uuid, (u64, u64)>, Error> {
+	let deployments =
+		db::get_deployments_for_workspace(connection, workspace_id).await?;
+
+	let mut deployment_usage_bill = HashMap::new();
+
+	for deployment in deployments {
+		let deployment_usages = db::get_deployment_usage(
+			connection,
+			&deployment.id,
+			&DateTime::from(month_start_date.clone()),
+		)
+		.await?;
+
+		let mut deployment_bill = 0;
+		let mut hours = 0;
+		for deployment_usage in deployment_usages {
+			hours = (deployment_usage
+				.stop_time
+				.map(|st| chrono::DateTime::from(st))
+				.unwrap_or(till_date.clone()) -
+				chrono::DateTime::from(deployment_usage.start_time))
+			.num_hours();
+
+			let (cpu_count, memory_count) = deployment::MACHINE_TYPES
+				.get()
+				.unwrap()
+				.get(&deployment_usage.machine_type)
+				.unwrap_or(&(1, 2));
+
+			let monthly_price = match (cpu_count, memory_count) {
+				(1, 2) => {
+					if deployment_usage.num_instance == 1 {
+						// TODO free deployment
+						0
+					} else {
+						5
+					}
+				}
+				(1, 4) => 10,
+				(1, 8) => 20,
+				(2, 8) => 40,
+				(4, 32) => 80,
+			};
+			deployment_bill += if hours > 720 {
+				monthly_price
+			} else {
+				hours as u64 * (monthly_price / 720)
+			};
+		}
+		deployment_usage_bill.insert(deployment.id, (deployment_bill, hours as u64));
+	}
+
+	Ok(deployment_usage_bill)
+}
+
+pub async fn get_database_usage_and_bill(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	month_start_date: &chrono::DateTime<Utc>,
+	till_date: &chrono::DateTime<Utc>,
+) -> Result<HashMap<Uuid, (u64, u64)>, Error> {
+	let databases =
+		db::get_all_database_clusters_for_workspace(connection, workspace_id)
+			.await?;
+
+	let mut database_usage_bill = HashMap::new();
+	for database in databases {
+		let database_usages = db::get_database_usage(
+			connection,
+			&database.id,
+			&DateTime::from(month_start_date.clone()),
+		)
+		.await?;
+
+		let mut database_bill = 0;
+		let mut hours = 0;
+		for database_usage in database_usages {
+			hours = (database_usage
+				.deletion_time
+				.map(|st| chrono::DateTime::from(st))
+				.unwrap_or(till_date.clone()) -
+				chrono::DateTime::from(database_usage.start_time))
+			.num_hours();
+			let monthly_price = match database_usage.db_plan {
+				// TODO update this
+				ManagedDatabasePlan::Nano => 15,
+				ManagedDatabasePlan::Micro => 30,
+				ManagedDatabasePlan::Medium => 60,
+				ManagedDatabasePlan::Large => 120,
+				ManagedDatabasePlan::Xlarge => 240,
+				ManagedDatabasePlan::Xxlarge => 480,
+				ManagedDatabasePlan::Mammoth => 960,
+				_ => {
+					return Error::as_result()
+						.status(500)
+						.body(error!(SERVER_ERROR).to_string())?;
+				}
+			};
+			database_bill += if hours > 720 {
+				monthly_price
+			} else {
+				hours as u64 * (monthly_price / 720)
+			};
+		}
+		database_usage_bill.insert(database.id, (database_bill, hours as u64));
+	}
+
+	Ok(database_usage_bill)
+}
+
+pub async fn get_static_site_usage_and_bill(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	month_start_date: &chrono::DateTime<Utc>,
+	till_date: &chrono::DateTime<Utc>,
+) -> Result<u64, Error> {
+	let static_sites_usages = db::get_all_static_site_usages(
+		&mut *connection,
+		&workspace_id,
+		&DateTime::from(month_start_date.clone()),
+	)
+	.await?;
+
+	let mut static_sites_bill = 0;
+	for static_sites_usage in static_sites_usages {
+		let hours = (static_sites_usage
+			.stop_time
+			.map(|st| chrono::DateTime::from(st))
+			.unwrap_or(till_date.clone()) -
+			chrono::DateTime::from(static_sites_usage.start_time))
+		.num_hours();
+		let monthly_price = match static_sites_usage.static_site_plan {
+			StaticSitePlan::Free => 0,
+			StaticSitePlan::Pro => 5,
+			StaticSitePlan::Unlimited => 10,
+		};
+		static_sites_bill += if hours > 720 {
+			monthly_price
+		} else {
+			hours as u64 * (monthly_price / 720)
+		};
+	}
+
+	Ok(static_sites_bill)
+}
+
+pub async fn get_managed_url_usage_and_bill(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	month_start_date: &chrono::DateTime<Utc>,
+	till_date: &chrono::DateTime<Utc>,
+) -> Result<u64, Error> {
+	let managed_url_usages = db::get_all_managed_url_usages(
+		&mut *connection,
+		&workspace_id,
+		&DateTime::from(month_start_date.clone()),
+	)
+	.await?;
+
+	let mut managed_url_bill = 0;
+	for managed_url_usage in managed_url_usages {
+		let hours = (managed_url_usage
+			.stop_time
+			.map(|st| chrono::DateTime::from(st))
+			.unwrap_or(till_date.clone()) -
+			chrono::DateTime::from(managed_url_usage.start_time))
+		.num_hours();
+		let monthly_price = if managed_url_usage.url_count <= 10 {
+			0
+		} else {
+			((managed_url_usage.url_count as f64 / 100 as f64).ceil() * 10f64)
+				as u64
+		};
+		managed_url_bill += if hours > 720 {
+			monthly_price
+		} else {
+			hours as u64 * (monthly_price / 720)
+		};
+	}
+
+	Ok(managed_url_bill)
+}
+
+pub async fn get_secret_usage_and_bill(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	month_start_date: &chrono::DateTime<Utc>,
+	till_date: &chrono::DateTime<Utc>,
+) -> Result<u64, Error> {
+	let secrets_usages = db::get_all_secrets_usages(
+		&mut *connection,
+		&workspace_id,
+		&DateTime::from(month_start_date.clone()),
+	)
+	.await?;
+
+	let mut secrets_bill = 0;
+	for secrets_usage in secrets_usages {
+		let hours = (secrets_usage
+			.stop_time
+			.map(|st| chrono::DateTime::from(st))
+			.unwrap_or(till_date.clone()) -
+			chrono::DateTime::from(secrets_usage.start_time))
+		.num_hours();
+		let monthly_price = if secrets_usage.secret_count <= 3 {
+			0
+		} else {
+			(secrets_usage.secret_count as f64 / 100f64).ceil() as u64 * 10
+		};
+		secrets_bill += if hours > 720 {
+			monthly_price
+		} else {
+			hours as u64 * (monthly_price / 720)
+		};
+	}
+
+	Ok(secrets_bill)
+}
+
+pub async fn get_docker_repo_usage_and_bill(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	month_start_date: &chrono::DateTime<Utc>,
+	till_date: &chrono::DateTime<Utc>,
+) -> Result<u64, Error> {
+	let docker_repository_usages = db::get_all_docker_repository_usages(
+		&mut *connection,
+		&workspace_id,
+		&DateTime::from(month_start_date.clone()),
+	)
+	.await?;
+
+	let mut docker_repository_bill = 0;
+
+	for docker_repository_usage in docker_repository_usages {
+		let hours = (docker_repository_usage
+			.stop_time
+			.map(|st| chrono::DateTime::from(st))
+			.unwrap_or(till_date.clone()) -
+			chrono::DateTime::from(docker_repository_usage.start_time))
+		.num_hours();
+		let monthly_price = if docker_repository_usage.storage <= 10 {
+			0
+		} else if docker_repository_usage.storage <= 10 {
+			10
+		} else {
+			(docker_repository_usage.storage as f64 * 0.1f64).ceil() as u64
+		};
+		docker_repository_bill += if hours > 720 {
+			monthly_price
+		} else {
+			hours as u64 * (monthly_price / 720)
+		};
+	}
+}
+
+pub async fn get_domain_usage_and_bill(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	month_start_date: &chrono::DateTime<Utc>,
+	till_date: &chrono::DateTime<Utc>,
+) -> Result<u64, Error> {
+	let domains_usages = db::get_all_domains_usages(
+		&mut *connection,
+		&workspace_id,
+		&DateTime::from(month_start_date.clone()),
+	)
+	.await?;
+
+	let mut domains_bill = 0;
+	for domains_usage in domains_usages {
+		let hours = (domains_usage
+			.stop_time
+			.map(|st| chrono::DateTime::from(st))
+			.unwrap_or(till_date.clone()) -
+			chrono::DateTime::from(domains_usage.start_time))
+		.num_hours();
+		let monthly_price = match domains_usage.domain_plan {
+			DomainPlan::Free => 0,
+			DomainPlan::Unlimited => 10,
+		};
+		domains_bill += if hours > 720 {
+			monthly_price
+		} else {
+			hours as u64 * (monthly_price / 720)
+		};
+	}
+
+	Ok(domains_bill)
 }

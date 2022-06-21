@@ -1,6 +1,6 @@
 use api_models::{
 	models::workspace::infrastructure::deployment::DeploymentStatus,
-	utils::{Uuid, DateTime},
+	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};

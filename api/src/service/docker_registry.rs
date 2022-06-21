@@ -1,4 +1,4 @@
-use api_models::utils::{Uuid, DateTime};
+use api_models::utils::{DateTime, Uuid};
 use chrono::Utc;
 use eve_rs::AsError;
 

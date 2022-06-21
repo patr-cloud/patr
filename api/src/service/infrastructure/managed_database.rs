@@ -1,6 +1,6 @@
 use std::ops::DerefMut;
 
-use api_models::utils::Uuid;
+use api_models::utils::{DateTime, Uuid};
 use chrono::Utc;
 use eve_rs::AsError;
 
@@ -113,7 +113,7 @@ pub async fn create_managed_database_in_workspace(
 		&workspace_id,
 		&database_id,
 		database_plan,
-		&creation_time,
+		&DateTime::from(creation_time),
 	)
 	.await?;
 

@@ -1,5 +1,9 @@
+use std::collections::HashMap;
+
 use api_models::{models::auth::PreferredRecoveryOption, utils::Uuid};
+use chrono::{Datelike, Month, Utc};
 use eve_rs::AsError;
+use num_traits::FromPrimitive;
 
 use crate::{
 	db::{self, User, UserToSignUp},
@@ -415,4 +419,61 @@ pub async fn send_alert_email_to_patr(
 	// send email
 	email::send_alert_email_to_patr("postmaster@vicara.co".parse()?, event_data)
 		.await
+}
+
+pub async fn send_invoice_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+	workspace_id: &Uuid,
+	workspace_name: &str,
+	deployment_usage: HashMap<Uuid, (u64, u64)>,
+	static_site_usage_bill: u64,
+	database_usage: HashMap<Uuid, (u64, u64)>,
+	managed_url_usage_bill: u64,
+	secret_usage_bill: u64,
+	docker_repo_usage_bill: u64,
+	domain_usage_bill: u64,
+	total_bill: u64,
+	start_date: &chrono::DateTime<Utc>,
+	end_date: &chrono::DateTime<Utc>,
+) -> Result<(), Error> {
+	let user = db::get_user_by_user_id(connection, user_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	let month = Month::from_u32(start_date.month())
+		.status(500)?
+		.name()
+		.to_string();
+
+	let year = start_date.year();
+
+	email::send_invoice_email(
+		user_email.parse()?,
+		workspace_name.to_string(),
+		deployment_usage,
+		static_site_usage_bill,
+		database_usage,
+		managed_url_usage_bill,
+		secret_usage_bill,
+		docker_repo_usage_bill,
+		domain_usage_bill,
+		total_bill,
+		month,
+		year,
+	)
+	.await
 }

@@ -423,6 +423,37 @@ pub async fn get_all_deployment_usage(
 	.await
 }
 
+pub async fn get_deployment_usage(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	start_date: &DateTime<Utc>,
+) -> Result<Vec<DeploymentPaymentHistory>, sqlx::Error> {
+	query_as!(
+		DeploymentPaymentHistory,
+		r#"
+		SELECT
+			workspace_id as "workspace_id: _",
+			deployment_id as "deployment_id: _",
+			machine_type as "machine_type: _",
+			num_instance as "num_instance: _",
+			start_time as "start_time: _",
+			stop_time as "stop_time: _"
+		FROM
+			deployment_payment_history
+		WHERE
+			deployment_id = $1 AND
+			(
+				(start_time > $2 AND stop_time IS NOT NULL) OR
+				stop_time is NULL
+			);
+		"#,
+		deployment_id as _,
+		start_date as _,
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
 pub async fn get_all_static_site_usages(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
@@ -476,6 +507,36 @@ pub async fn get_all_database_usage(
 			);
 		"#,
 		workspace_id as _,
+		start_date as _,
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn get_database_usage(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	database_id: &Uuid,
+	start_date: &DateTime<Utc>,
+) -> Result<Vec<ManagedDatabasePaymentHistory>, sqlx::Error> {
+	query_as!(
+		ManagedDatabasePaymentHistory,
+		r#"
+		SELECT
+			workspace_id as "workspace_id: _",
+			database_id as "database_id: _",
+			db_plan as "db_plan: _",
+			start_time as "start_time: _",
+			deletion_time as "deletion_time: _"
+		FROM
+			managed_database_payment_history
+		WHERE
+			database_id = $1 AND
+			(
+				(start_time > $2 AND deletion_time IS NOT NULL) OR
+				deletion_time is NULL
+			);
+		"#,
+		database_id as _,
 		start_date as _,
 	)
 	.fetch_all(&mut *connection)

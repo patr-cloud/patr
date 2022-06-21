@@ -2,7 +2,7 @@ use std::io::{Cursor, Read};
 
 use api_models::{
 	models::workspace::infrastructure::deployment::DeploymentStatus,
-	utils::{Uuid, DateTime},
+	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
 use eve_rs::AsError;
@@ -14,11 +14,7 @@ use crate::{
 	error,
 	models::rbac,
 	service::{self},
-	utils::{
-		settings::Settings,
-		validator,
-		Error,
-	},
+	utils::{settings::Settings, validator, Error},
 	Database,
 };
 
@@ -83,7 +79,7 @@ pub async fn create_static_site_in_workspace(
 			.get(rbac::resource_types::STATIC_SITE)
 			.unwrap(),
 		workspace_id,
-		creation_time.timestamp_millis(),
+		creation_time.timestamp_millis() as u64,
 	)
 	.await?;
 
@@ -232,7 +228,7 @@ pub async fn delete_static_site(
 		connection,
 		&static_site.workspace_id,
 		&static_site_plan,
-		&Utc::now(),
+		&DateTime::from(Utc::now()),
 	)
 	.await?;
 

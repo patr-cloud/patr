@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use api_models::utils::Uuid;
 use lettre::message::Mailbox;
 use serde::Serialize;
@@ -419,4 +421,54 @@ where
 {
 	log::trace!("Sending email to {}", to);
 	Ok(())
+}
+
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/invoice-email/template.json"]
+pub struct InvoiceEmail {
+	workspace_name: String,
+	deployment_usage: HashMap<Uuid, (u64, u64)>,
+	static_site_usage_bill: u64,
+	database_usage: HashMap<Uuid, (u64, u64)>,
+	managed_url_usage_bill: u64,
+	secret_usage_bill: u64,
+	docker_repo_usage_bill: u64,
+	domain_usage_bill: u64,
+	total_bill: u64,
+	month: String,
+	year: i32,
+}
+pub async fn send_invoice_email(
+	email: Mailbox,
+	workspace_name: String,
+	deployment_usage: HashMap<Uuid, (u64, u64)>,
+	static_site_usage_bill: u64,
+	database_usage: HashMap<Uuid, (u64, u64)>,
+	managed_url_usage_bill: u64,
+	secret_usage_bill: u64,
+	docker_repo_usage_bill: u64,
+	domain_usage_bill: u64,
+	total_bill: u64,
+	month: String,
+	year: i32,
+) -> Result<(), Error> {
+	send_email(
+		InvoiceEmail {
+			workspace_name,
+			deployment_usage,
+			static_site_usage_bill,
+			database_usage,
+			managed_url_usage_bill,
+			secret_usage_bill,
+			docker_repo_usage_bill,
+			domain_usage_bill,
+			total_bill,
+			month,
+			year,
+		},
+		email,
+		None,
+		"Patr invoice",
+	)
+	.await
 }

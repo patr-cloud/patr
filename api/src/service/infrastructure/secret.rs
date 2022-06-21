@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use api_models::utils::{Uuid, DateTime};
+use api_models::utils::{DateTime, Uuid};
 use chrono::Utc;
 use eve_rs::AsError;
 use vaultrs::{
@@ -13,10 +13,7 @@ use crate::{
 	db,
 	error,
 	models::rbac,
-	utils::{
-		settings::Settings,
-		Error,
-	},
+	utils::{settings::Settings, Error},
 	Database,
 };
 
@@ -58,7 +55,7 @@ pub async fn create_new_secret_in_workspace(
 			.get(rbac::resource_types::SECRET)
 			.unwrap(),
 		workspace_id,
-		creation_time.timestamp_millis(),
+		creation_time.timestamp_millis() as u64,
 	)
 	.await?;
 
@@ -79,7 +76,7 @@ pub async fn create_new_secret_in_workspace(
 		connection,
 		workspace_id,
 		&(secret_count as i32),
-		&creation_time,
+		&DateTime::from(creation_time),
 	)
 	.await?;
 
@@ -131,7 +128,7 @@ pub async fn create_new_secret_for_deployment(
 			.get(rbac::resource_types::SECRET)
 			.unwrap(),
 		workspace_id,
-		creation_time.timestamp_millis(),
+		creation_time.timestamp_millis() as u64,
 	)
 	.await?;
 
@@ -153,7 +150,7 @@ pub async fn create_new_secret_for_deployment(
 		connection,
 		workspace_id,
 		&(secret_count as i32),
-		&creation_time,
+		&DateTime::from(creation_time),
 	)
 	.await?;
 
@@ -312,7 +309,7 @@ pub async fn delete_secret_in_workspace(
 	db::update_secret_usage_history(
 		connection,
 		workspace_id,
-		secret_count,
+		&(secret_count as i32),
 		&DateTime::from(Utc::now()),
 	)
 	.await?;

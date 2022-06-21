@@ -3,7 +3,7 @@ use std::{
 	time::Duration,
 };
 
-use api_models::utils::DateTime;
+use api_models::utils::{DateTime, Uuid};
 use chrono::{TimeZone, Utc};
 use eve_rs::AsError;
 use reqwest::Client;
@@ -70,7 +70,7 @@ pub(super) async fn process_request(
 				&mut *connection,
 				&workspace.id,
 				&month_start_date,
-				&next_month_start_date,
+				&next_month_start_date.into(),
 			)
 			.await?;
 
@@ -130,7 +130,18 @@ pub(super) async fn process_request(
 			super::queue_confirm_payment_intent(
 				config,
 				payment_intent_object.id,
-				workspace.id,
+				workspace.id.clone(),
+			)
+			.await?;
+
+			send_invoice_email_to_workspace(
+				connection,
+				&workspace.super_admin_id,
+				&workspace.id,
+				&workspace.name,
+				total_bill,
+				&month_start_date,
+				&next_month_start_date.into(),
 			)
 			.await?;
 
@@ -144,7 +155,7 @@ pub(super) async fn process_request(
 			let last_transaction = db::get_last_bill_for_workspace(
 				&mut *connection,
 				&workspace_id,
-				payment_intent_id,
+				payment_intent_id.clone(),
 			)
 			.await?;
 			let last_transaction = if let Some(transaction) = last_transaction {
@@ -237,4 +248,90 @@ pub(super) async fn process_request(
 			Ok(())
 		}
 	}
+}
+
+async fn send_invoice_email_to_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+	workspace_id: &Uuid,
+	workspace_name: &str,
+	total_bill: u64,
+	start_date: &chrono::DateTime<Utc>,
+	end_date: &chrono::DateTime<Utc>,
+) -> Result<(), Error> {
+	let deployment_usage = service::get_deployment_usage_and_bill(
+		connection,
+		workspace_id,
+		start_date,
+		end_date,
+	)
+	.await?;
+
+	let static_site_usage_bill = service::get_static_site_usage_and_bill(
+		connection,
+		workspace_id,
+		start_date,
+		end_date,
+	)
+	.await?;
+
+	let database_usage = service::get_database_usage_and_bill(
+		connection,
+		workspace_id,
+		start_date,
+		end_date,
+	)
+	.await?;
+
+	let managed_url_usage_bill = service::get_managed_url_usage_and_bill(
+		connection,
+		workspace_id,
+		start_date,
+		end_date,
+	)
+	.await?;
+
+	let secret_usage_bill = service::get_secret_usage_and_bill(
+		connection,
+		workspace_id,
+		start_date,
+		end_date,
+	)
+	.await?;
+
+	let docker_repo_usage_bill = service::get_docker_repo_usage_and_bill(
+		connection,
+		workspace_id,
+		start_date,
+		end_date,
+	)
+	.await?;
+
+	let domain_usage_bill = service::get_domain_usage_and_bill(
+		connection,
+		workspace_id,
+		start_date,
+		end_date,
+	)
+	.await?;
+
+	service::send_invoice_email(
+		connection,
+		user_id,
+		workspace_id,
+		workspace_name,
+		deployment_usage,
+		static_site_usage_bill,
+		database_usage,
+		managed_url_usage_bill,
+		secret_usage_bill,
+		docker_repo_usage_bill,
+		domain_usage_bill,
+		total_bill as u64,
+		start_date,
+		end_date,
+	)
+	.await?;
+
+	Ok(())
 }

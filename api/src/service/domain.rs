@@ -2,7 +2,7 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 
 use api_models::{
 	models::workspace::domain::{DnsRecordValue, DomainNameserverType},
-	utils::{ResourceType, Uuid, DateTime},
+	utils::{DateTime, ResourceType, Uuid},
 };
 use chrono::Utc;
 use cloudflare::{

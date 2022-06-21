@@ -3,7 +3,7 @@ use api_models::{
 		ManagedUrl,
 		ManagedUrlType,
 	},
-	utils::Uuid,
+	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
 use eve_rs::AsError;
@@ -14,10 +14,7 @@ use crate::{
 	error,
 	models::rbac,
 	service,
-	utils::{
-		settings::Settings,
-		Error,
-	},
+	utils::{settings::Settings, Error},
 	Database,
 };
 
@@ -72,7 +69,7 @@ pub async fn create_new_managed_url_in_workspace(
 			.get(rbac::resource_types::MANAGED_URL)
 			.unwrap(),
 		workspace_id,
-		creation_time.timestamp_millis(),
+		creation_time.timestamp_millis() as u64,
 	)
 	.await?;
 
@@ -170,8 +167,8 @@ pub async fn create_new_managed_url_in_workspace(
 	db::update_managed_url_usage_history(
 		connection,
 		workspace_id,
-		num_managed_urls,
-		&creation_time,
+		&(num_managed_urls as i32),
+		&DateTime::from(creation_time),
 	)
 	.await?;
 
@@ -390,8 +387,8 @@ pub async fn delete_managed_url(
 	db::update_managed_url_usage_history(
 		connection,
 		workspace_id,
-		num_managed_urls,
-		&Utc::now(),
+		&(num_managed_urls as i32),
+		&DateTime::from(Utc::now()),
 	)
 	.await?;
 
