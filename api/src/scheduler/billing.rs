@@ -4,7 +4,7 @@ use super::Job;
 
 // Every two hours
 // TODO: change this to one hours
-pub(super) fn update_bill() -> Job {
+pub(super) fn update_bill_job() -> Job {
 	Job::new(
 		String::from("Verify unverified domains"),
 		"0 0 1/2 * * *".parse().unwrap(),
@@ -13,6 +13,7 @@ pub(super) fn update_bill() -> Job {
 }
 
 // TODO: fill this
-pub async fn update_bill() -> Result<(), Error> {
+async fn update_bill() -> Result<(), Error> {
+	
    Ok(())
 }
