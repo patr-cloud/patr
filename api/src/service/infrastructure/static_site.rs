@@ -364,11 +364,8 @@ pub async fn upload_static_site_files_to_s3(
 			file_name
 		);
 
-		let file_extension = file_name
-			.split_once('.')
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?
-			.1;
+		let file_extension = file_name.split('.').last().unwrap_or("");
+
 		let mime_string = get_mime_type_from_file_name(file_extension);
 
 		files_vec.push((
