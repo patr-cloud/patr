@@ -516,8 +516,6 @@ async fn update_billing_address(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let config = context.get_state().config.clone();
-
 	if let Some(address_info) = address_details {
 		service::update_billing_address(
 			context.get_database_connection(),
@@ -944,11 +942,15 @@ async fn get_credits(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let credits = service::get_credits_for_workspace(
+	let credits = db::get_credits_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 	)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|transaction| transaction.amount.abs())
+	.sum::<i64>()
+	.max(0) as u64;
 
 	context.success(GetCreditsResponse { credits });
 	Ok(context)
@@ -993,7 +995,7 @@ async fn get_current_bill(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let workspace = db::get_workspace_info(
+	let _workspace = db::get_workspace_info(
 		context.get_database_connection(),
 		&workspace_id,
 	)

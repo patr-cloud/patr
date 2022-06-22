@@ -3,7 +3,7 @@ use std::{
 	time::Duration,
 };
 
-use api_models::utils::{DateTime, Uuid};
+use api_models::utils::DateTime;
 use chrono::{TimeZone, Utc};
 use eve_rs::AsError;
 use reqwest::Client;
@@ -13,9 +13,8 @@ use crate::{
 	db::{self, PaymentStatus, TransactionType},
 	error,
 	models::{
+		billing::{PaymentIntent, PaymentIntentObject},
 		rabbitmq::WorkspaceRequestData,
-		PaymentIntent,
-		PaymentIntentObject,
 	},
 	service,
 	utils::{settings::Settings, Error},
@@ -42,18 +41,26 @@ pub(super) async fn process_request(
 					workspace.id
 				);
 
-				super::queue_generate_invoice_for_workspace(
+				service::queue_generate_invoice_for_workspace(
 					config, workspace, month, year,
 				)
 				.await?;
 			}
+
+			service::queue_process_payment(
+				if month == 12 { 1 } else { month + 1 },
+				if month == 12 { year + 1 } else { year },
+				config,
+			)
+			.await?;
+
 			Ok(())
 		}
 		WorkspaceRequestData::GenerateInvoice {
 			month,
 			year,
 			workspace,
-			request_id,
+			request_id: _,
 		} => {
 			let month_start_date = Utc.ymd(year, month, 1).and_hms(0, 0, 0);
 			let next_month_start_date = Utc
@@ -65,14 +72,127 @@ pub(super) async fn process_request(
 				.and_hms(0, 0, 0)
 				.sub(chrono::Duration::nanoseconds(1));
 
+			let month_string = match month {
+				1 => "January",
+				2 => "February",
+				3 => "March",
+				4 => "April",
+				5 => "May",
+				6 => "June",
+				7 => "July",
+				8 => "August",
+				9 => "September",
+				10 => "October",
+				11 => "November",
+				12 => "December",
+				_ => "",
+			};
+
 			// Step 1: Calculate bill for this entire cycle
-			let total_bill = service::calculate_total_bill_for_workspace_till(
-				&mut *connection,
-				&workspace.id,
-				&month_start_date,
-				&next_month_start_date.into(),
-			)
-			.await?;
+			let deployment_usages =
+				service::calculate_deployment_bill_for_workspace_till(
+					connection,
+					&workspace.id,
+					&month_start_date,
+					&next_month_start_date,
+				)
+				.await?;
+
+			let database_usages =
+				service::calculate_database_bill_for_workspace_till(
+					connection,
+					&workspace.id,
+					&month_start_date,
+					&next_month_start_date,
+				)
+				.await?;
+
+			let static_sites_usages =
+				service::calculate_static_sites_bill_for_workspace_till(
+					connection,
+					&workspace.id,
+					&month_start_date,
+					&next_month_start_date,
+				)
+				.await?;
+
+			let managed_url_usages =
+				service::calculate_managed_urls_bill_for_workspace_till(
+					connection,
+					&workspace.id,
+					&month_start_date,
+					&next_month_start_date,
+				)
+				.await?;
+
+			let docker_repository_usages =
+				service::calculate_docker_repository_bill_for_workspace_till(
+					connection,
+					&workspace.id,
+					&month_start_date,
+					&next_month_start_date,
+				)
+				.await?;
+
+			let domains_usages =
+				service::calculate_domains_bill_for_workspace_till(
+					connection,
+					&workspace.id,
+					&month_start_date,
+					&next_month_start_date,
+				)
+				.await?;
+
+			let secrets_usages =
+				service::calculate_secrets_bill_for_workspace_till(
+					connection,
+					&workspace.id,
+					&month_start_date,
+					&next_month_start_date,
+				)
+				.await?;
+
+			let total_bill = {
+				deployment_usages
+					.iter()
+					.map(|(_, bill)| {
+						bill.bill_items
+							.iter()
+							.map(|item| item.amount)
+							.sum::<f64>()
+					})
+					.sum::<f64>()
+			} + {
+				database_usages
+					.iter()
+					.map(|(_, bill)| bill.amount)
+					.sum::<f64>()
+			} + {
+				static_sites_usages
+					.iter()
+					.map(|(_, bill)| bill.amount)
+					.sum::<f64>()
+			} + {
+				managed_url_usages
+					.iter()
+					.map(|(_, bill)| bill.amount)
+					.sum::<f64>()
+			} + {
+				docker_repository_usages
+					.iter()
+					.map(|bill| bill.amount)
+					.sum::<f64>()
+			} + {
+				domains_usages
+					.iter()
+					.map(|(_, bill)| bill.amount)
+					.sum::<f64>()
+			} + {
+				secrets_usages
+					.iter()
+					.map(|(_, bill)| bill.amount)
+					.sum::<f64>()
+			};
 
 			// Step 2: Create payment intent with the given bill
 			let password: Option<String> = None;
@@ -85,22 +205,7 @@ pub(super) async fn process_request(
 					currency: "usd".to_string(),
 					description: format!(
 						"Patr charge: Bill for {} {}",
-						match month {
-							1 => "January",
-							2 => "February",
-							3 => "March",
-							4 => "April",
-							5 => "May",
-							6 => "June",
-							7 => "July",
-							8 => "August",
-							9 => "September",
-							10 => "October",
-							11 => "November",
-							12 => "December",
-							_ => "",
-						},
-						year
+						month_string, year
 					),
 					customer: config.stripe.customer_id.clone(),
 				})
@@ -127,21 +232,27 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
-			super::queue_confirm_payment_intent(
+			service::queue_confirm_payment_intent(
 				config,
 				payment_intent_object.id,
 				workspace.id.clone(),
 			)
 			.await?;
 
-			send_invoice_email_to_workspace(
+			service::send_invoice_email(
 				connection,
 				&workspace.super_admin_id,
-				&workspace.id,
-				&workspace.name,
+				workspace.name.clone(),
+				deployment_usages,
+				database_usages,
+				static_sites_usages,
+				managed_url_usages,
+				docker_repository_usages,
+				domains_usages,
+				secrets_usages,
 				total_bill,
-				&month_start_date,
-				&next_month_start_date.into(),
+				month_string.to_string(),
+				year,
 			)
 			.await?;
 
@@ -248,90 +359,4 @@ pub(super) async fn process_request(
 			Ok(())
 		}
 	}
-}
-
-async fn send_invoice_email_to_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &Uuid,
-	workspace_id: &Uuid,
-	workspace_name: &str,
-	total_bill: u64,
-	start_date: &chrono::DateTime<Utc>,
-	end_date: &chrono::DateTime<Utc>,
-) -> Result<(), Error> {
-	let deployment_usage = service::get_deployment_usage_and_bill(
-		connection,
-		workspace_id,
-		start_date,
-		end_date,
-	)
-	.await?;
-
-	let static_site_usage_bill = service::get_static_site_usage_and_bill(
-		connection,
-		workspace_id,
-		start_date,
-		end_date,
-	)
-	.await?;
-
-	let database_usage = service::get_database_usage_and_bill(
-		connection,
-		workspace_id,
-		start_date,
-		end_date,
-	)
-	.await?;
-
-	let managed_url_usage_bill = service::get_managed_url_usage_and_bill(
-		connection,
-		workspace_id,
-		start_date,
-		end_date,
-	)
-	.await?;
-
-	let secret_usage_bill = service::get_secret_usage_and_bill(
-		connection,
-		workspace_id,
-		start_date,
-		end_date,
-	)
-	.await?;
-
-	let docker_repo_usage_bill = service::get_docker_repo_usage_and_bill(
-		connection,
-		workspace_id,
-		start_date,
-		end_date,
-	)
-	.await?;
-
-	let domain_usage_bill = service::get_domain_usage_and_bill(
-		connection,
-		workspace_id,
-		start_date,
-		end_date,
-	)
-	.await?;
-
-	service::send_invoice_email(
-		connection,
-		user_id,
-		workspace_id,
-		workspace_name,
-		deployment_usage,
-		static_site_usage_bill,
-		database_usage,
-		managed_url_usage_bill,
-		secret_usage_bill,
-		docker_repo_usage_bill,
-		domain_usage_bill,
-		total_bill as u64,
-		start_date,
-		end_date,
-	)
-	.await?;
-
-	Ok(())
 }

@@ -93,8 +93,9 @@ pub async fn create_static_site_in_workspace(
 			.len()
 		{
 			(0..=3) => StaticSitePlan::Free,
-			(3..=25) => StaticSitePlan::Pro,
-			(25..) => StaticSitePlan::Unlimited,
+			(4..=25) => StaticSitePlan::Pro,
+			(26..) => StaticSitePlan::Unlimited,
+			_ => unreachable!(),
 		};
 
 	db::update_static_site_usage_history(
@@ -220,8 +221,9 @@ pub async fn delete_static_site(
 	.len()
 	{
 		(0..=3) => StaticSitePlan::Free,
-		(3..=25) => StaticSitePlan::Pro,
-		(25..) => StaticSitePlan::Unlimited,
+		(4..=25) => StaticSitePlan::Pro,
+		(26..) => StaticSitePlan::Unlimited,
+		_ => unreachable!(),
 	};
 
 	db::update_static_site_usage_history(

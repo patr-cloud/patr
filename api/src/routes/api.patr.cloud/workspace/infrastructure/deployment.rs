@@ -693,7 +693,6 @@ async fn create_deployment(
 		&region,
 		&machine_type,
 		&deployment_running_details,
-		&config,
 		&request_id,
 	)
 	.await?;
@@ -1259,7 +1258,6 @@ async fn update_deployment(
 
 	service::update_deployment(
 		context.get_database_connection(),
-		&workspace_id,
 		&deployment_id,
 		name,
 		region.as_ref(),
@@ -1278,7 +1276,6 @@ async fn update_deployment(
 		environment_variables.as_ref(),
 		startup_probe.as_ref(),
 		liveness_probe.as_ref(),
-		&config,
 		&request_id,
 	)
 	.await?;

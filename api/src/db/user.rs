@@ -2676,7 +2676,7 @@ pub async fn get_all_workspaces_for_user(
 			workspace.managed_url_limit,
 			workspace.secret_limit,
 			workspace.domain_limit,
-			workspace.volume_limit,
+			workspace.docker_repository_storage_limit,
 			workspace.stripe_customer_id,
 			workspace.address_id as "address_id: _",
 			workspace.amount_due

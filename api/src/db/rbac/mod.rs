@@ -466,7 +466,7 @@ pub async fn get_all_workspace_roles_for_user(
 			managed_url_limit,
 			secret_limit,
 			domain_limit,
-			volume_limit,
+			docker_repository_storage_limit,
 			stripe_customer_id,
 			address_id as "address_id: _",
 			amount_due

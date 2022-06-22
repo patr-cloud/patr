@@ -8,9 +8,9 @@ use reqwest::Client;
 use crate::{
 	db,
 	error,
-	models::{rbac, StripeAddress},
+	models::{billing::StripeAddress, rbac},
 	utils::{
-		constants::free_limits,
+		constants::default_limits,
 		get_current_time_millis,
 		settings::Settings,
 		validator,
@@ -126,13 +126,13 @@ pub async fn create_workspace(
 		workspace_name,
 		super_admin_id,
 		alert_emails,
-		*free_limits::FREE_DEPLOYMENTS,
-		*free_limits::FREE_STATIC_SITES,
-		*free_limits::FREE_MANAGED_DATABASE,
-		*free_limits::FREE_MANAGED_URLS,
-		*free_limits::FREE_SECRETS,
-		*free_limits::FREE_DOMAINS,
-		*free_limits::FREE_STORAGE,
+		default_limits::DEPLOYMENTS,
+		default_limits::MANAGED_DATABASE,
+		default_limits::STATIC_SITES,
+		default_limits::MANAGED_URLS,
+		default_limits::DOCKER_REPOSITORY_STORAGE,
+		default_limits::DOMAINS,
+		default_limits::SECRETS,
 		&stripe_customer.id,
 	)
 	.await?;

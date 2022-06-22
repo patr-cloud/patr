@@ -59,7 +59,6 @@ pub async fn create_deployment_in_workspace(
 	region: &Uuid,
 	machine_type: &Uuid,
 	deployment_running_details: &DeploymentRunningDetails,
-	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
@@ -121,7 +120,6 @@ pub async fn create_deployment_in_workspace(
 	if deployment_limit_crossed(
 		connection,
 		workspace_id,
-		machine_type,
 		request_id,
 	)
 	.await?
@@ -291,7 +289,6 @@ pub async fn get_deployment_container_logs(
 #[allow(clippy::too_many_arguments)]
 pub async fn update_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
 	deployment_id: &Uuid,
 	name: Option<&str>,
 	region: Option<&Uuid>,
@@ -303,7 +300,6 @@ pub async fn update_deployment(
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
-	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
@@ -913,7 +909,6 @@ pub async fn get_deployment_build_logs(
 async fn deployment_limit_crossed(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	machine_type: &Uuid,
 	request_id: &Uuid,
 ) -> Result<bool, Error> {
 	log::trace!(

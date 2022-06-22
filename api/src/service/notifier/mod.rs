@@ -1,14 +1,23 @@
 use std::collections::HashMap;
 
 use api_models::{models::auth::PreferredRecoveryOption, utils::Uuid};
-use chrono::{Datelike, Month, Utc};
 use eve_rs::AsError;
-use num_traits::FromPrimitive;
 
 use crate::{
-	db::{self, User, UserToSignUp},
+	db::{self, DomainPlan, StaticSitePlan, User, UserToSignUp},
 	error,
-	models::deployment::KubernetesEventData,
+	models::{
+		billing::{
+			DatabaseBill,
+			DeploymentBill,
+			DockerRepositoryBill,
+			DomainBill,
+			ManagedUrlBill,
+			SecretsBill,
+			StaticSiteBill,
+		},
+		deployment::KubernetesEventData,
+	},
 	utils::Error,
 	Database,
 };
@@ -424,18 +433,17 @@ pub async fn send_alert_email_to_patr(
 pub async fn send_invoice_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
-	workspace_id: &Uuid,
-	workspace_name: &str,
-	deployment_usage: HashMap<Uuid, (u64, u64)>,
-	static_site_usage_bill: u64,
-	database_usage: HashMap<Uuid, (u64, u64)>,
-	managed_url_usage_bill: u64,
-	secret_usage_bill: u64,
-	docker_repo_usage_bill: u64,
-	domain_usage_bill: u64,
-	total_bill: u64,
-	start_date: &chrono::DateTime<Utc>,
-	end_date: &chrono::DateTime<Utc>,
+	workspace_name: String,
+	deployment_usages: HashMap<Uuid, DeploymentBill>,
+	database_usages: HashMap<Uuid, DatabaseBill>,
+	static_sites_usages: HashMap<StaticSitePlan, StaticSiteBill>,
+	managed_url_usages: HashMap<u64, ManagedUrlBill>,
+	docker_repository_usages: Vec<DockerRepositoryBill>,
+	domains_usages: HashMap<DomainPlan, DomainBill>,
+	secrets_usages: HashMap<u64, SecretsBill>,
+	total_bill: f64,
+	month: String,
+	year: i32,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, user_id)
 		.await?
@@ -454,35 +462,16 @@ pub async fn send_invoice_email(
 	)
 	.await?;
 
-	let month = Month::from_u32(start_date.month())
-		.status(500)?
-		.name()
-		.to_string();
-
-	let year = start_date.year();
-
-	let deployment_usage = deployment_usage
-		.into_iter()
-		.map(|(k, (bill, hours))| format!("{}-{}-{}", k, bill, hours))
-		.collect::<Vec<String>>()
-		.join("\n");
-
-	let database_usage = database_usage
-		.into_iter()
-		.map(|(k, (bill, hours))| format!("{}-{}-{}", k, bill, hours))
-		.collect::<Vec<String>>()
-		.join("\n");
-
 	email::send_invoice_email(
 		user_email.parse()?,
-		workspace_name.to_string(),
-		deployment_usage,
-		static_site_usage_bill,
-		database_usage,
-		managed_url_usage_bill,
-		secret_usage_bill,
-		docker_repo_usage_bill,
-		domain_usage_bill,
+		workspace_name,
+		deployment_usages,
+		database_usages,
+		static_sites_usages,
+		managed_url_usages,
+		docker_repository_usages,
+		domains_usages,
+		secrets_usages,
 		total_bill,
 		month,
 		year,

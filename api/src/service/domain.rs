@@ -222,8 +222,9 @@ pub async fn add_domain_to_workspace(
 			.await?
 			.len()
 		{
-			0 | 1 => DomainPlan::Free,
-			(1..) => DomainPlan::Unlimited,
+			(0..=1) => DomainPlan::Free,
+			(2..) => DomainPlan::Unlimited,
+			_ => unreachable!(),
 		};
 	db::update_domain_usage_history(
 		connection,
@@ -781,8 +782,9 @@ pub async fn delete_domain_in_workspace(
 			.await?
 			.len()
 		{
-			0 | 1 => DomainPlan::Free,
-			(1..) => DomainPlan::Unlimited,
+			(0..=1) => DomainPlan::Free,
+			(2..) => DomainPlan::Unlimited,
+			_ => unreachable!(),
 		};
 	db::update_domain_usage_history(
 		connection,
