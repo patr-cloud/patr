@@ -32,7 +32,24 @@ pub(super) async fn process_request(
 			year,
 			request_id,
 		} => {
+			if Utc::now() < Utc.ymd(year, month, 1).and_hms(0, 0, 0) {
+				// It's not yet time to process the workspace. Wait and try
+				// again later
+				time::sleep(Duration::from_millis(
+					if cfg!(debug_assertions) { 1000 } else { 60_000 },
+				))
+				.await;
+				return Error::as_result()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
+			}
 			let workspaces = db::get_all_workspaces(connection).await?;
+			log::trace!(
+				"request_id: {} - Processing workspace for {} {}",
+				request_id,
+				month,
+				year
+			);
 
 			for workspace in workspaces {
 				log::trace!(
@@ -60,8 +77,14 @@ pub(super) async fn process_request(
 			month,
 			year,
 			workspace,
-			request_id: _,
+			request_id,
 		} => {
+			log::trace!(
+				"request_id: {} - Generating invoice for {} {}",
+				request_id,
+				month,
+				year
+			);
 			let month_start_date = Utc.ymd(year, month, 1).and_hms(0, 0, 0);
 			let next_month_start_date = Utc
 				.ymd(
@@ -198,6 +221,11 @@ pub(super) async fn process_request(
 			let password: Option<String> = None;
 
 			if let PaymentType::Card = workspace.payment_type {
+				if total_bill <= 0.0 {
+					// If the bill is zero, don't bother charging them
+					return Ok(());
+				}
+
 				let payment_intent_object = Client::new()
 					.post("https://api.stripe.com/v1/payment_intents")
 					.basic_auth(&config.stripe.secret_key, password)
@@ -212,7 +240,7 @@ pub(super) async fn process_request(
 						),
 						customer: workspace.stripe_customer_id.clone(),
 						payment_method: workspace.default_payment_method_id,
-						payment_method_types: vec!["card".to_string()],
+						payment_method_types: "card".to_string(),
 						setup_future_usage: "off_session".to_string(),
 					})
 					.send()
@@ -240,15 +268,12 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-				if total_bill > 0.0 {
-					// If the bill is zero, don't bother charging them
-					service::queue_confirm_payment_intent(
-						config,
-						payment_intent_object.id,
-						workspace.id.clone(),
-					)
-					.await?;
-				}
+				service::queue_confirm_payment_intent(
+					config,
+					payment_intent_object.id,
+					workspace.id.clone(),
+				)
+				.await?;
 			} else {
 				// create transactions for all types of resources
 				let transaction_id =

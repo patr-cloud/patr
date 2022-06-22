@@ -123,7 +123,7 @@ case $1 in
         docker-compose -f $baseDir/docker-compose.yml exec postgres pg_dump -U $DATABASE_USERNAME -d $DATABASE_NAME > $dumpFile
     ;;
     cleardb | clear-db | resetdb | reset-db)
-        docker-compose -f $baseDir/docker-compose.yml exec postgres psql -U $DATABASE_USERNAME -d "postgres" -c "\set AUTOCOMMIT on\nDROP DATABASE \"$DATABASE_NAME\"; CREATE DATABASE \"$DATABASE_NAME\";"
+        docker-compose -f $baseDir/docker-compose.yml run api bash -c "source .env && cargo sqlx db reset"
         echo "Database cleared"
     ;;
     restore)

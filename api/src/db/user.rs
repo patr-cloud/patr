@@ -2668,7 +2668,7 @@ pub async fn get_all_workspaces_for_user(
 			workspace.alert_emails,
 			workspace.drone_username,
 			workspace.drone_token,
-			workspace.payment_type as "payment_type!: _",
+			workspace.payment_type as "payment_type: _",
 			workspace.default_payment_method_id as "default_payment_method_id: _",
 			workspace.deployment_limit,
 			workspace.static_site_limit,

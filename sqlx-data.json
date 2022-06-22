@@ -463,16 +463,6 @@
     },
     "query": "SELECT deployment_id as \"deployment_id: _\", name, value, secret_id as \"secret_id: _\" FROM deployment_environment_variable WHERE deployment_id = $1;"
   },
-  "12142b109b8bfd15d79d6b1464d2279b0aa486473890e8c104a8102db3181403": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, alert_emails VARCHAR(320) [] NOT NULL, drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE, drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null CHECK( ( drone_username IS NULL AND drone_token IS NULL ) OR ( drone_username IS NOT NULL AND drone_token IS NOT NULL ) ), payment_type PAYMENT_TYPE, default_payment_method_id TEXT, deployment_limit INTEGER NOT NULL, database_limit INTEGER NOT NULL, static_site_limit INTEGER NOT NULL, managed_url_limit INTEGER NOT NULL, docker_repository_storage_limit INTEGER NOT NULL, domain_limit INTEGER NOT NULL, secret_limit INTEGER NOT NULL, stripe_customer_id TEXT NOT NULL, address_id UUID, amount_due DOUBLE PRECISION NOT NULL );"
-  },
   "1367b2c0bb8700daf488f62964c8c1396fb2a3a5a2f33577c4d0c1be8806507c": {
     "describe": {
       "columns": [
@@ -586,6 +576,144 @@
       }
     },
     "query": "ALTER TABLE workspace_audit_log ADD CONSTRAINT workspace_audit_log_fk_resource_id FOREIGN KEY(resource_id) REFERENCES resource(id);"
+  },
+  "1478ab87ac54089ccc6c59067496f8b816c33113043dbd3af5e76e0194986b8f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "super_admin_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "active",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "alert_emails: _",
+          "ordinal": 4,
+          "type_info": "VarcharArray"
+        },
+        {
+          "name": "drone_username",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "drone_token",
+          "ordinal": 6,
+          "type_info": "Text"
+        },
+        {
+          "name": "payment_type: _",
+          "ordinal": 7,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "card",
+                  "enterprise"
+                ]
+              },
+              "name": "payment_type"
+            }
+          }
+        },
+        {
+          "name": "default_payment_method_id: _",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "deployment_limit",
+          "ordinal": 9,
+          "type_info": "Int4"
+        },
+        {
+          "name": "static_site_limit",
+          "ordinal": 10,
+          "type_info": "Int4"
+        },
+        {
+          "name": "database_limit",
+          "ordinal": 11,
+          "type_info": "Int4"
+        },
+        {
+          "name": "managed_url_limit",
+          "ordinal": 12,
+          "type_info": "Int4"
+        },
+        {
+          "name": "secret_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "domain_limit",
+          "ordinal": 14,
+          "type_info": "Int4"
+        },
+        {
+          "name": "docker_repository_storage_limit",
+          "ordinal": 15,
+          "type_info": "Int4"
+        },
+        {
+          "name": "stripe_customer_id",
+          "ordinal": 16,
+          "type_info": "Text"
+        },
+        {
+          "name": "address_id: _",
+          "ordinal": 17,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "amount_due",
+          "ordinal": 18,
+          "type_info": "Float8"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", super_admin_id as \"super_admin_id: _\", active, alert_emails as \"alert_emails: _\", drone_username, drone_token, payment_type as \"payment_type: _\", default_payment_method_id as \"default_payment_method_id: _\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, stripe_customer_id, address_id as \"address_id: _\", amount_due FROM workspace WHERE id = $1;"
   },
   "1478e049e620cdd3592a2f14e0f25a668c95e62854c5facb14517c62d6210275": {
     "describe": {
@@ -1987,6 +2115,144 @@
     },
     "query": "CREATE TABLE business_email( user_id UUID NOT NULL CONSTRAINT business_email_fk_user_id REFERENCES \"user\"(id), local VARCHAR(64) NOT NULL CONSTRAINT business_email_chk_local_is_lower_case CHECK( local = LOWER(local) ), domain_id UUID NOT NULL CONSTRAINT business_email_fk_domain_id REFERENCES workspace_domain(id), CONSTRAINT business_email_pk PRIMARY KEY(local, domain_id) );"
   },
+  "3334e28110faf0232961070ce434f6a734654efe7efb754422a3a1d402410472": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "super_admin_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "active",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "alert_emails: _",
+          "ordinal": 4,
+          "type_info": "VarcharArray"
+        },
+        {
+          "name": "drone_username",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "drone_token",
+          "ordinal": 6,
+          "type_info": "Text"
+        },
+        {
+          "name": "payment_type: _",
+          "ordinal": 7,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "card",
+                  "enterprise"
+                ]
+              },
+              "name": "payment_type"
+            }
+          }
+        },
+        {
+          "name": "default_payment_method_id: _",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "deployment_limit",
+          "ordinal": 9,
+          "type_info": "Int4"
+        },
+        {
+          "name": "static_site_limit",
+          "ordinal": 10,
+          "type_info": "Int4"
+        },
+        {
+          "name": "database_limit",
+          "ordinal": 11,
+          "type_info": "Int4"
+        },
+        {
+          "name": "managed_url_limit",
+          "ordinal": 12,
+          "type_info": "Int4"
+        },
+        {
+          "name": "secret_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "domain_limit",
+          "ordinal": 14,
+          "type_info": "Int4"
+        },
+        {
+          "name": "docker_repository_storage_limit",
+          "ordinal": 15,
+          "type_info": "Int4"
+        },
+        {
+          "name": "stripe_customer_id",
+          "ordinal": 16,
+          "type_info": "Text"
+        },
+        {
+          "name": "address_id: _",
+          "ordinal": 17,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "amount_due",
+          "ordinal": 18,
+          "type_info": "Float8"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", super_admin_id as \"super_admin_id: _\", active, alert_emails as \"alert_emails: _\", drone_username, drone_token, payment_type as \"payment_type: _\", default_payment_method_id as \"default_payment_method_id: _\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, stripe_customer_id, address_id as \"address_id: _\", amount_due FROM workspace WHERE super_admin_id = $1;"
+  },
   "334d5e07965406e65178c69651ce3f91e4c2c4c16f7b1927d8f121f517aa4f67": {
     "describe": {
       "columns": [
@@ -2714,144 +2980,6 @@
       }
     },
     "query": "DELETE FROM workspace_domain WHERE id = $1;"
-  },
-  "508fc639bf509b4433ca585ed71cafd3fda9aa123105703514ac93701f7ab319": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "super_admin_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "active",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "alert_emails",
-          "ordinal": 4,
-          "type_info": "VarcharArray"
-        },
-        {
-          "name": "drone_username",
-          "ordinal": 5,
-          "type_info": "Text"
-        },
-        {
-          "name": "drone_token",
-          "ordinal": 6,
-          "type_info": "Text"
-        },
-        {
-          "name": "payment_type!: _",
-          "ordinal": 7,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "card",
-                  "enterprise"
-                ]
-              },
-              "name": "payment_type"
-            }
-          }
-        },
-        {
-          "name": "default_payment_method_id: _",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "deployment_limit",
-          "ordinal": 9,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_limit",
-          "ordinal": 10,
-          "type_info": "Int4"
-        },
-        {
-          "name": "database_limit",
-          "ordinal": 11,
-          "type_info": "Int4"
-        },
-        {
-          "name": "managed_url_limit",
-          "ordinal": 12,
-          "type_info": "Int4"
-        },
-        {
-          "name": "secret_limit",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "domain_limit",
-          "ordinal": 14,
-          "type_info": "Int4"
-        },
-        {
-          "name": "docker_repository_storage_limit",
-          "ordinal": 15,
-          "type_info": "Int4"
-        },
-        {
-          "name": "stripe_customer_id",
-          "ordinal": 16,
-          "type_info": "Text"
-        },
-        {
-          "name": "address_id: _",
-          "ordinal": 17,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "amount_due",
-          "ordinal": 18,
-          "type_info": "Float8"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT DISTINCT workspace.id as \"id: _\", workspace.name::TEXT as \"name!: _\", workspace.super_admin_id as \"super_admin_id: _\", workspace.active, workspace.alert_emails, workspace.drone_username, workspace.drone_token, workspace.payment_type as \"payment_type!: _\", workspace.default_payment_method_id as \"default_payment_method_id: _\", workspace.deployment_limit, workspace.static_site_limit, workspace.database_limit, workspace.managed_url_limit, workspace.secret_limit, workspace.domain_limit, workspace.docker_repository_storage_limit, workspace.stripe_customer_id, workspace.address_id as \"address_id: _\", workspace.amount_due FROM workspace LEFT JOIN workspace_user ON workspace.id = workspace_user.workspace_id WHERE ( workspace.super_admin_id = $1 OR workspace_user.user_id = $1 ) AND workspace.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
   },
   "5198716586d0f372c693b04629cc2b35cde145293878884d3ab56f0991d7df17": {
     "describe": {
@@ -4256,48 +4384,7 @@
     },
     "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\" FROM deployment_region;"
   },
-  "716f9c60fafbfa79a2dd1eebd546e54e5abdde8c1cdc56c8b3f776f547f08625": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Varchar",
-          "Text",
-          "Varchar",
-          "Varchar",
-          "Int8",
-          "Varchar",
-          "Uuid",
-          "Bpchar",
-          "Varchar"
-        ]
-      }
-    },
-    "query": "INSERT INTO \"user\"( id, username, password, first_name, last_name, dob, bio, location, created, recovery_email_local, recovery_email_domain_id, recovery_phone_country_code, recovery_phone_number ) VALUES ( $1, $2, $3, $4, $5, NULL, NULL, NULL, $6, $7, $8, $9, $10 );"
-  },
-  "71851c0dceb357cee7d00bff65ca31965f2aef6778a2f86283fa626ec6359412": {
-    "describe": {
-      "columns": [
-        {
-          "name": "size!",
-          "ordinal": 0,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT COALESCE(SUM(size), 0)::BIGINT as \"size!\" FROM docker_registry_repository_manifest INNER JOIN docker_registry_repository ON docker_registry_repository.id = docker_registry_repository_manifest.repository_id WHERE docker_registry_repository.workspace_id = $1;"
-  },
-  "728bb5003e9bb313570e5446210a49922dc4adad6257f51e73bc8de548861844": {
+  "71077a5189a75c5e4e0823d36adfd488a1bb9c711ef758d6192700bd088cf800": {
     "describe": {
       "columns": [
         {
@@ -4321,7 +4408,7 @@
           "type_info": "Bool"
         },
         {
-          "name": "alert_emails!: _",
+          "name": "alert_emails: _",
           "ordinal": 4,
           "type_info": "VarcharArray"
         },
@@ -4336,7 +4423,7 @@
           "type_info": "Text"
         },
         {
-          "name": "payment_type!: _",
+          "name": "payment_type: _",
           "ordinal": 7,
           "type_info": {
             "Custom": {
@@ -4414,7 +4501,7 @@
         false,
         true,
         true,
-        true,
+        false,
         true,
         false,
         false,
@@ -4438,7 +4525,48 @@
         ]
       }
     },
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", super_admin_id as \"super_admin_id: _\", active, alert_emails as \"alert_emails!: _\", drone_username, drone_token, payment_type as \"payment_type!: _\", default_payment_method_id as \"default_payment_method_id: _\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, stripe_customer_id, address_id as \"address_id: _\", amount_due FROM workspace WHERE name = $1;"
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", super_admin_id as \"super_admin_id: _\", active, alert_emails as \"alert_emails: _\", drone_username, drone_token, payment_type as \"payment_type: _\", default_payment_method_id as \"default_payment_method_id: _\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, stripe_customer_id, address_id as \"address_id: _\", amount_due FROM workspace WHERE name = $1;"
+  },
+  "716f9c60fafbfa79a2dd1eebd546e54e5abdde8c1cdc56c8b3f776f547f08625": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Varchar",
+          "Text",
+          "Varchar",
+          "Varchar",
+          "Int8",
+          "Varchar",
+          "Uuid",
+          "Bpchar",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "INSERT INTO \"user\"( id, username, password, first_name, last_name, dob, bio, location, created, recovery_email_local, recovery_email_domain_id, recovery_phone_country_code, recovery_phone_number ) VALUES ( $1, $2, $3, $4, $5, NULL, NULL, NULL, $6, $7, $8, $9, $10 );"
+  },
+  "71851c0dceb357cee7d00bff65ca31965f2aef6778a2f86283fa626ec6359412": {
+    "describe": {
+      "columns": [
+        {
+          "name": "size!",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT COALESCE(SUM(size), 0)::BIGINT as \"size!\" FROM docker_registry_repository_manifest INNER JOIN docker_registry_repository ON docker_registry_repository.id = docker_registry_repository_manifest.repository_id WHERE docker_registry_repository.workspace_id = $1;"
   },
   "72ac7bbce66b7ce6bf31c659da6b9c2b4f396b0a1738bdf2ccf4ef98e3ae61eb": {
     "describe": {
@@ -5384,7 +5512,42 @@
     },
     "query": "SELECT permission_id as \"permission_id: Uuid\", resource_id as \"resource_id: Uuid\" FROM role_permissions_resource WHERE role_id = $1;"
   },
-  "8ab4279664df8096b23d4ef283bd7a4362fc2956b01a47b781448a5cca6c2ae0": {
+  "8ba7e810211002c1b6033836493c2f48f72dbf7718a0ee8571cf200f07bbeb4d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "port",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "port_type: ExposedPortType",
+          "ordinal": 1,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "http"
+                ]
+              },
+              "name": "exposed_port_type"
+            }
+          }
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT port, port_type as \"port_type: ExposedPortType\" FROM deployment_exposed_port WHERE deployment_id = $1;"
+  },
+  "8bb1526d74bb2a01b9b23e83381458a61e72f7e15de96c77c91c6e13219e961c": {
     "describe": {
       "columns": [
         {
@@ -5408,7 +5571,7 @@
           "type_info": "Bool"
         },
         {
-          "name": "alert_emails!: _",
+          "name": "alert_emails: _",
           "ordinal": 4,
           "type_info": "VarcharArray"
         },
@@ -5423,7 +5586,7 @@
           "type_info": "Text"
         },
         {
-          "name": "payment_type!: _",
+          "name": "payment_type: _",
           "ordinal": 7,
           "type_info": {
             "Custom": {
@@ -5501,7 +5664,7 @@
         false,
         true,
         true,
-        true,
+        false,
         true,
         false,
         false,
@@ -5515,47 +5678,10 @@
         false
       ],
       "parameters": {
-        "Left": [
-          "Uuid"
-        ]
+        "Left": []
       }
     },
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", super_admin_id as \"super_admin_id: _\", active, alert_emails as \"alert_emails!: _\", drone_username, drone_token, payment_type as \"payment_type!: _\", default_payment_method_id as \"default_payment_method_id: _\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, stripe_customer_id, address_id as \"address_id: _\", amount_due FROM workspace WHERE super_admin_id = $1;"
-  },
-  "8ba7e810211002c1b6033836493c2f48f72dbf7718a0ee8571cf200f07bbeb4d": {
-    "describe": {
-      "columns": [
-        {
-          "name": "port",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "port_type: ExposedPortType",
-          "ordinal": 1,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "http"
-                ]
-              },
-              "name": "exposed_port_type"
-            }
-          }
-        }
-      ],
-      "nullable": [
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT port, port_type as \"port_type: ExposedPortType\" FROM deployment_exposed_port WHERE deployment_id = $1;"
+    "query": "SELECT DISTINCT workspace.id as \"id: _\", workspace.name::TEXT as \"name!: _\", workspace.super_admin_id as \"super_admin_id: _\", workspace.active, workspace.alert_emails as \"alert_emails: _\", workspace.drone_username, workspace.drone_token, workspace.payment_type as \"payment_type: _\", workspace.default_payment_method_id as \"default_payment_method_id: _\", workspace.deployment_limit, workspace.static_site_limit, workspace.database_limit, workspace.managed_url_limit, workspace.secret_limit, workspace.domain_limit, workspace.docker_repository_storage_limit, workspace.stripe_customer_id, workspace.address_id as \"address_id: _\", workspace.amount_due FROM workspace WHERE workspace.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
   },
   "8bec30e0e151a3799bc9bd16af35722042a7cab86a61d46549c18b9ba6e449c1": {
     "describe": {
@@ -7235,142 +7361,6 @@
       }
     },
     "query": "INSERT INTO docker_registry_repository( id, workspace_id, name ) VALUES ($1, $2, $3);"
-  },
-  "b1c0a741ca4c381dbdd0d66bf6d0303f9ff60de78176dbbfac05403aeed6d75c": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "super_admin_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "active",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "alert_emails!: _",
-          "ordinal": 4,
-          "type_info": "VarcharArray"
-        },
-        {
-          "name": "drone_username",
-          "ordinal": 5,
-          "type_info": "Text"
-        },
-        {
-          "name": "drone_token",
-          "ordinal": 6,
-          "type_info": "Text"
-        },
-        {
-          "name": "payment_type!: _",
-          "ordinal": 7,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "card",
-                  "enterprise"
-                ]
-              },
-              "name": "payment_type"
-            }
-          }
-        },
-        {
-          "name": "default_payment_method_id: _",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "deployment_limit",
-          "ordinal": 9,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_limit",
-          "ordinal": 10,
-          "type_info": "Int4"
-        },
-        {
-          "name": "database_limit",
-          "ordinal": 11,
-          "type_info": "Int4"
-        },
-        {
-          "name": "managed_url_limit",
-          "ordinal": 12,
-          "type_info": "Int4"
-        },
-        {
-          "name": "secret_limit",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "domain_limit",
-          "ordinal": 14,
-          "type_info": "Int4"
-        },
-        {
-          "name": "docker_repository_storage_limit",
-          "ordinal": 15,
-          "type_info": "Int4"
-        },
-        {
-          "name": "stripe_customer_id",
-          "ordinal": 16,
-          "type_info": "Text"
-        },
-        {
-          "name": "address_id: _",
-          "ordinal": 17,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "amount_due",
-          "ordinal": 18,
-          "type_info": "Float8"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "SELECT DISTINCT workspace.id as \"id: _\", workspace.name::TEXT as \"name!: _\", workspace.super_admin_id as \"super_admin_id: _\", workspace.active, workspace.alert_emails as \"alert_emails!: _\", workspace.drone_username, workspace.drone_token, workspace.payment_type as \"payment_type!: _\", workspace.default_payment_method_id as \"default_payment_method_id: _\", workspace.deployment_limit, workspace.static_site_limit, workspace.database_limit, workspace.managed_url_limit, workspace.secret_limit, workspace.domain_limit, workspace.docker_repository_storage_limit, workspace.stripe_customer_id, workspace.address_id as \"address_id: _\", workspace.amount_due FROM workspace WHERE workspace.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
   },
   "b214965bc8ea98855fc7ad482af084d4d42ab90aa577f64f9c30ce925188a8cf": {
     "describe": {
@@ -9521,144 +9511,6 @@
     },
     "query": "UPDATE role SET description = $1 WHERE id = $2;"
   },
-  "de59ef68d3bc0b0a3da165e7185198a29fcc2349860d1d3b709ae52c4f92a994": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "super_admin_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "active",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "alert_emails!: _",
-          "ordinal": 4,
-          "type_info": "VarcharArray"
-        },
-        {
-          "name": "drone_username",
-          "ordinal": 5,
-          "type_info": "Text"
-        },
-        {
-          "name": "drone_token",
-          "ordinal": 6,
-          "type_info": "Text"
-        },
-        {
-          "name": "payment_type!: _",
-          "ordinal": 7,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "card",
-                  "enterprise"
-                ]
-              },
-              "name": "payment_type"
-            }
-          }
-        },
-        {
-          "name": "default_payment_method_id: _",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "deployment_limit",
-          "ordinal": 9,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_limit",
-          "ordinal": 10,
-          "type_info": "Int4"
-        },
-        {
-          "name": "database_limit",
-          "ordinal": 11,
-          "type_info": "Int4"
-        },
-        {
-          "name": "managed_url_limit",
-          "ordinal": 12,
-          "type_info": "Int4"
-        },
-        {
-          "name": "secret_limit",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "domain_limit",
-          "ordinal": 14,
-          "type_info": "Int4"
-        },
-        {
-          "name": "docker_repository_storage_limit",
-          "ordinal": 15,
-          "type_info": "Int4"
-        },
-        {
-          "name": "stripe_customer_id",
-          "ordinal": 16,
-          "type_info": "Text"
-        },
-        {
-          "name": "address_id: _",
-          "ordinal": 17,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "amount_due",
-          "ordinal": 18,
-          "type_info": "Float8"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", super_admin_id as \"super_admin_id: _\", active, alert_emails as \"alert_emails!: _\", drone_username, drone_token, payment_type as \"payment_type!: _\", default_payment_method_id as \"default_payment_method_id: _\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, stripe_customer_id, address_id as \"address_id: _\", amount_due FROM workspace WHERE id = $1;"
-  },
   "de74ae7f29c027a8f87b7ddea32144fd590d3e4591e17fdc8f5fc80afcf1f299": {
     "describe": {
       "columns": [],
@@ -9917,6 +9769,16 @@
       }
     },
     "query": "UPDATE user_login SET token_expiry = 0 WHERE login_id = $1 AND user_id = $2;"
+  },
+  "e405e549ca372c70c43c95f50900a83ea1786bf780daf93775f2aca73ce73823": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, alert_emails VARCHAR(320) [] NOT NULL, drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE, drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null CHECK( ( drone_username IS NULL AND drone_token IS NULL ) OR ( drone_username IS NOT NULL AND drone_token IS NOT NULL ) ), payment_type PAYMENT_TYPE NOT NULL, default_payment_method_id TEXT, deployment_limit INTEGER NOT NULL, database_limit INTEGER NOT NULL, static_site_limit INTEGER NOT NULL, managed_url_limit INTEGER NOT NULL, docker_repository_storage_limit INTEGER NOT NULL, domain_limit INTEGER NOT NULL, secret_limit INTEGER NOT NULL, stripe_customer_id TEXT NOT NULL, address_id UUID, amount_due DOUBLE PRECISION NOT NULL );"
   },
   "e44c154107c5fb3d88b9c38b24ac19303760e8d8fde96510bb66ea9932b29e22": {
     "describe": {
@@ -10958,6 +10820,144 @@
       }
     },
     "query": "ALTER TABLE deployment_payment_history ADD CONSTRAINT deployment_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id);"
+  },
+  "f677e47caa0c60bab095de0cb6c962e194207b91950c15722318eacb38dc43a4": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "super_admin_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "active",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "alert_emails",
+          "ordinal": 4,
+          "type_info": "VarcharArray"
+        },
+        {
+          "name": "drone_username",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "drone_token",
+          "ordinal": 6,
+          "type_info": "Text"
+        },
+        {
+          "name": "payment_type: _",
+          "ordinal": 7,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "card",
+                  "enterprise"
+                ]
+              },
+              "name": "payment_type"
+            }
+          }
+        },
+        {
+          "name": "default_payment_method_id: _",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "deployment_limit",
+          "ordinal": 9,
+          "type_info": "Int4"
+        },
+        {
+          "name": "static_site_limit",
+          "ordinal": 10,
+          "type_info": "Int4"
+        },
+        {
+          "name": "database_limit",
+          "ordinal": 11,
+          "type_info": "Int4"
+        },
+        {
+          "name": "managed_url_limit",
+          "ordinal": 12,
+          "type_info": "Int4"
+        },
+        {
+          "name": "secret_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "domain_limit",
+          "ordinal": 14,
+          "type_info": "Int4"
+        },
+        {
+          "name": "docker_repository_storage_limit",
+          "ordinal": 15,
+          "type_info": "Int4"
+        },
+        {
+          "name": "stripe_customer_id",
+          "ordinal": 16,
+          "type_info": "Text"
+        },
+        {
+          "name": "address_id: _",
+          "ordinal": 17,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "amount_due",
+          "ordinal": 18,
+          "type_info": "Float8"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT DISTINCT workspace.id as \"id: _\", workspace.name::TEXT as \"name!: _\", workspace.super_admin_id as \"super_admin_id: _\", workspace.active, workspace.alert_emails, workspace.drone_username, workspace.drone_token, workspace.payment_type as \"payment_type: _\", workspace.default_payment_method_id as \"default_payment_method_id: _\", workspace.deployment_limit, workspace.static_site_limit, workspace.database_limit, workspace.managed_url_limit, workspace.secret_limit, workspace.domain_limit, workspace.docker_repository_storage_limit, workspace.stripe_customer_id, workspace.address_id as \"address_id: _\", workspace.amount_due FROM workspace LEFT JOIN workspace_user ON workspace.id = workspace_user.workspace_id WHERE ( workspace.super_admin_id = $1 OR workspace_user.user_id = $1 ) AND workspace.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
   },
   "f677f0f49f5509a73a29aa93a7525c287fdc8601417c0b671f6a2848cdcc1265": {
     "describe": {

@@ -56,7 +56,7 @@ pub async fn add_credits_to_workspace(
 				.status(500)?
 				.stripe_customer_id,
 			payment_method: None,
-			payment_method_types: vec!["card".to_string()],
+			payment_method_types: "card".to_string(),
 			setup_future_usage: "off_session".to_string(),
 		})
 		.send()
