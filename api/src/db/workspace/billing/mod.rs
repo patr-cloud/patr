@@ -63,7 +63,7 @@ pub struct DomainPaymentHistory {
 pub struct Transaction {
 	pub id: Uuid,
 	pub month: i32,
-	pub amount: i64,
+	pub amount: f64,
 	pub payment_intent_id: Option<String>,
 	pub date: DateTime<Utc>,
 	pub workspace_id: Uuid,
@@ -267,21 +267,21 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS transactions(
-			id UUID CONSTRAINT transactions_pk PRIMARY KEY,
+		CREATE TABLE IF NOT EXISTS transaction(
+			id UUID CONSTRAINT transaction_pk PRIMARY KEY,
 			month INTEGER NOT NULL,
-			amount BIGINT NOT NULL,
+			amount DOUBLE NOT NULL,
 			payment_intent_id TEXT,
 			date TIMESTAMPTZ NOT NULL,
 			workspace_id UUID NOT NULL,
 			transaction_type TRANSACTION_TYPE NOT NULL,
 			payment_status PAYMENT_STATUS NOT NULL
-				CONSTRAINT transactions_payment_status_check CHECK (
+				CONSTRAINT transaction_payment_status_check CHECK (
 					payment_status = 'success' AND
-					TRANSACTION_TYPE = 'bill'
+					transaction_type = 'bill'
 				),
 			description TEXT
-				CONSTRAINT transactions_description_check CHECK (
+				CONSTRAINT transaction_description_check CHECK (
 					transaction_type = 'credit' AND
 					description IS NOT NULL
 			)
@@ -598,21 +598,22 @@ pub async fn get_all_secrets_usages(
 	.await
 }
 
-pub async fn create_transactions(
+pub async fn create_transaction(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	id: &Uuid,
 	month: i32,
-	amount: i64,
+	amount: f64,
 	payment_intent_id: Option<&str>,
 	date: &DateTime<Utc>,
 	transaction_type: &TransactionType,
 	payment_status: &PaymentStatus,
+	description: Option<&str>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
-			transactions(
+			transaction(
 				id,
 				month,
 				amount,
@@ -620,9 +621,11 @@ pub async fn create_transactions(
 				date,
 				workspace_id,
 				transaction_type,
-				payment_status
+				payment_status,
+				description
 			)
-			VALUES(
+			VALUES
+			(
 				$1,
 				$2,
 				$3,
@@ -630,7 +633,8 @@ pub async fn create_transactions(
 				$5,
 				$6,
 				$7,
-				$8
+				$8,
+				$9
 			);
 		"#,
 		id as _,
@@ -641,6 +645,7 @@ pub async fn create_transactions(
 		workspace_id as _,
 		transaction_type as _,
 		payment_status as _,
+		description
 	)
 	.execute(&mut *connection)
 	.await
@@ -658,7 +663,7 @@ pub async fn generate_new_transaction_id(
 			SELECT
 				id
 			FROM
-				transactions
+				transaction
 			WHERE
 				id = $1;
 			"#,
@@ -693,7 +698,7 @@ pub async fn get_last_bill_for_workspace(
 			payment_status as "payment_status: _",
 			description
 		FROM
-			transactions
+			transaction
 		WHERE
 			workspace_id = $1 AND
 			payment_intent_id = $2;
@@ -744,7 +749,7 @@ pub async fn get_credits_for_workspace(
 			payment_status as "payment_status: _",
 			description
 		FROM
-			transactions
+			transaction
 		WHERE
 			workspace_id = $1 AND
 			transaction_type = 'credits';
@@ -1111,6 +1116,90 @@ pub async fn update_domain_usage_history(
 		workspace_id as _,
 		domain_plan as _,
 		update_time as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_total_amount_due_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<f64, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			SUM(
+				CASE
+					WHEN transaction_type = 'bill' THEN
+						amount
+					ELSE
+						-amount
+				END
+			) as "amount!"
+		FROM
+			transaction
+		WHERE
+			workspace_id = $1 AND
+			(
+				transaction_type = 'bill' OR
+				transaction_type = 'credits'
+			) AND
+			payment_status = 'success';
+		"#,
+		workspace_id as _,
+	)
+	.fetch_one(&mut *connection)
+	.await
+	.map(|row| row.amount)
+}
+
+pub async fn update_amount_due_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	amount_due: f64,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace
+		SET
+			amount_due = $1
+		WHERE
+			id = $2;
+		"#,
+		amount_due,
+		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_transaction_status_for_payment_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	payment_intent_id: &str,
+	status: &PaymentStatus,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			transaction
+		SET
+			payment_status = $1
+		WHERE
+			payment_intent_id = $2 AND
+			date = (
+				SELECT
+					MAX(date)
+				FROM
+					transaction
+				WHERE
+					payment_intent_id = $2
+			);
+		"#,
+		status as _,
+		payment_intent_id as _,
 	)
 	.execute(&mut *connection)
 	.await

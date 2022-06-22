@@ -42,7 +42,7 @@ pub struct Workspace {
 	pub secret_limit: i32,
 	pub stripe_customer_id: String,
 	pub address_id: Option<Uuid>,
-	pub amount_due: i64,
+	pub amount_due: f64,
 }
 
 pub struct WorkspaceAuditLog {
@@ -138,7 +138,7 @@ pub async fn initialize_workspaces_pre(
 			secret_limit INTEGER NOT NULL,
 			stripe_customer_id TEXT NOT NULL,
 			address_id UUID,
-			amount_due BIGINT NOT NULL
+			amount_due DOUBLE PRECISION NOT NULL
 		);
 		"#
 	)
@@ -243,7 +243,7 @@ pub async fn initialize_workspaces_pre(
 			zip TEXT NOT NULL,
 			country TEXT NOT NULL
 		);
-	"#
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;

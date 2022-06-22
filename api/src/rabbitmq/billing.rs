@@ -3,14 +3,14 @@ use std::{
 	time::Duration,
 };
 
-use api_models::utils::DateTime;
+use api_models::utils::{DateTime, True};
 use chrono::{TimeZone, Utc};
 use eve_rs::AsError;
 use reqwest::Client;
 use tokio::time;
 
 use crate::{
-	db::{self, PaymentStatus, TransactionType},
+	db::{self, PaymentStatus, PaymentType, TransactionType},
 	error,
 	models::{
 		billing::{PaymentIntent, PaymentIntentObject},
@@ -197,47 +197,99 @@ pub(super) async fn process_request(
 			// Step 2: Create payment intent with the given bill
 			let password: Option<String> = None;
 
-			let payment_intent_object = Client::new()
-				.post("https://api.stripe.com/v1/payment_intents")
-				.basic_auth(&config.stripe.secret_key, password)
-				.form(&PaymentIntent {
-					amount: total_bill,
-					currency: "usd".to_string(),
-					description: format!(
-						"Patr charge: Bill for {} {}",
-						month_string, year
-					),
-					customer: config.stripe.customer_id.clone(),
-				})
-				.send()
-				.await?
-				.json::<PaymentIntentObject>()
+			if let PaymentType::Card = workspace.payment_type {
+				let payment_intent_object = Client::new()
+					.post("https://api.stripe.com/v1/payment_intents")
+					.basic_auth(&config.stripe.secret_key, password)
+					.form(&PaymentIntent {
+						amount: (total_bill * 100f64) as u64,
+						currency: "usd".to_string(),
+						confirm: True,
+						off_session: True,
+						description: format!(
+							"Patr charge: Bill for {} {}",
+							month_string, year
+						),
+						customer: workspace.stripe_customer_id.clone(),
+						payment_method: workspace.default_payment_method_id,
+						payment_method_types: vec!["card".to_string()],
+						setup_future_usage: "off_session".to_string(),
+					})
+					.send()
+					.await?
+					.json::<PaymentIntentObject>()
+					.await?;
+
+				// create transactions for all types of resources
+				let transaction_id =
+					db::generate_new_transaction_id(connection).await?;
+				db::create_transaction(
+					connection,
+					&workspace.id,
+					&transaction_id,
+					month as i32,
+					total_bill,
+					Some(&payment_intent_object.id),
+					&DateTime::from(
+						next_month_start_date
+							.add(chrono::Duration::nanoseconds(1)),
+					), // 1st of next month,
+					&TransactionType::Bill,
+					&PaymentStatus::Success,
+					None,
+				)
 				.await?;
 
-			// create transactions for all types of resources
-			let transaction_id =
-				db::generate_new_transaction_id(connection).await?;
-			db::create_transactions(
-				connection,
-				&workspace.id,
-				&transaction_id,
-				month as i32,
-				total_bill as i64,
-				Some(&payment_intent_object.id),
-				&DateTime::from(
-					next_month_start_date.add(chrono::Duration::nanoseconds(1)),
-				), // 1st of next month,
-				&TransactionType::Bill,
-				&PaymentStatus::Success,
-			)
-			.await?;
+				if total_bill > 0.0 {
+					// If the bill is zero, don't bother charging them
+					service::queue_confirm_payment_intent(
+						config,
+						payment_intent_object.id,
+						workspace.id.clone(),
+					)
+					.await?;
+				}
+			} else {
+				// create transactions for all types of resources
+				let transaction_id =
+					db::generate_new_transaction_id(connection).await?;
+				db::create_transaction(
+					connection,
+					&workspace.id,
+					&transaction_id,
+					month as i32,
+					total_bill,
+					Some("enterprise-plan-bill"),
+					&DateTime::from(
+						next_month_start_date
+							.add(chrono::Duration::nanoseconds(1)),
+					), // 1st of next month,
+					&TransactionType::Bill,
+					&PaymentStatus::Success,
+					None,
+				)
+				.await?;
 
-			service::queue_confirm_payment_intent(
-				config,
-				payment_intent_object.id,
-				workspace.id.clone(),
-			)
-			.await?;
+				// Enterprise plan. Just assume a payment is made
+				let transaction_id =
+					db::generate_new_transaction_id(connection).await?;
+				db::create_transaction(
+					connection,
+					&workspace.id,
+					&transaction_id,
+					month as i32,
+					total_bill,
+					Some("enterprise-plan-payment"),
+					&DateTime::from(
+						next_month_start_date
+							.add(chrono::Duration::nanoseconds(1)),
+					), // 1st of next month,
+					&TransactionType::Payment,
+					&PaymentStatus::Success,
+					None,
+				)
+				.await?;
+			}
 
 			service::send_invoice_email(
 				connection,
@@ -316,7 +368,7 @@ pub(super) async fn process_request(
 
 			let payment_status = client
 				.post(format!(
-					"https://api.stripe.com/v1/payment_intents/{}",
+					"https://api.stripe.com/v1/payment_intents/{}/confirm",
 					payment_intent_id
 				))
 				.basic_auth(&config.stripe.secret_key, password)
@@ -325,7 +377,7 @@ pub(super) async fn process_request(
 				.status();
 
 			if !payment_status.is_success() {
-				db::create_transactions(
+				db::create_transaction(
 					connection,
 					&workspace_id,
 					&transaction_id,
@@ -335,6 +387,7 @@ pub(super) async fn process_request(
 					&DateTime::from(Utc::now()),
 					&TransactionType::Payment,
 					&PaymentStatus::Failed,
+					None,
 				)
 				.await?;
 
@@ -343,7 +396,7 @@ pub(super) async fn process_request(
 					.body(error!(SERVER_ERROR).to_string())?;
 			}
 
-			db::create_transactions(
+			db::create_transaction(
 				connection,
 				&workspace_id,
 				&transaction_id,
@@ -353,6 +406,7 @@ pub(super) async fn process_request(
 				&(Utc::now().into()),
 				&TransactionType::Payment,
 				&PaymentStatus::Success,
+				None,
 			)
 			.await?;
 

@@ -1,4 +1,4 @@
-use api_models::utils::Uuid;
+use api_models::utils::{Uuid, True};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -165,10 +165,17 @@ pub struct AutomaticPaymentMethods {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct PaymentIntent {
-	pub amount: f64,
+	pub amount: u64,
 	pub currency: String,
+	pub confirm: True,
+	pub off_session: True,
 	pub description: String,
 	pub customer: String,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub payment_method: Option<String>,
+	pub payment_method_types: Vec<String>,
+	#[serde(skip_serializing_if = "String::is_empty")]
+	pub setup_future_usage: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

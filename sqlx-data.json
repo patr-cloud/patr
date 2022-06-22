@@ -463,6 +463,16 @@
     },
     "query": "SELECT deployment_id as \"deployment_id: _\", name, value, secret_id as \"secret_id: _\" FROM deployment_environment_variable WHERE deployment_id = $1;"
   },
+  "12142b109b8bfd15d79d6b1464d2279b0aa486473890e8c104a8102db3181403": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, alert_emails VARCHAR(320) [] NOT NULL, drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE, drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null CHECK( ( drone_username IS NULL AND drone_token IS NULL ) OR ( drone_username IS NOT NULL AND drone_token IS NOT NULL ) ), payment_type PAYMENT_TYPE, default_payment_method_id TEXT, deployment_limit INTEGER NOT NULL, database_limit INTEGER NOT NULL, static_site_limit INTEGER NOT NULL, managed_url_limit INTEGER NOT NULL, docker_repository_storage_limit INTEGER NOT NULL, domain_limit INTEGER NOT NULL, secret_limit INTEGER NOT NULL, stripe_customer_id TEXT NOT NULL, address_id UUID, amount_due DOUBLE PRECISION NOT NULL );"
+  },
   "1367b2c0bb8700daf488f62964c8c1396fb2a3a5a2f33577c4d0c1be8806507c": {
     "describe": {
       "columns": [
@@ -2063,26 +2073,6 @@
     },
     "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\" FROM managed_url WHERE domain_id = $1 AND sub_domain NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
   },
-  "3359baeffd3b344c2f4b8d1031b7baa27f4fdeb6ea6f63f81d9528fde523b2ca": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id FROM transactions WHERE id = $1;"
-  },
   "33846eaf8014085364f0ee8032337df4c4d8c4c7fe4df6df74c76049dd3a43f8": {
     "describe": {
       "columns": [],
@@ -2285,46 +2275,6 @@
     },
     "query": "SELECT COUNT(*) as \"count\" FROM patr_domain_dns_record WHERE domain_id = $1;"
   },
-  "3cc390c42ae59aaefba436b64c492f1db707b783fd55467c968e7a85baed6a2b": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Int4",
-          "Int8",
-          "Text",
-          "Timestamptz",
-          "Uuid",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "bill",
-                  "credits",
-                  "payment"
-                ]
-              },
-              "name": "transaction_type"
-            }
-          },
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "success",
-                  "failed"
-                ]
-              },
-              "name": "payment_status"
-            }
-          }
-        ]
-      }
-    },
-    "query": "INSERT INTO transactions( id, month, amount, payment_intent_id, date, workspace_id, transaction_type, payment_status ) VALUES( $1, $2, $3, $4, $5, $6, $7, $8 );"
-  },
   "3dcc984f6870716b1bdc57d4f61d6fa87d190a0b20dd2c8efa38b67e9c4306ae": {
     "describe": {
       "columns": [
@@ -2514,95 +2464,6 @@
       }
     },
     "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tsecret_count as \"secret_count: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tsecrets_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\t(start_time > $2 AND stop_time IS NOT NULL) OR\n\t\t\t\tstop_time is NULL\n\t\t\t);\n\t\t"
-  },
-  "3f951956139535eee4cec31e64eae3bdf534d66e6fa723203feeaa6e0fd48769": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "month",
-          "ordinal": 1,
-          "type_info": "Int4"
-        },
-        {
-          "name": "amount",
-          "ordinal": 2,
-          "type_info": "Int8"
-        },
-        {
-          "name": "payment_intent_id",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "date: _",
-          "ordinal": 4,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 5,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "transaction_type: _",
-          "ordinal": 6,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "bill",
-                  "credits",
-                  "payment"
-                ]
-              },
-              "name": "transaction_type"
-            }
-          }
-        },
-        {
-          "name": "payment_status: _",
-          "ordinal": 7,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "success",
-                  "failed"
-                ]
-              },
-              "name": "payment_status"
-            }
-          }
-        },
-        {
-          "name": "description",
-          "ordinal": 8,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tmonth,\n\t\t\tamount,\n\t\t\tpayment_intent_id,\n\t\t\tdate as \"date: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\ttransaction_type as \"transaction_type: _\",\n\t\t\tpayment_status as \"payment_status: _\",\n\t\t\tdescription\n\t\tFROM\n\t\t\ttransactions\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\ttransaction_type = 'credits';\n\t\t"
   },
   "42a3e7e04f5b80211c82b6485eb7359d5b03fd8b3378f14537f349ce5a2d5508": {
     "describe": {
@@ -2854,16 +2715,6 @@
     },
     "query": "DELETE FROM workspace_domain WHERE id = $1;"
   },
-  "502a0d59b96e4bbf06d6eba6e4554307d6494ce8105493327521c82fc17f1cff": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, alert_emails VARCHAR(320) [] NOT NULL, drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE, drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null CHECK( ( drone_username IS NULL AND drone_token IS NULL ) OR ( drone_username IS NOT NULL AND drone_token IS NOT NULL ) ), payment_type PAYMENT_TYPE, default_payment_method_id TEXT, deployment_limit INTEGER NOT NULL, database_limit INTEGER NOT NULL, static_site_limit INTEGER NOT NULL, managed_url_limit INTEGER NOT NULL, docker_repository_storage_limit INTEGER NOT NULL, domain_limit INTEGER NOT NULL, secret_limit INTEGER NOT NULL, stripe_customer_id TEXT NOT NULL, address_id UUID, amount_due BIGINT NOT NULL );"
-  },
   "508fc639bf509b4433ca585ed71cafd3fda9aa123105703514ac93701f7ab319": {
     "describe": {
       "columns": [
@@ -2970,7 +2821,7 @@
         {
           "name": "amount_due",
           "ordinal": 18,
-          "type_info": "Int8"
+          "type_info": "Float8"
         }
       ],
       "nullable": [
@@ -4184,16 +4035,6 @@
     },
     "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id: _\", workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.nameserver_type as \"nameserver_type: _\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE domain.id = $1 AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
   },
-  "6a1ca865a6aac3f259265e0c48f5e606053f649e9735135690f1383571f4215a": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE IF NOT EXISTS transactions( id UUID CONSTRAINT transactions_pk PRIMARY KEY, month INTEGER NOT NULL, amount BIGINT NOT NULL, payment_intent_id TEXT, date TIMESTAMPTZ NOT NULL, workspace_id UUID NOT NULL, transaction_type TRANSACTION_TYPE NOT NULL, payment_status PAYMENT_STATUS NOT NULL CONSTRAINT transactions_payment_status_check CHECK ( payment_status = 'success' AND TRANSACTION_TYPE = 'bill' ), description TEXT CONSTRAINT transactions_description_check CHECK ( transaction_type = 'credit' AND description IS NOT NULL ) );"
-  },
   "6ad2f021500f77e5ac540f128fc071c0aead61d48db51dc32132ccba1a2120ab": {
     "describe": {
       "columns": [],
@@ -4562,7 +4403,7 @@
         {
           "name": "amount_due",
           "ordinal": 18,
-          "type_info": "Int8"
+          "type_info": "Float8"
         }
       ],
       "nullable": [
@@ -5372,6 +5213,26 @@
     },
     "query": "CREATE TABLE IF NOT EXISTS managed_url_payment_history( id UUID CONSTRAINT managed_url_payment_history_pk PRIMARY KEY, workspace_id UUID NOT NULL, url_count INTEGER NOT NULL, CONSTRAINT managed_url_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id) );"
   },
+  "83c7c39ed3e071ecccc1fe0f6af04d9cacc3d9ca6faaf5e3de08b9b10704773a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id FROM transaction WHERE id = $1;"
+  },
   "8462bd0e0f4ced9e6f53b6bb2ae95f0d393c2217d033072ca79e842b71881e06": {
     "describe": {
       "columns": [],
@@ -5629,7 +5490,7 @@
         {
           "name": "amount_due",
           "ordinal": 18,
-          "type_info": "Int8"
+          "type_info": "Float8"
         }
       ],
       "nullable": [
@@ -6128,6 +5989,26 @@
     },
     "query": "CREATE TYPE DOMAIN_PLAN AS ENUM( 'free', 'unlimited' );"
   },
+  "9984273841ee7044d1acfad61e9fe6d915e5729afe449766a780cc68e9db5808": {
+    "describe": {
+      "columns": [
+        {
+          "name": "amount!",
+          "ordinal": 0,
+          "type_info": "Float8"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT SUM( CASE WHEN transaction_type = 'bill' THEN amount ELSE -amount END ) as \"amount!\" FROM transaction WHERE workspace_id = $1 AND ( transaction_type = 'bill' OR transaction_type = 'credits' ) AND payment_status = 'success';"
+  },
   "999c6d99e64ea91f2f9496cfb2be0d453e6191c92a1a5a6a8230eef7ad0b6ad8": {
     "describe": {
       "columns": [],
@@ -6137,6 +6018,19 @@
       }
     },
     "query": "CREATE TABLE workspace_credits( workspace_id UUID NOT NULL, credits BIGINT NOT NULL DEFAULT 0, metadata JSON NOT NULL, date TIMESTAMPTZ NOT NULL );"
+  },
+  "99c7918fc6e51982308d66ba4db17e8887d1082239e5098d8e3d32aef4b38e1e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Float8",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE workspace SET amount_due = $1 WHERE id = $2;"
   },
   "99dc06d936908c90139edfcaed7f8ec46b9d5c97445cb5c4ed0a2f69c415b6a9": {
     "describe": {
@@ -7076,6 +6970,16 @@
     },
     "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE resource_id = $1;"
   },
+  "ab6e5c026351b21aa691cf34f0581c41e59d2bb9ceb5da4503a6c1fb144ba2d9": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE IF NOT EXISTS transaction( id UUID CONSTRAINT transaction_pk PRIMARY KEY, month INTEGER NOT NULL, amount DOUBLE NOT NULL, payment_intent_id TEXT, date TIMESTAMPTZ NOT NULL, workspace_id UUID NOT NULL, transaction_type TRANSACTION_TYPE NOT NULL, payment_status PAYMENT_STATUS NOT NULL CONSTRAINT transaction_payment_status_check CHECK ( payment_status = 'success' AND transaction_type = 'bill' ), description TEXT CONSTRAINT transaction_description_check CHECK ( transaction_type = 'credit' AND description IS NOT NULL ) );"
+  },
   "ac1034b956efa62c01ba79bff480479ba4614fa20e9fb63304173b92b3dbe01d": {
     "describe": {
       "columns": [],
@@ -7438,7 +7342,7 @@
         {
           "name": "amount_due",
           "ordinal": 18,
-          "type_info": "Int8"
+          "type_info": "Float8"
         }
       ],
       "nullable": [
@@ -7467,6 +7371,96 @@
       }
     },
     "query": "SELECT DISTINCT workspace.id as \"id: _\", workspace.name::TEXT as \"name!: _\", workspace.super_admin_id as \"super_admin_id: _\", workspace.active, workspace.alert_emails as \"alert_emails!: _\", workspace.drone_username, workspace.drone_token, workspace.payment_type as \"payment_type!: _\", workspace.default_payment_method_id as \"default_payment_method_id: _\", workspace.deployment_limit, workspace.static_site_limit, workspace.database_limit, workspace.managed_url_limit, workspace.secret_limit, workspace.domain_limit, workspace.docker_repository_storage_limit, workspace.stripe_customer_id, workspace.address_id as \"address_id: _\", workspace.amount_due FROM workspace WHERE workspace.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
+  },
+  "b214965bc8ea98855fc7ad482af084d4d42ab90aa577f64f9c30ce925188a8cf": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "month",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "amount",
+          "ordinal": 2,
+          "type_info": "Float8"
+        },
+        {
+          "name": "payment_intent_id",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "date: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 5,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "transaction_type: _",
+          "ordinal": 6,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "bill",
+                  "credits",
+                  "payment"
+                ]
+              },
+              "name": "transaction_type"
+            }
+          }
+        },
+        {
+          "name": "payment_status: _",
+          "ordinal": 7,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "success",
+                  "failed"
+                ]
+              },
+              "name": "payment_status"
+            }
+          }
+        },
+        {
+          "name": "description",
+          "ordinal": 8,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tmonth,\n\t\t\tamount,\n\t\t\tpayment_intent_id,\n\t\t\tdate as \"date: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\ttransaction_type as \"transaction_type: _\",\n\t\t\tpayment_status as \"payment_status: _\",\n\t\t\tdescription\n\t\tFROM\n\t\t\ttransaction\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\tpayment_intent_id = $2;\n\t\t"
   },
   "b2570af8ca7311aff26e71673f7b4a7e10881cc888e41a64b8b8dac482d0e992": {
     "describe": {
@@ -8157,6 +8151,47 @@
     },
     "query": "CREATE TYPE MANAGED_DATABASE_ENGINE AS ENUM( 'postgres', 'mysql' );"
   },
+  "be6660573f845f8dd70d787c335e1b5a1937d17c5509c2a5b304962e5853652a": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Int4",
+          "Float8",
+          "Text",
+          "Timestamptz",
+          "Uuid",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "bill",
+                  "credits",
+                  "payment"
+                ]
+              },
+              "name": "transaction_type"
+            }
+          },
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "success",
+                  "failed"
+                ]
+              },
+              "name": "payment_status"
+            }
+          },
+          "Text"
+        ]
+      }
+    },
+    "query": "INSERT INTO transaction( id, month, amount, payment_intent_id, date, workspace_id, transaction_type, payment_status, description ) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9 );"
+  },
   "be816fa44f70a6aed2285bf950575d5939a16b3d61d3009772afee9ad7a22cb3": {
     "describe": {
       "columns": [],
@@ -8794,6 +8829,95 @@
       }
     },
     "query": "CREATE INDEX workspace_idx_super_admin_id ON workspace (super_admin_id);"
+  },
+  "d9194070d90b6b0987a789933c15da1bb19512c19f5a9e5b78d8c17fe5e2b46f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "month",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "amount",
+          "ordinal": 2,
+          "type_info": "Float8"
+        },
+        {
+          "name": "payment_intent_id",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "date: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 5,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "transaction_type: _",
+          "ordinal": 6,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "bill",
+                  "credits",
+                  "payment"
+                ]
+              },
+              "name": "transaction_type"
+            }
+          }
+        },
+        {
+          "name": "payment_status: _",
+          "ordinal": 7,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "success",
+                  "failed"
+                ]
+              },
+              "name": "payment_status"
+            }
+          }
+        },
+        {
+          "name": "description",
+          "ordinal": 8,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tmonth,\n\t\t\tamount,\n\t\t\tpayment_intent_id,\n\t\t\tdate as \"date: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\ttransaction_type as \"transaction_type: _\",\n\t\t\tpayment_status as \"payment_status: _\",\n\t\t\tdescription\n\t\tFROM\n\t\t\ttransaction\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\ttransaction_type = 'credits';\n\t\t"
   },
   "d9403e1ceb62847e8bbca2d31fbb0afc16c8ce1cb802be0d6be6940017d1e9d4": {
     "describe": {
@@ -9503,7 +9627,7 @@
         {
           "name": "amount_due",
           "ordinal": 18,
-          "type_info": "Int8"
+          "type_info": "Float8"
         }
       ],
       "nullable": [
@@ -10895,6 +11019,29 @@
     },
     "query": "CREATE TABLE domain_tld( tld TEXT CONSTRAINT domain_tld_pk PRIMARY KEY CONSTRAINT domain_tld_chk_is_length_valid CHECK( LENGTH(tld) >= 2 AND LENGTH(tld) <= 63 ) CONSTRAINT domain_tld_chk_is_tld_valid CHECK( tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) );"
   },
+  "f95823395598e47ee5f9c0048504c3d63f22ad5eab2c0572531a19c4ffdcd71a": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "success",
+                  "failed"
+                ]
+              },
+              "name": "payment_status"
+            }
+          },
+          "Text"
+        ]
+      }
+    },
+    "query": "UPDATE transaction SET payment_status = $1 WHERE payment_intent_id = $2 AND date = ( SELECT MAX(date) FROM transaction WHERE payment_intent_id = $2 );"
+  },
   "f97a6aa74e29fce79cf925131c1d9600abb217529d44954f2044e5b11d43ef17": {
     "describe": {
       "columns": [
@@ -11106,96 +11253,6 @@
       }
     },
     "query": "UPDATE deployment SET min_horizontal_scale = $1 WHERE id = $2;"
-  },
-  "fb0dcdf317805663bb64c8fa32b9a55769d580fde1c5ac66d1f01fbb7da076f8": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "month",
-          "ordinal": 1,
-          "type_info": "Int4"
-        },
-        {
-          "name": "amount",
-          "ordinal": 2,
-          "type_info": "Int8"
-        },
-        {
-          "name": "payment_intent_id",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "date: _",
-          "ordinal": 4,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 5,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "transaction_type: _",
-          "ordinal": 6,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "bill",
-                  "credits",
-                  "payment"
-                ]
-              },
-              "name": "transaction_type"
-            }
-          }
-        },
-        {
-          "name": "payment_status: _",
-          "ordinal": 7,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "success",
-                  "failed"
-                ]
-              },
-              "name": "payment_status"
-            }
-          }
-        },
-        {
-          "name": "description",
-          "ordinal": 8,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tmonth,\n\t\t\tamount,\n\t\t\tpayment_intent_id,\n\t\t\tdate as \"date: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\ttransaction_type as \"transaction_type: _\",\n\t\t\tpayment_status as \"payment_status: _\",\n\t\t\tdescription\n\t\tFROM\n\t\t\ttransactions\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\tpayment_intent_id = $2;\n\t\t"
   },
   "fb61d8e9bb665263c6e91840682ffe069555305699873e37305595203ff62071": {
     "describe": {

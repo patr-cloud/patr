@@ -8,7 +8,7 @@ use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
+	db::{self, PaymentStatus},
 	error,
 	models::{
 		deployment::KubernetesEventData,
@@ -54,6 +54,11 @@ pub fn create_sub_app(
 	sub_app.post(
 		"/kubernetes-events",
 		[EveMiddleware::CustomFunction(pin_fn!(deployment_alert))],
+	);
+
+	sub_app.post(
+		"/stripe-webhook",
+		[EveMiddleware::CustomFunction(pin_fn!(stripe_webhook))],
 	);
 
 	sub_app
@@ -538,6 +543,45 @@ async fn deployment_alert(
 		}
 		_ => (),
 	}
+
+	Ok(context)
+}
+
+async fn stripe_webhook(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let payment_intent = context.get_body_object();
+
+	fn get_payment_intent_details_of_event(
+		event: &serde_json::Value,
+	) -> Option<(String, String)> {
+		let intent = event.as_object()?.get("data")?.as_object()?;
+		if intent.get("object")?.as_str()? == "payment_intent" {
+			Some((
+				intent.get("id")?.as_str()?.to_string(),
+				intent.get("status")?.as_str()?.to_string(),
+			))
+		} else {
+			None
+		}
+	}
+
+	let (id, status) =
+		get_payment_intent_details_of_event(payment_intent).status(500)?;
+
+	db::update_transaction_status_for_payment_id(
+		context.get_database_connection(),
+		&id,
+		&if status == "succeeded" {
+			PaymentStatus::Success
+		} else if status == "requires_payment_method" {
+			PaymentStatus::Pending
+		} else {
+			PaymentStatus::Failed
+		},
+	)
+	.await?;
 
 	Ok(context)
 }

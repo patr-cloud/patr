@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use api_models::{
 	models::workspace::billing::PaymentMethod,
-	utils::{DateTime, Uuid},
+	utils::{DateTime, True, Uuid},
 };
 use chrono::Utc;
 use eve_rs::AsError;
@@ -46,10 +46,18 @@ pub async fn add_credits_to_workspace(
 		.post("https://api.stripe.com/v1/payment_intents")
 		.basic_auth(&config.stripe.secret_key, password)
 		.form(&PaymentIntent {
-			amount: (credits as f64 * 10f64),
+			amount: (credits * 10).into(),
 			currency: "usd".to_string(),
+			confirm: True,
+			off_session: True,
 			description: "Patr charge: Additional credits".to_string(),
-			customer: config.stripe.customer_id.clone(),
+			customer: db::get_workspace_info(connection, workspace_id)
+				.await?
+				.status(500)?
+				.stripe_customer_id,
+			payment_method: None,
+			payment_method_types: vec!["card".to_string()],
+			setup_future_usage: "off_session".to_string(),
 		})
 		.send()
 		.await?

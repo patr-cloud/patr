@@ -949,8 +949,8 @@ async fn get_credits(
 	.await?
 	.into_iter()
 	.map(|transaction| transaction.amount.abs())
-	.sum::<i64>()
-	.max(0) as u64;
+	.sum::<f64>()
+	.max(0f64);
 
 	context.success(GetCreditsResponse { credits });
 	Ok(context)
