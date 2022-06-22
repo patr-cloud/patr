@@ -1,7 +1,10 @@
 use std::io::{Cursor, Read};
 
 use api_models::{
-	models::workspace::infrastructure::deployment::DeploymentStatus,
+	models::workspace::infrastructure::{
+		deployment::DeploymentStatus,
+		static_site::StaticSiteDetails,
+	},
 	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
@@ -13,8 +16,8 @@ use crate::{
 	db::{self, StaticSitePlan},
 	error,
 	models::rbac,
-	service::{self},
-	utils::{settings::Settings, validator, Error},
+	service::{self, infrastructure::kubernetes},
+	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
 
@@ -22,6 +25,8 @@ pub async fn create_static_site_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	name: &str,
+	file: Option<String>,
+	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	// validate static site name
@@ -110,6 +115,29 @@ pub async fn create_static_site_in_workspace(
 		"request_id: {} - static site created successfully",
 		request_id
 	);
+
+	if let Some(file) = file {
+		log::trace!("request_id: {} - Starting static site", request_id);
+
+		db::update_static_site_status(
+			connection,
+			&static_site_id,
+			&DeploymentStatus::Deploying,
+		)
+		.await?;
+
+		update_static_site_and_db_status(
+			connection,
+			workspace_id,
+			&static_site_id,
+			Some(&file),
+			&StaticSiteDetails {},
+			config,
+			request_id,
+		)
+		.await?;
+	}
+
 	Ok(static_site_id)
 }
 
@@ -122,20 +150,17 @@ pub async fn update_static_site(
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {} - getting static site details", request_id);
-	let static_site = db::get_static_site_by_id(connection, static_site_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	if let Some(name) = name {
 		db::update_static_site_name(connection, static_site_id, name).await?;
 	}
 
 	if let Some(file) = file {
-		service::queue_upload_static_site(
-			&static_site.workspace_id,
+		log::trace!("request_id: {} - Uploading the static site", request_id);
+		service::upload_static_site_files_to_s3(
+			connection,
+			&file,
 			static_site_id,
-			file,
 			config,
 			request_id,
 		)
@@ -147,18 +172,15 @@ pub async fn update_static_site(
 
 pub async fn stop_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
 	static_site_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {} - Getting deployment id from db", request_id);
-	let static_site = db::get_static_site_by_id(connection, static_site_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	service::queue_stop_static_site(
-		&static_site.workspace_id,
+	kubernetes::delete_kubernetes_static_site(
+		workspace_id,
 		static_site_id,
 		config,
 		request_id,
@@ -182,6 +204,7 @@ pub async fn stop_static_site(
 
 pub async fn delete_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
 	static_site_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
@@ -191,8 +214,8 @@ pub async fn delete_static_site(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	service::queue_delete_static_site(
-		&static_site.workspace_id,
+	kubernetes::delete_kubernetes_static_site(
+		workspace_id,
 		static_site_id,
 		config,
 		request_id,
@@ -305,6 +328,8 @@ pub async fn upload_static_site_files_to_s3(
 		request_id
 	);
 
+	let mut files_vec = Vec::new();
+
 	for i in 0..archive.len() {
 		let mut file = archive.by_index(i).map_err(|err| {
 			log::error!(
@@ -338,18 +363,27 @@ pub async fn upload_static_site_files_to_s3(
 			static_site_id,
 			file_name
 		);
+
 		let file_extension = file_name
-			.split('.')
-			.last()
+			.split_once('.')
 			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+			.body(error!(SERVER_ERROR).to_string())?
+			.1;
 		let mime_string = get_mime_type_from_file_name(file_extension);
 
+		files_vec.push((
+			file_name.clone(),
+			file_content,
+			mime_string.to_string(),
+		));
+	}
+
+	for (file_name, file_content, mime_string) in files_vec {
 		let (_, code) = bucket
 			.put_object_with_content_type(
 				format!("{}/{}", static_site_id, file_name),
 				&file_content,
-				mime_string,
+				&mime_string,
 			)
 			.await
 			.map_err(|err| {
@@ -373,6 +407,71 @@ pub async fn upload_static_site_files_to_s3(
 	log::trace!("request_id: {} - uploaded the files to s3", request_id);
 
 	Ok(())
+}
+
+pub async fn update_static_site_and_db_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	static_site_id: &Uuid,
+	file: Option<&str>,
+	_running_details: &StaticSiteDetails,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Updating kubernetes static site",
+		request_id
+	);
+	let result = service::update_kubernetes_static_site(
+		workspace_id,
+		static_site_id,
+		&StaticSiteDetails {},
+		config,
+		request_id,
+	)
+	.await;
+
+	if let Some(file) = file {
+		log::trace!(
+			"request_id: {} - Uploading static site files to S3",
+			request_id
+		);
+		service::upload_static_site_files_to_s3(
+			connection,
+			file,
+			static_site_id,
+			config,
+			request_id,
+		)
+		.await?;
+	}
+
+	if let Err(err) = result {
+		log::error!(
+			"request_id: {} - Error occured while deploying site `{}`: {}",
+			request_id,
+			static_site_id,
+			err.get_error()
+		);
+		// TODO log in audit log that there was an error while deploying
+		db::update_static_site_status(
+			connection,
+			static_site_id,
+			&DeploymentStatus::Errored,
+		)
+		.await?;
+
+		Err(err)
+	} else {
+		db::update_static_site_status(
+			connection,
+			static_site_id,
+			&DeploymentStatus::Running,
+		)
+		.await?;
+
+		Ok(())
+	}
 }
 
 fn get_mime_type_from_file_name(file_extension: &str) -> &str {
