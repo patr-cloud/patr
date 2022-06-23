@@ -2816,6 +2816,18 @@
       "nullable": []
     }
   },
+  "4708633ea62017c02ca996b71833126bb09c45aa717a610231a61c39f4abd3ed": {
+    "query": "DELETE FROM payment_method WHERE payment_method_id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "48614d899808b4b6293aeee2784b04096759b7e3b608a03b2915ec35d4c51221": {
     "query": "INSERT INTO personal_email( user_id, local, domain_id ) VALUES ($1, $2, $3);",
     "describe": {
@@ -4975,6 +4987,32 @@
         true,
         null,
         true,
+        false,
+        false
+      ]
+    }
+  },
+  "7b54510289828e668085a233f5c5fe0d6f5f5c1f406073f4cbe5e96cb181f0b3": {
+    "query": "\n\t\tSELECT \n\t\t\tpayment_method_id,\n\t\t\tworkspace_id as \"workspace_id: _\"\n\t\tFROM\n\t\t\tpayment_method\n\t\tWHERE\n\t\t\tpayment_method_id = $1;\n\t\t",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "payment_method_id",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "workspace_id: _",
+          "type_info": "Uuid"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
         false,
         false
       ]

@@ -586,3 +586,53 @@ pub async fn get_card_details(
 	}
 	Ok(cards)
 }
+
+pub async fn delete_payment_method(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	payment_method_id: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	// TODO: check for active resources above the free plan
+	// if there are any check if this is only the payment method the user has
+	// if that is the case throw an error
+
+	let payment_methods =
+		db::get_payment_methods_for_workspace(connection, workspace_id).await?;
+	if payment_methods.len() == 1 {
+		return Error::as_result()
+			.status(400)
+			.body(error!(CANNOT_DELETE_PAYMENT_METHOD).to_string())?;
+	}
+
+	// check if the payment method is primary
+	let primary_payment_method =
+		db::get_workspace_info(connection, workspace_id)
+			.await?
+			.status(500)?
+			.default_payment_method_id
+			.status(500)?;
+	if payment_method_id == primary_payment_method {
+		return Error::as_result()
+			.status(400)
+			.body(error!(CHANGE_PRIMARY_PAYMENT_METHOD).to_string())?;
+	}
+	db::delete_payment_method(connection, payment_method_id).await?;
+	let client = Client::new();
+	let password: Option<String> = None;
+	let deletion_status = client
+		.post(format!(
+			"https://api.stripe.com/v1/payment_methods/{}/detach",
+			payment_method_id
+		))
+		.basic_auth(&config.stripe.secret_key, password)
+		.send()
+		.await?
+		.status();
+	if !deletion_status.is_success() {
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+	}
+	Ok(())
+}

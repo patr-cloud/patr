@@ -212,12 +212,8 @@ pub async fn add_billing_address(
 	};
 
 	db::add_billing_address(connection, &address_details).await?;
-	db::add_billing_address_to_workspace(
-		connection,
-		workspace_id,
-		&address_id,
-	)
-	.await?;
+	db::add_billing_address_to_workspace(connection, workspace_id, &address_id)
+		.await?;
 
 	let client = Client::new();
 

@@ -1210,3 +1210,42 @@ pub async fn update_transaction_status_for_payment_id(
 	.await
 	.map(|_| ())
 }
+
+pub async fn get_payment_method_info(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	payment_method_id: &str,
+) -> Result<Option<PaymentMethod>, sqlx::Error> {
+	query_as!(
+		PaymentMethod,
+		r#"
+		SELECT 
+			payment_method_id,
+			workspace_id as "workspace_id: _"
+		FROM
+			payment_method
+		WHERE
+			payment_method_id = $1;
+		"#,
+		payment_method_id
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn delete_payment_method(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	payment_method_id: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			payment_method
+		WHERE
+			payment_method_id = $1;
+		"#,
+		payment_method_id
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}

@@ -68,6 +68,9 @@ pub mod id {
 	pub const ADDRESS_ALREADY_EXISTS: &str = "addressAlreadyExists";
 	pub const ADDRESS_NOT_FOUND: &str = "addressNotFound";
 	pub const DOMAIN_LIMIT_EXCEEDED: &str = "domainLimitExceeded";
+	pub const CHANGE_PRIMARY_PAYMENT_METHOD: &str =
+		"changePrimaryPaymentMethod";
+	pub const CANNOT_DELETE_PAYMENT_METHOD: &str = "cannotDeletePaymentMethod";
 }
 
 #[allow(dead_code)]
@@ -195,4 +198,6 @@ pub mod message {
 	pub const ADDRESS_NOT_FOUND: &str =
 		"The address does not exist, please add a new address";
 	pub const DOMAIN_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number domains allowed for your workspace, contact support to increase the limit";
+	pub const CHANGE_PRIMARY_PAYMENT_METHOD: &str = "The current payment method cannot be deleted since it is your primary payment method";
+	pub const CANNOT_DELETE_PAYMENT_METHOD: &str = "The payment method cannot be deleted since it is in use, please delete all the resources and try again in the next billing cycle";
 }
