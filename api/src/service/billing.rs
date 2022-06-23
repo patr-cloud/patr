@@ -62,13 +62,13 @@ pub async fn add_credits_to_workspace(
 			amount: (credits * 10).into(),
 			currency: "usd".to_string(),
 			confirm: True,
-			off_session: True,
+			off_session: false,
 			description: "Patr charge: Additional credits".to_string(),
 			customer: db::get_workspace_info(connection, workspace_id)
 				.await?
 				.status(500)?
 				.stripe_customer_id,
-			payment_method: None,
+			payment_method: default_payment_method_id,
 			payment_method_types: "card".to_string(),
 			setup_future_usage: "off_session".to_string(),
 		})
@@ -551,16 +551,22 @@ pub async fn add_card_details(
 	config: &Settings,
 ) -> Result<PaymentIntentObject, Error> {
 	let client = Client::new();
-	let stripe_customer_id = db::get_workspace_info(connection, workspace_id)
+	let workspace = db::get_workspace_info(connection, workspace_id)
 		.await?
-		.status(500)?
-		.stripe_customer_id;
+		.status(500)?;
+
+	if workspace.address_id.is_none() {
+		return Error::as_result()
+			.status(400)
+			.body(error!(ADDRESS_REQUIRED).to_string())?;
+	}
+
 	let password: Option<String> = None;
 	client
 		.post("https://api.stripe.com/v1/setup_intents")
 		.basic_auth(&config.stripe.secret_key, password)
 		.query(&[
-			("customer", stripe_customer_id.as_str()),
+			("customer", workspace.stripe_customer_id.as_str()),
 			// for now only accepting cards, other payment methods will be
 			// accepted at later point of time
 			("payment_method_types[]", "card"),

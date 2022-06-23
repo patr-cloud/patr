@@ -168,7 +168,7 @@ pub struct PaymentIntent {
 	pub amount: u64,
 	pub currency: String,
 	pub confirm: True,
-	pub off_session: True,
+	pub off_session: bool,
 	pub description: String,
 	pub customer: String,
 	#[serde(skip_serializing_if = "Option::is_none")]
@@ -197,10 +197,16 @@ pub struct CardNetworks {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct StripeAddress {
+	#[serde(rename = "address[city]")]
 	pub city: String,
+	#[serde(rename = "address[country]")]
 	pub country: String,
+	#[serde(rename = "address[line1]")]
 	pub line1: String,
+	#[serde(rename = "address[line2]")]
 	pub line2: Option<String>,
+	#[serde(rename = "address[postal_code]")]
 	pub postal_code: String,
+	#[serde(rename = "address[state]")]
 	pub state: String,
 }

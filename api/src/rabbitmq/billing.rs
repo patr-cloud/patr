@@ -233,7 +233,7 @@ pub(super) async fn process_request(
 						amount: (total_bill * 100f64) as u64,
 						currency: "usd".to_string(),
 						confirm: True,
-						off_session: True,
+						off_session: true,
 						description: format!(
 							"Patr charge: Bill for {} {}",
 							month_string, year

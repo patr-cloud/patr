@@ -72,6 +72,7 @@ pub mod id {
 		"changePrimaryPaymentMethod";
 	pub const CANNOT_DELETE_PAYMENT_METHOD: &str = "cannotDeletePaymentMethod";
 	pub const PAYMENT_METHOD_REQUIRED: &str = "paymentMethodRequired";
+	pub const ADDRESS_REQUIRED: &str = "addressRequired";
 }
 
 #[allow(dead_code)]
@@ -202,4 +203,5 @@ pub mod message {
 	pub const CHANGE_PRIMARY_PAYMENT_METHOD: &str = "The current payment method cannot be deleted since it is your primary payment method";
 	pub const CANNOT_DELETE_PAYMENT_METHOD: &str = "The payment method cannot be deleted since it is in use, please delete all the resources and try again in the next billing cycle";
 	pub const PAYMENT_METHOD_REQUIRED: &str = "It seems that you have not added any payment method. Please add a payment method to continue";
+	pub const ADDRESS_REQUIRED: &str = "You need to add your billing address inorder to proceed with the transaction";
 }
