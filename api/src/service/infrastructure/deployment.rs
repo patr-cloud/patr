@@ -117,13 +117,7 @@ pub async fn create_deployment_in_workspace(
 	}
 
 	log::trace!("request_id: {} - Checking deployment limit", request_id);
-	if deployment_limit_crossed(
-		connection,
-		workspace_id,
-		request_id,
-	)
-	.await?
-	{
+	if deployment_limit_crossed(connection, workspace_id, request_id).await? {
 		return Error::as_result()
 			.status(400)
 			.body(error!(DEPLOYMENT_LIMIT_EXCEEDED).to_string())?;
@@ -243,7 +237,7 @@ pub async fn create_deployment_in_workspace(
 		connection,
 		workspace_id,
 		&deployment_id,
-		&machine_type,
+		machine_type,
 		deployment_running_details.min_horizontal_scale as i32,
 		&DateTime::from(created_time),
 	)

@@ -243,16 +243,6 @@ pub async fn initialize_managed_database_post(
 	.execute(&mut *connection)
 	.await?;
 
-	query!(
-		r#"
-		ALTER TABLE managed_database
-		ADD CONSTRAINT managed_database_fk_database_payment_history_id
-		FOREIGN KEY(database_payment_history_id) REFERENCES managed_database_payment_history(id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	Ok(())
 }
 

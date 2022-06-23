@@ -2095,6 +2095,8 @@ pub async fn create_user(
 
 	recovery_phone_country_code: Option<&str>,
 	recovery_phone_number: Option<&str>,
+
+	workspace_limit: i32,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -2114,7 +2116,9 @@ pub async fn create_user(
 				recovery_email_domain_id,
 
 				recovery_phone_country_code,
-				recovery_phone_number
+				recovery_phone_number,
+
+				workspace_limit
 			)
 		VALUES
 			(
@@ -2132,7 +2136,9 @@ pub async fn create_user(
 				$8,
 				
 				$9,
-				$10
+				$10,
+
+				$11
 			);
 		"#,
 		user_id as _,
@@ -2144,7 +2150,8 @@ pub async fn create_user(
 		recovery_email_local,
 		recovery_email_domain_id as _,
 		recovery_phone_country_code,
-		recovery_phone_number
+		recovery_phone_number,
+		workspace_limit,
 	)
 	.execute(&mut *connection)
 	.await?;

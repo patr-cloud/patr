@@ -19,9 +19,11 @@ async fn update_bill() -> Result<(), Error> {
 	let month_start_date = now.date().with_day(1).unwrap().and_hms(0, 0, 0);
 
 	for workspace in workspaces {
-		let existing_bill =
-			db::get_total_amount_due_for_workspace(&mut connection, &workspace.id)
-				.await? as f64;
+		let existing_bill = db::get_total_amount_due_for_workspace(
+			&mut connection,
+			&workspace.id,
+		)
+		.await? as f64;
 		let deployment_usages =
 			service::calculate_deployment_bill_for_workspace_till(
 				&mut connection,

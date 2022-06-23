@@ -366,6 +366,7 @@ pub async fn create_workspace(
 	domain_limit: i32,
 	secret_limit: i32,
 	stripe_customer_id: &str,
+	payment_type: &PaymentType,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -388,16 +389,18 @@ pub async fn create_workspace(
 				domain_limit,
 				secret_limit,
 				stripe_customer_id,
-				address_id
+				address_id,
+				amount_due
 			)
 		VALUES
-			($1, $2, $3, $4, $5, NULL, NULL, NULL, NULL, $6, $7, $8, $9, $10, $11, $12, $13, NULL);
+			($1, $2, $3, $4, $5, NULL, NULL, $6, NULL, $7, $8, $9, $10, $11, $12, $13, $14, NULL, $15);
 		"#,
 		workspace_id as _,
 		name as _,
 		super_admin_id as _,
 		true,
 		alert_emails as _,
+		payment_type as _,
 		deployment_limit,
 		database_limit,
 		static_site_limit,
@@ -406,6 +409,7 @@ pub async fn create_workspace(
 		domain_limit,
 		secret_limit,
 		stripe_customer_id,
+		0 as i32
 	)
 	.execute(&mut *connection)
 	.await?;

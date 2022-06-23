@@ -73,7 +73,7 @@ pub struct Transaction {
 }
 
 pub struct PaymentMethod {
-	pub id: String,
+	pub payment_method_id: String,
 	pub workspace_id: Uuid,
 }
 
@@ -270,7 +270,7 @@ pub async fn initialize_billing_pre(
 		CREATE TABLE IF NOT EXISTS transaction(
 			id UUID CONSTRAINT transaction_pk PRIMARY KEY,
 			month INTEGER NOT NULL,
-			amount DOUBLE NOT NULL,
+			amount DOUBLE PRECISION NOT NULL,
 			payment_intent_id TEXT,
 			date TIMESTAMPTZ NOT NULL,
 			workspace_id UUID NOT NULL,
@@ -282,7 +282,7 @@ pub async fn initialize_billing_pre(
 				),
 			description TEXT
 				CONSTRAINT transaction_description_check CHECK (
-					transaction_type = 'credit' AND
+					transaction_type = 'credits' AND
 					description IS NOT NULL
 			)
 		);
@@ -718,7 +718,7 @@ pub async fn get_payment_methods_for_workspace(
 		PaymentMethod,
 		r#"
 		SELECT
-			id,
+			payment_method_id,
 			workspace_id as "workspace_id!: _"
 		FROM
 			payment_method
@@ -1129,14 +1129,18 @@ pub async fn get_total_amount_due_for_workspace(
 	query!(
 		r#"
 		SELECT
-			SUM(
-				CASE
-					WHEN transaction_type = 'bill' THEN
-						amount
-					ELSE
-						-amount
-				END
-			) as "amount!"
+			COALESCE(
+				SUM(
+					CASE
+						WHEN transaction_type = 'bill' THEN
+							amount
+						ELSE
+							-amount
+					END
+				),
+				0
+			)
+			 as "amount!"
 		FROM
 			transaction
 		WHERE
@@ -1159,6 +1163,7 @@ pub async fn update_amount_due_for_workspace(
 	workspace_id: &Uuid,
 	amount_due: f64,
 ) -> Result<(), sqlx::Error> {
+	println!("existing bill total: {}", amount_due);
 	query!(
 		r#"
 		UPDATE
@@ -1168,7 +1173,7 @@ pub async fn update_amount_due_for_workspace(
 		WHERE
 			id = $2;
 		"#,
-		amount_due,
+		amount_due as _,
 		workspace_id as _,
 	)
 	.execute(&mut *connection)

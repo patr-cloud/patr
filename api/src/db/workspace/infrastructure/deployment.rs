@@ -370,16 +370,6 @@ pub async fn initialize_deployment_post(
 		.await?;
 	}
 
-	query!(
-		r#"
-		ALTER TABLE deployment
-		ADD CONSTRAINT deployment_fk_deployment_payment_history_id
-		FOREIGN KEY(deployment_payment_history_id) REFERENCES deployment_payment_history(id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	for continent in DEFAULT_DEPLOYMENT_REGIONS.iter() {
 		let region_id =
 			populate_region(&mut *connection, None, continent).await?;

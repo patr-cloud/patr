@@ -13,6 +13,7 @@ use api_models::{
 		GetCardDetailsResponse,
 		GetCreditBalanceResponse,
 		GetCreditsResponse,
+		GetCurrentBillResponse,
 		GetSubscriptionsResponse,
 		PaymentMethod,
 		PromotionalCredits,
@@ -995,7 +996,7 @@ async fn get_current_bill(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let _workspace = db::get_workspace_info(
+	let workspace = db::get_workspace_info(
 		context.get_database_connection(),
 		&workspace_id,
 	)
@@ -1003,7 +1004,8 @@ async fn get_current_bill(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
-	// Send current bill as response
-
+	context.success(GetCurrentBillResponse {
+		bill: workspace.amount_due as u64,
+	});
 	Ok(context)
 }

@@ -154,8 +154,8 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 ) -> Result<HashMap<Uuid, DeploymentBill>, Error> {
 	let deployment_usages = db::get_all_deployment_usage(
 		&mut *connection,
-		&workspace_id,
-		&DateTime::from(month_start_date.clone()),
+		workspace_id,
+		&DateTime::from(*month_start_date),
 	)
 	.await?;
 
@@ -165,8 +165,8 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 	for deployment_usage in deployment_usages {
 		let hours = (deployment_usage
 			.stop_time
-			.map(|st| chrono::DateTime::from(st))
-			.unwrap_or(till_date.clone()) -
+			.map(chrono::DateTime::from)
+			.unwrap_or_else(|| *till_date) -
 			chrono::DateTime::from(deployment_usage.start_time))
 		.num_hours();
 
@@ -218,12 +218,10 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 					remaining_free_hours =
 						(remaining_free_hours - hours).max(0);
 					price
+				} else if hours >= 720 {
+					monthly_price
 				} else {
-					if hours >= 720 {
-						monthly_price
-					} else {
-						((hours as f64) / 720f64) * monthly_price
-					}
+					((hours as f64) / 720f64) * monthly_price
 				},
 			});
 	}
@@ -239,8 +237,8 @@ pub async fn calculate_database_bill_for_workspace_till(
 ) -> Result<HashMap<Uuid, DatabaseBill>, Error> {
 	let database_usages = db::get_all_database_usage(
 		&mut *connection,
-		&workspace_id,
-		&DateTime::from(month_start_date.clone()),
+		workspace_id,
+		&DateTime::from(*month_start_date),
 	)
 	.await?;
 
@@ -249,8 +247,8 @@ pub async fn calculate_database_bill_for_workspace_till(
 	for database_usage in database_usages {
 		let hours = (database_usage
 			.deletion_time
-			.map(|st| chrono::DateTime::from(st))
-			.unwrap_or(till_date.clone()) -
+			.map(chrono::DateTime::from)
+			.unwrap_or_else(|| *till_date) -
 			chrono::DateTime::from(database_usage.start_time))
 		.num_hours();
 
@@ -304,8 +302,8 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 ) -> Result<HashMap<StaticSitePlan, StaticSiteBill>, Error> {
 	let static_sites_usages = db::get_all_static_site_usages(
 		&mut *connection,
-		&workspace_id,
-		&DateTime::from(month_start_date.clone()),
+		workspace_id,
+		&DateTime::from(*month_start_date),
 	)
 	.await?;
 
@@ -313,8 +311,8 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 	for static_sites_usage in static_sites_usages {
 		let hours = (static_sites_usage
 			.stop_time
-			.map(|st| chrono::DateTime::from(st))
-			.unwrap_or(till_date.clone()) -
+			.map(chrono::DateTime::from)
+			.unwrap_or_else(|| *till_date) -
 			chrono::DateTime::from(static_sites_usage.start_time))
 		.num_hours();
 		let monthly_price = match static_sites_usage.static_site_plan {
@@ -347,8 +345,8 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 ) -> Result<HashMap<u64, ManagedUrlBill>, Error> {
 	let managed_url_usages = db::get_all_managed_url_usages(
 		&mut *connection,
-		&workspace_id,
-		&DateTime::from(month_start_date.clone()),
+		workspace_id,
+		&DateTime::from(*month_start_date),
 	)
 	.await?;
 
@@ -356,8 +354,8 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 	for managed_url_usage in managed_url_usages {
 		let hours = (managed_url_usage
 			.stop_time
-			.map(|st| chrono::DateTime::from(st))
-			.unwrap_or(till_date.clone()) -
+			.map(chrono::DateTime::from)
+			.unwrap_or_else(|| *till_date) -
 			chrono::DateTime::from(managed_url_usage.start_time))
 		.num_hours();
 		let monthly_price = if managed_url_usage.url_count <= 10 {
@@ -400,8 +398,8 @@ pub async fn calculate_docker_repository_bill_for_workspace_till(
 ) -> Result<Vec<DockerRepositoryBill>, Error> {
 	let docker_repository_usages = db::get_all_docker_repository_usages(
 		&mut *connection,
-		&workspace_id,
-		&DateTime::from(month_start_date.clone()),
+		workspace_id,
+		&DateTime::from(*month_start_date),
 	)
 	.await?;
 
@@ -410,13 +408,15 @@ pub async fn calculate_docker_repository_bill_for_workspace_till(
 	for docker_repository_usage in docker_repository_usages {
 		let hours = (docker_repository_usage
 			.stop_time
-			.map(|st| chrono::DateTime::from(st))
-			.unwrap_or(till_date.clone()) -
+			.map(chrono::DateTime::from)
+			.unwrap_or_else(|| *till_date) -
 			chrono::DateTime::from(docker_repository_usage.start_time))
 		.num_hours();
 		let monthly_price = if docker_repository_usage.storage <= 10 {
 			0f64
-		} else if docker_repository_usage.storage <= 10 {
+		} else if docker_repository_usage.storage > 10 &&
+			docker_repository_usage.storage <= 100
+		{
 			10f64
 		} else {
 			(docker_repository_usage.storage as f64 * 0.1f64).ceil()
@@ -444,8 +444,8 @@ pub async fn calculate_domains_bill_for_workspace_till(
 ) -> Result<HashMap<DomainPlan, DomainBill>, Error> {
 	let domains_usages = db::get_all_domains_usages(
 		&mut *connection,
-		&workspace_id,
-		&DateTime::from(month_start_date.clone()),
+		workspace_id,
+		&DateTime::from(*month_start_date),
 	)
 	.await?;
 
@@ -453,8 +453,8 @@ pub async fn calculate_domains_bill_for_workspace_till(
 	for domains_usage in domains_usages {
 		let hours = (domains_usage
 			.stop_time
-			.map(|st| chrono::DateTime::from(st))
-			.unwrap_or(till_date.clone()) -
+			.map(chrono::DateTime::from)
+			.unwrap_or_else(|| *till_date) -
 			chrono::DateTime::from(domains_usage.start_time))
 		.num_hours();
 		let monthly_price = match domains_usage.domain_plan {
@@ -487,8 +487,8 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 ) -> Result<HashMap<u64, SecretsBill>, Error> {
 	let secrets_usages = db::get_all_secrets_usages(
 		&mut *connection,
-		&workspace_id,
-		&DateTime::from(month_start_date.clone()),
+		workspace_id,
+		&DateTime::from(*month_start_date),
 	)
 	.await?;
 
@@ -496,8 +496,8 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 	for secrets_usage in secrets_usages {
 		let hours = (secrets_usage
 			.stop_time
-			.map(|st| chrono::DateTime::from(st))
-			.unwrap_or(till_date.clone()) -
+			.map(chrono::DateTime::from)
+			.unwrap_or_else(|| *till_date) -
 			chrono::DateTime::from(secrets_usage.start_time))
 		.num_hours();
 		let monthly_price = if secrets_usage.secret_count <= 3 {
@@ -572,7 +572,7 @@ pub async fn get_card_details(
 	for payment_source in payment_source_list {
 		let url = format!(
 			"https://api.stripe.com/v1/payment_methods/{}",
-			payment_source.id
+			payment_source.payment_method_id
 		);
 		let password: Option<String> = None;
 		let card_details = client

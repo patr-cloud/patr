@@ -228,7 +228,7 @@ pub async fn add_domain_to_workspace(
 		};
 	db::update_domain_usage_history(
 		connection,
-		&workspace_id,
+		workspace_id,
 		&domain_plan,
 		&DateTime::from(creation_time),
 	)
@@ -788,7 +788,7 @@ pub async fn delete_domain_in_workspace(
 		};
 	db::update_domain_usage_history(
 		connection,
-		&workspace_id,
+		workspace_id,
 		&domain_plan,
 		&DateTime::from(Utc::now()),
 	)

@@ -1,4 +1,4 @@
-use api_models::utils::{Uuid, True};
+use api_models::utils::{True, Uuid};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

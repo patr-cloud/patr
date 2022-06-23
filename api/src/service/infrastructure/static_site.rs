@@ -100,7 +100,7 @@ pub async fn create_static_site_in_workspace(
 
 	db::update_static_site_usage_history(
 		connection,
-		&workspace_id,
+		workspace_id,
 		&static_site_plan,
 		&DateTime::from(creation_time),
 	)

@@ -71,7 +71,7 @@ pub async fn refresh_domain_tld_list() -> Result<(), Error> {
 			!tld.starts_with('#') &&
 				!tld.is_empty() && !tld.starts_with("XN--") &&
 				!tld.starts_with("//") &&
-				!tld.starts_with("!") &&
+				!tld.starts_with('!') &&
 				tld.is_ascii()
 		})
 		.map(|item| item.to_lowercase().replace("*.", ""))

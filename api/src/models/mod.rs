@@ -1,9 +1,9 @@
+pub mod billing;
 pub mod ci;
 pub mod deployment;
 pub mod error;
 pub mod rabbitmq;
 pub mod rbac;
-pub mod billing;
 
 mod access_token_data;
 mod auditlog;

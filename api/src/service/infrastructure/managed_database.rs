@@ -110,7 +110,7 @@ pub async fn create_managed_database_in_workspace(
 
 	db::start_database_usage_history(
 		connection,
-		&workspace_id,
+		workspace_id,
 		&database_id,
 		database_plan,
 		&DateTime::from(creation_time),

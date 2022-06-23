@@ -848,6 +848,7 @@ pub async fn join_user(
 		recovery_email_domain_id,
 		recovery_phone_country_code,
 		recovery_phone_number,
+		3,
 	)
 	.await?;
 	db::end_deferred_constraints(connection).await?;

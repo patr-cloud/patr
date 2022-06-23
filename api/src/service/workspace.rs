@@ -6,7 +6,7 @@ use eve_rs::AsError;
 use reqwest::Client;
 
 use crate::{
-	db,
+	db::{self, PaymentType},
 	error,
 	models::{billing::StripeAddress, rbac},
 	utils::{
@@ -134,6 +134,7 @@ pub async fn create_workspace(
 		default_limits::DOMAINS,
 		default_limits::SECRETS,
 		&stripe_customer.id,
+		&PaymentType::Card,
 	)
 	.await?;
 	db::end_deferred_constraints(connection).await?;
@@ -213,7 +214,7 @@ pub async fn add_billing_address(
 	db::add_billing_address(connection, &address_details).await?;
 	db::add_billing_address_to_workspace(
 		connection,
-		&workspace_id,
+		workspace_id,
 		&address_id,
 	)
 	.await?;
