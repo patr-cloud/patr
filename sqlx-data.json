@@ -3307,6 +3307,19 @@
       ]
     }
   },
+  "52ba8734471d7540866c323502de2b6e858ad0db83eddbe1256fb7e5234a30c5": {
+    "query": "UPDATE workspace SET default_payment_method_id = $1 WHERE id = $2",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "53c9cc7a1548b6f80df7fb7be780e672f0533fd16e004785adf9459fe01c6942": {
     "query": "UPDATE deployment SET startup_probe_port = $1, startup_probe_path = $2, startup_probe_port_type = 'http' WHERE id = $3;",
     "describe": {
@@ -8237,6 +8250,19 @@
       "columns": [],
       "parameters": {
         "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "bfe6671a7279db81d2d3ab0cad2af992cb0657fea991be71ceba2de25e6f8b78": {
+    "query": "INSERT INTO payment_method( payment_method_id, workspace_id ) VALUES( $1, $2 );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Uuid"
+        ]
       },
       "nullable": []
     }

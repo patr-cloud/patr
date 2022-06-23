@@ -6,6 +6,8 @@ use api_models::{
 		AddCreditsResponse,
 		AddPaymentMethodResponse,
 		Address,
+		ConfirmPaymentMethodRequest,
+		ConfirmPaymentMethodResponse,
 		ConfirmPaymentRequest,
 		ConfirmPaymentResponse,
 		DeleteBillingAddressResponse,
@@ -275,6 +277,37 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(delete_payment_method)),
+		],
+	);
+
+	sub_app.post(
+		"/confirm-payment-method",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(confirm_payment_method)),
 		],
 	);
 
@@ -824,6 +857,42 @@ async fn delete_payment_method(
 	)
 	.await?;
 	context.success(DeletePaymentMethodResponse {});
+	Ok(context)
+}
+
+async fn confirm_payment_method(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+	let ConfirmPaymentMethodRequest {
+		payment_method_id, ..
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	db::add_payment_method_info(
+		context.get_database_connection(),
+		&workspace_id,
+		&payment_method_id,
+	)
+	.await?;
+	if db::get_workspace_info(context.get_database_connection(), &workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+		.default_payment_method_id
+		.is_none()
+	{
+		db::set_default_payment_method_for_workspace(
+			context.get_database_connection(),
+			&workspace_id,
+			&payment_method_id,
+		)
+		.await?;
+	}
+	context.success(ConfirmPaymentMethodResponse {});
 	Ok(context)
 }
 

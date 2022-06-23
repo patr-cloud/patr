@@ -1051,3 +1051,25 @@ pub async fn get_billing_address(
 	.fetch_optional(&mut *connection)
 	.await
 }
+
+pub async fn set_default_payment_method_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	payment_method_id: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace
+		SET
+			default_payment_method_id = $1
+		WHERE
+			id = $2
+		"#,
+		payment_method_id,
+		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}

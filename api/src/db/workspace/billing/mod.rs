@@ -1249,3 +1249,28 @@ pub async fn delete_payment_method(
 	.await
 	.map(|_| ())
 }
+
+pub async fn add_payment_method_info(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	payment_method_id: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO 
+			payment_method(
+				payment_method_id,
+				workspace_id
+			)
+		VALUES(
+			$1,
+			$2
+		);
+		"#,
+		payment_method_id,
+		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
