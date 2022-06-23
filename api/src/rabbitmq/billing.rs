@@ -241,7 +241,7 @@ pub(super) async fn process_request(
 						customer: workspace.stripe_customer_id.clone(),
 						payment_method: workspace.default_payment_method_id,
 						payment_method_types: "card".to_string(),
-						setup_future_usage: "off_session".to_string(),
+						setup_future_usage: None,
 					})
 					.send()
 					.await?

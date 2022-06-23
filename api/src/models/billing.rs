@@ -175,8 +175,8 @@ pub struct PaymentIntent {
 	pub payment_method: Option<String>,
 	#[serde(rename = "payment_method_types[]")]
 	pub payment_method_types: String,
-	#[serde(skip_serializing_if = "String::is_empty")]
-	pub setup_future_usage: String,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub setup_future_usage: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

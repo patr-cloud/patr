@@ -1053,7 +1053,7 @@ async fn add_credits(
 			.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
-	let secret_id = service::add_credits_to_workspace(
+	service::add_credits_to_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 		credits,
@@ -1061,9 +1061,7 @@ async fn add_credits(
 	)
 	.await?;
 
-	context.success(AddCreditsResponse {
-		client_secret: secret_id,
-	});
+	context.success(AddCreditsResponse {});
 	Ok(context)
 }
 

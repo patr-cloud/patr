@@ -37,7 +37,7 @@ pub async fn add_credits_to_workspace(
 	workspace_id: &Uuid,
 	credits: u32,
 	config: &Settings,
-) -> Result<String, Error> {
+) -> Result<(), Error> {
 	let client = Client::new();
 
 	let password: Option<String> = None;
@@ -55,14 +55,33 @@ pub async fn add_credits_to_workspace(
 			.body(error!(PAYMENT_METHOD_REQUIRED).to_string())?;
 	}
 
+	let address_id = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?
+		.address_id
+		.status(400)
+		.body(error!(ADDRESS_REQUIRED).to_string())?;
+
+	// : ().into()
+
+	let (currency, amount) = if db::get_billing_address(connection, &address_id)
+		.await?
+		.status(500)?
+		.country == *"IN"
+	{
+		("inr".to_string(), (credits * 10 * 80) as u64)
+	} else {
+		("usd".to_string(), (credits * 10) as u64)
+	};
+
 	let payment_intent_object = client
 		.post("https://api.stripe.com/v1/payment_intents")
 		.basic_auth(&config.stripe.secret_key, password)
 		.form(&PaymentIntent {
-			amount: (credits * 10).into(),
-			currency: "usd".to_string(),
+			amount,
+			currency,
 			confirm: True,
-			off_session: false,
+			off_session: true,
 			description: "Patr charge: Additional credits".to_string(),
 			customer: db::get_workspace_info(connection, workspace_id)
 				.await?
@@ -70,7 +89,7 @@ pub async fn add_credits_to_workspace(
 				.stripe_customer_id,
 			payment_method: default_payment_method_id,
 			payment_method_types: "card".to_string(),
-			setup_future_usage: "off_session".to_string(),
+			setup_future_usage: None,
 		})
 		.send()
 		.await?
@@ -92,7 +111,7 @@ pub async fn add_credits_to_workspace(
 	)
 	.await?;
 
-	Ok(payment_intent_object.client_secret)
+	Ok(())
 }
 
 pub async fn confirm_payment_method(
