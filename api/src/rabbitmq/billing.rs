@@ -226,12 +226,32 @@ pub(super) async fn process_request(
 					return Ok(());
 				}
 
+				let address_id = workspace
+					.clone()
+					.address_id
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
+
+				let (currency, amount) =
+					if db::get_billing_address(connection, &address_id)
+						.await?
+						.status(500)?
+						.country == *"IN"
+					{
+						(
+							"inr".to_string(),
+							(total_bill * 100f64 * 80f64) as u64,
+						)
+					} else {
+						("usd".to_string(), (total_bill * 100f64) as u64)
+					};
+
 				let payment_intent_object = Client::new()
 					.post("https://api.stripe.com/v1/payment_intents")
 					.basic_auth(&config.stripe.secret_key, password)
 					.form(&PaymentIntent {
-						amount: (total_bill * 100f64) as u64,
-						currency: "usd".to_string(),
+						amount,
+						currency,
 						confirm: True,
 						off_session: true,
 						description: format!(

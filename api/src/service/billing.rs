@@ -62,8 +62,6 @@ pub async fn add_credits_to_workspace(
 		.status(400)
 		.body(error!(ADDRESS_REQUIRED).to_string())?;
 
-	// : ().into()
-
 	let (currency, amount) = if db::get_billing_address(connection, &address_id)
 		.await?
 		.status(500)?
