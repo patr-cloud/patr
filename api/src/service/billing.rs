@@ -4,13 +4,20 @@ use api_models::{
 	models::workspace::billing::PaymentMethod,
 	utils::{DateTime, True, Uuid},
 };
-use chrono::Utc;
+use chrono::{Datelike, Utc};
 use eve_rs::AsError;
 use reqwest::Client;
 use serde_json::json;
 
 use crate::{
-	db::{self, DomainPlan, ManagedDatabasePlan, StaticSitePlan},
+	db::{
+		self,
+		DomainPlan,
+		ManagedDatabasePlan,
+		PaymentStatus,
+		StaticSitePlan,
+		TransactionType,
+	},
 	error,
 	models::{
 		billing::{
@@ -72,6 +79,8 @@ pub async fn add_credits_to_workspace(
 		("usd".to_string(), (credits * 10) as u64)
 	};
 
+	let description = "Patr charge: Additional credits".to_string();
+
 	let payment_intent_object = client
 		.post("https://api.stripe.com/v1/payment_intents")
 		.basic_auth(&config.stripe.secret_key, password)
@@ -80,7 +89,7 @@ pub async fn add_credits_to_workspace(
 			currency,
 			confirm: True,
 			off_session: true,
-			description: "Patr charge: Additional credits".to_string(),
+			description: description.clone(),
 			customer: db::get_workspace_info(connection, workspace_id)
 				.await?
 				.status(500)?
@@ -106,6 +115,24 @@ pub async fn add_credits_to_workspace(
 		credits.into(),
 		&metadata,
 		Utc::now().into(),
+	)
+	.await?;
+
+	let id = db::generate_new_transaction_id(connection).await?;
+
+	let date = Utc::now();
+
+	db::create_transaction(
+		connection,
+		workspace_id,
+		&id,
+		date.month() as i32,
+		credits.into(),
+		Some(&payment_intent_object.id),
+		&DateTime::from(date),
+		&TransactionType::Credits,
+		&PaymentStatus::Success,
+		Some(&description),
 	)
 	.await?;
 
