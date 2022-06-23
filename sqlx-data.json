@@ -3755,16 +3755,6 @@
       ]
     }
   },
-  "5b36f532d3986a27a00b936805a13cfc1e99e5b09b2eade3180495018e9ab808": {
-    "query": "CREATE TABLE IF NOT EXISTS transaction( id UUID CONSTRAINT transaction_pk PRIMARY KEY, month INTEGER NOT NULL, amount DOUBLE PRECISION NOT NULL, payment_intent_id TEXT, date TIMESTAMPTZ NOT NULL, workspace_id UUID NOT NULL, transaction_type TRANSACTION_TYPE NOT NULL, payment_status PAYMENT_STATUS NOT NULL CONSTRAINT transaction_payment_status_check CHECK ( payment_status = 'success' AND transaction_type = 'bill' ), description TEXT CONSTRAINT transaction_description_check CHECK ( transaction_type = 'credits' AND description IS NOT NULL ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "5bda0e52a15bdaf032ab3d119e3322ef902b74b2eb9910441af0af7590bbfb09": {
     "query": "CREATE TABLE IF NOT EXISTS payment_method( payment_method_id TEXT CONSTRAINT payment_method_pk PRIMARY KEY, workspace_id UUID NOT NULL );",
     "describe": {
@@ -4804,6 +4794,16 @@
           "Varchar",
           "Varchar"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "763445cddb24386fc3bc989f3ec32667a81299af54dd06456c17b0926e180809": {
+    "query": "CREATE TABLE IF NOT EXISTS transaction( id UUID CONSTRAINT transaction_pk PRIMARY KEY, month INTEGER NOT NULL, amount DOUBLE PRECISION NOT NULL, payment_intent_id TEXT, date TIMESTAMPTZ NOT NULL, workspace_id UUID NOT NULL, transaction_type TRANSACTION_TYPE NOT NULL, payment_status PAYMENT_STATUS NOT NULL CONSTRAINT transaction_payment_status_check CHECK ( ( payment_status = 'success' AND transaction_type = 'bill' ) OR ( transaction_type != 'bill' ) ), description TEXT CONSTRAINT transaction_description_check CHECK ( transaction_type = 'credits' AND description IS NOT NULL ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }

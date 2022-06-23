@@ -277,8 +277,13 @@ pub async fn initialize_billing_pre(
 			transaction_type TRANSACTION_TYPE NOT NULL,
 			payment_status PAYMENT_STATUS NOT NULL
 				CONSTRAINT transaction_payment_status_check CHECK (
+					(
 					payment_status = 'success' AND
 					transaction_type = 'bill'
+					) OR
+					(
+						transaction_type != 'bill'
+					)
 				),
 			description TEXT
 				CONSTRAINT transaction_description_check CHECK (
