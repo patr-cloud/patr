@@ -1168,7 +1168,6 @@ pub async fn update_amount_due_for_workspace(
 	workspace_id: &Uuid,
 	amount_due: f64,
 ) -> Result<(), sqlx::Error> {
-	println!("existing bill total: {}", amount_due);
 	query!(
 		r#"
 		UPDATE

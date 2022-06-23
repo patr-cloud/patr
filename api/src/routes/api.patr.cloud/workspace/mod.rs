@@ -291,6 +291,7 @@ async fn get_workspace_info(
 		active: workspace.active,
 		super_admin_id: workspace.super_admin_id,
 		alert_emails: workspace.alert_emails,
+		default_payment_method_id: workspace.default_payment_method_id,
 	})
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
@@ -461,7 +462,10 @@ async fn update_workspace_info(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let UpdateWorkspaceInfoRequest {
-		name, alert_emails, ..
+		name,
+		alert_emails,
+		default_payment_method_id,
+		..
 	} = context
 		.get_body_as()
 		.status(400)
@@ -499,6 +503,7 @@ async fn update_workspace_info(
 		&workspace_id,
 		name,
 		alert_emails,
+		default_payment_method_id,
 	)
 	.await?;
 

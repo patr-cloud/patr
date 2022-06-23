@@ -13,12 +13,15 @@ pub(super) fn update_bill_job() -> Job {
 }
 
 async fn update_bill() -> Result<(), Error> {
-	let mut connection = super::CONFIG.get().unwrap().database.begin().await?;
+	let mut connection =
+		super::CONFIG.get().unwrap().database.acquire().await?;
 	let workspaces = db::get_all_workspaces(&mut connection).await?;
 	let now = Utc::now();
 	let month_start_date = now.date().with_day(1).unwrap().and_hms(0, 0, 0);
 
 	for workspace in workspaces {
+		let mut connection =
+			super::CONFIG.get().unwrap().database.begin().await?;
 		let existing_bill = db::get_total_amount_due_for_workspace(
 			&mut connection,
 			&workspace.id,
@@ -132,6 +135,7 @@ async fn update_bill() -> Result<(), Error> {
 			(existing_bill + new_bill).max(0f64),
 		)
 		.await?;
+		connection.commit().await?;
 	}
 
 	Ok(())

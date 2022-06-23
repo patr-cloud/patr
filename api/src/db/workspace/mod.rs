@@ -520,6 +520,7 @@ pub async fn update_workspace_info(
 	workspace_id: &Uuid,
 	name: Option<String>,
 	alert_emails: Option<Vec<String>>,
+	default_payment_method_id: Option<String>,
 ) -> Result<(), sqlx::Error> {
 	if let Some(name) = name {
 		query!(
@@ -549,6 +550,23 @@ pub async fn update_workspace_info(
 				id = $2;
 			"#,
 			alert_emails as _,
+			workspace_id as _,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	if let Some(payment_method_id) = default_payment_method_id {
+		query!(
+			r#"
+			UPDATE
+				workspace
+			SET
+				default_payment_method_id = $1
+			WHERE
+				id = $2;
+			"#,
+			payment_method_id,
 			workspace_id as _,
 		)
 		.execute(&mut *connection)
