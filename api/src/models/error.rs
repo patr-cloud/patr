@@ -71,6 +71,7 @@ pub mod id {
 	pub const CHANGE_PRIMARY_PAYMENT_METHOD: &str =
 		"changePrimaryPaymentMethod";
 	pub const CANNOT_DELETE_PAYMENT_METHOD: &str = "cannotDeletePaymentMethod";
+	pub const PAYMENT_METHOD_REQUIRED: &str = "paymentMethodRequired";
 }
 
 #[allow(dead_code)]
@@ -200,4 +201,5 @@ pub mod message {
 	pub const DOMAIN_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number domains allowed for your workspace, contact support to increase the limit";
 	pub const CHANGE_PRIMARY_PAYMENT_METHOD: &str = "The current payment method cannot be deleted since it is your primary payment method";
 	pub const CANNOT_DELETE_PAYMENT_METHOD: &str = "The payment method cannot be deleted since it is in use, please delete all the resources and try again in the next billing cycle";
+	pub const PAYMENT_METHOD_REQUIRED: &str = "It seems that you have not added any payment method. Please add a payment method to continue";
 }

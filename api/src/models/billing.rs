@@ -75,7 +75,7 @@ pub struct ThreeDSecureUsage {
 #[serde(rename_all = "snake_case")]
 pub struct PaymentIntentObject {
 	pub id: String,
-	pub amount: f64,
+	pub amount: Option<f64>,
 	pub automatic_payment_method: Option<AutomaticPaymentMethods>,
 	pub client_secret: String,
 	pub customer: Option<String>,

@@ -42,6 +42,19 @@ pub async fn add_credits_to_workspace(
 
 	let password: Option<String> = None;
 
+	let default_payment_method_id =
+		db::get_workspace_info(connection, workspace_id)
+			.await?
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?
+			.default_payment_method_id;
+
+	if default_payment_method_id.is_none() {
+		return Error::as_result()
+			.status(402)
+			.body(error!(PAYMENT_METHOD_REQUIRED).to_string())?;
+	}
+
 	let payment_intent_object = client
 		.post("https://api.stripe.com/v1/payment_intents")
 		.basic_auth(&config.stripe.secret_key, password)
@@ -138,7 +151,7 @@ pub async fn confirm_payment_method(
 	.await?;
 
 	if payment_intent_object.status != Some(PaymentMethodStatus::Succeeded) &&
-		payment_intent_object.amount == payment_info.credits as f64
+		payment_intent_object.amount == Some(payment_info.credits as f64)
 	{
 		return Ok(false);
 	}
