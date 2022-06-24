@@ -4134,6 +4134,19 @@
       "nullable": []
     }
   },
+  "66f2f60fc86b651ff7aba12d6bcd2f1126ceaf1747c74cdd068dfc2b34cf6693": {
+    "query": "UPDATE workspace SET default_payment_method_id = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "696749fb5dd8e4bb7c3d80c5619417e05c78691505add6a7af389858cb3bf0d4": {
     "query": "UPDATE workspace SET address_id = NULL WHERE id = $1;",
     "describe": {
