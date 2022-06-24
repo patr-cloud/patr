@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{cmp::max, collections::HashMap};
 
 use api_models::{
 	models::workspace::billing::PaymentMethod,
@@ -224,7 +224,10 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 			.stop_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date) -
-			chrono::DateTime::from(deployment_usage.start_time))
+			max(
+				chrono::DateTime::from(deployment_usage.start_time),
+				*month_start_date,
+			))
 		.num_hours();
 
 		let (cpu_count, memory_count) = deployment::MACHINE_TYPES
@@ -306,7 +309,10 @@ pub async fn calculate_database_bill_for_workspace_till(
 			.deletion_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date) -
-			chrono::DateTime::from(database_usage.start_time))
+			max(
+				chrono::DateTime::from(database_usage.start_time),
+				*month_start_date,
+			))
 		.num_hours();
 
 		let monthly_price = match database_usage.db_plan {
@@ -370,7 +376,10 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 			.stop_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date) -
-			chrono::DateTime::from(static_sites_usage.start_time))
+			max(
+				chrono::DateTime::from(static_sites_usage.start_time),
+				*month_start_date,
+			))
 		.num_hours();
 		let monthly_price = match static_sites_usage.static_site_plan {
 			StaticSitePlan::Free => 0f64,
@@ -413,7 +422,10 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 			.stop_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date) -
-			chrono::DateTime::from(managed_url_usage.start_time))
+			max(
+				chrono::DateTime::from(managed_url_usage.start_time),
+				*month_start_date,
+			))
 		.num_hours();
 		let monthly_price = if managed_url_usage.url_count <= 10 {
 			0f64
@@ -467,11 +479,14 @@ pub async fn calculate_docker_repository_bill_for_workspace_till(
 			.stop_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date) -
-			chrono::DateTime::from(docker_repository_usage.start_time))
+			max(
+				chrono::DateTime::from(docker_repository_usage.start_time),
+				*month_start_date,
+			))
 		.num_hours();
-		let monthly_price = if docker_repository_usage.storage <= 10 {
+		let monthly_price = if docker_repository_usage.storage <= 1 {
 			0f64
-		} else if docker_repository_usage.storage > 10 &&
+		} else if docker_repository_usage.storage > 1 &&
 			docker_repository_usage.storage <= 100
 		{
 			10f64
@@ -512,7 +527,10 @@ pub async fn calculate_domains_bill_for_workspace_till(
 			.stop_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date) -
-			chrono::DateTime::from(domains_usage.start_time))
+			max(
+				chrono::DateTime::from(domains_usage.start_time),
+				*month_start_date,
+			))
 		.num_hours();
 		let monthly_price = match domains_usage.domain_plan {
 			DomainPlan::Free => 0f64,
@@ -555,8 +573,12 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 			.stop_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date) -
-			chrono::DateTime::from(secrets_usage.start_time))
+			max(
+				chrono::DateTime::from(secrets_usage.start_time),
+				*month_start_date,
+			))
 		.num_hours();
+
 		let monthly_price = if secrets_usage.secret_count <= 3 {
 			0f64
 		} else {

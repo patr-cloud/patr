@@ -55,7 +55,6 @@ pub struct DockerRepoPaymentHistory {
 pub struct DomainPaymentHistory {
 	pub workspace_id: Uuid,
 	pub domain_plan: DomainPlan,
-	pub time: i64,
 	pub start_time: DateTime<Utc>,
 	pub stop_time: Option<DateTime<Utc>>,
 }
@@ -102,7 +101,7 @@ pub enum StaticSitePlan {
 }
 
 #[derive(sqlx::Type, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[sqlx(type_name = "STATIC_SITE_PLAN", rename_all = "lowercase")]
+#[sqlx(type_name = "DOMAIN_PLAN", rename_all = "lowercase")]
 pub enum DomainPlan {
 	Free,
 	Unlimited,
@@ -222,7 +221,6 @@ pub async fn initialize_billing_pre(
 		CREATE TABLE IF NOT EXISTS domain_payment_history(
 			workspace_id UUID NOT NULL,
 			domain_plan DOMAIN_PLAN NOT NULL,
-			time TIMESTAMPTZ NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
 			stop_time TIMESTAMPTZ
 		);
@@ -401,7 +399,7 @@ pub async fn initialize_billing_post(
 pub async fn get_all_deployment_usage(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	start_date: &DateTime<Utc>,
+	month_start_date: &DateTime<Utc>,
 ) -> Result<Vec<DeploymentPaymentHistory>, sqlx::Error> {
 	query_as!(
 		DeploymentPaymentHistory,
@@ -418,12 +416,12 @@ pub async fn get_all_deployment_usage(
 		WHERE
 			workspace_id = $1 AND
 			(
-				(start_time > $2 AND stop_time IS NOT NULL) OR
-				stop_time is NULL
+				stop_time IS NULL OR
+				stop_time > $2
 			);
 		"#,
 		workspace_id as _,
-		start_date as _,
+		month_start_date as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -448,8 +446,8 @@ pub async fn get_all_database_usage(
 		WHERE
 			workspace_id = $1 AND
 			(
-				(start_time > $2 AND deletion_time IS NOT NULL) OR
-				deletion_time is NULL
+				deletion_time IS NULL OR
+				deletion_time > $2
 			);
 		"#,
 		workspace_id as _,
@@ -477,8 +475,8 @@ pub async fn get_all_static_site_usages(
 		WHERE
 			workspace_id = $1 AND
 			(
-				(start_time > $2 AND stop_time IS NOT NULL) OR
-				stop_time is NULL
+				stop_time IS NULL OR
+				stop_time > $2
 			);
 		"#,
 		workspace_id as _,
@@ -506,8 +504,8 @@ pub async fn get_all_managed_url_usages(
 		WHERE
 			workspace_id = $1 AND
 			(
-				(start_time > $2 AND stop_time IS NOT NULL) OR
-				stop_time is NULL
+				stop_time IS NULL OR
+				stop_time > $2
 			);
 		"#,
 		workspace_id as _,
@@ -534,8 +532,8 @@ pub async fn get_all_docker_repository_usages(
 		WHERE
 			workspace_id = $1 AND
 			(
-				(start_time > $2 AND stop_time IS NOT NULL) OR
-				stop_time is NULL
+				stop_time IS NULL OR
+				stop_time > $2
 			);
 		"#,
 		workspace_id as _,
@@ -555,7 +553,6 @@ pub async fn get_all_domains_usages(
 		SELECT
 			workspace_id as "workspace_id: _",
 			domain_plan as "domain_plan: _",
-			time as "time: _",
 			start_time as "start_time: _",
 			stop_time as "stop_time: _"
 		FROM
@@ -563,8 +560,8 @@ pub async fn get_all_domains_usages(
 		WHERE
 			workspace_id = $1 AND
 			(
-				(start_time > $2 AND stop_time IS NOT NULL) OR
-				stop_time is NULL
+				stop_time IS NULL OR
+				stop_time > $2
 			);
 			"#,
 		workspace_id as _,
@@ -577,7 +574,7 @@ pub async fn get_all_domains_usages(
 pub async fn get_all_secrets_usages(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	start_date: &DateTime<Utc>,
+	month_start_date: &DateTime<Utc>,
 ) -> Result<Vec<SecretPaymentHistory>, sqlx::Error> {
 	query_as!(
 		SecretPaymentHistory,
@@ -592,12 +589,12 @@ pub async fn get_all_secrets_usages(
 		WHERE
 			workspace_id = $1 AND
 			(
-				(start_time > $2 AND stop_time IS NOT NULL) OR
-				stop_time is NULL
+				stop_time IS NULL OR
+				stop_time > $2
 			);
 		"#,
 		workspace_id as _,
-		start_date as _,
+		month_start_date as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
