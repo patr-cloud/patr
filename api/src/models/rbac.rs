@@ -22,22 +22,6 @@ pub struct WorkspacePermissions {
 	pub allowed_resource_types: HashMap<Uuid, Vec<Uuid>>,
 }
 
-//////////////////////////////////////////////////////////////////////////////
-//
-// If there is any create/update/delete operations done in
-// 		- permission name
-// 		- resource type name
-// 		- permission to resource mapping
-//
-// then, the `validate_permission_to_resource_mapping` postgres function should
-// be updated accordingly, the corresponding database triggers for the following
-// tables should be updated
-// 		- role_block_permissions_resource
-// 		- role_allow_permissions_resource
-// 		- role_allow_permissions_resource_type
-//
-//////////////////////////////////////////////////////////////////////////////
-
 #[api_macros::iterable_module(consts, recursive = true)]
 pub mod permissions {
 	pub mod workspace {
