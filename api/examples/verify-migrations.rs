@@ -54,7 +54,7 @@ struct ReleaseAssetResponse {
 // - Dump the new database to migrated.sql
 // - Diff check migrated.sql and fresh.sql
 // - Use the following command to diff check
-// - diff -s -y -W 70 --ignore-matching-lines "\\x[a-f0-9]*"
+// - diff -s -y -W 70 -w -B --strip-trailing-cr --ignore-matching-lines "\\x[a-f0-9]*"
 //   --suppress-common-lines migrated.sql fresh.sql
 
 #[tokio::main]
@@ -495,6 +495,9 @@ async fn check_if_files_are_equal(first_file: &str, second_file: &str) {
 	let success = Command::new("diff")
 		.arg("-s")
 		.arg("-y")
+		.arg("-w")
+		.arg("-B")
+		.arg("--strip-trailing-cr")
 		.arg("--suppress-common-lines")
 		.arg(first_file)
 		.arg(second_file)
