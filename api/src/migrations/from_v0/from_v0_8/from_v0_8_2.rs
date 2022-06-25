@@ -296,16 +296,6 @@ pub(super) async fn migrate(
 	.execute(&mut *connection)
 	.await?;
 
-	mod default_limits {
-		pub const DEPLOYMENTS: i32 = 10;
-		pub const MANAGED_DATABASE: i32 = 5;
-		pub const STATIC_SITES: i32 = 30;
-		pub const MANAGED_URLS: i32 = 200;
-		pub const DOCKER_REPOSITORY_STORAGE: i32 = 200;
-		pub const DOMAINS: i32 = 5;
-		pub const SECRETS: i32 = 150;
-	}
-
 	query!(
 		r#"
 		ALTER TABLE workspace
@@ -316,25 +306,25 @@ pub(super) async fn migrate(
 				default_payment_method_id TEXT,
 			ADD COLUMN
 				deployment_limit INTEGER NOT NULL
-				DEFAULT $1,
+				DEFAULT 10,
 			ADD COLUMN
 				database_limit INTEGER NOT NULL
-				DEFAULT $2,
+				DEFAULT 5,
 			ADD COLUMN
 				static_site_limit INTEGER NOT NULL
-				DEFAULT $3,
+				DEFAULT 30,
 			ADD COLUMN
 				managed_url_limit INTEGER NOT NULL
-				DEFAULT $4,
+				DEFAULT 200,
 			ADD COLUMN
 				docker_repository_storage_limit INTEGER NOT NULL
-				DEFAULT $5,
+				DEFAULT 200,
 			ADD COLUMN
 				domain_limit INTEGER NOT NULL
-				DEFAULT $6,
+				DEFAULT 5,
 			ADD COLUMN
 				secret_limit INTEGER NOT NULL
-				DEFAULT $7,
+				DEFAULT 150,
 			ADD COLUMN
 				stripe_customer_id TEXT,
 			ADD COLUMN
@@ -343,13 +333,6 @@ pub(super) async fn migrate(
 				amount_due DOUBLE PRECISION NOT NULL
 				DEFAULT 0;
 		"#,
-		default_limits::DEPLOYMENTS,
-		default_limits::MANAGED_DATABASE,
-		default_limits::STATIC_SITES,
-		default_limits::MANAGED_URLS,
-		default_limits::DOCKER_REPOSITORY_STORAGE,
-		default_limits::DOMAINS,
-		default_limits::SECRETS,
 	)
 	.execute(&mut *connection)
 	.await?;
