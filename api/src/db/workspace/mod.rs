@@ -326,7 +326,8 @@ pub async fn initialize_workspaces_post(
 		r#"
 		ALTER TABLE workspace
 		ADD CONSTRAINT workspace_default_payment_method_id_fk
-		FOREIGN KEY (default_payment_method_id) REFERENCES payment_method(id)
+		FOREIGN KEY (default_payment_method_id)
+			REFERENCES payment_method(payment_method_id)
 		DEFERRABLE INITIALLY DEFERRED;
 		"#
 	)
