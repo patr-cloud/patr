@@ -486,7 +486,7 @@ def create_gitea_release(step_name, staging):
 def database_service(pwd):
     return {
         "name": "database",
-        "image": "postgis/postgis",
+        "image": "postgis/postgis:13-3.2",
         "environment": {
             "POSTGRES_PASSWORD": pwd,
             "POSTGRES_DB": "api"
