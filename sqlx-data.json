@@ -804,16 +804,6 @@
       "nullable": []
     }
   },
-  "14fd0c0d6574dcd4dded005e1cfa1f98dab03d5c37a2ce50448738e995de031a": {
-    "query": "CREATE TYPE STATIC_SITE_PLAN AS ENUM( 'free', '25', 'unlimited' );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "15d97c8249593f00516ac5b30598779bda9d6214d2341d0166ada2e5dbc4a9e5": {
     "query": "UPDATE managed_database SET status = $1 WHERE id = $2;",
     "describe": {
@@ -1776,16 +1766,6 @@
       ]
     }
   },
-  "275ff3a443d427d655b050d9ce46c5ace10c978aca8e678a16f21c2111df83a8": {
-    "query": "CREATE TABLE IF NOT EXISTS static_sites_payment_history( id UUID CONSTRAINT static_sites_payment_history_pk PRIMARY KEY, workspace_id UUID NOT NULL, static_site_plan STATIC_SITE_PLAN NOT NULL, time TIMESTAMPTZ NOT NULL, CONSTRAINT static_sites_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "28c3a8d03871bb820d4ea57bc7ded4e77e4aa8c0fd19556827bc401e16648cac": {
     "query": "CREATE TABLE docker_registry_repository( id UUID CONSTRAINT docker_registry_repository_pk PRIMARY KEY, workspace_id UUID NOT NULL CONSTRAINT docker_registry_repository_fk_workspace_id REFERENCES workspace(id), name CITEXT NOT NULL, CONSTRAINT docker_registry_repository_uq_workspace_id_name UNIQUE(workspace_id, name), CONSTRAINT docker_registry_repository_uq_id_workspace_id UNIQUE( id, workspace_id ) );",
     "describe": {
@@ -1821,16 +1801,6 @@
   },
   "2a8531f5a4448c2d77be6b5353946591bf213407b9a58b0b342a03bef0acd99c": {
     "query": "CREATE TYPE MANAGED_URL_TYPE AS ENUM( 'proxy_to_deployment', 'proxy_to_static_site', 'proxy_url', 'redirect' );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "2ad4a54b838bcab7de33627c0aa6dd6542b08b6953c55e561eaa9c2a85cc2ab2": {
-    "query": "CREATE TABLE IF NOT EXISTS docker_repo_payment_history( id UUID CONSTRAINT docker_repo_payment_history_pk PRIMARY KEY, workspace_id UUID NOT NULL, storage BIGINT NOT NULL, CONSTRAINT docker_repo_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1907,16 +1877,6 @@
         false,
         null
       ]
-    }
-  },
-  "2d9c9b348f745f5182352b56aa3068e693bc6b2237c65885899fdb39acae0206": {
-    "query": "CREATE TABLE IF NOT EXISTS secrets_payment_history( id UUID CONSTRAINT secrets_payment_history_pk PRIMARY KEY, workspace_id UUID NOT NULL, secret_count INTEGER NOT NULL, CONSTRAINT secrets_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
     }
   },
   "2ed7694989087062b9d43d0c0d294a84b766a979c580e450703c5119ca9a4562": {
@@ -2667,16 +2627,6 @@
   },
   "4473fad035c7e0e8c1466af8dae29925137071c56c7b8827b37fa3c6ee5505f5": {
     "query": "CREATE TABLE user_phone_number( user_id UUID NOT NULL CONSTRAINT user_phone_number_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, country_code CHAR(2) NOT NULL CONSTRAINT user_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_phone_number_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), number VARCHAR(15) NOT NULL CONSTRAINT user_phone_number_chk_number_valid CHECK( LENGTH(number) >= 7 AND LENGTH(number) <= 15 AND CAST(number AS BIGINT) > 0 ), CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number), CONSTRAINT user_phone_number_uq_user_id_country_code_number UNIQUE(user_id, country_code, number) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "464583d86b43bc9341490ec00221ada84a046b583eac7181f47097b239a6b894": {
-    "query": "CREATE TABLE IF NOT EXISTS domain_payment_history( id UUID CONSTRAINT domain_payment_history_pk PRIMARY KEY, workspace_id UUID NOT NULL, domain_plan DOMAIN_PLAN NOT NULL, time TIMESTAMPTZ NOT NULL, CONSTRAINT domain_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -5340,16 +5290,6 @@
       "nullable": []
     }
   },
-  "80a87370031191844abe8f78b1d3371cceddab1024a9d00cc0190f44e62508b3": {
-    "query": "CREATE TYPE DEPLOYMENT_ACTION AS ENUM( 'create', 'delete', 'update', 'start' );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "80fa0cff43932600e815f32385f983ff6c643e04f261fd5df7ff43b8ca98a9cf": {
     "query": "ALTER TABLE workspace_domain ADD CONSTRAINT workspace_domain_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
     "describe": {
@@ -5525,16 +5465,6 @@
       ]
     }
   },
-  "837d94d822a1003a2bc5448287158fc69baabc85f4d89e29b6eee1a376d924af": {
-    "query": "CREATE TABLE IF NOT EXISTS managed_url_payment_history( id UUID CONSTRAINT managed_url_payment_history_pk PRIMARY KEY, workspace_id UUID NOT NULL, url_count INTEGER NOT NULL, CONSTRAINT managed_url_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "83c7c39ed3e071ecccc1fe0f6af04d9cacc3d9ca6faaf5e3de08b9b10704773a": {
     "query": "SELECT id FROM transaction WHERE id = $1;",
     "describe": {
@@ -5571,26 +5501,6 @@
   },
   "8521029f50f05db59f5fabf5a5651a2bb0072010cefbf96f946184d01be8639c": {
     "query": "ALTER TABLE transaction ADD CONSTRAINT transaction_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "8558ee9863676482df1cad709310670edbe8e7362afe691eaeedaff125707b04": {
-    "query": "CREATE TYPE DATABASE_PLAN AS ENUM( 'free', '25', 'unlimited' );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "855cc4d3a36f4d60d32286145eb54e0228e01bf4cb898e9f7dc72c69066a406a": {
-    "query": "CREATE TABLE IF NOT EXISTS deployment_payment_history( id UUID CONSTRAINT deployment_payment_history_pk PRIMARY KEY, workspace_id UUID NOT NULL, deployment_id UUID NOT NULL, machine_type UUID NOT NULL, num_instance INTEGER NOT NULL, time TIMESTAMPTZ NOT NULL, action DEPLOYMENT_ACTION NOT NULL, CONSTRAINT deployment_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -10302,16 +10212,6 @@
           "Int2",
           "Int4"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "ebf832fe469d7fb6829ac545c11c35a1c6dd3dc62e32a1c5e1423e622a85102f": {
-    "query": "CREATE TABLE IF NOT EXISTS managed_database_payment_history( id UUID CONSTRAINT managed_database_payment_history_pk PRIMARY KEY, workspace_id UUID NOT NULL, database_id UUID NOT NULL, db_plan UUID NOT NULL, start_time TIMESTAMPTZ NOT NULL, deletion_time TIMESTAMPTZ NULL, CONSTRAINT managed_database_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
