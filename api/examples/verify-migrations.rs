@@ -492,13 +492,13 @@ async fn run_api_with_only_db(
 }
 
 async fn check_if_files_are_equal(first_file: &str, second_file: &str) {
-	let success = Command::new("cmp")
+	let success = Command::new("diff")
 		.arg("-s")
-		// .arg("-y")
-		// .arg("-w")
-		// .arg("-B")
-		// .arg("--strip-trailing-cr")
-		// .arg("--suppress-common-lines")
+		.arg("-y")
+		.arg("-w")
+		.arg("-B")
+		.arg("--strip-trailing-cr")
+		.arg("--suppress-common-lines")
 		.arg(first_file)
 		.arg(second_file)
 		.stdin(Stdio::inherit())
