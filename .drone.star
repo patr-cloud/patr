@@ -571,7 +571,7 @@ def test_migrations(step_name, release, env):
     }
     return {
         "name": step_name,
-        "image": "postgres:14.2",
+        "image": "postgres",
         "commands": [
             "apt update",
             "apt install ca-certificates",

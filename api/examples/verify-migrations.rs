@@ -358,6 +358,34 @@ async fn handle_release(
 
 	println!("Migrated database dumped to migrated.sql");
 
+	println!("Printing migrated");
+	println!("{}", {
+		let mut contents = String::new();
+		OpenOptions::new()
+			.read(true)
+			.open("migrated.sql-replaced")
+			.await
+			.expect("Unable to open file")
+			.read_to_string(&mut contents)
+			.await
+			.expect("Unable to read file");
+		contents
+	});
+
+	println!("Printing fresh");
+	println!("{}", {
+		let mut contents = String::new();
+		OpenOptions::new()
+			.read(true)
+			.open("fresh.sql-replaced")
+			.await
+			.expect("Unable to open file")
+			.read_to_string(&mut contents)
+			.await
+			.expect("Unable to read file");
+		contents
+	});
+
 	println!("Checking if migrated.sql is the same as fresh.sql...");
 	check_if_files_are_equal("migrated.sql-replaced", "fresh.sql-replaced")
 		.await;
