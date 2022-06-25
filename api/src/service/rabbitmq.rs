@@ -1,12 +1,9 @@
 use api_models::{
-	models::workspace::infrastructure::{
-		deployment::{
-			Deployment,
-			DeploymentRegistry,
-			DeploymentRunningDetails,
-			DeploymentStatus,
-		},
-		static_site::StaticSiteDetails,
+	models::workspace::infrastructure::deployment::{
+		Deployment,
+		DeploymentRegistry,
+		DeploymentRunningDetails,
+		DeploymentStatus,
 	},
 	utils::Uuid,
 };
@@ -18,7 +15,6 @@ use crate::{
 		rabbitmq::{
 			DeploymentRequestData,
 			RequestMessage,
-			StaticSiteRequestData,
 			WorkspaceRequestData,
 		},
 		DeploymentMetadata,
@@ -307,102 +303,6 @@ pub async fn queue_update_deployment_image(
 			image_name,
 			digest: Some(digest.to_string()),
 			running_details: deployment_running_details.clone(),
-			request_id: request_id.clone(),
-		}),
-		config,
-		request_id,
-	)
-	.await
-}
-
-pub async fn queue_create_static_site(
-	workspace_id: &Uuid,
-	static_site_id: &Uuid,
-	file: String,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	send_message_to_rabbit_mq(
-		&RequestMessage::StaticSite(StaticSiteRequestData::Create {
-			workspace_id: workspace_id.clone(),
-			static_site_id: static_site_id.clone(),
-			file,
-			static_site_details: StaticSiteDetails {},
-			request_id: request_id.clone(),
-		}),
-		config,
-		request_id,
-	)
-	.await
-}
-
-pub async fn queue_start_static_site(
-	workspace_id: &Uuid,
-	static_site_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	send_message_to_rabbit_mq(
-		&RequestMessage::StaticSite(StaticSiteRequestData::Start {
-			workspace_id: workspace_id.clone(),
-			static_site_id: static_site_id.clone(),
-			static_site_details: StaticSiteDetails {},
-			request_id: request_id.clone(),
-		}),
-		config,
-		request_id,
-	)
-	.await
-}
-
-pub async fn queue_upload_static_site(
-	workspace_id: &Uuid,
-	static_site_id: &Uuid,
-	file: String,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	send_message_to_rabbit_mq(
-		&RequestMessage::StaticSite(StaticSiteRequestData::UploadSite {
-			workspace_id: workspace_id.clone(),
-			static_site_id: static_site_id.clone(),
-			file,
-			request_id: request_id.clone(),
-		}),
-		config,
-		request_id,
-	)
-	.await
-}
-
-pub async fn queue_stop_static_site(
-	workspace_id: &Uuid,
-	static_site_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	send_message_to_rabbit_mq(
-		&RequestMessage::StaticSite(StaticSiteRequestData::Stop {
-			workspace_id: workspace_id.clone(),
-			static_site_id: static_site_id.clone(),
-			request_id: request_id.clone(),
-		}),
-		config,
-		request_id,
-	)
-	.await
-}
-
-pub async fn queue_delete_static_site(
-	workspace_id: &Uuid,
-	static_site_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	send_message_to_rabbit_mq(
-		&RequestMessage::StaticSite(StaticSiteRequestData::Delete {
-			workspace_id: workspace_id.clone(),
-			static_site_id: static_site_id.clone(),
 			request_id: request_id.clone(),
 		}),
 		config,

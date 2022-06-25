@@ -530,24 +530,11 @@ async fn create_static_site_deployment(
 		context.get_database_connection(),
 		&workspace_id,
 		name,
+		file,
+		&config,
 		&request_id,
 	)
 	.await?;
-
-	context.commit_database_transaction().await?;
-
-	if let Some(file) = file {
-		log::trace!("request_id: {} - Static-site created", request_id);
-		log::trace!("request_id: {} - Starting the static site", request_id);
-		service::queue_create_static_site(
-			&workspace_id,
-			&id,
-			file,
-			&config,
-			&request_id,
-		)
-		.await?;
-	}
 
 	let _ = service::get_internal_metrics(
 		context.get_database_connection(),
@@ -587,18 +574,16 @@ async fn start_static_site(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
+
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
 	let static_site_id = Uuid::parse_str(
 		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
 	)
 	.unwrap();
-
-	let static_site = db::get_static_site_by_id(
-		context.get_database_connection(),
-		&static_site_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	log::trace!(
 		"request_id: {} - Starting a static site with id: {}",
@@ -607,9 +592,12 @@ async fn start_static_site(
 	);
 	// start the container running the image, if doesn't exist
 	let config = context.get_state().config.clone();
-	service::queue_start_static_site(
-		&static_site.workspace_id,
+	service::update_static_site_and_db_status(
+		context.get_database_connection(),
+		&workspace_id,
 		&static_site_id,
+		None,
+		&StaticSiteDetails {},
 		&config,
 		&request_id,
 	)
@@ -715,6 +703,11 @@ async fn stop_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
 	let static_site_id = Uuid::parse_str(
 		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
 	)
@@ -731,6 +724,7 @@ async fn stop_static_site(
 	let config = context.get_state().config.clone();
 	service::stop_static_site(
 		context.get_database_connection(),
+		&workspace_id,
 		&static_site_id,
 		&config,
 		&request_id,
@@ -768,6 +762,11 @@ async fn delete_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
 	let request_id = Uuid::new_v4();
 
 	let static_site_id = Uuid::parse_str(
@@ -785,6 +784,7 @@ async fn delete_static_site(
 	let config = context.get_state().config.clone();
 	service::delete_static_site(
 		context.get_database_connection(),
+		&workspace_id,
 		&static_site_id,
 		&config,
 		&request_id,
