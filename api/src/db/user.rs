@@ -19,6 +19,7 @@ pub struct User {
 	pub recovery_email_domain_id: Option<Uuid>,
 	pub recovery_phone_country_code: Option<String>,
 	pub recovery_phone_number: Option<String>,
+	pub workspace_limit: i32,
 }
 
 pub struct UserLogin {
@@ -876,7 +877,8 @@ pub async fn get_user_by_username_email_or_phone_number(
 			"user".recovery_email_local,
 			"user".recovery_email_domain_id as "recovery_email_domain_id: Uuid",
 			"user".recovery_phone_country_code,
-			"user".recovery_phone_number
+			"user".recovery_phone_number,
+			"user".workspace_limit
 		FROM
 			"user"
 		LEFT JOIN
@@ -940,6 +942,7 @@ pub async fn get_user_by_username_email_or_phone_number(
 		recovery_email_domain_id: row.recovery_email_domain_id,
 		recovery_phone_country_code: row.recovery_phone_country_code,
 		recovery_phone_number: row.recovery_phone_number,
+		workspace_limit: row.workspace_limit,
 	});
 
 	Ok(user)
@@ -964,7 +967,8 @@ pub async fn get_user_by_email(
 			"user".recovery_email_local,
 			"user".recovery_email_domain_id as "recovery_email_domain_id: Uuid",
 			"user".recovery_phone_country_code,
-			"user".recovery_phone_number
+			"user".recovery_phone_number,
+			"user".workspace_limit
 		FROM
 			"user"
 		LEFT JOIN
@@ -1014,6 +1018,7 @@ pub async fn get_user_by_email(
 		recovery_email_domain_id: row.recovery_email_domain_id,
 		recovery_phone_country_code: row.recovery_phone_country_code,
 		recovery_phone_number: row.recovery_phone_number,
+		workspace_limit: row.workspace_limit,
 	});
 
 	Ok(user)
@@ -1039,7 +1044,8 @@ pub async fn get_user_by_phone_number(
 			"user".recovery_email_local,
 			"user".recovery_email_domain_id as "recovery_email_domain_id: Uuid",
 			"user".recovery_phone_country_code,
-			"user".recovery_phone_number
+			"user".recovery_phone_number,
+			"user".workspace_limit
 		FROM
 			"user"
 		INNER JOIN
@@ -1069,6 +1075,7 @@ pub async fn get_user_by_phone_number(
 		recovery_email_domain_id: row.recovery_email_domain_id,
 		recovery_phone_country_code: row.recovery_phone_country_code,
 		recovery_phone_number: row.recovery_phone_number,
+		workspace_limit: row.workspace_limit,
 	});
 
 	Ok(user)
@@ -1093,7 +1100,8 @@ pub async fn get_user_by_username(
 			"user".recovery_email_local,
 			"user".recovery_email_domain_id as "recovery_email_domain_id: Uuid",
 			"user".recovery_phone_country_code,
-			"user".recovery_phone_number
+			"user".recovery_phone_number,
+			"user".workspace_limit
 		FROM
 			"user"
 		WHERE
@@ -1117,6 +1125,7 @@ pub async fn get_user_by_username(
 		recovery_email_domain_id: row.recovery_email_domain_id,
 		recovery_phone_country_code: row.recovery_phone_country_code,
 		recovery_phone_number: row.recovery_phone_number,
+		workspace_limit: row.workspace_limit,
 	});
 
 	Ok(user)
@@ -1141,7 +1150,8 @@ pub async fn get_user_by_user_id(
 			"user".recovery_email_local,
 			"user".recovery_email_domain_id as "recovery_email_domain_id: Uuid",
 			"user".recovery_phone_country_code,
-			"user".recovery_phone_number
+			"user".recovery_phone_number,
+			"user".workspace_limit
 		FROM
 			"user"
 		WHERE
@@ -1165,6 +1175,7 @@ pub async fn get_user_by_user_id(
 		recovery_email_domain_id: row.recovery_email_domain_id,
 		recovery_phone_country_code: row.recovery_phone_country_code,
 		recovery_phone_number: row.recovery_phone_number,
+		workspace_limit: row.workspace_limit,
 	});
 
 	Ok(user)
@@ -2699,6 +2710,49 @@ pub async fn get_all_workspaces_for_user(
 				workspace_user.user_id = $1
 			) AND
 			workspace.name NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
+		"#,
+		user_id as _,
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn get_all_workspaces_owned_by_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+) -> Result<Vec<Workspace>, sqlx::Error> {
+	query_as!(
+		Workspace,
+		r#"
+		SELECT
+			id as "id: _",
+			name::TEXT as "name!: _",
+			super_admin_id as "super_admin_id: _",
+			active,
+			alert_emails,
+			drone_username,
+			drone_token,
+			payment_type as "payment_type: _",
+			default_payment_method_id as "default_payment_method_id: _",
+			deployment_limit,
+			static_site_limit,
+			database_limit,
+			managed_url_limit,
+			secret_limit,
+			domain_limit,
+			docker_repository_storage_limit,
+			stripe_customer_id,
+			address_id as "address_id: _",
+			amount_due
+		FROM
+			workspace
+		WHERE
+			super_admin_id = $1 AND
+			name NOT LIKE CONCAT(
 				'patr-deleted: ',
 				REPLACE(id::TEXT, '-', ''),
 				'@%'

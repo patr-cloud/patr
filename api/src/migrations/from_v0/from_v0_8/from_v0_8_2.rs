@@ -443,5 +443,25 @@ pub(super) async fn migrate(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE "user"
+		ADD COLUMN workspace_limit INTEGER NOT NULL
+		DEFAULT 3;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE "user"
+		ALTER COLUMN workspace_limit
+		DROP DEFAULT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }

@@ -101,6 +101,22 @@ pub async fn create_workspace(
 			.body(error!(WORKSPACE_EXISTS).to_string())?;
 	}
 
+	let limit = db::get_user_by_user_id(connection, super_admin_id)
+		.await?
+		.status(500)?
+		.workspace_limit as usize;
+
+	let super_admin_workspaces =
+		db::get_all_workspaces_owned_by_user(connection, super_admin_id)
+			.await?
+			.len();
+
+	if super_admin_workspaces + 1 > limit {
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string()));
+	}
+
 	let resource_id = db::generate_new_resource_id(connection).await?;
 
 	db::begin_deferred_constraints(connection).await?;
