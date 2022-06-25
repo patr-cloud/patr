@@ -464,8 +464,12 @@ def check_formatting(step_name):
         "image": "rustlang/rust:nightly",
         "commands": [
             "cargo fmt -- --check"
-        ]
+        ],
+        "environment": {
+            "CARGO_UNSTABLE_SPARSE_REGISTRY": "true",
+        }
     }
+
 
 def check_version(step_name):
     return {
@@ -480,6 +484,7 @@ def check_version(step_name):
             },
         }
     }
+
 
 def check_clippy(step_name, release):
 
