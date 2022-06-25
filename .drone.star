@@ -67,7 +67,8 @@ def get_pipeline_steps(ctx):
             ),
         ], [
             redis_service(),
-            database_service(get_database_password())
+            database_service(get_database_password()),
+            rabbitmq_service(),
         ])
     elif is_pr(ctx, "staging"):
         return ([
@@ -116,7 +117,8 @@ def get_pipeline_steps(ctx):
             ),
         ], [
             redis_service(),
-            database_service(get_database_password())
+            database_service(get_database_password()),
+            rabbitmq_service(),
         ])
     elif is_pr(ctx, "master"):
         return ([
@@ -165,7 +167,8 @@ def get_pipeline_steps(ctx):
             ),
         ], [
             redis_service(),
-            database_service(get_database_password())
+            database_service(get_database_password()),
+            rabbitmq_service(),
         ])
     elif is_push(ctx, "develop"):
         return ([
@@ -201,7 +204,8 @@ def get_pipeline_steps(ctx):
             ),
         ], [
             redis_service(),
-            database_service(get_database_password())
+            database_service(get_database_password()),
+            rabbitmq_service(),
         ])
     elif is_push(ctx, "staging"):
         return ([
@@ -250,7 +254,8 @@ def get_pipeline_steps(ctx):
             create_gitea_release("Create Gitea Release", staging=True),
         ], [
             redis_service(),
-            database_service(get_database_password())
+            database_service(get_database_password()),
+            rabbitmq_service(),
         ])
     elif is_push(ctx, "master"):
         return ([
@@ -299,7 +304,8 @@ def get_pipeline_steps(ctx):
             create_gitea_release("Create Gitea Release", staging=False),
         ], [
             redis_service(),
-            database_service(get_database_password())
+            database_service(get_database_password()),
+            rabbitmq_service(),
         ])
     else:
         return ([], [])
@@ -494,6 +500,16 @@ def redis_service():
         "image": "redis"
     }
 
+def rabbitmq_service():
+    return {
+        "name": "event-queue",
+        "image": "rabbitmq:3",
+        "environment": {
+            "RABBITMQ_DEFAULT_USER": "guest",
+            "RABBITMQ_DEFAULT_PASS": "guest"
+        }
+    }
+
 
 def get_database_password():
     return "dAtAbAsEpAsSwOrD"
@@ -506,6 +522,12 @@ def get_app_running_environment():
         "APP_DATABASE_USER": "postgres",
         "APP_DATABASE_PASSWORD": get_database_password(),
         "APP_DATABASE_DATABASE": "api",
+
+        "APP_RABBITMQ_HOST": "event-queue",
+        "APP_RABBITMQ_PORT": 5672,
+        "APP_RABBITMQ_QUEUE": "default",
+        "APP_RABBITMQ_USERNAME": "guest",
+        "APP_RABBITMQ_PASSWORD": "guest",
 
         "APP_REDIS_HOST": "cache",
     }
