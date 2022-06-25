@@ -1119,6 +1119,7 @@ async fn get_workspaces_for_user(
 		active: workspace.active,
 		super_admin_id: workspace.super_admin_id,
 		alert_emails: workspace.alert_emails,
+		default_payment_method_id: workspace.default_payment_method_id,
 	})
 	.collect::<Vec<_>>();
 

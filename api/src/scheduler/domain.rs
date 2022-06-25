@@ -59,7 +59,7 @@ pub(super) fn refresh_domain_tld_list_job() -> Job {
 pub async fn refresh_domain_tld_list() -> Result<(), Error> {
 	let mut connection = super::CONFIG.get().unwrap().database.begin().await?;
 	let data =
-		reqwest::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt")
+		reqwest::get("https://publicsuffix.org/list/public_suffix_list.dat")
 			.await?
 			.text()
 			.await?;
@@ -68,9 +68,13 @@ pub async fn refresh_domain_tld_list() -> Result<(), Error> {
 		.split('\n')
 		.map(String::from)
 		.filter(|tld| {
-			!tld.starts_with('#') && !tld.is_empty() && !tld.starts_with("XN--")
+			!tld.starts_with('#') &&
+				!tld.is_empty() && !tld.starts_with("XN--") &&
+				!tld.starts_with("//") &&
+				!tld.starts_with('!') &&
+				tld.is_ascii()
 		})
-		.map(|item| item.to_lowercase())
+		.map(|item| item.to_lowercase().replace("*.", ""))
 		.collect::<Vec<String>>();
 	let unused_tlds = db::get_all_unused_domain_tlds(&mut connection).await?;
 	let depreciated_tlds = unused_tlds

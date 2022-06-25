@@ -57,6 +57,22 @@ pub mod id {
 	pub const CANNOT_DELETE_WORKSPACE: &str = "cannotDeleteWorkspace";
 	pub const ADDRESS_LINE_3_NOT_ALLOWED: &str = "addressLine3NotAllowed";
 	pub const PAYMENT_FAILED: &str = "paymentFailed";
+	pub const RESOURCE_LIMIT_EXCEEDED: &str = "resourceLimitExceeded";
+	pub const DEPLOYMENT_LIMIT_EXCEEDED: &str = "deploymentLimitExceeded";
+	pub const STATIC_SITE_LIMIT_EXCEEDED: &str = "staticSiteLimitExceeded";
+	pub const DATABASE_LIMIT_EXCEEDED: &str = "databaseLimitExceeded";
+	pub const MANAGED_URL_LIMIT_EXCEEDED: &str = "managedUrlLimitExceeded";
+	pub const SECRET_LIMIT_EXCEEDED: &str = "secretLimitExceeded";
+	pub const REPOSITORY_SIZE_LIMIT_EXCEEDED: &str =
+		"repositorySizeLimitExceeded";
+	pub const ADDRESS_ALREADY_EXISTS: &str = "addressAlreadyExists";
+	pub const ADDRESS_NOT_FOUND: &str = "addressNotFound";
+	pub const DOMAIN_LIMIT_EXCEEDED: &str = "domainLimitExceeded";
+	pub const CHANGE_PRIMARY_PAYMENT_METHOD: &str =
+		"changePrimaryPaymentMethod";
+	pub const CANNOT_DELETE_PAYMENT_METHOD: &str = "cannotDeletePaymentMethod";
+	pub const PAYMENT_METHOD_REQUIRED: &str = "paymentMethodRequired";
+	pub const ADDRESS_REQUIRED: &str = "addressRequired";
 }
 
 #[allow(dead_code)]
@@ -172,4 +188,20 @@ pub mod message {
 	pub const ADDRESS_LINE_3_NOT_ALLOWED: &str =
 		"Address line 3 is not allowed if address line 2 is not provided";
 	pub const PAYMENT_FAILED: &str = "Payment failed, please try again. In case your money was deducted, it will be refunded back to your account in 7 working days";
+	pub const RESOURCE_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number resources allowed for your workspace, contact support to increase the limit";
+	pub const DEPLOYMENT_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number deployments allowed for your workspace, contact support to increase the limit";
+	pub const STATIC_SITE_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number static sites allowed for your workspace, contact support to increase the limit";
+	pub const DATABASE_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number databases allowed for your workspace, contact support to increase the limit";
+	pub const MANAGED_URL_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number managed URLs allowed for your workspace, contact support to increase the limit";
+	pub const SECRET_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number secrets allowed for your workspace, contact support to increase the limit";
+	pub const REPOSITORY_SIZE_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum size of repositories allowed for your workspace, contact support to increase the limit";
+	pub const ADDRESS_ALREADY_EXISTS: &str =
+		"The address already exists, please use a different address";
+	pub const ADDRESS_NOT_FOUND: &str =
+		"The address does not exist, please add a new address";
+	pub const DOMAIN_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number domains allowed for your workspace, contact support to increase the limit";
+	pub const CHANGE_PRIMARY_PAYMENT_METHOD: &str = "The current payment method cannot be deleted since it is your primary payment method";
+	pub const CANNOT_DELETE_PAYMENT_METHOD: &str = "The payment method cannot be deleted since it is in use, please delete all the resources and try again in the next billing cycle";
+	pub const PAYMENT_METHOD_REQUIRED: &str = "It seems that you have not added any payment method. Please add a payment method to continue";
+	pub const ADDRESS_REQUIRED: &str = "You need to add your billing address inorder to proceed with the transaction";
 }

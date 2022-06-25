@@ -2,18 +2,19 @@ use std::io::{Cursor, Read};
 
 use api_models::{
 	models::workspace::infrastructure::deployment::DeploymentStatus,
-	utils::Uuid,
+	utils::{DateTime, Uuid},
 };
+use chrono::Utc;
 use eve_rs::AsError;
 use s3::{creds::Credentials, Bucket, Region};
 use zip::ZipArchive;
 
 use crate::{
-	db,
+	db::{self, StaticSitePlan},
 	error,
 	models::rbac,
 	service::{self},
-	utils::{get_current_time_millis, settings::Settings, validator, Error},
+	utils::{settings::Settings, validator, Error},
 	Database,
 };
 
@@ -49,6 +50,24 @@ pub async fn create_static_site_in_workspace(
 	}
 
 	let static_site_id = db::generate_new_resource_id(connection).await?;
+
+	log::trace!("request_id: {} - Checking resource limit", request_id);
+	if super::resource_limit_crossed(connection, workspace_id, request_id)
+		.await?
+	{
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	log::trace!("request_id: {} - Checking static site limit", request_id);
+	if static_site_limit_crossed(connection, workspace_id, request_id).await? {
+		return Error::as_result()
+			.status(400)
+			.body(error!(STATIC_SITE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	let creation_time = Utc::now();
 	log::trace!("request_id: {} - creating static site resource", request_id);
 	db::create_resource(
 		connection,
@@ -60,13 +79,32 @@ pub async fn create_static_site_in_workspace(
 			.get(rbac::resource_types::STATIC_SITE)
 			.unwrap(),
 		workspace_id,
-		get_current_time_millis(),
+		creation_time.timestamp_millis() as u64,
 	)
 	.await?;
 
 	log::trace!("request_id: {} - Adding entry to database", request_id);
 	db::create_static_site(connection, &static_site_id, name, workspace_id)
 		.await?;
+
+	let static_site_plan =
+		match db::get_static_sites_for_workspace(connection, workspace_id)
+			.await?
+			.len()
+		{
+			(0..=3) => StaticSitePlan::Free,
+			(4..=25) => StaticSitePlan::Pro,
+			(26..) => StaticSitePlan::Unlimited,
+			_ => unreachable!(),
+		};
+
+	db::update_static_site_usage_history(
+		connection,
+		workspace_id,
+		&static_site_plan,
+		&DateTime::from(creation_time),
+	)
+	.await?;
 
 	log::trace!(
 		"request_id: {} - static site created successfully",
@@ -172,6 +210,27 @@ pub async fn delete_static_site(
 		connection,
 		static_site_id,
 		&DeploymentStatus::Deleted,
+	)
+	.await?;
+
+	let static_site_plan = match db::get_static_sites_for_workspace(
+		connection,
+		&static_site.workspace_id,
+	)
+	.await?
+	.len()
+	{
+		(0..=3) => StaticSitePlan::Free,
+		(4..=25) => StaticSitePlan::Pro,
+		(26..) => StaticSitePlan::Unlimited,
+		_ => unreachable!(),
+	};
+
+	db::update_static_site_usage_history(
+		connection,
+		&static_site.workspace_id,
+		&static_site_plan,
+		&DateTime::from(Utc::now()),
 	)
 	.await?;
 
@@ -433,4 +492,35 @@ fn get_mime_type_from_file_name(file_extension: &str) -> &str {
 		"wmv" => "video/x-ms-wmv",
 		_ => "application/octet-stream",
 	}
+}
+
+async fn static_site_limit_crossed(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	request_id: &Uuid,
+) -> Result<bool, Error> {
+	log::trace!(
+		"request_id: {} - Checking if free limits are crossed",
+		request_id
+	);
+
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let current_static_sites =
+		db::get_all_secrets_in_workspace(connection, workspace_id)
+			.await?
+			.len();
+
+	log::trace!(
+		"request_id: {} - Checking if static site limits are crossed",
+		request_id
+	);
+	if current_static_sites + 1 > workspace.static_site_limit as usize {
+		return Ok(true);
+	}
+
+	Ok(false)
 }

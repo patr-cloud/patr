@@ -440,6 +440,30 @@ pub async fn get_total_size_of_docker_repository(
 	.map(|row| row.size as u64)
 }
 
+pub async fn get_total_size_of_docker_repositories_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<u64, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			COALESCE(SUM(size), 0)::BIGINT as "size!"
+		FROM
+			docker_registry_repository_manifest
+		INNER JOIN
+			docker_registry_repository
+		ON
+			docker_registry_repository.id = docker_registry_repository_manifest.repository_id
+		WHERE
+			docker_registry_repository.workspace_id = $1;
+		"#,
+		workspace_id as _,
+	)
+	.fetch_one(&mut *connection)
+	.await
+	.map(|row| row.size as u64)
+}
+
 pub async fn get_docker_repository_image_by_digest(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repository_id: &Uuid,

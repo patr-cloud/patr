@@ -1,11 +1,21 @@
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::billing::{Address, StripeCustomer},
+	utils::Uuid,
+};
 use eve_rs::AsError;
+use reqwest::Client;
 
 use crate::{
-	db,
+	db::{self, PaymentType},
 	error,
-	models::rbac,
-	utils::{get_current_time_millis, settings::Settings, validator, Error},
+	models::{billing::StripeAddress, rbac},
+	utils::{
+		constants::default_limits,
+		get_current_time_millis,
+		settings::Settings,
+		validator,
+		Error,
+	},
 	Database,
 };
 
@@ -91,6 +101,22 @@ pub async fn create_workspace(
 			.body(error!(WORKSPACE_EXISTS).to_string())?;
 	}
 
+	let limit = db::get_user_by_user_id(connection, super_admin_id)
+		.await?
+		.status(500)?
+		.workspace_limit as usize;
+
+	let super_admin_workspaces =
+		db::get_all_workspaces_owned_by_user(connection, super_admin_id)
+			.await?
+			.len();
+
+	if super_admin_workspaces + 1 > limit {
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string()));
+	}
+
 	let resource_id = db::generate_new_resource_id(connection).await?;
 
 	db::begin_deferred_constraints(connection).await?;
@@ -108,12 +134,23 @@ pub async fn create_workspace(
 	)
 	.await?;
 
+	let stripe_customer = create_stripe_customer(&resource_id, config).await?;
+
 	db::create_workspace(
 		connection,
 		&resource_id,
 		workspace_name,
 		super_admin_id,
 		alert_emails,
+		default_limits::DEPLOYMENTS,
+		default_limits::MANAGED_DATABASE,
+		default_limits::STATIC_SITES,
+		default_limits::MANAGED_URLS,
+		default_limits::DOCKER_REPOSITORY_STORAGE,
+		default_limits::DOMAINS,
+		default_limits::SECRETS,
+		&stripe_customer.id,
+		&PaymentType::Card,
 	)
 	.await?;
 	db::end_deferred_constraints(connection).await?;
@@ -122,18 +159,6 @@ pub async fn create_workspace(
 		resource_id.as_str(),
 		config,
 		&Uuid::new_v4(),
-	)
-	.await?;
-
-	let user = db::get_user_by_user_id(connection, super_admin_id)
-		.await?
-		.status(500)?;
-
-	super::create_chargebee_user(
-		&resource_id,
-		&user.first_name,
-		&user.last_name,
-		config,
 	)
 	.await?;
 
@@ -151,4 +176,133 @@ pub async fn create_workspace(
 /// workspace
 pub fn get_personal_workspace_name(super_admin_id: &Uuid) -> String {
 	format!("personal-workspace-{}", super_admin_id)
+}
+
+pub async fn add_billing_address(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	address_details: Address,
+	config: &Settings,
+) -> Result<(), Error> {
+	if address_details.address_line_2.is_none() &&
+		address_details.address_line_3.is_some()
+	{
+		return Error::as_result()
+			.status(400)
+			.body(error!(ADDRESS_LINE_3_NOT_ALLOWED).to_string())?;
+	}
+
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
+
+	if workspace.address_id.is_some() {
+		return Error::as_result()
+			.status(400)
+			.body(error!(ADDRESS_ALREADY_EXISTS).to_string())?;
+	}
+	let address_id = db::generate_new_address_id(connection).await?;
+	let address_details = db::Address {
+		id: address_id.clone(),
+		first_name: address_details.first_name,
+		last_name: address_details.last_name,
+		address_line_1: address_details.address_line_1,
+		address_line_2: address_details.address_line_2,
+		address_line_3: address_details.address_line_3,
+		city: address_details.city,
+		state: address_details.state,
+		zip: address_details.zip,
+		country: address_details.country,
+	};
+
+	db::add_billing_address(connection, &address_details).await?;
+	db::add_billing_address_to_workspace(connection, workspace_id, &address_id)
+		.await?;
+
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	let address_line_2 = if let (Some(line2), Some(line3)) = (
+		address_details.address_line_2.clone(),
+		address_details.address_line_3,
+	) {
+		Some(format!("{} {}", line2, line3))
+	} else {
+		address_details.address_line_2
+	};
+
+	client
+		.post(format!(
+			"https://api.stripe.com/v1/customers/{}",
+			workspace.stripe_customer_id
+		))
+		.basic_auth(config.stripe.secret_key.as_str(), password.as_ref())
+		.form(&StripeAddress {
+			city: address_details.city,
+			country: address_details.country,
+			line1: address_details.address_line_1,
+			line2: address_line_2,
+			postal_code: address_details.zip,
+			state: address_details.state,
+		})
+		.send()
+		.await?
+		.error_for_status()?;
+
+	Ok(())
+}
+
+pub async fn update_billing_address(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	address_details: Address,
+) -> Result<(), Error> {
+	if address_details.address_line_2.is_none() &&
+		address_details.address_line_3.is_some()
+	{
+		return Error::as_result()
+			.status(400)
+			.body(error!(ADDRESS_LINE_3_NOT_ALLOWED).to_string())?;
+	}
+	let workspace_data = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
+	if let Some(address_id) = workspace_data.address_id {
+		let address_details = &db::Address {
+			id: address_id,
+			first_name: address_details.first_name,
+			last_name: address_details.last_name,
+			address_line_1: address_details.address_line_1,
+			address_line_2: address_details.address_line_2,
+			address_line_3: address_details.address_line_3,
+			city: address_details.city,
+			state: address_details.state,
+			zip: address_details.zip,
+			country: address_details.country,
+		};
+		db::update_billing_address(connection, address_details).await?;
+	} else {
+		return Error::as_result()
+			.status(400)
+			.body(error!(ADDRESS_NOT_FOUND).to_string())?;
+	}
+	Ok(())
+}
+
+async fn create_stripe_customer(
+	workspace_id: &Uuid,
+	config: &Settings,
+) -> Result<StripeCustomer, Error> {
+	let client = Client::new();
+	let password: Option<String> = None;
+	client
+		.post("https://api.stripe.com/v1/customers")
+		.basic_auth(&config.stripe.secret_key, password)
+		.query(&[("name", workspace_id.as_str())])
+		.send()
+		.await?
+		.json::<StripeCustomer>()
+		.await
+		.map_err(|e| e.into())
 }

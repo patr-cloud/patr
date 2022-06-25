@@ -12,8 +12,9 @@ use api_models::{
 		Metric,
 		PatrRegistry,
 	},
-	utils::{constants, StringifiedU16, Uuid},
+	utils::{constants, DateTime, StringifiedU16, Uuid},
 };
+use chrono::Utc;
 use eve_rs::AsError;
 use k8s_openapi::api::core::v1::Event;
 use reqwest::Client;
@@ -22,10 +23,10 @@ use crate::{
 	db,
 	error,
 	models::{
-		deployment::{Logs, PrometheusResponse, Subscription},
+		deployment::{Logs, PrometheusResponse},
 		rbac,
 	},
-	utils::{get_current_time_millis, settings::Settings, validator, Error},
+	utils::{settings::Settings, validator, Error},
 	Database,
 };
 
@@ -58,7 +59,6 @@ pub async fn create_deployment_in_workspace(
 	region: &Uuid,
 	machine_type: &Uuid,
 	deployment_running_details: &DeploymentRunningDetails,
-	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
@@ -106,6 +106,25 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
+	log::trace!("request_id: {} - Checking resource limit", request_id);
+
+	if super::resource_limit_crossed(connection, workspace_id, request_id)
+		.await?
+	{
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	log::trace!("request_id: {} - Checking deployment limit", request_id);
+	if deployment_limit_crossed(connection, workspace_id, request_id).await? {
+		return Error::as_result()
+			.status(400)
+			.body(error!(DEPLOYMENT_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	let created_time = Utc::now();
+
 	db::create_resource(
 		connection,
 		&deployment_id,
@@ -116,7 +135,7 @@ pub async fn create_deployment_in_workspace(
 			.get(rbac::resource_types::DEPLOYMENT)
 			.unwrap(),
 		workspace_id,
-		get_current_time_millis(),
+		created_time.timestamp_millis() as u64,
 	)
 	.await?;
 	log::trace!("request_id: {} - Created resource", request_id);
@@ -214,13 +233,13 @@ pub async fn create_deployment_in_workspace(
 		.await?;
 	}
 
-	start_subscription(
+	db::start_deployment_usage_history(
 		connection,
+		workspace_id,
 		&deployment_id,
-		machine_type.as_str(),
-		deployment_running_details.min_horizontal_scale,
-		config,
-		request_id,
+		machine_type,
+		deployment_running_details.min_horizontal_scale as i32,
+		&DateTime::from(created_time),
 	)
 	.await?;
 
@@ -275,7 +294,6 @@ pub async fn update_deployment(
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
-	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
@@ -361,8 +379,6 @@ pub async fn update_deployment(
 		"request_id: {} - Deployment updated in the database",
 		request_id
 	);
-
-	update_subscription(connection, deployment_id, config, request_id).await?;
 
 	Ok(())
 }
@@ -789,150 +805,6 @@ pub async fn get_deployment_metrics(
 	Ok(metric_response)
 }
 
-pub async fn cancel_subscription(
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Stopping subscription for deployment with id: {}",
-		request_id,
-		deployment_id
-	);
-	let client = Client::new();
-
-	let password: Option<String> = None;
-
-	let status = client
-		.post(format!(
-			"{}/subscriptions/{}/cancel_for_items",
-			config.chargebee.url, deployment_id
-		))
-		.basic_auth(&config.chargebee.api_key, password)
-		.query(&[
-			("end_of_term", "false"),
-			("credit_option_for_current_term_charges", "prorate"),
-		])
-		.send()
-		.await?
-		.status();
-
-	if status.is_client_error() || status.is_server_error() {
-		log::error!(
-			"request_id: {} - Error with the deployment: {}",
-			request_id,
-			status,
-		);
-		return Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string());
-	}
-
-	Ok(())
-}
-
-async fn start_subscription(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	item_price_id: &str,
-	quantity: u16,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Starting subscription for deployment with id: {}",
-		request_id,
-		deployment_id
-	);
-
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-	let client = Client::new();
-	let password: Option<String> = None;
-	let status = client
-		.post(format!(
-			"{}/customers/{}/subscription_for_items",
-			config.chargebee.url, deployment.workspace_id
-		))
-		.basic_auth(&config.chargebee.api_key, password)
-		.query(&Subscription {
-			id: deployment_id.to_string(),
-			item_price_id: format!("{}-USD-Monthly", item_price_id),
-			quantity,
-		})
-		.send()
-		.await?
-		.status();
-	if status.is_client_error() || status.is_server_error() {
-		log::error!(
-			"request_id: {} - Error with the deployment: {}",
-			request_id,
-			status,
-		);
-		return Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string());
-	}
-	Ok(())
-}
-
-async fn update_subscription(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Updating subscription for deployment with id: {}",
-		request_id,
-		deployment_id
-	);
-
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let client = Client::new();
-
-	let password: Option<String> = None;
-
-	let status = client
-		.post(format!(
-			"{}/subscriptions/{}/update_for_items",
-			config.chargebee.url, deployment.id,
-		))
-		.basic_auth(&config.chargebee.api_key, password)
-		.query(&[
-			(
-				"subscription_items[item_price_id][0]",
-				&format!("{}-USD-Monthly", deployment.machine_type),
-			),
-			(
-				"subscription_items[quantity][0]",
-				&format!("{}", deployment.min_horizontal_scale),
-			),
-		])
-		.send()
-		.await?
-		.status();
-
-	if status.is_client_error() || status.is_server_error() {
-		log::error!(
-			"request_id: {} - Error with the deployment: {}",
-			request_id,
-			status,
-		);
-		return Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string());
-	}
-
-	Ok(())
-}
-
 async fn get_container_logs(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
@@ -1026,4 +898,35 @@ pub async fn get_deployment_build_logs(
 	}
 
 	Ok(combined_build_logs)
+}
+
+async fn deployment_limit_crossed(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	request_id: &Uuid,
+) -> Result<bool, Error> {
+	log::trace!(
+		"request_id: {} - Checking if free limits are crossed",
+		request_id
+	);
+
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let current_deployments =
+		db::get_deployments_for_workspace(connection, workspace_id)
+			.await?
+			.len();
+
+	log::trace!(
+		"request_id: {} - Checking if deployment limits are crossed",
+		request_id
+	);
+	if current_deployments + 1 > workspace.deployment_limit as usize {
+		return Ok(true);
+	}
+
+	Ok(false)
 }

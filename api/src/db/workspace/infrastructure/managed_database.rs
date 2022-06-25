@@ -497,6 +497,40 @@ pub async fn get_managed_database_by_id(
 	.await
 }
 
+pub async fn get_managed_database_by_id_including_deleted(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+) -> Result<Option<ManagedDatabase>, sqlx::Error> {
+	query_as!(
+		ManagedDatabase,
+		r#"
+		SELECT
+			id as "id: _",
+			name::TEXT as "name!: _",
+			db_name,
+			engine as "engine: _",
+			version,
+			num_nodes,
+			database_plan as "database_plan: _",
+			region,
+			status as "status: _",
+			host,
+			port,
+			username,
+			password,
+			workspace_id as "workspace_id: _",
+			digitalocean_db_id
+		FROM
+			managed_database
+		WHERE
+			id = $1;
+		"#,
+		id as _,
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
 pub async fn update_digitalocean_db_id_for_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	database_id: &Uuid,

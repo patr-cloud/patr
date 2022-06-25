@@ -1,8 +1,10 @@
 use api_models::utils::{DateTime, Uuid};
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
 
 use crate::{query, query_as, Database};
 
+mod billing;
 mod ci;
 mod docker_registry;
 mod domain;
@@ -11,6 +13,7 @@ mod metrics;
 mod secret;
 
 pub use self::{
+	billing::*,
 	ci::*,
 	docker_registry::*,
 	domain::*,
@@ -19,12 +22,27 @@ pub use self::{
 	secret::*,
 };
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Workspace {
 	pub id: Uuid,
 	pub name: String,
 	pub super_admin_id: Uuid,
 	pub active: bool,
 	pub alert_emails: Vec<String>,
+	pub drone_username: Option<String>,
+	pub drone_token: Option<String>,
+	pub payment_type: PaymentType,
+	pub default_payment_method_id: Option<String>,
+	pub deployment_limit: i32,
+	pub database_limit: i32,
+	pub static_site_limit: i32,
+	pub managed_url_limit: i32,
+	pub docker_repository_storage_limit: i32,
+	pub domain_limit: i32,
+	pub secret_limit: i32,
+	pub stripe_customer_id: String,
+	pub address_id: Option<Uuid>,
+	pub amount_due: f64,
 }
 
 pub struct WorkspaceAuditLog {
@@ -42,6 +60,13 @@ pub struct WorkspaceAuditLog {
 	pub success: bool,
 }
 
+#[derive(sqlx::Type, Debug, Clone, Serialize, Deserialize)]
+#[sqlx(type_name = "PAYMENT_TYPE", rename_all = "lowercase")]
+pub enum PaymentType {
+	Card,
+	Enterprise,
+}
+
 #[derive(Debug, Clone)]
 pub struct WorkspaceCredits {
 	pub workspace_id: Uuid,
@@ -50,10 +75,35 @@ pub struct WorkspaceCredits {
 	pub date: DateTime<Utc>,
 }
 
+pub struct Address {
+	pub id: Uuid,
+	pub first_name: String,
+	pub last_name: String,
+	pub address_line_1: String,
+	pub address_line_2: Option<String>,
+	pub address_line_3: Option<String>,
+	pub city: String,
+	pub state: String,
+	pub zip: String,
+	pub country: String,
+}
+
 pub async fn initialize_workspaces_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing workspace tables");
+
+	query!(
+		r#"
+		CREATE TYPE PAYMENT_TYPE AS ENUM(
+			'card',
+			'enterprise'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	query!(
 		r#"
 		CREATE TABLE workspace(
@@ -76,7 +126,19 @@ pub async fn initialize_workspaces_pre(
 						drone_username IS NOT NULL AND
 						drone_token IS NOT NULL
 					)
-				)
+				),
+			payment_type PAYMENT_TYPE NOT NULL,
+			default_payment_method_id TEXT,
+			deployment_limit INTEGER NOT NULL,
+			database_limit INTEGER NOT NULL,
+			static_site_limit INTEGER NOT NULL,
+			managed_url_limit INTEGER NOT NULL,
+			docker_repository_storage_limit INTEGER NOT NULL,
+			domain_limit INTEGER NOT NULL,
+			secret_limit INTEGER NOT NULL,
+			stripe_customer_id TEXT NOT NULL,
+			address_id UUID,
+			amount_due DOUBLE PRECISION NOT NULL
 		);
 		"#
 	)
@@ -167,10 +229,30 @@ pub async fn initialize_workspaces_pre(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		CREATE TABLE address(
+			id UUID NOT NULL CONSTRAINT address_pk PRIMARY KEY,
+			first_name TEXT NOT NULL,
+			last_name TEXT NOT NULL,
+			address_line_1 TEXT NOT NULL,
+			address_line_2 TEXT,
+			address_line_3 TEXT,
+			city TEXT NOT NULL,
+			state TEXT NOT NULL,
+			zip TEXT NOT NULL,
+			country TEXT NOT NULL
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	domain::initialize_domain_pre(connection).await?;
 	docker_registry::initialize_docker_registry_pre(connection).await?;
 	secret::initialize_secret_pre(connection).await?;
 	infrastructure::initialize_infrastructure_pre(connection).await?;
+	billing::initialize_billing_pre(connection).await?;
 
 	Ok(())
 }
@@ -240,10 +322,33 @@ pub async fn initialize_workspaces_post(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE workspace
+		ADD CONSTRAINT workspace_default_payment_method_id_fk
+		FOREIGN KEY (default_payment_method_id)
+			REFERENCES payment_method(payment_method_id)
+		DEFERRABLE INITIALLY DEFERRED;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace
+		ADD CONSTRAINT workspace_fk_address_id
+		FOREIGN KEY(address_id) REFERENCES address(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	domain::initialize_domain_post(connection).await?;
 	docker_registry::initialize_docker_registry_post(connection).await?;
 	secret::initialize_secret_post(connection).await?;
 	infrastructure::initialize_infrastructure_post(connection).await?;
+	billing::initialize_billing_post(connection).await?;
 
 	Ok(())
 }
@@ -254,6 +359,15 @@ pub async fn create_workspace(
 	name: &str,
 	super_admin_id: &Uuid,
 	alert_emails: &[String],
+	deployment_limit: i32,
+	database_limit: i32,
+	static_site_limit: i32,
+	managed_url_limit: i32,
+	docker_repository_storage_limit: i32,
+	domain_limit: i32,
+	secret_limit: i32,
+	stripe_customer_id: &str,
+	payment_type: &PaymentType,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -265,16 +379,38 @@ pub async fn create_workspace(
 				active,
 				alert_emails,
 				drone_username,
-				drone_token
+				drone_token,
+				payment_type,
+				default_payment_method_id,
+				deployment_limit,
+				database_limit,
+				static_site_limit,
+				managed_url_limit,
+				docker_repository_storage_limit,
+				domain_limit,
+				secret_limit,
+				stripe_customer_id,
+				address_id,
+				amount_due
 			)
 		VALUES
-			($1, $2, $3, $4, $5, NULL, NULL);
+			($1, $2, $3, $4, $5, NULL, NULL, $6, NULL, $7, $8, $9, $10, $11, $12, $13, $14, NULL, $15);
 		"#,
 		workspace_id as _,
 		name as _,
 		super_admin_id as _,
 		true,
-		alert_emails as _
+		alert_emails as _,
+		payment_type as _,
+		deployment_limit,
+		database_limit,
+		static_site_limit,
+		managed_url_limit,
+		docker_repository_storage_limit,
+		domain_limit,
+		secret_limit,
+		stripe_customer_id,
+		0 as i32
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -294,7 +430,21 @@ pub async fn get_workspace_info(
 			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
 			active,
-			alert_emails as "alert_emails!: _"
+			alert_emails as "alert_emails: _",
+			drone_username,
+			drone_token,
+			payment_type as "payment_type: _",
+			default_payment_method_id as "default_payment_method_id: _",
+			deployment_limit,
+			static_site_limit,
+			database_limit,
+			managed_url_limit,
+			secret_limit,
+			domain_limit,
+			docker_repository_storage_limit,
+			stripe_customer_id,
+			address_id as "address_id: _",
+			amount_due
 		FROM
 			workspace
 		WHERE
@@ -318,7 +468,21 @@ pub async fn get_workspace_by_name(
 			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
 			active,
-			alert_emails as "alert_emails!: _"
+			alert_emails as "alert_emails: _",
+			drone_username,
+			drone_token,
+			payment_type as "payment_type: _",
+			default_payment_method_id as "default_payment_method_id: _",
+			deployment_limit,
+			static_site_limit,
+			database_limit,
+			managed_url_limit,
+			secret_limit,
+			domain_limit,
+			docker_repository_storage_limit,
+			stripe_customer_id,
+			address_id as "address_id: _",
+			amount_due
 		FROM
 			workspace
 		WHERE
@@ -357,6 +521,7 @@ pub async fn update_workspace_info(
 	workspace_id: &Uuid,
 	name: Option<String>,
 	alert_emails: Option<Vec<String>>,
+	default_payment_method_id: Option<String>,
 ) -> Result<(), sqlx::Error> {
 	if let Some(name) = name {
 		query!(
@@ -392,6 +557,22 @@ pub async fn update_workspace_info(
 		.await?;
 	}
 
+	if let Some(payment_method_id) = default_payment_method_id {
+		query!(
+			r#"
+			UPDATE
+				workspace
+			SET
+				default_payment_method_id = $1
+			WHERE
+				id = $2;
+			"#,
+			payment_method_id,
+			workspace_id as _,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
 	Ok(())
 }
 
@@ -574,29 +755,6 @@ pub async fn add_credits_to_workspace(
 	.map(|_| ())
 }
 
-pub async fn get_credits_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-) -> Result<Vec<WorkspaceCredits>, sqlx::Error> {
-	query_as!(
-		WorkspaceCredits,
-		r#"
-		SELECT
-			workspace_credits.workspace_id as "workspace_id: _",
-			workspace_credits.credits as "credits!: _",
-			workspace_credits.metadata as "metadata: _",
-			workspace_credits.date as "date: _"
-		FROM
-			workspace_credits
-		WHERE
-			workspace_id = $1;
-		"#,
-		workspace_id as _
-	)
-	.fetch_all(&mut *connection)
-	.await
-}
-
 pub async fn get_credit_info(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
@@ -642,6 +800,293 @@ pub async fn update_workspace_credit_metadata(
 		metadata as _,
 		workspace_id as _,
 		payment_method_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_all_workspaces(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<Workspace>, sqlx::Error> {
+	query_as!(
+		Workspace,
+		r#"
+		SELECT DISTINCT
+			workspace.id as "id: _",
+			workspace.name::TEXT as "name!: _",
+			workspace.super_admin_id as "super_admin_id: _",
+			workspace.active,
+			workspace.alert_emails as "alert_emails: _",
+			workspace.drone_username,
+			workspace.drone_token,
+			workspace.payment_type as "payment_type: _",
+			workspace.default_payment_method_id as "default_payment_method_id: _",
+			workspace.deployment_limit,
+			workspace.static_site_limit,
+			workspace.database_limit,
+			workspace.managed_url_limit,
+			workspace.secret_limit,
+			workspace.domain_limit,
+			workspace.docker_repository_storage_limit,
+			workspace.stripe_customer_id,
+			workspace.address_id as "address_id: _",
+			workspace.amount_due
+		FROM
+			workspace
+		WHERE
+			workspace.name NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
+		"#,
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn get_resource_limit_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<u32, sqlx::Error> {
+	query!(
+		r#"
+		SELECT (
+				deployment_limit +
+				database_limit +
+				static_site_limit +
+				managed_url_limit +
+				domain_limit +
+				secret_limit
+			) as "limit!: i32"
+		FROM
+			workspace
+		WHERE
+			workspace.id = $1;
+		"#,
+		workspace_id as _,
+	)
+	.fetch_one(&mut *connection)
+	.await
+	.map(|row| row.limit as u32)
+}
+
+pub async fn generate_new_address_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Uuid, sqlx::Error> {
+	loop {
+		let uuid = Uuid::new_v4();
+		let exists = query!(
+			r#"
+			SELECT
+				*
+			FROM
+				address
+			WHERE
+				id = $1;
+			"#,
+			uuid as _
+		)
+		.fetch_optional(&mut *connection)
+		.await?
+		.is_some();
+		if !exists {
+			break Ok(uuid);
+		}
+	}
+}
+
+pub async fn add_billing_address(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	address_details: &Address,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			address(
+				id,
+				first_name,
+				last_name,
+				address_line_1,
+				address_line_2,
+				address_line_3,
+				city,
+				state,
+				zip,
+				country
+			)
+		VALUES (
+			$1,
+			$2,
+			$3,
+			$4,
+			$5,
+			$6,
+			$7,
+			$8,
+			$9,
+			$10
+		);
+		"#,
+		address_details.id as _,
+		address_details.first_name,
+		address_details.last_name,
+		address_details.address_line_1,
+		address_details.address_line_2,
+		address_details.address_line_3,
+		address_details.city,
+		address_details.state,
+		address_details.zip,
+		address_details.country,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_billing_address(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	address_details: &Address,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			address
+		SET
+			first_name = $2,
+			last_name = $3,
+			address_line_1 = $4,
+			address_line_2 = $5,
+			address_line_3 = $6,
+			city = $7,
+			state = $8,
+			zip = $9,
+			country = $10
+		WHERE
+			id = $1;
+		"#,
+		address_details.id as _,
+		address_details.first_name,
+		address_details.last_name,
+		address_details.address_line_1,
+		address_details.address_line_2,
+		address_details.address_line_3,
+		address_details.city,
+		address_details.state,
+		address_details.zip,
+		address_details.country,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn add_billing_address_to_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	address_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace
+		SET
+			address_id = $1
+		WHERE
+			id = $2;
+			"#,
+		address_id as _,
+		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn delete_billing_address_from_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace
+		SET
+			address_id = NULL
+		WHERE
+			id = $1;
+		"#,
+		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn delete_billing_address(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	address_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			address
+		WHERE
+			id = $1;
+		"#,
+		address_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_billing_address(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	address_id: &Uuid,
+) -> Result<Option<Address>, sqlx::Error> {
+	query_as!(
+		Address,
+		r#"
+		SELECT
+			id as "id: _",
+			first_name,
+			last_name,
+			address_line_1,
+			address_line_2,
+			address_line_3,
+			city,
+			state,
+			zip,
+			country
+		FROM
+			address
+		WHERE
+			id = $1;
+		"#,
+		address_id as _,
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn set_default_payment_method_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	payment_method_id: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace
+		SET
+			default_payment_method_id = $1
+		WHERE
+			id = $2
+		"#,
+		payment_method_id,
+		workspace_id as _,
 	)
 	.execute(&mut *connection)
 	.await

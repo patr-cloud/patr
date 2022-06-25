@@ -1,15 +1,23 @@
 use std::cmp::Ordering;
 
+use api_models::utils::Uuid;
+use chrono::{Datelike, Utc};
+
 use crate::{
 	app::App,
 	db::{self, get_database_version, set_database_version},
 	migrations,
-	models::{deployment, rbac},
+	models::{
+		deployment,
+		rabbitmq::{RequestMessage, WorkspaceRequestData},
+		rbac,
+	},
 	query,
-	utils::constants,
+	service,
+	utils::{constants, Error},
 };
 
-pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
+pub async fn initialize(app: &App) -> Result<(), Error> {
 	log::info!("Initializing database");
 
 	let tables = query!(
@@ -65,6 +73,24 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 		set_database_version(&mut transaction, &constants::DATABASE_VERSION)
 			.await?;
 
+		// Queue the payment for the current month
+		let now = Utc::now();
+		let month = now.month();
+		let year = now.year();
+		let request_id = Uuid::new_v4();
+		service::send_message_to_rabbit_mq(
+			&RequestMessage::Workspace(
+				WorkspaceRequestData::ProcessWorkspaces {
+					month: if month == 12 { 1 } else { month + 1 },
+					year: if month == 12 { year + 1 } else { year },
+					request_id: request_id.clone(),
+				},
+			),
+			&app.config,
+			&request_id,
+		)
+		.await?;
+
 		transaction.commit().await?;
 
 		log::info!("Database created fresh");
@@ -92,14 +118,25 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 					version,
 					&app.config,
 				)
-				.await
-				.map_err(|err| {
-					log::error!(
-						"Error running migrations: {}",
-						err.get_error()
-					);
-					sqlx::Error::WorkerCrashed
-				})?;
+				.await?;
+
+				// Queue the payment for the current month
+				let now = Utc::now();
+				let month = now.month();
+				let year = now.year();
+				let request_id = Uuid::new_v4();
+				service::send_message_to_rabbit_mq(
+					&RequestMessage::Workspace(
+						WorkspaceRequestData::ProcessWorkspaces {
+							month: if month == 12 { 1 } else { month + 1 },
+							year: if month == 12 { year + 1 } else { year },
+							request_id: request_id.clone(),
+						},
+					),
+					&app.config,
+					&request_id,
+				)
+				.await?;
 
 				transaction.commit().await?;
 				log::info!(

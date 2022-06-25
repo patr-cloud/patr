@@ -9,6 +9,7 @@ use crate::{app::App, utils::Error};
 
 static CONFIG: OnceCell<App> = OnceCell::new();
 
+pub mod billing;
 pub mod domain;
 
 pub fn initialize_jobs(app: &App) {
@@ -52,6 +53,7 @@ fn get_scheduled_jobs() -> Vec<Job> {
 		domain::repatch_all_managed_urls_job(),
 		domain::reverify_verified_domains_job(),
 		domain::refresh_domain_tld_list_job(),
+		billing::update_bill_job(),
 	]
 }
 

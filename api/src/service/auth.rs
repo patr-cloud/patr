@@ -6,7 +6,6 @@ use api_models::{
 	utils::{ResourceType, Uuid},
 };
 use eve_rs::AsError;
-use reqwest::Client;
 
 /// This module validates user info and performs tasks related to user
 /// authentication The flow of this file will be:
@@ -848,6 +847,7 @@ pub async fn join_user(
 		recovery_email_domain_id,
 		recovery_phone_country_code,
 		recovery_phone_number,
+		3,
 	)
 	.await?;
 	db::end_deferred_constraints(connection).await?;
@@ -943,14 +943,6 @@ pub async fn join_user(
 				.status(500)
 				.body(error!(SERVER_ERROR).to_string()));
 		}
-
-		create_chargebee_user(
-			&workspace_id,
-			user_data.business_name.as_ref().unwrap(),
-			"",
-			config,
-		)
-		.await?;
 	} else {
 		if let Some((email_local, domain_id)) = user_data
 			.recovery_email_local
@@ -996,7 +988,7 @@ pub async fn join_user(
 	// add personal workspace
 	let personal_workspace_name =
 		service::get_personal_workspace_name(&user_id);
-	let workspace_id = service::create_workspace(
+	let _ = service::create_workspace(
 		connection,
 		&personal_workspace_name,
 		&user_id,
@@ -1018,14 +1010,6 @@ pub async fn join_user(
 		recovery_email_to,
 		recovery_phone_number_to,
 	};
-
-	create_chargebee_user(
-		&workspace_id,
-		&user_data.first_name,
-		&user_data.last_name,
-		config,
-	)
-	.await?;
 
 	Ok(response)
 }
@@ -1070,39 +1054,4 @@ pub async fn resend_user_sign_up_otp(
 			.body(error!(USER_NOT_FOUND).to_string())?,
 		otp,
 	))
-}
-
-pub async fn create_chargebee_user(
-	workspace_id: &Uuid,
-	first_name: &str,
-	last_name: &str,
-	config: &Settings,
-) -> Result<(), Error> {
-	let client = Client::new();
-
-	let password: Option<String> = None;
-
-	client
-		.post(format!("{}/customers", config.chargebee.url))
-		.basic_auth(config.chargebee.api_key.as_str(), password.as_ref())
-		.query(&[
-			("first_name", first_name),
-			("last_name", last_name),
-			("id", workspace_id.as_str()),
-		])
-		.send()
-		.await?;
-
-	client
-		.post(format!("{}/promotional_credits/set", config.chargebee.url))
-		.basic_auth(config.chargebee.api_key.as_str(), password.as_ref())
-		.query(&[
-			("customer_id", workspace_id.as_str()),
-			("amount", &config.chargebee.credit_amount),
-			("description", &config.chargebee.description),
-		])
-		.send()
-		.await?;
-
-	Ok(())
 }

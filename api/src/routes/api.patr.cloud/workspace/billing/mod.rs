@@ -1,25 +1,29 @@
 use api_models::{
 	models::workspace::billing::{
+		AddBillingAddressRequest,
+		AddBillingAddressResponse,
 		AddCreditsRequest,
 		AddCreditsResponse,
-		AddPaymentSourceResponse,
+		AddPaymentMethodResponse,
 		Address,
-		Card,
+		ConfirmPaymentMethodRequest,
+		ConfirmPaymentMethodResponse,
 		ConfirmPaymentRequest,
 		ConfirmPaymentResponse,
+		DeleteBillingAddressResponse,
+		DeletePaymentMethodResponse,
 		GetBillingAddressResponse,
-		GetCardDetailsResponse,
 		GetCreditBalanceResponse,
 		GetCreditsResponse,
+		GetCurrentBillResponse,
+		GetPaymentMethodResponse,
 		GetSubscriptionsResponse,
-		HostedPage,
-		PaymentSource,
+		PaymentMethod,
 		PromotionalCredits,
 		Subscription,
 		SubscriptionItem,
-		UpdateBillingInfoRequest,
-		UpdateBillingInfoResponse,
-		WorkspaceCredits,
+		UpdateBillingAddressRequest,
+		UpdateBillingAddressResponse,
 	},
 	utils::Uuid,
 };
@@ -63,7 +67,35 @@ pub fn create_sub_app(
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.post(
-		"/update-billing-info",
+		"/billing-address",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(add_billing_address)),
+		],
+	);
+
+	sub_app.patch(
+		"/billing-address",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::EDIT,
@@ -89,7 +121,38 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(update_billing_info)),
+			EveMiddleware::CustomFunction(pin_fn!(update_billing_address)),
+		],
+	);
+
+	sub_app.delete(
+		"/billing-address",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(delete_billing_address)),
 		],
 	);
 
@@ -124,8 +187,8 @@ pub fn create_sub_app(
 		],
 	);
 
-	sub_app.get(
-		"/card-details",
+	sub_app.post(
+		"/payment-method",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::EDIT,
@@ -151,12 +214,74 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(get_card_details)),
+			EveMiddleware::CustomFunction(pin_fn!(add_payment_method)),
+		],
+	);
+
+	sub_app.get(
+		"/payment-method",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_payment_method)),
+		],
+	);
+
+	sub_app.delete(
+		"/payment-method/:paymentMethodId",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(delete_payment_method)),
 		],
 	);
 
 	sub_app.post(
-		"/card-details",
+		"/confirm-payment-method",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::EDIT,
@@ -182,7 +307,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(add_card_details)),
+			EveMiddleware::CustomFunction(pin_fn!(confirm_payment_method)),
 		],
 	);
 
@@ -341,7 +466,66 @@ pub fn create_sub_app(
 		],
 	);
 
+	sub_app.get(
+		"/get-current-bill",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_current_bill)),
+		],
+	);
+
 	sub_app
+}
+
+async fn add_billing_address(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let AddBillingAddressRequest {
+		address_details, ..
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	let config = context.get_state().config.clone();
+
+	service::add_billing_address(
+		context.get_database_connection(),
+		&workspace_id,
+		address_details,
+		&config,
+	)
+	.await?;
+
+	context.success(AddBillingAddressResponse {});
+	Ok(context)
 }
 
 /// # Description
@@ -384,15 +568,12 @@ pub fn create_sub_app(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn update_billing_info(
+async fn update_billing_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let UpdateBillingInfoRequest {
-		first_name,
-		last_name,
-		address_details,
-		..
+	let UpdateBillingAddressRequest {
+		address_details, ..
 	} = context
 		.get_body_as()
 		.status(400)
@@ -401,18 +582,47 @@ async fn update_billing_info(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let config = context.get_state().config.clone();
+	if let Some(address_info) = address_details {
+		service::update_billing_address(
+			context.get_database_connection(),
+			&workspace_id,
+			address_info,
+		)
+		.await?;
+	}
 
-	service::update_billing_info(
+	context.success(UpdateBillingAddressResponse {});
+	Ok(context)
+}
+
+async fn delete_billing_address(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+	let billing_address_id = db::get_workspace_info(
+		context.get_database_connection(),
 		&workspace_id,
-		first_name,
-		last_name,
-		address_details,
-		&config,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?
+	.address_id
+	.status(404)
+	.body(error!(ADDRESS_NOT_FOUND).to_string())?;
+
+	db::delete_billing_address_from_workspace(
+		context.get_database_connection(),
+		&workspace_id,
 	)
 	.await?;
-
-	context.success(UpdateBillingInfoResponse {});
+	db::delete_billing_address(
+		context.get_database_connection(),
+		&billing_address_id,
+	)
+	.await?;
+	context.success(DeleteBillingAddressResponse {});
 	Ok(context)
 }
 
@@ -548,7 +758,7 @@ async fn get_promotional_credits(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn get_card_details(
+async fn get_payment_method(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -557,45 +767,23 @@ async fn get_card_details(
 
 	let config = context.get_state().config.clone();
 
-	let card_details = service::get_card_details(&workspace_id, &config)
-		.await?
-		.list
-		.into_iter()
-		.map(|payment_source| PaymentSource {
-			id: payment_source.payment_source.id,
-			updated_at: payment_source.payment_source.updated_at,
-			deleted: payment_source.payment_source.deleted,
-			object: payment_source.payment_source.object,
-			customer_id: payment_source.payment_source.customer_id,
-			r#type: payment_source.payment_source.r#type,
-			reference_id: payment_source.payment_source.reference_id,
-			status: payment_source.payment_source.status,
-			gateway: payment_source.payment_source.gateway,
-			gateway_account_id: payment_source
-				.payment_source
-				.gateway_account_id,
-			created_at: payment_source.payment_source.created_at,
-			card: payment_source.payment_source.card.map(|card| Card {
-				first_name: card.first_name,
-				last_name: card.last_name,
-				iin: card.iin,
-				last4: card.last4,
-				funding_type: card.funding_type,
-				expiry_month: card.expiry_month,
-				expiry_year: card.expiry_year,
-				billing_addr1: card.billing_addr1,
-				billing_addre2: card.billing_addre2,
-				billing_city: card.billing_city,
-				billing_state: card.billing_state,
-				billing_zip: card.billing_zip,
-				masked_number: card.masked_number,
-				object: card.object,
-				brand: card.brand,
-			}),
-		})
-		.collect();
+	let card_details = service::get_card_details(
+		context.get_database_connection(),
+		&workspace_id,
+		&config,
+	)
+	.await?
+	.into_iter()
+	.map(|payment_source| PaymentMethod {
+		id: payment_source.id,
+		customer: payment_source.customer,
+		r#type: payment_source.r#type,
+		card: payment_source.card,
+		created: payment_source.created,
+	})
+	.collect();
 
-	context.success(GetCardDetailsResponse { list: card_details });
+	context.success(GetPaymentMethodResponse { list: card_details });
 	Ok(context)
 }
 
@@ -624,34 +812,87 @@ async fn get_card_details(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn add_card_details(
+async fn add_payment_method(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-
 	let config = context.get_state().config.clone();
+	let client_secret = service::add_card_details(
+		context.get_database_connection(),
+		&workspace_id,
+		&config,
+	)
+	.await?
+	.client_secret;
+	context.success(AddPaymentMethodResponse { client_secret });
+	Ok(context)
+}
 
-	let hosted_page = service::add_card_details(&workspace_id, &config)
+async fn delete_payment_method(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+	let payment_method_id = context
+		.get_param(request_keys::PAYMENT_METHOD_ID)
+		.unwrap()
+		.parse::<String>()?;
+
+	let _ = db::get_payment_method_info(
+		context.get_database_connection(),
+		&payment_method_id,
+	)
+	.await?
+	.status(400)
+	.body(error!(WRONG_PARAMETERS).to_string())?;
+	let config = context.get_state().config.clone();
+	service::delete_payment_method(
+		context.get_database_connection(),
+		&workspace_id,
+		&payment_method_id,
+		&config,
+	)
+	.await?;
+	context.success(DeletePaymentMethodResponse {});
+	Ok(context)
+}
+
+async fn confirm_payment_method(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+	let ConfirmPaymentMethodRequest {
+		payment_method_id, ..
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	db::add_payment_method_info(
+		context.get_database_connection(),
+		&workspace_id,
+		&payment_method_id,
+	)
+	.await?;
+	if db::get_workspace_info(context.get_database_connection(), &workspace_id)
 		.await?
-		.hosted_page;
-
-	context.success(AddPaymentSourceResponse {
-		hosted_page: HostedPage {
-			id: hosted_page.id,
-			r#type: hosted_page.r#type,
-			url: hosted_page.url,
-			state: hosted_page.state,
-			embed: hosted_page.embed,
-			created_at: hosted_page.created_at,
-			expires_at: hosted_page.expires_at,
-			object: hosted_page.object,
-			updated_at: hosted_page.updated_at,
-			resource_version: hosted_page.resource_version,
-		},
-	});
-
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+		.default_payment_method_id
+		.is_none()
+	{
+		db::set_default_payment_method_for_workspace(
+			context.get_database_connection(),
+			&workspace_id,
+			&payment_method_id,
+		)
+		.await?;
+	}
+	context.success(ConfirmPaymentMethodResponse {});
 	Ok(context)
 }
 
@@ -764,25 +1005,36 @@ async fn get_billing_address(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let config = context.get_state().config.clone();
-	let customer_info =
-		service::get_billing_address(&config, &workspace_id).await?;
+	let user_address = db::get_workspace_info(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.status(500)?
+	.address_id;
+	let address = if let Some(addr_id) = user_address {
+		let billing_address = db::get_billing_address(
+			context.get_database_connection(),
+			&addr_id,
+		)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
 
-	let address =
-		if let Some(billing_addr) = customer_info.customer.billing_address {
-			Some(Address {
-				address_line1: billing_addr.line1,
-				address_line2: billing_addr.line2,
-				address_line3: billing_addr.line3,
-				city: billing_addr.city,
-				state: billing_addr.state,
-				zip: billing_addr.zip,
-				country: billing_addr.country,
-			})
-		} else {
-			None
-		};
-
+		Some(Address {
+			first_name: billing_address.first_name,
+			last_name: billing_address.last_name,
+			address_line_1: billing_address.address_line_1,
+			address_line_2: billing_address.address_line_2,
+			address_line_3: billing_address.address_line_3,
+			city: billing_address.city,
+			state: billing_address.state,
+			zip: billing_address.zip,
+			country: billing_address.country,
+		})
+	} else {
+		None
+	};
 	context.success(GetBillingAddressResponse { address });
 	Ok(context)
 }
@@ -801,7 +1053,7 @@ async fn add_credits(
 			.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
-	let secret_id = service::add_credits_to_workspace(
+	service::add_credits_to_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 		credits,
@@ -809,9 +1061,7 @@ async fn add_credits(
 	)
 	.await?;
 
-	context.success(AddCreditsResponse {
-		client_secret: secret_id,
-	});
+	context.success(AddCreditsResponse {});
 	Ok(context)
 }
 
@@ -828,13 +1078,9 @@ async fn get_credits(
 	)
 	.await?
 	.into_iter()
-	.map(|credits| WorkspaceCredits {
-		workspace_id: credits.workspace_id,
-		credits: credits.credits as u32,
-		metadata: credits.metadata,
-		date: credits.date,
-	})
-	.collect();
+	.map(|transaction| transaction.amount.abs())
+	.sum::<f64>()
+	.max(0f64);
 
 	context.success(GetCreditsResponse { credits });
 	Ok(context)
@@ -869,5 +1115,26 @@ async fn confirm_payment(
 	} else {
 		context.json(error!(PAYMENT_FAILED));
 	}
+	Ok(context)
+}
+
+async fn get_current_bill(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	let workspace = db::get_workspace_info(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
+
+	context.success(GetCurrentBillResponse {
+		bill: workspace.amount_due as u64,
+	});
 	Ok(context)
 }

@@ -1,19 +1,11 @@
-use api_models::{models::workspace::billing::Address, utils::Uuid};
+use api_models::utils::Uuid;
 use eve_rs::AsError;
 use reqwest::Client;
 
 use crate::{
 	db::{self, User},
 	error,
-	models::deployment::{
-		BillingAddress,
-		Customer,
-		CustomerInfo,
-		PaymentSourceList,
-		PromotionalCreditList,
-		SubscriptionList,
-		UpdatePaymentMethod,
-	},
+	models::deployment::{PromotionalCreditList, SubscriptionList},
 	service,
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
@@ -438,68 +430,6 @@ pub async fn verify_phone_number_for_user(
 	Ok(())
 }
 
-pub async fn update_billing_info(
-	workspace_id: &Uuid,
-	first_name: Option<String>,
-	last_name: Option<String>,
-	address_details: Option<Address>,
-	config: &Settings,
-) -> Result<(), Error> {
-	if let Some(address_details) = address_details.clone() {
-		if address_details.address_line2.is_none() &&
-			address_details.address_line3.is_some()
-		{
-			return Error::as_result()
-				.status(400)
-				.body(error!(ADDRESS_LINE_3_NOT_ALLOWED).to_string())?;
-		}
-	}
-
-	let client = Client::new();
-
-	let address_details = if let Some(address) = address_details {
-		Some(BillingAddress {
-			address_line1: address.address_line1,
-			address_line2: address.address_line2,
-			address_line3: address.address_line3,
-			city: address.city,
-			state: address.state,
-			zip: address.zip,
-			country: address.country,
-		})
-	} else {
-		None
-	};
-
-	let password: Option<String> = None;
-
-	let status = client
-		.post(format!(
-			"{}/customers/{}/update_billing_info",
-			config.chargebee.url, workspace_id
-		))
-		.basic_auth(config.chargebee.api_key.as_str(), password)
-		.form(&Customer {
-			id: None,
-			first_name,
-			last_name,
-			email: None,
-			phone: None,
-			address: address_details,
-		})
-		.send()
-		.await?
-		.status();
-
-	if !status.is_success() {
-		return Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
-	}
-
-	Ok(())
-}
-
 pub async fn get_credit_balance(
 	workspace_id: &Uuid,
 	config: &Settings,
@@ -519,54 +449,6 @@ pub async fn get_credit_balance(
 		.map_err(|e| e.into())
 }
 
-pub async fn get_card_details(
-	workspace_id: &Uuid,
-	config: &Settings,
-) -> Result<PaymentSourceList, Error> {
-	let client = Client::new();
-
-	let password: Option<String> = None;
-
-	client
-		.get(format!("{}/payment_sources", config.chargebee.url))
-		.basic_auth(&config.chargebee.api_key, password)
-		.query(&[
-			("customer_id[is]", workspace_id.as_str()),
-			("type[is]", "card"),
-		])
-		.send()
-		.await?
-		.json::<PaymentSourceList>()
-		.await
-		.map_err(|e| e.into())
-}
-
-pub async fn add_card_details(
-	workspace_id: &Uuid,
-	config: &Settings,
-) -> Result<UpdatePaymentMethod, Error> {
-	let client = Client::new();
-
-	let password: Option<String> = None;
-
-	client
-		.post(format!(
-			"{}/hosted_pages/manage_payment_sources",
-			config.chargebee.url
-		))
-		.basic_auth(&config.chargebee.api_key, password)
-		.query(&[
-			("customer[id]", workspace_id.as_str()),
-			("card[gateway_account_id]", &config.chargebee.gateway_id),
-			("redirect_url", &config.chargebee.redirect_url),
-		])
-		.send()
-		.await?
-		.json::<UpdatePaymentMethod>()
-		.await
-		.map_err(|e| e.into())
-}
-
 pub async fn get_subscriptions(
 	config: &Settings,
 	workspace_id: &Uuid,
@@ -582,27 +464,6 @@ pub async fn get_subscriptions(
 		.send()
 		.await?
 		.json::<SubscriptionList>()
-		.await
-		.map_err(|e| e.into())
-}
-
-pub async fn get_billing_address(
-	config: &Settings,
-	workspace_id: &Uuid,
-) -> Result<CustomerInfo, Error> {
-	let client = Client::new();
-
-	let password: Option<String> = None;
-
-	client
-		.get(format!(
-			"{}/customers/{}",
-			config.chargebee.url, workspace_id
-		))
-		.basic_auth(&config.chargebee.api_key, password)
-		.send()
-		.await?
-		.json::<CustomerInfo>()
 		.await
 		.map_err(|e| e.into())
 }
