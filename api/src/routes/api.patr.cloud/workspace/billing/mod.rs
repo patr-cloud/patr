@@ -13,10 +13,10 @@ use api_models::{
 		DeleteBillingAddressResponse,
 		DeletePaymentMethodResponse,
 		GetBillingAddressResponse,
-		GetCardDetailsResponse,
 		GetCreditBalanceResponse,
 		GetCreditsResponse,
 		GetCurrentBillResponse,
+		GetPaymentMethodResponse,
 		GetSubscriptionsResponse,
 		PaymentMethod,
 		PromotionalCredits,
@@ -783,7 +783,7 @@ async fn get_payment_method(
 	})
 	.collect();
 
-	context.success(GetCardDetailsResponse { list: card_details });
+	context.success(GetPaymentMethodResponse { list: card_details });
 	Ok(context)
 }
 
