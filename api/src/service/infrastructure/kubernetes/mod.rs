@@ -36,7 +36,7 @@ pub use self::{
 };
 use crate::utils::{settings::Settings, Error};
 
-async fn get_kubernetes_config(
+pub async fn get_kubernetes_config(
 	config: &Settings,
 ) -> Result<kube::Client, Error> {
 	let config = Config::from_custom_kubeconfig(

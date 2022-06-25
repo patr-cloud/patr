@@ -11,7 +11,8 @@ use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
+	db::{self, PaymentStatus},
+	ci,
 	error,
 	models::{
 		deployment::KubernetesEventData,
@@ -62,6 +63,12 @@ pub fn create_sub_app(
 	sub_app.post(
 		"/stripe-webhook",
 		[EveMiddleware::CustomFunction(pin_fn!(stripe_webhook))],
+	);
+
+	// TODO: webhook url generic or specific for each git providers?
+	sub_app.post(
+		"/ci/push-event",
+		[EveMiddleware::CustomFunction(pin_fn!(ci_push_event))],
 	);
 
 	sub_app
@@ -550,5 +557,14 @@ async fn stripe_webhook(
 	)
 	.await?;
 
+	Ok(context)
+}
+
+async fn ci_push_event(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	ci::github::ci_push_event(&mut context).await?;
+	
 	Ok(context)
 }

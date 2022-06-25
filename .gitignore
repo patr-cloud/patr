@@ -96,3 +96,6 @@ dump.rdb
 vicara-api.iml
 
 .optic
+
+# ignore log files
+*.log

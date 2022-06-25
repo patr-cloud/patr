@@ -11,6 +11,7 @@
 // #![allow(clippy::module_name_repetitions)]
 
 mod app;
+mod ci;
 mod db;
 mod macros;
 mod migrations;
