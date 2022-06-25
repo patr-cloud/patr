@@ -15,7 +15,6 @@ use crate::{
 		rabbitmq::{
 			DeploymentRequestData,
 			RequestMessage,
-			StaticSiteRequestData,
 			WorkspaceRequestData,
 		},
 		DeploymentMetadata,

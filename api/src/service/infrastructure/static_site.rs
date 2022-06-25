@@ -17,7 +17,7 @@ use crate::{
 	error,
 	models::rbac,
 	service::{self, infrastructure::kubernetes},
-	utils::{get_current_time_millis, settings::Settings, validator, Error},
+	utils::{settings::Settings, validator, Error},
 	Database,
 };
 
