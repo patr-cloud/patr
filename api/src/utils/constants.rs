@@ -65,11 +65,11 @@ pub mod request_keys {
 }
 
 pub mod default_limits {
-	pub const DEPLOYMENTS: i32 = 1;
-	pub const MANAGED_DATABASE: i32 = 0;
-	pub const STATIC_SITES: i32 = 5;
-	pub const MANAGED_URLS: i32 = 10;
-	pub const DOCKER_REPOSITORY_STORAGE: i32 = 10;
-	pub const DOMAINS: i32 = 1;
-	pub const SECRETS: i32 = 5;
+	pub const DEPLOYMENTS: i32 = 10;
+	pub const MANAGED_DATABASE: i32 = 5;
+	pub const STATIC_SITES: i32 = 30;
+	pub const MANAGED_URLS: i32 = 200;
+	pub const DOCKER_REPOSITORY_STORAGE: i32 = 200;
+	pub const DOMAINS: i32 = 5;
+	pub const SECRETS: i32 = 150;
 }
