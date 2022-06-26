@@ -463,5 +463,13 @@ pub(super) async fn migrate(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		DROP TABLE workspace_credits;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
