@@ -418,7 +418,7 @@ pub(super) async fn migrate(
 				id = $2;
 			"#,
 			customer.id.as_str(),
-			workspace_id.as_str(),
+			workspace_id,
 		)
 		.execute(&mut *connection)
 		.await?;
