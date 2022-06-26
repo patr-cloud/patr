@@ -218,6 +218,19 @@ pub async fn initialize_workspaces_pre(
 
 	query!(
 		r#"
+		CREATE TABLE workspace_credits(
+			workspace_id UUID NOT NULL,
+			credits BIGINT NOT NULL DEFAULT 0,
+			metadata JSON NOT NULL,
+			date TIMESTAMPTZ NOT NULL
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE address(
 			id UUID NOT NULL CONSTRAINT address_pk PRIMARY KEY,
 			first_name TEXT NOT NULL,
@@ -294,6 +307,16 @@ pub async fn initialize_workspaces_post(
 		ALTER TABLE workspace_audit_log
 		ADD CONSTRAINT workspace_audit_log_fk_action
 		FOREIGN KEY(action) REFERENCES permission(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace_credits
+		ADD CONSTRAINT workspace_credits_fk_workspace_id
+		FOREIGN KEY(workspace_id) REFERENCES workspace(id);
 		"#
 	)
 	.execute(&mut *connection)
