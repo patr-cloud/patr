@@ -1,24 +1,21 @@
 use api_models::{
-	models::workspace::infrastructure::{
-		deployment::{
-			Deployment,
-			DeploymentRegistry,
-			DeploymentRunningDetails,
-			DeploymentStatus,
-		},
-		static_site::StaticSiteDetails,
+	models::workspace::infrastructure::deployment::{
+		Deployment,
+		DeploymentRegistry,
+		DeploymentRunningDetails,
+		DeploymentStatus,
 	},
 	utils::Uuid,
 };
 use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
-	db,
+	db::{self, Workspace},
 	models::{
 		rabbitmq::{
 			DeploymentRequestData,
 			RequestMessage,
-			StaticSiteRequestData,
+			WorkspaceRequestData,
 		},
 		DeploymentMetadata,
 	},
@@ -314,103 +311,68 @@ pub async fn queue_update_deployment_image(
 	.await
 }
 
-pub async fn queue_create_static_site(
-	workspace_id: &Uuid,
-	static_site_id: &Uuid,
-	file: String,
+pub async fn queue_process_payment(
+	month: u32,
+	year: i32,
 	config: &Settings,
-	request_id: &Uuid,
 ) -> Result<(), Error> {
+	let request_id = Uuid::new_v4();
+
 	send_message_to_rabbit_mq(
-		&RequestMessage::StaticSite(StaticSiteRequestData::Create {
-			workspace_id: workspace_id.clone(),
-			static_site_id: static_site_id.clone(),
-			file,
-			static_site_details: StaticSiteDetails {},
+		&RequestMessage::Workspace(WorkspaceRequestData::ProcessWorkspaces {
+			month,
+			year,
 			request_id: request_id.clone(),
 		}),
 		config,
-		request_id,
+		&request_id,
 	)
 	.await
 }
 
-pub async fn queue_start_static_site(
-	workspace_id: &Uuid,
-	static_site_id: &Uuid,
+pub async fn queue_confirm_payment_intent(
 	config: &Settings,
-	request_id: &Uuid,
+	payment_intent_id: String,
+	workspace_id: Uuid,
 ) -> Result<(), Error> {
+	let request_id = Uuid::new_v4();
+
 	send_message_to_rabbit_mq(
-		&RequestMessage::StaticSite(StaticSiteRequestData::Start {
-			workspace_id: workspace_id.clone(),
-			static_site_id: static_site_id.clone(),
-			static_site_details: StaticSiteDetails {},
-			request_id: request_id.clone(),
-		}),
+		&RequestMessage::Workspace(
+			WorkspaceRequestData::ConfirmPaymentIntent {
+				payment_intent_id,
+				workspace_id,
+				request_id: request_id.clone(),
+			},
+		),
 		config,
-		request_id,
+		&request_id,
 	)
 	.await
 }
 
-pub async fn queue_upload_static_site(
-	workspace_id: &Uuid,
-	static_site_id: &Uuid,
-	file: String,
+pub async fn queue_generate_invoice_for_workspace(
 	config: &Settings,
-	request_id: &Uuid,
+	workspace: Workspace,
+	month: u32,
+	year: i32,
 ) -> Result<(), Error> {
+	let request_id = Uuid::new_v4();
+
 	send_message_to_rabbit_mq(
-		&RequestMessage::StaticSite(StaticSiteRequestData::UploadSite {
-			workspace_id: workspace_id.clone(),
-			static_site_id: static_site_id.clone(),
-			file,
+		&RequestMessage::Workspace(WorkspaceRequestData::GenerateInvoice {
+			month,
+			year,
+			workspace,
 			request_id: request_id.clone(),
 		}),
 		config,
-		request_id,
+		&request_id,
 	)
 	.await
 }
 
-pub async fn queue_stop_static_site(
-	workspace_id: &Uuid,
-	static_site_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	send_message_to_rabbit_mq(
-		&RequestMessage::StaticSite(StaticSiteRequestData::Stop {
-			workspace_id: workspace_id.clone(),
-			static_site_id: static_site_id.clone(),
-			request_id: request_id.clone(),
-		}),
-		config,
-		request_id,
-	)
-	.await
-}
-
-pub async fn queue_delete_static_site(
-	workspace_id: &Uuid,
-	static_site_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	send_message_to_rabbit_mq(
-		&RequestMessage::StaticSite(StaticSiteRequestData::Delete {
-			workspace_id: workspace_id.clone(),
-			static_site_id: static_site_id.clone(),
-			request_id: request_id.clone(),
-		}),
-		config,
-		request_id,
-	)
-	.await
-}
-
-async fn send_message_to_rabbit_mq(
+pub async fn send_message_to_rabbit_mq(
 	message: &RequestMessage,
 	config: &Settings,
 	request_id: &Uuid,

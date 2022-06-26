@@ -693,7 +693,6 @@ async fn create_deployment(
 		&region,
 		&machine_type,
 		&deployment_running_details,
-		&config,
 		&request_id,
 	)
 	.await?;
@@ -1123,6 +1122,13 @@ async fn delete_deployment(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
+	db::stop_deployment_usage_history(
+		context.get_database_connection(),
+		&deployment_id,
+		&Utc::now().into(),
+	)
+	.await?;
+
 	log::trace!("request_id: {} - Queuing delete deployment", request_id);
 	service::queue_delete_deployment(
 		context.get_database_connection(),
@@ -1142,8 +1148,6 @@ async fn delete_deployment(
 		"A deployment has been deleted",
 	)
 	.await;
-
-	service::cancel_subscription(&deployment_id, &config, &request_id).await?;
 
 	context.success(DeleteDeploymentResponse {});
 	Ok(context)
@@ -1244,6 +1248,14 @@ async fn update_deployment(
 		liveness_probe: liveness_probe.clone(),
 	};
 
+	let (deployment, workspace_id, _, deployment_running_details) =
+		service::get_full_deployment_config(
+			context.get_database_connection(),
+			&deployment_id,
+			&request_id,
+		)
+		.await?;
+
 	service::update_deployment(
 		context.get_database_connection(),
 		&deployment_id,
@@ -1264,20 +1276,11 @@ async fn update_deployment(
 		environment_variables.as_ref(),
 		startup_probe.as_ref(),
 		liveness_probe.as_ref(),
-		&config,
 		&request_id,
 	)
 	.await?;
 
 	context.commit_database_transaction().await?;
-
-	let (deployment, workspace_id, _, deployment_running_details) =
-		service::get_full_deployment_config(
-			context.get_database_connection(),
-			&deployment_id,
-			&request_id,
-		)
-		.await?;
 
 	match &deployment.status {
 		DeploymentStatus::Stopped |
@@ -1286,6 +1289,23 @@ async fn update_deployment(
 			// Don't update deployments that are explicitly stopped or deleted
 		}
 		_ => {
+			let current_time = Utc::now().into();
+			db::stop_deployment_usage_history(
+				context.get_database_connection(),
+				&deployment_id,
+				&current_time,
+			)
+			.await?;
+			db::start_deployment_usage_history(
+				context.get_database_connection(),
+				&workspace_id,
+				&deployment_id,
+				&deployment.machine_type,
+				deployment_running_details.min_horizontal_scale as i32,
+				&current_time,
+			)
+			.await?;
+
 			service::queue_update_deployment(
 				context.get_database_connection(),
 				&workspace_id,

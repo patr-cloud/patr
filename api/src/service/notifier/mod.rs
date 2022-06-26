@@ -1,10 +1,23 @@
+use std::collections::HashMap;
+
 use api_models::{models::auth::PreferredRecoveryOption, utils::Uuid};
 use eve_rs::AsError;
 
 use crate::{
-	db::{self, User, UserToSignUp},
+	db::{self, DomainPlan, StaticSitePlan, User, UserToSignUp},
 	error,
-	models::deployment::KubernetesEventData,
+	models::{
+		billing::{
+			DatabaseBill,
+			DeploymentBill,
+			DockerRepositoryBill,
+			DomainBill,
+			ManagedUrlBill,
+			SecretsBill,
+			StaticSiteBill,
+		},
+		deployment::KubernetesEventData,
+	},
 	utils::Error,
 	Database,
 };
@@ -415,4 +428,53 @@ pub async fn send_alert_email_to_patr(
 	// send email
 	email::send_alert_email_to_patr("postmaster@vicara.co".parse()?, event_data)
 		.await
+}
+
+pub async fn send_invoice_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+	workspace_name: String,
+	deployment_usages: HashMap<Uuid, DeploymentBill>,
+	database_usages: HashMap<Uuid, DatabaseBill>,
+	static_sites_usages: HashMap<StaticSitePlan, StaticSiteBill>,
+	managed_url_usages: HashMap<u64, ManagedUrlBill>,
+	docker_repository_usages: Vec<DockerRepositoryBill>,
+	domains_usages: HashMap<DomainPlan, DomainBill>,
+	secrets_usages: HashMap<u64, SecretsBill>,
+	total_bill: f64,
+	month: String,
+	year: i32,
+) -> Result<(), Error> {
+	let user = db::get_user_by_user_id(connection, user_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_invoice_email(
+		user_email.parse()?,
+		workspace_name,
+		deployment_usages,
+		database_usages,
+		static_sites_usages,
+		managed_url_usages,
+		docker_repository_usages,
+		domains_usages,
+		secrets_usages,
+		total_bill,
+		month,
+		year,
+	)
+	.await
 }

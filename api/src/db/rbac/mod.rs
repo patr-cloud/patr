@@ -455,7 +455,21 @@ pub async fn get_all_workspace_roles_for_user(
 			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
 			active,
-			alert_emails
+			alert_emails as "alert_emails: _",
+			drone_username,
+			drone_token,
+			payment_type as "payment_type: _",
+			default_payment_method_id as "default_payment_method_id: _",
+			deployment_limit,
+			static_site_limit,
+			database_limit,
+			managed_url_limit,
+			secret_limit,
+			domain_limit,
+			docker_repository_storage_limit,
+			stripe_customer_id,
+			address_id as "address_id: _",
+			amount_due
 		FROM
 			workspace
 		WHERE

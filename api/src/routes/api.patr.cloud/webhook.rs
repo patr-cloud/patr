@@ -1,13 +1,14 @@
 use api_models::{
 	models::workspace::infrastructure::deployment::DeploymentStatus,
-	utils::Uuid,
+	utils::{DateTime, Uuid},
 };
+use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
+	db::{self, PaymentStatus},
 	error,
 	models::{
 		deployment::KubernetesEventData,
@@ -19,7 +20,6 @@ use crate::{
 	service,
 	utils::{
 		constants::request_keys,
-		get_current_time_millis,
 		Error,
 		ErrorData,
 		EveContext,
@@ -54,6 +54,11 @@ pub fn create_sub_app(
 	sub_app.post(
 		"/kubernetes-events",
 		[EveMiddleware::CustomFunction(pin_fn!(deployment_alert))],
+	);
+
+	sub_app.post(
+		"/stripe-webhook",
+		[EveMiddleware::CustomFunction(pin_fn!(stripe_webhook))],
 	);
 
 	sub_app
@@ -181,7 +186,7 @@ async fn notification_handler(
 			continue;
 		};
 
-		let current_time = get_current_time_millis();
+		let current_time = Utc::now();
 
 		log::trace!(
 			"request_id: {} - Creating docker repository digest",
@@ -200,7 +205,22 @@ async fn notification_handler(
 				})
 				.map(|reference| reference.size)
 				.sum(),
-			current_time,
+			current_time.timestamp_millis() as u64,
+		)
+		.await?;
+
+		let total_storage =
+			db::get_total_size_of_docker_repositories_for_workspace(
+				context.get_database_connection(),
+				&workspace.id,
+			)
+			.await?;
+		db::update_docker_repo_usage_history(
+			context.get_database_connection(),
+			&workspace.id,
+			&(((total_storage as f64) / (1000f64 * 1000f64 * 1000f64)).ceil()
+				as i64),
+			&DateTime::from(current_time),
 		)
 		.await?;
 
@@ -217,7 +237,7 @@ async fn notification_handler(
 			&repository.id,
 			&target.tag,
 			&target.digest,
-			current_time,
+			current_time.timestamp_millis() as u64,
 		)
 		.await?;
 
@@ -466,6 +486,45 @@ async fn deployment_alert(
 		}
 		_ => (),
 	}
+
+	Ok(context)
+}
+
+async fn stripe_webhook(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let payment_intent = context.get_body_object();
+
+	fn get_payment_intent_details_of_event(
+		event: &serde_json::Value,
+	) -> Option<(String, String)> {
+		let intent = event.as_object()?.get("data")?.as_object()?;
+		if intent.get("object")?.as_str()? == "payment_intent" {
+			Some((
+				intent.get("id")?.as_str()?.to_string(),
+				intent.get("status")?.as_str()?.to_string(),
+			))
+		} else {
+			None
+		}
+	}
+
+	let (id, status) =
+		get_payment_intent_details_of_event(payment_intent).status(500)?;
+
+	db::update_transaction_status_for_payment_id(
+		context.get_database_connection(),
+		&id,
+		&if status == "succeeded" {
+			PaymentStatus::Success
+		} else if status == "requires_payment_method" {
+			PaymentStatus::Pending
+		} else {
+			PaymentStatus::Failed
+		},
+	)
+	.await?;
 
 	Ok(context)
 }

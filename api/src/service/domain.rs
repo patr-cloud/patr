@@ -2,8 +2,9 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 
 use api_models::{
 	models::workspace::domain::{DnsRecordValue, DomainNameserverType},
-	utils::{ResourceType, Uuid},
+	utils::{DateTime, ResourceType, Uuid},
 };
+use chrono::Utc;
 use cloudflare::{
 	endpoints::{
 		dns::{
@@ -41,7 +42,7 @@ use trust_dns_client::{
 
 use super::infrastructure;
 use crate::{
-	db::{self, DnsRecordType},
+	db::{self, DnsRecordType, DomainPlan},
 	error,
 	models::rbac::{self, resource_types},
 	utils::{
@@ -172,6 +173,23 @@ pub async fn add_domain_to_workspace(
 	log::trace!("request_id: {} - Generating new domain id", request_id);
 	let domain_id = db::generate_new_domain_id(connection).await?;
 
+	log::trace!("request_id: {} - Checking resource limit", request_id);
+	if super::resource_limit_crossed(connection, workspace_id, request_id)
+		.await?
+	{
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	log::trace!("request_id: {} - Checking static site limit", request_id);
+	if domain_limit_crossed(connection, workspace_id, request_id).await? {
+		return Error::as_result()
+			.status(400)
+			.body(error!(DOMAIN_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	let creation_time = Utc::now();
 	log::trace!("request_id: {} - Generating new resource", request_id);
 	db::create_resource(
 		connection,
@@ -183,7 +201,7 @@ pub async fn add_domain_to_workspace(
 			.get(rbac::resource_types::DOMAIN)
 			.unwrap(),
 		workspace_id,
-		get_current_time_millis(),
+		creation_time.timestamp_millis() as u64,
 	)
 	.await?;
 	db::create_generic_domain(
@@ -198,6 +216,23 @@ pub async fn add_domain_to_workspace(
 	log::trace!("request_id: {} - Adding domain to workspace", request_id);
 	db::add_to_workspace_domain(connection, &domain_id, nameserver_type)
 		.await?;
+
+	let domain_plan =
+		match db::get_domains_for_workspace(connection, workspace_id)
+			.await?
+			.len()
+		{
+			(0..=1) => DomainPlan::Free,
+			(2..) => DomainPlan::Unlimited,
+			_ => unreachable!(),
+		};
+	db::update_domain_usage_history(
+		connection,
+		workspace_id,
+		&domain_plan,
+		&DateTime::from(creation_time),
+	)
+	.await?;
 
 	if nameserver_type.is_internal() {
 		log::trace!(
@@ -742,6 +777,23 @@ pub async fn delete_domain_in_workspace(
 	)
 	.await?;
 
+	let domain_plan =
+		match db::get_domains_for_workspace(connection, workspace_id)
+			.await?
+			.len()
+		{
+			(0..=1) => DomainPlan::Free,
+			(2..) => DomainPlan::Unlimited,
+			_ => unreachable!(),
+		};
+	db::update_domain_usage_history(
+		connection,
+		workspace_id,
+		&domain_plan,
+		&DateTime::from(Utc::now()),
+	)
+	.await?;
+
 	if domain.is_ns_internal() {
 		log::trace!(
 			"request_id: {} - Getting the information for the internal domain",
@@ -846,4 +898,35 @@ pub async fn get_cloudflare_client(
 		return Err(Error::empty());
 	};
 	Ok(client)
+}
+
+async fn domain_limit_crossed(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	request_id: &Uuid,
+) -> Result<bool, Error> {
+	log::trace!(
+		"request_id: {} - Checking if free limits are crossed",
+		request_id
+	);
+
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let current_domains =
+		db::get_domains_for_workspace(connection, workspace_id)
+			.await?
+			.len();
+
+	log::trace!(
+		"request_id: {} - Checking if domains limits are crossed",
+		request_id
+	);
+	if current_domains + 1 > workspace.domain_limit as usize {
+		return Ok(true);
+	}
+
+	Ok(false)
 }

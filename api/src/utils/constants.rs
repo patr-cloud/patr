@@ -61,4 +61,15 @@ pub mod request_keys {
 	pub const BUILD_NUM: &str = "buildNum";
 	pub const STAGE: &str = "stage";
 	pub const STEP: &str = "step";
+	pub const PAYMENT_METHOD_ID: &str = "paymentMethodId";
+}
+
+pub mod default_limits {
+	pub const DEPLOYMENTS: i32 = 10;
+	pub const MANAGED_DATABASE: i32 = 5;
+	pub const STATIC_SITES: i32 = 30;
+	pub const MANAGED_URLS: i32 = 200;
+	pub const DOCKER_REPOSITORY_STORAGE: i32 = 200;
+	pub const DOMAINS: i32 = 5;
+	pub const SECRETS: i32 = 150;
 }

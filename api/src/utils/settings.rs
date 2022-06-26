@@ -294,7 +294,10 @@ pub struct GithubSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StripeSettings {
+	#[serde(alias = "secretkey")]
 	pub secret_key: String,
+	#[serde(alias = "publishablekey")]
 	pub publishable_key: String,
+	#[serde(alias = "customerid")]
 	pub customer_id: String,
 }

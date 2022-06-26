@@ -725,6 +725,42 @@ pub async fn get_deployment_by_id(
 	.await
 }
 
+pub async fn get_deployment_by_id_including_deleted(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+) -> Result<Option<Deployment>, sqlx::Error> {
+	query_as!(
+		Deployment,
+		r#"
+		SELECT
+			id as "id: _",
+			name::TEXT as "name!: _",
+			registry,
+			repository_id as "repository_id: _",
+			image_name,
+			image_tag,
+			status as "status: _",
+			workspace_id as "workspace_id: _",
+			region as "region: _",
+			min_horizontal_scale,
+			max_horizontal_scale,
+			machine_type as "machine_type: _",
+			deploy_on_push,
+			startup_probe_port,
+			startup_probe_path,
+			liveness_probe_port,
+			liveness_probe_path
+		FROM
+			deployment
+		WHERE
+			id = $1;
+		"#,
+		deployment_id as _
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
 pub async fn get_deployment_by_name_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	name: &str,

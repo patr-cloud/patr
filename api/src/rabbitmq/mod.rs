@@ -23,6 +23,7 @@ use crate::{
 	utils::{settings::Settings, Error},
 };
 
+mod billing;
 mod database;
 mod deployment;
 mod static_site;
@@ -133,6 +134,10 @@ async fn process_queue_payload(
 				.await
 		}
 		RequestMessage::Database {} => todo!(),
+		RequestMessage::Workspace(request_data) => {
+			billing::process_request(&mut connection, request_data, config)
+				.await
+		}
 	}
 	.map_err(|error| {
 		log::error!("Error processing RabbitMQ message: {}", error.get_error());

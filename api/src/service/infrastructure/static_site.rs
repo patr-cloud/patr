@@ -1,19 +1,23 @@
 use std::io::{Cursor, Read};
 
 use api_models::{
-	models::workspace::infrastructure::deployment::DeploymentStatus,
-	utils::Uuid,
+	models::workspace::infrastructure::{
+		deployment::DeploymentStatus,
+		static_site::StaticSiteDetails,
+	},
+	utils::{DateTime, Uuid},
 };
+use chrono::Utc;
 use eve_rs::AsError;
 use s3::{creds::Credentials, Bucket, Region};
 use zip::ZipArchive;
 
 use crate::{
-	db,
+	db::{self, StaticSitePlan},
 	error,
 	models::rbac,
-	service::{self},
-	utils::{get_current_time_millis, settings::Settings, validator, Error},
+	service::{self, infrastructure::kubernetes},
+	utils::{settings::Settings, validator, Error},
 	Database,
 };
 
@@ -21,6 +25,8 @@ pub async fn create_static_site_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	name: &str,
+	file: Option<String>,
+	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	// validate static site name
@@ -49,6 +55,24 @@ pub async fn create_static_site_in_workspace(
 	}
 
 	let static_site_id = db::generate_new_resource_id(connection).await?;
+
+	log::trace!("request_id: {} - Checking resource limit", request_id);
+	if super::resource_limit_crossed(connection, workspace_id, request_id)
+		.await?
+	{
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	log::trace!("request_id: {} - Checking static site limit", request_id);
+	if static_site_limit_crossed(connection, workspace_id, request_id).await? {
+		return Error::as_result()
+			.status(400)
+			.body(error!(STATIC_SITE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	let creation_time = Utc::now();
 	log::trace!("request_id: {} - creating static site resource", request_id);
 	db::create_resource(
 		connection,
@@ -60,7 +84,7 @@ pub async fn create_static_site_in_workspace(
 			.get(rbac::resource_types::STATIC_SITE)
 			.unwrap(),
 		workspace_id,
-		get_current_time_millis(),
+		creation_time.timestamp_millis() as u64,
 	)
 	.await?;
 
@@ -68,10 +92,52 @@ pub async fn create_static_site_in_workspace(
 	db::create_static_site(connection, &static_site_id, name, workspace_id)
 		.await?;
 
+	let static_site_plan =
+		match db::get_static_sites_for_workspace(connection, workspace_id)
+			.await?
+			.len()
+		{
+			(0..=3) => StaticSitePlan::Free,
+			(4..=25) => StaticSitePlan::Pro,
+			(26..) => StaticSitePlan::Unlimited,
+			_ => unreachable!(),
+		};
+
+	db::update_static_site_usage_history(
+		connection,
+		workspace_id,
+		&static_site_plan,
+		&DateTime::from(creation_time),
+	)
+	.await?;
+
 	log::trace!(
 		"request_id: {} - static site created successfully",
 		request_id
 	);
+
+	if let Some(file) = file {
+		log::trace!("request_id: {} - Starting static site", request_id);
+
+		db::update_static_site_status(
+			connection,
+			&static_site_id,
+			&DeploymentStatus::Deploying,
+		)
+		.await?;
+
+		update_static_site_and_db_status(
+			connection,
+			workspace_id,
+			&static_site_id,
+			Some(&file),
+			&StaticSiteDetails {},
+			config,
+			request_id,
+		)
+		.await?;
+	}
+
 	Ok(static_site_id)
 }
 
@@ -84,20 +150,17 @@ pub async fn update_static_site(
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {} - getting static site details", request_id);
-	let static_site = db::get_static_site_by_id(connection, static_site_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	if let Some(name) = name {
 		db::update_static_site_name(connection, static_site_id, name).await?;
 	}
 
 	if let Some(file) = file {
-		service::queue_upload_static_site(
-			&static_site.workspace_id,
+		log::trace!("request_id: {} - Uploading the static site", request_id);
+		service::upload_static_site_files_to_s3(
+			connection,
+			&file,
 			static_site_id,
-			file,
 			config,
 			request_id,
 		)
@@ -109,18 +172,15 @@ pub async fn update_static_site(
 
 pub async fn stop_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
 	static_site_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {} - Getting deployment id from db", request_id);
-	let static_site = db::get_static_site_by_id(connection, static_site_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	service::queue_stop_static_site(
-		&static_site.workspace_id,
+	kubernetes::delete_kubernetes_static_site(
+		workspace_id,
 		static_site_id,
 		config,
 		request_id,
@@ -144,6 +204,7 @@ pub async fn stop_static_site(
 
 pub async fn delete_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
 	static_site_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
@@ -153,8 +214,8 @@ pub async fn delete_static_site(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	service::queue_delete_static_site(
-		&static_site.workspace_id,
+	kubernetes::delete_kubernetes_static_site(
+		workspace_id,
 		static_site_id,
 		config,
 		request_id,
@@ -172,6 +233,27 @@ pub async fn delete_static_site(
 		connection,
 		static_site_id,
 		&DeploymentStatus::Deleted,
+	)
+	.await?;
+
+	let static_site_plan = match db::get_static_sites_for_workspace(
+		connection,
+		&static_site.workspace_id,
+	)
+	.await?
+	.len()
+	{
+		(0..=3) => StaticSitePlan::Free,
+		(4..=25) => StaticSitePlan::Pro,
+		(26..) => StaticSitePlan::Unlimited,
+		_ => unreachable!(),
+	};
+
+	db::update_static_site_usage_history(
+		connection,
+		&static_site.workspace_id,
+		&static_site_plan,
+		&DateTime::from(Utc::now()),
 	)
 	.await?;
 
@@ -246,6 +328,8 @@ pub async fn upload_static_site_files_to_s3(
 		request_id
 	);
 
+	let mut files_vec = Vec::new();
+
 	for i in 0..archive.len() {
 		let mut file = archive.by_index(i).map_err(|err| {
 			log::error!(
@@ -279,18 +363,24 @@ pub async fn upload_static_site_files_to_s3(
 			static_site_id,
 			file_name
 		);
-		let file_extension = file_name
-			.split('.')
-			.last()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+
+		let file_extension = file_name.split('.').last().unwrap_or("");
+
 		let mime_string = get_mime_type_from_file_name(file_extension);
 
+		files_vec.push((
+			file_name.clone(),
+			file_content,
+			mime_string.to_string(),
+		));
+	}
+
+	for (file_name, file_content, mime_string) in files_vec {
 		let (_, code) = bucket
 			.put_object_with_content_type(
 				format!("{}/{}", static_site_id, file_name),
 				&file_content,
-				mime_string,
+				&mime_string,
 			)
 			.await
 			.map_err(|err| {
@@ -314,6 +404,71 @@ pub async fn upload_static_site_files_to_s3(
 	log::trace!("request_id: {} - uploaded the files to s3", request_id);
 
 	Ok(())
+}
+
+pub async fn update_static_site_and_db_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	static_site_id: &Uuid,
+	file: Option<&str>,
+	_running_details: &StaticSiteDetails,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Updating kubernetes static site",
+		request_id
+	);
+	let result = service::update_kubernetes_static_site(
+		workspace_id,
+		static_site_id,
+		&StaticSiteDetails {},
+		config,
+		request_id,
+	)
+	.await;
+
+	if let Some(file) = file {
+		log::trace!(
+			"request_id: {} - Uploading static site files to S3",
+			request_id
+		);
+		service::upload_static_site_files_to_s3(
+			connection,
+			file,
+			static_site_id,
+			config,
+			request_id,
+		)
+		.await?;
+	}
+
+	if let Err(err) = result {
+		log::error!(
+			"request_id: {} - Error occured while deploying site `{}`: {}",
+			request_id,
+			static_site_id,
+			err.get_error()
+		);
+		// TODO log in audit log that there was an error while deploying
+		db::update_static_site_status(
+			connection,
+			static_site_id,
+			&DeploymentStatus::Errored,
+		)
+		.await?;
+
+		Err(err)
+	} else {
+		db::update_static_site_status(
+			connection,
+			static_site_id,
+			&DeploymentStatus::Running,
+		)
+		.await?;
+
+		Ok(())
+	}
 }
 
 fn get_mime_type_from_file_name(file_extension: &str) -> &str {
@@ -433,4 +588,35 @@ fn get_mime_type_from_file_name(file_extension: &str) -> &str {
 		"wmv" => "video/x-ms-wmv",
 		_ => "application/octet-stream",
 	}
+}
+
+async fn static_site_limit_crossed(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	request_id: &Uuid,
+) -> Result<bool, Error> {
+	log::trace!(
+		"request_id: {} - Checking if free limits are crossed",
+		request_id
+	);
+
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let current_static_sites =
+		db::get_all_secrets_in_workspace(connection, workspace_id)
+			.await?
+			.len();
+
+	log::trace!(
+		"request_id: {} - Checking if static site limits are crossed",
+		request_id
+	);
+	if current_static_sites + 1 > workspace.static_site_limit as usize {
+		return Ok(true);
+	}
+
+	Ok(false)
 }

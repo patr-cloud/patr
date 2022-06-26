@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
-use api_models::utils::Uuid;
+use api_models::utils::{DateTime, Uuid};
+use chrono::Utc;
 use eve_rs::AsError;
 use vaultrs::{
 	client::{VaultClient, VaultClientSettingsBuilder},
@@ -12,7 +13,7 @@ use crate::{
 	db,
 	error,
 	models::rbac,
-	utils::{get_current_time_millis, settings::Settings, Error},
+	utils::{settings::Settings, Error},
 	Database,
 };
 
@@ -24,8 +25,25 @@ pub async fn create_new_secret_in_workspace(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
+	log::trace!("request_id: {} - Checking resource limit", request_id);
+	if super::resource_limit_crossed(connection, workspace_id, request_id)
+		.await?
+	{
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	log::trace!("request_id: {} - Checking secret limit", request_id);
+	if secret_limit_crossed(connection, workspace_id, request_id).await? {
+		return Error::as_result()
+			.status(400)
+			.body(error!(SECRET_LIMIT_EXCEEDED).to_string())?;
+	}
+
 	let resource_id = db::generate_new_resource_id(connection).await?;
 
+	let creation_time = Utc::now();
 	log::trace!("request_id: {} - Creating resource", request_id);
 	db::create_resource(
 		connection,
@@ -37,17 +55,28 @@ pub async fn create_new_secret_in_workspace(
 			.get(rbac::resource_types::SECRET)
 			.unwrap(),
 		workspace_id,
-		get_current_time_millis(),
+		creation_time.timestamp_millis() as u64,
 	)
 	.await?;
 
 	log::trace!("request_id: {} - Creating database entry", request_id);
-
 	db::create_new_secret_in_workspace(
 		connection,
 		&resource_id,
 		name,
 		workspace_id,
+	)
+	.await?;
+
+	let secret_count =
+		db::get_all_secrets_in_workspace(connection, workspace_id)
+			.await?
+			.len();
+	db::update_secret_usage_history(
+		connection,
+		workspace_id,
+		&(secret_count as i32),
+		&DateTime::from(creation_time),
 	)
 	.await?;
 
@@ -87,6 +116,7 @@ pub async fn create_new_secret_for_deployment(
 ) -> Result<Uuid, Error> {
 	let resource_id = db::generate_new_resource_id(connection).await?;
 
+	let creation_time = Utc::now();
 	log::trace!("request_id: {} - Creating resource", request_id);
 	db::create_resource(
 		connection,
@@ -98,18 +128,29 @@ pub async fn create_new_secret_for_deployment(
 			.get(rbac::resource_types::SECRET)
 			.unwrap(),
 		workspace_id,
-		get_current_time_millis(),
+		creation_time.timestamp_millis() as u64,
 	)
 	.await?;
 
 	log::trace!("request_id: {} - Creating database entry", request_id);
-
 	db::create_new_secret_for_deployment(
 		connection,
 		&resource_id,
 		name,
 		workspace_id,
 		deployment_id,
+	)
+	.await?;
+
+	let secret_count =
+		db::get_all_secrets_in_workspace(connection, workspace_id)
+			.await?
+			.len();
+	db::update_secret_usage_history(
+		connection,
+		workspace_id,
+		&(secret_count as i32),
+		&DateTime::from(creation_time),
 	)
 	.await?;
 
@@ -261,6 +302,18 @@ pub async fn delete_secret_in_workspace(
 	)
 	.await?;
 
+	let secret_count =
+		db::get_all_secrets_in_workspace(connection, workspace_id)
+			.await?
+			.len();
+	db::update_secret_usage_history(
+		connection,
+		workspace_id,
+		&(secret_count as i32),
+		&DateTime::from(Utc::now()),
+	)
+	.await?;
+
 	log::trace!(
 		"request_id: {} - Deleted secret with id: {} from databae",
 		request_id,
@@ -268,4 +321,35 @@ pub async fn delete_secret_in_workspace(
 	);
 
 	Ok(())
+}
+
+async fn secret_limit_crossed(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	request_id: &Uuid,
+) -> Result<bool, Error> {
+	log::trace!(
+		"request_id: {} - Checking if free limits are crossed",
+		request_id
+	);
+
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let current_secrets =
+		db::get_all_secrets_in_workspace(connection, workspace_id)
+			.await?
+			.len();
+
+	log::trace!(
+		"request_id: {} - Checking if secret limits are crossed",
+		request_id
+	);
+	if current_secrets + 1 > workspace.secret_limit as usize {
+		return Ok(true);
+	}
+
+	Ok(false)
 }

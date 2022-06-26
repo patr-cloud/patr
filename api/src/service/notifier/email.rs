@@ -1,9 +1,24 @@
+use std::collections::HashMap;
+
 use api_models::utils::Uuid;
 use lettre::message::Mailbox;
 use serde::Serialize;
 
 use crate::{
-	models::{deployment::KubernetesEventData, EmailTemplate},
+	db::{DomainPlan, StaticSitePlan},
+	models::{
+		billing::{
+			DatabaseBill,
+			DeploymentBill,
+			DockerRepositoryBill,
+			DomainBill,
+			ManagedUrlBill,
+			SecretsBill,
+			StaticSiteBill,
+		},
+		deployment::KubernetesEventData,
+		EmailTemplate,
+	},
 	utils::Error,
 };
 
@@ -248,7 +263,7 @@ pub async fn send_email_verification_otp(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/send-deployment-alert-notification/template.json"]
-pub struct DeploymentAlertEmail {
+struct DeploymentAlertEmail {
 	workspace_name: String,
 	deployment_id: String,
 	deployment_name: String,
@@ -320,6 +335,57 @@ pub async fn send_alert_email_to_patr(
 		email,
 		None,
 		"Patr Kubernetes alert",
+	)
+	.await
+}
+
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/invoice-email/template.json"]
+struct InvoiceEmail {
+	workspace_name: String,
+	deployment_usages: HashMap<Uuid, DeploymentBill>,
+	database_usages: HashMap<Uuid, DatabaseBill>,
+	static_sites_usages: HashMap<StaticSitePlan, StaticSiteBill>,
+	managed_url_usages: HashMap<u64, ManagedUrlBill>,
+	docker_repository_usages: Vec<DockerRepositoryBill>,
+	domains_usages: HashMap<DomainPlan, DomainBill>,
+	secrets_usages: HashMap<u64, SecretsBill>,
+	total_bill: f64,
+	month: String,
+	year: i32,
+}
+
+pub async fn send_invoice_email(
+	email: Mailbox,
+	workspace_name: String,
+	deployment_usages: HashMap<Uuid, DeploymentBill>,
+	database_usages: HashMap<Uuid, DatabaseBill>,
+	static_sites_usages: HashMap<StaticSitePlan, StaticSiteBill>,
+	managed_url_usages: HashMap<u64, ManagedUrlBill>,
+	docker_repository_usages: Vec<DockerRepositoryBill>,
+	domains_usages: HashMap<DomainPlan, DomainBill>,
+	secrets_usages: HashMap<u64, SecretsBill>,
+	total_bill: f64,
+	month: String,
+	year: i32,
+) -> Result<(), Error> {
+	send_email(
+		InvoiceEmail {
+			workspace_name,
+			deployment_usages,
+			database_usages,
+			static_sites_usages,
+			managed_url_usages,
+			docker_repository_usages,
+			domains_usages,
+			secrets_usages,
+			total_bill,
+			month,
+			year,
+		},
+		email,
+		None,
+		"Patr invoice",
 	)
 	.await
 }

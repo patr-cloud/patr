@@ -1,6 +1,7 @@
 use std::ops::DerefMut;
 
-use api_models::utils::Uuid;
+use api_models::utils::{DateTime, Uuid};
+use chrono::Utc;
 use eve_rs::AsError;
 
 use crate::{
@@ -16,7 +17,7 @@ use crate::{
 		self,
 		infrastructure::{aws, digitalocean},
 	},
-	utils::{get_current_time_millis, settings::Settings, validator, Error},
+	utils::{settings::Settings, validator, Error},
 	Database,
 };
 
@@ -75,6 +76,24 @@ pub async fn create_managed_database_in_workspace(
 	};
 	let num_nodes = num_nodes.unwrap_or(1);
 
+	log::trace!("request_id: {} - Checking resource limit", request_id);
+	if super::resource_limit_crossed(connection, workspace_id, request_id)
+		.await?
+	{
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	log::trace!("request_id: {} - Checking database limit", request_id);
+	if database_limit_crossed(connection, workspace_id, request_id).await? {
+		return Error::as_result()
+			.status(400)
+			.body(error!(DATABASE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	let creation_time = Utc::now();
+
 	db::create_resource(
 		connection,
 		&database_id,
@@ -85,7 +104,16 @@ pub async fn create_managed_database_in_workspace(
 			.get(rbac::resource_types::MANAGED_DATABASE)
 			.unwrap(),
 		workspace_id,
-		get_current_time_millis(),
+		creation_time.timestamp_millis() as u64,
+	)
+	.await?;
+
+	db::start_database_usage_history(
+		connection,
+		workspace_id,
+		&database_id,
+		database_plan,
+		&DateTime::from(creation_time),
 	)
 	.await?;
 
@@ -218,6 +246,13 @@ pub async fn delete_managed_database(
 		&ManagedDatabaseStatus::Deleted,
 	)
 	.await?;
+
+	db::stop_database_usage_history(
+		connection,
+		database_id,
+		&Utc::now().into(),
+	)
+	.await?;
 	Ok(())
 }
 
@@ -257,4 +292,35 @@ pub(super) async fn update_managed_database_credentials_for_database(
 	.await?;
 
 	Ok(())
+}
+
+async fn database_limit_crossed(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	request_id: &Uuid,
+) -> Result<bool, Error> {
+	log::trace!(
+		"request_id: {} - Checking if free limits are crossed",
+		request_id
+	);
+
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let current_databases =
+		db::get_all_database_clusters_for_workspace(connection, workspace_id)
+			.await?
+			.len();
+
+	log::trace!(
+		"request_id: {} - Checking if database limits are crossed",
+		request_id
+	);
+	if current_databases + 1 > workspace.database_limit as usize {
+		return Ok(true);
+	}
+
+	Ok(false)
 }

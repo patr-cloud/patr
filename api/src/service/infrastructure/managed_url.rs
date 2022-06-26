@@ -3,8 +3,9 @@ use api_models::{
 		ManagedUrl,
 		ManagedUrlType,
 	},
-	utils::Uuid,
+	utils::{DateTime, Uuid},
 };
+use chrono::Utc;
 use eve_rs::AsError;
 
 use super::kubernetes;
@@ -13,7 +14,7 @@ use crate::{
 	error,
 	models::rbac,
 	service,
-	utils::{get_current_time_millis, settings::Settings, Error},
+	utils::{settings::Settings, Error},
 	Database,
 };
 
@@ -40,6 +41,23 @@ pub async fn create_new_managed_url_in_workspace(
 		.await?
 		.status(500)?;
 
+	log::trace!("request_id: {} - Checking resource limit", request_id);
+	if super::resource_limit_crossed(connection, workspace_id, request_id)
+		.await?
+	{
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	log::trace!("request_id: {} - Checking managed_url limit", request_id);
+	if managed_url_limit_crossed(connection, workspace_id, request_id).await? {
+		return Error::as_result()
+			.status(400)
+			.body(error!(MANAGED_URL_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	let creation_time = Utc::now();
 	log::trace!("request_id: {} - Creating resource.", request_id);
 	db::create_resource(
 		connection,
@@ -51,7 +69,7 @@ pub async fn create_new_managed_url_in_workspace(
 			.get(rbac::resource_types::MANAGED_URL)
 			.unwrap(),
 		workspace_id,
-		get_current_time_millis(),
+		creation_time.timestamp_millis() as u64,
 	)
 	.await?;
 
@@ -141,6 +159,18 @@ pub async fn create_new_managed_url_in_workspace(
 			.await?;
 		}
 	}
+
+	let num_managed_urls =
+		db::get_all_managed_urls_in_workspace(connection, workspace_id)
+			.await?
+			.len();
+	db::update_managed_url_usage_history(
+		connection,
+		workspace_id,
+		&(num_managed_urls as i32),
+		&DateTime::from(creation_time),
+	)
+	.await?;
 
 	log::trace!(
 		"request_id: {} - Updating managed url on Kubernetes.",
@@ -350,6 +380,18 @@ pub async fn delete_managed_url(
 	)
 	.await?;
 
+	let num_managed_urls =
+		db::get_all_managed_urls_in_workspace(connection, workspace_id)
+			.await?
+			.len();
+	db::update_managed_url_usage_history(
+		connection,
+		workspace_id,
+		&(num_managed_urls as i32),
+		&DateTime::from(Utc::now()),
+	)
+	.await?;
+
 	log::trace!(
 		"request_id: {} - Deleting managed url on Kubernetes.",
 		request_id
@@ -386,4 +428,35 @@ pub async fn delete_managed_url(
 	log::trace!("request_id: {} - ManagedUrl Deleted.", request_id);
 
 	Ok(())
+}
+
+async fn managed_url_limit_crossed(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	request_id: &Uuid,
+) -> Result<bool, Error> {
+	log::trace!(
+		"request_id: {} - Checking if free limits are crossed",
+		request_id
+	);
+
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let current_managed_urls =
+		db::get_all_managed_urls_in_workspace(connection, workspace_id)
+			.await?
+			.len();
+
+	log::trace!(
+		"request_id: {} - Checking if deployment limits are crossed",
+		request_id
+	);
+	if current_managed_urls + 1 > workspace.managed_url_limit as usize {
+		return Ok(true);
+	}
+
+	Ok(false)
 }

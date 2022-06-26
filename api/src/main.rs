@@ -77,11 +77,11 @@ async fn async_main() -> Result<(), EveError> {
 		render_register,
 		rabbitmq,
 	};
-	db::initialize(&app).await?;
-	log::debug!("Database initialized");
-
 	service::initialize(&app);
 	log::debug!("Service initialized");
+
+	db::initialize(&app).await?;
+	log::debug!("Database initialized");
 
 	scheduler::initialize_jobs(&app);
 	log::debug!("Schedulers initialized");
