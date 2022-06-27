@@ -66,7 +66,7 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 		.status(500)
 		.body("patr.yml file is not defined")?;
 
-	// TODO-SAM: test whether it fetches the needed
+	// TODO: use github credentials for private repo
 	let ci_file = reqwest::get(ci_file.download_url).await?.bytes().await?;
 
 	let config = &context.get_state().config;

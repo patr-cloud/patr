@@ -41,6 +41,18 @@ pub struct Step {
 	pub image: String,
 	/// list of commands to be executed with the given image
 	pub commands: Vec<String>,
+	/// list of environmental variables that has to be defined while
+	/// initializing container
+	#[serde(default)]
+	pub env: Option<Vec<EnvVar>>,
+}
 
-	// TODO-SAM: Add optional env variable definitions and then add variables while creating a job at k8s
+/// Environmental variable which can be used to init containers
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "snake_case")]
+pub struct EnvVar {
+	/// key name of the environment variable
+	name: String,
+	/// value of the environment varialbe
+	value: String,
 }

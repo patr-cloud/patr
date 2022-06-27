@@ -51,9 +51,10 @@ pub async fn create_ci_pipeline(
         let Kind::Pipeline(pipeline) = ci_flow.kind;
         pipeline.steps.into_iter().map(
             |Step {
-                 name,
+                 name, // TODO: slugify names and make sure it will be allowed in k8s (unique)
                  image,
                  commands,
+                 env
              }| {
                 let commands_str = [
                     format!(r#"cd "/mnt/workdir/{repo_name}""#),
@@ -64,28 +65,47 @@ pub async fn create_ci_pipeline(
                 .collect::<Vec<_>>()
                 .join("\n"); // TODO: use iter_intersperse once it got stabilized
 
-                json!({
-                  "name": name, // TODO: slugify names and make sure it will be allowed in k8s
-                  "image": image,
-                  "volumeMounts": [
-                    {
-                      "name": "vol-workdir",
-                      "mountPath": "/mnt/workdir"
-                    }
-                  ],
-                  "command": [
-                    "sh",
-                    "-ce",
-                    commands_str
-                  ]
-                })
+                if let Some(env) = env {
+					json!({
+						"name": name,
+						"image": image,
+						"volumeMounts": [
+                            {
+                                "name": "vol-workdir",
+                                "mountPath": "/mnt/workdir"
+                            }
+						],
+						"env": env,
+						"command": [
+							"sh",
+							"-ce",
+							commands_str
+						]
+					})
+                } else {
+					json!({
+						"name": name,
+						"image": image,
+						"volumeMounts": [
+                            {
+                                "name": "vol-workdir",
+                                "mountPath": "/mnt/workdir"
+                            }
+						],
+						"command": [
+							"sh",
+							"-ce",
+							commands_str
+						]
+					})
+				}
             },
         )
     })
     .collect::<Vec<_>>();
 
 	// TODO: get unique name for pods
-	let pod_name = get_current_time_millis();
+	let pod_name = get_current_time_millis().to_string();
 	let pod_spec: Pod = serde_json::from_value(json!({
 	  "apiVersion": "v1",
 	  "kind": "Pod",
@@ -124,7 +144,9 @@ pub async fn create_ci_pipeline(
 	let pods_api = Api::<Pod>::namespaced(kube_client, "kavin");
 	pods_api.create(&PostParams::default(), &pod_spec).await?;
 
-  // TODO: clean up pod after running the ci steps
+	log::debug!("successfully created a ci pipeline in k8s");
+
+	// TODO: clean up pod after running the ci steps
 
 	Ok(())
 }
