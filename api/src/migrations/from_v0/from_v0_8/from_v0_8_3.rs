@@ -1,5 +1,5 @@
 use api_models::utils::Uuid;
-use chrono::{Datelike, Utc, TimeZone};
+use chrono::{Datelike, TimeZone, Utc};
 use sqlx::Row;
 
 use crate::{
@@ -37,12 +37,7 @@ pub(super) async fn migrate(
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
-	.map(|row| {
-		(
-			row.get::<Uuid, _>("id"),
-			row.get::<i64, _>("created"),
-		)
-	});
+	.map(|row| (row.get::<Uuid, _>("id"), row.get::<i64, _>("created")));
 
 	for (workspace_id, created) in workspaces {
 		let created = Utc.timestamp_millis(created);

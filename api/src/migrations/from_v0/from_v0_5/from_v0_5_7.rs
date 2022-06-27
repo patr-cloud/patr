@@ -467,7 +467,7 @@ async fn chargebee(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
-	let workspaces = query!(
+	let mut workspaces = query!(
 		r#"
 		SELECT
 			id,
@@ -484,10 +484,9 @@ async fn chargebee(
 			row.get::<Uuid, _>("id"),
 			row.get::<Uuid, _>("super_admin_id"),
 		)
-	})
-	.collect::<Vec<_>>();
+	});
 
-	if workspaces.is_empty() {
+	if workspaces.next().is_none() {
 		return Ok(());
 	}
 
