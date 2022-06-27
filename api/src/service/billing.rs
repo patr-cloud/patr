@@ -7,7 +7,6 @@ use api_models::{
 use chrono::{Datelike, Utc};
 use eve_rs::AsError;
 use reqwest::Client;
-use serde_json::json;
 
 use crate::{
 	db::{
@@ -104,20 +103,6 @@ pub async fn add_credits_to_workspace(
 		.json::<PaymentIntentObject>()
 		.await?;
 
-	let metadata = json!({
-		"payment_intent_id": payment_intent_object.id,
-		"status": payment_intent_object.status
-	});
-
-	db::add_credits_to_workspace(
-		connection,
-		workspace_id,
-		credits.into(),
-		&metadata,
-		Utc::now().into(),
-	)
-	.await?;
-
 	let id = db::generate_new_transaction_id(connection).await?;
 
 	let date = Utc::now();
@@ -148,20 +133,15 @@ pub async fn confirm_payment_method(
 	let client = Client::new();
 	let password: Option<String> = None;
 
-	let payment_info =
-		db::get_credit_info(connection, workspace_id, payment_intent_id)
-			.await?
-			.status(500)?;
+	let transaction = db::get_transaction_by_payment_intent_id_in_workspace(
+		connection,
+		workspace_id,
+		payment_intent_id,
+	)
+	.await?
+	.status(500)?;
 
-	let payment_id = payment_info
-		.clone()
-		.metadata
-		.get("payment_intent_id")
-		.and_then(|value| value.as_str())
-		.and_then(|c| c.parse::<String>().ok())
-		.status(500)?;
-
-	if payment_intent_id != payment_id {
+	if Some(payment_intent_id) != transaction.payment_intent_id.as_deref() {
 		return Error::as_result()
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -181,21 +161,8 @@ pub async fn confirm_payment_method(
 		.json::<PaymentIntentObject>()
 		.await?;
 
-	let metadata = json!({
-		"payment_intent_id": payment_intent_object.id.clone(),
-		"status": payment_intent_object.status
-	});
-
-	db::update_workspace_credit_metadata(
-		connection,
-		workspace_id,
-		&metadata,
-		&payment_intent_object.id,
-	)
-	.await?;
-
 	if payment_intent_object.status != Some(PaymentMethodStatus::Succeeded) &&
-		payment_intent_object.amount == Some(payment_info.credits as f64)
+		payment_intent_object.amount == Some(transaction.amount)
 	{
 		return Ok(false);
 	}

@@ -218,19 +218,6 @@ pub async fn initialize_workspaces_pre(
 
 	query!(
 		r#"
-		CREATE TABLE workspace_credits(
-			workspace_id UUID NOT NULL,
-			credits BIGINT NOT NULL DEFAULT 0,
-			metadata JSON NOT NULL,
-			date TIMESTAMPTZ NOT NULL
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
 		CREATE TABLE address(
 			id UUID NOT NULL CONSTRAINT address_pk PRIMARY KEY,
 			first_name TEXT NOT NULL,
@@ -307,16 +294,6 @@ pub async fn initialize_workspaces_post(
 		ALTER TABLE workspace_audit_log
 		ADD CONSTRAINT workspace_audit_log_fk_action
 		FOREIGN KEY(action) REFERENCES permission(id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE workspace_credits
-		ADD CONSTRAINT workspace_credits_fk_workspace_id
-		FOREIGN KEY(workspace_id) REFERENCES workspace(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -724,86 +701,6 @@ pub async fn get_resource_audit_logs(
 	)
 	.fetch_all(&mut *connection)
 	.await
-}
-
-pub async fn add_credits_to_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	credits: i64,
-	metadata: &serde_json::Value,
-	date: DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			workspace_credits(
-				workspace_id,
-				credits,
-				metadata,
-				date
-			)
-		VALUES
-			($1, $2, $3, $4);
-		"#,
-		workspace_id as _,
-		credits as _,
-		metadata,
-		date as _,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn get_credit_info(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	payment_method_id: &str,
-) -> Result<Option<WorkspaceCredits>, sqlx::Error> {
-	query_as!(
-		WorkspaceCredits,
-		r#"
-		SELECT
-			workspace_credits.workspace_id as "workspace_id: _",
-			workspace_credits.credits as "credits!: _",
-			workspace_credits.metadata as "metadata: _",
-			workspace_credits.date as "date: _"
-		FROM
-			workspace_credits
-		WHERE
-			workspace_id = $1 AND
-			metadata ->> 'payment_intent_id' = $2;
-		"#,
-		workspace_id as _,
-		payment_method_id as _
-	)
-	.fetch_optional(&mut *connection)
-	.await
-}
-
-pub async fn update_workspace_credit_metadata(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	metadata: &serde_json::Value,
-	payment_method_id: &str,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			workspace_credits
-		SET
-			metadata = $1
-		WHERE
-			workspace_id = $2 AND
-			metadata ->> 'payment_intent_id' = $3;
-		"#,
-		metadata as _,
-		workspace_id as _,
-		payment_method_id as _
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
 }
 
 pub async fn get_all_workspaces(
