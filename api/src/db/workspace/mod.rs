@@ -301,16 +301,6 @@ pub async fn initialize_workspaces_post(
 
 	query!(
 		r#"
-		ALTER TABLE workspace_credits
-		ADD CONSTRAINT workspace_credits_fk_workspace_id
-		FOREIGN KEY(workspace_id) REFERENCES workspace(id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
 		ALTER TABLE workspace
 		ADD CONSTRAINT workspace_default_payment_method_id_fk
 		FOREIGN KEY (default_payment_method_id)
