@@ -1155,42 +1155,6 @@ pub async fn update_domain_usage_history(
 	.map(|_| ())
 }
 
-pub async fn get_total_amount_due_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-) -> Result<f64, sqlx::Error> {
-	query!(
-		r#"
-		SELECT
-			COALESCE(
-				SUM(
-					CASE
-						WHEN transaction_type = 'bill' THEN
-							amount
-						ELSE
-							-amount
-					END
-				),
-				0
-			)
-			 as "amount!"
-		FROM
-			transaction
-		WHERE
-			workspace_id = $1 AND
-			(
-				transaction_type = 'bill' OR
-				transaction_type = 'credits'
-			) AND
-			payment_status = 'success';
-		"#,
-		workspace_id as _,
-	)
-	.fetch_one(&mut *connection)
-	.await
-	.map(|row| row.amount)
-}
-
 pub async fn update_amount_due_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
