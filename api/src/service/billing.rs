@@ -688,3 +688,106 @@ pub async fn delete_payment_method(
 	}
 	Ok(())
 }
+
+pub async fn calculate_total_bill_for_workspace_till(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	month_start_date: &chrono::DateTime<Utc>,
+	till_date: &chrono::DateTime<Utc>,
+) -> Result<f64, Error> {
+	let deployment_usages = calculate_deployment_bill_for_workspace_till(
+		&mut *connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
+
+	let database_usages = calculate_database_bill_for_workspace_till(
+		&mut *connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
+
+	let static_sites_usages = calculate_static_sites_bill_for_workspace_till(
+		&mut *connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
+
+	let managed_url_usages = calculate_managed_urls_bill_for_workspace_till(
+		&mut *connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
+
+	let docker_repository_usages =
+		calculate_docker_repository_bill_for_workspace_till(
+			&mut *connection,
+			workspace_id,
+			month_start_date,
+			till_date,
+		)
+		.await?;
+
+	let domains_usages = calculate_domains_bill_for_workspace_till(
+		&mut *connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
+
+	let secrets_usages = calculate_secrets_bill_for_workspace_till(
+		&mut *connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
+
+	Ok({
+		deployment_usages
+			.iter()
+			.map(|(_, bill)| {
+				bill.bill_items.iter().map(|item| item.amount).sum::<f64>()
+			})
+			.sum::<f64>()
+	} + {
+		database_usages
+			.iter()
+			.map(|(_, bill)| bill.amount)
+			.sum::<f64>()
+	} + {
+		static_sites_usages
+			.iter()
+			.map(|(_, bill)| bill.amount)
+			.sum::<f64>()
+	} + {
+		managed_url_usages
+			.iter()
+			.map(|(_, bill)| bill.amount)
+			.sum::<f64>()
+	} + {
+		docker_repository_usages
+			.iter()
+			.map(|bill| bill.amount)
+			.sum::<f64>()
+	} + {
+		domains_usages
+			.iter()
+			.map(|(_, bill)| bill.amount)
+			.sum::<f64>()
+	} + {
+		secrets_usages
+			.iter()
+			.map(|(_, bill)| bill.amount)
+			.sum::<f64>()
+	})
+}

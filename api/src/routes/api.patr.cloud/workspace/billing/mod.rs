@@ -13,8 +13,7 @@ use api_models::{
 		DeleteBillingAddressResponse,
 		DeletePaymentMethodResponse,
 		GetBillingAddressResponse,
-		GetCreditsResponse,
-		GetCurrentBillResponse,
+		GetCurrentUsageResponse,
 		GetPaymentMethodResponse,
 		PaymentMethod,
 		UpdateBillingAddressRequest,
@@ -337,37 +336,6 @@ pub fn create_sub_app(
 		],
 	);
 
-	sub_app.get(
-		"/get-credits",
-		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
-			EveMiddleware::CustomFunction(pin_fn!(get_credits)),
-		],
-	);
-
 	sub_app.post(
 		"/confirm-payment",
 		[
@@ -400,7 +368,7 @@ pub fn create_sub_app(
 	);
 
 	sub_app.get(
-		"/get-current-bill",
+		"/get-current-usage",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::EDIT,
@@ -822,27 +790,6 @@ async fn add_credits(
 	Ok(context)
 }
 
-async fn get_credits(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-
-	let credits = db::get_credits_for_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?
-	.into_iter()
-	.map(|transaction| transaction.amount.abs())
-	.sum::<f64>()
-	.max(0f64);
-
-	context.success(GetCreditsResponse { credits });
-	Ok(context)
-}
-
 async fn confirm_payment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -882,16 +829,28 @@ async fn get_current_bill(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let workspace = db::get_workspace_info(
+	let current_bill = db::get_workspace_info(
 		context.get_database_connection(),
 		&workspace_id,
 	)
 	.await?
 	.status(500)
-	.body(error!(SERVER_ERROR).to_string())?;
+	.body(error!(SERVER_ERROR).to_string())?
+	.amount_due;
 
-	context.success(GetCurrentBillResponse {
-		bill: workspace.amount_due as u64,
+	let credits_left = db::get_credits_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.into_iter()
+	.map(|transaction| transaction.amount.abs())
+	.sum::<f64>()
+	.max(0f64);
+
+	context.success(GetCurrentUsageResponse {
+		current_bill,
+		credits_left,
 	});
 	Ok(context)
 }
