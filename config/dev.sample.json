@@ -85,14 +85,6 @@
 		"username": "admin",
 		"password": "admin"
 	},
-	"chargebee": {
-		"apiKey": "key",
-		"url": "https://vicara-test.chargebee.com/api/v2",
-		"creditAmount": "69000",
-		"description": "Patr Test",
-		"gatewayId": "test",
-		"redirectUrl": "https://app.patr.cloud/card-data/success"
-	},
 	"rabbitmq": {
 		"host": "localhost",
 		"port": 5672,
@@ -122,7 +114,6 @@
 	},
 	"stripe": {
 		"publishableKey": "pk_test_123",
-		"secretKey": "sk_test_123",
-		"customerId": "cus_12345"
+		"secretKey": "sk_test_123"
 	}
 }

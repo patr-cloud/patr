@@ -1,13 +1,11 @@
 use api_models::utils::Uuid;
 use eve_rs::AsError;
-use reqwest::Client;
 
 use crate::{
 	db::{self, User},
 	error,
-	models::deployment::{PromotionalCreditList, SubscriptionList},
 	service,
-	utils::{get_current_time_millis, settings::Settings, validator, Error},
+	utils::{get_current_time_millis, validator, Error},
 	Database,
 };
 
@@ -428,42 +426,4 @@ pub async fn verify_phone_number_for_user(
 	.await?;
 
 	Ok(())
-}
-
-pub async fn get_credit_balance(
-	workspace_id: &Uuid,
-	config: &Settings,
-) -> Result<PromotionalCreditList, Error> {
-	let client = Client::new();
-
-	let password: Option<String> = None;
-
-	client
-		.get(format!("{}/promotional_credits", config.chargebee.url))
-		.basic_auth(&config.chargebee.api_key, password)
-		.query(&[("customer_id[is]", workspace_id.as_str())])
-		.send()
-		.await?
-		.json::<PromotionalCreditList>()
-		.await
-		.map_err(|e| e.into())
-}
-
-pub async fn get_subscriptions(
-	config: &Settings,
-	workspace_id: &Uuid,
-) -> Result<SubscriptionList, Error> {
-	let client = Client::new();
-
-	let password: Option<String> = None;
-
-	client
-		.get(format!("{}/subscriptions", config.chargebee.url))
-		.basic_auth(&config.chargebee.api_key, password)
-		.query(&[("customer_id[is]", workspace_id.as_str())])
-		.send()
-		.await?
-		.json::<SubscriptionList>()
-		.await
-		.map_err(|e| e.into())
 }
