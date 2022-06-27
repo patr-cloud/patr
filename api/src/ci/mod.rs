@@ -10,7 +10,7 @@ pub mod github;
 
 pub async fn create_ci_pipeline(
 	ci_file: impl AsRef<[u8]>,
-	repo_url: &str,
+	repo_clone_url: &str,
 	repo_name: &str,
 	branch_name: &str,
 	kube_client: kube::Client,
@@ -25,7 +25,7 @@ pub async fn create_ci_pipeline(
             r#"cd "/mnt/workdir/""#,
             "set -x",
             &format!(
-                r#"git clone --filter=tree:0 --single-branch --branch="{branch_name}" "{repo_url}""#
+                r#"git clone --filter=tree:0 --single-branch --branch="{branch_name}" "{repo_clone_url}""#
             ),
         ]
         .join("\n");
@@ -123,5 +123,8 @@ pub async fn create_ci_pipeline(
 
 	let pods_api = Api::<Pod>::namespaced(kube_client, "kavin");
 	pods_api.create(&PostParams::default(), &pod_spec).await?;
+
+  // TODO: clean up pod after running the ci steps
+
 	Ok(())
 }

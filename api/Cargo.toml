@@ -79,7 +79,6 @@ zip = "0.6"
 hmac = "0.12.1"
 octorust = "0.1.35"
 serde_yaml = "0.8.24"
-github-types = "0.1.1"
 
 [dependencies.log4rs]
 default-features = false

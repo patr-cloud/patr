@@ -41,4 +41,6 @@ pub struct Step {
 	pub image: String,
 	/// list of commands to be executed with the given image
 	pub commands: Vec<String>,
+
+	// TODO-SAM: Add optional env variable definitions and then add variables while creating a job at k8s
 }
