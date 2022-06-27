@@ -8,13 +8,8 @@ use crate::{
 	error,
 	models::{
 		billing::{
-			DatabaseBill,
-			DeploymentBill,
-			DockerRepositoryBill,
-			DomainBill,
-			ManagedUrlBill,
-			SecretsBill,
-			StaticSiteBill,
+			DatabaseBill, DeploymentBill, DockerRepositoryBill, DomainBill,
+			ManagedUrlBill, SecretsBill, StaticSiteBill,
 		},
 		deployment::KubernetesEventData,
 	},
@@ -143,7 +138,8 @@ pub async fn send_user_sign_up_otp(
 			recovery_email_local,
 		)
 		.await?;
-		email::send_user_verification_otp(email.parse()?, otp).await
+		email::send_user_verification_otp(email.parse()?, &user.username, otp)
+			.await
 	} else if let Some((phone_country_code, phone_number)) = user
 		.recovery_phone_country_code
 		.as_ref()
