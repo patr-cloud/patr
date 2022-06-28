@@ -12,7 +12,6 @@ use serde_json::json;
 use crate::{
 	app::{create_eve_app, App},
 	db::{self, PaymentStatus},
-	ci,
 	error,
 	models::{
 		deployment::KubernetesEventData,
@@ -564,7 +563,7 @@ async fn ci_push_event(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	ci::github::ci_push_event(&mut context).await?;
-	
+	service::github::ci_push_event(&mut context).await?;
+
 	Ok(context)
 }

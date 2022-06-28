@@ -2,10 +2,11 @@ use k8s_openapi::api::core::v1::Pod;
 use kube::{api::PostParams, Api};
 use serde_json::json;
 
-use self::ci_flow_format::{CiFlow, Kind, Step};
-use crate::utils::{get_current_time_millis, Error};
+use crate::{
+	models::{CiFlow, Kind, Step},
+	utils::{get_current_time_millis, Error},
+};
 
-pub mod ci_flow_format;
 pub mod github;
 
 pub async fn create_ci_pipeline(
