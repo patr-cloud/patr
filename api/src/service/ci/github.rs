@@ -48,8 +48,12 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 	.await?;
 
 	let push_event = context.get_body_as::<webhook_payload::PushEvent>()?;
-	let (owner_name, repo_name) =
-		push_event.repository.full_name.split_once('/').unwrap();
+	let (owner_name, repo_name) = push_event
+		.repository
+		.full_name
+		.split_once('/')
+		.status(400)
+		.body("invalid repo name")?;
 	let repo_clone_url = push_event.repository.clone_url;
 	let branch_name = push_event
 		.ref_
@@ -57,7 +61,14 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 		.status(500)
 		.body("currently only push on branches is supported")?;
 
-	let github_client = octorust::Client::new("patr", None).unwrap(); // TODO: use github credentials for private repos
+	let github_client = octorust::Client::new("patr", None)
+		.map_err(|err| {
+			log::info!("error while octorust init: {err:#}");
+			err
+		})
+		.ok()
+		.status(500)
+		.body("error while initailizing octorust")?; // TODO: use github credentials for private repos
 	let ci_file = github_client
 		.repos()
 		.get_content_file(owner_name, repo_name, "patr.yml", branch_name)

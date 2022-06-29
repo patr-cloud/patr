@@ -2196,8 +2196,7 @@ dependencies = [
 [[package]]
 name = "octorust"
 version = "0.1.37"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9541376e7f3dd40c4efdf2a7342d961ce506f33cf0cb828b7ca5b7b1d83dce87"
+source = "git+https://github.com/kavin-kr/third-party-api-clients?branch=fix/list-all-repos#0cc561c8bd84052c9622970890d699aa4e301dd5"
 dependencies = [
  "anyhow",
  "async-recursion",
