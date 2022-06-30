@@ -94,7 +94,7 @@ pub fn create_sub_app(
 
 	// List all uploads for static site
 	app.get(
-		"/:staticSiteId/uploads",
+		"/:staticSiteId/deploy-history",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::static_site::LIST,
@@ -248,7 +248,7 @@ pub fn create_sub_app(
 
 	// Revert static site
 	app.post(
-		"/:staticSiteId/revert/:uploadId",
+		"/:staticSiteId/deploy-history/:uploadId/revert",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::static_site::EDIT,
@@ -595,7 +595,7 @@ async fn list_static_sites_deploy_history(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let deploy_history = db::get_static_site_deploy_history(
+	let deploys = db::get_static_site_deploy_history(
 		context.get_database_connection(),
 		&static_site_id,
 	)
