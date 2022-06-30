@@ -8,8 +8,13 @@ use crate::{
 	error,
 	models::{
 		billing::{
-			DatabaseBill, DeploymentBill, DockerRepositoryBill, DomainBill,
-			ManagedUrlBill, SecretsBill, StaticSiteBill,
+			DatabaseBill,
+			DeploymentBill,
+			DockerRepositoryBill,
+			DomainBill,
+			ManagedUrlBill,
+			SecretsBill,
+			StaticSiteBill,
 		},
 		deployment::KubernetesEventData,
 	},
