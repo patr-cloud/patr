@@ -13,15 +13,9 @@ use api_models::{
 		DeleteBillingAddressResponse,
 		DeletePaymentMethodResponse,
 		GetBillingAddressResponse,
-		GetCreditBalanceResponse,
-		GetCreditsResponse,
-		GetCurrentBillResponse,
+		GetCurrentUsageResponse,
 		GetPaymentMethodResponse,
-		GetSubscriptionsResponse,
 		PaymentMethod,
-		PromotionalCredits,
-		Subscription,
-		SubscriptionItem,
 		UpdateBillingAddressRequest,
 		UpdateBillingAddressResponse,
 	},
@@ -156,37 +150,6 @@ pub fn create_sub_app(
 		],
 	);
 
-	sub_app.get(
-		"/promotional-credits",
-		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
-			EveMiddleware::CustomFunction(pin_fn!(get_promotional_credits)),
-		],
-	);
-
 	sub_app.post(
 		"/payment-method",
 		[
@@ -312,37 +275,6 @@ pub fn create_sub_app(
 	);
 
 	sub_app.get(
-		"/subscriptions",
-		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
-			EveMiddleware::CustomFunction(pin_fn!(get_subscriptions)),
-		],
-	);
-
-	sub_app.get(
 		"/billing-address",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
@@ -404,37 +336,6 @@ pub fn create_sub_app(
 		],
 	);
 
-	sub_app.get(
-		"/get-credits",
-		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
-			EveMiddleware::CustomFunction(pin_fn!(get_credits)),
-		],
-	);
-
 	sub_app.post(
 		"/confirm-payment",
 		[
@@ -467,7 +368,7 @@ pub fn create_sub_app(
 	);
 
 	sub_app.get(
-		"/get-current-bill",
+		"/get-current-usage",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::EDIT,
@@ -623,80 +524,6 @@ async fn delete_billing_address(
 	)
 	.await?;
 	context.success(DeleteBillingAddressResponse {});
-	Ok(context)
-}
-
-/// # Description
-/// This function is used to fetch the promotional credits of the workspace
-/// required inputs:
-/// auth token in the authorization headers
-/// workspace id in the url
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///
-///    success: true or false
-///    list: [
-///              {
-///                  id:
-///                  customerId:
-///                  type:
-///                  amount:
-///                  description:
-///                  creditType:
-///                  closingBalance:
-///                  createdAt:
-///                  closingBalance:
-///                  createdAt:
-///                  object:
-///                  currencyCode:
-///              }
-///          ]
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
-async fn get_promotional_credits(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-
-	let config = context.get_state().config.clone();
-
-	let credit_balance = service::get_credit_balance(&workspace_id, &config)
-		.await?
-		.list
-		.into_iter()
-		.map(|credit| PromotionalCredits {
-			id: credit.promotional_credit.id,
-			customer_id: credit.promotional_credit.customer_id,
-			r#type: credit.promotional_credit.r#type,
-			amount: credit.promotional_credit.amount,
-			description: credit.promotional_credit.description,
-			credit_type: credit.promotional_credit.credit_type,
-			closing_balance: credit.promotional_credit.closing_balance,
-			created_at: credit.promotional_credit.created_at,
-			object: credit.promotional_credit.object,
-			currency_code: credit.promotional_credit.currency_code,
-		})
-		.collect();
-
-	context.success(GetCreditBalanceResponse {
-		list: credit_balance,
-	});
 	Ok(context)
 }
 
@@ -896,108 +723,6 @@ async fn confirm_payment_method(
 	Ok(context)
 }
 
-/// # Description
-/// This function is used to fetch the promotional credits of the workspace
-/// required inputs:
-/// auth token in the authorization headers
-/// workspace id in the url
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///
-///    success: true or false
-///    list: [
-///              {
-///                  id:
-///                  billingPeriod:
-///                  billing_period_unit:
-///                  customerId:
-///                  status:
-///                  current_term_start:
-///                  current_term_end:
-///                  next_billing_at:
-///                  type:
-///                  amount:
-///                  description:
-///                  creditType:
-///                  closingBalance:
-///                  createdAt:
-///                  closingBalance:
-///                  createdAt:
-///                  object:
-///                  currencyCode:
-///              }
-///          ]
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
-async fn get_subscriptions(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-
-	let config = context.get_state().config.clone();
-	let subscriptions = service::get_subscriptions(&config, &workspace_id)
-		.await?
-		.list
-		.into_iter()
-		.map(|subscription| Subscription {
-			id: subscription.subscription.id,
-			billing_period: subscription.subscription.billing_period,
-			billing_period_unit: subscription.subscription.billing_period_unit,
-			customer_id: subscription.subscription.customer_id,
-			status: subscription.subscription.status,
-			current_term_start: subscription.subscription.current_term_start,
-			current_term_end: subscription.subscription.current_term_end,
-			next_billing_at: subscription.subscription.next_billing_at,
-			created_at: subscription.subscription.created_at,
-			started_at: subscription.subscription.started_at,
-			activated_at: subscription.subscription.activated_at,
-			cancelled_at: subscription.subscription.cancelled_at,
-			updated_at: subscription.subscription.updated_at,
-			has_scheduled_changes: subscription
-				.subscription
-				.has_scheduled_changes,
-			channel: subscription.subscription.channel,
-			object: subscription.subscription.object,
-			currency_code: subscription.subscription.currency_code,
-			subscription_items: subscription
-				.subscription
-				.subscription_items
-				.into_iter()
-				.map(|subscription_item| SubscriptionItem {
-					item_price_id: subscription_item.item_price_id,
-					item_type: subscription_item.item_type,
-					quantity: subscription_item.quantity,
-					unit_price: subscription_item.unit_price,
-					amount: subscription_item.amount,
-					object: subscription_item.object,
-				})
-				.collect(),
-			due_invoices_count: subscription.subscription.due_invoices_count,
-		})
-		.collect();
-
-	context.success(GetSubscriptionsResponse {
-		list: subscriptions,
-	});
-	Ok(context)
-}
-
 async fn get_billing_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -1065,27 +790,6 @@ async fn add_credits(
 	Ok(context)
 }
 
-async fn get_credits(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-
-	let credits = db::get_credits_for_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?
-	.into_iter()
-	.map(|transaction| transaction.amount.abs())
-	.sum::<f64>()
-	.max(0f64);
-
-	context.success(GetCreditsResponse { credits });
-	Ok(context)
-}
-
 async fn confirm_payment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -1125,16 +829,28 @@ async fn get_current_bill(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let workspace = db::get_workspace_info(
+	let current_bill = db::get_workspace_info(
 		context.get_database_connection(),
 		&workspace_id,
 	)
 	.await?
 	.status(500)
-	.body(error!(SERVER_ERROR).to_string())?;
+	.body(error!(SERVER_ERROR).to_string())?
+	.amount_due;
 
-	context.success(GetCurrentBillResponse {
-		bill: workspace.amount_due as u64,
+	let credits_left = db::get_credits_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.into_iter()
+	.map(|transaction| transaction.amount.abs())
+	.sum::<f64>()
+	.max(0f64);
+
+	context.success(GetCurrentUsageResponse {
+		current_bill,
+		credits_left,
 	});
 	Ok(context)
 }

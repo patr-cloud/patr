@@ -59,7 +59,6 @@ pub struct Settings {
 	pub digitalocean: Digitalocean,
 	pub kubernetes: KubernetesSettings,
 	pub prometheus: PrometheusSettings,
-	pub chargebee: ChargebeeSettings,
 	#[serde(alias = "rabbitmq")]
 	pub rabbit_mq: RabbitMqSettings,
 	pub vault: VaultSettings,
@@ -229,21 +228,6 @@ pub struct PrometheusSettings {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ChargebeeSettings {
-	#[serde(alias = "apikey")]
-	pub api_key: String,
-	pub url: String,
-	#[serde(alias = "creditamount")]
-	pub credit_amount: String,
-	pub description: String,
-	#[serde(alias = "gatewayid")]
-	pub gateway_id: String,
-	#[serde(alias = "redirecturl")]
-	pub redirect_url: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct RabbitMqSettings {
 	pub host: String,
 	pub port: u16,
@@ -298,6 +282,4 @@ pub struct StripeSettings {
 	pub secret_key: String,
 	#[serde(alias = "publishablekey")]
 	pub publishable_key: String,
-	#[serde(alias = "customerid")]
-	pub customer_id: String,
 }

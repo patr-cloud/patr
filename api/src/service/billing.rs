@@ -7,7 +7,6 @@ use api_models::{
 use chrono::{Datelike, Utc};
 use eve_rs::AsError;
 use reqwest::Client;
-use serde_json::json;
 
 use crate::{
 	db::{
@@ -104,20 +103,6 @@ pub async fn add_credits_to_workspace(
 		.json::<PaymentIntentObject>()
 		.await?;
 
-	let metadata = json!({
-		"payment_intent_id": payment_intent_object.id,
-		"status": payment_intent_object.status
-	});
-
-	db::add_credits_to_workspace(
-		connection,
-		workspace_id,
-		credits.into(),
-		&metadata,
-		Utc::now().into(),
-	)
-	.await?;
-
 	let id = db::generate_new_transaction_id(connection).await?;
 
 	let date = Utc::now();
@@ -148,20 +133,15 @@ pub async fn confirm_payment_method(
 	let client = Client::new();
 	let password: Option<String> = None;
 
-	let payment_info =
-		db::get_credit_info(connection, workspace_id, payment_intent_id)
-			.await?
-			.status(500)?;
+	let transaction = db::get_transaction_by_payment_intent_id_in_workspace(
+		connection,
+		workspace_id,
+		payment_intent_id,
+	)
+	.await?
+	.status(500)?;
 
-	let payment_id = payment_info
-		.clone()
-		.metadata
-		.get("payment_intent_id")
-		.and_then(|value| value.as_str())
-		.and_then(|c| c.parse::<String>().ok())
-		.status(500)?;
-
-	if payment_intent_id != payment_id {
+	if Some(payment_intent_id) != transaction.payment_intent_id.as_deref() {
 		return Error::as_result()
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -181,21 +161,8 @@ pub async fn confirm_payment_method(
 		.json::<PaymentIntentObject>()
 		.await?;
 
-	let metadata = json!({
-		"payment_intent_id": payment_intent_object.id.clone(),
-		"status": payment_intent_object.status
-	});
-
-	db::update_workspace_credit_metadata(
-		connection,
-		workspace_id,
-		&metadata,
-		&payment_intent_object.id,
-	)
-	.await?;
-
 	if payment_intent_object.status != Some(PaymentMethodStatus::Succeeded) &&
-		payment_intent_object.amount == Some(payment_info.credits as f64)
+		payment_intent_object.amount == Some(transaction.amount)
 	{
 		return Ok(false);
 	}
@@ -720,4 +687,107 @@ pub async fn delete_payment_method(
 			.body(error!(SERVER_ERROR).to_string())?;
 	}
 	Ok(())
+}
+
+pub async fn calculate_total_bill_for_workspace_till(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	month_start_date: &chrono::DateTime<Utc>,
+	till_date: &chrono::DateTime<Utc>,
+) -> Result<f64, Error> {
+	let deployment_usages = calculate_deployment_bill_for_workspace_till(
+		&mut *connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
+
+	let database_usages = calculate_database_bill_for_workspace_till(
+		&mut *connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
+
+	let static_sites_usages = calculate_static_sites_bill_for_workspace_till(
+		&mut *connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
+
+	let managed_url_usages = calculate_managed_urls_bill_for_workspace_till(
+		&mut *connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
+
+	let docker_repository_usages =
+		calculate_docker_repository_bill_for_workspace_till(
+			&mut *connection,
+			workspace_id,
+			month_start_date,
+			till_date,
+		)
+		.await?;
+
+	let domains_usages = calculate_domains_bill_for_workspace_till(
+		&mut *connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
+
+	let secrets_usages = calculate_secrets_bill_for_workspace_till(
+		&mut *connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
+
+	Ok({
+		deployment_usages
+			.iter()
+			.map(|(_, bill)| {
+				bill.bill_items.iter().map(|item| item.amount).sum::<f64>()
+			})
+			.sum::<f64>()
+	} + {
+		database_usages
+			.iter()
+			.map(|(_, bill)| bill.amount)
+			.sum::<f64>()
+	} + {
+		static_sites_usages
+			.iter()
+			.map(|(_, bill)| bill.amount)
+			.sum::<f64>()
+	} + {
+		managed_url_usages
+			.iter()
+			.map(|(_, bill)| bill.amount)
+			.sum::<f64>()
+	} + {
+		docker_repository_usages
+			.iter()
+			.map(|bill| bill.amount)
+			.sum::<f64>()
+	} + {
+		domains_usages
+			.iter()
+			.map(|(_, bill)| bill.amount)
+			.sum::<f64>()
+	} + {
+		secrets_usages
+			.iter()
+			.map(|(_, bill)| bill.amount)
+			.sum::<f64>()
+	})
 }

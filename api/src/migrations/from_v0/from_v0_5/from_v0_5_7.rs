@@ -34,7 +34,6 @@ use kube::{
 	Api,
 	Config,
 };
-use reqwest::Client;
 use sqlx::Row;
 
 use crate::{
@@ -466,9 +465,9 @@ async fn audit_logs(
 
 async fn chargebee(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	config: &Settings,
+	_config: &Settings,
 ) -> Result<(), Error> {
-	let workspaces = query!(
+	let mut workspaces = query!(
 		r#"
 		SELECT
 			id,
@@ -485,112 +484,15 @@ async fn chargebee(
 			row.get::<Uuid, _>("id"),
 			row.get::<Uuid, _>("super_admin_id"),
 		)
-	})
-	.collect::<Vec<_>>();
+	});
 
-	if workspaces.is_empty() {
+	if workspaces.next().is_none() {
 		return Ok(());
 	}
 
-	for (workspace_id, user_id) in workspaces {
-		let user_data = query!(
-			r#"
-			SELECT
-				first_name,
-				last_name
-			FROM
-				"user"
-			WHERE
-				id = $1;
-			"#,
-			user_id
-		)
-		.fetch_one(&mut *connection)
-		.await?;
-
-		let (first_name, last_name) = (
-			user_data.get::<String, _>("first_name"),
-			user_data.get::<String, _>("last_name"),
-		);
-
-		let client = Client::new();
-
-		let password: Option<String> = None;
-
-		client
-			.post(format!("{}/customers", config.chargebee.url))
-			.basic_auth(config.chargebee.api_key.as_str(), password.as_ref())
-			.query(&[
-				("first_name", first_name),
-				("last_name", last_name),
-				("id", workspace_id.to_string()),
-			])
-			.send()
-			.await?;
-
-		client
-			.post(format!("{}/promotional_credits/set", config.chargebee.url))
-			.basic_auth(config.chargebee.api_key.as_str(), password.as_ref())
-			.query(&[
-				("customer_id", workspace_id.as_str()),
-				("amount", &config.chargebee.credit_amount),
-				("description", &config.chargebee.description),
-			])
-			.send()
-			.await?;
-
-		let deployments = query!(
-			r#"
-			SELECT
-				id,
-				min_horizontal_scale,
-				machine_type
-			FROM
-				deployment
-			WHERE
-				workspace_id = $1 AND
-				status != 'deleted';
-			"#,
-			&workspace_id
-		)
-		.fetch_all(&mut *connection)
-		.await?
-		.into_iter()
-		.map(|row| {
-			(
-				row.get::<Uuid, _>("id"),
-				row.get::<i16, _>("min_horizontal_scale"),
-				row.get::<Uuid, _>("machine_type"),
-			)
-		})
-		.collect::<Vec<_>>();
-
-		for (deployment_id, min_horizontal_scale, machine_type) in deployments {
-			let client = Client::new();
-
-			let password: Option<String> = None;
-
-			client
-				.post(format!(
-					"{}/customers/{}/subscription_for_items",
-					config.chargebee.url, workspace_id
-				))
-				.basic_auth(&config.chargebee.api_key, password)
-				.query(&[
-					("id", deployment_id.to_string()),
-					(
-						"subscription_items[item_price_id][0]",
-						format!("{}-USD-Monthly", machine_type),
-					),
-					(
-						"subscription_items[quantity][0]",
-						min_horizontal_scale.to_string(),
-					),
-				])
-				.send()
-				.await?;
-		}
-	}
+	// We used to create chargebee customers and subscriptions here. Ever since
+	// we stopped using chargebee, this migration usage is removed. We've now
+	// moved on to using stripe directly as of 0.8.3
 
 	Ok(())
 }

@@ -175,47 +175,13 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-			let total_bill = {
-				deployment_usages
-					.iter()
-					.map(|(_, bill)| {
-						bill.bill_items
-							.iter()
-							.map(|item| item.amount)
-							.sum::<f64>()
-					})
-					.sum::<f64>()
-			} + {
-				database_usages
-					.iter()
-					.map(|(_, bill)| bill.amount)
-					.sum::<f64>()
-			} + {
-				static_sites_usages
-					.iter()
-					.map(|(_, bill)| bill.amount)
-					.sum::<f64>()
-			} + {
-				managed_url_usages
-					.iter()
-					.map(|(_, bill)| bill.amount)
-					.sum::<f64>()
-			} + {
-				docker_repository_usages
-					.iter()
-					.map(|bill| bill.amount)
-					.sum::<f64>()
-			} + {
-				domains_usages
-					.iter()
-					.map(|(_, bill)| bill.amount)
-					.sum::<f64>()
-			} + {
-				secrets_usages
-					.iter()
-					.map(|(_, bill)| bill.amount)
-					.sum::<f64>()
-			};
+			let total_bill = service::calculate_total_bill_for_workspace_till(
+				connection,
+				&workspace.id,
+				&month_start_date,
+				&next_month_start_date,
+			)
+			.await?;
 
 			// Step 2: Create payment intent with the given bill
 			let password: Option<String> = None;
