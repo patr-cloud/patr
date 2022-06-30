@@ -1,4 +1,4 @@
-use std::ops::DerefMut;
+use std::{ops::DerefMut, time::Duration};
 
 use api_models::{
 	models::workspace::infrastructure::managed_urls::{
@@ -31,6 +31,7 @@ use kube::{
 	core::ObjectMeta,
 	Api,
 };
+use tokio::time;
 
 use crate::{
 	db,
@@ -49,7 +50,7 @@ pub async fn update_kubernetes_managed_url(
 
 	let namespace = workspace_id.as_str();
 	log::trace!(
-		"request_id: {} - generating deployment configuration",
+		"request_id: {} - generating managed url configuration",
 		request_id
 	);
 
@@ -76,6 +77,7 @@ pub async fn update_kubernetes_managed_url(
 	)
 	.await?
 	{
+		time::sleep(Duration::from_secs(30)).await;
 		return Error::as_result()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;

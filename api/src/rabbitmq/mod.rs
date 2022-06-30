@@ -26,6 +26,7 @@ use crate::{
 mod billing;
 mod database;
 mod deployment;
+mod managed_url;
 mod static_site;
 
 pub async fn start_consumer(app: &App) {
@@ -136,6 +137,10 @@ async fn process_queue_payload(
 		RequestMessage::Database {} => todo!(),
 		RequestMessage::Workspace(request_data) => {
 			billing::process_request(&mut connection, request_data, config)
+				.await
+		}
+		RequestMessage::ManagedUrl(request_data) => {
+			managed_url::process_request(&mut connection, request_data, config)
 				.await
 		}
 	}

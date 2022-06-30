@@ -46,7 +46,7 @@ pub async fn update_kubernetes_static_site(
 
 	let namespace = workspace_id.as_str();
 	log::trace!(
-		"request_id: {} - generating deployment configuration",
+		"request_id: {} - generating static site configuration",
 		request_id
 	);
 
