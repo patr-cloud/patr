@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use api_models::{
 	models::workspace::infrastructure::deployment::{
 		Deployment,
+		DeploymentRegistry,
 		DeploymentRunningDetails,
 		DeploymentStatus,
 		EnvironmentVariableValue,
@@ -286,11 +287,19 @@ pub async fn update_kubernetes_deployment(
 						}),
 						..Container::default()
 					}],
-					image_pull_secrets: Some(vec![LocalObjectReference {
-						// TODO: put this in config
-						name: Some("patr-regcred".to_string()),
-					}]),
-					..PodSpec::default()
+					image_pull_secrets: match deployment.registry {
+						DeploymentRegistry::PatrRegistry { .. } => {
+							Some(vec![LocalObjectReference {
+								name: Some("patr-regcred".to_string()),
+							}])
+						}
+						_ => None,
+					},
+					..PodSpec::default() /* Some(vec![LocalObjectReference {
+					                      * 	// TODO: put this in config
+					                      * 	name: Some("patr-regcred".
+					                      * to_string()),
+					                      * }]), */
 				}),
 				metadata: Some(ObjectMeta {
 					labels: Some(labels.clone()),
