@@ -20,7 +20,7 @@ use crate::{
 		EventData,
 	},
 	pin_fn,
-	service,
+	service::{self, github},
 	utils::{
 		constants::request_keys,
 		Error,
@@ -563,6 +563,14 @@ async fn ci_push_event(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	if context
+		.get_header(github::X_GITHUB_EVENT)
+		.map(|event| event.eq_ignore_ascii_case("ping"))
+		.unwrap_or(false)
+	{
+		return Ok(context);
+	}
+
 	service::github::ci_push_event(&mut context).await?;
 
 	Ok(context)

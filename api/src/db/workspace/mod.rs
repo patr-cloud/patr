@@ -6,6 +6,7 @@ use crate::{query, query_as, Database};
 
 mod billing;
 mod ci;
+mod ci2;
 mod docker_registry;
 mod domain;
 mod infrastructure;
@@ -15,6 +16,7 @@ mod secret;
 pub use self::{
 	billing::*,
 	ci::*,
+	ci2::*,
 	docker_registry::*,
 	domain::*,
 	infrastructure::*,
@@ -240,6 +242,7 @@ pub async fn initialize_workspaces_pre(
 	secret::initialize_secret_pre(connection).await?;
 	infrastructure::initialize_infrastructure_pre(connection).await?;
 	billing::initialize_billing_pre(connection).await?;
+	ci2::initialize_ci_pre(connection).await?;
 
 	Ok(())
 }
@@ -326,6 +329,7 @@ pub async fn initialize_workspaces_post(
 	secret::initialize_secret_post(connection).await?;
 	infrastructure::initialize_infrastructure_post(connection).await?;
 	billing::initialize_billing_post(connection).await?;
+	ci2::initialize_ci_post(connection).await?;
 
 	Ok(())
 }

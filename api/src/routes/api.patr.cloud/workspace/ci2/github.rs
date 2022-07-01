@@ -31,9 +31,9 @@ use serde::Deserialize;
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
+	db::{self, activate_ci_for_repo},
 	error,
-	models::{rbac::permissions},
+	models::rbac::permissions,
 	pin_fn,
 	utils::{
 		constants::request_keys,
@@ -526,9 +526,10 @@ async fn list_repositories(
 			.ok()
 			.status(500)?;
 
-	// TODO: update our local db and then fetch from db
-	// TODO: create a scheduler to check whether webhook has been removed
-	// TODO: test with org accounts
+	// TODO: update our local db and then fetch from db -> or we can use a
+	// crawler (highly complex) TODO: create a scheduler to check whether
+	// webhook has been removed manually TODO: test with org accounts
+	// TODO: how to handle whether the repo ci active or not during list repos
 	let repos = github_client
 		.repos()
 		.list_all_for_authenticated_user(
@@ -542,7 +543,7 @@ async fn list_repositories(
 		)
 		.await
 		.map_err(|err| {
-			log::info!("error while octorust init: {err:#}");
+			log::info!("error while getting repo list: {err:#}");
 			err
 		})
 		.ok()
@@ -563,7 +564,7 @@ async fn list_repositories(
 }
 
 const GITHUB_WEBHOOK_URL: &str =
-	"https://01d7-106-200-254-12.in.ngrok.io/webhook/ci/push-event";
+	"https://01d7-106-200-254-12.in.ngrok.io/webhook/ci/push-event"; // TODO
 
 async fn activate_repo(
 	mut context: EveContext,
@@ -594,6 +595,37 @@ async fn activate_repo(
 			.ok()
 			.status(500)?;
 
+	let repo = github_client
+		.repos()
+		.get(&repo_owner, &repo_name)
+		.await
+		.map_err(|err| {
+			log::info!("error while getting repo info: {err:#}");
+			err
+		})
+		.ok()
+		.status(500)?;
+
+	let repo = if let Some(repo) = db::get_repo_for_workspace_and_url(
+		context.get_database_connection(),
+		&workspace_id,
+		&repo.git_url,
+	)
+	.await?
+	{
+		repo
+	} else {
+		db::create_ci_repo(
+			context.get_database_connection(),
+			&workspace_id,
+			&repo.git_url,
+		)
+		.await?
+	};
+
+	activate_ci_for_repo(context.get_database_connection(), &repo.id).await?;
+
+	// TODO: better to store hook id in db so that we can modify that alone
 	let _configured_webhook = github_client
 		.repos()
 		.create_webhook(
@@ -607,8 +639,7 @@ async fn activate_repo(
 					insecure_ssl: Some(WebhookConfigInsecureSslOneOf::String(
 						"1".to_string(), // TODO: switch to ssl
 					)),
-					secret: "secret".to_owned(), /* create secret for each
-					                              * repo/user */
+					secret: repo.webhook_secret,
 					token: "".to_string(),
 					url: GITHUB_WEBHOOK_URL.to_string(),
 				}),
@@ -656,6 +687,29 @@ async fn deactivate_repo(
 			})
 			.ok()
 			.status(500)?;
+
+	let repo = github_client
+		.repos()
+		.get(&repo_owner, &repo_name)
+		.await
+		.map_err(|err| {
+			log::info!("error while getting repo info: {err:#}");
+			err
+		})
+		.ok()
+		.status(500)?;
+
+	let repo = db::get_repo_for_workspace_and_url(
+		context.get_database_connection(),
+		&workspace_id,
+		&repo.git_url,
+	)
+	.await?
+	.status(400)
+	.body("repo not found")?;
+
+	db::deactivate_ci_for_repo(context.get_database_connection(), &repo.id)
+		.await?;
 
 	// store the particular registed github webhook id and delete that alone
 	let all_webhooks = github_client

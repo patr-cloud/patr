@@ -1,19 +1,39 @@
+use std::fmt::Display;
+
 use k8s_openapi::api::core::v1::Pod;
 use kube::{api::PostParams, Api};
 use serde_json::json;
 
 use crate::{
 	models::{CiFlow, Kind, Step},
-	utils::{get_current_time_millis, Error},
+	utils::Error,
 };
 
 pub mod github;
+
+pub struct Netrc {
+	pub machine: String,
+	pub login: String,
+	pub password: String,
+}
+
+impl Display for Netrc {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"machine {} login {} password {}",
+			self.machine, self.login, self.password
+		)
+	}
+}
 
 pub async fn create_ci_pipeline(
 	ci_file: impl AsRef<[u8]>,
 	repo_clone_url: &str,
 	repo_name: &str,
 	branch_name: &str,
+	netrc: Option<Netrc>,
+	unique_pipeline_name: &str,
 	kube_client: kube::Client,
 ) -> Result<(), Error> {
 	log::debug!("Create a pod to run custom ci commands");
@@ -23,6 +43,7 @@ pub async fn create_ci_pipeline(
 	let ci_steps = std::iter::once({
         // first clone the repo
         let clone_repo_command = [
+			&format!(r#"echo "{}" > ~/.netrc"#, netrc.map_or("".to_string(), |netrc| netrc.to_string())),
             r#"cd "/mnt/workdir/""#,
             "set -x",
             &format!(
@@ -105,13 +126,11 @@ pub async fn create_ci_pipeline(
     })
     .collect::<Vec<_>>();
 
-	// TODO: get unique name for pods
-	let pod_name = get_current_time_millis().to_string();
 	let pod_spec: Pod = serde_json::from_value(json!({
 	  "apiVersion": "v1",
 	  "kind": "Pod",
 	  "metadata": {
-		"name": pod_name
+		"name": unique_pipeline_name
 	  },
 	  "spec": {
 		"restartPolicy": "Never",

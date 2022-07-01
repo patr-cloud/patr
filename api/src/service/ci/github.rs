@@ -1,15 +1,20 @@
 use eve_rs::{AsError, Context};
 use hmac::{Hmac, Mac};
+use octorust::auth::Credentials;
 use sha2::Sha256;
 
+use self::webhook_payload::PushEvent;
+use super::Netrc;
 use crate::{
+	db::{self, Repository},
 	service,
 	utils::{Error, EveContext},
 };
 
 type HmacSha256 = Hmac<Sha256>;
 
-pub const HUB_SIGNATURE_256: &str = "x-hub-signature-256";
+pub const X_HUB_SIGNATURE_256: &str = "x-hub-signature-256";
+pub const X_GITHUB_EVENT: &str = "x-github-event";
 
 /// Returns error if payload signature is different from header signature
 pub async fn verify_payload_signature(
@@ -35,19 +40,45 @@ pub async fn verify_payload_signature(
 	Ok(())
 }
 
-pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
-	// verify signature
-	verify_payload_signature(
-		&context
-			.get_header(HUB_SIGNATURE_256)
-			.status(400)
-			.body("x-hub-signature-256 header not found")?,
-		&context.get_request().get_body_bytes(),
-		&"secret", // TODO: handle secret for each repo/user
+async fn find_matching_repo_with_secret(
+	context: &mut EveContext,
+) -> Result<Option<(Repository, PushEvent)>, Error> {
+	let push_event = context.get_body_as::<webhook_payload::PushEvent>()?;
+
+	let signature_in_header = context
+		.get_header(X_HUB_SIGNATURE_256)
+		.status(400)
+		.body("x-hub-signature-256 header not found")?;
+	let payload = context.get_request().get_body_bytes().to_owned();
+
+	let repo_list = db::get_repo_for_git_url(
+		context.get_database_connection(),
+		&push_event.repository.git_url,
 	)
 	.await?;
 
-	let push_event = context.get_body_as::<webhook_payload::PushEvent>()?;
+	for repo in repo_list {
+		if verify_payload_signature(
+			&signature_in_header,
+			&payload,
+			&repo.webhook_secret,
+		)
+		.await
+		.is_ok()
+		{
+			return Ok(Some((repo, push_event)));
+		}
+	}
+
+	Ok(None)
+}
+
+pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
+	let (repo, push_event) = find_matching_repo_with_secret(context)
+		.await?
+		.status(400)
+		.body("not a valid payload")?;
+
 	let (owner_name, repo_name) = push_event
 		.repository
 		.full_name
@@ -61,14 +92,24 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 		.status(500)
 		.body("currently only push on branches is supported")?;
 
-	let github_client = octorust::Client::new("patr", None)
-		.map_err(|err| {
-			log::info!("error while octorust init: {err:#}");
-			err
-		})
-		.ok()
-		.status(500)
-		.body("error while initailizing octorust")?; // TODO: use github credentials for private repos
+	let access_token = db::get_access_token_for_repo(
+		context.get_database_connection(),
+		&repo.id,
+	)
+	.await?
+	.status(500)
+	.body("internal server error")?;
+
+	let github_client =
+		octorust::Client::new("patr", Credentials::Token(access_token.clone()))
+			.map_err(|err| {
+				log::info!("error while octorust init: {err:#}");
+				err
+			})
+			.ok()
+			.status(500)
+			.body("error while initailizing octorust")?;
+
 	let ci_file = github_client
 		.repos()
 		.get_content_file(owner_name, repo_name, "patr.yml", branch_name)
@@ -77,17 +118,37 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 		.status(500)
 		.body("patr.yml file is not defined")?;
 
-	// TODO: use github credentials for private repo
-	let ci_file = reqwest::get(ci_file.download_url).await?.bytes().await?;
+	let ci_file = reqwest::Client::new()
+		.get(ci_file.download_url)
+		.bearer_auth(&access_token)
+		.send()
+		.await?
+		.bytes()
+		.await?;
+
+	let build_id = db::generate_new_build_for_repo(
+		context.get_database_connection(),
+		&repo.id,
+	)
+	.await?;
 
 	let config = &context.get_state().config;
 	let kube_client = service::get_kubernetes_config(config).await?;
+
+	// TODO: make more generic
+	let netrc = Netrc {
+		machine: "github.com".to_string(),
+		login: "oauth".to_string(),
+		password: access_token,
+	};
 
 	super::create_ci_pipeline(
 		ci_file,
 		&repo_clone_url,
 		repo_name,
 		branch_name,
+		Some(netrc),
+		&format!("{}-{}", repo.id, build_id),
 		kube_client,
 	)
 	.await?;
