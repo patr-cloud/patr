@@ -1,5 +1,9 @@
+use std::collections::HashMap;
+
 use api_models::utils::{True, Uuid};
 use serde::{Deserialize, Serialize};
+
+use crate::db::{DomainPlan, StaticSitePlan};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -209,4 +213,20 @@ pub struct StripeAddress {
 	pub postal_code: String,
 	#[serde(rename = "address[state]")]
 	pub state: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InvoicePdf {
+	pub workspace_name: String,
+	pub deployment_usages: HashMap<Uuid, DeploymentBill>,
+	pub database_usages: HashMap<Uuid, DatabaseBill>,
+	pub static_sites_usages: HashMap<StaticSitePlan, StaticSiteBill>,
+	pub managed_url_usages: HashMap<u64, ManagedUrlBill>,
+	pub docker_repository_usages: Vec<DockerRepositoryBill>,
+	pub domains_usages: HashMap<DomainPlan, DomainBill>,
+	pub secrets_usages: HashMap<u64, SecretsBill>,
+	pub total_bill: f64,
+	pub month: String,
+	pub year: i32,
 }

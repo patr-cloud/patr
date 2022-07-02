@@ -12,6 +12,7 @@ use crate::{
 			DeploymentBill,
 			DockerRepositoryBill,
 			DomainBill,
+			InvoicePdf,
 			ManagedUrlBill,
 			SecretsBill,
 			StaticSiteBill,
@@ -19,6 +20,7 @@ use crate::{
 		deployment::KubernetesEventData,
 		EmailTemplate,
 	},
+	service,
 	utils::Error,
 };
 
@@ -360,6 +362,7 @@ struct InvoiceEmail {
 
 pub async fn send_invoice_email(
 	email: Mailbox,
+	workspace_id: &Uuid,
 	workspace_name: String,
 	deployment_usages: HashMap<Uuid, DeploymentBill>,
 	database_usages: HashMap<Uuid, DatabaseBill>,
@@ -372,6 +375,25 @@ pub async fn send_invoice_email(
 	month: String,
 	year: i32,
 ) -> Result<(), Error> {
+	service::generate_invoice_pdf(
+		&InvoicePdf {
+			workspace_name: workspace_name.clone(),
+			deployment_usages: deployment_usages.clone(),
+			database_usages: database_usages.clone(),
+			static_sites_usages: static_sites_usages.clone(),
+			managed_url_usages: managed_url_usages.clone(),
+			docker_repository_usages: docker_repository_usages.clone(),
+			domains_usages: domains_usages.clone(),
+			secrets_usages: secrets_usages.clone(),
+			total_bill,
+			month: month.clone(),
+			year,
+		},
+		workspace_id,
+	)
+	.await?;
+
+	// TODO: attach email here and delete it from temp folder in assets
 	send_email(
 		InvoiceEmail {
 			workspace_name,

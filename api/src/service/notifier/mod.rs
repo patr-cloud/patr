@@ -434,6 +434,7 @@ pub async fn send_alert_email_to_patr(
 pub async fn send_invoice_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
+	workspace_id: &Uuid,
 	workspace_name: String,
 	deployment_usages: HashMap<Uuid, DeploymentBill>,
 	database_usages: HashMap<Uuid, DatabaseBill>,
@@ -465,6 +466,7 @@ pub async fn send_invoice_email(
 
 	email::send_invoice_email(
 		user_email.parse()?,
+		workspace_id,
 		workspace_name,
 		deployment_usages,
 		database_usages,

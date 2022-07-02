@@ -5,8 +5,9 @@ use api_models::{
 	utils::{DateTime, True, Uuid},
 };
 use chrono::{Datelike, Utc};
-use eve_rs::AsError;
+use eve_rs::{handlebars::Handlebars, AsError};
 use reqwest::Client;
+use wkhtmltopdf::{Orientation, PdfApplication, Size};
 
 use crate::{
 	db::{
@@ -25,6 +26,7 @@ use crate::{
 			DeploymentBillItem,
 			DockerRepositoryBill,
 			DomainBill,
+			InvoicePdf,
 			ManagedUrlBill,
 			PaymentIntent,
 			PaymentIntentObject,
@@ -790,4 +792,30 @@ pub async fn calculate_total_bill_for_workspace_till(
 			.map(|(_, bill)| bill.amount)
 			.sum::<f64>()
 	})
+}
+
+pub async fn generate_invoice_pdf(
+	body: &InvoicePdf,
+	workspace_id: &Uuid,
+) -> Result<(), Error> {
+	let mut handlebar = Handlebars::new();
+
+	handlebar.register_template_file(
+		"invoice",
+		"assets/emails/invoice-email/invoice_html.handlebars",
+	)?;
+
+	let invoice_pdf = handlebar.render("invoice", body)?;
+
+	PdfApplication::new()?
+		.builder()
+		.orientation(Orientation::Portrait)
+		.margin(Size::Inches(2))
+		.build_from_html(&invoice_pdf)?
+		.save(&format!(
+			"assets/temp/{}-{}-{}.pdf",
+			workspace_id, body.month, body.year
+		))?;
+
+	Ok(())
 }

@@ -304,6 +304,7 @@ pub(super) async fn process_request(
 
 			service::send_invoice_email(
 				connection,
+				&workspace.id,
 				&workspace.super_admin_id,
 				workspace.name.clone(),
 				deployment_usages,

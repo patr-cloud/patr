@@ -92,7 +92,9 @@ pub enum PaymentStatus {
 	Failed,
 }
 
-#[derive(sqlx::Type, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(
+	sqlx::Type, Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash,
+)]
 #[sqlx(type_name = "STATIC_SITE_PLAN", rename_all = "lowercase")]
 pub enum StaticSitePlan {
 	Free,
@@ -100,7 +102,9 @@ pub enum StaticSitePlan {
 	Unlimited,
 }
 
-#[derive(sqlx::Type, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(
+	sqlx::Type, Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash,
+)]
 #[sqlx(type_name = "DOMAIN_PLAN", rename_all = "lowercase")]
 pub enum DomainPlan {
 	Free,
