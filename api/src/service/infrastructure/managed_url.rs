@@ -172,14 +172,6 @@ pub async fn create_new_managed_url_in_workspace(
 	)
 	.await?;
 
-	let managed_url = ManagedUrl {
-		id: managed_url_id.clone(),
-		sub_domain: sub_domain.to_string(),
-		domain_id: domain_id.clone(),
-		path: path.to_string(),
-		url_type: url_type.clone(),
-	};
-
 	if domain.is_ns_external() && domain.is_verified {
 		log::trace!(
 			"request_id: {} - Creating certificates for managed url.",
@@ -203,7 +195,7 @@ pub async fn create_new_managed_url_in_workspace(
 	);
 	service::queue_create_managed_url(
 		workspace_id,
-		&managed_url.id,
+		&managed_url_id,
 		config,
 		request_id,
 	)
