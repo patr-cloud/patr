@@ -150,7 +150,8 @@ pub async fn initialize_users_pre(
 			workspace_limit INTEGER NOT NULL,
 			sign_up_coupon TEXT CONSTRAINT user_fk_sign_up_coupon REFERENCES
 				coupon_code(code),
-
+			is_oauth_user BOOLEAN DEFAULT false,
+			oauth_access_token TEXT,
 			CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id
 				UNIQUE(recovery_email_local, recovery_email_domain_id),
 
@@ -2668,6 +2669,34 @@ pub async fn update_recovery_phone_number_for_user(
 	Ok(())
 }
 
+pub async fn update_user_oauth_info(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	access_token: &str,
+	user_id: &Uuid,
+	username: &str,
+	is_oauth_user: bool,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			"user"
+		SET
+			oauth_access_token = $1,
+			is_oauth_user = $2,
+			oauth_username = $3
+		WHERE
+			id = $4;
+		"#,
+		access_token,
+		is_oauth_user,
+		username,
+		user_id as _,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
 pub async fn add_password_reset_request(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
