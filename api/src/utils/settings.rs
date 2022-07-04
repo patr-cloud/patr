@@ -273,7 +273,6 @@ pub struct GithubSettings {
 	pub client_id: String,
 	#[serde(alias = "clientsecret")]
 	pub client_secret: String,
-	pub scope: String,
 	#[serde(alias = "authurl")]
 	pub auth_url: String,
 	#[serde(alias = "callbackurl")]
@@ -283,6 +282,9 @@ pub struct GithubSettings {
 	#[serde(alias = "state")]
 	pub state: String,
 	#[serde(alias = "userInfourl")]
+	#[serde(alias = "scope")]
+	pub scope: String,
+	#[serde(alias = "userInfoUrl")]
 	pub user_info_url: String,
 }
 
