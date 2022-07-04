@@ -504,12 +504,7 @@ async fn verify_transferred_domain_to_patr() -> Result<(), Error> {
 				"You might have a dangling resource for the domain"
 			);
 		} else {
-			// TODO change this to notifier
-			// mailer::send_domain_verified_mail(
-			// 	config.config.clone(),
-			// 	notification_email.unwrap(),
-			// 	unverified_domain.name,
-			// );
+			// Notify user about domain verified
 		}
 
 		connection.commit().await?;

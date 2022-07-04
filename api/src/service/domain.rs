@@ -336,17 +336,13 @@ pub async fn transfer_domain_to_patr(
 	let user_controlled_domain =
 		db::get_user_controlled_domain_by_id(connection, &domain.id).await?;
 
-	// Add to user_transferred_domains
+	// Add to user_transferred_domains and schedular will take care after that
 	db::add_to_user_transferring_domain_to_patr(
 		connection,
 		&user_controlled_domain.domain_id,
 		&zone_identifier,
 	)
 	.await?;
-
-	// TODO - can give user a message that transfer is ongoing please wait
-
-	// TODO - manage certs and secrets
 
 	Ok(())
 }

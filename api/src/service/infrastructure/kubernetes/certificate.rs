@@ -177,16 +177,12 @@ pub async fn get_kubernetes_certificate_status(
 		.data
 		.get("status")
 		.and_then(|condition| condition.get("type"));
-	let certificate_type = if let Some(certificate_status) = certificate_status
-	{
-		certificate_status.to_string()
-	} else {
-		"".to_string()
-	};
-
-	if &certificate_type == "Ready" {
-		Ok(true)
-	} else {
-		Ok(false)
+	if let Some(certificate_status) = certificate_status {
+		if certificate_status == "Ready" {
+			return Ok(true);
+		} else {
+			return Ok(false);
+		}
 	}
+	Ok(false)
 }
