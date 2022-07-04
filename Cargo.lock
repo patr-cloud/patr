@@ -2264,6 +2264,7 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "monostate"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2285,6 +2286,8 @@ dependencies = [
 ]
 
 [[package]]
+=======
+>>>>>>> 137445f4 (feature: login with github)
 name = "native-tls"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2605,7 +2608,6 @@ dependencies = [
  "kube",
  "lazy_static",
  "log",
- "monostate",
  "regex",
  "reqwest",
  "serde",
