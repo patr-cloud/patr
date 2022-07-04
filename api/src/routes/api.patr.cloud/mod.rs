@@ -14,6 +14,7 @@ use crate::{
 };
 
 mod auth;
+mod oauth;
 mod user;
 mod webhook;
 mod workspace;
@@ -40,6 +41,7 @@ pub fn create_sub_app(
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.use_sub_app("/auth", auth::create_sub_app(app));
+	sub_app.use_sub_app("/oauth", oauth::create_sub_app(app));
 	sub_app.use_sub_app("/user", user::create_sub_app(app));
 	sub_app.use_sub_app("/workspace", workspace::create_sub_app(app));
 	sub_app.use_sub_app("/webhook", webhook::create_sub_app(app));
