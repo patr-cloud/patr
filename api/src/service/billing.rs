@@ -1,7 +1,11 @@
 use std::{cmp::max, collections::HashMap};
 
 use api_models::{
-	models::workspace::billing::PaymentMethod,
+	models::workspace::billing::{
+		PaymentMethod,
+		PaymentStatus,
+		TransactionType,
+	},
 	utils::{DateTime, True, Uuid},
 };
 use chrono::{Datelike, Utc};
@@ -9,14 +13,7 @@ use eve_rs::AsError;
 use reqwest::Client;
 
 use crate::{
-	db::{
-		self,
-		DomainPlan,
-		ManagedDatabasePlan,
-		PaymentStatus,
-		StaticSitePlan,
-		TransactionType,
-	},
+	db::{self, DomainPlan, ManagedDatabasePlan, StaticSitePlan},
 	error,
 	models::{
 		billing::{
@@ -790,4 +787,90 @@ pub async fn calculate_total_bill_for_workspace_till(
 			.map(|(_, bill)| bill.amount)
 			.sum::<f64>()
 	})
+}
+
+pub async fn make_payment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	payment_amount: u32,
+	config: &Settings,
+) -> Result<(), Error> {
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	let default_payment_method_id =
+		db::get_workspace_info(connection, workspace_id)
+			.await?
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?
+			.default_payment_method_id;
+
+	if default_payment_method_id.is_none() {
+		return Error::as_result()
+			.status(402)
+			.body(error!(PAYMENT_METHOD_REQUIRED).to_string())?;
+	}
+
+	let address_id = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?
+		.address_id
+		.status(400)
+		.body(error!(ADDRESS_REQUIRED).to_string())?;
+
+	let (currency, amount) = if db::get_billing_address(connection, &address_id)
+		.await?
+		.status(500)?
+		.country == *"IN"
+	{
+		("inr".to_string(), (payment_amount * 80) as u64)
+	} else {
+		("usd".to_string(), payment_amount as u64)
+	};
+
+	let description = "Patr charge: Bill payment".to_string();
+
+	let payment_intent_object = client
+		.post("https://api.stripe.com/v1/payment_intents")
+		.basic_auth(&config.stripe.secret_key, password)
+		.form(&PaymentIntent {
+			amount,
+			currency,
+			confirm: True,
+			off_session: true,
+			description: description.clone(),
+			customer: db::get_workspace_info(connection, workspace_id)
+				.await?
+				.status(500)?
+				.stripe_customer_id,
+			payment_method: default_payment_method_id,
+			payment_method_types: "card".to_string(),
+			setup_future_usage: None,
+		})
+		.send()
+		.await?
+		.error_for_status()?
+		.json::<PaymentIntentObject>()
+		.await?;
+
+	let id = db::generate_new_transaction_id(connection).await?;
+
+	let date = Utc::now();
+
+	db::create_transaction(
+		connection,
+		workspace_id,
+		&id,
+		date.month() as i32,
+		payment_amount.into(),
+		Some(&payment_intent_object.id),
+		&DateTime::from(date),
+		&TransactionType::Payment,
+		&PaymentStatus::Success,
+		Some(&description),
+	)
+	.await?;
+
+	Ok(())
 }

@@ -1,13 +1,20 @@
-use api_models::utils::Uuid;
+use api_models::{models::workspace::billing::TransactionType, utils::Uuid};
 use chrono::{Datelike, TimeZone, Utc};
 use sqlx::Row;
 
 use crate::{
-	db::{PaymentStatus, TransactionType},
 	migrate_query as query,
 	utils::{settings::Settings, Error},
 	Database,
 };
+
+#[derive(sqlx::Type, Debug, Clone, PartialEq)]
+#[sqlx(type_name = "PAYMENT_STATUS", rename_all = "lowercase")]
+enum PaymentStatus {
+	Pending,
+	Success,
+	Failed,
+}
 
 pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,

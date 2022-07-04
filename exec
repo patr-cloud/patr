@@ -112,6 +112,9 @@ case $1 in
     clippy)
         docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api bash -c "source .env && cargo clippy"
     ;;
+    clean)
+        docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api bash -c "rm -rf ./target-dev"
+    ;;
     populate)
         docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api bash -c "source .env && cargo populate"
     ;;
