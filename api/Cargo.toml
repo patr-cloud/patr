@@ -77,7 +77,7 @@ vaultrs = "0.6"
 zeroize = "1"
 zip = "0.6"
 hmac = "0.12.1"
-octorust = { git = "https://github.com/kavin-kr/third-party-api-clients", branch = "fix/list-all-repos" }
+octorust = { git = "https://github.com/kavin-kr/third-party-api-clients", rev = "0cc561c" }
 serde_yaml = "0.8.24"
 
 [dependencies.log4rs]

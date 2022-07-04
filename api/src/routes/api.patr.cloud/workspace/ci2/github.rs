@@ -533,7 +533,7 @@ async fn list_repositories(
 	let repos = github_client
 		.repos()
 		.list_all_for_authenticated_user(
-			ReposListVisibility::All,
+			Some(ReposListVisibility::All),
 			"",
 			None,
 			ReposListOrgSort::Created,

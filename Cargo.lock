@@ -2196,7 +2196,7 @@ dependencies = [
 [[package]]
 name = "octorust"
 version = "0.1.37"
-source = "git+https://github.com/kavin-kr/third-party-api-clients?branch=fix/list-all-repos#0cc561c8bd84052c9622970890d699aa4e301dd5"
+source = "git+https://github.com/kavin-kr/third-party-api-clients?rev=0cc561c#0cc561c8bd84052c9622970890d699aa4e301dd5"
 dependencies = [
  "anyhow",
  "async-recursion",
