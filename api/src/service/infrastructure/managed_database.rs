@@ -324,3 +324,20 @@ async fn database_limit_crossed(
 
 	Ok(false)
 }
+
+pub async fn delete_all_managed_databases(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let managed_databases =
+		db::get_all_database_clusters_for_workspace(connection, workspace_id)
+			.await?;
+
+	for db in managed_databases {
+		super::delete_managed_database(connection, &db.id, config, request_id)
+			.await?;
+	}
+	Ok(())
+}

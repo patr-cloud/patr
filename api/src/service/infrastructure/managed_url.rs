@@ -460,3 +460,26 @@ async fn managed_url_limit_crossed(
 
 	Ok(false)
 }
+
+pub async fn delete_all_managed_urls(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let managed_urls =
+		db::get_all_managed_urls_in_workspace(connection, workspace_id).await?;
+
+	for managed_url in managed_urls {
+		super::delete_managed_url(
+			connection,
+			workspace_id,
+			&managed_url.id,
+			config,
+			request_id,
+		)
+		.await?;
+	}
+
+	Ok(())
+}

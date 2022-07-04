@@ -7,7 +7,7 @@ use api_models::{
 	models::workspace::billing::{PaymentStatus, TransactionType},
 	utils::{DateTime, True},
 };
-use chrono::{TimeZone, Utc};
+use chrono::{Datelike, TimeZone, Utc};
 use eve_rs::AsError;
 use reqwest::Client;
 use tokio::time;
@@ -260,6 +260,7 @@ pub(super) async fn process_request(
 				service::queue_confirm_payment_intent(
 					config,
 					payment_intent_object.id,
+					&month_start_date,
 					workspace.id.clone(),
 				)
 				.await?;
@@ -328,6 +329,7 @@ pub(super) async fn process_request(
 			payment_intent_id,
 			workspace_id,
 			request_id,
+			month_start_date,
 		} => {
 			let last_transaction = db::get_last_bill_for_workspace(
 				&mut *connection,
@@ -354,7 +356,7 @@ pub(super) async fn process_request(
 				if Utc::now()
 					.sub({
 						let chrono_date: chrono::DateTime<Utc> =
-							last_transaction.date.into();
+							last_transaction.date.clone().into();
 						chrono_date
 					})
 					.num_hours()
@@ -404,6 +406,49 @@ pub(super) async fn process_request(
 					None,
 				)
 				.await?;
+
+				// if it is more than 14 days since the bill has been out
+				// try one last time and if that transaction fails
+				// then shutdown all resources and change the workspace limit to
+				// 0
+				// TODO: send user reminder for non-payment
+
+				if Utc::now().sub(month_start_date).num_days().abs() > 14 {
+					service::shutdown_all_services(
+						connection,
+						&workspace_id,
+						config,
+					)
+					.await?;
+
+					let month_string = match last_transaction.month {
+						1 => "January",
+						2 => "February",
+						3 => "March",
+						4 => "April",
+						5 => "May",
+						6 => "June",
+						7 => "July",
+						8 => "August",
+						9 => "September",
+						10 => "October",
+						11 => "November",
+						12 => "December",
+						_ => "",
+					};
+
+					let year =
+						chrono::DateTime::from(last_transaction.date.clone())
+							.year();
+
+					service::send_delete_resource_notification(
+						connection,
+						&workspace_id,
+						month_string,
+						year,
+					)
+					.await?;
+				}
 
 				return Error::as_result()
 					.status(500)

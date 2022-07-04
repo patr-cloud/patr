@@ -15,7 +15,6 @@ use api_models::{
 		GetBillingAddressResponse,
 		GetCurrentUsageResponse,
 		GetPaymentMethodResponse,
-		GetTransactionHistoryRequest,
 		GetTransactionHistoryResponse,
 		MakePaymentRequest,
 		MakePaymentResponse,
@@ -873,7 +872,7 @@ async fn confirm_payment(
 
 	let config = context.get_state().config.clone();
 
-	let success = service::confirm_payment_method(
+	let success = service::confirm_payment_intent(
 		context.get_database_connection(),
 		&workspace_id,
 		&payment_intent_id,
@@ -956,20 +955,9 @@ async fn get_transaction_history(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let GetTransactionHistoryRequest {
-		start_time,
-		end_time,
-		..
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
 	let transactions = db::get_transactions_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		&start_time,
-		&end_time,
 	)
 	.await?
 	.into_iter()

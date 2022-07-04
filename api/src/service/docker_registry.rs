@@ -259,3 +259,25 @@ pub async fn delete_docker_repository(
 	log::trace!("request_id: {} - Deleting docker repository from the registry was successful", request_id);
 	Ok(())
 }
+
+pub async fn delete_all_docker_repositories(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let docker_repositories =
+		db::get_docker_repositories_for_workspace(connection, workspace_id)
+			.await?;
+
+	for docker_repository in docker_repositories {
+		super::delete_docker_repository(
+			connection,
+			&docker_repository.0.id,
+			config,
+			request_id,
+		)
+		.await?;
+	}
+	Ok(())
+}

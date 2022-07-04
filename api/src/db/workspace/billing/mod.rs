@@ -1261,8 +1261,6 @@ pub async fn add_payment_method_info(
 pub async fn get_transactions_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	start_time: &DateTime<Utc>,
-	end_time: &DateTime<Utc>,
 ) -> Result<Vec<Transaction>, sqlx::Error> {
 	query_as!(
 		Transaction,
@@ -1280,12 +1278,9 @@ pub async fn get_transactions_in_workspace(
 		FROM
 			transaction
 		WHERE
-			workspace_id = $1 AND
-			date BETWEEN $2 AND $3;
+			workspace_id = $1;
 		"#,
 		workspace_id as _,
-		start_time as _,
-		end_time as _,
 	)
 	.fetch_all(&mut *connection)
 	.await

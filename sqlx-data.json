@@ -2596,6 +2596,95 @@
       "nullable": []
     }
   },
+  "45b112cd94638051582357e64c62266311f37807da782620abefdf3921297603": {
+    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tmonth,\n\t\t\tamount,\n\t\t\tpayment_intent_id,\n\t\t\tdate as \"date: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\ttransaction_type as \"transaction_type!: _\",\n\t\t\tpayment_status as \"payment_status!: _\",\n\t\t\tdescription\n\t\tFROM\n\t\t\ttransaction\n\t\tWHERE\n\t\t\tworkspace_id = $1;\n\t\t",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "month",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 2,
+          "name": "amount",
+          "type_info": "Float8"
+        },
+        {
+          "ordinal": 3,
+          "name": "payment_intent_id",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "date: _",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 5,
+          "name": "workspace_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 6,
+          "name": "transaction_type!: _",
+          "type_info": {
+            "Custom": {
+              "name": "transaction_type",
+              "kind": {
+                "Enum": [
+                  "bill",
+                  "credits",
+                  "payment"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "payment_status!: _",
+          "type_info": {
+            "Custom": {
+              "name": "payment_status",
+              "kind": {
+                "Enum": [
+                  "success",
+                  "failed"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 8,
+          "name": "description",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true
+      ]
+    }
+  },
   "465499cd312427f9daac7b5b6a05aa0c4e266f2e44e2a880626698aee28a2577": {
     "query": "CREATE TABLE meta_data( id VARCHAR(100) CONSTRAINT meta_data_pk PRIMARY KEY, value TEXT NOT NULL );",
     "describe": {
@@ -10267,97 +10356,6 @@
         ]
       },
       "nullable": []
-    }
-  },
-  "eecc28512441a3f44dcf2ab92cfd1b7da8edbe5feec1193686b5bdebdf75bf9f": {
-    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tmonth,\n\t\t\tamount,\n\t\t\tpayment_intent_id,\n\t\t\tdate as \"date: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\ttransaction_type as \"transaction_type!: _\",\n\t\t\tpayment_status as \"payment_status!: _\",\n\t\t\tdescription\n\t\tFROM\n\t\t\ttransaction\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\tdate BETWEEN $2 AND $3;\n\t\t",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "month",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 2,
-          "name": "amount",
-          "type_info": "Float8"
-        },
-        {
-          "ordinal": 3,
-          "name": "payment_intent_id",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 4,
-          "name": "date: _",
-          "type_info": "Timestamptz"
-        },
-        {
-          "ordinal": 5,
-          "name": "workspace_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 6,
-          "name": "transaction_type!: _",
-          "type_info": {
-            "Custom": {
-              "name": "transaction_type",
-              "kind": {
-                "Enum": [
-                  "bill",
-                  "credits",
-                  "payment"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 7,
-          "name": "payment_status!: _",
-          "type_info": {
-            "Custom": {
-              "name": "payment_status",
-              "kind": {
-                "Enum": [
-                  "success",
-                  "failed"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 8,
-          "name": "description",
-          "type_info": "Text"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz",
-          "Timestamptz"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false,
-        true
-      ]
     }
   },
   "ef2c0cfb66e6428d47ca4e05b6b64d8568be322590230eb48df7eea85c3742bc": {

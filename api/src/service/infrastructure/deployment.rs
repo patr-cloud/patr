@@ -7,6 +7,7 @@ use api_models::{
 		DeploymentProbe,
 		DeploymentRegistry,
 		DeploymentRunningDetails,
+		DeploymentStatus,
 		EnvironmentVariableValue,
 		ExposedPortType,
 		Metric,
@@ -24,7 +25,8 @@ use crate::{
 	error,
 	models::{
 		deployment::{Logs, PrometheusResponse},
-		rbac,
+		rbac::{self, permissions},
+		DeploymentMetadata,
 	},
 	utils::{settings::Settings, validator, Error},
 	Database,
@@ -929,4 +931,73 @@ async fn deployment_limit_crossed(
 	}
 
 	Ok(false)
+}
+
+pub async fn delete_all_deployments(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	// TODO: add log statements
+	let deployments =
+		db::get_deployments_for_workspace(connection, workspace_id).await?;
+
+	for d in deployments {
+		db::stop_deployment_usage_history(
+			connection,
+			&d.id,
+			&Utc::now().into(),
+		)
+		.await?;
+
+		let audit_log_id =
+			db::generate_new_workspace_audit_log_id(connection).await?;
+
+		db::create_workspace_audit_log(
+			connection,
+			&audit_log_id,
+			workspace_id,
+			"0.0.0.0",
+			Utc::now().into(),
+			None,
+			None,
+			&d.id,
+			rbac::PERMISSIONS
+				.get()
+				.unwrap()
+				.get(permissions::workspace::infrastructure::deployment::EDIT)
+				.unwrap(),
+			request_id,
+			&serde_json::to_value(DeploymentMetadata::Delete {})?,
+			false,
+			true,
+		)
+		.await?;
+
+		super::delete_kubernetes_deployment(
+			workspace_id,
+			&d.id,
+			config,
+			request_id,
+		)
+		.await?;
+
+		db::update_deployment_name(
+			connection,
+			&d.id,
+			&format!("patr-deleted: {}-{}", d.name, d.id),
+		)
+		.await?;
+
+		log::trace!("request_id: {} - Updating deployment status", request_id);
+		db::update_deployment_status(
+			connection,
+			&d.id,
+			&DeploymentStatus::Deleted,
+		)
+		.await?;
+	}
+
+	Ok(())
 }

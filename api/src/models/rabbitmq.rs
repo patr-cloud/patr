@@ -5,6 +5,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use super::DeploymentMetadata;
@@ -132,6 +133,7 @@ pub enum WorkspaceRequestData {
 	},
 	ConfirmPaymentIntent {
 		payment_intent_id: String,
+		month_start_date: DateTime<Utc>,
 		workspace_id: Uuid,
 		request_id: Uuid,
 	},

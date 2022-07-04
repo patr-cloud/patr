@@ -393,6 +393,33 @@ pub async fn send_invoice_email(
 	.await
 }
 
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/resource-shutdown-email/template.json"]
+struct ResourceShutdownEmail {
+	workspace_name: String,
+	month: String,
+	year: i32,
+}
+
+pub async fn send_resource_shutdown_email(
+	email: Mailbox,
+	workspace_name: &str,
+	month: &str,
+	year: i32,
+) -> Result<(), Error> {
+	send_email(
+		ResourceShutdownEmail {
+			workspace_name: workspace_name.to_string(),
+			month: month.to_string(),
+			year,
+		},
+		email,
+		None,
+		"Patr invoice",
+	)
+	.await
+}
+
 /// # Description
 /// This function is used to send the email to a recipient
 ///

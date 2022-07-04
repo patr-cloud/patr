@@ -7,6 +7,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use chrono::{DateTime, Utc};
 use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
@@ -333,6 +334,7 @@ pub async fn queue_process_payment(
 pub async fn queue_confirm_payment_intent(
 	config: &Settings,
 	payment_intent_id: String,
+	month_start_date: &DateTime<Utc>,
 	workspace_id: Uuid,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
@@ -343,6 +345,7 @@ pub async fn queue_confirm_payment_intent(
 				payment_intent_id,
 				workspace_id,
 				request_id: request_id.clone(),
+				month_start_date: *month_start_date,
 			},
 		),
 		config,

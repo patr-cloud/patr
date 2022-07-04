@@ -479,3 +479,39 @@ pub async fn send_invoice_email(
 	)
 	.await
 }
+
+pub async fn send_delete_resource_notification(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	month: &str,
+	year: i32,
+) -> Result<(), Error> {
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
+
+	let user = db::get_user_by_user_id(connection, &workspace.super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_resource_shutdown_email(
+		user_email.parse()?,
+		&workspace.name,
+		month,
+		year,
+	)
+	.await
+}

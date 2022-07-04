@@ -121,7 +121,7 @@ pub async fn add_credits_to_workspace(
 	Ok(())
 }
 
-pub async fn confirm_payment_method(
+pub async fn confirm_payment_intent(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	payment_intent_id: &str,
@@ -872,5 +872,61 @@ pub async fn make_payment(
 	)
 	.await?;
 
+	Ok(())
+}
+
+pub async fn shutdown_all_services(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	config: &Settings,
+) -> Result<(), Error> {
+	//TODO: remove the request id from here and add it to rabbitmq
+	let request_id = Uuid::new_v4();
+
+	super::delete_all_deployments(
+		connection,
+		workspace_id,
+		config,
+		&request_id,
+	)
+	.await?;
+
+	super::delete_all_static_sites(
+		connection,
+		workspace_id,
+		config,
+		&request_id,
+	)
+	.await?;
+
+	super::delete_all_managed_databases(
+		connection,
+		workspace_id,
+		config,
+		&request_id,
+	)
+	.await?;
+
+	super::delete_all_managed_urls(
+		connection,
+		workspace_id,
+		config,
+		&request_id,
+	)
+	.await?;
+
+	super::delete_all_secrets(connection, workspace_id, config, &request_id)
+		.await?;
+
+	super::delete_all_docker_repositories(
+		connection,
+		workspace_id,
+		config,
+		&request_id,
+	)
+	.await?;
+
+	super::delete_all_domains(connection, workspace_id, config, &request_id)
+		.await?;
 	Ok(())
 }

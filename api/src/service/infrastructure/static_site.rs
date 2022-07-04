@@ -620,3 +620,26 @@ async fn static_site_limit_crossed(
 
 	Ok(false)
 }
+
+pub async fn delete_all_static_sites(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let static_sites =
+		db::get_static_sites_for_workspace(connection, workspace_id).await?;
+
+	for static_site in static_sites {
+		super::delete_static_site(
+			connection,
+			workspace_id,
+			&static_site.id,
+			config,
+			request_id,
+		)
+		.await?;
+	}
+
+	Ok(())
+}

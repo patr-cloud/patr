@@ -353,3 +353,26 @@ async fn secret_limit_crossed(
 
 	Ok(false)
 }
+
+pub async fn delete_all_secrets(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let secrets =
+		db::get_all_secrets_in_workspace(connection, workspace_id).await?;
+
+	for secret in secrets {
+		super::delete_secret_in_workspace(
+			connection,
+			workspace_id,
+			&secret.id,
+			config,
+			request_id,
+		)
+		.await?;
+	}
+
+	Ok(())
+}

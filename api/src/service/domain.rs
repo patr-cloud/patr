@@ -930,3 +930,26 @@ async fn domain_limit_crossed(
 
 	Ok(false)
 }
+
+pub async fn delete_all_domains(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let domains =
+		db::get_domains_for_workspace(connection, workspace_id).await?;
+
+	for domain in domains {
+		super::delete_domain_in_workspace(
+			connection,
+			workspace_id,
+			&domain.id,
+			config,
+			request_id,
+		)
+		.await?;
+	}
+
+	Ok(())
+}
