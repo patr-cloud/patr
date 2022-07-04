@@ -172,24 +172,6 @@ pub async fn create_new_managed_url_in_workspace(
 	)
 	.await?;
 
-	log::trace!(
-		"request_id: {} - Updating managed url on Kubernetes.",
-		request_id
-	);
-	kubernetes::update_kubernetes_managed_url(
-		workspace_id,
-		&ManagedUrl {
-			id: managed_url_id.clone(),
-			sub_domain: sub_domain.to_string(),
-			domain_id: domain_id.clone(),
-			path: path.to_string(),
-			url_type: url_type.clone(),
-		},
-		config,
-		&Uuid::new_v4(),
-	)
-	.await?;
-
 	if domain.is_ns_external() && domain.is_verified {
 		log::trace!(
 			"request_id: {} - Creating certificates for managed url.",
@@ -206,6 +188,18 @@ pub async fn create_new_managed_url_in_workspace(
 		)
 		.await?;
 	}
+
+	log::trace!(
+		"request_id: {} - Queuing update kubernetes managed url",
+		request_id
+	);
+	service::queue_create_managed_url(
+		workspace_id,
+		&managed_url_id,
+		config,
+		request_id,
+	)
+	.await?;
 
 	log::trace!("request_id: {} - ManagedUrl Created.", request_id);
 	Ok(managed_url_id)
@@ -451,7 +445,7 @@ async fn managed_url_limit_crossed(
 			.len();
 
 	log::trace!(
-		"request_id: {} - Checking if deployment limits are crossed",
+		"request_id: {} - Checking if managed url limits are crossed",
 		request_id
 	);
 	if current_managed_urls + 1 > workspace.managed_url_limit as usize {

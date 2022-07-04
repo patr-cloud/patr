@@ -18,6 +18,7 @@ pub enum RequestMessage {
 	StaticSite(StaticSiteRequestData),
 	Database {},
 	Workspace(WorkspaceRequestData),
+	ManagedUrl(ManagedUrlData),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -132,6 +133,17 @@ pub enum WorkspaceRequestData {
 	},
 	ConfirmPaymentIntent {
 		payment_intent_id: String,
+		workspace_id: Uuid,
+		request_id: Uuid,
+	},
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "action", rename_all = "camelCase")]
+#[allow(clippy::large_enum_variant)]
+pub enum ManagedUrlData {
+	Create {
+		managed_url_id: Uuid,
 		workspace_id: Uuid,
 		request_id: Uuid,
 	},
