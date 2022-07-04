@@ -375,6 +375,25 @@ pub(super) async fn process_request(
 			}
 			// confirming payment intent and charging the user
 
+			let month_string = match last_transaction.month {
+				1 => "January",
+				2 => "February",
+				3 => "March",
+				4 => "April",
+				5 => "May",
+				6 => "June",
+				7 => "July",
+				8 => "August",
+				9 => "September",
+				10 => "October",
+				11 => "November",
+				12 => "December",
+				_ => "",
+			};
+
+			let year =
+				chrono::DateTime::from(last_transaction.date.clone()).year();
+
 			let client = Client::new();
 
 			let password: Option<String> = None;
@@ -393,6 +412,15 @@ pub(super) async fn process_request(
 				.status();
 
 			if !payment_status.is_success() {
+				service::send_payment_failed_reminder(
+					connection,
+					&workspace_id,
+					last_transaction.amount,
+					month_string,
+					year,
+				)
+				.await?;
+
 				db::create_transaction(
 					connection,
 					&workspace_id,
@@ -420,26 +448,6 @@ pub(super) async fn process_request(
 						config,
 					)
 					.await?;
-
-					let month_string = match last_transaction.month {
-						1 => "January",
-						2 => "February",
-						3 => "March",
-						4 => "April",
-						5 => "May",
-						6 => "June",
-						7 => "July",
-						8 => "August",
-						9 => "September",
-						10 => "October",
-						11 => "November",
-						12 => "December",
-						_ => "",
-					};
-
-					let year =
-						chrono::DateTime::from(last_transaction.date.clone())
-							.year();
 
 					service::send_delete_resource_notification(
 						connection,

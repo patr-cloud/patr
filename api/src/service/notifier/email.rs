@@ -415,7 +415,37 @@ pub async fn send_resource_shutdown_email(
 		},
 		email,
 		None,
-		"Patr invoice",
+		"Patr resource shutdown",
+	)
+	.await
+}
+
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/payment-failed-reminder/template.json"]
+struct PaymentFailedReminderEmail {
+	workspace_name: String,
+	amount: f64,
+	month: String,
+	year: i32,
+}
+
+pub async fn send_payment_failed_reminder(
+	email: Mailbox,
+	workspace_name: &str,
+	amount: f64,
+	month: &str,
+	year: i32,
+) -> Result<(), Error> {
+	send_email(
+		PaymentFailedReminderEmail {
+			workspace_name: workspace_name.to_string(),
+			amount,
+			month: month.to_string(),
+			year,
+		},
+		email,
+		None,
+		"Patr payment reminder",
 	)
 	.await
 }
