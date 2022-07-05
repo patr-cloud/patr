@@ -279,13 +279,11 @@ pub struct GithubSettings {
 	pub callback_url: String,
 	#[serde(alias = "useremailapi")]
 	pub user_email_api: String,
-	#[serde(alias = "state")]
 	pub state: String,
-	#[serde(alias = "userInfourl")]
-	#[serde(alias = "scope")]
 	pub scope: String,
 	#[serde(alias = "userInfoUrl")]
 	pub user_info_url: String,
+	pub state: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
