@@ -114,7 +114,8 @@
 		"scope": "<github scope>",
 		"authUrl": "<github oauth url>",
 		"callbackUrl": "<github callback url>",
-		"userInfoUrl": "<user info url>"
+		"userInfoUrl": "<user info url>",
+		"state": ""
 	},
 	"stripe": {
 		"publishableKey": "pk_test_123",
