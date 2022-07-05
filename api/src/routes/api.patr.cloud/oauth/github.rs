@@ -6,8 +6,9 @@ use api_models::models::auth::{
 	GithubAuthResponse,
 	LoginResponse,
 };
-use eve_rs::{App as EveApp, AsError, NextHandler};
-use http::header::ACCEPT;
+use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use http::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
+use octorust::auth::Credentials;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
 use crate::{
@@ -63,11 +64,12 @@ async fn login_with_github(
 		.map(char::from)
 		.collect::<String>();
 
-	let value = "random-unique-alpha";
+	//  TODO: find a way to make it dynamic
+	let state_value = context.get_state().config.github.state.clone();
 
 	context
 		.get_redis_connection()
-		.set(format!("githubOAuthState:{}", state), value)
+		.set(format!("githubOAuthState:{}", state), state_value)
 		.await?;
 
 	let oauth_url =
@@ -92,8 +94,9 @@ async fn oauth_callback(
 		.get(format!("githubOAuthState:{}", state))
 		.await?;
 
+	let state = context.get_state().config.github.state.clone();
 	if !redis_github_state
-		.map(|value| value == "random-unique-alpha")
+		.map(|value| value == state)
 		.unwrap_or(false)
 	{
 		Error::as_result()
@@ -101,43 +104,75 @@ async fn oauth_callback(
 			.body(error!(SERVER_ERROR).to_string())?
 	}
 
-	let GitHubAccessTokenResponse {
-		access_token,
-		scope: _scope,
-		token_type: _token_type,
-	} = reqwest::Client::builder()
-		.build()?
-		.post(callback_url)
-		.query(&[
-			(
-				"client_id",
-				context.get_state().config.github.client_id.clone(),
-			),
-			(
-				"client_secret",
-				context.get_state().config.github.client_secret.clone(),
-			),
-			("code", code),
-		])
-		.header(ACCEPT, "application/json")
-		.send()
-		.await?
-		.error_for_status()?
-		.json::<GitHubAccessTokenResponse>()
-		.await?;
+	let GitHubAccessTokenResponse { access_token, .. } =
+		reqwest::Client::builder()
+			.build()?
+			.post(callback_url)
+			.query(&[
+				(
+					"client_id",
+					context.get_state().config.github.client_id.clone(),
+				),
+				(
+					"client_secret",
+					context.get_state().config.github.client_secret.clone(),
+				),
+				("code", code),
+			])
+			.header(ACCEPT, "application/json")
+			.send()
+			.await?
+			.error_for_status()?
+			.json::<GitHubAccessTokenResponse>()
+			.await?;
 
 	// Make a call to github to get the user details
-	let user_info_url = context.get_state().config.github.user_info_url.clone();
-	let GitHubUserInfoResponse { username, email } = reqwest::Client::builder()
+	let user_email_url =
+		context.get_state().config.github.user_info_url.clone();
+
+	let github_client =
+		octorust::Client::new("patr", Credentials::Token(access_token.clone()))
+			.map_err(|err| {
+				log::info!("error while octorust init: {err:#}");
+				err
+			})
+			.ok()
+			.status(500)?;
+
+	let login = github_client
+		.users()
+		.get_authenticated_private_user()
+		.await
+		.map_err(|err| {
+			log::info!("error while getting login name: {err:#}");
+			err
+		})
+		.ok()
+		.status(500)?
+		.login;
+
+	let user_agent = context.get_header("User-Agent").unwrap_or(login.clone());
+
+	let user_emails = reqwest::Client::builder()
 		.build()?
-		.get(user_info_url)
-		.header("Authorization", format!("token {}", access_token))
-		.header(ACCEPT, "application/json")
+		.get(format!("{}", user_email_url))
+		.header(AUTHORIZATION, format!("token {}", access_token))
+		.header(USER_AGENT, user_agent)
 		.send()
 		.await?
 		.error_for_status()?
-		.json::<GitHubUserInfoResponse>()
+		.json::<Vec<GitHubUserInfoResponse>>()
 		.await?;
+
+	let primary_email = user_emails.into_iter().find(|email| email.primary);
+
+	let email = if let Some(email) = primary_email {
+		email.email
+	} else {
+		Error::as_result()
+			.status(404)
+			.body(error!(EMAIL_NOT_FOUND).to_string())?
+	};
 
 	let user_exists =
 		db::get_user_by_email(context.get_database_connection(), &email)
@@ -148,7 +183,7 @@ async fn oauth_callback(
 			context.get_database_connection(),
 			&access_token,
 			&user.id,
-			&username,
+			&login,
 			true,
 		)
 		.await?;

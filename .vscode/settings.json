@@ -1,9 +1,5 @@
 {
     "rust-analyzer.checkOnSave.allTargets": false,
-    "rust-analyzer.checkOnSave.command": "cargo check",
+    "rust-analyzer.checkOnSave.command": "check",
     "rust-analyzer.checkOnSave.enable": true,
-    "rust-analyzer.checkOnSave.overrideCommand": [
-        "./exec",
-        "run-ra-check"
-    ]
 }
