@@ -68,17 +68,53 @@ pub async fn add_credits_to_workspace(
 		.status(400)
 		.body(error!(ADDRESS_REQUIRED).to_string())?;
 
+	const EARLY_ADOPTER_50: &str = "Patr Early Adopter 50";
+	const EARLY_ADOPTER_125: &str = "Patr Early Adopter 125";
+	const NORMAL_CREDITS: &str = "Patr charge: Additional credits";
+
+	let (dollars, description) = if credits == 50 {
+		let transaction_exists =
+			db::get_transaction_by_description_in_workspace(
+				connection,
+				workspace_id,
+				EARLY_ADOPTER_50,
+			)
+			.await?;
+		if transaction_exists.is_some() {
+			// This transaction has already been purchased
+			(50, NORMAL_CREDITS)
+		} else {
+			(10, EARLY_ADOPTER_50)
+		}
+	} else if credits == 125 {
+		let transaction_exists =
+			db::get_transaction_by_description_in_workspace(
+				connection,
+				workspace_id,
+				EARLY_ADOPTER_125,
+			)
+			.await?;
+		if transaction_exists.is_some() {
+			// This transaction has already been purchased
+			(125, NORMAL_CREDITS)
+		} else {
+			(25, EARLY_ADOPTER_125)
+		}
+	} else {
+		(credits, NORMAL_CREDITS)
+	};
+
 	let (currency, amount) = if db::get_billing_address(connection, &address_id)
 		.await?
 		.status(500)?
 		.country == *"IN"
 	{
-		("inr".to_string(), (credits * 10 * 80) as u64)
+		("inr".to_string(), (dollars * 100 * 80) as u64)
 	} else {
-		("usd".to_string(), (credits * 10) as u64)
+		("usd".to_string(), (dollars * 100) as u64)
 	};
 
-	let description = "Patr charge: Additional credits".to_string();
+	let description = description.to_string();
 
 	let payment_intent_object = client
 		.post("https://api.stripe.com/v1/payment_intents")

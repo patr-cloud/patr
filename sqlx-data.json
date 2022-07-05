@@ -8069,26 +8069,6 @@
     },
     "query": "ALTER TABLE secret ADD CONSTRAINT secret_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id), ADD CONSTRAINT secret_fk_deployment_id_workspace_id FOREIGN KEY(deployment_id, workspace_id) REFERENCES deployment(id, workspace_id);"
   },
-  "c398e7681e9cd67ff38e3500a06f138615991ae86311bbaf545a71820a8003ee": {
-    "describe": {
-      "columns": [
-        {
-          "name": "amount!",
-          "ordinal": 0,
-          "type_info": "Float8"
-        }
-      ],
-      "nullable": [
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT COALESCE( SUM( CASE WHEN transaction_type = 'bill' THEN amount ELSE -amount END ), 0 ) as \"amount!\" FROM transaction WHERE workspace_id = $1 AND ( transaction_type = 'bill' OR transaction_type = 'credits' ) AND payment_status = 'success';"
-  },
   "c4926f8d59dc7bc4e9ee1f2472a6362d47d65337c1644b6a0487cd9318d28d11": {
     "describe": {
       "columns": [
@@ -8778,6 +8758,96 @@
       }
     },
     "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tmonth,\n\t\t\tamount,\n\t\t\tpayment_intent_id,\n\t\t\tdate as \"date: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\ttransaction_type as \"transaction_type: _\",\n\t\t\tpayment_status as \"payment_status: _\",\n\t\t\tdescription\n\t\tFROM\n\t\t\ttransaction\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\ttransaction_type = 'credits';\n\t\t"
+  },
+  "d9a2bc2b47c63463c5cc38481eeda57692f7e4b3a143b71c569521d3bab6b72b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "month",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "amount",
+          "ordinal": 2,
+          "type_info": "Float8"
+        },
+        {
+          "name": "payment_intent_id",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "date: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 5,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "transaction_type: _",
+          "ordinal": 6,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "bill",
+                  "credits",
+                  "payment"
+                ]
+              },
+              "name": "transaction_type"
+            }
+          }
+        },
+        {
+          "name": "payment_status: _",
+          "ordinal": 7,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "success",
+                  "failed"
+                ]
+              },
+              "name": "payment_status"
+            }
+          }
+        },
+        {
+          "name": "description",
+          "ordinal": 8,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tmonth,\n\t\t\tamount,\n\t\t\tpayment_intent_id,\n\t\t\tdate as \"date: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\ttransaction_type as \"transaction_type: _\",\n\t\t\tpayment_status as \"payment_status: _\",\n\t\t\tdescription\n\t\tFROM\n\t\t\ttransaction\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\tdescription = $2;\n\t\t"
   },
   "d9ab542f26064cd3798be53f2c1c85e109ef352cbd69f38ada8f317426cd404c": {
     "describe": {

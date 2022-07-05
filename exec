@@ -5,7 +5,7 @@ function initialize-repo() {
 
     if [ $isClusterRequired == "y" ]; then
         # Make sure kind and kubectl are installed
-        kind --version
+        kind --version > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "kind not installed. Please install it from https://kind.sigs.k8s.io/docs/user/quick-start/"
             exit 1
@@ -22,7 +22,7 @@ function initialize-repo() {
         echo "Generating ECDSA keys for Docker Registry"
         currentDir=$(pwd)
         cd $baseDir/assets/patr
-        $baseDir/assets/patr/how\ to\ ecdsa.sh
+        ./how\ to\ ecdsa.sh
         cd $currentDir
         echo "Keys generated"
     fi
@@ -41,16 +41,17 @@ function initialize-repo() {
             clusterName="${clusterName}${chars:RANDOM%${#chars}:1}"
         done
         echo "Your cluster has been assigned a random name: $clusterName"
-        kind create cluster --name $clusterName --config $baseDir/assets/patr/kind-config.yml
+        sed "s/\$INGRESS_HTTP_PORT/$INGRESS_HTTP_PORT/;s/\$INGRESS_HTTPS_PORT/$INGRESS_HTTPS_PORT/" $baseDir/assets/patr/kind-config.yml | kind create cluster --name $clusterName -v=-1 --config=-
         echo "KIND_CLUSTER_NAME=$clusterName" > $baseDir/.localData
         echo "Cluster 'kind-$clusterName' created"
 
         echo "Setting up nginx ingress controller"
-        kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml --context kind-$clusterName
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml --context kind-$clusterName > /dev/null
         echo "nginx ingress controller setup"
 
         echo "Waiting for ingress controller to start"
-        kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --context kind-$clusterName --timeout=-1s
+        kubectl wait --namespace ingress-nginx --for=condition=available deployment --selector=app.kubernetes.io/component=controller --context kind-$clusterName --timeout=-1s > /dev/null
+        kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --context kind-$clusterName --timeout=-1s > /dev/null
         echo "nginx ingress controller ready"
 
         echo "Setting up your kubernetes variables"
@@ -61,11 +62,11 @@ function initialize-repo() {
         kubernetesClusterAuthUsername=kind-$clusterName
         kubernetesClusterContextName=kind-$clusterName
         sed -i "s/APP_KUBERNETES_CERTIFICATEAUTHORITYDATA=\"\"/APP_KUBERNETES_CERTIFICATEAUTHORITYDATA=$kubernetesCertificateAuthorityData/" .env
-        sed -i "s/APP_KUBERNETES_CLUSTERNAME=\"\"/APP_KUBERNETES_CLUSTERNAME=$kubernetesClusterName/" .env
-        sed -i "s/APP_KUBERNETES_CLUSTERURL=\"\"/APP_KUBERNETES_CLUSTERURL=$kubernetesClusterUrl/" .env
-        sed -i "s/APP_KUBERNETES_AUTHNAME=\"\"/APP_KUBERNETES_AUTHNAME=$kubernetesClusterAuthName/" .env
-        sed -i "s/APP_KUBERNETES_AUTHUSERNAME=\"\"/APP_KUBERNETES_AUTHUSERNAME=$kubernetesClusterAuthUsername/" .env
-        sed -i "s/APP_KUBERNETES_CONTEXTNAME=\"\"/APP_KUBERNETES_CONTEXTNAME=$kubernetesClusterContextName/" .env
+        sed -i "s/APP_KUBERNETES_CLUSTERNAME=\"\"/APP_KUBERNETES_CLUSTERNAME=\"$kubernetesClusterName\"/" .env
+        sed -i "s/APP_KUBERNETES_CLUSTERURL=\"\"/APP_KUBERNETES_CLUSTERURL=\"$kubernetesClusterUrl\"/" .env
+        sed -i "s/APP_KUBERNETES_AUTHNAME=\"\"/APP_KUBERNETES_AUTHNAME=\"$kubernetesClusterAuthName\"/" .env
+        sed -i "s/APP_KUBERNETES_AUTHUSERNAME=\"\"/APP_KUBERNETES_AUTHUSERNAME=\"$kubernetesClusterAuthUsername\"/" .env
+        sed -i "s/APP_KUBERNETES_CONTEXTNAME=\"\"/APP_KUBERNETES_CONTEXTNAME=\"$kubernetesClusterContextName\"/" .env
         echo ".env file updated with kubernetes variables"
     else
         echo "Skipping cluster creation"
