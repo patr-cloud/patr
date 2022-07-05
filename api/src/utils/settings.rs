@@ -291,14 +291,15 @@ pub struct GithubSettings {
 	pub client_id: String,
 	#[serde(alias = "clientsecret")]
 	pub client_secret: String,
-	#[serde(alias = "scope")]
 	pub scope: String,
-	#[serde(alias = "authUrl")]
+	#[serde(alias = "authurl")]
 	pub auth_url: String,
-	#[serde(alias = "callbackUrl")]
+	#[serde(alias = "callbackurl")]
 	pub callback_url: String,
-	#[serde(alias = "userInfoUrl")]
+	#[serde(alias = "userInfourl")]
 	pub user_info_url: String,
+	#[serde(alias = "state")]
+	pub state: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
