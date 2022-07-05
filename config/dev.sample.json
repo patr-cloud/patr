@@ -115,6 +115,7 @@
 		"authUrl": "<github oauth url>",
 		"callbackUrl": "<github callback url>",
 		"userEmailApi": "<user email url>",
+		"userInfoUrl": "<user info url>",
 		"state": ""
 	},
 	"stripe": {
