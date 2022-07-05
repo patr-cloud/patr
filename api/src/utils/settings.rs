@@ -70,6 +70,8 @@ pub struct Settings {
 	pub loki: LokiSettings,
 	pub mailchimp: MailchimpSettings,
 	pub github: GithubSettings,
+	pub google: GoogleSettings,
+	pub drone: DroneSettings,
 	pub stripe: StripeSettings,
 	#[serde(alias = "ipinfotoken")]
 	pub ipinfo_token: String,
@@ -284,6 +286,26 @@ pub struct GithubSettings {
 	#[serde(alias = "userInfoUrl")]
 	pub user_info_url: String,
 	pub state: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GoogleSettings {
+	#[serde(alias = "clientid")]
+	pub client_id: String,
+	#[serde(alias = "clientsecret")]
+	pub client_secret: String,
+	#[serde(alias = "authurl")]
+	pub auth_url: String,
+	#[serde(alias = "scope")]
+	pub scope: String,
+	#[serde(alias = "oauthcallbackurl")]
+	pub oauth_callback_url: String,
+	#[serde(alias = "redirecturl")]
+	pub redirect_url: String,
+	#[serde(alias = "expiresin")]
+	pub expires_in: u64,
+
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

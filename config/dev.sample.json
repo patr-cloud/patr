@@ -119,6 +119,15 @@
 		"userInfoUrl": "<user info url>",
 		"state": ""
 	},
+	"google": {
+		"authUrl": "",
+		"oauthCallbackUrl": "",
+		"scope": "",
+		"clientId": "",
+		"clientSecret": "",
+		"redirectUri": "",
+		"expiresIn": "<accesstoken ttl in seconds>"
+	},
 	"stripe": {
 		"publishableKey": "pk_test_123",
 		"secretKey": "sk_test_123"
