@@ -3,14 +3,17 @@ use std::{
 	time::Duration,
 };
 
-use api_models::utils::{DateTime, True};
+use api_models::{
+	models::workspace::billing::{PaymentStatus, TransactionType},
+	utils::{DateTime, True},
+};
 use chrono::{TimeZone, Utc};
 use eve_rs::AsError;
 use reqwest::Client;
 use tokio::time;
 
 use crate::{
-	db::{self, PaymentStatus, PaymentType, TransactionType},
+	db::{self, PaymentType},
 	error,
 	models::{
 		billing::{PaymentIntent, PaymentIntentObject},

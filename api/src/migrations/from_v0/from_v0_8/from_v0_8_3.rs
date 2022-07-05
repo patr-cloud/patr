@@ -3,11 +3,26 @@ use chrono::{Datelike, TimeZone, Utc};
 use sqlx::Row;
 
 use crate::{
-	db::{PaymentStatus, TransactionType},
 	migrate_query as query,
 	utils::{settings::Settings, Error},
 	Database,
 };
+
+#[derive(sqlx::Type, PartialEq, Eq, Hash)]
+#[sqlx(type_name = "TRANSACTION_TYPE", rename_all = "lowercase")]
+pub enum TransactionType {
+	Bill,
+	Credits,
+	Payment,
+}
+
+#[derive(sqlx::Type, PartialEq, Eq, Hash)]
+#[sqlx(type_name = "PAYMENT_STATUS", rename_all = "lowercase")]
+pub enum PaymentStatus {
+	Pending,
+	Success,
+	Failed,
+}
 
 pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
