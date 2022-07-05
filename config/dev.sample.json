@@ -110,7 +110,11 @@
 	},
 	"github": {
 		"clientId": "app-client-id",
-		"clientSecret": "app-client-secret"
+		"clientSecret": "app-client-secret",
+		"scope": "<github scope>",
+		"authUrl": "<github oauth url>",
+		"callbackUrl": "<github callback url>",
+		"userInfoUrl": "<user info url>"
 	},
 	"stripe": {
 		"publishableKey": "pk_test_123",
