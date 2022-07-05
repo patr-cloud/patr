@@ -18,6 +18,7 @@ use api_models::{
 use chrono::Utc;
 use eve_rs::AsError;
 use k8s_openapi::api::core::v1::Event;
+use redis::aio::MultiplexedConnection as RedisConnection;
 use reqwest::Client;
 
 use crate::{
@@ -28,6 +29,7 @@ use crate::{
 		rbac::{self, permissions},
 		DeploymentMetadata,
 	},
+	redis as api_redis,
 	utils::{settings::Settings, validator, Error},
 	Database,
 };
@@ -54,6 +56,7 @@ use crate::{
 /// [`Transaction`]: Transaction
 pub async fn create_deployment_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	redis_conn: &mut RedisConnection,
 	workspace_id: &Uuid,
 	name: &str,
 	registry: &DeploymentRegistry,
@@ -98,6 +101,13 @@ pub async fn create_deployment_in_workspace(
 			.status(200)
 			.body(error!(RESOURCE_EXISTS).to_string())?;
 	}
+
+	let lock_value = api_redis::acquire_lock_on_resource(
+		redis_conn,
+		workspace_id,
+		"deployment",
+	)
+	.await?;
 
 	log::trace!("request_id: {} - Generating new resource id", request_id);
 	let deployment_id = db::generate_new_resource_id(connection).await?;
@@ -242,6 +252,14 @@ pub async fn create_deployment_in_workspace(
 		machine_type,
 		deployment_running_details.min_horizontal_scale as i32,
 		&DateTime::from(created_time),
+	)
+	.await?;
+
+	api_redis::delete_lock_on_resource(
+		redis_conn,
+		workspace_id,
+		"deployment",
+		lock_value,
 	)
 	.await?;
 

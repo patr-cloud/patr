@@ -9,6 +9,7 @@ use api_models::{
 };
 use chrono::{Datelike, TimeZone, Utc};
 use eve_rs::AsError;
+use redis::aio::MultiplexedConnection as RedisConnection;
 use reqwest::Client;
 use tokio::time;
 
@@ -19,6 +20,7 @@ use crate::{
 		billing::{PaymentIntent, PaymentIntentObject},
 		rabbitmq::WorkspaceRequestData,
 	},
+	redis as api_redis,
 	service,
 	utils::{settings::Settings, Error},
 	Database,
@@ -26,6 +28,7 @@ use crate::{
 
 pub(super) async fn process_request(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	redis_conn: &mut RedisConnection,
 	request_data: WorkspaceRequestData,
 	config: &Settings,
 ) -> Result<(), Error> {
@@ -82,6 +85,13 @@ pub(super) async fn process_request(
 			workspace,
 			request_id,
 		} => {
+			let lock_value = api_redis::acquire_lock_on_resource(
+				redis_conn,
+				&workspace.id,
+				"billing",
+			)
+			.await?;
+
 			log::trace!(
 				"request_id: {} - Generating invoice for {} {}",
 				request_id,
@@ -320,6 +330,14 @@ pub(super) async fn process_request(
 				total_bill,
 				month_string.to_string(),
 				year,
+			)
+			.await?;
+
+			api_redis::delete_lock_on_resource(
+				redis_conn,
+				&workspace.id,
+				"billing",
+				lock_value,
 			)
 			.await?;
 

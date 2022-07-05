@@ -9,6 +9,7 @@ use api_models::{
 };
 use chrono::Utc;
 use eve_rs::AsError;
+use redis::aio::MultiplexedConnection as RedisConnection;
 use s3::{creds::Credentials, Bucket, Region};
 use zip::ZipArchive;
 
@@ -16,6 +17,7 @@ use crate::{
 	db::{self, StaticSitePlan},
 	error,
 	models::rbac,
+	redis as api_redis,
 	service::{self, infrastructure::kubernetes},
 	utils::{settings::Settings, validator, Error},
 	Database,
@@ -23,6 +25,7 @@ use crate::{
 
 pub async fn create_static_site_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	redis_conn: &mut RedisConnection,
 	workspace_id: &Uuid,
 	name: &str,
 	file: Option<String>,
@@ -53,6 +56,13 @@ pub async fn create_static_site_in_workspace(
 			.status(200)
 			.body(error!(RESOURCE_EXISTS).to_string())?;
 	}
+
+	let lock_value = api_redis::acquire_lock_on_resource(
+		redis_conn,
+		workspace_id,
+		"static-site",
+	)
+	.await?;
 
 	let static_site_id = db::generate_new_resource_id(connection).await?;
 
@@ -137,6 +147,14 @@ pub async fn create_static_site_in_workspace(
 		)
 		.await?;
 	}
+
+	api_redis::delete_lock_on_resource(
+		redis_conn,
+		workspace_id,
+		"static-site",
+		lock_value,
+	)
+	.await?;
 
 	Ok(static_site_id)
 }

@@ -6,6 +6,7 @@ use api_models::{
 	utils::{ResourceType, Uuid},
 };
 use eve_rs::AsError;
+use redis::aio::MultiplexedConnection as RedisConnection;
 
 /// This module validates user info and performs tasks related to user
 /// authentication The flow of this file will be:
@@ -755,6 +756,7 @@ pub async fn reset_password(
 /// ['JoinUser`]: JoinUser
 pub async fn join_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	redis_conn: &mut RedisConnection,
 	config: &Settings,
 	otp: &str,
 	username: &str,
@@ -885,6 +887,7 @@ pub async fn join_user(
 		let request_id = Uuid::new_v4();
 		let domain_id = service::add_domain_to_workspace(
 			connection,
+			redis_conn,
 			user_data.business_domain_name.as_ref().unwrap(),
 			&DomainNameserverType::External,
 			&workspace_id,

@@ -33,6 +33,7 @@ use cloudflare::{
 	},
 };
 use eve_rs::AsError;
+use redis::aio::MultiplexedConnection as RedisConnection;
 use tokio::{net::UdpSocket, task};
 use trust_dns_client::{
 	client::{AsyncClient, ClientHandle},
@@ -45,6 +46,7 @@ use crate::{
 	db::{self, DnsRecordType, DomainPlan},
 	error,
 	models::rbac::{self, resource_types},
+	redis as api_redis,
 	utils::{
 		constants,
 		get_current_time_millis,
@@ -132,12 +134,17 @@ pub async fn ensure_personal_domain_exists(
 ///[`Transaction`]: Transaction
 pub async fn add_domain_to_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	redis_conn: &mut RedisConnection,
 	full_domain_name: &str,
 	nameserver_type: &DomainNameserverType,
 	workspace_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
+	let lock_value =
+		api_redis::acquire_lock_on_resource(redis_conn, workspace_id, "secret")
+			.await?;
+
 	log::trace!(
 		"request_id: {} - Splitting the domain name and TLD",
 		request_id
@@ -280,6 +287,15 @@ pub async fn add_domain_to_workspace(
 	}
 
 	log::trace!("request_id: {} - Domain added successfully", request_id);
+
+	api_redis::delete_lock_on_resource(
+		redis_conn,
+		workspace_id,
+		"domain",
+		lock_value,
+	)
+	.await?;
+
 	Ok(domain_id)
 }
 

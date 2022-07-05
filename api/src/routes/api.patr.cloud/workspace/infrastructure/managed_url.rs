@@ -258,8 +258,12 @@ async fn create_managed_url(
 		request_id,
 		workspace_id,
 	);
+
+	let mut redis_conn = context.get_redis_connection().clone();
+
 	let id = service::create_new_managed_url_in_workspace(
 		context.get_database_connection(),
+		&mut redis_conn,
 		&workspace_id,
 		&sub_domain,
 		&domain_id,

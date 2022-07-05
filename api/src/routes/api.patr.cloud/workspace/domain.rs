@@ -512,8 +512,11 @@ async fn add_domain_to_workspace(
 
 	// move this to service layer
 	let config = context.get_state().config.clone();
+	let mut redis_conn = context.get_redis_connection().clone();
+
 	let domain_id = service::add_domain_to_workspace(
 		context.get_database_connection(),
+		&mut redis_conn,
 		&domain,
 		&nameserver_type,
 		&workspace_id,

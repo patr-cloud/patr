@@ -1,4 +1,5 @@
 mod auth;
+mod workspace;
 
 use redis::{
 	aio::MultiplexedConnection as RedisConnection,
@@ -7,7 +8,7 @@ use redis::{
 };
 use tokio::task;
 
-pub use self::auth::*;
+pub use self::{auth::*, workspace::*};
 use crate::utils::settings::Settings;
 
 pub async fn create_redis_connection(

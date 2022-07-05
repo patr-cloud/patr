@@ -684,8 +684,11 @@ async fn create_deployment(
 		request_id
 	);
 
+	let mut redis_conn = context.get_redis_connection().clone();
+
 	let id = service::create_deployment_in_workspace(
 		context.get_database_connection(),
+		&mut redis_conn,
 		&workspace_id,
 		name,
 		&registry,

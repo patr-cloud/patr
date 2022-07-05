@@ -3,6 +3,7 @@ use std::ops::DerefMut;
 use api_models::utils::{DateTime, Uuid};
 use chrono::Utc;
 use eve_rs::AsError;
+use redis::aio::MultiplexedConnection as RedisConnection;
 
 use crate::{
 	db::{
@@ -13,6 +14,7 @@ use crate::{
 	},
 	error,
 	models::rbac,
+	redis as api_redis,
 	service::{
 		self,
 		infrastructure::{aws, digitalocean},
@@ -23,6 +25,7 @@ use crate::{
 
 pub async fn create_managed_database_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	redis_conn: &mut RedisConnection,
 	name: &str,
 	db_name: &str,
 	engine: &ManagedDatabaseEngine,
@@ -34,10 +37,18 @@ pub async fn create_managed_database_in_workspace(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
+	let lock_value = api_redis::acquire_lock_on_resource(
+		redis_conn,
+		workspace_id,
+		"managed-database",
+	)
+	.await?;
+
 	let databases =
 		db::get_all_database_clusters_for_workspace(connection, workspace_id)
 			.await?;
 
+	// TODO: remove the hardcoded value
 	if databases.len() > 3 {
 		return Error::as_result()
 			.status(400)
@@ -178,6 +189,14 @@ pub async fn create_managed_database_in_workspace(
 				.body(error!(WRONG_PARAMETERS).to_string()));
 		}
 	}
+
+	api_redis::delete_lock_on_resource(
+		redis_conn,
+		workspace_id,
+		"managed-database",
+		lock_value,
+	)
+	.await?;
 
 	Ok(database_id)
 }

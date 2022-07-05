@@ -283,8 +283,11 @@ async fn create_database_cluster(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let mut redis_conn = context.get_redis_connection().clone();
+
 	let database_id = service::create_managed_database_in_workspace(
 		context.get_database_connection(),
+		&mut redis_conn,
 		name,
 		db_name,
 		&engine,

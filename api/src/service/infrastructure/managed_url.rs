@@ -7,12 +7,14 @@ use api_models::{
 };
 use chrono::Utc;
 use eve_rs::AsError;
+use redis::aio::MultiplexedConnection as RedisConnection;
 
 use super::kubernetes;
 use crate::{
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
 	models::rbac,
+	redis as api_redis,
 	service,
 	utils::{settings::Settings, Error},
 	Database,
@@ -20,6 +22,7 @@ use crate::{
 
 pub async fn create_new_managed_url_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	redis_conn: &mut RedisConnection,
 	workspace_id: &Uuid,
 	sub_domain: &str,
 	domain_id: &Uuid,
@@ -28,6 +31,13 @@ pub async fn create_new_managed_url_in_workspace(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
+	let lock_value = api_redis::acquire_lock_on_resource(
+		redis_conn,
+		workspace_id,
+		"managed-url",
+	)
+	.await?;
+
 	log::trace!("request_id: {} - Creating a new managed url with sub_domain: {} and domain_id: {} on Kubernetes with request_id: {}",
 		request_id,
 		sub_domain,
@@ -208,6 +218,15 @@ pub async fn create_new_managed_url_in_workspace(
 	}
 
 	log::trace!("request_id: {} - ManagedUrl Created.", request_id);
+
+	api_redis::delete_lock_on_resource(
+		redis_conn,
+		workspace_id,
+		"managed-url",
+		lock_value,
+	)
+	.await?;
+
 	Ok(managed_url_id)
 }
 

@@ -526,8 +526,11 @@ async fn create_static_site_deployment(
 
 	let config = context.get_state().config.clone();
 
+	let mut redis_conn = context.get_redis_connection().clone();
+
 	let id = service::create_static_site_in_workspace(
 		context.get_database_connection(),
+		&mut redis_conn,
 		&workspace_id,
 		name,
 		file,

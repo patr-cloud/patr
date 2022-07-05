@@ -124,6 +124,8 @@ async fn process_queue_payload(
 ) -> Result<(), Error> {
 	let config = &app.config;
 	let mut connection = app.database.acquire().await?;
+	let mut redis_conn = app.redis.clone();
+
 	match content {
 		RequestMessage::Deployment(request_data) => {
 			deployment::process_request(&mut connection, request_data, config)
@@ -135,8 +137,13 @@ async fn process_queue_payload(
 		}
 		RequestMessage::Database {} => todo!(),
 		RequestMessage::Workspace(request_data) => {
-			billing::process_request(&mut connection, request_data, config)
-				.await
+			billing::process_request(
+				&mut connection,
+				&mut redis_conn,
+				request_data,
+				config,
+			)
+			.await
 		}
 	}
 	.map_err(|error| {

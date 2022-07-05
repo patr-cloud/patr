@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use api_models::utils::{DateTime, Uuid};
 use chrono::Utc;
 use eve_rs::AsError;
+use redis::aio::MultiplexedConnection as RedisConnection;
 use vaultrs::{
 	client::{VaultClient, VaultClientSettingsBuilder},
 	error::ClientError,
@@ -13,18 +14,24 @@ use crate::{
 	db,
 	error,
 	models::rbac,
+	redis as api_redis,
 	utils::{settings::Settings, Error},
 	Database,
 };
 
 pub async fn create_new_secret_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	redis_conn: &mut RedisConnection,
 	workspace_id: &Uuid,
 	name: &str,
 	secret_value: &str,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
+	let lock_value =
+		api_redis::acquire_lock_on_resource(redis_conn, workspace_id, "secret")
+			.await?;
+
 	log::trace!("request_id: {} - Checking resource limit", request_id);
 	if super::resource_limit_crossed(connection, workspace_id, request_id)
 		.await?
@@ -100,6 +107,14 @@ pub async fn create_new_secret_in_workspace(
 	.await?;
 
 	log::trace!("request_id: {} - Created secret.", request_id);
+
+	api_redis::delete_lock_on_resource(
+		redis_conn,
+		workspace_id,
+		"secret",
+		lock_value,
+	)
+	.await?;
 
 	Ok(resource_id)
 }

@@ -381,9 +381,11 @@ async fn join(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
+	let mut redis_conn = context.get_redis_connection().clone();
 
 	let join_user = service::join_user(
 		context.get_database_connection(),
+		&mut redis_conn,
 		&config,
 		&verification_token,
 		username.to_lowercase().trim(),
