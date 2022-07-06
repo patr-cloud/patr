@@ -4,6 +4,8 @@ use api_models::{models::auth::*, utils::Uuid, ErrorType};
 use chrono::{Duration, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
+mod oauth;
+
 use crate::{
 	app::{create_eve_app, App},
 	db::{self, UserWebLogin},
@@ -95,6 +97,8 @@ pub fn create_sub_app(
 		))],
 	);
 	sub_app.use_sub_app("/", docker_registry::create_sub_app(app));
+
+	sub_app.use_sub_app("/oauth", oauth::create_sub_app(app));
 
 	sub_app
 }
