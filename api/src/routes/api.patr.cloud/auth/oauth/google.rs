@@ -1,21 +1,16 @@
 use ::redis::AsyncCommands;
 use api_models::models::auth::{
-	GoogleAccessTokenResponse,
-	GoogleAuthCallbackRequest,
-	GoogleAuthResponse,
-	GoogleUserInfoResponse,
-	LoginResponse,
+	GoogleAccessTokenResponse, GoogleAuthCallbackRequest, GoogleAuthResponse,
+	GoogleUserInfoResponse, LoginResponse,
 };
 use eve_rs::{App as EveApp, AsError, NextHandler};
-use http::header::ACCEPT;
+use http::header::{ACCEPT, CONTENT_LENGTH, CONTENT_TYPE, USER_AGENT};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
 use crate::{
 	app::{create_eve_app, App},
 	db::{self, UserLogin},
-	error,
-	pin_fn,
-	service,
+	error, pin_fn, service,
 	utils::{Error, ErrorData, EveContext, EveMiddleware},
 };
 
@@ -64,15 +59,15 @@ async fn login_with_google(
 		.map(char::from)
 		.collect::<String>();
 
-	let value = "random-unique-alpha";
+	let state_value = context.get_state().config.google.state.clone();
 
 	context
 		.get_redis_connection()
-		.set(format!("googleOAuthState:{}", state), value)
+		.set(format!("googleOAuthState:{}", state), state_value)
 		.await?;
 
 	let oauth_url =
-		format!("{auth_url}?client_id={client_id}&scope={scope}&state={state}&response_type=code&redirect_url={redirect_url}");
+		format!("{auth_url}?client_id={client_id}&scope={scope}&state={state}&response_type=code&redirect_uri={redirect_url}&access_type=offline");
 
 	context.success(GoogleAuthResponse { oauth_url });
 	Ok(context)
@@ -82,12 +77,15 @@ async fn oauth_callback(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let GoogleAuthCallbackRequest { code, state, .. } = context
+	println!("start oauth callback");
+	let GoogleAuthCallbackRequest { code, state } = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let callback_url =
 		context.get_state().config.google.oauth_callback_url.clone();
+
+	let state_value = context.get_state().config.google.state.clone();
 
 	// Check if the state is correct
 	let redis_google_state: Option<String> = context
@@ -96,7 +94,7 @@ async fn oauth_callback(
 		.await?;
 
 	if !redis_google_state
-		.map(|value| value == "random-unique-alpha")
+		.map(|value| value == state_value)
 		.unwrap_or(false)
 	{
 		Error::as_result()
@@ -104,31 +102,46 @@ async fn oauth_callback(
 			.body(error!(SERVER_ERROR).to_string())?
 	}
 
-	let GoogleAccessTokenResponse {
-		access_token,
-		scope: _scope,
-		token_type: _token_type,
-	} = reqwest::Client::builder()
-		.build()?
-		.post(callback_url)
-		.query(&[
-			(
-				"client_id",
-				context.get_state().config.google.client_id.clone(),
-			),
-			(
-				"client_secret",
-				context.get_state().config.google.client_secret.clone(),
-			),
-			("code", code),
-		])
-		.header(ACCEPT, "application/json")
-		.send()
-		.await?
-		.error_for_status()?
-		.json::<GoogleAccessTokenResponse>()
-		.await?;
+	println!(
+		"{}?client_id={}&client_secret={}&code={}&redirect_uri={}&grant_type=authorization_code",
+		callback_url,
+		context.get_state().config.google.client_id.clone(),
+		context.get_state().config.google.client_secret.clone(),
+		code,
+		context.get_state().config.google.redirect_url.clone(),
 
+	);
+	let user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36".to_string();
+	let GoogleAccessTokenResponse { access_token, .. } =
+		reqwest::Client::builder()
+			.build()?
+			.post(callback_url)
+			.query(&[
+				(
+					"client_id",
+					context.get_state().config.google.client_id.clone(),
+				),
+				(
+					"client_secret",
+					context.get_state().config.google.client_secret.clone(),
+				),
+				(
+					"redirect_uri",
+					context.get_state().config.google.redirect_url.clone(),
+				),
+				("code", code),
+			])
+			.header(ACCEPT, "application/json")
+			.header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+			.header(USER_AGENT, user_agent)
+			.header(CONTENT_LENGTH, 0)
+			.send()
+			.await?
+			.error_for_status()?
+			.json::<GoogleAccessTokenResponse>()
+			.await?;
+
+	println!("access token - {}", access_token);
 	// Make a call to Google to get the user details
 	// TODO change this in accordance with google's new api
 	// let user_info_url =
