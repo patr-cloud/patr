@@ -28,12 +28,11 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
-	models::rbac::{self, permissions},
+	models::rbac::permissions,
 	pin_fn,
 	service,
 	utils::{
 		constants::request_keys,
-		get_current_time_millis,
 		Error,
 		ErrorData,
 		EveContext,
@@ -607,9 +606,7 @@ async fn list_static_sites_deploy_history(
 		created: deploy_history.created as u64,
 	})
 	.collect();
-	context.success(ListStaticSitesDeployHistoryResponse {
-		deploys: deploy_history,
-	});
+	context.success(ListStaticSitesDeployHistoryResponse { deploys });
 
 	Ok(context)
 }
@@ -727,14 +724,9 @@ async fn revert_static_site_deployment(
 		Uuid::parse_str(context.get_param(request_keys::UPLOAD_ID).unwrap())
 			.unwrap();
 
-	// Check if static site exists
-	let static_site = db::get_static_site_by_id(
-		context.get_database_connection(),
-		&static_site_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
 
 	// check if upload_id is present in the deploy history
 	db::get_static_site_deploy_history_by_upload_id(
@@ -749,10 +741,13 @@ async fn revert_static_site_deployment(
 
 	// queue revert static site
 	let config = context.get_state().config.clone();
-	service::queue_revert_static_site(
-		&static_site.workspace_id,
+	service::update_static_site_and_db_status(
+		context.get_database_connection(),
+		&workspace_id,
 		&static_site_id,
+		None,
 		&upload_id,
+		&StaticSiteDetails {},
 		&config,
 		&request_id,
 	)
@@ -808,14 +803,6 @@ async fn start_static_site(
 	);
 	// start the container running the image, if doesn't exist
 	let config = context.get_state().config.clone();
-
-	let static_site = db::get_static_site_by_id(
-		context.get_database_connection(),
-		&static_site_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	// Get the latest upload_id
 	let upload = db::get_latest_upload_for_static_site(

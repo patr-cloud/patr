@@ -133,7 +133,7 @@ pub async fn create_static_site_in_workspace(
 				.unwrap()
 				.get(rbac::resource_types::STATIC_SITE_UPLOAD)
 				.unwrap(),
-			&workspace_id,
+			workspace_id,
 			get_current_time_millis(),
 		)
 		.await?;
