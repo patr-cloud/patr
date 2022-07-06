@@ -121,6 +121,7 @@
 	},
 	"google": {
 		"authUrl": "",
+		"redirectUrl": "",
 		"oauthCallbackUrl": "",
 		"scope": "",
 		"clientId": "",
