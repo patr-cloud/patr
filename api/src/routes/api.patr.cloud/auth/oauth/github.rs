@@ -166,11 +166,15 @@ async fn oauth_callback(
 		)
 		.await?;
 
+		let ip = context.get_ip();
+		let user_agent = context.get_header("user-agent").unwrap_or_default();
 		let config = context.get_state().config.clone();
 		let (UserLogin { login_id, .. }, access_token, refresh_token) =
 			service::sign_in_user(
 				context.get_database_connection(),
 				&user.id,
+				ip.parse()?,
+				&user_agent,
 				&config,
 			)
 			.await?;
