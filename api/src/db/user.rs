@@ -2673,7 +2673,6 @@ pub async fn update_user_oauth_info(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	access_token: &str,
 	user_id: &Uuid,
-	username: &str,
 	is_oauth_user: bool,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -2682,14 +2681,12 @@ pub async fn update_user_oauth_info(
 			"user"
 		SET
 			oauth_access_token = $1,
-			is_oauth_user = $2,
-			oauth_username = $3
+			is_oauth_user = $2
 		WHERE
-			id = $4;
+			id = $3;
 		"#,
 		access_token,
 		is_oauth_user,
-		username,
 		user_id as _,
 	)
 	.execute(&mut *connection)
