@@ -51,6 +51,7 @@ pub(super) async fn migrate(
 	.await?;
 	add_last_unverified_column_to_workspace_domain(connection, config).await?;
 	add_table_deployment_image_digest(&mut *connection, config).await?;
+	populate_deployment_deploy_history(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -541,6 +542,82 @@ async fn add_table_deployment_image_digest(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	Ok(())
+}
+
+async fn populate_deployment_deploy_history(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	let deployments = query!(
+		r#"
+		SELECT
+			id,
+			repository_id,
+			image_tag
+		FROM
+			deployment
+		WHERE
+			status != 'status';
+		"#,
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| {
+		(
+			row.get::<Uuid, _>("id"),
+			row.get::<Uuid, _>("repository_id"),
+			row.get::<String, _>("image_tag"),
+		)
+	})
+	.collect::<Vec<_>>();
+
+	if deployments.is_empty() {
+		return Ok(());
+	}
+
+	for (deployment_id, repository_id, image_tag) in deployments {
+		let manifest_digest = query!(
+			r#"
+			SELECT
+				manifest_digest
+			FROM
+				docker_repository_tag
+			WHERE
+				repository_id = $1 AND
+				tag = $2;
+			"#,
+			repository_id.clone(),
+			image_tag
+		)
+		.fetch_one(&mut *connection)
+		.await?
+		.get::<String, _>("manifest_digest");
+
+		query!(
+			r#"
+			INSERT INTO
+				deployment_deploy_history(
+					deployment_id,
+					image_digest,
+					repository_id,
+					message,
+					created
+				)
+			VALUES
+				($1, $2, $3, $4, $5);
+			"#,
+			deployment_id,
+			manifest_digest,
+			repository_id,
+			"initial deployment",
+			get_current_time_millis() as i64
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
 
 	Ok(())
 }

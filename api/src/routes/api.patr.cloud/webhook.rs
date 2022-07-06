@@ -1,11 +1,9 @@
 use api_models::{
 	models::workspace::{
-		infrastructure::deployment::DeploymentStatus,
+		billing::PaymentStatus,
+		infrastructure::deployment::{DeploymentRegistry, DeploymentStatus},
 	},
 	utils::{DateTime, Uuid},
-	models::workspace::infrastructure::deployment::{
-		DeploymentRegistry,
-	},
 };
 use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
@@ -25,6 +23,7 @@ use crate::{
 	service,
 	utils::{
 		constants::request_keys,
+		get_current_time_millis,
 		Error,
 		ErrorData,
 		EveContext,
