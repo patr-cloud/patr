@@ -5,6 +5,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use k8s_openapi::api::batch::v1::Job;
 use serde::{Deserialize, Serialize};
 
 use super::DeploymentMetadata;

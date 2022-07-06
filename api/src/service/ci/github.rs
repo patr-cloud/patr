@@ -7,6 +7,7 @@ use self::webhook_payload::PushEvent;
 use super::Netrc;
 use crate::{
 	db::{self, Repository},
+	models::{CiFlow, Kind, Step},
 	service,
 	utils::{Error, EveContext},
 };
@@ -126,11 +127,38 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 		.bytes()
 		.await?;
 
-	let build_id = db::generate_new_build_for_repo(
+	let build_num = db::generate_new_build_for_repo(
 		context.get_database_connection(),
 		&repo.id,
+		&push_event.ref_,
+		&push_event.after,
 	)
 	.await?;
+
+	let ci_flow: CiFlow = serde_yaml::from_slice(ci_file.as_ref())?;
+	let Kind::Pipeline(pipeline) = ci_flow.kind.clone();
+	for (
+		step_count,
+		Step {
+			name,
+			image,
+			commands,
+			env,
+		},
+	) in pipeline.steps.into_iter().enumerate()
+	{
+		db::add_ci_steps_for_build(
+			context.get_database_connection(),
+			&repo.id,
+			build_num,
+			step_count as u32 + 1,
+			&name,
+			&image,
+			commands,
+			env,
+		)
+		.await?;
+	}
 
 	let config = &context.get_state().config;
 	let kube_client = service::get_kubernetes_config(config).await?;
@@ -143,12 +171,12 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 	};
 
 	super::create_ci_pipeline(
-		ci_file,
+		ci_flow,
 		&repo_clone_url,
 		repo_name,
 		branch_name,
 		Some(netrc),
-		&format!("{}-{}", repo.id, build_id),
+		&format!("{}-{}", repo.id, build_num),
 		kube_client,
 	)
 	.await?;

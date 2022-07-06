@@ -1,14 +1,18 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{
-	models::workspace::ci2::github::{
+	models::workspace::{ci2::github::{
 		ActivateGithubRepoResponse,
+		BuildLogs,
 		DeactivateGithubRepoResponse,
+		GetBuildInfoResponse,
+		GetBuildListResponse,
+		GetBuildLogResponse,
 		GithubAuthCallbackRequest,
 		GithubAuthCallbackResponse,
 		GithubAuthResponse,
 		GithubListReposResponse,
 		GithubRepository,
-	},
+	}, infrastructure::deployment::Interval},
 	utils::Uuid,
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
@@ -33,14 +37,14 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, activate_ci_for_repo},
 	error,
-	models::rbac::permissions,
+	models::{deployment::Logs, rbac::permissions},
 	pin_fn,
 	utils::{
 		constants::request_keys,
 		Error,
 		ErrorData,
 		EveContext,
-		EveMiddleware,
+		EveMiddleware, get_current_time,
 	},
 };
 
@@ -217,7 +221,7 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(deactivate_repo)),
 		],
 	);
-	/*
+
 	app.get(
 		"/repo/:repoOwner/:repoName/build",
 		[
@@ -281,7 +285,7 @@ pub fn create_sub_app(
 	);
 
 	app.get(
-		"/repo/:repoOwner/:repoName/build/:buildNum/log/:stage/:step",
+		"/repo/:repoOwner/:repoName/build/:buildNum/log/:step",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::ci::github::VIEW_BUILDS,
@@ -311,37 +315,7 @@ pub fn create_sub_app(
 		],
 	);
 
-	app.post(
-		"/repo/:repoOwner/:repoName/build/:buildNum/restart",
-		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::ci::github::RESTART_BUILDS,
-				closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
-			EveMiddleware::CustomFunction(pin_fn!(restart_build)),
-		],
-	);
-
+	/*
 	app.delete(
 		"/sign-out",
 		[
@@ -618,6 +592,7 @@ async fn activate_repo(
 		db::create_ci_repo(
 			context.get_database_connection(),
 			&workspace_id,
+			&repo.full_name,
 			&repo.git_url,
 		)
 		.await?
@@ -725,7 +700,7 @@ async fn deactivate_repo(
 
 	for webhook in all_webhooks {
 		if webhook.config.url == GITHUB_WEBHOOK_URL {
-			let _ = github_client
+			github_client
 				.repos()
 				.delete_webhook(&repo_owner, &repo_name, webhook.id)
 				.await
@@ -742,7 +717,6 @@ async fn deactivate_repo(
 	Ok(context)
 }
 
-/*
 async fn get_build_list(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -755,7 +729,7 @@ async fn get_build_list(
 		context.get_param(request_keys::REPO_OWNER).unwrap().clone();
 	let repo_name = context.get_param(request_keys::REPO_NAME).unwrap().clone();
 
-	let (_, drone_token) = db::get_drone_username_and_token_for_workspace(
+	let (_, access_token) = db::get_drone_username_and_token_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 	)
@@ -763,19 +737,40 @@ async fn get_build_list(
 	.status(404)
 	.body(error!(USER_NOT_FOUND).to_string())?;
 
-	let builds = reqwest::Client::new()
-		.get(format!(
-			"{}/api/repos/{}/{}/builds",
-			context.get_state().config.drone.url,
-			repo_owner,
-			repo_name
-		))
-		.bearer_auth(drone_token)
-		.send()
-		.await?
-		.error_for_status()?
-		.json()
-		.await?;
+	let github_client =
+		octorust::Client::new("patr", Credentials::Token(access_token))
+			.map_err(|err| {
+				log::info!("error while octorust init: {err:#}");
+				err
+			})
+			.ok()
+			.status(500)?;
+
+	let repo = github_client
+		.repos()
+		.get(&repo_owner, &repo_name)
+		.await
+		.map_err(|err| {
+			log::info!("error while getting repo info: {err:#}");
+			err
+		})
+		.ok()
+		.status(500)?;
+
+	let repo = db::get_repo_for_workspace_and_url(
+		context.get_database_connection(),
+		&workspace_id,
+		&repo.git_url,
+	)
+	.await?
+	.status(400)
+	.body("repo not found")?;
+
+	let builds = db::list_build_details_for_repo(
+		context.get_database_connection(),
+		&repo.id,
+	)
+	.await?;
 
 	context.success(GetBuildListResponse { builds });
 	Ok(context)
@@ -797,7 +792,7 @@ async fn get_build_info(
 		.unwrap()
 		.parse::<u64>()?;
 
-	let (_, drone_token) = db::get_drone_username_and_token_for_workspace(
+	let (_, access_token) = db::get_drone_username_and_token_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 	)
@@ -805,20 +800,41 @@ async fn get_build_info(
 	.status(404)
 	.body(error!(USER_NOT_FOUND).to_string())?;
 
-	let build_info = reqwest::Client::new()
-		.get(format!(
-			"{}/api/repos/{}/{}/builds/{}",
-			context.get_state().config.drone.url,
-			repo_owner,
-			repo_name,
-			build_num
-		))
-		.bearer_auth(drone_token)
-		.send()
-		.await?
-		.error_for_status()?
-		.json()
-		.await?;
+	let github_client =
+		octorust::Client::new("patr", Credentials::Token(access_token))
+			.map_err(|err| {
+				log::info!("error while octorust init: {err:#}");
+				err
+			})
+			.ok()
+			.status(500)?;
+
+	let repo = github_client
+		.repos()
+		.get(&repo_owner, &repo_name)
+		.await
+		.map_err(|err| {
+			log::info!("error while getting repo info: {err:#}");
+			err
+		})
+		.ok()
+		.status(500)?;
+
+	let repo = db::get_repo_for_workspace_and_url(
+		context.get_database_connection(),
+		&workspace_id,
+		&repo.git_url,
+	)
+	.await?
+	.status(400)
+	.body("repo not found")?;
+
+	let build_info = db::get_build_details_for_build(
+		context.get_database_connection(),
+		&repo.id,
+		build_num as i64,
+	)
+	.await?;
 
 	context.success(GetBuildInfoResponse { build_info });
 	Ok(context)
@@ -839,16 +855,12 @@ async fn get_build_logs(
 		.get_param(request_keys::BUILD_NUM)
 		.unwrap()
 		.parse::<u64>()?;
-	let stage = context
-		.get_param(request_keys::STAGE)
-		.unwrap()
-		.parse::<u64>()?;
 	let step = context
 		.get_param(request_keys::STEP)
 		.unwrap()
 		.parse::<u64>()?;
 
-	let (_, drone_token) = db::get_drone_username_and_token_for_workspace(
+	let (_, access_token) = db::get_drone_username_and_token_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 	)
@@ -856,79 +868,69 @@ async fn get_build_logs(
 	.status(404)
 	.body(error!(USER_NOT_FOUND).to_string())?;
 
+	let github_client =
+		octorust::Client::new("patr", Credentials::Token(access_token))
+			.map_err(|err| {
+				log::info!("error while octorust init: {err:#}");
+				err
+			})
+			.ok()
+			.status(500)?;
+
+	let repo = github_client
+		.repos()
+		.get(&repo_owner, &repo_name)
+		.await
+		.map_err(|err| {
+			log::info!("error while getting repo info: {err:#}");
+			err
+		})
+		.ok()
+		.status(500)?;
+
+	let repo_id = db::get_repo_for_workspace_and_url(
+		context.get_database_connection(),
+		&workspace_id,
+		&repo.git_url,
+	)
+	.await?
+	.status(400)
+	.body("repo not found")?
+	.id;
+
+	let loki = context.get_state().config.loki.clone();
+	// TODO: make correct use of start and end
 	let response = reqwest::Client::new()
-		.get(format!(
-			"{}/api/repos/{}/{}/builds/{}/logs/{}/{}",
-			context.get_state().config.drone.url,
-			repo_owner,
-			repo_name,
-			build_num,
-			stage,
-			step
-		))
-		.bearer_auth(drone_token)
+		.get(dbg!(format!("https://{}/loki/api/v1/query_range?direction=BACKWARD&query={{namespace=\"kavin\",pod=\"{}-{}\",container=\"{}\"}}&start={}&end={}", loki.host, repo_id.as_str(), build_num, step, Interval::Week.as_u64(), get_current_time().as_secs())))
+		.basic_auth(&loki.username, Some(&loki.password))
 		.send()
-		.await?;
+		.await?
+		.json::<Logs>()
+		.await?
+		.data
+		.result;
 
-	if response.status().as_u16() == 404 {
-		context.status(404).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::NOT_FOUND,
-			request_keys::MESSAGE: error::message::NOT_FOUND,
-		}));
-		return Ok(context);
-	}
-
-	let logs = response.error_for_status()?.json().await?;
+	let logs = response
+		.into_iter()
+		.flat_map(|loki_log| {
+			loki_log.values.into_iter().map(|log| {
+				let mut log = log.into_iter();
+				(log.next(), log.next())
+			})
+		})
+		.filter_map(|(time, log_msg)| {
+			Some(BuildLogs {
+				time: time?.parse().ok()?,
+				log: log_msg?,
+			})
+		})
+		.collect();
 
 	context.success(GetBuildLogResponse { logs });
 	Ok(context)
 }
 
-async fn restart_build(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-
-	let repo_owner =
-		context.get_param(request_keys::REPO_OWNER).unwrap().clone();
-	let repo_name = context.get_param(request_keys::REPO_NAME).unwrap().clone();
-	let build_num = context
-		.get_param(request_keys::BUILD_NUM)
-		.unwrap()
-		.parse::<u64>()?;
-
-	let (_, drone_token) = db::get_drone_username_and_token_for_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(USER_NOT_FOUND).to_string())?;
-
-	let build_num = reqwest::Client::new()
-		.post(format!(
-			"{}/api/repos/{}/{}/builds/{}",
-			context.get_state().config.drone.url,
-			repo_owner,
-			repo_name,
-			build_num
-		))
-		.bearer_auth(drone_token)
-		.send()
-		.await?
-		.error_for_status()?
-		.json::<BuildDetails>()
-		.await?
-		.number;
-
-	context.success(RestartBuildResponse { build_num });
-	Ok(context)
-}
-
+/*
 async fn sign_out(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,

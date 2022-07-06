@@ -28,7 +28,7 @@ impl Display for Netrc {
 }
 
 pub async fn create_ci_pipeline(
-	ci_file: impl AsRef<[u8]>,
+	ci_flow: CiFlow,
 	repo_clone_url: &str,
 	repo_name: &str,
 	branch_name: &str,
@@ -37,8 +37,6 @@ pub async fn create_ci_pipeline(
 	kube_client: kube::Client,
 ) -> Result<(), Error> {
 	log::debug!("Create a pod to run custom ci commands");
-
-	let ci_flow: CiFlow = serde_yaml::from_slice(ci_file.as_ref())?;
 
 	let ci_steps = std::iter::once({
         // first clone the repo
@@ -71,13 +69,13 @@ pub async fn create_ci_pipeline(
     .chain({
         // now add the ci steps defined by user
         let Kind::Pipeline(pipeline) = ci_flow.kind;
-        pipeline.steps.into_iter().map(
-            |Step {
-                 name, // TODO: slugify names and make sure it will be allowed in k8s (unique)
+        pipeline.steps.into_iter().enumerate().map(
+            |(step_count, Step {
+                 name: _name,
                  image,
                  commands,
                  env
-             }| {
+             })| {
                 let commands_str = [
                     format!(r#"cd "/mnt/workdir/{repo_name}""#),
                     "set -x".to_owned(),
@@ -87,40 +85,23 @@ pub async fn create_ci_pipeline(
                 .collect::<Vec<_>>()
                 .join("\n"); // TODO: use iter_intersperse once it got stabilized
 
-                if let Some(env) = env {
-					json!({
-						"name": name,
-						"image": image,
-						"volumeMounts": [
-                            {
-                                "name": "vol-workdir",
-                                "mountPath": "/mnt/workdir"
-                            }
-						],
-						"env": env,
-						"command": [
-							"sh",
-							"-ce",
-							commands_str
-						]
-					})
-                } else {
-					json!({
-						"name": name,
-						"image": image,
-						"volumeMounts": [
-                            {
-                                "name": "vol-workdir",
-                                "mountPath": "/mnt/workdir"
-                            }
-						],
-						"command": [
-							"sh",
-							"-ce",
-							commands_str
-						]
-					})
-				}
+				let step_count = (step_count + 1).to_string();
+				json!({
+					"name": step_count,
+					"image": image,
+					"volumeMounts": [
+						{
+							"name": "vol-workdir",
+							"mountPath": "/mnt/workdir"
+						}
+					],
+					"env": env,
+					"command": [
+						"sh",
+						"-ce",
+						commands_str
+					]
+				})
             },
         )
     })
@@ -161,7 +142,7 @@ pub async fn create_ci_pipeline(
 	  }
 	}))?;
 
-	let pods_api = Api::<Pod>::namespaced(kube_client, "kavin");
+	let pods_api = Api::<Pod>::namespaced(kube_client, "kavin"); // TODO: what should be the workspace_id?
 	pods_api.create(&PostParams::default(), &pod_spec).await?;
 
 	log::debug!("successfully created a ci pipeline in k8s");

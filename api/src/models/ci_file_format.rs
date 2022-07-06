@@ -1,7 +1,8 @@
+use api_models::models::workspace::ci2::github::EnvVariable;
 use serde::{Deserialize, Serialize};
 
 /// Represents a single unit of task which will be triggered based on actions
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct CiFlow {
 	/// Indicates the version, so that we can identify the breaking changes
@@ -12,7 +13,7 @@ pub struct CiFlow {
 }
 
 /// Indicates the type of task which will be triggered
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, tag = "kind")]
 pub enum Kind {
 	/// CI pipeline
@@ -22,7 +23,7 @@ pub enum Kind {
 /// Pipeline action defines the CI pipeline steps which will be executed.
 /// All pipeline steps will start execution under the repository's root
 /// directory
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub struct Pipeline {
 	/// name of pipeline
@@ -32,7 +33,7 @@ pub struct Pipeline {
 }
 
 /// Step represent a single unit of work which will be done in pipeline
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub struct Step {
 	/// name of the step
@@ -44,15 +45,5 @@ pub struct Step {
 	/// list of environmental variables that has to be defined while
 	/// initializing container
 	#[serde(default)]
-	pub env: Option<Vec<EnvVar>>,
-}
-
-/// Environmental variable which can be used to init containers
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "snake_case")]
-pub struct EnvVar {
-	/// key name of the environment variable
-	name: String,
-	/// value of the environment varialbe
-	value: String,
+	pub env: Vec<EnvVariable>,
 }
