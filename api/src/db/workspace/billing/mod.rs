@@ -1,5 +1,8 @@
 use api_macros::query;
-use api_models::utils::{DateTime, Uuid};
+use api_models::{
+	models::workspace::billing::{PaymentStatus, TransactionType},
+	utils::{DateTime, Uuid},
+};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::query_as;
@@ -74,22 +77,6 @@ pub struct Transaction {
 pub struct PaymentMethod {
 	pub payment_method_id: String,
 	pub workspace_id: Uuid,
-}
-
-#[derive(sqlx::Type, PartialEq, Eq, Hash)]
-#[sqlx(type_name = "TRANSACTION_TYPE", rename_all = "lowercase")]
-pub enum TransactionType {
-	Bill,
-	Credits,
-	Payment,
-}
-
-#[derive(sqlx::Type, PartialEq, Eq, Hash)]
-#[sqlx(type_name = "PAYMENT_STATUS", rename_all = "lowercase")]
-pub enum PaymentStatus {
-	Pending,
-	Success,
-	Failed,
 }
 
 #[derive(sqlx::Type, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -1299,5 +1286,33 @@ pub async fn get_transaction_by_description_in_workspace(
 		description,
 	)
 	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn get_transactions_in_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Vec<Transaction>, sqlx::Error> {
+	query_as!(
+		Transaction,
+		r#"
+		SELECT
+			id as "id: _",
+			month,
+			amount,
+			payment_intent_id,
+			date as "date: _",
+			workspace_id as "workspace_id: _",
+			transaction_type as "transaction_type!: _",
+			payment_status as "payment_status!: _",
+			description
+		FROM
+			transaction
+		WHERE
+			workspace_id = $1;
+		"#,
+		workspace_id as _,
+	)
+	.fetch_all(&mut *connection)
 	.await
 }

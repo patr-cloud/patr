@@ -1,7 +1,11 @@
 use std::{cmp::max, collections::HashMap};
 
 use api_models::{
-	models::workspace::billing::PaymentMethod,
+	models::workspace::billing::{
+		PaymentMethod,
+		PaymentStatus,
+		TransactionType,
+	},
 	utils::{DateTime, True, Uuid},
 };
 use chrono::{Datelike, Utc};
@@ -9,14 +13,7 @@ use eve_rs::AsError;
 use reqwest::Client;
 
 use crate::{
-	db::{
-		self,
-		DomainPlan,
-		ManagedDatabasePlan,
-		PaymentStatus,
-		StaticSitePlan,
-		TransactionType,
-	},
+	db::{self, DomainPlan, ManagedDatabasePlan, StaticSitePlan},
 	error,
 	models::{
 		billing::{
