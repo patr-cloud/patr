@@ -3,7 +3,7 @@ use api_models::models::auth::{
 	GitHubAccessTokenResponse,
 	GitHubUserEmailResponse,
 	GithubAuthCallbackRequest,
-	GithubLoginResponse,
+	GithubAuthResponse,
 	LoginResponse,
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
@@ -73,7 +73,7 @@ async fn login_with_github(
 
 	let oauth_url =
 		format!("{auth_url}?client_id={client_id}&scope={scope}&state={state}");
-	context.success(GithubLoginResponse { oauth_url });
+	context.success(GithubAuthResponse { oauth_url });
 	Ok(context)
 }
 
