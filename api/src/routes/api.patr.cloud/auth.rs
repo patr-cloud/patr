@@ -245,6 +245,7 @@ async fn sign_up(
 		last_name,
 		recovery_method,
 		account_type,
+		coupon_code,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -258,6 +259,7 @@ async fn sign_up(
 		&last_name,
 		&account_type,
 		&recovery_method,
+		coupon_code.as_deref(),
 	)
 	.await?;
 	// send otp

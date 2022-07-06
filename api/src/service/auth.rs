@@ -1,10 +1,14 @@
 use api_models::{
 	models::{
 		auth::{PreferredRecoveryOption, RecoveryMethod, SignUpAccountType},
-		workspace::domain::DomainNameserverType,
+		workspace::{
+			billing::{PaymentStatus, TransactionType},
+			domain::DomainNameserverType,
+		},
 	},
-	utils::{ResourceType, Uuid},
+	utils::{DateTime, ResourceType, Uuid},
 };
+use chrono::{Datelike, Utc};
 use eve_rs::AsError;
 
 /// This module validates user info and performs tasks related to user
@@ -228,6 +232,7 @@ pub async fn create_user_join_request(
 	last_name: &str,
 	account_type: &SignUpAccountType,
 	recovery_method: &RecoveryMethod,
+	coupon_code: Option<&str>,
 ) -> Result<(UserToSignUp, String), Error> {
 	// Check if the username is allowed
 	if !is_username_allowed(connection, username).await? {
@@ -373,6 +378,7 @@ pub async fn create_user_join_request(
 				workspace_name,
 				&token_hash,
 				token_expiry,
+				coupon_code,
 			)
 			.await?;
 
@@ -391,6 +397,7 @@ pub async fn create_user_join_request(
 				business_name: Some(workspace_name.to_string()),
 				otp_hash: token_hash,
 				otp_expiry: token_expiry,
+				coupon_code: coupon_code.map(|code| code.to_string()),
 			}
 		}
 		SignUpAccountType::Personal { account_type: _ } => {
@@ -405,6 +412,7 @@ pub async fn create_user_join_request(
 				phone_number.as_deref(),
 				&token_hash,
 				token_expiry,
+				coupon_code,
 			)
 			.await?;
 
@@ -423,6 +431,7 @@ pub async fn create_user_join_request(
 				business_name: None,
 				otp_hash: token_hash,
 				otp_expiry: token_expiry,
+				coupon_code: coupon_code.map(|code| code.to_string()),
 			}
 		}
 	};
@@ -786,7 +795,8 @@ pub async fn join_user(
 	// And finally send the token, along with the email to the user
 
 	let user_id = db::generate_new_user_id(connection).await?;
-	let created = get_current_time_millis();
+	let now = Utc::now();
+	let created = now.timestamp_millis() as u64;
 
 	if rbac::GOD_USER_ID.get().is_none() {
 		rbac::GOD_USER_ID
@@ -848,6 +858,7 @@ pub async fn join_user(
 		recovery_phone_country_code,
 		recovery_phone_number,
 		3,
+		user_data.coupon_code.as_deref(),
 	)
 	.await?;
 	db::end_deferred_constraints(connection).await?;
@@ -900,6 +911,51 @@ pub async fn join_user(
 			&domain_id,
 		)
 		.await?;
+
+		if let Some(coupon_code) = user_data.coupon_code.as_deref() {
+			if let Some(coupon) =
+				db::get_sign_up_coupon_by_code(connection, coupon_code).await?
+			{
+				// Add coupon credits for their business account
+				let is_not_expired = coupon
+					.expiry
+					.map(|expiry| chrono::DateTime::from(expiry) > now)
+					.unwrap_or(true);
+				let has_usage_remaining = coupon
+					.uses_remaining
+					.map(|uses_remaining| uses_remaining > 0)
+					.unwrap_or(true);
+
+				if is_not_expired && has_usage_remaining && coupon.credits > 0 {
+					// It's not expired, it has usage remaining, AND it has a
+					// non zero positive credit value. Give them some fucking
+					// credits
+					let transaction_id =
+						db::generate_new_transaction_id(connection).await?;
+					db::create_transaction(
+						connection,
+						&workspace_id,
+						&transaction_id,
+						now.month() as i32,
+						coupon.credits as f64,
+						Some("coupon-credits"),
+						&DateTime::from(now),
+						&TransactionType::Credits,
+						&PaymentStatus::Success,
+						Some("Coupon credits"),
+					)
+					.await?;
+					if let Some(uses_remaining) = coupon.uses_remaining {
+						db::update_coupon_code_uses_remaining(
+							connection,
+							coupon_code,
+							uses_remaining.checked_sub(1).unwrap_or(0),
+						)
+						.await?;
+					}
+				}
+			}
+		}
 
 		welcome_email_to = Some(format!(
 			"{}@{}",
@@ -988,7 +1044,7 @@ pub async fn join_user(
 	// add personal workspace
 	let personal_workspace_name =
 		service::get_personal_workspace_name(&user_id);
-	let _ = service::create_workspace(
+	let personal_workspace_id = service::create_workspace(
 		connection,
 		&personal_workspace_name,
 		&user_id,
@@ -997,6 +1053,53 @@ pub async fn join_user(
 		config,
 	)
 	.await?;
+
+	if user_data.account_type.is_personal() {
+		if let Some(coupon_code) = user_data.coupon_code.as_deref() {
+			if let Some(coupon) =
+				db::get_sign_up_coupon_by_code(connection, coupon_code).await?
+			{
+				// Add coupon credits for their personal account
+				let is_not_expired = coupon
+					.expiry
+					.map(|expiry| chrono::DateTime::from(expiry) > now)
+					.unwrap_or(true);
+				let has_usage_remaining = coupon
+					.uses_remaining
+					.map(|uses_remaining| uses_remaining > 0)
+					.unwrap_or(true);
+
+				if is_not_expired && has_usage_remaining && coupon.credits > 0 {
+					// It's not expired, it has usage remaining, AND it has a
+					// non zero positive credit value. Give them some fucking
+					// credits
+					let transaction_id =
+						db::generate_new_transaction_id(connection).await?;
+					db::create_transaction(
+						connection,
+						&personal_workspace_id,
+						&transaction_id,
+						now.month() as i32,
+						coupon.credits as f64,
+						Some("coupon-credits"),
+						&DateTime::from(now),
+						&TransactionType::Credits,
+						&PaymentStatus::Success,
+						Some("Coupon credits"),
+					)
+					.await?;
+					if let Some(uses_remaining) = coupon.uses_remaining {
+						db::update_coupon_code_uses_remaining(
+							connection,
+							coupon_code,
+							uses_remaining.checked_sub(1).unwrap_or(0),
+						)
+						.await?;
+					}
+				}
+			}
+		}
+	}
 
 	db::delete_user_to_be_signed_up(connection, &user_data.username).await?;
 

@@ -521,8 +521,6 @@ async fn stripe_webhook(
 		&id,
 		&if status == "succeeded" {
 			PaymentStatus::Success
-		} else if status == "requires_payment_method" {
-			PaymentStatus::Pending
 		} else {
 			PaymentStatus::Failed
 		},
