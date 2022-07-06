@@ -1274,7 +1274,7 @@ pub async fn add_payment_method_info(
 pub async fn get_transaction_by_description_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	description: &str
+	description: &str,
 ) -> Result<Option<Transaction>, sqlx::Error> {
 	query_as!(
 		Transaction,

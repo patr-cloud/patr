@@ -57,7 +57,8 @@ function initialize-repo() {
         echo "Setting up your kubernetes variables"
         kubernetesCertificateAuthorityData=$(kubectl config view --output json --raw | jq ".clusters | map(select(.name == \"kind-$clusterName\")) | .[0].cluster[\"certificate-authority-data\"]")
         kubernetesClusterName=kind-$clusterName
-        kubernetesClusterUrl=$(kubectl config view --output json --raw | jq ".clusters | map(select(.name == \"kind-$clusterName\")) | .[0].cluster.server" | sed s/127.0.0.1/127.0.1.1/)
+        kubernetesClusterUrl=$(kubectl config view --output json --raw | jq ".clusters | map(select(.name == \"kind-$clusterName\")) | .[0].cluster.server" | sed s/0.0.0.0/127.0.1.1/)
+        kubernetesClusterUrl=$(echo $kubernetesClusterUrl | sed "s/\"//g")
         kubernetesClusterAuthName=kind-$clusterName
         kubernetesClusterAuthUsername=kind-$clusterName
         kubernetesClusterContextName=kind-$clusterName
@@ -94,6 +95,28 @@ source $baseDir/.env
 source $baseDir/.localData
 export RUNNING_USER="$UID:$UID"
 
+if [ ! -f "$baseDir/target-dev" ]; then
+    mkdir -p $baseDir/target-dev
+fi
+if [ ! -f "$baseDir/target-dev/cargo" ]; then
+    mkdir -p $baseDir/target-dev/cargo
+fi
+if [ ! -f "$baseDir/target-dev/drone" ]; then
+    mkdir -p $baseDir/target-dev/drone
+fi
+if [ ! -f "$baseDir/target-dev/postgres" ]; then
+    mkdir -p $baseDir/target-dev/postgres
+fi
+if [ ! -f "$baseDir/target-dev/rabbitmq" ]; then
+    mkdir -p $baseDir/target-dev/rabbitmq
+fi
+if [ ! -f "$baseDir/target-dev/registry" ]; then
+    mkdir -p $baseDir/target-dev/registry
+fi
+if [ ! -f "$baseDir/target-dev/s3" ]; then
+    mkdir -p $baseDir/target-dev/s3
+fi
+
 case $1 in
     down | stop)
         docker-compose -f $baseDir/docker-compose.yml down
@@ -105,10 +128,14 @@ case $1 in
         docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api
     ;;
     bash)
-        RUNNING_USER=root docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api bash
+        RUNNING_USER=root docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports bash bash
     ;;
     build)
         docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api bash -c "source .env && cargo build"
+    ;;
+    clear)
+        docker-compose -f $baseDir/docker-compose.yml down
+        RUNNING_USER=root docker-compose -f $baseDir/docker-compose.yml run --rm bash bash -c "rm -rf ./target-dev"
     ;;
     clippy)
         docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api bash -c "source .env && cargo clippy"
