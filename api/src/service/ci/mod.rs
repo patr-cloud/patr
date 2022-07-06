@@ -142,7 +142,7 @@ pub async fn create_ci_pipeline(
 	  }
 	}))?;
 
-	let pods_api = Api::<Pod>::namespaced(kube_client, "kavin"); // TODO: what should be the workspace_id?
+	let pods_api = Api::<Pod>::namespaced(kube_client, "patrci"); // TODO: what should be the workspace_id?
 	pods_api.create(&PostParams::default(), &pod_spec).await?;
 
 	log::debug!("successfully created a ci pipeline in k8s");

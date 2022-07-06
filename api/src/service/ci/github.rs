@@ -151,7 +151,7 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 			context.get_database_connection(),
 			&repo.id,
 			build_num,
-			step_count as u32 + 1,
+			step_count as i32 + 1,
 			&name,
 			&image,
 			commands,
