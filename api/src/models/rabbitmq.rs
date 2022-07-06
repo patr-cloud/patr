@@ -1,6 +1,7 @@
 use api_models::{
-	models::workspace::infrastructure::{
-		deployment::{Deployment, DeploymentRunningDetails},
+	models::workspace::infrastructure::deployment::{
+		Deployment,
+		DeploymentRunningDetails,
 	},
 	utils::Uuid,
 };
