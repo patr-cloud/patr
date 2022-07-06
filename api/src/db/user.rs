@@ -2674,6 +2674,7 @@ pub async fn update_user_oauth_info(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	access_token: &str,
 	user_id: &Uuid,
+	is_oauth_user: bool,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
