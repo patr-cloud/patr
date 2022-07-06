@@ -949,7 +949,7 @@ pub async fn join_user(
 						db::update_coupon_code_uses_remaining(
 							connection,
 							coupon_code,
-							uses_remaining.checked_sub(1).unwrap_or(0),
+							uses_remaining.saturating_sub(1),
 						)
 						.await?;
 					}
@@ -1092,7 +1092,7 @@ pub async fn join_user(
 						db::update_coupon_code_uses_remaining(
 							connection,
 							coupon_code,
-							uses_remaining.checked_sub(1).unwrap_or(0),
+							uses_remaining.saturating_sub(1),
 						)
 						.await?;
 					}
