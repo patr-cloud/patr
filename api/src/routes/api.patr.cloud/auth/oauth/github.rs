@@ -1,14 +1,13 @@
 use ::redis::AsyncCommands;
 use api_models::models::auth::{
 	GitHubAccessTokenResponse,
-	GitHubUserInfoResponse,
+	GitHubUserEmailResponse,
 	GithubAuthCallbackRequest,
 	GithubAuthResponse,
 	LoginResponse,
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use http::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
-use octorust::auth::Credentials;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
 use crate::{
@@ -64,7 +63,7 @@ async fn login_with_github(
 		.map(char::from)
 		.collect::<String>();
 
-	//  TODO: find a way to make it dynamic
+	// TODO: find a way to make it dynamic
 	let state_value = context.get_state().config.github.state.clone();
 
 	context
@@ -88,7 +87,7 @@ async fn oauth_callback(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let callback_url = context.get_state().config.github.callback_url.clone();
 
-	// Check if the state is correct
+	// Check if the state is correct and not forged
 	let redis_github_state: Option<String> = context
 		.get_redis_connection()
 		.get(format!("githubOAuthState:{}", state))
@@ -103,6 +102,10 @@ async fn oauth_callback(
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?
 	}
+
+	let user_agent = context
+		.get_header("User-Agent")
+		.unwrap_or_else(|| "patr".to_string());
 
 	let GitHubAccessTokenResponse { access_token, .. } =
 		reqwest::Client::builder()
@@ -126,42 +129,18 @@ async fn oauth_callback(
 			.json::<GitHubAccessTokenResponse>()
 			.await?;
 
-	// Make a call to github to get the user details
-	let user_email_url =
-		context.get_state().config.github.user_info_url.clone();
-
-	let github_client =
-		octorust::Client::new("patr", Credentials::Token(access_token.clone()))
-			.map_err(|err| {
-				log::info!("error while octorust init: {err:#}");
-				err
-			})
-			.ok()
-			.status(500)?;
-
-	let login = github_client
-		.users()
-		.get_authenticated_private_user()
-		.await
-		.map_err(|err| {
-			log::info!("error while getting login name: {err:#}");
-			err
-		})
-		.ok()
-		.status(500)?
-		.login;
-
-	let user_agent = context.get_header("User-Agent").unwrap_or(login.clone());
+	let user_email_api =
+		context.get_state().config.github.user_email_api.clone();
 
 	let user_emails = reqwest::Client::builder()
 		.build()?
-		.get(format!("{}", user_email_url))
+		.get(user_email_api)
 		.header(AUTHORIZATION, format!("token {}", access_token))
 		.header(USER_AGENT, user_agent)
 		.send()
 		.await?
 		.error_for_status()?
-		.json::<Vec<GitHubUserInfoResponse>>()
+		.json::<Vec<GitHubUserEmailResponse>>()
 		.await?;
 
 	let primary_email = user_emails.into_iter().find(|email| email.primary);
@@ -183,7 +162,6 @@ async fn oauth_callback(
 			context.get_database_connection(),
 			&access_token,
 			&user.id,
-			&login,
 			true,
 		)
 		.await?;

@@ -5,6 +5,8 @@ use chrono::{Duration, Utc};
 use eve_rs::{App as EveApp, AsError, Context, HttpMethod, NextHandler};
 use serde_json::json;
 
+mod oauth;
+
 use crate::{
 	app::{create_eve_app, App},
 	db::{self, UserLogin},
@@ -44,73 +46,75 @@ use crate::{
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut app = create_eve_app(app);
+	let mut sub_app = create_eve_app(app);
 
-	app.post(
+	sub_app.post(
 		"/sign-in",
 		[EveMiddleware::CustomFunction(pin_fn!(sign_in))],
 	);
-	app.post(
+	sub_app.post(
 		"/sign-up",
 		[EveMiddleware::CustomFunction(pin_fn!(sign_up))],
 	);
-	app.post(
+	sub_app.post(
 		"/sign-out",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(sign_out)),
 		],
 	);
-	app.post("/join", [EveMiddleware::CustomFunction(pin_fn!(join))]);
-	app.get(
+	sub_app.post("/join", [EveMiddleware::CustomFunction(pin_fn!(join))]);
+	sub_app.get(
 		"/access-token",
 		[EveMiddleware::CustomFunction(pin_fn!(get_access_token))],
 	);
-	app.get(
+	sub_app.get(
 		"/email-valid",
 		[EveMiddleware::CustomFunction(pin_fn!(is_email_valid))],
 	);
-	app.get(
+	sub_app.get(
 		"/username-valid",
 		[EveMiddleware::CustomFunction(pin_fn!(is_username_valid))],
 	);
-	app.get(
+	sub_app.get(
 		"/coupon-valid",
 		[EveMiddleware::CustomFunction(pin_fn!(is_coupon_valid))],
 	);
-	app.post(
+	sub_app.post(
 		"/forgot-password",
 		[EveMiddleware::CustomFunction(pin_fn!(forgot_password))],
 	);
-	app.post(
+	sub_app.post(
 		"/reset-password",
 		[EveMiddleware::CustomFunction(pin_fn!(reset_password))],
 	);
-	app.post(
+	sub_app.post(
 		"/resend-otp",
 		[EveMiddleware::CustomFunction(pin_fn!(resend_otp))],
 	);
-	app.post(
+	sub_app.post(
 		"/docker-registry-token",
 		[EveMiddleware::CustomFunction(pin_fn!(
 			docker_registry_token_endpoint
 		))],
 	);
-	app.get(
+	sub_app.get(
 		"/docker-registry-token",
 		[EveMiddleware::CustomFunction(pin_fn!(
 			docker_registry_token_endpoint
 		))],
 	);
 
-	app.post(
+	sub_app.post(
 		"/list-recovery-options",
 		[EveMiddleware::CustomFunction(pin_fn!(
 			list_recovery_options
 		))],
 	);
 
-	app
+	sub_app.use_sub_app("/oauth", oauth::create_sub_app(app));
+
+	sub_app
 }
 
 /// # Description
