@@ -4,6 +4,7 @@ use api_models::{
 };
 use chrono::Utc;
 use eve_rs::AsError;
+use redis::AsyncCommands;
 
 use super::kubernetes;
 use crate::{
@@ -174,12 +175,39 @@ pub async fn create_new_managed_url_in_workspace(
 			"request_id: {} - Creating certificates for managed url.",
 			request_id
 		);
-		kubernetes::create_certificates(
+
+		// Randomly generate a secret content for the TLS certificate
+		let verification_secret = Uuid::new_v4();
+
+		// Put content and ingress in the Redis
+		let app = service::get_app();
+		let mut redis = app.redis.clone();
+
+		redis
+			.set(
+				format!("verfication-{}", managed_url_id),
+				verification_secret.to_string(),
+			)
+			.await?;
+
+		let host = if sub_domain == "@" {
+			domain.name.clone()
+		} else {
+			format!("{}.{}", sub_domain, domain.name)
+		};
+
+		kubernetes::verify_managed_url(
 			workspace_id,
-			&format!("certificate-{}", managed_url_id),
-			&format!("tls-{}", managed_url_id),
-			vec![format!("{}.{}", sub_domain, domain.name)],
-			false,
+			&domain,
+			&ManagedUrl {
+				id: managed_url_id.clone(),
+				sub_domain: sub_domain.to_string(),
+				domain_id: domain.id.clone(),
+				path: path.to_string(),
+				url_type: url_type.clone(),
+			},
+			&host,
+			verification_secret.as_str(),
 			config,
 			request_id,
 		)

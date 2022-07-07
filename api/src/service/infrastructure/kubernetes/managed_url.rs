@@ -32,7 +32,6 @@ use kube::{
 	Api,
 };
 use tokio::time;
-use redis::AsyncCommands;
 
 use crate::{
 	db::{self, WorkspaceDomain},
@@ -344,21 +343,6 @@ pub async fn update_kubernetes_managed_url(
 		}
 	};
 
-	let secret_name = format!(
-		"tls-{}",
-		if domain.is_ns_internal() {
-			&domain.id
-		} else {
-			&managed_url.id
-		}
-	);
-	let secret_exists = super::secret_exists(
-		&secret_name,
-		kubernetes_client.clone(),
-		namespace,
-	)
-	.await?;
-
 	let kubernetes_ingress = Ingress {
 		metadata: ObjectMeta {
 			name: Some(format!("ingress-{}", managed_url.id)),
@@ -367,21 +351,17 @@ pub async fn update_kubernetes_managed_url(
 		},
 		spec: Some(IngressSpec {
 			rules: Some(vec![ingress]),
-			tls: if secret_exists {
-				Some(vec![IngressTLS {
-					hosts: if domain.is_ns_internal() {
-						Some(vec![
-							format!("*.{}", domain.name),
-							domain.name.clone(),
-						])
-					} else {
-						Some(vec![host.clone()])
-					},
-					secret_name: Some(secret_name),
-				}])
-			} else {
-				None
-			},
+			tls: Some(vec![IngressTLS {
+				hosts: if domain.is_ns_internal() {
+					Some(vec![
+						format!("*.{}", domain.name),
+						domain.name.clone(),
+					])
+				} else {
+					Some(vec![host.clone()])
+				},
+				secret_name: Some(secret_name),
+			}]),
 			..IngressSpec::default()
 		}),
 		..Ingress::default()
@@ -400,34 +380,6 @@ pub async fn update_kubernetes_managed_url(
 		.status
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
-
-	if domain.is_ns_internal() {
-		// Randomly generate a secret content for the TLS certificate
-		let verification_secret = Uuid::new_v4();
-
-		// Put content and ingress in the Redis
-		let app = service::get_app();
-		let mut redis = app.redis.clone();
-
-		redis
-			.set(
-				format!("verfification-{}", managed_url.id),
-				verification_secret.to_string(),
-			)
-			.await?;
-
-		println!("verification_secret - {}", verification_secret);
-		verify_managed_url(
-			workspace_id,
-			&domain,
-			managed_url,
-			&host,
-			verification_secret.as_str(),
-			config,
-			request_id,
-		)
-		.await?;
-	}
 
 	log::trace!("request_id: {} - managed URL created", request_id);
 	Ok(())
@@ -540,6 +492,42 @@ pub async fn verify_managed_url(
 	)
 	.await?;
 
+	let kubernetes_service = Service {
+		metadata: ObjectMeta {
+			name: Some(format!("service-{}", managed_url.id)),
+			..ObjectMeta::default()
+		},
+		spec: Some(ServiceSpec {
+			type_: Some("ExternalName".to_string()),
+			external_name: Some("api.patr.cloud".to_string()),
+			ports: Some(vec![ServicePort {
+				name: Some("https".to_string()),
+				port: 443,
+				protocol: Some("TCP".to_string()),
+				target_port: Some(IntOrString::Int(443)),
+				..ServicePort::default()
+			}]),
+			..ServiceSpec::default()
+		}),
+		..Service::default()
+	};
+
+	// Create the service defined above
+	log::trace!("request_id: {} - creating ExternalName service", request_id);
+	let service_api: Api<Service> =
+		Api::namespaced(kubernetes_client.clone(), namespace);
+
+	service_api
+		.patch(
+			&format!("service-verify-{}", managed_url.id),
+			&PatchParams::apply(&format!("service-verify-{}", managed_url.id)),
+			&Patch::Apply(kubernetes_service),
+		)
+		.await?
+		.status
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
 	let (ingress, annotations) = (
 			IngressRule {
 				host: Some(host.to_string()),
@@ -566,9 +554,12 @@ pub async fn verify_managed_url(
 					"nginx".to_string(),
 				),
 				(
-					"nginx.ingress.kubernetes.io/temporal-redirect"
-						.to_string(),
-					format!("http://{}:{}/workspace/{}/infrastructure/managed-url/{}/verify", config.bind_address, config.port, workspace_id, managed_url.id),
+					"nginx.ingress.kubernetes.io/upstream-vhost".to_string(),
+					format!("https://api.patr.cloud/workspace/{}/infrastructure/managed-url/{}/verify", workspace_id, managed_url.id),
+				),
+				(
+					"nginx.ingress.kubernetes.io/backend-protocol".to_string(),
+					"HTTPS".to_string(),
 				),
 				(
 					"cert-manager.io/cluster-issuer".to_string(),
@@ -593,14 +584,7 @@ pub async fn verify_managed_url(
 			rules: Some(vec![ingress]),
 			tls: if secret_exists {
 				Some(vec![IngressTLS {
-					hosts: if domain.is_ns_internal() {
-						Some(vec![
-							format!("*.{}", domain.name),
-							domain.name.clone(),
-						])
-					} else {
-						Some(vec![host.to_string()])
-					},
+					hosts: Some(vec![host.to_string()]),
 					secret_name: Some(secret_name),
 				}])
 			} else {
@@ -636,6 +620,14 @@ pub async fn verify_managed_url(
 			"request_id: {} - verification string mismatch, scheduling for re-verification",
 			request_id
 		);
+
+		service_api
+			.delete(
+				&format!("service-verify-{}", managed_url.id),
+				&DeleteParams::default(),
+			)
+			.await?;
+
 		// Schedule a job to verify the managed URL again
 		ingress_api
 			.delete(
@@ -648,6 +640,14 @@ pub async fn verify_managed_url(
 		Ok(())
 	} else {
 		log::error!("request_id: {} - Managed URL verified", request_id);
+		service_api
+			.delete(
+				&format!("service-verify-{}", managed_url.id),
+				&DeleteParams::default(),
+			)
+			.await?;
+
+		// Schedule a job to verify the managed URL again
 		ingress_api
 			.delete(
 				&format!("ingress-verify-{}", managed_url.id),
