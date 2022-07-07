@@ -33,7 +33,7 @@ use sqlx::Row;
 
 use crate::{
 	migrate_query as query,
-	utils::{settings::Settings, Error},
+	utils::{settings::Settings, Error, get_current_time_millis},
 	Database,
 };
 

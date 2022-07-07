@@ -27,7 +27,7 @@ use crate::{
 		Error,
 		ErrorData,
 		EveContext,
-		EveMiddleware, get_current_time_millis,
+		EveMiddleware,
 	},
 };
 
