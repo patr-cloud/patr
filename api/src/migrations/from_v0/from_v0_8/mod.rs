@@ -9,6 +9,7 @@ mod from_v0_8_0;
 mod from_v0_8_1;
 mod from_v0_8_2;
 mod from_v0_8_3;
+mod from_v0_8_4;
 
 /// # Description
 /// The function is used to migrate the database from one version to another
@@ -34,6 +35,7 @@ pub async fn migrate(
 		(0, 8, 1) => from_v0_8_1::migrate(&mut *connection, config).await,
 		(0, 8, 2) => from_v0_8_2::migrate(&mut *connection, config).await,
 		(0, 8, 3) => from_v0_8_3::migrate(&mut *connection, config).await,
+		(0, 8, 4) => from_v0_8_4::migrate(&mut *connection, config).await,
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
@@ -48,5 +50,5 @@ pub async fn migrate(
 /// This function returns [&'static str; _] containing a list of all migration
 /// versions
 pub fn get_migrations() -> Vec<&'static str> {
-	vec!["0.8.0", "0.8.1", "0.8.2", "0.8.3"]
+	vec!["0.8.0", "0.8.1", "0.8.2", "0.8.3", "0.8.4"]
 }

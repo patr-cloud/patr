@@ -1,5 +1,10 @@
 use api_models::{
-	models::workspace::billing::{Address, StripeCustomer},
+	models::workspace::billing::{
+		Address,
+		PaymentStatus,
+		StripeCustomer,
+		TransactionType,
+	},
 	utils::{DateTime, Uuid},
 };
 use chrono::{Datelike, Utc};
@@ -7,7 +12,7 @@ use eve_rs::AsError;
 use reqwest::Client;
 
 use crate::{
-	db::{self, PaymentStatus, PaymentType, TransactionType},
+	db::{self, PaymentType},
 	error,
 	models::{billing::StripeAddress, rbac},
 	utils::{

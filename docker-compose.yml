@@ -145,6 +145,17 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
+  bash:
+    container_name: command-runner
+    image: rust:1
+    restart: "no"
+    user: ${RUNNING_USER}
+    working_dir: /app
+    networks:
+      - vpc
+    volumes:
+      - .:/app
+
   api:
     container_name: api
     image: "rust:1"

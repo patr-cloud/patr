@@ -25,6 +25,7 @@ use crate::{
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/user-sign-up/template.json"]
 struct UserSignUpVerificationEmail {
+	username: String,
 	otp: String,
 }
 
@@ -44,10 +45,12 @@ struct UserSignUpVerificationEmail {
 /// [`Mailbox`]: Mailbox
 pub async fn send_user_verification_otp(
 	email: Mailbox,
+	username: &str,
 	otp: &str,
 ) -> Result<(), Error> {
 	send_email(
 		UserSignUpVerificationEmail {
+			username: username.to_string(),
 			otp: otp.to_string(),
 		},
 		email,
