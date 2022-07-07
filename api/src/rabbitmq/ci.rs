@@ -1,9 +1,11 @@
 use std::time::Duration;
 
 use api_models::utils::Uuid;
-use eve_rs::AsError;
 use k8s_openapi::api::{batch::v1::Job, core::v1::PersistentVolumeClaim};
-use kube::Api;
+use kube::{
+	api::{DeleteParams, PropagationPolicy},
+	Api,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -127,10 +129,20 @@ pub async fn process_request(
 			{
 				// wait until parent job completes, so requeue this job after
 				// some time by returing an error
-				tokio::time::sleep(Duration::from_secs(60)).await;
-				return Error::as_result()
-					.status(200)
-					.body("waiting to create build step")?;
+				tokio::time::sleep(Duration::from_secs(10)).await;
+				service::queue_create_build_step(
+					BuildStepId {
+						workspace_id,
+						repo_id,
+						build_num,
+						step_id,
+					},
+					job,
+					config,
+					&request_id,
+				)
+				.await?;
+				return Ok(());
 			} else if previous_status.eq_ignore_ascii_case("success") {
 				// previous state is success, so we can spinup this job now
 				let result = Api::<Job>::namespaced(kube_client, "patrci") // TODO
@@ -175,7 +187,7 @@ pub async fn process_request(
 		CIData::UpdateBuildStepStatus {
 			build_step_id:
 				BuildStepId {
-					workspace_id: _,
+					workspace_id,
 					repo_id,
 					build_num,
 					step_id,
@@ -186,10 +198,10 @@ pub async fn process_request(
 				"request_id: {request_id} - Checking the status for ci-{repo_id}-{build_num}-{step_id}"
 			);
 
-			let result =
-				Api::<Job>::namespaced(kube_client, "patrci") // TODO
-					.get_status(&format!("ci-{repo_id}-{build_num}-{step_id}"))
-					.await;
+			let job_name = format!("ci-{repo_id}-{build_num}-{step_id}");
+			let result = Api::<Job>::namespaced(kube_client.clone(), "patrci") // TODO
+				.get_status(&job_name)
+				.await;
 
 			let mut is_errored = false;
 			match result {
@@ -221,10 +233,19 @@ pub async fn process_request(
 						} else if active == 1 {
 							// currently running, so requeue this job after some
 							// time by returing an error
-							tokio::time::sleep(Duration::from_secs(60)).await;
-							return Error::as_result()
-								.status(200)
-								.body("waiting for updating build status")?;
+							tokio::time::sleep(Duration::from_secs(10)).await;
+							service::queue_update_build_step_status(
+								BuildStepId {
+									workspace_id,
+									repo_id,
+									build_num,
+									step_id,
+								},
+								config,
+								&request_id,
+							)
+							.await?;
+							return Ok(());
 						} else {
 							// TODO: handle invalid state
 						}
@@ -242,6 +263,16 @@ pub async fn process_request(
 					is_errored = true;
 				}
 			}
+			// first delete the current job so that volume can be used by others
+			Api::<Job>::namespaced(kube_client, "patrci") // TODO
+				.delete(
+					&job_name,
+					&DeleteParams {
+						propagation_policy: Some(PropagationPolicy::Foreground),
+						..Default::default()
+					},
+				)
+				.await?;
 
 			if is_errored {
 				db::update_build_step_status(
@@ -253,11 +284,11 @@ pub async fn process_request(
 		CIData::CleanBuild {
 			build_id:
 				BuildId {
-					workspace_id: _,
+					workspace_id,
 					repo_id,
 					build_num,
 				},
-			request_id: _,
+			request_id,
 		} => {
 			let steps = db::get_build_steps_for_build(
 				&mut *connection,
@@ -274,8 +305,18 @@ pub async fn process_request(
 				{
 					// currently running, so requeue this job after some time by
 					// returing an error
-					tokio::time::sleep(Duration::from_secs(120)).await;
-					return Err(Error::empty());
+					tokio::time::sleep(Duration::from_secs(30)).await;
+					service::queue_clean_build_pipeline(
+						BuildId {
+							workspace_id,
+							repo_id,
+							build_num,
+						},
+						config,
+						&request_id,
+					)
+					.await?;
+					return Ok(());
 				}
 				Some(status)
 					if status.eq_ignore_ascii_case("errored") ||
@@ -302,9 +343,9 @@ pub async fn process_request(
 				}
 			}
 
-			// delete all jobs associated with this pvc
-			// since ttl is 120 for jobs sleep for 150 sec and then delete pvc
-			tokio::time::sleep(Duration::from_secs(150)).await;
+			log::debug!(
+				"request_id: {request_id} - Cleaning up ci-{repo_id}-{build_num}"
+			);
 
 			// remove pvc
 			let pvc_name = format!("ci-{repo_id}-{build_num}");

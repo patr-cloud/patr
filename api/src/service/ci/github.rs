@@ -10,7 +10,6 @@ use crate::{
 	db::{self, Repository},
 	models::{CiFlow, Kind, Step},
 	rabbitmq::BuildId,
-	service,
 	utils::{Error, EveContext},
 };
 

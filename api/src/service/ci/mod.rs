@@ -10,7 +10,6 @@ use k8s_openapi::{
 			PersistentVolumeClaim,
 			PersistentVolumeClaimSpec,
 			PersistentVolumeClaimVolumeSource,
-			Pod,
 			PodSpec,
 			PodTemplateSpec,
 			ResourceRequirements,
@@ -20,16 +19,12 @@ use k8s_openapi::{
 	},
 	apimachinery::pkg::api::resource::Quantity,
 };
-use kube::{
-	api::{ObjectMeta, PostParams},
-	Api,
-};
-use serde_json::json;
+use kube::{api::ObjectMeta, Api};
 
 use crate::{
 	models::{CiFlow, Kind, Step},
-	rabbitmq::{self, BuildId, BuildStepId},
-	service::{self, queue_clone_ci_repo},
+	rabbitmq::{BuildId, BuildStepId},
+	service,
 	utils::{settings::Settings, Error},
 };
 
@@ -85,17 +80,18 @@ pub async fn create_ci_pipeline(
 				},
 				spec: Some(PersistentVolumeClaimSpec {
 					access_modes: Some(vec!["ReadWriteOnce".to_string()]),
-					storage_class_name: Some("csi-s3".to_string()),
+					storage_class_name: Some("do-block-storage".to_string()),
 					resources: Some(ResourceRequirements {
 						requests: Some(
 							[(
 								"storage".to_string(),
-								Quantity("1G".to_string()), // TODO
+								Quantity("1Gi".to_string()), // TODO
 							)]
 							.into(),
 						),
 						..Default::default()
 					}),
+					volume_mode: Some("Filesystem".to_string()),
 					..Default::default()
 				}),
 				..Default::default()
@@ -110,7 +106,7 @@ pub async fn create_ci_pipeline(
 			..Default::default()
 		},
 		spec: Some(JobSpec {
-			backoff_limit: Some(1), // TODO
+			backoff_limit: Some(0),
 			template: PodTemplateSpec {
 				spec: Some(PodSpec {
 					containers: vec![Container {
@@ -152,8 +148,6 @@ pub async fn create_ci_pipeline(
 				}),
 				..Default::default()
 			},
-			// ttl seconds buffer time should accomodate mq check time
-			ttl_seconds_after_finished: Some(120), // TODO
 			..Default::default()
 		}),
 		..Default::default()
@@ -191,7 +185,7 @@ pub async fn create_ci_pipeline(
 				..Default::default()
 			},
 			spec: Some(JobSpec {
-				backoff_limit: Some(1), // TODO
+				backoff_limit: Some(0),
 				template: PodTemplateSpec {
 					spec: Some(PodSpec {
 						containers: vec![Container {
@@ -241,8 +235,6 @@ pub async fn create_ci_pipeline(
 					}),
 					..Default::default()
 				},
-				// ttl seconds buffer time should accomodate mq check time
-				ttl_seconds_after_finished: Some(120), // TODO
 				..Default::default()
 			}),
 			..Default::default()

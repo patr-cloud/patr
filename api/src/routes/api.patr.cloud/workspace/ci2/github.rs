@@ -1,20 +1,17 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{
-	models::workspace::{
-		ci2::github::{
-			ActivateGithubRepoResponse,
-			BuildLogs,
-			DeactivateGithubRepoResponse,
-			GetBuildInfoResponse,
-			GetBuildListResponse,
-			GetBuildLogResponse,
-			GithubAuthCallbackRequest,
-			GithubAuthCallbackResponse,
-			GithubAuthResponse,
-			GithubListReposResponse,
-			GithubRepository,
-		},
-		infrastructure::deployment::Interval,
+	models::workspace::ci2::github::{
+		ActivateGithubRepoResponse,
+		BuildLogs,
+		DeactivateGithubRepoResponse,
+		GetBuildInfoResponse,
+		GetBuildListResponse,
+		GetBuildLogResponse,
+		GithubAuthCallbackRequest,
+		GithubAuthCallbackResponse,
+		GithubAuthResponse,
+		GithubListReposResponse,
+		GithubRepository,
 	},
 	utils::Uuid,
 };
@@ -44,7 +41,6 @@ use crate::{
 	pin_fn,
 	utils::{
 		constants::request_keys,
-		get_current_time,
 		Error,
 		ErrorData,
 		EveContext,
@@ -903,9 +899,10 @@ async fn get_build_logs(
 	.id;
 
 	let loki = context.get_state().config.loki.clone();
-	// TODO: make correct use of start and end
+	// TODO: make correct use of start and
+	// {job="patrci/ci-d46c8aba5dab4d3ab9bfe70b00039995-3-2",namespace="patrci"}
 	let response = reqwest::Client::new()
-		.get(format!("https://{}/loki/api/v1/query_range?direction=BACKWARD&query={{namespace=\"patrci\",pod=\"{}-{}\",container=\"{}\"}}&start={}&end={}", loki.host, repo_id.as_str(), build_num, step, Interval::Week.as_u64(), get_current_time().as_secs()))
+		.get(format!("https://{}/loki/api/v1/query_range?query={{namespace=\"patrci\",job=\"{}/ci-{}-{}-{}\"}}", loki.host, workspace_id.as_str(), repo_id.as_str(), build_num, step)) // TODO
 		.basic_auth(&loki.username, Some(&loki.password))
 		.send()
 		.await?
