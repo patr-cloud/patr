@@ -272,9 +272,13 @@ pub async fn initialize_billing_pre(
 				),
 			description TEXT
 				CONSTRAINT transaction_description_check CHECK (
-					transaction_type = 'credits' AND
-					description IS NOT NULL
-			)
+					(
+						transaction_type = 'credits' AND
+						description IS NOT NULL
+					) OR (
+						transaction_type != 'credits'
+					)
+				)
 		);
 		"#
 	)
