@@ -73,7 +73,7 @@ pub async fn initialize_ci_pre(
 			step_name TEXT NOT NULL,
 			base_image TEXT NOT NULL,
 			commands TEXT[] NOT NULL,
-			step_status TEXT,
+			step_status TEXT NOT NULL DEFAULT 'waiting_to_start',
 
 			CONSTRAINT ci_steps_fk_repo_id_build_num
 				FOREIGN KEY (repo_id, build_num)
@@ -340,6 +340,32 @@ pub async fn generate_new_build_for_repo(
 	.map(|row| row.build_num)
 }
 
+pub async fn update_build_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
+	build_num: i64,
+	status: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			ci_builds
+		SET
+			build_status = $3
+		WHERE (
+			repo_id = $1
+			AND build_num = $2
+		);
+		"#,
+		repo_id as _,
+		build_num,
+		status
+	)
+	.execute(connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn list_build_details_for_repo(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
@@ -434,7 +460,8 @@ pub async fn get_build_steps_for_build(
 			step_id,
 			step_name,
 			base_image,
-			commands
+			commands,
+			step_status
 		FROM
 			ci_steps
 		WHERE (
@@ -456,7 +483,7 @@ pub async fn get_build_steps_for_build(
 			&mut *connection,
 			repo_id,
 			build_num,
-			step.step_id
+			step.step_id,
 		)
 		.await?;
 
@@ -466,6 +493,7 @@ pub async fn get_build_steps_for_build(
 			base_image: step.base_image,
 			commands: step.commands,
 			env,
+			step_status: step.step_status,
 		}));
 	}
 
@@ -622,4 +650,61 @@ pub async fn get_env_variables_for_build_step(
 	)
 	.fetch_all(&mut *connection)
 	.await
+}
+
+pub async fn update_build_step_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
+	build_num: i64,
+	step_id: i32,
+	status: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			ci_steps
+		SET
+			step_status = $4
+		WHERE (
+			repo_id = $1
+			AND build_num = $2
+			AND step_id = $3
+		);
+		"#,
+		repo_id as _,
+		build_num,
+		step_id,
+		status
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_build_step_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
+	build_num: i64,
+	step_id: i32,
+) -> Result<String, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			step_status
+		FROM
+			ci_steps
+		WHERE (
+			repo_id = $1
+			AND build_num = $2
+			AND step_id = $3
+		);
+		"#,
+		repo_id as _,
+		build_num,
+		step_id,
+	)
+	// TODO: use fetch optional
+	.fetch_one(&mut *connection)
+	.await
+	.map(|row| row.step_status)
 }

@@ -9,7 +9,10 @@ use k8s_openapi::api::batch::v1::Job;
 use serde::{Deserialize, Serialize};
 
 use super::DeploymentMetadata;
-use crate::db::Workspace;
+use crate::{
+	db::Workspace,
+	rabbitmq::{BuildId, BuildStepId},
+};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "resource", rename_all = "camelCase")]
@@ -18,6 +21,8 @@ pub enum RequestMessage {
 	Deployment(DeploymentRequestData),
 	Database {},
 	Workspace(WorkspaceRequestData),
+	ManagedUrl(ManagedUrlData),
+	ContinuousIntegration(CIData),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -99,6 +104,41 @@ pub enum WorkspaceRequestData {
 	ConfirmPaymentIntent {
 		payment_intent_id: String,
 		workspace_id: Uuid,
+		request_id: Uuid,
+	},
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "action", rename_all = "camelCase")]
+#[allow(clippy::large_enum_variant)]
+pub enum ManagedUrlData {
+	Create {
+		managed_url_id: Uuid,
+		workspace_id: Uuid,
+		request_id: Uuid,
+	},
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "action", rename_all = "camelCase")]
+#[allow(clippy::large_enum_variant)]
+pub enum CIData {
+	InitRepo {
+		build_step_id: BuildStepId,
+		job: Job,
+		request_id: Uuid,
+	},
+	CreateBuildStep {
+		build_step_id: BuildStepId,
+		job: Job,
+		request_id: Uuid,
+	},
+	UpdateBuildStepStatus {
+		build_step_id: BuildStepId,
+		request_id: Uuid,
+	},
+	CleanBuild {
+		build_id: BuildId,
 		request_id: Uuid,
 	},
 }

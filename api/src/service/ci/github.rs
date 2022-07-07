@@ -1,3 +1,4 @@
+use api_models::utils::Uuid;
 use eve_rs::{AsError, Context};
 use hmac::{Hmac, Mac};
 use octorust::auth::Credentials;
@@ -8,6 +9,7 @@ use super::Netrc;
 use crate::{
 	db::{self, Repository},
 	models::{CiFlow, Kind, Step},
+	rabbitmq::BuildId,
 	service,
 	utils::{Error, EveContext},
 };
@@ -75,6 +77,11 @@ async fn find_matching_repo_with_secret(
 }
 
 pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
+	let request_id = Uuid::new_v4();
+	log::info!(
+		"request_id: {request_id} - Processing github webhook payload..."
+	);
+
 	let (repo, push_event) = find_matching_repo_with_secret(context)
 		.await?
 		.status(400)
@@ -135,6 +142,19 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 	)
 	.await?;
 
+	// add cloning as a step
+	db::add_ci_steps_for_build(
+		context.get_database_connection(),
+		&repo.id,
+		build_num,
+		0,
+		"git-clone",
+		"",
+		vec![],
+		vec![],
+	)
+	.await?;
+
 	let ci_flow: CiFlow = serde_yaml::from_slice(ci_file.as_ref())?;
 	let Kind::Pipeline(pipeline) = ci_flow.kind.clone();
 	for (
@@ -161,7 +181,6 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 	}
 
 	let config = &context.get_state().config;
-	let kube_client = service::get_kubernetes_config(config).await?;
 
 	// TODO: make more generic
 	let netrc = Netrc {
@@ -176,8 +195,13 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 		repo_name,
 		branch_name,
 		Some(netrc),
-		&format!("{}-{}", repo.id, build_num),
-		kube_client,
+		BuildId {
+			workspace_id: repo.workspace_id,
+			repo_id: repo.id,
+			build_num,
+		},
+		config,
+		&request_id,
 	)
 	.await?;
 

@@ -7,19 +7,21 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use k8s_openapi::api::batch::v1::Job;
 use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
 	db::{self, Workspace},
 	models::{
 		rabbitmq::{
+			CIData,
 			DeploymentRequestData,
 			RequestMessage,
 			WorkspaceRequestData,
 		},
 		DeploymentMetadata,
 	},
-	rabbitmq,
+	rabbitmq::{self, BuildId, BuildStepId},
 	service,
 	utils::{settings::Settings, Error},
 	Database,
@@ -410,5 +412,96 @@ pub async fn send_message_to_rabbit_mq(
 			log::error!("Error closing rabbitmq connection: {}", e);
 			Error::from(e)
 		})?;
+	Ok(())
+}
+
+pub async fn queue_create_managed_url(
+	workspace_id: &Uuid,
+	managed_url_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_rabbit_mq(
+		&RequestMessage::ManagedUrl(ManagedUrlData::Create {
+			managed_url_id: managed_url_id.clone(),
+			workspace_id: workspace_id.clone(),
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await?;
+	Ok(())
+}
+
+pub async fn queue_clone_ci_repo(
+	build_step_id: BuildStepId,
+	job: Job,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_rabbit_mq(
+		&RequestMessage::ContinuousIntegration(CIData::InitRepo {
+			build_step_id,
+			job,
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await?;
+	Ok(())
+}
+
+pub async fn queue_create_build_step(
+	build_step_id: BuildStepId,
+	job: Job,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_rabbit_mq(
+		&RequestMessage::ContinuousIntegration(CIData::CreateBuildStep {
+			build_step_id,
+			job,
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await?;
+	Ok(())
+}
+
+pub async fn queue_update_build_step_status(
+	build_step_id: BuildStepId,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_rabbit_mq(
+		&RequestMessage::ContinuousIntegration(CIData::UpdateBuildStepStatus {
+			build_step_id,
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await?;
+	Ok(())
+}
+
+pub async fn queue_clean_build_pipeline(
+	build_id: BuildId,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_rabbit_mq(
+		&RequestMessage::ContinuousIntegration(CIData::CleanBuild {
+			build_id,
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await?;
 	Ok(())
 }

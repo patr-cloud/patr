@@ -24,8 +24,12 @@ use crate::{
 };
 
 mod billing;
+mod ci;
 mod database;
 mod deployment;
+mod managed_url;
+
+pub use ci::{BuildId, BuildStepId};
 
 pub async fn start_consumer(app: &App) {
 	// Create connection
@@ -132,6 +136,13 @@ async fn process_queue_payload(
 		RequestMessage::Workspace(request_data) => {
 			billing::process_request(&mut connection, request_data, config)
 				.await
+		}
+		RequestMessage::ManagedUrl(request_data) => {
+			managed_url::process_request(&mut connection, request_data, config)
+				.await
+		}
+		RequestMessage::ContinuousIntegration(request_data) => {
+			ci::process_request(&mut connection, request_data, config).await
 		}
 	}
 	.map_err(|error| {
