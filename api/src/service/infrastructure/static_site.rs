@@ -27,6 +27,7 @@ pub async fn create_static_site_in_workspace(
 	name: &str,
 	file: Option<String>,
 	message: &str,
+	uploaded_by: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
@@ -139,12 +140,13 @@ pub async fn create_static_site_in_workspace(
 		.await?;
 		log::trace!("request_id: {} - Creating upload history", request_id);
 
-		db::create_static_site_deploy_history(
+		db::create_static_site_upload_history(
 			connection,
 			&upload_id,
 			&static_site_id,
 			message,
-			get_current_time_millis(),
+			uploaded_by,
+			&Utc::now().into(),
 		)
 		.await?;
 
@@ -180,17 +182,19 @@ pub async fn update_static_site(
 	name: Option<&str>,
 	file: Option<String>,
 	message: &str,
+	uploaded_by: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
-) -> Result<(), Error> {
+) -> Result<Option<Uuid>, Error> {
 	log::trace!("request_id: {} - getting static site details", request_id);
 
 	if let Some(name) = name {
 		db::update_static_site_name(connection, static_site_id, name).await?;
 	}
 
-	if let Some(file) = file {
+	let upload_id = if let Some(file) = file {
 		let upload_id = db::generate_new_resource_id(connection).await?;
+		let now = Utc::now();
 
 		db::create_resource(
 			connection,
@@ -202,17 +206,18 @@ pub async fn update_static_site(
 				.get(rbac::resource_types::STATIC_SITE_UPLOAD)
 				.unwrap(),
 			workspace_id,
-			get_current_time_millis(),
+			now.timestamp_millis() as u64,
 		)
 		.await?;
 
 		log::trace!("request_id: {} - Creating upload history", request_id);
-		db::create_static_site_deploy_history(
+		db::create_static_site_upload_history(
 			connection,
 			&upload_id,
 			static_site_id,
 			message,
-			get_current_time_millis(),
+			uploaded_by,
+			&now.into(),
 		)
 		.await?;
 
@@ -231,9 +236,13 @@ pub async fn update_static_site(
 			"request_id: {} - Creating Static-site upload resource",
 			request_id
 		);
-	}
 
-	Ok(())
+		Some(upload_id)
+	} else {
+		None
+	};
+
+	Ok(upload_id)
 }
 
 pub async fn stop_static_site(

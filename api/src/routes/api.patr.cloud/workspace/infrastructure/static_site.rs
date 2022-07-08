@@ -8,13 +8,13 @@ use api_models::{
 			DeleteStaticSiteResponse,
 			GetStaticSiteInfoResponse,
 			ListLinkedURLsResponse,
-			ListStaticSitesDeployHistoryResponse,
+			ListStaticSiteUploadHistoryResponse,
 			ListStaticSitesResponse,
 			RevertStaticSiteResponse,
 			StartStaticSiteResponse,
 			StaticSite,
-			StaticSiteDeployHistory,
 			StaticSiteDetails,
+			StaticSiteUploadHistory,
 			StopStaticSiteResponse,
 			UpdateStaticSiteRequest,
 			UpdateStaticSiteResponse,
@@ -594,20 +594,21 @@ async fn list_static_sites_deploy_history(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let deploys = db::get_static_site_deploy_history(
+	let uploads = db::get_static_site_upload_history(
 		context.get_database_connection(),
 		&static_site_id,
 	)
 	.await?
 	.into_iter()
-	.map(|deploy_history| StaticSiteDeployHistory {
+	.map(|deploy_history| StaticSiteUploadHistory {
 		upload_id: deploy_history.id,
 		message: deploy_history.message,
-		created: deploy_history.created as u64,
+		uploaded_by: deploy_history.uploaded_by,
+		created: deploy_history.created,
 	})
 	.collect();
-	context.success(ListStaticSitesDeployHistoryResponse { deploys });
 
+	context.success(ListStaticSiteUploadHistoryResponse { uploads });
 	Ok(context)
 }
 
@@ -651,6 +652,7 @@ async fn create_static_site_deployment(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
+	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	let CreateStaticSiteRequest {
 		workspace_id: _,
@@ -672,6 +674,7 @@ async fn create_static_site_deployment(
 		name,
 		file,
 		&message,
+		&user_id,
 		&config,
 		&request_id,
 	)
@@ -729,7 +732,7 @@ async fn revert_static_site_deployment(
 			.unwrap();
 
 	// check if upload_id is present in the deploy history
-	db::get_static_site_deploy_history_by_upload_id(
+	db::get_static_site_upload_history_by_upload_id(
 		context.get_database_connection(),
 		&upload_id,
 	)
@@ -875,6 +878,8 @@ async fn update_static_site(
 	)
 	.unwrap();
 	let request_id = Uuid::new_v4();
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
 	log::trace!(
 		"Uploading the file for static site with id: {} and request_id: {}",
 		static_site_id,
@@ -893,19 +898,20 @@ async fn update_static_site(
 
 	let config = context.get_state().config.clone();
 
-	service::update_static_site(
+	let upload_id = service::update_static_site(
 		context.get_database_connection(),
 		&workspace_id,
 		&static_site_id,
 		name,
 		file,
-		&message,
+		message.as_deref().unwrap_or("No upload message"),
+		&user_id,
 		&config,
 		&request_id,
 	)
 	.await?;
 
-	context.success(UpdateStaticSiteResponse {});
+	context.success(UpdateStaticSiteResponse { upload_id });
 	Ok(context)
 }
 

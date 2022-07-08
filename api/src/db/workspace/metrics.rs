@@ -210,11 +210,11 @@ pub async fn get_created_static_site_count(
 		SELECT
 			COUNT(*) as "count!"
 		FROM
-			deployment_static_site
+			static_site
 		INNER JOIN
 			workspace
 		ON
-			deployment_static_site.workspace_id = workspace.id
+			static_site.workspace_id = workspace.id
 		WHERE
 			status != 'deleted' AND
 			workspace.super_admin_id NOT IN (
@@ -272,11 +272,11 @@ pub async fn get_deleted_static_site_count(
 		SELECT
 			COUNT(*) as "count!"
 		FROM 
-			deployment_static_site
+			static_site
 		INNER JOIN
 			workspace
 		ON
-			deployment_static_site.workspace_id = workspace.id
+			static_site.workspace_id = workspace.id
 		WHERE 
 			status = 'deleted' AND
 			workspace.super_admin_id NOT IN (
