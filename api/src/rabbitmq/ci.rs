@@ -1,9 +1,21 @@
 use std::time::Duration;
 
-use api_models::utils::Uuid;
-use k8s_openapi::api::{batch::v1::Job, core::v1::PersistentVolumeClaim};
+use api_models::{models::workspace::ci2::github::EnvVariable, utils::Uuid};
+use k8s_openapi::api::{
+	batch::v1::{Job, JobSpec},
+	core::v1::{
+		Container,
+		EnvVar,
+		PersistentVolumeClaim,
+		PersistentVolumeClaimVolumeSource,
+		PodSpec,
+		PodTemplateSpec,
+		Volume,
+		VolumeMount,
+	},
+};
 use kube::{
-	api::{DeleteParams, PropagationPolicy},
+	api::{DeleteParams, ObjectMeta, PropagationPolicy},
 	Api,
 };
 use serde::{Deserialize, Serialize};
@@ -23,12 +35,98 @@ pub struct BuildId {
 	pub build_num: i64,
 }
 
+impl BuildId {
+	pub fn get_pvc_name(&self) -> String {
+		format!("ci-{}-{}", self.repo_id, self.build_num)
+	}
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BuildStepId {
-	pub workspace_id: Uuid,
-	pub repo_id: Uuid,
-	pub build_num: i64,
+	pub build_id: BuildId,
 	pub step_id: i32,
+}
+
+impl BuildStepId {
+	pub fn get_job_name(&self) -> String {
+		format!(
+			"ci-{}-{}-{}",
+			self.build_id.repo_id, self.build_id.build_num, self.step_id
+		)
+	}
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct BuildStep {
+	pub id: BuildStepId,
+	pub image: String,
+	pub env_vars: Vec<EnvVariable>,
+	pub commands: Vec<String>,
+}
+
+impl BuildStep {
+	pub fn get_job_manifest(&self) -> Job {
+		Job {
+			metadata: ObjectMeta {
+				name: Some(self.id.get_job_name()),
+				..Default::default()
+			},
+			spec: Some(JobSpec {
+				backoff_limit: Some(0),
+				template: PodTemplateSpec {
+					spec: Some(PodSpec {
+						containers: vec![Container {
+							image: Some(self.image.clone()),
+							image_pull_policy: Some("Always".to_string()),
+							name: "build-step".to_string(),
+							volume_mounts: Some(vec![VolumeMount {
+								mount_path: "/mnt/workdir".to_string(),
+								name: "workdir".to_string(),
+								..Default::default()
+							}]),
+							env: Some(
+								self.env_vars
+									.iter()
+									.map(|env| EnvVar {
+										name: env.name.clone(),
+										value: Some(env.value.clone()),
+										..Default::default()
+									})
+									.collect(),
+							),
+							command: Some(vec![
+								"sh".to_string(),
+								"-ce".to_string(),
+								self.commands.join("\n"),
+							]),
+							..Default::default()
+						}],
+						volumes: Some(vec![Volume {
+							name: "workdir".to_string(),
+							persistent_volume_claim: Some(
+								PersistentVolumeClaimVolumeSource {
+									claim_name: self.id.build_id.get_pvc_name(),
+									..Default::default()
+								},
+							),
+							..Default::default()
+						}]),
+						restart_policy: Some("Never".to_string()),
+						..Default::default()
+					}),
+					..Default::default()
+				},
+				..Default::default()
+			}),
+			..Default::default()
+		}
+	}
+}
+
+enum Status {
+	Errored,
+	Completed,
+	Running,
 }
 
 pub async fn process_request(
@@ -39,319 +137,229 @@ pub async fn process_request(
 	let kube_client = service::get_kubernetes_config(config).await?;
 
 	match request_data {
-		CIData::InitRepo {
-			build_step_id,
-			job,
+		CIData::BuildStep {
+			build_step,
 			request_id,
 		} => {
-			log::debug!(
-				"request_id: {request_id} - Initializing clone repo job"
+			let build_step_job_name = build_step.id.get_job_name();
+			let jobs_api = Api::<Job>::namespaced(
+				kube_client,
+				build_step.id.build_id.workspace_id.as_str(),
 			);
+			let step_status = jobs_api
+				.get_opt(&build_step_job_name)
+				.await?
+				.and_then(|job| job.status);
 
-			let result = Api::<Job>::namespaced(kube_client, "patrci") // TODO
-				.create(&Default::default(), &job)
-				.await;
+			if let Some(status) = step_status {
+				let status = match (status.active.unwrap_or_default(), status.succeeded.unwrap_or_default(), status.failed.unwrap_or_default()) {
+					(1, 0, 0) => Status::Running,
+					(0, 1, 0) => Status::Completed,
+					(0, 0, 1) => Status::Errored,
+					(a, s, f) => unreachable!("expected one pod per job, invalid job status is obtained (active:{a}, succeeded:{s}, failed:{f})")
+				};
 
-			match result {
-				Ok(_) => {
-					log::debug!(
-						"request_id: {request_id} - Clone repo job creation success, queuing job to look for status update"
-					);
-					db::update_build_step_status(
-						connection,
-						&build_step_id.repo_id,
-						build_step_id.build_num,
-						build_step_id.step_id,
-						"running",
-					)
-					.await?;
-					service::queue_update_build_step_status(
-						build_step_id,
-						config,
-						&request_id,
-					)
-					.await?;
-				}
-				Err(err) => {
-					log::error!(
-						"request_id: {} - Error while creating clone repo job, updating error status in db : {}", request_id, err
-					);
-					db::update_build_step_status(
-						connection,
-						&build_step_id.repo_id,
-						build_step_id.build_num,
-						build_step_id.step_id,
-						"errored",
-					)
-					.await?;
-				}
-			}
-		}
-		CIData::CreateBuildStep {
-			build_step_id:
-				BuildStepId {
-					workspace_id,
-					repo_id,
-					build_num,
-					step_id,
-				},
-			job,
-			request_id,
-		} => {
-			log::debug!(
-				"request_id: {request_id} - Checking to create job for ci-{repo_id}-{build_num}-{step_id}"
-			);
-
-			// TODO: step_id
-			let previous_status = db::get_build_step_status(
-				connection,
-				&repo_id,
-				build_num,
-				step_id - 1,
-			)
-			.await?;
-			if previous_status.eq_ignore_ascii_case("errored") ||
-				previous_status.eq_ignore_ascii_case("skipped-parent_error")
-			{
-				log::debug!(
-					"request_id: {request_id} - Updating status as skipped-parent_error for ci-{repo_id}-{build_num}-{step_id}"
-				);
-				db::update_build_step_status(
-					connection,
-					&repo_id,
-					build_num,
-					step_id,
-					"skipped-parent_error",
-				)
-				.await?;
-			} else if previous_status.eq_ignore_ascii_case("waiting_to_start") ||
-				previous_status.eq_ignore_ascii_case("running")
-			{
-				// wait until parent job completes, so requeue this job after
-				// some time by returing an error
-				tokio::time::sleep(Duration::from_secs(10)).await;
-				service::queue_create_build_step(
-					BuildStepId {
-						workspace_id,
-						repo_id,
-						build_num,
-						step_id,
-					},
-					job,
-					config,
-					&request_id,
-				)
-				.await?;
-				return Ok(());
-			} else if previous_status.eq_ignore_ascii_case("success") {
-				// previous state is success, so we can spinup this job now
-				let result = Api::<Job>::namespaced(kube_client, "patrci") // TODO
-					.create(&Default::default(), &job)
-					.await;
-
-				match result {
-					Ok(_) => {
-						log::debug!(
-						"request_id: {request_id} - Creating job for ci-{repo_id}-{build_num}-{step_id} success"
-					);
+				match status {
+					Status::Errored => {
+						log::info!("request_id: {request_id} - Build step `{build_step_job_name}` errored");
+						jobs_api
+							.delete(
+								&build_step_job_name,
+								&DeleteParams {
+									propagation_policy: Some(
+										PropagationPolicy::Foreground,
+									),
+									..Default::default()
+								},
+							)
+							.await?;
 						db::update_build_step_status(
-							connection, &repo_id, build_num, step_id, "running",
+							connection,
+							&build_step.id.build_id.repo_id,
+							build_step.id.build_id.build_num,
+							build_step.id.step_id,
+							"errored",
 						)
-						.await?;
-						service::queue_update_build_step_status(
-							BuildStepId {
-								workspace_id,
-								repo_id,
-								build_num,
-								step_id,
-							},
+						.await?
+					}
+					Status::Completed => {
+						log::info!("request_id: {request_id} - Build step `{build_step_job_name}` succeeded");
+						jobs_api
+							.delete(
+								&build_step_job_name,
+								&DeleteParams {
+									propagation_policy: Some(
+										PropagationPolicy::Foreground,
+									),
+									..Default::default()
+								},
+							)
+							.await?;
+						db::update_build_step_status(
+							connection,
+							&build_step.id.build_id.repo_id,
+							build_step.id.build_id.build_num,
+							build_step.id.step_id,
+							"success",
+						)
+						.await?
+					}
+					Status::Running => {
+						log::debug!("request_id: {request_id} - Waiting to update status of `{build_step_job_name}`");
+						tokio::time::sleep(Duration::from_secs(5)).await;
+						service::queue_create_ci_build_step(
+							build_step,
 							config,
 							&request_id,
 						)
 						.await?;
 					}
-					Err(err) => {
-						log::error!(
-						"request_id: {} - Error while creating job for ci-{}-{}-{}, updating error status in db : {}", request_id, repo_id, build_num, step_id, err
-					);
+				}
+			} else {
+				let dependency_status = db::get_build_step_status(
+					connection,
+					&build_step.id.build_id.repo_id,
+					build_step.id.build_id.build_num,
+					build_step.id.step_id - 1, /* since sequential, checking
+					                            * previous status is okay
+					                            * for now */
+				)
+				.await?;
+
+				let dependency_status = match dependency_status
+					.unwrap_or_else(|| "success".to_string()) // for clone command it will be None
+					.as_str()
+				{
+					"running" | "waiting_to_start" => Status::Running,
+					"errored" | "skipped-parent_error" => Status::Errored,
+					"success" => Status::Completed,
+					unknown => {
+						unreachable!("invalid dependency status `{unknown}`")
+					}
+				};
+
+				match dependency_status {
+					Status::Errored => {
+						log::info!("request_id: {request_id} - Build step `{build_step_job_name}` skipped as dependencies errored out");
 						db::update_build_step_status(
-							connection, &repo_id, build_num, step_id, "errored",
+							connection,
+							&build_step.id.build_id.repo_id,
+							build_step.id.build_id.build_num,
+							build_step.id.step_id,
+							"skipped-parent_error",
+						)
+						.await?
+					}
+					Status::Completed => {
+						log::info!("request_id: {request_id} - Starting build step `{build_step_job_name}`");
+						jobs_api
+							.create(
+								&Default::default(),
+								&build_step.get_job_manifest(),
+							)
+							.await?;
+						db::update_build_step_status(
+							connection,
+							&build_step.id.build_id.repo_id,
+							build_step.id.build_id.build_num,
+							build_step.id.step_id,
+							"running",
+						)
+						.await?;
+						service::queue_create_ci_build_step(
+							build_step,
+							config,
+							&request_id,
+						)
+						.await?;
+					}
+					Status::Running => {
+						log::debug!("request_id: {request_id} - Waiting to create `{build_step_job_name}`");
+						tokio::time::sleep(Duration::from_secs(5)).await;
+						service::queue_create_ci_build_step(
+							build_step,
+							config,
+							&request_id,
 						)
 						.await?;
 					}
 				}
-			} else {
-				// TODO: handle invalid state
-			}
-		}
-		CIData::UpdateBuildStepStatus {
-			build_step_id:
-				BuildStepId {
-					workspace_id,
-					repo_id,
-					build_num,
-					step_id,
-				},
-			request_id,
-		} => {
-			log::debug!(
-				"request_id: {request_id} - Checking the status for ci-{repo_id}-{build_num}-{step_id}"
-			);
-
-			let job_name = format!("ci-{repo_id}-{build_num}-{step_id}");
-			let result = Api::<Job>::namespaced(kube_client.clone(), "patrci") // TODO
-				.get_status(&job_name)
-				.await;
-
-			let mut is_errored = false;
-			match result {
-				Ok(job) => {
-					let status = job.status.map(|status| {
-						(
-							status.active.unwrap_or_default(),
-							status.succeeded.unwrap_or_default(),
-							status.failed.unwrap_or_default(),
-						)
-					});
-					if let Some((active, succeeded, failed)) = status {
-						// one pod per job is used, so it is safe to check this
-						// way
-						if failed == 1 {
-							log::error!(
-								"request_id: {request_id} - Error while getting status of job from JobStatus, updating error status in db"
-							);
-							is_errored = true;
-						} else if succeeded == 1 {
-							log::info!(
-								"request_id: {request_id} - Step completed successfully, updating in db"
-							);
-							db::update_build_step_status(
-								connection, &repo_id, build_num, step_id,
-								"success",
-							)
-							.await?;
-						} else if active == 1 {
-							// currently running, so requeue this job after some
-							// time by returing an error
-							tokio::time::sleep(Duration::from_secs(10)).await;
-							service::queue_update_build_step_status(
-								BuildStepId {
-									workspace_id,
-									repo_id,
-									build_num,
-									step_id,
-								},
-								config,
-								&request_id,
-							)
-							.await?;
-							return Ok(());
-						} else {
-							// TODO: handle invalid state
-						}
-					} else {
-						log::error!(
-							"request_id: {request_id} - Error while getting status of job from JobStatus, updating error status in db"
-						);
-						is_errored = true;
-					}
-				}
-				Err(err) => {
-					log::error!(
-						"request_id: {} - Error while getting status of job from k8s, updating error status in db : {}", request_id, err
-					);
-					is_errored = true;
-				}
-			}
-			// first delete the current job so that volume can be used by others
-			Api::<Job>::namespaced(kube_client, "patrci") // TODO
-				.delete(
-					&job_name,
-					&DeleteParams {
-						propagation_policy: Some(PropagationPolicy::Foreground),
-						..Default::default()
-					},
-				)
-				.await?;
-
-			if is_errored {
-				db::update_build_step_status(
-					connection, &repo_id, build_num, step_id, "errored",
-				)
-				.await?;
 			}
 		}
 		CIData::CleanBuild {
-			build_id:
-				BuildId {
-					workspace_id,
-					repo_id,
-					build_num,
-				},
+			build_id,
 			request_id,
 		} => {
 			let steps = db::get_build_steps_for_build(
 				&mut *connection,
-				&repo_id,
-				build_num,
+				&build_id.repo_id,
+				build_id.build_num,
 			)
 			.await?;
+			// for now sequential, so checking last status is enough
 			let status = steps.last().map(|step| step.step_status.clone());
 
-			match status {
-				Some(status)
-					if status.eq_ignore_ascii_case("waiting_to_start") ||
-						status.eq_ignore_ascii_case("running") =>
-				{
-					// currently running, so requeue this job after some time by
-					// returing an error
-					tokio::time::sleep(Duration::from_secs(30)).await;
-					service::queue_clean_build_pipeline(
-						BuildId {
-							workspace_id,
-							repo_id,
-							build_num,
-						},
-						config,
-						&request_id,
-					)
-					.await?;
-					return Ok(());
+			let status = match status
+				.unwrap_or_else(|| "unknown".to_string())
+				.as_str()
+			{
+				"running" | "waiting_to_start" => Status::Running,
+				"errored" | "skipped-parent_error" => Status::Errored,
+				"success" => Status::Completed,
+				unknown => {
+					unreachable!("invalid dependency status `{unknown}`")
 				}
-				Some(status)
-					if status.eq_ignore_ascii_case("errored") ||
-						status.eq_ignore_ascii_case(
-							"skipped-parent_error",
-						) =>
-				{
+			};
+
+			let pvc_name = build_id.get_pvc_name();
+			match status {
+				Status::Errored => {
+					log::info!(
+						"request_id: {request_id} - Build `{pvc_name}` errored"
+					);
+					Api::<PersistentVolumeClaim>::namespaced(
+						kube_client,
+						build_id.workspace_id.as_str(),
+					)
+					.delete(&pvc_name, &Default::default())
+					.await?;
 					db::update_build_status(
 						&mut *connection,
-						&repo_id,
-						build_num,
+						&build_id.repo_id,
+						build_id.build_num,
 						"errored",
 					)
 					.await?;
 				}
-				_ => {
+				Status::Completed => {
+					log::info!(
+						"request_id: {request_id} - Build `{pvc_name}` succeed"
+					);
+					Api::<PersistentVolumeClaim>::namespaced(
+						kube_client,
+						build_id.workspace_id.as_str(),
+					)
+					.delete(&pvc_name, &Default::default())
+					.await?;
 					db::update_build_status(
 						&mut *connection,
-						&repo_id,
-						build_num,
+						&build_id.repo_id,
+						build_id.build_num,
 						"success",
 					)
 					.await?;
 				}
+				Status::Running => {
+					log::debug!("request_id: {request_id} - Waiting to clean `{pvc_name}`");
+					tokio::time::sleep(Duration::from_secs(10)).await;
+					service::queue_clean_ci_build_pipeline(
+						build_id,
+						config,
+						&request_id,
+					)
+					.await?;
+				}
 			}
-
-			log::debug!(
-				"request_id: {request_id} - Cleaning up ci-{repo_id}-{build_num}"
-			);
-
-			// remove pvc
-			let pvc_name = format!("ci-{repo_id}-{build_num}");
-			Api::<PersistentVolumeClaim>::namespaced(kube_client, "patrci")
-				.delete(&pvc_name, &Default::default())
-				.await?;
 		}
 	}
 	Ok(())

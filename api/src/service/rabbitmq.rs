@@ -7,7 +7,6 @@ use api_models::{
 	},
 	utils::Uuid,
 };
-use k8s_openapi::api::batch::v1::Job;
 use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
@@ -21,7 +20,7 @@ use crate::{
 		},
 		DeploymentMetadata,
 	},
-	rabbitmq::{self, BuildId, BuildStepId},
+	rabbitmq::{self, BuildId, BuildStep},
 	service,
 	utils::{settings::Settings, Error},
 	Database,
@@ -434,16 +433,14 @@ pub async fn queue_create_managed_url(
 	Ok(())
 }
 
-pub async fn queue_clone_ci_repo(
-	build_step_id: BuildStepId,
-	job: Job,
+pub async fn queue_create_ci_build_step(
+	build_step: BuildStep,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	send_message_to_rabbit_mq(
-		&RequestMessage::ContinuousIntegration(CIData::InitRepo {
-			build_step_id,
-			job,
+		&RequestMessage::ContinuousIntegration(CIData::BuildStep {
+			build_step,
 			request_id: request_id.clone(),
 		}),
 		config,
@@ -453,43 +450,7 @@ pub async fn queue_clone_ci_repo(
 	Ok(())
 }
 
-pub async fn queue_create_build_step(
-	build_step_id: BuildStepId,
-	job: Job,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	send_message_to_rabbit_mq(
-		&RequestMessage::ContinuousIntegration(CIData::CreateBuildStep {
-			build_step_id,
-			job,
-			request_id: request_id.clone(),
-		}),
-		config,
-		request_id,
-	)
-	.await?;
-	Ok(())
-}
-
-pub async fn queue_update_build_step_status(
-	build_step_id: BuildStepId,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	send_message_to_rabbit_mq(
-		&RequestMessage::ContinuousIntegration(CIData::UpdateBuildStepStatus {
-			build_step_id,
-			request_id: request_id.clone(),
-		}),
-		config,
-		request_id,
-	)
-	.await?;
-	Ok(())
-}
-
-pub async fn queue_clean_build_pipeline(
+pub async fn queue_clean_ci_build_pipeline(
 	build_id: BuildId,
 	config: &Settings,
 	request_id: &Uuid,

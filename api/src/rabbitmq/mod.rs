@@ -29,7 +29,7 @@ mod database;
 mod deployment;
 mod managed_url;
 
-pub use ci::{BuildId, BuildStepId};
+pub use ci::{BuildId, BuildStep, BuildStepId};
 
 pub async fn start_consumer(app: &App) {
 	// Create connection

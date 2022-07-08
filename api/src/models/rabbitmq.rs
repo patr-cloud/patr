@@ -5,13 +5,12 @@ use api_models::{
 	},
 	utils::Uuid,
 };
-use k8s_openapi::api::batch::v1::Job;
 use serde::{Deserialize, Serialize};
 
 use super::DeploymentMetadata;
 use crate::{
 	db::Workspace,
-	rabbitmq::{BuildId, BuildStepId},
+	rabbitmq::{BuildId, BuildStep},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -123,18 +122,8 @@ pub enum ManagedUrlData {
 #[serde(tag = "action", rename_all = "camelCase")]
 #[allow(clippy::large_enum_variant)]
 pub enum CIData {
-	InitRepo {
-		build_step_id: BuildStepId,
-		job: Job,
-		request_id: Uuid,
-	},
-	CreateBuildStep {
-		build_step_id: BuildStepId,
-		job: Job,
-		request_id: Uuid,
-	},
-	UpdateBuildStepStatus {
-		build_step_id: BuildStepId,
+	BuildStep {
+		build_step: BuildStep,
 		request_id: Uuid,
 	},
 	CleanBuild {

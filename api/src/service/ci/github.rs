@@ -179,6 +179,8 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 		.await?;
 	}
 
+	context.commit_database_transaction().await?;
+
 	let config = &context.get_state().config;
 
 	// TODO: make more generic

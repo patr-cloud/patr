@@ -686,7 +686,7 @@ pub async fn get_build_step_status(
 	repo_id: &Uuid,
 	build_num: i64,
 	step_id: i32,
-) -> Result<String, sqlx::Error> {
+) -> Result<Option<String>, sqlx::Error> {
 	query!(
 		r#"
 		SELECT
@@ -703,8 +703,7 @@ pub async fn get_build_step_status(
 		build_num,
 		step_id,
 	)
-	// TODO: use fetch optional
-	.fetch_one(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await
-	.map(|row| row.step_status)
+	.map(|row| row.map(|row| row.step_status))
 }
