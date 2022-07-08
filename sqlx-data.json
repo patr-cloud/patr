@@ -443,6 +443,16 @@
       "nullable": []
     }
   },
+  "0df2dea5d1e7108a6092502e9ad5c07703510849e7616c8b1d8bd6ad02883f1b": {
+    "query": "CREATE TABLE workspace_domain( id UUID CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_domain_type CHECK( domain_type = 'business' ), is_verified BOOLEAN NOT NULL, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL, last_unverified TIMESTAMPTZ, transfer_domain UUID, CONSTRAINT workspace_domain_uq_id_nameserver_type UNIQUE(id, nameserver_type), CONSTRAINT workspace_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type), CONSTRAINT workspace_domain_chk_transfer_domain_ext CHECK( ( transfer_domain IS NULL AND nameserver_type = 'internal' ) OR ( nameserver_type = 'external' ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "0fd9c540bc839084b3d28bd84a79e3b348e1801e5d38321e74e92572e0fa0d0c": {
     "query": "UPDATE workspace_domain SET transfer_domain = $1 WHERE id = $2;",
     "describe": {
@@ -4270,16 +4280,6 @@
           "Text",
           "Uuid"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "623cdff19660c3a7b6a6c132dc8e5b0ba38ccf0658b0c326aadd17efd0fa7417": {
-    "query": "CREATE TABLE workspace_domain( id UUID CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_domain_type CHECK( domain_type = 'business' ), is_verified BOOLEAN NOT NULL, last_unverified TIMESTAMPTZ, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL, transfer_domain UUID, CONSTRAINT workspace_domain_uq_id_nameserver_type UNIQUE(id, nameserver_type), CONSTRAINT workspace_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type), CONSTRAINT workspace_domain_chk_transfer_domain_ext CHECK( ( transfer_domain IS NULL AND nameserver_type = 'internal' ) OR ( nameserver_type = 'external' ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }

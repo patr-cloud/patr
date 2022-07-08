@@ -194,8 +194,8 @@ pub async fn initialize_domain_pre(
 					domain_type = 'business'
 				),
 			is_verified BOOLEAN NOT NULL,
-			last_unverified TIMESTAMPTZ,
 			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL,
+			last_unverified TIMESTAMPTZ,
 			transfer_domain UUID,
 			CONSTRAINT workspace_domain_uq_id_nameserver_type
 				UNIQUE(id, nameserver_type),
