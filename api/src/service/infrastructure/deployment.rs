@@ -61,15 +61,6 @@ pub async fn create_deployment_in_workspace(
 	deployment_running_details: &DeploymentRunningDetails,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
-	// As of now, only our custom registry is allowed
-	// Docker hub will also be allowed in the near future
-	log::trace!("request_id: {} - Checking if the deployment's image is in patr registry", request_id);
-	if !registry.is_patr_registry() {
-		return Err(Error::empty()
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string()));
-	}
-
 	if image_tag.is_empty() {
 		return Err(Error::empty()
 			.status(400)
