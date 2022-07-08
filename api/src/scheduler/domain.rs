@@ -361,6 +361,13 @@ async fn verify_transferred_domain_to_patr() -> Result<(), Error> {
 			continue;
 		}
 
+		// Delete transfer domain from workspace domain
+		db::delete_transfer_domain_from_workspace_domain(
+			&mut connection,
+			&unverified_domain.id,
+		)
+		.await?;
+
 		// Delete user_transferring_domain_to_patr
 		db::delete_user_transferred_domain_by_id(
 			&mut connection,

@@ -16,7 +16,6 @@ pub(super) async fn migrate(
 	)
 	.execute(&mut *connection)
 	.await?;
-
 	query!(
 		r#"
 		ALTER TABLE transaction

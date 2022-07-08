@@ -27,6 +27,7 @@ pub struct WorkspaceDomain {
 	pub domain_type: ResourceType,
 	pub is_verified: bool,
 	pub nameserver_type: DomainNameserverType,
+	pub transfer_domain: Option<Uuid>,
 }
 
 impl WorkspaceDomain {
@@ -195,6 +196,7 @@ pub async fn initialize_domain_pre(
 			is_verified BOOLEAN NOT NULL,
 			last_unverified TIMESTAMPTZ,
 			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL,
+			transfer_domain UUID,
 			CONSTRAINT workspace_domain_uq_id_nameserver_type
 				UNIQUE(id, nameserver_type),
 			CONSTRAINT workspace_domain_fk_id_domain_type
@@ -567,7 +569,8 @@ pub async fn get_domains_for_workspace(
 			workspace_domain.id as "id: _",
 			workspace_domain.domain_type as "domain_type: _",
 			workspace_domain.is_verified,
-			workspace_domain.nameserver_type as "nameserver_type: _"
+			workspace_domain.nameserver_type as "nameserver_type: _",
+			workspace_domain.transfer_domain as "transfer_domain: _"
 		FROM
 			domain
 		INNER JOIN
@@ -603,7 +606,8 @@ pub async fn get_all_unverified_domains(
 			workspace_domain.domain_type as "domain_type!: ResourceType",
 			workspace_domain.is_verified as "is_verified!",
 			workspace_domain.nameserver_type as "nameserver_type!: DomainNameserverType",
-			patr_controlled_domain.zone_identifier as "zone_identifier?"
+			patr_controlled_domain.zone_identifier as "zone_identifier?",
+			workspace_domain.transfer_domain as "transfer_domain: Uuid"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -634,6 +638,7 @@ pub async fn get_all_unverified_domains(
 				domain_type: row.domain_type,
 				is_verified: row.is_verified,
 				nameserver_type: row.nameserver_type,
+				transfer_domain: row.transfer_domain,
 			},
 			row.zone_identifier,
 		)
@@ -654,7 +659,8 @@ pub async fn get_all_verified_domains(
 			workspace_domain.domain_type as "domain_type!: ResourceType",
 			workspace_domain.is_verified as "is_verified!",
 			workspace_domain.nameserver_type as "nameserver_type!: DomainNameserverType",
-			patr_controlled_domain.zone_identifier as "zone_identifier?"
+			patr_controlled_domain.zone_identifier as "zone_identifier?",
+			workspace_domain.transfer_domain as "transfer_domain: Uuid"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -685,6 +691,7 @@ pub async fn get_all_verified_domains(
 				domain_type: row.domain_type,
 				is_verified: row.is_verified,
 				nameserver_type: row.nameserver_type,
+				transfer_domain: row.transfer_domain,
 			},
 			row.zone_identifier,
 		)
@@ -797,6 +804,26 @@ pub async fn update_workspace_domain_nameserver_type(
 	.map(|_| ())
 }
 
+pub async fn delete_transfer_domain_from_workspace_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace_domain
+		SET
+			transfer_domain = NULL
+		WHERE
+			id = $1;
+		"#,
+		domain_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn update_generic_domain_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
@@ -869,7 +896,8 @@ pub async fn get_workspace_domain_by_id(
 			workspace_domain.id as "id: _",
 			workspace_domain.domain_type as "domain_type: _",
 			workspace_domain.is_verified,
-			workspace_domain.nameserver_type as "nameserver_type: _"
+			workspace_domain.nameserver_type as "nameserver_type: _",
+			workspace_domain.transfer_domain as "transfer_domain: _"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -1302,6 +1330,32 @@ pub async fn add_to_user_transferring_domain_to_patr(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn get_user_transferring_domain_to_patr(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+) -> Result<Option<UserTransferredDomain>, sqlx::Error> {
+	query_as!(
+		UserTransferredDomain,
+		r#"
+		SELECT
+			user_transferring_domain_to_patr.domain_id as "id!: _",
+			user_transferring_domain_to_patr.zone_identifier as "zone_identifier!",
+			CONCAT(domain.name, '.', domain.tld) as "name!"
+		FROM
+			user_transferring_domain_to_patr
+		LEFT JOIN
+			domain
+		ON
+			domain.id = user_transferring_domain_to_patr.domain_id
+		WHERE
+			user_transferring_domain_to_patr.domain_id = $1;
+		"#,
+		domain_id as _
+	)
+	.fetch_optional(&mut *connection)
+	.await
 }
 
 pub async fn get_all_unverified_transferred_domains(
