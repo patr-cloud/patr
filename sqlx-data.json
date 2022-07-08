@@ -2863,6 +2863,16 @@
       ]
     }
   },
+  "45f4f79273f278a0879e97a664e1a4bc71ccd61686a16daf67a2276bb753c764": {
+    "query": "ALTER TABLE workspace_domain ADD CONSTRAINT workspace_domain_fk_transferred_domain FOREIGN KEY (transferred_domain) REFERENCES user_transferring_domain_to_patr(domain_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "465499cd312427f9daac7b5b6a05aa0c4e266f2e44e2a880626698aee28a2577": {
     "query": "CREATE TABLE meta_data( id VARCHAR(100) CONSTRAINT meta_data_pk PRIMARY KEY, value TEXT NOT NULL );",
     "describe": {

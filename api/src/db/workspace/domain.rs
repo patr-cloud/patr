@@ -362,6 +362,16 @@ pub async fn initialize_domain_post(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE workspace_domain
+		ADD CONSTRAINT workspace_domain_fk_transferred_domain
+		FOREIGN KEY (transferred_domain) REFERENCES user_transferring_domain_to_patr(domain_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
