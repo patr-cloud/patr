@@ -569,7 +569,7 @@ async fn transfer_domain_to_patr(
 ) -> Result<EveContext, Error> {
 	let config = context.get_state().config.clone();
 	let request_id = Uuid::new_v4();
-	log::trace!("request_id: {} - Adding domain to workspace", request_id);
+	log::trace!("request_id: {} - Transferring domain to patr", request_id);
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();

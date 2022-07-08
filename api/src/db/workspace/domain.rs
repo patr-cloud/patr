@@ -200,7 +200,16 @@ pub async fn initialize_domain_pre(
 			CONSTRAINT workspace_domain_uq_id_nameserver_type
 				UNIQUE(id, nameserver_type),
 			CONSTRAINT workspace_domain_fk_id_domain_type
-				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
+				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type),
+			CONSTRAINT workspace_domain_chk_transfer_domain_ext CHECK(
+				(
+					transfer_domain IS NULL AND
+					nameserver_type = 'internal'
+				) OR
+				(
+					nameserver_type = 'external'
+				)
+			)
 		);
 		"#
 	)
@@ -834,6 +843,28 @@ pub async fn delete_transfer_domain_from_workspace_domain(
 	.map(|_| ())
 }
 
+pub async fn update_workspace_domain_transfer_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+	transfer_domain: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace_domain
+		SET
+			transfer_domain = $1
+		WHERE
+			id = $2;
+		"#,
+		domain_id as _,
+		transfer_domain as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn update_generic_domain_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
@@ -1332,7 +1363,7 @@ pub async fn add_to_user_transferring_domain_to_patr(
 				is_verified
 			)
 		VALUES
-			($1, 'internal', $2, false);
+			($1, 'external', $2, false);
 		"#,
 		domain_id as _,
 		zone_identifier,

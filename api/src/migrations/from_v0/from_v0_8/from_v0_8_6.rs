@@ -56,7 +56,16 @@ async fn create_user_transferring_domain_to_patr_table(
 		ALTER TABLE workspace_domain
 		ADD COLUMN transfer_domain UUID
 		CONSTRAINT workspace_domain_fk_transfer_domain
-		REFERENCES user_transferring_domain_to_patr(domain_id);
+		REFERENCES user_transferring_domain_to_patr(domain_id),
+		ADD CONSTRAINT workspace_domain_chk_transfer_domain_ext CHECK(
+			(
+				transfer_domain IS NULL AND
+				nameserver_type = 'internal'
+			) OR
+			(
+				nameserver_type = 'external'
+			)
+		);
 		"#
 	)
 	.execute(&mut *connection)

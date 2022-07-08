@@ -352,6 +352,13 @@ pub async fn transfer_domain_to_patr(
 	)
 	.await?;
 
+	db::update_workspace_domain_transfer_domain(
+		connection,
+		&user_controlled_domain.domain_id,
+		&user_controlled_domain.domain_id,
+	)
+	.await?;
+
 	Ok(())
 }
 
@@ -432,9 +439,8 @@ pub async fn is_domain_verified(
 			return Ok(true);
 		}
 
-		return Ok(false);
-	}
-	if domain.transfer_domain.is_some() {
+		Ok(false)
+	} else if domain.transfer_domain.is_some() {
 		log::trace!("request_id: {} - Domain is being transferred", request_id);
 		let client = get_cloudflare_client(config).await?;
 

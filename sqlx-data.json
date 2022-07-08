@@ -443,6 +443,19 @@
       "nullable": []
     }
   },
+  "0fd9c540bc839084b3d28bd84a79e3b348e1801e5d38321e74e92572e0fa0d0c": {
+    "query": "UPDATE workspace_domain SET transfer_domain = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "109658541c3629fa2b93265b2ac5c6d6dd5d154161d45ef2293027f875ff27f6": {
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", status as \"status: _\", workspace_id as \"workspace_id: _\" FROM deployment_static_site WHERE name = $1 AND workspace_id = $2 AND status != 'deleted';",
     "describe": {
@@ -1991,16 +2004,6 @@
   },
   "2ee43784256fab1f48a059f39e58aab7623b3afd59d0ffa15fab0e5899589d04": {
     "query": "CREATE TABLE IF NOT EXISTS docker_repo_payment_history( workspace_id UUID NOT NULL, storage BIGINT NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "3008c0a2bf19fda0ce521a7a67da13164d8f274d1c5dc771b054ef4ee8c2f84a": {
-    "query": "CREATE TABLE workspace_domain( id UUID CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_domain_type CHECK( domain_type = 'business' ), is_verified BOOLEAN NOT NULL, last_unverified TIMESTAMPTZ, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL, transfer_domain UUID, CONSTRAINT workspace_domain_uq_id_nameserver_type UNIQUE(id, nameserver_type), CONSTRAINT workspace_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -4281,15 +4284,12 @@
       "nullable": []
     }
   },
-  "62634145d3968caff1d5e8fdaecd7dd6ef77c4c14640c879f60c32a7ff74508f": {
-    "query": "INSERT INTO user_transferring_domain_to_patr( domain_id, nameserver_type, zone_identifier, is_verified ) VALUES ($1, 'internal', $2, false);",
+  "623cdff19660c3a7b6a6c132dc8e5b0ba38ccf0658b0c326aadd17efd0fa7417": {
+    "query": "CREATE TABLE workspace_domain( id UUID CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_domain_type CHECK( domain_type = 'business' ), is_verified BOOLEAN NOT NULL, last_unverified TIMESTAMPTZ, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL, transfer_domain UUID, CONSTRAINT workspace_domain_uq_id_nameserver_type UNIQUE(id, nameserver_type), CONSTRAINT workspace_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type), CONSTRAINT workspace_domain_chk_transfer_domain_ext CHECK( ( transfer_domain IS NULL AND nameserver_type = 'internal' ) OR ( nameserver_type = 'external' ) ) );",
     "describe": {
       "columns": [],
       "parameters": {
-        "Left": [
-          "Uuid",
-          "Text"
-        ]
+        "Left": []
       },
       "nullable": []
     }
@@ -10766,6 +10766,19 @@
       "nullable": [
         null
       ]
+    }
+  },
+  "f158cd1d519dd82ffa283a8eee7d0b19851eb2ea3f136d7ba981e647e1de6cae": {
+    "query": "INSERT INTO user_transferring_domain_to_patr( domain_id, nameserver_type, zone_identifier, is_verified ) VALUES ($1, 'external', $2, false);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      },
+      "nullable": []
     }
   },
   "f39f35664495c1605a1f36e9a5a7597392c9143ea0afd6c73a6267770e1b6bbd": {
