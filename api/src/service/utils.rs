@@ -358,9 +358,11 @@ pub async fn get_image_name_and_digest_for_deployment_image(
 			registry,
 			image_name,
 		} => match registry.as_str() {
-			"registry.hub.docker.com" | "hub.docker.com" | "" => {
-				Ok((format!("registry.hub.docker.com/{}", image_name), None))
-			}
+			"registry.hub.docker.com" |
+			"hub.docker.com" |
+			"index.docker.io" |
+			"docker.io" |
+			"" => Ok((format!("docker.io/{}", image_name), None)),
 			_ => Ok((format!("{}/{}", registry, image_name), None)),
 		},
 	}
