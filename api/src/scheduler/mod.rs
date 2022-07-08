@@ -54,7 +54,7 @@ fn get_scheduled_jobs() -> Vec<Job> {
 		domain::reverify_verified_domains_job(),
 		domain::refresh_domain_tld_list_job(),
 		billing::update_bill_job(),
-		domain::verify_transferred_domain_to_patr_job(),
+		domain::verify_transfer_domain_to_patr_job(),
 	]
 }
 

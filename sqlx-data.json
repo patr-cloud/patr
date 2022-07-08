@@ -2866,16 +2866,6 @@
       ]
     }
   },
-  "45f4f79273f278a0879e97a664e1a4bc71ccd61686a16daf67a2276bb753c764": {
-    "query": "ALTER TABLE workspace_domain ADD CONSTRAINT workspace_domain_fk_transferred_domain FOREIGN KEY (transferred_domain) REFERENCES user_transferring_domain_to_patr(domain_id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "465499cd312427f9daac7b5b6a05aa0c4e266f2e44e2a880626698aee28a2577": {
     "query": "CREATE TABLE meta_data( id VARCHAR(100) CONSTRAINT meta_data_pk PRIMARY KEY, value TEXT NOT NULL );",
     "describe": {
@@ -4330,6 +4320,16 @@
   },
   "6505122d8c40c26849eb3a6144e2de08388b087d10d049cdbba7a1742fefc5de": {
     "query": "CREATE INDEX role_permissions_resource_idx_role_id ON role_permissions_resource (role_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "666f9024c0eb2ea9f50268dfc876de89f716cc617353c42f466a8030a045f1a9": {
+    "query": "ALTER TABLE workspace_domain ADD CONSTRAINT workspace_domain_fk_transfer_domain FOREIGN KEY (transfer_domain) REFERENCES user_transferring_domain_to_patr(domain_id);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -6742,16 +6742,6 @@
         true,
         true
       ]
-    }
-  },
-  "a0289bdbfb71ff688a114f1b6b466f1a83ceb80337b7b29a242485a3e3b55342": {
-    "query": "CREATE TABLE user_transferring_domain_to_patr( domain_id UUID NOT NULL CONSTRAINT user_transferred_domain_pk PRIMARY KEY, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL CONSTRAINT user_transferred_domain_chk_nameserver_type CHECK( nameserver_type = 'external' ), zone_identifier TEXT NOT NULL, is_verified BOOLEAN NOT NULL, CONSTRAINT user_transferred_domain_fk_domain_id_nameserver_type FOREIGN KEY(domain_id)REFERENCES user_controlled_domain(domain_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
     }
   },
   "a03759e3d7230bf40f95045d32da6bf26fc2e2928a11f9fe236a67ee75caf349": {
@@ -9465,6 +9455,16 @@
         false,
         true
       ]
+    }
+  },
+  "dc2fa1537bd7f95b0fe9cf680e6ce4cb7e2f47d9a70da48169f667933056269e": {
+    "query": "CREATE TABLE user_transferring_domain_to_patr( domain_id UUID NOT NULL CONSTRAINT user_transfer_domain_pk PRIMARY KEY, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL CONSTRAINT user_transfer_domain_chk_nameserver_type CHECK( nameserver_type = 'external' ), zone_identifier TEXT NOT NULL, is_verified BOOLEAN NOT NULL, CONSTRAINT user_transfer_domain_fk_domain_id_nameserver_type FOREIGN KEY(domain_id)REFERENCES user_controlled_domain(domain_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "dc7de568effee5ebaee539ded50b6d763d4d21bd5c2c29166e6c7be9bb23c2d9": {

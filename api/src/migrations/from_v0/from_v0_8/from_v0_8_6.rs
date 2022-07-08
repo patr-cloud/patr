@@ -36,14 +36,14 @@ async fn create_user_transferring_domain_to_patr_table(
 		r#"
 		CREATE TABLE user_transferring_domain_to_patr(
 			domain_id UUID NOT NULL
-				CONSTRAINT user_transferred_domain_pk PRIMARY KEY,
+				CONSTRAINT user_transfer_domain_pk PRIMARY KEY,
 			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL
-				CONSTRAINT user_transferred_domain_chk_nameserver_type CHECK(
+				CONSTRAINT user_transfer_domain_chk_nameserver_type CHECK(
 					nameserver_type = 'external'
 				),
 			zone_identifier TEXT NOT NULL,
 			is_verified BOOLEAN NOT NULL,
-			CONSTRAINT user_transferred_domain_fk_domain_id_nameserver_type
+			CONSTRAINT user_transfer_domain_fk_domain_id_nameserver_type
 				FOREIGN KEY(domain_id)REFERENCES
 					user_controlled_domain(domain_id)
 		);

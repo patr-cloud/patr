@@ -269,14 +269,14 @@ pub async fn initialize_domain_pre(
 		r#"
 		CREATE TABLE user_transferring_domain_to_patr(
 			domain_id UUID NOT NULL
-				CONSTRAINT user_transferred_domain_pk PRIMARY KEY,
+				CONSTRAINT user_transfer_domain_pk PRIMARY KEY,
 			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL
-				CONSTRAINT user_transferred_domain_chk_nameserver_type CHECK(
+				CONSTRAINT user_transfer_domain_chk_nameserver_type CHECK(
 					nameserver_type = 'external'
 				),
 			zone_identifier TEXT NOT NULL,
 			is_verified BOOLEAN NOT NULL,
-			CONSTRAINT user_transferred_domain_fk_domain_id_nameserver_type
+			CONSTRAINT user_transfer_domain_fk_domain_id_nameserver_type
 				FOREIGN KEY(domain_id)REFERENCES
 					user_controlled_domain(domain_id)
 		);
@@ -374,8 +374,8 @@ pub async fn initialize_domain_post(
 	query!(
 		r#"
 		ALTER TABLE workspace_domain
-		ADD CONSTRAINT workspace_domain_fk_transferred_domain
-		FOREIGN KEY (transferred_domain) REFERENCES user_transferring_domain_to_patr(domain_id);
+		ADD CONSTRAINT workspace_domain_fk_transfer_domain
+		FOREIGN KEY (transfer_domain) REFERENCES user_transferring_domain_to_patr(domain_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -1399,7 +1399,7 @@ pub async fn get_user_transferring_domain_to_patr(
 	.await
 }
 
-pub async fn get_all_unverified_transferred_domains(
+pub async fn get_all_unverified_transfer_domains(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Vec<UserTransferredDomain>, sqlx::Error> {
 	query_as!(
@@ -1423,7 +1423,7 @@ pub async fn get_all_unverified_transferred_domains(
 	.await
 }
 
-pub async fn delete_user_transferred_domain_by_id(
+pub async fn delete_user_transfer_domain_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 ) -> Result<(), sqlx::Error> {

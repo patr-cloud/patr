@@ -344,7 +344,7 @@ pub async fn transfer_domain_to_patr(
 	let user_controlled_domain =
 		db::get_user_controlled_domain_by_id(connection, &domain.id).await?;
 
-	// Add to user_transferred_domains and schedular will take care after that
+	// Add to user_transfer_domains and schedular will take care after that
 	db::add_to_user_transferring_domain_to_patr(
 		connection,
 		&user_controlled_domain.domain_id,
@@ -470,7 +470,7 @@ pub async fn is_domain_verified(
 			)
 			.await?;
 
-			db::delete_user_transferred_domain_by_id(connection, domain_id)
+			db::delete_user_transfer_domain_by_id(connection, domain_id)
 				.await?;
 
 			db::delete_user_contolled_domain(connection, domain_id).await?;
