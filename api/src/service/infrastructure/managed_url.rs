@@ -1,5 +1,8 @@
 use api_models::{
-	models::workspace::infrastructure::managed_urls::ManagedUrlType,
+	models::workspace::infrastructure::managed_urls::{
+		ManagedUrl,
+		ManagedUrlType,
+	},
 	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
