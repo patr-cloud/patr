@@ -563,8 +563,6 @@
         {
           "name": "sign_up_coupon",
           "ordinal": 14,
-          "name": "sign_up_coupon",
-          "ordinal": 14,
           "type_info": "Text"
         },
         {
