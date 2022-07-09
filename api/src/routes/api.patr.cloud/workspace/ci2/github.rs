@@ -48,20 +48,6 @@ use crate::{
 	},
 };
 
-/// # Description
-/// This function is used to create a sub app for every endpoint listed. It
-/// creates an eve app which binds the endpoint with functions.
-///
-/// # Arguments
-/// * `app` - an object of type [`App`] which contains all the configuration of
-///   api including the
-/// database connections.
-///
-/// # Returns
-/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
-/// containing context, middleware, object of [`App`] and Error
-///
-/// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
@@ -834,7 +820,9 @@ async fn get_build_info(
 		&repo.id,
 		build_num as i64,
 	)
-	.await?;
+	.await?
+	.status(400)
+	.body("build not found")?;
 
 	context.success(GetBuildInfoResponse { build_info });
 	Ok(context)
@@ -898,11 +886,11 @@ async fn get_build_logs(
 	.body("repo not found")?
 	.id;
 
+	let build_created_time = db::get_build_created_time(context.get_database_connection(), &repo_id, build_num as i64).await?.status(500).body(error!(SERVER_ERROR).to_string())?;
+
 	let loki = context.get_state().config.loki.clone();
-	// TODO: make correct use of start and
-	// {job="patrci/ci-d46c8aba5dab4d3ab9bfe70b00039995-3-2",namespace="patrci"}
 	let response = reqwest::Client::new()
-		.get(format!("https://{}/loki/api/v1/query_range?query={{namespace=\"patrci\",job=\"{}/ci-{}-{}-{}\"}}", loki.host, workspace_id.as_str(), repo_id.as_str(), build_num, step)) // TODO
+		.get(format!("https://{}/loki/api/v1/query_range?query={{namespace=\"{}\",job=\"{}/ci-{}-{}-{}\"}}&start={}", loki.host, workspace_id.as_str(), workspace_id.as_str(), repo_id.as_str(), build_num, step, build_created_time.timestamp_nanos()))
 		.basic_auth(&loki.username, Some(&loki.password))
 		.send()
 		.await?

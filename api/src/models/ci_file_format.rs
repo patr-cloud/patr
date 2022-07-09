@@ -1,4 +1,3 @@
-use api_models::models::workspace::ci2::github::EnvVariable;
 use serde::{Deserialize, Serialize};
 
 /// Represents a single unit of task which will be triggered based on actions
@@ -46,4 +45,14 @@ pub struct Step {
 	/// initializing container
 	#[serde(default)]
 	pub env: Vec<EnvVariable>,
+}
+
+/// Environmental variable which can be used to init containers
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields, rename_all = "snake_case")]
+pub struct EnvVariable {
+	/// key name of the environment variable
+	pub name: String,
+	/// value of the environment varialbe
+	pub value: String,
 }

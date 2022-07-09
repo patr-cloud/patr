@@ -1,13 +1,15 @@
 use api_models::{
-	models::workspace::ci2::github::{Build, EnvVariable, Step},
+	models::workspace::ci2::github::{Build, Step},
 	utils::Uuid,
 };
+use chrono::{DateTime, Utc};
 
 use crate::{query, query_as, Database};
 
 pub struct Repository {
 	pub id: Uuid,
 	pub workspace_id: Uuid,
+	pub repo_name: String,
 	pub git_url: String,
 	pub webhook_secret: String,
 	pub active: bool,
@@ -21,20 +23,17 @@ pub async fn initialize_ci_pre(
 	query!(
 		r#"
 		CREATE TABLE ci_repos (
-            id UUID
-                CONSTRAINT ci_repos_pk PRIMARY KEY,
-            workspace_id UUID NOT NULL,
-			repo_name TEXT NOT NULL,
-            git_url TEXT NOT NULL,
-            webhook_secret TEXT NOT NULL
-                CONSTRAINT ci_repos_uq_secret UNIQUE,
-            active BOOLEAN NOT NULL,
+            id 				UUID CONSTRAINT ci_repos_pk PRIMARY KEY,
+            workspace_id 	UUID NOT NULL,
+			repo_name 		TEXT NOT NULL,
+            git_url 		TEXT NOT NULL,
+            webhook_secret 	TEXT NOT NULL CONSTRAINT ci_repos_uq_secret UNIQUE,
+            active 			BOOLEAN NOT NULL,
 
             CONSTRAINT ci_repos_fk_workspace_id
-                FOREIGN KEY (workspace_id)
-                    REFERENCES workspace(id),
+				FOREIGN KEY (workspace_id) REFERENCES workspace(id),
             CONSTRAINT ci_repos_uq_workspace_id_git_url
-                UNIQUE (workspace_id, git_url)
+				UNIQUE (workspace_id, git_url)
         );
 		"#
 	)
@@ -44,17 +43,13 @@ pub async fn initialize_ci_pre(
 	query!(
 		r#"
 		CREATE TABLE ci_builds (
-			repo_id UUID NOT NULL
-				CONSTRAINT ci_builds_fk_repo_id
-					REFERENCES ci_repos(id),
-			build_num BIGINT NOT NULL
-				CONSTRAINT ci_builds_chk_build_num_unsigned
-					CHECK (build_num > 0),
-			git_ref TEXT NOT NULL,
-			git_commit TEXT NOT NULL,
-			build_status TEXT,
-			build_started TIMESTAMPTZ,
-			build_finished TIMESTAMPTZ,
+			repo_id		UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id),
+			build_num 	BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK (build_num > 0),
+			git_ref 	TEXT NOT NULL,
+			git_commit 	TEXT NOT NULL,
+			status 		TEXT NOT NULL,
+			created 	TIMESTAMPTZ NOT NULL,
+			finished 	TIMESTAMPTZ,
 
 			CONSTRAINT ci_builds_pk_repo_id_build_num
 				PRIMARY KEY (repo_id, build_num)
@@ -67,40 +62,20 @@ pub async fn initialize_ci_pre(
 	query!(
 		r#"
 		CREATE TABLE ci_steps (
-			repo_id UUID NOT NULL,
-			build_num BIGINT NOT NULL,
-			step_id INTEGER NOT NULL,
-			step_name TEXT NOT NULL,
-			base_image TEXT NOT NULL,
-			commands TEXT[] NOT NULL,
-			step_status TEXT NOT NULL DEFAULT 'waiting_to_start',
+			repo_id 	UUID NOT NULL,
+			build_num 	BIGINT NOT NULL,
+			step_id 	INTEGER NOT NULL CONSTRAINT ci_steps_chk_step_id_unsigned CHECK (build_num >= 0),
+			step_name 	TEXT NOT NULL,
+			base_image 	TEXT NOT NULL,
+			commands 	TEXT[] NOT NULL,
+			status 		TEXT NOT NULL,
+			started 	TIMESTAMPTZ,
+			finished 	TIMESTAMPTZ,
 
 			CONSTRAINT ci_steps_fk_repo_id_build_num
-				FOREIGN KEY (repo_id, build_num)
-					REFERENCES ci_builds(repo_id, build_num),
+				FOREIGN KEY (repo_id, build_num) REFERENCES ci_builds(repo_id, build_num),
 			CONSTRAINT ci_steps_pk_repo_id_build_num_step_id
 				PRIMARY KEY (repo_id, build_num, step_id)
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE ci_step_env_variable (
-			repo_id UUID NOT NULL,
-			build_num BIGINT NOT NULL,
-			step_id INTEGER NOT NULL,
-			env_id INTEGER NOT NULL,
-			name TEXT NOT NULL,
-			value TEXT NOT NULL,
-
-			CONSTRAINT ci_step_env_variable_fk_repo_id_build_num_step_id
-				FOREIGN KEY (repo_id, build_num, step_id)
-					REFERENCES ci_steps(repo_id, build_num, step_id),
-			CONSTRAINT ci_step_env_variable_pk_repo_id_build_num_step_id_env_id
-				PRIMARY KEY (repo_id, build_num, step_id, env_id)
 		);
 		"#
 	)
@@ -124,51 +99,8 @@ pub async fn create_ci_repo(
 	repo_name: &str,
 	git_url: &str,
 ) -> Result<Repository, sqlx::Error> {
-	let webhook_secret = loop {
-		let uuid = Uuid::new_v4().to_string();
-
-		let exists = query!(
-			r#"
-			SELECT
-				*
-			FROM
-                ci_repos
-			WHERE
-                webhook_secret = $1;
-			"#,
-			uuid as _
-		)
-		.fetch_optional(&mut *connection)
-		.await?
-		.is_some();
-
-		if !exists {
-			break uuid;
-		}
-	};
-
-	let repo_id = loop {
-		let uuid = Uuid::new_v4();
-
-		let exists = query!(
-			r#"
-			SELECT
-				*
-			FROM
-                ci_repos
-			WHERE
-                id = $1;
-			"#,
-			uuid as _
-		)
-		.fetch_optional(&mut *connection)
-		.await?
-		.is_some();
-
-		if !exists {
-			break uuid;
-		}
-	};
+	let webhook_secret = Uuid::new_v4().to_string();
+	let repo_id = Uuid::new_v4();
 
 	query!(
 		r#"
@@ -195,6 +127,7 @@ pub async fn create_ci_repo(
 	Ok(Repository {
 		id: repo_id,
 		workspace_id: workspace_id.to_owned(),
+		repo_name: repo_name.to_owned(),
 		git_url: git_url.to_owned(),
 		webhook_secret: webhook_secret.to_owned(),
 		active: false,
@@ -212,15 +145,14 @@ pub async fn get_repo_for_workspace_and_url(
 		SELECT
 			id as "id: _",
 			workspace_id as "workspace_id: _",
-			git_url::TEXT as "git_url!: _",
-			webhook_secret::TEXT as "webhook_secret!: _",
-			active as "active: _"
+			repo_name,
+			git_url,
+			webhook_secret,
+			active
 		FROM
 			ci_repos
-		WHERE (
-            workspace_id = $1
-                AND git_url = $2
-        );
+		WHERE
+			(workspace_id = $1 AND git_url = $2);
 		"#,
 		workspace_id as _,
 		git_url as _
@@ -235,7 +167,8 @@ pub async fn activate_ci_for_repo(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-        UPDATE ci_repos
+        UPDATE
+			ci_repos
         SET
             active = TRUE
         WHERE
@@ -254,7 +187,8 @@ pub async fn deactivate_ci_for_repo(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-        UPDATE ci_repos
+        UPDATE
+			ci_repos
         SET
             active = FALSE
         WHERE
@@ -277,9 +211,10 @@ pub async fn get_repo_for_git_url(
 		SELECT
 			id as "id: _",
 			workspace_id as "workspace_id: _",
-			git_url::TEXT as "git_url!: _",
-			webhook_secret::TEXT as "webhook_secret!: _",
-			active as "active: _"
+			repo_name,
+			git_url,
+			webhook_secret,
+			active
 		FROM
 			ci_repos
 		WHERE
@@ -301,8 +236,8 @@ pub async fn get_access_token_for_repo(
 			drone_token
 		FROM
 			workspace
-				JOIN ci_repos
-					ON ci_repos.workspace_id = workspace.id
+		JOIN ci_repos
+			ON ci_repos.workspace_id = workspace.id
 		WHERE
 			ci_repos.id = $1;
 		"#,
@@ -318,22 +253,28 @@ pub async fn generate_new_build_for_repo(
 	repo_id: &Uuid,
 	git_ref: &str,
 	git_commit: &str,
+	status: &str,
+	created: &DateTime<Utc>,
 ) -> Result<i64, sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
-			ci_builds (repo_id, build_num, git_ref, git_commit)
+			ci_builds (repo_id, build_num, git_ref, git_commit, status, created)
 		VALUES (
 			$1,
 			1 + (SELECT COUNT(*) FROM ci_builds WHERE repo_id = $1),
 			$2,
-			$3
+			$3,
+			$4,
+			$5
 		)
 		RETURNING build_num;
 		"#,
 		repo_id as _,
 		git_ref as _,
-		git_commit as _
+		git_commit as _,
+		status,
+		created,
 	)
 	.fetch_one(connection)
 	.await
@@ -351,11 +292,9 @@ pub async fn update_build_status(
 		UPDATE
 			ci_builds
 		SET
-			build_status = $3
-		WHERE (
-			repo_id = $1
-			AND build_num = $2
-		);
+			status = $3
+		WHERE
+			(repo_id = $1 AND build_num = $2);
 		"#,
 		repo_id as _,
 		build_num,
@@ -366,87 +305,132 @@ pub async fn update_build_status(
 	.map(|_| ())
 }
 
+pub async fn update_build_finished_time(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
+	build_num: i64,
+	finished: &DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			ci_builds
+		SET
+			finished = $3
+		WHERE (
+			repo_id = $1
+			AND build_num = $2
+		);
+		"#,
+		repo_id as _,
+		build_num,
+		finished
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn list_build_details_for_repo(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
 ) -> Result<Vec<Build>, sqlx::Error> {
-	let builds = query!(
+	query_as!(
+		Build,
 		r#"
- 		SELECT
- 			build_num,
- 			git_ref,
- 			git_commit
+		SELECT
+			ci_builds.repo_id as "repo_id: _",
+			ci_builds.build_num,
+			ci_builds.git_ref,
+			ci_builds.git_commit,
+			ci_builds.status,
+			ci_builds.created,
+			ci_builds.finished,
+			ARRAY_AGG (
+				(
+					ci_steps.step_id,
+					ci_steps.step_name,
+					ci_steps.base_image,
+					ci_steps.commands,
+					ci_steps.status,
+					ci_steps.started,
+					ci_steps.finished
+				)
+				ORDER BY ci_steps.step_id ASC
+			) as "steps!: Vec<Step>"
 		FROM
- 			ci_builds
- 		WHERE
- 			repo_id = $1
- 		ORDER BY
-			build_num DESC
- 		LIMIT 10;
- 		"#,
+			ci_builds
+		INNER JOIN
+			ci_steps
+				ON (
+					ci_builds.repo_id = ci_steps.repo_id
+					AND ci_builds.build_num = ci_steps.build_num
+				)
+		WHERE
+			ci_builds.repo_id = $1
+		GROUP BY (
+			ci_builds.repo_id,
+			ci_builds.build_num
+		)
+		ORDER BY ci_builds.build_num DESC;
+		"#,
 		repo_id as _,
 	)
-	.fetch_all(&mut *connection)
-	.await?;
-
-	let mut result = Vec::new();
-	for build in builds {
-		let steps = get_build_steps_for_build(
-			&mut *connection,
-			repo_id,
-			build.build_num,
-		)
-		.await?;
-
-		result.extend(std::iter::once(Build {
-			repo_id: repo_id.clone(),
-			build_num: build.build_num,
-			git_ref: build.git_ref,
-			git_commit: build.git_commit,
-			steps,
-		}));
-	}
-
-	Ok(result)
+	.fetch_all(connection)
+	.await
 }
 
 pub async fn get_build_details_for_build(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
 	build_num: i64,
-) -> Result<Build, sqlx::Error> {
-	let build = query!(
+) -> Result<Option<Build>, sqlx::Error> {
+	query_as!(
+		Build,
 		r#"
- 		SELECT
- 			build_num,
- 			git_ref,
- 			git_commit
+		SELECT
+			ci_builds.repo_id as "repo_id: _",
+			ci_builds.build_num,
+			ci_builds.git_ref,
+			ci_builds.git_commit,
+			ci_builds.status,
+			ci_builds.created,
+			ci_builds.finished,
+			ARRAY_AGG (
+				(
+					ci_steps.step_id,
+					ci_steps.step_name,
+					ci_steps.base_image,
+					ci_steps.commands,
+					ci_steps.status,
+					ci_steps.started,
+					ci_steps.finished
+				)
+				ORDER BY ci_steps.step_id ASC
+			) as "steps!: Vec<Step>"
 		FROM
- 			ci_builds
- 		WHERE (
-			repo_id = $1
-			AND build_num = $2
+			ci_builds
+		INNER JOIN
+			ci_steps
+				ON (
+					ci_builds.repo_id = ci_steps.repo_id
+					AND ci_builds.build_num = ci_steps.build_num
+				)
+		WHERE (
+			ci_builds.repo_id = $1
+			AND ci_builds.build_num = $2
 		)
-		ORDER BY
-			build_num DESC
- 		LIMIT 10;
- 		"#,
+		GROUP BY (
+			ci_builds.repo_id,
+			ci_builds.build_num
+		)
+		ORDER BY ci_builds.build_num DESC;
+		"#,
 		repo_id as _,
 		build_num
 	)
-	.fetch_one(&mut *connection)
-	.await?;
-
-	let steps =
-		get_build_steps_for_build(&mut *connection, repo_id, build_num).await?;
-
-	Ok(Build {
-		repo_id: repo_id.clone(),
-		build_num,
-		git_ref: build.git_ref,
-		git_commit: build.git_commit,
-		steps,
-	})
+	.fetch_optional(connection)
+	.await
 }
 
 pub async fn get_build_steps_for_build(
@@ -454,14 +438,17 @@ pub async fn get_build_steps_for_build(
 	repo_id: &Uuid,
 	build_num: i64,
 ) -> Result<Vec<Step>, sqlx::Error> {
-	let steps = query!(
+	query_as!(
+		Step,
 		r#"
 		SELECT
 			step_id,
 			step_name,
 			base_image,
 			commands,
-			step_status
+			status,
+			started,
+			finished
 		FROM
 			ci_steps
 		WHERE (
@@ -475,70 +462,8 @@ pub async fn get_build_steps_for_build(
 		build_num
 	)
 	.fetch_all(&mut *connection)
-	.await?;
-
-	let mut result = Vec::new();
-	for step in steps {
-		let env = get_env_variables_for_build_step(
-			&mut *connection,
-			repo_id,
-			build_num,
-			step.step_id,
-		)
-		.await?;
-
-		result.extend(std::iter::once(Step {
-			step_id: step.step_id,
-			step_name: step.step_name,
-			base_image: step.base_image,
-			commands: step.commands,
-			env,
-			step_status: step.step_status,
-		}));
-	}
-
-	Ok(result)
+	.await
 }
-
-// 	query_as!(
-// 		Build,
-// 		r#"
-// 		SELECT
-// 			ci_builds.build_num,
-// 			ci_builds.git_ref,
-// 			ci_builds.git_commit,
-// 			ARRAY_AGG (
-// 				(
-// 					ci_steps.step_id,
-// 					ci_steps.step_name,
-// 					ci_steps.base_image,
-// 					ci_steps.commands,
-// 					ci_steps.env
-// 				)
-// 				ORDER BY ci_steps.step_id ASC
-// 			) as "steps!: Vec<Step>"
-// 		FROM
-// 			ci_builds
-// 		INNER JOIN
-// 			ci_steps
-// 				ON (
-// 					ci_builds.repo_id = ci_steps.repo_id
-// 					AND ci_builds.build_num = ci_steps.build_num
-// 				)
-// 		WHERE
-// 			ci_builds.repo_id = $1
-// 		GROUP BY (
-// 			ci_builds.build_num,
-// 			ci_builds.git_ref,
-// 			ci_builds.git_commit
-// 		)
-// 		ORDER BY ci_builds.build_num DESC
-// 		LIMIT 10;
-// 		"#,
-// 		repo_id as _,
-// 	)
-// 	.fetch_all(connection)
-// 	.await
 
 pub async fn add_ci_steps_for_build(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -548,7 +473,7 @@ pub async fn add_ci_steps_for_build(
 	step_name: &str,
 	base_image: &str,
 	commands: Vec<String>,
-	env: Vec<EnvVariable>,
+	status: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -558,98 +483,24 @@ pub async fn add_ci_steps_for_build(
 			step_id,
 			step_name,
 			base_image,
-			commands
+			commands,
+			status
 		)
 		VALUES
-			($1, $2, $3, $4, $5, $6);
+			($1, $2, $3, $4, $5, $6, $7);
 		"#,
 		repo_id as _,
 		build_num,
 		step_id,
-		step_name as _,
-		base_image as _,
+		step_name,
+		base_image,
 		&commands[..],
+		status,
 	)
 	.execute(&mut *connection)
 	.await?;
 
-	for (env_id, EnvVariable { name, value }) in env.into_iter().enumerate() {
-		add_ci_env_variable_for_build_step(
-			&mut *connection,
-			repo_id,
-			build_num,
-			step_id,
-			1 + env_id as i32,
-			&name,
-			&value,
-		)
-		.await?;
-	}
-
 	Ok(())
-}
-
-pub async fn add_ci_env_variable_for_build_step(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	repo_id: &Uuid,
-	build_num: i64,
-	step_id: i32,
-	env_id: i32,
-	name: &str,
-	value: &str,
-) -> Result<i32, sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO ci_step_env_variable (
-			repo_id,
-			build_num,
-			step_id,
-			env_id,
-			name,
-			value
-		)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING env_id;
-		"#,
-		repo_id as _,
-		build_num,
-		step_id,
-		env_id,
-		name,
-		value,
-	)
-	.fetch_one(&mut *connection)
-	.await
-	.map(|row| row.env_id)
-}
-
-pub async fn get_env_variables_for_build_step(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	repo_id: &Uuid,
-	build_num: i64,
-	step_id: i32,
-) -> Result<Vec<EnvVariable>, sqlx::Error> {
-	query_as!(
-		EnvVariable,
-		r#"
-		SELECT
-			name,
-			value
-		FROM
-			ci_step_env_variable
-		WHERE (
-			repo_id = $1
-			AND build_num = $2
-			AND step_id = $3
-		)
-		ORDER BY env_id ASC;
-		"#,
-		repo_id as _,
-		build_num,
-		step_id,
-	)
-	.fetch_all(&mut *connection)
-	.await
 }
 
 pub async fn update_build_step_status(
@@ -664,7 +515,7 @@ pub async fn update_build_step_status(
 		UPDATE
 			ci_steps
 		SET
-			step_status = $4
+			status = $4
 		WHERE (
 			repo_id = $1
 			AND build_num = $2
@@ -690,7 +541,7 @@ pub async fn get_build_step_status(
 	query!(
 		r#"
 		SELECT
-			step_status
+			status
 		FROM
 			ci_steps
 		WHERE (
@@ -705,5 +556,87 @@ pub async fn get_build_step_status(
 	)
 	.fetch_optional(&mut *connection)
 	.await
-	.map(|row| row.map(|row| row.step_status))
+	.map(|row| row.map(|row| row.status))
+}
+
+pub async fn get_build_created_time(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
+	build_num: i64,
+) -> Result<Option<DateTime<Utc>>, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			created
+		FROM
+			ci_builds
+		WHERE (
+			repo_id = $1
+			AND build_num = $2
+		);
+		"#,
+		repo_id as _,
+		build_num,
+	)
+	.fetch_optional(&mut *connection)
+	.await
+	.map(|row| row.map(|row| row.created))
+}
+
+pub async fn update_build_step_started_time(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
+	build_num: i64,
+	step_id: i32,
+	started: &DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			ci_steps
+		SET
+			started = $4
+		WHERE (
+			repo_id = $1
+			AND build_num = $2
+			AND step_id = $3
+		);
+		"#,
+		repo_id as _,
+		build_num,
+		step_id,
+		started
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_build_step_finished_time(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
+	build_num: i64,
+	step_id: i32,
+	finished: &DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			ci_steps
+		SET
+			finished = $4
+		WHERE (
+			repo_id = $1
+			AND build_num = $2
+			AND step_id = $3
+		);
+		"#,
+		repo_id as _,
+		build_num,
+		step_id,
+		finished
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }

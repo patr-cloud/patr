@@ -1,6 +1,7 @@
 use std::time::Duration;
 
-use api_models::{models::workspace::ci2::github::EnvVariable, utils::Uuid};
+use api_models::utils::Uuid;
+use chrono::Utc;
 use k8s_openapi::api::{
 	batch::v1::{Job, JobSpec},
 	core::v1::{
@@ -22,7 +23,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
 	db,
-	models::rabbitmq::CIData,
+	models::{rabbitmq::CIData, EnvVariable},
 	service,
 	utils::{settings::Settings, Error},
 	Database,
@@ -180,7 +181,15 @@ pub async fn process_request(
 							build_step.id.step_id,
 							"errored",
 						)
-						.await?
+						.await?;
+						db::update_build_step_finished_time(
+							&mut *connection,
+							&build_step.id.build_id.repo_id,
+							build_step.id.build_id.build_num,
+							build_step.id.step_id,
+							&Utc::now(),
+						)
+						.await?;
 					}
 					Status::Completed => {
 						log::info!("request_id: {request_id} - Build step `{build_step_job_name}` succeeded");
@@ -202,7 +211,15 @@ pub async fn process_request(
 							build_step.id.step_id,
 							"success",
 						)
-						.await?
+						.await?;
+						db::update_build_step_finished_time(
+							&mut *connection,
+							&build_step.id.build_id.repo_id,
+							build_step.id.build_id.build_num,
+							build_step.id.step_id,
+							&Utc::now(),
+						)
+						.await?;
 					}
 					Status::Running => {
 						log::debug!("request_id: {request_id} - Waiting to update status of `{build_step_job_name}`");
@@ -248,7 +265,23 @@ pub async fn process_request(
 							build_step.id.step_id,
 							"skipped-parent_error",
 						)
-						.await?
+						.await?;
+						db::update_build_step_started_time(
+							&mut *connection,
+							&build_step.id.build_id.repo_id,
+							build_step.id.build_id.build_num,
+							build_step.id.step_id,
+							&Utc::now(),
+						)
+						.await?;
+						db::update_build_step_finished_time(
+							&mut *connection,
+							&build_step.id.build_id.repo_id,
+							build_step.id.build_id.build_num,
+							build_step.id.step_id,
+							&Utc::now(),
+						)
+						.await?;
 					}
 					Status::Completed => {
 						log::info!("request_id: {request_id} - Starting build step `{build_step_job_name}`");
@@ -264,6 +297,14 @@ pub async fn process_request(
 							build_step.id.build_id.build_num,
 							build_step.id.step_id,
 							"running",
+						)
+						.await?;
+						db::update_build_step_started_time(
+							&mut *connection,
+							&build_step.id.build_id.repo_id,
+							build_step.id.build_id.build_num,
+							build_step.id.step_id,
+							&Utc::now(),
 						)
 						.await?;
 						service::queue_create_ci_build_step(
@@ -297,7 +338,7 @@ pub async fn process_request(
 			)
 			.await?;
 			// for now sequential, so checking last status is enough
-			let status = steps.last().map(|step| step.step_status.clone());
+			let status = steps.last().map(|step| step.status.clone());
 
 			let status = match status
 				.unwrap_or_else(|| "unknown".to_string())
@@ -330,6 +371,13 @@ pub async fn process_request(
 						"errored",
 					)
 					.await?;
+					db::update_build_finished_time(
+						&mut *connection,
+						&build_id.repo_id,
+						build_id.build_num,
+						&Utc::now(),
+					)
+					.await?;
 				}
 				Status::Completed => {
 					log::info!(
@@ -346,6 +394,13 @@ pub async fn process_request(
 						&build_id.repo_id,
 						build_id.build_num,
 						"success",
+					)
+					.await?;
+					db::update_build_finished_time(
+						&mut *connection,
+						&build_id.repo_id,
+						build_id.build_num,
+						&Utc::now(),
 					)
 					.await?;
 				}
