@@ -93,7 +93,7 @@ pub fn create_sub_app(
 
 	// List all uploads for static site
 	app.get(
-		"/:staticSiteId/deploy-history",
+		"/:staticSiteId/upload",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::static_site::LIST,
@@ -120,7 +120,7 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(
-				list_static_sites_deploy_history
+				list_static_sites_upload_history
 			)),
 		],
 	);
@@ -247,7 +247,7 @@ pub fn create_sub_app(
 
 	// Revert static site
 	app.post(
-		"/:staticSiteId/deploy-history/:uploadId/revert",
+		"/:staticSiteId/upload/:uploadId/revert",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::static_site::EDIT,
@@ -282,7 +282,7 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(
-				revert_static_site_deployment
+				revert_static_site
 			)),
 		],
 	);
@@ -356,7 +356,7 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(
-				create_static_site_deployment
+				create_static_site
 			)),
 		],
 	);
@@ -577,7 +577,7 @@ async fn list_static_sites(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn list_static_sites_deploy_history(
+async fn list_static_sites_upload_history(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -642,7 +642,7 @@ async fn list_static_sites_deploy_history(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn create_static_site_deployment(
+async fn create_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -714,7 +714,7 @@ async fn create_static_site_deployment(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn revert_static_site_deployment(
+async fn revert_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
