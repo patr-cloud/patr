@@ -62,7 +62,7 @@ async fn create_static_site_deploy_history(
 			upload_id UUID CONSTRAINT static_site_upload_history_pk PRIMARY KEY,
 			static_site_id UUID NOT NULL CONSTRAINT
 				static_site_upload_history_fk_static_site_id
-					REFERENCES static_site(id),
+					REFERENCES deployment_static_site(id),
 			message TEXT NOT NULL,
 			uploaded_by UUID NOT NULL CONSTRAINT
 				static_site_upload_history_fk_uploaded_by
