@@ -339,6 +339,16 @@ async fn rename_all_deployment_static_site_to_just_static_site(
 	query!(
 		r#"
 		ALTER TABLE static_site
+		RENAME CONSTRAINT deployment_static_site_pk
+		TO static_site_pk;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE static_site
 		RENAME CONSTRAINT deployment_static_site_chk_name_is_trimmed
 		TO static_site_chk_name_is_trimmed;
 		"#
