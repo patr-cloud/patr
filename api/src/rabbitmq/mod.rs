@@ -27,7 +27,6 @@ mod billing;
 mod database;
 mod deployment;
 mod managed_url;
-mod static_site;
 
 pub async fn start_consumer(app: &App) {
 	// Create connection
@@ -128,10 +127,6 @@ async fn process_queue_payload(
 	match content {
 		RequestMessage::Deployment(request_data) => {
 			deployment::process_request(&mut connection, request_data, config)
-				.await
-		}
-		RequestMessage::StaticSite(request_data) => {
-			static_site::process_request(&mut connection, request_data, config)
 				.await
 		}
 		RequestMessage::Database {} => todo!(),

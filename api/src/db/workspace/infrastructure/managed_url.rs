@@ -130,7 +130,7 @@ pub async fn initialize_managed_url_post(
 					REFERENCES deployment(id, workspace_id),
 			ADD CONSTRAINT managed_url_fk_static_site_id_workspace_id
 				FOREIGN KEY(static_site_id, workspace_id)
-					REFERENCES deployment_static_site(id, workspace_id),
+					REFERENCES static_site(id, workspace_id),
 			ADD CONSTRAINT managed_url_fk_id_workspace_id
 				FOREIGN KEY(id, workspace_id)
 					REFERENCES resource(id, owner_id);
