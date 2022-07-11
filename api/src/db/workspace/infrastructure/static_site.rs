@@ -71,12 +71,21 @@ pub async fn initialize_static_site_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up static site tables initialization");
-
 	query!(
 		r#"
 		ALTER TABLE static_site
 		ADD CONSTRAINT static_site_fk_id_workspace_id
 		FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE static_site_upload_history
+		ADD CONSTRAINT static_site_upload_history_fk_upload_id_resource_id
+		FOREIGN KEY(upload_id) REFERENCES resource(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -229,33 +238,6 @@ pub async fn get_static_sites_for_workspace(
 	)
 	.fetch_all(&mut *connection)
 	.await
-}
-
-pub async fn generate_new_static_site_upload_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Uuid, sqlx::Error> {
-	loop {
-		let upload_id = Uuid::new_v4();
-
-		let exists = query!(
-			r#"
-			SELECT
-				*
-			FROM
-				static_site_upload_history
-			WHERE
-				upload_id = $1;
-			"#,
-			&upload_id as _,
-		)
-		.fetch_optional(&mut *connection)
-		.await?
-		.is_some();
-
-		if !exists {
-			break Ok(upload_id);
-		}
-	}
 }
 
 pub async fn create_static_site_upload_history(

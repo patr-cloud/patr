@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use api_models::utils::Uuid;
-use chrono::Utc;
+use chrono::{TimeZone, Utc};
 use k8s_openapi::api::networking::v1::{
 	HTTPIngressPath,
 	HTTPIngressRuleValue,
@@ -41,7 +41,8 @@ pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), Error> {
-	create_static_site_deploy_history(&mut *connection, config).await?;
+	create_static_site_upload_history(&mut *connection, config).await?;
+	add_static_site_upload_resource_type(&mut *connection, config).await?;
 	add_upload_id_for_existing_users(&mut *connection, config).await?;
 	rename_all_deployment_static_site_to_just_static_site(
 		&mut *connection,
@@ -52,14 +53,17 @@ pub(super) async fn migrate(
 	Ok(())
 }
 
-async fn create_static_site_deploy_history(
+async fn create_static_site_upload_history(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
 	query!(
 		r#"
 		CREATE TABLE static_site_upload_history(
-			upload_id UUID CONSTRAINT static_site_upload_history_pk PRIMARY KEY,
+			upload_id UUID
+				CONSTRAINT static_site_upload_history_pk PRIMARY KEY
+				CONSTRAINT static_site_upload_history_fk_upload_id_resource_id
+					REFERENCES resource(id),
 			static_site_id UUID NOT NULL CONSTRAINT
 				static_site_upload_history_fk_static_site_id
 					REFERENCES deployment_static_site(id),
@@ -79,6 +83,52 @@ async fn create_static_site_deploy_history(
 	Ok(())
 }
 
+async fn add_static_site_upload_resource_type(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	let resource_type_id = loop {
+		let resource_type_id = Uuid::new_v4();
+
+		let exists = query!(
+			r#"
+			SELECT
+				*
+			FROM
+				resource_type
+			WHERE
+				id = $1;
+			"#,
+			&resource_type_id
+		)
+		.fetch_optional(&mut *connection)
+		.await?
+		.is_some();
+
+		if !exists {
+			break resource_type_id;
+		}
+	};
+
+	query!(
+		r#"
+		INSERT INTO
+			resource_type(
+				id,
+				name,
+				description
+			)
+		VALUES
+			($1, 'staticSiteUpload', '');
+		"#,
+		&resource_type_id
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
 async fn add_upload_id_for_existing_users(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
@@ -87,9 +137,14 @@ async fn add_upload_id_for_existing_users(
 		r#"
 		SELECT
 			id,
-			workspace_id
+			workspace_id,
+			created
 		FROM
 			deployment_static_site
+		INNER JOIN
+			resource
+		ON
+			deployment_static_site.id = resource.resource_id
 		WHERE	
 			status != 'deleted';
 		"#,
@@ -97,8 +152,28 @@ async fn add_upload_id_for_existing_users(
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
-	.map(|row| (row.get::<Uuid, _>("id"), row.get::<Uuid, _>("workspace_id")))
+	.map(|row| {
+		(
+			row.get::<Uuid, _>("id"),
+			row.get::<Uuid, _>("workspace_id"),
+			row.get::<i64, _>("created"),
+		)
+	})
 	.collect::<Vec<_>>();
+
+	let static_site_upload_resource_type_id = query!(
+		r#"
+		SELECT
+			id
+		FROM
+			resource_type
+		WHERE
+			name = 'staticSiteUpload';
+		"#
+	)
+	.fetch_one(&mut *connection)
+	.await?
+	.get::<Uuid, _>("id");
 
 	if static_sites.is_empty() {
 		return Ok(());
@@ -166,7 +241,7 @@ async fn add_upload_id_for_existing_users(
 	.await?;
 
 	let kubernetes_client = kube::Client::try_from(kubernetes_config)?;
-	for (static_site_id, workspace_id) in static_sites {
+	for (static_site_id, workspace_id, created) in static_sites {
 		let upload_id = loop {
 			let upload_id = Uuid::new_v4();
 
@@ -175,9 +250,9 @@ async fn add_upload_id_for_existing_users(
 				SELECT
 					*
 				FROM
-					static_site_upload_history
+					resource
 				WHERE
-					upload_id = $1;
+					id = $1;
 				"#,
 				&upload_id
 			)
@@ -207,6 +282,28 @@ async fn add_upload_id_for_existing_users(
 
 		// Make new entries in static_site_upload_history for existing static
 		// sites
+		query!(
+			r#"
+			INSERT INTO
+				resource(
+					id,
+					name,
+					resource_type_id,
+					owner_id,
+					created
+				)
+			VALUES
+				($1, $2, $3, $4, $5);
+			"#,
+			&upload_id,
+			format!("Static site upload: {}", upload_id),
+			&static_site_upload_resource_type_id,
+			&workspace_id,
+			&Utc.timestamp_millis(created),
+		)
+		.execute(&mut *connection)
+		.await?;
+
 		query!(
 			r#"
 			INSERT INTO
