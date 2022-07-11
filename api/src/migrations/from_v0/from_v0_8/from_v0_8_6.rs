@@ -136,7 +136,7 @@ async fn add_upload_id_for_existing_users(
 	let static_sites = query!(
 		r#"
 		SELECT
-			id,
+			deployment_static_site.id,
 			workspace_id,
 			created
 		FROM
