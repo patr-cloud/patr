@@ -17,7 +17,7 @@ use crate::{
 	error,
 	models::rbac,
 	service::{self, infrastructure::kubernetes},
-	utils::{get_current_time_millis, settings::Settings, validator, Error},
+	utils::{settings::Settings, validator, Error},
 	Database,
 };
 
@@ -123,21 +123,8 @@ pub async fn create_static_site_in_workspace(
 			"request_id: {} - Creating Static-site upload resource",
 			request_id
 		);
-		let upload_id = db::generate_new_resource_id(connection).await?;
-
-		db::create_resource(
-			connection,
-			&upload_id,
-			&format!("Static_site_upload: {}", upload_id),
-			rbac::RESOURCE_TYPES
-				.get()
-				.unwrap()
-				.get(rbac::resource_types::STATIC_SITE_UPLOAD)
-				.unwrap(),
-			workspace_id,
-			get_current_time_millis(),
-		)
-		.await?;
+		let upload_id =
+			db::generate_new_static_site_upload_id(connection).await?;
 		log::trace!("request_id: {} - Creating upload history", request_id);
 
 		db::create_static_site_upload_history(
@@ -177,7 +164,6 @@ pub async fn create_static_site_in_workspace(
 
 pub async fn update_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
 	static_site_id: &Uuid,
 	name: Option<&str>,
 	file: Option<String>,
@@ -193,22 +179,9 @@ pub async fn update_static_site(
 	}
 
 	let upload_id = if let Some(file) = file {
-		let upload_id = db::generate_new_resource_id(connection).await?;
+		let upload_id =
+			db::generate_new_static_site_upload_id(connection).await?;
 		let now = Utc::now();
-
-		db::create_resource(
-			connection,
-			&upload_id,
-			&format!("Static_site_upload: {}", upload_id),
-			rbac::RESOURCE_TYPES
-				.get()
-				.unwrap()
-				.get(rbac::resource_types::STATIC_SITE_UPLOAD)
-				.unwrap(),
-			workspace_id,
-			now.timestamp_millis() as u64,
-		)
-		.await?;
 
 		log::trace!("request_id: {} - Creating upload history", request_id);
 		db::create_static_site_upload_history(

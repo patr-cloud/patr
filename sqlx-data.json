@@ -4095,6 +4095,50 @@
     },
     "query": "UPDATE managed_database SET host = $1, port = $2, username = $3, password = $4 WHERE id = $5;"
   },
+  "6248932b11fc7902279dff004a64d6981c9493340e191014c08948c1b5b4f7d1": {
+    "describe": {
+      "columns": [
+        {
+          "name": "upload_id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "static_site_id",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "message",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "uploaded_by",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "created",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT * FROM static_site_upload_history WHERE upload_id = $1;"
+  },
   "629c00298724c7b118fa471652c112c774ebc0c0d08a288c41c1cf7b9a27b5f9": {
     "describe": {
       "columns": [

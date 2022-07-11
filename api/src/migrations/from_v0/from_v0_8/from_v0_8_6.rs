@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use api_models::utils::Uuid;
+use chrono::Utc;
 use k8s_openapi::api::networking::v1::{
 	HTTPIngressPath,
 	HTTPIngressRuleValue,
@@ -32,7 +33,7 @@ use sqlx::Row;
 
 use crate::{
 	migrate_query as query,
-	utils::{get_current_time_millis, settings::Settings, Error},
+	utils::{settings::Settings, Error},
 	Database,
 };
 
@@ -41,7 +42,6 @@ pub(super) async fn migrate(
 	config: &Settings,
 ) -> Result<(), Error> {
 	create_static_site_deploy_history(&mut *connection, config).await?;
-	add_static_site_upload_resource_type(&mut *connection, config).await?;
 	add_upload_id_for_existing_users(&mut *connection, config).await?;
 	rename_all_deployment_static_site_to_just_static_site(
 		&mut *connection,
@@ -58,66 +58,20 @@ async fn create_static_site_deploy_history(
 ) -> Result<(), Error> {
 	query!(
 		r#"
-		CREATE TABLE static_site_deploy_history(
-			upload_id UUID CONSTRAINT deployment_static_site_history_pk PRIMARY KEY,
-			static_site_id UUID NOT NULL,
+		CREATE TABLE static_site_upload_history(
+			upload_id UUID CONSTRAINT static_site_upload_history_pk PRIMARY KEY,
+			static_site_id UUID NOT NULL CONSTRAINT
+				static_site_upload_history_fk_static_site_id
+					REFERENCES static_site(id),
 			message TEXT NOT NULL,
-			created BIGINT NOT NULL
-				CONSTRAINT static_site_deploy_history_chk_created_unsigned CHECK(
-						created >= 0
-				),
-			CONSTRAINT static_site_deploy_history_fk_static_site_id
-				FOREIGN KEY(static_site_id)
-					REFERENCES deployment_static_site(id),
-			CONSTRAINT static_site_deploy_history_uq_upload_id_static_site_id
+			uploaded_by UUID NOT NULL CONSTRAINT
+				static_site_upload_history_fk_uploaded_by
+					REFERENCES "user"(id),
+			created TIMESTAMPTZ NOT NULL,
+			CONSTRAINT static_site_upload_history_uq_upload_id_static_site_id
 				UNIQUE(upload_id, static_site_id)
 		);
 		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-	Ok(())
-}
-
-async fn add_static_site_upload_resource_type(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
-) -> Result<(), Error> {
-	let uuid = loop {
-		let uuid = Uuid::new_v4();
-
-		let exists = query!(
-			r#"
-			SELECT
-				*
-			FROM
-				resource_type
-			WHERE
-				id = $1;
-			"#,
-			&uuid
-		)
-		.fetch_optional(&mut *connection)
-		.await?
-		.is_some();
-
-		if !exists {
-			break uuid;
-		}
-	};
-
-	query!(
-		r#"
-		INSERT INTO
-			resource_type(
-				id,
-				name,
-				description
-			)
-		VALUES
-			($1, 'staticSiteUpload', NULL);
-		"#,
-		&uuid,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -150,21 +104,6 @@ async fn add_upload_id_for_existing_users(
 		return Ok(());
 	}
 
-	// New resource_type for static site uploads
-	let resource_type_id = query!(
-		r#"
-		SELECT
-			id
-		FROM
-			resource_type
-		WHERE
-			name = 'staticSiteUpload';
-		"#
-	)
-	.fetch_one(&mut *connection)
-	.await
-	.map(|row| row.get::<Uuid, _>("id"))?;
-
 	// Create a new s3 bucket
 	let bucket = Bucket::new(
 		&config.s3.bucket,
@@ -182,6 +121,7 @@ async fn add_upload_id_for_existing_users(
 		.map_err(|_err| Error::empty())?,
 	)
 	.map_err(|_err| Error::empty())?;
+
 	// Kubernetes config
 	let kubernetes_config = Config::from_custom_kubeconfig(
 		Kubeconfig {
@@ -224,8 +164,9 @@ async fn add_upload_id_for_existing_users(
 		&Default::default(),
 	)
 	.await?;
+
 	let kubernetes_client = kube::Client::try_from(kubernetes_config)?;
-	for (static_site_id, workspace_id) in &static_sites {
+	for (static_site_id, workspace_id) in static_sites {
 		let upload_id = loop {
 			let upload_id = Uuid::new_v4();
 
@@ -234,9 +175,9 @@ async fn add_upload_id_for_existing_users(
 				SELECT
 					*
 				FROM
-					resource
+					static_site_upload_history
 				WHERE
-					id = $1;
+					upload_id = $1;
 				"#,
 				&upload_id
 			)
@@ -249,47 +190,40 @@ async fn add_upload_id_for_existing_users(
 			}
 		};
 
-		// Make the existing static site as a upload resource
-		let resource_name = format!("Static_site_upload: {}", upload_id);
-		query!(
+		let super_admin_id = query!(
 			r#"
-			INSERT INTO
-				resource(
-					id,
-					name
-					resource_type_id,
-					owner_id,
-					created
-				)
-			VALUES
-				($1, $2, $3, $4, $5);
+			SELECT
+				super_admin_id
+			FROM
+				workspace
+			WHERE
+				id = $1
 			"#,
-			&upload_id,
-			&resource_name,
-			&resource_type_id,
-			workspace_id,
-			get_current_time_millis() as i64
+			&workspace_id
 		)
-		.execute(&mut *connection)
-		.await?;
+		.fetch_one(&mut *connection)
+		.await?
+		.get::<Uuid, _>("super_admin_id");
 
-		// Make new entries in static_site_deploy_history for existing static
+		// Make new entries in static_site_upload_history for existing static
 		// sites
 		query!(
 			r#"
 			INSERT INTO
-				static_site_deploy_history(
+				static_site_upload_history(
 					upload_id,
 					static_site_id,
 					message,
-					created,
+					uploaded_by,
+					created
 				)
 			VALUES
-				($1, $2, $3);
+				($1, $2, 'No upload message', $3, $4);
 			"#,
 			&upload_id,
-			static_site_id,
-			get_current_time_millis() as i64
+			&static_site_id,
+			&super_admin_id,
+			&Utc::now(),
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -303,7 +237,13 @@ async fn add_upload_id_for_existing_users(
 		for static_site in static_site_objects {
 			let objects = static_site.contents;
 			for object in objects {
-				let (_, file) = object.key.split_once('/').unwrap();
+				let file = if let Some(removed) =
+					object.key.strip_prefix(&format!("{}/", static_site_id))
+				{
+					removed
+				} else {
+					continue;
+				};
 				bucket
 					.copy_object_internal(
 						format!("{}/{}", static_site_id, file),
@@ -315,6 +255,7 @@ async fn add_upload_id_for_existing_users(
 					.await?;
 			}
 		}
+
 		let namespace = workspace_id.as_str();
 		let mut annotations: BTreeMap<String, String> = BTreeMap::new();
 		annotations.insert(

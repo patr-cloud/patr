@@ -231,6 +231,33 @@ pub async fn get_static_sites_for_workspace(
 	.await
 }
 
+pub async fn generate_new_static_site_upload_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Uuid, sqlx::Error> {
+	loop {
+		let upload_id = Uuid::new_v4();
+
+		let exists = query!(
+			r#"
+			SELECT
+				*
+			FROM
+				static_site_upload_history
+			WHERE
+				upload_id = $1;
+			"#,
+			&upload_id as _,
+		)
+		.fetch_optional(&mut *connection)
+		.await?
+		.is_some();
+
+		if !exists {
+			break Ok(upload_id);
+		}
+	}
+}
+
 pub async fn create_static_site_upload_history(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	upload_id: &Uuid,

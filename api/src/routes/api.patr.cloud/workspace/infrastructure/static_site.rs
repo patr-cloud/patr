@@ -870,9 +870,6 @@ async fn update_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
 	let static_site_id = Uuid::parse_str(
 		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
 	)
@@ -900,7 +897,6 @@ async fn update_static_site(
 
 	let upload_id = service::update_static_site(
 		context.get_database_connection(),
-		&workspace_id,
 		&static_site_id,
 		name,
 		file,
