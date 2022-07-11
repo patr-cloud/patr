@@ -12,10 +12,10 @@ pub struct User {
 	pub password: String,
 	pub first_name: String,
 	pub last_name: String,
-	pub dob: Option<u64>,
+	pub dob: Option<DateTime<Utc>>,
 	pub bio: Option<String>,
 	pub location: Option<String>,
-	pub created: u64,
+	pub created: DateTime<Utc>,
 	pub recovery_email_local: Option<String>,
 	pub recovery_email_domain_id: Option<Uuid>,
 	pub recovery_phone_country_code: Option<String>,
@@ -28,16 +28,16 @@ pub struct UserLogin {
 	pub login_id: Uuid,
 	/// Hashed refresh token
 	pub refresh_token: String,
-	pub token_expiry: u64,
+	pub token_expiry: DateTime<Utc>,
 	pub user_id: Uuid,
-	pub last_login: u64,
-	pub last_activity: u64,
+	pub last_login: DateTime<Utc>,
+	pub last_activity: DateTime<Utc>,
 }
 
 pub struct PasswordResetRequest {
 	pub user_id: Uuid,
 	pub token: String,
-	pub token_expiry: u64,
+	pub token_expiry: DateTime<Utc>,
 }
 
 pub struct PhoneCountryCode {
@@ -51,7 +51,7 @@ pub struct PersonalEmailToBeVerified {
 	pub domain_id: Uuid,
 	pub user_id: Uuid,
 	pub verification_token_hash: String,
-	pub verification_token_expiry: u64,
+	pub verification_token_expiry: DateTime<Utc>,
 }
 
 pub struct PhoneNumberToBeVerified {
@@ -59,7 +59,7 @@ pub struct PhoneNumberToBeVerified {
 	pub phone_number: String,
 	pub user_id: Uuid,
 	pub verification_token_hash: String,
-	pub verification_token_expiry: u64,
+	pub verification_token_expiry: DateTime<Utc>,
 }
 
 pub struct UserToSignUp {
@@ -81,7 +81,7 @@ pub struct UserToSignUp {
 	pub business_name: Option<String>,
 
 	pub otp_hash: String,
-	pub otp_expiry: u64,
+	pub otp_expiry: DateTime<Utc>,
 
 	pub coupon_code: Option<String>,
 }
@@ -130,12 +130,10 @@ pub async fn initialize_users_pre(
 			password TEXT NOT NULL,
 			first_name VARCHAR(100) NOT NULL,
 			last_name VARCHAR(100) NOT NULL,
-			dob BIGINT DEFAULT NULL
-				CONSTRAINT user_chk_dob_unsigned CHECK(dob >= 0),
+			dob TIMESTAMPTZ DEFAULT NULL,
 			bio VARCHAR(128) DEFAULT NULL,
 			location VARCHAR(128) DEFAULT NULL,
-			created BIGINT NOT NULL
-				CONSTRAINT user_chk_created_unsigned CHECK(created >= 0),
+			created TIMESTAMPTZ NOT NULL,
 			/* Recovery options */
 			recovery_email_local VARCHAR(64)
 				CONSTRAINT user_chk_recovery_email_is_lower_case CHECK(
@@ -191,17 +189,11 @@ pub async fn initialize_users_pre(
 			login_id UUID
 				CONSTRAINT user_login_uq_login_id UNIQUE,
 			refresh_token TEXT NOT NULL,
-			token_expiry BIGINT NOT NULL
-				CONSTRAINT user_login_chk_token_expiry_unsigned
-					CHECK(token_expiry >= 0),
+			token_expiry TIMESTAMPTZ NOT NULL,
 			user_id UUID NOT NULL
 				CONSTRAINT user_login_fk_user_id REFERENCES "user"(id),
-			last_login BIGINT NOT NULL
-				CONSTRAINT user_login_chk_last_login_unsigned
-					CHECK(last_login >= 0),
-			last_activity BIGINT NOT NULL
-				CONSTRAINT user_login_chk_last_activity_unsigned
-					CHECK(last_activity >= 0),
+			last_login TIMESTAMPTZ NOT NULL,
+			last_activity TIMESTAMPTZ NOT NULL,
 			CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id)
 		);
 		"#
@@ -229,9 +221,7 @@ pub async fn initialize_users_pre(
 				CONSTRAINT password_reset_request_fk_user_id
 					REFERENCES "user"(id),
 			token TEXT NOT NULL,
-			token_expiry BIGINT NOT NULL
-				CONSTRAINT password_reset_request_token_expiry_chk_unsigned
-					CHECK(token_expiry >= 0)
+			token_expiry TIMESTAMPTZ NOT NULL
 		);
 		"#
 	)
@@ -391,10 +381,7 @@ pub async fn initialize_users_post(
 				CONSTRAINT user_unverified_personal_email_fk_user_id
 					REFERENCES "user"(id),
 			verification_token_hash TEXT NOT NULL,
-			verification_token_expiry BIGINT NOT NULL
-				CONSTRAINT
-					user_unverified_personal_email_chk_token_expiry_unsigned
-					CHECK(verification_token_expiry >= 0),
+			verification_token_expiry TIMESTAMPTZ NOT NULL,
 			
 			CONSTRAINT user_unverified_personal_email_pk
 				PRIMARY KEY(local, domain_id),
@@ -421,7 +408,7 @@ pub async fn initialize_users_post(
 				CONSTRAINT user_unverified_phone_number_fk_user_id
 					REFERENCES "user"(id),
 			verification_token_hash TEXT NOT NULL,
-			verification_token_expiry BIGINT NOT NULL
+			verification_token_expiry TIMESTAMPTZ NOT NULL
 				CONSTRAINT
 					user_unverified_phone_number_chk_token_expiry_unsigned
 					CHECK(verification_token_expiry >= 0),
@@ -507,9 +494,7 @@ pub async fn initialize_users_post(
 				CONSTRAINT user_to_sign_up_chk_business_name_is_lower_case
 					CHECK(business_name = LOWER(business_name)),
 			otp_hash TEXT NOT NULL,
-			otp_expiry BIGINT NOT NULL
-				CONSTRAINT user_to_sign_up_chk_expiry_unsigned
-					CHECK(otp_expiry >= 0),
+			otp_expiry TIMESTAMPTZ NOT NULL,
 			coupon_code TEXT CONSTRAINT user_to_sign_up_fk_coupon_code
 				REFERENCES coupon_code(code),
 
@@ -967,10 +952,10 @@ pub async fn get_user_by_username_email_or_phone_number(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		dob: row.dob.map(|dob| dob as u64),
+		dob: row.dob.map(|dob| DateTime::from(dob)),
 		bio: row.bio,
 		location: row.location,
-		created: row.created as u64,
+		created: row.created.into(),
 		recovery_email_local: row.recovery_email_local,
 		recovery_email_domain_id: row.recovery_email_domain_id,
 		recovery_phone_country_code: row.recovery_phone_country_code,
@@ -1045,10 +1030,10 @@ pub async fn get_user_by_email(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		dob: row.dob.map(|dob| dob as u64),
+		dob: row.dob.map(|dob| DateTime::from(dob)),
 		bio: row.bio,
 		location: row.location,
-		created: row.created as u64,
+		created: row.created.into(),
 		recovery_email_local: row.recovery_email_local,
 		recovery_email_domain_id: row.recovery_email_domain_id,
 		recovery_phone_country_code: row.recovery_phone_country_code,
@@ -1104,10 +1089,10 @@ pub async fn get_user_by_phone_number(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		dob: row.dob.map(|dob| dob as u64),
+		dob: row.dob.map(|dob| DateTime::from(dob)),
 		bio: row.bio,
 		location: row.location,
-		created: row.created as u64,
+		created: row.created.into(),
 		recovery_email_local: row.recovery_email_local,
 		recovery_email_domain_id: row.recovery_email_domain_id,
 		recovery_phone_country_code: row.recovery_phone_country_code,
@@ -1156,10 +1141,10 @@ pub async fn get_user_by_username(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		dob: row.dob.map(|dob| dob as u64),
+		dob: row.dob.map(|dob| DateTime::from(dob)),
 		bio: row.bio,
 		location: row.location,
-		created: row.created as u64,
+		created: row.created.into(),
 		recovery_email_local: row.recovery_email_local,
 		recovery_email_domain_id: row.recovery_email_domain_id,
 		recovery_phone_country_code: row.recovery_phone_country_code,
@@ -1208,10 +1193,10 @@ pub async fn get_user_by_user_id(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		dob: row.dob.map(|dob| dob as u64),
+		dob: row.dob.map(|dob| DateTime::from(dob)),
 		bio: row.bio,
 		location: row.location,
-		created: row.created as u64,
+		created: row.created.into(),
 		recovery_email_local: row.recovery_email_local,
 		recovery_email_domain_id: row.recovery_email_domain_id,
 		recovery_phone_country_code: row.recovery_phone_country_code,
@@ -1283,7 +1268,7 @@ pub async fn set_personal_user_to_be_signed_up(
 	recovery_phone_number: Option<&str>,
 
 	otp_hash: &str,
-	otp_expiry: u64,
+	otp_expiry: DateTime<Utc>,
 
 	coupon_code: Option<&str>,
 ) -> Result<(), sqlx::Error> {
@@ -1364,7 +1349,7 @@ pub async fn set_personal_user_to_be_signed_up(
 		recovery_phone_country_code,
 		recovery_phone_number,
 		otp_hash,
-		otp_expiry as i64,
+		otp_expiry as _,
 		coupon_code,
 	)
 	.execute(&mut *connection)
@@ -1390,7 +1375,7 @@ pub async fn set_business_user_to_be_signed_up(
 	business_name: &str,
 
 	otp_hash: &str,
-	otp_expiry: u64,
+	otp_expiry: &DateTime<Utc>,
 
 	coupon_code: Option<&str>,
 ) -> Result<(), sqlx::Error> {
@@ -1476,7 +1461,7 @@ pub async fn set_business_user_to_be_signed_up(
 		business_domain_tld,
 		business_name,
 		otp_hash,
-		otp_expiry as i64,
+		otp_expiry as _,
 		coupon_code,
 	)
 	.execute(&mut *connection)
@@ -1535,7 +1520,7 @@ pub async fn get_user_to_sign_up_by_username(
 		business_domain_name: row.business_domain_name,
 		business_name: row.business_name,
 		otp_hash: row.otp_hash,
-		otp_expiry: row.otp_expiry as u64,
+		otp_expiry: row.otp_expiry.into(),
 		coupon_code: row.coupon_code,
 	});
 
@@ -1595,7 +1580,7 @@ pub async fn get_user_to_sign_up_by_phone_number(
 		business_domain_name: row.business_domain_name,
 		business_name: row.business_name,
 		otp_hash: row.otp_hash,
-		otp_expiry: row.otp_expiry as u64,
+		otp_expiry: row.otp_expiry.into(),
 		coupon_code: row.coupon_code,
 	});
 
@@ -1666,7 +1651,7 @@ pub async fn get_user_to_sign_up_by_email(
 		business_domain_name: row.business_domain_name,
 		business_name: row.business_name,
 		otp_hash: row.otp_hash,
-		otp_expiry: row.otp_expiry as u64,
+		otp_expiry: row.otp_expiry.into(),
 		coupon_code: row.coupon_code,
 	});
 
@@ -1723,7 +1708,7 @@ pub async fn get_user_to_sign_up_by_business_name(
 		business_domain_name: row.business_domain_name,
 		business_name: row.business_name,
 		otp_hash: row.otp_hash,
-		otp_expiry: row.otp_expiry as u64,
+		otp_expiry: row.otp_expiry.into(),
 		coupon_code: row.coupon_code,
 	});
 
@@ -1780,7 +1765,7 @@ pub async fn get_user_to_sign_up_by_business_domain_name(
 		business_domain_name: row.business_domain_name,
 		business_name: row.business_name,
 		otp_hash: row.otp_hash,
-		otp_expiry: row.otp_expiry as u64,
+		otp_expiry: row.otp_expiry.into(),
 		coupon_code: row.coupon_code,
 	});
 
@@ -1791,7 +1776,7 @@ pub async fn update_user_to_sign_up_with_otp(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	username: &str,
 	verification_token: &str,
-	token_expiry: u64,
+	token_expiry: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1804,7 +1789,7 @@ pub async fn update_user_to_sign_up_with_otp(
 			username = $3;
 		"#,
 		verification_token,
-		token_expiry as i64,
+		token_expiry as _,
 		username
 	)
 	.execute(&mut *connection)
@@ -1818,7 +1803,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 	domain_id: &Uuid,
 	user_id: &Uuid,
 	verification_token: &str,
-	token_expiry: u64,
+	token_expiry: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1841,7 +1826,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 		domain_id as _,
 		user_id as _,
 		verification_token,
-		token_expiry as i64
+		token_expiry as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -1855,7 +1840,7 @@ pub async fn add_phone_number_to_be_verified_for_user(
 	phone_number: &str,
 	user_id: &Uuid,
 	verification_token: &str,
-	token_expiry: u64,
+	token_expiry: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1878,7 +1863,7 @@ pub async fn add_phone_number_to_be_verified_for_user(
 		phone_number,
 		user_id as _,
 		verification_token,
-		token_expiry as i64
+		token_expiry as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -1919,7 +1904,7 @@ pub async fn get_personal_email_to_be_verified_for_user(
 		domain_id: row.domain_id,
 		user_id: row.user_id,
 		verification_token_hash: row.verification_token_hash,
-		verification_token_expiry: row.verification_token_expiry as u64,
+		verification_token_expiry: row.verification_token_expiry.into(),
 	});
 
 	Ok(email)
@@ -1955,7 +1940,7 @@ pub async fn get_personal_email_to_be_verified_by_email(
 		domain_id: row.domain_id,
 		user_id: row.user_id,
 		verification_token_hash: row.verification_token_hash,
-		verification_token_expiry: row.verification_token_expiry as u64,
+		verification_token_expiry: row.verification_token_expiry.into(),
 	});
 
 	Ok(email)
@@ -2022,7 +2007,7 @@ pub async fn get_phone_number_to_be_verified_for_user(
 		phone_number: row.phone_number,
 		user_id: row.user_id,
 		verification_token_hash: row.verification_token_hash,
-		verification_token_expiry: row.verification_token_expiry as u64,
+		verification_token_expiry: row.verification_token_expiry.into(),
 	});
 
 	Ok(phone_number)
@@ -2057,7 +2042,7 @@ pub async fn get_phone_number_to_be_verified_by_phone_number(
 		phone_number: row.phone_number,
 		user_id: row.user_id,
 		verification_token_hash: row.verification_token_hash,
-		verification_token_expiry: row.verification_token_expiry as u64,
+		verification_token_expiry: row.verification_token_expiry.into(),
 	});
 
 	Ok(phone_number)
@@ -2167,7 +2152,7 @@ pub async fn create_user(
 	username: &str,
 	password: &str,
 	(first_name, last_name): (&str, &str),
-	created: u64,
+	created: DateTime<Utc>,
 
 	recovery_email_local: Option<&str>,
 	recovery_email_domain_id: Option<&Uuid>,
@@ -2230,7 +2215,7 @@ pub async fn create_user(
 		password,
 		first_name,
 		last_name,
-		created as i64,
+		created as _,
 		recovery_email_local,
 		recovery_email_domain_id as _,
 		recovery_phone_country_code,
@@ -2248,10 +2233,10 @@ pub async fn add_user_login(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &Uuid,
 	refresh_token: &str,
-	token_expiry: u64,
+	token_expiry: DateTime<Utc>,
 	user_id: &Uuid,
-	last_login: u64,
-	last_activity: u64,
+	last_login: DateTime<Utc>,
+	last_activity: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -2269,10 +2254,10 @@ pub async fn add_user_login(
 		"#,
 		login_id as _,
 		refresh_token,
-		token_expiry as i64,
+		token_expiry as _,
 		user_id as _,
-		last_login as i64,
-		last_activity as i64
+		last_login as _,
+		last_activity as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -2305,10 +2290,10 @@ pub async fn get_user_login(
 	.map(|row| UserLogin {
 		login_id: row.login_id,
 		refresh_token: row.refresh_token,
-		token_expiry: row.token_expiry as u64,
+		token_expiry: row.token_expiry.into(),
 		user_id: row.user_id,
-		last_login: row.last_login as u64,
-		last_activity: row.last_activity as u64,
+		last_login: row.last_login.into(),
+		last_activity: row.last_activity.into(),
 	});
 
 	Ok(login)
@@ -2342,10 +2327,10 @@ pub async fn get_user_login_for_user(
 	.map(|row| UserLogin {
 		login_id: row.login_id,
 		refresh_token: row.refresh_token,
-		token_expiry: row.token_expiry as u64,
+		token_expiry: row.token_expiry.into(),
 		user_id: row.user_id,
-		last_login: row.last_login as u64,
-		last_activity: row.last_activity as u64,
+		last_login: row.last_login.into(),
+		last_activity: row.last_activity.into(),
 	});
 
 	Ok(row)
@@ -2404,10 +2389,10 @@ pub async fn get_all_logins_for_user(
 	.map(|row| UserLogin {
 		login_id: row.login_id,
 		refresh_token: row.refresh_token,
-		token_expiry: row.token_expiry as u64,
+		token_expiry: row.token_expiry.into(),
 		user_id: row.user_id,
-		last_login: row.last_login as u64,
-		last_activity: row.last_activity as u64,
+		last_login: row.last_login.into(),
+		last_activity: row.last_activity.into(),
 	})
 	.collect();
 
@@ -2442,10 +2427,10 @@ pub async fn get_login_for_user_with_refresh_token(
 	.map(|row| UserLogin {
 		login_id: row.login_id,
 		refresh_token: row.refresh_token,
-		token_expiry: row.token_expiry as u64,
+		token_expiry: row.token_expiry.into(),
 		user_id: row.user_id,
-		last_login: row.last_login as u64,
-		last_activity: row.last_activity as u64,
+		last_login: row.last_login.into(),
+		last_activity: row.last_activity.into(),
 	});
 
 	Ok(login)
@@ -2461,7 +2446,7 @@ pub async fn delete_user_login_by_id(
 		UPDATE
 			user_login
 		SET
-			token_expiry = 0
+			token_expiry = TO_TIMESTAMP(0)
 		WHERE
 			login_id = $1 AND
 			user_id = $2;
@@ -2477,8 +2462,8 @@ pub async fn delete_user_login_by_id(
 pub async fn set_login_expiry(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &Uuid,
-	last_activity: u64,
-	token_expiry: u64,
+	last_activity: DateTime<Utc>,
+	token_expiry: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -2490,8 +2475,8 @@ pub async fn set_login_expiry(
 		WHERE
 			login_id = $3;
 		"#,
-		token_expiry as i64,
-		last_activity as i64,
+		token_expiry as _,
+		last_activity as _,
 		login_id as _,
 	)
 	.execute(&mut *connection)
@@ -2505,7 +2490,7 @@ pub async fn update_user_data(
 	user_id: &Uuid,
 	first_name: Option<&str>,
 	last_name: Option<&str>,
-	dob: Option<u64>,
+	dob: Option<DateTime<Utc>>,
 	bio: Option<&str>,
 	location: Option<&str>,
 ) -> Result<(), sqlx::Error> {
@@ -2524,15 +2509,14 @@ pub async fn update_user_data(
 		"#,
 		first_name,
 		last_name,
-		dob.map(|d| d as i64),
+		dob as _,
 		bio,
 		location,
 		user_id as _,
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn update_user_password(
@@ -2614,7 +2598,7 @@ pub async fn add_password_reset_request(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 	token_hash: &str,
-	token_expiry: u64,
+	token_expiry: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -2632,7 +2616,7 @@ pub async fn add_password_reset_request(
 		"#,
 		user_id as _,
 		token_hash,
-		token_expiry as i64
+		token_expiry as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -2662,7 +2646,7 @@ pub async fn get_password_reset_request_for_user(
 	.map(|row| PasswordResetRequest {
 		user_id: row.user_id,
 		token: row.token,
-		token_expiry: row.token_expiry as u64,
+		token_expiry: row.token_expiry.into(),
 	});
 
 	Ok(reset)

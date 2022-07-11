@@ -36,9 +36,9 @@ use api_models::{
 		},
 		WorkspaceAuditLog,
 	},
-	utils::{constants, Uuid},
+	utils::{constants, Uuid, get_current_time},
 };
-use chrono::Utc;
+use chrono::{TimeZone, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
@@ -54,7 +54,6 @@ use crate::{
 	service,
 	utils::{
 		constants::request_keys,
-		get_current_time,
 		Error,
 		ErrorData,
 		EveContext,
@@ -1373,8 +1372,8 @@ async fn get_logs(
 	let logs = service::get_deployment_container_logs(
 		context.get_database_connection(),
 		&deployment_id,
-		start_time.as_u64(),
-		get_current_time().as_secs(),
+		&Utc.timestamp_millis(start_time.as_u64()).into(),
+		Utc::now(),
 		&config,
 		&request_id,
 	)

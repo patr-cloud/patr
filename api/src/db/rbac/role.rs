@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, HashMap};
 
-use api_models::utils::Uuid;
+use api_models::utils::{DateTime, Uuid};
+use chrono::Utc;
 
 use super::{Permission, Role};
 use crate::{db::User, query, query_as, Database};
@@ -345,10 +346,10 @@ pub async fn get_all_users_with_role(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		dob: row.dob.map(|dob| dob as u64),
+		dob: row.dob.map(|dob| dob.into()),
 		bio: row.bio,
 		location: row.location,
-		created: row.created as u64,
+		created: row.created.into(),
 		recovery_email_local: row.recovery_email_local,
 		recovery_email_domain_id: row.recovery_email_domain_id,
 		recovery_phone_country_code: row.recovery_phone_country_code,

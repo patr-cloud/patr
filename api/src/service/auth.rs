@@ -8,7 +8,7 @@ use api_models::{
 	},
 	utils::{DateTime, ResourceType, Uuid},
 };
-use chrono::{Datelike, Utc};
+use chrono::{Datelike, TimeZone, Utc};
 use eve_rs::AsError;
 
 /// This module validates user info and performs tasks related to user
@@ -68,7 +68,9 @@ pub async fn is_username_allowed(
 
 	if let Some(status) = sign_up_status {
 		// return in-valid (`false`) if expiry is greater than current time
-		if status.otp_expiry > get_current_time_millis() {
+		if (status.otp_expiry.timestamp_millis() as u64) >
+			get_current_time_millis()
+		{
 			return Ok(false);
 		}
 	}
@@ -116,7 +118,9 @@ pub async fn is_email_allowed(
 	let sign_up_status =
 		db::get_user_to_sign_up_by_email(connection, email).await?;
 	if let Some(status) = sign_up_status {
-		if status.otp_expiry > get_current_time_millis() {
+		if (status.otp_expiry.timestamp_millis() as u64) >
+			get_current_time_millis()
+		{
 			return Ok(false);
 		}
 	}
@@ -187,7 +191,9 @@ pub async fn is_phone_number_allowed(
 	.await?;
 
 	if let Some(status) = sign_up_status {
-		if status.otp_expiry > get_current_time_millis() {
+		if (status.otp_expiry.timestamp_millis() as u64) >
+			get_current_time_millis()
+		{
 			return Ok(false);
 		}
 	}
@@ -301,6 +307,8 @@ pub async fn create_user_join_request(
 	let token_expiry =
 		get_current_time_millis() + service::get_join_token_expiry();
 
+	let token_expiry = Utc.timestamp_millis(token_expiry as i64).into();
+
 	let password = service::hash(password.as_bytes())?;
 	let token_hash = service::hash(otp.as_bytes())?;
 
@@ -338,7 +346,9 @@ pub async fn create_user_join_request(
 			)
 			.await?;
 			if let Some(user_sign_up) = user_sign_up {
-				if user_sign_up.otp_expiry < get_current_time_millis() {
+				if (user_sign_up.otp_expiry.timestamp_millis() as u64) <
+					get_current_time_millis()
+				{
 					Error::as_result()
 						.status(200)
 						.body(error!(WORKSPACE_EXISTS).to_string())?;
@@ -377,7 +387,7 @@ pub async fn create_user_join_request(
 				tld,
 				workspace_name,
 				&token_hash,
-				token_expiry,
+				&token_expiry,
 				coupon_code,
 			)
 			.await?;
@@ -396,7 +406,7 @@ pub async fn create_user_join_request(
 				business_domain_name: Some(format!("{}.{}", domain_name, tld)),
 				business_name: Some(workspace_name.to_string()),
 				otp_hash: token_hash,
-				otp_expiry: token_expiry,
+				otp_expiry: token_expiry.into(),
 				coupon_code: coupon_code.map(|code| code.to_string()),
 			}
 		}
@@ -411,7 +421,7 @@ pub async fn create_user_join_request(
 				phone_country_code.as_deref(),
 				phone_number.as_deref(),
 				&token_hash,
-				token_expiry,
+				token_expiry.clone().into(),
 				coupon_code,
 			)
 			.await?;
@@ -430,7 +440,7 @@ pub async fn create_user_join_request(
 				business_domain_name: None,
 				business_name: None,
 				otp_hash: token_hash,
-				otp_expiry: token_expiry,
+				otp_expiry: token_expiry.into(),
 				coupon_code: coupon_code.map(|code| code.to_string()),
 			}
 		}
@@ -781,7 +791,9 @@ pub async fn join_user(
 			.body(error!(INVALID_OTP).to_string())?;
 	}
 
-	if user_data.otp_expiry < get_current_time_millis() {
+	if (user_data.otp_expiry.timestamp_millis() as u64) <
+		get_current_time_millis()
+	{
 		Error::as_result()
 			.status(200)
 			.body(error!(OTP_EXPIRED).to_string())?;

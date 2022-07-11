@@ -254,8 +254,8 @@ pub async fn create_deployment_in_workspace(
 pub async fn get_deployment_container_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
-	start_time: u64,
-	end_time: u64,
+	start_time: &DateTime<Utc>,
+	end_time: &DateTime<Utc>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<String, Error> {

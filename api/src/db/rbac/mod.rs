@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use api_models::utils::Uuid;
+use api_models::utils::{DateTime, Uuid};
+use chrono::Utc;
 
 use crate::{
 	db::Workspace,
@@ -26,7 +27,7 @@ pub struct Resource {
 	pub name: String,
 	pub resource_type_id: Uuid,
 	pub owner_id: Uuid,
-	pub created: u64,
+	pub created: DateTime<Utc>,
 }
 
 pub struct Role {
@@ -77,9 +78,7 @@ pub async fn initialize_rbac_pre(
 			owner_id UUID NOT NULL
 				CONSTRAINT resource_fk_owner_id REFERENCES workspace(id)
 					DEFERRABLE INITIALLY IMMEDIATE,
-			created BIGINT NOT NULL
-				CONSTRAINT resource_created_chk_unsigned
-						CHECK(created >= 0),
+			created TIMESTAMPTZ NOT NULL,
 			CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id)
 		);
 		"#
@@ -595,7 +594,7 @@ pub async fn create_resource(
 	resource_name: &str,
 	resource_type_id: &Uuid,
 	owner_id: &Uuid,
-	created: u64,
+	created: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -614,7 +613,7 @@ pub async fn create_resource(
 		resource_name,
 		resource_type_id as _,
 		owner_id as _,
-		created as i64
+		created as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -660,7 +659,7 @@ pub async fn get_resource_by_id(
 			name,
 			resource_type_id as "resource_type_id: Uuid",
 			owner_id as "owner_id: Uuid",
-			created
+			created 
 		FROM
 			resource
 		WHERE
@@ -675,7 +674,7 @@ pub async fn get_resource_by_id(
 		name: row.name,
 		resource_type_id: row.resource_type_id,
 		owner_id: row.owner_id,
-		created: row.created as u64,
+		created: row.created.into(),
 	});
 
 	Ok(resource)
