@@ -198,7 +198,7 @@ pub async fn update_static_site(
 
 		db::create_resource(
 			connection,
-			&static_site_id,
+			static_site_id,
 			&format!("Static site upload: {}", upload_id),
 			rbac::RESOURCE_TYPES
 				.get()
