@@ -281,9 +281,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(
-				revert_static_site
-			)),
+			EveMiddleware::CustomFunction(pin_fn!(revert_static_site)),
 		],
 	);
 
@@ -355,9 +353,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(
-				create_static_site
-			)),
+			EveMiddleware::CustomFunction(pin_fn!(create_static_site)),
 		],
 	);
 
