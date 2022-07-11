@@ -43,6 +43,11 @@ pub(super) async fn migrate(
 	create_static_site_deploy_history(&mut *connection, config).await?;
 	add_static_site_upload_resource_type(&mut *connection, config).await?;
 	add_upload_id_for_existing_users(&mut *connection, config).await?;
+	rename_all_deployment_static_site_to_just_static_site(
+		&mut *connection,
+		config,
+	)
+	.await?;
 
 	Ok(())
 }
@@ -373,6 +378,62 @@ async fn add_upload_id_for_existing_users(
 			)
 			.await?;
 	}
+
+	Ok(())
+}
+
+async fn rename_all_deployment_static_site_to_just_static_site(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE deployment_static_site
+		RENAME TO static_site;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE static_site
+		RENAME CONSTRAINT deployment_static_site_chk_name_is_trimmed
+		TO static_site_chk_name_is_trimmed;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE static_site
+		RENAME CONSTRAINT deployment_static_site_uq_name_workspace_id
+		TO static_site_uq_name_workspace_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE static_site
+		RENAME CONSTRAINT deployment_static_site_uq_id_workspace_id
+		TO static_site_uq_id_workspace_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE static_site
+		RENAME CONSTRAINT deployment_static_site_fk_id_workspace_id
+		TO static_site_fk_id_workspace_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }

@@ -4165,16 +4165,6 @@
     },
     "query": "INSERT INTO deployment_region( id, name, provider, location, parent_region_id ) VALUES ($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6);"
   },
-  "66d3f65687b9fccb1ee80549ffc2a7a855bcb790d7c9df75a3b8c26a6bd1ff54": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "ALTER TABLE managed_url ADD CONSTRAINT managed_url_fk_domain_id FOREIGN KEY(domain_id) REFERENCES workspace_domain(id), ADD CONSTRAINT managed_url_fk_domain_id_workspace_id FOREIGN KEY(domain_id, workspace_id) REFERENCES resource(id, owner_id), ADD CONSTRAINT managed_url_fk_deployment_id_port FOREIGN KEY(deployment_id, port) REFERENCES deployment_exposed_port(deployment_id, port) DEFERRABLE INITIALLY IMMEDIATE, ADD CONSTRAINT managed_url_fk_deployment_id_workspace_id FOREIGN KEY(deployment_id, workspace_id) REFERENCES deployment(id, workspace_id), ADD CONSTRAINT managed_url_fk_static_site_id_workspace_id FOREIGN KEY(static_site_id, workspace_id) REFERENCES deployment_static_site(id, workspace_id), ADD CONSTRAINT managed_url_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);"
-  },
   "66f2f60fc86b651ff7aba12d6bcd2f1126ceaf1747c74cdd068dfc2b34cf6693": {
     "describe": {
       "columns": [],
@@ -6361,6 +6351,16 @@
       }
     },
     "query": "CREATE TYPE DOMAIN_PLAN AS ENUM( 'free', 'unlimited' );"
+  },
+  "99aa3fab0d93a31d339b94fe2c0916cb159988c87123650a0686ca167ec0c4f7": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "ALTER TABLE managed_url ADD CONSTRAINT managed_url_fk_domain_id FOREIGN KEY(domain_id) REFERENCES workspace_domain(id), ADD CONSTRAINT managed_url_fk_domain_id_workspace_id FOREIGN KEY(domain_id, workspace_id) REFERENCES resource(id, owner_id), ADD CONSTRAINT managed_url_fk_deployment_id_port FOREIGN KEY(deployment_id, port) REFERENCES deployment_exposed_port(deployment_id, port) DEFERRABLE INITIALLY IMMEDIATE, ADD CONSTRAINT managed_url_fk_deployment_id_workspace_id FOREIGN KEY(deployment_id, workspace_id) REFERENCES deployment(id, workspace_id), ADD CONSTRAINT managed_url_fk_static_site_id_workspace_id FOREIGN KEY(static_site_id, workspace_id) REFERENCES static_site(id, workspace_id), ADD CONSTRAINT managed_url_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);"
   },
   "99c7918fc6e51982308d66ba4db17e8887d1082239e5098d8e3d32aef4b38e1e": {
     "describe": {
