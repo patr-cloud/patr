@@ -144,7 +144,7 @@ async fn add_upload_id_for_existing_users(
 		INNER JOIN
 			resource
 		ON
-			deployment_static_site.id = resource.resource_id
+			deployment_static_site.id = resource.id
 		WHERE	
 			status != 'deleted';
 		"#,
