@@ -1,7 +1,7 @@
 use api_models::{
 	models::workspace::{
 		billing::PaymentStatus,
-		infrastructure::deployment::{DeploymentRegistry, DeploymentStatus},
+		infrastructure::deployment::DeploymentStatus,
 	},
 	utils::{DateTime, Uuid},
 };
@@ -23,7 +23,6 @@ use crate::{
 	service,
 	utils::{
 		constants::request_keys,
-		get_current_time_millis,
 		Error,
 		ErrorData,
 		EveContext,
@@ -190,7 +189,7 @@ async fn notification_handler(
 			continue;
 		};
 
-		let current_time = Utc::now();
+		let current_time = DateTime::from(Utc::now());
 
 		log::trace!(
 			"request_id: {} - Creating docker repository digest",
@@ -225,7 +224,7 @@ async fn notification_handler(
 			&workspace.id,
 			&(((total_storage as f64) / (1000f64 * 1000f64 * 1000f64)).ceil()
 				as i64),
-			&DateTime::from(current_time),
+			&current_time,
 		)
 		.await?;
 
@@ -260,15 +259,15 @@ async fn notification_handler(
 			.await?;
 
 		log::trace!("request_id: {} - Updating the deployments", request_id);
-		for deployment in deployments {
-			if let DeploymentStatus::Stopped = deployment.status {
+		for db_deployment in deployments {
+			if let DeploymentStatus::Stopped = db_deployment.status {
 				continue;
 			}
 
 			let (deployment, workspace_id, _, deployment_running_details) =
 				service::get_full_deployment_config(
 					context.get_database_connection(),
-					&deployment.id,
+					&db_deployment.id,
 					&request_id,
 				)
 				.await?;
@@ -279,21 +278,15 @@ async fn notification_handler(
 				deployment.id,
 				target.digest
 			);
-			let repository_id = match &deployment.registry {
-				DeploymentRegistry::PatrRegistry {
-					registry: _,
-					repository_id,
-				} => repository_id,
-				_ => todo!(),
-			};
+			let repository_id = db_deployment.repository_id.status(500)?;
 
 			if !repository_id.is_nil() {
 				db::add_digest_to_deployment_deploy_history(
 					context.get_database_connection(),
 					&deployment.id,
-					repository_id,
+					&repository_id,
 					&target.digest,
-					get_current_time_millis(),
+					&current_time,
 				)
 				.await?;
 			}

@@ -55,7 +55,6 @@ use crate::{
 	utils::{
 		constants::request_keys,
 		get_current_time,
-		get_current_time_millis,
 		Error,
 		ErrorData,
 		EveContext,
@@ -744,7 +743,7 @@ async fn list_deployment_history(
 		.into_iter()
 		.map(|deploy| DeploymentDeployHistory {
 			image_digest: deploy.image_digest,
-			created: deploy.created as u64,
+			created: deploy.created.timestamp_millis() as u64,
 		})
 		.collect();
 
@@ -845,6 +844,8 @@ async fn create_deployment(
 	)
 	.await?;
 
+	let now = Utc::now();
+
 	let metadata = serde_json::to_value(DeploymentMetadata::Create {
 		deployment: Deployment {
 			id: id.clone(),
@@ -863,7 +864,7 @@ async fn create_deployment(
 		&audit_log_id,
 		&workspace_id,
 		&ip_address,
-		Utc::now().into(),
+		now.into(),
 		Some(&user_id),
 		Some(&login_id),
 		&id,
@@ -897,7 +898,7 @@ async fn create_deployment(
 					&id,
 					repository_id,
 					&digest,
-					get_current_time_millis(),
+					&now.into(),
 				)
 				.await?;
 			}
@@ -1083,6 +1084,7 @@ async fn start_deployment(
 			&request_id,
 		)
 		.await?;
+	let now = Utc::now();
 
 	if let DeploymentRegistry::PatrRegistry { repository_id, .. } =
 		&deployment.registry
@@ -1109,7 +1111,7 @@ async fn start_deployment(
 					&deployment_id,
 					repository_id,
 					&digest,
-					get_current_time_millis(),
+					&now.into(),
 				)
 				.await?;
 			}

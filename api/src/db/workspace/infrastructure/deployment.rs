@@ -3,8 +3,9 @@ use api_models::{
 		deployment::{DeploymentProbe, DeploymentStatus, ExposedPortType},
 		DeploymentCloudProvider,
 	},
-	utils::Uuid,
+	utils::{DateTime, Uuid},
 };
+use chrono::Utc;
 
 use crate::{
 	db::{self, WorkspaceAuditLog},
@@ -52,8 +53,9 @@ pub struct Deployment {
 
 pub struct DeploymentDeployHistory {
 	pub image_digest: String,
-	pub created: i64,
+	pub created: DateTime<Utc>,
 }
+
 pub struct DeploymentEnvironmentVariable {
 	pub deployment_id: Uuid,
 	pub name: String,
@@ -346,10 +348,7 @@ pub async fn initialize_deployment_pre(
 				CONSTRAINT deployment_image_digest_fk_repository_id
 					REFERENCES docker_registry_repository(id),
 			message TEXT,
-			created BIGINT NOT NULL
-				CONSTRAINT deployment_deploy_history_chk_created_unsigned CHECK(
-						created >= 0
-				),
+			created TIMESTAMPTZ NOT NULL,
 			CONSTRAINT deployment_image_digest_pk
 				PRIMARY KEY(deployment_id, image_digest)
 		);
@@ -1363,7 +1362,7 @@ pub async fn add_digest_to_deployment_deploy_history(
 	deployment_id: &Uuid,
 	repository_id: &Uuid,
 	digest: &str,
-	created: u64,
+	created: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1381,7 +1380,7 @@ pub async fn add_digest_to_deployment_deploy_history(
 		deployment_id as _,
 		digest as _,
 		repository_id as _,
-		created as i64
+		created as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -1397,7 +1396,7 @@ pub async fn get_deployment_image_digest_by_digest(
 		r#"
 		SELECT 
 			image_digest,
-			created
+			created as "created: _"
 		FROM deployment_deploy_history
 		WHERE
 			image_digest = $1;
@@ -1417,7 +1416,7 @@ pub async fn get_all_digest_for_deployment(
 		r#"
 		SELECT 
 			image_digest,
-			created
+			created as "created: _"
 		FROM
 			deployment_deploy_history
 		WHERE
