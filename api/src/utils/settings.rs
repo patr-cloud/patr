@@ -302,9 +302,9 @@ pub struct GoogleSettings {
 	pub oauth_callback_url: String,
 	#[serde(alias = "redirecturl")]
 	pub redirect_url: String,
-	#[serde(alias = "expiresin")]
-	pub expires_in: u64,
 	pub state: String,
+	#[serde(alias = "userinfourl")]
+	pub user_info_url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

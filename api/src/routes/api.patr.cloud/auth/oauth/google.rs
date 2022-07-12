@@ -1,16 +1,21 @@
 use ::redis::AsyncCommands;
 use api_models::models::auth::{
-	GoogleAccessTokenResponse, GoogleAuthCallbackRequest, GoogleAuthResponse,
-	GoogleUserInfoResponse, LoginResponse,
+	GoogleAccessTokenResponse,
+	GoogleAuthCallbackRequest,
+	GoogleAuthResponse,
+	GoogleUserInfoResponse,
+	LoginResponse,
 };
-use eve_rs::{App as EveApp, AsError, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use http::header::{ACCEPT, CONTENT_LENGTH, CONTENT_TYPE, USER_AGENT};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
 use crate::{
 	app::{create_eve_app, App},
 	db::{self, UserLogin},
-	error, pin_fn, service,
+	error,
+	pin_fn,
+	service,
 	utils::{Error, ErrorData, EveContext, EveMiddleware},
 };
 
@@ -77,7 +82,6 @@ async fn oauth_callback(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	println!("start oauth callback");
 	let GoogleAuthCallbackRequest { code, state } = context
 		.get_body_as()
 		.status(400)
@@ -87,7 +91,7 @@ async fn oauth_callback(
 
 	let state_value = context.get_state().config.google.state.clone();
 
-	// Check if the state is correct
+	// Check if the state is correct and request is not forged
 	let redis_google_state: Option<String> = context
 		.get_redis_connection()
 		.get(format!("googleOAuthState:{}", state))
@@ -102,16 +106,7 @@ async fn oauth_callback(
 			.body(error!(SERVER_ERROR).to_string())?
 	}
 
-	println!(
-		"{}?client_id={}&client_secret={}&code={}&redirect_uri={}&grant_type=authorization_code",
-		callback_url,
-		context.get_state().config.google.client_id.clone(),
-		context.get_state().config.google.client_secret.clone(),
-		code,
-		context.get_state().config.google.redirect_url.clone(),
-
-	);
-	let user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36".to_string();
+	let user_agent = context.get_header("User-Agent").unwrap();
 	let GoogleAccessTokenResponse { access_token, .. } =
 		reqwest::Client::builder()
 			.build()?
@@ -129,68 +124,63 @@ async fn oauth_callback(
 					"redirect_uri",
 					context.get_state().config.google.redirect_url.clone(),
 				),
+				("grant_type", "authorization_code".to_string()),
 				("code", code),
 			])
 			.header(ACCEPT, "application/json")
 			.header(CONTENT_TYPE, "application/x-www-form-urlencoded")
 			.header(USER_AGENT, user_agent)
-			.header(CONTENT_LENGTH, 0)
+			.header(CONTENT_LENGTH, "0")
 			.send()
 			.await?
 			.error_for_status()?
 			.json::<GoogleAccessTokenResponse>()
 			.await?;
 
-	println!("access token - {}", access_token);
-	// Make a call to Google to get the user details
-	// TODO change this in accordance with google's new api
-	// let user_info_url =
-	// context.get_state().config.google.user_info_url.clone();
-	// let GoogleUserInfoResponse { username, email } =
-	// reqwest::Client::builder() 	.build()?
-	// 	.get(user_info_url)
-	// 	.header("Authorization", format!("token {}", access_token))
-	// 	.header(ACCEPT, "application/json")
-	// 	.send()
-	// 	.await?
-	// 	.error_for_status()?
-	// 	.json::<GoogleUserInfoResponse>()
-	// 	.await?;
+	let user_info_url = context.get_state().config.google.user_info_url.clone();
+	let GoogleUserInfoResponse { email } = reqwest::Client::builder()
+		.build()?
+		.get(user_info_url)
+		.header("Authorization", format!("Bearer {}", access_token))
+		.header(ACCEPT, "application/json")
+		.send()
+		.await?
+		.error_for_status()?
+		.json::<GoogleUserInfoResponse>()
+		.await?;
 
-	// let user_exists =
-	// 	db::get_user_by_email(context.get_database_connection(), &email)
-	// 		.await?;
+	let user_exists =
+		db::get_user_by_email(context.get_database_connection(), &email)
+			.await?;
 
-	// if let Some(user) = user_exists {
-	// 	db::update_user_oauth_info(
-	// 		context.get_database_connection(),
-	// 		&access_token,
-	// 		&user.id,
-	// 		&username,
-	// 		true,
-	// 	)
-	// 	.await?;
+	if let Some(user) = user_exists {
+		db::update_user_oauth_info(
+			context.get_database_connection(),
+			&access_token,
+			&user.id,
+			true,
+		)
+		.await?;
 
-	// 	let config = context.get_state().config.clone();
-	// 	let (UserLogin { login_id, .. }, access_token, refresh_token) =
-	// 		service::sign_in_user(
-	// 			context.get_database_connection(),
-	// 			&user.id,
-	// 			&config,
-	// 		)
-	// 		.await?;
+		let config = context.get_state().config.clone();
+		let (UserLogin { login_id, .. }, access_token, refresh_token) =
+			service::sign_in_user(
+				context.get_database_connection(),
+				&user.id,
+				&config,
+			)
+			.await?;
 
-	// 	context.success(LoginResponse {
-	// 		login_id,
-	// 		access_token,
-	// 		refresh_token,
-	// 	});
+		context.success(LoginResponse {
+			login_id,
+			access_token,
+			refresh_token,
+		});
 
-	// 	Ok(context)
-	// } else {
-	// 	Error::as_result()
-	// 		.status(404)
-	// 		.body(error!(EMAIL_NOT_FOUND).to_string())?
-	// }
-	Ok(context)
+		Ok(context)
+	} else {
+		Error::as_result()
+			.status(404)
+			.body(error!(EMAIL_NOT_FOUND).to_string())?
+	}
 }
