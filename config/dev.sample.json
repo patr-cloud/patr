@@ -125,8 +125,7 @@
 		"scope": "",
 		"clientId": "",
 		"clientSecret": "",
-		"redirectUri": "",
-		"expiresIn": "<accesstoken ttl in seconds>"
+		"userInfoUrl": ""
 	},
 	"stripe": {
 		"publishableKey": "pk_test_123",
