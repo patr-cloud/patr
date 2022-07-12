@@ -11,7 +11,7 @@ use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
-	db::{self, PaymentStatus},
+	db::{self},
 	error,
 	models::{
 		deployment::KubernetesEventData,

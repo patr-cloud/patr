@@ -245,9 +245,7 @@ pub async fn process_request(
 				)
 				.await?;
 
-				match dependency_status
-					.unwrap_or(BuildStepStatus::Succeeded)
-				{
+				match dependency_status.unwrap_or(BuildStepStatus::Succeeded) {
 					BuildStepStatus::Errored |
 					BuildStepStatus::SkippedDepError => {
 						log::info!("request_id: {request_id} - Build step `{build_step_job_name}` skipped as dependencies errored out");

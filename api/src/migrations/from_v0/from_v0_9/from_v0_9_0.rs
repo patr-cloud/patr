@@ -12,6 +12,8 @@ pub(super) async fn migrate(
 	config: &Settings,
 ) -> Result<(), Error> {
 	migrate_from_bigint_to_timestamptz(connection, config).await?;
+	add_migrations_for_ci(connection, config).await?;
+
 	Ok(())
 }
 
@@ -276,6 +278,104 @@ async fn migrate_from_bigint_to_timestamptz(
 			Duration::days(30).num_seconds() as usize,
 		)
 		.await?;
+
+	Ok(())
+}
+
+async fn add_migrations_for_ci(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		CREATE TABLE ci_repos (
+			id 				UUID CONSTRAINT ci_repos_pk PRIMARY KEY,
+			workspace_id 	UUID NOT NULL,
+			repo_owner 		TEXT NOT NULL,
+			repo_name 		TEXT NOT NULL,
+			git_url 		TEXT NOT NULL,
+			webhook_secret 	TEXT NOT NULL CONSTRAINT ci_repos_uq_secret UNIQUE,
+			active 			BOOLEAN NOT NULL,
+
+			CONSTRAINT ci_repos_fk_workspace_id
+				FOREIGN KEY (workspace_id) REFERENCES workspace(id),
+			CONSTRAINT ci_repos_uq_workspace_id_git_url
+				UNIQUE (workspace_id, git_url),
+			CONSTRAINT ci_repos_uq_workspace_id_repo_owner_repo_name
+				UNIQUE (workspace_id, repo_owner, repo_name)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE CI_BUILD_STATUS AS ENUM (
+			'running',
+			'succeeded',
+			'errored'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE ci_builds (
+			repo_id		UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id),
+			build_num 	BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK (build_num > 0),
+			git_ref 	TEXT NOT NULL,
+			git_commit 	TEXT NOT NULL,
+			status 		CI_BUILD_STATUS NOT NULL,
+			created 	TIMESTAMPTZ NOT NULL,
+			finished 	TIMESTAMPTZ,
+
+			CONSTRAINT ci_builds_pk_repo_id_build_num
+				PRIMARY KEY (repo_id, build_num)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE CI_BUILD_STEP_STATUS AS ENUM (
+			'waiting_to_start',
+			'running',
+			'succeeded',
+			'errored',
+			'skipped_dep_error'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE ci_steps (
+			repo_id 	UUID NOT NULL,
+			build_num 	BIGINT NOT NULL,
+			step_id 	INTEGER NOT NULL CONSTRAINT ci_steps_chk_step_id_unsigned CHECK (build_num >= 0),
+			step_name 	TEXT NOT NULL,
+			base_image 	TEXT NOT NULL,
+			commands 	TEXT[] NOT NULL,
+			status 		CI_BUILD_STEP_STATUS NOT NULL,
+			started 	TIMESTAMPTZ,
+			finished 	TIMESTAMPTZ,
+
+			CONSTRAINT ci_steps_fk_repo_id_build_num
+				FOREIGN KEY (repo_id, build_num) REFERENCES ci_builds(repo_id, build_num),
+			CONSTRAINT ci_steps_pk_repo_id_build_num_step_id
+				PRIMARY KEY (repo_id, build_num, step_id)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }
