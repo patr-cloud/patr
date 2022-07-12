@@ -20,6 +20,7 @@ pub(super) async fn migrate(
 	add_permission_and_resource_type_for_region(&mut *connection, config)
 		.await?;
 	reset_permission_order(&mut *connection, config).await?;
+	add_oauth_column_to_user_table(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -1099,5 +1100,21 @@ async fn add_permission_and_resource_type_for_region(
 		.await?;
 	}
 
+	Ok(())
+}
+
+async fn add_oauth_column_to_user_table(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE "user"
+			ADD COLUMN is_oauth_user BOOLEAN DEFAULT false,
+			ADD COLUMN oauth_access_token TEXT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 	Ok(())
 }
