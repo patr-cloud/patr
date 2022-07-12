@@ -17,6 +17,7 @@ pub(super) async fn migrate(
 	clean_up_drone_ci(&mut *connection, config).await?;
 	reset_permission_order(&mut *connection, config).await?;
 	update_user_login_table_with_more_info(&mut *connection, config).await?;
+	add_oauth_column_to_user_table(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -852,5 +853,21 @@ async fn update_user_login_table_with_more_info(
 	.execute(&mut *connection)
 	.await?;
 
+	Ok(())
+}
+
+async fn add_oauth_column_to_user_table(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE "user"
+			ADD COLUMN is_oauth_user BOOLEAN DEFAULT false,
+			ADD COLUMN oauth_access_token TEXT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 	Ok(())
 }
