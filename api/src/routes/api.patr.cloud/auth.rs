@@ -73,6 +73,10 @@ pub fn create_sub_app(
 		"/username-valid",
 		[EveMiddleware::CustomFunction(pin_fn!(is_username_valid))],
 	);
+	app.get(
+		"/coupon-valid",
+		[EveMiddleware::CustomFunction(pin_fn!(is_coupon_valid))],
+	);
 	app.post(
 		"/forgot-password",
 		[EveMiddleware::CustomFunction(pin_fn!(forgot_password))],
@@ -605,6 +609,54 @@ async fn is_username_valid(
 	.await?;
 
 	context.success(IsUsernameValidResponse { available });
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to check if the coupon is valid or not
+/// required inputs:
+/// ```
+/// {
+///    username:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+///    available: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn is_coupon_valid(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let IsCouponValidRequest { coupon } = context
+		.get_query_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let valid = db::get_sign_up_coupon_by_code(
+		context.get_database_connection(),
+		&coupon,
+	)
+	.await?
+	.is_some();
+
+	context.success(IsCouponValidResponse { valid });
 	Ok(context)
 }
 
