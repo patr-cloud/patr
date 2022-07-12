@@ -95,7 +95,7 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 	let (owner_name, repo_name) = push_event
 		.repository
 		.full_name
-		.split_once('/')
+		.rsplit_once('/')
 		.status(400)
 		.body("invalid repo name")?;
 	let repo_clone_url = push_event.repository.clone_url;
@@ -189,8 +189,6 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 
 	context.commit_database_transaction().await?;
 
-	let config = &context.get_state().config;
-
 	// TODO: make more generic
 	let netrc = Netrc {
 		machine: "github.com".to_string(),
@@ -209,7 +207,7 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 			repo_id: repo.id,
 			build_num,
 		},
-		config,
+		&context.get_state().config,
 		&request_id,
 	)
 	.await?;

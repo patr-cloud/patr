@@ -246,7 +246,7 @@ pub async fn process_request(
 				.await?;
 
 				match dependency_status
-					.unwrap_or_else(|| BuildStepStatus::Succeeded)
+					.unwrap_or(BuildStepStatus::Succeeded)
 				{
 					BuildStepStatus::Errored |
 					BuildStepStatus::SkippedDepError => {
@@ -335,7 +335,7 @@ pub async fn process_request(
 			let status = steps.last().map(|step| step.status.clone());
 
 			let pvc_name = build_id.get_pvc_name();
-			match status.unwrap_or_else(|| BuildStepStatus::Succeeded) {
+			match status.unwrap_or(BuildStepStatus::Succeeded) {
 				BuildStepStatus::Errored | BuildStepStatus::SkippedDepError => {
 					log::info!(
 						"request_id: {request_id} - Build `{pvc_name}` errored"

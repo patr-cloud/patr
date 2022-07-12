@@ -414,25 +414,6 @@ pub async fn send_message_to_rabbit_mq(
 	Ok(())
 }
 
-pub async fn queue_create_managed_url(
-	workspace_id: &Uuid,
-	managed_url_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	send_message_to_rabbit_mq(
-		&RequestMessage::ManagedUrl(ManagedUrlData::Create {
-			managed_url_id: managed_url_id.clone(),
-			workspace_id: workspace_id.clone(),
-			request_id: request_id.clone(),
-		}),
-		config,
-		request_id,
-	)
-	.await?;
-	Ok(())
-}
-
 pub async fn queue_create_ci_build_step(
 	build_step: BuildStep,
 	config: &Settings,

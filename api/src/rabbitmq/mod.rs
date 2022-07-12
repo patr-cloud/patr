@@ -27,7 +27,6 @@ mod billing;
 mod ci;
 mod database;
 mod deployment;
-mod managed_url;
 
 pub use ci::{BuildId, BuildStep, BuildStepId};
 
@@ -135,10 +134,6 @@ async fn process_queue_payload(
 		RequestMessage::Database {} => todo!(),
 		RequestMessage::Workspace(request_data) => {
 			billing::process_request(&mut connection, request_data, config)
-				.await
-		}
-		RequestMessage::ManagedUrl(request_data) => {
-			managed_url::process_request(&mut connection, request_data, config)
 				.await
 		}
 		RequestMessage::ContinuousIntegration(request_data) => {

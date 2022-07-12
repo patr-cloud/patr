@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use api_macros::closure_as_pinned_box;
 use api_models::{
 	models::workspace::ci2::github::{
@@ -12,6 +14,7 @@ use api_models::{
 		GithubAuthResponse,
 		GithubListReposResponse,
 		GithubRepository,
+		GithubSignOutResponse,
 	},
 	utils::Uuid,
 };
@@ -26,7 +29,6 @@ use octorust::{
 		ReposCreateWebhookRequestConfig,
 		ReposListOrgSort,
 		ReposListVisibility,
-		WebhookConfigInsecureSslOneOf,
 	},
 };
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
@@ -35,7 +37,7 @@ use serde::Deserialize;
 
 use crate::{
 	app::{create_eve_app, App},
-	db::{self, activate_ci_for_repo},
+	db::{self, get_all_repos_for_workspace},
 	error,
 	models::{deployment::Logs, rbac::permissions},
 	pin_fn,
@@ -301,7 +303,6 @@ pub fn create_sub_app(
 		],
 	);
 
-	/*
 	app.delete(
 		"/sign-out",
 		[
@@ -332,7 +333,7 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(sign_out)),
 		],
 	);
-	*/
+
 	app
 }
 
@@ -347,7 +348,7 @@ async fn connect_to_github(
 	let client_id = context.get_state().config.github.client_id.to_owned();
 
 	// https://docs.github.com/en/developers/apps/building-oauth-apps/scopes-for-oauth-apps
-	let scope = "repo"; // TODO
+	let scope = "repo";
 
 	// https://docs.github.com/en/developers/apps/building-oauth-apps/authorizing-oauth-apps#2-users-are-redirected-back-to-your-site-by-github
 	let state = thread_rng()
@@ -356,16 +357,16 @@ async fn connect_to_github(
 		.map(char::from)
 		.collect::<String>();
 
-	// temporary code from github will expire within 10 mins so we are using
-	// extra 5 mins as buffer time for now
+	// temporary code from github will expire within 10 mins,
+	// so we are using extra 5 mins as buffer time for now
 	let ttl_in_secs = 15 * 60; // 15 mins
-	let value = workspace_id.as_str(); // TODO: user/workspace ?
+	let value = workspace_id.as_str();
 	context
 		.get_redis_connection()
 		.set_ex(format!("githubAuthState:{state}"), value, ttl_in_secs)
 		.await?;
 
-	let oauth_url = format!("https://github.com/login/oauth/authorize?client_id={client_id}&scope={scope}&state={state}"); // TODO: state
+	let oauth_url = format!("https://github.com/login/oauth/authorize?client_id={client_id}&scope={scope}&state={state}");
 	context.success(GithubAuthResponse { oauth_url });
 	Ok(context)
 }
@@ -384,7 +385,7 @@ async fn github_oauth_callback(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	// validate the state value
-	let expected_value = workspace_id.as_str(); // TODO: user/workspace ?
+	let expected_value = workspace_id.as_str();
 	let value_from_redis: Option<String> = context
 		.get_redis_connection()
 		.get(format!("githubAuthState:{state}"))
@@ -469,6 +470,15 @@ async fn list_repositories(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
+	let ci_status_for_repo = db::get_all_repos_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.into_iter()
+	.map(|repo| (repo.git_url, repo.active))
+	.collect::<HashMap<_, _>>();
+
 	let (_, access_token) = db::get_drone_username_and_token_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
@@ -486,10 +496,7 @@ async fn list_repositories(
 			.ok()
 			.status(500)?;
 
-	// TODO: update our local db and then fetch from db -> or we can use a
-	// crawler (highly complex) TODO: create a scheduler to check whether
-	// webhook has been removed manually TODO: test with org accounts
-	// TODO: how to handle whether the repo ci active or not during list repos
+	// TODO: create a scheduler to check whether webhook has been removed
 	let repos = github_client
 		.repos()
 		.list_all_for_authenticated_user(
@@ -509,22 +516,27 @@ async fn list_repositories(
 		.ok()
 		.status(500)?
 		.into_iter()
-		.map(|repo| GithubRepository {
-			name: repo.name,
-			description: repo.description,
-			full_name: repo.full_name,
-			git_url: repo.git_url,
-			owner: repo.owner.map(|user| user.name),
-			organization: repo.organization.map(|org| org.name),
+		.map(|repo| {
+			let (repo_owner, repo_name) =
+				repo.full_name.rsplit_once('/').unwrap(); // TODO
+
+			GithubRepository {
+				name: repo_name.to_string(),
+				description: repo.description,
+				is_ci_active: ci_status_for_repo
+					.get(&repo.git_url)
+					.unwrap_or(&false)
+					.to_owned(),
+				git_url: repo.git_url,
+				repo_owner: repo_owner.to_string(),
+				organization: repo.organization.map(|org| org.name),
+			}
 		})
 		.collect();
 
 	context.success(GithubListReposResponse { repos });
 	Ok(context)
 }
-
-const GITHUB_WEBHOOK_URL: &str =
-	"https://01d7-106-200-254-12.in.ngrok.io/webhook/ci/push-event"; // TODO
 
 async fn activate_repo(
 	mut context: EveContext,
@@ -566,6 +578,9 @@ async fn activate_repo(
 		.ok()
 		.status(500)?;
 
+	let (repo_owner, repo_name) =
+		repo.full_name.rsplit_once('/').status(500)?;
+
 	let repo = if let Some(repo) = db::get_repo_for_workspace_and_url(
 		context.get_database_connection(),
 		&workspace_id,
@@ -578,31 +593,36 @@ async fn activate_repo(
 		db::create_ci_repo(
 			context.get_database_connection(),
 			&workspace_id,
-			&repo.full_name,
+			repo_owner,
+			repo_name,
 			&repo.git_url,
 		)
 		.await?
 	};
 
-	activate_ci_for_repo(context.get_database_connection(), &repo.id).await?;
+	db::activate_ci_for_repo(context.get_database_connection(), &repo.id)
+		.await?;
 
-	// TODO: better to store hook id in db so that we can modify that alone
+	let github_webhook_url =
+		context.get_state().config.callback_domain_url.clone() +
+			"/webhook/ci/push-event";
+
+	// TODO: its better to store hook id in db so that
+	// we can update that alone during activate and deactivate actions
 	let _configured_webhook = github_client
 		.repos()
 		.create_webhook(
-			&repo_owner,
-			&repo_name,
+			repo_owner,
+			repo_name,
 			&ReposCreateWebhookRequest {
 				active: Some(true),
 				config: Some(ReposCreateWebhookRequestConfig {
 					content_type: "json".to_string(),
 					digest: "".to_string(),
-					insecure_ssl: Some(WebhookConfigInsecureSslOneOf::String(
-						"1".to_string(), // TODO: switch to ssl
-					)),
+					insecure_ssl: None,
 					secret: repo.webhook_secret,
 					token: "".to_string(),
-					url: GITHUB_WEBHOOK_URL.to_string(),
+					url: github_webhook_url,
 				}),
 				events: vec!["push".to_string()],
 				name: "web".to_string(),
@@ -632,6 +652,15 @@ async fn deactivate_repo(
 		context.get_param(request_keys::REPO_OWNER).unwrap().clone();
 	let repo_name = context.get_param(request_keys::REPO_NAME).unwrap().clone();
 
+	let repo = db::get_repo_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+		&repo_owner,
+		&repo_name,
+	)
+	.await?
+	.status(500)?;
+
 	let (_, access_token) = db::get_drone_username_and_token_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
@@ -649,30 +678,11 @@ async fn deactivate_repo(
 			.ok()
 			.status(500)?;
 
-	let repo = github_client
-		.repos()
-		.get(&repo_owner, &repo_name)
-		.await
-		.map_err(|err| {
-			log::info!("error while getting repo info: {err:#}");
-			err
-		})
-		.ok()
-		.status(500)?;
-
-	let repo = db::get_repo_for_workspace_and_url(
-		context.get_database_connection(),
-		&workspace_id,
-		&repo.git_url,
-	)
-	.await?
-	.status(400)
-	.body("repo not found")?;
-
 	db::deactivate_ci_for_repo(context.get_database_connection(), &repo.id)
 		.await?;
 
-	// store the particular registed github webhook id and delete that alone
+	// TODO: store the particular registed github webhook id and delete that
+	// alone
 	let all_webhooks = github_client
 		.repos()
 		.list_all_webhooks(&repo_owner, &repo_name)
@@ -684,8 +694,12 @@ async fn deactivate_repo(
 		.ok()
 		.status(500)?;
 
+	let github_webhook_url =
+		context.get_state().config.callback_domain_url.clone() +
+			"/webhook/ci/push-event";
+
 	for webhook in all_webhooks {
-		if webhook.config.url == GITHUB_WEBHOOK_URL {
+		if webhook.config.url == github_webhook_url {
 			github_client
 				.repos()
 				.delete_webhook(&repo_owner, &repo_name, webhook.id)
@@ -715,42 +729,14 @@ async fn get_build_list(
 		context.get_param(request_keys::REPO_OWNER).unwrap().clone();
 	let repo_name = context.get_param(request_keys::REPO_NAME).unwrap().clone();
 
-	let (_, access_token) = db::get_drone_username_and_token_for_workspace(
+	let repo = db::get_repo_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
+		&repo_owner,
+		&repo_name,
 	)
 	.await?
-	.status(404)
-	.body(error!(USER_NOT_FOUND).to_string())?;
-
-	let github_client =
-		octorust::Client::new("patr", Credentials::Token(access_token))
-			.map_err(|err| {
-				log::info!("error while octorust init: {err:#}");
-				err
-			})
-			.ok()
-			.status(500)?;
-
-	let repo = github_client
-		.repos()
-		.get(&repo_owner, &repo_name)
-		.await
-		.map_err(|err| {
-			log::info!("error while getting repo info: {err:#}");
-			err
-		})
-		.ok()
-		.status(500)?;
-
-	let repo = db::get_repo_for_workspace_and_url(
-		context.get_database_connection(),
-		&workspace_id,
-		&repo.git_url,
-	)
-	.await?
-	.status(400)
-	.body("repo not found")?;
+	.status(500)?;
 
 	let builds = db::list_build_details_for_repo(
 		context.get_database_connection(),
@@ -778,42 +764,14 @@ async fn get_build_info(
 		.unwrap()
 		.parse::<u64>()?;
 
-	let (_, access_token) = db::get_drone_username_and_token_for_workspace(
+	let repo = db::get_repo_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
+		&repo_owner,
+		&repo_name,
 	)
 	.await?
-	.status(404)
-	.body(error!(USER_NOT_FOUND).to_string())?;
-
-	let github_client =
-		octorust::Client::new("patr", Credentials::Token(access_token))
-			.map_err(|err| {
-				log::info!("error while octorust init: {err:#}");
-				err
-			})
-			.ok()
-			.status(500)?;
-
-	let repo = github_client
-		.repos()
-		.get(&repo_owner, &repo_name)
-		.await
-		.map_err(|err| {
-			log::info!("error while getting repo info: {err:#}");
-			err
-		})
-		.ok()
-		.status(500)?;
-
-	let repo = db::get_repo_for_workspace_and_url(
-		context.get_database_connection(),
-		&workspace_id,
-		&repo.git_url,
-	)
-	.await?
-	.status(400)
-	.body("repo not found")?;
+	.status(500)?;
 
 	let build_info = db::get_build_details_for_build(
 		context.get_database_connection(),
@@ -848,47 +806,18 @@ async fn get_build_logs(
 		.unwrap()
 		.parse::<u64>()?;
 
-	let (_, access_token) = db::get_drone_username_and_token_for_workspace(
+	let repo = db::get_repo_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
+		&repo_owner,
+		&repo_name,
 	)
 	.await?
-	.status(404)
-	.body(error!(USER_NOT_FOUND).to_string())?;
-
-	let github_client =
-		octorust::Client::new("patr", Credentials::Token(access_token))
-			.map_err(|err| {
-				log::info!("error while octorust init: {err:#}");
-				err
-			})
-			.ok()
-			.status(500)?;
-
-	let repo = github_client
-		.repos()
-		.get(&repo_owner, &repo_name)
-		.await
-		.map_err(|err| {
-			log::info!("error while getting repo info: {err:#}");
-			err
-		})
-		.ok()
-		.status(500)?;
-
-	let repo_id = db::get_repo_for_workspace_and_url(
-		context.get_database_connection(),
-		&workspace_id,
-		&repo.git_url,
-	)
-	.await?
-	.status(400)
-	.body("repo not found")?
-	.id;
+	.status(500)?;
 
 	let build_created_time = db::get_build_created_time(
 		context.get_database_connection(),
-		&repo_id,
+		&repo.id,
 		build_num as i64,
 	)
 	.await?
@@ -897,7 +826,16 @@ async fn get_build_logs(
 
 	let loki = context.get_state().config.loki.clone();
 	let response = reqwest::Client::new()
-		.get(format!("https://{}/loki/api/v1/query_range?query={{namespace=\"{}\",job=\"{}/ci-{}-{}-{}\"}}&start={}", loki.host, workspace_id.as_str(), workspace_id.as_str(), repo_id.as_str(), build_num, step, build_created_time.timestamp_nanos()))
+		.get(format!(
+			"https://{}/loki/api/v1/query_range?query={{namespace=\"{}\",job=\"{}/ci-{}-{}-{}\"}}&start={}",
+			loki.host,
+			workspace_id.as_str(),
+			workspace_id.as_str(),
+			repo.id.as_str(),
+			build_num,
+			step,
+			build_created_time.timestamp_nanos()
+		))
 		.basic_auth(&loki.username, Some(&loki.password))
 		.send()
 		.await?
@@ -915,8 +853,10 @@ async fn get_build_logs(
 			})
 		})
 		.filter_map(|(time, log_msg)| {
+			let original_log_time: u64 = time?.parse().ok()?;
 			Some(BuildLogs {
-				time: time?.parse().ok()?,
+				time: original_log_time
+					.saturating_sub(build_created_time.timestamp_nanos() as u64),
 				log: log_msg?,
 			})
 		})
@@ -926,7 +866,6 @@ async fn get_build_logs(
 	Ok(context)
 }
 
-/*
 async fn sign_out(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -935,7 +874,7 @@ async fn sign_out(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let (_, drone_token) = db::get_drone_username_and_token_for_workspace(
+	let (_, access_token) = db::get_drone_username_and_token_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 	)
@@ -943,43 +882,68 @@ async fn sign_out(
 	.status(404)
 	.body(error!(USER_NOT_FOUND).to_string())?;
 
+	let github_webhook_url =
+		context.get_state().config.callback_domain_url.clone() +
+			"/webhook/ci/push-event";
+
 	db::remove_drone_username_and_token_from_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 	)
 	.await?;
 
-	let client = reqwest::Client::new();
-	let repos = client
-		.get(format!(
-			"{}/api/user/repos",
-			context.get_state().config.drone.url
-		))
-		.bearer_auth(&drone_token)
-		.send()
-		.await?
-		.error_for_status()?
-		.json::<Vec<GithubRepository>>()
-		.await?
-		.into_iter()
-		.filter(|repo| repo.active)
-		.collect::<Vec<_>>();
+	let github_client =
+		octorust::Client::new("patr", Credentials::Token(access_token))
+			.map_err(|err| {
+				log::info!("error while octorust init: {err:#}");
+				err
+			})
+			.ok()
+			.status(500)?;
+
+	let repos = get_all_repos_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?;
 
 	for repo in repos {
-		client
-			.delete(format!(
-				"{}/api/repos/{}/{}",
-				context.get_state().config.drone.url,
-				repo.namespace,
-				repo.name
-			))
-			.bearer_auth(&drone_token)
-			.send()
-			.await?
-			.error_for_status()?;
+		db::deactivate_ci_for_repo(context.get_database_connection(), &repo.id)
+			.await?;
+
+		let webhooks = github_client
+			.repos()
+			.list_all_webhooks(&repo.repo_owner, &repo.repo_name)
+			.await
+			.map_err(|err| {
+				log::info!("error while getting webhooks list: {err:#}");
+				err
+			})
+			.ok()
+			.status(500)?;
+
+		for webhook in webhooks {
+			if webhook.config.url == github_webhook_url {
+				github_client
+					.repos()
+					.delete_webhook(
+						&repo.repo_owner,
+						&repo.repo_name,
+						webhook.id,
+					)
+					.await
+					.map_err(|err| {
+						log::info!("error while deleting webhook: {err:#}");
+						err
+					})
+					.ok()
+					.status(500)?;
+			}
+		}
 	}
+
+	// TODO: now show in client to delete patr in github oauth apps
 
 	context.success(GithubSignOutResponse {});
 	Ok(context)
 }
-*/

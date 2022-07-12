@@ -20,7 +20,6 @@ pub enum RequestMessage {
 	Deployment(DeploymentRequestData),
 	Database {},
 	Workspace(WorkspaceRequestData),
-	ManagedUrl(ManagedUrlData),
 	ContinuousIntegration(CIData),
 }
 
@@ -102,17 +101,6 @@ pub enum WorkspaceRequestData {
 	},
 	ConfirmPaymentIntent {
 		payment_intent_id: String,
-		workspace_id: Uuid,
-		request_id: Uuid,
-	},
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(tag = "action", rename_all = "camelCase")]
-#[allow(clippy::large_enum_variant)]
-pub enum ManagedUrlData {
-	Create {
-		managed_url_id: Uuid,
 		workspace_id: Uuid,
 		request_id: Uuid,
 	},

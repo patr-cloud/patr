@@ -49,6 +49,7 @@ pub async fn create_ci_pipeline(
 	let build_name = build_id.get_pvc_name();
 	log::debug!("request_id: {request_id} - Creating a ci pipeline for build `{build_name}`");
 
+	// TODO: its better to move PVC creation to mq
 	let kube_client = service::get_kubernetes_config(config).await?;
 	Api::<PersistentVolumeClaim>::namespaced(
 		kube_client,

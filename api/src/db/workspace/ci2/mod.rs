@@ -14,6 +14,7 @@ use crate::{query, query_as, Database};
 pub struct Repository {
 	pub id: Uuid,
 	pub workspace_id: Uuid,
+	pub repo_owner: String,
 	pub repo_name: String,
 	pub git_url: String,
 	pub webhook_secret: String,
@@ -30,6 +31,7 @@ pub async fn initialize_ci_pre(
 		CREATE TABLE ci_repos (
             id 				UUID CONSTRAINT ci_repos_pk PRIMARY KEY,
             workspace_id 	UUID NOT NULL,
+			repo_owner 		TEXT NOT NULL,
 			repo_name 		TEXT NOT NULL,
             git_url 		TEXT NOT NULL,
             webhook_secret 	TEXT NOT NULL CONSTRAINT ci_repos_uq_secret UNIQUE,
@@ -38,7 +40,9 @@ pub async fn initialize_ci_pre(
             CONSTRAINT ci_repos_fk_workspace_id
 				FOREIGN KEY (workspace_id) REFERENCES workspace(id),
             CONSTRAINT ci_repos_uq_workspace_id_git_url
-				UNIQUE (workspace_id, git_url)
+				UNIQUE (workspace_id, git_url),
+			CONSTRAINT ci_repos_uq_workspace_id_repo_owner_repo_name
+				UNIQUE (workspace_id, repo_owner, repo_name)
         );
 		"#
 	)
@@ -127,6 +131,7 @@ pub async fn initialize_ci_post(
 pub async fn create_ci_repo(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
+	repo_owner: &str,
 	repo_name: &str,
 	git_url: &str,
 ) -> Result<Repository, sqlx::Error> {
@@ -138,16 +143,18 @@ pub async fn create_ci_repo(
 		INSERT INTO ci_repos (
             id,
             workspace_id,
+			repo_owner,
 			repo_name,
             git_url,
             webhook_secret,
             active
         )
 		VALUES
-			($1, $2, $3, $4, $5, FALSE)
+			($1, $2, $3, $4, $5, $6, FALSE)
 		"#,
 		repo_id as _,
 		workspace_id as _,
+		repo_owner,
 		repo_name as _,
 		git_url as _,
 		webhook_secret as _,
@@ -158,11 +165,71 @@ pub async fn create_ci_repo(
 	Ok(Repository {
 		id: repo_id,
 		workspace_id: workspace_id.to_owned(),
+		repo_owner: repo_owner.to_owned(),
 		repo_name: repo_name.to_owned(),
 		git_url: git_url.to_owned(),
 		webhook_secret: webhook_secret.to_owned(),
 		active: false,
 	})
+}
+
+pub async fn get_all_repos_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Vec<Repository>, sqlx::Error> {
+	query_as!(
+		Repository,
+		r#"
+		SELECT
+			id as "id: _",
+			workspace_id as "workspace_id: _",
+			repo_owner,
+			repo_name,
+			git_url,
+			webhook_secret,
+			active
+		FROM
+			ci_repos
+		WHERE
+			workspace_id = $1;
+		"#,
+		workspace_id as _,
+	)
+	.fetch_all(connection)
+	.await
+}
+
+pub async fn get_repo_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	repo_owner: &str,
+	repo_name: &str,
+) -> Result<Option<Repository>, sqlx::Error> {
+	query_as!(
+		Repository,
+		r#"
+		SELECT
+			id as "id: _",
+			workspace_id as "workspace_id: _",
+			repo_owner,
+			repo_name,
+			git_url,
+			webhook_secret,
+			active
+		FROM
+			ci_repos
+		WHERE (
+			workspace_id = $1
+			AND repo_owner = $2
+			AND repo_name = $3
+		);
+		"#,
+		workspace_id as _,
+		repo_owner,
+		repo_name,
+	)
+	.fetch_optional(connection)
+	.await
 }
 
 pub async fn get_repo_for_workspace_and_url(
@@ -176,6 +243,7 @@ pub async fn get_repo_for_workspace_and_url(
 		SELECT
 			id as "id: _",
 			workspace_id as "workspace_id: _",
+			repo_owner,
 			repo_name,
 			git_url,
 			webhook_secret,
@@ -242,6 +310,7 @@ pub async fn get_repo_for_git_url(
 		SELECT
 			id as "id: _",
 			workspace_id as "workspace_id: _",
+			repo_owner,
 			repo_name,
 			git_url,
 			webhook_secret,
