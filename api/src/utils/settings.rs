@@ -285,7 +285,6 @@ pub struct GithubSettings {
 	pub scope: String,
 	#[serde(alias = "userInfoUrl")]
 	pub user_info_url: String,
-	pub state: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
