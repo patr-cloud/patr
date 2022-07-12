@@ -102,7 +102,7 @@ pub async fn initialize_users_pre(
 		CREATE TABLE coupon_code(
 			code TEXT CONSTRAINT coupon_code_pk PRIMARY KEY,
 			credits INTEGER NOT NULL CONSTRAINT coupon_code_chk_credits_positive
-				CHECK(credits > 0),
+				CHECK(credits >= 0),
 			expiry TIMESTAMPTZ,
 			uses_remaining INTEGER CONSTRAINT
 				coupon_code_chk_uses_remaining_positive CHECK(
