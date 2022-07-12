@@ -15,7 +15,9 @@ use api_models::{
 		GetBillingAddressResponse,
 		GetCurrentUsageResponse,
 		GetPaymentMethodResponse,
+		GetTransactionHistoryResponse,
 		PaymentMethod,
+		Transaction,
 		UpdateBillingAddressRequest,
 		UpdateBillingAddressResponse,
 	},
@@ -395,6 +397,37 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(get_current_bill)),
+		],
+	);
+
+	sub_app.get(
+		"/transaction-history",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_transaction_history)),
 		],
 	);
 
@@ -852,5 +885,36 @@ async fn get_current_bill(
 		current_bill,
 		credits_left,
 	});
+	Ok(context)
+}
+
+async fn get_transaction_history(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	let transactions = db::get_transactions_in_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.into_iter()
+	.map(|transaction| Transaction {
+		id: transaction.id,
+		month: transaction.month,
+		amount: transaction.amount,
+		payment_intent_id: transaction.payment_intent_id,
+		date: transaction.date,
+		workspace_id: transaction.workspace_id,
+		payment_status: transaction.payment_status,
+		description: transaction.description,
+		transaction_type: transaction.transaction_type,
+	})
+	.collect();
+
+	context.success(GetTransactionHistoryResponse { transactions });
+
 	Ok(context)
 }

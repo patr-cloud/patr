@@ -37,6 +37,7 @@ use crate::{
 pub async fn update_kubernetes_static_site(
 	workspace_id: &Uuid,
 	static_site_id: &Uuid,
+	upload_id: &Uuid,
 	_static_site_details: &StaticSiteDetails,
 	config: &Settings,
 	request_id: &Uuid,
@@ -105,13 +106,12 @@ pub async fn update_kubernetes_static_site(
 		"nginx".to_string(),
 	);
 	annotations.insert(
-		"nginx.ingress.kubernetes.io/upstream-vhost".to_string(),
-		format!("{}.patr.cloud", static_site_id),
-	);
-
-	annotations.insert(
 		"cert-manager.io/cluster-issuer".to_string(),
 		config.kubernetes.cert_issuer_dns.clone(),
+	);
+	annotations.insert(
+		"nginx.ingress.kubernetes.io/upstream-vhost".to_string(),
+		format!("{}-{}.patr.cloud", upload_id, static_site_id),
 	);
 	let ingress_rule = vec![IngressRule {
 		host: Some(format!("{}.patr.cloud", static_site_id)),

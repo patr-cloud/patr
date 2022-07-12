@@ -323,7 +323,8 @@ pub async fn get_all_users_with_role(
 			"user".recovery_email_domain_id as "recovery_email_domain_id: Uuid",
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
-			"user".workspace_limit
+			"user".workspace_limit,
+			"user".sign_up_coupon
 		FROM
 			"user"
 		INNER JOIN
@@ -353,6 +354,7 @@ pub async fn get_all_users_with_role(
 		recovery_phone_country_code: row.recovery_phone_country_code,
 		recovery_phone_number: row.recovery_phone_number,
 		workspace_limit: row.workspace_limit,
+		sign_up_coupon: row.sign_up_coupon,
 	})
 	.collect();
 

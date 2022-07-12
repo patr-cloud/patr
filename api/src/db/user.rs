@@ -1,7 +1,8 @@
 use api_models::{
 	models::user::{BasicUserInfo, UserPhoneNumber},
-	utils::{ResourceType, Uuid},
+	utils::{DateTime, ResourceType, Uuid},
 };
+use chrono::Utc;
 
 use crate::{db::Workspace, query, query_as, Database};
 
@@ -20,6 +21,7 @@ pub struct User {
 	pub recovery_phone_country_code: Option<String>,
 	pub recovery_phone_number: Option<String>,
 	pub workspace_limit: i32,
+	pub sign_up_coupon: Option<String>,
 }
 
 pub struct UserLogin {
@@ -80,12 +82,38 @@ pub struct UserToSignUp {
 
 	pub otp_hash: String,
 	pub otp_expiry: u64,
+
+	pub coupon_code: Option<String>,
+}
+
+pub struct CouponCode {
+	pub code: String,
+	pub credits: u32,
+	pub expiry: Option<DateTime<Utc>>,
+	pub uses_remaining: Option<u32>,
 }
 
 pub async fn initialize_users_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing user tables");
+	query!(
+		r#"
+		CREATE TABLE coupon_code(
+			code TEXT CONSTRAINT coupon_code_pk PRIMARY KEY,
+			credits INTEGER NOT NULL CONSTRAINT coupon_code_chk_credits_positive
+				CHECK(credits > 0),
+			expiry TIMESTAMPTZ,
+			uses_remaining INTEGER CONSTRAINT
+				coupon_code_chk_uses_remaining_positive CHECK(
+					uses_remaining IS NULL OR uses_remaining > 0
+				)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	query!(
 		r#"
 		CREATE TABLE "user"(
@@ -120,6 +148,8 @@ pub async fn initialize_users_pre(
 				),
 			recovery_phone_number VARCHAR(15),
 			workspace_limit INTEGER NOT NULL,
+			sign_up_coupon TEXT CONSTRAINT user_fk_sign_up_coupon REFERENCES
+				coupon_code(code),
 
 			CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id
 				UNIQUE(recovery_email_local, recovery_email_domain_id),
@@ -480,6 +510,8 @@ pub async fn initialize_users_post(
 			otp_expiry BIGINT NOT NULL
 				CONSTRAINT user_to_sign_up_chk_expiry_unsigned
 					CHECK(otp_expiry >= 0),
+			coupon_code TEXT CONSTRAINT user_to_sign_up_fk_coupon_code
+				REFERENCES coupon_code(code),
 
 			CONSTRAINT user_to_sign_up_chk_max_domain_name_length CHECK(
 				(LENGTH(business_domain_name) + LENGTH(business_domain_tld)) < 255
@@ -878,7 +910,8 @@ pub async fn get_user_by_username_email_or_phone_number(
 			"user".recovery_email_domain_id as "recovery_email_domain_id: Uuid",
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
-			"user".workspace_limit
+			"user".workspace_limit,
+			"user".sign_up_coupon
 		FROM
 			"user"
 		LEFT JOIN
@@ -943,6 +976,7 @@ pub async fn get_user_by_username_email_or_phone_number(
 		recovery_phone_country_code: row.recovery_phone_country_code,
 		recovery_phone_number: row.recovery_phone_number,
 		workspace_limit: row.workspace_limit,
+		sign_up_coupon: row.sign_up_coupon,
 	});
 
 	Ok(user)
@@ -968,7 +1002,8 @@ pub async fn get_user_by_email(
 			"user".recovery_email_domain_id as "recovery_email_domain_id: Uuid",
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
-			"user".workspace_limit
+			"user".workspace_limit,
+			"user".sign_up_coupon
 		FROM
 			"user"
 		LEFT JOIN
@@ -1019,6 +1054,7 @@ pub async fn get_user_by_email(
 		recovery_phone_country_code: row.recovery_phone_country_code,
 		recovery_phone_number: row.recovery_phone_number,
 		workspace_limit: row.workspace_limit,
+		sign_up_coupon: row.sign_up_coupon,
 	});
 
 	Ok(user)
@@ -1045,7 +1081,8 @@ pub async fn get_user_by_phone_number(
 			"user".recovery_email_domain_id as "recovery_email_domain_id: Uuid",
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
-			"user".workspace_limit
+			"user".workspace_limit,
+			"user".sign_up_coupon
 		FROM
 			"user"
 		INNER JOIN
@@ -1076,6 +1113,7 @@ pub async fn get_user_by_phone_number(
 		recovery_phone_country_code: row.recovery_phone_country_code,
 		recovery_phone_number: row.recovery_phone_number,
 		workspace_limit: row.workspace_limit,
+		sign_up_coupon: row.sign_up_coupon,
 	});
 
 	Ok(user)
@@ -1101,7 +1139,8 @@ pub async fn get_user_by_username(
 			"user".recovery_email_domain_id as "recovery_email_domain_id: Uuid",
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
-			"user".workspace_limit
+			"user".workspace_limit,
+			"user".sign_up_coupon
 		FROM
 			"user"
 		WHERE
@@ -1126,6 +1165,7 @@ pub async fn get_user_by_username(
 		recovery_phone_country_code: row.recovery_phone_country_code,
 		recovery_phone_number: row.recovery_phone_number,
 		workspace_limit: row.workspace_limit,
+		sign_up_coupon: row.sign_up_coupon,
 	});
 
 	Ok(user)
@@ -1151,7 +1191,8 @@ pub async fn get_user_by_user_id(
 			"user".recovery_email_domain_id as "recovery_email_domain_id: Uuid",
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
-			"user".workspace_limit
+			"user".workspace_limit,
+			"user".sign_up_coupon
 		FROM
 			"user"
 		WHERE
@@ -1176,6 +1217,7 @@ pub async fn get_user_by_user_id(
 		recovery_phone_country_code: row.recovery_phone_country_code,
 		recovery_phone_number: row.recovery_phone_number,
 		workspace_limit: row.workspace_limit,
+		sign_up_coupon: row.sign_up_coupon,
 	});
 
 	Ok(user)
@@ -1242,6 +1284,8 @@ pub async fn set_personal_user_to_be_signed_up(
 
 	otp_hash: &str,
 	otp_expiry: u64,
+
+	coupon_code: Option<&str>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1261,7 +1305,8 @@ pub async fn set_personal_user_to_be_signed_up(
 				business_domain_tld,
 				business_name,
 				otp_hash,
-				otp_expiry
+				otp_expiry,
+				coupon_code
 			)
 		VALUES
 			(
@@ -1284,7 +1329,9 @@ pub async fn set_personal_user_to_be_signed_up(
 				NULL,
 				
 				$9,
-				$10
+				$10,
+
+				$11
 			)
 		ON CONFLICT(username) DO UPDATE SET
 			account_type = 'personal',
@@ -1304,7 +1351,9 @@ pub async fn set_personal_user_to_be_signed_up(
 			business_name = NULL,
 			
 			otp_hash = EXCLUDED.otp_hash,
-			otp_expiry = EXCLUDED.otp_expiry;
+			otp_expiry = EXCLUDED.otp_expiry,
+			
+			coupon_code = EXCLUDED.coupon_code;
 		"#,
 		username,
 		password,
@@ -1315,7 +1364,8 @@ pub async fn set_personal_user_to_be_signed_up(
 		recovery_phone_country_code,
 		recovery_phone_number,
 		otp_hash,
-		otp_expiry as i64
+		otp_expiry as i64,
+		coupon_code,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -1341,6 +1391,8 @@ pub async fn set_business_user_to_be_signed_up(
 
 	otp_hash: &str,
 	otp_expiry: u64,
+
+	coupon_code: Option<&str>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1360,7 +1412,8 @@ pub async fn set_business_user_to_be_signed_up(
 				business_domain_tld,
 				business_name,
 				otp_hash,
-				otp_expiry
+				otp_expiry,
+				coupon_code
 			)
 		VALUES
 			(
@@ -1383,7 +1436,9 @@ pub async fn set_business_user_to_be_signed_up(
 				$12,
 
 				$13,
-				$14
+				$14,
+
+				$15
 			)
 		ON CONFLICT(username) DO UPDATE SET
 			account_type = 'business',
@@ -1404,7 +1459,9 @@ pub async fn set_business_user_to_be_signed_up(
 			business_name = EXCLUDED.business_name,
 			
 			otp_hash = EXCLUDED.otp_hash,
-			otp_expiry = EXCLUDED.otp_expiry;
+			otp_expiry = EXCLUDED.otp_expiry,
+			
+			coupon_code = EXCLUDED.coupon_code;
 		"#,
 		username,
 		password,
@@ -1419,7 +1476,8 @@ pub async fn set_business_user_to_be_signed_up(
 		business_domain_tld,
 		business_name,
 		otp_hash,
-		otp_expiry as i64
+		otp_expiry as i64,
+		coupon_code,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -1452,7 +1510,8 @@ pub async fn get_user_to_sign_up_by_username(
 			END as "business_domain_name: String",
 			business_name,
 			otp_hash,
-			otp_expiry
+			otp_expiry,
+			coupon_code
 		FROM
 			user_to_sign_up
 		WHERE
@@ -1477,6 +1536,7 @@ pub async fn get_user_to_sign_up_by_username(
 		business_name: row.business_name,
 		otp_hash: row.otp_hash,
 		otp_expiry: row.otp_expiry as u64,
+		coupon_code: row.coupon_code,
 	});
 
 	Ok(user)
@@ -1508,7 +1568,8 @@ pub async fn get_user_to_sign_up_by_phone_number(
 			END as "business_domain_name: String",
 			business_name,
 			otp_hash,
-			otp_expiry
+			otp_expiry,
+			coupon_code
 		FROM
 			user_to_sign_up
 		WHERE
@@ -1535,6 +1596,7 @@ pub async fn get_user_to_sign_up_by_phone_number(
 		business_name: row.business_name,
 		otp_hash: row.otp_hash,
 		otp_expiry: row.otp_expiry as u64,
+		coupon_code: row.coupon_code,
 	});
 
 	Ok(sign_up)
@@ -1569,7 +1631,8 @@ pub async fn get_user_to_sign_up_by_email(
 			END as "business_domain_name: String",
 			user_to_sign_up.business_name,
 			user_to_sign_up.otp_hash,
-			user_to_sign_up.otp_expiry
+			user_to_sign_up.otp_expiry,
+			user_to_sign_up.coupon_code
 		FROM
 			user_to_sign_up
 		INNER JOIN
@@ -1604,6 +1667,7 @@ pub async fn get_user_to_sign_up_by_email(
 		business_name: row.business_name,
 		otp_hash: row.otp_hash,
 		otp_expiry: row.otp_expiry as u64,
+		coupon_code: row.coupon_code,
 	});
 
 	Ok(sign_up)
@@ -1634,7 +1698,8 @@ pub async fn get_user_to_sign_up_by_business_name(
 			END as "business_domain_name: String",
 			business_name,
 			otp_hash,
-			otp_expiry
+			otp_expiry,
+			coupon_code
 		FROM
 			user_to_sign_up
 		WHERE
@@ -1659,6 +1724,7 @@ pub async fn get_user_to_sign_up_by_business_name(
 		business_name: row.business_name,
 		otp_hash: row.otp_hash,
 		otp_expiry: row.otp_expiry as u64,
+		coupon_code: row.coupon_code,
 	});
 
 	Ok(sign_up)
@@ -1689,7 +1755,8 @@ pub async fn get_user_to_sign_up_by_business_domain_name(
 			END as "business_domain_name: String",
 			business_name,
 			otp_hash,
-			otp_expiry
+			otp_expiry,
+			coupon_code
 		FROM
 			user_to_sign_up
 		WHERE
@@ -1714,6 +1781,7 @@ pub async fn get_user_to_sign_up_by_business_domain_name(
 		business_name: row.business_name,
 		otp_hash: row.otp_hash,
 		otp_expiry: row.otp_expiry as u64,
+		coupon_code: row.coupon_code,
 	});
 
 	Ok(sign_up)
@@ -2108,6 +2176,7 @@ pub async fn create_user(
 	recovery_phone_number: Option<&str>,
 
 	workspace_limit: i32,
+	sign_up_coupon: Option<&str>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -2129,7 +2198,9 @@ pub async fn create_user(
 				recovery_phone_country_code,
 				recovery_phone_number,
 
-				workspace_limit
+				workspace_limit,
+
+				sign_up_coupon
 			)
 		VALUES
 			(
@@ -2149,7 +2220,9 @@ pub async fn create_user(
 				$9,
 				$10,
 
-				$11
+				$11,
+
+				$12
 			);
 		"#,
 		user_id as _,
@@ -2163,6 +2236,7 @@ pub async fn create_user(
 		recovery_phone_country_code,
 		recovery_phone_number,
 		workspace_limit,
+		sign_up_coupon,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -3220,4 +3294,53 @@ pub async fn search_for_users(
 	.collect();
 
 	Ok(users)
+}
+
+pub async fn get_sign_up_coupon_by_code(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	coupon_code: &str,
+) -> Result<Option<CouponCode>, sqlx::Error> {
+	let row = query!(
+		r#"
+		SELECT
+			*
+		FROM
+			coupon_code
+		WHERE
+			code = $1;
+		"#,
+		coupon_code,
+	)
+	.fetch_optional(&mut *connection)
+	.await?
+	.map(|row| CouponCode {
+		code: row.code,
+		credits: row.credits as u32,
+		uses_remaining: row.uses_remaining.map(|uses| uses as u32),
+		expiry: row.expiry.map(DateTime::from),
+	});
+
+	Ok(row)
+}
+
+pub async fn update_coupon_code_uses_remaining(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	coupon_code: &str,
+	uses_remaining: u32,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			coupon_code
+		SET
+			uses_remaining = $1
+		WHERE
+			code = $2;
+		"#,
+		uses_remaining as i32,
+		coupon_code,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }

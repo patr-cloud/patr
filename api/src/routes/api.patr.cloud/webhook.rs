@@ -1,5 +1,8 @@
 use api_models::{
-	models::workspace::infrastructure::deployment::DeploymentStatus,
+	models::workspace::{
+		billing::PaymentStatus,
+		infrastructure::deployment::DeploymentStatus,
+	},
 	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
@@ -8,7 +11,7 @@ use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
-	db::{self, PaymentStatus},
+	db::{self},
 	error,
 	models::{
 		deployment::KubernetesEventData,
@@ -518,8 +521,6 @@ async fn stripe_webhook(
 		&id,
 		&if status == "succeeded" {
 			PaymentStatus::Success
-		} else if status == "requires_payment_method" {
-			PaymentStatus::Pending
 		} else {
 			PaymentStatus::Failed
 		},

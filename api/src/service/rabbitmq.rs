@@ -318,7 +318,6 @@ pub async fn queue_process_payment(
 	config: &Settings,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-
 	send_message_to_rabbit_mq(
 		&RequestMessage::Workspace(WorkspaceRequestData::ProcessWorkspaces {
 			month,
@@ -337,7 +336,6 @@ pub async fn queue_confirm_payment_intent(
 	workspace_id: Uuid,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-
 	send_message_to_rabbit_mq(
 		&RequestMessage::Workspace(
 			WorkspaceRequestData::ConfirmPaymentIntent {

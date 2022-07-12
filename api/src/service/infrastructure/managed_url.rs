@@ -1,8 +1,5 @@
 use api_models::{
-	models::workspace::infrastructure::managed_urls::{
-		ManagedUrl,
-		ManagedUrlType,
-	},
+	models::workspace::infrastructure::managed_urls::ManagedUrlType,
 	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
@@ -299,40 +296,14 @@ pub async fn update_managed_url(
 	}
 
 	log::trace!(
-		"request_id: {} - Updating managed url on Kubernetes.",
+		"request_id: {} - Queuing update kubernetes managed url",
 		request_id
 	);
-	kubernetes::update_kubernetes_managed_url(
+	service::queue_create_managed_url(
 		&managed_url.workspace_id,
-		&ManagedUrl {
-			id: managed_url.id,
-			sub_domain: managed_url.sub_domain,
-			domain_id: managed_url.domain_id,
-			path: managed_url.path,
-			url_type: match managed_url.url_type {
-				DbManagedUrlType::ProxyToDeployment => {
-					ManagedUrlType::ProxyDeployment {
-						deployment_id: managed_url.deployment_id.status(500)?,
-						port: managed_url.port.status(500)? as u16,
-					}
-				}
-				DbManagedUrlType::ProxyToStaticSite => {
-					ManagedUrlType::ProxyStaticSite {
-						static_site_id: managed_url
-							.static_site_id
-							.status(500)?,
-					}
-				}
-				DbManagedUrlType::ProxyUrl => ManagedUrlType::ProxyUrl {
-					url: managed_url.url.status(500)?,
-				},
-				DbManagedUrlType::Redirect => ManagedUrlType::Redirect {
-					url: managed_url.url.status(500)?,
-				},
-			},
-		},
+		managed_url_id,
 		config,
-		&Uuid::new_v4(),
+		request_id,
 	)
 	.await?;
 
