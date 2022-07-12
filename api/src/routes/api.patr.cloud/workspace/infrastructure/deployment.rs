@@ -117,7 +117,7 @@ pub fn create_sub_app(
 		"/:deploymentId/deploy-history",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::deployment::LIST,
+				permissions::workspace::infrastructure::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -125,11 +125,18 @@ pub fn create_sub_app(
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
+					let deployment_id =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = Uuid::parse_str(deployment_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&workspace_id,
+						&deployment_id,
 					)
-					.await?;
+					.await?
+					.filter(|resource| resource.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -717,6 +724,11 @@ async fn list_deployment_history(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
 	.unwrap();
+	let deployment = db::get_deployment_by_id(
+		context.get_database_connection(),
+		&deployment_id,
+	)
+	.await?;
 
 	log::trace!(
 		"request_id: {} - Getting deployment image digest history from database",
@@ -726,26 +738,24 @@ async fn list_deployment_history(
 		context.get_database_connection(),
 		&deployment_id,
 	)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|deploy| DeploymentDeployHistory {
+		image_digest: deploy.image_digest,
+		created: deploy.created.timestamp_millis() as u64,
+	})
+	.collect();
 	log::trace!(
 		"request_id: {} - Deployments image history successfully retreived",
 		request_id
 	);
 
 	// Check if no image is pushed for this deployment_id
-	if deploys.is_empty() {
+	if deployment.is_none() {
 		return Error::as_result()
 			.status(404)
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	}
-
-	let deploys = deploys
-		.into_iter()
-		.map(|deploy| DeploymentDeployHistory {
-			image_digest: deploy.image_digest,
-			created: deploy.created.timestamp_millis() as u64,
-		})
-		.collect();
 
 	context.success(ListDeploymentHistoryResponse { deploys });
 	Ok(context)

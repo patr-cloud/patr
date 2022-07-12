@@ -275,7 +275,6 @@ pub(super) async fn process_request(
 			)
 			.await
 		}
-
 		DeploymentRequestData::Delete {
 			workspace_id,
 			deployment_id,

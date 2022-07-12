@@ -1156,6 +1156,16 @@
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path FROM deployment WHERE id = $1 AND status != 'deleted';"
   },
+  "16f3f83e0a244e8f8d45b182edbbd4c036b9adad293f8ffe356d989906f597f9": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_deploy_history( deployment_id UUID NOT NULL CONSTRAINT deployment_image_digest_fk_deployment_id REFERENCES deployment(id), image_digest TEXT NOT NULL, repository_id UUID NOT NULL CONSTRAINT deployment_image_digest_fk_repository_id REFERENCES docker_registry_repository(id), created TIMESTAMPTZ NOT NULL, CONSTRAINT deployment_image_digest_pk PRIMARY KEY(deployment_id, image_digest) );"
+  },
   "1744a46ba8ec9a9e788956406cc0ee9aa34844903ecf16ff84af3ff9332dc982": {
     "describe": {
       "columns": [
@@ -1476,15 +1486,31 @@
     },
     "query": "INSERT INTO patr_controlled_domain( domain_id, zone_identifier, nameserver_type ) VALUES ($1, $2, 'internal');"
   },
-  "1f0e9979ab3a81d3e0f420eb9327500f57517241cdac2573b6139ab204db97ae": {
+  "1f01acc4e3fae0e51ea653e6539f1d7207950b5413272ddee29f59936cac9a7e": {
     "describe": {
-      "columns": [],
-      "nullable": [],
+      "columns": [
+        {
+          "name": "image_digest",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "created: _",
+          "ordinal": 1,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
       "parameters": {
-        "Left": []
+        "Left": [
+          "Text"
+        ]
       }
     },
-    "query": "CREATE TABLE deployment_deploy_history( deployment_id UUID NOT NULL CONSTRAINT deployment_image_digest_fk_deployment_id REFERENCES deployment(id), image_digest TEXT NOT NULL, repository_id UUID NOT NULL CONSTRAINT deployment_image_digest_fk_repository_id REFERENCES docker_registry_repository(id), message TEXT, created BIGINT NOT NULL CONSTRAINT deployment_deploy_history_chk_created_unsigned CHECK( created >= 0 ), CONSTRAINT deployment_image_digest_pk PRIMARY KEY(deployment_id, image_digest) );"
+    "query": "SELECT image_digest, created as \"created: _\" FROM deployment_deploy_history WHERE image_digest = $1;"
   },
   "1f6ff6cf661a6007d78b7a30f0f8599c0ad2accd42912eb3f28d45c411f23674": {
     "describe": {
@@ -3176,6 +3202,21 @@
       }
     },
     "query": "CREATE TYPE DOMAIN_NAMESERVER_TYPE AS ENUM( 'internal', 'external' );"
+  },
+  "4b60bb4fd27a655220c0db3f4ffb85f463bcf799d4d58f7f89220bcd3303bb9f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "INSERT INTO deployment_deploy_history( deployment_id, image_digest, repository_id, created ) VALUES ($1, $2, $3, $4);"
   },
   "4bd9a22a3f2ac8aab228c971872edde263118a43760697b2fd73b05a66630c35": {
     "describe": {
@@ -6458,32 +6499,6 @@
     },
     "query": "CREATE INDEX deployment_idx_image_name_image_tag ON deployment (image_name, image_tag);"
   },
-  "96139d5cc07d9d46e7273c1ab06cfa1a0ded0abf3b2a3e38044a4a4d736d12b2": {
-    "describe": {
-      "columns": [
-        {
-          "name": "image_digest",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "created",
-          "ordinal": 1,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      }
-    },
-    "query": "SELECT image_digest, created FROM deployment_deploy_history WHERE image_digest = $1;"
-  },
   "9619d6b989536b51299ed94b0c88316ac91290cd6bfcee615f9f252699f77add": {
     "describe": {
       "columns": [],
@@ -6546,21 +6561,6 @@
       }
     },
     "query": "INSERT INTO secret( id, name, workspace_id, deployment_id ) VALUES ($1, $2, $3, NULL);"
-  },
-  "975e33e71c228bfe76b1ab8a0f64939597344921f8947e42305964eb02e6c078": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          "Uuid",
-          "Int8"
-        ]
-      }
-    },
-    "query": "INSERT INTO deployment_deploy_history( deployment_id, image_digest, repository_id, message, created ) VALUES ($1, $2, $3, NULL, $4);"
   },
   "97dc58af5c9c3baed320a573d34a5069c2f7919b6a3ace08bdbbf1a2e90b4789": {
     "describe": {
@@ -7864,6 +7864,32 @@
       }
     },
     "query": "INSERT INTO docker_registry_repository( id, workspace_id, name ) VALUES ($1, $2, $3);"
+  },
+  "b11d8732266d0d95fcacd195466325df74bd8ca6e0e2234b3f10141015ab85e5": {
+    "describe": {
+      "columns": [
+        {
+          "name": "image_digest",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "created: _",
+          "ordinal": 1,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT image_digest, created as \"created: _\" FROM deployment_deploy_history WHERE deployment_id = $1;"
   },
   "b214965bc8ea98855fc7ad482af084d4d42ab90aa577f64f9c30ce925188a8cf": {
     "describe": {

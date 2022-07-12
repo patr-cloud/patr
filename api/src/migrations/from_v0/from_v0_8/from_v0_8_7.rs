@@ -33,7 +33,7 @@ use sqlx::Row;
 
 use crate::{
 	migrate_query as query,
-	utils::{settings::Settings, Error, get_current_time_millis},
+	utils::{get_current_time_millis, settings::Settings, Error},
 	Database,
 };
 
@@ -530,7 +530,6 @@ async fn add_table_deployment_image_digest(
 			repository_id UUID NOT NULL
 				CONSTRAINT deployment_image_digest_fk_repository_id
 					REFERENCES docker_registry_repository(id),
-			message TEXT,
 			created BIGINT NOT NULL
 				CONSTRAINT deployment_deploy_history_chk_created_unsigned CHECK(
 						created >= 0
@@ -571,12 +570,7 @@ async fn populate_deployment_deploy_history(
 			row.get::<Uuid, _>("repository_id"),
 			row.get::<String, _>("image_tag"),
 		)
-	})
-	.collect::<Vec<_>>();
-
-	if deployments.is_empty() {
-		return Ok(());
-	}
+	});
 
 	for (deployment_id, repository_id, image_tag) in deployments {
 		let manifest_digest = query!(
@@ -603,16 +597,14 @@ async fn populate_deployment_deploy_history(
 					deployment_id,
 					image_digest,
 					repository_id,
-					message,
 					created
 				)
 			VALUES
-				($1, $2, $3, $4, $5);
+				($1, $2, $3, $5);
 			"#,
 			deployment_id,
 			manifest_digest,
 			repository_id,
-			"initial deployment",
 			get_current_time_millis() as i64
 		)
 		.execute(&mut *connection)

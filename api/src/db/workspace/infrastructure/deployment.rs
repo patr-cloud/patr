@@ -347,7 +347,6 @@ pub async fn initialize_deployment_pre(
 			repository_id UUID NOT NULL
 				CONSTRAINT deployment_image_digest_fk_repository_id
 					REFERENCES docker_registry_repository(id),
-			message TEXT,
 			created TIMESTAMPTZ NOT NULL,
 			CONSTRAINT deployment_image_digest_pk
 				PRIMARY KEY(deployment_id, image_digest)
@@ -1371,11 +1370,10 @@ pub async fn add_digest_to_deployment_deploy_history(
 				deployment_id,
 				image_digest,
 				repository_id,
-				message,
 				created
 			)
 		VALUES
-			($1, $2, $3, NULL, $4);
+			($1, $2, $3, $4);
 		"#,
 		deployment_id as _,
 		digest as _,
@@ -1397,7 +1395,8 @@ pub async fn get_deployment_image_digest_by_digest(
 		SELECT 
 			image_digest,
 			created as "created: _"
-		FROM deployment_deploy_history
+		FROM
+			deployment_deploy_history
 		WHERE
 			image_digest = $1;
 		"#,

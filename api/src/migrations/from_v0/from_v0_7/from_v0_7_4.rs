@@ -477,6 +477,7 @@ async fn update_deployment_with_probe_column(
 	)
 	.execute(&mut *connection)
 	.await?;
+
 	Ok(())
 }
 
