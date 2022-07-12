@@ -3,7 +3,7 @@ authors = ["Rakshith Ravi <rakshith.ravi@vicara.co>"]
 default-run = "api"
 edition = "2021"
 name = "api"
-version = "0.8.4"
+version = "0.8.6"
 
 [features]
 default = []
