@@ -886,7 +886,14 @@ async fn get_build_logs(
 	.body("repo not found")?
 	.id;
 
-	let build_created_time = db::get_build_created_time(context.get_database_connection(), &repo_id, build_num as i64).await?.status(500).body(error!(SERVER_ERROR).to_string())?;
+	let build_created_time = db::get_build_created_time(
+		context.get_database_connection(),
+		&repo_id,
+		build_num as i64,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
 
 	let loki = context.get_state().config.loki.clone();
 	let response = reqwest::Client::new()

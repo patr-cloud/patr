@@ -1,4 +1,7 @@
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::ci2::github::{BuildStatus, BuildStepStatus},
+	utils::Uuid,
+};
 use chrono::Utc;
 use eve_rs::{AsError, Context};
 use hmac::{Hmac, Mac};
@@ -141,7 +144,7 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 		&repo.id,
 		&push_event.ref_,
 		&push_event.after,
-		"running",
+		BuildStatus::Running,
 		&Utc::now(),
 	)
 	.await?;
@@ -155,7 +158,7 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 		"git-clone",
 		"",
 		vec![],
-		"waiting_to_start",
+		BuildStepStatus::WaitingToStart,
 	)
 	.await?;
 
@@ -179,7 +182,7 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 			&name,
 			&image,
 			commands,
-			"waiting_to_start",
+			BuildStepStatus::WaitingToStart,
 		)
 		.await?;
 	}

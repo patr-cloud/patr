@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::ci2::github::{BuildStatus, BuildStepStatus},
+	utils::Uuid,
+};
 use chrono::Utc;
 use k8s_openapi::api::{
 	batch::v1::{Job, JobSpec},
@@ -124,12 +127,6 @@ impl BuildStep {
 	}
 }
 
-enum Status {
-	Errored,
-	Completed,
-	Running,
-}
-
 pub async fn process_request(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	request_data: CIData,
@@ -152,6 +149,11 @@ pub async fn process_request(
 				.await?
 				.and_then(|job| job.status);
 
+			enum Status {
+				Errored,
+				Completed,
+				Running,
+			}
 			if let Some(status) = step_status {
 				let status = match (status.active.unwrap_or_default(), status.succeeded.unwrap_or_default(), status.failed.unwrap_or_default()) {
 					(1, 0, 0) => Status::Running,
@@ -179,7 +181,7 @@ pub async fn process_request(
 							&build_step.id.build_id.repo_id,
 							build_step.id.build_id.build_num,
 							build_step.id.step_id,
-							"errored",
+							BuildStepStatus::Errored,
 						)
 						.await?;
 						db::update_build_step_finished_time(
@@ -209,7 +211,7 @@ pub async fn process_request(
 							&build_step.id.build_id.repo_id,
 							build_step.id.build_id.build_num,
 							build_step.id.step_id,
-							"success",
+							BuildStepStatus::Succeeded,
 						)
 						.await?;
 						db::update_build_step_finished_time(
@@ -237,33 +239,24 @@ pub async fn process_request(
 					connection,
 					&build_step.id.build_id.repo_id,
 					build_step.id.build_id.build_num,
-					build_step.id.step_id - 1, /* since sequential, checking
-					                            * previous status is okay
-					                            * for now */
+					// for now, only sequenctial build is supported,
+					// so checking previous status is enough
+					build_step.id.step_id - 1,
 				)
 				.await?;
 
-				let dependency_status = match dependency_status
-					.unwrap_or_else(|| "success".to_string()) // for clone command it will be None
-					.as_str()
+				match dependency_status
+					.unwrap_or_else(|| BuildStepStatus::Succeeded)
 				{
-					"running" | "waiting_to_start" => Status::Running,
-					"errored" | "skipped-parent_error" => Status::Errored,
-					"success" => Status::Completed,
-					unknown => {
-						unreachable!("invalid dependency status `{unknown}`")
-					}
-				};
-
-				match dependency_status {
-					Status::Errored => {
+					BuildStepStatus::Errored |
+					BuildStepStatus::SkippedDepError => {
 						log::info!("request_id: {request_id} - Build step `{build_step_job_name}` skipped as dependencies errored out");
 						db::update_build_step_status(
 							connection,
 							&build_step.id.build_id.repo_id,
 							build_step.id.build_id.build_num,
 							build_step.id.step_id,
-							"skipped-parent_error",
+							BuildStepStatus::SkippedDepError,
 						)
 						.await?;
 						db::update_build_step_started_time(
@@ -283,7 +276,7 @@ pub async fn process_request(
 						)
 						.await?;
 					}
-					Status::Completed => {
+					BuildStepStatus::Succeeded => {
 						log::info!("request_id: {request_id} - Starting build step `{build_step_job_name}`");
 						jobs_api
 							.create(
@@ -296,7 +289,7 @@ pub async fn process_request(
 							&build_step.id.build_id.repo_id,
 							build_step.id.build_id.build_num,
 							build_step.id.step_id,
-							"running",
+							BuildStepStatus::Running,
 						)
 						.await?;
 						db::update_build_step_started_time(
@@ -314,7 +307,8 @@ pub async fn process_request(
 						)
 						.await?;
 					}
-					Status::Running => {
+					BuildStepStatus::Running |
+					BuildStepStatus::WaitingToStart => {
 						log::debug!("request_id: {request_id} - Waiting to create `{build_step_job_name}`");
 						tokio::time::sleep(Duration::from_secs(5)).await;
 						service::queue_create_ci_build_step(
@@ -340,21 +334,9 @@ pub async fn process_request(
 			// for now sequential, so checking last status is enough
 			let status = steps.last().map(|step| step.status.clone());
 
-			let status = match status
-				.unwrap_or_else(|| "unknown".to_string())
-				.as_str()
-			{
-				"running" | "waiting_to_start" => Status::Running,
-				"errored" | "skipped-parent_error" => Status::Errored,
-				"success" => Status::Completed,
-				unknown => {
-					unreachable!("invalid dependency status `{unknown}`")
-				}
-			};
-
 			let pvc_name = build_id.get_pvc_name();
-			match status {
-				Status::Errored => {
+			match status.unwrap_or_else(|| BuildStepStatus::Succeeded) {
+				BuildStepStatus::Errored | BuildStepStatus::SkippedDepError => {
 					log::info!(
 						"request_id: {request_id} - Build `{pvc_name}` errored"
 					);
@@ -368,7 +350,7 @@ pub async fn process_request(
 						&mut *connection,
 						&build_id.repo_id,
 						build_id.build_num,
-						"errored",
+						BuildStatus::Errored,
 					)
 					.await?;
 					db::update_build_finished_time(
@@ -379,7 +361,7 @@ pub async fn process_request(
 					)
 					.await?;
 				}
-				Status::Completed => {
+				BuildStepStatus::Succeeded => {
 					log::info!(
 						"request_id: {request_id} - Build `{pvc_name}` succeed"
 					);
@@ -393,7 +375,7 @@ pub async fn process_request(
 						&mut *connection,
 						&build_id.repo_id,
 						build_id.build_num,
-						"success",
+						BuildStatus::Succeeded,
 					)
 					.await?;
 					db::update_build_finished_time(
@@ -404,7 +386,7 @@ pub async fn process_request(
 					)
 					.await?;
 				}
-				Status::Running => {
+				BuildStepStatus::Running | BuildStepStatus::WaitingToStart => {
 					log::debug!("request_id: {request_id} - Waiting to clean `{pvc_name}`");
 					tokio::time::sleep(Duration::from_secs(10)).await;
 					service::queue_clean_ci_build_pipeline(

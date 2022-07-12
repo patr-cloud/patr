@@ -1,5 +1,10 @@
 use api_models::{
-	models::workspace::ci2::github::{Build, Step},
+	models::workspace::ci2::github::{
+		Build,
+		BuildStatus,
+		BuildStepStatus,
+		Step,
+	},
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
@@ -42,17 +47,43 @@ pub async fn initialize_ci_pre(
 
 	query!(
 		r#"
+		CREATE TYPE CI_BUILD_STATUS AS ENUM (
+			'running',
+			'succeeded',
+			'errored'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE ci_builds (
 			repo_id		UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id),
 			build_num 	BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK (build_num > 0),
 			git_ref 	TEXT NOT NULL,
 			git_commit 	TEXT NOT NULL,
-			status 		TEXT NOT NULL,
+			status 		CI_BUILD_STATUS NOT NULL,
 			created 	TIMESTAMPTZ NOT NULL,
 			finished 	TIMESTAMPTZ,
 
 			CONSTRAINT ci_builds_pk_repo_id_build_num
 				PRIMARY KEY (repo_id, build_num)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE CI_BUILD_STEP_STATUS AS ENUM (
+			'waiting_to_start',
+			'running',
+			'succeeded',
+			'errored',
+			'skipped_dep_error'
 		);
 		"#
 	)
@@ -68,7 +99,7 @@ pub async fn initialize_ci_pre(
 			step_name 	TEXT NOT NULL,
 			base_image 	TEXT NOT NULL,
 			commands 	TEXT[] NOT NULL,
-			status 		TEXT NOT NULL,
+			status 		CI_BUILD_STEP_STATUS NOT NULL,
 			started 	TIMESTAMPTZ,
 			finished 	TIMESTAMPTZ,
 
@@ -253,7 +284,7 @@ pub async fn generate_new_build_for_repo(
 	repo_id: &Uuid,
 	git_ref: &str,
 	git_commit: &str,
-	status: &str,
+	status: BuildStatus,
 	created: &DateTime<Utc>,
 ) -> Result<i64, sqlx::Error> {
 	query!(
@@ -273,7 +304,7 @@ pub async fn generate_new_build_for_repo(
 		repo_id as _,
 		git_ref as _,
 		git_commit as _,
-		status,
+		status as _,
 		created,
 	)
 	.fetch_one(connection)
@@ -285,7 +316,7 @@ pub async fn update_build_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
 	build_num: i64,
-	status: &str,
+	status: BuildStatus,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -298,7 +329,7 @@ pub async fn update_build_status(
 		"#,
 		repo_id as _,
 		build_num,
-		status
+		status as _
 	)
 	.execute(connection)
 	.await
@@ -343,7 +374,7 @@ pub async fn list_build_details_for_repo(
 			ci_builds.build_num,
 			ci_builds.git_ref,
 			ci_builds.git_commit,
-			ci_builds.status,
+			ci_builds.status as "status: _",
 			ci_builds.created,
 			ci_builds.finished,
 			ARRAY_AGG (
@@ -393,7 +424,7 @@ pub async fn get_build_details_for_build(
 			ci_builds.build_num,
 			ci_builds.git_ref,
 			ci_builds.git_commit,
-			ci_builds.status,
+			ci_builds.status as "status: _",
 			ci_builds.created,
 			ci_builds.finished,
 			ARRAY_AGG (
@@ -446,7 +477,7 @@ pub async fn get_build_steps_for_build(
 			step_name,
 			base_image,
 			commands,
-			status,
+			status as "status: _",
 			started,
 			finished
 		FROM
@@ -473,7 +504,7 @@ pub async fn add_ci_steps_for_build(
 	step_name: &str,
 	base_image: &str,
 	commands: Vec<String>,
-	status: &str,
+	status: BuildStepStatus,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -495,7 +526,7 @@ pub async fn add_ci_steps_for_build(
 		step_name,
 		base_image,
 		&commands[..],
-		status,
+		status as _,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -508,7 +539,7 @@ pub async fn update_build_step_status(
 	repo_id: &Uuid,
 	build_num: i64,
 	step_id: i32,
-	status: &str,
+	status: BuildStepStatus,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -525,7 +556,7 @@ pub async fn update_build_step_status(
 		repo_id as _,
 		build_num,
 		step_id,
-		status
+		status as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -537,11 +568,11 @@ pub async fn get_build_step_status(
 	repo_id: &Uuid,
 	build_num: i64,
 	step_id: i32,
-) -> Result<Option<String>, sqlx::Error> {
+) -> Result<Option<BuildStepStatus>, sqlx::Error> {
 	query!(
 		r#"
 		SELECT
-			status
+			status as "status: BuildStepStatus"
 		FROM
 			ci_steps
 		WHERE (
