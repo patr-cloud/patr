@@ -35,12 +35,13 @@
           </tr>
           <tr>
             <td style="padding:10px 20px;color:#ffffff">
-              Your
+              Payment for your billing period
               {{month}}
               {{year}}
-              invoice is now available for workspace
-              {{workspace_name}}. The balance was automatically charged from
-              your credit card, so you don't need to do anything.
+              of amount ${{total_bill}}
+              for the workspace
+              {{workspace_name}}
+              was not successful.
             </td>
           </tr>
           <tr>
@@ -55,7 +56,7 @@
           </tr>
           <tr>
             <td style="padding:0 20px;color:#ffffff">
-              Amount paid:
+              Amount to be paid:
               <strong
                 style="color:#ffffff;font-size:16px"
               >${{total_bill}}</strong>
@@ -73,6 +74,11 @@
                 <li>Domain Usage: ${{domains_usages}}</li>
                 <li>Secret Usage: ${{secrets_usages}}</li>
               </ul>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:10px 20px;color:#ffffff">
+              Login to your Patr account to make the payment.
             </td>
           </tr>
           <tr>
