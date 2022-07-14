@@ -288,6 +288,72 @@ async fn add_migrations_for_ci(
 ) -> Result<(), Error> {
 	query!(
 		r#"
+		CREATE TABLE ci_build_machine_type (
+			id       UUID CONSTRAINT ci_machint_type_pk PRIMARY KEY,
+			cpu      INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_cpu_positive CHECK (cpu > 0),   		/* Multiples of 1 vCPU */
+			ram      INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_ram_positive CHECK (ram > 0),   		/* Multiples of 0.25 GB RAM */
+			volume   INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_volume_positive CHECK (volume > 0) 	/* Multiples of 1 GB storage space */
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	const CI_BUILD_MACHINE_TYPES: [(i32, i32, i32); 5] = [
+		(1, 2, 1),  // 1 vCPU, 0.5 GB RAM, 1GB storage
+		(1, 4, 1),  // 1 vCPU,   1 GB RAM, 1GB storage
+		(1, 6, 2),  // 1 vCPU,   2 GB RAM, 2GB storage
+		(2, 8, 4),  // 2 vCPU,   4 GB RAM, 4GB storage
+		(4, 32, 8), // 4 vCPU,   8 GB RAM, 8GB storage
+	];
+
+	for (cpu, ram, volume) in CI_BUILD_MACHINE_TYPES {
+		let machine_type_id = loop {
+			let uuid = Uuid::new_v4();
+
+			let exists = query!(
+				r#"
+					SELECT
+						*
+					FROM
+						resource
+					WHERE
+						id = $1;
+					"#,
+				&uuid
+			)
+			.fetch_optional(&mut *connection)
+			.await?
+			.is_some();
+
+			if !exists {
+				break uuid;
+			}
+		};
+
+		query!(
+			r#"
+			INSERT INTO 
+				ci_build_machine_type(
+					id,
+					cpu,
+					ram,
+					volume
+				)
+			VALUES
+				($1, $2, $3, $4);
+			"#,
+			machine_type_id,
+			cpu,
+			ram,
+			volume
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	query!(
+		r#"
 		CREATE TABLE ci_repos (
 			id 				UUID CONSTRAINT ci_repos_pk PRIMARY KEY,
 			workspace_id 	UUID NOT NULL,

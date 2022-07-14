@@ -1,15 +1,13 @@
 use api_models::{
-	models::workspace::ci2::github::{
-		Build,
-		BuildStatus,
-		BuildStepStatus,
-		Step,
+	models::workspace::ci2::{
+		github::{Build, BuildStatus, BuildStepStatus, Step},
+		BuildMachineType,
 	},
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
 
-use crate::{query, query_as, Database};
+use crate::{db, query, query_as, Database};
 
 pub struct Repository {
 	pub id: Uuid,
@@ -18,6 +16,7 @@ pub struct Repository {
 	pub repo_name: String,
 	pub git_url: String,
 	pub webhook_secret: String,
+	pub build_machine_type_id: Uuid,
 	pub active: bool,
 }
 
@@ -28,17 +27,29 @@ pub async fn initialize_ci_pre(
 
 	query!(
 		r#"
-		CREATE TABLE ci_repos (
-            id 				UUID CONSTRAINT ci_repos_pk PRIMARY KEY,
-            workspace_id 	UUID NOT NULL,
-			repo_owner 		TEXT NOT NULL,
-			repo_name 		TEXT NOT NULL,
-            git_url 		TEXT NOT NULL,
-            webhook_secret 	TEXT NOT NULL CONSTRAINT ci_repos_uq_secret UNIQUE,
-            active 			BOOLEAN NOT NULL,
+		CREATE TABLE ci_build_machine_type (
+			id       UUID CONSTRAINT ci_machint_type_pk PRIMARY KEY,
+			cpu      INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_cpu_positive CHECK (cpu > 0),   		/* Multiples of 1 vCPU */
+			ram      INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_ram_positive CHECK (ram > 0),   		/* Multiples of 0.25 GB RAM */
+			volume   INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_volume_positive CHECK (volume > 0) 	/* Multiples of 1 GB storage space */
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
-            CONSTRAINT ci_repos_fk_workspace_id
-				FOREIGN KEY (workspace_id) REFERENCES workspace(id),
+	query!(
+		r#"
+		CREATE TABLE ci_repos (
+            id 						UUID CONSTRAINT ci_repos_pk PRIMARY KEY,
+            workspace_id 			UUID NOT NULL CONSTRAINT ci_repos_fk_workspace_id REFERENCES workspace(id),
+			repo_owner 				TEXT NOT NULL,
+			repo_name 				TEXT NOT NULL,
+            git_url 				TEXT NOT NULL,
+            webhook_secret 			TEXT NOT NULL CONSTRAINT ci_repos_uq_secret UNIQUE,
+			build_machine_type_id	UUID NOT NULL CONSTRAINT ci_repos_fk_build_machine_type_id REFERENCES ci_build_machine_type(id),
+            active 					BOOLEAN NOT NULL,
+            
             CONSTRAINT ci_repos_uq_workspace_id_git_url
 				UNIQUE (workspace_id, git_url),
 			CONSTRAINT ci_repos_uq_workspace_id_repo_owner_repo_name
@@ -121,11 +132,63 @@ pub async fn initialize_ci_pre(
 }
 
 pub async fn initialize_ci_post(
-	_connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up ci tables initialization");
 
+	// machine types for ci builds
+	const CI_BUILD_MACHINE_TYPES: [(i32, i32, i32); 5] = [
+		(1, 2, 1),  // 1 vCPU, 0.5 GB RAM, 1GB storage
+		(1, 4, 1),  // 1 vCPU,   1 GB RAM, 1GB storage
+		(1, 6, 2),  // 1 vCPU,   2 GB RAM, 2GB storage
+		(2, 8, 4),  // 2 vCPU,   4 GB RAM, 4GB storage
+		(4, 32, 8), // 4 vCPU,   8 GB RAM, 8GB storage
+	];
+
+	for (cpu, ram, volume) in CI_BUILD_MACHINE_TYPES {
+		let machine_type_id =
+			db::generate_new_resource_id(&mut *connection).await?;
+		query!(
+			r#"
+			INSERT INTO 
+				ci_build_machine_type(
+					id,
+					cpu,
+					ram,
+					volume
+				)
+			VALUES
+				($1, $2, $3, $4);
+			"#,
+			machine_type_id as _,
+			cpu,
+			ram,
+			volume
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
 	Ok(())
+}
+
+pub async fn get_all_build_machine_types(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<BuildMachineType>, sqlx::Error> {
+	query_as!(
+		BuildMachineType,
+		r#"
+		SELECT
+			id as "id: _",
+			cpu,
+			ram,
+			volume
+		FROM
+			ci_build_machine_type
+		"#,
+	)
+	.fetch_all(connection)
+	.await
 }
 
 pub async fn create_ci_repo(
@@ -134,6 +197,7 @@ pub async fn create_ci_repo(
 	repo_owner: &str,
 	repo_name: &str,
 	git_url: &str,
+	build_machine_type_id: &Uuid,
 ) -> Result<Repository, sqlx::Error> {
 	let webhook_secret = Uuid::new_v4().to_string();
 	let repo_id = Uuid::new_v4();
@@ -147,10 +211,11 @@ pub async fn create_ci_repo(
 			repo_name,
             git_url,
             webhook_secret,
+			build_machine_type_id,
             active
         )
 		VALUES
-			($1, $2, $3, $4, $5, $6, FALSE)
+			($1, $2, $3, $4, $5, $6, $7, FALSE)
 		"#,
 		repo_id as _,
 		workspace_id as _,
@@ -158,6 +223,7 @@ pub async fn create_ci_repo(
 		repo_name as _,
 		git_url as _,
 		webhook_secret as _,
+		build_machine_type_id as _,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -169,6 +235,7 @@ pub async fn create_ci_repo(
 		repo_name: repo_name.to_owned(),
 		git_url: git_url.to_owned(),
 		webhook_secret: webhook_secret.to_owned(),
+		build_machine_type_id: build_machine_type_id.to_owned(),
 		active: false,
 	})
 }
@@ -187,6 +254,7 @@ pub async fn get_all_repos_for_workspace(
 			repo_name,
 			git_url,
 			webhook_secret,
+			build_machine_type_id as "build_machine_type_id: _",
 			active
 		FROM
 			ci_repos
@@ -215,6 +283,7 @@ pub async fn get_repo_for_workspace(
 			repo_name,
 			git_url,
 			webhook_secret,
+			build_machine_type_id as "build_machine_type_id: _",
 			active
 		FROM
 			ci_repos
@@ -247,6 +316,7 @@ pub async fn get_repo_for_workspace_and_url(
 			repo_name,
 			git_url,
 			webhook_secret,
+			build_machine_type_id as "build_machine_type_id: _",
 			active
 		FROM
 			ci_repos
@@ -255,6 +325,53 @@ pub async fn get_repo_for_workspace_and_url(
 		"#,
 		workspace_id as _,
 		git_url as _
+	)
+	.fetch_optional(connection)
+	.await
+}
+
+pub async fn update_build_machine_type_for_repo(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
+	build_machine_type_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+        UPDATE
+			ci_repos
+        SET
+            build_machine_type_id = $2
+        WHERE
+            id = $1;
+		"#,
+		repo_id as _,
+		build_machine_type_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_build_machine_type_for_repo(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
+) -> Result<Option<BuildMachineType>, sqlx::Error> {
+	query_as!(
+		BuildMachineType,
+		r#"
+		SELECT
+			ci_build_machine_type.id as "id: _",
+			cpu,
+			ram,
+			volume
+		FROM
+			ci_build_machine_type
+		JOIN ci_repos
+			ON ci_repos.build_machine_type_id = ci_build_machine_type.id
+		WHERE
+			ci_repos.id = $1;
+		"#,
+		repo_id as _,
 	)
 	.fetch_optional(connection)
 	.await
@@ -314,6 +431,7 @@ pub async fn get_repo_for_git_url(
 			repo_name,
 			git_url,
 			webhook_secret,
+			build_machine_type_id as "build_machine_type_id: _",
 			active
 		FROM
 			ci_repos

@@ -12,7 +12,7 @@ use self::payload_types::PushEvent;
 use super::Netrc;
 use crate::{
 	db::{self, Repository},
-	models::{CiFlow, Kind, Step},
+	models::ci::file_format::{CiFlow, Kind, Step},
 	rabbitmq::BuildId,
 	utils::{Error, EveContext},
 };
@@ -207,7 +207,8 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 			repo_id: repo.id,
 			build_num,
 		},
-		&context.get_state().config,
+		&context.get_state().config.clone(),
+		context.get_database_connection(),
 		&request_id,
 	)
 	.await?;

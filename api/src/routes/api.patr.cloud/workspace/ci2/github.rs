@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use api_macros::closure_as_pinned_box;
 use api_models::{
 	models::workspace::ci2::github::{
+		ActivateGithubRepoRequest,
 		ActivateGithubRepoResponse,
 		BuildLogs,
 		DeactivateGithubRepoResponse,
@@ -476,7 +477,7 @@ async fn list_repositories(
 	)
 	.await?
 	.into_iter()
-	.map(|repo| (repo.git_url, repo.active))
+	.map(|repo| (repo.git_url, (repo.active, repo.build_machine_type_id)))
 	.collect::<HashMap<_, _>>();
 
 	let (_, access_token) = db::get_drone_username_and_token_for_workspace(
@@ -520,16 +521,19 @@ async fn list_repositories(
 			let (repo_owner, repo_name) =
 				repo.full_name.rsplit_once('/').unwrap(); // TODO
 
+			let (is_ci_active, build_machine_type_id) = ci_status_for_repo
+				.get(&repo.git_url)
+				.map_or((false, None), |(status, machine_type)| {
+					(*status, Some(machine_type.to_owned()))
+				});
 			GithubRepository {
 				name: repo_name.to_string(),
 				description: repo.description,
-				is_ci_active: ci_status_for_repo
-					.get(&repo.git_url)
-					.unwrap_or(&false)
-					.to_owned(),
+				is_ci_active,
 				git_url: repo.git_url,
 				repo_owner: repo_owner.to_string(),
 				organization: repo.organization.map(|org| org.name),
+				build_machine_type_id,
 			}
 		})
 		.collect();
@@ -549,6 +553,16 @@ async fn activate_repo(
 	let repo_owner =
 		context.get_param(request_keys::REPO_OWNER).unwrap().clone();
 	let repo_name = context.get_param(request_keys::REPO_NAME).unwrap().clone();
+
+	let ActivateGithubRepoRequest {
+		workspace_id: _,
+		repo_owner: _,
+		repo_name: _,
+		build_machine_type_id,
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let (_, access_token) = db::get_drone_username_and_token_for_workspace(
 		context.get_database_connection(),
@@ -588,6 +602,12 @@ async fn activate_repo(
 	)
 	.await?
 	{
+		db::update_build_machine_type_for_repo(
+			context.get_database_connection(),
+			&repo.id,
+			&build_machine_type_id,
+		)
+		.await?;
 		repo
 	} else {
 		db::create_ci_repo(
@@ -596,6 +616,7 @@ async fn activate_repo(
 			repo_owner,
 			repo_name,
 			&repo.git_url,
+			&build_machine_type_id,
 		)
 		.await?
 	};

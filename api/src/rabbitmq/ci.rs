@@ -1,22 +1,27 @@
-use std::time::Duration;
+use std::{collections::BTreeMap, time::Duration};
 
 use api_models::{
 	models::workspace::ci2::github::{BuildStatus, BuildStepStatus},
 	utils::Uuid,
 };
 use chrono::Utc;
-use k8s_openapi::api::{
-	batch::v1::{Job, JobSpec},
-	core::v1::{
-		Container,
-		EnvVar,
-		PersistentVolumeClaim,
-		PersistentVolumeClaimVolumeSource,
-		PodSpec,
-		PodTemplateSpec,
-		Volume,
-		VolumeMount,
+use eve_rs::AsError;
+use k8s_openapi::{
+	api::{
+		batch::v1::{Job, JobSpec},
+		core::v1::{
+			Container,
+			EnvVar,
+			PersistentVolumeClaim,
+			PersistentVolumeClaimVolumeSource,
+			PodSpec,
+			PodTemplateSpec,
+			ResourceRequirements,
+			Volume,
+			VolumeMount,
+		},
 	},
+	apimachinery::pkg::api::resource::Quantity,
 };
 use kube::{
 	api::{DeleteParams, ObjectMeta, PropagationPolicy},
@@ -26,7 +31,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
 	db,
-	models::{rabbitmq::CIData, EnvVariable},
+	models::{ci::file_format::EnvVariable, rabbitmq::CIData},
 	service,
 	utils::{settings::Settings, Error},
 	Database,
@@ -68,63 +73,94 @@ pub struct BuildStep {
 	pub commands: Vec<String>,
 }
 
-impl BuildStep {
-	pub fn get_job_manifest(&self) -> Job {
-		Job {
-			metadata: ObjectMeta {
-				name: Some(self.id.get_job_name()),
-				..Default::default()
-			},
-			spec: Some(JobSpec {
-				backoff_limit: Some(0),
-				template: PodTemplateSpec {
-					spec: Some(PodSpec {
-						containers: vec![Container {
-							image: Some(self.image.clone()),
-							image_pull_policy: Some("Always".to_string()),
-							name: "build-step".to_string(),
-							volume_mounts: Some(vec![VolumeMount {
-								mount_path: "/mnt/workdir".to_string(),
-								name: "workdir".to_string(),
-								..Default::default()
-							}]),
-							env: Some(
-								self.env_vars
-									.iter()
-									.map(|env| EnvVar {
-										name: env.name.clone(),
-										value: Some(env.value.clone()),
-										..Default::default()
-									})
-									.collect(),
-							),
-							command: Some(vec![
-								"sh".to_string(),
-								"-ce".to_string(),
-								self.commands.join("\n"),
-							]),
-							..Default::default()
-						}],
-						volumes: Some(vec![Volume {
+async fn get_job_manifest(
+	build_step: &BuildStep,
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Job, Error> {
+	let build_machine_type = db::get_build_machine_type_for_repo(
+		&mut *connection,
+		&build_step.id.build_id.repo_id,
+	)
+	.await?
+	.status(500)?;
+
+	let build_machine_type = [
+		(
+			"memory".to_string(),
+			Quantity(format!("{:.1}G", (build_machine_type.ram as f64) / 4f64)),
+		),
+		(
+			"cpu".to_string(),
+			Quantity(format!("{:.1}", build_machine_type.cpu as f64)),
+		),
+	]
+	.into_iter()
+	.collect::<BTreeMap<_, _>>();
+
+	let job = Job {
+		metadata: ObjectMeta {
+			name: Some(build_step.id.get_job_name()),
+			..Default::default()
+		},
+		spec: Some(JobSpec {
+			backoff_limit: Some(0),
+			template: PodTemplateSpec {
+				spec: Some(PodSpec {
+					containers: vec![Container {
+						image: Some(build_step.image.clone()),
+						image_pull_policy: Some("Always".to_string()),
+						name: "build-step".to_string(),
+						volume_mounts: Some(vec![VolumeMount {
+							mount_path: "/mnt/workdir".to_string(),
 							name: "workdir".to_string(),
-							persistent_volume_claim: Some(
-								PersistentVolumeClaimVolumeSource {
-									claim_name: self.id.build_id.get_pvc_name(),
-									..Default::default()
-								},
-							),
 							..Default::default()
 						}]),
-						restart_policy: Some("Never".to_string()),
+						env: Some(
+							build_step
+								.env_vars
+								.iter()
+								.map(|env| EnvVar {
+									name: env.name.clone(),
+									value: Some(env.value.clone()),
+									..Default::default()
+								})
+								.collect(),
+						),
+						command: Some(vec![
+							"sh".to_string(),
+							"-ce".to_string(),
+							build_step.commands.join("\n"),
+						]),
+						resources: Some(ResourceRequirements {
+							limits: Some(build_machine_type),
+							..Default::default()
+						}),
 						..Default::default()
-					}),
+					}],
+					volumes: Some(vec![Volume {
+						name: "workdir".to_string(),
+						persistent_volume_claim: Some(
+							PersistentVolumeClaimVolumeSource {
+								claim_name: build_step
+									.id
+									.build_id
+									.get_pvc_name(),
+								..Default::default()
+							},
+						),
+						..Default::default()
+					}]),
+					restart_policy: Some("Never".to_string()),
 					..Default::default()
-				},
+				}),
 				..Default::default()
-			}),
+			},
 			..Default::default()
-		}
-	}
+		}),
+		..Default::default()
+	};
+
+	Ok(job)
 }
 
 pub async fn process_request(
@@ -279,7 +315,11 @@ pub async fn process_request(
 						jobs_api
 							.create(
 								&Default::default(),
-								&build_step.get_job_manifest(),
+								&get_job_manifest(
+									&build_step,
+									&mut *connection,
+								)
+								.await?,
 							)
 							.await?;
 						db::update_build_step_status(

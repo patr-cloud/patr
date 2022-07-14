@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use api_models::utils::Uuid;
+use eve_rs::AsError;
 use k8s_openapi::{
 	api::core::v1::{
 		PersistentVolumeClaim,
@@ -12,10 +13,12 @@ use k8s_openapi::{
 use kube::{api::ObjectMeta, Api};
 
 use crate::{
-	models::{CiFlow, Kind, Step},
+	db,
+	models::ci::file_format::{CiFlow, Kind, Step},
 	rabbitmq::{BuildId, BuildStep, BuildStepId},
 	service,
 	utils::{settings::Settings, Error},
+	Database,
 };
 
 pub mod github;
@@ -44,10 +47,18 @@ pub async fn create_ci_pipeline(
 	netrc: Option<Netrc>,
 	build_id: BuildId,
 	config: &Settings,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let build_name = build_id.get_pvc_name();
 	log::debug!("request_id: {request_id} - Creating a ci pipeline for build `{build_name}`");
+
+	let build_machine_type = db::get_build_machine_type_for_repo(
+		&mut *connection,
+		&build_id.repo_id,
+	)
+	.await?
+	.status(500)?;
 
 	// TODO: its better to move PVC creation to mq
 	let kube_client = service::get_kubernetes_config(config).await?;
@@ -69,7 +80,10 @@ pub async fn create_ci_pipeline(
 					requests: Some(
 						[(
 							"storage".to_string(),
-							Quantity("1Gi".to_string()), // TODO
+							Quantity(format!(
+								"{}Gi",
+								build_machine_type.volume
+							)),
 						)]
 						.into(),
 					),

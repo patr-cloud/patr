@@ -1254,62 +1254,6 @@
     },
     "query": "SELECT id as \"id: _\", name, description FROM permission;"
   },
-  "17c49fb9411578bba4d719446d4a76cd505b84caf104be88da4307b5c598d60e": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "repo_owner",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "repo_name",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "git_url",
-          "ordinal": 4,
-          "type_info": "Text"
-        },
-        {
-          "name": "webhook_secret",
-          "ordinal": 5,
-          "type_info": "Text"
-        },
-        {
-          "name": "active",
-          "ordinal": 6,
-          "type_info": "Bool"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", workspace_id as \"workspace_id: _\", repo_owner, repo_name, git_url, webhook_secret, active FROM ci_repos WHERE git_url = $1;"
-  },
   "1815e0c66b5645f7e4994f135c7d0622d3219c98297eab447d4cadf9bed4a1f4": {
     "describe": {
       "columns": [],
@@ -1388,109 +1332,15 @@
     },
     "query": "DELETE FROM role_permissions_resource_type WHERE role_id = $1;"
   },
-  "1b15d94cb3db84e91a75b6263ce3946a283cd7cad7c28624d2e9b9d5913aad1f": {
+  "1a9e7df86de0f362774513c9bd4512338e0b8671d0c048bdb79b81ac2e51277f": {
     "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "username",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "password",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "first_name",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "last_name",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "dob",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "bio",
-          "ordinal": 6,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "location",
-          "ordinal": 7,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "created",
-          "ordinal": 8,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "recovery_email_local",
-          "ordinal": 9,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "recovery_email_domain_id: _",
-          "ordinal": 10,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "recovery_phone_country_code",
-          "ordinal": 11,
-          "type_info": "Bpchar"
-        },
-        {
-          "name": "recovery_phone_number",
-          "ordinal": 12,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "workspace_limit",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "sign_up_coupon",
-          "ordinal": 14,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        true
-      ],
+      "columns": [],
+      "nullable": [],
       "parameters": {
-        "Left": [
-          "Text"
-        ]
+        "Left": []
       }
     },
-    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id WHERE CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( business_email.local, '@', domain.name, '.', domain.tld ) = $1;"
+    "query": "CREATE TABLE ci_build_machine_type ( id UUID CONSTRAINT ci_machint_type_pk PRIMARY KEY, cpu INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_cpu_positive CHECK (cpu > 0), /* Multiples of 1 vCPU */ ram INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_ram_positive CHECK (ram > 0), /* Multiples of 0.25 GB RAM */ volume INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_volume_positive CHECK (volume > 0) /* Multiples of 1 GB storage space */ );"
   },
   "1b91d51ce01a40c989017198a841c47361919562817d7f58d41e147a10bc2b2c": {
     "describe": {
@@ -1578,7 +1428,7 @@
     },
     "query": "CREATE TABLE personal_domain( id UUID CONSTRAINT personal_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT personal_domain_chk_domain_type CHECK( domain_type = 'personal' ), CONSTRAINT personal_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );"
   },
-  "1d1f568364822d8bce83a9ae1aec29a6b5a0182431b361dfcedb2f9398962724": {
+  "1dfbc5a9244e9bdb73d8cf6f502d428251ac3d331de55e96c5be1d598150e6c1": {
     "describe": {
       "columns": [
         {
@@ -1587,47 +1437,50 @@
           "type_info": "Uuid"
         },
         {
-          "name": "name!: _",
+          "name": "workspace_id: _",
           "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "repo_owner",
+          "ordinal": 2,
           "type_info": "Text"
         },
         {
-          "name": "status: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "created",
-                  "pushed",
-                  "deploying",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              },
-              "name": "deployment_status"
-            }
-          }
-        },
-        {
-          "name": "workspace_id: _",
+          "name": "repo_name",
           "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_url",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "webhook_secret",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_machine_type_id: _",
+          "ordinal": 6,
           "type_info": "Uuid"
         },
         {
-          "name": "current_live_upload: _",
-          "ordinal": 4,
-          "type_info": "Uuid"
+          "name": "active",
+          "ordinal": 7,
+          "type_info": "Bool"
         }
       ],
       "nullable": [
         false,
-        null,
         false,
         false,
-        true
+        false,
+        false,
+        false,
+        false,
+        false
       ],
       "parameters": {
         "Left": [
@@ -2043,6 +1896,120 @@
       }
     },
     "query": "SELECT * FROM phone_number_country_code WHERE country_code = $1;"
+  },
+  "25b857232c83beded795d2c91d30ed8b88b92a1ade6fbdf9a63ee62e2d1f20a6": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "repo_owner",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "repo_name",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_url",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "webhook_secret",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_machine_type_id: _",
+          "ordinal": 6,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "active",
+          "ordinal": 7,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", workspace_id as \"workspace_id: _\", repo_owner, repo_name, git_url, webhook_secret, build_machine_type_id as \"build_machine_type_id: _\", active FROM ci_repos WHERE ( workspace_id = $1 AND repo_owner = $2 AND repo_name = $3 );"
+  },
+  "25eafab4c0a9b0440ac9cdf11910ccd6be067d8ef4ed4132d555dd9e0d57f949": {
+    "describe": {
+      "columns": [
+        {
+          "name": "login_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "refresh_token",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "token_expiry",
+          "ordinal": 2,
+          "type_info": "Int8"
+        },
+        {
+          "name": "user_id: Uuid",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "last_login",
+          "ordinal": 4,
+          "type_info": "Int8"
+        },
+        {
+          "name": "last_activity",
+          "ordinal": 5,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT login_id as \"login_id: Uuid\", refresh_token, token_expiry, user_id as \"user_id: Uuid\", last_login, last_activity FROM user_login WHERE user_id = $1;"
   },
   "265d098fb12a72689196f941ca78205cdf6d8d45bfcbacbd2cc1f637da0baa4e": {
     "describe": {
@@ -2686,6 +2653,19 @@
       }
     },
     "query": "CREATE INDEX resource_idx_owner_id ON resource (owner_id);"
+  },
+  "34fbe218529ff01e7a9817d9402240637c2c5c0284a929122e0d44ecd19352f8": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE ci_repos SET build_machine_type_id = $2 WHERE id = $1;"
   },
   "353ded9cc4ab26bb0b06b1d9ae212dd16336aa261d501f393967955becb485a2": {
     "describe": {
@@ -4931,16 +4911,11 @@
       "nullable": [],
       "parameters": {
         "Left": [
-          "Uuid",
-          "Uuid",
-          "Text",
-          "Text",
-          "Text",
-          "Text"
+          "Uuid"
         ]
       }
     },
-    "query": "INSERT INTO ci_repos ( id, workspace_id, repo_owner, repo_name, git_url, webhook_secret, active ) VALUES ($1, $2, $3, $4, $5, $6, FALSE)"
+    "query": "UPDATE workspace SET address_id = NULL WHERE id = $1;"
   },
   "696bdaf6f707eea875bebce9c7b5f9ed6aee64eafcaf520113320625f71f988c": {
     "describe": {
@@ -6528,7 +6503,32 @@
     },
     "query": "CREATE TABLE static_site( id UUID CONSTRAINT static_site_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT static_site_chk_name_is_trimmed CHECK( name = TRIM(name) ), status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, CONSTRAINT static_site_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT static_site_uq_id_workspace_id UNIQUE(id, workspace_id) );"
   },
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+<<<<<<< HEAD
+  "86cde14a496c03a3a0b7cb2cb08018eac41bfa809da79ba7a17da4c71e7dd49e": {
+=======
+>>>>>>> e1334aba (Added resource limits for builds)
   "86d73705349ff13ae5a8930f91ef44e279f287ba1e8a06288c180942a1f10bee": {
+=======
+  "86da166d78d720baa27481d402b8f31a8e589c8da416d4cf8f17ef67a4e6f899": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Text",
+          "Int8"
+        ]
+      }
+    },
+    "query": "INSERT INTO docker_registry_repository_tag( repository_id, tag, manifest_digest, last_updated ) VALUES ($1, $2, $3, $4) ON CONFLICT(repository_id, tag) DO UPDATE SET manifest_digest = $3, last_updated = $4;"
+  },
+  "87584a36562fd1d96452e70a9dc877b6177a2583215abcd647b5a8c73705ea8a": {
+>>>>>>> d6482d4b... Added resource limits for builds
     "describe": {
       "columns": [
         {
@@ -6537,6 +6537,7 @@
           "type_info": "Uuid"
         },
         {
+<<<<<<< HEAD
           "name": "workspace_id: _",
           "ordinal": 1,
           "type_info": "Uuid"
@@ -6595,6 +6596,16 @@
           "Uuid",
           "Text",
           {
+=======
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 2,
+          "type_info": {
+>>>>>>> d6482d4b... Added resource limits for builds
             "Custom": {
               "kind": {
                 "Enum": [
@@ -8312,6 +8323,7 @@
     },
     "query": "SELECT upload_id as \"id: _\", message, uploaded_by as \"uploaded_by: _\", created as \"created: _\" FROM static_site_upload_history WHERE static_site_id = $1 ORDER BY created DESC LIMIT 1;"
   },
+<<<<<<< HEAD
   "ab7e5016ffdee786cea0a587a5973b9edd8e87b26e10a87bb05d4aa5153bad6e": {
     "describe": {
       "columns": [
@@ -8371,6 +8383,9 @@
     "query": "SELECT id as \"id: _\", workspace_id as \"workspace_id: _\", repo_owner, repo_name, git_url, webhook_secret, active FROM ci_repos WHERE ( workspace_id = $1 AND repo_owner = $2 AND repo_name = $3 );"
   },
   "aa89f69db4362344f8d29df3d18bc3da669f3ddf77a68cdeefd1aad1ba8b3e85": {
+=======
+  "ac016a17b868bc255b30dd49c718fce7c6c28637f5cb4f94a83c993f959627dd": {
+>>>>>>> e1334aba (Added resource limits for builds)
     "describe": {
       "columns": [
         {
@@ -8876,6 +8891,161 @@
     },
     "query": "CREATE TABLE user_controlled_domain( domain_id UUID NOT NULL CONSTRAINT user_controlled_domain_pk PRIMARY KEY, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL CONSTRAINT user_controlled_domain_chk_nameserver_type CHECK( nameserver_type = 'external' ), CONSTRAINT user_controlled_domain_fk_domain_id_nameserver_type FOREIGN KEY(domain_id, nameserver_type) REFERENCES workspace_domain(id, nameserver_type) );"
   },
+<<<<<<< HEAD
+=======
+  "b259bd9d3b4c574037250ec04ef26507b20106b04a0adfe9a8795d9e9a2e0f1e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "password",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "first_name",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "last_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "dob",
+          "ordinal": 5,
+          "type_info": "Int8"
+        },
+        {
+          "name": "bio",
+          "ordinal": 6,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "location",
+          "ordinal": 7,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created",
+          "ordinal": 8,
+          "type_info": "Int8"
+        },
+        {
+          "name": "recovery_email_local",
+          "ordinal": 9,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "recovery_email_domain_id: Uuid",
+          "ordinal": 10,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "recovery_phone_country_code",
+          "ordinal": 11,
+          "type_info": "Bpchar"
+        },
+        {
+          "name": "recovery_phone_number",
+          "ordinal": 12,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "workspace_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "sign_up_coupon",
+          "ordinal": 14,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT \"user\".id as \"id: Uuid\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: Uuid\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id WHERE CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( business_email.local, '@', domain.name, '.', domain.tld ) = $1;"
+  },
+  "b261b38f8e6b9fdf5776b9c572ef60b3f6b4b21e1aad5172f6de094dabbd87af": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "cpu",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "ram",
+          "ordinal": 2,
+          "type_info": "Int4"
+        },
+        {
+          "name": "volume",
+          "ordinal": 3,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT ci_build_machine_type.id as \"id: _\", cpu, ram, volume FROM ci_build_machine_type JOIN ci_repos ON ci_repos.build_machine_type_id = ci_build_machine_type.id WHERE ci_repos.id = $1;"
+  },
+  "b270b73cf6ba1c506757694b18dbaf4876cd6485fe4986652ef36f597167344c": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE ci_repos ( id UUID CONSTRAINT ci_repos_pk PRIMARY KEY, workspace_id UUID NOT NULL CONSTRAINT ci_repos_fk_workspace_id REFERENCES workspace(id), repo_owner TEXT NOT NULL, repo_name TEXT NOT NULL, git_url TEXT NOT NULL, webhook_secret TEXT NOT NULL CONSTRAINT ci_repos_uq_secret UNIQUE, build_machine_type_id UUID NOT NULL CONSTRAINT ci_repos_fk_build_machine_type_id REFERENCES ci_build_machine_type(id), active BOOLEAN NOT NULL, CONSTRAINT ci_repos_uq_workspace_id_git_url UNIQUE (workspace_id, git_url), CONSTRAINT ci_repos_uq_workspace_id_repo_owner_repo_name UNIQUE (workspace_id, repo_owner, repo_name) );"
+  },
+>>>>>>> e1334aba (Added resource limits for builds)
   "b27e78f8804b797ac37d45e828f0070405b23e9018b59ad40534b6fe8b853527": {
     "describe": {
       "columns": [],
@@ -8888,16 +9058,6 @@
       }
     },
     "query": "UPDATE \"user\" SET password = $1 WHERE id = $2;"
-  },
-  "b282ab2ddd5bcf6d932f2701f58f4994d1fc166fd0c7bdbac566995ebc45bcbf": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE ci_repos ( id UUID CONSTRAINT ci_repos_pk PRIMARY KEY, workspace_id UUID NOT NULL, repo_owner TEXT NOT NULL, repo_name TEXT NOT NULL, git_url TEXT NOT NULL, webhook_secret TEXT NOT NULL CONSTRAINT ci_repos_uq_secret UNIQUE, active BOOLEAN NOT NULL, CONSTRAINT ci_repos_fk_workspace_id FOREIGN KEY (workspace_id) REFERENCES workspace(id), CONSTRAINT ci_repos_uq_workspace_id_git_url UNIQUE (workspace_id, git_url), CONSTRAINT ci_repos_uq_workspace_id_repo_owner_repo_name UNIQUE (workspace_id, repo_owner, repo_name) );"
   },
   "b2b0dddb1d6ccc72898c82bdc5e6f99946bb2e03e66d5c104f879d3e03b7c18c": {
     "describe": {
@@ -10088,6 +10248,7 @@
     },
     "query": "SELECT tag, last_updated, manifest_digest FROM docker_registry_repository_tag WHERE repository_id = $1 AND tag = $2;"
   },
+<<<<<<< HEAD
   "d3d08674a34b872f9407cd28eeda8b305024f133dd62536f51dc7618e35738b6": {
     "describe": {
       "columns": [],
@@ -10099,6 +10260,214 @@
     "query": "CREATE TABLE docker_registry_repository_manifest( repository_id UUID NOT NULL CONSTRAINT docker_registry_repository_manifest_fk_repository_id REFERENCES docker_registry_repository(id), manifest_digest TEXT NOT NULL, size BIGINT NOT NULL CONSTRAINT docker_registry_repository_manifest_chk_size_unsigned CHECK(size >= 0), created TIMESTAMPTZ NOT NULL, CONSTRAINT docker_registry_repository_manifest_pk PRIMARY KEY( repository_id, manifest_digest ) );"
   },
   "d3dd14301e39841c7027251c66667c349f284f0ab47a38a38d0001c52391593e": {
+=======
+<<<<<<< HEAD
+  "d513b0c8950ab92cb26b919d4611b976d25c5a4c7ff14db6bee61cf348d58704": {
+=======
+  "d2ed38b9eb044df797a412359876da4f75ef191b04b0dcd3fa7ae0adc2afebb2": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "registry",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "repository_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "image_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "image_tag",
+          "ordinal": 5,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 6,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              },
+              "name": "deployment_status"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 7,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "region: _",
+          "ordinal": 8,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "min_horizontal_scale",
+          "ordinal": 9,
+          "type_info": "Int2"
+        },
+        {
+          "name": "max_horizontal_scale",
+          "ordinal": 10,
+          "type_info": "Int2"
+        },
+        {
+          "name": "machine_type: _",
+          "ordinal": 11,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "deploy_on_push",
+          "ordinal": 12,
+          "type_info": "Bool"
+        },
+        {
+          "name": "startup_probe_port",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "startup_probe_path",
+          "ordinal": 14,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "liveness_probe_port",
+          "ordinal": 15,
+          "type_info": "Int4"
+        },
+        {
+          "name": "liveness_probe_path",
+          "ordinal": 16,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          },
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT deployment.id as \"id: _\", deployment.name::TEXT as \"name!: _\", deployment.registry, deployment.repository_id as \"repository_id: _\", deployment.image_name, deployment.image_tag, deployment.status as \"status: _\", deployment.workspace_id as \"workspace_id: _\", deployment.region as \"region: _\", deployment.min_horizontal_scale, deployment.max_horizontal_scale, deployment.machine_type as \"machine_type: _\", deployment.deploy_on_push, deployment.startup_probe_port, deployment.startup_probe_path, deployment.liveness_probe_port, deployment.liveness_probe_path FROM deployment LEFT JOIN docker_registry_repository ON docker_registry_repository.id = deployment.repository_id WHERE ( ( deployment.registry = 'registry.patr.cloud' AND docker_registry_repository.name = $1 ) OR ( deployment.registry != 'registry.patr.cloud' AND deployment.image_name = $1 ) ) AND deployment.image_tag = $2 AND deployment.workspace_id = $3 AND deployment.status != 'deleted';"
+  },
+  "d31487464d995247996311873f8ae1745a1941d29156b38bdee6d77f5957a8dd": {
+>>>>>>> d6482d4b... Added resource limits for builds
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "repo_owner",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "repo_name",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_url",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "webhook_secret",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_machine_type_id: _",
+          "ordinal": 6,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "active",
+          "ordinal": 7,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", workspace_id as \"workspace_id: _\", repo_owner, repo_name, git_url, webhook_secret, build_machine_type_id as \"build_machine_type_id: _\", active FROM ci_repos WHERE (workspace_id = $1 AND git_url = $2);"
+  },
+  "d513b0c8950ab92cb26b919d4611b976d25c5a4c7ff14db6bee61cf348d58704": {
+>>>>>>> e1334aba (Added resource limits for builds)
     "describe": {
       "columns": [
         {
@@ -10203,75 +10572,20 @@
     },
     "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" INNER JOIN user_phone_number ON \"user\".id = user_phone_number.user_id WHERE user_phone_number.country_code = $1 AND user_phone_number.number = $2;"
   },
-  "d59e41ec097c83794553cb428306ca0d2f269fd4f8ba00ac375632ad3217ff98": {
+  "d554e0cdaefed7bec784a16adfa3a7e2e844251ddab8d60a00e481b7adc938d9": {
     "describe": {
-      "columns": [
-        {
-          "name": "name!",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "id: _",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "domain_type: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              },
-              "name": "resource_owner_type"
-            }
-          }
-        },
-        {
-          "name": "is_verified",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "nameserver_type: _",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "internal",
-                  "external"
-                ]
-              },
-              "name": "domain_nameserver_type"
-            }
-          }
-        },
-        {
-          "name": "last_unverified!: _",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        null,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
+      "columns": [],
+      "nullable": [],
       "parameters": {
         "Left": [
-          "Uuid"
+          "Uuid",
+          "Int4",
+          "Int4",
+          "Int4"
         ]
       }
     },
-    "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id: _\", workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.nameserver_type as \"nameserver_type: _\", workspace_domain.last_unverified as \"last_unverified!: _\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE domain.id = $1 AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
+    "query": "INSERT INTO ci_build_machine_type( id, cpu, ram, volume ) VALUES ($1, $2, $3, $4);"
   },
   "d613849146adeb62cd527df8c3c9242264d98e259532580f2f45390033c19d8d": {
     "describe": {
@@ -10346,6 +10660,24 @@
       }
     },
     "query": "INSERT INTO ci_builds (repo_id, build_num, git_ref, git_commit, status, created) VALUES ( $1, 1 + (SELECT COUNT(*) FROM ci_builds WHERE repo_id = $1), $2, $3, $4, $5 ) RETURNING build_num;"
+  },
+  "d73505bd363326202fa4428066db9db9988c3f159391520a3003c72589a827f6": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Text",
+          "Text",
+          "Text",
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO ci_repos ( id, workspace_id, repo_owner, repo_name, git_url, webhook_secret, build_machine_type_id, active ) VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE)"
   },
   "d7547e8a9cba4b11e5c2cc4558ea436d609f0c4cdf65c06c70cf4f300e2dafce": {
     "describe": {
@@ -11404,6 +11736,202 @@
     },
     "query": "CREATE INDEX personal_email_idx_user_id ON personal_email (user_id);"
   },
+<<<<<<< HEAD
+=======
+  "e934601fa96a2c3f826cf875a5905117625a8ae4d138a200e4089047ce7f4a71": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "repo_owner",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "repo_name",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_url",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "webhook_secret",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_machine_type_id: _",
+          "ordinal": 6,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "active",
+          "ordinal": 7,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", workspace_id as \"workspace_id: _\", repo_owner, repo_name, git_url, webhook_secret, build_machine_type_id as \"build_machine_type_id: _\", active FROM ci_repos WHERE git_url = $1;"
+  },
+  "e948b2cbf9093751a9b27ad5444df59d690b0284a247b1920802fc84bde2c67a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "registry",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "repository_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "image_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "image_tag",
+          "ordinal": 5,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 6,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              },
+              "name": "deployment_status"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 7,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "region: _",
+          "ordinal": 8,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "min_horizontal_scale",
+          "ordinal": 9,
+          "type_info": "Int2"
+        },
+        {
+          "name": "max_horizontal_scale",
+          "ordinal": 10,
+          "type_info": "Int2"
+        },
+        {
+          "name": "machine_type: _",
+          "ordinal": 11,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "deploy_on_push",
+          "ordinal": 12,
+          "type_info": "Bool"
+        },
+        {
+          "name": "startup_probe_port",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "startup_probe_path",
+          "ordinal": 14,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "liveness_probe_port",
+          "ordinal": 15,
+          "type_info": "Int4"
+        },
+        {
+          "name": "liveness_probe_path",
+          "ordinal": 16,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path FROM deployment WHERE repository_id = $1 AND status != 'deleted';"
+  },
+>>>>>>> d6482d4b... Added resource limits for builds
   "e948ebf3407d3fb2268e95006f05ce37bfc95fa4ae4af5378b51d2d831df30b1": {
     "describe": {
       "columns": [],
