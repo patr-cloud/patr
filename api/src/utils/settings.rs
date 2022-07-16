@@ -75,6 +75,7 @@ pub struct Settings {
 	pub mimir: MimirSettings,
 	#[serde(alias = "ipquality")]
 	pub ip_quality: IpQualityScoreSettings,
+	pub recaptcha: RecaptchaSettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -296,4 +297,13 @@ pub struct MimirSettings {
 pub struct IpQualityScoreSettings {
 	pub host: String,
 	pub token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecaptchaSettings {
+	#[serde(alias = "secretkey")]
+	pub secret_key: String,
+	#[serde(alias = "sitekey")]
+	pub site_key: String,
 }

@@ -108,5 +108,9 @@
 	"ipQuality": {
 		"host": "<ip-quality-score-host>",
 		"token": "<api-token>"
+	},
+	"recaptcha": {
+		"siteKey": "site-key",
+		"secretKey": "secret-key"
 	}
 }
