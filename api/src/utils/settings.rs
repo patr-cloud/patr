@@ -67,6 +67,7 @@ pub struct Settings {
 	pub github: GithubSettings,
 	pub drone: DroneSettings,
 	pub stripe: StripeSettings,
+	pub recaptcha: RecaptchaSettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -282,4 +283,13 @@ pub struct StripeSettings {
 	pub secret_key: String,
 	#[serde(alias = "publishablekey")]
 	pub publishable_key: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecaptchaSettings {
+	#[serde(alias = "secretkey")]
+	pub secret_key: String,
+	#[serde(alias = "sitekey")]
+	pub site_key: String,
 }

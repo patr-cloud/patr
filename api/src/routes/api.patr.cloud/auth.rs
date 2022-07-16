@@ -50,6 +50,10 @@ pub fn create_sub_app(
 		[EveMiddleware::CustomFunction(pin_fn!(sign_in))],
 	);
 	app.post(
+		"/verify-recaptcha",
+		[EveMiddleware::CustomFunction(pin_fn!(verify_recaptcha))],
+	);
+	app.post(
 		"/sign-up",
 		[EveMiddleware::CustomFunction(pin_fn!(sign_up))],
 	);
@@ -181,6 +185,41 @@ async fn sign_in(
 		login_id,
 		refresh_token,
 	});
+	Ok(context)
+}
+
+// Verify recaptcha response
+async fn verify_recaptcha(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let VerifyRecaptchaRequest { token } = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let site_secret = context.get_state().config.recaptcha.secret_key.clone();
+
+	let url = format!(
+		"https://www.google.com/recaptcha/api/siteverify?secret={}&response={}",
+		site_secret, token
+	);
+
+	let RecaptchaResponse { success } = reqwest::Client::new()
+		.get(url)
+		.send()
+		.await?
+		.json::<RecaptchaResponse>()
+		.await?;
+
+	if !success {
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string());
+	}
+
+	context.success(VerifyRecaptchaResponse {});
+
 	Ok(context)
 }
 
