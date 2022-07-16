@@ -1299,7 +1299,7 @@
         true,
         true,
         true,
-        true
+        false
       ],
       "parameters": {
         "Left": []
@@ -2590,7 +2590,7 @@
         true,
         true,
         true,
-        true
+        false
       ],
       "parameters": {
         "Left": []
@@ -6943,6 +6943,16 @@
     },
     "query": "DELETE FROM password_reset_request WHERE user_id = $1;"
   },
+  "a8688bba56bf919a5196740c13a1ef1e2637281c3da4d2ffed0cf1264fd7ee54": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE coupon_code( code TEXT CONSTRAINT coupon_code_pk PRIMARY KEY, credits INTEGER NOT NULL CONSTRAINT coupon_code_chk_credits_positive CHECK(credits >= 0), expiry TIMESTAMPTZ, uses_remaining INTEGER CONSTRAINT coupon_code_chk_uses_remaining_positive CHECK( uses_remaining IS NULL OR uses_remaining > 0 ) );"
+  },
   "a96073b72c29dee2028e0e62e6896f294cd6e6aae843c2de17db78b35b7a3a6c": {
     "describe": {
       "columns": [],
@@ -8962,16 +8972,6 @@
       }
     },
     "query": "SELECT deployment.id as \"id: _\", deployment.name::TEXT as \"name!: _\", deployment.registry, deployment.repository_id as \"repository_id: _\", deployment.image_name, deployment.image_tag, deployment.status as \"status: _\", deployment.workspace_id as \"workspace_id: _\", deployment.region as \"region: _\", deployment.min_horizontal_scale, deployment.max_horizontal_scale, deployment.machine_type as \"machine_type: _\", deployment.deploy_on_push, deployment.startup_probe_port, deployment.startup_probe_path, deployment.liveness_probe_port, deployment.liveness_probe_path FROM deployment LEFT JOIN docker_registry_repository ON docker_registry_repository.id = deployment.repository_id WHERE ( ( deployment.registry = 'registry.patr.cloud' AND docker_registry_repository.name = $1 ) OR ( deployment.registry != 'registry.patr.cloud' AND deployment.image_name = $1 ) ) AND deployment.image_tag = $2 AND deployment.workspace_id = $3 AND deployment.status != 'deleted';"
-  },
-  "d4a1a91c3da6d8197fb8ffdcbca71d6452eb3ef147ca9bf8dc45797324bef3d2": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE coupon_code( code TEXT CONSTRAINT coupon_code_pk PRIMARY KEY, credits INTEGER NOT NULL CONSTRAINT coupon_code_chk_credits_positive CHECK(credits > 0), expiry TIMESTAMPTZ, uses_remaining INTEGER CONSTRAINT coupon_code_chk_uses_remaining_positive CHECK( uses_remaining IS NULL OR uses_remaining > 0 ) );"
   },
   "d513b0c8950ab92cb26b919d4611b976d25c5a4c7ff14db6bee61cf348d58704": {
     "describe": {
