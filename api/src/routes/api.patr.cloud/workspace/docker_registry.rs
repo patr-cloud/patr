@@ -7,6 +7,8 @@ use api_models::{
 		DeleteDockerRepositoryResponse,
 		DockerRepository,
 		DockerRepositoryTagAndDigestInfo,
+		GetDockerRepositoryExposedPortRequest,
+		GetDockerRepositoryExposedPortResponse,
 		GetDockerRepositoryImageDetailsResponse,
 		GetDockerRepositoryInfoResponse,
 		GetDockerRepositoryTagDetailsResponse,
@@ -16,6 +18,8 @@ use api_models::{
 	utils::Uuid,
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use http::header::ACCEPT;
+use serde_json::Value;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -26,6 +30,7 @@ use crate::{
 	service,
 	utils::{
 		constants::request_keys,
+		get_current_time,
 		get_current_time_millis,
 		validator,
 		Error,
@@ -154,6 +159,48 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(get_docker_repository_info)),
+		],
+	);
+
+	// Get exposed port
+	app.get(
+		"/:repositoryId/exposed-port",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::docker_registry::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let repository_id_string =
+						context.get_param(request_keys::REPOSITORY_ID).unwrap();
+					let repository_id = Uuid::parse_str(repository_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&repository_id,
+					)
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
+					println!("resource2");
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+					println!("resource2");
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(
+				get_repository_image_exposed_port
+			)),
 		],
 	);
 
@@ -680,6 +727,88 @@ async fn get_repository_image_details(
 		request_id
 	);
 	context.success(GetDockerRepositoryImageDetailsResponse { image, tags });
+	Ok(context)
+}
+
+async fn get_repository_image_exposed_port(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let config = context.get_state().config.to_owned();
+	let repository_id = Uuid::parse_str(
+		context.get_param(request_keys::REPOSITORY_ID).unwrap(),
+	)
+	.unwrap();
+	let GetDockerRepositoryExposedPortRequest { tag, .. } = context
+		.get_query_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let _repository = db::get_docker_repository_by_id(
+		context.get_database_connection(),
+		&repository_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let god_user = db::get_user_by_user_id(
+		context.get_database_connection(),
+		rbac::GOD_USER_ID.get().unwrap(),
+	)
+	.await?
+	.unwrap();
+
+	let iat = get_current_time().as_secs();
+	let response = reqwest::Client::new()
+		.get(format!(
+			"{}/v2/{}/manifests/{}",
+			// if config.docker_registry.registry_url.starts_with("localhost")
+			// { 	"http"
+			// } else {
+			// 	"https"
+			// },
+			// "http",
+			// "localhost:5000",
+			config.docker_registry.registry_url,
+			// repository.name,
+			"testimage",
+			tag
+		))
+		.header(ACCEPT, "application/json")
+		// .bearer_auth(
+		// 	RegistryToken::new(
+		// 		config.docker_registry.issuer.clone(),
+		// 		iat,
+		// 		god_user.username.clone(),
+		// 		&config,
+		// 		vec![RegistryTokenAccess {
+		// 			r#type: "repository".to_string(),
+		// 			name: repository.name.clone(),
+		// 			actions: vec!["repository".to_string()],
+		// 		}],
+		// 	)
+		// 	.to_string(
+		// 		config.docker_registry.private_key.as_ref(),
+		// 		config.docker_registry.public_key_der.as_ref(),
+		// 	)?,
+		// )
+		.send()
+		.await?
+		.text()
+		.await?;
+
+	let history: Value = serde_json::from_str(&response)?;
+	let history = history["history"].as_array().unwrap();
+	let latest = history[0]["v1Compatibility"].as_str().unwrap();
+	let body: Value = serde_json::from_str(latest)?;
+	let ports = body["config"]["ExposedPorts"].as_object().unwrap();
+	let key = ports.keys().next().unwrap();
+	println!("{:#?}", key);
+
+	context.success(GetDockerRepositoryExposedPortResponse {
+		port: Some(key.to_owned()),
+	});
 	Ok(context)
 }
 
