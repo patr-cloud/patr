@@ -560,6 +560,31 @@ pub async fn get_list_of_digests_for_docker_repository(
 	Ok(rows)
 }
 
+pub async fn get_latest_digest_for_docker_repository(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &Uuid,
+) -> Result<Option<String>, sqlx::Error> {
+	let digest = query!(
+		r#"
+		SELECT
+			manifest_digest
+		FROM
+			docker_registry_repository_manifest
+		WHERE
+			repository_id = $1
+		ORDER BY
+			created DESC
+		LIMIT 1;
+		"#,
+		repository_id as _
+	)
+	.fetch_optional(&mut *connection)
+	.await?
+	.map(|row| row.manifest_digest);
+
+	Ok(digest)
+}
+
 pub async fn delete_all_tags_for_docker_repository(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repository_id: &Uuid,

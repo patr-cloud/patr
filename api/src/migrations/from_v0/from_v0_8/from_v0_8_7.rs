@@ -33,7 +33,7 @@ use sqlx::Row;
 
 use crate::{
 	migrate_query as query,
-	utils::{settings::Settings, Error},
+	utils::{get_current_time_millis, settings::Settings, Error},
 	Database,
 };
 
@@ -50,6 +50,8 @@ pub(super) async fn migrate(
 	)
 	.await?;
 	add_last_unverified_column_to_workspace_domain(connection, config).await?;
+	add_table_deployment_image_digest(&mut *connection, config).await?;
+	populate_deployment_deploy_history(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -510,6 +512,101 @@ async fn add_last_unverified_column_to_workspace_domain(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	Ok(())
+}
+
+async fn add_table_deployment_image_digest(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		CREATE TABLE deployment_deploy_history(
+			deployment_id UUID NOT NULL
+				CONSTRAINT deployment_image_digest_fk_deployment_id
+					REFERENCES deployment(id),
+			image_digest TEXT NOT NULL,
+			repository_id UUID NOT NULL
+				CONSTRAINT deployment_image_digest_fk_repository_id
+					REFERENCES docker_registry_repository(id),
+			created TIMESTAMPTZ NOT NULL,
+			CONSTRAINT deployment_image_digest_pk
+				PRIMARY KEY(deployment_id, image_digest)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn populate_deployment_deploy_history(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	let deployments = query!(
+		r#"
+		SELECT
+			id,
+			repository_id,
+			image_tag
+		FROM
+			deployment
+		WHERE
+			status != 'deleted';
+		"#,
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| {
+		(
+			row.get::<Uuid, _>("id"),
+			row.get::<Uuid, _>("repository_id"),
+			row.get::<String, _>("image_tag"),
+		)
+	});
+
+	for (deployment_id, repository_id, image_tag) in deployments {
+		let manifest_digest = query!(
+			r#"
+			SELECT
+				manifest_digest
+			FROM
+				docker_repository_tag
+			WHERE
+				repository_id = $1 AND
+				tag = $2;
+			"#,
+			repository_id.clone(),
+			image_tag
+		)
+		.fetch_one(&mut *connection)
+		.await?
+		.get::<String, _>("manifest_digest");
+
+		query!(
+			r#"
+			INSERT INTO
+				deployment_deploy_history(
+					deployment_id,
+					image_digest,
+					repository_id,
+					created
+				)
+			VALUES
+				($1, $2, $3, $5);
+			"#,
+			deployment_id,
+			manifest_digest,
+			repository_id,
+			get_current_time_millis() as i64
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
 
 	Ok(())
 }

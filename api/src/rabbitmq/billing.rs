@@ -258,9 +258,9 @@ pub(super) async fn process_request(
 				.await?;
 
 				service::queue_confirm_payment_intent(
-					config,
+					&workspace.id,
 					payment_intent_object.id,
-					workspace.id.clone(),
+					config,
 				)
 				.await?;
 			} else {

@@ -331,16 +331,16 @@ pub async fn queue_process_payment(
 }
 
 pub async fn queue_confirm_payment_intent(
-	config: &Settings,
+	workspace_id: &Uuid,
 	payment_intent_id: String,
-	workspace_id: Uuid,
+	config: &Settings,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	send_message_to_rabbit_mq(
 		&RequestMessage::Workspace(
 			WorkspaceRequestData::ConfirmPaymentIntent {
 				payment_intent_id,
-				workspace_id,
+				workspace_id: workspace_id.clone(),
 				request_id: request_id.clone(),
 			},
 		),
