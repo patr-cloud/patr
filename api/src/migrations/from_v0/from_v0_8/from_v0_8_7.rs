@@ -494,7 +494,18 @@ async fn add_last_unverified_column_to_workspace_domain(
 	query!(
 		r#"
 		ALTER TABLE workspace_domain
-		ADD COLUMN last_unverified TIMESTAMPTZ NOT NULL;
+		ADD COLUMN last_unverified TIMESTAMPTZ NOT NULL
+		DEFAULT NOW();
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Remove default value
+	query!(
+		r#"
+		ALTER TABLE workspace_domain
+		ALTER COLUMN last_unverified DROP DEFAULT;
 		"#
 	)
 	.execute(&mut *connection)

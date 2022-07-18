@@ -462,5 +462,6 @@ pub(super) async fn migrate(
 	)
 	.execute(&mut *connection)
 	.await?;
+
 	Ok(())
 }
