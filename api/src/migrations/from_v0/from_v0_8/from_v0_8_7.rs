@@ -49,6 +49,7 @@ pub(super) async fn migrate(
 		config,
 	)
 	.await?;
+	add_last_unverified_column_to_workspace_domain(connection, config).await?;
 
 	Ok(())
 }
@@ -478,6 +479,33 @@ async fn rename_all_deployment_static_site_to_just_static_site(
 		ALTER TABLE static_site
 		RENAME CONSTRAINT deployment_static_site_fk_id_workspace_id
 		TO static_site_fk_id_workspace_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn add_last_unverified_column_to_workspace_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE workspace_domain
+		ADD COLUMN last_unverified TIMESTAMPTZ NOT NULL
+		DEFAULT NOW();
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Remove default value
+	query!(
+		r#"
+		ALTER TABLE workspace_domain
+		ALTER COLUMN last_unverified DROP DEFAULT;
 		"#
 	)
 	.execute(&mut *connection)

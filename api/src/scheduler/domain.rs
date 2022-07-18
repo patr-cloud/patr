@@ -5,6 +5,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use chrono::Utc;
 use cloudflare::{
 	endpoints::zone::{self, Status},
 	framework::async_api::ApiClient,
@@ -134,55 +135,112 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					identifier: &zone_identifier,
 				})
 				.await?;
-
 			if let Status::Active = response.result.status {
-				// Create certs below
+				service::create_certificates(
+					&workspace_id,
+					&format!("certificate-{}", unverified_domain.id),
+					&format!("tls-{}", unverified_domain.id),
+					vec![
+						format!("*.{}", unverified_domain.name),
+						unverified_domain.name.clone(),
+					],
+					true,
+					&settings,
+					&request_id,
+				)
+				.await?;
+
+				// Domain is now verified
+				db::update_workspace_domain_status(
+					&mut connection,
+					&unverified_domain.id,
+					true,
+					Utc::now(),
+				)
+				.await?;
+				let notification_email = db::get_notification_email_for_domain(
+					&mut connection,
+					&unverified_domain.id,
+				)
+				.await?;
+				if notification_email.is_none() {
+					log::error!(
+						"Notification email for domain `{}` is None. {}",
+						unverified_domain.name,
+						"You might have a dangling resource for the domain"
+					);
+				} else {
+					// TODO change this to notifier
+					// mailer::send_domain_verified_mail(
+					// 	config.config.clone(),
+					// 	notification_email.unwrap(),
+					// 	unverified_domain.name,
+					// );
+				}
+
+				connection.commit().await?;
 			} else {
-				continue;
+				let last_unverified = Utc::now()
+					.signed_duration_since(unverified_domain.last_unverified);
+				let last_unverified_days = last_unverified.num_days();
+				if last_unverified_days > 7 {
+					// Delete all managed url before deleting the domain
+					let managed_urls = db::get_all_managed_urls_for_domain(
+						&mut connection,
+						&unverified_domain.id,
+					)
+					.await?;
+					for managed_url in managed_urls {
+						service::delete_managed_url(
+							&mut connection,
+							&workspace_id,
+							&managed_url.id,
+							&settings,
+							&request_id,
+						)
+						.await?;
+					}
+
+					// Delete all the dns record before deleting the domain
+					let dns_records = db::get_dns_records_by_domain_id(
+						&mut connection,
+						&unverified_domain.id,
+					)
+					.await?;
+					for dns_record in dns_records {
+						service::delete_patr_domain_dns_record(
+							&mut connection,
+							&unverified_domain.id,
+							&dns_record.id,
+							&settings,
+							&request_id,
+						)
+						.await?;
+					}
+					// Delete the domain
+					service::delete_domain_in_workspace(
+						&mut connection,
+						&workspace_id,
+						&unverified_domain.id,
+						&settings,
+						&request_id,
+					)
+					.await?;
+					// Delete the certificate for the domain
+					service::delete_certificates_for_domain(
+						&workspace_id,
+						&format!("certificate-{}", unverified_domain.id),
+						&format!("tls-{}", unverified_domain.id),
+						&settings,
+						&request_id,
+					)
+					.await?;
+
+					connection.commit().await?;
+				} else {
+					continue;
+				}
 			}
-
-			service::create_certificates(
-				&workspace_id,
-				&format!("certificate-{}", unverified_domain.id),
-				&format!("tls-{}", unverified_domain.id),
-				vec![
-					format!("*.{}", unverified_domain.name),
-					unverified_domain.name.clone(),
-				],
-				true,
-				&settings,
-				&request_id,
-			)
-			.await?;
-
-			// Domain is now verified
-			db::update_workspace_domain_status(
-				&mut connection,
-				&unverified_domain.id,
-				true,
-			)
-			.await?;
-			let notification_email = db::get_notification_email_for_domain(
-				&mut connection,
-				&unverified_domain.id,
-			)
-			.await?;
-			if notification_email.is_none() {
-				log::error!(
-					"Notification email for domain `{}` is None. {}",
-					unverified_domain.name,
-					"You might have a dangling resource for the domain"
-				);
-			} else {
-				// TODO change this to notifier
-				// mailer::send_domain_verified_mail(
-				// 	config.config.clone(),
-				// 	notification_email.unwrap(),
-				// 	unverified_domain.name,
-				// );
-			}
-
-			connection.commit().await?;
 		} else {
 			let response = service::verify_external_domain(
 				&mut connection,
@@ -199,6 +257,40 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					"Could not verify domain `{}`",
 					unverified_domain.name
 				);
+
+				let last_unverified = Utc::now()
+					.signed_duration_since(unverified_domain.last_unverified);
+				let last_unverified_days = last_unverified.num_days();
+
+				if last_unverified_days > 7 {
+					// Delete all managed url before deleting the domain
+					let managed_urls = db::get_all_managed_urls_for_domain(
+						&mut connection,
+						&unverified_domain.id,
+					)
+					.await?;
+					for managed_url in managed_urls {
+						service::delete_managed_url(
+							&mut connection,
+							&workspace_id,
+							&managed_url.id,
+							&settings,
+							&request_id,
+						)
+						.await?;
+					}
+
+					// Delete the domain
+					service::delete_domain_in_workspace(
+						&mut connection,
+						&workspace_id,
+						&unverified_domain.id,
+						&settings,
+						&request_id,
+					)
+					.await?;
+				}
+				connection.commit().await?;
 			}
 		}
 	}
@@ -294,8 +386,10 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 			&mut connection,
 			&verified_domain.id,
 			false,
+			Utc::now(),
 		)
 		.await?;
+
 		let notification_email = db::get_notification_email_for_domain(
 			&mut connection,
 			&verified_domain.id,

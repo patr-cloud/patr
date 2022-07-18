@@ -214,8 +214,13 @@ pub async fn add_domain_to_workspace(
 	.await?;
 
 	log::trace!("request_id: {} - Adding domain to workspace", request_id);
-	db::add_to_workspace_domain(connection, &domain_id, nameserver_type)
-		.await?;
+	db::add_to_workspace_domain(
+		connection,
+		&domain_id,
+		nameserver_type,
+		Utc::now(),
+	)
+	.await?;
 
 	let domain_plan =
 		match db::get_domains_for_workspace(connection, workspace_id)
@@ -342,8 +347,13 @@ pub async fn is_domain_verified(
 				"request_id: {} - Updating domain verification status",
 				request_id
 			);
-			db::update_workspace_domain_status(connection, domain_id, true)
-				.await?;
+			db::update_workspace_domain_status(
+				connection,
+				domain_id,
+				true,
+				Utc::now(),
+			)
+			.await?;
 
 			log::trace!("request_id: {} - Creating wild card certiifcate for internal domain", request_id);
 			infrastructure::create_certificates(
@@ -728,7 +738,13 @@ pub async fn verify_external_domain(
 		.await?;
 
 		log::trace!("request_id: {} - Verified the domain and updating workspace domain status", request_id);
-		db::update_workspace_domain_status(connection, domain_id, true).await?;
+		db::update_workspace_domain_status(
+			connection,
+			domain_id,
+			true,
+			Utc::now(),
+		)
+		.await?;
 
 		return Ok(true);
 	}
@@ -763,7 +779,13 @@ pub async fn delete_domain_in_workspace(
 		"request_id: {} - Updating the domain name in the db",
 		request_id
 	);
-	db::update_workspace_domain_status(connection, &domain.id, false).await?;
+	db::update_workspace_domain_status(
+		connection,
+		&domain.id,
+		false,
+		Utc::now(),
+	)
+	.await?;
 	db::update_generic_domain_name(
 		connection,
 		&domain.id,

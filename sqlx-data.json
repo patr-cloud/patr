@@ -20,6 +20,76 @@
     },
     "query": "CREATE TABLE IF NOT EXISTS transaction( id UUID CONSTRAINT transaction_pk PRIMARY KEY, month INTEGER NOT NULL, amount DOUBLE PRECISION NOT NULL, payment_intent_id TEXT, date TIMESTAMPTZ NOT NULL, workspace_id UUID NOT NULL, transaction_type TRANSACTION_TYPE NOT NULL, payment_status PAYMENT_STATUS NOT NULL CONSTRAINT transaction_payment_status_check CHECK ( ( payment_status = 'success' AND transaction_type = 'bill' ) OR ( transaction_type != 'bill' ) ), description TEXT CONSTRAINT transaction_description_check CHECK ( ( transaction_type = 'credits' AND description IS NOT NULL ) OR ( transaction_type != 'credits' ) ) );"
   },
+  "00e94ea7eac693fcf22a16ed0591a9f089ef238deca8a5ae0a1eb0ffb9de9d95": {
+    "describe": {
+      "columns": [
+        {
+          "name": "name!",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "domain_type: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              },
+              "name": "resource_owner_type"
+            }
+          }
+        },
+        {
+          "name": "is_verified",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "nameserver_type: _",
+          "ordinal": 4,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "internal",
+                  "external"
+                ]
+              },
+              "name": "domain_nameserver_type"
+            }
+          }
+        },
+        {
+          "name": "last_unverified!",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        null,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id: _\", workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.nameserver_type as \"nameserver_type: _\", workspace_domain.last_unverified as \"last_unverified!\" FROM domain INNER JOIN workspace_domain ON workspace_domain.id = domain.id INNER JOIN resource ON domain.id = resource.id WHERE resource.owner_id = $1 AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
+  },
   "014218cb95e441c6cd559825f5ed01df173088d2fb86e4220e77976fd1b045dd": {
     "describe": {
       "columns": [],
@@ -428,6 +498,20 @@
       }
     },
     "query": "INSERT INTO password_reset_request( user_id, token, token_expiry ) VALUES ($1, $2, $3) ON CONFLICT(user_id) DO UPDATE SET token = EXCLUDED.token, token_expiry = EXCLUDED.token_expiry;"
+  },
+  "0da430e7bc5b6777be3936dd832e5c0119e21fd0508f47ac291c4f2f51cc10f2": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Bool",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "UPDATE workspace_domain SET is_verified = $2, last_unverified = $3 WHERE id = $1;"
   },
   "117cf2f33ceb30129812a98389512975c4e4be5a736a0b28e7ee38c77330eae1": {
     "describe": {
@@ -1238,74 +1322,6 @@
       }
     },
     "query": "SELECT tag, last_updated FROM docker_registry_repository_tag WHERE repository_id = $1 AND manifest_digest = $2;"
-  },
-  "1bb5d7f76d7fe36ec6bf5b12742e8b3b1112b350979bff98a46bb84c2add992f": {
-    "describe": {
-      "columns": [
-        {
-          "name": "name!",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "id!: Uuid",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "domain_type!: ResourceType",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              },
-              "name": "resource_owner_type"
-            }
-          }
-        },
-        {
-          "name": "is_verified!",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "nameserver_type!: DomainNameserverType",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "internal",
-                  "external"
-                ]
-              },
-              "name": "domain_nameserver_type"
-            }
-          }
-        },
-        {
-          "name": "zone_identifier?",
-          "ordinal": 5,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        null,
-        true,
-        true,
-        true,
-        true,
-        false
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id!: Uuid\", workspace_domain.domain_type as \"domain_type!: ResourceType\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: DomainNameserverType\", patr_controlled_domain.zone_identifier as \"zone_identifier?\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id LEFT JOIN patr_controlled_domain ON patr_controlled_domain.domain_id = workspace_domain.id WHERE is_verified = TRUE AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
   },
   "1c258cdf5e4f891a42018dbd6a99ad7cae3698e386c38415a5823d07d48ace98": {
     "describe": {
@@ -2529,87 +2545,6 @@
       }
     },
     "query": "CREATE TABLE deployment_exposed_port( deployment_id UUID NOT NULL CONSTRAINT deployment_exposed_port_fk_deployment_id REFERENCES deployment(id), port INTEGER NOT NULL CONSTRAINT deployment_exposed_port_chk_port_u16 CHECK( port > 0 AND port <= 65535 ), port_type EXPOSED_PORT_TYPE NOT NULL, CONSTRAINT deployment_exposed_port_pk PRIMARY KEY(deployment_id, port), CONSTRAINT deployment_exposed_port_uq_deployment_id_port_port_type UNIQUE(deployment_id, port, port_type) );"
-  },
-  "3f67392b96b39a7df360ad4b54de8a56a5f12c1f6f17534917236072eb283680": {
-    "describe": {
-      "columns": [
-        {
-          "name": "name!",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "id!: Uuid",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "domain_type!: ResourceType",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              },
-              "name": "resource_owner_type"
-            }
-          }
-        },
-        {
-          "name": "is_verified!",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "nameserver_type!: DomainNameserverType",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "internal",
-                  "external"
-                ]
-              },
-              "name": "domain_nameserver_type"
-            }
-          }
-        },
-        {
-          "name": "zone_identifier?",
-          "ordinal": 5,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        null,
-        true,
-        true,
-        true,
-        true,
-        false
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id!: Uuid\", workspace_domain.domain_type as \"domain_type!: ResourceType\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: DomainNameserverType\", patr_controlled_domain.zone_identifier as \"zone_identifier?\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id LEFT JOIN patr_controlled_domain ON patr_controlled_domain.domain_id = workspace_domain.id WHERE is_verified = FALSE AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
-  },
-  "42a3e7e04f5b80211c82b6485eb7359d5b03fd8b3378f14537f349ce5a2d5508": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Bool"
-        ]
-      }
-    },
-    "query": "UPDATE workspace_domain SET is_verified = $2 WHERE id = $1;"
   },
   "4357441a58d66b47fffabe8c10fa5ddedbe067c22d5c59d00cb492be40abc1a8": {
     "describe": {
@@ -3855,6 +3790,80 @@
     },
     "query": "CREATE TABLE IF NOT EXISTS payment_method( payment_method_id TEXT CONSTRAINT payment_method_pk PRIMARY KEY, workspace_id UUID NOT NULL );"
   },
+  "5c84574cad76ff198efeefbf0c39672e9321303784575e158c2cd68fe36aaa3c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "name!",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "id!: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "domain_type!: ResourceType",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              },
+              "name": "resource_owner_type"
+            }
+          }
+        },
+        {
+          "name": "is_verified!",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "nameserver_type!: DomainNameserverType",
+          "ordinal": 4,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "internal",
+                  "external"
+                ]
+              },
+              "name": "domain_nameserver_type"
+            }
+          }
+        },
+        {
+          "name": "last_unverified!",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "zone_identifier?",
+          "ordinal": 6,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        null,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id!: Uuid\", workspace_domain.domain_type as \"domain_type!: ResourceType\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: DomainNameserverType\", workspace_domain.last_unverified as \"last_unverified!\", patr_controlled_domain.zone_identifier as \"zone_identifier?\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id LEFT JOIN patr_controlled_domain ON patr_controlled_domain.domain_id = workspace_domain.id WHERE is_verified = FALSE AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
+  },
   "5c908ff2cedd7e66c5909913dffce5bda1efa39252cc8aeacdcc114437ab4aa4": {
     "describe": {
       "columns": [],
@@ -4190,70 +4199,6 @@
     },
     "query": "UPDATE workspace SET address_id = NULL WHERE id = $1;"
   },
-  "696bdaf6f707eea875bebce9c7b5f9ed6aee64eafcaf520113320625f71f988c": {
-    "describe": {
-      "columns": [
-        {
-          "name": "name!",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "id: _",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "domain_type: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              },
-              "name": "resource_owner_type"
-            }
-          }
-        },
-        {
-          "name": "is_verified",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "nameserver_type: _",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "internal",
-                  "external"
-                ]
-              },
-              "name": "domain_nameserver_type"
-            }
-          }
-        }
-      ],
-      "nullable": [
-        null,
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id: _\", workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.nameserver_type as \"nameserver_type: _\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE domain.id = $1 AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
-  },
   "6ad2f021500f77e5ac540f128fc071c0aead61d48db51dc32132ccba1a2120ab": {
     "describe": {
       "columns": [],
@@ -4402,29 +4347,6 @@
       }
     },
     "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE workspace_id = $1;"
-  },
-  "6f356f929f3a1a25814f9182c06462b5ec8a1f32ae91c52c552661acadc1c57b": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "internal",
-                  "external"
-                ]
-              },
-              "name": "domain_nameserver_type"
-            }
-          }
-        ]
-      }
-    },
-    "query": "INSERT INTO workspace_domain( id, domain_type, is_verified, nameserver_type ) VALUES ($1, 'business', FALSE, $2);"
   },
   "6f7f9061d9b0ef20410537f9f662cc3a501d0a3ec931a68f7ef6c0891bfa4a06": {
     "describe": {
@@ -5255,16 +5177,6 @@
     },
     "query": "CREATE INDEX role_permissions_resource_type_idx_role_id_resource_type_id ON role_permissions_resource_type (role_id, resource_type_id);"
   },
-  "7e07dd285ab55985a65de09b3873044801b3cfad26520fb218e055ec47512932": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE workspace_domain( id UUID CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_domain_type CHECK( domain_type = 'business' ), is_verified BOOLEAN NOT NULL, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL, CONSTRAINT workspace_domain_uq_id_nameserver_type UNIQUE(id, nameserver_type), CONSTRAINT workspace_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );"
-  },
   "800be378aa534e253f75a64c956799e120102f6b9ae464053f8a38d493f46877": {
     "describe": {
       "columns": [],
@@ -5904,70 +5816,6 @@
       }
     },
     "query": "SELECT ( deployment_limit + database_limit + static_site_limit + managed_url_limit + domain_limit + secret_limit ) as \"limit!: i32\" FROM workspace WHERE workspace.id = $1;"
-  },
-  "8d0a4c011fc58624c93d87270ff0cc7db7a41927801b42f826871cc11a37ce02": {
-    "describe": {
-      "columns": [
-        {
-          "name": "name!",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "id: _",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "domain_type: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              },
-              "name": "resource_owner_type"
-            }
-          }
-        },
-        {
-          "name": "is_verified",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "nameserver_type: _",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "internal",
-                  "external"
-                ]
-              },
-              "name": "domain_nameserver_type"
-            }
-          }
-        }
-      ],
-      "nullable": [
-        null,
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id: _\", workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.nameserver_type as \"nameserver_type: _\" FROM domain INNER JOIN workspace_domain ON workspace_domain.id = domain.id INNER JOIN resource ON domain.id = resource.id WHERE resource.owner_id = $1 AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
   },
   "8d72ae0818e4164c031c48aefd83eab24188d066b54ef81050d670d08804ff7e": {
     "describe": {
@@ -6750,6 +6598,80 @@
       }
     },
     "query": "SELECT \"user\".recovery_phone_country_code as \"recovery_phone_country_code!\", \"user\".recovery_phone_number as \"recovery_phone_number!\" FROM \"user\" WHERE \"user\".id = $1 AND \"user\".recovery_phone_number IS NOT NULL AND \"user\".recovery_phone_country_code IS NOT NULL;"
+  },
+  "a1d6b54fddda05b038af3e43c50863f0384be527268cf04f65984dc0dd8a52b4": {
+    "describe": {
+      "columns": [
+        {
+          "name": "name!",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "id!: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "domain_type!: ResourceType",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              },
+              "name": "resource_owner_type"
+            }
+          }
+        },
+        {
+          "name": "is_verified!",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "nameserver_type!: DomainNameserverType",
+          "ordinal": 4,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "internal",
+                  "external"
+                ]
+              },
+              "name": "domain_nameserver_type"
+            }
+          }
+        },
+        {
+          "name": "last_unverified!",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "zone_identifier?",
+          "ordinal": 6,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        null,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id!: Uuid\", workspace_domain.domain_type as \"domain_type!: ResourceType\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: DomainNameserverType\", workspace_domain.last_unverified as \"last_unverified!\", patr_controlled_domain.zone_identifier as \"zone_identifier?\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id LEFT JOIN patr_controlled_domain ON patr_controlled_domain.domain_id = workspace_domain.id WHERE is_verified = TRUE AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
   },
   "a1ef5b3c2269453d465e5f47f7bd9a8d8e7cd237085cf1a59a4c55ddd093c269": {
     "describe": {
@@ -8430,6 +8352,16 @@
     },
     "query": "INSERT INTO payment_method( payment_method_id, workspace_id ) VALUES( $1, $2 );"
   },
+  "c01e1cdcabfe53756654a2160d7458bcb64e1749e38198252f522e4d2f5a1b5c": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE workspace_domain( id UUID CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_domain_type CHECK( domain_type = 'business' ), is_verified BOOLEAN NOT NULL, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL, last_unverified TIMESTAMPTZ NOT NULL, CONSTRAINT workspace_domain_uq_id_nameserver_type UNIQUE(id, nameserver_type), CONSTRAINT workspace_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );"
+  },
   "c0c17a0c6a75242acff00efaf8d8431359561110af0f76f7d19410edd32e0674": {
     "describe": {
       "columns": [],
@@ -9028,6 +8960,76 @@
       }
     },
     "query": "SELECT DISTINCT ( CASE WHEN LOWER(\"user\".username) = LOWER($1) THEN 100 /* Exact username */ WHEN COALESCE( CASE WHEN personal_email.local IS NOT NULL THEN LOWER(CONCAT( personal_email.local, '@', domain.name, domain.tld )) ELSE NULL END, CASE WHEN business_email.local IS NOT NULL THEN LOWER(CONCAT( business_email.local, '@', domain.name, domain.tld )) ELSE NULL END ) = LOWER($1) THEN 100 /* Exact email */ WHEN CONCAT( '+', phone_number_country_code.phone_code, user_phone_number.number ) = $1 THEN 100 /* Exact phone number */ WHEN user_phone_number.number = $1 THEN 90 /* Just the phone alone */ WHEN LOWER(CONCAT( \"user\".first_name, ' ', \"user\".last_name )) = LOWER($1) THEN 90 /* firstName lastName */ WHEN LOWER(CONCAT( \"user\".last_name, ' ', \"user\".first_name )) = LOWER($1) THEN 90 /* lastName firstName */ WHEN LOWER(\"user\".first_name) = LOWER($1) THEN 80 /* Only first name */ WHEN LOWER(\"user\".last_name) = LOWER($1) THEN 80 /* Only last name */ /* If you search for a part of their username */ WHEN STARTS_WITH( LOWER(\"user\".username), SUBSTR(LOWER($1), 0, LENGTH(\"user\".username)) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(\"user\".username)::REAL ) * 20 ) /* If you search for a part of their name */ WHEN STARTS_WITH( LOWER(CONCAT(\"user\".first_name, ' ', \"user\".last_name)), SUBSTR( LOWER($1), 0, LENGTH(CONCAT(\"user\".first_name, ' ', \"user\".last_name)) ) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(CONCAT(\"user\".first_name, ' ', \"user\".last_name))::REAL ) * 20 ) /* If you search for a part of their name reversed */ WHEN STARTS_WITH( LOWER(CONCAT(\"user\".last_name, ' ', \"user\".first_name)), SUBSTR( LOWER($1), 0, LENGTH(CONCAT(\"user\".last_name, ' ', \"user\".first_name)) ) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(CONCAT(\"user\".last_name, ' ', \"user\".first_name))::REAL ) * 20 ) ELSE 0 END ) AS \"score\", \"user\".id as \"id!: Uuid\", \"user\".username as \"username!\", \"user\".first_name as \"first_name!\", \"user\".last_name as \"last_name!\", \"user\".bio as \"bio\", \"user\".location as \"location\" FROM \"user\" LEFT JOIN personal_email ON \"user\".id = personal_email.user_id LEFT JOIN business_email ON \"user\".id = personal_email.user_id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id LEFT JOIN user_phone_number ON \"user\".id = user_phone_number.user_id LEFT JOIN phone_number_country_code ON user_phone_number.country_code = phone_number_country_code.country_code WHERE ( CASE WHEN LOWER(\"user\".username) = LOWER($1) THEN 100 /* Exact username */ WHEN COALESCE( CASE WHEN personal_email.local IS NOT NULL THEN LOWER(CONCAT( personal_email.local, '@', domain.name, domain.tld )) ELSE NULL END, CASE WHEN business_email.local IS NOT NULL THEN LOWER(CONCAT( business_email.local, '@', domain.name, domain.tld )) ELSE NULL END ) = LOWER($1) THEN 100 /* Exact email */ WHEN CONCAT( '+', phone_number_country_code.phone_code, user_phone_number.number ) = $1 THEN 100 /* Exact phone number */ WHEN user_phone_number.number = $1 THEN 90 /* Just the phone alone */ WHEN LOWER(CONCAT( \"user\".first_name, ' ', \"user\".last_name )) = LOWER($1) THEN 90 /* firstName lastName */ WHEN LOWER(CONCAT( \"user\".last_name, ' ', \"user\".first_name )) = LOWER($1) THEN 90 /* lastName firstName */ WHEN LOWER(\"user\".first_name) = LOWER($1) THEN 80 /* Only first name */ WHEN LOWER(\"user\".last_name) = LOWER($1) THEN 80 /* Only last name */ /* If you search for a part of their username */ WHEN STARTS_WITH( LOWER(\"user\".username), SUBSTR(LOWER($1), 0, LENGTH(\"user\".username)) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(\"user\".username)::REAL ) * 20 ) /* If you search for a part of their name */ WHEN STARTS_WITH( LOWER(CONCAT(\"user\".first_name, ' ', \"user\".last_name)), SUBSTR( LOWER($1), 0, LENGTH(CONCAT(\"user\".first_name, ' ', \"user\".last_name)) ) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(CONCAT(\"user\".first_name, ' ', \"user\".last_name))::REAL ) * 20 ) /* If you search for a part of their name reversed */ WHEN STARTS_WITH( LOWER(CONCAT(\"user\".last_name, ' ', \"user\".first_name)), SUBSTR( LOWER($1), 0, LENGTH(CONCAT(\"user\".last_name, ' ', \"user\".first_name)) ) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(CONCAT(\"user\".last_name, ' ', \"user\".first_name))::REAL ) * 20 ) ELSE 0 END ) > 0 ORDER BY 1 DESC LIMIT 10;"
+  },
+  "d59e41ec097c83794553cb428306ca0d2f269fd4f8ba00ac375632ad3217ff98": {
+    "describe": {
+      "columns": [
+        {
+          "name": "name!",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "domain_type: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              },
+              "name": "resource_owner_type"
+            }
+          }
+        },
+        {
+          "name": "is_verified",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "nameserver_type: _",
+          "ordinal": 4,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "internal",
+                  "external"
+                ]
+              },
+              "name": "domain_nameserver_type"
+            }
+          }
+        },
+        {
+          "name": "last_unverified!: _",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        null,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id: _\", workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.nameserver_type as \"nameserver_type: _\", workspace_domain.last_unverified as \"last_unverified!: _\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE domain.id = $1 AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
   },
   "d613849146adeb62cd527df8c3c9242264d98e259532580f2f45390033c19d8d": {
     "describe": {
@@ -9934,6 +9936,30 @@
       }
     },
     "query": "SELECT id as \"id: _\", name, description, owner_id as \"owner_id: _\" FROM role WHERE owner_id = $1;"
+  },
+  "e311b717d9499a73b00b7e568b36e93b9af06b1c42b534d45663262e5be5328b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "internal",
+                  "external"
+                ]
+              },
+              "name": "domain_nameserver_type"
+            }
+          },
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "INSERT INTO workspace_domain( id, domain_type, is_verified, nameserver_type, last_unverified ) VALUES ($1, 'business', FALSE, $2, $3);"
   },
   "e313defa3d63bb79a1b84bbac09a430197050238b4076f03a1d8b90f0788f769": {
     "describe": {
