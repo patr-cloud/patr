@@ -18,14 +18,19 @@ use api_models::{
 	utils::Uuid,
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use http::header::ACCEPT;
-use serde_json::Value;
+use http::header::CONTENT_TYPE;
 
 use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::{self, permissions},
+	models::{
+		rbac::{self, permissions},
+		Manifest,
+		RegistryToken,
+		RegistryTokenAccess,
+		V1Compatibility,
+	},
 	pin_fn,
 	service,
 	utils::{
@@ -187,13 +192,11 @@ pub fn create_sub_app(
 					)
 					.await?
 					.filter(|value| value.owner_id == workspace_id);
-					println!("resource2");
 					if resource.is_none() {
 						context
 							.status(404)
 							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
-					println!("resource2");
 
 					Ok((context, resource))
 				}),
@@ -735,18 +738,24 @@ async fn get_repository_image_exposed_port(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let config = context.get_state().config.to_owned();
-	let repository_id = Uuid::parse_str(
-		context.get_param(request_keys::REPOSITORY_ID).unwrap(),
+	let workspace_id = Uuid::parse_str(
+		context.get_param(request_keys::WORKSPACE_ID).unwrap(),
 	)
 	.unwrap();
-	let GetDockerRepositoryExposedPortRequest { tag, .. } = context
+
+	let GetDockerRepositoryExposedPortRequest {
+		tag,
+		repository_name,
+		..
+	} = context
 		.get_query_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let _repository = db::get_docker_repository_by_id(
+	let repository = db::get_docker_repository_by_name(
 		context.get_database_connection(),
-		&repository_id,
+		&repository_name,
+		&workspace_id,
 	)
 	.await?
 	.status(404)
@@ -760,56 +769,68 @@ async fn get_repository_image_exposed_port(
 	.unwrap();
 
 	let iat = get_current_time().as_secs();
-	let response = reqwest::Client::new()
+
+	let manifest = reqwest::Client::new()
 		.get(format!(
-			"{}/v2/{}/manifests/{}",
-			// if config.docker_registry.registry_url.starts_with("localhost")
-			// { 	"http"
-			// } else {
-			// 	"https"
-			// },
-			// "http",
-			// "localhost:5000",
+			"{}://{}/v2/{}/manifests/{}",
+			if config.docker_registry.registry_url.starts_with("localhost") {
+				"http"
+			} else {
+				"https"
+			},
 			config.docker_registry.registry_url,
-			// repository.name,
-			"testimage",
+			repository_name,
 			tag
 		))
-		.header(ACCEPT, "application/json")
-		// .bearer_auth(
-		// 	RegistryToken::new(
-		// 		config.docker_registry.issuer.clone(),
-		// 		iat,
-		// 		god_user.username.clone(),
-		// 		&config,
-		// 		vec![RegistryTokenAccess {
-		// 			r#type: "repository".to_string(),
-		// 			name: repository.name.clone(),
-		// 			actions: vec!["repository".to_string()],
-		// 		}],
-		// 	)
-		// 	.to_string(
-		// 		config.docker_registry.private_key.as_ref(),
-		// 		config.docker_registry.public_key_der.as_ref(),
-		// 	)?,
-		// )
+		.header(
+			CONTENT_TYPE,
+			"application/vnd.docker.distribution.manifest.v1+prettyjws",
+		)
+		.bearer_auth(
+			RegistryToken::new(
+				config.docker_registry.issuer.clone(),
+				iat,
+				god_user.username.clone(),
+				&config,
+				vec![RegistryTokenAccess {
+					r#type: "repository".to_string(),
+					name: repository.name.clone(),
+					actions: vec!["pull".to_string()],
+				}],
+			)
+			.to_string(
+				config.docker_registry.private_key.as_ref(),
+				config.docker_registry.public_key_der.as_ref(),
+			)?,
+		)
 		.send()
 		.await?
-		.text()
-		.await?;
+		.json::<Manifest>()
+		.await
+		.map_err(|e| {
+			log::error!("Error while parsing manifest json - {}", e);
+			e
+		})?;
 
-	let history: Value = serde_json::from_str(&response)?;
-	let history = history["history"].as_array().unwrap();
-	let latest = history[0]["v1Compatibility"].as_str().unwrap();
-	let body: Value = serde_json::from_str(latest)?;
-	let ports = body["config"]["ExposedPorts"].as_object().unwrap();
-	let key = ports.keys().next().unwrap();
-	println!("{:#?}", key);
+	let v1comp: V1Compatibility =
+		serde_json::from_str(&manifest.history[0].v1_compatibility)?;
 
-	context.success(GetDockerRepositoryExposedPortResponse {
-		port: Some(key.to_owned()),
-	});
-	Ok(context)
+	let exposed_port = v1comp.config.exposed_ports;
+	if let Some(port) = exposed_port {
+		let port = port.0.keys().next().map(|port| port.to_string());
+		if let Some(port) = port {
+			context.success(GetDockerRepositoryExposedPortResponse { port });
+			Ok(context)
+		} else {
+			Error::as_result()
+				.status(404)
+				.body(error!(EXPOSED_PORT_NOT_FOUND).to_string())
+		}
+	} else {
+		Error::as_result()
+			.status(404)
+			.body(error!(EXPOSED_PORT_NOT_FOUND).to_string())
+	}
 }
 
 /// # Description

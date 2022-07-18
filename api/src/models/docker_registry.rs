@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use jsonwebtoken::{
 	errors::Error as JWTError,
@@ -10,6 +12,7 @@ use jsonwebtoken::{
 };
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sha2::{Digest, Sha256};
 
 use crate::utils::settings::Settings;
@@ -197,3 +200,31 @@ pub struct Source {
 	)]
 	pub instance_id: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Manifest {
+	pub history: Vec<V1CompatibilityStr>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct History {
+	pub history: Vec<V1CompatibilityStr>,
+}
+
+#[derive(Serialize, Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct V1CompatibilityStr {
+	pub v1_compatibility: String,
+}
+
+#[derive(Serialize, Debug, Deserialize, Clone)]
+pub struct V1Compatibility {
+	pub config: Config,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "PascalCase")]
+pub struct Config {
+	pub exposed_ports: Option<ExposedPorts>,
+}
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ExposedPorts(pub HashMap<String, Value>);
