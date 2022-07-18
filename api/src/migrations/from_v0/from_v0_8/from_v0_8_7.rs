@@ -530,10 +530,7 @@ async fn add_table_deployment_image_digest(
 			repository_id UUID NOT NULL
 				CONSTRAINT deployment_image_digest_fk_repository_id
 					REFERENCES docker_registry_repository(id),
-			created BIGINT NOT NULL
-				CONSTRAINT deployment_deploy_history_chk_created_unsigned CHECK(
-						created >= 0
-				),
+			created TIMESTAMPTZ NOT NULL,
 			CONSTRAINT deployment_image_digest_pk
 				PRIMARY KEY(deployment_id, image_digest)
 		);
