@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use api_models::{
 	models::workspace::ci2::github::{BuildStatus, BuildStepStatus},
 	utils::Uuid,
@@ -12,7 +14,7 @@ use self::payload_types::PushEvent;
 use super::Netrc;
 use crate::{
 	db::{self, Repository},
-	models::ci::file_format::{CiFlow, Kind, Step},
+	models::ci::file_format::{CiFlow, Step},
 	rabbitmq::BuildId,
 	utils::{Error, EveContext},
 };
@@ -149,6 +151,23 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 	)
 	.await?;
 
+	let ci_flow: CiFlow = serde_yaml::from_slice(ci_file.as_ref())?;
+	let CiFlow::Pipeline(pipeline) = ci_flow.clone();
+	if !is_names_unique(&ci_flow) {
+		log::info!(
+			"request_id: {request_id} - Invalid ci config file, marking build as errored"
+		);
+		db::update_build_status(
+			context.get_database_connection(),
+			&repo.id,
+			build_num,
+			BuildStatus::Errored,
+		)
+		.await?;
+
+		return Ok(());
+	}
+
 	// add cloning as a step
 	db::add_ci_steps_for_build(
 		context.get_database_connection(),
@@ -162,8 +181,6 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 	)
 	.await?;
 
-	let ci_flow: CiFlow = serde_yaml::from_slice(ci_file.as_ref())?;
-	let Kind::Pipeline(pipeline) = ci_flow.kind.clone();
 	for (
 		step_count,
 		Step {
@@ -181,7 +198,7 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 			step_count as i32 + 1,
 			&name,
 			&image,
-			commands,
+			vec![commands.to_string()],
 			BuildStepStatus::WaitingToStart,
 		)
 		.await?;
@@ -214,4 +231,24 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 	.await?;
 
 	Ok(())
+}
+
+fn is_names_unique(ci_flow: &CiFlow) -> bool {
+	let CiFlow::Pipeline(pipeline) = ci_flow;
+
+	let mut step_names = HashSet::new();
+	for step in &pipeline.steps {
+		if !step_names.insert(step.name.as_str()) {
+			return false;
+		}
+	}
+
+	let mut service_names = HashSet::new();
+	for service in &pipeline.services {
+		if !service_names.insert(service.name.as_str()) {
+			return false;
+		}
+	}
+
+	true
 }

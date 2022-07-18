@@ -130,6 +130,7 @@ dependencies = [
  "lettre",
  "log",
  "log4rs",
+ "monostate",
  "num-traits",
  "num_cpus",
  "octorust",
@@ -2094,6 +2095,27 @@ dependencies = [
  "log",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys",
+]
+
+[[package]]
+name = "monostate"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2d90ab1b1135f4f5dffd0a99bfa56ea7bfae83b807e77db843cba631c047a85"
+dependencies = [
+ "monostate-impl",
+ "serde",
+]
+
+[[package]]
+name = "monostate-impl"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b546b44458f9128ccde8d52845ef3a0be988a7d0d0c1463f43e05d4c510989da"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

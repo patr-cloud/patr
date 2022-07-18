@@ -3,18 +3,36 @@ use std::fmt::Display;
 use api_models::utils::Uuid;
 use eve_rs::AsError;
 use k8s_openapi::{
-	api::core::v1::{
-		PersistentVolumeClaim,
-		PersistentVolumeClaimSpec,
-		ResourceRequirements,
+	api::{
+		apps::v1::{Deployment, DeploymentSpec},
+		core::v1::{
+			Container,
+			EnvVar,
+			Namespace,
+			PersistentVolumeClaim,
+			PersistentVolumeClaimSpec,
+			PodSpec,
+			PodTemplateSpec,
+			ResourceRequirements,
+			Service,
+			ServicePort,
+			ServiceSpec,
+		},
 	},
-	apimachinery::pkg::api::resource::Quantity,
+	apimachinery::pkg::{
+		api::resource::Quantity,
+		apis::meta::v1::LabelSelector,
+		util::intstr::IntOrString,
+	},
 };
 use kube::{api::ObjectMeta, Api};
 
 use crate::{
 	db,
-	models::ci::file_format::{CiFlow, Kind, Step},
+	models::ci::{
+		self,
+		file_format::{CiFlow, Step},
+	},
 	rabbitmq::{BuildId, BuildStep, BuildStepId},
 	service,
 	utils::{settings::Settings, Error},
@@ -50,8 +68,7 @@ pub async fn create_ci_pipeline(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let build_name = build_id.get_pvc_name();
-	log::debug!("request_id: {request_id} - Creating a ci pipeline for build `{build_name}`");
+	log::debug!("request_id: {request_id} - Creating a ci pipeline for build `{build_id}`");
 
 	let build_machine_type = db::get_build_machine_type_for_repo(
 		&mut *connection,
@@ -60,17 +77,32 @@ pub async fn create_ci_pipeline(
 	.await?
 	.status(500)?;
 
-	// TODO: its better to move PVC creation to mq
 	let kube_client = service::get_kubernetes_config(config).await?;
+
+	// create a namespace for each build
+	Api::<Namespace>::all(kube_client.clone())
+		.create(
+			&Default::default(),
+			&Namespace {
+				metadata: ObjectMeta {
+					name: Some(build_id.get_build_namespace()),
+					..Default::default()
+				},
+				..Default::default()
+			},
+		)
+		.await?;
+
+	// create pvc for storage
 	Api::<PersistentVolumeClaim>::namespaced(
-		kube_client,
-		build_id.workspace_id.as_str(),
+		kube_client.clone(),
+		&build_id.get_build_namespace(),
 	)
 	.create(
 		&Default::default(),
 		&PersistentVolumeClaim {
 			metadata: ObjectMeta {
-				name: Some(build_name.clone()),
+				name: Some(build_id.get_pvc_name()),
 				..Default::default()
 			},
 			spec: Some(PersistentVolumeClaimSpec {
@@ -97,12 +129,22 @@ pub async fn create_ci_pipeline(
 	)
 	.await?;
 
+	let CiFlow::Pipeline(pipeline) = ci_flow;
+	for service in &pipeline.services {
+		create_background_service_for_pipeline(
+			kube_client.clone(),
+			&build_id,
+			service,
+		)
+		.await?;
+	}
+
 	// queue clone job
 	service::queue_create_ci_build_step(
 		BuildStep {
 			id: BuildStepId { build_id: build_id.clone(), step_id: 0 },
 			image: "alpine/git".to_string(),
-			env_vars: vec![],
+			env_vars: None,
 			commands: vec!	[
 				format!(r#"echo "{}" > ~/.netrc"#, netrc.map_or("".to_string(), |netrc| netrc.to_string())),
 				r#"cd "/mnt/workdir/""#.to_string(),
@@ -118,7 +160,6 @@ pub async fn create_ci_pipeline(
 	.await?;
 
 	// queue build steps
-	let Kind::Pipeline(pipeline) = ci_flow.kind;
 	for (
 		step_id, // TODO
 		Step {
@@ -139,13 +180,11 @@ pub async fn create_ci_pipeline(
 				},
 				image,
 				env_vars: env,
-				commands: [
+				commands: vec![
 					format!(r#"cd "/mnt/workdir/{repo_name}""#),
 					"set -x".to_owned(),
-				]
-				.into_iter()
-				.chain(commands.into_iter())
-				.collect::<Vec<_>>(),
+					commands.to_string(),
+				],
 			},
 			config,
 			request_id,
@@ -154,9 +193,106 @@ pub async fn create_ci_pipeline(
 	}
 
 	// queue clean up jobs
-	service::queue_clean_ci_build_pipeline(build_id, config, request_id)
+	service::queue_clean_ci_build_pipeline(
+		build_id.clone(),
+		config,
+		request_id,
+	)
+	.await?;
+
+	log::debug!("request_id: {request_id} - Successfully created a ci pipeline for build `{build_id}`");
+	Ok(())
+}
+
+async fn create_background_service_for_pipeline(
+	kube_client: kube::Client,
+	build_id: &BuildId,
+	service: &ci::file_format::Service,
+) -> Result<(), Error> {
+	Api::<Deployment>::namespaced(
+		kube_client.clone(),
+		&build_id.get_build_namespace(),
+	)
+	.create(
+		&Default::default(),
+		&Deployment {
+			metadata: ObjectMeta {
+				name: Some(service.name.to_string()),
+				..Default::default()
+			},
+			spec: Some(DeploymentSpec {
+				selector: LabelSelector {
+					match_labels: Some(
+						[("app".to_string(), service.name.to_string())].into(),
+					),
+					..Default::default()
+				},
+				template: PodTemplateSpec {
+					metadata: Some(ObjectMeta {
+						labels: Some(
+							[("app".to_string(), service.name.to_string())]
+								.into(),
+						),
+						..Default::default()
+					}),
+					spec: Some(PodSpec {
+						containers: vec![Container {
+							name: service.name.to_string(),
+							image: Some(service.image.clone()),
+							image_pull_policy: Some("Always".to_string()),
+							env: service.env.as_ref().map(|envs| {
+								envs.iter()
+									.map(|env| EnvVar {
+										name: env.name.clone(),
+										value: Some(env.value.clone()),
+										..Default::default()
+									})
+									.collect()
+							}),
+							command: service.commands.as_ref().map(
+								|commands| {
+									vec![
+										"sh".to_string(),
+										"-ce".to_string(),
+										commands.to_string(),
+									]
+								},
+							),
+							..Default::default()
+						}],
+						..Default::default()
+					}),
+				},
+				..Default::default()
+			}),
+			..Default::default()
+		},
+	)
+	.await?;
+
+	Api::<Service>::namespaced(kube_client, &build_id.get_build_namespace())
+		.create(
+			&Default::default(),
+			&Service {
+				metadata: ObjectMeta {
+					name: Some(service.name.to_string()),
+					..Default::default()
+				},
+				spec: Some(ServiceSpec {
+					selector: Some(
+						[("app".to_string(), service.name.to_string())].into(),
+					),
+					ports: Some(vec![ServicePort {
+						port: service.port,
+						target_port: Some(IntOrString::Int(service.port)),
+						..Default::default()
+					}]),
+					..Default::default()
+				}),
+				..Default::default()
+			},
+		)
 		.await?;
 
-	log::debug!("request_id: {request_id} - Successfully created a ci pipeline for build `{build_name}`");
 	Ok(())
 }

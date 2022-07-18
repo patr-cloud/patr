@@ -42,6 +42,7 @@ use crate::{
 	error,
 	models::{deployment::Logs, rbac::permissions},
 	pin_fn,
+	rabbitmq::{BuildId, BuildStepId},
 	utils::{
 		constants::request_keys,
 		Error,
@@ -821,11 +822,11 @@ async fn get_build_logs(
 	let build_num = context
 		.get_param(request_keys::BUILD_NUM)
 		.unwrap()
-		.parse::<u64>()?;
+		.parse::<i64>()?;
 	let step = context
 		.get_param(request_keys::STEP)
 		.unwrap()
-		.parse::<u64>()?;
+		.parse::<i32>()?;
 
 	let repo = db::get_repo_for_workspace(
 		context.get_database_connection(),
@@ -845,16 +846,23 @@ async fn get_build_logs(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
+	let build_step_id = BuildStepId {
+		build_id: BuildId {
+			workspace_id,
+			repo_id: repo.id,
+			build_num,
+		},
+		step_id: step,
+	};
+
 	let loki = context.get_state().config.loki.clone();
 	let response = reqwest::Client::new()
 		.get(format!(
-			"https://{}/loki/api/v1/query_range?query={{namespace=\"{}\",job=\"{}/ci-{}-{}-{}\"}}&start={}",
+			"https://{}/loki/api/v1/query_range?query={{namespace=\"{}\",job=\"{}/{}\"}}&start={}",
 			loki.host,
-			workspace_id.as_str(),
-			workspace_id.as_str(),
-			repo.id.as_str(),
-			build_num,
-			step,
+			build_step_id.build_id.get_build_namespace(),
+			build_step_id.build_id.get_build_namespace(),
+			build_step_id.get_job_name(),
 			build_created_time.timestamp_nanos()
 		))
 		.basic_auth(&loki.username, Some(&loki.password))

@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, time::Duration};
+use std::{collections::BTreeMap, fmt::Display, time::Duration};
 
 use api_models::{
 	models::workspace::ci2::github::{BuildStatus, BuildStepStatus},
@@ -12,7 +12,7 @@ use k8s_openapi::{
 		core::v1::{
 			Container,
 			EnvVar,
-			PersistentVolumeClaim,
+			Namespace,
 			PersistentVolumeClaimVolumeSource,
 			PodSpec,
 			PodTemplateSpec,
@@ -31,7 +31,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
 	db,
-	models::{ci::file_format::EnvVariable, rabbitmq::CIData},
+	models::{ci, rabbitmq::CIData},
 	service,
 	utils::{settings::Settings, Error},
 	Database,
@@ -45,8 +45,18 @@ pub struct BuildId {
 }
 
 impl BuildId {
-	pub fn get_pvc_name(&self) -> String {
+	pub fn get_build_namespace(&self) -> String {
 		format!("ci-{}-{}", self.repo_id, self.build_num)
+	}
+
+	pub fn get_pvc_name(&self) -> String {
+		format!("pvc-{}-{}", self.repo_id, self.build_num)
+	}
+}
+
+impl Display for BuildId {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "ci-{}-{}", self.repo_id, self.build_num)
 	}
 }
 
@@ -69,7 +79,7 @@ impl BuildStepId {
 pub struct BuildStep {
 	pub id: BuildStepId,
 	pub image: String,
-	pub env_vars: Vec<EnvVariable>,
+	pub env_vars: Option<Vec<ci::file_format::EnvVar>>,
 	pub commands: Vec<String>,
 }
 
@@ -115,17 +125,15 @@ async fn get_job_manifest(
 							name: "workdir".to_string(),
 							..Default::default()
 						}]),
-						env: Some(
-							build_step
-								.env_vars
-								.iter()
+						env: build_step.env_vars.as_ref().map(|envs| {
+							envs.iter()
 								.map(|env| EnvVar {
 									name: env.name.clone(),
 									value: Some(env.value.clone()),
 									..Default::default()
 								})
-								.collect(),
-						),
+								.collect()
+						}),
 						command: Some(vec![
 							"sh".to_string(),
 							"-ce".to_string(),
@@ -178,7 +186,7 @@ pub async fn process_request(
 			let build_step_job_name = build_step.id.get_job_name();
 			let jobs_api = Api::<Job>::namespaced(
 				kube_client,
-				build_step.id.build_id.workspace_id.as_str(),
+				&build_step.id.build_id.get_build_namespace(),
 			);
 			let step_status = jobs_api
 				.get_opt(&build_step_job_name)
@@ -261,7 +269,7 @@ pub async fn process_request(
 					}
 					Status::Running => {
 						log::debug!("request_id: {request_id} - Waiting to update status of `{build_step_job_name}`");
-						tokio::time::sleep(Duration::from_secs(5)).await;
+						tokio::time::sleep(Duration::from_secs(2)).await;
 						service::queue_create_ci_build_step(
 							build_step,
 							config,
@@ -348,7 +356,7 @@ pub async fn process_request(
 					BuildStepStatus::Running |
 					BuildStepStatus::WaitingToStart => {
 						log::debug!("request_id: {request_id} - Waiting to create `{build_step_job_name}`");
-						tokio::time::sleep(Duration::from_secs(5)).await;
+						tokio::time::sleep(Duration::from_secs(2)).await;
 						service::queue_create_ci_build_step(
 							build_step,
 							config,
@@ -372,18 +380,22 @@ pub async fn process_request(
 			// for now sequential, so checking last status is enough
 			let status = steps.last().map(|step| step.status.clone());
 
-			let pvc_name = build_id.get_pvc_name();
 			match status.unwrap_or(BuildStepStatus::Succeeded) {
 				BuildStepStatus::Errored | BuildStepStatus::SkippedDepError => {
 					log::info!(
-						"request_id: {request_id} - Build `{pvc_name}` errored"
+						"request_id: {request_id} - Build `{build_id}` errored"
 					);
-					Api::<PersistentVolumeClaim>::namespaced(
-						kube_client,
-						build_id.workspace_id.as_str(),
-					)
-					.delete(&pvc_name, &Default::default())
-					.await?;
+					Api::<Namespace>::all(kube_client)
+						.delete(
+							&build_id.get_build_namespace(),
+							&DeleteParams {
+								propagation_policy: Some(
+									PropagationPolicy::Foreground,
+								),
+								..Default::default()
+							},
+						)
+						.await?;
 					db::update_build_status(
 						&mut *connection,
 						&build_id.repo_id,
@@ -401,14 +413,19 @@ pub async fn process_request(
 				}
 				BuildStepStatus::Succeeded => {
 					log::info!(
-						"request_id: {request_id} - Build `{pvc_name}` succeed"
+						"request_id: {request_id} - Build `{build_id}` succeed"
 					);
-					Api::<PersistentVolumeClaim>::namespaced(
-						kube_client,
-						build_id.workspace_id.as_str(),
-					)
-					.delete(&pvc_name, &Default::default())
-					.await?;
+					Api::<Namespace>::all(kube_client)
+						.delete(
+							&build_id.get_build_namespace(),
+							&DeleteParams {
+								propagation_policy: Some(
+									PropagationPolicy::Foreground,
+								),
+								..Default::default()
+							},
+						)
+						.await?;
 					db::update_build_status(
 						&mut *connection,
 						&build_id.repo_id,
@@ -425,8 +442,8 @@ pub async fn process_request(
 					.await?;
 				}
 				BuildStepStatus::Running | BuildStepStatus::WaitingToStart => {
-					log::debug!("request_id: {request_id} - Waiting to clean `{pvc_name}`");
-					tokio::time::sleep(Duration::from_secs(10)).await;
+					log::debug!("request_id: {request_id} - Waiting to clean `{build_id}`");
+					tokio::time::sleep(Duration::from_secs(5)).await;
 					service::queue_clean_ci_build_pipeline(
 						build_id,
 						config,
