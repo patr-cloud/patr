@@ -558,7 +558,7 @@ async fn populate_deployment_deploy_history(
 		FROM
 			deployment
 		WHERE
-			status != 'status';
+			status != 'deleted';
 		"#,
 	)
 	.fetch_all(&mut *connection)
