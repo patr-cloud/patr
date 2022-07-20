@@ -39,7 +39,7 @@ jsonwebtoken = "8.0.1"
 k8s-openapi = { version = "0.15.0", default-features = true, features = [
   "v1_21",
 ] } # Kube-rs depends on k8s-openapi
-kube = { version = "0.73.0", default-features = true, features = [
+kube = { version = "0.74.0", default-features = true, features = [
   "derive",
   "runtime",
 ] } # Library for talking to Kubernetes API
@@ -50,7 +50,6 @@ lettre = { version = "=0.10.0-rc.3", features = [
   "smtp-transport",
   "tokio1-rustls-tls",
 ] }
-lightsail = { git = "https://github.com/awslabs/aws-sdk-rust", tag = "v0.0.16-alpha", package = "aws-sdk-lightsail" }
 log = "0.4.8"
 num-traits = "0.2.14"
 num_cpus = "1.13.0"
@@ -66,7 +65,7 @@ rust-s3 = { version = "0.31.0", features = ["tokio-rustls-tls", "with-tokio"] }
 semver = "1.0.0"
 serde = { version = "1.0.114", features = ["serde_derive"] }
 serde_json = "1.0.57"
-serde_qs = "0.9.1"
+serde_qs = "0.10.1"
 sha2 = "0.10.0"
 shiplift = "0.7"
 sqlx = { version = "0.5", features = [

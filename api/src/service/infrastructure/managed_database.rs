@@ -1,5 +1,3 @@
-use std::ops::DerefMut;
-
 use api_models::utils::{DateTime, Uuid};
 use chrono::Utc;
 use eve_rs::AsError;
@@ -13,10 +11,7 @@ use crate::{
 	},
 	error,
 	models::rbac,
-	service::{
-		self,
-		infrastructure::{aws, digitalocean},
-	},
+	service::infrastructure::digitalocean,
 	utils::{settings::Settings, validator, Error},
 	Database,
 };
@@ -136,7 +131,6 @@ pub async fn create_managed_database_in_workspace(
 		"",
 		"",
 		workspace_id,
-		None,
 	)
 	.await?;
 	log::trace!("request_id: {} - Resource generation complete", request_id);
@@ -144,21 +138,6 @@ pub async fn create_managed_database_in_workspace(
 	match provider {
 		"do" => {
 			digitalocean::create_managed_database_cluster(
-				connection,
-				&database_id,
-				db_name,
-				engine,
-				version,
-				num_nodes,
-				database_plan,
-				region,
-				config,
-				request_id,
-			)
-			.await?;
-		}
-		"aws" => {
-			aws::create_managed_database_cluster(
 				connection,
 				&database_id,
 				db_name,
@@ -198,7 +177,7 @@ pub async fn delete_managed_database(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let (provider, region) = database
+	let (provider, _) = database
 		.region
 		.split_once('-')
 		.status(500)
@@ -218,13 +197,6 @@ pub async fn delete_managed_database(
 				)
 				.await?;
 			}
-		}
-		"aws" => {
-			log::trace!(
-				"request_id: {} - deleting the deployment from aws",
-				request_id
-			);
-			aws::delete_database(database_id, region, request_id).await?;
 		}
 		_ => {
 			return Err(Error::empty()
@@ -253,44 +225,6 @@ pub async fn delete_managed_database(
 		&Utc::now().into(),
 	)
 	.await?;
-	Ok(())
-}
-
-pub(super) async fn update_managed_database_status(
-	database_id: &Uuid,
-	status: &ManagedDatabaseStatus,
-) -> Result<(), sqlx::Error> {
-	let app = service::get_app();
-
-	db::update_managed_database_status(
-		app.database.acquire().await?.deref_mut(),
-		database_id,
-		status,
-	)
-	.await?;
-
-	Ok(())
-}
-
-pub(super) async fn update_managed_database_credentials_for_database(
-	database_id: &Uuid,
-	host: &str,
-	port: i32,
-	username: &str,
-	password: &str,
-) -> Result<(), sqlx::Error> {
-	let app = service::get_app();
-
-	db::update_managed_database_credentials_for_database(
-		app.database.acquire().await?.deref_mut(),
-		database_id,
-		host,
-		port,
-		username,
-		password,
-	)
-	.await?;
-
 	Ok(())
 }
 
