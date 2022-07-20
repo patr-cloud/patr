@@ -218,7 +218,7 @@ pub struct V1CompatibilityStr {
 
 #[derive(Serialize, Debug, Deserialize, Clone)]
 pub struct V1Compatibility {
-	pub config: Config,
+	pub container_config: Config,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -169,7 +169,7 @@ pub fn create_sub_app(
 
 	// Get exposed port
 	app.get(
-		"/:repositoryId/exposed-port",
+		"/:repositoryId/exposed-ports",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::docker_registry::INFO,
@@ -192,6 +192,7 @@ pub fn create_sub_app(
 					)
 					.await?
 					.filter(|value| value.owner_id == workspace_id);
+
 					if resource.is_none() {
 						context
 							.status(404)
@@ -738,24 +739,19 @@ async fn get_repository_image_exposed_port(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let config = context.get_state().config.to_owned();
-	let workspace_id = Uuid::parse_str(
-		context.get_param(request_keys::WORKSPACE_ID).unwrap(),
+	let repository_id = Uuid::parse_str(
+		context.get_param(request_keys::REPOSITORY_ID).unwrap(),
 	)
 	.unwrap();
 
-	let GetDockerRepositoryExposedPortRequest {
-		tag,
-		repository_name,
-		..
-	} = context
+	let GetDockerRepositoryExposedPortRequest { tag, .. } = context
 		.get_query_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let repository = db::get_docker_repository_by_name(
+	let repository = db::get_docker_repository_by_id(
 		context.get_database_connection(),
-		&repository_name,
-		&workspace_id,
+		&repository_id,
 	)
 	.await?
 	.status(404)
@@ -779,13 +775,9 @@ async fn get_repository_image_exposed_port(
 				"https"
 			},
 			config.docker_registry.registry_url,
-			repository_name,
+			repository.name,
 			tag
 		))
-		.header(
-			CONTENT_TYPE,
-			"application/vnd.docker.distribution.manifest.v1+prettyjws",
-		)
 		.bearer_auth(
 			RegistryToken::new(
 				config.docker_registry.issuer.clone(),
@@ -803,6 +795,18 @@ async fn get_repository_image_exposed_port(
 				config.docker_registry.public_key_der.as_ref(),
 			)?,
 		)
+		.header(
+			reqwest::header::ACCEPT,
+			format!(
+				"{}, {}",
+				"application/vnd.docker.distribution.manifest.v2+json",
+				"application/vnd.oci.image.manifest.v1+json"
+			),
+		)
+		.header(
+			CONTENT_TYPE,
+			"application/vnd.docker.distribution.manifest.v1+prettyjws",
+		)
 		.send()
 		.await?
 		.json::<Manifest>()
@@ -812,25 +816,36 @@ async fn get_repository_image_exposed_port(
 			e
 		})?;
 
-	let v1comp: V1Compatibility =
-		serde_json::from_str(&manifest.history[0].v1_compatibility)?;
+	let history = manifest
+		.history
+		.into_iter()
+		.map(|his| {
+			let v1_comp: V1Compatibility =
+				serde_json::from_str(&his.v1_compatibility).unwrap();
+			v1_comp.container_config.exposed_ports.map(|port| {
+				port.0.into_iter().fold(vec![], |mut accu, x| {
+					accu.push(x.0);
+					accu
+				})
+			})
+		})
+		.collect::<Vec<_>>();
 
-	let exposed_port = v1comp.config.exposed_ports;
-	if let Some(port) = exposed_port {
-		let port = port.0.keys().next().map(|port| port.to_string());
-		if let Some(port) = port {
-			context.success(GetDockerRepositoryExposedPortResponse { port });
-			Ok(context)
-		} else {
-			Error::as_result()
-				.status(404)
-				.body(error!(EXPOSED_PORT_NOT_FOUND).to_string())
-		}
-	} else {
-		Error::as_result()
-			.status(404)
-			.body(error!(EXPOSED_PORT_NOT_FOUND).to_string())
-	}
+	let exposed_ports = history
+		.into_iter()
+		.fold(vec![], |mut accu, x| {
+			accu.extend(x);
+			accu
+		})
+		.into_iter()
+		.flatten()
+		.collect::<Vec<_>>();
+
+	context.success(GetDockerRepositoryExposedPortResponse {
+		ports: exposed_ports,
+	});
+
+	Ok(context)
 }
 
 /// # Description
