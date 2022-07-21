@@ -713,7 +713,7 @@ async fn remove_application_permissions(
 			"#,
 			permission,
 		)
-		.map(|row| row.get::<Vec<u8>, _>("id"))
+		.map(|row: PgRow| row.get::<Vec<u8>, _>("id"))
 		.fetch_optional(&mut *connection)
 		.await?;
 
@@ -875,7 +875,7 @@ async fn remove_portus_permissions(
 			"#,
 			permission,
 		)
-		.map(|row| row.get::<Vec<u8>, _>("id"))
+		.map(|row: PgRow| row.get::<Vec<u8>, _>("id"))
 		.fetch_optional(&mut *connection)
 		.await?;
 
