@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use api_macros::closure_as_pinned_box;
 use api_models::{
 	models::workspace::docker_registry::{
@@ -757,6 +759,19 @@ async fn get_repository_image_exposed_port(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
+	let repository_tag = db::get_docker_repository_tag_details(
+		context.get_database_connection(),
+		&repository_id,
+		&tag,
+	)
+	.await?;
+
+	if repository_tag.is_none() {
+		return Error::as_result()
+			.status(404)
+			.body(error!(TAG_NOT_FOUND).to_string());
+	}
+
 	let god_user = db::get_user_by_user_id(
 		context.get_database_connection(),
 		rbac::GOD_USER_ID.get().unwrap(),
@@ -765,44 +780,37 @@ async fn get_repository_image_exposed_port(
 	.unwrap();
 
 	let iat = get_current_time().as_secs();
+	println!("repository - {}", repository.name);
 
 	let manifest = reqwest::Client::new()
 		.get(format!(
-			"{}://{}/v2/{}/manifests/{}",
-			if config.docker_registry.registry_url.starts_with("localhost") {
-				"http"
-			} else {
-				"https"
-			},
+			"{}/v2/{}/manifests/{}",
+			// if config.docker_registry.registry_url.starts_with("localhost")
+			// { "http"
+			// } else {
+			// "https"
+			// },
 			config.docker_registry.registry_url,
-			repository.name,
+			&repository.name,
 			tag
 		))
-		.bearer_auth(
-			RegistryToken::new(
-				config.docker_registry.issuer.clone(),
-				iat,
-				god_user.username.clone(),
-				&config,
-				vec![RegistryTokenAccess {
-					r#type: "repository".to_string(),
-					name: repository.name.clone(),
-					actions: vec!["pull".to_string()],
-				}],
-			)
-			.to_string(
-				config.docker_registry.private_key.as_ref(),
-				config.docker_registry.public_key_der.as_ref(),
-			)?,
-		)
-		.header(
-			reqwest::header::ACCEPT,
-			format!(
-				"{}, {}",
-				"application/vnd.docker.distribution.manifest.v2+json",
-				"application/vnd.oci.image.manifest.v1+json"
-			),
-		)
+		// .bearer_auth(
+		// 	RegistryToken::new(
+		// 		config.docker_registry.issuer.clone(),
+		// 		iat,
+		// 		god_user.username.clone(),
+		// 		&config,
+		// 		vec![RegistryTokenAccess {
+		// 			r#type: "repository".to_string(),
+		// 			name: repository.name.clone(),
+		// 			actions: vec!["pull".to_string()],
+		// 		}],
+		// 	)
+		// 	.to_string(
+		// 		config.docker_registry.private_key.as_ref(),
+		// 		config.docker_registry.public_key_der.as_ref(),
+		// 	)?,
+		// )
 		.header(
 			CONTENT_TYPE,
 			"application/vnd.docker.distribution.manifest.v1+prettyjws",
@@ -816,30 +824,29 @@ async fn get_repository_image_exposed_port(
 			e
 		})?;
 
-	let history = manifest
+	let exposed_ports = manifest
 		.history
 		.into_iter()
-		.map(|his| {
-			let v1_comp: V1Compatibility =
-				serde_json::from_str(&his.v1_compatibility).unwrap();
-			v1_comp.container_config.exposed_ports.map(|port| {
-				port.0.into_iter().fold(vec![], |mut accu, x| {
-					accu.push(x.0);
-					accu
+		.filter_map(|v1_comp_str| {
+			Some(
+				serde_json::from_str::<V1Compatibility>(
+					&v1_comp_str.v1_compatibility,
+				)
+				.ok()?,
+			)
+		})
+		.filter_map(|v1_comp| v1_comp.container_config.exposed_ports)
+		.map(|exposted_ports| exposted_ports.0)
+		.flat_map(|ref exposted_ports| {
+			exposted_ports
+				.iter()
+				.filter_map(|(key, _)| key.split_once("/"))
+				.filter_map(|(port, protocol)| {
+					Some((port.parse::<u16>().ok()?, protocol.to_string()))
 				})
-			})
+				.collect::<Vec<_>>()
 		})
-		.collect::<Vec<_>>();
-
-	let exposed_ports = history
-		.into_iter()
-		.fold(vec![], |mut accu, x| {
-			accu.extend(x);
-			accu
-		})
-		.into_iter()
-		.flatten()
-		.collect::<Vec<_>>();
+		.collect::<HashMap<_, _>>();
 
 	context.success(GetDockerRepositoryExposedPortResponse {
 		ports: exposed_ports,
