@@ -1,23 +1,26 @@
-use std::collections::HashMap;
+use std::{collections::BTreeMap, str::FromStr};
 
 use api_macros::closure_as_pinned_box;
 use api_models::{
-	models::workspace::docker_registry::{
-		CreateDockerRepositoryRequest,
-		CreateDockerRepositoryResponse,
-		DeleteDockerRepositoryImageResponse,
-		DeleteDockerRepositoryResponse,
-		DockerRepository,
-		DockerRepositoryTagAndDigestInfo,
-		GetDockerRepositoryExposedPortRequest,
-		GetDockerRepositoryExposedPortResponse,
-		GetDockerRepositoryImageDetailsResponse,
-		GetDockerRepositoryInfoResponse,
-		GetDockerRepositoryTagDetailsResponse,
-		ListDockerRepositoriesResponse,
-		ListDockerRepositoryTagsResponse,
+	models::workspace::{
+		docker_registry::{
+			CreateDockerRepositoryRequest,
+			CreateDockerRepositoryResponse,
+			DeleteDockerRepositoryImageResponse,
+			DeleteDockerRepositoryResponse,
+			DockerRepository,
+			DockerRepositoryTagAndDigestInfo,
+			GetDockerRepositoryExposedPortRequest,
+			GetDockerRepositoryExposedPortResponse,
+			GetDockerRepositoryImageDetailsResponse,
+			GetDockerRepositoryInfoResponse,
+			GetDockerRepositoryTagDetailsResponse,
+			ListDockerRepositoriesResponse,
+			ListDockerRepositoryTagsResponse,
+		},
+		infrastructure::deployment::ExposedPortType,
 	},
-	utils::Uuid,
+	utils::{StringifiedU16, Uuid},
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use http::header::CONTENT_TYPE;
@@ -784,33 +787,33 @@ async fn get_repository_image_exposed_port(
 
 	let manifest = reqwest::Client::new()
 		.get(format!(
-			"{}/v2/{}/manifests/{}",
-			// if config.docker_registry.registry_url.starts_with("localhost")
-			// { "http"
-			// } else {
-			// "https"
-			// },
+			"{}://{}/v2/{}/manifests/{}",
+			if config.docker_registry.registry_url.starts_with("localhost") {
+				"http"
+			} else {
+				"https"
+			},
 			config.docker_registry.registry_url,
 			&repository.name,
 			tag
 		))
-		// .bearer_auth(
-		// 	RegistryToken::new(
-		// 		config.docker_registry.issuer.clone(),
-		// 		iat,
-		// 		god_user.username.clone(),
-		// 		&config,
-		// 		vec![RegistryTokenAccess {
-		// 			r#type: "repository".to_string(),
-		// 			name: repository.name.clone(),
-		// 			actions: vec!["pull".to_string()],
-		// 		}],
-		// 	)
-		// 	.to_string(
-		// 		config.docker_registry.private_key.as_ref(),
-		// 		config.docker_registry.public_key_der.as_ref(),
-		// 	)?,
-		// )
+		.bearer_auth(
+			RegistryToken::new(
+				config.docker_registry.issuer.clone(),
+				iat,
+				god_user.username.clone(),
+				&config,
+				vec![RegistryTokenAccess {
+					r#type: "repository".to_string(),
+					name: repository.name.clone(),
+					actions: vec!["pull".to_string()],
+				}],
+			)
+			.to_string(
+				config.docker_registry.private_key.as_ref(),
+				config.docker_registry.public_key_der.as_ref(),
+			)?,
+		)
 		.header(
 			CONTENT_TYPE,
 			"application/vnd.docker.distribution.manifest.v1+prettyjws",
@@ -828,25 +831,26 @@ async fn get_repository_image_exposed_port(
 		.history
 		.into_iter()
 		.filter_map(|v1_comp_str| {
-			Some(
-				serde_json::from_str::<V1Compatibility>(
-					&v1_comp_str.v1_compatibility,
-				)
-				.ok()?,
+			serde_json::from_str::<V1Compatibility>(
+				&v1_comp_str.v1_compatibility,
 			)
+			.ok()
 		})
 		.filter_map(|v1_comp| v1_comp.container_config.exposed_ports)
 		.map(|exposted_ports| exposted_ports.0)
 		.flat_map(|ref exposted_ports| {
 			exposted_ports
 				.iter()
-				.filter_map(|(key, _)| key.split_once("/"))
-				.filter_map(|(port, protocol)| {
-					Some((port.parse::<u16>().ok()?, protocol.to_string()))
+				.filter_map(|(key, _)| key.split_once('/'))
+				.filter_map(|(port, port_type)| {
+					Some((
+						StringifiedU16::from_str(port).ok()?,
+						ExposedPortType::from_str(port_type).ok()?,
+					))
 				})
 				.collect::<Vec<_>>()
 		})
-		.collect::<HashMap<_, _>>();
+		.collect::<BTreeMap<_, _>>();
 
 	context.success(GetDockerRepositoryExposedPortResponse {
 		ports: exposed_ports,
