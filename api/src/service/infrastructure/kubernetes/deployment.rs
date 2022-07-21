@@ -75,15 +75,12 @@ pub async fn update_kubernetes_deployment(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
-
-	// the namespace is workspace id
-	let namespace = workspace_id.as_str();
+	let kube_client = super::get_kubernetes_config(config).await?;
 
 	if !super::secret_exists(
 		"tls-domain-wildcard-patr-cloud",
-		kubernetes_client.clone(),
-		namespace,
+		kube_client.clone(),
+		workspace_id.as_str(),
 	)
 	.await?
 	{
@@ -98,18 +95,85 @@ pub async fn update_kubernetes_deployment(
 		request_id,
 	);
 
+	update_k8s_deployment_for_deployment(
+		workspace_id,
+		deployment,
+		running_details,
+		full_image,
+		digest,
+		request_id,
+		&kube_client,
+		config,
+	)
+	.await?;
+
+	update_k8s_service_for_deployment(
+		workspace_id,
+		deployment,
+		running_details,
+		request_id,
+		&kube_client,
+	)
+	.await?;
+
+	update_k8s_hpa_for_deployment(
+		workspace_id,
+		deployment,
+		running_details,
+		request_id,
+		&kube_client,
+	)
+	.await?;
+
+	update_k8s_ingress_for_deployment(
+		workspace_id,
+		deployment,
+		running_details,
+		request_id,
+		&kube_client,
+		config,
+	)
+	.await?;
+
+	log::trace!("request_id: {} - deployment created", request_id);
+
+	log::trace!(
+		"request_id: {} - App ingress is at {}",
+		request_id,
+		running_details
+			.ports
+			.iter()
+			.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
+			.map(|(port, _)| format!("{}-{}.patr.cloud", port, deployment.id))
+			.collect::<Vec<_>>()
+			.join(",")
+	);
+
+	Ok(())
+}
+
+pub async fn update_k8s_deployment_for_deployment(
+	workspace_id: &Uuid,
+	deployment: &Deployment,
+	running_details: &DeploymentRunningDetails,
+	full_image: &str,
+	digest: Option<&str>,
+	request_id: &Uuid,
+	kubernetes_client: &kube::Client,
+	config: &Settings,
+) -> Result<(), eve_rs::Error<()>> {
 	let image_name = if let Some(digest) = digest {
 		format!("{}@{}", full_image, digest)
 	} else {
 		full_image.to_string()
 	};
 
-	// get this from machine type
 	let (cpu_count, memory_count) = deployment::MACHINE_TYPES
 		.get()
 		.unwrap()
 		.get(&deployment.machine_type)
 		.unwrap_or(&(1, 2));
+
 	let machine_type = [
 		(
 			"memory".to_string(),
@@ -123,34 +187,7 @@ pub async fn update_kubernetes_deployment(
 	.into_iter()
 	.collect::<BTreeMap<_, _>>();
 
-	log::trace!(
-		"request_id: {} - Deploying deployment: {}",
-		request_id,
-		deployment.id,
-	);
-
-	let labels = [
-		(
-			request_keys::DEPLOYMENT_ID.to_string(),
-			deployment.id.to_string(),
-		),
-		(
-			request_keys::WORKSPACE_ID.to_string(),
-			workspace_id.to_string(),
-		),
-		(
-			request_keys::REGION.to_string(),
-			deployment.region.to_string(),
-		),
-		("app.kubernetes.io/name".to_string(), "vault".to_string()),
-	]
-	.into_iter()
-	.collect::<BTreeMap<_, _>>();
-
-	log::trace!(
-		"request_id: {} - generating deployment configuration",
-		request_id
-	);
+	let labels = get_labels_for_deployment(deployment, workspace_id);
 
 	let annotations = [
 		(
@@ -180,7 +217,7 @@ pub async fn update_kubernetes_deployment(
 	let kubernetes_deployment = K8sDeployment {
 		metadata: ObjectMeta {
 			name: Some(format!("deployment-{}", deployment.id)),
-			namespace: Some(namespace.to_string()),
+			namespace: Some(workspace_id.to_string()),
 			labels: Some(labels.clone()),
 			..ObjectMeta::default()
 		},
@@ -248,9 +285,9 @@ pub async fn update_kubernetes_deployment(
 											String(value) => value.clone(),
 											Secret { from_secret } => {
 												format!(
-													"vault:secret/data/{}/{}#data",
-													workspace_id, from_secret
-												)
+													    "vault:secret/data/{}/{}#data",
+													    workspace_id, from_secret
+												    )
 											}
 										}),
 										..EnvVar::default()
@@ -307,18 +344,51 @@ pub async fn update_kubernetes_deployment(
 		..K8sDeployment::default()
 	};
 
-	// Create the deployment defined above
 	log::trace!("request_id: {} - creating deployment", request_id);
-	let deployment_api =
-		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace);
+	Api::<K8sDeployment>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.patch(
+		&format!("deployment-{}", deployment.id),
+		&PatchParams::apply(&format!("deployment-{}", deployment.id)),
+		&Patch::Apply(kubernetes_deployment),
+	)
+	.await?;
+	Ok(())
+}
 
-	deployment_api
-		.patch(
-			&format!("deployment-{}", deployment.id),
-			&PatchParams::apply(&format!("deployment-{}", deployment.id)),
-			&Patch::Apply(kubernetes_deployment),
-		)
-		.await?;
+fn get_labels_for_deployment(
+	deployment: &Deployment,
+	workspace_id: &Uuid,
+) -> BTreeMap<String, String> {
+	[
+		(
+			request_keys::DEPLOYMENT_ID.to_string(),
+			deployment.id.to_string(),
+		),
+		(
+			request_keys::WORKSPACE_ID.to_string(),
+			workspace_id.to_string(),
+		),
+		(
+			request_keys::REGION.to_string(),
+			deployment.region.to_string(),
+		),
+		("app.kubernetes.io/name".to_string(), "vault".to_string()),
+	]
+	.into_iter()
+	.collect::<BTreeMap<_, _>>()
+}
+
+pub async fn update_k8s_service_for_deployment(
+	workspace_id: &Uuid,
+	deployment: &Deployment,
+	running_details: &DeploymentRunningDetails,
+	request_id: &Uuid,
+	kube_client: &kube::Client,
+) -> Result<(), eve_rs::Error<()>> {
+	let labels = get_labels_for_deployment(deployment, workspace_id);
 
 	let kubernetes_service = Service {
 		metadata: ObjectMeta {
@@ -346,24 +416,28 @@ pub async fn update_kubernetes_deployment(
 		..Service::default()
 	};
 
-	// Create the service defined above
 	log::trace!("request_id: {} - creating ClusterIp service", request_id);
-	let service_api =
-		Api::<Service>::namespaced(kubernetes_client.clone(), namespace);
-
-	service_api
+	Api::<Service>::namespaced(kube_client.clone(), workspace_id.as_str())
 		.patch(
 			&format!("service-{}", deployment.id),
 			&PatchParams::apply(&format!("service-{}", deployment.id)),
 			&Patch::Apply(kubernetes_service),
 		)
 		.await?;
+	Ok(())
+}
 
-	// HPA - horizontal pod autoscaler
+pub async fn update_k8s_hpa_for_deployment(
+	workspace_id: &Uuid,
+	deployment: &Deployment,
+	running_details: &DeploymentRunningDetails,
+	request_id: &Uuid,
+	kube_client: &kube::Client,
+) -> Result<(), eve_rs::Error<()>> {
 	let kubernetes_hpa = HorizontalPodAutoscaler {
 		metadata: ObjectMeta {
 			name: Some(format!("hpa-{}", deployment.id)),
-			namespace: Some(namespace.to_string()),
+			namespace: Some(workspace_id.to_string()),
 			..ObjectMeta::default()
 		},
 		spec: Some(HorizontalPodAutoscalerSpec {
@@ -379,24 +453,32 @@ pub async fn update_kubernetes_deployment(
 		..HorizontalPodAutoscaler::default()
 	};
 
-	// Create the HPA defined above
 	log::trace!(
 		"request_id: {} - creating horizontal pod autoscalar",
 		request_id
 	);
-	let hpa_api = Api::<HorizontalPodAutoscaler>::namespaced(
-		kubernetes_client.clone(),
-		namespace,
-	);
+	Api::<HorizontalPodAutoscaler>::namespaced(
+		kube_client.clone(),
+		workspace_id.as_str(),
+	)
+	.patch(
+		&format!("hpa-{}", deployment.id),
+		&PatchParams::apply(&format!("hpa-{}", deployment.id)),
+		&Patch::Apply(kubernetes_hpa),
+	)
+	.await?;
 
-	hpa_api
-		.patch(
-			&format!("hpa-{}", deployment.id),
-			&PatchParams::apply(&format!("hpa-{}", deployment.id)),
-			&Patch::Apply(kubernetes_hpa),
-		)
-		.await?;
+	Ok(())
+}
 
+pub async fn update_k8s_ingress_for_deployment(
+	workspace_id: &Uuid,
+	deployment: &Deployment,
+	running_details: &DeploymentRunningDetails,
+	request_id: &Uuid,
+	kube_client: &kube::Client,
+	config: &Settings,
+) -> Result<(), eve_rs::Error<()>> {
 	let annotations = [
 		(
 			"kubernetes.io/ingress.class".to_string(),
@@ -463,31 +545,14 @@ pub async fn update_kubernetes_deployment(
 		..Ingress::default()
 	};
 
-	// Create the ingress defined above
 	log::trace!("request_id: {} - creating ingress", request_id);
-	let ingress_api = Api::<Ingress>::namespaced(kubernetes_client, namespace);
-
-	ingress_api
+	Api::<Ingress>::namespaced(kube_client.clone(), workspace_id.as_str())
 		.patch(
 			&format!("ingress-{}", deployment.id),
 			&PatchParams::apply(&format!("ingress-{}", deployment.id)),
 			&Patch::Apply(kubernetes_ingress),
 		)
 		.await?;
-
-	log::trace!("request_id: {} - deployment created", request_id);
-
-	log::trace!(
-		"request_id: {} - App ingress is at {}",
-		request_id,
-		running_details
-			.ports
-			.iter()
-			.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
-			.map(|(port, _)| format!("{}-{}.patr.cloud", port, deployment.id))
-			.collect::<Vec<_>>()
-			.join(",")
-	);
 
 	Ok(())
 }

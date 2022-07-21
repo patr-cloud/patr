@@ -20,6 +20,7 @@ mod redis;
 mod routes;
 mod scheduler;
 mod service;
+mod syncr;
 mod utils;
 
 use std::sync::Arc;

@@ -36,7 +36,7 @@ pub use self::{
 };
 use crate::utils::{settings::Settings, Error};
 
-async fn get_kubernetes_config(
+pub async fn get_kubernetes_config(
 	config: &Settings,
 ) -> Result<kube::Client, Error> {
 	let config = Config::from_custom_kubeconfig(
@@ -86,7 +86,7 @@ async fn get_kubernetes_config(
 	Ok(client)
 }
 
-async fn service_exists(
+pub async fn service_exists(
 	service_id: &Uuid,
 	kubernetes_client: kube::Client,
 	namespace: &str,
@@ -101,7 +101,7 @@ async fn service_exists(
 	}
 }
 
-async fn deployment_exists(
+pub async fn deployment_exists(
 	deployment_id: &Uuid,
 	kubernetes_client: kube::Client,
 	namespace: &str,
@@ -117,7 +117,7 @@ async fn deployment_exists(
 	}
 }
 
-async fn hpa_exists(
+pub async fn hpa_exists(
 	hpa_id: &Uuid,
 	kubernetes_client: kube::Client,
 	namespace: &str,
@@ -135,7 +135,7 @@ async fn hpa_exists(
 	}
 }
 
-async fn ingress_exists(
+pub async fn ingress_exists(
 	managed_url_id: &Uuid,
 	kubernetes_client: kube::Client,
 	namespace: &str,
@@ -150,7 +150,7 @@ async fn ingress_exists(
 	}
 }
 
-async fn certificate_exists(
+pub async fn certificate_exists(
 	certificate_name: &str,
 	kubernetes_client: kube::Client,
 	namespace: &str,
@@ -177,7 +177,7 @@ async fn certificate_exists(
 	}
 }
 
-async fn secret_exists(
+pub async fn secret_exists(
 	secret_name: &str,
 	kubernetes_client: kube::Client,
 	namespace: &str,

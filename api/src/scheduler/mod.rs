@@ -11,6 +11,7 @@ static CONFIG: OnceCell<App> = OnceCell::new();
 
 pub mod billing;
 pub mod domain;
+pub mod syncr;
 
 pub fn initialize_jobs(app: &App) {
 	CONFIG.set(app.clone()).expect("CONFIG is already set");
@@ -54,6 +55,7 @@ fn get_scheduled_jobs() -> Vec<Job> {
 		domain::reverify_verified_domains_job(),
 		domain::refresh_domain_tld_list_job(),
 		billing::update_bill_job(),
+		syncr::initiate_syncr_job(),
 	]
 }
 

@@ -713,6 +713,32 @@ pub async fn get_deployments_for_workspace(
 	.await
 }
 
+pub async fn get_running_deployment_ids_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Vec<Uuid>, sqlx::Error> {
+	let ids = query!(
+		r#"
+			SELECT
+				id as "id: Uuid"
+			FROM
+				deployment
+			WHERE (
+				workspace_id = $1 AND
+				status = 'running'
+			);
+		"#,
+		workspace_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| row.id)
+	.collect();
+
+	Ok(ids)
+}
+
 pub async fn get_deployment_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
