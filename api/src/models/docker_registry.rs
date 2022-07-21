@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use jsonwebtoken::{
 	errors::Error as JWTError,
@@ -10,6 +12,7 @@ use jsonwebtoken::{
 };
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sha2::{Digest, Sha256};
 
 use crate::utils::settings::Settings;
@@ -196,4 +199,30 @@ pub struct Source {
 		skip_serializing_if = "String::is_empty"
 	)]
 	pub instance_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DockerRepositoryManifest {
+	pub history: Vec<V1CompatibilityHolder>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DockerRepositoryManifestHistory {
+	pub history: Vec<V1CompatibilityHolder>,
+}
+
+#[derive(Serialize, Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct V1CompatibilityHolder {
+	pub v1_compatibility: String,
+}
+
+#[derive(Serialize, Debug, Deserialize, Clone)]
+pub struct V1Compatibility {
+	pub container_config: DockerRepositoryExposedPort,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "PascalCase")]
+pub struct DockerRepositoryExposedPort {
+	pub exposed_ports: Option<HashMap<String, Value>>,
 }

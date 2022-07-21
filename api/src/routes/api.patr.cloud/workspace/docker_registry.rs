@@ -7,6 +7,8 @@ use api_models::{
 		DeleteDockerRepositoryResponse,
 		DockerRepository,
 		DockerRepositoryTagAndDigestInfo,
+		GetDockerRepositoryExposedPortRequest,
+		GetDockerRepositoryExposedPortResponse,
 		GetDockerRepositoryImageDetailsResponse,
 		GetDockerRepositoryInfoResponse,
 		GetDockerRepositoryTagDetailsResponse,
@@ -154,6 +156,47 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(get_docker_repository_info)),
+		],
+	);
+
+	// Get exposed port
+	app.get(
+		"/:repositoryId/exposed-ports",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::docker_registry::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let repository_id_string =
+						context.get_param(request_keys::REPOSITORY_ID).unwrap();
+					let repository_id = Uuid::parse_str(repository_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&repository_id,
+					)
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(
+				get_repository_image_exposed_port
+			)),
 		],
 	);
 
@@ -680,6 +723,50 @@ async fn get_repository_image_details(
 		request_id
 	);
 	context.success(GetDockerRepositoryImageDetailsResponse { image, tags });
+	Ok(context)
+}
+
+async fn get_repository_image_exposed_port(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let config = context.get_state().config.to_owned();
+	let repository_id = Uuid::parse_str(
+		context.get_param(request_keys::REPOSITORY_ID).unwrap(),
+	)
+	.unwrap();
+
+	let GetDockerRepositoryExposedPortRequest { tag, .. } = context
+		.get_query_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let repository = db::get_docker_repository_by_id(
+		context.get_database_connection(),
+		&repository_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	db::get_docker_repository_tag_details(
+		context.get_database_connection(),
+		&repository_id,
+		&tag,
+	)
+	.await?
+	.status(404)
+	.body(error!(TAG_NOT_FOUND).to_string())?;
+
+	let ports = service::get_exposed_port_for_docker_image(
+		context.get_database_connection(),
+		&config,
+		&repository.name,
+		&tag,
+	)
+	.await?;
+
+	context.success(GetDockerRepositoryExposedPortResponse { ports });
 	Ok(context)
 }
 
