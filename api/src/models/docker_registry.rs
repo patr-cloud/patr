@@ -218,11 +218,11 @@ pub struct V1CompatibilityHolder {
 
 #[derive(Serialize, Debug, Deserialize, Clone)]
 pub struct V1Compatibility {
-	pub container_config: Port,
+	pub container_config: DockerRepositoryExposedPort,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
-pub struct Port {
+pub struct DockerRepositoryExposedPort {
 	pub exposed_ports: Option<HashMap<String, Value>>,
 }

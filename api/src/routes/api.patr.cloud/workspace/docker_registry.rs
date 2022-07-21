@@ -749,20 +749,16 @@ async fn get_repository_image_exposed_port(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let repository_tag = db::get_docker_repository_tag_details(
+	db::get_docker_repository_tag_details(
 		context.get_database_connection(),
 		&repository_id,
 		&tag,
 	)
-	.await?;
+	.await?
+	.status(404)
+	.body(error!(TAG_NOT_FOUND).to_string())?;
 
-	if repository_tag.is_none() {
-		return Error::as_result()
-			.status(404)
-			.body(error!(TAG_NOT_FOUND).to_string());
-	}
-
-	let exposed_ports = service::get_exposed_port(
+	let ports = service::get_exposed_port_for_docker_image(
 		context.get_database_connection(),
 		&config,
 		&repository.name,
@@ -770,10 +766,7 @@ async fn get_repository_image_exposed_port(
 	)
 	.await?;
 
-	context.success(GetDockerRepositoryExposedPortResponse {
-		ports: exposed_ports,
-	});
-
+	context.success(GetDockerRepositoryExposedPortResponse { ports });
 	Ok(context)
 }
 

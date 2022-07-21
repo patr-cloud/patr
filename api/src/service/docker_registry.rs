@@ -6,7 +6,6 @@ use api_models::{
 };
 use chrono::Utc;
 use eve_rs::AsError;
-use http::header::CONTENT_TYPE;
 
 use crate::{
 	db,
@@ -272,7 +271,7 @@ pub async fn delete_docker_repository(
 	Ok(())
 }
 
-pub async fn get_exposed_port(
+pub async fn get_exposed_port_for_docker_image(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 	repository_name: &str,
@@ -285,7 +284,7 @@ pub async fn get_exposed_port(
 
 	let iat = get_current_time().as_secs();
 
-	let manifest = reqwest::Client::new()
+	let exposed_ports = reqwest::Client::new()
 		.get(format!(
 			"{}://{}/v2/{}/manifests/{}",
 			if config.docker_registry.registry_url.starts_with("localhost") {
@@ -315,7 +314,7 @@ pub async fn get_exposed_port(
 			)?,
 		)
 		.header(
-			CONTENT_TYPE,
+			reqwest::header::CONTENT_TYPE,
 			"application/vnd.docker.distribution.manifest.v1+prettyjws",
 		)
 		.send()
@@ -325,9 +324,7 @@ pub async fn get_exposed_port(
 		.map_err(|e| {
 			log::error!("Error while parsing manifest json - {}", e);
 			e
-		})?;
-
-	let exposed_ports = manifest
+		})?
 		.history
 		.into_iter()
 		.filter_map(|v1_comp_str| {
@@ -337,18 +334,19 @@ pub async fn get_exposed_port(
 			.ok()
 		})
 		.filter_map(|v1_comp| v1_comp.container_config.exposed_ports)
-		.flat_map(|ref exposted_ports| {
-			exposted_ports
-				.iter()
-				.filter_map(|(key, _)| key.split_once('/'))
-				.filter_map(|(port, _)| {
-					Some((
-						StringifiedU16::from_str(port).ok()?,
-						ExposedPortType::Http,
-					))
-				})
-				.collect::<Vec<_>>()
+		.flat_map(IntoIterator::into_iter)
+		.map(|(port, _)| port)
+		.flat_map(|port| {
+			if let Some((port, "tcp")) = port.split_once('/') {
+				Some((
+					StringifiedU16::from_str(port).ok()?,
+					ExposedPortType::Http,
+				))
+			} else {
+				None
+			}
 		})
 		.collect::<BTreeMap<_, _>>();
+
 	Ok(exposed_ports)
 }
