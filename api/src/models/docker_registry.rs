@@ -202,29 +202,27 @@ pub struct Source {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Manifest {
-	pub history: Vec<V1CompatibilityStr>,
+pub struct DockerRepositoryManifest {
+	pub history: Vec<V1CompatibilityHolder>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct History {
-	pub history: Vec<V1CompatibilityStr>,
+pub struct DockerRepositoryManifestHistory {
+	pub history: Vec<V1CompatibilityHolder>,
 }
 
 #[derive(Serialize, Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct V1CompatibilityStr {
+pub struct V1CompatibilityHolder {
 	pub v1_compatibility: String,
 }
 
 #[derive(Serialize, Debug, Deserialize, Clone)]
 pub struct V1Compatibility {
-	pub container_config: Config,
+	pub container_config: Port,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
-pub struct Config {
-	pub exposed_ports: Option<ExposedPorts>,
+pub struct Port {
+	pub exposed_ports: Option<HashMap<String, Value>>,
 }
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ExposedPorts(pub HashMap<String, Value>);

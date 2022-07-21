@@ -1,11 +1,23 @@
-use api_models::utils::{DateTime, Uuid};
+use std::{collections::BTreeMap, str::FromStr};
+
+use api_models::{
+	models::workspace::infrastructure::deployment::ExposedPortType,
+	utils::{DateTime, StringifiedU16, Uuid},
+};
 use chrono::Utc;
 use eve_rs::AsError;
+use http::header::CONTENT_TYPE;
 
 use crate::{
 	db,
 	error,
-	models::{rbac, RegistryToken, RegistryTokenAccess},
+	models::{
+		rbac,
+		DockerRepositoryManifest,
+		RegistryToken,
+		RegistryTokenAccess,
+		V1Compatibility,
+	},
 	utils::{get_current_time, settings::Settings, Error},
 	Database,
 };
@@ -258,4 +270,85 @@ pub async fn delete_docker_repository(
 
 	log::trace!("request_id: {} - Deleting docker repository from the registry was successful", request_id);
 	Ok(())
+}
+
+pub async fn get_exposed_port(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+	repository_name: &str,
+	tag: &str,
+) -> Result<BTreeMap<StringifiedU16, ExposedPortType>, Error> {
+	let god_user =
+		db::get_user_by_user_id(connection, rbac::GOD_USER_ID.get().unwrap())
+			.await?
+			.unwrap();
+
+	let iat = get_current_time().as_secs();
+
+	let manifest = reqwest::Client::new()
+		.get(format!(
+			"{}://{}/v2/{}/manifests/{}",
+			if config.docker_registry.registry_url.starts_with("localhost") {
+				"http"
+			} else {
+				"https"
+			},
+			config.docker_registry.registry_url,
+			&repository_name,
+			tag
+		))
+		.bearer_auth(
+			RegistryToken::new(
+				config.docker_registry.issuer.clone(),
+				iat,
+				god_user.username.clone(),
+				config,
+				vec![RegistryTokenAccess {
+					r#type: "repository".to_string(),
+					name: repository_name.to_string(),
+					actions: vec!["pull".to_string()],
+				}],
+			)
+			.to_string(
+				config.docker_registry.private_key.as_ref(),
+				config.docker_registry.public_key_der.as_ref(),
+			)?,
+		)
+		.header(
+			CONTENT_TYPE,
+			"application/vnd.docker.distribution.manifest.v1+prettyjws",
+		)
+		.send()
+		.await?
+		.json::<DockerRepositoryManifest>()
+		.await
+		.map_err(|e| {
+			log::error!("Error while parsing manifest json - {}", e);
+			e
+		})?;
+
+	let exposed_ports = manifest
+		.history
+		.into_iter()
+		.filter_map(|v1_comp_str| {
+			serde_json::from_str::<V1Compatibility>(
+				&v1_comp_str.v1_compatibility,
+			)
+			.ok()
+		})
+		.filter_map(|v1_comp| v1_comp.container_config.exposed_ports)
+		.flat_map(|ref exposted_ports| {
+			exposted_ports
+				.iter()
+				.filter_map(|(key, _)| key.split_once('/'))
+				.filter_map(|(port, _)| {
+					Some((
+						StringifiedU16::from_str(port).ok()?,
+						ExposedPortType::Http,
+					))
+				})
+				.collect::<Vec<_>>()
+		})
+		.collect::<BTreeMap<_, _>>();
+	Ok(exposed_ports)
 }
