@@ -85,6 +85,7 @@ trust-dns-client = "0.21.1"
 vaultrs = "0.6.0"
 zeroize = "1.5.4"
 zip = "0.6.2"
+either = "1.7.0"
 
 [dependencies.log4rs]
 default-features = false
