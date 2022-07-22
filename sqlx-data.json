@@ -3907,7 +3907,7 @@
         true,
         true,
         true,
-        true
+        false
       ],
       "parameters": {
         "Left": []
@@ -5677,6 +5677,26 @@
     },
     "query": "SELECT permission_id as \"permission_id: Uuid\", resource_id as \"resource_id: Uuid\" FROM role_permissions_resource WHERE role_id = $1;"
   },
+  "8ad3e20eadf888727090e76e7cb73ae584bccc1ab041f248362189cc1de8e068": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: Uuid\" FROM deployment WHERE ( workspace_id = $1 AND status = 'running' );"
+  },
   "8ba7e810211002c1b6033836493c2f48f72dbf7718a0ee8571cf200f07bbeb4d": {
     "describe": {
       "columns": [
@@ -6251,6 +6271,26 @@
     },
     "query": "UPDATE \"user\" SET location = $1 WHERE id = $2;"
   },
+  "98f347bfc9b2ddcdfe7d1b6aab510245a4597810ef5f0b6638d482ecdaef2a86": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: Uuid\" FROM deployment WHERE ( workspace_id = $1 AND status != 'deleted' );"
+  },
   "997947986aa00232ee0ef91426b9a53e3af707486cbc1799eb05d2501d2d7ce9": {
     "describe": {
       "columns": [],
@@ -6716,7 +6756,7 @@
         true,
         true,
         true,
-        true
+        false
       ],
       "parameters": {
         "Left": []
