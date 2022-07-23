@@ -293,7 +293,7 @@ pub async fn initialize_domain_pre(
 					proxied IS NOT NULL
 				) OR
 				(
-					(type = 'MX' OR type = 'TXT') AND 
+					(type = 'MX' OR type = 'TXT') AND
 					proxied IS NULL
 				)
 			)
@@ -1075,83 +1075,57 @@ pub async fn update_workspace_domain_status(
 	.map(|_| ())
 }
 
-pub async fn get_all_unused_domain_tlds(
+pub async fn update_top_level_domain_list(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<String>, sqlx::Error> {
-	let rows = query!(
+	tlds: &[String],
+) -> Result<(), sqlx::Error> {
+	let result = query!(
 		r#"
-		SELECT
-			tld
-		FROM
-			domain_tld
-		WHERE
-			(
+			WITH current_domains(tld) AS (
 				SELECT
-					COUNT(*)
-				FROM
-					domain
-				WHERE
-					domain.tld = tld
-			) = 0;
-		"#
+					UNNEST($1::text[])
+			),
+			deprecated_domains(tld) AS (
+				SELECT tld FROM domain_tld
+				EXCEPT
+				SELECT tld FROM current_domains
+				EXCEPT
+				SELECT tld FROM domain
+				EXCEPT
+				SELECT business_domain_tld FROM user_to_sign_up
+			),
+			inserted_domains(tld, action) AS (
+				INSERT INTO domain_tld
+					SELECT * FROM current_domains
+				ON CONFLICT DO NOTHING
+				RETURNING tld, 'inserted'
+			),
+			deleted_domains(tld, action) AS (
+				DELETE FROM domain_tld
+				WHERE EXISTS (
+					SELECT
+						tld
+					FROM
+						deprecated_domains
+					WHERE
+						deprecated_domains.tld = domain_tld.tld
+				)
+				RETURNING tld, 'deleted'
+			)
+			SELECT tld as "tld!", action as "action!" FROM inserted_domains
+			UNION
+			SELECT tld as "tld!", action as "action!" FROM deleted_domains;
+		"#,
+		&tlds[..],
 	)
 	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| row.tld)
-	.collect();
+	.await?;
 
-	Ok(rows)
-}
-
-pub async fn update_domain_tld_list(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	tlds: &[String],
-) -> Result<(), sqlx::Error> {
-	for tld in tlds {
-		query!(
-			r#"
-			INSERT INTO
-				domain_tld(
-					tld
-				)
-			VALUES
-				($1)
-			ON CONFLICT DO NOTHING;
-			"#,
-			tld,
-		)
-		.execute(&mut *connection)
-		.await
-		.map_err(|err| {
-			log::error!("Error inserting TLD `{}`", tld);
-			err
-		})?;
-	}
-
-	Ok(())
-}
-
-pub async fn remove_from_domain_tld_list(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	tlds: &[String],
-) -> Result<(), sqlx::Error> {
-	for tld in tlds {
-		query!(
-			r#"
-			DELETE FROM
-				domain_tld
-			WHERE
-				tld = $1;
-			"#,
-			tld,
-		)
-		.execute(&mut *connection)
-		.await
-		.map_err(|err| {
-			log::error!("Error removing TLD `{}`", tld);
-			err
-		})?;
+	if !cfg!(debug_assertions) {
+		// in production log the query result
+		result.into_iter().for_each(|record| {
+			log::info!("sync tld: {} domain '{}'", record.action, record.tld)
+		});
 	}
 
 	Ok(())

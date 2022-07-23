@@ -1210,18 +1210,6 @@
     },
     "query": "UPDATE managed_url SET path = $2, url_type = $3, deployment_id = $4, port = $5, static_site_id = $6, url = $7 WHERE id = $1;"
   },
-  "19a432179c8e7da5140ac965a7bdfa4eb1306ac48fad4c2a47a4f86276eccbfa": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      }
-    },
-    "query": "INSERT INTO domain_tld( tld ) VALUES ($1) ON CONFLICT DO NOTHING;"
-  },
   "1a22653fa91b8253b6ac6440aef2826bcb839954b73ee66f202f3682d8f6b6ef": {
     "describe": {
       "columns": [
@@ -2350,6 +2338,32 @@
       }
     },
     "query": "CREATE INDEX resource_idx_owner_id ON resource (owner_id);"
+  },
+  "350120178e1eab7c9efe08ad136ddcac9c1409ee8c573ea210a35eb0cbebd0a1": {
+    "describe": {
+      "columns": [
+        {
+          "name": "tld!",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "action!",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "TextArray"
+        ]
+      }
+    },
+    "query": "WITH current_domains(tld) AS ( SELECT UNNEST($1::text[]) ), deprecated_domains(tld) AS ( SELECT tld FROM domain_tld EXCEPT SELECT tld FROM current_domains EXCEPT SELECT tld FROM domain EXCEPT SELECT business_domain_tld FROM user_to_sign_up ), inserted_domains(tld, action) AS ( INSERT INTO domain_tld SELECT * FROM current_domains ON CONFLICT DO NOTHING RETURNING tld, 'inserted' ), deleted_domains(tld, action) AS ( DELETE FROM domain_tld WHERE EXISTS ( SELECT tld FROM deprecated_domains WHERE deprecated_domains.tld = domain_tld.tld ) RETURNING tld, 'deleted' ) SELECT tld as \"tld!\", action as \"action!\" FROM inserted_domains UNION SELECT tld as \"tld!\", action as \"action!\" FROM deleted_domains;"
   },
   "353ded9cc4ab26bb0b06b1d9ae212dd16336aa261d501f393967955becb485a2": {
     "describe": {
@@ -3660,24 +3674,6 @@
     },
     "query": "ALTER TABLE static_site ADD CONSTRAINT static_site_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);"
   },
-  "571435b90fe135c72da1588938fba41d3e6371f8da7f50ca74e254a6a6826699": {
-    "describe": {
-      "columns": [
-        {
-          "name": "tld",
-          "ordinal": 0,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "SELECT tld FROM domain_tld WHERE ( SELECT COUNT(*) FROM domain WHERE domain.tld = tld ) = 0;"
-  },
   "5721e736cbf4837d0ede04057dc60ebc451c0e29bc279f2ec86ec2d05053c38a": {
     "describe": {
       "columns": [],
@@ -3907,7 +3903,7 @@
         true,
         true,
         true,
-        true
+        false
       ],
       "parameters": {
         "Left": []
@@ -6716,7 +6712,7 @@
         true,
         true,
         true,
-        true
+        false
       ],
       "parameters": {
         "Left": []
@@ -6753,18 +6749,6 @@
       }
     },
     "query": "SELECT id as \"id: _\", cpu_count, memory_count FROM deployment_machine_type;"
-  },
-  "a1fbca12fee638f4712ee6c0458d471e6978fbe3745de16d24c157b960491206": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      }
-    },
-    "query": "DELETE FROM domain_tld WHERE tld = $1;"
   },
   "a26aaae9c578adae831230251acca207c63e94e7962a88ed7aa95c55a0769adc": {
     "describe": {
