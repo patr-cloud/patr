@@ -128,7 +128,7 @@ pub async fn create_static_site_in_workspace(
 
 		db::create_resource(
 			connection,
-			&static_site_id,
+			&upload_id,
 			&format!("Static site upload: {}", upload_id),
 			rbac::RESOURCE_TYPES
 				.get()
@@ -198,7 +198,7 @@ pub async fn update_static_site(
 
 		db::create_resource(
 			connection,
-			static_site_id,
+			&upload_id,
 			&format!("Static site upload: {}", upload_id),
 			rbac::RESOURCE_TYPES
 				.get()
