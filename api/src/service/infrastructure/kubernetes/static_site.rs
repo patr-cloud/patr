@@ -4,6 +4,7 @@ use api_models::{
 	models::workspace::infrastructure::static_site::StaticSiteDetails,
 	utils::Uuid,
 };
+use cloudflare::endpoints::workerskv;
 use eve_rs::AsError;
 use k8s_openapi::{
 	api::{
@@ -27,10 +28,11 @@ use kube::{
 	core::ObjectMeta,
 	Api,
 };
+use serde_json::json;
 
 use crate::{
 	error,
-	service::infrastructure::kubernetes,
+	service::{self, infrastructure::kubernetes},
 	utils::{settings::Settings, Error},
 };
 
@@ -172,6 +174,26 @@ pub async fn update_kubernetes_static_site(
 		.status
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
+
+	// TODO: error handling
+	let cf_client = service::get_cloudflare_client(config).await?;
+	cf_client
+		.request_handle(&workerskv::write_bulk::WriteBulk {
+			account_identifier: &config.cloudflare.account_id,
+			namespace_identifier: &config.cloudflare.kv_routing_ns,
+			bulk_key_value_pairs: vec![workerskv::write_bulk::KeyValuePair {
+				key: static_site_id.to_string(),
+				value: json!({
+					"static_site_id": static_site_id,
+					"upload": upload_id
+				}).to_string(),
+				expiration: None,
+				expiration_ttl: None,
+				base64: None,
+			}],
+		})
+		.await?;
+
 	log::trace!("request_id: {} - deployment created", request_id);
 	log::trace!(
 		"request_id: {} - App ingress is at {}.patr.cloud",
@@ -250,6 +272,16 @@ pub async fn delete_kubernetes_static_site(
 			namespace,
 		);
 	}
+
+	// TODO: error handling
+	let cf_client = service::get_cloudflare_client(config).await?;
+	cf_client
+		.request_handle(&workerskv::delete_key::DeleteKey {
+			account_identifier: &config.cloudflare.account_id,
+			namespace_identifier: &config.cloudflare.kv_routing_ns,
+			key: static_site_id.as_str(),
+		})
+		.await?;
 
 	log::trace!(
 		"request_id: {} - static site deleted successfully!",

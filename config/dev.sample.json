@@ -52,7 +52,8 @@
 	"cloudflare": {
 		"accountId": "<example-account-id>",
 		"accountEmail": "account@example.com",
-		"apiToken": "<example-api-token>"
+		"apiToken": "<example-api-token>",
+		"kvRoutingNs": "cloudflare kv namespace id"
 	},
 	"dockerRegistry": {
 		"serviceName": "Deployer Registry Service",
