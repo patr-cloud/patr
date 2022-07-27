@@ -1,4 +1,5 @@
 use api_models::utils::Uuid;
+use serde::{Deserialize, Serialize};
 
 use crate::{query, query_as, Database};
 
@@ -23,6 +24,8 @@ pub struct ManagedUrl {
 	pub url: Option<String>,
 	pub workspace_id: Uuid,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct VerifyManagedUrlResponse {
 	pub verification_secret: String,
 }
