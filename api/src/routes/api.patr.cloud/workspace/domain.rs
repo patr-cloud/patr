@@ -12,7 +12,7 @@ use api_models::{
 		GetDomainInfoResponse,
 		GetDomainsForWorkspaceResponse,
 		PatrDomainDnsRecord,
-		TransferDomainResponse,
+		TransferDomainNameserverToPatrResponse,
 		UpdateDomainDnsRecordRequest,
 		UpdateDomainDnsRecordResponse,
 		VerifyDomainResponse,
@@ -587,7 +587,7 @@ async fn transfer_domain_to_patr(
 	)
 	.await?;
 
-	context.success(TransferDomainResponse {});
+	context.success(TransferDomainNameserverToPatrResponse {});
 	Ok(context)
 }
 
