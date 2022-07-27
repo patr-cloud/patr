@@ -105,19 +105,37 @@ pub async fn initialize_deployment_pre(
 			parent_region_id UUID
 				CONSTRAINT deployment_region_fk_parent_region_id
 					REFERENCES deployment_region(id),
+			slug CITEXT,
 			CONSTRAINT
-				deployment_region_chk_provider_location_parent_region_is_valid
+				deployment_region_chk_provider_location_slug_parent_is_valid
 					CHECK(
 						(
 							location IS NULL AND
-							provider IS NULL
+							provider IS NULL AND
+							slug IS NULL
 						) OR (
 							provider IS NOT NULL AND
 							location IS NOT NULL AND
 							parent_region_id IS NOT NULL
 						)
-					)
+					),
+			CONSTRAINT
+				deployment_region_name_provider_location_uq
+					UNIQUE(name, provider, location)
 		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			deployment_region_slug_uq
+		ON
+			deployment_region(slug)
+		WHERE
+			slug IS NOT NULL;
 		"#
 	)
 	.execute(&mut *connection)
@@ -1257,10 +1275,11 @@ async fn populate_region(
 					name,
 					provider,
 					location,
-					parent_region_id
+					parent_region_id,
+					slug
 				)
 			VALUES
-				($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6);
+				($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6, $7);
 			"#,
 			region_id as _,
 			region.name,
@@ -1268,6 +1287,7 @@ async fn populate_region(
 			region.coordinates.unwrap().0,
 			region.coordinates.unwrap().1,
 			parent_region_id as _,
+			region.slug as _,
 		)
 		.execute(&mut *connection)
 		.await?;

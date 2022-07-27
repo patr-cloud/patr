@@ -24,21 +24,25 @@ lazy_static::lazy_static! {
 			name: "Asia",
 			cloud_provider: None,
 			coordinates: None,
+			slug: None,
 			child_regions: vec![
 				DefaultDeploymentRegion {
 					name: "Singapore",
 					cloud_provider: Some(DeploymentCloudProvider::Digitalocean),
 					coordinates: Some((1.3521, 103.8198)),
+					slug: None,
 					child_regions: vec![],
 				},
 				DefaultDeploymentRegion {
 					name: "India",
 					cloud_provider: None,
 					coordinates: None,
+					slug: None,
 					child_regions: vec![DefaultDeploymentRegion {
 						name: "Bangalore",
 						cloud_provider: Some(DeploymentCloudProvider::Digitalocean),
 						coordinates: Some((2.9716, 77.5946)),
+						slug: Some("do-blr1"),
 						child_regions: vec![],
 					}],
 				},
@@ -48,15 +52,18 @@ lazy_static::lazy_static! {
 			name: "Europe",
 			cloud_provider: None,
 			coordinates: None,
+			slug: None,
 			child_regions: vec![
 				DefaultDeploymentRegion {
 					name: "England",
 					cloud_provider: None,
 					coordinates: None,
+					slug: None,
 					child_regions: vec![DefaultDeploymentRegion {
 						name: "London",
 						cloud_provider: Some(DeploymentCloudProvider::Digitalocean),
 						coordinates: Some((51.5072, 0.1276)),
+						slug: None,
 						child_regions: vec![],
 					}],
 				},
@@ -64,10 +71,12 @@ lazy_static::lazy_static! {
 					name: "Netherlands",
 					cloud_provider: None,
 					coordinates: None,
+					slug: None,
 					child_regions: vec![DefaultDeploymentRegion {
 						name: "Amsterdam",
 						cloud_provider: Some(DeploymentCloudProvider::Digitalocean),
 						coordinates: Some((52.3676, 4.9041)),
+						slug: None,
 						child_regions: vec![],
 					}],
 				},
@@ -75,10 +84,12 @@ lazy_static::lazy_static! {
 					name: "Germany",
 					cloud_provider: None,
 					coordinates: None,
+					slug: None,
 					child_regions: vec![DefaultDeploymentRegion {
 						name: "Frankfurt",
 						cloud_provider: Some(DeploymentCloudProvider::Digitalocean),
 						coordinates: Some((50.1109, 8.6821)),
+						slug: None,
 						child_regions: vec![],
 					}],
 				},
@@ -88,15 +99,18 @@ lazy_static::lazy_static! {
 			name: "North-America",
 			cloud_provider: None,
 			coordinates: None,
+			slug: None,
 			child_regions: vec![
 				DefaultDeploymentRegion {
 					name: "Canada",
 					cloud_provider: None,
 					coordinates: None,
+					slug: None,
 					child_regions: vec![DefaultDeploymentRegion {
 						name: "Toronto",
 						cloud_provider: Some(DeploymentCloudProvider::Digitalocean),
 						coordinates: Some((43.6532, 79.3832)),
+						slug: None,
 						child_regions: vec![],
 					}],
 				},
@@ -104,6 +118,7 @@ lazy_static::lazy_static! {
 					name: "USA",
 					cloud_provider: None,
 					coordinates: None,
+					slug: None,
 					child_regions: vec![
 						DefaultDeploymentRegion {
 							name: "New-York 1",
@@ -111,6 +126,7 @@ lazy_static::lazy_static! {
 								DeploymentCloudProvider::Digitalocean,
 							),
 							coordinates: Some((40.7128, 74.0060)),
+							slug: None,
 							child_regions: vec![],
 						},
 						DefaultDeploymentRegion {
@@ -119,6 +135,7 @@ lazy_static::lazy_static! {
 								DeploymentCloudProvider::Digitalocean,
 							),
 							coordinates: Some((40.7128, 74.0060)),
+							slug: None,
 							child_regions: vec![],
 						},
 						DefaultDeploymentRegion {
@@ -127,6 +144,7 @@ lazy_static::lazy_static! {
 								DeploymentCloudProvider::Digitalocean,
 							),
 							coordinates: Some((37.7749, 122.4194)),
+							slug: None,
 							child_regions: vec![],
 						},
 					],
@@ -146,6 +164,7 @@ pub struct DefaultDeploymentRegion {
 	pub name: &'static str,
 	pub cloud_provider: Option<DeploymentCloudProvider>,
 	pub coordinates: Option<(f64, f64)>,
+	pub slug: Option<&'static str>,
 	pub child_regions: Vec<DefaultDeploymentRegion>,
 }
 

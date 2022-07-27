@@ -53,6 +53,8 @@ pub(super) async fn migrate(
 	add_table_deployment_image_digest(&mut *connection, config).await?;
 	populate_deployment_deploy_history(&mut *connection, config).await?;
 
+	update_deployment_region_table_for_multi_cluster(&mut *connection, config).await?;
+
 	Ok(())
 }
 
@@ -605,6 +607,101 @@ async fn populate_deployment_deploy_history(
 			get_current_time_millis() as i64
 		)
 		.execute(&mut *connection)
+		.await?;
+	}
+
+	Ok(())
+}
+
+async fn update_deployment_region_table_for_multi_cluster(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+			ALTER TABLE
+				deployment_region
+			DROP CONSTRAINT
+				deployment_region_chk_provider_location_parent_region_is_valid;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+			ALTER TABLE
+				deployment_region
+			ADD COLUMN
+				slug CITEXT;
+			"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+			ALTER TABLE
+				deployment_region
+			ADD CONSTRAINT
+				deployment_region_chk_provider_location_slug_parent_is_valid
+				CHECK(
+					(
+						location IS NULL
+						AND provider IS NULL
+						AND slug IS NULL
+					)
+					OR (
+						provider IS NOT NULL
+						AND location IS NOT NULL
+						AND parent_region_id IS NOT NULL
+					)
+				),
+				deployment_region_name_provider_location_uq
+					UNIQUE(name, provider, location);
+			"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+			CREATE UNIQUE INDEX
+				deployment_region_slug_uq
+			ON
+				deployment_region(slug)
+			WHERE
+				slug IS NOT NULL;
+			"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	let slug_list = [
+		("name", "digitalocean", (2.9716, 77.5946), "do-blr1")
+	];
+
+	for (name, provider, location, slug) in slug_list {
+		query!(
+			r#"
+				UPDATE
+					deployment_region
+				SET
+					slug = $5
+				WHERE (
+					name = $1 AND
+					provider = $2 AND
+					location = ST_SetSRID(POINT($3, $4)::GEOMETRY, 4326)
+				)
+				RETURNING 1;
+			"#,
+			name,
+			provider,
+			location.0,
+			location.1,
+			slug,
+		)
+		.fetch_one(&mut *connection) // minimum one column should be updated
 		.await?;
 	}
 
