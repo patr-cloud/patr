@@ -8,7 +8,7 @@ use api_models::utils::Uuid;
 use k8s_openapi::api::{
 	apps::v1::Deployment as K8sDeployment,
 	autoscaling::v1::HorizontalPodAutoscaler,
-	core::v1::{Secret, Service},
+	core::v1::{ConfigMap, Secret, Service},
 	networking::v1::Ingress,
 };
 use kube::{
@@ -36,7 +36,7 @@ pub use self::{
 };
 use crate::utils::{settings::Settings, Error};
 
-async fn get_kubernetes_config(
+pub async fn get_kubernetes_config(
 	config: &Settings,
 ) -> Result<kube::Client, Error> {
 	let config = Config::from_custom_kubeconfig(
@@ -109,6 +109,22 @@ async fn deployment_exists(
 	let deployment_app =
 		Api::<K8sDeployment>::namespaced(kubernetes_client, namespace)
 			.get(&format!("deployment-{}", deployment_id))
+			.await;
+	match deployment_app {
+		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),
+		Err(err) => Err(err),
+		Ok(_) => Ok(true),
+	}
+}
+
+async fn config_map_exists(
+	deployment_id: &Uuid,
+	kubernetes_client: kube::Client,
+	namespace: &str,
+) -> Result<bool, KubeError> {
+	let deployment_app =
+		Api::<ConfigMap>::namespaced(kubernetes_client, namespace)
+			.get(&format!("config-{}", deployment_id))
 			.await;
 	match deployment_app {
 		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),

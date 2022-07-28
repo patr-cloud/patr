@@ -20,6 +20,8 @@ use k8s_openapi::{
 			HorizontalPodAutoscalerSpec,
 		},
 		core::v1::{
+			ConfigMap,
+			ConfigMapVolumeSource,
 			Container,
 			ContainerPort,
 			EnvVar,
@@ -32,6 +34,8 @@ use k8s_openapi::{
 			Service,
 			ServicePort,
 			ServiceSpec,
+			Volume,
+			VolumeMount,
 		},
 		networking::v1::{
 			HTTPIngressPath,
@@ -284,8 +288,33 @@ pub async fn update_kubernetes_deployment(
 							limits: Some(machine_type.clone()),
 							..ResourceRequirements::default()
 						}),
+						volume_mounts: running_details.config.as_ref().map(
+							|deployment_config| {
+								vec![VolumeMount {
+									name: format!(
+										"config-volume-{}",
+										deployment.id
+									),
+									mount_path: deployment_config.path.clone(),
+									sub_path: Some("config".to_string()),
+									..VolumeMount::default()
+								}]
+							},
+						),
 						..Container::default()
 					}],
+					volumes: if running_details.config.is_some() {
+						Some(vec![Volume {
+							name: format!("config-volume-{}", deployment.id),
+							config_map: Some(ConfigMapVolumeSource {
+								name: Some(format!("config-{}", deployment.id)),
+								..ConfigMapVolumeSource::default()
+							}),
+							..Volume::default()
+						}])
+					} else {
+						None
+					},
 					image_pull_secrets: deployment
 						.registry
 						.is_patr_registry()
@@ -527,6 +556,39 @@ pub async fn delete_kubernetes_deployment(
 	} else {
 		log::trace!(
 			"request_id: {} - No deployment found with name deployment-{} in namespace: {}",
+			request_id,
+			deployment_id,
+			workspace_id,
+		);
+	}
+
+	if super::config_map_exists(
+		deployment_id,
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.await?
+	{
+		log::trace!(
+			"request_id: {} - config map exists as config-{}",
+			request_id,
+			deployment_id
+		);
+
+		log::trace!("request_id: {} - deleting the config map", request_id);
+
+		Api::<ConfigMap>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
+		.delete(
+			&format!("config-{}", deployment_id),
+			&DeleteParams::default(),
+		)
+		.await?;
+	} else {
+		log::trace!(
+			"request_id: {} - No config map found with name config-{} in namespace: {}",
 			request_id,
 			deployment_id,
 			workspace_id,

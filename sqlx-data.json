@@ -80,7 +80,7 @@
         false,
         false,
         false,
-        false
+        true
       ],
       "parameters": {
         "Left": [
@@ -6302,6 +6302,16 @@
     },
     "query": "UPDATE docker_repo_payment_history SET stop_time = $1 WHERE workspace_id = $2 AND stop_time IS NULL;"
   },
+  "9d07e3885df76817e11f91a35a9d1918479fbc53c488dd983f50f9eb1d4e64c4": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_config_file( deployment_id UUID NOT NULL CONSTRAINT deployment_config_file_fk_deployment_id REFERENCES deployment(id), path TEXT NOT NULL, file BYTEA NOT NULL, CONSTRAINT deployment_config_file_pk PRIMARY KEY(deployment_id, path) );"
+  },
   "9d12957af2506956a6c245b5822233f06bb1b51740cc77867c9269d16d53c635": {
     "describe": {
       "columns": [
@@ -6938,6 +6948,20 @@
       }
     },
     "query": "SELECT upload_id as \"id: _\", message, uploaded_by as \"uploaded_by: _\", created as \"created: _\" FROM static_site_upload_history WHERE static_site_id = $1 ORDER BY created DESC LIMIT 1;"
+  },
+  "aac3f3674044a2af12c99f59dfc2ee2bcba8b610686a81460d05cba6e850a680": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Bytea"
+        ]
+      }
+    },
+    "query": "INSERT INTO deployment_config_file( deployment_id, path, file ) VALUES ($1, $2, $3);"
   },
   "ac016a17b868bc255b30dd49c718fce7c6c28637f5cb4f94a83c993f959627dd": {
     "describe": {
@@ -8921,7 +8945,7 @@
         false,
         false,
         false,
-        false
+        true
       ],
       "parameters": {
         "Left": [

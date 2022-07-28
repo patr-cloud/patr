@@ -3,6 +3,7 @@ use std::{collections::BTreeMap, str};
 use api_models::{
 	models::workspace::infrastructure::deployment::{
 		Deployment,
+		DeploymentConfig,
 		DeploymentMetrics,
 		DeploymentProbe,
 		DeploymentRegistry,
@@ -16,7 +17,14 @@ use api_models::{
 };
 use chrono::Utc;
 use eve_rs::AsError;
-use k8s_openapi::api::core::v1::Event;
+use k8s_openapi::{
+	api::core::v1::{ConfigMap, Event},
+	ByteString,
+};
+use kube::{
+	api::{ObjectMeta, Patch, PatchParams},
+	Api,
+};
 use reqwest::Client;
 
 use crate::{
@@ -59,6 +67,7 @@ pub async fn create_deployment_in_workspace(
 	region: &Uuid,
 	machine_type: &Uuid,
 	deployment_running_details: &DeploymentRunningDetails,
+	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	if image_tag.is_empty() {
@@ -224,6 +233,30 @@ pub async fn create_deployment_in_workspace(
 		.await?;
 	}
 
+	if let Some(deployment_config) = &deployment_running_details.config {
+		log::trace!(
+			"request_id: {} - Decoding config file from base64 to byte array",
+			request_id
+		);
+		let config_file = base64::decode(deployment_config.file.clone())?;
+		db::add_config_for_deployment(
+			connection,
+			&deployment_id,
+			deployment_config.path.as_ref(),
+			&config_file,
+		)
+		.await?;
+
+		patch_config_map_for_deployment(
+			&deployment_id,
+			workspace_id,
+			config_file,
+			config,
+			request_id,
+		)
+		.await?;
+	}
+
 	db::start_deployment_usage_history(
 		connection,
 		workspace_id,
@@ -275,6 +308,7 @@ pub async fn get_deployment_container_logs(
 pub async fn update_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
+	workspace_id: &Uuid,
 	name: Option<&str>,
 	region: Option<&Uuid>,
 	machine_type: Option<&Uuid>,
@@ -285,6 +319,9 @@ pub async fn update_deployment(
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
+	config_path: Option<&str>,
+	config_file: Option<&str>,
+	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
@@ -328,9 +365,29 @@ pub async fn update_deployment(
 		max_horizontal_scale,
 		startup_probe,
 		liveness_probe,
+		config_path,
+		if let Some(config_file) = config_file {
+			let file = base64::decode(config_file)?;
+			Some(file.clone())
+		} else {
+			None
+		},
 	)
 	.await?;
+
 	db::end_deferred_constraints(connection).await?;
+
+	if let Some(config_file) = config_file {
+		let file = base64::decode(config_file)?;
+		patch_config_map_for_deployment(
+			&deployment_id,
+			workspace_id,
+			file,
+			config,
+			request_id,
+		)
+		.await?;
+	}
 
 	if let Some(environment_variables) = environment_variables {
 		log::trace!(
@@ -483,6 +540,10 @@ pub async fn get_full_deployment_config(
 				_ => None,
 			})
 			.collect();
+
+	let deployment_config =
+		db::get_deployment_config_file(connection, deployment_id).await?;
+
 	log::trace!("request_id: {} - Full deployment config for deployment with id: {} successfully retreived", request_id, deployment_id);
 
 	Ok((
@@ -503,6 +564,11 @@ pub async fn get_full_deployment_config(
 				.map(|port| port as u16)
 				.zip(liveness_probe_path)
 				.map(|(port, path)| DeploymentProbe { path, port }),
+			config: deployment_config.map(|deploy_config| DeploymentConfig {
+				path: deploy_config.path,
+				file: "".to_string(), /* change or remove this, this is not
+				                       * needed here */
+			}),
 		},
 	))
 }
@@ -920,4 +986,47 @@ async fn deployment_limit_crossed(
 	}
 
 	Ok(false)
+}
+
+async fn patch_config_map_for_deployment(
+	deployment_id: &Uuid,
+	namespace: &Uuid,
+	config_file: Vec<u8>,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let kubernetes_client = super::get_kubernetes_config(config).await?;
+
+	let kubernetes_config_map = ConfigMap {
+		metadata: ObjectMeta {
+			name: Some(format!("config-{}", deployment_id)),
+			namespace: Some(namespace.to_string()),
+			..ObjectMeta::default()
+		},
+		binary_data: Some(BTreeMap::from([(
+			"config".to_string(),
+			ByteString(config_file),
+		)])),
+		..ConfigMap::default()
+	};
+
+	log::trace!(
+		"request_id: {} - Patching ConfigMap for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+	let config_map_api = Api::<ConfigMap>::namespaced(
+		kubernetes_client.clone(),
+		namespace.as_str(),
+	); // workspace_id is k8s namespace
+
+	config_map_api
+		.patch(
+			&format!("config-{}", deployment_id),
+			&PatchParams::apply(&format!("config-{}", deployment_id)),
+			&Patch::Apply(kubernetes_config_map),
+		)
+		.await?;
+
+	Ok(())
 }

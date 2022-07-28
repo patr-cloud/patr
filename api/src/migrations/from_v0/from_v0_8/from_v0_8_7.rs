@@ -52,6 +52,7 @@ pub(super) async fn migrate(
 	add_last_unverified_column_to_workspace_domain(connection, config).await?;
 	add_table_deployment_image_digest(&mut *connection, config).await?;
 	populate_deployment_deploy_history(&mut *connection, config).await?;
+	create_deployment_config_file(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -607,6 +608,29 @@ async fn populate_deployment_deploy_history(
 		.execute(&mut *connection)
 		.await?;
 	}
+
+	Ok(())
+}
+
+async fn create_deployment_config_file(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		CREATE TABLE deployment_config_file(
+			deployment_id UUID NOT NULL
+				CONSTRAINT deployment_config_file_fk_deployment_id
+					REFERENCES deployment(id),
+			path TEXT NOT NULL,
+			file BYTEA NOT NULL,
+			CONSTRAINT deployment_config_file_pk
+				PRIMARY KEY(deployment_id, path)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }
