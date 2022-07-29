@@ -385,39 +385,22 @@ pub async fn update_role_name_and_description(
 	name: Option<&str>,
 	description: Option<&str>,
 ) -> Result<(), sqlx::Error> {
-	if let Some(name) = name {
-		query!(
-			r#"
-			UPDATE
-				role
-			SET
-				name = $1
-			WHERE
-				id = $2;
-			"#,
-			name,
-			role_id as _,
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	if let Some(description) = description {
-		query!(
-			r#"
-			UPDATE
-				role
-			SET
-				description = $1
-			WHERE
-				id = $2;
-			"#,
-			description,
-			role_id as _,
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
+	query!(
+		r#"
+		UPDATE
+			role
+		SET
+			name = COALESCE($1, name),
+			description = COALESCE($2, description)
+		WHERE
+			id = $3;
+		"#,
+		name,
+		description,
+		role_id as _,
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }

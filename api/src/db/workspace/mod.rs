@@ -500,57 +500,25 @@ pub async fn update_workspace_info(
 	alert_emails: Option<Vec<String>>,
 	default_payment_method_id: Option<String>,
 ) -> Result<(), sqlx::Error> {
-	if let Some(name) = name {
-		query!(
-			r#"
-			UPDATE
-				workspace
-			SET
-				name = $1
-			WHERE
-				id = $2;
-			"#,
-			name as _,
-			workspace_id as _,
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	if let Some(alert_emails) = alert_emails {
-		query!(
-			r#"
-			UPDATE
-				workspace
-			SET
-				alert_emails = $1
-			WHERE
-				id = $2;
-			"#,
-			alert_emails as _,
-			workspace_id as _,
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	if let Some(payment_method_id) = default_payment_method_id {
-		query!(
-			r#"
-			UPDATE
-				workspace
-			SET
-				default_payment_method_id = $1
-			WHERE
-				id = $2;
-			"#,
-			payment_method_id,
-			workspace_id as _,
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-	Ok(())
+	query!(
+		r#"
+		UPDATE
+			workspace
+		SET
+			name = COALESCE($1, name),
+			alert_emails = COALESCE($2, alert_emails),
+			default_payment_method_id = COALESCE($3, default_payment_method_id)
+		WHERE
+			id = $4;
+		"#,
+		name as _,
+		alert_emails as _,
+		default_payment_method_id as _,
+		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 pub async fn create_workspace_audit_log(

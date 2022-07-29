@@ -1170,6 +1170,33 @@
     },
     "query": "SELECT id as \"id: _\", name, description FROM permission;"
   },
+  "17b36133abb04c425e442ecc50707adc68137c4547f0d21c0c59aec53bbfae63": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          },
+          "Uuid",
+          "Uuid",
+          "Bool",
+          "Int2",
+          "Int2",
+          "Int4",
+          "Text",
+          "Int4",
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE deployment SET name = COALESCE($1, name), region = COALESCE($2, region), machine_type = COALESCE($3, machine_type), deploy_on_push = COALESCE($4, deploy_on_push), min_horizontal_scale = COALESCE($5, min_horizontal_scale), max_horizontal_scale = COALESCE($6, max_horizontal_scale), startup_probe_port = ( CASE WHEN $7 = 0 THEN NULL ELSE $7 END ), startup_probe_path = ( CASE WHEN $7 = 0 THEN NULL ELSE $8 END ), startup_probe_port_type = ( CASE WHEN $7 = 0 THEN NULL ELSE 'http'::EXPOSED_PORT_TYPE END ), liveness_probe_port = ( CASE WHEN $9 = 0 THEN NULL ELSE $9 END ), liveness_probe_path = ( CASE WHEN $9 = 0 THEN NULL ELSE $10 END ), liveness_probe_port_type = ( CASE WHEN $9 = 0 THEN NULL ELSE 'http'::EXPOSED_PORT_TYPE END ) WHERE id = $11;"
+  },
   "1815e0c66b5645f7e4994f135c7d0622d3219c98297eab447d4cadf9bed4a1f4": {
     "describe": {
       "columns": [],
@@ -1502,19 +1529,6 @@
       }
     },
     "query": "DELETE FROM user_phone_number WHERE user_id = $1 AND country_code = $2 AND number = $3;"
-  },
-  "22ffa1d7616fd7c73e9bceebff257394d23b60558ae748196429f04410e5d616": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET machine_type = $1 WHERE id = $2;"
   },
   "241d2d5275d061fa9f24043adb72590b240a691cf68bf703dc63546fa7705ec8": {
     "describe": {
@@ -1849,19 +1863,6 @@
       }
     },
     "query": "CREATE EXTENSION IF NOT EXISTS postgis;"
-  },
-  "2a338d8661b637bcd06f1f98e6fb4128d9d922f739630f04204c7817dd6071b4": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE role SET name = $1 WHERE id = $2;"
   },
   "2a8531f5a4448c2d77be6b5353946591bf213407b9a58b0b342a03bef0acd99c": {
     "describe": {
@@ -3505,20 +3506,6 @@
     },
     "query": "UPDATE workspace SET default_payment_method_id = $1 WHERE id = $2"
   },
-  "53c9cc7a1548b6f80df7fb7be780e672f0533fd16e004785adf9459fe01c6942": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int4",
-          "Varchar",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET startup_probe_port = $1, startup_probe_path = $2, startup_probe_port_type = 'http' WHERE id = $3;"
-  },
   "540418ebd247783fe0b10d409202ea69fd56a56abde26a3c944b4b378f6e2851": {
     "describe": {
       "columns": [
@@ -3625,19 +3612,6 @@
     },
     "query": "INSERT INTO managed_database( id, name, db_name, engine, version, num_nodes, database_plan, region, status, host, port, username, password, workspace_id, digitalocean_db_id ) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, 'creating', $9, $10, $11, $12, $13, NULL );"
   },
-  "561a68357a791929a142bab054437c0984b9d36ab55569146d65999052234837": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET region = $1 WHERE id = $2;"
-  },
   "56227fccf9e60c797a9f7bfb575ab4cc57e2109bb04661317b53900682745de4": {
     "describe": {
       "columns": [],
@@ -3671,20 +3645,6 @@
     },
     "query": "ALTER TABLE \"user\" ADD CONSTRAINT user_fk_id_recovery_email_local_recovery_email_domain_id FOREIGN KEY( id, recovery_email_local, recovery_email_domain_id ) REFERENCES personal_email( user_id, local, domain_id ) DEFERRABLE INITIALLY IMMEDIATE;"
   },
-  "57b549b7b18cc6d4e2699673c10e7c3adb2f360cc0f04091cb305eba93c01d5f": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int4",
-          "Varchar",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET liveness_probe_port = $1, liveness_probe_path = $2, liveness_probe_port_type = 'http' WHERE id = $3;"
-  },
   "57ef5c5d81560479e3386b1b89652b1033ca62be083fb8bfdf5217cda06cf9d8": {
     "describe": {
       "columns": [],
@@ -3694,6 +3654,23 @@
       }
     },
     "query": "ALTER TABLE workspace ADD CONSTRAINT workspace_default_payment_method_id_fk FOREIGN KEY (default_payment_method_id) REFERENCES payment_method(payment_method_id) DEFERRABLE INITIALLY DEFERRED;"
+  },
+  "5a132d1b3ad04aa7ad894563e8dc23f9ad0e4df73d8ffe9d253d195af293f0f2": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Int8",
+          "Varchar",
+          "Varchar",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE \"user\" SET first_name = COALESCE($1, first_name), last_name = COALESCE($2, last_name), dob = COALESCE($3, dob), bio = COALESCE($4, bio), location = COALESCE($5, location) WHERE id = $6;"
   },
   "5aafa67998a92b12cf57676dd039f892b159630c352036a04157f593e1828e52": {
     "describe": {
@@ -4195,19 +4172,6 @@
     },
     "query": "INSERT INTO deployment_region( id, name, provider, location, parent_region_id ) VALUES ($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6);"
   },
-  "66f2f60fc86b651ff7aba12d6bcd2f1126ceaf1747c74cdd068dfc2b34cf6693": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE workspace SET default_payment_method_id = $1 WHERE id = $2;"
-  },
   "696749fb5dd8e4bb7c3d80c5619417e05c78691505add6a7af389858cb3bf0d4": {
     "describe": {
       "columns": [],
@@ -4219,19 +4183,6 @@
       }
     },
     "query": "UPDATE workspace SET address_id = NULL WHERE id = $1;"
-  },
-  "6ad2f021500f77e5ac540f128fc071c0aead61d48db51dc32132ccba1a2120ab": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE \"user\" SET last_name = $1 WHERE id = $2;"
   },
   "6b678ec64a61d5c20d7ea207efa6fce83058481b7af34fb81a36022b0a52dbc6": {
     "describe": {
@@ -4881,19 +4832,6 @@
     },
     "query": "CREATE TABLE deployment_region( id UUID CONSTRAINT deployment_region_pk PRIMARY KEY, name TEXT NOT NULL, provider DEPLOYMENT_CLOUD_PROVIDER, location GEOMETRY, parent_region_id UUID CONSTRAINT deployment_region_fk_parent_region_id REFERENCES deployment_region(id), CONSTRAINT deployment_region_chk_provider_location_parent_region_is_valid CHECK( ( location IS NULL AND provider IS NULL ) OR ( provider IS NOT NULL AND location IS NOT NULL AND parent_region_id IS NOT NULL ) ) );"
   },
-  "751f7ae4b4c1d76c43283ccb88c5247004ed8b1db984dd9aa92903eca6cfe56a": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Bool",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET deploy_on_push = $1 WHERE id = $2;"
-  },
   "755b9a9cbf07434857270275ea77339365b5af23cb1b1a4c168e6e02089c6ca9": {
     "describe": {
       "columns": [],
@@ -4947,18 +4885,6 @@
       }
     },
     "query": "ALTER TABLE docker_repo_payment_history ADD CONSTRAINT docker_repo_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id);"
-  },
-  "778e09a22d58ff86e1694225ce8353fe2da88eef1384fd509386f99df8e155cb": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET startup_probe_port = NULL, startup_probe_path = NULL, startup_probe_port_type = NULL WHERE id = $1;"
   },
   "799f1b78ac4c1bd45251b83af9dea7179be61357e5241533c66406c1cf0b60de": {
     "describe": {
@@ -6220,19 +6146,6 @@
     },
     "query": "DELETE FROM managed_url WHERE id = $1;"
   },
-  "985017bf290c3b482b9ecf7c939085b9f344b97e9ef6f57696fe91e7affb5e91": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE \"user\" SET location = $1 WHERE id = $2;"
-  },
   "997947986aa00232ee0ef91426b9a53e3af707486cbc1799eb05d2501d2d7ce9": {
     "describe": {
       "columns": [],
@@ -6426,18 +6339,6 @@
       }
     },
     "query": "CREATE TABLE role_permissions_resource( role_id UUID CONSTRAINT role_permissions_resource_fk_role_id REFERENCES role(id), permission_id UUID CONSTRAINT role_permissions_resource_fk_permission_id REFERENCES permission(id), resource_id UUID CONSTRAINT role_permissions_resource_fk_resource_id REFERENCES resource(id), CONSTRAINT role_permissions_resource_pk PRIMARY KEY(role_id, permission_id, resource_id) );"
-  },
-  "9e6df600d397b8aa8ea872e84291a8e54970942b1930a3210791dcbd000a7ded": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET liveness_probe_port = NULL, liveness_probe_path = NULL, liveness_probe_port_type = NULL WHERE id = $1;"
   },
   "9e700afbaa2bcee044788a11c5b123d5cad8158dbc54ef99c35d20dfb72c6dd3": {
     "describe": {
@@ -6895,19 +6796,6 @@
       }
     },
     "query": "CREATE TABLE coupon_code( code TEXT CONSTRAINT coupon_code_pk PRIMARY KEY, credits INTEGER NOT NULL CONSTRAINT coupon_code_chk_credits_positive CHECK(credits >= 0), expiry TIMESTAMPTZ, uses_remaining INTEGER CONSTRAINT coupon_code_chk_uses_remaining_positive CHECK( uses_remaining IS NULL OR uses_remaining > 0 ) );"
-  },
-  "a96073b72c29dee2028e0e62e6896f294cd6e6aae843c2de17db78b35b7a3a6c": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int2",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET max_horizontal_scale = $1 WHERE id = $2;"
   },
   "a98cea2a8f8fc45db9251140e9bdedf0f23cfb31386c6a9ff0b4496068407532": {
     "describe": {
@@ -7931,62 +7819,6 @@
     },
     "query": "SELECT workspace_id as \"workspace_id: Uuid\", role_id as \"role_id: Uuid\" FROM workspace_user WHERE user_id = $1 ORDER BY workspace_id;"
   },
-  "b6a58f88cc354cb36f6cb22af31c30cf0c25d1efb6bc4a4aeacc2d4bca4b1aff": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Varchar",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "postgres",
-                  "mysql"
-                ]
-              },
-              "name": "managed_database_engine"
-            }
-          },
-          "Text",
-          "Int4",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "nano",
-                  "micro",
-                  "small",
-                  "medium",
-                  "large",
-                  "xlarge",
-                  "xxlarge",
-                  "mammoth"
-                ]
-              },
-              "name": "managed_database_plan"
-            }
-          },
-          "Text",
-          "Text",
-          "Int4",
-          "Text",
-          "Text",
-          "Uuid",
-          "Text"
-        ]
-      }
-    },
-    "query": "INSERT INTO managed_database( id, name, db_name, engine, version, num_nodes, database_plan, region, status, host, port, username, password, workspace_id, digitalocean_db_id ) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, 'creating', $9, $10, $11, $12, $13, $14 );"
-  },
   "b6e0dd1826475d91e9f7ce39f7c50b81cbc075084cd51a041fd223c80add6e06": {
     "describe": {
       "columns": [],
@@ -8650,18 +8482,19 @@
     },
     "query": "CREATE INDEX workspace_user_idx_user_id ON workspace_user (user_id);"
   },
-  "cc5052043d15b31259977b31b0cc857411b204b64180714e0db89cffcb68fe46": {
+  "cace9e73cb537ac7e402b135ee4bef19059e3d7b5e4d1bd1ba5b5c18e2c42313": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
         "Left": [
-          "Int8",
+          "Varchar",
+          "Varchar",
           "Uuid"
         ]
       }
     },
-    "query": "UPDATE \"user\" SET dob = $1 WHERE id = $2;"
+    "query": "UPDATE role SET name = COALESCE($1, name), description = COALESCE($2, description) WHERE id = $3;"
   },
   "cc9e8b6528c4a5470becba2c5496e37acd8681d8749c240b85e02ffc04ef624f": {
     "describe": {
@@ -9459,6 +9292,26 @@
     },
     "query": "INSERT INTO deployment( id, name, registry, repository_id, image_name, image_tag, status, workspace_id, region, min_horizontal_scale, max_horizontal_scale, machine_type, deploy_on_push, startup_probe_port, startup_probe_path, startup_probe_port_type, liveness_probe_port, liveness_probe_path, liveness_probe_port_type ) VALUES ( $1, $2, $3, NULL, $4, $5, 'created', $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17 );"
   },
+  "d9fc1f285add230c574a2c595560bc0b08c7992a25c87ca03afdff49014a9433": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          },
+          "VarcharArray",
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE workspace SET name = COALESCE($1, name), alert_emails = COALESCE($2, alert_emails), default_payment_method_id = COALESCE($3, default_payment_method_id) WHERE id = $4;"
+  },
   "da1189d39d4d092b648061fd074d1e847a2142cd3a13efd0bb18abd92978baca": {
     "describe": {
       "columns": [],
@@ -9933,19 +9786,6 @@
     },
     "query": "INSERT INTO patr_domain_dns_record( id, record_identifier, domain_id, name, type, value, priority, ttl, proxied ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);"
   },
-  "de52e22ada9f97bf2ba83615fd4a10e00069984fe10de0ffc5c6d36fd1d4e121": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE role SET description = $1 WHERE id = $2;"
-  },
   "de74ae7f29c027a8f87b7ddea32144fd590d3e4591e17fdc8f5fc80afcf1f299": {
     "describe": {
       "columns": [],
@@ -10194,32 +10034,6 @@
       }
     },
     "query": "DELETE FROM docker_registry_repository_tag WHERE repository_id = $1;"
-  },
-  "e612e850c570bbc931e8a3fcbd7b87c54257d739d9a4a3dfbd367961edea354b": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE \"user\" SET first_name = $1 WHERE id = $2;"
-  },
-  "e67c1e6f96aec49750ea347b36199d17f7e58efbff15d77a740c47a6deae9db5": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE \"user\" SET bio = $1 WHERE id = $2;"
   },
   "e6c4d388e3509368f53c7a8b011ae44810d4a52d30f4a9772a580e12f349ac83": {
     "describe": {
@@ -10778,19 +10592,6 @@
       }
     },
     "query": "SELECT COUNT(*) \"count!\" FROM deployment INNER JOIN workspace ON deployment.workspace_id = workspace.id WHERE deployment.status = 'deleted' AND workspace.super_admin_id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );"
-  },
-  "f036e1661ba6aaabccab6b4a72a176f8ec7efa5a206f548fed7d7b34bc915fe4": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "VarcharArray",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE workspace SET alert_emails = $1 WHERE id = $2;"
   },
   "f09ba7816097607f7f07421f1d8fe5bfae9d0fee58b6fd2715448e069e98750f": {
     "describe": {
@@ -11552,19 +11353,6 @@
       }
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", db_name, engine as \"engine: _\", version, num_nodes, database_plan as \"database_plan: _\", region, status as \"status: _\", host, port, username, password, workspace_id as \"workspace_id: _\", digitalocean_db_id FROM managed_database WHERE id = $1 AND status != 'deleted';"
-  },
-  "fb098c06747fe3fd6d3eca864e64909152465ef3782b280e2c19655c4b1db506": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int2",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET min_horizontal_scale = $1 WHERE id = $2;"
   },
   "fc4c352e3336bc9fe042f89c376d37071ad35b83c92c15f98e89dae664c29f62": {
     "describe": {
