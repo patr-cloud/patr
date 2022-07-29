@@ -62,7 +62,7 @@ redis = { version = "0.21", features = [
 ] }
 regex = "1"
 reqwest = { version = "0.11", features = ["json", "multipart", "cookies"] }
-rust-s3 = { version = "0.31", features = ["tokio-rustls-tls", "with-tokio"] }
+rust-s3 = { version = "0.32", features = ["tokio-rustls-tls", "with-tokio"] }
 semver = "1"
 serde = { version = "1", features = ["serde_derive"] }
 serde_json = "1"
@@ -98,4 +98,4 @@ features = [
   "threshold_filter",
   "gzip",
 ]
-version = "1.1.1"
+version = "1"
