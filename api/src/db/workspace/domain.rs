@@ -1079,56 +1079,68 @@ pub async fn update_top_level_domain_list(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	tlds: &[String],
 ) -> Result<(), sqlx::Error> {
-	let result = query!(
+	query!(
 		r#"
-			WITH current_domains(tld) AS (
+		WITH current_domains(tld) AS (
+			SELECT
+				UNNEST($1::TEXT[])
+		),
+		deprecated_domains(tld) AS (
+			SELECT tld FROM domain_tld
+			EXCEPT
+			SELECT tld FROM current_domains
+			EXCEPT
+			SELECT tld FROM domain
+			EXCEPT
+			SELECT business_domain_tld FROM user_to_sign_up
+		),
+		inserted_domains(tld, action) AS (
+			INSERT INTO domain_tld
+				SELECT * FROM current_domains
+			ON CONFLICT DO NOTHING
+			RETURNING tld, 'inserted'
+		),
+		deleted_domains(tld, action) AS (
+			DELETE FROM domain_tld
+			WHERE EXISTS (
 				SELECT
-					UNNEST($1::text[])
-			),
-			deprecated_domains(tld) AS (
-				SELECT tld FROM domain_tld
-				EXCEPT
-				SELECT tld FROM current_domains
-				EXCEPT
-				SELECT tld FROM domain
-				EXCEPT
-				SELECT business_domain_tld FROM user_to_sign_up
-			),
-			inserted_domains(tld, action) AS (
-				INSERT INTO domain_tld
-					SELECT * FROM current_domains
-				ON CONFLICT DO NOTHING
-				RETURNING tld, 'inserted'
-			),
-			deleted_domains(tld, action) AS (
-				DELETE FROM domain_tld
-				WHERE EXISTS (
-					SELECT
-						tld
-					FROM
-						deprecated_domains
-					WHERE
-						deprecated_domains.tld = domain_tld.tld
-				)
-				RETURNING tld, 'deleted'
+					tld
+				FROM
+					deprecated_domains
+				WHERE
+					deprecated_domains.tld = domain_tld.tld
 			)
-			SELECT tld as "tld!", action as "action!" FROM inserted_domains
-			UNION
-			SELECT tld as "tld!", action as "action!" FROM deleted_domains;
+			RETURNING tld, 'deleted'
+		)
+		SELECT tld as "tld!", action as "action!" FROM inserted_domains
+		UNION
+		SELECT tld as "tld!", action as "action!" FROM deleted_domains;
 		"#,
 		&tlds[..],
 	)
 	.fetch_all(&mut *connection)
-	.await?;
+	.await
+	.map(|_| ())
+}
 
-	if !cfg!(debug_assertions) {
-		// in production log the query result
-		result.into_iter().for_each(|record| {
-			log::info!("sync tld: {} domain '{}'", record.action, record.tld)
-		});
-	}
-
-	Ok(())
+pub async fn remove_from_domain_tld_list(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	tlds: &[String],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			domain_tld
+		WHERE
+			tld IN (
+				SELECT UNNEST($1::TEXT[])
+			);
+		"#,
+		&tlds[..],
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 pub async fn get_dns_record_count_for_domain(

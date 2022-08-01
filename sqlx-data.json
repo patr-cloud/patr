@@ -2339,32 +2339,6 @@
     },
     "query": "CREATE INDEX resource_idx_owner_id ON resource (owner_id);"
   },
-  "350120178e1eab7c9efe08ad136ddcac9c1409ee8c573ea210a35eb0cbebd0a1": {
-    "describe": {
-      "columns": [
-        {
-          "name": "tld!",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "action!",
-          "ordinal": 1,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        null,
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "TextArray"
-        ]
-      }
-    },
-    "query": "WITH current_domains(tld) AS ( SELECT UNNEST($1::text[]) ), deprecated_domains(tld) AS ( SELECT tld FROM domain_tld EXCEPT SELECT tld FROM current_domains EXCEPT SELECT tld FROM domain EXCEPT SELECT business_domain_tld FROM user_to_sign_up ), inserted_domains(tld, action) AS ( INSERT INTO domain_tld SELECT * FROM current_domains ON CONFLICT DO NOTHING RETURNING tld, 'inserted' ), deleted_domains(tld, action) AS ( DELETE FROM domain_tld WHERE EXISTS ( SELECT tld FROM deprecated_domains WHERE deprecated_domains.tld = domain_tld.tld ) RETURNING tld, 'deleted' ) SELECT tld as \"tld!\", action as \"action!\" FROM inserted_domains UNION SELECT tld as \"tld!\", action as \"action!\" FROM deleted_domains;"
-  },
   "353ded9cc4ab26bb0b06b1d9ae212dd16336aa261d501f393967955becb485a2": {
     "describe": {
       "columns": [],
@@ -5408,6 +5382,18 @@
       }
     },
     "query": "SELECT * FROM workspace_audit_log WHERE id = $1;"
+  },
+  "83912ed29e82fb53ea784afaefd393bd6362298a50c7688e3db952ed59ae81dc": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "TextArray"
+        ]
+      }
+    },
+    "query": "DELETE FROM domain_tld WHERE tld IN ( SELECT UNNEST($1::TEXT[]) );"
   },
   "83c7c39ed3e071ecccc1fe0f6af04d9cacc3d9ca6faaf5e3de08b9b10704773a": {
     "describe": {
@@ -9203,6 +9189,32 @@
       }
     },
     "query": "CREATE INDEX workspace_idx_super_admin_id ON workspace (super_admin_id);"
+  },
+  "d8feb73a06ee671347cc894b097feabe1a428fc4fcae88a905d95fd33193a9f8": {
+    "describe": {
+      "columns": [
+        {
+          "name": "tld!",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "action!",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "TextArray"
+        ]
+      }
+    },
+    "query": "WITH current_domains(tld) AS ( SELECT UNNEST($1::TEXT[]) ), deprecated_domains(tld) AS ( SELECT tld FROM domain_tld EXCEPT SELECT tld FROM current_domains EXCEPT SELECT tld FROM domain EXCEPT SELECT business_domain_tld FROM user_to_sign_up ), inserted_domains(tld, action) AS ( INSERT INTO domain_tld SELECT * FROM current_domains ON CONFLICT DO NOTHING RETURNING tld, 'inserted' ), deleted_domains(tld, action) AS ( DELETE FROM domain_tld WHERE EXISTS ( SELECT tld FROM deprecated_domains WHERE deprecated_domains.tld = domain_tld.tld ) RETURNING tld, 'deleted' ) SELECT tld as \"tld!\", action as \"action!\" FROM inserted_domains UNION SELECT tld as \"tld!\", action as \"action!\" FROM deleted_domains;"
   },
   "d9194070d90b6b0987a789933c15da1bb19512c19f5a9e5b78d8c17fe5e2b46f": {
     "describe": {
