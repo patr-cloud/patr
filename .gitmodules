@@ -4,3 +4,6 @@
 [submodule "patr-api-models"]
 	path = api-models
 	url = https://develop.vicara.co/vicara/patr-api-dto
+[submodule "frontend"]
+	path = frontend
+	url = https://develop.vicara.co/vicara/patr-frontend
