@@ -1052,6 +1052,8 @@ pub async fn update_deployment_details(
 				CASE
 					WHEN $7 = 0 THEN
 						NULL
+					WHEN $7 IS NULL THEN
+						startup_probe_port_type
 					ELSE
 						'http'::EXPOSED_PORT_TYPE
 				END
@@ -1076,6 +1078,8 @@ pub async fn update_deployment_details(
 				CASE
 					WHEN $9 = 0 THEN
 						NULL
+					WHEN $9 IS NULL THEN
+						liveness_probe_port_type
 					ELSE
 						'http'::EXPOSED_PORT_TYPE
 				END

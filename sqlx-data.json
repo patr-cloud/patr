@@ -1170,33 +1170,6 @@
     },
     "query": "SELECT id as \"id: _\", name, description FROM permission;"
   },
-  "17b36133abb04c425e442ecc50707adc68137c4547f0d21c0c59aec53bbfae63": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Uuid",
-          "Uuid",
-          "Bool",
-          "Int2",
-          "Int2",
-          "Int4",
-          "Text",
-          "Int4",
-          "Text",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET name = COALESCE($1, name), region = COALESCE($2, region), machine_type = COALESCE($3, machine_type), deploy_on_push = COALESCE($4, deploy_on_push), min_horizontal_scale = COALESCE($5, min_horizontal_scale), max_horizontal_scale = COALESCE($6, max_horizontal_scale), startup_probe_port = ( CASE WHEN $7 = 0 THEN NULL ELSE $7 END ), startup_probe_path = ( CASE WHEN $7 = 0 THEN NULL ELSE $8 END ), startup_probe_port_type = ( CASE WHEN $7 = 0 THEN NULL ELSE 'http'::EXPOSED_PORT_TYPE END ), liveness_probe_port = ( CASE WHEN $9 = 0 THEN NULL ELSE $9 END ), liveness_probe_path = ( CASE WHEN $9 = 0 THEN NULL ELSE $10 END ), liveness_probe_port_type = ( CASE WHEN $9 = 0 THEN NULL ELSE 'http'::EXPOSED_PORT_TYPE END ) WHERE id = $11;"
-  },
   "1815e0c66b5645f7e4994f135c7d0622d3219c98297eab447d4cadf9bed4a1f4": {
     "describe": {
       "columns": [],
@@ -5829,6 +5802,33 @@
       }
     },
     "query": "CREATE TABLE resource( id UUID CONSTRAINT resource_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, resource_type_id UUID NOT NULL CONSTRAINT resource_fk_resource_type_id REFERENCES resource_type(id), owner_id UUID NOT NULL CONSTRAINT resource_fk_owner_id REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE, created BIGINT NOT NULL CONSTRAINT resource_created_chk_unsigned CHECK(created >= 0), CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id) );"
+  },
+  "8fb06ab213ca20a26e9c0fd8e49d22cb63e385f4737d2771d9b4ab01b909704b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          },
+          "Uuid",
+          "Uuid",
+          "Bool",
+          "Int2",
+          "Int2",
+          "Int4",
+          "Text",
+          "Int4",
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE deployment SET name = COALESCE($1, name), region = COALESCE($2, region), machine_type = COALESCE($3, machine_type), deploy_on_push = COALESCE($4, deploy_on_push), min_horizontal_scale = COALESCE($5, min_horizontal_scale), max_horizontal_scale = COALESCE($6, max_horizontal_scale), startup_probe_port = ( CASE WHEN $7 = 0 THEN NULL ELSE $7 END ), startup_probe_path = ( CASE WHEN $7 = 0 THEN NULL ELSE $8 END ), startup_probe_port_type = ( CASE WHEN $7 = 0 THEN NULL WHEN $7 IS NULL THEN startup_probe_port_type ELSE 'http'::EXPOSED_PORT_TYPE END ), liveness_probe_port = ( CASE WHEN $9 = 0 THEN NULL ELSE $9 END ), liveness_probe_path = ( CASE WHEN $9 = 0 THEN NULL ELSE $10 END ), liveness_probe_port_type = ( CASE WHEN $9 = 0 THEN NULL WHEN $9 IS NULL THEN liveness_probe_port_type ELSE 'http'::EXPOSED_PORT_TYPE END ) WHERE id = $11;"
   },
   "90b256033a09c702b2ce6ebce96aca72e15731dd6621235082a7b0d4e7db75c6": {
     "describe": {
