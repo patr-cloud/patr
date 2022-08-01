@@ -1021,185 +1021,87 @@ pub async fn update_deployment_details(
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
 ) -> Result<(), sqlx::Error> {
-	if let Some(name) = name {
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				name = $1
-			WHERE
-				id = $2;
-			"#,
-			name as _,
-			deployment_id as _
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	if let Some(region) = region {
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				region = $1
-			WHERE
-				id = $2;
-			"#,
-			region as _,
-			deployment_id as _
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	if let Some(machine_type) = machine_type {
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				machine_type = $1
-			WHERE
-				id = $2;
-			"#,
-			machine_type as _,
-			deployment_id as _
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	if let Some(deploy_on_push) = deploy_on_push {
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				deploy_on_push = $1
-			WHERE
-				id = $2;
-			"#,
-			deploy_on_push as _,
-			deployment_id as _
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	if let Some(min_horizontal_scale) = min_horizontal_scale {
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				min_horizontal_scale = $1
-			WHERE
-				id = $2;
-			"#,
-			min_horizontal_scale as i32,
-			deployment_id as _
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	if let Some(max_horizontal_scale) = max_horizontal_scale {
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				max_horizontal_scale = $1
-			WHERE
-				id = $2;
-			"#,
-			max_horizontal_scale as i32,
-			deployment_id as _
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	if let Some(startup_probe) = startup_probe {
-		if startup_probe.port == 0 {
-			query!(
-				r#"
-				UPDATE
-					deployment
-				SET
-					startup_probe_port = NULL,
-					startup_probe_path = NULL,
-					startup_probe_port_type = NULL
-				WHERE
-					id = $1;
-				"#,
-				deployment_id as _
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			name = COALESCE($1, name),
+			region = COALESCE($2, region),
+			machine_type = COALESCE($3, machine_type),
+			deploy_on_push = COALESCE($4, deploy_on_push),
+			min_horizontal_scale = COALESCE($5, min_horizontal_scale),
+			max_horizontal_scale = COALESCE($6, max_horizontal_scale),
+			startup_probe_port = (
+				CASE
+					WHEN $7 = 0 THEN
+						NULL
+					ELSE
+						$7
+				END
+			),
+			startup_probe_path = (
+				CASE
+					WHEN $7 = 0 THEN
+						NULL
+					ELSE
+						$8
+				END
+			),
+			startup_probe_port_type = (
+				CASE
+					WHEN $7 = 0 THEN
+						NULL
+					WHEN $7 IS NULL THEN
+						startup_probe_port_type
+					ELSE
+						'http'::EXPOSED_PORT_TYPE
+				END
+			),
+			liveness_probe_port = (
+				CASE
+					WHEN $9 = 0 THEN
+						NULL
+					ELSE
+						$9
+				END
+			),
+			liveness_probe_path = (
+				CASE
+					WHEN $9 = 0 THEN
+						NULL
+					ELSE
+						$10
+				END
+			),
+			liveness_probe_port_type = (
+				CASE
+					WHEN $9 = 0 THEN
+						NULL
+					WHEN $9 IS NULL THEN
+						liveness_probe_port_type
+					ELSE
+						'http'::EXPOSED_PORT_TYPE
+				END
 			)
-			.execute(&mut *connection)
-			.await?;
-		} else {
-			query!(
-				r#"
-				UPDATE
-					deployment
-				SET
-					startup_probe_port = $1,
-					startup_probe_path = $2,
-					startup_probe_port_type = 'http'
-				WHERE
-					id = $3;
-				"#,
-				startup_probe.port as i32,
-				startup_probe.path,
-				deployment_id as _
-			)
-			.execute(&mut *connection)
-			.await?;
-		}
-	}
-
-	if let Some(liveness_probe) = liveness_probe {
-		if liveness_probe.port == 0 {
-			query!(
-				r#"
-				UPDATE
-					deployment
-				SET
-					liveness_probe_port = NULL,
-					liveness_probe_path = NULL,
-					liveness_probe_port_type = NULL
-				WHERE
-					id = $1;
-				"#,
-				deployment_id as _
-			)
-			.execute(&mut *connection)
-			.await?;
-		} else {
-			query!(
-				r#"
-				UPDATE
-					deployment
-				SET
-					liveness_probe_port = $1,
-					liveness_probe_path = $2,
-					liveness_probe_port_type = 'http'
-				WHERE
-					id = $3;
-				"#,
-				liveness_probe.port as i32,
-				liveness_probe.path,
-				deployment_id as _
-			)
-			.execute(&mut *connection)
-			.await?;
-		}
-	}
-
-	Ok(())
+		WHERE
+			id = $11;
+		"#,
+		name as _,
+		region as _,
+		machine_type as _,
+		deploy_on_push,
+		min_horizontal_scale.map(|v| v as i16),
+		max_horizontal_scale.map(|v| v as i16),
+		startup_probe.map(|probe| probe.port as i32),
+		startup_probe.as_ref().map(|probe| probe.path.as_str()),
+		liveness_probe.map(|probe| probe.port as i32),
+		liveness_probe.as_ref().map(|probe| probe.path.as_str()),
+		deployment_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 pub async fn get_all_deployment_machine_types(

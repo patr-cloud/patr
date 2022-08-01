@@ -2509,86 +2509,28 @@ pub async fn update_user_data(
 	bio: Option<&str>,
 	location: Option<&str>,
 ) -> Result<(), sqlx::Error> {
-	if let Some(first_name) = first_name {
-		query!(
-			r#"
-			UPDATE
-				"user"
-			SET
-				first_name = $1
-			WHERE
-				id = $2;
-			"#,
-			first_name,
-			user_id as _,
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-	if let Some(last_name) = last_name {
-		query!(
-			r#"
-			UPDATE
-				"user"
-			SET
-				last_name = $1
-			WHERE
-				id = $2;
-			"#,
-			last_name,
-			user_id as _,
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-	if let Some(dob) = dob {
-		query!(
-			r#"
-			UPDATE
-				"user"
-			SET
-				dob = $1
-			WHERE
-				id = $2;
-			"#,
-			dob as i64,
-			user_id as _,
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-	if let Some(bio) = bio {
-		query!(
-			r#"
-			UPDATE
-				"user"
-			SET
-				bio = $1
-			WHERE
-				id = $2;
-			"#,
-			bio,
-			user_id as _,
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-	if let Some(location) = location {
-		query!(
-			r#"
-			UPDATE
-				"user"
-			SET
-				location = $1
-			WHERE
-				id = $2;
-			"#,
-			location,
-			user_id as _,
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
+	query!(
+		r#"
+		UPDATE
+			"user"
+		SET
+			first_name = COALESCE($1, first_name),
+			last_name = COALESCE($2, last_name),
+			dob = COALESCE($3, dob),
+			bio = COALESCE($4, bio),
+			location = COALESCE($5, location)
+		WHERE
+			id = $6;
+		"#,
+		first_name,
+		last_name,
+		dob.map(|d| d as i64),
+		bio,
+		location,
+		user_id as _,
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }
