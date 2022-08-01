@@ -1,4 +1,3 @@
-mod aws;
 mod deployment;
 mod digitalocean;
 mod kubernetes;

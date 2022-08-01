@@ -111,16 +111,10 @@ impl FromStr for ManagedDatabasePlan {
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
 			"do-nano" | "db-s-1vcpu-1gb" => Ok(Self::Nano),
-			"do-micro" | "db-s-1vcpu-2gb" | "aws-micro" | "micro_1_0" => {
-				Ok(Self::Micro)
-			}
-			"aws-small" | "small_1_0" => Ok(Self::Small),
-			"do-medium" | "db-s-2vcpu-4gb" | "aws-medium" | "medium_1_0" => {
-				Ok(Self::Medium)
-			}
-			"do-large" | "db-s-4vcpu-8gb" | "aws-large" | "large_1_0" => {
-				Ok(Self::Large)
-			}
+			"do-micro" | "db-s-1vcpu-2gb" => Ok(Self::Micro),
+			"small_1_0" => Ok(Self::Small),
+			"do-medium" | "db-s-2vcpu-4gb" => Ok(Self::Medium),
+			"do-large" | "db-s-4vcpu-8gb" => Ok(Self::Large),
 			"do-xlarge" | "db-s-6vcpu-16gb" => Ok(Self::Xlarge),
 			"do-xxlarge" | "db-s-8vcpu-32gb" => Ok(Self::Xxlarge),
 			"do-mammoth" | "db-s-16vcpu-64gb" => Ok(Self::Mammoth),
@@ -263,124 +257,63 @@ pub async fn create_managed_database(
 	username: &str,
 	password: &str,
 	workspace_id: &Uuid,
-	digital_ocean_id: Option<&str>,
 ) -> Result<(), sqlx::Error> {
-	if let Some(digitalocean_db_id) = digital_ocean_id {
-		query!(
-			r#"
-			INSERT INTO
-				managed_database(
-					id,
-					name,
-					db_name,
-					engine,
-					version,
-					num_nodes,
-					database_plan,
-					region,
-					status,
-					host,
-					port,
-					username,
-					password,
-					workspace_id,
-					digitalocean_db_id
-				)
-			VALUES
-				(
-					$1,
-					$2,
-					$3,
-					$4,
-					$5,
-					$6,
-					$7,
-					$8,
-					'creating',
-					$9,
-					$10,
-					$11,
-					$12,
-					$13,
-					$14
-				);
-			"#,
-			id as _,
-			name as _,
-			db_name,
-			engine as _,
-			version,
-			num_nodes as i32,
-			database_plan as _,
-			region,
-			host,
-			port,
-			username,
-			password,
-			workspace_id as _,
-			digitalocean_db_id
-		)
-		.execute(&mut *connection)
-		.await
-		.map(|_| ())
-	} else {
-		query!(
-			r#"
-			INSERT INTO
-				managed_database(
-					id,
-					name,
-					db_name,
-					engine,
-					version,
-					num_nodes,
-					database_plan,
-					region,
-					status,
-					host,
-					port,
-					username,
-					password,
-					workspace_id,
-					digitalocean_db_id
-				)
-			VALUES
-				(
-					$1,
-					$2,
-					$3,
-					$4,
-					$5,
-					$6,
-					$7,
-					$8,
-					'creating',
-					$9,
-					$10,
-					$11,
-					$12,
-					$13,
-					NULL
-				);
-			"#,
-			id as _,
-			name as _,
-			db_name,
-			engine as _,
-			version,
-			num_nodes as i32,
-			database_plan as _,
-			region,
-			host,
-			port,
-			username,
-			password,
-			workspace_id as _,
-		)
-		.execute(&mut *connection)
-		.await
-		.map(|_| ())
-	}
+	query!(
+		r#"
+		INSERT INTO
+			managed_database(
+				id,
+				name,
+				db_name,
+				engine,
+				version,
+				num_nodes,
+				database_plan,
+				region,
+				status,
+				host,
+				port,
+				username,
+				password,
+				workspace_id,
+				digitalocean_db_id
+			)
+		VALUES
+			(
+				$1,
+				$2,
+				$3,
+				$4,
+				$5,
+				$6,
+				$7,
+				$8,
+				'creating',
+				$9,
+				$10,
+				$11,
+				$12,
+				$13,
+				NULL
+			);
+		"#,
+		id as _,
+		name as _,
+		db_name,
+		engine as _,
+		version,
+		num_nodes as i32,
+		database_plan as _,
+		region,
+		host,
+		port,
+		username,
+		password,
+		workspace_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 pub async fn update_managed_database_status(
