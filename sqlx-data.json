@@ -1210,18 +1210,6 @@
     },
     "query": "UPDATE managed_url SET path = $2, url_type = $3, deployment_id = $4, port = $5, static_site_id = $6, url = $7 WHERE id = $1;"
   },
-  "19a432179c8e7da5140ac965a7bdfa4eb1306ac48fad4c2a47a4f86276eccbfa": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      }
-    },
-    "query": "INSERT INTO domain_tld( tld ) VALUES ($1) ON CONFLICT DO NOTHING;"
-  },
   "1a22653fa91b8253b6ac6440aef2826bcb839954b73ee66f202f3682d8f6b6ef": {
     "describe": {
       "columns": [
@@ -3660,24 +3648,6 @@
     },
     "query": "ALTER TABLE static_site ADD CONSTRAINT static_site_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);"
   },
-  "571435b90fe135c72da1588938fba41d3e6371f8da7f50ca74e254a6a6826699": {
-    "describe": {
-      "columns": [
-        {
-          "name": "tld",
-          "ordinal": 0,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "SELECT tld FROM domain_tld WHERE ( SELECT COUNT(*) FROM domain WHERE domain.tld = tld ) = 0;"
-  },
   "5721e736cbf4837d0ede04057dc60ebc451c0e29bc279f2ec86ec2d05053c38a": {
     "describe": {
       "columns": [],
@@ -3907,7 +3877,7 @@
         true,
         true,
         true,
-        true
+        false
       ],
       "parameters": {
         "Left": []
@@ -5413,6 +5383,18 @@
     },
     "query": "SELECT * FROM workspace_audit_log WHERE id = $1;"
   },
+  "83912ed29e82fb53ea784afaefd393bd6362298a50c7688e3db952ed59ae81dc": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "TextArray"
+        ]
+      }
+    },
+    "query": "DELETE FROM domain_tld WHERE tld IN ( SELECT UNNEST($1::TEXT[]) );"
+  },
   "83c7c39ed3e071ecccc1fe0f6af04d9cacc3d9ca6faaf5e3de08b9b10704773a": {
     "describe": {
       "columns": [
@@ -6716,7 +6698,7 @@
         true,
         true,
         true,
-        true
+        false
       ],
       "parameters": {
         "Left": []
@@ -6753,18 +6735,6 @@
       }
     },
     "query": "SELECT id as \"id: _\", cpu_count, memory_count FROM deployment_machine_type;"
-  },
-  "a1fbca12fee638f4712ee6c0458d471e6978fbe3745de16d24c157b960491206": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      }
-    },
-    "query": "DELETE FROM domain_tld WHERE tld = $1;"
   },
   "a26aaae9c578adae831230251acca207c63e94e7962a88ed7aa95c55a0769adc": {
     "describe": {
@@ -9219,6 +9189,32 @@
       }
     },
     "query": "CREATE INDEX workspace_idx_super_admin_id ON workspace (super_admin_id);"
+  },
+  "d8feb73a06ee671347cc894b097feabe1a428fc4fcae88a905d95fd33193a9f8": {
+    "describe": {
+      "columns": [
+        {
+          "name": "tld!",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "action!",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "TextArray"
+        ]
+      }
+    },
+    "query": "WITH current_domains(tld) AS ( SELECT UNNEST($1::TEXT[]) ), deprecated_domains(tld) AS ( SELECT tld FROM domain_tld EXCEPT SELECT tld FROM current_domains EXCEPT SELECT tld FROM domain EXCEPT SELECT business_domain_tld FROM user_to_sign_up ), inserted_domains(tld, action) AS ( INSERT INTO domain_tld SELECT * FROM current_domains ON CONFLICT DO NOTHING RETURNING tld, 'inserted' ), deleted_domains(tld, action) AS ( DELETE FROM domain_tld WHERE EXISTS ( SELECT tld FROM deprecated_domains WHERE deprecated_domains.tld = domain_tld.tld ) RETURNING tld, 'deleted' ) SELECT tld as \"tld!\", action as \"action!\" FROM inserted_domains UNION SELECT tld as \"tld!\", action as \"action!\" FROM deleted_domains;"
   },
   "d9194070d90b6b0987a789933c15da1bb19512c19f5a9e5b78d8c17fe5e2b46f": {
     "describe": {
