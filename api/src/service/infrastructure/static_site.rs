@@ -453,7 +453,7 @@ pub async fn upload_static_site_files_to_s3(
 	}
 
 	for (file_name, file_content, mime_string) in files_vec {
-		let (_, code) = bucket
+		let code = bucket
 			.put_object_with_content_type(
 				format!("{}/{}/{}", static_site_id, upload_id, file_name),
 				&file_content,
@@ -467,7 +467,8 @@ pub async fn upload_static_site_files_to_s3(
 					err
 				);
 				Error::empty()
-			})?;
+			})?
+			.status_code();
 
 		if !(200..300).contains(&code) {
 			log::error!(
