@@ -120,24 +120,6 @@ pub async fn initialize(app: &App) -> Result<(), Error> {
 				)
 				.await?;
 
-				// Queue the payment for the current month
-				let now = Utc::now();
-				let month = now.month();
-				let year = now.year();
-				let request_id = Uuid::new_v4();
-				service::send_message_to_rabbit_mq(
-					&RequestMessage::Workspace(
-						WorkspaceRequestData::ProcessWorkspaces {
-							month: if month == 12 { 1 } else { month + 1 },
-							year: if month == 12 { year + 1 } else { year },
-							request_id: request_id.clone(),
-						},
-					),
-					&app.config,
-					&request_id,
-				)
-				.await?;
-
 				transaction.commit().await?;
 				log::info!(
 					"Migration completed. Database is now at version {}.{}.{}",
