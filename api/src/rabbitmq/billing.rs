@@ -195,74 +195,94 @@ pub(super) async fn process_request(
 					return Ok(());
 				}
 
-				let address_id = workspace
-					.clone()
-					.address_id
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+				if let Some(address_id) = workspace.address_id.clone() {
+					let (currency, amount) =
+						if db::get_billing_address(connection, &address_id)
+							.await?
+							.status(500)?
+							.country == *"IN"
+						{
+							(
+								"inr".to_string(),
+								(total_bill * 100f64 * 80f64) as u64,
+							)
+						} else {
+							("usd".to_string(), (total_bill * 100f64) as u64)
+						};
 
-				let (currency, amount) =
-					if db::get_billing_address(connection, &address_id)
+					let payment_intent_object = Client::new()
+						.post("https://api.stripe.com/v1/payment_intents")
+						.basic_auth(&config.stripe.secret_key, password)
+						.form(&PaymentIntent {
+							amount,
+							currency,
+							confirm: True,
+							off_session: true,
+							description: format!(
+								"Patr charge: Bill for {} {}",
+								month_string, year
+							),
+							customer: workspace.stripe_customer_id.clone(),
+							payment_method: workspace.default_payment_method_id,
+							payment_method_types: "card".to_string(),
+							setup_future_usage: None,
+						})
+						.send()
 						.await?
-						.status(500)?
-						.country == *"IN"
-					{
-						(
-							"inr".to_string(),
-							(total_bill * 100f64 * 80f64) as u64,
-						)
-					} else {
-						("usd".to_string(), (total_bill * 100f64) as u64)
-					};
+						.json::<PaymentIntentObject>()
+						.await?;
 
-				let payment_intent_object = Client::new()
-					.post("https://api.stripe.com/v1/payment_intents")
-					.basic_auth(&config.stripe.secret_key, password)
-					.form(&PaymentIntent {
-						amount,
-						currency,
-						confirm: True,
-						off_session: true,
-						description: format!(
-							"Patr charge: Bill for {} {}",
-							month_string, year
-						),
-						customer: workspace.stripe_customer_id.clone(),
-						payment_method: workspace.default_payment_method_id,
-						payment_method_types: "card".to_string(),
-						setup_future_usage: None,
-					})
-					.send()
-					.await?
-					.json::<PaymentIntentObject>()
+					// create transactions for all types of resources
+					let transaction_id =
+						db::generate_new_transaction_id(connection).await?;
+					db::create_transaction(
+						connection,
+						&workspace.id,
+						&transaction_id,
+						month as i32,
+						total_bill,
+						Some(&payment_intent_object.id),
+						&DateTime::from(
+							next_month_start_date
+								.add(chrono::Duration::nanoseconds(1)),
+						), // 1st of next month,
+						&TransactionType::Bill,
+						&PaymentStatus::Success,
+						None,
+					)
 					.await?;
 
-				// create transactions for all types of resources
-				let transaction_id =
-					db::generate_new_transaction_id(connection).await?;
-				db::create_transaction(
-					connection,
-					&workspace.id,
-					&transaction_id,
-					month as i32,
-					total_bill,
-					Some(&payment_intent_object.id),
-					&DateTime::from(
-						next_month_start_date
-							.add(chrono::Duration::nanoseconds(1)),
-					), // 1st of next month,
-					&TransactionType::Bill,
-					&PaymentStatus::Success,
-					None,
-				)
-				.await?;
+					service::queue_confirm_payment_intent(
+						config,
+						payment_intent_object.id,
+						workspace.id.clone(),
+					)
+					.await?;
+				} else {
+					// TODO: Does using NULL for payment_indent, can we
+					// reinitiate the payment in future?
 
-				service::queue_confirm_payment_intent(
-					config,
-					payment_intent_object.id,
-					workspace.id.clone(),
-				)
-				.await?;
+					// TODO: notify about the missing address id and reinitiate
+					// the payment process once added.
+					let transaction_id =
+						db::generate_new_transaction_id(connection).await?;
+					db::create_transaction(
+						connection,
+						&workspace.id,
+						&transaction_id,
+						month as i32,
+						total_bill,
+						None,
+						&DateTime::from(
+							next_month_start_date
+								.add(chrono::Duration::nanoseconds(1)),
+						), // 1st of next month,
+						&TransactionType::Bill,
+						&PaymentStatus::Success,
+						None,
+					)
+					.await?;
+				}
 			} else {
 				// create transactions for all types of resources
 				let transaction_id =

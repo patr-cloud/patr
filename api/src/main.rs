@@ -25,12 +25,16 @@ mod utils;
 use std::sync::Arc;
 
 use api_macros::{migrate_query, query, query_as};
+use api_models::utils::Uuid;
 use app::App;
+use chrono::{Datelike, Utc};
 use clap::{Arg, ArgMatches, Command};
 use eve_rs::handlebars::Handlebars;
 use futures::future;
 use tokio::{fs, runtime::Builder};
 use utils::{constants, logger, Error as EveError};
+
+use crate::models::rabbitmq::{RequestMessage, WorkspaceRequestData};
 
 type Database = sqlx::Postgres;
 
@@ -105,6 +109,29 @@ async fn async_main() -> Result<(), EveError> {
 
 	future::join(app::start_server(&app), rabbitmq::start_consumer(&app)).await;
 
+	if args.is_present("init-billing-msg") {
+		// Queue the payment for the current month
+		log::info!(
+			"Initializing billing message to trigger bills at end of month"
+		);
+		let now = Utc::now();
+		let month = now.month();
+		let year = now.year();
+		let request_id = Uuid::new_v4();
+		service::send_message_to_rabbit_mq(
+			&RequestMessage::Workspace(
+				WorkspaceRequestData::ProcessWorkspaces {
+					month, /* : if month == 12 { 1 } else { month + 1 } */
+					year,  /* : if month == 12 { year + 1 } else { year } */
+					request_id: request_id.clone(),
+				},
+			),
+			&app.config,
+			&request_id,
+		)
+		.await?;
+	}
+
 	Ok(())
 }
 
@@ -118,6 +145,14 @@ fn parse_cli_args() -> ArgMatches {
 				.long("db-only")
 				.takes_value(false)
 				.help("Initialises the database and quits"),
+		)
+		.arg(
+			Arg::new("init-billing-msg")
+				.long("init-billing-msg")
+				.takes_value(false)
+				.help(
+					"Initializes the billing trigger for next month in queue",
+				),
 		);
 	#[cfg(feature = "sample-data")]
 	{
