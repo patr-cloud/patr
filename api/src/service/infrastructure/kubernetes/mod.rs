@@ -36,7 +36,7 @@ pub use self::{
 };
 use crate::utils::{settings::Settings, Error};
 
-pub async fn get_kubernetes_config(
+async fn get_kubernetes_config(
 	config: &Settings,
 ) -> Result<kube::Client, Error> {
 	let config = Config::from_custom_kubeconfig(
@@ -117,14 +117,14 @@ async fn deployment_exists(
 	}
 }
 
-async fn config_map_exists(
+async fn config_mounts_map_exists(
 	deployment_id: &Uuid,
 	kubernetes_client: kube::Client,
 	namespace: &str,
 ) -> Result<bool, KubeError> {
 	let deployment_app =
 		Api::<ConfigMap>::namespaced(kubernetes_client, namespace)
-			.get(&format!("config-{}", deployment_id))
+			.get(&format!("config-mount-{}", deployment_id))
 			.await;
 	match deployment_app {
 		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),

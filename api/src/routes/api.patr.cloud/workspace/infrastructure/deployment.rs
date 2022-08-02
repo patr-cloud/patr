@@ -845,7 +845,6 @@ async fn create_deployment(
 		&region,
 		&machine_type,
 		&deployment_running_details,
-		&config,
 		&request_id,
 	)
 	.await?;
@@ -1505,8 +1504,7 @@ async fn update_deployment(
 		environment_variables,
 		startup_probe,
 		liveness_probe,
-		config_path,
-		config_file,
+		config_mounts,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -1530,8 +1528,7 @@ async fn update_deployment(
 		environment_variables.is_none() &&
 		startup_probe.is_none() &&
 		liveness_probe.is_none() &&
-		config_path.is_none() &&
-		config_file.is_none()
+		config_mounts.is_none()
 	{
 		return Err(Error::empty()
 			.status(400)
@@ -1564,7 +1561,6 @@ async fn update_deployment(
 	service::update_deployment(
 		context.get_database_connection(),
 		&deployment_id,
-		&workspace_id,
 		name,
 		region.as_ref(),
 		machine_type.as_ref(),
@@ -1582,9 +1578,7 @@ async fn update_deployment(
 		environment_variables.as_ref(),
 		startup_probe.as_ref(),
 		liveness_probe.as_ref(),
-		config_path.as_deref(),
-		config_file.as_deref(),
-		&config,
+		config_mounts.as_ref(),
 		&request_id,
 	)
 	.await?;

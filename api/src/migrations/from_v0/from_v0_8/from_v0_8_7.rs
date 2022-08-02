@@ -618,14 +618,16 @@ async fn create_deployment_config_file(
 ) -> Result<(), Error> {
 	query!(
 		r#"
-		CREATE TABLE deployment_config_file(
+		CREATE TABLE deployment_config_mounts(
+			path TEXT NOT NULL,
+			file BYTEA NOT NULL,
 			deployment_id UUID NOT NULL
 				CONSTRAINT deployment_config_file_fk_deployment_id
 					REFERENCES deployment(id),
-			path TEXT NOT NULL,
-			file BYTEA NOT NULL,
-			CONSTRAINT deployment_config_file_pk
-				PRIMARY KEY(deployment_id, path)
+			CONSTRAINT deployment_config_file_pk PRIMARY KEY(
+				deployment_id,
+				path
+			)
 		);
 		"#
 	)

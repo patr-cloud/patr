@@ -80,7 +80,7 @@
         false,
         false,
         false,
-        true
+        false
       ],
       "parameters": {
         "Left": [
@@ -2302,6 +2302,38 @@
       }
     },
     "query": "INSERT INTO user_phone_number( user_id, country_code, number ) VALUES ($1, $2, $3);"
+  },
+  "340d64fcd716c068b8f1619f037f3a6dc7a9ba3746cbb90aaecc93e23dc2851d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "deployment_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "path",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "file!: _",
+          "ordinal": 2,
+          "type_info": "Bytea"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT deployment_id as \"deployment_id: _\", path, file as \"file!: _\" FROM deployment_config_mounts WHERE deployment_id = $1;"
   },
   "34a6c091329abb7322f4583844fc2bcd5a5d8a6b610da77113647a6583bff569": {
     "describe": {
@@ -5793,6 +5825,20 @@
     },
     "query": "DELETE FROM user_to_sign_up WHERE username = $1;"
   },
+  "8eca64d2d92c9b42eb9cd67bc5a344d9dfcf9f5ee9ff6fc7a72cba6056a5a203": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Bytea",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO deployment_config_mounts( path, file, deployment_id ) VALUES ($1, $2, $3);"
+  },
   "8f40c85c9a884c7baefc91aace67efcf5d1966aa9589f1b2d408e3f27cadd6e9": {
     "describe": {
       "columns": [],
@@ -6301,16 +6347,6 @@
       }
     },
     "query": "UPDATE docker_repo_payment_history SET stop_time = $1 WHERE workspace_id = $2 AND stop_time IS NULL;"
-  },
-  "9d07e3885df76817e11f91a35a9d1918479fbc53c488dd983f50f9eb1d4e64c4": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment_config_file( deployment_id UUID NOT NULL CONSTRAINT deployment_config_file_fk_deployment_id REFERENCES deployment(id), path TEXT NOT NULL, file BYTEA NOT NULL, CONSTRAINT deployment_config_file_pk PRIMARY KEY(deployment_id, path) );"
   },
   "9d12957af2506956a6c245b5822233f06bb1b51740cc77867c9269d16d53c635": {
     "describe": {
@@ -6948,20 +6984,6 @@
       }
     },
     "query": "SELECT upload_id as \"id: _\", message, uploaded_by as \"uploaded_by: _\", created as \"created: _\" FROM static_site_upload_history WHERE static_site_id = $1 ORDER BY created DESC LIMIT 1;"
-  },
-  "aac3f3674044a2af12c99f59dfc2ee2bcba8b610686a81460d05cba6e850a680": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          "Bytea"
-        ]
-      }
-    },
-    "query": "INSERT INTO deployment_config_file( deployment_id, path, file ) VALUES ($1, $2, $3);"
   },
   "ac016a17b868bc255b30dd49c718fce7c6c28637f5cb4f94a83c993f959627dd": {
     "describe": {
@@ -8486,6 +8508,16 @@
     },
     "query": "UPDATE patr_domain_dns_record SET value = $1, priority = $2, ttl = $3, proxied = $4 WHERE id = $5;"
   },
+  "c7a802d7ee32abf736093c6e13ae10fe4c7c00d8250ce34861741533bf83678e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_config_mounts( path TEXT NOT NULL, file BYTEA NOT NULL, deployment_id UUID NOT NULL CONSTRAINT deployment_config_file_fk_deployment_id REFERENCES deployment(id), CONSTRAINT deployment_config_file_pk PRIMARY KEY( deployment_id, path ) );"
+  },
   "c7badbbf95c47e30f52f6f6390e9af3a7e3f8cec8e9f6abe7e092bc2004eed5d": {
     "describe": {
       "columns": [],
@@ -8945,7 +8977,7 @@
         false,
         false,
         false,
-        true
+        false
       ],
       "parameters": {
         "Left": [
@@ -9365,6 +9397,18 @@
       }
     },
     "query": "CREATE TABLE docker_registry_repository_tag( repository_id UUID NOT NULL CONSTRAINT docker_registry_repository_tag_fk_repository_id REFERENCES docker_registry_repository(id), tag TEXT NOT NULL, manifest_digest TEXT NOT NULL, last_updated BIGINT NOT NULL CONSTRAINT docker_registry_repository_tag_chk_last_updated_unsigned CHECK( last_updated >= 0 ), CONSTRAINT docker_registry_repository_tag_pk PRIMARY KEY( repository_id, tag ), CONSTRAINT docker_registry_repository_tag_fk_repository_id_manifest_digest FOREIGN KEY(repository_id, manifest_digest) REFERENCES docker_registry_repository_manifest( repository_id, manifest_digest ) );"
+  },
+  "daf8c5cc27ae0095c77760d86448ba3374082cc0cf5df1c59313342b992b59a8": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "DELETE FROM deployment_config_mounts WHERE deployment_id = $1;"
   },
   "dc143c1965f5cd576eced73955f378a1330ab5e8cb535bbd6ac7c202e95520ee": {
     "describe": {

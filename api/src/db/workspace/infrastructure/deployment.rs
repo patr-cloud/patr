@@ -63,9 +63,10 @@ pub struct DeploymentEnvironmentVariable {
 	pub secret_id: Option<Uuid>,
 }
 
-pub struct DeploymentConfig {
+pub struct DeploymentConfigMount {
 	pub path: String,
 	pub file: Vec<u8>,
+	pub deployment_id: Uuid,
 }
 
 pub async fn initialize_deployment_pre(
@@ -344,14 +345,16 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
-		CREATE TABLE deployment_config_file(
+		CREATE TABLE deployment_config_mounts(
+			path TEXT NOT NULL,
+			file BYTEA NOT NULL,
 			deployment_id UUID NOT NULL
 				CONSTRAINT deployment_config_file_fk_deployment_id
 					REFERENCES deployment(id),
-			path TEXT NOT NULL,
-			file BYTEA NOT NULL,
-			CONSTRAINT deployment_config_file_pk
-				PRIMARY KEY(deployment_id, path)
+			CONSTRAINT deployment_config_file_pk PRIMARY KEY(
+				deployment_id,
+				path
+			)
 		);
 		"#
 	)
@@ -943,55 +946,6 @@ pub async fn add_environment_variable_for_deployment(
 	.map(|_| ())
 }
 
-pub async fn add_config_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	path: &str,
-	file: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO 
-			deployment_config_file(
-				deployment_id,
-				path,
-				file
-			)
-		VALUES
-			($1, $2, $3);
-		"#,
-		deployment_id as _,
-		path,
-		file
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn get_deployment_config_file(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-) -> Result<Option<DeploymentConfig>, sqlx::Error> {
-	let config = query_as!(
-		DeploymentConfig,
-		r#"
-		SELECT
-		   path,
-		   file as "file!: _"
-		FROM
-			deployment_config_file
-		WHERE
-			deployment_id = $1;
-		"#,
-		deployment_id as _
-	)
-	.fetch_optional(&mut *connection)
-	.await?;
-
-	Ok(config)
-}
-
 pub async fn remove_all_environment_variables_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
@@ -1090,10 +1044,8 @@ pub async fn update_deployment_details(
 	max_horizontal_scale: Option<u16>,
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
-	config_path: Option<&str>,
-	config_file: Option<Vec<u8>>,
 ) -> Result<(), sqlx::Error> {
-	let result = query!(
+	query!(
 		r#"
 		UPDATE
 			deployment
@@ -1172,43 +1124,74 @@ pub async fn update_deployment_details(
 		deployment_id as _
 	)
 	.execute(&mut *connection)
-	.await?;
+	.await
+	.map(|_| ())
+}
 
-	if let Some(file) = config_file {
-		query!(
-			r#"
-			UPDATE
-				deployment_config_file
-			SET
-				file = $1
-			WHERE
-				deployment_id = $2;
-			"#,
-			file as _,
-			deployment_id as _
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
+pub async fn add_config_mount_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	path: &str,
+	file: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO 
+			deployment_config_mounts(
+				path,
+				file,
+				deployment_id
+			)
+		VALUES
+			($1, $2, $3);
+		"#,
+		path,
+		file,
+		deployment_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
 
-	if let Some(path) = config_path {
-		query!(
-			r#"
-			UPDATE
-				deployment_config_file
-			SET
-				path = $1
-			WHERE
-				deployment_id = $2;
-			"#,
-			path as _,
-			deployment_id as _
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
+pub async fn get_all_deployment_config_mounts(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+) -> Result<Vec<DeploymentConfigMount>, sqlx::Error> {
+	query_as!(
+		DeploymentConfigMount,
+		r#"
+		SELECT
+			deployment_id as "deployment_id: _",
+			path,
+			file as "file!: _"
+		FROM
+			deployment_config_mounts
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
 
-	Ok(())
+pub async fn remove_all_config_mounts_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			deployment_config_mounts
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 pub async fn get_all_deployment_machine_types(
