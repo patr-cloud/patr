@@ -346,12 +346,14 @@ pub async fn initialize_deployment_pre(
 	query!(
 		r#"
 		CREATE TABLE deployment_config_mounts(
-			path TEXT NOT NULL,
+			path TEXT NOT NULL
+				CONSTRAINT deployment_config_mounts_chk_path_valid
+					CHECK(path ~ '^[a-zA-Z0-9_\-\.\(\)]+$'),
 			file BYTEA NOT NULL,
 			deployment_id UUID NOT NULL
-				CONSTRAINT deployment_config_file_fk_deployment_id
+				CONSTRAINT deployment_config_mounts_fk_deployment_id
 					REFERENCES deployment(id),
-			CONSTRAINT deployment_config_file_pk PRIMARY KEY(
+			CONSTRAINT deployment_config_mounts_pk PRIMARY KEY(
 				deployment_id,
 				path
 			)

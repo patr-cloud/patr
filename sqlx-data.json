@@ -1885,6 +1885,16 @@
     },
     "query": "UPDATE \"user\" SET recovery_email_local = $1, recovery_email_domain_id = $2 WHERE id = $3;"
   },
+  "2ccf26dfa5419b9f57a55650c28a77adf0a66778d02e316182145326fa9fc52c": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_config_mounts( path TEXT NOT NULL CONSTRAINT deployment_config_mounts_chk_path_valid CHECK(path ~ '^[a-zA-Z0-9_\\-\\.\\(\\)]+$'), file BYTEA NOT NULL, deployment_id UUID NOT NULL CONSTRAINT deployment_config_mounts_fk_deployment_id REFERENCES deployment(id), CONSTRAINT deployment_config_mounts_pk PRIMARY KEY( deployment_id, path ) );"
+  },
   "2d9bd34aec2d4a7e2b0a0a989686426764736a4d4c82d91fa157b387bc0a4642": {
     "describe": {
       "columns": [
@@ -8507,16 +8517,6 @@
       }
     },
     "query": "UPDATE patr_domain_dns_record SET value = $1, priority = $2, ttl = $3, proxied = $4 WHERE id = $5;"
-  },
-  "c7a802d7ee32abf736093c6e13ae10fe4c7c00d8250ce34861741533bf83678e": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment_config_mounts( path TEXT NOT NULL, file BYTEA NOT NULL, deployment_id UUID NOT NULL CONSTRAINT deployment_config_file_fk_deployment_id REFERENCES deployment(id), CONSTRAINT deployment_config_file_pk PRIMARY KEY( deployment_id, path ) );"
   },
   "c7badbbf95c47e30f52f6f6390e9af3a7e3f8cec8e9f6abe7e092bc2004eed5d": {
     "describe": {
