@@ -1504,6 +1504,7 @@ async fn update_deployment(
 		environment_variables,
 		startup_probe,
 		liveness_probe,
+		config_mounts,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -1526,7 +1527,8 @@ async fn update_deployment(
 		ports.is_none() &&
 		environment_variables.is_none() &&
 		startup_probe.is_none() &&
-		liveness_probe.is_none()
+		liveness_probe.is_none() &&
+		config_mounts.is_none()
 	{
 		return Err(Error::empty()
 			.status(400)
@@ -1576,6 +1578,7 @@ async fn update_deployment(
 		environment_variables.as_ref(),
 		startup_probe.as_ref(),
 		liveness_probe.as_ref(),
+		config_mounts.as_ref(),
 		&request_id,
 	)
 	.await?;

@@ -1885,6 +1885,16 @@
     },
     "query": "UPDATE \"user\" SET recovery_email_local = $1, recovery_email_domain_id = $2 WHERE id = $3;"
   },
+  "2ccf26dfa5419b9f57a55650c28a77adf0a66778d02e316182145326fa9fc52c": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_config_mounts( path TEXT NOT NULL CONSTRAINT deployment_config_mounts_chk_path_valid CHECK(path ~ '^[a-zA-Z0-9_\\-\\.\\(\\)]+$'), file BYTEA NOT NULL, deployment_id UUID NOT NULL CONSTRAINT deployment_config_mounts_fk_deployment_id REFERENCES deployment(id), CONSTRAINT deployment_config_mounts_pk PRIMARY KEY( deployment_id, path ) );"
+  },
   "2d9bd34aec2d4a7e2b0a0a989686426764736a4d4c82d91fa157b387bc0a4642": {
     "describe": {
       "columns": [
@@ -2302,6 +2312,38 @@
       }
     },
     "query": "INSERT INTO user_phone_number( user_id, country_code, number ) VALUES ($1, $2, $3);"
+  },
+  "340d64fcd716c068b8f1619f037f3a6dc7a9ba3746cbb90aaecc93e23dc2851d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "deployment_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "path",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "file!: _",
+          "ordinal": 2,
+          "type_info": "Bytea"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT deployment_id as \"deployment_id: _\", path, file as \"file!: _\" FROM deployment_config_mounts WHERE deployment_id = $1;"
   },
   "34a6c091329abb7322f4583844fc2bcd5a5d8a6b610da77113647a6583bff569": {
     "describe": {
@@ -5792,6 +5834,20 @@
       }
     },
     "query": "DELETE FROM user_to_sign_up WHERE username = $1;"
+  },
+  "8eca64d2d92c9b42eb9cd67bc5a344d9dfcf9f5ee9ff6fc7a72cba6056a5a203": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Bytea",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO deployment_config_mounts( path, file, deployment_id ) VALUES ($1, $2, $3);"
   },
   "8f40c85c9a884c7baefc91aace67efcf5d1966aa9589f1b2d408e3f27cadd6e9": {
     "describe": {
@@ -9341,6 +9397,18 @@
       }
     },
     "query": "CREATE TABLE docker_registry_repository_tag( repository_id UUID NOT NULL CONSTRAINT docker_registry_repository_tag_fk_repository_id REFERENCES docker_registry_repository(id), tag TEXT NOT NULL, manifest_digest TEXT NOT NULL, last_updated BIGINT NOT NULL CONSTRAINT docker_registry_repository_tag_chk_last_updated_unsigned CHECK( last_updated >= 0 ), CONSTRAINT docker_registry_repository_tag_pk PRIMARY KEY( repository_id, tag ), CONSTRAINT docker_registry_repository_tag_fk_repository_id_manifest_digest FOREIGN KEY(repository_id, manifest_digest) REFERENCES docker_registry_repository_manifest( repository_id, manifest_digest ) );"
+  },
+  "daf8c5cc27ae0095c77760d86448ba3374082cc0cf5df1c59313342b992b59a8": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "DELETE FROM deployment_config_mounts WHERE deployment_id = $1;"
   },
   "dc143c1965f5cd576eced73955f378a1330ab5e8cb535bbd6ac7c202e95520ee": {
     "describe": {
