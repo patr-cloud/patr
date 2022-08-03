@@ -61,6 +61,12 @@ pub(super) async fn process_request(
 					workspace.id
 				);
 
+				// generate invoice for prev month
+				let (month, year) = if month == 1 {
+					(12, year - 1)
+				} else {
+					(month - 1, year)
+				};
 				service::queue_generate_invoice_for_workspace(
 					config, workspace, month, year,
 				)

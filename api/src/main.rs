@@ -121,8 +121,8 @@ async fn async_main() -> Result<(), EveError> {
 		service::send_message_to_rabbit_mq(
 			&RequestMessage::Workspace(
 				WorkspaceRequestData::ProcessWorkspaces {
-					month, /* : if month == 12 { 1 } else { month + 1 } */
-					year,  /* : if month == 12 { year + 1 } else { year } */
+					month: if month == 12 { 1 } else { month + 1 },
+					year: if month == 12 { year + 1 } else { year },
 					request_id: request_id.clone(),
 				},
 			),
