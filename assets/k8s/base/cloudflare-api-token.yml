@@ -1,0 +1,11 @@
+kind: Secret
+apiVersion: v1
+metadata:
+  name: cloudflare-api-token-secret
+  annotations:
+    reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+    reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+type: Opaque
+stringData:
+  # TODO: get api token from env
+  api-token: cloudflare-api-token-key
