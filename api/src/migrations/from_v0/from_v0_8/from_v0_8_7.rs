@@ -3,30 +3,18 @@ use std::collections::BTreeMap;
 use api_models::utils::Uuid;
 use chrono::{TimeZone, Utc};
 use k8s_openapi::api::networking::v1::{
-	HTTPIngressPath,
-	HTTPIngressRuleValue,
-	Ingress,
-	IngressBackend,
-	IngressRule,
-	IngressServiceBackend,
-	IngressSpec,
-	IngressTLS,
+	HTTPIngressPath, HTTPIngressRuleValue, Ingress, IngressBackend,
+	IngressRule, IngressServiceBackend, IngressSpec, IngressTLS,
 	ServiceBackendPort,
 };
 use kube::{
 	api::{Patch, PatchParams},
 	config::{
-		AuthInfo,
-		Cluster,
-		Context,
-		Kubeconfig,
-		NamedAuthInfo,
-		NamedCluster,
+		AuthInfo, Cluster, Context, Kubeconfig, NamedAuthInfo, NamedCluster,
 		NamedContext,
 	},
 	core::ObjectMeta,
-	Api,
-	Config,
+	Api, Config,
 };
 use s3::{creds::Credentials, Bucket, Region};
 use sqlx::Row;
@@ -635,6 +623,5 @@ async fn create_deployment_config_file(
 	)
 	.execute(&mut *connection)
 	.await?;
-
 	Ok(())
 }
