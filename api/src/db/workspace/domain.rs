@@ -266,7 +266,7 @@ pub async fn initialize_domain_pre(
 			domain_id UUID NOT NULL,
 			name TEXT NOT NULL
 				CONSTRAINT patr_domain_dns_record_chk_name_is_valid CHECK(
-					name ~ '^(\*)|((\*\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_]))$' OR
+					name ~ '^((\*)|((\*\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])))$' OR
 					name = '@'
 				),
 			type DNS_RECORD_TYPE NOT NULL,
