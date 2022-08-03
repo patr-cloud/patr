@@ -1,4 +1,4 @@
-use eve_rs::{App as EveApp, Context};
+use eve_rs::{App as EveApp, AsError, Context};
 
 use crate::{
 	app::{create_eve_app, App},

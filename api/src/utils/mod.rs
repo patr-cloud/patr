@@ -2,6 +2,7 @@ mod eve_context;
 mod eve_middlewares;
 
 pub mod constants;
+pub mod errors;
 pub mod logger;
 pub mod settings;
 pub mod validator;
@@ -12,7 +13,7 @@ pub use eve_context::*;
 pub use eve_middlewares::*;
 use eve_rs::Error as EveError;
 
-pub type ErrorData = ();
+pub type ErrorData = errors::APIError;
 pub type Error = EveError<ErrorData>;
 
 pub fn get_current_time() -> Duration {

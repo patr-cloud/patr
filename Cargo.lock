@@ -142,6 +142,7 @@ dependencies = [
  "sha2",
  "shiplift",
  "sqlx",
+ "thiserror",
  "tokio",
  "trust-dns-client",
  "vaultrs",

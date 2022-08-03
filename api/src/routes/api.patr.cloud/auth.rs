@@ -17,6 +17,7 @@ use crate::{
 	service::{self, get_access_token_expiry},
 	utils::{
 		constants::request_keys,
+		errors::{APIError, HasErrorData},
 		get_current_time,
 		get_current_time_millis,
 		validator,
@@ -150,6 +151,7 @@ async fn sign_in(
 	let LoginRequest { user_id, password } = context
 		.get_body_as()
 		.status(400)
+		.data(APIError::WrongParameters)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let user_data = db::get_user_by_username_email_or_phone_number(
