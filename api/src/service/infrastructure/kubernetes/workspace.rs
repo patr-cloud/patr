@@ -14,7 +14,9 @@ pub async fn create_kubernetes_namespace(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_config(config).await?;
+	let cluster_config = super::get_kubernetes_default_cluster_config(config);
+	let kubernetes_client =
+		super::get_kubernetes_client(cluster_config).await?;
 
 	log::trace!("request_id: {} - creating namespace", request_id);
 	let kubernetes_namespace = Namespace {
@@ -24,7 +26,7 @@ pub async fn create_kubernetes_namespace(
 		},
 		..Namespace::default()
 	};
-	let namespace_api = Api::<Namespace>::all(client);
+	let namespace_api = Api::<Namespace>::all(kubernetes_client);
 	namespace_api
 		.create(&PostParams::default(), &kubernetes_namespace)
 		.await?;
@@ -38,13 +40,15 @@ pub async fn delete_kubernetes_namespace(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_config(config).await?;
+	let cluster_config = super::get_kubernetes_default_cluster_config(config);
+	let kubernetes_client =
+		super::get_kubernetes_client(cluster_config).await?;
 
 	log::trace!("request_id: {} - deleting namespace", request_id);
 
 	// deleting the kubernetes namespace deletes
 	// all the resources automatically that are present inside that namespace
-	let namespace_api = Api::<Namespace>::all(client);
+	let namespace_api = Api::<Namespace>::all(kubernetes_client);
 	namespace_api
 		.delete(namespace_name, &DeleteParams::default())
 		.await?;

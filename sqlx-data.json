@@ -3757,6 +3757,51 @@
     },
     "query": "ALTER TABLE workspace ADD CONSTRAINT workspace_default_payment_method_id_fk FOREIGN KEY (default_payment_method_id) REFERENCES payment_method(payment_method_id) DEFERRABLE INITIALLY DEFERRED;"
   },
+  "5a8afafdf34ccade1b2f274ba892ae5f1ffd91cf4af8eb507422641501dbdde8": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "slug",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "cloud_provider: _",
+          "ordinal": 3,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "digitalocean"
+                ]
+              },
+              "name": "deployment_cloud_provider"
+            }
+          }
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        null,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT id as \"id: _\", name, slug::TEXT, provider as \"cloud_provider: _\" FROM deployment_region;"
+  },
   "5aafa67998a92b12cf57676dd039f892b159630c352036a04157f593e1828e52": {
     "describe": {
       "columns": [
@@ -4404,45 +4449,6 @@
       }
     },
     "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE workspace_id = $1;"
-  },
-  "6f7f9061d9b0ef20410537f9f662cc3a501d0a3ec931a68f7ef6c0891bfa4a06": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "cloud_provider: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "digitalocean"
-                ]
-              },
-              "name": "deployment_cloud_provider"
-            }
-          }
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\" FROM deployment_region;"
   },
   "71077a5189a75c5e4e0823d36adfd488a1bb9c711ef758d6192700bd088cf800": {
     "describe": {

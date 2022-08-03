@@ -8,7 +8,7 @@ use api_models::utils::Uuid;
 use k8s_openapi::api::{
 	apps::v1::Deployment as K8sDeployment,
 	autoscaling::v1::HorizontalPodAutoscaler,
-	core::v1::{Secret, Service},
+	core::v1::{Namespace, Secret, Service},
 	networking::v1::Ingress,
 };
 use kube::{
@@ -34,45 +34,76 @@ pub use self::{
 	static_site::*,
 	workspace::*,
 };
-use crate::utils::{settings::Settings, Error};
+use crate::{
+	models::deployment::REGIONS,
+	utils::{
+		settings::{KubernetesSettings, Settings},
+		Error,
+	},
+};
 
-async fn get_kubernetes_config(
+/// get the default k8s cluster config ie do-blr1
+fn get_kubernetes_default_cluster_config(
 	config: &Settings,
+) -> &KubernetesSettings {
+	// TODO: add validation for checking atleast one k8s config is present in
+	// config file
+	config
+		.kubernetes
+		.get("do-blr1")
+		.expect("default cluster config is missing")
+}
+
+/// if a cluster is running on given region, will return that cluster's config
+fn get_kubernetes_cluster_config<'a>(
+	config: &'a Settings,
+	region_id: &'a Uuid,
+) -> Option<&'a KubernetesSettings> {
+	REGIONS
+		.get()
+		.expect("should have been initialized already")
+		.get(region_id)
+		.and_then(|value| value.slug.as_deref())
+		.and_then(|slug| config.kubernetes.get(slug))
+}
+
+async fn get_kubernetes_client(
+	cluster_config: &KubernetesSettings,
 ) -> Result<kube::Client, Error> {
 	let config = Config::from_custom_kubeconfig(
 		Kubeconfig {
 			preferences: None,
 			clusters: vec![NamedCluster {
-				name: config.kubernetes.cluster_name.clone(),
+				name: cluster_config.cluster_name.clone(),
 				cluster: Cluster {
-					server: config.kubernetes.cluster_url.clone(),
+					server: cluster_config.cluster_url.clone(),
 					insecure_skip_tls_verify: None,
 					certificate_authority: None,
 					certificate_authority_data: Some(
-						config.kubernetes.certificate_authority_data.clone(),
+						cluster_config.certificate_authority_data.clone(),
 					),
 					proxy_url: None,
 					extensions: None,
 				},
 			}],
 			auth_infos: vec![NamedAuthInfo {
-				name: config.kubernetes.auth_name.clone(),
+				name: cluster_config.auth_name.clone(),
 				auth_info: AuthInfo {
-					username: Some(config.kubernetes.auth_username.clone()),
-					token: Some(config.kubernetes.auth_token.clone().into()),
+					username: Some(cluster_config.auth_username.clone()),
+					token: Some(cluster_config.auth_token.clone().into()),
 					..Default::default()
 				},
 			}],
 			contexts: vec![NamedContext {
-				name: config.kubernetes.context_name.clone(),
+				name: cluster_config.context_name.clone(),
 				context: Context {
-					cluster: config.kubernetes.cluster_name.clone(),
-					user: config.kubernetes.auth_username.clone(),
+					cluster: cluster_config.cluster_name.clone(),
+					user: cluster_config.auth_username.clone(),
 					extensions: None,
 					namespace: None,
 				},
 			}],
-			current_context: Some(config.kubernetes.context_name.clone()),
+			current_context: Some(cluster_config.context_name.clone()),
 			extensions: None,
 			kind: Some("Config".to_string()),
 			api_version: Some("v1".to_string()),
@@ -99,6 +130,16 @@ async fn service_exists(
 		Err(err) => Err(err),
 		Ok(_) => Ok(true),
 	}
+}
+
+async fn namespace_exists(
+	namespace: &str,
+	kubernetes_client: kube::Client,
+) -> Result<bool, KubeError> {
+	Api::<Namespace>::all(kubernetes_client)
+		.get_opt(namespace)
+		.await
+		.map(|ns| ns.is_some())
 }
 
 async fn deployment_exists(

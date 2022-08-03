@@ -67,18 +67,20 @@
 		"apiKey": "key",
 		"registry": "test"
 	},
-	"kubernetes": {
-		"certificateAuthorityData": "",
-		"clusterName": "",
-		"clusterUrl": "",
-		"authName": "",
-		"authUsername": "",
-		"authToken": "",
-		"contextName": "",
-		"certIssuerHttp": "letsencrypt-staging",
-		"certIssuerDns": "letsencrypt-staging-dns",
-		"staticSiteProxyService": "proxy-static-site-service.default.svc.cluster.local",
-		"alertWebhookSecret": "<auth-header>"
+    "kubernetes": {
+		"do-blr1": {
+			"certificateAuthorityData": "",
+			"clusterName": "",
+			"clusterUrl": "",
+			"authName": "",
+			"authUsername": "",
+			"authToken": "",
+			"contextName": "",
+			"certIssuerHttp": "letsencrypt-staging",
+			"certIssuerDns": "letsencrypt-staging-dns",
+			"staticSiteProxyService": "proxy-static-site-service.default.svc.cluster.local",
+			"alertWebhookSecret": "<auth-header>"
+		}
 	},
 	"prometheus": {
 		"host": "prometheus.samyakgangwal.com",

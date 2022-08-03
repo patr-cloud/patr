@@ -46,7 +46,9 @@ pub async fn update_kubernetes_managed_url(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let cluster_config = super::get_kubernetes_default_cluster_config(config);
+	let kubernetes_client =
+		super::get_kubernetes_client(cluster_config).await?;
 
 	let namespace = workspace_id.as_str();
 	log::trace!(
@@ -125,9 +127,9 @@ pub async fn update_kubernetes_managed_url(
 				(
 					"cert-manager.io/cluster-issuer".to_string(),
 					if domain.is_ns_internal() {
-						config.kubernetes.cert_issuer_dns.clone()
+						cluster_config.cert_issuer_dns.clone()
 					} else {
-						config.kubernetes.cert_issuer_http.clone()
+						cluster_config.cert_issuer_http.clone()
 					},
 				),
 			]
@@ -166,9 +168,9 @@ pub async fn update_kubernetes_managed_url(
 				(
 					"cert-manager.io/cluster-issuer".to_string(),
 					if domain.is_ns_internal() {
-						config.kubernetes.cert_issuer_dns.clone()
+						cluster_config.cert_issuer_dns.clone()
 					} else {
-						config.kubernetes.cert_issuer_http.clone()
+						cluster_config.cert_issuer_http.clone()
 					},
 				),
 			]
@@ -251,9 +253,9 @@ pub async fn update_kubernetes_managed_url(
 					(
 						"cert-manager.io/cluster-issuer".to_string(),
 						if domain.is_ns_internal() {
-							config.kubernetes.cert_issuer_dns.clone()
+							cluster_config.cert_issuer_dns.clone()
 						} else {
-							config.kubernetes.cert_issuer_http.clone()
+							cluster_config.cert_issuer_http.clone()
 						},
 					),
 				]
@@ -331,9 +333,9 @@ pub async fn update_kubernetes_managed_url(
 					(
 						"cert-manager.io/cluster-issuer".to_string(),
 						if domain.is_ns_internal() {
-							config.kubernetes.cert_issuer_dns.clone()
+							cluster_config.cert_issuer_dns.clone()
 						} else {
-							config.kubernetes.cert_issuer_http.clone()
+							cluster_config.cert_issuer_http.clone()
 						},
 					),
 				]
@@ -409,7 +411,9 @@ pub async fn delete_kubernetes_managed_url(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let cluster_config = super::get_kubernetes_default_cluster_config(config);
+	let kubernetes_client =
+		super::get_kubernetes_client(cluster_config).await?;
 
 	let namespace = workspace_id.as_str();
 	log::trace!(

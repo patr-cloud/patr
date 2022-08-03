@@ -195,10 +195,11 @@ pub async fn initialize(app: &App) -> Result<(), Error> {
 			.set(machine_types)
 			.expect("MACHINE_TYPES is already set");
 
+		// TODO: add validation for config check
 		let regions = db::get_all_deployment_regions(&mut *transaction)
 			.await?
 			.into_iter()
-			.map(|region| (region.id, (region.name, region.cloud_provider)))
+			.map(|region| (region.id.clone(), region))
 			.collect();
 		deployment::REGIONS
 			.set(regions)

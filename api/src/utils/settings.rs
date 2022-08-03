@@ -1,4 +1,5 @@
 use std::{
+	collections::HashMap,
 	env,
 	fmt::{Display, Formatter},
 	net::IpAddr,
@@ -57,7 +58,8 @@ pub struct Settings {
 	#[serde(alias = "dockerregistry")]
 	pub docker_registry: DockerRegistrySettings,
 	pub digitalocean: Digitalocean,
-	pub kubernetes: KubernetesSettings,
+	pub kubernetes: HashMap<String, KubernetesSettings>, /* TODO: update
+	                                                      * .env.sample file */
 	pub prometheus: PrometheusSettings,
 	#[serde(alias = "rabbitmq")]
 	pub rabbit_mq: RabbitMqSettings,

@@ -42,7 +42,9 @@ pub async fn update_kubernetes_static_site(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let cluster_config = super::get_kubernetes_default_cluster_config(config);
+	let kubernetes_client =
+		super::get_kubernetes_client(cluster_config).await?;
 	// new name for the docker image
 
 	let namespace = workspace_id.as_str();
@@ -71,7 +73,7 @@ pub async fn update_kubernetes_static_site(
 		spec: Some(ServiceSpec {
 			type_: Some("ExternalName".to_string()),
 			external_name: Some(
-				config.kubernetes.static_site_proxy_service.to_string(),
+				cluster_config.static_site_proxy_service.to_string(),
 			),
 			ports: Some(vec![ServicePort {
 				port: 80,
@@ -107,7 +109,7 @@ pub async fn update_kubernetes_static_site(
 	);
 	annotations.insert(
 		"cert-manager.io/cluster-issuer".to_string(),
-		config.kubernetes.cert_issuer_dns.clone(),
+		cluster_config.cert_issuer_dns.clone(),
 	);
 	annotations.insert(
 		"nginx.ingress.kubernetes.io/upstream-vhost".to_string(),
@@ -187,7 +189,9 @@ pub async fn delete_kubernetes_static_site(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let cluster_config = super::get_kubernetes_default_cluster_config(config);
+	let kubernetes_client =
+		super::get_kubernetes_client(cluster_config).await?;
 
 	let namespace = workspace_id.as_str();
 	log::trace!(

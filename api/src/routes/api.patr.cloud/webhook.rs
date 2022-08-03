@@ -373,7 +373,12 @@ async fn deployment_alert(
 		request_id
 	);
 
-	if custom_header != config.kubernetes.alert_webhook_secret {
+	// TODO: is cluster specific handling needed in webhook?
+	if !config
+		.kubernetes
+		.values()
+		.any(|kube_config| kube_config.alert_webhook_secret == custom_header)
+	{
 		Error::as_result().status(400).body(
 			json!({
 				request_keys::ERRORS: [{

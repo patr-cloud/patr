@@ -19,9 +19,11 @@ use crate::{
 	Database,
 };
 
+#[derive(Debug)]
 pub struct DeploymentRegion {
 	pub id: Uuid,
 	pub name: String,
+	pub slug: Option<String>,
 	pub cloud_provider: Option<DeploymentCloudProvider>,
 }
 
@@ -1326,6 +1328,7 @@ pub async fn get_all_deployment_regions(
 		SELECT
 			id as "id: _",
 			name,
+			slug::TEXT,
 			provider as "cloud_provider: _"
 		FROM
 			deployment_region;

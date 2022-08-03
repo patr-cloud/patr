@@ -21,7 +21,9 @@ pub async fn create_certificates(
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {} - Creating certificates", request_id);
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let cluster_config = super::get_kubernetes_default_cluster_config(config);
+	let kubernetes_client =
+		super::get_kubernetes_client(cluster_config).await?;
 
 	log::trace!(
 		"request_id: {} - Checking if certificate exists",
@@ -53,9 +55,9 @@ pub async fn create_certificates(
 				"dnsNames": domain_list,
 				"issuerRef": {
 					"name": if is_internal {
-						&config.kubernetes.cert_issuer_dns
+						&cluster_config.cert_issuer_dns
 					} else {
-						&config.kubernetes.cert_issuer_http
+						&cluster_config.cert_issuer_http
 					},
 					"kind": "ClusterIssuer",
 					"group": "cert-manager.io"
@@ -102,7 +104,10 @@ pub async fn delete_certificates_for_domain(
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {} - Deleting certificates", request_id);
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let kubernetes_client = super::get_kubernetes_client(
+		super::get_kubernetes_default_cluster_config(config),
+	)
+	.await?;
 
 	let namespace = workspace_id.as_str();
 

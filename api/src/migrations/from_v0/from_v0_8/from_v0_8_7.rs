@@ -656,7 +656,17 @@ async fn update_deployment_region_table_for_multi_cluster(
 						AND location IS NOT NULL
 						AND parent_region_id IS NOT NULL
 					)
-				),
+				);
+			"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+			ALTER TABLE
+				deployment_region
+			ADD CONSTRAINT
 				deployment_region_name_provider_location_uq
 					UNIQUE(name, provider, location);
 			"#

@@ -25,6 +25,7 @@ use k8s_openapi::{
 			EnvVar,
 			HTTPGetAction,
 			LocalObjectReference,
+			Namespace,
 			PodSpec,
 			PodTemplateSpec,
 			Probe,
@@ -52,7 +53,7 @@ use k8s_openapi::{
 	},
 };
 use kube::{
-	api::{DeleteParams, Patch, PatchParams},
+	api::{DeleteParams, Patch, PatchParams, PostParams},
 	core::{ErrorResponse, ObjectMeta},
 	Api,
 	Error as KubeError,
@@ -75,10 +76,33 @@ pub async fn update_kubernetes_deployment(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let cluster_config =
+		super::get_kubernetes_cluster_config(config, &deployment.region)
+			.unwrap_or_else(|| {
+				super::get_kubernetes_default_cluster_config(config)
+			});
+	let kubernetes_client =
+		super::get_kubernetes_client(cluster_config).await?;
 
 	// the namespace is workspace id
 	let namespace = workspace_id.as_str();
+
+	// check whether namespace exists in the given cluster
+	if !super::namespace_exists(namespace, kubernetes_client.clone()).await? {
+		log::trace!("request_id: {} - creating namespace", request_id);
+		let kubernetes_namespace = Namespace {
+			metadata: ObjectMeta {
+				name: Some(namespace.to_string()),
+				..ObjectMeta::default()
+			},
+			..Namespace::default()
+		};
+		let namespace_api = Api::<Namespace>::all(kubernetes_client.clone());
+		namespace_api
+			.create(&PostParams::default(), &kubernetes_namespace)
+			.await?;
+		log::trace!("request_id: {} - namespace created", request_id);
+	}
 
 	if !super::secret_exists(
 		"tls-domain-wildcard-patr-cloud",
@@ -404,7 +428,7 @@ pub async fn update_kubernetes_deployment(
 		),
 		(
 			"cert-manager.io/cluster-issuer".to_string(),
-			config.kubernetes.cert_issuer_dns.clone(),
+			cluster_config.cert_issuer_dns.clone(),
 		),
 	]
 	.into_iter()
@@ -498,7 +522,9 @@ pub async fn delete_kubernetes_deployment(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let cluster_config = super::get_kubernetes_default_cluster_config(config);
+	let kubernetes_client =
+		super::get_kubernetes_client(cluster_config).await?;
 
 	if super::deployment_exists(
 		deployment_id,
@@ -641,7 +667,9 @@ pub async fn get_kubernetes_deployment_status(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let cluster_config = super::get_kubernetes_default_cluster_config(config);
+	let kubernetes_client =
+		super::get_kubernetes_client(cluster_config).await?;
 	let deployment_result =
 		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace)
 			.get(&format!("deployment-{}", deployment.id))

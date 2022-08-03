@@ -8,6 +8,8 @@ use chrono::{DateTime, Utc};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
+use crate::db::DeploymentRegion;
+
 pub mod cloud_providers;
 
 pub const DEFAULT_MACHINE_TYPES: [(i16, i32); 5] = [
@@ -30,7 +32,7 @@ lazy_static::lazy_static! {
 					name: "Singapore",
 					cloud_provider: Some(DeploymentCloudProvider::Digitalocean),
 					coordinates: Some((1.3521, 103.8198)),
-					slug: None,
+					slug: Some("do-sgp1"),
 					child_regions: vec![],
 				},
 				DefaultDeploymentRegion {
@@ -155,9 +157,7 @@ lazy_static::lazy_static! {
 }
 
 pub static MACHINE_TYPES: OnceCell<HashMap<Uuid, (i16, i32)>> = OnceCell::new();
-pub static REGIONS: OnceCell<
-	HashMap<Uuid, (String, Option<DeploymentCloudProvider>)>,
-> = OnceCell::new();
+pub static REGIONS: OnceCell<HashMap<Uuid, DeploymentRegion>> = OnceCell::new();
 
 #[derive(Debug, Clone)]
 pub struct DefaultDeploymentRegion {
