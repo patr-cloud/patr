@@ -735,6 +735,10 @@ pub async fn add_is_configured_for_managed_urls(
 	.map(|row| (row.get::<Uuid, _>("id"), row.get::<Uuid, _>("workspace_id")))
 	.collect::<Vec<_>>();
 
+	if external_managed_urls.is_empty() {
+		return Ok(());
+	}
+
 	// Kubernetes config
 	let kubernetes_config = Config::from_custom_kubeconfig(
 		Kubeconfig {
