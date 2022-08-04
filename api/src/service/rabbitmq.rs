@@ -14,7 +14,6 @@ use crate::{
 	models::{
 		rabbitmq::{
 			DeploymentRequestData,
-			ManagedUrlData,
 			RequestMessage,
 			WorkspaceRequestData,
 		},
@@ -408,24 +407,5 @@ pub async fn send_message_to_rabbit_mq(
 			log::error!("Error closing rabbitmq connection: {}", e);
 			Error::from(e)
 		})?;
-	Ok(())
-}
-
-pub async fn queue_create_managed_url(
-	workspace_id: &Uuid,
-	managed_url_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	send_message_to_rabbit_mq(
-		&RequestMessage::ManagedUrl(ManagedUrlData::Create {
-			managed_url_id: managed_url_id.clone(),
-			workspace_id: workspace_id.clone(),
-			request_id: request_id.clone(),
-		}),
-		config,
-		request_id,
-	)
-	.await?;
 	Ok(())
 }

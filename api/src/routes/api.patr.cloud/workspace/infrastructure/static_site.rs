@@ -1087,6 +1087,7 @@ async fn list_linked_urls(
 					ManagedUrlType::Redirect { url: url.url? }
 				}
 			},
+			is_configured: url.is_configured,
 		})
 	})
 	.collect();

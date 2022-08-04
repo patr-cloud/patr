@@ -7,11 +7,11 @@ use api_models::{
 };
 use chrono::Utc;
 use eve_rs::AsError;
-use redis::AsyncCommands;
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
 use super::kubernetes;
 use crate::{
-	db::{self, ManagedUrlType as DbManagedUrlType},
+	db::{self, DnsRecordType, ManagedUrlType as DbManagedUrlType},
 	error,
 	models::rbac,
 	service,
@@ -96,6 +96,7 @@ pub async fn create_new_managed_url_in_workspace(
 				None,
 				None,
 				workspace_id,
+				false,
 			)
 			.await?;
 		}
@@ -116,6 +117,7 @@ pub async fn create_new_managed_url_in_workspace(
 				Some(static_site_id),
 				None,
 				workspace_id,
+				false,
 			)
 			.await?;
 		}
@@ -136,6 +138,7 @@ pub async fn create_new_managed_url_in_workspace(
 				None,
 				Some(url),
 				workspace_id,
+				false,
 			)
 			.await?;
 		}
@@ -156,6 +159,7 @@ pub async fn create_new_managed_url_in_workspace(
 				None,
 				Some(url),
 				workspace_id,
+				false,
 			)
 			.await?;
 		}
@@ -173,56 +177,36 @@ pub async fn create_new_managed_url_in_workspace(
 	)
 	.await?;
 
-	if domain.is_ns_external() && domain.is_verified {
-		log::trace!(
-			"request_id: {} - Creating certificates for managed url.",
-			request_id
-		);
-
-		// Randomly generate a secret content for the TLS certificate
-		let verification_secret = Uuid::new_v4();
-
-		let app = service::get_app();
-		let mut redis = app.redis.clone();
-		redis
-			.set(
-				format!("verfication-{}", managed_url_id),
-				verification_secret.to_string(),
-			)
-			.await?;
-		let host = if sub_domain == "@" {
-			domain.name.clone()
-		} else {
-			format!("{}.{}", sub_domain, domain.name)
-		};
-		kubernetes::verify_managed_url(
-			workspace_id,
-			&domain,
-			&ManagedUrl {
-				id: managed_url_id.clone(),
-				sub_domain: sub_domain.to_string(),
-				domain_id: domain.id.clone(),
-				path: path.to_string(),
-				url_type: url_type.clone(),
-			},
-			&host,
-			verification_secret.as_str(),
-			config,
-			request_id,
-		)
-		.await?;
-	}
-	log::trace!(
-		"request_id: {} - Queuing update kubernetes managed url",
-		request_id
-	);
-	service::queue_create_managed_url(
-		workspace_id,
+	let is_configured = service::verify_managed_url_configuration(
+		connection,
 		&managed_url_id,
 		config,
 		request_id,
 	)
 	.await?;
+
+	db::update_managed_url_configuration_status(
+		connection,
+		&managed_url_id,
+		is_configured,
+	)
+	.await?;
+
+	service::update_kubernetes_managed_url(
+		workspace_id,
+		&ManagedUrl {
+			id: managed_url_id.clone(),
+			sub_domain: sub_domain.to_string(),
+			domain_id: domain_id.clone(),
+			path: path.to_string(),
+			url_type: url_type.clone(),
+			is_configured,
+		},
+		config,
+		request_id,
+	)
+	.await?;
+
 	log::trace!("request_id: {} - ManagedUrl Created.", request_id);
 	Ok(managed_url_id)
 }
@@ -320,18 +304,6 @@ pub async fn update_managed_url(
 		}
 	}
 
-	log::trace!(
-		"request_id: {} - Queuing update kubernetes managed url",
-		request_id
-	);
-	service::queue_create_managed_url(
-		&managed_url.workspace_id,
-		managed_url_id,
-		config,
-		request_id,
-	)
-	.await?;
-
 	log::trace!("request_id: {} - ManagedUrl Updated.", request_id);
 	Ok(())
 }
@@ -418,6 +390,85 @@ pub async fn delete_managed_url(
 	log::trace!("request_id: {} - ManagedUrl Deleted.", request_id);
 
 	Ok(())
+}
+
+pub async fn verify_managed_url_configuration(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	managed_url_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<bool, Error> {
+	let managed_url = db::get_managed_url_by_id(connection, &managed_url_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let domain =
+		db::get_workspace_domain_by_id(connection, &managed_url.domain_id)
+			.await?
+			.status(500)?;
+
+	let configured = if domain.is_ns_internal() {
+		if !domain.is_verified {
+			return Err(Error::empty()
+				.status(400)
+				.body(error!(DOMAIN_UNVERIFIED).to_string()));
+		}
+
+		// Domain is verified. Check if the corresponding DNS records exist
+		db::get_dns_records_by_domain_id(connection, &managed_url.domain_id)
+			.await?
+			.into_iter()
+			.find(|record| {
+				let sub_domain_match = if record.name.starts_with('*') {
+					managed_url.sub_domain.ends_with(&record.name[1..])
+				} else {
+					record.name == managed_url.sub_domain
+				};
+				sub_domain_match &&
+					matches!(record.r#type, DnsRecordType::A) &&
+					record.value == "ingress.patr.cloud"
+			})
+			.is_some()
+	} else {
+		service::create_managed_url_verification_ingress(
+			&managed_url.workspace_id,
+			&managed_url.id,
+			&managed_url.sub_domain,
+			&domain.name,
+			config,
+			request_id,
+		)
+		.await?;
+
+		let verification_token = {
+			let mut rng = thread_rng();
+			(0..32)
+				.map(|_| rng.sample(Alphanumeric) as char)
+				.collect::<String>()
+		};
+		let response = reqwest::Client::new()
+			.get(format!(
+				"http://{}.{}/.well-known/patr-verification",
+				managed_url.sub_domain, domain.name
+			))
+			.header(reqwest::header::AUTHORIZATION, verification_token.clone())
+			.send()
+			.await?
+			.text()
+			.await?;
+
+		service::delete_kubernetes_managed_url_verification(
+			&managed_url.workspace_id,
+			&managed_url.id,
+			config,
+			request_id,
+		)
+		.await?;
+
+		response == verification_token
+	};
+
+	Ok(configured)
 }
 
 async fn managed_url_limit_crossed(

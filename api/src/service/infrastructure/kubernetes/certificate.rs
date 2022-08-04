@@ -148,3 +148,17 @@ pub async fn delete_certificates_for_domain(
 
 	Ok(())
 }
+
+pub async fn check_if_kubernetes_certificate_secret_exists(
+	workspace_id: &Uuid,
+	secret_name: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<bool, Error> {
+	log::trace!("request_id: {} - Checking if Kubernetes certificate secret exists", request_id);
+	let kubernetes_client = super::get_kubernetes_config(config).await?;
+
+	let namespace = workspace_id.as_str();
+
+	Ok(super::secret_exists(secret_name, kubernetes_client, namespace).await?)
+}
