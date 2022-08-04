@@ -14,11 +14,10 @@ use api_models::{
 	utils::Uuid,
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use redis::AsyncCommands;
 
 use crate::{
 	app::{create_eve_app, App},
-	db::{self, DnsRecordType, ManagedUrlType as DbManagedUrlType},
+	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
 	models::rbac::permissions,
 	pin_fn,

@@ -38,10 +38,6 @@ pub async fn create_new_managed_url_in_workspace(
 
 	let managed_url_id = db::generate_new_resource_id(connection).await?;
 
-	let domain = db::get_workspace_domain_by_id(connection, domain_id)
-		.await?
-		.status(500)?;
-
 	log::trace!("request_id: {} - Checking resource limit", request_id);
 	if super::resource_limit_crossed(connection, workspace_id, request_id)
 		.await?
@@ -304,6 +300,41 @@ pub async fn update_managed_url(
 		}
 	}
 
+	service::update_kubernetes_managed_url(
+		&managed_url.workspace_id,
+		&ManagedUrl {
+			id: managed_url.id,
+			sub_domain: managed_url.sub_domain,
+			domain_id: managed_url.domain_id,
+			path: managed_url.path,
+			url_type: match managed_url.url_type {
+				DbManagedUrlType::ProxyToDeployment => {
+					ManagedUrlType::ProxyDeployment {
+						deployment_id: managed_url.deployment_id.status(500)?,
+						port: managed_url.port.status(500)? as u16,
+					}
+				}
+				DbManagedUrlType::ProxyToStaticSite => {
+					ManagedUrlType::ProxyStaticSite {
+						static_site_id: managed_url
+							.static_site_id
+							.status(500)?,
+					}
+				}
+				DbManagedUrlType::ProxyUrl => ManagedUrlType::ProxyUrl {
+					url: managed_url.url.status(500)?,
+				},
+				DbManagedUrlType::Redirect => ManagedUrlType::Redirect {
+					url: managed_url.url.status(500)?,
+				},
+			},
+			is_configured: managed_url.is_configured,
+		},
+		config,
+		request_id,
+	)
+	.await?;
+
 	log::trace!("request_id: {} - ManagedUrl Updated.", request_id);
 	Ok(())
 }
@@ -398,7 +429,7 @@ pub async fn verify_managed_url_configuration(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<bool, Error> {
-	let managed_url = db::get_managed_url_by_id(connection, &managed_url_id)
+	let managed_url = db::get_managed_url_by_id(connection, managed_url_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
@@ -407,18 +438,18 @@ pub async fn verify_managed_url_configuration(
 			.await?
 			.status(500)?;
 
-	let configured = if domain.is_ns_internal() {
-		if !domain.is_verified {
-			return Err(Error::empty()
-				.status(400)
-				.body(error!(DOMAIN_UNVERIFIED).to_string()));
-		}
+	if !domain.is_verified {
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(DOMAIN_UNVERIFIED).to_string()));
+	}
 
+	let configured = if domain.is_ns_internal() {
 		// Domain is verified. Check if the corresponding DNS records exist
 		db::get_dns_records_by_domain_id(connection, &managed_url.domain_id)
 			.await?
 			.into_iter()
-			.find(|record| {
+			.any(|record| {
 				let sub_domain_match = if record.name.starts_with('*') {
 					managed_url.sub_domain.ends_with(&record.name[1..])
 				} else {
@@ -428,7 +459,6 @@ pub async fn verify_managed_url_configuration(
 					matches!(record.r#type, DnsRecordType::A) &&
 					record.value == "ingress.patr.cloud"
 			})
-			.is_some()
 	} else {
 		service::create_managed_url_verification_ingress(
 			&managed_url.workspace_id,

@@ -228,10 +228,8 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 		} else {
 			let response = service::verify_external_domain(
 				&mut connection,
-				&workspace_id,
 				&unverified_domain.name,
 				&unverified_domain.id,
-				&settings,
 				&request_id,
 			)
 			.await?;
@@ -344,6 +342,65 @@ async fn repatch_all_managed_urls() -> Result<(), Error> {
 				service::check_if_kubernetes_certificate_secret_exists(
 					&managed_url.workspace_id,
 					&secret_name,
+					&config.config,
+					&request_id,
+				)
+				.await?;
+
+			if cert_exists {
+				db::update_managed_url_configuration_status(
+					&mut connection,
+					&managed_url.id,
+					true,
+				)
+				.await?;
+
+				service::update_kubernetes_managed_url(
+					&managed_url.workspace_id,
+					&ManagedUrl {
+						id: managed_url.id,
+						sub_domain: managed_url.sub_domain,
+						domain_id: managed_url.domain_id,
+						path: managed_url.path,
+						url_type: match managed_url.url_type {
+							DbManagedUrlType::ProxyToDeployment => {
+								ManagedUrlType::ProxyDeployment {
+									deployment_id: managed_url
+										.deployment_id
+										.status(500)?,
+									port: managed_url.port.status(500)? as u16,
+								}
+							}
+							DbManagedUrlType::ProxyToStaticSite => {
+								ManagedUrlType::ProxyStaticSite {
+									static_site_id: managed_url
+										.static_site_id
+										.status(500)?,
+								}
+							}
+							DbManagedUrlType::ProxyUrl => {
+								ManagedUrlType::ProxyUrl {
+									url: managed_url.url.status(500)?,
+								}
+							}
+							DbManagedUrlType::Redirect => {
+								ManagedUrlType::Redirect {
+									url: managed_url.url.status(500)?,
+								}
+							}
+						},
+						is_configured: true,
+					},
+					&config.config,
+					&request_id,
+				)
+				.await?;
+			}
+		} else {
+			let cert_exists =
+				service::check_if_kubernetes_certificate_secret_exists(
+					&managed_url.workspace_id,
+					&format!("tls-{}", managed_url.domain_id),
 					&config.config,
 					&request_id,
 				)

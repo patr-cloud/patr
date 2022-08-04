@@ -14,7 +14,7 @@ use k8s_openapi::api::networking::v1::{
 	ServiceBackendPort,
 };
 use kube::{
-	api::{Patch, PatchParams},
+	api::{DeleteParams, Patch, PatchParams},
 	config::{
 		AuthInfo,
 		Cluster,
@@ -24,7 +24,8 @@ use kube::{
 		NamedCluster,
 		NamedContext,
 	},
-	core::ObjectMeta,
+	core::{DynamicObject, ObjectMeta},
+	discovery::ApiResource,
 	Api,
 	Config,
 };
@@ -54,6 +55,7 @@ pub(super) async fn migrate(
 	populate_deployment_deploy_history(&mut *connection, config).await?;
 	create_deployment_config_file(&mut *connection, config).await?;
 	update_dns_record_name_constraint_regexp(&mut *connection, config).await?;
+	add_is_configured_for_managed_urls(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -651,6 +653,7 @@ async fn update_dns_record_name_constraint_regexp(
 	)
 	.execute(&mut *connection)
 	.await?;
+
 	query!(
 		r#"
 		ALTER TABLE patr_domain_dns_record
@@ -662,5 +665,158 @@ async fn update_dns_record_name_constraint_regexp(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	Ok(())
+}
+
+pub async fn add_is_configured_for_managed_urls(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE managed_url
+		ADD COLUMN is_configured BOOLEAN NOT NULL
+		DEFAULT FALSE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Remove the default value for the is_configured column
+	query!(
+		r#"
+		ALTER TABLE managed_url
+		ALTER COLUMN is_configured DROP DEFAULT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			managed_url
+		SET
+			is_configured = TRUE
+		WHERE
+			domain_id IN (
+				SELECT
+					id
+				FROM
+					domain
+				WHERE
+					nameserver_type = 'internal' AND
+					is_verified = TRUE
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	let external_managed_urls = query!(
+		r#"
+		SELECT
+			managed_url.id,
+			managed_url.workspace_id,
+		FROM
+			managed_url
+		INNER JOIN
+			domain
+		ON
+			managed_url.domain_id = domain.id
+		WHERE
+			domain.nameserver_type = 'external';
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| (row.get::<Uuid, _>("id"), row.get::<Uuid, _>("workspace_id")))
+	.collect::<Vec<_>>();
+
+	// Kubernetes config
+	let kubernetes_config = Config::from_custom_kubeconfig(
+		Kubeconfig {
+			preferences: None,
+			clusters: vec![NamedCluster {
+				name: config.kubernetes.cluster_name.clone(),
+				cluster: Cluster {
+					server: config.kubernetes.cluster_url.clone(),
+					insecure_skip_tls_verify: None,
+					certificate_authority: None,
+					certificate_authority_data: Some(
+						config.kubernetes.certificate_authority_data.clone(),
+					),
+					proxy_url: None,
+					extensions: None,
+				},
+			}],
+			auth_infos: vec![NamedAuthInfo {
+				name: config.kubernetes.auth_name.clone(),
+				auth_info: AuthInfo {
+					username: Some(config.kubernetes.auth_username.clone()),
+					token: Some(config.kubernetes.auth_token.clone().into()),
+					..Default::default()
+				},
+			}],
+			contexts: vec![NamedContext {
+				name: config.kubernetes.context_name.clone(),
+				context: Context {
+					cluster: config.kubernetes.cluster_name.clone(),
+					user: config.kubernetes.auth_username.clone(),
+					extensions: None,
+					namespace: None,
+				},
+			}],
+			current_context: Some(config.kubernetes.context_name.clone()),
+			extensions: None,
+			kind: Some("Config".to_string()),
+			api_version: Some("v1".to_string()),
+		},
+		&Default::default(),
+	)
+	.await?;
+	let kubernetes_client = kube::Client::try_from(kubernetes_config)?;
+
+	let certificate_resource = ApiResource {
+		group: "cert-manager.io".to_string(),
+		version: "v1".to_string(),
+		api_version: "cert-manager.io/v1".to_string(),
+		kind: "certificate".to_string(),
+		plural: "certificates".to_string(),
+	};
+
+	for (managed_url_id, workspace_id) in external_managed_urls {
+		let cert_exists = match Api::<DynamicObject>::namespaced_with(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+			&certificate_resource,
+		)
+		.get(&format!("certificate-{}", managed_url_id))
+		.await
+		{
+			Err(kube::Error::Api(kube::error::ErrorResponse {
+				code: 404,
+				..
+			})) => Ok(false),
+			Err(err) => Err(err),
+			Ok(_) => Ok(true),
+		}?;
+
+		if cert_exists {
+			Api::<DynamicObject>::namespaced_with(
+				kubernetes_client.clone(),
+				workspace_id.as_str(),
+				&certificate_resource,
+			)
+			.delete(
+				&format!("certificate-{}", managed_url_id),
+				&DeleteParams::default(),
+			)
+			.await?;
+		}
+	}
+
 	Ok(())
 }
