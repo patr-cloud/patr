@@ -718,7 +718,7 @@ pub async fn add_is_configured_for_managed_urls(
 		r#"
 		SELECT
 			managed_url.id,
-			managed_url.workspace_id,
+			managed_url.workspace_id
 		FROM
 			managed_url
 		INNER JOIN
