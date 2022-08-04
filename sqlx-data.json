@@ -1761,18 +1761,30 @@
     },
     "query": "DELETE FROM user_phone_number WHERE user_id = $1 AND country_code = $2 AND number = $3;"
   },
-  "22ffa1d7616fd7c73e9bceebff257394d23b60558ae748196429f04410e5d616": {
+  "23bb8f9797fd073f661ce8e1db702fe75a68ac93438b8239cd0d9a95e32b177d": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
         "Left": [
           "Uuid",
-          "Uuid"
+          "Int8",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "running",
+                  "succeeded",
+                  "errored"
+                ]
+              },
+              "name": "ci_build_status"
+            }
+          }
         ]
       }
     },
-    "query": "UPDATE deployment SET machine_type = $1 WHERE id = $2;"
+    "query": "UPDATE ci_builds SET status = $3 WHERE (repo_id = $1 AND build_num = $2);"
   },
   "241d2d5275d061fa9f24043adb72590b240a691cf68bf703dc63546fa7705ec8": {
     "describe": {
@@ -2644,6 +2656,18 @@
     },
     "query": "SELECT deployment_id as \"deployment_id: _\", path, file as \"file!: _\" FROM deployment_config_mounts WHERE deployment_id = $1;"
   },
+  "344a79624b99c6ee9bdda98c85877af1ca85663b6c1f294e79a858a58f23227c": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE ci_repos SET active = FALSE WHERE id = $1;"
+  },
   "34a6c091329abb7322f4583844fc2bcd5a5d8a6b610da77113647a6583bff569": {
     "describe": {
       "columns": [],
@@ -2866,86 +2890,79 @@
     },
     "query": "CREATE TABLE deployment_exposed_port( deployment_id UUID NOT NULL CONSTRAINT deployment_exposed_port_fk_deployment_id REFERENCES deployment(id), port INTEGER NOT NULL CONSTRAINT deployment_exposed_port_chk_port_u16 CHECK( port > 0 AND port <= 65535 ), port_type EXPOSED_PORT_TYPE NOT NULL, CONSTRAINT deployment_exposed_port_pk PRIMARY KEY(deployment_id, port), CONSTRAINT deployment_exposed_port_uq_deployment_id_port_port_type UNIQUE(deployment_id, port, port_type) );"
   },
-  "3f67392b96b39a7df360ad4b54de8a56a5f12c1f6f17534917236072eb283680": {
+  "418f7daa8fc94d875761ba767dff06bea82202441d7c1d9c4adc903e3c968e80": {
     "describe": {
       "columns": [
         {
-          "name": "name!",
+          "name": "repo_id: _",
           "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "id!: Uuid",
-          "ordinal": 1,
           "type_info": "Uuid"
         },
         {
-          "name": "domain_type!: ResourceType",
+          "name": "build_num",
+          "ordinal": 1,
+          "type_info": "Int8"
+        },
+        {
+          "name": "git_ref",
           "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              },
-              "name": "resource_owner_type"
-            }
-          }
+          "type_info": "Text"
         },
         {
-          "name": "is_verified!",
+          "name": "git_commit",
           "ordinal": 3,
-          "type_info": "Bool"
+          "type_info": "Text"
         },
         {
-          "name": "nameserver_type!: DomainNameserverType",
+          "name": "status: _",
           "ordinal": 4,
           "type_info": {
             "Custom": {
               "kind": {
                 "Enum": [
-                  "internal",
-                  "external"
+                  "running",
+                  "succeeded",
+                  "errored"
                 ]
               },
-              "name": "domain_nameserver_type"
+              "name": "ci_build_status"
             }
           }
         },
         {
-          "name": "zone_identifier?",
+          "name": "created",
           "ordinal": 5,
-          "type_info": "Text"
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "finished",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "steps!: Vec<Step>",
+          "ordinal": 7,
+          "type_info": "RecordArray"
         }
       ],
       "nullable": [
-        null,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
         true,
-        true,
-        true,
-        true,
-        false
+        null
       ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id!: Uuid\", workspace_domain.domain_type as \"domain_type!: ResourceType\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: DomainNameserverType\", patr_controlled_domain.zone_identifier as \"zone_identifier?\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id LEFT JOIN patr_controlled_domain ON patr_controlled_domain.domain_id = workspace_domain.id WHERE is_verified = FALSE AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
-  },
-  "42a3e7e04f5b80211c82b6485eb7359d5b03fd8b3378f14537f349ce5a2d5508": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
       "parameters": {
         "Left": [
           "Uuid",
-          "Bool"
+          "Int8"
         ]
       }
     },
-    "query": "UPDATE workspace_domain SET is_verified = $2 WHERE id = $1;"
+    "query": "SELECT ci_builds.repo_id as \"repo_id: _\", ci_builds.build_num, ci_builds.git_ref, ci_builds.git_commit, ci_builds.status as \"status: _\", ci_builds.created, ci_builds.finished, ARRAY_AGG ( ( ci_steps.step_id, ci_steps.step_name, ci_steps.base_image, ci_steps.commands, ci_steps.status, ci_steps.started, ci_steps.finished ) ORDER BY ci_steps.step_id ASC ) as \"steps!: Vec<Step>\" FROM ci_builds INNER JOIN ci_steps ON ( ci_builds.repo_id = ci_steps.repo_id AND ci_builds.build_num = ci_steps.build_num ) WHERE ( ci_builds.repo_id = $1 AND ci_builds.build_num = $2 ) GROUP BY ( ci_builds.repo_id, ci_builds.build_num ) ORDER BY ci_builds.build_num DESC;"
   },
   "4357441a58d66b47fffabe8c10fa5ddedbe067c22d5c59d00cb492be40abc1a8": {
     "describe": {
@@ -3367,6 +3384,52 @@
       }
     },
     "query": "CREATE TYPE DOMAIN_NAMESERVER_TYPE AS ENUM( 'internal', 'external' );"
+  },
+  "4ad162a09a93c81ecf060512762bff0448c21d8feb97bb8df9a6ae4c825e3853": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Int8",
+          "Int4",
+          "Text",
+          "Text",
+          "TextArray",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "waiting_to_start",
+                  "running",
+                  "succeeded",
+                  "errored",
+                  "skipped_dep_error"
+                ]
+              },
+              "name": "ci_build_step_status"
+            }
+          }
+        ]
+      }
+    },
+    "query": "INSERT INTO ci_steps ( repo_id, build_num, step_id, step_name, base_image, commands, status ) VALUES ($1, $2, $3, $4, $5, $6, $7);"
+  },
+  "4b60bb4fd27a655220c0db3f4ffb85f463bcf799d4d58f7f89220bcd3303bb9f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "INSERT INTO deployment_deploy_history( deployment_id, image_digest, repository_id, created ) VALUES ($1, $2, $3, $4);"
   },
   "4bd9a22a3f2ac8aab228c971872edde263118a43760697b2fd73b05a66630c35": {
     "describe": {
@@ -4768,6 +4831,7 @@
     },
     "query": "INSERT INTO deployment_region( id, name, provider, location, parent_region_id ) VALUES ($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6);"
   },
+<<<<<<< HEAD
   "6714984cd52ecf759cd6cb912a65e0c7d3189afd7a613eafb425a57146fceb2d": {
     "describe": {
       "columns": [
@@ -4905,6 +4969,8 @@
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE workspace_id = $1 AND status != 'deleted';"
   },
+=======
+>>>>>>> 96802779... Fixed rebase issues
   "696749fb5dd8e4bb7c3d80c5619417e05c78691505add6a7af389858cb3bf0d4": {
     "describe": {
       "columns": [],
@@ -4917,6 +4983,7 @@
     },
     "query": "UPDATE workspace SET address_id = NULL WHERE id = $1;"
   },
+<<<<<<< HEAD
   "696bdaf6f707eea875bebce9c7b5f9ed6aee64eafcaf520113320625f71f988c": {
     "describe": {
       "columns": [
@@ -5131,6 +5198,8 @@
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE repository_id = $1 AND status != 'deleted';"
   },
+=======
+>>>>>>> 96802779... Fixed rebase issues
   "6b678ec64a61d5c20d7ea207efa6fce83058481b7af34fb81a36022b0a52dbc6": {
     "describe": {
       "columns": [],
@@ -5858,7 +5927,7 @@
         "Left": []
       }
     },
-    "query": "CREATE TABLE workspace_domain( id UUID CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_domain_type CHECK( domain_type = 'business' ), is_verified BOOLEAN NOT NULL, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL, CONSTRAINT workspace_domain_uq_id_nameserver_type UNIQUE(id, nameserver_type), CONSTRAINT workspace_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );"
+    "query": "CREATE INDEX role_permissions_resource_type_idx_role_id_resource_type_id ON role_permissions_resource_type (role_id, resource_type_id);"
   },
   "7dcc1ad2deccea96f2a06a630f2f29c3f0e2062d91c0e1e609ef416cbade549e": {
     "describe": {
@@ -8535,6 +8604,26 @@
     },
     "query": "UPDATE ci_steps SET status = $4 WHERE ( repo_id = $1 AND build_num = $2 AND step_id = $3 );"
   },
+  "ae41156d89527be463294943976764f6e16e645eb799bdbd47aa1efdb637d4f1": {
+    "describe": {
+      "columns": [
+        {
+          "name": "manifest_digest",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT manifest_digest FROM docker_registry_repository_manifest WHERE repository_id = $1 ORDER BY created DESC LIMIT 1;"
+  },
   "ae6b3ec59473060d220b035361bc19cab8ed4b9c66f7dfaca561db2f96f2adc3": {
     "describe": {
       "columns": [],
@@ -10586,6 +10675,76 @@
       }
     },
     "query": "INSERT INTO ci_build_machine_type( id, cpu, ram, volume ) VALUES ($1, $2, $3, $4);"
+  },
+  "d59e41ec097c83794553cb428306ca0d2f269fd4f8ba00ac375632ad3217ff98": {
+    "describe": {
+      "columns": [
+        {
+          "name": "name!",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "domain_type: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              },
+              "name": "resource_owner_type"
+            }
+          }
+        },
+        {
+          "name": "is_verified",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "nameserver_type: _",
+          "ordinal": 4,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "internal",
+                  "external"
+                ]
+              },
+              "name": "domain_nameserver_type"
+            }
+          }
+        },
+        {
+          "name": "last_unverified!: _",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        null,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id: _\", workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.nameserver_type as \"nameserver_type: _\", workspace_domain.last_unverified as \"last_unverified!: _\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE domain.id = $1 AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
   },
   "d613849146adeb62cd527df8c3c9242264d98e259532580f2f45390033c19d8d": {
     "describe": {
