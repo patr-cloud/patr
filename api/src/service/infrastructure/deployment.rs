@@ -3,6 +3,7 @@ use std::{collections::BTreeMap, str};
 use api_models::{
 	models::workspace::infrastructure::deployment::{
 		Deployment,
+		DeploymentCustomMetrics,
 		DeploymentMetrics,
 		DeploymentProbe,
 		DeploymentRegistry,
@@ -166,6 +167,8 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.max_horizontal_scale,
 				deployment_running_details.startup_probe.as_ref(),
 				deployment_running_details.liveness_probe.as_ref(),
+				deployment_running_details.metrics_enabled,
+				deployment_running_details.custom_metrics.as_ref(),
 			)
 			.await?;
 		}
@@ -189,6 +192,8 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.max_horizontal_scale,
 				deployment_running_details.startup_probe.as_ref(),
 				deployment_running_details.liveness_probe.as_ref(),
+				deployment_running_details.metrics_enabled,
+				deployment_running_details.custom_metrics.as_ref(),
 			)
 			.await?;
 		}
@@ -314,6 +319,7 @@ pub async fn update_deployment(
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
 	config_mounts: Option<&BTreeMap<String, Base64String>>,
+	custom_metrics: Option<&DeploymentCustomMetrics>,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
@@ -356,6 +362,7 @@ pub async fn update_deployment(
 		max_horizontal_scale,
 		startup_probe,
 		liveness_probe,
+		custom_metrics,
 	)
 	.await?;
 
@@ -437,6 +444,9 @@ pub async fn get_full_deployment_config(
 		startup_probe_path,
 		liveness_probe_port,
 		liveness_probe_path,
+		metrics_enabled,
+		custom_metrics_port,
+		custom_metrics_path,
 	) = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.and_then(|deployment| {
@@ -470,6 +480,9 @@ pub async fn get_full_deployment_config(
 				deployment.startup_probe_path,
 				deployment.liveness_probe_port,
 				deployment.liveness_probe_path,
+				deployment.metrics_enabled,
+				deployment.custom_metrics_port,
+				deployment.custom_metrics_path,
 			))
 		})
 		.status(404)
@@ -553,6 +566,11 @@ pub async fn get_full_deployment_config(
 				.zip(liveness_probe_path)
 				.map(|(port, path)| DeploymentProbe { path, port }),
 			config_mounts,
+			metrics_enabled,
+			custom_metrics: custom_metrics_port
+				.map(|port| port as u16)
+				.zip(custom_metrics_path)
+				.map(|(port, path)| DeploymentCustomMetrics { path, port }),
 		},
 	))
 }

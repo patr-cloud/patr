@@ -1,5 +1,6 @@
 use api_models::{
 	models::workspace::infrastructure::deployment::{
+		DeploymentCustomMetrics,
 		DeploymentProbe,
 		DeploymentStatus,
 		ExposedPortType,
@@ -41,6 +42,9 @@ pub struct Deployment {
 	pub liveness_probe_port: Option<i32>,
 	pub liveness_probe_path: Option<String>,
 	pub current_live_digest: Option<String>,
+	pub metrics_enabled: bool,
+	pub custom_metrics_port: Option<i32>,
+	pub custom_metrics_path: Option<String>,
 }
 
 pub struct DeploymentDeployHistory {
@@ -141,6 +145,9 @@ pub async fn initialize_deployment_pre(
 			liveness_probe_port_type EXPOSED_PORT_TYPE,
 			current_live_digest TEXT,
 			deleted TIMESTAMPTZ,
+			metrics_enabled BOOLEAN DEFAULT FALSE,
+			custom_metrics_port INTEGER,
+			custom_metrics_path TEXT,
 			CONSTRAINT deployment_fk_repository_id_workspace_id
 				FOREIGN KEY(repository_id, workspace_id)
 					REFERENCES docker_registry_repository(id, workspace_id),
@@ -318,6 +325,18 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
+		ALTER TABLE deployment
+			ADD CONSTRAINT deployment_fk_deployment_id_custom_metrics_port
+				FOREIGN KEY (id, custom_metrics_port)
+					REFERENCES deployment_exposed_port(deployment_id, port)
+					DEFERRABLE INITIALLY IMMEDIATE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE deployment_deploy_history(
 			deployment_id UUID NOT NULL
 				CONSTRAINT deployment_image_digest_fk_deployment_id
@@ -415,6 +434,8 @@ pub async fn create_deployment_with_internal_registry(
 	max_horizontal_scale: u16,
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
+	metrics_enabled: bool,
+	custom_metrics: Option<&DeploymentCustomMetrics>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -438,7 +459,10 @@ pub async fn create_deployment_with_internal_registry(
 				startup_probe_port_type,
 				liveness_probe_port,
 				liveness_probe_path,
-				liveness_probe_port_type
+				liveness_probe_port_type,
+				metrics_enabled,
+				custom_metrics_port,
+				custom_metrics_path
 			)
 		VALUES
 			(
@@ -460,7 +484,10 @@ pub async fn create_deployment_with_internal_registry(
 				$13,
 				$14,
 				$15,
-				$16
+				$16,
+				$17,
+				$18,
+				$19
 			);
 		"#,
 		id as _,
@@ -479,6 +506,9 @@ pub async fn create_deployment_with_internal_registry(
 		liveness_probe.map(|probe| probe.port as i32),
 		liveness_probe.map(|probe| probe.path.as_str()),
 		liveness_probe.map(|_| ExposedPortType::Http) as _,
+		metrics_enabled,
+		custom_metrics.map(|metrics| metrics.port as i32),
+		custom_metrics.map(|metrics| metrics.path.as_str()),
 	)
 	.execute(&mut *connection)
 	.await
@@ -501,6 +531,8 @@ pub async fn create_deployment_with_external_registry(
 	max_horizontal_scale: u16,
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
+	metrics_enabled: bool,
+	custom_metrics: Option<&DeploymentCustomMetrics>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -524,7 +556,10 @@ pub async fn create_deployment_with_external_registry(
 				startup_probe_port_type,
 				liveness_probe_port,
 				liveness_probe_path,
-				liveness_probe_port_type
+				liveness_probe_port_type,
+				metrics_enabled,
+				custom_metrics_port,
+				custom_metrics_path
 			)
 		VALUES
 			(
@@ -546,7 +581,10 @@ pub async fn create_deployment_with_external_registry(
 				$14,
 				$15,
 				$16,
-				$17
+				$17,
+				$18,
+				$19,
+				$20
 			);
 		"#,
 		id as _,
@@ -566,6 +604,9 @@ pub async fn create_deployment_with_external_registry(
 		liveness_probe.map(|probe| probe.port as i32),
 		liveness_probe.map(|probe| probe.path.as_str()),
 		liveness_probe.map(|_| ExposedPortType::Http) as _,
+		metrics_enabled,
+		custom_metrics.map(|metrics| metrics.port as i32),
+		custom_metrics.map(|metrics| metrics.path.as_str()),
 	)
 	.execute(&mut *connection)
 	.await
@@ -599,7 +640,10 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 			deployment.startup_probe_path,
 			deployment.liveness_probe_port,
 			deployment.liveness_probe_path,
-			current_live_digest
+			deployment.current_live_digest,
+			deployment.metrics_enabled,
+			deployment.custom_metrics_port,
+			deployment.custom_metrics_path
 		FROM
 			deployment
 		LEFT JOIN
@@ -654,7 +698,10 @@ pub async fn get_deployments_by_repository_id(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			metrics_enabled,
+			custom_metrics_port,
+			custom_metrics_path
 		FROM
 			deployment
 		WHERE
@@ -692,7 +739,10 @@ pub async fn get_deployments_for_workspace(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			metrics_enabled,
+			custom_metrics_port,
+			custom_metrics_path
 		FROM
 			deployment
 		WHERE
@@ -730,7 +780,10 @@ pub async fn get_deployment_by_id(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			metrics_enabled,
+			custom_metrics_port,
+			custom_metrics_path
 		FROM
 			deployment
 		WHERE
@@ -768,7 +821,10 @@ pub async fn get_deployment_by_id_including_deleted(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			metrics_enabled,
+			custom_metrics_port,
+			custom_metrics_path
 		FROM
 			deployment
 		WHERE
@@ -806,7 +862,10 @@ pub async fn get_deployment_by_name_in_workspace(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			metrics_enabled,
+			custom_metrics_port,
+			custom_metrics_path
 		FROM
 			deployment
 		WHERE
@@ -1039,6 +1098,7 @@ pub async fn update_deployment_details(
 	max_horizontal_scale: Option<u16>,
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
+	custom_metrics: Option<&DeploymentCustomMetrics>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1062,6 +1122,8 @@ pub async fn update_deployment_details(
 				CASE
 					WHEN $6 = 0 THEN
 						NULL
+					WHEN $7::TEXT IS NULL THEN
+						startup_probe_path
 					ELSE
 						$7
 				END
@@ -1088,6 +1150,8 @@ pub async fn update_deployment_details(
 				CASE
 					WHEN $8 = 0 THEN
 						NULL
+					WHEN $9::TEXT IS NULL THEN
+						liveness_probe_path
 					ELSE
 						$9
 				END
@@ -1101,9 +1165,29 @@ pub async fn update_deployment_details(
 					ELSE
 						'http'::EXPOSED_PORT_TYPE
 				END
+			),
+			custom_metrics_port = (
+				CASE
+					WHEN $10 = 0 THEN
+						NULL
+					WHEN $10 IS NULL THEN
+						custom_metrics_port
+					ELSE
+						$10
+				END
+			),
+			custom_metrics_path = (
+				CASE
+					WHEN $10 = 0 THEN
+						NULL
+					WHEN $10 IS NULL THEN
+						custom_metrics_path
+					ELSE
+						$11
+				END
 			)
 		WHERE
-			id = $10;
+			id = $12;
 		"#,
 		name as _,
 		machine_type as _,
@@ -1114,6 +1198,8 @@ pub async fn update_deployment_details(
 		startup_probe.as_ref().map(|probe| probe.path.as_str()),
 		liveness_probe.map(|probe| probe.port as i32),
 		liveness_probe.as_ref().map(|probe| probe.path.as_str()),
+		custom_metrics.map(|metrics| metrics.port as i32),
+		custom_metrics.as_ref().map(|metrics| metrics.path.as_str()),
 		deployment_id as _
 	)
 	.execute(&mut *connection)

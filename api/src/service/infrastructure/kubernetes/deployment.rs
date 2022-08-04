@@ -59,10 +59,12 @@ use k8s_openapi::{
 };
 use kube::{
 	api::{DeleteParams, Patch, PatchParams},
-	core::{ErrorResponse, ObjectMeta},
+	core::{DynamicObject, ErrorResponse, ObjectMeta, TypeMeta},
+	discovery::ApiResource,
 	Api,
 	Error as KubeError,
 };
+use serde_json::json;
 use sha2::{Digest, Sha512};
 
 use crate::{
@@ -453,7 +455,7 @@ pub async fn update_kubernetes_deployment(
 					})
 					.collect::<Vec<_>>(),
 			),
-			selector: Some(labels),
+			selector: Some(labels.clone()),
 			..ServiceSpec::default()
 		}),
 		..Service::default()
@@ -471,6 +473,69 @@ pub async fn update_kubernetes_deployment(
 			&Patch::Apply(kubernetes_service),
 		)
 		.await?;
+
+	// Service monitor for custom metrics
+	if let Some(custom_metrics) = &running_details.custom_metrics {
+		let service_monitor_data = json!(
+			{
+				"spec": {
+					"selector": {
+						"matchLabels": Some(labels.clone())
+					},
+					"endpoints": [
+						{
+							"port": custom_metrics.port,
+						},
+						{
+							"path": custom_metrics.path
+						}
+					]
+				}
+			}
+		);
+		let kubernetes_service_monitor = DynamicObject {
+			types: Some(TypeMeta {
+				api_version: "monitoring.coreos.com/v1".to_string(),
+				kind: "ServiceMonitor".to_string(),
+			}),
+			metadata: ObjectMeta {
+				name: Some(format!("service-monitor-{}", deployment.id)),
+				..ObjectMeta::default()
+			},
+			data: service_monitor_data,
+		};
+
+		let service_monitor_resource = ApiResource {
+			group: "monitoring.coreos.com".to_string(),
+			version: "v1".to_string(),
+			api_version: "monitoring.coreos.com/v1".to_string(),
+			kind: "ServiceMonitor".to_string(),
+			plural: "ServiceMonitor".to_string(),
+		};
+
+		// create the service monitor defined above
+		let service_monitor_api = Api::<DynamicObject>::namespaced_with(
+			kubernetes_client.clone(),
+			namespace,
+			&service_monitor_resource,
+		);
+
+		log::trace!(
+			"request_id: {} - Creating service monitor in Kubernetes",
+			request_id
+		);
+
+		service_monitor_api
+			.patch(
+				&format!("service-monitor-{}", deployment.id),
+				&PatchParams::apply(&format!(
+					"service-monitor-{}",
+					deployment.id
+				)),
+				&Patch::Apply(kubernetes_service_monitor),
+			)
+			.await?;
+	}
 
 	// HPA - horizontal pod autoscaler
 	let kubernetes_hpa = HorizontalPodAutoscaler {

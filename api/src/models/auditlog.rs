@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use api_models::{
 	models::workspace::infrastructure::deployment::{
 		Deployment,
+		DeploymentCustomMetrics,
 		DeploymentProbe,
 		DeploymentRunningDetails,
 		EnvironmentVariableValue,
@@ -40,6 +41,8 @@ pub enum DeploymentMetadata {
 		startup_probe: Option<DeploymentProbe>,
 		#[serde(skip_serializing_if = "Option::is_none")]
 		liveness_probe: Option<DeploymentProbe>,
+		#[serde(skip_serializing_if = "Option::is_none")]
+		custom_metrics: Option<DeploymentCustomMetrics>,
 	},
 	Stop {},
 	Delete {},

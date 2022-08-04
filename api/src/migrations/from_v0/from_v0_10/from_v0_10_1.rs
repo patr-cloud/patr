@@ -35,6 +35,7 @@ pub(super) async fn migrate(
 ) -> Result<(), Error> {
 	refactor_resource_deletion(&mut *connection, config).await?;
 	add_resource_requests_for_running_deployments(connection, config).await?;
+	update_deployment_with_metrics_column(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -1058,6 +1059,28 @@ async fn add_resource_requests_for_running_deployments(
 			Err(err) => return Err(err)?,
 		}
 	}
+
+	Ok(())
+}
+
+async fn update_deployment_with_metrics_column(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE deployment
+			ADD COLUMN metrics_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+			ADD COLUMN custom_metrics_path TEXT,
+			ADD COLUMN custom_metrics_port INTEGER,
+			ADD CONSTRAINT deployment_fk_deployment_id_custom_metrics_port
+				FOREIGN KEY (id, custom_metrics_port)
+					REFERENCES deployment_exposed_port(deployment_id, port)
+					DEFERRABLE INITIALLY IMMEDIATE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }
