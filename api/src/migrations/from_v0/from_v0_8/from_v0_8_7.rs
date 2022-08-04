@@ -722,11 +722,11 @@ pub async fn add_is_configured_for_managed_urls(
 		FROM
 			managed_url
 		INNER JOIN
-			domain
+			workspace_domain
 		ON
-			managed_url.domain_id = domain.id
+			managed_url.domain_id = workspace_domain.id
 		WHERE
-			domain.nameserver_type = 'external';
+			workspace_domain.nameserver_type = 'external';
 		"#
 	)
 	.fetch_all(&mut *connection)
