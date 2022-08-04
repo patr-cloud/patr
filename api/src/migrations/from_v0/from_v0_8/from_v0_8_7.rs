@@ -3,18 +3,30 @@ use std::collections::BTreeMap;
 use api_models::utils::Uuid;
 use chrono::{TimeZone, Utc};
 use k8s_openapi::api::networking::v1::{
-	HTTPIngressPath, HTTPIngressRuleValue, Ingress, IngressBackend,
-	IngressRule, IngressServiceBackend, IngressSpec, IngressTLS,
+	HTTPIngressPath,
+	HTTPIngressRuleValue,
+	Ingress,
+	IngressBackend,
+	IngressRule,
+	IngressServiceBackend,
+	IngressSpec,
+	IngressTLS,
 	ServiceBackendPort,
 };
 use kube::{
 	api::{Patch, PatchParams},
 	config::{
-		AuthInfo, Cluster, Context, Kubeconfig, NamedAuthInfo, NamedCluster,
+		AuthInfo,
+		Cluster,
+		Context,
+		Kubeconfig,
+		NamedAuthInfo,
+		NamedCluster,
 		NamedContext,
 	},
 	core::ObjectMeta,
-	Api, Config,
+	Api,
+	Config,
 };
 use s3::{creds::Credentials, Bucket, Region};
 use sqlx::Row;
@@ -41,6 +53,7 @@ pub(super) async fn migrate(
 	add_table_deployment_image_digest(&mut *connection, config).await?;
 	populate_deployment_deploy_history(&mut *connection, config).await?;
 	create_deployment_config_file(&mut *connection, config).await?;
+	update_dns_record_name_constraint_regexp(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -618,6 +631,32 @@ async fn create_deployment_config_file(
 				deployment_id,
 				path
 			)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+	Ok(())
+}
+
+async fn update_dns_record_name_constraint_regexp(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE patr_domain_dns_record
+		DROP CONSTRAINT patr_domain_dns_record_chk_name_is_valid;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+	query!(
+		r#"
+		ALTER TABLE patr_domain_dns_record
+		ADD CONSTRAINT patr_domain_dns_record_chk_name_is_valid CHECK(
+			name ~ '^((\*)|((\*\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])))$' OR
+			name = '@'
 		);
 		"#
 	)
