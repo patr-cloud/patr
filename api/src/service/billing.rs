@@ -228,8 +228,11 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 			chrono::DateTime::from(deployment_usage.start_time),
 			*month_start_date,
 		);
-		let hours = ((stop_time - start_time).num_seconds() as f64 / 3600f64)
-			.ceil() as i64;
+		let hours = max(
+			720,
+			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
+				as i64,
+		);
 
 		let (cpu_count, memory_count) = deployment::MACHINE_TYPES
 			.get()
@@ -314,8 +317,11 @@ pub async fn calculate_database_bill_for_workspace_till(
 			chrono::DateTime::from(database_usage.start_time),
 			*month_start_date,
 		);
-		let hours = ((stop_time - start_time).num_seconds() as f64 / 3600f64)
-			.ceil() as i64;
+		let hours = max(
+			720,
+			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
+				as i64,
+		);
 
 		let monthly_price = match database_usage.db_plan {
 			ManagedDatabasePlan::Nano => 15f64,
@@ -348,7 +354,7 @@ pub async fn calculate_database_bill_for_workspace_till(
 					.unwrap_or("unknown")
 					.to_string(),
 				hours: hours as u64,
-				amount: if hours > 720 {
+				amount: if hours >= 720 {
 					monthly_price
 				} else {
 					(hours as f64 / 720f64) * monthly_price
@@ -382,8 +388,11 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 			chrono::DateTime::from(static_sites_usage.start_time),
 			*month_start_date,
 		);
-		let hours = ((stop_time - start_time).num_seconds() as f64 / 3600f64)
-			.ceil() as i64;
+		let hours = max(
+			720,
+			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
+				as i64,
+		);
 
 		let monthly_price = match static_sites_usage.static_site_plan {
 			StaticSitePlan::Free => 0f64,
@@ -397,7 +406,7 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 				amount: 0f64,
 			});
 		bill.hours += hours as u64;
-		bill.amount = if bill.hours > 720 {
+		bill.amount = if bill.hours >= 720 {
 			monthly_price
 		} else {
 			(bill.hours as f64 / 720f64) * monthly_price
@@ -430,8 +439,11 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 			chrono::DateTime::from(managed_url_usage.start_time),
 			*month_start_date,
 		);
-		let hours = ((stop_time - start_time).num_seconds() as f64 / 3600f64)
-			.ceil() as i64;
+		let hours = max(
+			720,
+			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
+				as i64,
+		);
 
 		let monthly_price = if managed_url_usage.url_count <= 10 {
 			0f64
@@ -455,7 +467,7 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 
 		bill.url_count = managed_url_usage.url_count as u64;
 		bill.hours += hours as u64;
-		bill.amount = if bill.hours > 720 {
+		bill.amount = if bill.hours >= 720 {
 			monthly_price
 		} else {
 			(bill.hours as f64 / 720f64) * monthly_price
@@ -489,8 +501,11 @@ pub async fn calculate_docker_repository_bill_for_workspace_till(
 			chrono::DateTime::from(docker_repository_usage.start_time),
 			*month_start_date,
 		);
-		let hours = ((stop_time - start_time).num_seconds() as f64 / 3600f64)
-			.ceil() as i64;
+		let hours = max(
+			720,
+			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
+				as i64,
+		);
 
 		let storage_in_gb = (docker_repository_usage.storage as f64 /
 			(1024 * 1024 * 1024) as f64)
@@ -506,7 +521,7 @@ pub async fn calculate_docker_repository_bill_for_workspace_till(
 		docker_repository_bill.push(DockerRepositoryBill {
 			storage: docker_repository_usage.storage as u64,
 			hours: hours as u64,
-			amount: if hours > 720 {
+			amount: if hours >= 720 {
 				monthly_price
 			} else {
 				(hours as f64 / 720f64) * monthly_price
@@ -540,8 +555,11 @@ pub async fn calculate_domains_bill_for_workspace_till(
 			chrono::DateTime::from(domains_usage.start_time),
 			*month_start_date,
 		);
-		let hours = ((stop_time - start_time).num_seconds() as f64 / 3600f64)
-			.ceil() as i64;
+		let hours = max(
+			720,
+			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
+				as i64,
+		);
 
 		let monthly_price = match domains_usage.domain_plan {
 			DomainPlan::Free => 0f64,
@@ -555,7 +573,7 @@ pub async fn calculate_domains_bill_for_workspace_till(
 		);
 
 		bill.hours = hours as u64;
-		bill.amount = if hours > 720 {
+		bill.amount = if hours >= 720 {
 			monthly_price
 		} else {
 			hours as f64 * (monthly_price / 720f64)
@@ -588,8 +606,11 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 			chrono::DateTime::from(secrets_usage.start_time),
 			*month_start_date,
 		);
-		let hours = ((stop_time - start_time).num_seconds() as f64 / 3600f64)
-			.ceil() as i64;
+		let hours = max(
+			720,
+			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
+				as i64,
+		);
 
 		let monthly_price = if secrets_usage.secret_count <= 3 {
 			0f64
@@ -613,7 +634,7 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 
 		bill.secrets_count = secrets_usage.secret_count as u64;
 		bill.hours += hours as u64;
-		bill.amount = if bill.hours > 720 {
+		bill.amount = if bill.hours >= 720 {
 			monthly_price
 		} else {
 			(bill.hours as f64 / 720f64) * monthly_price

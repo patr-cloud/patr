@@ -840,11 +840,11 @@ async fn fix_july_billing_issues(
 	// delete the bills calculated for july month
 	query!(
 		r#"
-			DELETE FROM
-				transaction
-			WHERE
-				transaction_type = 'bill' AND
-				month = 7;
+		DELETE FROM
+			transaction
+		WHERE
+			transaction_type = 'bill' AND
+			month = 7;
 		"#
 	)
 	.execute(&mut *connection)
