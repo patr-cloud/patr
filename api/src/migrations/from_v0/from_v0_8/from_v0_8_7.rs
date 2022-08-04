@@ -704,7 +704,7 @@ pub async fn add_is_configured_for_managed_urls(
 				SELECT
 					id
 				FROM
-					domain
+					workspace_domain
 				WHERE
 					nameserver_type = 'internal' AND
 					is_verified = TRUE
