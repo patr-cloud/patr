@@ -151,7 +151,6 @@ services:
     restart: always
     user: ${RUNNING_USER}
     working_dir: /app/frontend
-    command: bash -c "npm ci && npm run start"
     networks:
       - vpc
     ports:
@@ -194,7 +193,6 @@ services:
       - vault
       - drone
       - drone-runner
-      - frontend
     networks:
       - vpc
     ports:
