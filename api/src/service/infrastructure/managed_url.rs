@@ -439,9 +439,7 @@ pub async fn verify_managed_url_configuration(
 			.status(500)?;
 
 	if !domain.is_verified {
-		return Err(Error::empty()
-			.status(400)
-			.body(error!(DOMAIN_UNVERIFIED).to_string()));
+		return Ok(false);
 	}
 
 	let configured = if domain.is_ns_internal() {
@@ -477,10 +475,19 @@ pub async fn verify_managed_url_configuration(
 				.collect::<String>()
 		};
 		let response = reqwest::Client::new()
-			.get(format!(
-				"http://{}.{}/.well-known/patr-verification",
-				managed_url.sub_domain, domain.name
-			))
+			.get(
+				if managed_url.sub_domain == "@" {
+					format!(
+						"http://{}/.well-known/patr-verification",
+						domain.name
+					)
+				} else {
+					format!(
+						"http://{}.{}/.well-known/patr-verification",
+						managed_url.sub_domain, domain.name
+					)
+				},
+			)
 			.header(reqwest::header::AUTHORIZATION, verification_token.clone())
 			.send()
 			.await?
