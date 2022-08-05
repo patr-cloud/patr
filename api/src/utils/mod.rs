@@ -13,7 +13,7 @@ pub use eve_context::*;
 pub use eve_middlewares::*;
 use eve_rs::Error as EveError;
 
-pub type ErrorData = errors::APIError;
+pub type ErrorData = ();
 pub type Error = EveError<ErrorData>;
 
 pub fn get_current_time() -> Duration {

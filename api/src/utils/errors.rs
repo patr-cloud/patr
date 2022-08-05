@@ -1,39 +1,40 @@
-use eve_rs::Error;
-use thiserror::Error as ThisError;
+pub use api_macros::ErrorResponse;
 
-#[derive(ThisError, Debug)]
+use eve_rs::{Error as EveError, AsError};
+
+#[derive(ErrorResponse, Debug)]
 pub enum APIError {
-	#[error("Incorrect Parameter")]
+
+	#[status = 404]
+	#[error = "Incorrect"]
 	WrongParameters,
 
-	#[error("No Error")]
-	None,
 }
 
-impl Default for APIError {
-	fn default() -> Self {
-		return APIError::None;
-	}
+trait AsErrorResponse {
+
+	fn get_status_code(&self) -> u16;
+
+	fn get_body(&self) -> &str;
+
 }
 
-pub trait HasErrorData<Value, TErrorData>
+pub trait EnumError<V, U, T> {
+
+	fn with_error(self, err: T) -> Result<V, U>;
+
+}
+
+impl<Value, TErrorData, T> EnumError<Value, EveError<TErrorData>, T>
+	for Result<Value, EveError<TErrorData>>
 where
+	T: AsErrorResponse,
 	Value: Send + Sync,
 	TErrorData: Default + Send + Sync,
 {
-	fn data(self, data: TErrorData) -> Result<Value, Error<TErrorData>>;
-}
-
-impl<Value, TErrorData> HasErrorData<Value, TErrorData>
-	for Result<Value, eve_rs::Error<TErrorData>>
-where
-	Value: Send + Sync,
-	TErrorData: Default + Send + Sync,
-{
-	fn data(self, data: TErrorData) -> Result<Value, Error<TErrorData>> {
-		match self {
-			Ok(value) => Ok(value),
-			Err(err) => Err(err.data(data)),
-		}
+	
+	fn with_error(self, err: T) -> Result<Value, EveError<TErrorData>> {
+		self.status(err.get_status_code()).body(err.get_body())
 	}
+
 }
