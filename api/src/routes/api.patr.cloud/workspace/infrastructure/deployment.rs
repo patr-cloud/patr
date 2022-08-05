@@ -1550,14 +1550,6 @@ async fn update_deployment(
 		liveness_probe: liveness_probe.clone(),
 	};
 
-	let (deployment, workspace_id, _, deployment_running_details) =
-		service::get_full_deployment_config(
-			context.get_database_connection(),
-			&deployment_id,
-			&request_id,
-		)
-		.await?;
-
 	service::update_deployment(
 		context.get_database_connection(),
 		&deployment_id,
@@ -1584,6 +1576,14 @@ async fn update_deployment(
 	.await?;
 
 	context.commit_database_transaction().await?;
+
+	let (deployment, workspace_id, _, deployment_running_details) =
+		service::get_full_deployment_config(
+			context.get_database_connection(),
+			&deployment_id,
+			&request_id,
+		)
+		.await?;
 
 	match &deployment.status {
 		DeploymentStatus::Stopped |
