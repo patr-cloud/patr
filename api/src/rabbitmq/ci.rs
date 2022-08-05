@@ -31,7 +31,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
 	db,
-	models::{ci, rabbitmq::CIData},
+	models::{
+		ci::{self, file_format::EnvVarValue},
+		rabbitmq::CIData,
+	},
 	service,
 	utils::{settings::Settings, Error},
 	Database,
@@ -79,12 +82,13 @@ impl BuildStepId {
 pub struct BuildStep {
 	pub id: BuildStepId,
 	pub image: String,
-	pub env_vars: Option<Vec<ci::file_format::EnvVar>>,
+	pub env_vars: Vec<ci::file_format::EnvVar>,
 	pub commands: Vec<String>,
 }
 
 async fn get_job_manifest(
 	build_step: &BuildStep,
+	config: &Settings,
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Job, Error> {
 	let build_machine_type = db::get_build_machine_type_for_repo(
@@ -93,6 +97,49 @@ async fn get_job_manifest(
 	)
 	.await?
 	.status(500)?;
+
+	let env = (!build_step.env_vars.is_empty()).then(|| {
+		build_step
+			.env_vars
+			.iter()
+			.map(|ci::file_format::EnvVar { name, value }| EnvVar {
+				name: name.clone(),
+				value: Some(match value {
+					EnvVarValue::Value(value) => value.clone(),
+					EnvVarValue::ValueFromSecret(from_secret) => format!(
+						"vault:secret/data/{}/{}#data",
+						build_step.id.build_id.workspace_id, from_secret
+					),
+				}),
+				..Default::default()
+			})
+			.collect()
+	});
+
+	let annotations = [
+		(
+			"vault.security.banzaicloud.io/vault-addr".to_string(),
+			config.vault.address.clone(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-role".to_string(),
+			"vault".to_string(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-skip-verify".to_string(),
+			"false".to_string(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-agent".to_string(),
+			"false".to_string(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-path".to_string(),
+			"kubernetes".to_string(),
+		),
+	]
+	.into_iter()
+	.collect();
 
 	let build_machine_type = [
 		(
@@ -115,6 +162,10 @@ async fn get_job_manifest(
 		spec: Some(JobSpec {
 			backoff_limit: Some(0),
 			template: PodTemplateSpec {
+				metadata: Some(ObjectMeta {
+					annotations: Some(annotations),
+					..Default::default()
+				}),
 				spec: Some(PodSpec {
 					containers: vec![Container {
 						image: Some(build_step.image.clone()),
@@ -125,15 +176,7 @@ async fn get_job_manifest(
 							name: "workdir".to_string(),
 							..Default::default()
 						}]),
-						env: build_step.env_vars.as_ref().map(|envs| {
-							envs.iter()
-								.map(|env| EnvVar {
-									name: env.name.clone(),
-									value: Some(env.value.clone()),
-									..Default::default()
-								})
-								.collect()
-						}),
+						env,
 						command: Some(vec![
 							"sh".to_string(),
 							"-ce".to_string(),
@@ -161,7 +204,6 @@ async fn get_job_manifest(
 					restart_policy: Some("Never".to_string()),
 					..Default::default()
 				}),
-				..Default::default()
 			},
 			..Default::default()
 		}),
@@ -325,6 +367,7 @@ pub async fn process_request(
 								&Default::default(),
 								&get_job_manifest(
 									&build_step,
+									config,
 									&mut *connection,
 								)
 								.await?,

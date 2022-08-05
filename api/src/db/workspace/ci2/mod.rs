@@ -20,6 +20,16 @@ pub struct Repository {
 	pub active: bool,
 }
 
+struct BuildTableRecord {
+	pub repo_id: Uuid,
+	pub build_num: i64,
+	pub git_ref: String,
+	pub git_commit: String,
+	pub status: BuildStatus,
+	pub created: DateTime<Utc>,
+	pub finished: Option<DateTime<Utc>>,
+}
+
 pub async fn initialize_ci_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
@@ -549,53 +559,81 @@ pub async fn update_build_finished_time(
 	.map(|_| ())
 }
 
+pub async fn list_build_steps_for_build(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
+	build_num: i64,
+) -> Result<Vec<Step>, sqlx::Error> {
+	query_as!(
+		Step,
+		r#"
+			SELECT
+				step_id,
+				step_name,
+				base_image,
+				commands,
+				status as "status: _",
+				started,
+				finished
+			FROM
+				ci_steps
+			WHERE (
+				repo_id = $1
+				AND build_num = $2
+			)
+			ORDER BY step_id ASC;
+		"#,
+		repo_id as _,
+		build_num
+	)
+	.fetch_all(connection)
+	.await
+}
+
 pub async fn list_build_details_for_repo(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
 ) -> Result<Vec<Build>, sqlx::Error> {
-	query_as!(
-		Build,
+	let builds = query_as!(
+		BuildTableRecord,
 		r#"
 		SELECT
-			ci_builds.repo_id as "repo_id: _",
-			ci_builds.build_num,
-			ci_builds.git_ref,
-			ci_builds.git_commit,
-			ci_builds.status as "status: _",
-			ci_builds.created,
-			ci_builds.finished,
-			ARRAY_AGG (
-				(
-					ci_steps.step_id,
-					ci_steps.step_name,
-					ci_steps.base_image,
-					ci_steps.commands,
-					ci_steps.status,
-					ci_steps.started,
-					ci_steps.finished
-				)
-				ORDER BY ci_steps.step_id ASC
-			) as "steps!: Vec<Step>"
+			repo_id as "repo_id: _",
+			build_num,
+			git_ref,
+			git_commit,
+			status as "status: _",
+			created,
+			finished
 		FROM
 			ci_builds
-		INNER JOIN
-			ci_steps
-				ON (
-					ci_builds.repo_id = ci_steps.repo_id
-					AND ci_builds.build_num = ci_steps.build_num
-				)
 		WHERE
-			ci_builds.repo_id = $1
-		GROUP BY (
-			ci_builds.repo_id,
-			ci_builds.build_num
-		)
-		ORDER BY ci_builds.build_num DESC;
+			repo_id = $1
+		ORDER BY build_num DESC;
 		"#,
 		repo_id as _,
 	)
-	.fetch_all(connection)
-	.await
+	.fetch_all(&mut *connection)
+	.await?;
+
+	let mut result = vec![];
+	for build in builds {
+		let steps =
+			list_build_steps_for_build(&mut *connection, repo_id, build.build_num)
+				.await?;
+		result.push(Build {
+			repo_id: build.repo_id,
+			build_num: build.build_num,
+			git_ref: build.git_ref,
+			git_commit: build.git_commit,
+			status: build.status,
+			created: build.created,
+			finished: build.finished,
+			steps,
+		})
+	}
+
+	Ok(result)
 }
 
 pub async fn get_build_details_for_build(
@@ -603,52 +641,51 @@ pub async fn get_build_details_for_build(
 	repo_id: &Uuid,
 	build_num: i64,
 ) -> Result<Option<Build>, sqlx::Error> {
-	query_as!(
-		Build,
+	let build = query_as!(
+		BuildTableRecord,
 		r#"
 		SELECT
-			ci_builds.repo_id as "repo_id: _",
-			ci_builds.build_num,
-			ci_builds.git_ref,
-			ci_builds.git_commit,
-			ci_builds.status as "status: _",
-			ci_builds.created,
-			ci_builds.finished,
-			ARRAY_AGG (
-				(
-					ci_steps.step_id,
-					ci_steps.step_name,
-					ci_steps.base_image,
-					ci_steps.commands,
-					ci_steps.status,
-					ci_steps.started,
-					ci_steps.finished
-				)
-				ORDER BY ci_steps.step_id ASC
-			) as "steps!: Vec<Step>"
+			repo_id as "repo_id: _",
+			build_num,
+			git_ref,
+			git_commit,
+			status as "status: _",
+			created,
+			finished
 		FROM
 			ci_builds
-		INNER JOIN
-			ci_steps
-				ON (
-					ci_builds.repo_id = ci_steps.repo_id
-					AND ci_builds.build_num = ci_steps.build_num
-				)
 		WHERE (
-			ci_builds.repo_id = $1
-			AND ci_builds.build_num = $2
+			repo_id = $1
+			AND build_num = $2
 		)
-		GROUP BY (
-			ci_builds.repo_id,
-			ci_builds.build_num
-		)
-		ORDER BY ci_builds.build_num DESC;
+		ORDER BY build_num DESC;
 		"#,
 		repo_id as _,
 		build_num
 	)
-	.fetch_optional(connection)
-	.await
+	.fetch_optional(&mut *connection)
+	.await?;
+
+	let result = match build {
+		Some(build) => Some(Build {
+			repo_id: build.repo_id,
+			build_num: build.build_num,
+			git_ref: build.git_ref,
+			git_commit: build.git_commit,
+			status: build.status,
+			created: build.created,
+			finished: build.finished,
+			steps: list_build_steps_for_build(
+				&mut *connection,
+				repo_id,
+				build.build_num,
+			)
+			.await?,
+		}),
+		None => None,
+	};
+
+	Ok(result)
 }
 
 pub async fn get_build_steps_for_build(

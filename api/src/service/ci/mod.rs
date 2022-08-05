@@ -31,7 +31,7 @@ use crate::{
 	db,
 	models::ci::{
 		self,
-		file_format::{CiFlow, Step},
+		file_format::{CiFlow, EnvVarValue, Step},
 	},
 	rabbitmq::{BuildId, BuildStep, BuildStepId},
 	service,
@@ -135,6 +135,7 @@ pub async fn create_ci_pipeline(
 			kube_client.clone(),
 			&build_id,
 			service,
+			config,
 		)
 		.await?;
 	}
@@ -144,7 +145,7 @@ pub async fn create_ci_pipeline(
 		BuildStep {
 			id: BuildStepId { build_id: build_id.clone(), step_id: 0 },
 			image: "alpine/git".to_string(),
-			env_vars: None,
+			env_vars: vec![],
 			commands: vec!	[
 				format!(r#"echo "{}" > ~/.netrc"#, netrc.map_or("".to_string(), |netrc| netrc.to_string())),
 				r#"cd "/mnt/workdir/""#.to_string(),
@@ -208,7 +209,51 @@ async fn create_background_service_for_pipeline(
 	kube_client: kube::Client,
 	build_id: &BuildId,
 	service: &ci::file_format::Service,
+	config: &Settings,
 ) -> Result<(), Error> {
+	let env = (!service.env.is_empty()).then(|| {
+		service
+			.env
+			.iter()
+			.map(|ci::file_format::EnvVar { name, value }| EnvVar {
+				name: name.clone(),
+				value: Some(match value {
+					EnvVarValue::Value(value) => value.clone(),
+					EnvVarValue::ValueFromSecret(from_secret) => format!(
+						"vault:secret/data/{}/{}#data",
+						build_id.workspace_id, from_secret
+					),
+				}),
+				..Default::default()
+			})
+			.collect()
+	});
+
+	let annotations = [
+		(
+			"vault.security.banzaicloud.io/vault-addr".to_string(),
+			config.vault.address.clone(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-role".to_string(),
+			"vault".to_string(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-skip-verify".to_string(),
+			"false".to_string(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-agent".to_string(),
+			"false".to_string(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-path".to_string(),
+			"kubernetes".to_string(),
+		),
+	]
+	.into_iter()
+	.collect();
+
 	Api::<Deployment>::namespaced(
 		kube_client.clone(),
 		&build_id.get_build_namespace(),
@@ -233,6 +278,7 @@ async fn create_background_service_for_pipeline(
 							[("app".to_string(), service.name.to_string())]
 								.into(),
 						),
+						annotations: Some(annotations),
 						..Default::default()
 					}),
 					spec: Some(PodSpec {
@@ -240,15 +286,7 @@ async fn create_background_service_for_pipeline(
 							name: service.name.to_string(),
 							image: Some(service.image.clone()),
 							image_pull_policy: Some("Always".to_string()),
-							env: service.env.as_ref().map(|envs| {
-								envs.iter()
-									.map(|env| EnvVar {
-										name: env.name.clone(),
-										value: Some(env.value.clone()),
-										..Default::default()
-									})
-									.collect()
-							}),
+							env,
 							command: service.commands.as_ref().map(
 								|commands| {
 									vec![

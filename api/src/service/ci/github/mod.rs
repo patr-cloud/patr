@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use api_models::{
 	models::workspace::ci2::github::{BuildStatus, BuildStepStatus},
@@ -14,9 +14,10 @@ use self::payload_types::PushEvent;
 use super::Netrc;
 use crate::{
 	db::{self, Repository},
-	models::ci::file_format::{CiFlow, Step},
+	models::ci::file_format::{CiFlow, EnvVarValue, Step},
 	rabbitmq::BuildId,
 	utils::{Error, EveContext},
+	Database,
 };
 
 type HmacSha256 = Hmac<Sha256>;
@@ -151,8 +152,10 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 	)
 	.await?;
 
-	let ci_flow: CiFlow = serde_yaml::from_slice(ci_file.as_ref())?;
+	let mut ci_flow: CiFlow = serde_yaml::from_slice(ci_file.as_ref())?;
 	let CiFlow::Pipeline(pipeline) = ci_flow.clone();
+
+	// validate the ci file
 	if !is_names_unique(&ci_flow) {
 		log::info!(
 			"request_id: {request_id} - Invalid ci config file, marking build as errored"
@@ -167,6 +170,27 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 
 		return Ok(());
 	}
+
+	if !find_and_replace_secret_names(
+		context.get_database_connection(),
+		&mut ci_flow,
+		&repo.workspace_id,
+	)
+	.await?
+	{
+		log::info!(
+			"request_id: {request_id} - Invalid secret name given, marking build as errored"
+		);
+		db::update_build_status(
+			context.get_database_connection(),
+			&repo.id,
+			build_num,
+			BuildStatus::Errored,
+		)
+		.await?;
+
+		return Ok(());
+	};
 
 	// add cloning as a step
 	db::add_ci_steps_for_build(
@@ -251,4 +275,45 @@ fn is_names_unique(ci_flow: &CiFlow) -> bool {
 	}
 
 	true
+}
+
+async fn find_and_replace_secret_names(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	ci_flow: &mut CiFlow,
+	workspace_id: &Uuid,
+) -> Result<bool, Error> {
+	let workspace_secrets =
+		db::get_all_secrets_in_workspace(connection, workspace_id)
+			.await?
+			.into_iter()
+			.map(|secret| (secret.name, secret.id))
+			.collect::<HashMap<_, _>>();
+
+	let CiFlow::Pipeline(pipeline) = ci_flow;
+
+	for service in &mut pipeline.services {
+		for env in &mut service.env {
+			if let EnvVarValue::ValueFromSecret(secret_name) = &mut env.value {
+				if let Some(secret_id) = workspace_secrets.get(&*secret_name) {
+					*secret_name = secret_id.to_string();
+				} else {
+					return Ok(false);
+				}
+			}
+		}
+	}
+
+	for step in &mut pipeline.steps {
+		for env in &mut step.env {
+			if let EnvVarValue::ValueFromSecret(secret_name) = &mut env.value {
+				if let Some(secret_id) = workspace_secrets.get(&*secret_name) {
+					*secret_name = secret_id.to_string();
+				} else {
+					return Ok(false);
+				}
+			}
+		}
+	}
+
+	Ok(true)
 }

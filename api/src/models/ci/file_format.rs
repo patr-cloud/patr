@@ -39,8 +39,8 @@ pub struct Step {
 	pub commands: Commands,
 	/// list of environmental variables that has to be defined while
 	/// initializing container
-	#[serde(default, skip_serializing_if = "Option::is_none")]
-	pub env: Option<Vec<EnvVar>>,
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub env: Vec<EnvVar>,
 }
 
 /// Service represents a background job which will run during pipeline
@@ -57,8 +57,8 @@ pub struct Service {
 	pub commands: Option<Commands>,
 	/// list of environmental variables that has to be defined while
 	/// initializing container
-	#[serde(default, skip_serializing_if = "Option::is_none")]
-	pub env: Option<Vec<EnvVar>>,
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub env: Vec<EnvVar>,
 	/// TCP port to access this service
 	pub port: i32,
 }
@@ -89,7 +89,15 @@ pub struct EnvVar {
 	/// key name of the environment variable
 	pub name: String,
 	/// value of the environment varialbe
-	pub value: String,
+	#[serde(flatten)]
+	pub value: EnvVarValue,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum EnvVarValue {
+	Value(String),
+	ValueFromSecret(String),
 }
 
 /// A wrapped string type used to represent the valid naming
