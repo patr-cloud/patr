@@ -58,7 +58,7 @@ use k8s_openapi::{
 	ByteString,
 };
 use kube::{
-	api::{DeleteParams, Patch, PatchParams},
+	api::{DeleteParams, Patch, PatchParams, PostParams},
 	core::{DynamicObject, ErrorResponse, ObjectMeta, TypeMeta},
 	discovery::ApiResource,
 	Api,
@@ -438,6 +438,8 @@ pub async fn update_kubernetes_deployment(
 	let kubernetes_service = Service {
 		metadata: ObjectMeta {
 			name: Some(format!("service-{}", deployment.id)),
+			// used by service monitor defined below to detect the service
+			labels: Some(labels.clone()),
 			..ObjectMeta::default()
 		},
 		spec: Some(ServiceSpec {
@@ -476,6 +478,13 @@ pub async fn update_kubernetes_deployment(
 
 	// Service monitor for custom metrics
 	if let Some(custom_metrics) = &running_details.custom_metrics {
+		let service_monitor_resource = ApiResource {
+			group: "monitoring.coreos.com".to_string(),
+			version: "v1".to_string(),
+			api_version: "monitoring.coreos.com/v1".to_string(),
+			kind: "servicemonitor".to_string(),
+			plural: "servicemonitors".to_string(),
+		};
 		let service_monitor_data = json!(
 			{
 				"spec": {
@@ -484,7 +493,7 @@ pub async fn update_kubernetes_deployment(
 					},
 					"endpoints": [
 						{
-							"port": custom_metrics.port,
+							"port": format!("port-{}", custom_metrics.port),
 						},
 						{
 							"path": custom_metrics.path
@@ -493,6 +502,12 @@ pub async fn update_kubernetes_deployment(
 				}
 			}
 		);
+
+		let mut prometheus_release_labels = labels.clone();
+
+		prometheus_release_labels
+			.insert("release".to_string(), "prometheus".to_string());
+
 		let kubernetes_service_monitor = DynamicObject {
 			types: Some(TypeMeta {
 				api_version: "monitoring.coreos.com/v1".to_string(),
@@ -500,41 +515,24 @@ pub async fn update_kubernetes_deployment(
 			}),
 			metadata: ObjectMeta {
 				name: Some(format!("service-monitor-{}", deployment.id)),
+				labels: Some(prometheus_release_labels),
 				..ObjectMeta::default()
 			},
 			data: service_monitor_data,
 		};
-
-		let service_monitor_resource = ApiResource {
-			group: "monitoring.coreos.com".to_string(),
-			version: "v1".to_string(),
-			api_version: "monitoring.coreos.com/v1".to_string(),
-			kind: "ServiceMonitor".to_string(),
-			plural: "ServiceMonitor".to_string(),
-		};
-
-		// create the service monitor defined above
-		let service_monitor_api = Api::<DynamicObject>::namespaced_with(
-			kubernetes_client.clone(),
-			namespace,
-			&service_monitor_resource,
-		);
 
 		log::trace!(
 			"request_id: {} - Creating service monitor in Kubernetes",
 			request_id
 		);
 
-		service_monitor_api
-			.patch(
-				&format!("service-monitor-{}", deployment.id),
-				&PatchParams::apply(&format!(
-					"service-monitor-{}",
-					deployment.id
-				)),
-				&Patch::Apply(kubernetes_service_monitor),
-			)
-			.await?;
+		Api::<DynamicObject>::namespaced_with(
+			kubernetes_client.clone(),
+			namespace,
+			&service_monitor_resource,
+		)
+		.create(&PostParams::default(), &kubernetes_service_monitor)
+		.await?;
 	}
 
 	// HPA - horizontal pod autoscaler
@@ -823,6 +821,27 @@ pub async fn delete_kubernetes_deployment(
 			&DeleteParams::default(),
 		)
 		.await?;
+
+	log::trace!("request_id: {} - deleting the service monitor", request_id);
+
+	let service_monitor_resource = ApiResource {
+		group: "monitoring.coreos.com".to_string(),
+		version: "v1".to_string(),
+		api_version: "monitoring.coreos.com/v1".to_string(),
+		kind: "servicemonitor".to_string(),
+		plural: "servicemonitors".to_string(),
+	};
+
+	Api::<DynamicObject>::namespaced_with(
+		kubernetes_client,
+		workspace_id.as_str(),
+		&service_monitor_resource,
+	)
+	.delete_opt(
+		&format!("service-monitor-{}", deployment_id),
+		&DeleteParams::default(),
+	)
+	.await?;
 
 	log::trace!(
 		"request_id: {} - deployment deleted successfully!",
