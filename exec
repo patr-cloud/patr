@@ -163,6 +163,9 @@ case $1 in
     restore)
         docker-compose -f $baseDir/docker-compose.yml exec -T postgres psql -U $DATABASE_USERNAME -d $DATABASE_NAME < $2
     ;;
+    frontend)
+        docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports frontend bash -c "npm install && npm start"
+    ;;
     *)
         echo "Unknown command '$1'"
         exit 1
