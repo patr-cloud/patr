@@ -53,6 +53,7 @@ pub(super) async fn migrate(
 	add_table_deployment_image_digest(&mut *connection, config).await?;
 	populate_deployment_deploy_history(&mut *connection, config).await?;
 	create_deployment_config_file(&mut *connection, config).await?;
+	update_dns_record_name_constraint_regexp(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -635,6 +636,31 @@ async fn create_deployment_config_file(
 	)
 	.execute(&mut *connection)
 	.await?;
+	Ok(())
+}
 
+async fn update_dns_record_name_constraint_regexp(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE patr_domain_dns_record
+		DROP CONSTRAINT patr_domain_dns_record_chk_name_is_valid;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+	query!(
+		r#"
+		ALTER TABLE patr_domain_dns_record
+		ADD CONSTRAINT patr_domain_dns_record_chk_name_is_valid CHECK(
+			name ~ '^((\*)|((\*\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])))$' OR
+			name = '@'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 	Ok(())
 }
