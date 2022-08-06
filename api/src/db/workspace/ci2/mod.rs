@@ -618,9 +618,12 @@ pub async fn list_build_details_for_repo(
 
 	let mut result = vec![];
 	for build in builds {
-		let steps =
-			list_build_steps_for_build(&mut *connection, repo_id, build.build_num)
-				.await?;
+		let steps = list_build_steps_for_build(
+			&mut *connection,
+			repo_id,
+			build.build_num,
+		)
+		.await?;
 		result.push(Build {
 			repo_id: build.repo_id,
 			build_num: build.build_num,

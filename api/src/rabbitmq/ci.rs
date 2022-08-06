@@ -35,7 +35,7 @@ use crate::{
 		ci::{self, file_format::EnvVarValue},
 		rabbitmq::CIData,
 	},
-	service,
+	service::{self, ext_traits::DeleteOpt},
 	utils::{settings::Settings, Error},
 	Database,
 };
@@ -252,7 +252,7 @@ pub async fn process_request(
 					Status::Errored => {
 						log::info!("request_id: {request_id} - Build step `{build_step_job_name}` errored");
 						jobs_api
-							.delete(
+							.delete_opt(
 								&build_step_job_name,
 								&DeleteParams {
 									propagation_policy: Some(
@@ -282,7 +282,7 @@ pub async fn process_request(
 					Status::Completed => {
 						log::info!("request_id: {request_id} - Build step `{build_step_job_name}` succeeded");
 						jobs_api
-							.delete(
+							.delete_opt(
 								&build_step_job_name,
 								&DeleteParams {
 									propagation_policy: Some(
@@ -429,7 +429,7 @@ pub async fn process_request(
 						"request_id: {request_id} - Build `{build_id}` errored"
 					);
 					Api::<Namespace>::all(kube_client)
-						.delete(
+						.delete_opt(
 							&build_id.get_build_namespace(),
 							&DeleteParams {
 								propagation_policy: Some(
@@ -459,7 +459,7 @@ pub async fn process_request(
 						"request_id: {request_id} - Build `{build_id}` succeed"
 					);
 					Api::<Namespace>::all(kube_client)
-						.delete(
+						.delete_opt(
 							&build_id.get_build_namespace(),
 							&DeleteParams {
 								propagation_policy: Some(

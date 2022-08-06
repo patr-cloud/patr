@@ -240,7 +240,7 @@ async fn create_background_service_for_pipeline(
 		),
 		(
 			"vault.security.banzaicloud.io/vault-skip-verify".to_string(),
-			"false".to_string(),
+			"true".to_string(),
 		),
 		(
 			"vault.security.banzaicloud.io/vault-agent".to_string(),

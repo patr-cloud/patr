@@ -4,6 +4,8 @@ mod managed_url;
 mod static_site;
 mod workspace;
 
+pub mod ext_traits;
+
 use api_models::utils::Uuid;
 use k8s_openapi::api::{
 	apps::v1::Deployment as K8sDeployment,

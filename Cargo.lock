@@ -118,6 +118,7 @@ dependencies = [
  "cron",
  "deadpool",
  "deadpool-lapin",
+ "either",
  "eve-rs",
  "futures",
  "handlebars 4.3.3",
