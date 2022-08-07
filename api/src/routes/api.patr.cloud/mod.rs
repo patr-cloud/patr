@@ -1,14 +1,68 @@
+pub use api_macros::ErrorResponse;
 use eve_rs::{App as EveApp, Context};
 
 use crate::{
 	app::{create_eve_app, App},
-	utils::{ErrorData, EveContext, EveMiddleware},
+	models::error::{id as ErrId, message as ErrMsg},
+	utils::{errors::AsErrorResponse, ErrorData, EveContext, EveMiddleware},
 };
 
 mod auth;
 mod user;
 mod webhook;
 mod workspace;
+
+#[derive(ErrorResponse)]
+pub enum APIError {
+	#[error(
+		status = 404,
+		id = ErrId::WRONG_PARAMETERS,
+		message = ErrMsg::WRONG_PARAMETERS,
+	)]
+	WrongParameters,
+
+	#[error(
+		status = 200,
+		id = ErrId::USER_NOT_FOUND,
+		message = ErrMsg::USER_NOT_FOUND
+	)]
+	UserNotFound,
+
+	#[error(
+		status = 200,
+		id = ErrId::TOKEN_NOT_FOUND,
+		message = ErrMsg::TOKEN_NOT_FOUND
+	)]
+	TokenNotFound,
+
+	#[error(
+		status = 200,
+		id = ErrId::UNAUTHORIZED,
+		message = ErrMsg::UNAUTHORIZED
+	)]
+	Unauthorized,
+
+	#[error(
+		status = 400,
+		id = ErrId::EMAIL_TOKEN_NOT_FOUND,
+		message = ErrMsg::EMAIL_TOKEN_NOT_FOUND
+	)]
+	EmailTokenNotFound,
+
+	#[error(
+		status = 404,
+		id = ErrId::USER_NOT_FOUND,
+		message = ErrMsg::USER_NOT_FOUND
+	)]
+	UserNotFound404,
+
+	#[error(
+		status = 500,
+		id = ErrId::INVALID_PHONE_NUMBER,
+		message = ErrMsg::INVALID_PHONE_NUMBER
+	)]
+	InvalidPhoneNumber,
+}
 
 /// # Description
 /// This function is used to create a sub app for every endpoint listed. It

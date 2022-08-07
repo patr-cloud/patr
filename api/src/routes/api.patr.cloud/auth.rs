@@ -5,7 +5,6 @@ use serde_json::json;
 use crate::{
 	app::{create_eve_app, App},
 	db::{self, UserLogin},
-	error,
 	models::{
 		error::{id as ErrorId, message as ErrorMessage},
 		rbac::{self, permissions, GOD_USER_ID},
@@ -14,9 +13,11 @@ use crate::{
 	},
 	pin_fn,
 	redis,
+	routes::api_patr_cloud::APIError,
 	service::{self, get_access_token_expiry},
 	utils::{
 		constants::request_keys,
+		errors::EnumError,
 		get_current_time,
 		get_current_time_millis,
 		validator,
@@ -24,7 +25,6 @@ use crate::{
 		ErrorData,
 		EveContext,
 		EveMiddleware,
-		errors::{EnumError, APIError}
 	},
 };
 
@@ -151,16 +151,13 @@ async fn sign_in(
 	let LoginRequest { user_id, password } = context
 		.get_body_as()
 		.with_error(APIError::WrongParameters)?;
-		// .status(400)
-		// .body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let user_data = db::get_user_by_username_email_or_phone_number(
 		context.get_database_connection(),
 		user_id.to_lowercase().trim(),
 	)
 	.await?
-	.status(200)
-	.body(error!(USER_NOT_FOUND).to_string())?;
+	.with_error(APIError::UserNotFound)?;
 
 	let success = service::validate_hash(&password, &user_data.password)?;
 
@@ -254,8 +251,7 @@ async fn sign_up(
 		coupon_code,
 	} = context
 		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.with_error(APIError::WrongParameters)?;
 
 	let (user_to_sign_up, otp) = service::create_user_join_request(
 		context.get_database_connection(),
@@ -324,8 +320,7 @@ async fn sign_out(
 		&user_id,
 	)
 	.await?
-	.status(200)
-	.body(error!(TOKEN_NOT_FOUND).to_string())?;
+	.with_error(APIError::TokenNotFound)?;
 
 	db::delete_user_login_by_id(
 		context.get_database_connection(),
@@ -385,8 +380,7 @@ async fn join(
 		verification_token,
 	} = context
 		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.with_error(APIError::WrongParameters)?;
 
 	let config = context.get_state().config.clone();
 
@@ -482,15 +476,13 @@ async fn get_access_token(
 ) -> Result<EveContext, Error> {
 	let refresh_token = context
 		.get_header("Authorization")
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.with_error(APIError::WrongParameters)?;
 	let login_id = context
 		.get_request()
 		.get_query()
 		.get(request_keys::LOGIN_ID)
 		.and_then(|value| Uuid::parse_str(value).ok())
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.with_error(APIError::WrongParameters)?;
 
 	let config = context.get_state().config.clone();
 	let user_login = service::get_user_login_for_login_id(
@@ -502,9 +494,7 @@ async fn get_access_token(
 		service::validate_hash(&refresh_token, &user_login.refresh_token)?;
 
 	if !success {
-		Error::as_result()
-			.status(200)
-			.body(error!(UNAUTHORIZED).to_string())?;
+		Error::as_result().with_error(APIError::Unauthorized)?
 	}
 
 	let access_token = service::generate_access_token(
@@ -552,8 +542,7 @@ async fn is_email_valid(
 ) -> Result<EveContext, Error> {
 	let IsEmailValidRequest { email } = context
 		.get_query_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.with_error(APIError::WrongParameters)?;
 	let email_address = email.trim().to_lowercase();
 
 	let available = service::is_email_allowed(
@@ -600,8 +589,7 @@ async fn is_username_valid(
 ) -> Result<EveContext, Error> {
 	let IsUsernameValidRequest { username } = context
 		.get_query_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.with_error(APIError::WrongParameters)?;
 	let username = username.trim().to_lowercase();
 
 	let available = service::is_username_allowed(
@@ -648,8 +636,7 @@ async fn is_coupon_valid(
 ) -> Result<EveContext, Error> {
 	let IsCouponValidRequest { coupon } = context
 		.get_query_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.with_error(APIError::WrongParameters)?;
 
 	let valid = db::get_sign_up_coupon_by_code(
 		context.get_database_connection(),
@@ -701,8 +688,7 @@ async fn forgot_password(
 		preferred_recovery_option,
 	} = context
 		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.with_error(APIError::WrongParameters)?;
 
 	// service function should take care of otp generation and delivering the
 	// otp to the preferred recovery option
@@ -756,16 +742,14 @@ async fn reset_password(
 		verification_token,
 	} = context
 		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.with_error(APIError::WrongParameters)?;
 
 	let user = db::get_user_by_username_email_or_phone_number(
 		context.get_database_connection(),
 		user_id.to_lowercase().trim(),
 	)
 	.await?
-	.status(400)
-	.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
+	.with_error(APIError::EmailTokenNotFound)?;
 
 	service::reset_password(
 		context.get_database_connection(),
@@ -820,8 +804,7 @@ async fn resend_otp(
 ) -> Result<EveContext, Error> {
 	let ResendOtpRequest { username, password } = context
 		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.with_error(APIError::WrongParameters)?;
 
 	// update database with newly generated otp
 	let (user_to_sign_up, otp) = service::resend_user_sign_up_otp(
@@ -1509,16 +1492,14 @@ async fn list_recovery_options(
 ) -> Result<EveContext, Error> {
 	let ListRecoveryOptionsRequest { user_id } = context
 		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.with_error(APIError::WrongParameters)?;
 
 	let user = db::get_user_by_username_email_or_phone_number(
 		context.get_database_connection(),
 		user_id.to_lowercase().trim(),
 	)
 	.await?
-	.status(404)
-	.body(error!(USER_NOT_FOUND).to_string())?;
+	.with_error(APIError::UserNotFound404)?;
 
 	let recovery_email =
 		if let (Some(recovery_email_local), Some(recovery_email_domain_id)) =
@@ -1548,8 +1529,7 @@ async fn list_recovery_options(
 			&user.recovery_phone_country_code.unwrap(),
 		)
 		.await?
-		.status(500)
-		.body(error!(INVALID_PHONE_NUMBER).to_string())?;
+		.with_error(APIError::InvalidPhoneNumber)?;
 
 		Some(format!("+{}{}", country_code.phone_code, phone_number))
 	} else {
