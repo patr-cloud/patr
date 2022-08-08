@@ -61,7 +61,7 @@ pub async fn create_ci_pipeline(
 	ci_flow: CiFlow,
 	repo_clone_url: &str,
 	repo_name: &str,
-	branch_name: &str,
+	commit_sha: &str,
 	netrc: Option<Netrc>,
 	build_id: BuildId,
 	config: &Settings,
@@ -143,20 +143,25 @@ pub async fn create_ci_pipeline(
 	// queue clone job
 	service::queue_create_ci_build_step(
 		BuildStep {
-			id: BuildStepId { build_id: build_id.clone(), step_id: 0 },
+			id: BuildStepId {
+				build_id: build_id.clone(),
+				step_id: 0,
+			},
 			image: "alpine/git".to_string(),
 			env_vars: vec![],
-			commands: vec!	[
-				format!(r#"echo "{}" > ~/.netrc"#, netrc.map_or("".to_string(), |netrc| netrc.to_string())),
+			commands: vec![
+				format!(
+					r#"echo "{}" > ~/.netrc"#,
+					netrc.map_or("".to_string(), |netrc| netrc.to_string())
+				),
 				r#"cd "/mnt/workdir/""#.to_string(),
 				"set -x".to_string(),
-				format!(
-					r#"git clone --filter=tree:0 --single-branch --branch="{branch_name}" "{repo_clone_url}""#
-				),
+				format!(r#"git clone "{repo_clone_url}""#),
+				format!(r#"git checkout "{commit_sha}""#),
 			],
 		},
 		config,
-		request_id
+		request_id,
 	)
 	.await?;
 

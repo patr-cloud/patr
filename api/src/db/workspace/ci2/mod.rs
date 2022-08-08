@@ -75,6 +75,7 @@ pub async fn initialize_ci_pre(
 		CREATE TYPE CI_BUILD_STATUS AS ENUM (
 			'running',
 			'succeeded',
+			'stopped',
 			'errored'
 		);
 		"#
@@ -107,6 +108,7 @@ pub async fn initialize_ci_pre(
 			'waiting_to_start',
 			'running',
 			'succeeded',
+			'stopped',
 			'errored',
 			'skipped_dep_error'
 		);
@@ -531,6 +533,37 @@ pub async fn update_build_status(
 	.execute(connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn get_build_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
+	build_num: i64,
+) -> Result<Option<BuildStatus>, sqlx::Error> {
+	let result = query_as!(
+		BuildTableRecord,
+		r#"
+		SELECT
+			repo_id as "repo_id: _",
+			build_num,
+			git_ref,
+			git_commit,
+			status as "status: _",
+			created,
+			finished
+		FROM
+			ci_builds
+		WHERE
+			(repo_id = $1 AND build_num = $2);
+		"#,
+		repo_id as _,
+		build_num,
+	)
+	.fetch_optional(connection)
+	.await?
+	.map(|row| row.status);
+
+	Ok(result)
 }
 
 pub async fn update_build_finished_time(

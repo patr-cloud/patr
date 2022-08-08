@@ -431,6 +431,24 @@ pub async fn queue_create_ci_build_step(
 	Ok(())
 }
 
+pub async fn queue_stop_ci_build_pipeline(
+	build_id: BuildId,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_rabbit_mq(
+		&RequestMessage::ContinuousIntegration(CIData::StopBuild {
+			build_id,
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await?;
+
+	Ok(())
+}
+
 pub async fn queue_clean_ci_build_pipeline(
 	build_id: BuildId,
 	config: &Settings,

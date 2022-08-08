@@ -380,6 +380,7 @@ async fn add_migrations_for_ci(
 		CREATE TYPE CI_BUILD_STATUS AS ENUM (
 			'running',
 			'succeeded',
+			'stopped',
 			'errored'
 		);
 		"#
@@ -412,6 +413,7 @@ async fn add_migrations_for_ci(
 			'waiting_to_start',
 			'running',
 			'succeeded',
+			'stopped',
 			'errored',
 			'skipped_dep_error'
 		);

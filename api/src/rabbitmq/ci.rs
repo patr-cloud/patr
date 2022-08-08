@@ -241,6 +241,51 @@ pub async fn process_request(
 				Running,
 			}
 			if let Some(status) = step_status {
+				// update the stopped status for currently running steps,
+				// dependent steps will get updated in their own messages
+
+				// check whether the build has been stopped
+				let build_status = db::get_build_status(
+					&mut *connection,
+					&build_step.id.build_id.repo_id,
+					build_step.id.build_id.build_num,
+				)
+				.await?
+				.unwrap_or(BuildStatus::Stopped); // TODO: handle none case
+
+				if build_status == BuildStatus::Stopped {
+					log::info!("request_id: {request_id} - Build step `{build_step_job_name}` stopped");
+					jobs_api
+						.delete_opt(
+							&build_step_job_name,
+							&DeleteParams {
+								propagation_policy: Some(
+									PropagationPolicy::Foreground,
+								),
+								..Default::default()
+							},
+						)
+						.await?;
+					db::update_build_step_status(
+						connection,
+						&build_step.id.build_id.repo_id,
+						build_step.id.build_id.build_num,
+						build_step.id.step_id,
+						BuildStepStatus::Stopped,
+					)
+					.await?;
+					db::update_build_step_finished_time(
+						&mut *connection,
+						&build_step.id.build_id.repo_id,
+						build_step.id.build_id.build_num,
+						build_step.id.step_id,
+						&Utc::now(),
+					)
+					.await?;
+
+					return Ok(());
+				}
+
 				let status = match (status.active.unwrap_or_default(), status.succeeded.unwrap_or_default(), status.failed.unwrap_or_default()) {
 					(1, 0, 0) => Status::Running,
 					(0, 1, 0) => Status::Completed,
@@ -360,6 +405,33 @@ pub async fn process_request(
 						)
 						.await?;
 					}
+					BuildStepStatus::Stopped => {
+						log::info!("request_id: {request_id} - Build step `{build_step_job_name}` stopped");
+						db::update_build_step_status(
+							connection,
+							&build_step.id.build_id.repo_id,
+							build_step.id.build_id.build_num,
+							build_step.id.step_id,
+							BuildStepStatus::Stopped,
+						)
+						.await?;
+						db::update_build_step_started_time(
+							&mut *connection,
+							&build_step.id.build_id.repo_id,
+							build_step.id.build_id.build_num,
+							build_step.id.step_id,
+							&Utc::now(),
+						)
+						.await?;
+						db::update_build_step_finished_time(
+							&mut *connection,
+							&build_step.id.build_id.repo_id,
+							build_step.id.build_id.build_num,
+							build_step.id.step_id,
+							&Utc::now(),
+						)
+						.await?;
+					}
 					BuildStepStatus::Succeeded => {
 						log::info!("request_id: {request_id} - Starting build step `{build_step_job_name}`");
 						jobs_api
@@ -409,6 +481,26 @@ pub async fn process_request(
 					}
 				}
 			}
+		}
+		CIData::StopBuild {
+			build_id,
+			request_id,
+		} => {
+			log::info!("request_id: {request_id} - Build `{build_id}` stopped");
+			db::update_build_status(
+				&mut *connection,
+				&build_id.repo_id,
+				build_id.build_num,
+				BuildStatus::Stopped,
+			)
+			.await?;
+			db::update_build_finished_time(
+				&mut *connection,
+				&build_id.repo_id,
+				build_id.build_num,
+				&Utc::now(),
+			)
+			.await?;
 		}
 		CIData::CleanBuild {
 			build_id,
@@ -493,6 +585,20 @@ pub async fn process_request(
 						&request_id,
 					)
 					.await?;
+				}
+				BuildStepStatus::Stopped => {
+					log::debug!("request_id: {request_id} - Cleaning stopped build `{build_id}`");
+					Api::<Namespace>::all(kube_client)
+						.delete_opt(
+							&build_id.get_build_namespace(),
+							&DeleteParams {
+								propagation_policy: Some(
+									PropagationPolicy::Foreground,
+								),
+								..Default::default()
+							},
+						)
+						.await?;
 				}
 			}
 		}

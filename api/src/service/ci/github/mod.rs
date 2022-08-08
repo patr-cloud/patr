@@ -241,7 +241,7 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 		ci_flow,
 		&repo_clone_url,
 		repo_name,
-		branch_name,
+		&push_event.after,
 		Some(netrc),
 		BuildId {
 			workspace_id: repo.workspace_id,

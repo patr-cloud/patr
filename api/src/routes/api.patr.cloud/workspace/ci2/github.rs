@@ -6,6 +6,7 @@ use api_models::{
 		ActivateGithubRepoRequest,
 		ActivateGithubRepoResponse,
 		BuildLogs,
+		BuildStatus,
 		DeactivateGithubRepoResponse,
 		GetBuildInfoResponse,
 		GetBuildListResponse,
@@ -16,6 +17,7 @@ use api_models::{
 		GithubListReposResponse,
 		GithubRepository,
 		GithubSignOutResponse,
+		StopBuildResponse,
 	},
 	utils::Uuid,
 };
@@ -43,6 +45,7 @@ use crate::{
 	models::{deployment::Logs, rbac::permissions},
 	pin_fn,
 	rabbitmq::{BuildId, BuildStepId},
+	service,
 	utils::{
 		constants::request_keys,
 		Error,
@@ -61,6 +64,7 @@ pub fn create_sub_app(
 		"/auth",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
+				// TODO: refactor permissions for ci
 				permissions::workspace::ci::github::CONNECT,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
@@ -302,6 +306,37 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(get_build_logs)),
+		],
+	);
+
+	app.post(
+		"/repo/:repoOwner/:repoName/build/:buildNum/stop",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::ci::github::VIEW_BUILDS,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(stop_build)),
 		],
 	);
 
@@ -892,6 +927,59 @@ async fn get_build_logs(
 		.collect();
 
 	context.success(GetBuildLogResponse { logs });
+	Ok(context)
+}
+
+async fn stop_build(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+
+	let repo_owner =
+		context.get_param(request_keys::REPO_OWNER).unwrap().clone();
+	let repo_name = context.get_param(request_keys::REPO_NAME).unwrap().clone();
+	let build_num = context
+		.get_param(request_keys::BUILD_NUM)
+		.unwrap()
+		.parse::<i64>()?;
+
+	let repo = db::get_repo_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+		&repo_owner,
+		&repo_name,
+	)
+	.await?
+	.status(500)?;
+
+	let build = db::get_build_details_for_build(
+		context.get_database_connection(),
+		&repo.id,
+		build_num,
+	)
+	.await?
+	.status(400)
+	.body("Build does not exists")?;
+
+	if build.status == BuildStatus::Running {
+		service::queue_stop_ci_build_pipeline(
+			BuildId {
+				workspace_id,
+				repo_id: repo.id,
+				build_num,
+			},
+			&context.get_state().config,
+			&request_id,
+		)
+		.await?;
+	}
+
+	context.success(StopBuildResponse {});
 	Ok(context)
 }
 
