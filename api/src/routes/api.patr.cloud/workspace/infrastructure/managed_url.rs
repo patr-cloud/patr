@@ -389,6 +389,15 @@ async fn verify_managed_url_configuration(
 	)
 	.await?;
 
+	if configured {
+		db::update_managed_url_configuration_status(
+			context.get_database_connection(),
+			&managed_url_id,
+			true,
+		)
+		.await?;
+	}
+
 	context.success(VerifyManagedUrlConfigurationResponse { configured });
 	Ok(context)
 }

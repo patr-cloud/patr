@@ -478,32 +478,41 @@ pub async fn verify_managed_url_configuration(
 		.await?;
 		let time = Instant::now();
 
-		let mut response = String::new();
+		let mut response = String::with_capacity(32);
+		let mut index = 0;
 
 		while response != verification_token {
 			log::trace!("Verification token not found. Retrying...");
-			tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+			tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+			index += 1;
 
-			response = reqwest::Client::builder()
-				.build()?
-				.get(
-					if managed_url.sub_domain == "@" {
-						format!(
-							"http://{}/.well-known/patr-verification",
-							domain.name
-						)
-					} else {
-						format!(
-							"http://{}.{}/.well-known/patr-verification",
-							managed_url.sub_domain, domain.name
-						)
-					},
-				)
-				.body(verification_token.as_bytes().to_vec())
-				.send()
-				.await?
-				.text()
-				.await?;
+			response.clear();
+			response.push_str(
+				&reqwest::Client::builder()
+					.build()?
+					.get(
+						if managed_url.sub_domain == "@" {
+							format!(
+								"http://{}/.well-known/patr-verification",
+								domain.name
+							)
+						} else {
+							format!(
+								"http://{}.{}/.well-known/patr-verification",
+								managed_url.sub_domain, domain.name
+							)
+						},
+					)
+					.body(verification_token.as_bytes().to_vec())
+					.send()
+					.await?
+					.text()
+					.await?,
+			);
+
+			if index > 10 {
+				break;
+			}
 		}
 		log::trace!(
 			"Verification token found after {} ms",
