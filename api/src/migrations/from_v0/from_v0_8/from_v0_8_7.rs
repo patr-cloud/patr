@@ -306,7 +306,7 @@ async fn add_upload_id_for_existing_users(
 			format!("Static site upload: {}", upload_id),
 			&static_site_upload_resource_type_id,
 			&workspace_id,
-			&Utc.timestamp_millis(created),
+			created,
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -579,7 +579,7 @@ async fn populate_deployment_deploy_history(
 			SELECT
 				manifest_digest
 			FROM
-				docker_repository_tag
+				docker_registry_repository_tag
 			WHERE
 				repository_id = $1 AND
 				tag = $2;
@@ -587,9 +587,14 @@ async fn populate_deployment_deploy_history(
 			repository_id.clone(),
 			image_tag
 		)
-		.fetch_one(&mut *connection)
+		.fetch_optional(&mut *connection)
 		.await?
-		.get::<String, _>("manifest_digest");
+		.map(|pgrow| pgrow.get::<String, _>("manifest_digest"));
+
+		let manifest_digest = match manifest_digest {
+			Some(value) => value,
+			None => continue,
+		};
 
 		query!(
 			r#"
@@ -601,12 +606,12 @@ async fn populate_deployment_deploy_history(
 					created
 				)
 			VALUES
-				($1, $2, $3, $5);
+				($1, $2, $3, $4);
 			"#,
 			deployment_id,
 			manifest_digest,
 			repository_id,
-			get_current_time_millis() as i64
+			&Utc.timestamp_millis(get_current_time_millis() as i64)
 		)
 		.execute(&mut *connection)
 		.await?;
