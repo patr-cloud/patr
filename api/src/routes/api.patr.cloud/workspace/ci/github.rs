@@ -7,7 +7,7 @@ use api_models::{
 		GetBuildInfoResponse,
 		GetBuildListResponse,
 		GetBuildLogResponse,
-		GetRepoInfoResponse,
+		GetRepositoryInfoResponse,
 		GithubAuthCallbackRequest,
 		GithubAuthCallbackResponse,
 		GithubAuthResponse,
@@ -545,7 +545,7 @@ async fn get_repo_info(
 		.json::<GithubRepository>()
 		.await?;
 
-	context.success(GetRepoInfoResponse { repo_info });
+	context.success(GetRepositoryInfoResponse { repo_info });
 	Ok(context)
 }
 
