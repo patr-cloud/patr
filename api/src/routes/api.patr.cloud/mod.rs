@@ -64,6 +64,86 @@ pub enum APIError {
 	InvalidPhoneNumber,
 }
 
+#[derive(ErrorResponse)]
+pub enum CodedError {
+	#[error(
+		status = 400,
+		code = ErrId::UNAUTHORIZED,
+		message = ErrMsg::INVALID_CLIENT_ID,
+	)]
+	InvalidClientId,
+
+	#[error(
+		status = 400,
+		code = ErrId::UNAUTHORIZED,
+		message = ErrMsg::INVALID_OFFLINE_TOKEN,
+	)]
+	InvalidOfflineToken,
+
+	#[error(
+		status = 400,
+		code = ErrId::UNAUTHORIZED,
+		message = ErrMsg::OFFLINE_TOKEN_NOT_FOUND,
+	)]
+	OfflineTokenNotFound,
+
+	#[error(
+		status = 400,
+		code = ErrId::UNAUTHORIZED,
+		message = ErrMsg::SERVICE_NOT_FOUND,
+	)]
+	ServiceNotFound,
+
+	#[error(
+		status = 400,
+		code = ErrId::UNAUTHORIZED,
+		message = ErrMsg::INVALID_SERVICE,
+	)]
+	InvalidService,
+
+	#[error(
+		status = 400,
+		code = ErrId::UNAUTHORIZED,
+		message = ErrMsg::AUTHORIZATION_PARSE_ERROR,
+	)]
+	AuthorizationParseError,
+
+	#[error(
+		status = 400,
+		code = ErrId::UNAUTHORIZED,
+		message = ErrMsg::AUTHORIZATION_NOT_FOUND,
+	)]
+	AuthorizationNotFound,
+
+	#[error(
+		status = 400,
+		code = ErrId::UNAUTHORIZED,
+		message = ErrMsg::USERNAME_NOT_FOUND,
+	)]
+	UsernameNotFound,
+
+	#[error(
+		status = 400,
+		code = ErrId::UNAUTHORIZED,
+		message = ErrMsg::PASSWORD_NOT_FOUND,
+	)]
+	PasswordNotFound,
+
+	#[error(
+		status = 401,
+		code = ErrId::UNAUTHORIZED,
+		message = ErrMsg::USER_NOT_FOUND,
+	)]
+	UserNotFound,
+
+	#[error(
+		status = 401,
+		code = ErrId::UNAUTHORIZED,
+		message = ErrMsg::INVALID_PASSWORD,
+	)]
+	InvalidPassword,
+}
+
 /// # Description
 /// This function is used to create a sub app for every endpoint listed. It
 /// creates an eve app which binds the endpoint with functions. This file

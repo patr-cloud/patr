@@ -13,7 +13,7 @@ use crate::{
 	},
 	pin_fn,
 	redis,
-	routes::api_patr_cloud::APIError,
+	routes::api_patr_cloud::{APIError, CodedError},
 	service::{self, get_access_token_expiry},
 	utils::{
 		constants::request_keys,
@@ -910,66 +910,24 @@ async fn docker_registry_login(
 
 	let _client_id = query
 		.get(request_keys::SNAKE_CASE_CLIENT_ID)
-		.status(400)
-		.body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::UNAUTHORIZED,
-					request_keys::MESSAGE: ErrorMessage::INVALID_CLIENT_ID,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)?;
+		.with_error(CodedError::InvalidClientId)?;
 
 	let _offline_token = query
 		.get(request_keys::SNAKE_CASE_OFFLINE_TOKEN)
 		.map(|value| {
-			value.parse::<bool>().status(400).body(
-				json!({
-					request_keys::ERRORS: [{
-						request_keys::CODE: ErrorId::UNAUTHORIZED,
-						request_keys::MESSAGE: ErrorMessage::INVALID_OFFLINE_TOKEN,
-						request_keys::DETAIL: []
-					}]
-				})
-				.to_string(),
-			)
+			value
+				.parse::<bool>()
+				.map_err(|op| op.into())
+				.with_error(CodedError::InvalidOfflineToken)
 		})
-		.status(400)
-		.body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::UNAUTHORIZED,
-					request_keys::MESSAGE: ErrorMessage::OFFLINE_TOKEN_NOT_FOUND,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)??;
+		.with_error(CodedError::OfflineTokenNotFound)??;
 
-	let service = query.get(request_keys::SERVICE).status(400).body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::UNAUTHORIZED,
-				request_keys::MESSAGE: ErrorMessage::SERVICE_NOT_FOUND,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
+	let service = query
+		.get(request_keys::SERVICE)
+		.with_error(CodedError::ServiceNotFound)?;
 
 	if service != &config.docker_registry.service_name {
-		Error::as_result().status(400).body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::UNAUTHORIZED,
-					request_keys::MESSAGE: ErrorMessage::INVALID_SERVICE,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)?;
+		Error::as_result::<()>().with_error(CodedError::InvalidService)?;
 	}
 
 	let authorization = context
@@ -979,81 +937,24 @@ async fn docker_registry_login(
 			base64::decode(value)
 				.ok()
 				.and_then(|value| String::from_utf8(value).ok())
-				.status(400)
-				.body(
-					json!({
-						request_keys::ERRORS: [{
-							request_keys::CODE: ErrorId::UNAUTHORIZED,
-							request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
-							request_keys::DETAIL: []
-						}]
-					})
-					.to_string(),
-				)
+				.with_error(CodedError::AuthorizationParseError)
 		})
-		.status(400)
-		.body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::UNAUTHORIZED,
-					request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_NOT_FOUND,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)??;
+		.with_error(CodedError::AuthorizationNotFound)??;
 
 	let mut splitter = authorization.split(':');
-	let username = splitter.next().status(400).body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::UNAUTHORIZED,
-				request_keys::MESSAGE: ErrorMessage::USERNAME_NOT_FOUND,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
-	let password = splitter.next().status(400).body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::UNAUTHORIZED,
-				request_keys::MESSAGE: ErrorMessage::PASSWORD_NOT_FOUND,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
+	let username = splitter.next().with_error(CodedError::UsernameNotFound)?;
+	let password = splitter.next().with_error(CodedError::PasswordNotFound)?;
 	let user =
 		db::get_user_by_username(context.get_database_connection(), username)
 			.await?
-			.status(401)
-			.body(
-				json!({
-					request_keys::ERRORS: [{
-						request_keys::CODE: ErrorId::UNAUTHORIZED,
-						request_keys::MESSAGE: ErrorMessage::USER_NOT_FOUND,
-						request_keys::DETAIL: []
-					}]
-				})
-				.to_string(),
-			)?;
+			.with_error(CodedError::UserNotFound)?;
 
 	// TODO API token as password instead of password, for TFA.
 	// This will happen once the API token is merged in
 	let success = service::validate_hash(password, &user.password)?;
 
 	if !success {
-		Error::as_result().status(401).body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::UNAUTHORIZED,
-					request_keys::MESSAGE: ErrorMessage::INVALID_PASSWORD,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)?;
+		Error::as_result().with_error(CodedError::InvalidPassword)?;
 	}
 
 	let iat = get_current_time().as_secs();
