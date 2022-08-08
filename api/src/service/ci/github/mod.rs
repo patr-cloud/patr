@@ -1,23 +1,13 @@
-use std::collections::{HashMap, HashSet};
-
-use api_models::{
-	models::workspace::ci2::github::{BuildStatus, BuildStepStatus},
-	utils::Uuid,
-};
-use chrono::Utc;
+use api_models::utils::Uuid;
 use eve_rs::{AsError, Context};
 use hmac::{Hmac, Mac};
 use octorust::auth::Credentials;
 use sha2::Sha256;
 
 use self::payload_types::PushEvent;
-use super::Netrc;
 use crate::{
 	db::{self, Repository},
-	models::ci::file_format::{CiFlow, EnvVarValue, Step},
-	rabbitmq::BuildId,
 	utils::{Error, EveContext},
-	Database,
 };
 
 type HmacSha256 = Hmac<Sha256>;
@@ -102,11 +92,6 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 		.status(400)
 		.body("invalid repo name")?;
 	let repo_clone_url = push_event.repository.clone_url;
-	let branch_name = push_event
-		.ref_
-		.strip_prefix("refs/heads/")
-		.status(500)
-		.body("currently only push on branches is supported")?;
 
 	let access_token = db::get_access_token_for_repo(
 		context.get_database_connection(),
@@ -128,7 +113,7 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 
 	let ci_file = github_client
 		.repos()
-		.get_content_file(owner_name, repo_name, "patr.yml", branch_name)
+		.get_content_file(owner_name, repo_name, "patr.yml", &push_event.after)
 		.await
 		.ok()
 		.status(500)
@@ -142,178 +127,18 @@ pub async fn ci_push_event(context: &mut EveContext) -> Result<(), Error> {
 		.bytes()
 		.await?;
 
-	let build_num = db::generate_new_build_for_repo(
-		context.get_database_connection(),
-		&repo.id,
+	let _build_num = super::create_ci_build(
+		context,
+		&repo,
 		&push_event.ref_,
 		&push_event.after,
-		BuildStatus::Running,
-		&Utc::now(),
-	)
-	.await?;
-
-	let mut ci_flow: CiFlow = serde_yaml::from_slice(ci_file.as_ref())?;
-	let CiFlow::Pipeline(pipeline) = ci_flow.clone();
-
-	// validate the ci file
-	if !is_names_unique(&ci_flow) {
-		log::info!(
-			"request_id: {request_id} - Invalid ci config file, marking build as errored"
-		);
-		db::update_build_status(
-			context.get_database_connection(),
-			&repo.id,
-			build_num,
-			BuildStatus::Errored,
-		)
-		.await?;
-
-		return Ok(());
-	}
-
-	if !find_and_replace_secret_names(
-		context.get_database_connection(),
-		&mut ci_flow,
-		&repo.workspace_id,
-	)
-	.await?
-	{
-		log::info!(
-			"request_id: {request_id} - Invalid secret name given, marking build as errored"
-		);
-		db::update_build_status(
-			context.get_database_connection(),
-			&repo.id,
-			build_num,
-			BuildStatus::Errored,
-		)
-		.await?;
-
-		return Ok(());
-	};
-
-	// add cloning as a step
-	db::add_ci_steps_for_build(
-		context.get_database_connection(),
-		&repo.id,
-		build_num,
-		0,
-		"git-clone",
-		"",
-		vec![],
-		BuildStepStatus::WaitingToStart,
-	)
-	.await?;
-
-	for (
-		step_count,
-		Step {
-			name,
-			image,
-			commands,
-			env: _,
-		},
-	) in pipeline.steps.into_iter().enumerate()
-	{
-		db::add_ci_steps_for_build(
-			context.get_database_connection(),
-			&repo.id,
-			build_num,
-			step_count as i32 + 1,
-			&name,
-			&image,
-			vec![commands.to_string()],
-			BuildStepStatus::WaitingToStart,
-		)
-		.await?;
-	}
-
-	context.commit_database_transaction().await?;
-
-	// TODO: make more generic
-	let netrc = Netrc {
-		machine: "github.com".to_string(),
-		login: "oauth".to_string(),
-		password: access_token,
-	};
-
-	super::create_ci_pipeline(
-		ci_flow,
+		ci_file,
+		&access_token,
 		&repo_clone_url,
 		repo_name,
-		&push_event.after,
-		Some(netrc),
-		BuildId {
-			workspace_id: repo.workspace_id,
-			repo_id: repo.id,
-			build_num,
-		},
-		&context.get_state().config.clone(),
-		context.get_database_connection(),
-		&request_id,
+		request_id,
 	)
 	.await?;
 
 	Ok(())
-}
-
-fn is_names_unique(ci_flow: &CiFlow) -> bool {
-	let CiFlow::Pipeline(pipeline) = ci_flow;
-
-	let mut step_names = HashSet::new();
-	for step in &pipeline.steps {
-		if !step_names.insert(step.name.as_str()) {
-			return false;
-		}
-	}
-
-	let mut service_names = HashSet::new();
-	for service in &pipeline.services {
-		if !service_names.insert(service.name.as_str()) {
-			return false;
-		}
-	}
-
-	true
-}
-
-async fn find_and_replace_secret_names(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	ci_flow: &mut CiFlow,
-	workspace_id: &Uuid,
-) -> Result<bool, Error> {
-	let workspace_secrets =
-		db::get_all_secrets_in_workspace(connection, workspace_id)
-			.await?
-			.into_iter()
-			.map(|secret| (secret.name, secret.id))
-			.collect::<HashMap<_, _>>();
-
-	let CiFlow::Pipeline(pipeline) = ci_flow;
-
-	for service in &mut pipeline.services {
-		for env in &mut service.env {
-			if let EnvVarValue::ValueFromSecret(secret_name) = &mut env.value {
-				if let Some(secret_id) = workspace_secrets.get(&*secret_name) {
-					*secret_name = secret_id.to_string();
-				} else {
-					return Ok(false);
-				}
-			}
-		}
-	}
-
-	for step in &mut pipeline.steps {
-		for env in &mut step.env {
-			if let EnvVarValue::ValueFromSecret(secret_name) = &mut env.value {
-				if let Some(secret_id) = workspace_secrets.get(&*secret_name) {
-					*secret_name = secret_id.to_string();
-				} else {
-					return Ok(false);
-				}
-			}
-		}
-	}
-
-	Ok(true)
 }

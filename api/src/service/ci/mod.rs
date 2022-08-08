@@ -1,6 +1,13 @@
-use std::fmt::Display;
+use std::{
+	collections::{HashMap, HashSet},
+	fmt::Display,
+};
 
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::ci2::github::{BuildStatus, BuildStepStatus},
+	utils::Uuid,
+};
+use chrono::Utc;
 use eve_rs::AsError;
 use k8s_openapi::{
 	api::{
@@ -28,14 +35,14 @@ use k8s_openapi::{
 use kube::{api::ObjectMeta, Api};
 
 use crate::{
-	db,
+	db::{self, Repository},
 	models::ci::{
 		self,
 		file_format::{CiFlow, EnvVarValue, Step},
 	},
 	rabbitmq::{BuildId, BuildStep, BuildStepId},
 	service,
-	utils::{settings::Settings, Error},
+	utils::{settings::Settings, Error, EveContext},
 	Database,
 };
 
@@ -57,7 +64,7 @@ impl Display for Netrc {
 	}
 }
 
-pub async fn create_ci_pipeline(
+async fn create_ci_pipeline_in_k8s(
 	ci_flow: CiFlow,
 	repo_clone_url: &str,
 	repo_name: &str,
@@ -338,4 +345,191 @@ async fn create_background_service_for_pipeline(
 		.await?;
 
 	Ok(())
+}
+
+pub async fn create_ci_build(
+	context: &mut EveContext,
+	repo: &Repository,
+	git_ref: &str,
+	git_commit: &str,
+	ci_file: bytes::Bytes,
+	access_token: &str,
+	repo_clone_url: &str,
+	repo_name: &str,
+	request_id: Uuid,
+) -> Result<i64, eve_rs::Error<()>> {
+	let build_num = db::generate_new_build_for_repo(
+		context.get_database_connection(),
+		&repo.id,
+		git_ref,
+		git_commit,
+		BuildStatus::Running,
+		&Utc::now(),
+	)
+	.await?;
+
+	let mut ci_flow: CiFlow = serde_yaml::from_slice(ci_file.as_ref())?;
+	let CiFlow::Pipeline(pipeline) = ci_flow.clone();
+
+	// validate the ci file
+	if !is_names_unique(&ci_flow) {
+		log::info!(
+			"request_id: {request_id} - Invalid ci config file, marking build as errored"
+		);
+		db::update_build_status(
+			context.get_database_connection(),
+			&repo.id,
+			build_num,
+			BuildStatus::Errored,
+		)
+		.await?;
+
+		return Ok(build_num);
+	}
+
+	if !find_and_replace_secret_names(
+		context.get_database_connection(),
+		&mut ci_flow,
+		&repo.workspace_id,
+	)
+	.await?
+	{
+		log::info!(
+			"request_id: {request_id} - Invalid secret name given, marking build as errored"
+		);
+		db::update_build_status(
+			context.get_database_connection(),
+			&repo.id,
+			build_num,
+			BuildStatus::Errored,
+		)
+		.await?;
+
+		return Ok(build_num);
+	};
+
+	// add cloning as a step
+	db::add_ci_steps_for_build(
+		context.get_database_connection(),
+		&repo.id,
+		build_num,
+		0,
+		"git-clone",
+		"",
+		vec![],
+		BuildStepStatus::WaitingToStart,
+	)
+	.await?;
+
+	for (
+		step_count,
+		Step {
+			name,
+			image,
+			commands,
+			env: _,
+		},
+	) in pipeline.steps.into_iter().enumerate()
+	{
+		db::add_ci_steps_for_build(
+			context.get_database_connection(),
+			&repo.id,
+			build_num,
+			step_count as i32 + 1,
+			&name,
+			&image,
+			vec![commands.to_string()],
+			BuildStepStatus::WaitingToStart,
+		)
+		.await?;
+	}
+
+	context.commit_database_transaction().await?;
+
+	// TODO: make more generic
+	let netrc = Netrc {
+		machine: "github.com".to_string(),
+		login: "oauth".to_string(),
+		password: access_token.to_string(),
+	};
+
+	create_ci_pipeline_in_k8s(
+		ci_flow,
+		repo_clone_url,
+		repo_name,
+		git_commit,
+		Some(netrc),
+		BuildId {
+			workspace_id: repo.workspace_id.clone(),
+			repo_id: repo.id.clone(),
+			build_num,
+		},
+		&context.get_state().config.clone(),
+		context.get_database_connection(),
+		&request_id,
+	)
+	.await?;
+
+	Ok(build_num)
+}
+
+fn is_names_unique(ci_flow: &CiFlow) -> bool {
+	let CiFlow::Pipeline(pipeline) = ci_flow;
+
+	let mut step_names = HashSet::new();
+	for step in &pipeline.steps {
+		if !step_names.insert(step.name.as_str()) {
+			return false;
+		}
+	}
+
+	let mut service_names = HashSet::new();
+	for service in &pipeline.services {
+		if !service_names.insert(service.name.as_str()) {
+			return false;
+		}
+	}
+
+	true
+}
+
+async fn find_and_replace_secret_names(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	ci_flow: &mut CiFlow,
+	workspace_id: &Uuid,
+) -> Result<bool, Error> {
+	let workspace_secrets =
+		db::get_all_secrets_in_workspace(connection, workspace_id)
+			.await?
+			.into_iter()
+			.map(|secret| (secret.name, secret.id))
+			.collect::<HashMap<_, _>>();
+
+	let CiFlow::Pipeline(pipeline) = ci_flow;
+
+	for service in &mut pipeline.services {
+		for env in &mut service.env {
+			if let EnvVarValue::ValueFromSecret(secret_name) = &mut env.value {
+				if let Some(secret_id) = workspace_secrets.get(&*secret_name) {
+					*secret_name = secret_id.to_string();
+				} else {
+					return Ok(false);
+				}
+			}
+		}
+	}
+
+	for step in &mut pipeline.steps {
+		for env in &mut step.env {
+			if let EnvVarValue::ValueFromSecret(secret_name) = &mut env.value {
+				if let Some(secret_id) = workspace_secrets.get(&*secret_name) {
+					*secret_name = secret_id.to_string();
+				} else {
+					return Ok(false);
+				}
+			}
+		}
+	}
+
+	Ok(true)
 }

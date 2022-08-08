@@ -17,6 +17,7 @@ use api_models::{
 		GithubListReposResponse,
 		GithubRepository,
 		GithubSignOutResponse,
+		RestartBuildResponse,
 		StopBuildResponse,
 	},
 	utils::Uuid,
@@ -337,6 +338,37 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(stop_build)),
+		],
+	);
+
+	app.post(
+		"/repo/:repoOwner/:repoName/build/:buildNum/restart",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::ci::github::RESTART_BUILDS,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(restart_build)),
 		],
 	);
 
@@ -980,6 +1012,99 @@ async fn stop_build(
 	}
 
 	context.success(StopBuildResponse {});
+	Ok(context)
+}
+
+async fn restart_build(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+
+	let repo_owner =
+		context.get_param(request_keys::REPO_OWNER).unwrap().clone();
+	let repo_name = context.get_param(request_keys::REPO_NAME).unwrap().clone();
+	let build_num = context
+		.get_param(request_keys::BUILD_NUM)
+		.unwrap()
+		.parse::<u64>()?;
+
+	let repo = db::get_repo_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+		&repo_owner,
+		&repo_name,
+	)
+	.await?
+	.status(500)?;
+
+	let previous_build = db::get_build_details_for_build(
+		context.get_database_connection(),
+		&repo.id,
+		build_num as i64,
+	)
+	.await?
+	.status(400)?;
+
+	let access_token = db::get_access_token_for_repo(
+		context.get_database_connection(),
+		&repo.id,
+	)
+	.await?
+	.status(500)
+	.body("internal server error")?;
+
+	let github_client =
+		octorust::Client::new("patr", Credentials::Token(access_token.clone()))
+			.map_err(|err| {
+				log::info!("error while octorust init: {err:#}");
+				err
+			})
+			.ok()
+			.status(500)
+			.body("error while initailizing octorust")?;
+
+	let ci_file = github_client
+		.repos()
+		.get_content_file(
+			&repo.repo_owner,
+			&repo.repo_name,
+			"patr.yml",
+			&previous_build.git_commit,
+		)
+		.await
+		.ok()
+		.status(500)
+		.body("patr.yml file is not defined")?;
+
+	let ci_file = reqwest::Client::new()
+		.get(ci_file.download_url)
+		.bearer_auth(&access_token)
+		.send()
+		.await?
+		.bytes()
+		.await?;
+
+	let build_num = service::create_ci_build(
+		&mut context,
+		&repo,
+		&previous_build.git_ref,
+		&previous_build.git_commit,
+		ci_file,
+		&access_token,
+		&repo.git_url,
+		&repo.repo_name,
+		request_id,
+	)
+	.await?;
+
+	context.success(RestartBuildResponse {
+		build_num: build_num as u64,
+	});
 	Ok(context)
 }
 
