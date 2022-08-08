@@ -590,7 +590,7 @@ async fn list_repositories(
 				repo.full_name.rsplit_once('/').unwrap(); // TODO
 
 			let (is_ci_active, build_machine_type_id) = ci_status_for_repo
-				.get(&repo.git_url)
+				.get(&repo.clone_url)
 				.map_or((false, None), |(status, machine_type)| {
 					(*status, Some(machine_type.to_owned()))
 				});
@@ -598,7 +598,7 @@ async fn list_repositories(
 				name: repo_name.to_string(),
 				description: repo.description,
 				is_ci_active,
-				git_url: repo.git_url,
+				git_url: repo.clone_url,
 				repo_owner: repo_owner.to_string(),
 				organization: repo.organization.map(|org| org.name),
 				build_machine_type_id,
@@ -666,7 +666,7 @@ async fn activate_repo(
 	let repo = if let Some(repo) = db::get_repo_for_workspace_and_url(
 		context.get_database_connection(),
 		&workspace_id,
-		&repo.git_url,
+		&repo.clone_url,
 	)
 	.await?
 	{
@@ -683,7 +683,7 @@ async fn activate_repo(
 			&workspace_id,
 			repo_owner,
 			repo_name,
-			&repo.git_url,
+			&repo.clone_url,
 			&build_machine_type_id,
 		)
 		.await?

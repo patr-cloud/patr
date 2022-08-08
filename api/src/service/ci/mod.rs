@@ -164,6 +164,7 @@ async fn create_ci_pipeline_in_k8s(
 				r#"cd "/mnt/workdir/""#.to_string(),
 				"set -x".to_string(),
 				format!(r#"git clone "{repo_clone_url}""#),
+				format!(r#"cd "/mnt/workdir/{repo_name}""#),
 				format!(r#"git checkout "{commit_sha}""#),
 			],
 		},

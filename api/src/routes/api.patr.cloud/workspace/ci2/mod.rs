@@ -1,5 +1,5 @@
 use api_models::{
-	models::workspace::ci2::list_all_deployment_machine_type::ListAllBuildMachineTypesResponse,
+	models::workspace::ci2::list_all_build_machine_type::ListAllBuildMachineTypesResponse,
 	utils::Uuid,
 };
 use eve_rs::{App as EveApp, AsError, NextHandler};

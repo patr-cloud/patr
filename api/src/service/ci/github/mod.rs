@@ -54,7 +54,7 @@ async fn find_matching_repo_with_secret(
 
 	let repo_list = db::get_repo_for_git_url(
 		context.get_database_connection(),
-		&push_event.repository.git_url,
+		&push_event.repository.clone_url,
 	)
 	.await?;
 
