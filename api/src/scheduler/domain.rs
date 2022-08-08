@@ -338,14 +338,13 @@ async fn repatch_all_managed_urls() -> Result<(), Error> {
 			)
 			.await?;
 
-			let cert_exists =
-				service::is_kubernetes_certificate_secret_exists(
-					&managed_url.workspace_id,
-					&secret_name,
-					&config.config,
-					&request_id,
-				)
-				.await?;
+			let cert_exists = service::is_kubernetes_certificate_secret_exists(
+				&managed_url.workspace_id,
+				&secret_name,
+				&config.config,
+				&request_id,
+			)
+			.await?;
 
 			if cert_exists {
 				db::update_managed_url_configuration_status(
@@ -397,14 +396,13 @@ async fn repatch_all_managed_urls() -> Result<(), Error> {
 				.await?;
 			}
 		} else {
-			let cert_exists =
-				service::is_kubernetes_certificate_secret_exists(
-					&managed_url.workspace_id,
-					&format!("tls-{}", managed_url.domain_id),
-					&config.config,
-					&request_id,
-				)
-				.await?;
+			let cert_exists = service::is_kubernetes_certificate_secret_exists(
+				&managed_url.workspace_id,
+				&format!("tls-{}", managed_url.domain_id),
+				&config.config,
+				&request_id,
+			)
+			.await?;
 
 			if cert_exists {
 				db::update_managed_url_configuration_status(

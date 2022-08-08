@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use api_models::{
 	models::workspace::infrastructure::managed_urls::{
 		ManagedUrl,
@@ -458,41 +460,57 @@ pub async fn verify_managed_url_configuration(
 					record.value == "ingress.patr.cloud"
 			})
 	} else {
-		service::create_managed_url_verification_ingress(
-			&managed_url.workspace_id,
-			&managed_url.id,
-			&managed_url.sub_domain,
-			&domain.name,
-			config,
-			request_id,
-		)
-		.await?;
-
 		let verification_token = {
 			let mut rng = thread_rng();
 			(0..32)
 				.map(|_| rng.sample(Alphanumeric) as char)
 				.collect::<String>()
 		};
-		let response = reqwest::Client::new()
-			.get(
-				if managed_url.sub_domain == "@" {
-					format!(
-						"http://{}/.well-known/patr-verification",
-						domain.name
-					)
-				} else {
-					format!(
-						"http://{}.{}/.well-known/patr-verification",
-						managed_url.sub_domain, domain.name
-					)
-				},
-			)
-			.header(reqwest::header::AUTHORIZATION, verification_token.clone())
-			.send()
-			.await?
-			.text()
-			.await?;
+		service::create_managed_url_verification_ingress(
+			&managed_url.workspace_id,
+			&managed_url.id,
+			&managed_url.sub_domain,
+			&domain.name,
+			&verification_token,
+			config,
+			request_id,
+		)
+		.await?;
+		let time = Instant::now();
+
+		let mut response = String::new();
+
+		while response != verification_token {
+			log::trace!("Verification token not found. Retrying...");
+			tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
+			response = reqwest::Client::builder()
+				.build()?
+				.get(
+					if managed_url.sub_domain == "@" {
+						format!(
+							"http://{}/.well-known/patr-verification",
+							domain.name
+						)
+					} else {
+						format!(
+							"http://{}.{}/.well-known/patr-verification",
+							managed_url.sub_domain, domain.name
+						)
+					},
+				)
+				.body(verification_token.as_bytes().to_vec())
+				.send()
+				.await?
+				.text()
+				.await?;
+		}
+		log::trace!(
+			"Verification token found after {} ms",
+			time.elapsed().as_millis()
+		);
+
+		log::trace!("Deleting managed urls verification ingress");
 
 		service::delete_kubernetes_managed_url_verification(
 			&managed_url.workspace_id,

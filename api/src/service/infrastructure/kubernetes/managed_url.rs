@@ -466,6 +466,7 @@ pub async fn create_managed_url_verification_ingress(
 	managed_url_id: &Uuid,
 	sub_domain: &str,
 	domain_name: &str,
+	verification_token: &str,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -563,11 +564,12 @@ pub async fn create_managed_url_verification_ingress(
 							"nginx.ingress.kubernetes.io/temporal-redirect",
 						),
 						format!(
-							"{}{}{}{}/verification",
-							"https://api.patr.cloud/workspace/",
+							"{}{}{}{}/verification/{}",
+							"http://api.patr.cloud/workspace/",
 							workspace_id,
 							"/infrastructure/managed-url/",
-							managed_url_id
+							managed_url_id,
+							verification_token
 						),
 					),
 				]

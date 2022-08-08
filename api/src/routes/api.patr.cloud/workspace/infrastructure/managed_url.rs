@@ -144,7 +144,7 @@ pub fn create_sub_app(
 
 	// Verify configuration of a managed URL
 	app.get(
-		"/:managedUrlId/verification",
+		"/:managedUrlId/verification/:token",
 		[EveMiddleware::CustomFunction(pin_fn!(
 			get_managed_url_authorization_header
 		))],
@@ -397,9 +397,9 @@ async fn get_managed_url_authorization_header(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	if let Some(auth) = context.get_header("Authorization") {
-		context.body(&auth);
-	}
+	let verification_token =
+		context.get_param(request_keys::TOKEN).unwrap().clone();
+	context.body(&verification_token);
 	Ok(context)
 }
 
