@@ -374,15 +374,8 @@ pub async fn is_domain_verified(
 	} else {
 		log::trace!("request_id: {} - Domain is not internal", request_id);
 		log::trace!("request_id: {} - Verifying external domain", request_id);
-		verify_external_domain(
-			connection,
-			workspace_id,
-			&domain.name,
-			&domain.id,
-			config,
-			request_id,
-		)
-		.await
+		verify_external_domain(connection, &domain.name, &domain.id, request_id)
+			.await
 	}
 }
 
@@ -689,10 +682,8 @@ pub async fn delete_patr_domain_dns_record(
 
 pub async fn verify_external_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
 	domain_name: &str,
 	domain_id: &Uuid,
-	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<bool, Error> {
 	log::trace!("request_id: {} - Getting the client", request_id);
@@ -723,20 +714,6 @@ pub async fn verify_external_domain(
 
 	if response.is_some() {
 		log::trace!("request_id: {} - The TXT record exists", request_id);
-		log::trace!(
-			"request_id: {} - Creating the certificate for managed url",
-			request_id
-		);
-		create_certificates_of_managed_urls_for_domain(
-			connection,
-			workspace_id,
-			domain_id,
-			domain_name,
-			config,
-			request_id,
-		)
-		.await?;
-
 		log::trace!("request_id: {} - Verified the domain and updating workspace domain status", request_id);
 		db::update_workspace_domain_status(
 			connection,
@@ -865,40 +842,6 @@ pub async fn delete_domain_in_workspace(
 			.await?;
 	}
 	log::trace!("request_id: {} - Domain deleted successfully", request_id);
-	Ok(())
-}
-
-pub async fn create_certificates_of_managed_urls_for_domain(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	domain_id: &Uuid,
-	domain_name: &str,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Getting the managed urls for the domain",
-		request_id
-	);
-	let managed_urls =
-		db::get_all_managed_urls_for_domain(connection, domain_id).await?;
-
-	log::trace!(
-		"request_id: {} - Creating the certificates for the managed urls",
-		request_id
-	);
-	for managed_url in managed_urls {
-		infrastructure::create_certificates(
-			workspace_id,
-			&format!("certificate-{}", managed_url.id),
-			&format!("tls-{}", managed_url.id),
-			vec![format!("{}.{}", managed_url.sub_domain, domain_name)],
-			false,
-			config,
-			request_id,
-		)
-		.await?;
-	}
 	Ok(())
 }
 

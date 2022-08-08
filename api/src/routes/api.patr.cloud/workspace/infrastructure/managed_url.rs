@@ -9,6 +9,7 @@ use api_models::{
 		ManagedUrlType,
 		UpdateManagedUrlRequest,
 		UpdateManagedUrlResponse,
+		VerifyManagedUrlConfigurationResponse,
 	},
 	utils::Uuid,
 };
@@ -97,6 +98,56 @@ pub fn create_sub_app(
 			),
 			EveMiddleware::CustomFunction(pin_fn!(create_managed_url)),
 		],
+	);
+
+	// Verify configuration of a managed URL
+	app.post(
+		"/:managedUrlId/verify-configuration",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::infrastructure::managed_url::EDIT,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let managed_url_id = context
+						.get_param(request_keys::MANAGED_URL_ID)
+						.unwrap();
+					let managed_url_id = Uuid::parse_str(managed_url_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&managed_url_id,
+					)
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(
+				verify_managed_url_configuration
+			)),
+		],
+	);
+
+	// Verify configuration of a managed URL
+	app.get(
+		"/:managedUrlId/verification/:token",
+		[EveMiddleware::CustomFunction(pin_fn!(
+			get_managed_url_authorization_header
+		))],
 	);
 
 	// Update a managed URL
@@ -223,6 +274,7 @@ async fn list_all_managed_urls(
 					ManagedUrlType::Redirect { url: url.url? }
 				}
 			},
+			is_configured: url.is_configured,
 		})
 	})
 	.collect();
@@ -313,6 +365,50 @@ async fn update_managed_url(
 	.await?;
 
 	context.success(UpdateManagedUrlResponse {});
+	Ok(context)
+}
+
+async fn verify_managed_url_configuration(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
+	let managed_url_id = Uuid::parse_str(
+		context.get_param(request_keys::MANAGED_URL_ID).unwrap(),
+	)
+	.unwrap();
+
+	let config = context.get_state().config.clone();
+
+	let configured = service::verify_managed_url_configuration(
+		context.get_database_connection(),
+		&managed_url_id,
+		&config,
+		&request_id,
+	)
+	.await?;
+
+	if configured {
+		db::update_managed_url_configuration_status(
+			context.get_database_connection(),
+			&managed_url_id,
+			true,
+		)
+		.await?;
+	}
+
+	context.success(VerifyManagedUrlConfigurationResponse { configured });
+	Ok(context)
+}
+
+async fn get_managed_url_authorization_header(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let verification_token =
+		context.get_param(request_keys::TOKEN).unwrap().clone();
+	context.body(&verification_token);
 	Ok(context)
 }
 
