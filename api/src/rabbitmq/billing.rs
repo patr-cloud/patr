@@ -121,7 +121,7 @@ pub(super) async fn process_request(
 			};
 
 			// Step 1: Calculate bill for this entire cycle
-			let deployment_usages =
+			let _deployment_usages =
 				service::calculate_deployment_bill_for_workspace_till(
 					connection,
 					&workspace.id,
@@ -130,7 +130,7 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-			let database_usages =
+			let _database_usages =
 				service::calculate_database_bill_for_workspace_till(
 					connection,
 					&workspace.id,
@@ -139,7 +139,7 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-			let static_sites_usages =
+			let _static_sites_usages =
 				service::calculate_static_sites_bill_for_workspace_till(
 					connection,
 					&workspace.id,
@@ -148,7 +148,7 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-			let managed_url_usages =
+			let _managed_url_usages =
 				service::calculate_managed_urls_bill_for_workspace_till(
 					connection,
 					&workspace.id,
@@ -157,7 +157,7 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-			let docker_repository_usages =
+			let _docker_repository_usages =
 				service::calculate_docker_repository_bill_for_workspace_till(
 					connection,
 					&workspace.id,
@@ -166,7 +166,7 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-			let domains_usages =
+			let _domains_usages =
 				service::calculate_domains_bill_for_workspace_till(
 					connection,
 					&workspace.id,
@@ -175,7 +175,7 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-			let secrets_usages =
+			let _secrets_usages =
 				service::calculate_secrets_bill_for_workspace_till(
 					connection,
 					&workspace.id,
@@ -192,11 +192,25 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
+			let total_credits =
+				db::get_credits_for_workspace(connection, &workspace.id)
+					.await?
+					.into_iter()
+					.fold(0.0, |accu, item| {
+						accu + if item.month == month as i32 {
+							item.amount
+						} else {
+							0.0
+						}
+					});
+
+			let payable_bill = total_bill - total_credits;
+
 			// Step 2: Create payment intent with the given bill
 			let password: Option<String> = None;
 
 			if let PaymentType::Card = workspace.payment_type {
-				if total_bill <= 0.0 {
+				if payable_bill <= 0.0 {
 					// If the bill is zero, don't bother charging them
 					return Ok(());
 				}
@@ -210,10 +224,10 @@ pub(super) async fn process_request(
 						{
 							(
 								"inr".to_string(),
-								(total_bill * 100f64 * 80f64) as u64,
+								(payable_bill * 100f64 * 80f64) as u64,
 							)
 						} else {
-							("usd".to_string(), (total_bill * 100f64) as u64)
+							("usd".to_string(), (payable_bill * 100f64) as u64)
 						};
 
 					let payment_intent_object = Client::new()
@@ -329,22 +343,25 @@ pub(super) async fn process_request(
 				.await?;
 			}
 
-			service::send_invoice_email(
-				connection,
-				&workspace.super_admin_id,
-				workspace.name.clone(),
-				deployment_usages,
-				database_usages,
-				static_sites_usages,
-				managed_url_usages,
-				docker_repository_usages,
-				domains_usages,
-				secrets_usages,
-				total_bill,
-				month_string.to_string(),
-				year,
-			)
-			.await?;
+			// TODO: for now disabled the invoice email,
+			// but we need to enable this in next migration
+
+			// service::send_invoice_email(
+			// 	connection,
+			// 	&workspace.super_admin_id,
+			// 	workspace.name.clone(),
+			// 	deployment_usages,
+			// 	database_usages,
+			// 	static_sites_usages,
+			// 	managed_url_usages,
+			// 	docker_repository_usages,
+			// 	domains_usages,
+			// 	secrets_usages,
+			// 	total_bill,
+			// 	month_string.to_string(),
+			// 	year,
+			// )
+			// .await?;
 
 			Ok(())
 		}

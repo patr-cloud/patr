@@ -1,4 +1,7 @@
-use std::{cmp::max, collections::HashMap};
+use std::{
+	cmp::{max, min},
+	collections::HashMap,
+};
 
 use api_models::{
 	models::workspace::billing::{
@@ -228,7 +231,7 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 			chrono::DateTime::from(deployment_usage.start_time),
 			*month_start_date,
 		);
-		let hours = max(
+		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
 				as i64,
@@ -317,7 +320,7 @@ pub async fn calculate_database_bill_for_workspace_till(
 			chrono::DateTime::from(database_usage.start_time),
 			*month_start_date,
 		);
-		let hours = max(
+		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
 				as i64,
@@ -388,7 +391,7 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 			chrono::DateTime::from(static_sites_usage.start_time),
 			*month_start_date,
 		);
-		let hours = max(
+		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
 				as i64,
@@ -439,7 +442,7 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 			chrono::DateTime::from(managed_url_usage.start_time),
 			*month_start_date,
 		);
-		let hours = max(
+		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
 				as i64,
@@ -501,7 +504,7 @@ pub async fn calculate_docker_repository_bill_for_workspace_till(
 			chrono::DateTime::from(docker_repository_usage.start_time),
 			*month_start_date,
 		);
-		let hours = max(
+		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
 				as i64,
@@ -555,7 +558,7 @@ pub async fn calculate_domains_bill_for_workspace_till(
 			chrono::DateTime::from(domains_usage.start_time),
 			*month_start_date,
 		);
-		let hours = max(
+		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
 				as i64,
@@ -606,7 +609,7 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 			chrono::DateTime::from(secrets_usage.start_time),
 			*month_start_date,
 		);
-		let hours = max(
+		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
 				as i64,
@@ -856,6 +859,27 @@ pub async fn calculate_total_bill_for_workspace_till(
 		docker_repo_cost +
 		managed_domain_cost +
 		managed_secret_cost;
+
+	// NOTE: keeping the below commented code in git,
+	// so that it can be used to debug payment issues in future
+
+	// if total_cost > 0.0 {
+	// 	eprintln!(
+	// 		"{}",
+	// 		serde_json::to_string(&serde_json::json!({
+	// 			"workspace":  workspace_id,
+	// 			"cost": total_cost,
+	// 			"deployment_usages": deployment_usages,
+	// 			"database_usages": database_usages,
+	// 			"static_sites_usages": static_sites_usages,
+	// 			"managed_url_usages": managed_url_usages,
+	// 			"docker_repository_usages": docker_repository_usages,
+	// 			"domains_usages": domains_usages,
+	// 			"secrets_usages": secrets_usages,
+	// 		}))
+	// 		.unwrap_or_default()
+	// 	);
+	// }
 
 	Ok(total_cost)
 }

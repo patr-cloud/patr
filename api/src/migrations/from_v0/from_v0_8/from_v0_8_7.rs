@@ -34,8 +34,6 @@ use sqlx::Row;
 
 use crate::{
 	migrate_query as query,
-	models::rabbitmq::WorkspaceRequestData,
-	service,
 	utils::{get_current_time_millis, settings::Settings, Error},
 	Database,
 };
@@ -835,7 +833,7 @@ pub async fn add_is_configured_for_managed_urls(
 
 async fn fix_july_billing_issues(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	config: &Settings,
+	_config: &Settings,
 ) -> Result<(), Error> {
 	// delete the bills calculated for july month
 	query!(

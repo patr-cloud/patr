@@ -431,6 +431,7 @@ pub async fn send_alert_email_to_patr(
 		.await
 }
 
+#[allow(dead_code)]
 pub async fn send_invoice_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
