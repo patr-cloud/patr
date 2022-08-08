@@ -30,11 +30,11 @@ pub(super) fn verify_unverified_domains_job() -> Job {
 	)
 }
 
-// Every two hours
+// Every 15 mins
 pub(super) fn repatch_all_managed_urls_job() -> Job {
 	Job::new(
 		String::from("Repatch all managed URLs"),
-		"0 0 1/2 * * *".parse().unwrap(),
+		"0 0/15 * * * *".parse().unwrap(),
 		|| Box::pin(repatch_all_managed_urls()),
 	)
 }
@@ -339,7 +339,7 @@ async fn repatch_all_managed_urls() -> Result<(), Error> {
 			.await?;
 
 			let cert_exists =
-				service::check_if_kubernetes_certificate_secret_exists(
+				service::is_kubernetes_certificate_secret_exists(
 					&managed_url.workspace_id,
 					&secret_name,
 					&config.config,
@@ -398,7 +398,7 @@ async fn repatch_all_managed_urls() -> Result<(), Error> {
 			}
 		} else {
 			let cert_exists =
-				service::check_if_kubernetes_certificate_secret_exists(
+				service::is_kubernetes_certificate_secret_exists(
 					&managed_url.workspace_id,
 					&format!("tls-{}", managed_url.domain_id),
 					&config.config,

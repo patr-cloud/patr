@@ -454,7 +454,7 @@ pub async fn verify_managed_url_configuration(
 					record.name == managed_url.sub_domain
 				};
 				sub_domain_match &&
-					matches!(record.r#type, DnsRecordType::A) &&
+					matches!(record.r#type, DnsRecordType::CNAME) &&
 					record.value == "ingress.patr.cloud"
 			})
 	} else {

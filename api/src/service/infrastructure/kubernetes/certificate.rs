@@ -149,7 +149,7 @@ pub async fn delete_certificates_for_domain(
 	Ok(())
 }
 
-pub async fn check_if_kubernetes_certificate_secret_exists(
+pub async fn is_kubernetes_certificate_secret_exists(
 	workspace_id: &Uuid,
 	secret_name: &str,
 	config: &Settings,
