@@ -7,6 +7,7 @@ use api_models::{
 		GetBuildInfoResponse,
 		GetBuildListResponse,
 		GetBuildLogResponse,
+		GetRepositoryInfoResponse,
 		GithubAuthCallbackRequest,
 		GithubAuthCallbackResponse,
 		GithubAuthResponse,
@@ -144,6 +145,37 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(list_repositories)),
+		],
+	);
+
+	app.get(
+		"/repo/:repoOwner/:repoName",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::ci::github::VIEW_BUILDS,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_repo_info)),
 		],
 	);
 
@@ -475,6 +507,45 @@ async fn list_repositories(
 		.await?;
 
 	context.success(GithubListReposResponse { repos });
+	Ok(context)
+}
+
+async fn get_repo_info(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+
+	let repo_owner =
+		context.get_param(request_keys::REPO_OWNER).unwrap().clone();
+
+	let repo_name = context.get_param(request_keys::REPO_NAME).unwrap().clone();
+
+	let (_, drone_token) = db::get_drone_username_and_token_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(USER_NOT_FOUND).to_string())?;
+
+	let repo_info = reqwest::Client::new()
+		.get(format!(
+			"{}/api/repos/{}/{}",
+			context.get_state().config.drone.url,
+			repo_owner,
+			repo_name,
+		))
+		.bearer_auth(drone_token)
+		.send()
+		.await?
+		.error_for_status()?
+		.json::<GithubRepository>()
+		.await?;
+
+	context.success(GetRepositoryInfoResponse { repo_info });
 	Ok(context)
 }
 
