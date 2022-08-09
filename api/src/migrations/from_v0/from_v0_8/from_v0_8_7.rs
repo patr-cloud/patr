@@ -56,6 +56,7 @@ pub(super) async fn migrate(
 	create_deployment_config_file(&mut *connection, config).await?;
 	update_dns_record_name_constraint_regexp(&mut *connection, config).await?;
 	add_is_configured_for_managed_urls(&mut *connection, config).await?;
+	fix_july_billing_issues(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -826,6 +827,26 @@ pub async fn add_is_configured_for_managed_urls(
 			.await?;
 		}
 	}
+
+	Ok(())
+}
+
+async fn fix_july_billing_issues(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	// delete the bills calculated for july month
+	query!(
+		r#"
+		DELETE FROM
+			transaction
+		WHERE
+			transaction_type = 'bill' AND
+			month = 7;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }
