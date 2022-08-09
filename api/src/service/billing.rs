@@ -860,26 +860,23 @@ pub async fn calculate_total_bill_for_workspace_till(
 		managed_domain_cost +
 		managed_secret_cost;
 
-	// NOTE: keeping the below commented code in git,
-	// so that it can be used to debug payment issues in future
-
-	// if total_cost > 0.0 {
-	// 	eprintln!(
-	// 		"{}",
-	// 		serde_json::to_string(&serde_json::json!({
-	// 			"workspace":  workspace_id,
-	// 			"cost": total_cost,
-	// 			"deployment_usages": deployment_usages,
-	// 			"database_usages": database_usages,
-	// 			"static_sites_usages": static_sites_usages,
-	// 			"managed_url_usages": managed_url_usages,
-	// 			"docker_repository_usages": docker_repository_usages,
-	// 			"domains_usages": domains_usages,
-	// 			"secrets_usages": secrets_usages,
-	// 		}))
-	// 		.unwrap_or_default()
-	// 	);
-	// }
+	if total_cost > 0.0 && cfg!(debug_assertions) {
+		log::trace!(
+			"Total bill for workspace `{}`: {}",
+			workspace_id,
+			serde_json::to_string(&serde_json::json!({
+				"cost": total_cost,
+				"deployment_usages": deployment_usages,
+				"database_usages": database_usages,
+				"static_sites_usages": static_sites_usages,
+				"managed_url_usages": managed_url_usages,
+				"docker_repository_usages": docker_repository_usages,
+				"domains_usages": domains_usages,
+				"secrets_usages": secrets_usages,
+			}))
+			.unwrap_or_default()
+		);
+	}
 
 	Ok(total_cost)
 }

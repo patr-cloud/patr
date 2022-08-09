@@ -215,9 +215,9 @@ pub(super) async fn process_request(
 					return Ok(());
 				}
 
-				if let Some(address_id) = workspace.address_id.clone() {
+				if let Some(address_id) = &workspace.address_id {
 					let (currency, amount) =
-						if db::get_billing_address(connection, &address_id)
+						if db::get_billing_address(connection, address_id)
 							.await?
 							.status(500)?
 							.country == *"IN"
