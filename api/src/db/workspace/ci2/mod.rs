@@ -38,10 +38,10 @@ pub async fn initialize_ci_pre(
 	query!(
 		r#"
 		CREATE TABLE ci_build_machine_type (
-			id       UUID CONSTRAINT ci_machint_type_pk PRIMARY KEY,
-			cpu      INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_cpu_positive CHECK (cpu > 0),   		/* Multiples of 1 vCPU */
-			ram      INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_ram_positive CHECK (ram > 0),   		/* Multiples of 0.25 GB RAM */
-			volume   INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_volume_positive CHECK (volume > 0) 	/* Multiples of 1 GB storage space */
+			id UUID CONSTRAINT ci_machint_type_pk PRIMARY KEY,
+			cpu INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_cpu_positive CHECK (cpu > 0),   		/* Multiples of 1 vCPU */
+			ram INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_ram_positive CHECK (ram > 0),   		/* Multiples of 0.25 GB RAM */
+			volume INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_volume_positive CHECK (volume > 0) 	/* Multiples of 1 GB storage space */
 		);
 		"#
 	)
@@ -51,20 +51,20 @@ pub async fn initialize_ci_pre(
 	query!(
 		r#"
 		CREATE TABLE ci_repos (
-            id 						UUID CONSTRAINT ci_repos_pk PRIMARY KEY,
-            workspace_id 			UUID NOT NULL CONSTRAINT ci_repos_fk_workspace_id REFERENCES workspace(id),
-			repo_owner 				TEXT NOT NULL,
-			repo_name 				TEXT NOT NULL,
-            git_url 				TEXT NOT NULL,
-            webhook_secret 			TEXT NOT NULL CONSTRAINT ci_repos_uq_secret UNIQUE,
-			build_machine_type_id	UUID NOT NULL CONSTRAINT ci_repos_fk_build_machine_type_id REFERENCES ci_build_machine_type(id),
-            active 					BOOLEAN NOT NULL,
-            
-            CONSTRAINT ci_repos_uq_workspace_id_git_url
+			id UUID CONSTRAINT ci_repos_pk PRIMARY KEY,
+			workspace_id UUID NOT NULL CONSTRAINT ci_repos_fk_workspace_id REFERENCES workspace(id),
+			repo_owner TEXT NOT NULL,
+			repo_name TEXT NOT NULL,
+			git_url TEXT NOT NULL,
+			webhook_secret TEXT NOT NULL CONSTRAINT ci_repos_uq_secret UNIQUE,
+			build_machine_type_id UUID NOT NULL CONSTRAINT ci_repos_fk_build_machine_type_id REFERENCES ci_build_machine_type(id),
+			active BOOLEAN NOT NULL,
+
+			CONSTRAINT ci_repos_uq_workspace_id_git_url
 				UNIQUE (workspace_id, git_url),
 			CONSTRAINT ci_repos_uq_workspace_id_repo_owner_repo_name
 				UNIQUE (workspace_id, repo_owner, repo_name)
-        );
+		);
 		"#
 	)
 	.execute(&mut *connection)
@@ -86,13 +86,13 @@ pub async fn initialize_ci_pre(
 	query!(
 		r#"
 		CREATE TABLE ci_builds (
-			repo_id		UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id),
-			build_num 	BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK (build_num > 0),
-			git_ref 	TEXT NOT NULL,
-			git_commit 	TEXT NOT NULL,
-			status 		CI_BUILD_STATUS NOT NULL,
-			created 	TIMESTAMPTZ NOT NULL,
-			finished 	TIMESTAMPTZ,
+			repo_id UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id),
+			build_num BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK (build_num > 0),
+			git_ref TEXT NOT NULL,
+			git_commit TEXT NOT NULL,
+			status CI_BUILD_STATUS NOT NULL,
+			created TIMESTAMPTZ NOT NULL,
+			finished TIMESTAMPTZ,
 
 			CONSTRAINT ci_builds_pk_repo_id_build_num
 				PRIMARY KEY (repo_id, build_num)
@@ -120,15 +120,15 @@ pub async fn initialize_ci_pre(
 	query!(
 		r#"
 		CREATE TABLE ci_steps (
-			repo_id 	UUID NOT NULL,
-			build_num 	BIGINT NOT NULL,
-			step_id 	INTEGER NOT NULL CONSTRAINT ci_steps_chk_step_id_unsigned CHECK (build_num >= 0),
-			step_name 	TEXT NOT NULL,
-			base_image 	TEXT NOT NULL,
-			commands 	TEXT[] NOT NULL,
-			status 		CI_BUILD_STEP_STATUS NOT NULL,
-			started 	TIMESTAMPTZ,
-			finished 	TIMESTAMPTZ,
+			repo_id UUID NOT NULL,
+			build_num BIGINT NOT NULL,
+			step_id INTEGER NOT NULL CONSTRAINT ci_steps_chk_step_id_unsigned CHECK (build_num >= 0),
+			step_name TEXT NOT NULL,
+			base_image TEXT NOT NULL,
+			commands TEXT[] NOT NULL,
+			status CI_BUILD_STEP_STATUS NOT NULL,
+			started TIMESTAMPTZ,
+			finished TIMESTAMPTZ,
 
 			CONSTRAINT ci_steps_fk_repo_id_build_num
 				FOREIGN KEY (repo_id, build_num) REFERENCES ci_builds(repo_id, build_num),
@@ -217,15 +217,15 @@ pub async fn create_ci_repo(
 	query!(
 		r#"
 		INSERT INTO ci_repos (
-            id,
-            workspace_id,
+			id,
+			workspace_id,
 			repo_owner,
 			repo_name,
-            git_url,
-            webhook_secret,
+			git_url,
+			webhook_secret,
 			build_machine_type_id,
-            active
-        )
+			active
+		)
 		VALUES
 			($1, $2, $3, $4, $5, $6, $7, FALSE)
 		"#,
@@ -349,12 +349,12 @@ pub async fn update_build_machine_type_for_repo(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-        UPDATE
+		UPDATE
 			ci_repos
-        SET
-            build_machine_type_id = $2
-        WHERE
-            id = $1;
+		SET
+			build_machine_type_id = $2
+		WHERE
+			id = $1;
 		"#,
 		repo_id as _,
 		build_machine_type_id as _
@@ -395,12 +395,12 @@ pub async fn activate_ci_for_repo(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-        UPDATE
+		UPDATE
 			ci_repos
-        SET
-            active = TRUE
-        WHERE
-            id = $1;
+		SET
+			active = TRUE
+		WHERE
+			id = $1;
 		"#,
 		repo_id as _,
 	)
@@ -415,12 +415,12 @@ pub async fn deactivate_ci_for_repo(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-        UPDATE
+		UPDATE
 			ci_repos
-        SET
-            active = FALSE
-        WHERE
-            id = $1;
+		SET
+			active = FALSE
+		WHERE
+			id = $1;
 		"#,
 		repo_id as _,
 	)
@@ -448,7 +448,7 @@ pub async fn get_repo_for_git_url(
 		FROM
 			ci_repos
 		WHERE
-            git_url = $1;
+			git_url = $1;
 		"#,
 		git_url as _
 	)
