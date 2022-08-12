@@ -57,6 +57,7 @@ pub(super) async fn migrate(
 	update_dns_record_name_constraint_regexp(&mut *connection, config).await?;
 	add_is_configured_for_managed_urls(&mut *connection, config).await?;
 	fix_july_billing_issues(&mut *connection, config).await?;
+	add_active_column_for_static_site_upload_history(& mut *connection, config).await?;
 
 	Ok(())
 }
@@ -843,6 +844,24 @@ async fn fix_july_billing_issues(
 		WHERE
 			transaction_type = 'bill' AND
 			month = 7;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn add_active_column_for_static_site_upload_history(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE 
+			static_site_upload_history 
+		ADD COLUMN 
+			active BOOLEAN NOT NULL DEFAULT FALSE;
 		"#
 	)
 	.execute(&mut *connection)

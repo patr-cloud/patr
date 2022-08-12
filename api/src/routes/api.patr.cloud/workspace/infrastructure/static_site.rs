@@ -736,6 +736,13 @@ async fn revert_static_site(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
+	db::update_static_site_active_upload(
+		context.get_database_connection(),
+		&static_site_id,
+		&upload_id,
+	)
+	.await?;
+
 	log::trace!("request_id: {} - Reverting static site", request_id);
 
 	// queue revert static site
