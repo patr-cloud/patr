@@ -539,12 +539,26 @@ pub async fn update_static_site_and_db_status(
 		)
 		.await?;
 
+		db::update_static_site_active_upload(
+			connection,
+			static_site_id,
+			upload_id,
+		)
+		.await?;
+
 		Err(err)
 	} else {
 		db::update_static_site_status(
 			connection,
 			static_site_id,
 			&DeploymentStatus::Running,
+		)
+		.await?;
+
+		db::update_static_site_active_upload(
+			connection,
+			static_site_id,
+			upload_id,
 		)
 		.await?;
 

@@ -11,6 +11,7 @@ pub struct StaticSite {
 	pub name: String,
 	pub status: DeploymentStatus,
 	pub workspace_id: Uuid,
+	pub current_live_upload: Option<Uuid>,
 }
 
 pub struct StaticSiteUploadHistory {
@@ -18,7 +19,6 @@ pub struct StaticSiteUploadHistory {
 	pub message: String,
 	pub uploaded_by: Uuid,
 	pub created: DateTime<Utc>,
-	pub active: bool,
 }
 
 pub async fn initialize_static_site_pre(
@@ -35,16 +35,19 @@ pub async fn initialize_static_site_pre(
 				),
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
 			workspace_id UUID NOT NULL,
+			current_live_upload UUID,
 			CONSTRAINT static_site_uq_name_workspace_id
 				UNIQUE(name, workspace_id),
 			CONSTRAINT static_site_uq_id_workspace_id
-				UNIQUE(id, workspace_id)
+				UNIQUE(id, workspace_id),
+				CONSTRAINT static_site_fk_current_live_upload
+		FOREIGN KEY(current_live_upload) REFERENCES static_site_upload_history(upload_id)
 		);
 		"#
 	)
 	.execute(&mut *connection)
 	.await?;
-
+	// add foreign key constraint
 	query!(
 		r#"
 		CREATE TABLE static_site_upload_history(
@@ -57,7 +60,6 @@ pub async fn initialize_static_site_pre(
 				static_site_upload_history_fk_uploaded_by
 					REFERENCES "user"(id),
 			created TIMESTAMPTZ NOT NULL,
-			active BOOLEAN NOT NULL DEFAULT FALSE,
 			CONSTRAINT static_site_upload_history_uq_upload_id_static_site_id
 				UNIQUE(upload_id, static_site_id)
 		);
@@ -134,7 +136,8 @@ pub async fn get_static_site_by_id(
 			id as "id: _",
 			name::TEXT as "name!: _",
 			status as "status: _",
-			workspace_id as "workspace_id: _"
+			workspace_id as "workspace_id: _",
+			current_live_upload as "current_live_upload: _"
 		FROM
 			static_site
 		WHERE
@@ -159,7 +162,8 @@ pub async fn get_static_site_by_name_in_workspace(
 			id as "id: _",
 			name::TEXT as "name!: _",
 			status as "status: _",
-			workspace_id as "workspace_id: _"
+			workspace_id as "workspace_id: _",
+			current_live_upload as "current_live_upload: _"
 		FROM
 			static_site
 		WHERE
@@ -204,34 +208,18 @@ pub async fn update_static_site_active_upload(
 	query!(
 		r#"
 		UPDATE
-			static_site_upload_history
+			static_site
 		SET
-			active = FALSE
+			current_live_upload = $1
 		WHERE
-			static_site_id = $1;
+			id = $2;
 		"#,
-		static_site_id as _,
+		upload_id as _,
+		static_site_id as _
 	)
 	.execute(&mut *connection)
 	.await?;
-
-	query!(
-		r#"
-		UPDATE
-			static_site_upload_history
-		SET
-			active = TRUE
-		WHERE (
-			upload_id = $1
-			AND static_site_id = $2
-		);
-		"#,
-		upload_id as _,
-		static_site_id as _,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
+	Ok(())
 }
 
 pub async fn update_static_site_name(
@@ -267,7 +255,8 @@ pub async fn get_static_sites_for_workspace(
 			id as "id: _",
 			name::TEXT as "name!: _",
 			status as "status: _",
-			workspace_id as "workspace_id: _"
+			workspace_id as "workspace_id: _",
+			current_live_upload as "current_live_upload: _"
 		FROM
 			static_site
 		WHERE
@@ -290,37 +279,37 @@ pub async fn create_static_site_upload_history(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		UPDATE
-			static_site_upload_history
-		SET
-			active = FALSE
-		WHERE
-			static_site_id = $1;
-		"#,
-		static_site_id as _
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
 		INSERT INTO
 			static_site_upload_history(
 				upload_id,
 				static_site_id,
 				message,
 				uploaded_by,
-				created,
-				active
+				created
 			)
 		VALUES
-			($1, $2, $3, $4, $5, TRUE);
+			($1, $2, $3, $4, $5);
 		"#,
 		upload_id as _,
 		static_site_id as _,
 		message as _,
 		uploaded_by as _,
 		created as _,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			static_site
+		SET
+			current_live_upload = $1
+		WHERE
+			id = $2;
+		"#,
+		upload_id as _,
+		static_site_id as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -338,8 +327,7 @@ pub async fn get_static_site_upload_history(
 			upload_id as "id: _",
 			message,
 			uploaded_by as "uploaded_by: _",
-			created as "created: _",
-			active
+			created as "created: _"
 		FROM
 			static_site_upload_history
 		WHERE
@@ -362,8 +350,7 @@ pub async fn get_static_site_upload_history_by_upload_id(
 			upload_id as "id: _",
 			message,
 			uploaded_by as "uploaded_by: _",
-			created as "created: _",
-			active
+			created as "created: _"
 		FROM
 			static_site_upload_history
 		WHERE
@@ -386,8 +373,7 @@ pub async fn get_latest_upload_for_static_site(
 			upload_id as "id: _",
 			message,
 			uploaded_by as "uploaded_by: _",
-			created as "created: _",
-			active
+			created as "created: _"
 		FROM
 			static_site_upload_history
 		WHERE
