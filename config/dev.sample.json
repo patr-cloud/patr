@@ -117,5 +117,10 @@
 		"publishableKey": "pk_test_123",
 		"secretKey": "sk_test_123"
 	},
-	"ipinfoToken": "token"
+	"ipinfoToken": "token",
+	"mimir": {
+		"host": "mimir.samyakgangwal.com",
+		"username": "admin",
+		"password": "admin"
+	}
 }
