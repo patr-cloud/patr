@@ -677,6 +677,7 @@ async fn list_deployments(
 			status: deployment.status,
 			region: deployment.region,
 			machine_type: deployment.machine_type,
+			current_live_upload: deployment.current_live_upload,
 		})
 	})
 	.collect();
@@ -865,6 +866,7 @@ async fn create_deployment(
 			status: DeploymentStatus::Created,
 			region: region.clone(),
 			machine_type: machine_type.clone(),
+			current_live_upload: None,
 		},
 		running_details: deployment_running_details.clone(),
 	})?;
@@ -909,6 +911,13 @@ async fn create_deployment(
 					repository_id,
 					&digest,
 					&now.into(),
+				)
+				.await?;
+
+				db::update_deployment_with_current_live_upload(
+					context.get_database_connection(),
+					&id,
+					&digest,
 				)
 				.await?;
 			}
@@ -1275,6 +1284,13 @@ async fn revert_deployment(
 	.await?
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	db::update_deployment_with_current_live_upload(
+		context.get_database_connection(),
+		&deployment.id,
+		&image_digest,
+	)
+	.await?;
 
 	let (deployment, workspace_id, _, deployment_running_details) =
 		service::get_full_deployment_config(

@@ -446,6 +446,7 @@ pub async fn get_full_deployment_config(
 					status: deployment.status,
 					region: deployment.region,
 					machine_type: deployment.machine_type,
+					current_live_upload: deployment.current_live_upload,
 				},
 				deployment.workspace_id,
 				deployment.deploy_on_push,

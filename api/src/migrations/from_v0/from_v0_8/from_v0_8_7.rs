@@ -59,6 +59,8 @@ pub(super) async fn migrate(
 	fix_july_billing_issues(&mut *connection, config).await?;
 	add_current_live_upload_column_for_static_site(&mut *connection, config)
 		.await?;
+	add_current_live_upload_column_for_deployment(&mut *connection, config)
+		.await?;
 
 	Ok(())
 }
@@ -860,6 +862,29 @@ async fn add_current_live_upload_column_for_static_site(
 	query!(
 		r#"
 		ALTER TABLE static_site ADD COLUMN current_live_upload UUID CONSTRAINT static_site_fk_current_live_upload REFERENCES static_site_upload_history(upload_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn add_current_live_upload_column_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE deployment ADD COLUMN current_live_upload TEXT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment ADD CONSTRAINT deployment_fk_current_live_upload FOREIGN KEY(id,current_live_upload) REFERENCES deployment_deploy_history(deployment_id,image_digest);
 		"#
 	)
 	.execute(&mut *connection)

@@ -49,6 +49,7 @@ pub struct Deployment {
 	pub startup_probe_path: Option<String>,
 	pub liveness_probe_port: Option<i32>,
 	pub liveness_probe_path: Option<String>,
+	pub current_live_upload: Option<String>,
 }
 
 pub struct DeploymentDeployHistory {
@@ -186,6 +187,7 @@ pub async fn initialize_deployment_pre(
 			liveness_probe_port INTEGER,
 			liveness_probe_path VARCHAR(255),
 			liveness_probe_port_type EXPOSED_PORT_TYPE,
+			current_live_upload TEXT,
 			CONSTRAINT deployment_fk_repository_id_workspace_id
 				FOREIGN KEY(repository_id, workspace_id)
 					REFERENCES docker_registry_repository(id, workspace_id),
@@ -234,7 +236,9 @@ pub async fn initialize_deployment_pre(
 				),
 			CONSTRAINT deployment_chk_liveness_probe_port_type_is_http CHECK(
 					liveness_probe_port_type = 'http'
-				)
+				),
+				CONSTRAINT deployment_fk_current_live_upload
+		FOREIGN KEY(id,current_live_upload) REFERENCES deployment_deploy_history(deployment_id,image_digest)
 		);
 		"#
 	)
@@ -635,7 +639,8 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 			deployment.startup_probe_port,
 			deployment.startup_probe_path,
 			deployment.liveness_probe_port,
-			deployment.liveness_probe_path
+			deployment.liveness_probe_path,
+			current_live_upload
 		FROM
 			deployment
 		LEFT JOIN
@@ -689,7 +694,8 @@ pub async fn get_deployments_by_repository_id(
 			startup_probe_port,
 			startup_probe_path,
 			liveness_probe_port,
-			liveness_probe_path
+			liveness_probe_path,
+			current_live_upload
 		FROM
 			deployment
 		WHERE
@@ -726,7 +732,8 @@ pub async fn get_deployments_for_workspace(
 			startup_probe_port,
 			startup_probe_path,
 			liveness_probe_port,
-			liveness_probe_path
+			liveness_probe_path,
+			current_live_upload
 		FROM
 			deployment
 		WHERE
@@ -763,7 +770,8 @@ pub async fn get_deployment_by_id(
 			startup_probe_port,
 			startup_probe_path,
 			liveness_probe_port,
-			liveness_probe_path
+			liveness_probe_path,
+			current_live_upload
 		FROM
 			deployment
 		WHERE
@@ -800,7 +808,8 @@ pub async fn get_deployment_by_id_including_deleted(
 			startup_probe_port,
 			startup_probe_path,
 			liveness_probe_port,
-			liveness_probe_path
+			liveness_probe_path,
+			current_live_upload
 		FROM
 			deployment
 		WHERE
@@ -837,7 +846,8 @@ pub async fn get_deployment_by_name_in_workspace(
 			startup_probe_port,
 			startup_probe_path,
 			liveness_probe_port,
-			liveness_probe_path
+			liveness_probe_path,
+			current_live_upload
 		FROM
 			deployment
 		WHERE
@@ -1373,6 +1383,28 @@ pub async fn add_digest_to_deployment_deploy_history(
 		digest as _,
 		repository_id as _,
 		created as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_deployment_with_current_live_upload(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	digest: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			current_live_upload = $1
+		WHERE
+			id = $2;
+		"#,
+		digest as _,
+		deployment_id as _
 	)
 	.execute(&mut *connection)
 	.await
