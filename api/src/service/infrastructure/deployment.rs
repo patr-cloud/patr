@@ -577,20 +577,20 @@ pub async fn get_deployment_metrics(
 			client
 				.post(format!(
 					concat!(
-						"https://{}/api/v1/query_range?query=",
+						"https://{}/prometheus/api/v1/query_range?query=",
 						"sum(rate(container_cpu_usage_seconds_total",
 						"{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)",
 						"&start={}&end={}&step={step}"
 					),
-					config.prometheus.host,
+					config.mimir.host,
 					deployment_id,
 					start_time.timestamp_millis(),
 					end_time.timestamp(),
 					step = step
 				))
 				.basic_auth(
-					&config.prometheus.username,
-					Some(&config.prometheus.password),
+					&config.mimir.username,
+					Some(&config.mimir.password),
 				)
 				.send()
 				.await?
@@ -605,20 +605,20 @@ pub async fn get_deployment_metrics(
 			client
 				.post(format!(
 					concat!(
-						"https://{}/api/v1/query_range?query=",
+						"https://{}/prometheus/api/v1/query_range?query=",
 						"sum(rate(container_memory_usage_bytes",
 						"{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)",
 						"&start={}&end={}&step={step}"
 					),
-					config.prometheus.host,
+					config.mimir.host,
 					deployment_id,
 					start_time.timestamp_millis(),
 					end_time.timestamp(),
 					step = step
 				))
 				.basic_auth(
-					&config.prometheus.username,
-					Some(&config.prometheus.password),
+					&config.mimir.username,
+					Some(&config.mimir.password),
 				)
 				.send()
 				.await?
@@ -633,20 +633,20 @@ pub async fn get_deployment_metrics(
 			client
 				.post(format!(
 					concat!(
-						"https://{}/api/v1/query_range?query=",
+						"https://{}/prometheus/api/v1/query_range?query=",
 						"sum(rate(container_network_transmit_bytes_total",
 						"{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)",
 						"&start={}&end={}&step={step}"
 					),
-					config.prometheus.host,
+					config.mimir.host,
 					deployment_id,
 					start_time.timestamp_millis(),
 					end_time.timestamp(),
 					step = step
 				))
 				.basic_auth(
-					&config.prometheus.username,
-					Some(&config.prometheus.password),
+					&config.mimir.username,
+					Some(&config.mimir.password),
 				)
 				.send()
 				.await?
@@ -661,20 +661,20 @@ pub async fn get_deployment_metrics(
 			client
 				.post(format!(
 					concat!(
-						"https://{}/api/v1/query_range?query=",
+						"https://{}/prometheus/api/v1/query_range?query=",
 						"sum(rate(container_network_receive_bytes_total",
 						"{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)",
 						"&start={}&end={}&step={step}"
 					),
-					config.prometheus.host,
+					config.mimir.host,
 					deployment_id,
 					start_time.timestamp_millis(),
 					end_time.timestamp(),
 					step = step
 				))
 				.basic_auth(
-					&config.prometheus.username,
-					Some(&config.prometheus.password),
+					&config.mimir.username,
+					Some(&config.mimir.password),
 				)
 				.send()
 				.await?
