@@ -39,9 +39,7 @@ pub async fn initialize_static_site_pre(
 			CONSTRAINT static_site_uq_name_workspace_id
 				UNIQUE(name, workspace_id),
 			CONSTRAINT static_site_uq_id_workspace_id
-				UNIQUE(id, workspace_id),
-				CONSTRAINT static_site_fk_current_live_upload
-		FOREIGN KEY(current_live_upload) REFERENCES static_site_upload_history(upload_id)
+				UNIQUE(id, workspace_id)
 		);
 		"#
 	)
@@ -80,6 +78,16 @@ pub async fn initialize_static_site_post(
 		ALTER TABLE static_site
 		ADD CONSTRAINT static_site_fk_id_workspace_id
 		FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE static_site
+		ADD CONSTRAINT static_site_fk_current_live_upload
+		FOREIGN KEY(current_live_upload) REFERENCES static_site_upload_history(upload_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -200,7 +208,7 @@ pub async fn update_static_site_status(
 	.map(|_| ())
 }
 
-pub async fn update_static_site_active_upload(
+pub async fn update_current_live_upload_for_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &Uuid,
 	upload_id: &Uuid,

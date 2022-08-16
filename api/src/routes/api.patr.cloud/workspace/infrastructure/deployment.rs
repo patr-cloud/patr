@@ -677,7 +677,7 @@ async fn list_deployments(
 			status: deployment.status,
 			region: deployment.region,
 			machine_type: deployment.machine_type,
-			current_live_upload: deployment.current_live_upload,
+			current_live_digest: deployment.current_live_digest,
 		})
 	})
 	.collect();
@@ -866,7 +866,7 @@ async fn create_deployment(
 			status: DeploymentStatus::Created,
 			region: region.clone(),
 			machine_type: machine_type.clone(),
-			current_live_upload: None,
+			current_live_digest: None,
 		},
 		running_details: deployment_running_details.clone(),
 	})?;
@@ -914,7 +914,7 @@ async fn create_deployment(
 				)
 				.await?;
 
-				db::update_deployment_with_current_live_upload(
+				db::update_current_live_digest_for_deployment(
 					context.get_database_connection(),
 					&id,
 					&digest,
@@ -1285,7 +1285,7 @@ async fn revert_deployment(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	db::update_deployment_with_current_live_upload(
+	db::update_current_live_digest_for_deployment(
 		context.get_database_connection(),
 		&deployment.id,
 		&image_digest,

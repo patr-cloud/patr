@@ -57,10 +57,8 @@ pub(super) async fn migrate(
 	update_dns_record_name_constraint_regexp(&mut *connection, config).await?;
 	add_is_configured_for_managed_urls(&mut *connection, config).await?;
 	fix_july_billing_issues(&mut *connection, config).await?;
-	add_current_live_upload_column_for_static_site(&mut *connection, config)
-		.await?;
-	add_current_live_upload_column_for_deployment(&mut *connection, config)
-		.await?;
+	add_current_live_upload_for_static_site(&mut *connection, config).await?;
+	add_current_live_digest_for_deployment(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -855,13 +853,16 @@ async fn fix_july_billing_issues(
 	Ok(())
 }
 
-async fn add_current_live_upload_column_for_static_site(
+async fn add_current_live_upload_for_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
 	query!(
 		r#"
-		ALTER TABLE static_site ADD COLUMN current_live_upload UUID CONSTRAINT static_site_fk_current_live_upload REFERENCES static_site_upload_history(upload_id);
+		ALTER TABLE static_site 
+		ADD COLUMN current_live_upload UUID 
+			CONSTRAINT static_site_fk_current_live_upload 
+			REFERENCES static_site_upload_history(upload_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -870,13 +871,14 @@ async fn add_current_live_upload_column_for_static_site(
 	Ok(())
 }
 
-async fn add_current_live_upload_column_for_deployment(
+async fn add_current_live_digest_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
 	query!(
 		r#"
-		ALTER TABLE deployment ADD COLUMN current_live_upload TEXT;
+		ALTER TABLE deployment 
+		ADD COLUMN current_live_digest TEXT;
 		"#
 	)
 	.execute(&mut *connection)
@@ -884,7 +886,9 @@ async fn add_current_live_upload_column_for_deployment(
 
 	query!(
 		r#"
-		ALTER TABLE deployment ADD CONSTRAINT deployment_fk_current_live_upload FOREIGN KEY(id,current_live_upload) REFERENCES deployment_deploy_history(deployment_id,image_digest);
+		ALTER TABLE deployment 
+		ADD CONSTRAINT deployment_fk_current_live_digest FOREIGN KEY(id,current_live_digest) 
+			REFERENCES deployment_deploy_history(deployment_id,image_digest);
 		"#
 	)
 	.execute(&mut *connection)

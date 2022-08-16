@@ -290,7 +290,7 @@ async fn notification_handler(
 				)
 				.await?;
 
-				db::update_deployment_with_current_live_upload(
+				db::update_current_live_digest_for_deployment(
 					context.get_database_connection(),
 					&deployment.id,
 					&target.digest,

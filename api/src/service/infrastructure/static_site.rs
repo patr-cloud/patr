@@ -539,7 +539,7 @@ pub async fn update_static_site_and_db_status(
 		)
 		.await?;
 
-		db::update_static_site_active_upload(
+		db::update_current_live_upload_for_static_site(
 			connection,
 			static_site_id,
 			upload_id,
@@ -555,7 +555,7 @@ pub async fn update_static_site_and_db_status(
 		)
 		.await?;
 
-		db::update_static_site_active_upload(
+		db::update_current_live_upload_for_static_site(
 			connection,
 			static_site_id,
 			upload_id,
