@@ -57,8 +57,6 @@ pub(super) async fn migrate(
 	update_dns_record_name_constraint_regexp(&mut *connection, config).await?;
 	add_is_configured_for_managed_urls(&mut *connection, config).await?;
 	fix_july_billing_issues(&mut *connection, config).await?;
-	add_current_live_upload_for_static_site(&mut *connection, config).await?;
-	add_current_live_digest_for_deployment(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -143,6 +141,26 @@ async fn add_upload_id_for_existing_users(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE deployment_static_site
+		ADD COLUMN current_live_upload UUID;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_static_site
+		ADD CONSTRAINT static_site_fk_current_live_upload
+		FOREIGN KEY(id, current_live_upload) REFERENCES
+		static_site_upload_history(static_site_id, upload_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	let static_sites = query!(
 		r#"
 		SELECT
@@ -156,7 +174,8 @@ async fn add_upload_id_for_existing_users(
 		ON
 			deployment_static_site.id = resource.id
 		WHERE	
-			status != 'deleted';
+			status != 'deleted' AND
+			status != 'created';
 		"#,
 	)
 	.fetch_all(&mut *connection)
@@ -331,6 +350,21 @@ async fn add_upload_id_for_existing_users(
 			&static_site_id,
 			&super_admin_id,
 			&Utc::now(),
+		)
+		.execute(&mut *connection)
+		.await?;
+
+		query!(
+			r#"
+			UPDATE
+				deployment_static_site
+			SET
+				current_live_upload = $1
+			WHERE
+				id = $2;
+			"#,
+			&upload_id,
+			&static_site_id,
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -546,6 +580,26 @@ async fn add_table_deployment_image_digest(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE deployment
+		ADD COLUMN current_live_digest TEXT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+		ADD CONSTRAINT deployment_fk_current_live_digest
+		FOREIGN KEY(id, current_live_digest) REFERENCES
+		deployment_deploy_history(deployment_id, image_digest);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
@@ -562,7 +616,8 @@ async fn populate_deployment_deploy_history(
 		FROM
 			deployment
 		WHERE
-			status != 'deleted';
+			status != 'deleted' AND
+			status != 'created';
 		"#,
 	)
 	.fetch_all(&mut *connection)
@@ -611,10 +666,25 @@ async fn populate_deployment_deploy_history(
 			VALUES
 				($1, $2, $3, $4);
 			"#,
-			deployment_id,
-			manifest_digest,
+			&deployment_id,
+			&manifest_digest,
 			repository_id,
 			&Utc.timestamp_millis(get_current_time_millis() as i64)
+		)
+		.execute(&mut *connection)
+		.await?;
+
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				current_live_digest = $1
+			WHERE
+				id = $2;
+			"#,
+			&manifest_digest,
+			&deployment_id
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -845,50 +915,6 @@ async fn fix_july_billing_issues(
 		WHERE
 			transaction_type = 'bill' AND
 			month = 7;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
-}
-
-async fn add_current_live_upload_for_static_site(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
-) -> Result<(), Error> {
-	query!(
-		r#"
-		ALTER TABLE static_site 
-		ADD COLUMN current_live_upload UUID 
-			CONSTRAINT static_site_fk_current_live_upload 
-			REFERENCES static_site_upload_history(upload_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
-}
-
-async fn add_current_live_digest_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
-) -> Result<(), Error> {
-	query!(
-		r#"
-		ALTER TABLE deployment 
-		ADD COLUMN current_live_digest TEXT;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE deployment 
-		ADD CONSTRAINT deployment_fk_current_live_digest FOREIGN KEY(id,current_live_digest) 
-			REFERENCES deployment_deploy_history(deployment_id,image_digest);
 		"#
 	)
 	.execute(&mut *connection)
