@@ -405,7 +405,8 @@ pub async fn initialize_deployment_post(
 		r#"
 		ALTER TABLE deployment
 		ADD CONSTRAINT deployment_fk_current_live_digest
-		FOREIGN KEY(id,current_live_digest) REFERENCES deployment_deploy_history(deployment_id,image_digest);
+		FOREIGN KEY(id, current_live_digest) REFERENCES
+		deployment_deploy_history(deployment_id, image_digest);
 		"#
 	)
 	.execute(&mut *connection)

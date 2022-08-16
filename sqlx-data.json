@@ -328,16 +328,6 @@
     },
     "query": "SELECT CONCAT( \"user\".recovery_email_local, '@', domain.name, '.', domain.tld ) as \"email!: String\" FROM \"user\" INNER JOIN domain ON \"user\".recovery_email_domain_id = domain.id WHERE \"user\".id = $1;"
   },
-  "07ac65b44f05b5b7950fd4092715243d3748d2e64d9576e54531a4481324ad05": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "ALTER TABLE deployment ADD CONSTRAINT deployment_fk_current_live_digest FOREIGN KEY(id,current_live_digest) REFERENCES deployment_deploy_history(deployment_id,image_digest);"
-  },
   "08133cde3025bc5f5f335c04065b11cc144468352adb85ff3695b424dc0938f9": {
     "describe": {
       "columns": [
@@ -3437,6 +3427,16 @@
     },
     "query": "ALTER TABLE workspace ADD CONSTRAINT workspace_default_payment_method_id_fk FOREIGN KEY (default_payment_method_id) REFERENCES payment_method(payment_method_id) DEFERRABLE INITIALLY DEFERRED;"
   },
+  "596263b2e3a73f7471e29ba577e91c086364896755cfd4dad9eb62b5cbbde966": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "ALTER TABLE static_site ADD CONSTRAINT static_site_fk_current_live_upload FOREIGN KEY(id, current_live_upload) REFERENCES static_site_upload_history(static_site_id, upload_id);"
+  },
   "5a132d1b3ad04aa7ad894563e8dc23f9ad0e4df73d8ffe9d253d195af293f0f2": {
     "describe": {
       "columns": [],
@@ -5873,16 +5873,6 @@
       }
     },
     "query": "CREATE INDEX role_permissions_resource_idx_role_id_resource_id ON role_permissions_resource (role_id, resource_id);"
-  },
-  "8643baeefa7dff0f0c21f5310f80a9e8a7d6bb7ce2c70e2d900d65fd029ba8b3": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "ALTER TABLE static_site ADD CONSTRAINT static_site_fk_current_live_upload FOREIGN KEY(current_live_upload) REFERENCES static_site_upload_history(upload_id);"
   },
   "86cde14a496c03a3a0b7cb2cb08018eac41bfa809da79ba7a17da4c71e7dd49e": {
     "describe": {
@@ -8797,6 +8787,16 @@
       }
     },
     "query": "WITH RECURSIVE managed_url_list AS ( SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id WHERE managed_url.static_site_id = $1 AND managed_url.url_type = 'proxy_to_static_site' UNION ALL SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id JOIN managed_url_list ON managed_url.url LIKE CONCAT( managed_url.sub_domain, '.', domain.name, '.', domain.tld, CASE managed_url.path WHEN '/' THEN '%' ELSE CONCAT(managed_url.path, '%') END ) WHERE managed_url.url_type = 'redirect' OR managed_url.url_type = 'proxy_url' ) SELECT id as \"id!: _\", sub_domain as \"sub_domain!: _\", domain_id as \"domain_id!: _\", path as \"path!: _\", url_type as \"url_type!: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id!: _\", is_configured as \"is_configured!: _\" FROM managed_url_list WHERE managed_url_list.workspace_id = $2 AND managed_url_list.sub_domain NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
+  },
+  "bf803cd3b21d499ff2a1f2b17bb535b595f0fa26282b6d85980f387b5879d72a": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "ALTER TABLE deployment ADD CONSTRAINT deployment_fk_current_live_digest FOREIGN KEY(id, current_live_digest) REFERENCES deployment_deploy_history(deployment_id, image_digest);"
   },
   "bfe39187b7925d9987415d6f1430adb8ea31e32dbbf15528aaebf81923e1d1fe": {
     "describe": {

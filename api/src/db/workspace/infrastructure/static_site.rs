@@ -87,7 +87,8 @@ pub async fn initialize_static_site_post(
 		r#"
 		ALTER TABLE static_site
 		ADD CONSTRAINT static_site_fk_current_live_upload
-		FOREIGN KEY(current_live_upload) REFERENCES static_site_upload_history(upload_id);
+		FOREIGN KEY(id, current_live_upload) REFERENCES
+		static_site_upload_history(static_site_id, upload_id);
 		"#
 	)
 	.execute(&mut *connection)
