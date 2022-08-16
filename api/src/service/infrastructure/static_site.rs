@@ -149,6 +149,12 @@ pub async fn create_static_site_in_workspace(
 			&Utc::now().into(),
 		)
 		.await?;
+		db::update_current_live_upload_for_static_site(
+			connection,
+			&static_site_id,
+			&upload_id,
+		)
+		.await?;
 
 		log::trace!("request_id: {} - Starting static site", request_id);
 
@@ -218,6 +224,12 @@ pub async fn update_static_site(
 			message,
 			uploaded_by,
 			&now.into(),
+		)
+		.await?;
+		db::update_current_live_upload_for_static_site(
+			connection,
+			static_site_id,
+			&upload_id,
 		)
 		.await?;
 

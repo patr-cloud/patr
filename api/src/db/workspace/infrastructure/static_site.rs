@@ -226,8 +226,8 @@ pub async fn update_current_live_upload_for_static_site(
 		static_site_id as _
 	)
 	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn update_static_site_name(
@@ -303,21 +303,6 @@ pub async fn create_static_site_upload_history(
 		message as _,
 		uploaded_by as _,
 		created as _,
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		UPDATE
-			static_site
-		SET
-			current_live_upload = $1
-		WHERE
-			id = $2;
-		"#,
-		upload_id as _,
-		static_site_id as _
 	)
 	.execute(&mut *connection)
 	.await
