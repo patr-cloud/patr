@@ -491,6 +491,7 @@ async fn get_static_site_info(
 			id: static_site.id,
 			name: static_site.name,
 			status: static_site.status,
+			current_live_upload: static_site.current_live_upload,
 		},
 		static_site_details: StaticSiteDetails {},
 	});
@@ -541,6 +542,7 @@ async fn list_static_sites(
 		id: static_site.id,
 		name: static_site.name,
 		status: static_site.status,
+		current_live_upload: static_site.current_live_upload,
 	})
 	.collect::<Vec<_>>();
 	log::trace!("request_id: {} - Returning the list of all static sites for the workspace", request_id);

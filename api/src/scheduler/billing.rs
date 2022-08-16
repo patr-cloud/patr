@@ -23,7 +23,7 @@ async fn update_bill() -> Result<(), Error> {
 		let mut connection =
 			super::CONFIG.get().unwrap().database.begin().await?;
 		let new_bill = service::calculate_total_bill_for_workspace_till(
-			&mut *connection,
+			&mut connection,
 			&workspace.id,
 			&month_start_date,
 			&now,

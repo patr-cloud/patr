@@ -289,6 +289,13 @@ async fn notification_handler(
 					&current_time,
 				)
 				.await?;
+
+				db::update_current_live_digest_for_deployment(
+					context.get_database_connection(),
+					&deployment.id,
+					&target.digest,
+				)
+				.await?;
 			}
 
 			log::trace!(

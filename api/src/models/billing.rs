@@ -65,7 +65,7 @@ pub struct SecretsBill {
 	pub amount: f64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ThreeDSecureUsage {
 	pub supported: bool,
@@ -87,7 +87,7 @@ pub struct PaymentIntentObject {
 	pub usage: Option<PaymentMethodUsage>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum PaymentMethodStatus {
 	RequiresPaymentMethod,
@@ -98,14 +98,14 @@ pub enum PaymentMethodStatus {
 	Succeeded,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum PaymentMethodUsage {
 	OnSession,
 	OffSession,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct Card {
 	pub brand: String,
@@ -118,7 +118,7 @@ pub struct Card {
 	pub three_d_secure_usage: ThreeDSecureUsage,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct PaymentMethod {
 	pub id: String,
@@ -129,7 +129,7 @@ pub struct PaymentMethod {
 	pub created: u64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum StripePaymentMethodType {
 	AcssDebit,
@@ -143,7 +143,7 @@ pub enum StripePaymentMethodType {
 	UsBankAccount,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct LastSetupError {
 	pub code: String,
@@ -156,13 +156,13 @@ pub struct LastSetupError {
 	pub r#type: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct AutomaticPaymentMethods {
 	pub enabled: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct PaymentIntent {
 	pub amount: u64,
@@ -179,7 +179,7 @@ pub struct PaymentIntent {
 	pub setup_future_usage: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum CardFundingType {
 	Debit,
@@ -187,14 +187,14 @@ pub enum CardFundingType {
 	Prepaid,
 	Unknown,
 }
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct CardNetworks {
 	pub available: Vec<String>,
 	pub preferred: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct StripeAddress {
 	#[serde(rename = "address[city]")]

@@ -11,6 +11,7 @@ pub struct StaticSite {
 	pub name: String,
 	pub status: DeploymentStatus,
 	pub workspace_id: Uuid,
+	pub current_live_upload: Option<Uuid>,
 }
 
 pub struct StaticSiteUploadHistory {
@@ -34,6 +35,7 @@ pub async fn initialize_static_site_pre(
 				),
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
 			workspace_id UUID NOT NULL,
+			current_live_upload UUID,
 			CONSTRAINT static_site_uq_name_workspace_id
 				UNIQUE(name, workspace_id),
 			CONSTRAINT static_site_uq_id_workspace_id
@@ -43,7 +45,7 @@ pub async fn initialize_static_site_pre(
 	)
 	.execute(&mut *connection)
 	.await?;
-
+	// add foreign key constraint
 	query!(
 		r#"
 		CREATE TABLE static_site_upload_history(
@@ -76,6 +78,17 @@ pub async fn initialize_static_site_post(
 		ALTER TABLE static_site
 		ADD CONSTRAINT static_site_fk_id_workspace_id
 		FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE static_site
+		ADD CONSTRAINT static_site_fk_current_live_upload
+		FOREIGN KEY(id, current_live_upload) REFERENCES
+		static_site_upload_history(static_site_id, upload_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -132,7 +145,8 @@ pub async fn get_static_site_by_id(
 			id as "id: _",
 			name::TEXT as "name!: _",
 			status as "status: _",
-			workspace_id as "workspace_id: _"
+			workspace_id as "workspace_id: _",
+			current_live_upload as "current_live_upload: _"
 		FROM
 			static_site
 		WHERE
@@ -157,7 +171,8 @@ pub async fn get_static_site_by_name_in_workspace(
 			id as "id: _",
 			name::TEXT as "name!: _",
 			status as "status: _",
-			workspace_id as "workspace_id: _"
+			workspace_id as "workspace_id: _",
+			current_live_upload as "current_live_upload: _"
 		FROM
 			static_site
 		WHERE
@@ -188,6 +203,28 @@ pub async fn update_static_site_status(
 		"#,
 		status as _,
 		static_site_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_current_live_upload_for_static_site(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &Uuid,
+	upload_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			static_site
+		SET
+			current_live_upload = $1
+		WHERE
+			id = $2;
+		"#,
+		upload_id as _,
+		static_site_id as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -227,7 +264,8 @@ pub async fn get_static_sites_for_workspace(
 			id as "id: _",
 			name::TEXT as "name!: _",
 			status as "status: _",
-			workspace_id as "workspace_id: _"
+			workspace_id as "workspace_id: _",
+			current_live_upload as "current_live_upload: _"
 		FROM
 			static_site
 		WHERE

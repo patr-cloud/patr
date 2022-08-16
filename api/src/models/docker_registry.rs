@@ -17,7 +17,7 @@ use sha2::{Digest, Sha256};
 
 use crate::utils::settings::Settings;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RegistryToken {
 	pub iss: String,
 	pub sub: String,
@@ -29,7 +29,7 @@ pub struct RegistryToken {
 	pub access: Vec<RegistryTokenAccess>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RegistryTokenAccess {
 	pub r#type: String,
 	pub name: String,
@@ -102,26 +102,26 @@ impl RegistryToken {
 	}
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct DockerRegistryListImagesResponse {
 	pub repositories: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct DockerRegistryImageListTagsResponse {
 	pub name: String,
 	pub tags: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct EventData {
 	pub events: Vec<Event>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum Action {
 	Push,
@@ -130,7 +130,7 @@ pub enum Action {
 	Mount,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Event {
 	pub id: String,
@@ -142,7 +142,7 @@ pub struct Event {
 	pub source: Source,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Target {
 	#[serde(default, skip_serializing_if = "String::is_empty")]
@@ -164,7 +164,7 @@ pub struct Target {
 	pub references: Vec<TargetReference>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct TargetReference {
 	pub media_type: String,
@@ -172,7 +172,7 @@ pub struct TargetReference {
 	pub digest: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Request {
 	pub id: String,
@@ -182,14 +182,14 @@ pub struct Request {
 	pub useragent: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Actor {
 	#[serde(default, skip_serializing_if = "String::is_empty")]
 	pub name: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Source {
 	pub addr: String,

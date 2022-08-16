@@ -1079,137 +1079,6 @@
     },
     "query": "UPDATE managed_database SET status = $1 WHERE id = $2;"
   },
-  "161e4e176cfde1bcbbea2345043f50a690860cce2f7e3e3b2461e0ffa40134c7": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "registry",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "repository_id: _",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "image_name",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "image_tag",
-          "ordinal": 5,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 6,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "created",
-                  "pushed",
-                  "deploying",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              },
-              "name": "deployment_status"
-            }
-          }
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "region: _",
-          "ordinal": 8,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "min_horizontal_scale",
-          "ordinal": 9,
-          "type_info": "Int2"
-        },
-        {
-          "name": "max_horizontal_scale",
-          "ordinal": 10,
-          "type_info": "Int2"
-        },
-        {
-          "name": "machine_type: _",
-          "ordinal": 11,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "deploy_on_push",
-          "ordinal": 12,
-          "type_info": "Bool"
-        },
-        {
-          "name": "startup_probe_port",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "startup_probe_path",
-          "ordinal": 14,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "liveness_probe_port",
-          "ordinal": 15,
-          "type_info": "Int4"
-        },
-        {
-          "name": "liveness_probe_path",
-          "ordinal": 16,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        true,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path FROM deployment WHERE id = $1 AND status != 'deleted';"
-  },
   "16f3f83e0a244e8f8d45b182edbbd4c036b9adad293f8ffe356d989906f597f9": {
     "describe": {
       "columns": [],
@@ -1401,6 +1270,19 @@
     },
     "query": "SELECT tag, last_updated FROM docker_registry_repository_tag WHERE repository_id = $1 AND manifest_digest = $2;"
   },
+  "1bd155b7e42cd22c76d717012434668e7d74ad605a3345e926074c4e7008e535": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE deployment SET current_live_digest = $1 WHERE id = $2;"
+  },
   "1c258cdf5e4f891a42018dbd6a99ad7cae3698e386c38415a5823d07d48ace98": {
     "describe": {
       "columns": [
@@ -1446,6 +1328,65 @@
       }
     },
     "query": "CREATE TABLE personal_domain( id UUID CONSTRAINT personal_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT personal_domain_chk_domain_type CHECK( domain_type = 'personal' ), CONSTRAINT personal_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );"
+  },
+  "1d1f568364822d8bce83a9ae1aec29a6b5a0182431b361dfcedb2f9398962724": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              },
+              "name": "deployment_status"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "current_live_upload: _",
+          "ordinal": 4,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", status as \"status: _\", workspace_id as \"workspace_id: _\", current_live_upload as \"current_live_upload: _\" FROM static_site WHERE id = $1 AND status != 'deleted';"
   },
   "1e9f9c42861e8bc6a5c383d96212e6d271a9a46447b30e1a3fdec17afda99352": {
     "describe": {
@@ -1844,59 +1785,6 @@
     },
     "query": "SELECT COUNT(*) as \"count!\" FROM static_site INNER JOIN workspace ON static_site.workspace_id = workspace.id WHERE status = 'deleted' AND workspace.super_admin_id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );"
   },
-  "278b7fa70011ba7f49f807e031dc780f00d5ef0d9305f7205089412281c2168d": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "created",
-                  "pushed",
-                  "deploying",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              },
-              "name": "deployment_status"
-            }
-          }
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", status as \"status: _\", workspace_id as \"workspace_id: _\" FROM static_site WHERE workspace_id = $1 AND status != 'deleted';"
-  },
   "28c3a8d03871bb820d4ea57bc7ded4e77e4aa8c0fd19556827bc401e16648cac": {
     "describe": {
       "columns": [],
@@ -2039,6 +1927,16 @@
     },
     "query": "DELETE FROM resource WHERE id = $1;"
   },
+  "309d01450e54bfe97ed9852aefa751bd8ac59a0095771bfd4a9a26ecc824c464": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE static_site( id UUID CONSTRAINT static_site_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT static_site_chk_name_is_trimmed CHECK( name = TRIM(name) ), status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, current_live_upload UUID, CONSTRAINT static_site_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT static_site_uq_id_workspace_id UNIQUE(id, workspace_id) );"
+  },
   "31fa3365a18b7cdbb3532ea5559f8a6fafda313ec59e82c3d790c31ac45fb452": {
     "describe": {
       "columns": [],
@@ -2048,6 +1946,16 @@
       }
     },
     "query": "CREATE TABLE business_email( user_id UUID NOT NULL CONSTRAINT business_email_fk_user_id REFERENCES \"user\"(id), local VARCHAR(64) NOT NULL CONSTRAINT business_email_chk_local_is_lower_case CHECK( local = LOWER(local) ), domain_id UUID NOT NULL CONSTRAINT business_email_fk_domain_id REFERENCES workspace_domain(id), CONSTRAINT business_email_pk PRIMARY KEY(local, domain_id) );"
+  },
+  "3228fe8c7141cac85ec7797e59df9e3bdf9f5163ec9e39f80b08602770a7a6dd": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, startup_probe_port INTEGER, startup_probe_path VARCHAR(255), startup_probe_port_type EXPOSED_PORT_TYPE, liveness_probe_port INTEGER, liveness_probe_path VARCHAR(255), liveness_probe_port_type EXPOSED_PORT_TYPE, current_live_digest TEXT, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ), CONSTRAINT deployment_chk_image_tag_is_valid CHECK( image_tag != '' ), CONSTRAINT deployment_chk_startup_probe_is_valid CHECK( ( startup_probe_port IS NULL AND startup_probe_path IS NULL AND startup_probe_port_type IS NULL ) OR ( startup_probe_port IS NOT NULL AND startup_probe_path IS NOT NULL AND startup_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_liveness_probe_is_valid CHECK( ( liveness_probe_port IS NULL AND liveness_probe_path IS NULL AND liveness_probe_port_type IS NULL ) OR ( liveness_probe_port IS NOT NULL AND liveness_probe_path IS NOT NULL AND liveness_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_startup_probe_port_type_is_http CHECK( startup_probe_port_type = 'http' ), CONSTRAINT deployment_chk_liveness_probe_port_type_is_http CHECK( liveness_probe_port_type = 'http' ) );"
   },
   "3334e28110faf0232961070ce434f6a734654efe7efb754422a3a1d402410472": {
     "describe": {
@@ -2206,6 +2114,65 @@
       }
     },
     "query": "CREATE TYPE EXPOSED_PORT_TYPE AS ENUM( 'http' );"
+  },
+  "33c4abb14f6861af8ff44a944cca507903153b90b6d01bf34f59f69ef88075b4": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              },
+              "name": "deployment_status"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "current_live_upload: _",
+          "ordinal": 4,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", status as \"status: _\", workspace_id as \"workspace_id: _\", current_live_upload as \"current_live_upload: _\" FROM static_site WHERE workspace_id = $1 AND status != 'deleted';"
   },
   "33de91de165ded9563e49b455ddc1c5161743231f6d7693ce9c0855de0959c5d": {
     "describe": {
@@ -3197,137 +3164,6 @@
     },
     "query": "SELECT id as \"id: _\", name, description FROM resource_type;"
   },
-  "52176833ce28d3c12882c51b5645477c4114fea001c4357f123923c080101fcd": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "registry",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "repository_id: _",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "image_name",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "image_tag",
-          "ordinal": 5,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 6,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "created",
-                  "pushed",
-                  "deploying",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              },
-              "name": "deployment_status"
-            }
-          }
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "region: _",
-          "ordinal": 8,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "min_horizontal_scale",
-          "ordinal": 9,
-          "type_info": "Int2"
-        },
-        {
-          "name": "max_horizontal_scale",
-          "ordinal": 10,
-          "type_info": "Int2"
-        },
-        {
-          "name": "machine_type: _",
-          "ordinal": 11,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "deploy_on_push",
-          "ordinal": 12,
-          "type_info": "Bool"
-        },
-        {
-          "name": "startup_probe_port",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "startup_probe_path",
-          "ordinal": 14,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "liveness_probe_port",
-          "ordinal": 15,
-          "type_info": "Int4"
-        },
-        {
-          "name": "liveness_probe_path",
-          "ordinal": 16,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        true,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path FROM deployment WHERE id = $1;"
-  },
   "523a50a5e2630a62b80a7d82c44b851c93d77c2e502dde3a5117dcdc55e0228e": {
     "describe": {
       "columns": [],
@@ -3590,6 +3426,16 @@
       }
     },
     "query": "ALTER TABLE workspace ADD CONSTRAINT workspace_default_payment_method_id_fk FOREIGN KEY (default_payment_method_id) REFERENCES payment_method(payment_method_id) DEFERRABLE INITIALLY DEFERRED;"
+  },
+  "596263b2e3a73f7471e29ba577e91c086364896755cfd4dad9eb62b5cbbde966": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "ALTER TABLE static_site ADD CONSTRAINT static_site_fk_current_live_upload FOREIGN KEY(id, current_live_upload) REFERENCES static_site_upload_history(static_site_id, upload_id);"
   },
   "5a132d1b3ad04aa7ad894563e8dc23f9ad0e4df73d8ffe9d253d195af293f0f2": {
     "describe": {
@@ -3885,6 +3731,143 @@
     },
     "query": "SELECT * FROM resource WHERE id = $1;"
   },
+  "60019d077bb419814cbac5096048affd4ccf54696afa2fb1e25221c8878017a9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "registry",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "repository_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "image_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "image_tag",
+          "ordinal": 5,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 6,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              },
+              "name": "deployment_status"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 7,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "region: _",
+          "ordinal": 8,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "min_horizontal_scale",
+          "ordinal": 9,
+          "type_info": "Int2"
+        },
+        {
+          "name": "max_horizontal_scale",
+          "ordinal": 10,
+          "type_info": "Int2"
+        },
+        {
+          "name": "machine_type: _",
+          "ordinal": 11,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "deploy_on_push",
+          "ordinal": 12,
+          "type_info": "Bool"
+        },
+        {
+          "name": "startup_probe_port",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "startup_probe_path",
+          "ordinal": 14,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "liveness_probe_port",
+          "ordinal": 15,
+          "type_info": "Int4"
+        },
+        {
+          "name": "liveness_probe_path",
+          "ordinal": 16,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "current_live_digest",
+          "ordinal": 17,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE id = $1;"
+  },
   "60052c09546b142087edbb8c7677a63a9567bbdc0ae3a6cb1626a3fd3b520c67": {
     "describe": {
       "columns": [
@@ -4174,6 +4157,19 @@
     },
     "query": "INSERT INTO user_unverified_phone_number( country_code, phone_number, user_id, verification_token_hash, verification_token_expiry ) VALUES ($1, $2, $3, $4, $5) ON CONFLICT(country_code, phone_number) DO UPDATE SET user_id = EXCLUDED.user_id, verification_token_hash = EXCLUDED.verification_token_hash, verification_token_expiry = EXCLUDED.verification_token_expiry;"
   },
+  "63fc86568e0415560a3bbf43dce61d29c62ca4d0561100e6f4a10777de2b5c6f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE static_site SET current_live_upload = $1 WHERE id = $2;"
+  },
   "6505122d8c40c26849eb3a6144e2de08388b087d10d049cdbba7a1742fefc5de": {
     "describe": {
       "columns": [],
@@ -4210,6 +4206,143 @@
     },
     "query": "INSERT INTO deployment_region( id, name, provider, location, parent_region_id ) VALUES ($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6);"
   },
+  "6714984cd52ecf759cd6cb912a65e0c7d3189afd7a613eafb425a57146fceb2d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "registry",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "repository_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "image_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "image_tag",
+          "ordinal": 5,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 6,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              },
+              "name": "deployment_status"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 7,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "region: _",
+          "ordinal": 8,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "min_horizontal_scale",
+          "ordinal": 9,
+          "type_info": "Int2"
+        },
+        {
+          "name": "max_horizontal_scale",
+          "ordinal": 10,
+          "type_info": "Int2"
+        },
+        {
+          "name": "machine_type: _",
+          "ordinal": 11,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "deploy_on_push",
+          "ordinal": 12,
+          "type_info": "Bool"
+        },
+        {
+          "name": "startup_probe_port",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "startup_probe_path",
+          "ordinal": 14,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "liveness_probe_port",
+          "ordinal": 15,
+          "type_info": "Int4"
+        },
+        {
+          "name": "liveness_probe_path",
+          "ordinal": 16,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "current_live_digest",
+          "ordinal": 17,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE workspace_id = $1 AND status != 'deleted';"
+  },
   "696749fb5dd8e4bb7c3d80c5619417e05c78691505add6a7af389858cb3bf0d4": {
     "describe": {
       "columns": [],
@@ -4221,6 +4354,143 @@
       }
     },
     "query": "UPDATE workspace SET address_id = NULL WHERE id = $1;"
+  },
+  "6a9f796898ca3fbee74997021cfdbea6e2af1bb1852b45f7d6b6159212999cca": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "registry",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "repository_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "image_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "image_tag",
+          "ordinal": 5,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 6,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              },
+              "name": "deployment_status"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 7,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "region: _",
+          "ordinal": 8,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "min_horizontal_scale",
+          "ordinal": 9,
+          "type_info": "Int2"
+        },
+        {
+          "name": "max_horizontal_scale",
+          "ordinal": 10,
+          "type_info": "Int2"
+        },
+        {
+          "name": "machine_type: _",
+          "ordinal": 11,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "deploy_on_push",
+          "ordinal": 12,
+          "type_info": "Bool"
+        },
+        {
+          "name": "startup_probe_port",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "startup_probe_path",
+          "ordinal": 14,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "liveness_probe_port",
+          "ordinal": 15,
+          "type_info": "Int4"
+        },
+        {
+          "name": "liveness_probe_path",
+          "ordinal": 16,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "current_live_digest",
+          "ordinal": 17,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE repository_id = $1 AND status != 'deleted';"
   },
   "6b678ec64a61d5c20d7ea207efa6fce83058481b7af34fb81a36022b0a52dbc6": {
     "describe": {
@@ -4713,59 +4983,6 @@
     },
     "query": "SELECT username, account_type as \"account_type: ResourceType\", password, first_name, last_name, recovery_email_local, recovery_email_domain_id as \"recovery_email_domain_id: Uuid\", recovery_phone_country_code, recovery_phone_number, business_email_local, CASE WHEN business_domain_name IS NULL THEN NULL ELSE CONCAT(business_domain_name, '.', business_domain_tld) END as \"business_domain_name: String\", business_name, otp_hash, otp_expiry, coupon_code FROM user_to_sign_up WHERE username = $1;"
   },
-  "7308cf65085b6a684c7be66b0e76e1f016cd7ada2d7d1c76bf0726fa4f9f053a": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "created",
-                  "pushed",
-                  "deploying",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              },
-              "name": "deployment_status"
-            }
-          }
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", status as \"status: _\", workspace_id as \"workspace_id: _\" FROM static_site WHERE id = $1 AND status != 'deleted';"
-  },
   "732e2589870afa5056b66d963994b606517cbe372282aaa8292080d861ba6a3a": {
     "describe": {
       "columns": [],
@@ -5074,6 +5291,149 @@
     },
     "query": "SELECT manifest_digest, size, created FROM docker_registry_repository_manifest WHERE repository_id = $1 AND manifest_digest = $2;"
   },
+  "7d34879da2f4eb252c10df698cbe48cacfa1f02f8e4317a4fbecd0f8b903ec01": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "registry",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "repository_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "image_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "image_tag",
+          "ordinal": 5,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 6,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              },
+              "name": "deployment_status"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 7,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "region: _",
+          "ordinal": 8,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "min_horizontal_scale",
+          "ordinal": 9,
+          "type_info": "Int2"
+        },
+        {
+          "name": "max_horizontal_scale",
+          "ordinal": 10,
+          "type_info": "Int2"
+        },
+        {
+          "name": "machine_type: _",
+          "ordinal": 11,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "deploy_on_push",
+          "ordinal": 12,
+          "type_info": "Bool"
+        },
+        {
+          "name": "startup_probe_port",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "startup_probe_path",
+          "ordinal": 14,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "liveness_probe_port",
+          "ordinal": 15,
+          "type_info": "Int4"
+        },
+        {
+          "name": "liveness_probe_path",
+          "ordinal": 16,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "current_live_digest",
+          "ordinal": 17,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          },
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE name = $1 AND workspace_id = $2 AND status != 'deleted';"
+  },
   "7d4f82ad1a647d0bcb90321774d7e4261578091c7822d00cef3ec66a8a4f0174": {
     "describe": {
       "columns": [],
@@ -5301,6 +5661,143 @@
     },
     "query": "SELECT id FROM transaction WHERE id = $1;"
   },
+  "83db18e7233378a31ef04c463d2a7bd04f5f9e4cf4750385044a1c8e724e7df1": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "registry",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "repository_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "image_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "image_tag",
+          "ordinal": 5,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 6,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              },
+              "name": "deployment_status"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 7,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "region: _",
+          "ordinal": 8,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "min_horizontal_scale",
+          "ordinal": 9,
+          "type_info": "Int2"
+        },
+        {
+          "name": "max_horizontal_scale",
+          "ordinal": 10,
+          "type_info": "Int2"
+        },
+        {
+          "name": "machine_type: _",
+          "ordinal": 11,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "deploy_on_push",
+          "ordinal": 12,
+          "type_info": "Bool"
+        },
+        {
+          "name": "startup_probe_port",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "startup_probe_path",
+          "ordinal": 14,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "liveness_probe_port",
+          "ordinal": 15,
+          "type_info": "Int4"
+        },
+        {
+          "name": "liveness_probe_path",
+          "ordinal": 16,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "current_live_digest",
+          "ordinal": 17,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE id = $1 AND status != 'deleted';"
+  },
   "8462bd0e0f4ced9e6f53b6bb2ae95f0d393c2217d033072ca79e842b71881e06": {
     "describe": {
       "columns": [],
@@ -5377,16 +5874,6 @@
     },
     "query": "CREATE INDEX role_permissions_resource_idx_role_id_resource_id ON role_permissions_resource (role_id, resource_id);"
   },
-  "86ac7c41f81b6207880e9842e087372816345701700fc36bc4b64ccd95151cf0": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE static_site( id UUID CONSTRAINT static_site_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT static_site_chk_name_is_trimmed CHECK( name = TRIM(name) ), status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, CONSTRAINT static_site_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT static_site_uq_id_workspace_id UNIQUE(id, workspace_id) );"
-  },
   "86cde14a496c03a3a0b7cb2cb08018eac41bfa809da79ba7a17da4c71e7dd49e": {
     "describe": {
       "columns": [],
@@ -5435,65 +5922,6 @@
       }
     },
     "query": "INSERT INTO docker_registry_repository_tag( repository_id, tag, manifest_digest, last_updated ) VALUES ($1, $2, $3, $4) ON CONFLICT(repository_id, tag) DO UPDATE SET manifest_digest = $3, last_updated = $4;"
-  },
-  "87584a36562fd1d96452e70a9dc877b6177a2583215abcd647b5a8c73705ea8a": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "created",
-                  "pushed",
-                  "deploying",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              },
-              "name": "deployment_status"
-            }
-          }
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", status as \"status: _\", workspace_id as \"workspace_id: _\" FROM static_site WHERE name = $1 AND workspace_id = $2 AND status != 'deleted';"
   },
   "87bca736fca728f58dad62df4bc2c4973eaad8c008f9b456c629907210a26ce3": {
     "describe": {
@@ -6273,16 +6701,6 @@
       }
     },
     "query": "SELECT * FROM user_login WHERE login_id = $1;"
-  },
-  "9a80a38e2f423be112c1bc29c8aa36dc989d200121f2ae65e8fcf0ca732df9b8": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, startup_probe_port INTEGER, startup_probe_path VARCHAR(255), startup_probe_port_type EXPOSED_PORT_TYPE, liveness_probe_port INTEGER, liveness_probe_path VARCHAR(255), liveness_probe_port_type EXPOSED_PORT_TYPE, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ), CONSTRAINT deployment_chk_image_tag_is_valid CHECK( image_tag != '' ), CONSTRAINT deployment_chk_startup_probe_is_valid CHECK( ( startup_probe_port IS NULL AND startup_probe_path IS NULL AND startup_probe_port_type IS NULL ) OR ( startup_probe_port IS NOT NULL AND startup_probe_path IS NOT NULL AND startup_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_liveness_probe_is_valid CHECK( ( liveness_probe_port IS NULL AND liveness_probe_path IS NULL AND liveness_probe_port_type IS NULL ) OR ( liveness_probe_port IS NOT NULL AND liveness_probe_path IS NOT NULL AND liveness_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_startup_probe_port_type_is_http CHECK( startup_probe_port_type = 'http' ), CONSTRAINT deployment_chk_liveness_probe_port_type_is_http CHECK( liveness_probe_port_type = 'http' ) );"
   },
   "9b88d7c5fc101c3ee54f19f893dcd561664e63b7206aa46df6a7868ae52d5157": {
     "describe": {
@@ -8176,143 +8594,6 @@
     },
     "query": "DELETE FROM workspace_user WHERE workspace_id = $1 AND user_id = $2;"
   },
-  "bd83965fd0b7b287d29629e4684f9365fea18339c9481b6cfed8140407d46a81": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "registry",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "repository_id: _",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "image_name",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "image_tag",
-          "ordinal": 5,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 6,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "created",
-                  "pushed",
-                  "deploying",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              },
-              "name": "deployment_status"
-            }
-          }
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "region: _",
-          "ordinal": 8,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "min_horizontal_scale",
-          "ordinal": 9,
-          "type_info": "Int2"
-        },
-        {
-          "name": "max_horizontal_scale",
-          "ordinal": 10,
-          "type_info": "Int2"
-        },
-        {
-          "name": "machine_type: _",
-          "ordinal": 11,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "deploy_on_push",
-          "ordinal": 12,
-          "type_info": "Bool"
-        },
-        {
-          "name": "startup_probe_port",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "startup_probe_path",
-          "ordinal": 14,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "liveness_probe_port",
-          "ordinal": 15,
-          "type_info": "Int4"
-        },
-        {
-          "name": "liveness_probe_path",
-          "ordinal": 16,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        true,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path FROM deployment WHERE name = $1 AND workspace_id = $2 AND status != 'deleted';"
-  },
   "bd8ba3216d930577a5a5c3b3094e7ca23e0585dc678c8357809b3a4ca616e493": {
     "describe": {
       "columns": [],
@@ -8506,6 +8787,16 @@
       }
     },
     "query": "WITH RECURSIVE managed_url_list AS ( SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id WHERE managed_url.static_site_id = $1 AND managed_url.url_type = 'proxy_to_static_site' UNION ALL SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id JOIN managed_url_list ON managed_url.url LIKE CONCAT( managed_url.sub_domain, '.', domain.name, '.', domain.tld, CASE managed_url.path WHEN '/' THEN '%' ELSE CONCAT(managed_url.path, '%') END ) WHERE managed_url.url_type = 'redirect' OR managed_url.url_type = 'proxy_url' ) SELECT id as \"id!: _\", sub_domain as \"sub_domain!: _\", domain_id as \"domain_id!: _\", path as \"path!: _\", url_type as \"url_type!: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id!: _\", is_configured as \"is_configured!: _\" FROM managed_url_list WHERE managed_url_list.workspace_id = $2 AND managed_url_list.sub_domain NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
+  },
+  "bf803cd3b21d499ff2a1f2b17bb535b595f0fa26282b6d85980f387b5879d72a": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "ALTER TABLE deployment ADD CONSTRAINT deployment_fk_current_live_digest FOREIGN KEY(id, current_live_digest) REFERENCES deployment_deploy_history(deployment_id, image_digest);"
   },
   "bfe39187b7925d9987415d6f1430adb8ea31e32dbbf15528aaebf81923e1d1fe": {
     "describe": {
@@ -8935,144 +9226,6 @@
       }
     },
     "query": "SELECT tag, last_updated, manifest_digest FROM docker_registry_repository_tag WHERE repository_id = $1 AND tag = $2;"
-  },
-  "d2ed38b9eb044df797a412359876da4f75ef191b04b0dcd3fa7ae0adc2afebb2": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "registry",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "repository_id: _",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "image_name",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "image_tag",
-          "ordinal": 5,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 6,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "created",
-                  "pushed",
-                  "deploying",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              },
-              "name": "deployment_status"
-            }
-          }
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "region: _",
-          "ordinal": 8,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "min_horizontal_scale",
-          "ordinal": 9,
-          "type_info": "Int2"
-        },
-        {
-          "name": "max_horizontal_scale",
-          "ordinal": 10,
-          "type_info": "Int2"
-        },
-        {
-          "name": "machine_type: _",
-          "ordinal": 11,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "deploy_on_push",
-          "ordinal": 12,
-          "type_info": "Bool"
-        },
-        {
-          "name": "startup_probe_port",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "startup_probe_path",
-          "ordinal": 14,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "liveness_probe_port",
-          "ordinal": 15,
-          "type_info": "Int4"
-        },
-        {
-          "name": "liveness_probe_path",
-          "ordinal": 16,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        true,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Text",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT deployment.id as \"id: _\", deployment.name::TEXT as \"name!: _\", deployment.registry, deployment.repository_id as \"repository_id: _\", deployment.image_name, deployment.image_tag, deployment.status as \"status: _\", deployment.workspace_id as \"workspace_id: _\", deployment.region as \"region: _\", deployment.min_horizontal_scale, deployment.max_horizontal_scale, deployment.machine_type as \"machine_type: _\", deployment.deploy_on_push, deployment.startup_probe_port, deployment.startup_probe_path, deployment.liveness_probe_port, deployment.liveness_probe_path FROM deployment LEFT JOIN docker_registry_repository ON docker_registry_repository.id = deployment.repository_id WHERE ( ( deployment.registry = 'registry.patr.cloud' AND docker_registry_repository.name = $1 ) OR ( deployment.registry != 'registry.patr.cloud' AND deployment.image_name = $1 ) ) AND deployment.image_tag = $2 AND deployment.workspace_id = $3 AND deployment.status != 'deleted';"
   },
   "d513b0c8950ab92cb26b919d4611b976d25c5a4c7ff14db6bee61cf348d58704": {
     "describe": {
@@ -9766,6 +9919,71 @@
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", db_name, engine as \"engine: _\", version, num_nodes, database_plan as \"database_plan: _\", region, status as \"status: _\", host, port, username, password, workspace_id as \"workspace_id: _\", digitalocean_db_id FROM managed_database WHERE id = $1;"
   },
+  "dc532b30067cfee729672c5ddffe470971c2b69db1c60f3c883d2e34aa08808e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              },
+              "name": "deployment_status"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "current_live_upload: _",
+          "ordinal": 4,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          },
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", status as \"status: _\", workspace_id as \"workspace_id: _\", current_live_upload as \"current_live_upload: _\" FROM static_site WHERE name = $1 AND workspace_id = $2 AND status != 'deleted';"
+  },
   "dc7de568effee5ebaee539ded50b6d763d4d21bd5c2c29166e6c7be9bb23c2d9": {
     "describe": {
       "columns": [],
@@ -9890,137 +10108,6 @@
       }
     },
     "query": "SELECT domain_id as \"domain_id: _\", zone_identifier, nameserver_type as \"nameserver_type: _\" FROM patr_controlled_domain WHERE domain_id = $1;"
-  },
-  "dde591b28c83aad9a06b2e7949ee81b8e6b61be52c1a3e7dfb117787159b5d9c": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "registry",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "repository_id: _",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "image_name",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "image_tag",
-          "ordinal": 5,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 6,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "created",
-                  "pushed",
-                  "deploying",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              },
-              "name": "deployment_status"
-            }
-          }
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "region: _",
-          "ordinal": 8,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "min_horizontal_scale",
-          "ordinal": 9,
-          "type_info": "Int2"
-        },
-        {
-          "name": "max_horizontal_scale",
-          "ordinal": 10,
-          "type_info": "Int2"
-        },
-        {
-          "name": "machine_type: _",
-          "ordinal": 11,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "deploy_on_push",
-          "ordinal": 12,
-          "type_info": "Bool"
-        },
-        {
-          "name": "startup_probe_port",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "startup_probe_path",
-          "ordinal": 14,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "liveness_probe_port",
-          "ordinal": 15,
-          "type_info": "Int4"
-        },
-        {
-          "name": "liveness_probe_path",
-          "ordinal": 16,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        true,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path FROM deployment WHERE workspace_id = $1 AND status != 'deleted';"
   },
   "ddf2963936615eb58225ace43d720c4c708e1abced58c94dc7a8d9b83c0f6321": {
     "describe": {
@@ -10361,137 +10448,6 @@
       }
     },
     "query": "CREATE INDEX personal_email_idx_user_id ON personal_email (user_id);"
-  },
-  "e948b2cbf9093751a9b27ad5444df59d690b0284a247b1920802fc84bde2c67a": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "registry",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "repository_id: _",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "image_name",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "image_tag",
-          "ordinal": 5,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 6,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "created",
-                  "pushed",
-                  "deploying",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              },
-              "name": "deployment_status"
-            }
-          }
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "region: _",
-          "ordinal": 8,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "min_horizontal_scale",
-          "ordinal": 9,
-          "type_info": "Int2"
-        },
-        {
-          "name": "max_horizontal_scale",
-          "ordinal": 10,
-          "type_info": "Int2"
-        },
-        {
-          "name": "machine_type: _",
-          "ordinal": 11,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "deploy_on_push",
-          "ordinal": 12,
-          "type_info": "Bool"
-        },
-        {
-          "name": "startup_probe_port",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "startup_probe_path",
-          "ordinal": 14,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "liveness_probe_port",
-          "ordinal": 15,
-          "type_info": "Int4"
-        },
-        {
-          "name": "liveness_probe_path",
-          "ordinal": 16,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        true,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path FROM deployment WHERE repository_id = $1 AND status != 'deleted';"
   },
   "e948ebf3407d3fb2268e95006f05ce37bfc95fa4ae4af5378b51d2d831df30b1": {
     "describe": {
@@ -10866,6 +10822,150 @@
       }
     },
     "query": "SELECT COUNT(*) as \"count!\" FROM user_to_sign_up;"
+  },
+  "f2a44134a01b4bcd94ff4d7b847b205199c59cb7e613b384a501c8415190b57b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "registry",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "repository_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "image_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "image_tag",
+          "ordinal": 5,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 6,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              },
+              "name": "deployment_status"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 7,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "region: _",
+          "ordinal": 8,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "min_horizontal_scale",
+          "ordinal": 9,
+          "type_info": "Int2"
+        },
+        {
+          "name": "max_horizontal_scale",
+          "ordinal": 10,
+          "type_info": "Int2"
+        },
+        {
+          "name": "machine_type: _",
+          "ordinal": 11,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "deploy_on_push",
+          "ordinal": 12,
+          "type_info": "Bool"
+        },
+        {
+          "name": "startup_probe_port",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "startup_probe_path",
+          "ordinal": 14,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "liveness_probe_port",
+          "ordinal": 15,
+          "type_info": "Int4"
+        },
+        {
+          "name": "liveness_probe_path",
+          "ordinal": 16,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "current_live_digest",
+          "ordinal": 17,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          },
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT deployment.id as \"id: _\", deployment.name::TEXT as \"name!: _\", deployment.registry, deployment.repository_id as \"repository_id: _\", deployment.image_name, deployment.image_tag, deployment.status as \"status: _\", deployment.workspace_id as \"workspace_id: _\", deployment.region as \"region: _\", deployment.min_horizontal_scale, deployment.max_horizontal_scale, deployment.machine_type as \"machine_type: _\", deployment.deploy_on_push, deployment.startup_probe_port, deployment.startup_probe_path, deployment.liveness_probe_port, deployment.liveness_probe_path, current_live_digest FROM deployment LEFT JOIN docker_registry_repository ON docker_registry_repository.id = deployment.repository_id WHERE ( ( deployment.registry = 'registry.patr.cloud' AND docker_registry_repository.name = $1 ) OR ( deployment.registry != 'registry.patr.cloud' AND deployment.image_name = $1 ) ) AND deployment.image_tag = $2 AND deployment.workspace_id = $3 AND deployment.status != 'deleted';"
   },
   "f39f35664495c1605a1f36e9a5a7597392c9143ea0afd6c73a6267770e1b6bbd": {
     "describe": {

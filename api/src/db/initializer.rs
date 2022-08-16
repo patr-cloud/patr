@@ -163,7 +163,7 @@ pub async fn initialize(app: &App) -> Result<(), Error> {
 			.expect("PERMISSIONS is already set");
 
 		let machine_types =
-			db::get_all_deployment_machine_types(&mut *transaction)
+			db::get_all_deployment_machine_types(&mut transaction)
 				.await?
 				.into_iter()
 				.map(|machine_type| {
@@ -177,7 +177,7 @@ pub async fn initialize(app: &App) -> Result<(), Error> {
 			.set(machine_types)
 			.expect("MACHINE_TYPES is already set");
 
-		let regions = db::get_all_deployment_regions(&mut *transaction)
+		let regions = db::get_all_deployment_regions(&mut transaction)
 			.await?
 			.into_iter()
 			.map(|region| (region.id, (region.name, region.cloud_provider)))
