@@ -8,6 +8,8 @@ use api_models::{
 			BasicUserInfo,
 			ChangePasswordRequest,
 			ChangePasswordResponse,
+			CreateApiTokenRequest,
+			CreateApiTokenResponse,
 			DeletePersonalEmailRequest,
 			DeletePersonalEmailResponse,
 			DeletePhoneNumberRequest,
@@ -20,6 +22,7 @@ use api_models::{
 			ListPhoneNumbersResponse,
 			ListUserLoginsResponse,
 			ListUserWorkspacesResponse,
+			RevokeApiTokenResponse,
 			SearchForUserRequest,
 			SearchForUserResponse,
 			UpdateRecoveryEmailRequest,
@@ -216,6 +219,22 @@ pub fn create_sub_app(
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(search_for_user)),
+		],
+	);
+
+	app.post(
+		"/api-token",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(create_api_token)),
+		],
+	);
+
+	app.put(
+		"/:apiToken",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(revoke_api_token)),
 		],
 	);
 
@@ -1328,5 +1347,85 @@ async fn search_for_user(
 		db::search_for_users(context.get_database_connection(), &query).await?;
 
 	context.success(SearchForUserResponse { users });
+	Ok(context)
+}
+
+async fn create_api_token(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let CreateApiTokenRequest {
+		workspace_id,
+		name,
+		resource_permissions,
+		resource_type_permissions,
+		ttl,
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	// This logic has to change to accomodate the user_id
+	// Can be user who is creating token for personal user or the admin who
+	// created token for user Accomodate logic for which user creating for
+	// personal user or admin creating for user As for now user_id will be the
+	// id of user who is making this request
+
+	let api_token = service::create_api_token_for_user(
+		context.get_database_connection(),
+		&user_id,
+		&workspace_id,
+		&name,
+		&resource_permissions,
+		&resource_type_permissions,
+		ttl,
+		&request_id,
+	)
+	.await?;
+
+	context.success(CreateApiTokenResponse { api_token });
+	Ok(context)
+}
+
+async fn revoke_api_token(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	// TODO - Has to validate if the user has right to revoke the token or not
+	let api_token = Uuid::parse_str(
+		context
+			.get_param(request_keys::API_TOKEN)
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?,
+	)
+	.unwrap();
+
+	db::get_api_token_by_id(context.get_database_connection(), &api_token)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	log::trace!(
+		"request_id: {} with user_id: {} revoking api_token: {}",
+		request_id,
+		user_id,
+		api_token
+	);
+
+	db::revoke_user_api_token(
+		context.get_database_connection(),
+		&api_token,
+		&user_id,
+		true,
+	)
+	.await?;
+
+	context.success(RevokeApiTokenResponse {});
 	Ok(context)
 }

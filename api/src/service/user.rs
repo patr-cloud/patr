@@ -1,4 +1,6 @@
-use api_models::utils::Uuid;
+use std::collections::BTreeMap;
+
+use api_models::utils::{DateTime, Uuid};
 use chrono::Utc;
 use eve_rs::AsError;
 
@@ -421,4 +423,50 @@ pub async fn verify_phone_number_for_user(
 	.await?;
 
 	Ok(())
+}
+
+pub async fn create_api_token_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+	workspace_id: &Uuid,
+	name: &str,
+	resource_permissions: &BTreeMap<Uuid, Vec<Uuid>>,
+	resource_type_permissions: &BTreeMap<Uuid, Vec<Uuid>>,
+	ttl: Option<DateTime<Utc>>,
+	request_id: &Uuid,
+) -> Result<Uuid, Error> {
+	let token = Uuid::new_v4();
+
+	// Take out the permission and permission_type
+	// Check for super_admin permission
+	// Check for who is creating the token
+	// Check for api_token's permission should be subset of user permissions
+	// always
+	log::trace!(
+		"request_id: {} creating api token for user: {} in database",
+		request_id,
+		user_id
+	);
+	db::create_api_token_for_user(connection, &token, user_id, name, ttl)
+		.await?;
+
+	log::trace!("request_id: {} creating resource type permissions for token for user: {} in database", request_id, user_id);
+	db::add_resource_permission_for_api_token(
+		connection,
+		&token,
+		workspace_id,
+		resource_permissions,
+	)
+	.await?;
+
+	log::trace!("request_id: {} creating resource_permissions for token for user: {} in database", request_id, user_id);
+	db::add_resource_type_permission_for_api_token(
+		connection,
+		&token,
+		workspace_id,
+		resource_type_permissions,
+	)
+	.await?;
+
+	Ok(token)
 }

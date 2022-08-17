@@ -35,6 +35,8 @@ pub(super) async fn migrate(
 ) -> Result<(), Error> {
 	refactor_resource_deletion(&mut *connection, config).await?;
 	add_resource_requests_for_running_deployments(connection, config).await?;
+	unique_workspac_id_super_admin_id(connection, config).await?;
+	create_api_token_x_relations(connection, config).await?;
 
 	Ok(())
 }
@@ -1058,6 +1060,94 @@ async fn add_resource_requests_for_running_deployments(
 			Err(err) => return Err(err)?,
 		}
 	}
+
+	Ok(())
+}
+
+async fn unique_workspac_id_super_admin_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE workspace
+		ADD CONSTRAINT workspace_uq_id_super_admin_id
+		UNIQUE(id, super_admin_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn create_api_token_x_relations(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		CREATE TABLE api_token(
+			token UUID
+				CONSTRAINT api_token_pk PRIMARY KEY,
+			user_id UUID NOT NULL,
+			name TEXT NOT NULL,
+			token_expiry TIMESTAMPTZ,
+			created TIMESTAMPTZ NOT NULL,
+			revoked BOOLEAN NOT NULL DEFAULT FALSE,
+			revoked_by UUID,
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE api_token_resource_permission(
+			token UUID NOT NULL,
+			workspace_id UUID NOT NULL,
+			permission_id UUID NOT NULL,
+			resource_id UUID NOT NULL,
+			CONSTRAINT api_token_resource_permission_fk_token
+				FOREIGN KEY(token)
+					REFERENCES api_token(token)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE api_token_resource_permission_type(
+			token UUID NOT NULL,
+			workspace_id UUID NOT NULL,
+			permission_id UUID NOT NULL,
+			resource_type_id UUID NOT NULL,
+			CONSTRAINT api_token_resource_permission_type_fk_token
+				FOREIGN KEY(token)
+					REFERENCES api_token(token)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE api_token_workspace_super_admin(
+			token UUID NOT NULL,
+			workspace_id UUID NOT NULL,
+			super_admin_id UUID NOT NULL,
+			CONSTRAINT api_token_fk_workspace_id_super_admin_id
+				FOREIGN KEY(workspace_id, super_admin_id)
+					REFERENCES workspace(id, super_admin_id)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }

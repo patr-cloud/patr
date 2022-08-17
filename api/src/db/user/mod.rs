@@ -1,5 +1,6 @@
 use crate::Database;
 
+mod api_token;
 mod sign_up;
 mod user_data;
 mod user_email;
@@ -7,6 +8,7 @@ mod user_login;
 mod user_phone;
 
 pub use self::{
+	api_token::*,
 	sign_up::*,
 	user_data::*,
 	user_email::*,
