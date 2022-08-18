@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use api_models::utils::{DateTime, Uuid};
 use chrono::Utc;
@@ -433,15 +434,78 @@ pub async fn create_api_token_for_user(
 	resource_permissions: &BTreeMap<Uuid, Vec<Uuid>>,
 	resource_type_permissions: &BTreeMap<Uuid, Vec<Uuid>>,
 	ttl: Option<DateTime<Utc>>,
+	is_super_admin: bool,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	let token = Uuid::new_v4();
 
-	// Take out the permission and permission_type
-	// Check for super_admin permission
-	// Check for who is creating the token
-	// Check for api_token's permission should be subset of user permissions
-	// always
+	// Currently only super admin is allwed to create tokens for users or self
+	// TODO - to be re-iterated when RBAC is implemented properly
+
+	if !is_super_admin {
+		return Error::as_result()
+			.status(403)
+			.body(error!(NOT_A_SUPER_ADMIN).to_string())?;
+	}
+
+	// Check if user_id is super admin
+	let is_user_super_admin =
+		db::is_user_super_admin(connection, workspace_id, user_id).await?;
+
+	if !is_user_super_admin {
+		let user_resource_permissions =
+			db::get_user_permissions_resource_in_workspace(
+				connection,
+				user_id,
+				workspace_id,
+			)
+			.await?;
+
+		// Checking is user's permissions are superset of requested token
+		// permission If not returning 403(forbidden/unprivileged)
+		for (token_resource_id, token_permissions) in resource_permissions {
+			let token_permission_ids =
+				HashSet::from_iter(token_permissions.iter().cloned());
+			for (user_resource_id, user_permissions) in
+				&user_resource_permissions
+			{
+				if !user_permissions.is_superset(&token_permission_ids) &&
+					token_resource_id != user_resource_id
+				{
+					return Error::as_result()
+						.status(403)
+						.body(error!(NOT_A_SUPER_ADMIN).to_string())?;
+				}
+			}
+		}
+
+		let user_resource_type_permissions =
+			db::get_user_permissions_resource_type_in_workspace(
+				connection,
+				user_id,
+				workspace_id,
+			)
+			.await?;
+
+		for (token_resource_type_id, token_permissions) in
+			resource_type_permissions
+		{
+			let token_permission_ids =
+				HashSet::from_iter(token_permissions.iter().cloned());
+			for (user_resource_type_id, user_permissions) in
+				&user_resource_type_permissions
+			{
+				if !user_permissions.is_superset(&token_permission_ids) &&
+					token_resource_type_id != user_resource_type_id
+				{
+					return Error::as_result()
+						.status(403)
+						.body(error!(UNPRIVILEGED).to_string())?;
+				}
+			}
+		}
+	}
+
 	log::trace!(
 		"request_id: {} creating api token for user: {} in database",
 		request_id,

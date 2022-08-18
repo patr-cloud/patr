@@ -1,4 +1,5 @@
-use std::{collections::BTreeMap, net::IpAddr};
+use std::net::IpAddr;
+use std::collections::{BTreeMap, HashSet};
 
 use api_models::{
 	models::user::{BasicUserInfo, UserPhoneNumber},
@@ -244,4 +245,105 @@ pub async fn add_resource_type_permission_for_api_token(
 		}
 	}
 	Ok(())
+}
+
+pub async fn get_user_permissions_resource_in_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+	workspace_id: &Uuid,
+) -> Result<BTreeMap<Uuid, HashSet<Uuid>>, sqlx::Error> {
+	let mut permissions = BTreeMap::<Uuid, HashSet<Uuid>>::new();
+	let rows = query!(
+		r#"
+		SELECT
+			resource_id as "resource_id: Uuid",
+			permission_id as "permission_id: Uuid" 
+		FROM
+			role_permissions_resource
+		LEFT JOIN
+			workspace_user 
+		ON 
+			workspace_user.role_id = role_permissions_resource.role_id
+		WHERE
+			workspace_user.workspace_id = $1 AND
+			workspace_user.user_id = $2;
+		"#,
+		workspace_id as _,
+		user_id as _,
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	for row in rows {
+		let permission_id = row.permission_id;
+		permissions
+			.entry(row.resource_id)
+			.or_insert_with(HashSet::new)
+			.insert(permission_id);
+	}
+
+	Ok(permissions)
+}
+
+pub async fn get_user_permissions_resource_type_in_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+	workspace_id: &Uuid,
+) -> Result<BTreeMap<Uuid, HashSet<Uuid>>, sqlx::Error> {
+	let mut permissions = BTreeMap::<Uuid, HashSet<Uuid>>::new();
+
+	let rows = query!(
+		r#"
+		SELECT
+			resource_type_id as "resource_type_id: Uuid",
+			permission_id as "permission_id: Uuid"
+		FROM
+			role_permissions_resource_type
+		LEFT JOIN
+			workspace_user 
+		ON 
+			workspace_user.role_id = role_permissions_resource_type.role_id
+		WHERE
+			workspace_user.workspace_id = $1 AND
+			workspace_user.user_id = $2;
+		"#,
+		workspace_id as _,
+		user_id as _,
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	for row in rows {
+		let permission_id = row.permission_id;
+		permissions
+			.entry(row.resource_type_id)
+			.or_insert_with(HashSet::new)
+			.insert(permission_id);
+	}
+
+	Ok(permissions)
+}
+
+pub async fn is_user_super_admin(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	user_id: &Uuid,
+) -> Result<bool, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT
+			super_admin_id
+		FROM
+			workspace
+		WHERE
+			super_admin_id = $1 AND
+			id = $2;
+		"#,
+		user_id as _,
+		workspace_id as _,
+	)
+	.fetch_optional(&mut *connection)
+	.await?;
+
+	Ok(rows.is_some())
 }

@@ -1354,11 +1354,17 @@ async fn create_api_token(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	// This logic has to change to accomodate the user_id
+	// Can be user who is creating token for personal user or the admin who
+	// created token for user Accomodate logic for which user creating for
+	// personal user or admin creating for user As for now user_id will be the
+	// id of user who is making this request
+
 	let request_id = Uuid::new_v4();
-	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	let CreateApiTokenRequest {
 		workspace_id,
+		user_id,
 		name,
 		resource_permissions,
 		resource_type_permissions,
@@ -1368,11 +1374,17 @@ async fn create_api_token(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	// This logic has to change to accomodate the user_id
-	// Can be user who is creating token for personal user or the admin who
-	// created token for user Accomodate logic for which user creating for
-	// personal user or admin creating for user As for now user_id will be the
-	// id of user who is making this request
+	let workspace_permissions = context
+		.get_token_data()
+		.unwrap()
+		.workspaces
+		.get(&workspace_id);
+	let is_super_admin =
+		if let Some(workspace_permission) = workspace_permissions {
+			workspace_permission.is_super_admin
+		} else {
+			false
+		};
 
 	let api_token = service::create_api_token_for_user(
 		context.get_database_connection(),
@@ -1382,6 +1394,7 @@ async fn create_api_token(
 		&resource_permissions,
 		&resource_type_permissions,
 		ttl,
+		is_super_admin,
 		&request_id,
 	)
 	.await?;
