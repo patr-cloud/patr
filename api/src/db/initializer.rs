@@ -120,24 +120,6 @@ pub async fn initialize(app: &App) -> Result<(), Error> {
 				)
 				.await?;
 
-				// Queue the payment for the current month
-				let now = Utc::now();
-				let month = now.month();
-				let year = now.year();
-				let request_id = Uuid::new_v4();
-				service::send_message_to_rabbit_mq(
-					&RequestMessage::Workspace(
-						WorkspaceRequestData::ProcessWorkspaces {
-							month: if month == 12 { 1 } else { month + 1 },
-							year: if month == 12 { year + 1 } else { year },
-							request_id: request_id.clone(),
-						},
-					),
-					&app.config,
-					&request_id,
-				)
-				.await?;
-
 				transaction.commit().await?;
 				log::info!(
 					"Migration completed. Database is now at version {}.{}.{}",
@@ -181,7 +163,7 @@ pub async fn initialize(app: &App) -> Result<(), Error> {
 			.expect("PERMISSIONS is already set");
 
 		let machine_types =
-			db::get_all_deployment_machine_types(&mut *transaction)
+			db::get_all_deployment_machine_types(&mut transaction)
 				.await?
 				.into_iter()
 				.map(|machine_type| {
@@ -195,7 +177,7 @@ pub async fn initialize(app: &App) -> Result<(), Error> {
 			.set(machine_types)
 			.expect("MACHINE_TYPES is already set");
 
-		let regions = db::get_all_deployment_regions(&mut *transaction)
+		let regions = db::get_all_deployment_regions(&mut transaction)
 			.await?
 			.into_iter()
 			.map(|region| (region.id, (region.name, region.cloud_provider)))

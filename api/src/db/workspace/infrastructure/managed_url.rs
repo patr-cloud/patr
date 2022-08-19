@@ -22,6 +22,7 @@ pub struct ManagedUrl {
 	pub static_site_id: Option<Uuid>,
 	pub url: Option<String>,
 	pub workspace_id: Uuid,
+	pub is_configured: bool,
 }
 
 pub async fn initialize_managed_url_pre(
@@ -65,6 +66,7 @@ pub async fn initialize_managed_url_pre(
 			static_site_id UUID,
 			url TEXT,
 			workspace_id UUID NOT NULL,
+			is_configured BOOLEAN NOT NULL,
 			CONSTRAINT managed_url_uq_sub_domain_domain_id_path UNIQUE(
 				sub_domain, domain_id, path
 			),
@@ -130,7 +132,7 @@ pub async fn initialize_managed_url_post(
 					REFERENCES deployment(id, workspace_id),
 			ADD CONSTRAINT managed_url_fk_static_site_id_workspace_id
 				FOREIGN KEY(static_site_id, workspace_id)
-					REFERENCES deployment_static_site(id, workspace_id),
+					REFERENCES static_site(id, workspace_id),
 			ADD CONSTRAINT managed_url_fk_id_workspace_id
 				FOREIGN KEY(id, workspace_id)
 					REFERENCES resource(id, owner_id);
@@ -159,7 +161,8 @@ pub async fn get_all_managed_urls_in_workspace(
 			port,
 			static_site_id as "static_site_id: _",
 			url,
-			workspace_id as "workspace_id: _"
+			workspace_id as "workspace_id: _",
+			is_configured
 		FROM
 			managed_url
 		WHERE
@@ -193,7 +196,8 @@ pub async fn get_all_managed_urls_for_domain(
 			port,
 			static_site_id as "static_site_id: _",
 			url,
-			workspace_id as "workspace_id: _"
+			workspace_id as "workspace_id: _",
+			is_configured
 		FROM
 			managed_url
 		WHERE
@@ -210,7 +214,7 @@ pub async fn get_all_managed_urls_for_domain(
 	.await
 }
 
-pub async fn get_all_managed_urls(
+pub async fn get_all_unconfigured_managed_urls(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Vec<ManagedUrl>, sqlx::Error> {
 	query_as!(
@@ -226,10 +230,12 @@ pub async fn get_all_managed_urls(
 			port,
 			static_site_id as "static_site_id: _",
 			url,
-			workspace_id as "workspace_id: _"
+			workspace_id as "workspace_id: _",
+			is_configured
 		FROM
 			managed_url
 		WHERE
+			is_configured = FALSE AND
 			sub_domain NOT LIKE CONCAT(
 				'patr-deleted: ',
 				REPLACE(id::TEXT, '-', ''),
@@ -253,6 +259,7 @@ pub async fn create_new_managed_url_in_workspace(
 	static_site_id: Option<&Uuid>,
 	url: Option<&str>,
 	workspace_id: &Uuid,
+	is_configured: bool,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -267,7 +274,8 @@ pub async fn create_new_managed_url_in_workspace(
 				port,
 				static_site_id,
 				url,
-				workspace_id
+				workspace_id,
+				is_configured
 			)
 		VALUES
 			(
@@ -280,7 +288,8 @@ pub async fn create_new_managed_url_in_workspace(
 				$7,
 				$8,
 				$9,
-				$10
+				$10,
+				$11
 			);
 		"#,
 		managed_url_id as _,
@@ -292,7 +301,8 @@ pub async fn create_new_managed_url_in_workspace(
 		port.map(|port| port as i32),
 		static_site_id as _,
 		url,
-		workspace_id as _
+		workspace_id as _,
+		is_configured
 	)
 	.execute(&mut *connection)
 	.await
@@ -316,7 +326,8 @@ pub async fn get_managed_url_by_id(
 			port,
 			static_site_id as "static_site_id: _",
 			url,
-			workspace_id as "workspace_id: _"
+			workspace_id as "workspace_id: _",
+			is_configured
 		FROM
 			managed_url
 		WHERE
@@ -364,6 +375,28 @@ pub async fn update_managed_url(
 		port.map(|port| port as i32),
 		static_site_id as _,
 		url
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_managed_url_configuration_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	managed_url_id: &Uuid,
+	is_configured: bool,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			managed_url
+		SET
+			is_configured = $2
+		WHERE
+			id = $1;
+		"#,
+		managed_url_id as _,
+		is_configured
 	)
 	.execute(&mut *connection)
 	.await
@@ -469,7 +502,8 @@ pub async fn get_all_managed_urls_for_deployment(
 			port,
 			static_site_id as "static_site_id: _",
 			url,
-			workspace_id as "workspace_id!: _"
+			workspace_id as "workspace_id!: _",
+			is_configured as "is_configured!: _"
 		FROM
 			managed_url_list
 		WHERE
@@ -545,7 +579,8 @@ pub async fn get_all_managed_urls_for_static_site(
 			port,
 			static_site_id as "static_site_id: _",
 			url,
-			workspace_id as "workspace_id!: _"
+			workspace_id as "workspace_id!: _",
+			is_configured as "is_configured!: _"
 		FROM
 			managed_url_list
 		WHERE

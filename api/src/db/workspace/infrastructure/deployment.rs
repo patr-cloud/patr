@@ -3,8 +3,9 @@ use api_models::{
 		deployment::{DeploymentProbe, DeploymentStatus, ExposedPortType},
 		DeploymentCloudProvider,
 	},
-	utils::Uuid,
+	utils::{DateTime, Uuid},
 };
+use chrono::Utc;
 
 use crate::{
 	db::{self, WorkspaceAuditLog},
@@ -48,6 +49,12 @@ pub struct Deployment {
 	pub startup_probe_path: Option<String>,
 	pub liveness_probe_port: Option<i32>,
 	pub liveness_probe_path: Option<String>,
+	pub current_live_digest: Option<String>,
+}
+
+pub struct DeploymentDeployHistory {
+	pub image_digest: String,
+	pub created: DateTime<Utc>,
 }
 
 pub struct DeploymentEnvironmentVariable {
@@ -55,6 +62,12 @@ pub struct DeploymentEnvironmentVariable {
 	pub name: String,
 	pub value: Option<String>,
 	pub secret_id: Option<Uuid>,
+}
+
+pub struct DeploymentConfigMount {
+	pub path: String,
+	pub file: Vec<u8>,
+	pub deployment_id: Uuid,
 }
 
 pub async fn initialize_deployment_pre(
@@ -174,6 +187,7 @@ pub async fn initialize_deployment_pre(
 			liveness_probe_port INTEGER,
 			liveness_probe_path VARCHAR(255),
 			liveness_probe_port_type EXPOSED_PORT_TYPE,
+			current_live_digest TEXT,
 			CONSTRAINT deployment_fk_repository_id_workspace_id
 				FOREIGN KEY(repository_id, workspace_id)
 					REFERENCES docker_registry_repository(id, workspace_id),
@@ -331,6 +345,45 @@ pub async fn initialize_deployment_pre(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		CREATE TABLE deployment_config_mounts(
+			path TEXT NOT NULL
+				CONSTRAINT deployment_config_mounts_chk_path_valid
+					CHECK(path ~ '^[a-zA-Z0-9_\-\.\(\)]+$'),
+			file BYTEA NOT NULL,
+			deployment_id UUID NOT NULL
+				CONSTRAINT deployment_config_mounts_fk_deployment_id
+					REFERENCES deployment(id),
+			CONSTRAINT deployment_config_mounts_pk PRIMARY KEY(
+				deployment_id,
+				path
+			)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE deployment_deploy_history(
+			deployment_id UUID NOT NULL
+				CONSTRAINT deployment_image_digest_fk_deployment_id
+					REFERENCES deployment(id),
+			image_digest TEXT NOT NULL,
+			repository_id UUID NOT NULL
+				CONSTRAINT deployment_image_digest_fk_repository_id
+					REFERENCES docker_registry_repository(id),
+			created TIMESTAMPTZ NOT NULL,
+			CONSTRAINT deployment_image_digest_pk
+				PRIMARY KEY(deployment_id, image_digest)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
@@ -343,6 +396,17 @@ pub async fn initialize_deployment_post(
 		ALTER TABLE deployment
 		ADD CONSTRAINT deployment_fk_id_workspace_id
 		FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+		ADD CONSTRAINT deployment_fk_current_live_digest
+		FOREIGN KEY(id, current_live_digest) REFERENCES
+		deployment_deploy_history(deployment_id, image_digest);
 		"#
 	)
 	.execute(&mut *connection)
@@ -584,7 +648,8 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 			deployment.startup_probe_port,
 			deployment.startup_probe_path,
 			deployment.liveness_probe_port,
-			deployment.liveness_probe_path
+			deployment.liveness_probe_path,
+			current_live_digest
 		FROM
 			deployment
 		LEFT JOIN
@@ -638,7 +703,8 @@ pub async fn get_deployments_by_repository_id(
 			startup_probe_port,
 			startup_probe_path,
 			liveness_probe_port,
-			liveness_probe_path
+			liveness_probe_path,
+			current_live_digest
 		FROM
 			deployment
 		WHERE
@@ -675,7 +741,8 @@ pub async fn get_deployments_for_workspace(
 			startup_probe_port,
 			startup_probe_path,
 			liveness_probe_port,
-			liveness_probe_path
+			liveness_probe_path,
+			current_live_digest
 		FROM
 			deployment
 		WHERE
@@ -712,7 +779,8 @@ pub async fn get_deployment_by_id(
 			startup_probe_port,
 			startup_probe_path,
 			liveness_probe_port,
-			liveness_probe_path
+			liveness_probe_path,
+			current_live_digest
 		FROM
 			deployment
 		WHERE
@@ -749,7 +817,8 @@ pub async fn get_deployment_by_id_including_deleted(
 			startup_probe_port,
 			startup_probe_path,
 			liveness_probe_port,
-			liveness_probe_path
+			liveness_probe_path,
+			current_live_digest
 		FROM
 			deployment
 		WHERE
@@ -786,7 +855,8 @@ pub async fn get_deployment_by_name_in_workspace(
 			startup_probe_port,
 			startup_probe_path,
 			liveness_probe_port,
-			liveness_probe_path
+			liveness_probe_path,
+			current_live_digest
 		FROM
 			deployment
 		WHERE
@@ -996,185 +1066,153 @@ pub async fn update_deployment_details(
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
 ) -> Result<(), sqlx::Error> {
-	if let Some(name) = name {
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				name = $1
-			WHERE
-				id = $2;
-			"#,
-			name as _,
-			deployment_id as _
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	if let Some(region) = region {
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				region = $1
-			WHERE
-				id = $2;
-			"#,
-			region as _,
-			deployment_id as _
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	if let Some(machine_type) = machine_type {
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				machine_type = $1
-			WHERE
-				id = $2;
-			"#,
-			machine_type as _,
-			deployment_id as _
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	if let Some(deploy_on_push) = deploy_on_push {
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				deploy_on_push = $1
-			WHERE
-				id = $2;
-			"#,
-			deploy_on_push as _,
-			deployment_id as _
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	if let Some(min_horizontal_scale) = min_horizontal_scale {
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				min_horizontal_scale = $1
-			WHERE
-				id = $2;
-			"#,
-			min_horizontal_scale as i32,
-			deployment_id as _
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	if let Some(max_horizontal_scale) = max_horizontal_scale {
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				max_horizontal_scale = $1
-			WHERE
-				id = $2;
-			"#,
-			max_horizontal_scale as i32,
-			deployment_id as _
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	if let Some(startup_probe) = startup_probe {
-		if startup_probe.port == 0 {
-			query!(
-				r#"
-				UPDATE
-					deployment
-				SET
-					startup_probe_port = NULL,
-					startup_probe_path = NULL,
-					startup_probe_port_type = NULL
-				WHERE
-					id = $1;
-				"#,
-				deployment_id as _
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			name = COALESCE($1, name),
+			region = COALESCE($2, region),
+			machine_type = COALESCE($3, machine_type),
+			deploy_on_push = COALESCE($4, deploy_on_push),
+			min_horizontal_scale = COALESCE($5, min_horizontal_scale),
+			max_horizontal_scale = COALESCE($6, max_horizontal_scale),
+			startup_probe_port = (
+				CASE
+					WHEN $7 = 0 THEN
+						NULL
+					ELSE
+						$7
+				END
+			),
+			startup_probe_path = (
+				CASE
+					WHEN $7 = 0 THEN
+						NULL
+					ELSE
+						$8
+				END
+			),
+			startup_probe_port_type = (
+				CASE
+					WHEN $7 = 0 THEN
+						NULL
+					WHEN $7 IS NULL THEN
+						startup_probe_port_type
+					ELSE
+						'http'::EXPOSED_PORT_TYPE
+				END
+			),
+			liveness_probe_port = (
+				CASE
+					WHEN $9 = 0 THEN
+						NULL
+					ELSE
+						$9
+				END
+			),
+			liveness_probe_path = (
+				CASE
+					WHEN $9 = 0 THEN
+						NULL
+					ELSE
+						$10
+				END
+			),
+			liveness_probe_port_type = (
+				CASE
+					WHEN $9 = 0 THEN
+						NULL
+					WHEN $9 IS NULL THEN
+						liveness_probe_port_type
+					ELSE
+						'http'::EXPOSED_PORT_TYPE
+				END
 			)
-			.execute(&mut *connection)
-			.await?;
-		} else {
-			query!(
-				r#"
-				UPDATE
-					deployment
-				SET
-					startup_probe_port = $1,
-					startup_probe_path = $2,
-					startup_probe_port_type = 'http'
-				WHERE
-					id = $3;
-				"#,
-				startup_probe.port as i32,
-				startup_probe.path,
-				deployment_id as _
-			)
-			.execute(&mut *connection)
-			.await?;
-		}
-	}
+		WHERE
+			id = $11;
+		"#,
+		name as _,
+		region as _,
+		machine_type as _,
+		deploy_on_push,
+		min_horizontal_scale.map(|v| v as i16),
+		max_horizontal_scale.map(|v| v as i16),
+		startup_probe.map(|probe| probe.port as i32),
+		startup_probe.as_ref().map(|probe| probe.path.as_str()),
+		liveness_probe.map(|probe| probe.port as i32),
+		liveness_probe.as_ref().map(|probe| probe.path.as_str()),
+		deployment_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
 
-	if let Some(liveness_probe) = liveness_probe {
-		if liveness_probe.port == 0 {
-			query!(
-				r#"
-				UPDATE
-					deployment
-				SET
-					liveness_probe_port = NULL,
-					liveness_probe_path = NULL,
-					liveness_probe_port_type = NULL
-				WHERE
-					id = $1;
-				"#,
-				deployment_id as _
+pub async fn add_config_mount_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	path: &str,
+	file: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO 
+			deployment_config_mounts(
+				path,
+				file,
+				deployment_id
 			)
-			.execute(&mut *connection)
-			.await?;
-		} else {
-			query!(
-				r#"
-				UPDATE
-					deployment
-				SET
-					liveness_probe_port = $1,
-					liveness_probe_path = $2,
-					liveness_probe_port_type = 'http'
-				WHERE
-					id = $3;
-				"#,
-				liveness_probe.port as i32,
-				liveness_probe.path,
-				deployment_id as _
-			)
-			.execute(&mut *connection)
-			.await?;
-		}
-	}
+		VALUES
+			($1, $2, $3);
+		"#,
+		path,
+		file,
+		deployment_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
 
-	Ok(())
+pub async fn get_all_deployment_config_mounts(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+) -> Result<Vec<DeploymentConfigMount>, sqlx::Error> {
+	query_as!(
+		DeploymentConfigMount,
+		r#"
+		SELECT
+			deployment_id as "deployment_id: _",
+			path,
+			file as "file!: _"
+		FROM
+			deployment_config_mounts
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn remove_all_config_mounts_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			deployment_config_mounts
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 pub async fn get_all_deployment_machine_types(
@@ -1326,6 +1364,99 @@ pub async fn get_build_events_for_deployment(
 			);
 		"#,
 		deployment_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn add_digest_to_deployment_deploy_history(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	repository_id: &Uuid,
+	digest: &str,
+	created: &DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			deployment_deploy_history(
+				deployment_id,
+				image_digest,
+				repository_id,
+				created
+			)
+		VALUES
+			($1, $2, $3, $4);
+		"#,
+		deployment_id as _,
+		digest as _,
+		repository_id as _,
+		created as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_current_live_digest_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	digest: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			current_live_digest = $1
+		WHERE
+			id = $2;
+		"#,
+		digest as _,
+		deployment_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_deployment_image_digest_by_digest(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	digest: &str,
+) -> Result<Option<DeploymentDeployHistory>, sqlx::Error> {
+	query_as!(
+		DeploymentDeployHistory,
+		r#"
+		SELECT 
+			image_digest,
+			created as "created: _"
+		FROM
+			deployment_deploy_history
+		WHERE
+			image_digest = $1;
+		"#,
+		digest as _,
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn get_all_digest_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+) -> Result<Vec<DeploymentDeployHistory>, sqlx::Error> {
+	query_as!(
+		DeploymentDeployHistory,
+		r#"
+		SELECT 
+			image_digest,
+			created as "created: _"
+		FROM
+			deployment_deploy_history
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id as _,
 	)
 	.fetch_all(&mut *connection)
 	.await

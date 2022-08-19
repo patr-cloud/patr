@@ -4,6 +4,7 @@ use api_models::{
 	models::workspace::domain::DomainNameserverType,
 	utils::{ResourceType, Uuid},
 };
+use chrono::{DateTime, Utc};
 use eve_rs::AsError;
 
 use crate::{error, query, query_as, utils::Error, Database};
@@ -26,6 +27,7 @@ pub struct WorkspaceDomain {
 	pub domain_type: ResourceType,
 	pub is_verified: bool,
 	pub nameserver_type: DomainNameserverType,
+	pub last_unverified: DateTime<Utc>,
 }
 
 impl WorkspaceDomain {
@@ -44,7 +46,7 @@ pub struct PatrControlledDomain {
 	pub zone_identifier: String,
 }
 
-#[derive(sqlx::Type, PartialEq)]
+#[derive(sqlx::Type, PartialEq, Eq)]
 #[sqlx(type_name = "DNS_RECORD_TYPE", rename_all = "UPPERCASE")]
 #[allow(clippy::upper_case_acronyms)]
 pub enum DnsRecordType {
@@ -182,6 +184,7 @@ pub async fn initialize_domain_pre(
 				),
 			is_verified BOOLEAN NOT NULL,
 			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL,
+			last_unverified TIMESTAMPTZ NOT NULL,
 			CONSTRAINT workspace_domain_uq_id_nameserver_type
 				UNIQUE(id, nameserver_type),
 			CONSTRAINT workspace_domain_fk_id_domain_type
@@ -263,7 +266,7 @@ pub async fn initialize_domain_pre(
 			domain_id UUID NOT NULL,
 			name TEXT NOT NULL
 				CONSTRAINT patr_domain_dns_record_chk_name_is_valid CHECK(
-					name ~ '^(\*)|((\*\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_]))$' OR
+					name ~ '^((\*)|((\*\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])))$' OR
 					name = '@'
 				),
 			type DNS_RECORD_TYPE NOT NULL,
@@ -290,7 +293,7 @@ pub async fn initialize_domain_pre(
 					proxied IS NOT NULL
 				) OR
 				(
-					(type = 'MX' OR type = 'TXT') AND 
+					(type = 'MX' OR type = 'TXT') AND
 					proxied IS NULL
 				)
 			)
@@ -411,6 +414,7 @@ pub async fn add_to_workspace_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	nameserver_type: &DomainNameserverType,
+	last_unverified: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -419,13 +423,15 @@ pub async fn add_to_workspace_domain(
 				id,
 				domain_type,
 				is_verified,
-				nameserver_type
+				nameserver_type,
+				last_unverified
 			)
 		VALUES
-			($1, 'business', FALSE, $2);
+			($1, 'business', FALSE, $2, $3);
 		"#,
 		domain_id as _,
-		nameserver_type as _
+		nameserver_type as _,
+		last_unverified as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -510,7 +516,8 @@ pub async fn get_domains_for_workspace(
 			workspace_domain.id as "id: _",
 			workspace_domain.domain_type as "domain_type: _",
 			workspace_domain.is_verified,
-			workspace_domain.nameserver_type as "nameserver_type: _"
+			workspace_domain.nameserver_type as "nameserver_type: _",
+			workspace_domain.last_unverified as "last_unverified!"
 		FROM
 			domain
 		INNER JOIN
@@ -546,6 +553,7 @@ pub async fn get_all_unverified_domains(
 			workspace_domain.domain_type as "domain_type!: ResourceType",
 			workspace_domain.is_verified as "is_verified!",
 			workspace_domain.nameserver_type as "nameserver_type!: DomainNameserverType",
+			workspace_domain.last_unverified as "last_unverified!",
 			patr_controlled_domain.zone_identifier as "zone_identifier?"
 		FROM
 			workspace_domain
@@ -577,6 +585,7 @@ pub async fn get_all_unverified_domains(
 				domain_type: row.domain_type,
 				is_verified: row.is_verified,
 				nameserver_type: row.nameserver_type,
+				last_unverified: row.last_unverified,
 			},
 			row.zone_identifier,
 		)
@@ -597,6 +606,7 @@ pub async fn get_all_verified_domains(
 			workspace_domain.domain_type as "domain_type!: ResourceType",
 			workspace_domain.is_verified as "is_verified!",
 			workspace_domain.nameserver_type as "nameserver_type!: DomainNameserverType",
+			workspace_domain.last_unverified as "last_unverified!",
 			patr_controlled_domain.zone_identifier as "zone_identifier?"
 		FROM
 			workspace_domain
@@ -628,6 +638,7 @@ pub async fn get_all_verified_domains(
 				domain_type: row.domain_type,
 				is_verified: row.is_verified,
 				nameserver_type: row.nameserver_type,
+				last_unverified: row.last_unverified,
 			},
 			row.zone_identifier,
 		)
@@ -774,7 +785,8 @@ pub async fn get_workspace_domain_by_id(
 			workspace_domain.id as "id: _",
 			workspace_domain.domain_type as "domain_type: _",
 			workspace_domain.is_verified,
-			workspace_domain.nameserver_type as "nameserver_type: _"
+			workspace_domain.nameserver_type as "nameserver_type: _",
+			workspace_domain.last_unverified as "last_unverified!: _"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -1042,104 +1054,93 @@ pub async fn update_workspace_domain_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	is_verified: bool,
+	last_unverified: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		UPDATE
 			workspace_domain
 		SET
-			is_verified = $2
+			is_verified = $2,
+			last_unverified = $3
 		WHERE
 			id = $1;
 		"#,
 		domain_id as _,
 		is_verified,
+		last_unverified as _,
 	)
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
-pub async fn get_all_unused_domain_tlds(
-	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<String>, sqlx::Error> {
-	let rows = query!(
-		r#"
-		SELECT
-			tld
-		FROM
-			domain_tld
-		WHERE
-			(
-				SELECT
-					COUNT(*)
-				FROM
-					domain
-				WHERE
-					domain.tld = tld
-			) = 0;
-		"#
-	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| row.tld)
-	.collect();
-
-	Ok(rows)
-}
-
-pub async fn update_domain_tld_list(
+pub async fn update_top_level_domain_list(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	tlds: &[String],
 ) -> Result<(), sqlx::Error> {
-	for tld in tlds {
-		query!(
-			r#"
-			INSERT INTO
-				domain_tld(
+	query!(
+		r#"
+		WITH current_domains(tld) AS (
+			SELECT
+				UNNEST($1::TEXT[])
+		),
+		deprecated_domains(tld) AS (
+			SELECT tld FROM domain_tld
+			EXCEPT
+			SELECT tld FROM current_domains
+			EXCEPT
+			SELECT tld FROM domain
+			EXCEPT
+			SELECT business_domain_tld FROM user_to_sign_up
+		),
+		inserted_domains(tld, action) AS (
+			INSERT INTO domain_tld
+				SELECT * FROM current_domains
+			ON CONFLICT DO NOTHING
+			RETURNING tld, 'inserted'
+		),
+		deleted_domains(tld, action) AS (
+			DELETE FROM domain_tld
+			WHERE EXISTS (
+				SELECT
 					tld
-				)
-			VALUES
-				($1)
-			ON CONFLICT DO NOTHING;
-			"#,
-			tld,
+				FROM
+					deprecated_domains
+				WHERE
+					deprecated_domains.tld = domain_tld.tld
+			)
+			RETURNING tld, 'deleted'
 		)
-		.execute(&mut *connection)
-		.await
-		.map_err(|err| {
-			log::error!("Error inserting TLD `{}`", tld);
-			err
-		})?;
-	}
-
-	Ok(())
+		SELECT tld as "tld!", action as "action!" FROM inserted_domains
+		UNION
+		SELECT tld as "tld!", action as "action!" FROM deleted_domains;
+		"#,
+		&tlds[..],
+	)
+	.fetch_all(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 pub async fn remove_from_domain_tld_list(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	tlds: &[String],
 ) -> Result<(), sqlx::Error> {
-	for tld in tlds {
-		query!(
-			r#"
-			DELETE FROM
-				domain_tld
-			WHERE
-				tld = $1;
-			"#,
-			tld,
-		)
-		.execute(&mut *connection)
-		.await
-		.map_err(|err| {
-			log::error!("Error removing TLD `{}`", tld);
-			err
-		})?;
-	}
-
-	Ok(())
+	query!(
+		r#"
+		DELETE FROM
+			domain_tld
+		WHERE
+			tld IN (
+				SELECT UNNEST($1::TEXT[])
+			);
+		"#,
+		&tlds[..],
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 pub async fn get_dns_record_count_for_domain(

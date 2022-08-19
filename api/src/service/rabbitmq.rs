@@ -14,7 +14,6 @@ use crate::{
 	models::{
 		rabbitmq::{
 			DeploymentRequestData,
-			ManagedUrlData,
 			RequestMessage,
 			WorkspaceRequestData,
 		},
@@ -65,6 +64,7 @@ pub async fn queue_create_deployment(
 				status: DeploymentStatus::Pushed,
 				region: region.clone(),
 				machine_type: machine_type.clone(),
+				current_live_digest: digest.clone(),
 			},
 			image_name,
 			digest,
@@ -246,6 +246,7 @@ pub async fn queue_update_deployment(
 				status: DeploymentStatus::Pushed,
 				region: region.clone(),
 				machine_type: machine_type.clone(),
+				current_live_digest: digest.clone(),
 			},
 			image_name,
 			digest,
@@ -300,6 +301,7 @@ pub async fn queue_update_deployment_image(
 				status: DeploymentStatus::Pushed,
 				region: region.clone(),
 				machine_type: machine_type.clone(),
+				current_live_digest: Some(digest.to_string()),
 			},
 			image_name,
 			digest: Some(digest.to_string()),
@@ -318,7 +320,6 @@ pub async fn queue_process_payment(
 	config: &Settings,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-
 	send_message_to_rabbit_mq(
 		&RequestMessage::Workspace(WorkspaceRequestData::ProcessWorkspaces {
 			month,
@@ -332,17 +333,16 @@ pub async fn queue_process_payment(
 }
 
 pub async fn queue_confirm_payment_intent(
-	config: &Settings,
+	workspace_id: &Uuid,
 	payment_intent_id: String,
-	workspace_id: Uuid,
+	config: &Settings,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-
 	send_message_to_rabbit_mq(
 		&RequestMessage::Workspace(
 			WorkspaceRequestData::ConfirmPaymentIntent {
 				payment_intent_id,
-				workspace_id,
+				workspace_id: workspace_id.clone(),
 				request_id: request_id.clone(),
 			},
 		),
@@ -410,24 +410,5 @@ pub async fn send_message_to_rabbit_mq(
 			log::error!("Error closing rabbitmq connection: {}", e);
 			Error::from(e)
 		})?;
-	Ok(())
-}
-
-pub async fn queue_create_managed_url(
-	workspace_id: &Uuid,
-	managed_url_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	send_message_to_rabbit_mq(
-		&RequestMessage::ManagedUrl(ManagedUrlData::Create {
-			managed_url_id: managed_url_id.clone(),
-			workspace_id: workspace_id.clone(),
-			request_id: request_id.clone(),
-		}),
-		config,
-		request_id,
-	)
-	.await?;
 	Ok(())
 }

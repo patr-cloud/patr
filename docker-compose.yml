@@ -145,6 +145,22 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
+  frontend:
+    container_name: frontend
+    image: node:16
+    restart: always
+    user: ${RUNNING_USER}
+    working_dir: /app/frontend
+    networks:
+      - vpc
+    ports:
+      - ${FRONTEND_PORT}:${FRONTEND_PORT}
+    environment:
+      - REACT_APP_API_BASE_URL="http://localhost:${API_PORT}"
+      - PORT=${FRONTEND_PORT}
+    volumes:
+      - .:/app
+
   bash:
     container_name: command-runner
     image: rust:1

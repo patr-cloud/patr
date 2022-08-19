@@ -1,7 +1,7 @@
 use api_models::{
-	models::workspace::infrastructure::{
-		deployment::{Deployment, DeploymentRunningDetails},
-		static_site::StaticSiteDetails,
+	models::workspace::infrastructure::deployment::{
+		Deployment,
+		DeploymentRunningDetails,
 	},
 	utils::Uuid,
 };
@@ -15,10 +15,8 @@ use crate::db::Workspace;
 #[allow(clippy::large_enum_variant)]
 pub enum RequestMessage {
 	Deployment(DeploymentRequestData),
-	StaticSite(StaticSiteRequestData),
 	Database {},
 	Workspace(WorkspaceRequestData),
-	ManagedUrl(ManagedUrlData),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -84,40 +82,6 @@ pub enum DeploymentRequestData {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", rename_all = "camelCase")]
-pub enum StaticSiteRequestData {
-	Create {
-		workspace_id: Uuid,
-		static_site_id: Uuid,
-		file: String,
-		static_site_details: StaticSiteDetails,
-		request_id: Uuid,
-	},
-	Start {
-		workspace_id: Uuid,
-		static_site_id: Uuid,
-		static_site_details: StaticSiteDetails,
-		request_id: Uuid,
-	},
-	Stop {
-		workspace_id: Uuid,
-		static_site_id: Uuid,
-		request_id: Uuid,
-	},
-	UploadSite {
-		workspace_id: Uuid,
-		static_site_id: Uuid,
-		file: String,
-		request_id: Uuid,
-	},
-	Delete {
-		workspace_id: Uuid,
-		static_site_id: Uuid,
-		request_id: Uuid,
-	},
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(tag = "action", rename_all = "camelCase")]
 #[allow(clippy::large_enum_variant)]
 pub enum WorkspaceRequestData {
 	ProcessWorkspaces {
@@ -133,17 +97,6 @@ pub enum WorkspaceRequestData {
 	},
 	ConfirmPaymentIntent {
 		payment_intent_id: String,
-		workspace_id: Uuid,
-		request_id: Uuid,
-	},
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(tag = "action", rename_all = "camelCase")]
-#[allow(clippy::large_enum_variant)]
-pub enum ManagedUrlData {
-	Create {
-		managed_url_id: Uuid,
 		workspace_id: Uuid,
 		request_id: Uuid,
 	},

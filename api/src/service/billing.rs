@@ -1,4 +1,7 @@
-use std::{cmp::max, collections::HashMap};
+use std::{
+	cmp::{max, min},
+	collections::HashMap,
+};
 
 use api_models::{
 	models::workspace::billing::{
@@ -220,15 +223,19 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 	let mut remaining_free_hours = 720;
 
 	for deployment_usage in deployment_usages {
-		let hours = (deployment_usage
+		let stop_time = deployment_usage
 			.stop_time
 			.map(chrono::DateTime::from)
-			.unwrap_or_else(|| *till_date) -
-			max(
-				chrono::DateTime::from(deployment_usage.start_time),
-				*month_start_date,
-			))
-		.num_hours();
+			.unwrap_or_else(|| *till_date);
+		let start_time = max(
+			chrono::DateTime::from(deployment_usage.start_time),
+			*month_start_date,
+		);
+		let hours = min(
+			720,
+			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
+				as i64,
+		);
 
 		let (cpu_count, memory_count) = deployment::MACHINE_TYPES
 			.get()
@@ -273,8 +280,8 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 					deployment_usage.num_instance == 1
 				{
 					// Free eligible
-					let price = (hours - remaining_free_hours).max(0) as f64 *
-						monthly_price;
+					let price = (((hours - remaining_free_hours).max(0)
+						as f64) / 720f64) * monthly_price;
 					remaining_free_hours =
 						(remaining_free_hours - hours).max(0);
 					price
@@ -305,15 +312,19 @@ pub async fn calculate_database_bill_for_workspace_till(
 	let mut database_usage_bill = HashMap::new();
 
 	for database_usage in database_usages {
-		let hours = (database_usage
+		let stop_time = database_usage
 			.deletion_time
 			.map(chrono::DateTime::from)
-			.unwrap_or_else(|| *till_date) -
-			max(
-				chrono::DateTime::from(database_usage.start_time),
-				*month_start_date,
-			))
-		.num_hours();
+			.unwrap_or_else(|| *till_date);
+		let start_time = max(
+			chrono::DateTime::from(database_usage.start_time),
+			*month_start_date,
+		);
+		let hours = min(
+			720,
+			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
+				as i64,
+		);
 
 		let monthly_price = match database_usage.db_plan {
 			ManagedDatabasePlan::Nano => 15f64,
@@ -346,7 +357,7 @@ pub async fn calculate_database_bill_for_workspace_till(
 					.unwrap_or("unknown")
 					.to_string(),
 				hours: hours as u64,
-				amount: if hours > 720 {
+				amount: if hours >= 720 {
 					monthly_price
 				} else {
 					(hours as f64 / 720f64) * monthly_price
@@ -372,15 +383,20 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 
 	let mut static_sites_bill = HashMap::new();
 	for static_sites_usage in static_sites_usages {
-		let hours = (static_sites_usage
+		let stop_time = static_sites_usage
 			.stop_time
 			.map(chrono::DateTime::from)
-			.unwrap_or_else(|| *till_date) -
-			max(
-				chrono::DateTime::from(static_sites_usage.start_time),
-				*month_start_date,
-			))
-		.num_hours();
+			.unwrap_or_else(|| *till_date);
+		let start_time = max(
+			chrono::DateTime::from(static_sites_usage.start_time),
+			*month_start_date,
+		);
+		let hours = min(
+			720,
+			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
+				as i64,
+		);
+
 		let monthly_price = match static_sites_usage.static_site_plan {
 			StaticSitePlan::Free => 0f64,
 			StaticSitePlan::Pro => 5f64,
@@ -393,7 +409,7 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 				amount: 0f64,
 			});
 		bill.hours += hours as u64;
-		bill.amount = if bill.hours > 720 {
+		bill.amount = if bill.hours >= 720 {
 			monthly_price
 		} else {
 			(bill.hours as f64 / 720f64) * monthly_price
@@ -418,15 +434,20 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 
 	let mut managed_url_bill = HashMap::new();
 	for managed_url_usage in managed_url_usages {
-		let hours = (managed_url_usage
+		let stop_time = managed_url_usage
 			.stop_time
 			.map(chrono::DateTime::from)
-			.unwrap_or_else(|| *till_date) -
-			max(
-				chrono::DateTime::from(managed_url_usage.start_time),
-				*month_start_date,
-			))
-		.num_hours();
+			.unwrap_or_else(|| *till_date);
+		let start_time = max(
+			chrono::DateTime::from(managed_url_usage.start_time),
+			*month_start_date,
+		);
+		let hours = min(
+			720,
+			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
+				as i64,
+		);
+
 		let monthly_price = if managed_url_usage.url_count <= 10 {
 			0f64
 		} else {
@@ -449,7 +470,7 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 
 		bill.url_count = managed_url_usage.url_count as u64;
 		bill.hours += hours as u64;
-		bill.amount = if bill.hours > 720 {
+		bill.amount = if bill.hours >= 720 {
 			monthly_price
 		} else {
 			(bill.hours as f64 / 720f64) * monthly_price
@@ -475,29 +496,35 @@ pub async fn calculate_docker_repository_bill_for_workspace_till(
 	let mut docker_repository_bill = Vec::new();
 
 	for docker_repository_usage in docker_repository_usages {
-		let hours = (docker_repository_usage
+		let stop_time = docker_repository_usage
 			.stop_time
 			.map(chrono::DateTime::from)
-			.unwrap_or_else(|| *till_date) -
-			max(
-				chrono::DateTime::from(docker_repository_usage.start_time),
-				*month_start_date,
-			))
-		.num_hours();
-		let monthly_price = if docker_repository_usage.storage <= 1 {
+			.unwrap_or_else(|| *till_date);
+		let start_time = max(
+			chrono::DateTime::from(docker_repository_usage.start_time),
+			*month_start_date,
+		);
+		let hours = min(
+			720,
+			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
+				as i64,
+		);
+
+		let storage_in_gb = (docker_repository_usage.storage as f64 /
+			(1024 * 1024 * 1024) as f64)
+			.ceil() as i64;
+		let monthly_price = if storage_in_gb <= 10 {
 			0f64
-		} else if docker_repository_usage.storage > 1 &&
-			docker_repository_usage.storage <= 100
-		{
+		} else if storage_in_gb > 10 && storage_in_gb <= 100 {
 			10f64
 		} else {
-			(docker_repository_usage.storage as f64 * 0.1f64).ceil()
+			(storage_in_gb as f64 * 0.1f64).ceil()
 		};
 
 		docker_repository_bill.push(DockerRepositoryBill {
 			storage: docker_repository_usage.storage as u64,
 			hours: hours as u64,
-			amount: if hours > 720 {
+			amount: if hours >= 720 {
 				monthly_price
 			} else {
 				(hours as f64 / 720f64) * monthly_price
@@ -523,15 +550,20 @@ pub async fn calculate_domains_bill_for_workspace_till(
 
 	let mut domains_bill = HashMap::new();
 	for domains_usage in domains_usages {
-		let hours = (domains_usage
+		let stop_time = domains_usage
 			.stop_time
 			.map(chrono::DateTime::from)
-			.unwrap_or_else(|| *till_date) -
-			max(
-				chrono::DateTime::from(domains_usage.start_time),
-				*month_start_date,
-			))
-		.num_hours();
+			.unwrap_or_else(|| *till_date);
+		let start_time = max(
+			chrono::DateTime::from(domains_usage.start_time),
+			*month_start_date,
+		);
+		let hours = min(
+			720,
+			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
+				as i64,
+		);
+
 		let monthly_price = match domains_usage.domain_plan {
 			DomainPlan::Free => 0f64,
 			DomainPlan::Unlimited => 10f64,
@@ -544,7 +576,7 @@ pub async fn calculate_domains_bill_for_workspace_till(
 		);
 
 		bill.hours = hours as u64;
-		bill.amount = if hours > 720 {
+		bill.amount = if hours >= 720 {
 			monthly_price
 		} else {
 			hours as f64 * (monthly_price / 720f64)
@@ -569,15 +601,19 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 
 	let mut secrets_bill = HashMap::new();
 	for secrets_usage in secrets_usages {
-		let hours = (secrets_usage
+		let stop_time = secrets_usage
 			.stop_time
 			.map(chrono::DateTime::from)
-			.unwrap_or_else(|| *till_date) -
-			max(
-				chrono::DateTime::from(secrets_usage.start_time),
-				*month_start_date,
-			))
-		.num_hours();
+			.unwrap_or_else(|| *till_date);
+		let start_time = max(
+			chrono::DateTime::from(secrets_usage.start_time),
+			*month_start_date,
+		);
+		let hours = min(
+			720,
+			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
+				as i64,
+		);
 
 		let monthly_price = if secrets_usage.secret_count <= 3 {
 			0f64
@@ -601,7 +637,7 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 
 		bill.secrets_count = secrets_usage.secret_count as u64;
 		bill.hours += hours as u64;
-		bill.amount = if bill.hours > 720 {
+		bill.amount = if bill.hours >= 720 {
 			monthly_price
 		} else {
 			(bill.hours as f64 / 720f64) * monthly_price
@@ -785,42 +821,62 @@ pub async fn calculate_total_bill_for_workspace_till(
 	)
 	.await?;
 
-	Ok({
-		deployment_usages
-			.iter()
-			.map(|(_, bill)| {
-				bill.bill_items.iter().map(|item| item.amount).sum::<f64>()
-			})
-			.sum::<f64>()
-	} + {
-		database_usages
-			.iter()
-			.map(|(_, bill)| bill.amount)
-			.sum::<f64>()
-	} + {
-		static_sites_usages
-			.iter()
-			.map(|(_, bill)| bill.amount)
-			.sum::<f64>()
-	} + {
-		managed_url_usages
-			.iter()
-			.map(|(_, bill)| bill.amount)
-			.sum::<f64>()
-	} + {
-		docker_repository_usages
-			.iter()
-			.map(|bill| bill.amount)
-			.sum::<f64>()
-	} + {
-		domains_usages
-			.iter()
-			.map(|(_, bill)| bill.amount)
-			.sum::<f64>()
-	} + {
-		secrets_usages
-			.iter()
-			.map(|(_, bill)| bill.amount)
-			.sum::<f64>()
-	})
+	let deployment_cost = deployment_usages
+		.iter()
+		.map(|(_, bill)| {
+			bill.bill_items.iter().map(|item| item.amount).sum::<f64>()
+		})
+		.sum::<f64>();
+	let database_cost = database_usages
+		.iter()
+		.map(|(_, bill)| bill.amount)
+		.sum::<f64>();
+	let static_site_cost = static_sites_usages
+		.iter()
+		.map(|(_, bill)| bill.amount)
+		.sum::<f64>();
+	let managed_url_cost = managed_url_usages
+		.iter()
+		.map(|(_, bill)| bill.amount)
+		.sum::<f64>();
+	let docker_repo_cost = docker_repository_usages
+		.iter()
+		.map(|bill| bill.amount)
+		.sum::<f64>();
+	let managed_domain_cost = domains_usages
+		.iter()
+		.map(|(_, bill)| bill.amount)
+		.sum::<f64>();
+	let managed_secret_cost = secrets_usages
+		.iter()
+		.map(|(_, bill)| bill.amount)
+		.sum::<f64>();
+
+	let total_cost = deployment_cost +
+		database_cost +
+		static_site_cost +
+		managed_url_cost +
+		docker_repo_cost +
+		managed_domain_cost +
+		managed_secret_cost;
+
+	if total_cost > 0.0 && cfg!(debug_assertions) {
+		log::trace!(
+			"Total bill for workspace `{}`: {}",
+			workspace_id,
+			serde_json::to_string(&serde_json::json!({
+				"cost": total_cost,
+				"deployment_usages": deployment_usages,
+				"database_usages": database_usages,
+				"static_sites_usages": static_sites_usages,
+				"managed_url_usages": managed_url_usages,
+				"docker_repository_usages": docker_repository_usages,
+				"domains_usages": domains_usages,
+				"secrets_usages": secrets_usages,
+			}))
+			.unwrap_or_default()
+		);
+	}
+
+	Ok(total_cost)
 }

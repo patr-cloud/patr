@@ -61,6 +61,12 @@ pub(super) async fn process_request(
 					workspace.id
 				);
 
+				// generate invoice for prev month
+				let (month, year) = if month == 1 {
+					(12, year - 1)
+				} else {
+					(month - 1, year)
+				};
 				service::queue_generate_invoice_for_workspace(
 					config, workspace, month, year,
 				)
@@ -115,7 +121,7 @@ pub(super) async fn process_request(
 			};
 
 			// Step 1: Calculate bill for this entire cycle
-			let deployment_usages =
+			let _deployment_usages =
 				service::calculate_deployment_bill_for_workspace_till(
 					connection,
 					&workspace.id,
@@ -124,7 +130,7 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-			let database_usages =
+			let _database_usages =
 				service::calculate_database_bill_for_workspace_till(
 					connection,
 					&workspace.id,
@@ -133,7 +139,7 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-			let static_sites_usages =
+			let _static_sites_usages =
 				service::calculate_static_sites_bill_for_workspace_till(
 					connection,
 					&workspace.id,
@@ -142,7 +148,7 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-			let managed_url_usages =
+			let _managed_url_usages =
 				service::calculate_managed_urls_bill_for_workspace_till(
 					connection,
 					&workspace.id,
@@ -151,7 +157,7 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-			let docker_repository_usages =
+			let _docker_repository_usages =
 				service::calculate_docker_repository_bill_for_workspace_till(
 					connection,
 					&workspace.id,
@@ -160,7 +166,7 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-			let domains_usages =
+			let _domains_usages =
 				service::calculate_domains_bill_for_workspace_till(
 					connection,
 					&workspace.id,
@@ -169,7 +175,7 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-			let secrets_usages =
+			let _secrets_usages =
 				service::calculate_secrets_bill_for_workspace_till(
 					connection,
 					&workspace.id,
@@ -186,83 +192,115 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
+			let total_credits =
+				db::get_credits_for_workspace(connection, &workspace.id)
+					.await?
+					.into_iter()
+					.fold(0.0, |accu, item| {
+						accu + if item.month == month as i32 {
+							item.amount
+						} else {
+							0.0
+						}
+					});
+
+			let payable_bill = total_bill - total_credits;
+
 			// Step 2: Create payment intent with the given bill
 			let password: Option<String> = None;
 
 			if let PaymentType::Card = workspace.payment_type {
-				if total_bill <= 0.0 {
+				if payable_bill <= 0.0 {
 					// If the bill is zero, don't bother charging them
 					return Ok(());
 				}
 
-				let address_id = workspace
-					.clone()
-					.address_id
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+				if let Some(address_id) = &workspace.address_id {
+					let (currency, amount) =
+						if db::get_billing_address(connection, address_id)
+							.await?
+							.status(500)?
+							.country == *"IN"
+						{
+							(
+								"inr".to_string(),
+								(payable_bill * 100f64 * 80f64) as u64,
+							)
+						} else {
+							("usd".to_string(), (payable_bill * 100f64) as u64)
+						};
 
-				let (currency, amount) =
-					if db::get_billing_address(connection, &address_id)
+					let payment_intent_object = Client::new()
+						.post("https://api.stripe.com/v1/payment_intents")
+						.basic_auth(&config.stripe.secret_key, password)
+						.form(&PaymentIntent {
+							amount,
+							currency,
+							confirm: True,
+							off_session: true,
+							description: format!(
+								"Patr charge: Bill for {} {}",
+								month_string, year
+							),
+							customer: workspace.stripe_customer_id.clone(),
+							payment_method: workspace.default_payment_method_id,
+							payment_method_types: "card".to_string(),
+							setup_future_usage: None,
+						})
+						.send()
 						.await?
-						.status(500)?
-						.country == *"IN"
-					{
-						(
-							"inr".to_string(),
-							(total_bill * 100f64 * 80f64) as u64,
-						)
-					} else {
-						("usd".to_string(), (total_bill * 100f64) as u64)
-					};
+						.json::<PaymentIntentObject>()
+						.await?;
 
-				let payment_intent_object = Client::new()
-					.post("https://api.stripe.com/v1/payment_intents")
-					.basic_auth(&config.stripe.secret_key, password)
-					.form(&PaymentIntent {
-						amount,
-						currency,
-						confirm: True,
-						off_session: true,
-						description: format!(
-							"Patr charge: Bill for {} {}",
-							month_string, year
-						),
-						customer: workspace.stripe_customer_id.clone(),
-						payment_method: workspace.default_payment_method_id,
-						payment_method_types: "card".to_string(),
-						setup_future_usage: None,
-					})
-					.send()
-					.await?
-					.json::<PaymentIntentObject>()
+					// create transactions for all types of resources
+					let transaction_id =
+						db::generate_new_transaction_id(connection).await?;
+					db::create_transaction(
+						connection,
+						&workspace.id,
+						&transaction_id,
+						month as i32,
+						total_bill,
+						Some(&payment_intent_object.id),
+						&DateTime::from(
+							next_month_start_date
+								.add(chrono::Duration::nanoseconds(1)),
+						), // 1st of next month,
+						&TransactionType::Bill,
+						&PaymentStatus::Success,
+						None,
+					)
 					.await?;
 
-				// create transactions for all types of resources
-				let transaction_id =
-					db::generate_new_transaction_id(connection).await?;
-				db::create_transaction(
-					connection,
-					&workspace.id,
-					&transaction_id,
-					month as i32,
-					total_bill,
-					Some(&payment_intent_object.id),
-					&DateTime::from(
-						next_month_start_date
-							.add(chrono::Duration::nanoseconds(1)),
-					), // 1st of next month,
-					&TransactionType::Bill,
-					&PaymentStatus::Success,
-					None,
-				)
-				.await?;
-
-				service::queue_confirm_payment_intent(
-					config,
-					payment_intent_object.id,
-					workspace.id.clone(),
-				)
-				.await?;
+					service::queue_confirm_payment_intent(
+						&workspace.id,
+						payment_intent_object.id,
+						config,
+					)
+					.await?;
+				} else {
+					// TODO: notify about the missing address id and reinitiate
+					// the payment process once added. For now, using the
+					// payment_indent_id as NULL
+					let transaction_id =
+						db::generate_new_transaction_id(connection).await?;
+					db::create_transaction(
+						connection,
+						&workspace.id,
+						&transaction_id,
+						month as i32,
+						total_bill,
+						None,
+						&DateTime::from(
+							next_month_start_date
+								.add(chrono::Duration::nanoseconds(1)),
+						), // 1st of next month,
+						&TransactionType::Bill,
+						&PaymentStatus::Success,
+						None,
+					)
+					.await?;
+				}
 			} else {
 				// create transactions for all types of resources
 				let transaction_id =
@@ -305,22 +343,25 @@ pub(super) async fn process_request(
 				.await?;
 			}
 
-			service::send_invoice_email(
-				connection,
-				&workspace.super_admin_id,
-				workspace.name.clone(),
-				deployment_usages,
-				database_usages,
-				static_sites_usages,
-				managed_url_usages,
-				docker_repository_usages,
-				domains_usages,
-				secrets_usages,
-				total_bill,
-				month_string.to_string(),
-				year,
-			)
-			.await?;
+			// TODO: for now disabled the invoice email,
+			// but we need to enable this in next migration
+
+			// service::send_invoice_email(
+			// 	connection,
+			// 	&workspace.super_admin_id,
+			// 	workspace.name.clone(),
+			// 	deployment_usages,
+			// 	database_usages,
+			// 	static_sites_usages,
+			// 	managed_url_usages,
+			// 	docker_repository_usages,
+			// 	domains_usages,
+			// 	secrets_usages,
+			// 	total_bill,
+			// 	month_string.to_string(),
+			// 	year,
+			// )
+			// .await?;
 
 			Ok(())
 		}

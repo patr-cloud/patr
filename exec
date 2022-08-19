@@ -157,8 +157,14 @@ case $1 in
         docker-compose -f $baseDir/docker-compose.yml run api bash -c "source .env && cargo sqlx db reset"
         echo "Database cleared"
     ;;
+    run-ra-check)
+        docker-compose -f $baseDir/docker-compose.yml run --rm api bash -c "source .env && CARGO_TARGET_DIR=./target cargo check --message-format=json"
+    ;;
     restore)
         docker-compose -f $baseDir/docker-compose.yml exec -T postgres psql -U $DATABASE_USERNAME -d $DATABASE_NAME < $2
+    ;;
+    frontend)
+        docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports frontend bash -c "npm install && npm start"
     ;;
     *)
         echo "Unknown command '$1'"

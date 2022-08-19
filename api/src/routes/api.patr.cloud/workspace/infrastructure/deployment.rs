@@ -10,6 +10,7 @@ use api_models::{
 				CreateDeploymentResponse,
 				DeleteDeploymentResponse,
 				Deployment,
+				DeploymentDeployHistory,
 				DeploymentRegistry,
 				DeploymentStatus,
 				GetDeploymentBuildLogsRequest,
@@ -20,9 +21,11 @@ use api_models::{
 				GetDeploymentLogsResponse,
 				GetDeploymentMetricsResponse,
 				Interval,
+				ListDeploymentHistoryResponse,
 				ListDeploymentsResponse,
 				ListLinkedURLsResponse,
 				PatrRegistry,
+				RevertDeploymentResponse,
 				StartDeploymentResponse,
 				Step,
 				StopDeploymentResponse,
@@ -107,6 +110,44 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(list_deployments)),
+		],
+	);
+
+	app.get(
+		"/:deploymentId/deploy-history",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::infrastructure::deployment::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let deployment_id =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = Uuid::parse_str(deployment_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?
+					.filter(|resource| resource.owner_id == workspace_id);
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(list_deployment_history)),
 		],
 	);
 
@@ -256,6 +297,45 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(stop_deployment)),
+		],
+	);
+
+	// revert the deployment
+	app.post(
+		"/:deploymentId/deploy-history/:digest/revert",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::infrastructure::deployment::EDIT,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = Uuid::parse_str(deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(revert_deployment)),
 		],
 	);
 
@@ -597,6 +677,7 @@ async fn list_deployments(
 			status: deployment.status,
 			region: deployment.region,
 			machine_type: deployment.machine_type,
+			current_live_digest: deployment.current_live_digest,
 		})
 	})
 	.collect();
@@ -606,6 +687,78 @@ async fn list_deployments(
 	);
 
 	context.success(ListDeploymentsResponse { deployments });
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to list of image digest for the deployments with user
+/// required inputs:
+/// workspaceId and deploymentId in url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success:
+///    deployments: []
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn list_deployment_history(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Listing deployments", request_id);
+
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
+	let deployment = db::get_deployment_by_id(
+		context.get_database_connection(),
+		&deployment_id,
+	)
+	.await?;
+
+	log::trace!(
+		"request_id: {} - Getting deployment image digest history from database",
+		request_id
+	);
+	let deploys = db::get_all_digest_for_deployment(
+		context.get_database_connection(),
+		&deployment_id,
+	)
+	.await?
+	.into_iter()
+	.map(|deploy| DeploymentDeployHistory {
+		image_digest: deploy.image_digest,
+		created: deploy.created.timestamp_millis() as u64,
+	})
+	.collect();
+	log::trace!(
+		"request_id: {} - Deployments image history successfully retreived",
+		request_id
+	);
+
+	// Check if no image is pushed for this deployment_id
+	if deployment.is_none() {
+		return Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	}
+
+	context.success(ListDeploymentHistoryResponse { deploys });
 	Ok(context)
 }
 
@@ -702,6 +855,8 @@ async fn create_deployment(
 	)
 	.await?;
 
+	let now = Utc::now();
+
 	let metadata = serde_json::to_value(DeploymentMetadata::Create {
 		deployment: Deployment {
 			id: id.clone(),
@@ -711,6 +866,7 @@ async fn create_deployment(
 			status: DeploymentStatus::Created,
 			region: region.clone(),
 			machine_type: machine_type.clone(),
+			current_live_digest: None,
 		},
 		running_details: deployment_running_details.clone(),
 	})?;
@@ -720,7 +876,7 @@ async fn create_deployment(
 		&audit_log_id,
 		&workspace_id,
 		&ip_address,
-		Utc::now().into(),
+		now.into(),
 		Some(&user_id),
 		Some(&login_id),
 		&id,
@@ -739,6 +895,33 @@ async fn create_deployment(
 	context.commit_database_transaction().await?;
 
 	if deploy_on_create {
+		if let DeploymentRegistry::PatrRegistry { repository_id, .. } =
+			&registry
+		{
+			let digest = db::get_latest_digest_for_docker_repository(
+				context.get_database_connection(),
+				repository_id,
+			)
+			.await?;
+
+			if let Some(digest) = digest {
+				db::add_digest_to_deployment_deploy_history(
+					context.get_database_connection(),
+					&id,
+					repository_id,
+					&digest,
+					&now.into(),
+				)
+				.await?;
+
+				db::update_current_live_digest_for_deployment(
+					context.get_database_connection(),
+					&id,
+					&digest,
+				)
+				.await?;
+			}
+		}
 		service::queue_create_deployment(
 			context.get_database_connection(),
 			&workspace_id,
@@ -920,6 +1103,39 @@ async fn start_deployment(
 			&request_id,
 		)
 		.await?;
+	let now = Utc::now();
+
+	if let DeploymentRegistry::PatrRegistry { repository_id, .. } =
+		&deployment.registry
+	{
+		let digest = db::get_latest_digest_for_docker_repository(
+			context.get_database_connection(),
+			repository_id,
+		)
+		.await?;
+
+		if let Some(digest) = digest {
+			// Check if digest is already in deployment_deploy_history table
+			let deployment_deploy_history =
+				db::get_deployment_image_digest_by_digest(
+					context.get_database_connection(),
+					&digest,
+				)
+				.await?;
+
+			// If not, add it to the table
+			if deployment_deploy_history.is_none() {
+				db::add_digest_to_deployment_deploy_history(
+					context.get_database_connection(),
+					&deployment_id,
+					repository_id,
+					&digest,
+					&now.into(),
+				)
+				.await?;
+			}
+		}
+	}
 
 	log::trace!("request_id: {} - RabbitMQ to start deployment", request_id);
 	service::queue_start_deployment(
@@ -1006,6 +1222,106 @@ async fn stop_deployment(
 	.await?;
 
 	context.success(StopDeploymentResponse {});
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to revert a deployment to specific image hash
+/// required inputs:
+/// deploymentId and digest in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the next
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn revert_deployment(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
+	let image_digest =
+		context.get_param(request_keys::DIGEST).unwrap().to_string();
+
+	let config = context.get_state().config.clone();
+	log::trace!("request_id: {} - Getting deployment id from db", request_id);
+	let deployment = db::get_deployment_by_id(
+		context.get_database_connection(),
+		&deployment_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	log::trace!(
+		"request_id: {} - Getting info digest info from db",
+		request_id
+	);
+
+	// Check if the digest is present or not in the deployment_deploy_history
+	// table
+	db::get_deployment_image_digest_by_digest(
+		context.get_database_connection(),
+		&image_digest,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	db::update_current_live_digest_for_deployment(
+		context.get_database_connection(),
+		&deployment.id,
+		&image_digest,
+	)
+	.await?;
+
+	let (deployment, workspace_id, _, deployment_running_details) =
+		service::get_full_deployment_config(
+			context.get_database_connection(),
+			&deployment.id,
+			&request_id,
+		)
+		.await?;
+
+	log::trace!(
+		"request_id: {} - queuing revert the deployment request",
+		request_id
+	);
+
+	service::queue_update_deployment_image(
+		context.get_database_connection(),
+		&workspace_id,
+		&deployment_id,
+		&deployment.name,
+		&deployment.registry,
+		&image_digest,
+		&deployment.image_tag,
+		&deployment.region,
+		&deployment.machine_type,
+		&deployment_running_details,
+		&config,
+		&request_id,
+	)
+	.await?;
+
+	context.success(RevertDeploymentResponse {});
 	Ok(context)
 }
 
@@ -1204,6 +1520,7 @@ async fn update_deployment(
 		environment_variables,
 		startup_probe,
 		liveness_probe,
+		config_mounts,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -1226,7 +1543,8 @@ async fn update_deployment(
 		ports.is_none() &&
 		environment_variables.is_none() &&
 		startup_probe.is_none() &&
-		liveness_probe.is_none()
+		liveness_probe.is_none() &&
+		config_mounts.is_none()
 	{
 		return Err(Error::empty()
 			.status(400)
@@ -1248,14 +1566,6 @@ async fn update_deployment(
 		liveness_probe: liveness_probe.clone(),
 	};
 
-	let (deployment, workspace_id, _, deployment_running_details) =
-		service::get_full_deployment_config(
-			context.get_database_connection(),
-			&deployment_id,
-			&request_id,
-		)
-		.await?;
-
 	service::update_deployment(
 		context.get_database_connection(),
 		&deployment_id,
@@ -1276,11 +1586,20 @@ async fn update_deployment(
 		environment_variables.as_ref(),
 		startup_probe.as_ref(),
 		liveness_probe.as_ref(),
+		config_mounts.as_ref(),
 		&request_id,
 	)
 	.await?;
 
 	context.commit_database_transaction().await?;
+
+	let (deployment, workspace_id, _, deployment_running_details) =
+		service::get_full_deployment_config(
+			context.get_database_connection(),
+			&deployment_id,
+			&request_id,
+		)
+		.await?;
 
 	match &deployment.status {
 		DeploymentStatus::Stopped |
@@ -1398,6 +1717,7 @@ async fn list_linked_urls(
 					ManagedUrlType::Redirect { url: url.url? }
 				}
 			},
+			is_configured: url.is_configured,
 		})
 	})
 	.collect();

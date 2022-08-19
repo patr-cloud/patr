@@ -12,7 +12,7 @@ use api_models::{
 		Metric,
 		PatrRegistry,
 	},
-	utils::{constants, DateTime, StringifiedU16, Uuid},
+	utils::{constants, Base64String, DateTime, StringifiedU16, Uuid},
 };
 use chrono::Utc;
 use eve_rs::AsError;
@@ -61,15 +61,6 @@ pub async fn create_deployment_in_workspace(
 	deployment_running_details: &DeploymentRunningDetails,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
-	// As of now, only our custom registry is allowed
-	// Docker hub will also be allowed in the near future
-	log::trace!("request_id: {} - Checking if the deployment's image is in patr registry", request_id);
-	if !registry.is_patr_registry() {
-		return Err(Error::empty()
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string()));
-	}
-
 	if image_tag.is_empty() {
 		return Err(Error::empty()
 			.status(400)
@@ -233,6 +224,20 @@ pub async fn create_deployment_in_workspace(
 		.await?;
 	}
 
+	for (path, file) in &deployment_running_details.config_mounts {
+		log::trace!(
+			"request_id: {} - Decoding config file from base64 to byte array",
+			request_id
+		);
+		db::add_config_mount_for_deployment(
+			connection,
+			&deployment_id,
+			path.as_ref(),
+			file,
+		)
+		.await?;
+	}
+
 	db::start_deployment_usage_history(
 		connection,
 		workspace_id,
@@ -280,7 +285,6 @@ pub async fn get_deployment_container_logs(
 	Ok(logs)
 }
 
-#[allow(clippy::too_many_arguments)]
 pub async fn update_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
@@ -294,6 +298,7 @@ pub async fn update_deployment(
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
+	config_mounts: Option<&BTreeMap<String, Base64String>>,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
@@ -339,7 +344,22 @@ pub async fn update_deployment(
 		liveness_probe,
 	)
 	.await?;
+
 	db::end_deferred_constraints(connection).await?;
+
+	if let Some(config_mounts) = config_mounts {
+		db::remove_all_config_mounts_for_deployment(connection, deployment_id)
+			.await?;
+		for (path, file) in config_mounts {
+			db::add_config_mount_for_deployment(
+				connection,
+				deployment_id,
+				path.as_ref(),
+				file,
+			)
+			.await?;
+		}
+	}
 
 	if let Some(environment_variables) = environment_variables {
 		log::trace!(
@@ -426,6 +446,7 @@ pub async fn get_full_deployment_config(
 					status: deployment.status,
 					region: deployment.region,
 					machine_type: deployment.machine_type,
+					current_live_digest: deployment.current_live_digest,
 				},
 				deployment.workspace_id,
 				deployment.deploy_on_push,
@@ -492,6 +513,14 @@ pub async fn get_full_deployment_config(
 				_ => None,
 			})
 			.collect();
+
+	let config_mounts =
+		db::get_all_deployment_config_mounts(connection, deployment_id)
+			.await?
+			.into_iter()
+			.map(|mount| (mount.path, mount.file.into()))
+			.collect();
+
 	log::trace!("request_id: {} - Full deployment config for deployment with id: {} successfully retreived", request_id, deployment_id);
 
 	Ok((
@@ -512,6 +541,7 @@ pub async fn get_full_deployment_config(
 				.map(|port| port as u16)
 				.zip(liveness_probe_path)
 				.map(|(port, path)| DeploymentProbe { path, port }),
+			config_mounts,
 		},
 	))
 }

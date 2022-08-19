@@ -20,10 +20,13 @@ use k8s_openapi::{
 			HorizontalPodAutoscalerSpec,
 		},
 		core::v1::{
+			ConfigMap,
+			ConfigMapVolumeSource,
 			Container,
 			ContainerPort,
 			EnvVar,
 			HTTPGetAction,
+			KeyToPath,
 			LocalObjectReference,
 			PodSpec,
 			PodTemplateSpec,
@@ -32,6 +35,8 @@ use k8s_openapi::{
 			Service,
 			ServicePort,
 			ServiceSpec,
+			Volume,
+			VolumeMount,
 		},
 		networking::v1::{
 			HTTPIngressPath,
@@ -50,6 +55,7 @@ use k8s_openapi::{
 		apis::meta::v1::LabelSelector,
 		util::intstr::IntOrString,
 	},
+	ByteString,
 };
 use kube::{
 	api::{DeleteParams, Patch, PatchParams},
@@ -61,7 +67,7 @@ use kube::{
 use crate::{
 	db,
 	error,
-	models::deployment::{self},
+	models::deployment,
 	utils::{constants::request_keys, settings::Settings, Error},
 	Database,
 };
@@ -103,6 +109,38 @@ pub async fn update_kubernetes_deployment(
 	} else {
 		full_image.to_string()
 	};
+
+	let kubernetes_config_map = ConfigMap {
+		metadata: ObjectMeta {
+			name: Some(format!("config-mount-{}", deployment.id)),
+			namespace: Some(namespace.to_string()),
+			..ObjectMeta::default()
+		},
+		binary_data: Some(
+			running_details
+				.config_mounts
+				.iter()
+				.map(|(path, data)| {
+					(path.to_string(), ByteString(data.clone().into()))
+				})
+				.collect(),
+		),
+		..ConfigMap::default()
+	};
+
+	log::trace!(
+		"request_id: {} - Patching ConfigMap for deployment with id: {}",
+		request_id,
+		deployment.id
+	);
+
+	Api::<ConfigMap>::namespaced(kubernetes_client.clone(), namespace)
+		.patch(
+			&format!("config-mount-{}", deployment.id),
+			&PatchParams::apply(&format!("config-mount-{}", deployment.id)),
+			&Patch::Apply(kubernetes_config_map),
+		)
+		.await?;
 
 	// get this from machine type
 	let (cpu_count, memory_count) = deployment::MACHINE_TYPES
@@ -284,12 +322,54 @@ pub async fn update_kubernetes_deployment(
 							limits: Some(machine_type.clone()),
 							..ResourceRequirements::default()
 						}),
+						volume_mounts: if !running_details
+							.config_mounts
+							.is_empty()
+						{
+							Some(vec![VolumeMount {
+								name: "config-mounts".to_string(),
+								mount_path: "/etc/config".to_string(),
+								..VolumeMount::default()
+							}])
+						} else {
+							None
+						},
 						..Container::default()
 					}],
-					image_pull_secrets: Some(vec![LocalObjectReference {
-						// TODO: put this in config
-						name: Some("patr-regcred".to_string()),
-					}]),
+					volumes: if !running_details.config_mounts.is_empty() {
+						Some(vec![Volume {
+							name: "config-mounts".to_string(),
+							config_map: Some(ConfigMapVolumeSource {
+								name: Some(format!(
+									"config-mount-{}",
+									deployment.id
+								)),
+								items: Some(
+									running_details
+										.config_mounts
+										.iter()
+										.map(|(path, _)| KeyToPath {
+											key: path.clone(),
+											path: path.clone(),
+											..KeyToPath::default()
+										})
+										.collect(),
+								),
+								..ConfigMapVolumeSource::default()
+							}),
+							..Volume::default()
+						}])
+					} else {
+						None
+					},
+					image_pull_secrets: deployment
+						.registry
+						.is_patr_registry()
+						.then(|| {
+							vec![LocalObjectReference {
+								name: Some("patr-regcred".to_string()),
+							}]
+						}),
 					..PodSpec::default()
 				}),
 				metadata: Some(ObjectMeta {
@@ -523,6 +603,39 @@ pub async fn delete_kubernetes_deployment(
 	} else {
 		log::trace!(
 			"request_id: {} - No deployment found with name deployment-{} in namespace: {}",
+			request_id,
+			deployment_id,
+			workspace_id,
+		);
+	}
+
+	if super::config_mounts_map_exists(
+		deployment_id,
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.await?
+	{
+		log::trace!(
+			"request_id: {} - config map exists as config-mount-{}",
+			request_id,
+			deployment_id
+		);
+
+		log::trace!("request_id: {} - deleting the config map", request_id);
+
+		Api::<ConfigMap>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
+		.delete(
+			&format!("config-mount-{}", deployment_id),
+			&DeleteParams::default(),
+		)
+		.await?;
+	} else {
+		log::trace!(
+			"request_id: {} - No config map found with name config-{} in namespace: {}",
 			request_id,
 			deployment_id,
 			workspace_id,
