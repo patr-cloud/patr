@@ -940,7 +940,6 @@ async fn update_user_login_table_with_meta_info(
 			ADD COLUMN last_activity_ip INET NOT NULL,
 			ADD COLUMN last_activity_location GEOMETRY NOT NULL,
 			ADD COLUMN last_activity_user_agent TEXT NOT NULL,
-		DEFAULT FALSE;
 		"#
 	)
 	.execute(&mut *connection)
