@@ -1,3 +1,5 @@
+use std::net::{IpAddr, Ipv4Addr};
+
 use api_models::{models::auth::*, utils::Uuid, ErrorType};
 use chrono::{Duration, Utc};
 use eve_rs::{App as EveApp, AsError, Context, HttpMethod, NextHandler};
@@ -167,10 +169,17 @@ async fn sign_in(
 	}
 
 	let config = context.get_state().config.clone();
+	let ip_address = super::get_request_ip_address(&context);
+	let user_agent = context.get_header("user-agent").unwrap_or_default();
+
 	let (UserLogin { login_id, .. }, access_token, refresh_token) =
 		service::sign_in_user(
 			context.get_database_connection(),
 			&user_data.id,
+			&ip_address
+				.parse()
+				.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+			&user_agent,
 			&config,
 		)
 		.await?;
@@ -387,11 +396,18 @@ async fn join(
 
 	let config = context.get_state().config.clone();
 
+	let ip_address = super::get_request_ip_address(&context);
+	let user_agent = context.get_header("user-agent").unwrap_or_default();
+
 	let join_user = service::join_user(
 		context.get_database_connection(),
-		&config,
 		&verification_token,
 		username.to_lowercase().trim(),
+		&ip_address
+			.parse()
+			.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+		&user_agent,
+		&config,
 	)
 	.await?;
 

@@ -1,3 +1,5 @@
+use std::net::IpAddr;
+
 use api_models::{
 	models::{
 		auth::{PreferredRecoveryOption, RecoveryMethod, SignUpAccountType},
@@ -11,6 +13,7 @@ use api_models::{
 use chrono::{Datelike, Duration, Utc};
 use eve_rs::AsError;
 
+use super::get_ip_address_info;
 /// This module validates user info and performs tasks related to user
 /// authentication The flow of this file will be:
 /// 1. An endpoint will be called from routes layer and the arguments will
@@ -471,6 +474,9 @@ pub async fn create_user_join_request(
 pub async fn create_login_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
+	created_ip: &IpAddr,
+	user_agent: &str,
+	config: &Settings,
 ) -> Result<(UserLogin, Uuid), Error> {
 	let login_id = db::generate_new_login_id(connection).await?;
 	let (refresh_token, hashed_refresh_token) =
@@ -478,6 +484,9 @@ pub async fn create_login_for_user(
 			.await?;
 	let now = Utc::now();
 	let expiry = now + service::get_refresh_token_expiry();
+	let ipinfo = get_ip_address_info(created_ip, &config.ipinfo_token).await?;
+	let (lat, lng) = ipinfo.loc.split_once(',').status(500)?;
+	let (lat, lng): (f64, f64) = (lat.parse()?, lng.parse()?);
 
 	db::add_user_login(
 		connection,
@@ -486,16 +495,32 @@ pub async fn create_login_for_user(
 		&expiry,
 		user_id,
 		&now,
+		created_ip,
+		lat,
+		lng,
 		&now,
+		&now,
+		created_ip,
+		lat,
+		lng,
+		user_agent,
 	)
 	.await?;
 	let user_login = UserLogin {
 		login_id,
 		user_id: user_id.clone(),
-		last_activity: now,
-		last_login: now,
 		refresh_token: hashed_refresh_token,
 		token_expiry: now + service::get_refresh_token_expiry(),
+		created: now,
+		created_ip: *created_ip,
+		created_location_latitude: lat,
+		created_location_longitude: lng,
+		last_activity: now,
+		last_login: now,
+		last_activity_ip: *created_ip,
+		last_activity_location_latitude: lat,
+		last_activity_location_longitude: lng,
+		last_activity_user_agent: user_agent.to_string(),
 	};
 
 	Ok((user_login, refresh_token))
@@ -524,10 +549,14 @@ pub async fn create_login_for_user(
 pub async fn sign_in_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
+	created_ip: &IpAddr,
+	user_agent: &str,
 	config: &Settings,
 ) -> Result<(UserLogin, String, Uuid), Error> {
-	let (user_login, refresh_token) =
-		create_login_for_user(connection, user_id).await?;
+	let (user_login, refresh_token) = create_login_for_user(
+		connection, user_id, created_ip, user_agent, config,
+	)
+	.await?;
 
 	let jwt = generate_access_token(connection, &user_login, config).await?;
 
@@ -765,9 +794,11 @@ pub async fn reset_password(
 /// ['JoinUser`]: JoinUser
 pub async fn join_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	config: &Settings,
 	otp: &str,
 	username: &str,
+	created_ip: &IpAddr,
+	user_agent: &str,
+	config: &Settings,
 ) -> Result<JoinUser, Error> {
 	let user_data = db::get_user_to_sign_up_by_username(connection, username)
 		.await?
@@ -1100,7 +1131,8 @@ pub async fn join_user(
 	db::delete_user_to_be_signed_up(connection, &user_data.username).await?;
 
 	let (UserLogin { login_id, .. }, jwt, refresh_token) =
-		sign_in_user(connection, &user_id, config).await?;
+		sign_in_user(connection, &user_id, created_ip, user_agent, config)
+			.await?;
 	let response = JoinUser {
 		jwt,
 		login_id,

@@ -105,3 +105,14 @@ mod datetime_as_seconds {
 			.map(|timestamp| Utc.timestamp(timestamp, 0))
 	}
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct IpAddressInfoResponse {
+	pub country: String,
+	pub region: String,
+	pub city: String,
+	pub postal: String,
+	pub loc: String,
+	pub timezone: String,
+}

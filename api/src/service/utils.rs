@@ -1,3 +1,5 @@
+use std::net::IpAddr;
+
 use api_models::{
 	models::workspace::infrastructure::deployment::DeploymentRegistry,
 	utils::Uuid,
@@ -17,6 +19,7 @@ use eve_rs::AsError;
 use crate::{
 	db,
 	error,
+	models::IpAddressInfoResponse,
 	service,
 	utils::{settings::Settings, validator, Error},
 	Database,
@@ -360,4 +363,15 @@ pub async fn get_image_name_and_digest_for_deployment_image(
 			_ => Ok((format!("{}/{}", registry, image_name), None)),
 		},
 	}
+}
+
+pub async fn get_ip_address_info(
+	ip_addr: &IpAddr,
+	token: &str,
+) -> Result<IpAddressInfoResponse, Error> {
+	reqwest::get(format!("https://ipinfo.io/{}?token={}", ip_addr, token))
+		.await?
+		.json()
+		.await
+		.map_err(|err| Error::new(Box::new(err)))
 }

@@ -1,3 +1,5 @@
+use std::net::IpAddr;
+
 use api_models::{
 	models::user::{BasicUserInfo, UserPhoneNumber},
 	utils::{ResourceType, Uuid},
@@ -30,8 +32,16 @@ pub struct UserLogin {
 	pub refresh_token: String,
 	pub token_expiry: DateTime<Utc>,
 	pub user_id: Uuid,
+	pub created: DateTime<Utc>,
+	pub created_ip: IpAddr,
+	pub created_location_latitude: f64,
+	pub created_location_longitude: f64,
 	pub last_login: DateTime<Utc>,
 	pub last_activity: DateTime<Utc>,
+	pub last_activity_ip: IpAddr,
+	pub last_activity_location_latitude: f64,
+	pub last_activity_location_longitude: f64,
+	pub last_activity_user_agent: String,
 }
 
 pub struct PasswordResetRequest {
@@ -186,14 +196,19 @@ pub async fn initialize_users_pre(
 	query!(
 		r#"
 		CREATE TABLE user_login(
-			login_id UUID
-				CONSTRAINT user_login_uq_login_id UNIQUE,
+			login_id UUID CONSTRAINT user_login_uq_login_id UNIQUE,
 			refresh_token TEXT NOT NULL,
 			token_expiry TIMESTAMPTZ NOT NULL,
 			user_id UUID NOT NULL
 				CONSTRAINT user_login_fk_user_id REFERENCES "user"(id),
+			created TIMESTAMPTZ NOT NULL,
+			created_ip INET NOT NULL,
+			created_location GEOMETRY NOT NULL,
 			last_login TIMESTAMPTZ NOT NULL,
 			last_activity TIMESTAMPTZ NOT NULL,
+			last_activity_ip INET NOT NULL,
+			last_activity_location GEOMETRY NOT NULL,
+			last_activity_user_agent TEXT NOT NULL,
 			CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id)
 		);
 		"#
@@ -2013,8 +2028,16 @@ pub async fn add_user_login(
 	refresh_token: &str,
 	token_expiry: &DateTime<Utc>,
 	user_id: &Uuid,
+	created: &DateTime<Utc>,
+	created_ip: &IpAddr,
+	created_location_latitude: f64,
+	created_location_longitude: f64,
 	last_login: &DateTime<Utc>,
 	last_activity: &DateTime<Utc>,
+	last_activity_ip: &IpAddr,
+	last_activity_location_latitude: f64,
+	last_activity_location_longitude: f64,
+	last_activity_user_agent: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -2024,18 +2047,45 @@ pub async fn add_user_login(
 				refresh_token, 
 				token_expiry, 
 				user_id, 
+				created,
+				created_ip,
+				created_location,
 				last_login, 
-				last_activity
+				last_activity,
+				last_activity_ip,
+				last_activity_location,
+				last_activity_user_agent
 			)
 		VALUES
-			($1, $2, $3, $4, $5, $6);
+			(
+				$1,
+				$2,
+				$3,
+				$4,
+				$5,
+				$6,
+				ST_SetSRID(POINT($7, $8)::GEOMETRY, 4326),
+				$9,
+				$10,
+				$11,
+				ST_SetSRID(POINT($12, $13)::GEOMETRY, 4326),
+				$14
+			);
 		"#,
 		login_id as _,
 		refresh_token,
 		token_expiry as _,
 		user_id as _,
+		created as _,
+		created_ip as _,
+		created_location_latitude as _,
+		created_location_longitude as _,
 		last_login as _,
-		last_activity as _
+		last_activity as _,
+		last_activity_ip as _,
+		last_activity_location_latitude as _,
+		last_activity_location_longitude as _,
+		last_activity_user_agent,
 	)
 	.execute(&mut *connection)
 	.await
@@ -2054,8 +2104,16 @@ pub async fn get_user_login(
 			refresh_token,
 			token_expiry,
 			user_id as "user_id: _",
+			created,
+			created_ip as "created_ip: _",
+			ST_Y(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_latitude!: _",
+			ST_X(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_longitude!: _",
 			last_login,
-			last_activity
+			last_activity,
+			last_activity_ip as "last_activity_ip: _",
+			ST_Y(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_latitude!: _",
+			ST_X(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_longitude!: _",
+			last_activity_user_agent
 		FROM
 			user_login
 		WHERE
@@ -2080,8 +2138,16 @@ pub async fn get_user_login_for_user(
 			refresh_token,
 			token_expiry,
 			user_id as "user_id: _",
+			created,
+			created_ip as "created_ip: _",
+			ST_Y(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_latitude!: _",
+			ST_X(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_longitude!: _",
 			last_login,
-			last_activity
+			last_activity,
+			last_activity_ip as "last_activity_ip: _",
+			ST_Y(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_latitude!: _",
+			ST_X(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_longitude!: _",
+			last_activity_user_agent
 		FROM
 			user_login
 		WHERE
@@ -2134,8 +2200,16 @@ pub async fn get_all_logins_for_user(
 			refresh_token,
 			token_expiry,
 			user_id as "user_id: _",
+			created as "created: _",
+			created_ip as "created_ip: _",
+			ST_Y(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_latitude!: _",
+			ST_X(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_longitude!: _",
 			last_login,
-			last_activity
+			last_activity,
+			last_activity_ip as "last_activity_ip: _",
+			ST_Y(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_latitude!: _",
+			ST_X(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_longitude!: _",
+			last_activity_user_agent
 		FROM
 			user_login
 		WHERE
@@ -2156,12 +2230,20 @@ pub async fn get_login_for_user_with_refresh_token(
 		UserLogin,
 		r#"
 		SELECT
-			login_id as "login_id: Uuid",
+			login_id as "login_id: _",
 			refresh_token,
 			token_expiry,
-			user_id as "user_id: Uuid",
+			user_id as "user_id: _",
+			created as "created: _",
+			created_ip as "created_ip: _",
+			ST_Y(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_latitude!: _",
+			ST_X(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_longitude!: _",
 			last_login,
-			last_activity
+			last_activity,
+			last_activity_ip as "last_activity_ip: _",
+			ST_Y(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_latitude!: _",
+			ST_X(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_longitude!: _",
+			last_activity_user_agent
 		FROM
 			user_login
 		WHERE
