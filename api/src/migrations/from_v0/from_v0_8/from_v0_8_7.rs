@@ -488,7 +488,7 @@ async fn add_upload_id_for_existing_users(
 		ON
 			domain.id = workspace_domain.id
 		WHERE
-			managed_url.sub_domain IS NOT LIKE 'patr-deleted: %' AND
+			managed_url.sub_domain NOT LIKE 'patr-deleted: %' AND
 			url_type = 'proxy_to_static_site' AND
 			workspace_domain.is_verified = TRUE;
 		"#,
