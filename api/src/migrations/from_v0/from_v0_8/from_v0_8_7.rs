@@ -190,6 +190,7 @@ async fn add_upload_id_for_existing_users(
 		)
 	})
 	.collect::<Vec<_>>();
+	let sites_len = static_sites.len();
 
 	let static_site_upload_resource_type_id = query!(
 		r#"
@@ -271,7 +272,8 @@ async fn add_upload_id_for_existing_users(
 	.await?;
 
 	let kubernetes_client = kube::Client::try_from(kubernetes_config)?;
-	for (static_site_id, workspace_id, created) in static_sites {
+	for (index, (static_site_id, workspace_id, created)) in static_sites.into_iter().enumerate() {
+		log::trace!("Updating static site {}/{}", index, sites_len);
 		let upload_id = loop {
 			let upload_id = Uuid::new_v4();
 
@@ -472,7 +474,7 @@ async fn add_upload_id_for_existing_users(
 			managed_url.sub_domain,
 			CONCAT(domain.name, '.', domain.tld) as "domain",
 			managed_url.path,
-			domain.nameserver_type
+			workspace_domain.nameserver_type::TEXT
 		FROM
 			managed_url
 		INNER JOIN
