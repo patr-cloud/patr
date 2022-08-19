@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use api_models::utils::Uuid;
 use chrono::{TimeZone, Utc};
+use eve_rs::AsError;
 use k8s_openapi::api::networking::v1::{
 	HTTPIngressPath,
 	HTTPIngressRuleValue,
@@ -173,7 +174,7 @@ async fn add_upload_id_for_existing_users(
 			resource
 		ON
 			deployment_static_site.id = resource.id
-		WHERE	
+		WHERE
 			status != 'deleted' AND
 			status != 'created';
 		"#,
@@ -459,6 +460,134 @@ async fn add_upload_id_for_existing_users(
 				&Patch::Apply(kubernetes_ingress),
 			)
 			.await?;
+	}
+
+	let managed_urls = query!(
+		r#"
+		SELECT
+			managed_url.id,
+			deployment_static_site.current_live_upload,
+			managed_url.static_site_id,
+			managed_url.workspace_id,
+			managed_url.sub_domain,
+			CONCAT(domain.name, '.', domain.tld) as "domain",
+			managed_url.path,
+			domain.nameserver_type
+		FROM
+			managed_url
+		INNER JOIN
+			deployment_static_site
+		ON
+			deployment_static_site.id = managed_url.static_site_id
+		INNER JOIN
+			workspace_domain
+		ON
+			workspace_domain.id = managed_url.domain_id
+		INNER JOIN
+			domain
+		ON
+			domain.id = workspace_domain.id
+		WHERE
+			managed_url.sub_domain IS NOT LIKE 'patr-deleted: %' AND
+			url_type = 'proxy_to_static_site' AND
+			workspace_domain.is_verified = TRUE;
+		"#,
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| {
+		(
+			row.get::<Uuid, _>("id"),
+			row.get::<Option<Uuid>, _>("current_live_upload"),
+			row.get::<Option<Uuid>, _>("static_site_id"),
+			row.get::<Uuid, _>("workspace_id"),
+			row.get::<String, _>("sub_domain"),
+			row.get::<String, _>("domain"),
+			row.get::<String, _>("path"),
+			row.get::<String, _>("nameserver_type"),
+		)
+	});
+
+	for (
+		id,
+		current_live_upload,
+		static_site_id,
+		workspace_id,
+		sub_domain,
+		domain,
+		path,
+		nameserver_type,
+	) in managed_urls
+	{
+		let namespace = workspace_id.as_str();
+		let static_site_id = static_site_id.status(500)?;
+
+		let annotations: BTreeMap<String, String> = [
+			(
+				"kubernetes.io/ingress.class".to_string(),
+				"nginx".to_string(),
+			),
+			(
+				"nginx.ingress.kubernetes.io/upstream-vhost".to_string(),
+				if let Some(upload_id) = current_live_upload {
+					format!("{}-{}.patr.cloud", upload_id, static_site_id)
+				} else {
+					format!("{}.patr.cloud", static_site_id)
+				},
+			),
+			(
+				"cert-manager.io/cluster-issuer".to_string(),
+				if nameserver_type == "internal" {
+					config.kubernetes.cert_issuer_dns.clone()
+				} else {
+					config.kubernetes.cert_issuer_http.clone()
+				},
+			),
+		]
+		.into_iter()
+		.collect();
+		let ingress_rule = vec![IngressRule {
+			host: Some(format!("{}.{}", sub_domain, domain)),
+			http: Some(HTTPIngressRuleValue {
+				paths: vec![HTTPIngressPath {
+					backend: IngressBackend {
+						service: Some(IngressServiceBackend {
+							name: format!("service-{}", static_site_id),
+							port: Some(ServiceBackendPort {
+								number: Some(80),
+								..ServiceBackendPort::default()
+							}),
+						}),
+						..Default::default()
+					},
+					path: Some(path),
+					path_type: Some("Prefix".to_string()),
+				}],
+			}),
+		}];
+		let kubernetes_ingress = Ingress {
+			metadata: ObjectMeta {
+				name: Some(format!("ingress-{}", id)),
+				annotations: Some(annotations),
+				..ObjectMeta::default()
+			},
+			spec: Some(IngressSpec {
+				rules: Some(ingress_rule),
+				tls: None,
+				..IngressSpec::default()
+			}),
+			..Ingress::default()
+		};
+		Api::<Ingress>::namespaced(kubernetes_client.clone(), namespace)
+			.patch(
+				&format!("ingress-{}", id),
+				&PatchParams::apply(&format!("ingress-{}", id)),
+				&Patch::Apply(kubernetes_ingress),
+			)
+			.await?
+			.status
+			.status(500)?;
 	}
 
 	Ok(())

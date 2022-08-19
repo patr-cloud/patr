@@ -124,47 +124,64 @@ pub async fn update_kubernetes_managed_url(
 			.into_iter()
 			.collect(),
 		),
-		ManagedUrlType::ProxyStaticSite { static_site_id } => (
-			IngressRule {
-				host: Some(host.clone()),
-				http: Some(HTTPIngressRuleValue {
-					paths: vec![HTTPIngressPath {
-						backend: IngressBackend {
-							service: Some(IngressServiceBackend {
-								name: format!("service-{}", static_site_id),
-								port: Some(ServiceBackendPort {
-									number: Some(80),
-									..ServiceBackendPort::default()
+		ManagedUrlType::ProxyStaticSite { static_site_id } => {
+			let static_site = db::get_static_site_by_id(
+				service::get_app().database.acquire().await?.deref_mut(),
+				static_site_id,
+			)
+			.await?
+			.status(500)?;
+			(
+				IngressRule {
+					host: Some(host.clone()),
+					http: Some(HTTPIngressRuleValue {
+						paths: vec![HTTPIngressPath {
+							backend: IngressBackend {
+								service: Some(IngressServiceBackend {
+									name: format!("service-{}", static_site_id),
+									port: Some(ServiceBackendPort {
+										number: Some(80),
+										..ServiceBackendPort::default()
+									}),
 								}),
-							}),
-							..Default::default()
+								..Default::default()
+							},
+							path: Some(managed_url.path.to_string()),
+							path_type: Some("Prefix".to_string()),
+						}],
+					}),
+				},
+				[
+					(
+						"kubernetes.io/ingress.class".to_string(),
+						"nginx".to_string(),
+					),
+					(
+						"nginx.ingress.kubernetes.io/upstream-vhost"
+							.to_string(),
+						if let Some(upload_id) = static_site.current_live_upload
+						{
+							format!(
+								"{}-{}.patr.cloud",
+								upload_id, static_site_id
+							)
+						} else {
+							format!("{}.patr.cloud", static_site_id)
 						},
-						path: Some(managed_url.path.to_string()),
-						path_type: Some("Prefix".to_string()),
-					}],
-				}),
-			},
-			[
-				(
-					"kubernetes.io/ingress.class".to_string(),
-					"nginx".to_string(),
-				),
-				(
-					"nginx.ingress.kubernetes.io/upstream-vhost".to_string(),
-					format!("{}.patr.cloud", static_site_id),
-				),
-				(
-					"cert-manager.io/cluster-issuer".to_string(),
-					if domain.is_ns_internal() {
-						config.kubernetes.cert_issuer_dns.clone()
-					} else {
-						config.kubernetes.cert_issuer_http.clone()
-					},
-				),
-			]
-			.into_iter()
-			.collect(),
-		),
+					),
+					(
+						"cert-manager.io/cluster-issuer".to_string(),
+						if domain.is_ns_internal() {
+							config.kubernetes.cert_issuer_dns.clone()
+						} else {
+							config.kubernetes.cert_issuer_http.clone()
+						},
+					),
+				]
+				.into_iter()
+				.collect(),
+			)
+		}
 		ManagedUrlType::ProxyUrl { url } => {
 			let kubernetes_service = Service {
 				metadata: ObjectMeta {
