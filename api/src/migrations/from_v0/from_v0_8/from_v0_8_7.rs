@@ -272,7 +272,9 @@ async fn add_upload_id_for_existing_users(
 	.await?;
 
 	let kubernetes_client = kube::Client::try_from(kubernetes_config)?;
-	for (index, (static_site_id, workspace_id, created)) in static_sites.into_iter().enumerate() {
+	for (index, (static_site_id, workspace_id, created)) in
+		static_sites.into_iter().enumerate()
+	{
 		log::trace!("Updating static site {}/{}", index, sites_len);
 		let upload_id = loop {
 			let upload_id = Uuid::new_v4();
