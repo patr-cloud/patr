@@ -18,6 +18,8 @@ use api_models::{
 			GetUserInfoByUserIdResponse,
 			GetUserInfoResponse,
 			GetUserLoginInfoResponse,
+			ListApiTokenPermissionsResponse,
+			ListApiTokenResponse,
 			ListPersonalEmailsResponse,
 			ListPhoneNumbersResponse,
 			ListUserLoginsResponse,
@@ -31,6 +33,8 @@ use api_models::{
 			UpdateRecoveryPhoneNumberResponse,
 			UpdateUserInfoRequest,
 			UpdateUserInfoResponse,
+			UserApiToken,
+			UserApiTokenPermission,
 			UserLogin,
 			VerifyPersonalEmailRequest,
 			VerifyPersonalEmailResponse,
@@ -235,6 +239,24 @@ pub fn create_sub_app(
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(revoke_api_token)),
+		],
+	);
+
+	app.get(
+		"/api-token/:apiToken",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(list_api_token_for_user)),
+		],
+	);
+
+	app.get(
+		"/api-token/:apiToken/permission",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(
+				list_permission_for_api_token
+			)),
 		],
 	);
 
@@ -1440,5 +1462,91 @@ async fn revoke_api_token(
 	.await?;
 
 	context.success(RevokeApiTokenResponse {});
+	Ok(context)
+}
+
+async fn list_api_token_for_user(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	let user_id =
+		Uuid::parse_str(context.get_param(request_keys::USER_ID).unwrap())
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	// TODO - Logic to validate if the user listing the token is allowed to do
+	// so or not TODO - Most likely should be user who created the token or
+	// super admin
+
+	db::get_user_by_user_id(context.get_database_connection(), &user_id)
+		.await?
+		.status(404)
+		.body(error!(USER_NOT_FOUND).to_string())?;
+
+	log::trace!(
+		"request_id: {} listing api_tokens for user: {}",
+		request_id,
+		user_id
+	);
+	let tokens = db::list_api_tokens_for_user(
+		context.get_database_connection(),
+		&user_id,
+	)
+	.await?
+	.into_iter()
+	.map(|token| UserApiToken {
+		name: token.name,
+		token: token.token,
+		ttl: token.token_expiry,
+		user_id: token.user_id,
+		created: token.created,
+	})
+	.collect::<Vec<_>>();
+
+	context.success(ListApiTokenResponse { tokens });
+
+	Ok(context)
+}
+
+async fn list_permission_for_api_token(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	let token =
+		Uuid::parse_str(context.get_param(request_keys::API_TOKEN).unwrap())
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	// TODO - Logic to validate if the user listing the token is allowed to do
+	// so or not TODO - Most likely should be user who created the token or
+	// super admin
+
+	// Check if token exists
+	db::get_api_token_by_id(context.get_database_connection(), &token)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	log::trace!(
+		"request_id: {} listing permissions for api_token: {}",
+		request_id,
+		token
+	);
+
+	let permissions = db::list_permissions_for_api_token(
+		context.get_database_connection(),
+		&token,
+	)
+	.await
+	.into_iter()
+	.map(|permission| UserApiTokenPermission {
+		resource_permissions: permission.resource_permissions,
+		resource_type_permissions: permission.resource_type_permissions,
+	})
+	.collect::<Vec<_>>();
+
+	context.success(ListApiTokenPermissionsResponse { permissions });
 	Ok(context)
 }

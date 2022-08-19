@@ -14,7 +14,11 @@ pub struct ApiToken {
 	pub user_id: Uuid,
 	pub token_expiry: Option<DateTime<Utc>>,
 	pub created: DateTime<Utc>,
-	pub revoked: bool,
+}
+
+pub struct Permission {
+    pub resource_permissions: BTreeMap<Uuid, Vec<Uuid>>,
+    pub resource_type_permissions: BTreeMap<Uuid, Vec<Uuid>>,
 }
 
 pub async fn initialize_api_token_pre(
@@ -131,11 +135,11 @@ pub async fn get_api_token_by_id(
 			user_id as "user_id: _",
 			token_expiry as "token_expiry!: _",
 			created as "created: _",
-			revoked
 		FROM
 			api_token
 		WHERE
-			token = $1;
+			token = $1 AND
+            revoked != false;
 		"#,
 		token as _
 	)
@@ -346,4 +350,86 @@ pub async fn is_user_super_admin(
 	.await?;
 
 	Ok(rows.is_some())
+}
+
+pub async fn list_api_tokens_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+) -> Result<Vec<ApiToken>, sqlx::Error> {
+	query_as!(
+		ApiToken,
+		r#"
+		SELECT
+			token as "token: _",
+			name,
+			user_id as "user_id: _",
+			token_expiry as "token_expiry!: _",
+			created as "created: _"
+		FROM
+			api_token
+		WHERE
+			user_id = $1 AND
+			revoked != false;
+		"#,
+		user_id as _,
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn list_permissions_for_api_token(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	token: &Uuid,
+) -> Result<Permission, sqlx::Error> {
+	let mut resource_permissions = BTreeMap::<Uuid, Vec<Uuid>>::new();
+	let mut resource_type_permissions = BTreeMap::<Uuid, Vec<Uuid>>::new();
+
+	let rows = query!(
+		r#"
+		SELECT
+			resource_id as "resource_id: Uuid",
+			permission_id as "permission_id: Uuid"
+		FROM
+			api_token_resource_permission
+		WHERE
+			token = $1;
+		"#,
+		token as _,
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	for row in rows {
+		resource_permissions
+			.entry(row.resource_id)
+			.or_insert_with(Vec::new)
+			.push(row.permission_id);
+	}
+
+	let rows = query!(
+		r#"
+		SELECT
+			resource_type_id as "resource_type_id: Uuid",
+			permission_id as "permission_id: Uuid"
+		FROM
+			api_token_resource_type_permission
+		WHERE
+			token = $1;
+		"#,
+		token as _,
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	for row in rows {
+		resource_type_permissions
+			.entry(row.resource_type_id)
+			.or_insert_with(Vec::new)
+			.push(row.permission_id);
+	}
+
+	Ok(Permission {
+		resource_permissions,
+		resource_type_permissions,
+	})
 }
