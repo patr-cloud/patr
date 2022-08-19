@@ -1,8 +1,10 @@
+use std::net::IpAddr;
+
 use api_models::{
 	models::user::{BasicUserInfo, UserPhoneNumber},
 	utils::{DateTime, ResourceType, Uuid},
 };
-use chrono::Utc;
+use chrono::{TimeZone, Utc};
 
 use crate::{db::Workspace, query, query_as, Database};
 
@@ -28,10 +30,18 @@ pub struct UserLogin {
 	pub login_id: Uuid,
 	/// Hashed refresh token
 	pub refresh_token: String,
-	pub token_expiry: u64,
+	pub token_expiry: DateTime<Utc>,
 	pub user_id: Uuid,
-	pub last_login: u64,
-	pub last_activity: u64,
+	pub last_login: DateTime<Utc>,
+	pub last_activity: DateTime<Utc>,
+	pub created: DateTime<Utc>,
+	pub created_ip: IpAddr,
+	pub created_location_latitude: f64,
+	pub created_location_longitude: f64,
+	pub last_activity_ip: IpAddr,
+	pub last_activity_location_latitude: f64,
+	pub last_activity_location_longitude: f64,
+	pub last_activity_user_agent: String,
 }
 
 pub struct PasswordResetRequest {
@@ -188,20 +198,19 @@ pub async fn initialize_users_pre(
 	query!(
 		r#"
 		CREATE TABLE user_login(
-			login_id UUID
-				CONSTRAINT user_login_uq_login_id UNIQUE,
+			login_id UUID CONSTRAINT user_login_uq_login_id UNIQUE,
 			refresh_token TEXT NOT NULL,
-			token_expiry BIGINT NOT NULL
-				CONSTRAINT user_login_chk_token_expiry_unsigned
-					CHECK(token_expiry >= 0),
+			token_expiry TIMESTAMPTZ NOT NULL,
 			user_id UUID NOT NULL
 				CONSTRAINT user_login_fk_user_id REFERENCES "user"(id),
-			last_login BIGINT NOT NULL
-				CONSTRAINT user_login_chk_last_login_unsigned
-					CHECK(last_login >= 0),
-			last_activity BIGINT NOT NULL
-				CONSTRAINT user_login_chk_last_activity_unsigned
-					CHECK(last_activity >= 0),
+			last_login TIMESTAMPTZ NOT NULL,
+			last_activity TIMESTAMPTZ NOT NULL,
+			created TIMESTAMPTZ NOT NULL,
+			created_ip INET NOT NULL,
+			created_location GEOMETRY NOT NULL,
+			last_activity_ip INET NOT NULL,
+			last_activity_location GEOMETRY NOT NULL,
+			last_activity_user_agent TEXT NOT NULL,
 			CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id)
 		);
 		"#
@@ -2248,10 +2257,18 @@ pub async fn add_user_login(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &Uuid,
 	refresh_token: &str,
-	token_expiry: u64,
+	token_expiry: &DateTime<Utc>,
 	user_id: &Uuid,
-	last_login: u64,
-	last_activity: u64,
+	last_login: &DateTime<Utc>,
+	last_activity: &DateTime<Utc>,
+	created: &DateTime<Utc>,
+	created_ip: &IpAddr,
+	created_location_latitude: f64,
+	created_location_longitude: f64,
+	last_activity_ip: &IpAddr,
+	last_activity_location_latitude: f64,
+	last_activity_location_longitude: f64,
+	last_activity_user_agent: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -2262,17 +2279,44 @@ pub async fn add_user_login(
 				token_expiry, 
 				user_id, 
 				last_login, 
-				last_activity
+				last_activity,
+				created,
+				created_ip,
+				created_location,
+				last_activity_ip,
+				last_activity_location,
+				last_activity_user_agent
 			)
 		VALUES
-			($1, $2, $3, $4, $5, $6);
+			(
+				$1,
+				$2,
+				$3,
+				$4,
+				$5,
+				$6,
+				$7,
+				$8,
+				ST_SetSRID(POINT($9, $10)::GEOMETRY, 4326),
+				$11,
+				ST_SetSRID(POINT($12, $13)::GEOMETRY, 4326),
+				$14
+			);
 		"#,
 		login_id as _,
 		refresh_token,
-		token_expiry as i64,
+		token_expiry as _,
 		user_id as _,
-		last_login as i64,
-		last_activity as i64
+		last_login as _,
+		last_activity as _,
+		created as _,
+		created_ip as _,
+		created_location_latitude as _,
+		created_location_longitude as _,
+		last_activity_ip as _,
+		last_activity_location_latitude as _,
+		last_activity_location_longitude as _,
+		last_activity_user_agent,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -2284,15 +2328,24 @@ pub async fn get_user_login(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &Uuid,
 ) -> Result<Option<UserLogin>, sqlx::Error> {
-	let login = query!(
+	query_as!(
+		UserLogin,
 		r#"
 		SELECT
-			login_id as "login_id: Uuid",
+			login_id as "login_id: _",
 			refresh_token,
-			token_expiry,
-			user_id as "user_id: Uuid",
-			last_login,
-			last_activity
+			token_expiry as "token_expiry: _",
+			user_id as "user_id: _",
+			last_login as "last_login: _",
+			last_activity as "last_activity: _",
+			created as "created: _",
+			created_ip as "created_ip: _",
+			ST_Y(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_latitude!: _",
+			ST_X(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_longitude!: _",
+			last_activity_ip as "last_activity_ip: _",
+			ST_Y(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_latitude!: _",
+			ST_X(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_longitude!: _",
+			last_activity_user_agent
 		FROM
 			user_login
 		WHERE
@@ -2301,17 +2354,7 @@ pub async fn get_user_login(
 		login_id as _
 	)
 	.fetch_optional(&mut *connection)
-	.await?
-	.map(|row| UserLogin {
-		login_id: row.login_id,
-		refresh_token: row.refresh_token,
-		token_expiry: row.token_expiry as u64,
-		user_id: row.user_id,
-		last_login: row.last_login as u64,
-		last_activity: row.last_activity as u64,
-	});
-
-	Ok(login)
+	.await
 }
 
 pub async fn get_user_login_for_user(
@@ -2319,15 +2362,24 @@ pub async fn get_user_login_for_user(
 	login_id: &Uuid,
 	user_id: &Uuid,
 ) -> Result<Option<UserLogin>, sqlx::Error> {
-	let row = query!(
+	query_as!(
+		UserLogin,
 		r#"
 		SELECT
-			login_id as "login_id: Uuid",
+			login_id as "login_id: _",
 			refresh_token,
-			token_expiry,
-			user_id as "user_id: Uuid",
-			last_login,
-			last_activity
+			token_expiry as "token_expiry: _",
+			user_id as "user_id: _",
+			last_login as "last_login: _",
+			last_activity as "last_activity: _",
+			created as "created: _",
+			created_ip as "created_ip: _",
+			ST_Y(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_latitude!: _",
+			ST_X(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_longitude!: _",
+			last_activity_ip as "last_activity_ip: _",
+			ST_Y(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_latitude!: _",
+			ST_X(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_longitude!: _",
+			last_activity_user_agent
 		FROM
 			user_login
 		WHERE
@@ -2338,17 +2390,7 @@ pub async fn get_user_login_for_user(
 		user_id as _,
 	)
 	.fetch_optional(&mut *connection)
-	.await?
-	.map(|row| UserLogin {
-		login_id: row.login_id,
-		refresh_token: row.refresh_token,
-		token_expiry: row.token_expiry as u64,
-		user_id: row.user_id,
-		last_login: row.last_login as u64,
-		last_activity: row.last_activity as u64,
-	});
-
-	Ok(row)
+	.await
 }
 
 pub async fn generate_new_login_id(
@@ -2360,7 +2402,7 @@ pub async fn generate_new_login_id(
 		let exists = query!(
 			r#"
 			SELECT
-				*
+				login_id
 			FROM
 				user_login
 			WHERE
@@ -2382,15 +2424,24 @@ pub async fn get_all_logins_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 ) -> Result<Vec<UserLogin>, sqlx::Error> {
-	let rows = query!(
+	query_as!(
+		UserLogin,
 		r#"
 		SELECT
-			login_id as "login_id: Uuid",
+			login_id as "login_id: _",
 			refresh_token,
-			token_expiry,
-			user_id as "user_id: Uuid",
-			last_login,
-			last_activity
+			token_expiry as "token_expiry: _",
+			user_id as "user_id: _",
+			last_login as "last_login: _",
+			last_activity as "last_activity: _",
+			created as "created: _",
+			created_ip as "created_ip: _",
+			ST_Y(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_latitude!: _",
+			ST_X(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_longitude!: _",
+			last_activity_ip as "last_activity_ip: _",
+			ST_Y(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_latitude!: _",
+			ST_X(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_longitude!: _",
+			last_activity_user_agent
 		FROM
 			user_login
 		WHERE
@@ -2399,19 +2450,7 @@ pub async fn get_all_logins_for_user(
 		user_id as _
 	)
 	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| UserLogin {
-		login_id: row.login_id,
-		refresh_token: row.refresh_token,
-		token_expiry: row.token_expiry as u64,
-		user_id: row.user_id,
-		last_login: row.last_login as u64,
-		last_activity: row.last_activity as u64,
-	})
-	.collect();
-
-	Ok(rows)
+	.await
 }
 
 pub async fn get_login_for_user_with_refresh_token(
@@ -2419,15 +2458,24 @@ pub async fn get_login_for_user_with_refresh_token(
 	user_id: &Uuid,
 	refresh_token: &str,
 ) -> Result<Option<UserLogin>, sqlx::Error> {
-	let login = query!(
+	query_as!(
+		UserLogin,
 		r#"
 		SELECT
-			login_id as "login_id: Uuid",
+			login_id as "login_id: _",
 			refresh_token,
-			token_expiry,
-			user_id as "user_id: Uuid",
-			last_login,
-			last_activity
+			token_expiry as "token_expiry: _",
+			user_id as "user_id: _",
+			last_login as "last_login: _",
+			last_activity as "last_activity: _",
+			created as "created: _",
+			created_ip as "created_ip: _",
+			ST_Y(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_latitude!: _",
+			ST_X(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_longitude!: _",
+			last_activity_ip as "last_activity_ip: _",
+			ST_Y(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_latitude!: _",
+			ST_X(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_longitude!: _",
+			last_activity_user_agent
 		FROM
 			user_login
 		WHERE
@@ -2438,17 +2486,7 @@ pub async fn get_login_for_user_with_refresh_token(
 		refresh_token,
 	)
 	.fetch_optional(&mut *connection)
-	.await?
-	.map(|row| UserLogin {
-		login_id: row.login_id,
-		refresh_token: row.refresh_token,
-		token_expiry: row.token_expiry as u64,
-		user_id: row.user_id,
-		last_login: row.last_login as u64,
-		last_activity: row.last_activity as u64,
-	});
-
-	Ok(login)
+	.await
 }
 
 pub async fn delete_user_login_by_id(
@@ -2461,13 +2499,14 @@ pub async fn delete_user_login_by_id(
 		UPDATE
 			user_login
 		SET
-			token_expiry = 0
+			token_expiry = $3
 		WHERE
 			login_id = $1 AND
 			user_id = $2;
 		"#,
 		login_id as _,
 		user_id as _,
+		Utc.timestamp(0, 0),
 	)
 	.execute(&mut *connection)
 	.await

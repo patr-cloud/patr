@@ -77,3 +77,14 @@ pub struct ExposedUserData {
 	pub last_name: String,
 	pub created: u64,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct IpAddressInfoResponse {
+	pub country: String,
+	pub region: String,
+	pub city: String,
+	pub postal: String,
+	pub loc: String,
+	pub timezone: String,
+}

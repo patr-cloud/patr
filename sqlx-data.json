@@ -415,6 +415,26 @@
     },
     "query": "UPDATE static_site SET name = $1 WHERE id = $2;"
   },
+  "09706c508df1f73266ecd89ee4d05447a57f0750e2309b1bfedfc28e9352fadc": {
+    "describe": {
+      "columns": [
+        {
+          "name": "login_id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT login_id FROM user_login WHERE login_id = $1;"
+  },
   "0a99a795783bd682faac118e140bb40890bcecc424254bf651823cb42022b1ec": {
     "describe": {
       "columns": [
@@ -1469,23 +1489,6 @@
     },
     "query": "CREATE TYPE MANAGED_DATABASE_STATUS AS ENUM( 'creating', /* Started the creation of database */ 'running', /* Database is running successfully */ 'stopped', /* Database is stopped by the user */ 'errored', /* Database encountered errors */ 'deleted' /* Database is deled by the user */ );"
   },
-  "2051f9929ae7b78d7594f0451130cc67700bb81d54c7df6191ddeb29eed577af": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          "Int8",
-          "Uuid",
-          "Int8",
-          "Int8"
-        ]
-      }
-    },
-    "query": "INSERT INTO user_login( login_id, refresh_token, token_expiry, user_id, last_login, last_activity ) VALUES ($1, $2, $3, $4, $5, $6);"
-  },
   "228e6bc3a8eb9c3113acda6e4fa32f347b99cf44fb9935e39461eaa8e8cef7e7": {
     "describe": {
       "columns": [
@@ -1647,56 +1650,6 @@
     },
     "query": "SELECT * FROM phone_number_country_code WHERE country_code = $1;"
   },
-  "25eafab4c0a9b0440ac9cdf11910ccd6be067d8ef4ed4132d555dd9e0d57f949": {
-    "describe": {
-      "columns": [
-        {
-          "name": "login_id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "refresh_token",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "token_expiry",
-          "ordinal": 2,
-          "type_info": "Int8"
-        },
-        {
-          "name": "user_id: Uuid",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "last_login",
-          "ordinal": 4,
-          "type_info": "Int8"
-        },
-        {
-          "name": "last_activity",
-          "ordinal": 5,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT login_id as \"login_id: Uuid\", refresh_token, token_expiry, user_id as \"user_id: Uuid\", last_login, last_activity FROM user_login WHERE user_id = $1;"
-  },
   "265d098fb12a72689196f941ca78205cdf6d8d45bfcbacbd2cc1f637da0baa4e": {
     "describe": {
       "columns": [
@@ -1784,6 +1737,31 @@
       }
     },
     "query": "SELECT COUNT(*) as \"count!\" FROM static_site INNER JOIN workspace ON static_site.workspace_id = workspace.id WHERE status = 'deleted' AND workspace.super_admin_id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );"
+  },
+  "27c86b71d56b85012770b115c93eb9b04ae13d2473208025f2c18684ad9c2133": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Timestamptz",
+          "Uuid",
+          "Timestamptz",
+          "Timestamptz",
+          "Timestamptz",
+          "Inet",
+          "Float8",
+          "Float8",
+          "Inet",
+          "Float8",
+          "Float8",
+          "Text"
+        ]
+      }
+    },
+    "query": "INSERT INTO user_login( login_id, refresh_token, token_expiry, user_id, last_login, last_activity, created, created_ip, created_location, last_activity_ip, last_activity_location, last_activity_user_agent ) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, ST_SetSRID(POINT($9, $10)::GEOMETRY, 4326), $11, ST_SetSRID(POINT($12, $13)::GEOMETRY, 4326), $14 );"
   },
   "28c3a8d03871bb820d4ea57bc7ded4e77e4aa8c0fd19556827bc401e16648cac": {
     "describe": {
@@ -3384,6 +3362,20 @@
     },
     "query": "INSERT INTO managed_database( id, name, db_name, engine, version, num_nodes, database_plan, region, status, host, port, username, password, workspace_id, digitalocean_db_id ) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, 'creating', $9, $10, $11, $12, $13, NULL );"
   },
+  "560b7c4b65c09f235d5cd922f1c84ec1fa7c49f0d6e3833ab5df882f74b1d722": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "UPDATE user_login SET token_expiry = $3 WHERE login_id = $1 AND user_id = $2;"
+  },
   "56227fccf9e60c797a9f7bfb575ab4cc57e2109bb04661317b53900682745de4": {
     "describe": {
       "columns": [],
@@ -4122,6 +4114,104 @@
       }
     },
     "query": "UPDATE managed_database SET host = $1, port = $2, username = $3, password = $4 WHERE id = $5;"
+  },
+  "623f5dfbae38ec94a175792dcc22ee5283fc778248de230cd34f913e4563fc23": {
+    "describe": {
+      "columns": [
+        {
+          "name": "login_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "refresh_token",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "token_expiry: _",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "user_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "last_login: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "last_activity: _",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "created: _",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "created_ip: _",
+          "ordinal": 7,
+          "type_info": "Inet"
+        },
+        {
+          "name": "created_location_latitude!: _",
+          "ordinal": 8,
+          "type_info": "Float8"
+        },
+        {
+          "name": "created_location_longitude!: _",
+          "ordinal": 9,
+          "type_info": "Float8"
+        },
+        {
+          "name": "last_activity_ip: _",
+          "ordinal": 10,
+          "type_info": "Inet"
+        },
+        {
+          "name": "last_activity_location_latitude!: _",
+          "ordinal": 11,
+          "type_info": "Float8"
+        },
+        {
+          "name": "last_activity_location_longitude!: _",
+          "ordinal": 12,
+          "type_info": "Float8"
+        },
+        {
+          "name": "last_activity_user_agent",
+          "ordinal": 13,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        null,
+        null,
+        false,
+        null,
+        null,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT login_id as \"login_id: _\", refresh_token, token_expiry as \"token_expiry: _\", user_id as \"user_id: _\", last_login as \"last_login: _\", last_activity as \"last_activity: _\", created as \"created: _\", created_ip as \"created_ip: _\", ST_Y(ST_Centroid(ST_Transform(created_location, 4326))) as \"created_location_latitude!: _\", ST_X(ST_Centroid(ST_Transform(created_location, 4326))) as \"created_location_longitude!: _\", last_activity_ip as \"last_activity_ip: _\", ST_Y(ST_Centroid(ST_Transform(last_activity_location, 4326))) as \"last_activity_location_latitude!: _\", ST_X(ST_Centroid(ST_Transform(last_activity_location, 4326))) as \"last_activity_location_longitude!: _\", last_activity_user_agent FROM user_login WHERE user_id = $1;"
   },
   "629c00298724c7b118fa471652c112c774ebc0c0d08a288c41c1cf7b9a27b5f9": {
     "describe": {
@@ -5056,6 +5146,105 @@
       }
     },
     "query": "ALTER TABLE docker_repo_payment_history ADD CONSTRAINT docker_repo_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id);"
+  },
+  "79033ce9336a653098ae94f55f8dea52a4bfaa94771bde0cf246ef40b88fc919": {
+    "describe": {
+      "columns": [
+        {
+          "name": "login_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "refresh_token",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "token_expiry: _",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "user_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "last_login: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "last_activity: _",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "created: _",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "created_ip: _",
+          "ordinal": 7,
+          "type_info": "Inet"
+        },
+        {
+          "name": "created_location_latitude!: _",
+          "ordinal": 8,
+          "type_info": "Float8"
+        },
+        {
+          "name": "created_location_longitude!: _",
+          "ordinal": 9,
+          "type_info": "Float8"
+        },
+        {
+          "name": "last_activity_ip: _",
+          "ordinal": 10,
+          "type_info": "Inet"
+        },
+        {
+          "name": "last_activity_location_latitude!: _",
+          "ordinal": 11,
+          "type_info": "Float8"
+        },
+        {
+          "name": "last_activity_location_longitude!: _",
+          "ordinal": 12,
+          "type_info": "Float8"
+        },
+        {
+          "name": "last_activity_user_agent",
+          "ordinal": 13,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        null,
+        null,
+        false,
+        null,
+        null,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT login_id as \"login_id: _\", refresh_token, token_expiry as \"token_expiry: _\", user_id as \"user_id: _\", last_login as \"last_login: _\", last_activity as \"last_activity: _\", created as \"created: _\", created_ip as \"created_ip: _\", ST_Y(ST_Centroid(ST_Transform(created_location, 4326))) as \"created_location_latitude!: _\", ST_X(ST_Centroid(ST_Transform(created_location, 4326))) as \"created_location_longitude!: _\", last_activity_ip as \"last_activity_ip: _\", ST_Y(ST_Centroid(ST_Transform(last_activity_location, 4326))) as \"last_activity_location_latitude!: _\", ST_X(ST_Centroid(ST_Transform(last_activity_location, 4326))) as \"last_activity_location_longitude!: _\", last_activity_user_agent FROM user_login WHERE user_id = $1 AND refresh_token = $2;"
   },
   "799da22d8cdbef2c4255be096c65f4912d3ec487dd2cc93cce9c7d784c31a938": {
     "describe": {
@@ -6334,6 +6523,104 @@
     },
     "query": "INSERT INTO workspace( id, name, super_admin_id, active, alert_emails, drone_username, drone_token, payment_type, default_payment_method_id, deployment_limit, database_limit, static_site_limit, managed_url_limit, docker_repository_storage_limit, domain_limit, secret_limit, stripe_customer_id, address_id, amount_due ) VALUES ($1, $2, $3, $4, $5, NULL, NULL, $6, NULL, $7, $8, $9, $10, $11, $12, $13, $14, NULL, $15);"
   },
+  "93c3fbcc9fbb49e7a397faaab201d0bdc070cf9fe1eab8e6ef05ed0a6953772c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "login_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "refresh_token",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "token_expiry: _",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "user_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "last_login: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "last_activity: _",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "created: _",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "created_ip: _",
+          "ordinal": 7,
+          "type_info": "Inet"
+        },
+        {
+          "name": "created_location_latitude!: _",
+          "ordinal": 8,
+          "type_info": "Float8"
+        },
+        {
+          "name": "created_location_longitude!: _",
+          "ordinal": 9,
+          "type_info": "Float8"
+        },
+        {
+          "name": "last_activity_ip: _",
+          "ordinal": 10,
+          "type_info": "Inet"
+        },
+        {
+          "name": "last_activity_location_latitude!: _",
+          "ordinal": 11,
+          "type_info": "Float8"
+        },
+        {
+          "name": "last_activity_location_longitude!: _",
+          "ordinal": 12,
+          "type_info": "Float8"
+        },
+        {
+          "name": "last_activity_user_agent",
+          "ordinal": 13,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        null,
+        null,
+        false,
+        null,
+        null,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT login_id as \"login_id: _\", refresh_token, token_expiry as \"token_expiry: _\", user_id as \"user_id: _\", last_login as \"last_login: _\", last_activity as \"last_activity: _\", created as \"created: _\", created_ip as \"created_ip: _\", ST_Y(ST_Centroid(ST_Transform(created_location, 4326))) as \"created_location_latitude!: _\", ST_X(ST_Centroid(ST_Transform(created_location, 4326))) as \"created_location_longitude!: _\", last_activity_ip as \"last_activity_ip: _\", ST_Y(ST_Centroid(ST_Transform(last_activity_location, 4326))) as \"last_activity_location_latitude!: _\", ST_X(ST_Centroid(ST_Transform(last_activity_location, 4326))) as \"last_activity_location_longitude!: _\", last_activity_user_agent FROM user_login WHERE login_id = $1;"
+  },
   "9443444e07501e0364dc35e7d31d502bcd12e55aa1ea182091ad0b4c7765a55d": {
     "describe": {
       "columns": [
@@ -6651,56 +6938,6 @@
       }
     },
     "query": "ALTER TABLE managed_url_payment_history ADD CONSTRAINT managed_url_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id);"
-  },
-  "9a3de7f88487616a70b025316dfa10b5ec412d40d7c15567e0dd9d19c369a3c1": {
-    "describe": {
-      "columns": [
-        {
-          "name": "login_id",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "refresh_token",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "token_expiry",
-          "ordinal": 2,
-          "type_info": "Int8"
-        },
-        {
-          "name": "user_id",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "last_login",
-          "ordinal": 4,
-          "type_info": "Int8"
-        },
-        {
-          "name": "last_activity",
-          "ordinal": 5,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT * FROM user_login WHERE login_id = $1;"
   },
   "9b88d7c5fc101c3ee54f19f893dcd561664e63b7206aa46df6a7868ae52d5157": {
     "describe": {
@@ -7557,6 +7794,105 @@
     },
     "query": "SELECT * FROM address WHERE id = $1;"
   },
+  "ace7d20bc2994495f157dee8d63c55d5b725129932cdb840d96522709b2cf562": {
+    "describe": {
+      "columns": [
+        {
+          "name": "login_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "refresh_token",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "token_expiry: _",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "user_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "last_login: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "last_activity: _",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "created: _",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "created_ip: _",
+          "ordinal": 7,
+          "type_info": "Inet"
+        },
+        {
+          "name": "created_location_latitude!: _",
+          "ordinal": 8,
+          "type_info": "Float8"
+        },
+        {
+          "name": "created_location_longitude!: _",
+          "ordinal": 9,
+          "type_info": "Float8"
+        },
+        {
+          "name": "last_activity_ip: _",
+          "ordinal": 10,
+          "type_info": "Inet"
+        },
+        {
+          "name": "last_activity_location_latitude!: _",
+          "ordinal": 11,
+          "type_info": "Float8"
+        },
+        {
+          "name": "last_activity_location_longitude!: _",
+          "ordinal": 12,
+          "type_info": "Float8"
+        },
+        {
+          "name": "last_activity_user_agent",
+          "ordinal": 13,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        null,
+        null,
+        false,
+        null,
+        null,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT login_id as \"login_id: _\", refresh_token, token_expiry as \"token_expiry: _\", user_id as \"user_id: _\", last_login as \"last_login: _\", last_activity as \"last_activity: _\", created as \"created: _\", created_ip as \"created_ip: _\", ST_Y(ST_Centroid(ST_Transform(created_location, 4326))) as \"created_location_latitude!: _\", ST_X(ST_Centroid(ST_Transform(created_location, 4326))) as \"created_location_longitude!: _\", last_activity_ip as \"last_activity_ip: _\", ST_Y(ST_Centroid(ST_Transform(last_activity_location, 4326))) as \"last_activity_location_latitude!: _\", ST_X(ST_Centroid(ST_Transform(last_activity_location, 4326))) as \"last_activity_location_longitude!: _\", last_activity_user_agent FROM user_login WHERE login_id = $1 AND user_id = $2;"
+  },
   "ae41156d89527be463294943976764f6e16e645eb799bdbd47aa1efdb637d4f1": {
     "describe": {
       "columns": [
@@ -8081,8 +8417,8 @@
       "nullable": [],
       "parameters": {
         "Left": [
-          "Int8",
-          "Int8",
+          "Timestamptz",
+          "Timestamptz",
           "Uuid"
         ]
       }
@@ -8203,107 +8539,6 @@
       }
     },
     "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured FROM managed_url WHERE id = $1 AND sub_domain NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
-  },
-  "b47eedf97c7d77d6c60a68960460d37a161858459255a2a8d09b3a69d080b70f": {
-    "describe": {
-      "columns": [
-        {
-          "name": "login_id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "refresh_token",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "token_expiry",
-          "ordinal": 2,
-          "type_info": "Int8"
-        },
-        {
-          "name": "user_id: Uuid",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "last_login",
-          "ordinal": 4,
-          "type_info": "Int8"
-        },
-        {
-          "name": "last_activity",
-          "ordinal": 5,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT login_id as \"login_id: Uuid\", refresh_token, token_expiry, user_id as \"user_id: Uuid\", last_login, last_activity FROM user_login WHERE login_id = $1 AND user_id = $2;"
-  },
-  "b4adc7f1228c69cf983d7c1cc8af1a7720a0a7df2d1ea9d2d9aa1a434e40782f": {
-    "describe": {
-      "columns": [
-        {
-          "name": "login_id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "refresh_token",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "token_expiry",
-          "ordinal": 2,
-          "type_info": "Int8"
-        },
-        {
-          "name": "user_id: Uuid",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "last_login",
-          "ordinal": 4,
-          "type_info": "Int8"
-        },
-        {
-          "name": "last_activity",
-          "ordinal": 5,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT login_id as \"login_id: Uuid\", refresh_token, token_expiry, user_id as \"user_id: Uuid\", last_login, last_activity FROM user_login WHERE login_id = $1;"
   },
   "b4d2a52eacd8db7502f452aa9fddab45bd6f171581cd217c99b32a1727cf2155": {
     "describe": {
@@ -8797,16 +9032,6 @@
       }
     },
     "query": "ALTER TABLE deployment ADD CONSTRAINT deployment_fk_current_live_digest FOREIGN KEY(id, current_live_digest) REFERENCES deployment_deploy_history(deployment_id, image_digest);"
-  },
-  "bfe39187b7925d9987415d6f1430adb8ea31e32dbbf15528aaebf81923e1d1fe": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE user_login( login_id UUID CONSTRAINT user_login_uq_login_id UNIQUE, refresh_token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT user_login_chk_token_expiry_unsigned CHECK(token_expiry >= 0), user_id UUID NOT NULL CONSTRAINT user_login_fk_user_id REFERENCES \"user\"(id), last_login BIGINT NOT NULL CONSTRAINT user_login_chk_last_login_unsigned CHECK(last_login >= 0), last_activity BIGINT NOT NULL CONSTRAINT user_login_chk_last_activity_unsigned CHECK(last_activity >= 0), CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id) );"
   },
   "bfe6671a7279db81d2d3ab0cad2af992cb0657fea991be71ceba2de25e6f8b78": {
     "describe": {
@@ -10238,6 +10463,16 @@
     },
     "query": "SELECT id as \"id: _\", name, description, owner_id as \"owner_id: _\" FROM role WHERE owner_id = $1;"
   },
+  "e1969b24bd5a555c47c0fbdb5809bbfa059642dd2d0a7765fee81493236ca0f0": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE user_login( login_id UUID CONSTRAINT user_login_uq_login_id UNIQUE, refresh_token TEXT NOT NULL, token_expiry TIMESTAMPTZ NOT NULL, user_id UUID NOT NULL CONSTRAINT user_login_fk_user_id REFERENCES \"user\"(id), last_login TIMESTAMPTZ NOT NULL, last_activity TIMESTAMPTZ NOT NULL, created TIMESTAMPTZ NOT NULL, created_ip INET NOT NULL, created_location GEOMETRY NOT NULL, last_activity_ip INET NOT NULL, last_activity_location GEOMETRY NOT NULL, last_activity_user_agent TEXT NOT NULL, CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id) );"
+  },
   "e311b717d9499a73b00b7e568b36e93b9af06b1c42b534d45663262e5be5328b": {
     "describe": {
       "columns": [],
@@ -10273,19 +10508,6 @@
       }
     },
     "query": "DELETE FROM domain WHERE id = $1;"
-  },
-  "e35ed129acf987dfdfc82522eca202c00f16058bf9b0e385f50a6028f38a6adb": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE user_login SET token_expiry = 0 WHERE login_id = $1 AND user_id = $2;"
   },
   "e405e549ca372c70c43c95f50900a83ea1786bf780daf93775f2aca73ce73823": {
     "describe": {
@@ -10753,57 +10975,6 @@
       }
     },
     "query": "SELECT COUNT(*) \"count!\" FROM deployment INNER JOIN workspace ON deployment.workspace_id = workspace.id WHERE deployment.status = 'deleted' AND workspace.super_admin_id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );"
-  },
-  "f09ba7816097607f7f07421f1d8fe5bfae9d0fee58b6fd2715448e069e98750f": {
-    "describe": {
-      "columns": [
-        {
-          "name": "login_id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "refresh_token",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "token_expiry",
-          "ordinal": 2,
-          "type_info": "Int8"
-        },
-        {
-          "name": "user_id: Uuid",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "last_login",
-          "ordinal": 4,
-          "type_info": "Int8"
-        },
-        {
-          "name": "last_activity",
-          "ordinal": 5,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text"
-        ]
-      }
-    },
-    "query": "SELECT login_id as \"login_id: Uuid\", refresh_token, token_expiry, user_id as \"user_id: Uuid\", last_login, last_activity FROM user_login WHERE user_id = $1 AND refresh_token = $2;"
   },
   "f0f61d6c683953e8f0ad3c94e7493b7f2fe5520d7d98420eed7c6fdab0d1ecc2": {
     "describe": {

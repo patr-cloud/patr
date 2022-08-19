@@ -67,6 +67,8 @@ pub struct Settings {
 	pub github: GithubSettings,
 	pub drone: DroneSettings,
 	pub stripe: StripeSettings,
+	#[serde(alias = "ipinfotoken")]
+	pub ipinfo_token: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

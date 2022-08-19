@@ -36,7 +36,7 @@ use api_models::{
 		},
 		workspace::Workspace,
 	},
-	utils::Uuid,
+	utils::{Location, Uuid},
 };
 use eve_rs::{App as EveApp, AsError, NextHandler};
 
@@ -1204,6 +1204,18 @@ async fn get_all_logins_for_user(
 		token_expiry: login.token_expiry,
 		last_login: login.last_login,
 		last_activity: login.last_activity,
+		created: login.created,
+		created_ip: login.created_ip,
+		created_location: Location {
+			lat: login.created_location_latitude,
+			lng: login.created_location_longitude,
+		},
+		last_activity_ip: login.last_activity_ip,
+		last_activity_location: Location {
+			lat: login.last_activity_location_latitude,
+			lng: login.last_activity_location_longitude,
+		},
+		last_activity_user_agent: login.last_activity_user_agent,
 	})
 	.collect::<Vec<_>>();
 
@@ -1229,6 +1241,18 @@ async fn get_login_info(
 				token_expiry: login.token_expiry,
 				last_login: login.last_login,
 				last_activity: login.last_activity,
+				created: login.created,
+				created_ip: login.created_ip,
+				created_location: Location {
+					lat: login.created_location_latitude,
+					lng: login.created_location_longitude,
+				},
+				last_activity_ip: login.last_activity_ip,
+				last_activity_location: Location {
+					lat: login.last_activity_location_latitude,
+					lng: login.last_activity_location_longitude,
+				},
+				last_activity_user_agent: login.last_activity_user_agent,
 			})
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string())?;
