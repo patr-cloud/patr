@@ -1,6 +1,7 @@
 use api_models::{
 	models::workspace::{
 		billing::PaymentStatus,
+		ci2::github::BuildStatus,
 		infrastructure::deployment::DeploymentStatus,
 	},
 	utils::{DateTime, Uuid},
@@ -20,7 +21,8 @@ use crate::{
 		EventData,
 	},
 	pin_fn,
-	service::{self, github},
+	rabbitmq::BuildId,
+	service::{Netrc, ParseStatus, self},
 	utils::{
 		constants::request_keys,
 		Error,
@@ -64,10 +66,9 @@ pub fn create_sub_app(
 		[EveMiddleware::CustomFunction(pin_fn!(stripe_webhook))],
 	);
 
-	// TODO: webhook url generic or specific for each git providers?
 	sub_app.post(
-		"/ci/push-event",
-		[EveMiddleware::CustomFunction(pin_fn!(ci_push_event))],
+		"/ci",
+		[EveMiddleware::CustomFunction(pin_fn!(handle_ci_hooks))],
 	);
 
 	sub_app
@@ -559,19 +560,147 @@ async fn stripe_webhook(
 	Ok(context)
 }
 
-async fn ci_push_event(
+async fn handle_ci_hooks(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	if context
-		.get_header(github::X_GITHUB_EVENT)
-		.map(|event| event.eq_ignore_ascii_case("ping"))
-		.unwrap_or(false)
-	{
-		return Ok(context);
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {request_id} - Processing ci webhook ...");
+
+	// handle github webhook events
+	if let Some(event) = context.get_header(service::X_GITHUB_EVENT) {
+		// handle ping events
+		if event.eq_ignore_ascii_case("ping") {
+			return Ok(context);
+		}
+
+		// validate the payload data signature
+		let payload = context.get_request().get_body_bytes().to_vec();
+		let signature_in_header = context
+			.get_header(service::X_HUB_SIGNATURE_256)
+			.status(400)?;
+
+		let git_provider_repo_uid = context
+			.get_body_object()
+			.get("repository")
+			.and_then(|repo| repo.get("id"))
+			.and_then(|id| id.as_str())
+			.status(400)?
+			.to_owned();
+		let repo = db::get_repo_by_domain_and_uid(
+			context.get_database_connection(),
+			"github.com",
+			&git_provider_repo_uid,
+		)
+		.await?
+		.status(400)?;
+
+		service::verify_github_payload_signature_256(
+			&signature_in_header,
+			&payload,
+			&repo.webhook_secret,
+		)
+		.await?;
+
+		// handle push events
+		if event.eq_ignore_ascii_case("push") {
+			let push_event_data =
+				context.get_body_as::<service::payload_types::PushEvent>()?;
+			let config = context.get_state().config.clone();
+
+			let (owner_name, repo_name) = push_event_data
+				.repository
+				.full_name
+				.rsplit_once('/')
+				.status(400)
+				.body("invalid repo name")?;
+
+			let access_token = db::get_access_token_for_repo(
+				context.get_database_connection(),
+				&repo.id,
+			)
+			.await?
+			.status(500)?;
+
+			let ci_file_content =
+				service::fetch_ci_file_content_from_github_repo(
+					owner_name,
+					repo_name,
+					&access_token,
+					&push_event_data.after,
+				)
+				.await?;
+
+			let build_num = db::generate_new_build_for_repo(
+				context.get_database_connection(),
+				&repo.id,
+				&push_event_data.ref_,
+				&push_event_data.after,
+				BuildStatus::Running,
+				&Utc::now(),
+			)
+			.await?;
+
+			let ci_flow = match service::parse_ci_file_content(
+				context.get_database_connection(),
+				&repo.workspace_id,
+				&ci_file_content,
+				&request_id,
+			)
+			.await?
+			{
+				ParseStatus::Success(ci_file) => ci_file,
+				ParseStatus::Error => {
+					db::update_build_status(
+						context.get_database_connection(),
+						&repo.id,
+						build_num,
+						BuildStatus::Errored,
+					)
+					.await?;
+					return Ok(context);
+				}
+			};
+
+			service::add_build_steps_in_db(
+				context.get_database_connection(),
+				&repo.id,
+				build_num,
+				&ci_flow,
+				&request_id,
+			)
+			.await?;
+
+			context.commit_database_transaction().await?;
+
+			service::add_build_steps_in_k8s(
+				context.get_database_connection(),
+				&config,
+				&repo.id,
+				&BuildId {
+					repo_workspace_id: repo.workspace_id,
+					repo_id: repo.id.clone(),
+					build_num,
+				},
+				ci_flow,
+				Some(Netrc {
+					machine: "github.com".to_owned(),
+					login: "oauth".to_owned(),
+					password: access_token,
+				}),
+				&repo.git_url,
+				repo_name,
+				&push_event_data.after,
+				&request_id,
+			)
+			.await?;
+
+			return Ok(context);
+		}
 	}
 
-	service::github::ci_push_event(&mut context).await?;
-
-	Ok(context)
+	// none of the know payload type is matched return client error
+	Err(Error::empty()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string()))
 }

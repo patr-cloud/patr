@@ -42,7 +42,7 @@ use crate::{
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BuildId {
-	pub workspace_id: Uuid,
+	pub repo_workspace_id: Uuid,
 	pub repo_id: Uuid,
 	pub build_num: i64,
 }
@@ -108,7 +108,7 @@ async fn get_job_manifest(
 					EnvVarValue::Value(value) => value.clone(),
 					EnvVarValue::ValueFromSecret(from_secret) => format!(
 						"vault:secret/data/{}/{}#data",
-						build_step.id.build_id.workspace_id, from_secret
+						build_step.id.build_id.repo_workspace_id, from_secret
 					),
 				}),
 				..Default::default()

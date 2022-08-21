@@ -150,3 +150,9 @@ impl Deref for LabelName {
 		&self.0
 	}
 }
+
+impl Display for LabelName {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.0)
+	}
+}

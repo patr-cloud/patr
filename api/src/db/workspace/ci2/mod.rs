@@ -429,31 +429,12 @@ pub async fn deactivate_ci_for_repo(
 	.map(|_| ())
 }
 
-pub async fn get_repo_for_git_url(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	git_url: &str,
-) -> Result<Vec<Repository>, sqlx::Error> {
-	query_as!(
-		Repository,
-		r#"
-		SELECT
-			id as "id: _",
-			workspace_id as "workspace_id: _",
-			repo_owner,
-			repo_name,
-			git_url,
-			webhook_secret,
-			build_machine_type_id as "build_machine_type_id: _",
-			active
-		FROM
-			ci_repos
-		WHERE
-			git_url = $1;
-		"#,
-		git_url as _
-	)
-	.fetch_all(connection)
-	.await
+pub async fn get_repo_by_domain_and_uid(
+	_connection: &mut <Database as sqlx::Database>::Connection,
+	_git_provider_domain: &str,
+	_git_provider_repo_uid: &str,
+) -> Result<Option<Repository>, sqlx::Error> {
+	todo!()
 }
 
 pub async fn get_access_token_for_repo(
@@ -763,7 +744,7 @@ pub async fn add_ci_steps_for_build(
 	step_id: i32,
 	step_name: &str,
 	base_image: &str,
-	commands: Vec<String>,
+	commands: &str, // TODO: decide on command str stored in db - single / vec
 	status: BuildStepStatus,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -785,7 +766,7 @@ pub async fn add_ci_steps_for_build(
 		step_id,
 		step_name,
 		base_image,
-		&commands[..],
+		&vec![commands.to_owned()],
 		status as _,
 	)
 	.execute(&mut *connection)

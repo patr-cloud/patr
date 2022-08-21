@@ -22,6 +22,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use http::header::ACCEPT;
 use octorust::{
@@ -46,7 +47,7 @@ use crate::{
 	models::{deployment::Logs, rbac::permissions},
 	pin_fn,
 	rabbitmq::{BuildId, BuildStepId},
-	service,
+	service::{self, ParseStatus, Netrc},
 	utils::{
 		constants::request_keys,
 		Error,
@@ -693,8 +694,7 @@ async fn activate_repo(
 		.await?;
 
 	let github_webhook_url =
-		context.get_state().config.callback_domain_url.clone() +
-			"/webhook/ci/push-event";
+		context.get_state().config.callback_domain_url.clone() + "/webhook/ci";
 
 	// TODO: its better to store hook id in db so that
 	// we can update that alone during activate and deactivate actions
@@ -784,8 +784,7 @@ async fn deactivate_repo(
 		.status(500)?;
 
 	let github_webhook_url =
-		context.get_state().config.callback_domain_url.clone() +
-			"/webhook/ci/push-event";
+		context.get_state().config.callback_domain_url.clone() + "/webhook/ci";
 
 	for webhook in all_webhooks {
 		if webhook.config.url == github_webhook_url {
@@ -915,7 +914,7 @@ async fn get_build_logs(
 
 	let build_step_id = BuildStepId {
 		build_id: BuildId {
-			workspace_id,
+			repo_workspace_id: workspace_id,
 			repo_id: repo.id,
 			build_num,
 		},
@@ -1001,7 +1000,7 @@ async fn stop_build(
 	if build.status == BuildStatus::Running {
 		service::queue_stop_ci_build_pipeline(
 			BuildId {
-				workspace_id,
+				repo_workspace_id: workspace_id,
 				repo_id: repo.id,
 				build_num,
 			},
@@ -1058,47 +1057,78 @@ async fn restart_build(
 	.status(500)
 	.body("internal server error")?;
 
-	let github_client =
-		octorust::Client::new("patr", Credentials::Token(access_token.clone()))
-			.map_err(|err| {
-				log::info!("error while octorust init: {err:#}");
-				err
-			})
-			.ok()
-			.status(500)
-			.body("error while initailizing octorust")?;
+	let config = context.get_state().config.clone();
+	let git_commit = previous_build.git_commit.as_ref();
 
-	let ci_file = github_client
-		.repos()
-		.get_content_file(
-			&repo.repo_owner,
-			&repo.repo_name,
-			"patr.yml",
-			&previous_build.git_commit,
-		)
-		.await
-		.ok()
-		.status(500)
-		.body("patr.yml file is not defined")?;
+	let ci_file_content = service::fetch_ci_file_content_from_github_repo(
+		&repo_owner,
+		&repo_name,
+		&access_token,
+		git_commit,
+	)
+	.await?;
 
-	let ci_file = reqwest::Client::new()
-		.get(ci_file.download_url)
-		.bearer_auth(&access_token)
-		.send()
-		.await?
-		.bytes()
-		.await?;
-
-	let build_num = service::create_ci_build(
-		&mut context,
-		&repo,
+	let build_num = db::generate_new_build_for_repo(
+		context.get_database_connection(),
+		&repo.id,
 		&previous_build.git_ref,
 		&previous_build.git_commit,
-		ci_file,
-		&access_token,
+		BuildStatus::Running,
+		&Utc::now(),
+	)
+	.await?;
+
+	let ci_flow = match service::parse_ci_file_content(
+		context.get_database_connection(),
+		&repo.workspace_id,
+		&ci_file_content,
+		&request_id,
+	)
+	.await?
+	{
+		ParseStatus::Success(ci_file) => ci_file,
+		ParseStatus::Error => {
+			db::update_build_status(
+				context.get_database_connection(),
+				&repo.id,
+				build_num,
+				BuildStatus::Errored,
+			)
+			.await?;
+			return Ok(context);
+		}
+	};
+
+	service::add_build_steps_in_db(
+		context.get_database_connection(),
+		&repo.id,
+		build_num,
+		&ci_flow,
+		&request_id
+	)
+	.await?;
+
+	context.commit_database_transaction().await?;
+
+	service::add_build_steps_in_k8s(
+		context.get_database_connection(),
+		&config,
+		&repo.id,
+		&BuildId {
+			repo_workspace_id: repo.workspace_id,
+			repo_id: repo.id.clone(),
+			build_num,
+		},
+		ci_flow,
+		Some(Netrc {
+			machine: "github.com".to_owned(),
+			login: "oauth".to_owned(),
+			password: access_token,
+		}),
 		&repo.git_url,
-		&repo.repo_name,
-		request_id,
+		&repo_name,
+		git_commit,
+		&request_id,
 	)
 	.await?;
 
@@ -1125,8 +1155,7 @@ async fn sign_out(
 	.body(error!(USER_NOT_FOUND).to_string())?;
 
 	let github_webhook_url =
-		context.get_state().config.callback_domain_url.clone() +
-			"/webhook/ci/push-event";
+		context.get_state().config.callback_domain_url.clone() + "/webhook/ci";
 
 	db::remove_drone_username_and_token_from_workspace(
 		context.get_database_connection(),

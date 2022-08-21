@@ -4,10 +4,9 @@ use std::{
 };
 
 use api_models::{
-	models::workspace::ci2::github::{BuildStatus, BuildStepStatus},
+	models::workspace::ci2::github::BuildStepStatus,
 	utils::Uuid,
 };
-use chrono::Utc;
 use eve_rs::AsError;
 use k8s_openapi::{
 	api::{
@@ -35,18 +34,20 @@ use k8s_openapi::{
 use kube::{api::ObjectMeta, Api};
 
 use crate::{
-	db::{self, Repository},
+	db,
 	models::ci::{
 		self,
 		file_format::{CiFlow, EnvVarValue, Step},
 	},
 	rabbitmq::{BuildId, BuildStep, BuildStepId},
 	service,
-	utils::{settings::Settings, Error, EveContext},
+	utils::{settings::Settings, Error},
 	Database,
 };
 
-pub mod github;
+mod github;
+
+pub use self::github::*;
 
 pub struct Netrc {
 	pub machine: String,
@@ -64,29 +65,167 @@ impl Display for Netrc {
 	}
 }
 
-async fn create_ci_pipeline_in_k8s(
+pub enum ParseStatus {
+	Success(CiFlow),
+	Error,
+}
+
+pub async fn parse_ci_file_content(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	ci_file_content: &[u8],
+	request_id: &Uuid,
+) -> Result<ParseStatus, Error> {
+	let mut ci_flow = match serde_yaml::from_slice::<CiFlow>(ci_file_content) {
+		Ok(ci_flow) => ci_flow,
+		Err(err) => {
+			log::info!("request_id: {request_id} - Error while parsing CI config file {err}");
+			return Ok(ParseStatus::Error);
+		}
+	};
+
+	// check for name duplication
+	let CiFlow::Pipeline(pipeline) = &ci_flow;
+	let mut step_names = HashSet::new();
+	for step in &pipeline.steps {
+		if !step_names.insert(step.name.as_str()) {
+			log::info!(
+				"request_id: {} - Duplicate step name `{}` found",
+				request_id,
+				step.name
+			);
+			return Ok(ParseStatus::Error);
+		}
+	}
+	let mut service_names = HashSet::new();
+	for service in &pipeline.services {
+		if !service_names.insert(service.name.as_str()) {
+			log::info!(
+				"request_id: {} - Duplicate service name `{}` found",
+				request_id,
+				service.name
+			);
+			return Ok(ParseStatus::Error);
+		}
+	}
+
+	// find and replace secret names with vault secret id
+	let workspace_secrets =
+		db::get_all_secrets_in_workspace(connection, workspace_id)
+			.await?
+			.into_iter()
+			.map(|secret| (secret.name, secret.id))
+			.collect::<HashMap<_, _>>();
+
+	let CiFlow::Pipeline(pipeline) = &mut ci_flow;
+	for service in &mut pipeline.services {
+		for env in &mut service.env {
+			if let EnvVarValue::ValueFromSecret(secret_name) = &mut env.value {
+				if let Some(secret_id) = workspace_secrets.get(&*secret_name) {
+					*secret_name = secret_id.to_string();
+				} else {
+					log::info!(
+						"request_id: {} - Invalid secret name `{}` found",
+						request_id,
+						secret_name
+					);
+					return Ok(ParseStatus::Error);
+				}
+			}
+		}
+	}
+	for step in &mut pipeline.steps {
+		for env in &mut step.env {
+			if let EnvVarValue::ValueFromSecret(secret_name) = &mut env.value {
+				if let Some(secret_id) = workspace_secrets.get(&*secret_name) {
+					*secret_name = secret_id.to_string();
+				} else {
+					log::info!(
+						"request_id: {} - Invalid secret name `{}` found",
+						request_id,
+						secret_name
+					);
+					return Ok(ParseStatus::Error);
+				}
+			}
+		}
+	}
+
+	Ok(ParseStatus::Success(ci_flow))
+}
+
+pub async fn add_build_steps_in_db(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
+	build_num: i64,
+	ci_flow: &CiFlow,
+	request_id: &Uuid,
+) -> Result<(), eve_rs::Error<()>> {
+	log::trace!("request_id: {request_id} - Adding build steps in db");
+
+	// add cloning as a step
+	db::add_ci_steps_for_build(
+		connection,
+		repo_id,
+		build_num,
+		0,
+		"git-clone",
+		"",
+		"",
+		BuildStepStatus::WaitingToStart,
+	)
+	.await?;
+
+	// add build steps provider in ci file
+	let CiFlow::Pipeline(pipeline) = ci_flow;
+	for (
+		step_count,
+		Step {
+			name,
+			image,
+			commands,
+			env: _,
+		},
+	) in pipeline.steps.iter().enumerate()
+	{
+		db::add_ci_steps_for_build(
+			connection,
+			repo_id,
+			build_num,
+			step_count as i32 + 1,
+			name,
+			image,
+			&commands.to_string(),
+			BuildStepStatus::WaitingToStart,
+		)
+		.await?;
+	}
+
+	Ok(())
+}
+
+pub async fn add_build_steps_in_k8s(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+	repo_id: &Uuid,
+	build_id: &BuildId,
 	ci_flow: CiFlow,
+	netrc: Option<Netrc>,
 	repo_clone_url: &str,
 	repo_name: &str,
-	commit_sha: &str,
-	netrc: Option<Netrc>,
-	build_id: BuildId,
-	config: &Settings,
-	connection: &mut <Database as sqlx::Database>::Connection,
+	git_commit: &str,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	log::debug!("request_id: {request_id} - Creating a ci pipeline for build `{build_id}`");
+	log::trace!("request_id: {request_id} - Adding build steps in k8s");
 
-	let build_machine_type = db::get_build_machine_type_for_repo(
-		&mut *connection,
-		&build_id.repo_id,
-	)
-	.await?
-	.status(500)?;
+	let build_machine_type =
+		db::get_build_machine_type_for_repo(&mut *connection, repo_id)
+			.await?
+			.status(500)?;
 
 	let kube_client = service::get_kubernetes_config(config).await?;
 
-	// create a namespace for each build
+	// create a new namespace
 	Api::<Namespace>::all(kube_client.clone())
 		.create(
 			&Default::default(),
@@ -100,7 +239,7 @@ async fn create_ci_pipeline_in_k8s(
 		)
 		.await?;
 
-	// create pvc for storage
+	// create a storage space for building
 	Api::<PersistentVolumeClaim>::namespaced(
 		kube_client.clone(),
 		&build_id.get_build_namespace(),
@@ -140,7 +279,7 @@ async fn create_ci_pipeline_in_k8s(
 	for service in &pipeline.services {
 		create_background_service_for_pipeline(
 			kube_client.clone(),
-			&build_id,
+			build_id,
 			service,
 			config,
 		)
@@ -165,7 +304,7 @@ async fn create_ci_pipeline_in_k8s(
 				"set -x".to_string(),
 				format!(r#"git clone "{repo_clone_url}""#),
 				format!(r#"cd "/mnt/workdir/{repo_name}""#),
-				format!(r#"git checkout "{commit_sha}""#),
+				format!(r#"git checkout "{git_commit}""#),
 			],
 		},
 		config,
@@ -175,7 +314,7 @@ async fn create_ci_pipeline_in_k8s(
 
 	// queue build steps
 	for (
-		step_id, // TODO
+		step_id,
 		Step {
 			name: _,
 			image,
@@ -184,6 +323,7 @@ async fn create_ci_pipeline_in_k8s(
 		},
 	) in pipeline.steps.into_iter().enumerate()
 	{
+		// TODO: use step name as dependent instead of step id
 		let step_id = 1 + step_id as i32;
 
 		service::queue_create_ci_build_step(
@@ -234,7 +374,7 @@ async fn create_background_service_for_pipeline(
 					EnvVarValue::Value(value) => value.clone(),
 					EnvVarValue::ValueFromSecret(from_secret) => format!(
 						"vault:secret/data/{}/{}#data",
-						build_id.workspace_id, from_secret
+						build_id.repo_workspace_id, from_secret
 					),
 				}),
 				..Default::default()
@@ -346,191 +486,4 @@ async fn create_background_service_for_pipeline(
 		.await?;
 
 	Ok(())
-}
-
-pub async fn create_ci_build(
-	context: &mut EveContext,
-	repo: &Repository,
-	git_ref: &str,
-	git_commit: &str,
-	ci_file: bytes::Bytes,
-	access_token: &str,
-	repo_clone_url: &str,
-	repo_name: &str,
-	request_id: Uuid,
-) -> Result<i64, eve_rs::Error<()>> {
-	let build_num = db::generate_new_build_for_repo(
-		context.get_database_connection(),
-		&repo.id,
-		git_ref,
-		git_commit,
-		BuildStatus::Running,
-		&Utc::now(),
-	)
-	.await?;
-
-	let mut ci_flow: CiFlow = serde_yaml::from_slice(ci_file.as_ref())?;
-	let CiFlow::Pipeline(pipeline) = ci_flow.clone();
-
-	// validate the ci file
-	if !is_names_unique(&ci_flow) {
-		log::info!(
-			"request_id: {request_id} - Invalid ci config file, marking build as errored"
-		);
-		db::update_build_status(
-			context.get_database_connection(),
-			&repo.id,
-			build_num,
-			BuildStatus::Errored,
-		)
-		.await?;
-
-		return Ok(build_num);
-	}
-
-	if !find_and_replace_secret_names(
-		context.get_database_connection(),
-		&mut ci_flow,
-		&repo.workspace_id,
-	)
-	.await?
-	{
-		log::info!(
-			"request_id: {request_id} - Invalid secret name given, marking build as errored"
-		);
-		db::update_build_status(
-			context.get_database_connection(),
-			&repo.id,
-			build_num,
-			BuildStatus::Errored,
-		)
-		.await?;
-
-		return Ok(build_num);
-	};
-
-	// add cloning as a step
-	db::add_ci_steps_for_build(
-		context.get_database_connection(),
-		&repo.id,
-		build_num,
-		0,
-		"git-clone",
-		"",
-		vec![],
-		BuildStepStatus::WaitingToStart,
-	)
-	.await?;
-
-	for (
-		step_count,
-		Step {
-			name,
-			image,
-			commands,
-			env: _,
-		},
-	) in pipeline.steps.into_iter().enumerate()
-	{
-		db::add_ci_steps_for_build(
-			context.get_database_connection(),
-			&repo.id,
-			build_num,
-			step_count as i32 + 1,
-			&name,
-			&image,
-			vec![commands.to_string()],
-			BuildStepStatus::WaitingToStart,
-		)
-		.await?;
-	}
-
-	context.commit_database_transaction().await?;
-
-	// TODO: make more generic
-	let netrc = Netrc {
-		machine: "github.com".to_string(),
-		login: "oauth".to_string(),
-		password: access_token.to_string(),
-	};
-
-	create_ci_pipeline_in_k8s(
-		ci_flow,
-		repo_clone_url,
-		repo_name,
-		git_commit,
-		Some(netrc),
-		BuildId {
-			workspace_id: repo.workspace_id.clone(),
-			repo_id: repo.id.clone(),
-			build_num,
-		},
-		&context.get_state().config.clone(),
-		context.get_database_connection(),
-		&request_id,
-	)
-	.await?;
-
-	Ok(build_num)
-}
-
-fn is_names_unique(ci_flow: &CiFlow) -> bool {
-	let CiFlow::Pipeline(pipeline) = ci_flow;
-
-	let mut step_names = HashSet::new();
-	for step in &pipeline.steps {
-		if !step_names.insert(step.name.as_str()) {
-			return false;
-		}
-	}
-
-	let mut service_names = HashSet::new();
-	for service in &pipeline.services {
-		if !service_names.insert(service.name.as_str()) {
-			return false;
-		}
-	}
-
-	true
-}
-
-async fn find_and_replace_secret_names(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	ci_flow: &mut CiFlow,
-	workspace_id: &Uuid,
-) -> Result<bool, Error> {
-	let workspace_secrets =
-		db::get_all_secrets_in_workspace(connection, workspace_id)
-			.await?
-			.into_iter()
-			.map(|secret| (secret.name, secret.id))
-			.collect::<HashMap<_, _>>();
-
-	let CiFlow::Pipeline(pipeline) = ci_flow;
-
-	for service in &mut pipeline.services {
-		for env in &mut service.env {
-			if let EnvVarValue::ValueFromSecret(secret_name) = &mut env.value {
-				if let Some(secret_id) = workspace_secrets.get(&*secret_name) {
-					*secret_name = secret_id.to_string();
-				} else {
-					return Ok(false);
-				}
-			}
-		}
-	}
-
-	for step in &mut pipeline.steps {
-		for env in &mut step.env {
-			if let EnvVarValue::ValueFromSecret(secret_name) = &mut env.value {
-				if let Some(secret_id) = workspace_secrets.get(&*secret_name) {
-					*secret_name = secret_id.to_string();
-				} else {
-					return Ok(false);
-				}
-			}
-		}
-	}
-
-	Ok(true)
 }
