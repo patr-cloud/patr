@@ -8,7 +8,11 @@ use serde_json::Value;
 use sqlx::Transaction;
 
 use super::Error;
-use crate::{app::App, models::AccessTokenData, Database};
+use crate::{
+	app::App,
+	models::{AccessTokenData, ApiTokenData},
+	Database,
+};
 
 pub struct EveContext {
 	request: Request,
@@ -17,6 +21,7 @@ pub struct EveContext {
 	state: App,
 	db_connection: Option<Transaction<'static, Database>>,
 	access_token_data: Option<AccessTokenData>,
+	api_token_data: Option<ApiTokenData>,
 }
 
 impl EveContext {
@@ -28,6 +33,7 @@ impl EveContext {
 			state: state.clone(),
 			db_connection: None,
 			access_token_data: None,
+			api_token_data: None,
 		}
 	}
 
@@ -114,6 +120,10 @@ impl EveContext {
 
 	pub fn set_token_data(&mut self, token_data: AccessTokenData) {
 		self.access_token_data = Some(token_data);
+	}
+
+	pub fn set_api_token_data(&mut self, api_token_data: ApiTokenData) {
+		self.api_token_data = Some(api_token_data);
 	}
 
 	pub fn get_param(&self, param_id: &str) -> Option<&String> {

@@ -1,5 +1,6 @@
 use std::net::IpAddr;
 use std::collections::{BTreeMap, HashSet};
+use std::collections::{HashSet, HashMap};
 
 use api_models::{
 	models::user::{BasicUserInfo, UserPhoneNumber},
@@ -14,11 +15,12 @@ pub struct ApiToken {
 	pub user_id: Uuid,
 	pub token_expiry: Option<DateTime<Utc>>,
 	pub created: DateTime<Utc>,
+    pub is_super_admin: bool,
 }
 
 pub struct Permission {
-    pub resource_permissions: BTreeMap<Uuid, Vec<Uuid>>,
-    pub resource_type_permissions: BTreeMap<Uuid, Vec<Uuid>>,
+    pub resource_permissions: HashMap<Uuid, Vec<Uuid>>,
+    pub resource_type_permissions: HashMap<Uuid, Vec<Uuid>>,
 }
 
 pub async fn initialize_api_token_pre(
@@ -135,6 +137,7 @@ pub async fn get_api_token_by_id(
 			user_id as "user_id: _",
 			token_expiry as "token_expiry!: _",
 			created as "created: _",
+            is_super_admin
 		FROM
 			api_token
 		WHERE
@@ -381,8 +384,8 @@ pub async fn list_permissions_for_api_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	token: &Uuid,
 ) -> Result<Permission, sqlx::Error> {
-	let mut resource_permissions = BTreeMap::<Uuid, Vec<Uuid>>::new();
-	let mut resource_type_permissions = BTreeMap::<Uuid, Vec<Uuid>>::new();
+	let mut resource_permissions = HashMap::<Uuid, Vec<Uuid>>::new();
+	let mut resource_type_permissions = HashMap::<Uuid, Vec<Uuid>>::new();
 
 	let rows = query!(
 		r#"
@@ -433,3 +436,44 @@ pub async fn list_permissions_for_api_token(
 		resource_type_permissions,
 	})
 }
+
+pub async fn get_workspace_id_for_api_token(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	api_token: &Uuid,
+) -> Result<Option<Uuid>, sqlx::Error> {
+	let resource_permission_workspace_id: Uuid = query!(
+		r#"
+		SELECT
+			workspace_id as "workspace_id: Uuid",
+		FROM
+			api_token_resource_permission
+		WHERE
+			api_token = $1;
+		"#,
+		api_token as _
+	)
+	.fetch_optional(&mut *connection)
+	.await?;
+
+	let resource_type_permission_workspace_id: Uuid = query!(
+		r#"
+		SELECT
+			workspace_id as "workspace_id: Uuid",
+		FROM
+			api_token_resource_type_permission
+		WHERE
+			api_token = $1;
+		"#,
+		api_token as _
+	)
+	.fetch_optional(&mut *connection)
+	.await?;
+
+	if resource_permission_workspace_id == resource_type_permission_workspace_id
+	{
+		Ok(Some(resource_permission_workspace_id))
+	} else {
+		Ok(None)
+	}
+}
+

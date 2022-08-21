@@ -2,6 +2,9 @@ use std::collections::HashMap;
 
 use api_models::utils::Uuid;
 use chrono::{DateTime, Utc};
+use api_models::utils::{DateTime, Uuid};
+use chrono::Utc;
+
 use jsonwebtoken::{
 	errors::Error,
 	Algorithm,
@@ -28,6 +31,15 @@ pub struct AccessTokenData {
 	pub login_id: Uuid,
 	pub user: ExposedUserData,
 	// Do we need to add more?
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiTokenData {
+	pub is_super_admin: bool,
+	pub exp: Option<DateTime<Utc>>,
+	pub workspaces: HashMap<Uuid, WorkspacePermissions>,
+	pub user_id: Uuid,
 }
 
 impl AccessTokenData {

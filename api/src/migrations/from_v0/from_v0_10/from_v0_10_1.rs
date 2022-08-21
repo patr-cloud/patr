@@ -1096,6 +1096,7 @@ async fn create_api_token_x_relations(
 			created TIMESTAMPTZ NOT NULL,
 			revoked BOOLEAN NOT NULL DEFAULT FALSE,
 			revoked_by UUID,
+			is_super_admin BOOLEAN NOT NULL DEFAULT FALSE,
 		);
 		"#
 	)

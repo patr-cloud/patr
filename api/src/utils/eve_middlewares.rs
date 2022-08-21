@@ -1,5 +1,6 @@
-use std::{future::Future, pin::Pin};
+use std::{collections::HashMap, future::Future, pin::Pin};
 
+use api_models::utils::{DateTime, Uuid};
 use async_trait::async_trait;
 use chrono::Utc;
 use eve_rs::{
@@ -20,11 +21,12 @@ use redis::aio::MultiplexedConnection as RedisConnection;
 
 use crate::{
 	app::App,
-	db::Resource,
+	db::{self, Resource},
 	error,
 	models::{
-		rbac::{self, GOD_USER_ID},
+		rbac::{self, WorkspacePermissions, GOD_USER_ID},
 		AccessTokenData,
+		ApiTokenData,
 	},
 	redis::is_access_token_revoked,
 	utils::{Error, ErrorData, EveContext},
@@ -101,38 +103,41 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				static_file_server.run_middleware(context, next).await
 			}
 			EveMiddleware::PlainTokenAuthenticator => {
-				let access_data =
-					if let Some(token) = decode_access_token(&context) {
-						token
-					} else {
-						context.status(401).json(error!(UNAUTHORIZED));
-						return Ok(context);
-					};
+				let (access_token_data, api_token_data) =
+					decode_access_token(&context)
+						.await?
+						.status(401)
+						.body(error!(UNAUTHORIZED).to_string())?;
 
-				validate_access_token(
-					context.get_redis_connection(),
-					&access_data,
-				)
-				.await?;
+				if access_token_data {
+					validate_access_token(
+						context.get_redis_connection(),
+						&access_token_data,
+					)
+					.await?;
+					context.set_token_data(access_token_data);
+				} else if api_token_data {
+					validate_api_token(
+						context.get_redis_connection(),
+						&api_token_data,
+					)
+					.await?;
+					context.set_token_data(api_token_data);
+				} else {
+					return Err(error!(UNAUTHORIZED));
+				}
 
-				context.set_token_data(access_data);
 				next(context).await
 			}
 			EveMiddleware::ResourceTokenAuthenticator(
 				permission_required,
 				resource_in_question,
 			) => {
-				let access_data = decode_access_token(&context)
-					.status(401)
-					.body(error!(UNAUTHORIZED).to_string())?;
+				let (access_token_data, api_token_data) =
+					decode_access_token(&context)
+						.status(401)
+						.body(error!(UNAUTHORIZED).to_string())?;
 
-				validate_access_token(
-					context.get_redis_connection(),
-					&access_data,
-				)
-				.await?;
-
-				// check if the access token has access to the resource
 				let (mut context, resource) =
 					resource_in_question(context).await?;
 				let resource = if let Some(resource) = resource {
@@ -141,61 +146,53 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					return Ok(context);
 				};
 
-				let workspace_id = resource.owner_id;
-				let workspace_permission = if let Some(permission) =
-					access_data.workspaces.get(&workspace_id)
-				{
-					permission
-				} else {
-					context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
-					return Ok(context);
-				};
+				if access_token_data {
+					validate_access_token(
+						context.get_redis_connection(),
+						&access_token_data,
+					)
+					.await?;
+					context.set_token_data(access_token_data);
 
-				let allowed = {
-					// Check if the resource type is allowed
-					if let Some(permissions) = workspace_permission
-						.resource_types
-						.get(&resource.resource_type_id)
-					{
-						permissions.contains(
-							rbac::PERMISSIONS
-								.get()
-								.unwrap()
-								.get(&(*permission_required).to_string())
-								.unwrap(),
-						)
-					} else {
-						false
-					}
-				} || {
-					// Check if that specific resource is allowed
-					if let Some(permissions) =
-						workspace_permission.resources.get(&resource.id)
-					{
-						permissions.contains(
-							rbac::PERMISSIONS
-								.get()
-								.unwrap()
-								.get(&(*permission_required).to_string())
-								.unwrap(),
-						)
-					} else {
-						false
-					}
-				} || {
-					// Check if super admin or god is permitted
-					workspace_permission.is_super_admin || {
-						let god_user_id = GOD_USER_ID.get().unwrap();
-						god_user_id == &access_data.user.id
-					}
-				};
+					let allowed = has_permission_to_access_resource(
+						&context,
+						&resource,
+						permission_required,
+						Some(access_token_data),
+						Some(api_token_data),
+					);
 
-				if allowed {
-					context.set_token_data(access_data);
-					next(context).await
+					if allowed {
+						context.set_token_data(access_token_data);
+						next(context).await
+					} else {
+						context.status(401).json(error!(UNAUTHORIZED));
+						Ok(context)
+					}
+				} else if api_token_data {
+					validate_api_token(
+						context.get_redis_connection(),
+						&api_token_data,
+					)
+					.await?;
+					context.set_token_data(api_token_data);
+					let allowed = has_permission_to_access_resource(
+						&context,
+						&resource,
+						permission_required,
+						Some(access_token_data),
+						Some(api_token_data),
+					);
+
+					if allowed {
+						context.set_token_data(api_token_data);
+						next(context).await
+					} else {
+						context.status(401).json(error!(UNAUTHORIZED));
+						Ok(context)
+					}
 				} else {
-					context.status(401).json(error!(UNAUTHORIZED));
-					Ok(context)
+					return Err(error!(UNAUTHORIZED));
 				}
 			}
 			EveMiddleware::CustomFunction(function) => {
@@ -216,19 +213,85 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 	}
 }
 
-fn decode_access_token(context: &EveContext) -> Option<AccessTokenData> {
-	let authorization = context.get_header("Authorization")?;
+async fn decode_access_token(
+	context: &EveContext,
+) -> (Option<AccessTokenData>, Option<ApiTokenData>) {
+	let authorization = context
+		.get_header("Authorization")
+		.unwrap_or("".to_string());
+	let is_api_token = is_uuid(&authorization);
 
-	let result = AccessTokenData::parse(
-		authorization,
-		context.get_state().config.jwt_secret.as_ref(),
-	);
-	if let Err(err) = result {
-		log::warn!("Error occured while parsing JWT: {}", err.to_string());
-		return None;
+	if is_api_token {
+		let token = Uuid::parse_str(&authorization).unwrap();
+		let api_token = db::get_api_token_by_id(
+			context.get_database_connection(),
+			&token,
+		)
+		.await?;
+		// .ok();
+
+		if let Some(api_token) = api_token {
+			let is_token_valid = if let Some(expiry) = api_token.token_expiry {
+				expiry > DateTime::<Utc>::now()
+			} else {
+				true
+			};
+			if !is_token_valid {
+				return Error::as_result().status(401).body(error!(UNAUTHORIZED).to_string())?;
+			}
+			let api_token_permissions = db::list_permissions_for_api_token(
+				context.get_database_connection(),
+				&token,
+			)
+			.await
+			.ok()?;
+
+			let workspace_id = db::get_workspace_id_for_api_token(
+				context.get_database_connection(),
+				&token,
+			)
+			.await
+			.ok()?;
+
+			if workspace_id.is_none() {
+				log::warn!("Cannot get workspace_id for api_token:{}", token);
+				return Error::as_result()
+					.status(401)
+					.body(error!(UNAUTHORIZED).to_string())
+					.ok()?;
+			}
+
+			let api_token_data = ApiTokenData {
+				is_super_admin: api_token.is_super_admin,
+				exp: api_token.token_expiry,
+				workspaces: HashMap::from([(
+					workspace_id.unwrap(),
+					WorkspacePermissions {
+						is_super_admin: api_token.is_super_admin,
+						resources: api_token_permissions.resource_permissions,
+						resource_types: api_token_permissions
+							.resource_type_permissions,
+					},
+				)]),
+				user_id: api_token.user_id,
+			};
+			(None, Some(api_token_data))
+		} else {
+			log::warn!("Invalid api token");
+			return None;
+		}
+	} else {
+		let result = AccessTokenData::parse(
+			authorization,
+			context.get_state().config.jwt_secret.as_ref(),
+		);
+		if let Err(err) = result {
+			log::warn!("Error occured while parsing JWT: {}", err.to_string());
+			return None;
+		}
+		let access_data = result.unwrap();
+		(Some(access_data), None)
 	}
-	let access_data = result.unwrap();
-	Some(access_data)
 }
 
 async fn validate_access_token(
@@ -254,4 +317,141 @@ async fn validate_access_token(
 	}
 
 	Ok(())
+}
+
+async fn validate_api_token(
+	redis_conn: &mut RedisConnection,
+	api_token: &ApiTokenData,
+) -> Result<(), Error> {
+	// check whether access token has expired
+	match api_token.exp {
+		Some(exp) => {
+			if exp < DateTime::<Utc>::now() {
+				return Error::as_result()
+					.status(401)
+					.body(error!(EXPIRED).to_string())?;
+			}
+		}
+		None => Ok(()),
+	}
+
+	Ok(())
+}
+
+fn is_uuid(id: &str) -> bool {
+	let result = match Uuid::parse_str(id) {
+		Ok(id) => true,
+		Err(_) => false,
+	};
+	result
+}
+
+fn has_permission_to_access_resource(
+	context: &EveContext,
+	resource: &Resource,
+	permission_required: &str,
+	access_token_data: Option<AccessTokenData>,
+	api_token_data: Option<ApiTokenData>,
+) -> bool {
+	if let Some(access_token_data) = access_token_data {
+		let workspace_id = resource.owner_id;
+		let workspace_permission = if let Some(permission) =
+			access_token_data.workspaces.get(&workspace_id)
+		{
+			permission
+		} else {
+			return false				
+		};
+
+		let allowed = {
+			// Check if the resource type is allowed
+			if let Some(permissions) = workspace_permission
+				.resource_types
+				.get(&resource.resource_type_id)
+			{
+				permissions.contains(
+					rbac::PERMISSIONS
+						.get()
+						.unwrap()
+						.get(&(*permission_required).to_string())
+						.unwrap(),
+				)
+			} else {
+				false
+			}
+		} || {
+			// Check if that specific resource is allowed
+			if let Some(permissions) =
+				workspace_permission.resources.get(&resource.id)
+			{
+				permissions.contains(
+					rbac::PERMISSIONS
+						.get()
+						.unwrap()
+						.get(&(*permission_required).to_string())
+						.unwrap(),
+				)
+			} else {
+				false
+			}
+		} || {
+			// Check if super admin or god is permitted
+			workspace_permission.is_super_admin || {
+				let god_user_id = GOD_USER_ID.get().unwrap();
+				god_user_id == &access_token_data.user.id
+			}
+		};
+		return allowed;
+	} else if let Some(api_token_data) = api_token_data {
+		let workspace_id = resource.owner_id;
+		let workspace_permission = if let Some(permission) =
+			api_token_data.workspaces.get(&workspace_id)
+		{
+			permission
+		} else {
+			return false
+		};
+
+		let allowed = {
+			// Check if the resource type is allowed
+			if let Some(permissions) = workspace_permission
+				.resource_types
+				.get(&resource.resource_type_id)
+			{
+				permissions.contains(
+					rbac::PERMISSIONS
+						.get()
+						.unwrap()
+						.get(&(*permission_required).to_string())
+						.unwrap(),
+				)
+			} else {
+				false
+			}
+		} || {
+			// Check if that specific resource is allowed
+			if let Some(permissions) =
+				workspace_permission.resources.get(&resource.id)
+			{
+				permissions.contains(
+					rbac::PERMISSIONS
+						.get()
+						.unwrap()
+						.get(&(*permission_required).to_string())
+						.unwrap(),
+				)
+			} else {
+				false
+			}
+		} || {
+			// Check if super admin or god is permitted
+			workspace_permission.is_super_admin || {
+				let god_user_id = GOD_USER_ID.get().unwrap();
+				god_user_id == &api_token_data.user_id
+			}
+		};
+		return allowed;
+	} else {
+		return false;
+	};
 }
