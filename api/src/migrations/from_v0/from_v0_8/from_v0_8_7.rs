@@ -57,7 +57,6 @@ pub(super) async fn migrate(
 	update_dns_record_name_constraint_regexp(&mut *connection, config).await?;
 	add_is_configured_for_managed_urls(&mut *connection, config).await?;
 	fix_july_billing_issues(&mut *connection, config).await?;
-	update_user_login_table_with_meta_info(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -920,32 +919,6 @@ async fn fix_july_billing_issues(
 	)
 	.execute(&mut *connection)
 	.await?;
-
-	Ok(())
-}
-
-async fn update_user_login_table_with_meta_info(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
-) -> Result<(), Error> {
-	// Update data_types for last_login, last_activity, token_expiry
-	// last_activity to timestamptz from bigint
-
-	query!(
-		r#"
-		ALTER TABLE user_login
-			ADD COLUMN created TIMESTAMPTZ NOT NULL,
-			ADD COLUMN created_ip INET NOT NULL,
-			ADD COLUMN created_location GEOMETRY NOT NULL,
-			ADD COLUMN last_activity_ip INET NOT NULL,
-			ADD COLUMN last_activity_location GEOMETRY NOT NULL,
-			ADD COLUMN last_activity_user_agent TEXT NOT NULL,
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	// Enter a default values for all if needed
 
 	Ok(())
 }
