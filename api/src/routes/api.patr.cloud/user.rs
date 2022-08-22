@@ -235,7 +235,7 @@ pub fn create_sub_app(
 	);
 
 	app.put(
-		"/:apiToken",
+		"/api-token/:apiToken",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(revoke_api_token)),
@@ -243,7 +243,7 @@ pub fn create_sub_app(
 	);
 
 	app.get(
-		"/api-token/:apiToken",
+		"/api-token/:userId",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(list_api_token_for_user)),
@@ -1376,6 +1376,7 @@ async fn create_api_token(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	// After RBAC is introduced,
 	// This logic has to change to accomodate the user_id
 	// Can be user who is creating token for personal user or the admin who
 	// created token for user Accomodate logic for which user creating for
@@ -1470,14 +1471,8 @@ async fn list_api_token_for_user(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
-	let user_id =
-		Uuid::parse_str(context.get_param(request_keys::USER_ID).unwrap())
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	// TODO - Logic to validate if the user listing the token is allowed to do
-	// so or not TODO - Most likely should be user who created the token or
-	// super admin
+	let user_id = context.get_param(request_keys::USER_ID).unwrap();
+	let user_id = Uuid::parse_str(user_id).unwrap();
 
 	db::get_user_by_user_id(context.get_database_connection(), &user_id)
 		.await?
@@ -1514,14 +1509,8 @@ async fn list_permission_for_api_token(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
-	let token =
-		Uuid::parse_str(context.get_param(request_keys::API_TOKEN).unwrap())
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	// TODO - Logic to validate if the user listing the token is allowed to do
-	// so or not TODO - Most likely should be user who created the token or
-	// super admin
+	let token = context.get_param(request_keys::API_TOKEN).unwrap();
+	let token = Uuid::parse_str(token).unwrap();
 
 	// Check if token exists
 	db::get_api_token_by_id(context.get_database_connection(), &token)

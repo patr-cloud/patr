@@ -18,6 +18,12 @@ pub struct ApiToken {
     pub is_super_admin: bool,
 }
 
+pub struct SuperAdminApiToken {
+    pub token: Uuid,
+    pub workspace_id: Uuid,
+    pub super_admin_id: Uuid,
+}
+
 pub struct Permission {
     pub resource_permissions: HashMap<Uuid, Vec<Uuid>>,
     pub resource_type_permissions: HashMap<Uuid, Vec<Uuid>>,
@@ -36,7 +42,18 @@ pub async fn initialize_api_token_pre(
 			token_expiry TIMESTAMPTZ,
 			created TIMESTAMPTZ NOT NULL,
 			revoked BOOLEAN NOT NULL DEFAULT FALSE,
-			revoked_by UUID
+			revoked_by UUID,
+            is_super_admin BOOLEAN NOT NULL DEFAULT FALSE,
+            CONSTRAINT api_token_chk_revoked_revoked_by_valid
+                CHECK(
+                    (
+                        revoked IS false AND
+                        revoked_by IS NULL
+                    ) OR (
+                        revoked IS true AND
+                        revoked_by IS NOT NULL
+                    )
+                )
 		);
 		"#
 	)
@@ -136,13 +153,12 @@ pub async fn get_api_token_by_id(
 			token as "token: _",
 			user_id as "user_id: _",
 			token_expiry as "token_expiry!: _",
-			created as "created: _",
-            is_super_admin
+			created as "created: _"
 		FROM
 			api_token
 		WHERE
 			token = $1 AND
-            revoked != false;
+            revoked = false;
 		"#,
 		token as _
 	)
@@ -189,6 +205,38 @@ pub async fn create_api_token_for_user(
 	.await
 	.map(|_| ())
 }
+
+
+pub async fn add_super_admin_info_for_api_token(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	token: &Uuid,
+	workspace_id: &Uuid,
+	super_admin_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			api_token_workspace_super_admin(
+				token,
+				workspace_id,
+				super_admin_id
+			)
+		VALUES
+			(
+				$1,
+				$2,
+				$3
+			);
+		"#,
+		token as _,
+		workspace_id as _,
+		super_admin_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 
 pub async fn add_resource_permission_for_api_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -335,8 +383,8 @@ pub async fn is_user_super_admin(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	user_id: &Uuid,
-) -> Result<bool, sqlx::Error> {
-	let rows = query!(
+) -> Result<Option<Uuid>, sqlx::Error> {
+	let record = query!(
 		r#"
 		SELECT
 			super_admin_id
@@ -350,9 +398,10 @@ pub async fn is_user_super_admin(
 		workspace_id as _,
 	)
 	.fetch_optional(&mut *connection)
-	.await?;
+	.await?
+    .map(|row| row.super_admin_id);
 
-	Ok(rows.is_some())
+	Ok(record)
 }
 
 pub async fn list_api_tokens_for_user(
@@ -372,7 +421,7 @@ pub async fn list_api_tokens_for_user(
 			api_token
 		WHERE
 			user_id = $1 AND
-			revoked != false;
+			revoked = false;
 		"#,
 		user_id as _,
 	)
@@ -441,39 +490,62 @@ pub async fn get_workspace_id_for_api_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	api_token: &Uuid,
 ) -> Result<Option<Uuid>, sqlx::Error> {
-	let resource_permission_workspace_id: Uuid = query!(
+	let resource_permission_workspace_id = query!(
 		r#"
 		SELECT
-			workspace_id as "workspace_id: Uuid",
+			workspace_id as "workspace_id: Uuid"
 		FROM
 			api_token_resource_permission
 		WHERE
-			api_token = $1;
+			token = $1;
 		"#,
 		api_token as _
 	)
 	.fetch_optional(&mut *connection)
 	.await?;
 
-	let resource_type_permission_workspace_id: Uuid = query!(
+	let resource_type_permission_workspace_id = query!(
 		r#"
 		SELECT
-			workspace_id as "workspace_id: Uuid",
+			workspace_id as "workspace_id: Uuid"
 		FROM
 			api_token_resource_type_permission
 		WHERE
-			api_token = $1;
+			token = $1;
 		"#,
 		api_token as _
 	)
 	.fetch_optional(&mut *connection)
 	.await?;
 
-	if resource_permission_workspace_id == resource_type_permission_workspace_id
-	{
-		Ok(Some(resource_permission_workspace_id))
+	if let Some(record) = resource_permission_workspace_id {
+		Ok(Some(record.workspace_id))
+	} else if let Some(record) = resource_type_permission_workspace_id {
+		Ok(Some(record.workspace_id))
 	} else {
 		Ok(None)
 	}
+}
+
+pub async fn get_super_admin_api_token(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	api_token: &Uuid,
+) -> Result<Option<SuperAdminApiToken>, sqlx::Error> {
+	query_as!(
+		SuperAdminApiToken,
+		r#"
+		SELECT
+			token as "token: _",
+			workspace_id as "workspace_id: _",
+			super_admin_id as "super_admin_id: _"
+		FROM
+			api_token_workspace_super_admin
+		WHERE
+			token = $1;
+		"#,
+		api_token as _
+	)
+	.fetch_optional(&mut *connection)
+	.await
 }
 

@@ -1081,6 +1081,23 @@ async fn unique_workspac_id_super_admin_id(
 	Ok(())
 }
 
+async fn unique_workspac_id_super_admin_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE workspace
+		ADD CONSTRAINT workspace_uq_id_super_admin_id
+		UNIQUE(id, super_admin_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
 async fn create_api_token_x_relations(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
@@ -1091,12 +1108,12 @@ async fn create_api_token_x_relations(
 			token UUID
 				CONSTRAINT api_token_pk PRIMARY KEY,
 			user_id UUID NOT NULL,
-			name TEXT NOT NULL,
+			name TEXT NOT NULL UNIQUE,
 			token_expiry TIMESTAMPTZ,
 			created TIMESTAMPTZ NOT NULL,
 			revoked BOOLEAN NOT NULL DEFAULT FALSE,
 			revoked_by UUID,
-			is_super_admin BOOLEAN NOT NULL DEFAULT FALSE,
+			is_super_admin BOOLEAN NOT NULL DEFAULT FALSE
 		);
 		"#
 	)
@@ -1121,7 +1138,7 @@ async fn create_api_token_x_relations(
 
 	query!(
 		r#"
-		CREATE TABLE api_token_resource_permission_type(
+		CREATE TABLE api_token_resource_type_permission(
 			token UUID NOT NULL,
 			workspace_id UUID NOT NULL,
 			permission_id UUID NOT NULL,
@@ -1130,6 +1147,17 @@ async fn create_api_token_x_relations(
 				FOREIGN KEY(token)
 					REFERENCES api_token(token)
 		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Before creating api_token_workspace_super_admin add constraint below
+	query!(
+		r#"
+		ALTER TABLE workspace
+		ADD CONSTRAINT workspace_uq_id_super_admin_id
+		UNIQUE(id, super_admin_id);
 		"#
 	)
 	.execute(&mut *connection)

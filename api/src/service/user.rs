@@ -452,7 +452,7 @@ pub async fn create_api_token_for_user(
 	let is_user_super_admin =
 		db::is_user_super_admin(connection, workspace_id, user_id).await?;
 
-	if !is_user_super_admin {
+	if is_user_super_admin.is_none() {
 		let user_resource_permissions =
 			db::get_user_permissions_resource_in_workspace(
 				connection,
@@ -469,12 +469,12 @@ pub async fn create_api_token_for_user(
 			for (user_resource_id, user_permissions) in
 				&user_resource_permissions
 			{
-				if !user_permissions.is_superset(&token_permission_ids) &&
-					token_resource_id != user_resource_id
+				if !token_permission_ids.is_subset(user_permissions) &&
+					token_resource_id == user_resource_id
 				{
 					return Error::as_result()
 						.status(403)
-						.body(error!(NOT_A_SUPER_ADMIN).to_string())?;
+						.body(error!(UNPRIVILEGED).to_string())?;
 				}
 			}
 		}
@@ -495,8 +495,8 @@ pub async fn create_api_token_for_user(
 			for (user_resource_type_id, user_permissions) in
 				&user_resource_type_permissions
 			{
-				if !user_permissions.is_superset(&token_permission_ids) &&
-					token_resource_type_id != user_resource_type_id
+				if !token_permission_ids.is_subset(user_permissions) &&
+					token_resource_type_id == user_resource_type_id
 				{
 					return Error::as_result()
 						.status(403)
@@ -531,6 +531,16 @@ pub async fn create_api_token_for_user(
 		resource_type_permissions,
 	)
 	.await?;
+
+	if let Some(super_admin_id) = is_user_super_admin {
+		db::add_super_admin_info_for_api_token(
+			connection,
+			&token,
+			workspace_id,
+			&super_admin_id,
+		)
+		.await?
+	}
 
 	Ok(token)
 }

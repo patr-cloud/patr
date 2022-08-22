@@ -36,7 +36,6 @@ pub struct AccessTokenData {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiTokenData {
-	pub is_super_admin: bool,
 	pub exp: Option<DateTime<Utc>>,
 	pub workspaces: HashMap<Uuid, WorkspacePermissions>,
 	pub user_id: Uuid,
