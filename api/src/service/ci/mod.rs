@@ -4,7 +4,7 @@ use std::{
 };
 
 use api_models::{
-	models::workspace::ci2::github::BuildStepStatus,
+	models::workspace::ci2::github::{BuildStepStatus, RepoStatus},
 	utils::Uuid,
 };
 use eve_rs::AsError;
@@ -164,7 +164,7 @@ pub async fn add_build_steps_in_db(
 	log::trace!("request_id: {request_id} - Adding build steps in db");
 
 	// add cloning as a step
-	db::add_ci_steps_for_build(
+	db::add_ci_step_for_build(
 		connection,
 		repo_id,
 		build_num,
@@ -188,7 +188,7 @@ pub async fn add_build_steps_in_db(
 		},
 	) in pipeline.steps.iter().enumerate()
 	{
-		db::add_ci_steps_for_build(
+		db::add_ci_step_for_build(
 			connection,
 			repo_id,
 			build_num,
@@ -484,6 +484,61 @@ async fn create_background_service_for_pipeline(
 			},
 		)
 		.await?;
+
+	Ok(())
+}
+
+#[derive(Debug, PartialEq)]
+pub struct MutableRepoValues {
+	pub repo_owner: String,
+	pub repo_name: String,
+	pub repo_clone_url: String,
+}
+
+pub async fn sync_repos_in_db(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	git_provider_id: &Uuid,
+	repos_in_git_provider: HashMap<String, MutableRepoValues>,
+	mut repos_in_db: HashMap<String, MutableRepoValues>,
+) -> Result<(), sqlx::Error> {
+	for (g_repo_id, g_values) in repos_in_git_provider {
+		if let Some(db_values) = repos_in_db.remove(&g_repo_id) {
+			if g_values != db_values {
+				// values differing in db and git-provider, update it now
+				db::update_repo_details_for_git_provider(
+					connection,
+					git_provider_id,
+					&g_repo_id,
+					&g_values.repo_owner,
+					&g_values.repo_name,
+					&g_values.repo_clone_url,
+				)
+				.await?;
+			} else {
+				// new repo found in git-provider, create it
+				db::add_repo_for_git_provider(
+					connection,
+					git_provider_id,
+					&g_repo_id,
+					&g_values.repo_owner,
+					&g_values.repo_name,
+					&g_values.repo_clone_url,
+				)
+				.await?;
+			}
+		}
+	}
+
+	// missing repos from git-provider, mark as deleted
+	for (repo_uid, _) in repos_in_db {
+		db::update_repo_status(
+			connection,
+			git_provider_id,
+			&repo_uid,
+			RepoStatus::Deleted,
+		)
+		.await?;
+	}
 
 	Ok(())
 }

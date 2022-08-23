@@ -354,21 +354,85 @@ async fn add_migrations_for_ci(
 
 	query!(
 		r#"
-		CREATE TABLE ci_repos (
-			id 				UUID CONSTRAINT ci_repos_pk PRIMARY KEY,
-			workspace_id 	UUID NOT NULL,
-			repo_owner 		TEXT NOT NULL,
-			repo_name 		TEXT NOT NULL,
-			git_url 		TEXT NOT NULL,
-			webhook_secret 	TEXT NOT NULL CONSTRAINT ci_repos_uq_secret UNIQUE,
-			active 			BOOLEAN NOT NULL,
+		CREATE TYPE CI_GIT_PROVIDER_TYPE AS ENUM(
+			'github'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
-			CONSTRAINT ci_repos_fk_workspace_id
-				FOREIGN KEY (workspace_id) REFERENCES workspace(id),
-			CONSTRAINT ci_repos_uq_workspace_id_git_url
-				UNIQUE (workspace_id, git_url),
-			CONSTRAINT ci_repos_uq_workspace_id_repo_owner_repo_name
-				UNIQUE (workspace_id, repo_owner, repo_name)
+	query!(
+		r#"
+		CREATE TABLE ci_git_provider (
+			id 					UUID CONSTRAINT ci_git_provider_pk PRIMARY KEY,
+			workspace_id 		UUID NOT NULL CONSTRAINT ci_git_provider_fk_workspace_id REFERENCES workspace(id),
+			domain_name 		TEXT NOT NULL,
+			git_provider_type 	CI_GIT_PROVIDER_TYPE NOT NULL,
+			login_name 			TEXT,
+			password 			TEXT,
+			is_deleted			BOOL NOT NULL DEFAULT FALSE,
+
+			CONSTRAINT ci_git_provider_ch_login_name_password
+				CHECK (
+					(login_name IS NULL AND password IS NULL)
+					OR (login_name IS NOT NULL AND password IS NOT NULL)
+				)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			ci_git_provider_uq_workspace_id_domain_name
+		ON
+			ci_git_provider(workspace_id, domain_name)
+		WHERE
+			is_deleted = FALSE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE CI_REPO_STATUS AS ENUM (
+			'active',
+			'inactive',
+			'deleted'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE ci_repos (
+			id 						UUID CONSTRAINT ci_repos_pk PRIMARY KEY,
+			repo_owner 				TEXT NOT NULL,
+			repo_name 				TEXT NOT NULL,
+			clone_url 				TEXT NOT NULL,
+			webhook_secret 			TEXT CONSTRAINT ci_repos_uq_secret UNIQUE,
+			build_machine_type_id 	UUID CONSTRAINT ci_repos_fk_build_machine_type_id REFERENCES ci_build_machine_type(id),
+			status 					CI_REPO_STATUS NOT NULL,
+			git_provider_id 		UUID NOT NULL CONSTRAINT ci_repos_fk_git_provider_id REFERENCES ci_git_provider(id),
+			git_provider_repo_uid 	TEXT NOT NULL,
+
+			CONSTRAINT ci_repos_uq_git_provider_id_repo_uid
+				UNIQUE (git_provider_id, git_provider_repo_uid),
+			CONSTRAINT ci_repos_chk_status_machine_type_id_webhook_secret
+				CHECK (
+					(
+						status = 'active'
+						AND build_machine_type_id IS NOT NULL
+						AND webhook_secret IS NOT NULL
+					)
+					OR status != 'active'
+				)
 		);
 		"#
 	)
@@ -391,7 +455,7 @@ async fn add_migrations_for_ci(
 	query!(
 		r#"
 		CREATE TABLE ci_builds (
-			repo_id		UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id),
+			repo_id 	UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id),
 			build_num 	BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK (build_num > 0),
 			git_ref 	TEXT NOT NULL,
 			git_commit 	TEXT NOT NULL,
@@ -430,7 +494,7 @@ async fn add_migrations_for_ci(
 			step_id 	INTEGER NOT NULL CONSTRAINT ci_steps_chk_step_id_unsigned CHECK (build_num >= 0),
 			step_name 	TEXT NOT NULL,
 			base_image 	TEXT NOT NULL,
-			commands 	TEXT[] NOT NULL,
+			commands 	TEXT NOT NULL,
 			status 		CI_BUILD_STEP_STATUS NOT NULL,
 			started 	TIMESTAMPTZ,
 			finished 	TIMESTAMPTZ,

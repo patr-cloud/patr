@@ -1,7 +1,7 @@
 use api_models::{
 	models::workspace::{
 		billing::PaymentStatus,
-		ci2::github::BuildStatus,
+		ci2::github::{BuildStatus, RepoStatus},
 		infrastructure::deployment::DeploymentStatus,
 	},
 	utils::{DateTime, Uuid},
@@ -22,7 +22,7 @@ use crate::{
 	},
 	pin_fn,
 	rabbitmq::BuildId,
-	service::{Netrc, ParseStatus, self},
+	service::{self, Netrc, ParseStatus},
 	utils::{
 		constants::request_keys,
 		Error,
@@ -587,20 +587,31 @@ async fn handle_ci_hooks(
 			.and_then(|id| id.as_str())
 			.status(400)?
 			.to_owned();
-		let repo = db::get_repo_by_domain_and_uid(
+
+		let possible_repos = db::get_repos_by_domain_and_uid(
 			context.get_database_connection(),
 			"github.com",
 			&git_provider_repo_uid,
 		)
-		.await?
-		.status(400)?;
-
-		service::verify_github_payload_signature_256(
-			&signature_in_header,
-			&payload,
-			&repo.webhook_secret,
-		)
 		.await?;
+
+		let repo = possible_repos
+			.into_iter()
+			.filter(|repo| repo.status == RepoStatus::Active)
+			.find(|repo| {
+				repo.webhook_secret
+					.as_deref()
+					.and_then(|secret| {
+						service::verify_github_payload_signature_256(
+							&signature_in_header,
+							&payload,
+							&secret,
+						)
+						.ok()
+					})
+					.is_some()
+			})
+			.status(500)?;
 
 		// handle push events
 		if event.eq_ignore_ascii_case("push") {
@@ -615,12 +626,17 @@ async fn handle_ci_hooks(
 				.status(400)
 				.body("invalid repo name")?;
 
-			let access_token = db::get_access_token_for_repo(
+			let git_provider = db::get_git_provider_details_by_id(
 				context.get_database_connection(),
-				&repo.id,
+				&repo.git_provider_id,
 			)
 			.await?
 			.status(500)?;
+
+			let (login_name, access_token) = git_provider
+				.login_name
+				.zip(git_provider.password)
+				.status(500)?;
 
 			let ci_file_content =
 				service::fetch_ci_file_content_from_github_repo(
@@ -643,7 +659,7 @@ async fn handle_ci_hooks(
 
 			let ci_flow = match service::parse_ci_file_content(
 				context.get_database_connection(),
-				&repo.workspace_id,
+				&git_provider.workspace_id,
 				&ci_file_content,
 				&request_id,
 			)
@@ -678,17 +694,17 @@ async fn handle_ci_hooks(
 				&config,
 				&repo.id,
 				&BuildId {
-					repo_workspace_id: repo.workspace_id,
+					repo_workspace_id: git_provider.workspace_id,
 					repo_id: repo.id.clone(),
 					build_num,
 				},
 				ci_flow,
 				Some(Netrc {
 					machine: "github.com".to_owned(),
-					login: "oauth".to_owned(),
+					login: login_name,
 					password: access_token,
 				}),
-				&repo.git_url,
+				&repo.clone_url,
 				repo_name,
 				&push_event_data.after,
 				&request_id,

@@ -506,7 +506,7 @@ pub async fn process_request(
 			build_id,
 			request_id,
 		} => {
-			let steps = db::get_build_steps_for_build(
+			let steps = db::list_build_steps_for_build(
 				&mut *connection,
 				&build_id.repo_id,
 				build_id.build_num,
