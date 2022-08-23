@@ -492,7 +492,7 @@ async fn create_background_service_for_pipeline(
 	Ok(())
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct MutableRepoValues {
 	pub repo_owner: String,
 	pub repo_name: String,

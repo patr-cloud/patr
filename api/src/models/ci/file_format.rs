@@ -83,7 +83,7 @@ impl Display for Commands {
 }
 
 /// Environmental variable which can be used to init containers
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct EnvVar {
 	/// key name of the environment variable
@@ -93,7 +93,7 @@ pub struct EnvVar {
 	pub value: EnvVarValue,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum EnvVarValue {
 	Value(String),
