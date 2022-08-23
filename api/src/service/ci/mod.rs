@@ -540,18 +540,18 @@ pub async fn sync_repos_in_db(
 					&g_values.repo_clone_url,
 				)
 				.await?;
-			} else {
-				// new repo found in git-provider, create it
-				db::add_repo_for_git_provider(
-					connection,
-					git_provider_id,
-					&g_repo_id,
-					&g_values.repo_owner,
-					&g_values.repo_name,
-					&g_values.repo_clone_url,
-				)
-				.await?;
 			}
+		} else {
+			// new repo found in git-provider, create it
+			db::add_repo_for_git_provider(
+				connection,
+				git_provider_id,
+				&g_repo_id,
+				&g_values.repo_owner,
+				&g_values.repo_name,
+				&g_values.repo_clone_url,
+			)
+			.await?;
 		}
 	}
 

@@ -375,7 +375,6 @@ pub async fn remove_git_provider_credentials(
 			ci_git_provider
 		SET
 			is_deleted = TRUE,
-			login_name = NULL,
 			password = NULL
 		WHERE
 			id = $1;

@@ -567,6 +567,9 @@ async fn handle_ci_hooks(
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {request_id} - Processing ci webhook ...");
 
+	// TODO: github is giving timeout status in webhooks settings for our
+	// endpoint its better to process the payload in the message/event queue
+
 	// handle github webhook events
 	if let Some(event) = context.get_header(service::X_GITHUB_EVENT) {
 		// handle ping events
@@ -584,9 +587,9 @@ async fn handle_ci_hooks(
 			.get_body_object()
 			.get("repository")
 			.and_then(|repo| repo.get("id"))
-			.and_then(|id| id.as_str())
+			.and_then(|id| id.as_i64())
 			.status(400)?
-			.to_owned();
+			.to_string();
 
 		let possible_repos = db::get_repos_by_domain_and_uid(
 			context.get_database_connection(),
