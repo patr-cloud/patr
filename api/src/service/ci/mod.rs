@@ -4,7 +4,11 @@ use std::{
 };
 
 use api_models::{
-	models::workspace::ci2::github::{BuildStepStatus, RepoStatus},
+	models::workspace::ci2::github::{
+		BuildStepStatus,
+		GitProviderType,
+		RepoStatus,
+	},
 	utils::Uuid,
 };
 use eve_rs::AsError;
@@ -34,7 +38,7 @@ use k8s_openapi::{
 use kube::{api::ObjectMeta, Api};
 
 use crate::{
-	db,
+	db::{self, GitProvider},
 	models::ci::{
 		self,
 		file_format::{CiFlow, EnvVarValue, Step},
@@ -493,6 +497,28 @@ pub struct MutableRepoValues {
 	pub repo_owner: String,
 	pub repo_name: String,
 	pub repo_clone_url: String,
+}
+
+pub async fn sync_repos_for_git_provider(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	git_provider: &GitProvider,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	match git_provider.git_provider_type {
+		GitProviderType::Github => {
+			if let Some(access_token) = git_provider.password.clone() {
+				sync_github_repos(
+					connection,
+					&git_provider.id,
+					access_token,
+					request_id,
+				)
+				.await?
+			}
+		}
+	}
+
+	Ok(())
 }
 
 pub async fn sync_repos_in_db(

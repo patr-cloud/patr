@@ -16,6 +16,7 @@ use api_models::{
 		GithubListReposResponse,
 		GithubRepository,
 		GithubSignOutResponse,
+		GithubSyncReposResponse,
 		RepoStatus,
 		RestartBuildResponse,
 		StopBuildResponse,
@@ -27,7 +28,8 @@ use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use http::header::ACCEPT;
 use octorust::{
 	self,
-	auth::Credentials, types::{ReposCreateWebhookRequest, ReposCreateWebhookRequestConfig},
+	auth::Credentials,
+	types::{ReposCreateWebhookRequest, ReposCreateWebhookRequestConfig},
 };
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use redis::AsyncCommands;
@@ -591,6 +593,7 @@ async fn sync_repositories(
 	)
 	.await?;
 
+	context.success(GithubSyncReposResponse {});
 	Ok(context)
 }
 
@@ -654,7 +657,7 @@ async fn activate_repo(
 	.await?
 	.status(500)?;
 
-	let git_provider = db::get_git_provider_details_by_id(
+	let git_provider = db::get_connected_git_provider_details_by_id(
 		context.get_database_connection(),
 		&repo.git_provider_id,
 	)
@@ -752,7 +755,7 @@ async fn deactivate_repo(
 	.await?
 	.status(500)?;
 
-	let git_provider = db::get_git_provider_details_by_id(
+	let git_provider = db::get_connected_git_provider_details_by_id(
 		context.get_database_connection(),
 		&repo.git_provider_id,
 	)
@@ -1047,7 +1050,7 @@ async fn restart_build(
 	.await?
 	.status(500)?;
 
-	let git_provider = db::get_git_provider_details_by_id(
+	let git_provider = db::get_connected_git_provider_details_by_id(
 		context.get_database_connection(),
 		&repo.git_provider_id,
 	)

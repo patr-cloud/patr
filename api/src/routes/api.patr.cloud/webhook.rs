@@ -626,7 +626,7 @@ async fn handle_ci_hooks(
 				.status(400)
 				.body("invalid repo name")?;
 
-			let git_provider = db::get_git_provider_details_by_id(
+			let git_provider = db::get_connected_git_provider_details_by_id(
 				context.get_database_connection(),
 				&repo.git_provider_id,
 			)

@@ -333,7 +333,7 @@ async fn add_migrations_for_ci(
 
 		query!(
 			r#"
-			INSERT INTO 
+			INSERT INTO
 				ci_build_machine_type(
 					id,
 					cpu,
@@ -373,10 +373,15 @@ async fn add_migrations_for_ci(
 			password 			TEXT,
 			is_deleted			BOOL NOT NULL DEFAULT FALSE,
 
-			CONSTRAINT ci_git_provider_ch_login_name_password
+			CONSTRAINT ci_git_provider_ch_login_name_password_is_deleted
 				CHECK (
-					(login_name IS NULL AND password IS NULL)
-					OR (login_name IS NOT NULL AND password IS NOT NULL)
+					(is_deleted = TRUE AND password IS NULL)
+					OR (
+						is_deleted = FALSE
+						AND (
+							(password IS NOT NULL AND login_name IS NOT NULL)
+							OR (password IS NULL)
+					))
 				)
 		);
 		"#

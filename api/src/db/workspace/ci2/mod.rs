@@ -100,10 +100,15 @@ pub async fn initialize_ci_pre(
 			password 			TEXT,
 			is_deleted			BOOL NOT NULL DEFAULT FALSE,
 
-			CONSTRAINT ci_git_provider_ch_login_name_password
+			CONSTRAINT ci_git_provider_ch_login_name_password_is_deleted
 				CHECK (
-					(login_name IS NULL AND password IS NULL)
-					OR (login_name IS NOT NULL AND password IS NOT NULL)
+					(is_deleted = TRUE AND password IS NULL)
+					OR (
+						is_deleted = FALSE
+						AND (
+							(password IS NOT NULL AND login_name IS NOT NULL)
+							OR (password IS NULL)
+					))
 				)
 		);
 		"#
@@ -334,7 +339,7 @@ pub async fn add_git_provider_to_workspace(
 	.map(|_| id)
 }
 
-pub async fn get_git_provider_details_by_id(
+pub async fn get_connected_git_provider_details_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	git_provider_id: &Uuid,
 ) -> Result<Option<GitProvider>, sqlx::Error> {
@@ -380,6 +385,33 @@ pub async fn remove_git_provider_credentials(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn list_connected_git_providers_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Vec<GitProvider>, sqlx::Error> {
+	query_as!(
+		GitProvider,
+		r#"
+		SELECT
+			id as "id: _",
+			workspace_id as "workspace_id: _",
+			domain_name,
+			git_provider_type as "git_provider_type: _",
+			login_name,
+			password
+		FROM
+			ci_git_provider
+		WHERE (
+			workspace_id = $1
+			AND is_deleted = FALSE
+		);
+		"#,
+		workspace_id as _,
+	)
+	.fetch_all(&mut *connection)
+	.await
 }
 
 pub async fn get_git_provider_details_for_workspace_using_domain(
