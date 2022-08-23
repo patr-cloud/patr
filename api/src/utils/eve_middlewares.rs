@@ -62,6 +62,7 @@ pub enum EveMiddleware {
 		String,
 		Box<EveApp<EveContext, EveMiddleware, App, ErrorData>>,
 	),
+	BlockApiToken,
 }
 
 #[derive(Clone, Debug)]
@@ -197,6 +198,20 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					app.resolve(context).await
 				} else {
 					next(context).await
+				}
+			}
+			EveMiddleware::BlockApiToken => {
+				let authorization = context
+					.get_header("Authorization")
+					.expect("Authorization header not found");
+
+				let is_api_token = Uuid::parse_str(&authorization).is_ok();
+				if !is_api_token {
+					next(context).await
+				} else {
+					return Error::as_result()
+						.status(403)
+						.body(error!(UNPRIVILEGED).to_string());
 				}
 			}
 		}
