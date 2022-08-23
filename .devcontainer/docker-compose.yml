@@ -1,0 +1,138 @@
+version: '3.8'
+
+
+volumes:
+  postgres-data:
+
+networks:
+  vpc:
+
+services:
+
+  nginx-proxy:
+    image: nginxproxy/nginx-proxy
+    networks:
+      - vpc
+    ports:
+      - "80:80"
+    init: true
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+
+  api:
+    container_name: api
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Use the VARIANT arg to pick a Debian OS version: buster, bullseye
+        # Use bullseye when on local on arm64/Apple Silicon.
+        VARIANT:  bullseye
+    env_file:
+        # Ensure that the variables in .env match the same variables in devcontainer.json
+        - .env
+    environment:
+      - VIRTUAL_HOST=api.patr.cloud
+    # Security Opt and cap_add for C++ based debuggers to work.
+    # See `runArgs`: https://github.com/Microsoft/vscode-docs/blob/main/docs/remote/devcontainerjson-reference.md
+    # security_opt:
+    #   - seccomp:unconfined
+    # cap_add:
+    #   - SYS_PTRACE
+
+    volumes:
+      - ..:/workspace:cached
+
+    # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity
+
+    # Runs app on the same network as the database container, allows "forwardPorts" in devcontainer.json function.
+    # network_mode: service:postgres
+
+    networks:
+      - vpc
+
+    # Uncomment the next line to use a non-root user for all processes.
+    # user: vscode
+
+    # Use "forwardPorts" in **devcontainer.json** to forward an app port locally. 
+    # (Adding the "ports" property to this file will not forward from a Codespace.)
+
+  postgres:
+    container_name: database
+    image: postgis/postgis:13-master
+    restart: always
+    hostname: ${DATABASE_HOST}
+    user: ${RUNNING_USER}
+    networks:
+      - vpc
+    environment:
+      - POSTGRES_USER=${DATABASE_USERNAME}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_DB=${DATABASE_NAME}
+      - PGDATA=/var/lib/postgresql/data
+    volumes:
+      - ./target-dev/postgres:/var/lib/postgresql/data
+
+  redis:
+    container_name: cache
+    image: redis:7
+    restart: always
+    hostname: ${REDIS_HOST}
+    user: ${RUNNING_USER}
+    networks:
+      - vpc
+    
+  docker-registry:
+    container_name: registry
+    image: registry:2
+    restart: always
+    hostname: ${REGISTRY_HOST}
+    user: ${RUNNING_USER}
+    networks:
+      - vpc
+    ports:
+      - ${REGISTRY_PORT}:5000
+    environment:
+      - REGISTRY_VERSION=0.1
+      - REGISTRY_LOG_FORMATTER=text
+      - REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=redis
+      - REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/data
+      - REGISTRY_STORAGE_DELETE_ENABLED=true
+      - REGISTRY_HTTP_ADDR="0.0.0.0:5000"
+      - REGISTRY_HTTP_SECRET="keyboard cat"
+      - REGISTRY_REDIS_ADDR=${REDIS_HOST}:6379
+      - REGISTRY_REDIS_DB=2
+      - REGISTRY_REDIS_POOL_MAXIDLE=16
+      - REGISTRY_REDIS_POOL_MAXACTIVE=64
+      - REGISTRY_REDIS_POOL_IDLETIMEOUT=300s
+      - REGISTRY_AUTH_TOKEN_REALM=http://${API_HOST}:${API_PORT}/auth/docker-registry-token
+      - REGISTRY_AUTH_TOKEN_SERVICE=${APP_DOCKERREGISTRY_SERVICENAME}
+      - REGISTRY_AUTH_TOKEN_ISSUER=${APP_DOCKERREGISTRY_ISSUER}
+      - REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE=/certs/ecdsa.pubkey.crt
+      - REGISTRY_NOTIFICATIONS_ENDPOINTS_EVENTS_INCLUDEREFERENCES=true
+      - REGISTRY_NOTIFICATIONS_ENDPOINTS=${REGISTRY_APP_ENDPOINT}
+      - VIRTUAL_HOST=registry.patr.cloud
+    volumes:
+      - ./target-dev/registry:/data
+      - ./assets/patr/certs:/certs
+
+  rabbitmq:
+    container_name: message-queue
+    image: rabbitmq:3-management
+    restart: always
+    hostname: ${RABBITMQ_HOST}
+    user: ${RUNNING_USER}
+    networks:
+      - vpc
+    ports:
+      - ${RABBITMQ_MANAGEMENT_PORT}:15672
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+    volumes:
+      - ./target-dev/rabbitmq:/var/lib/rabbitmq
+
+
+    # Add "forwardPorts": ["5432"] to **devcontainer.json** to forward PostgreSQL locally.
+    # (Adding the "ports" property to this file will not forward from a Codespace.)
