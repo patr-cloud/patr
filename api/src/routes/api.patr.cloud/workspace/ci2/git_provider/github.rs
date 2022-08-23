@@ -62,7 +62,7 @@ pub fn create_sub_app(
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				// TODO: refactor permissions for ci
-				permissions::workspace::ci::github::CONNECT,
+				permissions::workspace::ci::git_provider::CONNECT,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -93,7 +93,7 @@ pub fn create_sub_app(
 		"/auth-callback",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::ci::github::CONNECT,
+				permissions::workspace::ci::git_provider::CONNECT,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -124,7 +124,7 @@ pub fn create_sub_app(
 		"/repo/sync",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::ci::github::VIEW_BUILDS,
+				permissions::workspace::ci::git_provider::repo::LIST,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -155,7 +155,7 @@ pub fn create_sub_app(
 		"/repo",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::ci::github::VIEW_BUILDS,
+				permissions::workspace::ci::git_provider::repo::LIST,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -186,7 +186,7 @@ pub fn create_sub_app(
 		"/repo/:repoId/activate",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::ci::github::ACTIVATE,
+				permissions::workspace::ci::git_provider::repo::ACTIVATE,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -217,7 +217,7 @@ pub fn create_sub_app(
 		"/repo/:repoId/deactivate",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::ci::github::DEACTIVATE,
+				permissions::workspace::ci::git_provider::repo::DEACTIVATE,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -248,7 +248,7 @@ pub fn create_sub_app(
 		"/repo/:repoId/build",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::ci::github::VIEW_BUILDS,
+				permissions::workspace::ci::git_provider::repo::build::VIEW,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -279,7 +279,7 @@ pub fn create_sub_app(
 		"/repo/:repoId/build/:buildNum",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::ci::github::VIEW_BUILDS,
+				permissions::workspace::ci::git_provider::repo::build::VIEW,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -310,7 +310,7 @@ pub fn create_sub_app(
 		"/repo/:repoId/build/:buildNum/log/:step",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::ci::github::VIEW_BUILDS,
+				permissions::workspace::ci::git_provider::repo::build::VIEW,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -341,7 +341,7 @@ pub fn create_sub_app(
 		"/repo/:repoId/build/:buildNum/stop",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::ci::github::VIEW_BUILDS,
+				permissions::workspace::ci::git_provider::repo::build::VIEW,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -372,7 +372,7 @@ pub fn create_sub_app(
 		"/repo/:repoId/build/:buildNum/restart",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::ci::github::RESTART_BUILDS,
+				permissions::workspace::ci::git_provider::repo::build::RESTART,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -403,7 +403,7 @@ pub fn create_sub_app(
 		"/sign-out",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::ci::github::DISCONNECT,
+				permissions::workspace::ci::git_provider::DISCONNECT,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();

@@ -151,6 +151,29 @@ pub mod permissions {
 				pub const DISCONNECT: &str =
 					"workspace::ci::github::disconnect";
 			}
+
+			pub mod git_provider {
+				pub const CONNECT: &str =
+					"workspace::ci::git_provider::connect";
+				pub const DISCONNECT: &str =
+					"workspace::ci::git_provider::disconnect";
+
+				pub mod repo {
+					pub const ACTIVATE: &str =
+						"workspace::ci::git_provider::repo::activate";
+					pub const DEACTIVATE: &str =
+						"workspace::ci::git_provider::repo::deactivate";
+					pub const LIST: &str =
+						"workspace::ci::git_provider::repo::list";
+
+					pub mod build {
+						pub const VIEW: &str =
+							"workspace::ci::git_provider::repo::build::view";
+						pub const RESTART: &str =
+							"workspace::ci::git_provider::repo::build::restart";
+					}
+				}
+			}
 		}
 
 		pub const EDIT: &str = "workspace::edit";
