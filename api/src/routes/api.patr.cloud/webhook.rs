@@ -1,7 +1,7 @@
 use api_models::{
 	models::workspace::{
 		billing::PaymentStatus,
-		ci2::github::{BuildStatus, RepoStatus},
+		ci::github::{BuildStatus, RepoStatus},
 		infrastructure::deployment::DeploymentStatus,
 	},
 	utils::{DateTime, Uuid},
@@ -656,7 +656,7 @@ async fn handle_ci_hooks(
 				&push_event_data.ref_,
 				&push_event_data.after,
 				BuildStatus::Running,
-				&Utc::now(),
+				&DateTime::from(Utc::now()),
 			)
 			.await?;
 

@@ -13,6 +13,7 @@ pub(super) async fn migrate(
 ) -> Result<(), Error> {
 	migrate_from_bigint_to_timestamptz(&mut *connection, config).await?;
 	add_migrations_for_ci(&mut *connection, config).await?;
+	clean_up_drone_ci(&mut *connection, config).await?;
 	reset_permission_order(&mut *connection, config).await?;
 
 	Ok(())
@@ -561,6 +562,48 @@ async fn add_migrations_for_ci(
 			permission
 		)
 		.fetch_optional(&mut *connection)
+		.await?;
+	}
+
+	Ok(())
+}
+
+async fn clean_up_drone_ci(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	// drop drone token columns in workspace table
+	query!(
+		r#"
+		ALTER TABLE workspace
+			DROP COLUMN drone_username,
+			DROP COLUMN drone_token;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// remove permissions
+	for &permission in [
+		"workspace::ci::github::connect",
+		"workspace::ci::github::activate",
+		"workspace::ci::github::deactivate",
+		"workspace::ci::github::viewBuilds",
+		"workspace::ci::github::restartBuilds",
+		"workspace::ci::github::disconnect",
+	]
+	.iter()
+	{
+		query!(
+			r#"
+			DELETE FROM
+				permission
+			WHERE
+				name = $1;
+			"#,
+			permission
+		)
+		.execute(&mut *connection)
 		.await?;
 	}
 

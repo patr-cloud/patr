@@ -455,8 +455,6 @@ pub async fn get_all_workspace_roles_for_user(
 			super_admin_id as "super_admin_id: _",
 			active,
 			alert_emails as "alert_emails: _",
-			drone_username,
-			drone_token,
 			payment_type as "payment_type: _",
 			default_payment_method_id as "default_payment_method_id: _",
 			deployment_limit,

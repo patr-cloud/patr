@@ -51,11 +51,8 @@ pub mod request_keys {
 	pub const START_TIME: &str = "startTime";
 	pub const INTERVAL: &str = "interval";
 	pub const SECRET_ID: &str = "secretId";
-	pub const REPO_OWNER: &str = "repoOwner";
-	pub const REPO_NAME: &str = "repoName";
 	pub const REPO_ID: &str = "repoId";
 	pub const BUILD_NUM: &str = "buildNum";
-	pub const STAGE: &str = "stage";
 	pub const STEP: &str = "step";
 	pub const PAYMENT_METHOD_ID: &str = "paymentMethodId";
 }

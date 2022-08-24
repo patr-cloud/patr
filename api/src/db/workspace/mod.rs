@@ -6,7 +6,6 @@ use crate::{query, query_as, Database};
 
 mod billing;
 mod ci;
-mod ci2;
 mod docker_registry;
 mod domain;
 mod infrastructure;
@@ -16,7 +15,6 @@ mod secret;
 pub use self::{
 	billing::*,
 	ci::*,
-	ci2::*,
 	docker_registry::*,
 	domain::*,
 	infrastructure::*,
@@ -31,8 +29,6 @@ pub struct Workspace {
 	pub super_admin_id: Uuid,
 	pub active: bool,
 	pub alert_emails: Vec<String>,
-	pub drone_username: Option<String>,
-	pub drone_token: Option<String>,
 	pub payment_type: PaymentType,
 	pub default_payment_method_id: Option<String>,
 	pub deployment_limit: i32,
@@ -118,17 +114,6 @@ pub async fn initialize_workspaces_pre(
 					REFERENCES "user"(id),
 			active BOOLEAN NOT NULL DEFAULT FALSE,
 			alert_emails VARCHAR(320) [] NOT NULL,
-			drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE,
-			drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null
-				CHECK(
-					(
-						drone_username IS NULL AND
-						drone_token IS NULL
-					) OR (
-						drone_username IS NOT NULL AND
-						drone_token IS NOT NULL
-					)
-				),
 			payment_type PAYMENT_TYPE NOT NULL,
 			default_payment_method_id TEXT,
 			deployment_limit INTEGER NOT NULL,
@@ -242,7 +227,7 @@ pub async fn initialize_workspaces_pre(
 	secret::initialize_secret_pre(connection).await?;
 	infrastructure::initialize_infrastructure_pre(connection).await?;
 	billing::initialize_billing_pre(connection).await?;
-	ci2::initialize_ci_pre(connection).await?;
+	ci::initialize_ci_pre(connection).await?;
 
 	Ok(())
 }
@@ -329,7 +314,7 @@ pub async fn initialize_workspaces_post(
 	secret::initialize_secret_post(connection).await?;
 	infrastructure::initialize_infrastructure_post(connection).await?;
 	billing::initialize_billing_post(connection).await?;
-	ci2::initialize_ci_post(connection).await?;
+	ci::initialize_ci_post(connection).await?;
 
 	Ok(())
 }
@@ -359,8 +344,6 @@ pub async fn create_workspace(
 				super_admin_id,
 				active,
 				alert_emails,
-				drone_username,
-				drone_token,
 				payment_type,
 				default_payment_method_id,
 				deployment_limit,
@@ -375,7 +358,7 @@ pub async fn create_workspace(
 				amount_due
 			)
 		VALUES
-			($1, $2, $3, $4, $5, NULL, NULL, $6, NULL, $7, $8, $9, $10, $11, $12, $13, $14, NULL, $15);
+			($1, $2, $3, $4, $5, $6, NULL, $7, $8, $9, $10, $11, $12, $13, $14, NULL, $15);
 		"#,
 		workspace_id as _,
 		name as _,
@@ -411,8 +394,6 @@ pub async fn get_workspace_info(
 			super_admin_id as "super_admin_id: _",
 			active,
 			alert_emails as "alert_emails: _",
-			drone_username,
-			drone_token,
 			payment_type as "payment_type: _",
 			default_payment_method_id as "default_payment_method_id: _",
 			deployment_limit,
@@ -454,8 +435,6 @@ pub async fn get_workspace_by_name(
 			super_admin_id as "super_admin_id: _",
 			active,
 			alert_emails as "alert_emails: _",
-			drone_username,
-			drone_token,
 			payment_type as "payment_type: _",
 			default_payment_method_id as "default_payment_method_id: _",
 			deployment_limit,
@@ -691,8 +670,6 @@ pub async fn get_all_workspaces(
 			workspace.super_admin_id as "super_admin_id: _",
 			workspace.active,
 			workspace.alert_emails as "alert_emails: _",
-			workspace.drone_username,
-			workspace.drone_token,
 			workspace.payment_type as "payment_type: _",
 			workspace.default_payment_method_id as "default_payment_method_id: _",
 			workspace.deployment_limit,

@@ -1,8 +1,8 @@
 use std::{collections::BTreeMap, fmt::Display, time::Duration};
 
 use api_models::{
-	models::workspace::ci2::github::{BuildStatus, BuildStepStatus},
-	utils::Uuid,
+	models::workspace::ci::github::{BuildStatus, BuildStepStatus},
+	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
 use eve_rs::AsError;
@@ -279,7 +279,7 @@ pub async fn process_request(
 						&build_step.id.build_id.repo_id,
 						build_step.id.build_id.build_num,
 						build_step.id.step_id,
-						&Utc::now(),
+						&DateTime::from(Utc::now()),
 					)
 					.await?;
 
@@ -320,7 +320,7 @@ pub async fn process_request(
 							&build_step.id.build_id.repo_id,
 							build_step.id.build_id.build_num,
 							build_step.id.step_id,
-							&Utc::now(),
+							&DateTime::from(Utc::now()),
 						)
 						.await?;
 					}
@@ -350,7 +350,7 @@ pub async fn process_request(
 							&build_step.id.build_id.repo_id,
 							build_step.id.build_id.build_num,
 							build_step.id.step_id,
-							&Utc::now(),
+							&DateTime::from(Utc::now()),
 						)
 						.await?;
 					}
@@ -393,7 +393,7 @@ pub async fn process_request(
 							&build_step.id.build_id.repo_id,
 							build_step.id.build_id.build_num,
 							build_step.id.step_id,
-							&Utc::now(),
+							&DateTime::from(Utc::now()),
 						)
 						.await?;
 						db::update_build_step_finished_time(
@@ -401,7 +401,7 @@ pub async fn process_request(
 							&build_step.id.build_id.repo_id,
 							build_step.id.build_id.build_num,
 							build_step.id.step_id,
-							&Utc::now(),
+							&DateTime::from(Utc::now()),
 						)
 						.await?;
 					}
@@ -420,7 +420,7 @@ pub async fn process_request(
 							&build_step.id.build_id.repo_id,
 							build_step.id.build_id.build_num,
 							build_step.id.step_id,
-							&Utc::now(),
+							&DateTime::from(Utc::now()),
 						)
 						.await?;
 						db::update_build_step_finished_time(
@@ -428,7 +428,7 @@ pub async fn process_request(
 							&build_step.id.build_id.repo_id,
 							build_step.id.build_id.build_num,
 							build_step.id.step_id,
-							&Utc::now(),
+							&DateTime::from(Utc::now()),
 						)
 						.await?;
 					}
@@ -458,7 +458,7 @@ pub async fn process_request(
 							&build_step.id.build_id.repo_id,
 							build_step.id.build_id.build_num,
 							build_step.id.step_id,
-							&Utc::now(),
+							&DateTime::from(Utc::now()),
 						)
 						.await?;
 						service::queue_create_ci_build_step(
@@ -498,7 +498,7 @@ pub async fn process_request(
 				&mut *connection,
 				&build_id.repo_id,
 				build_id.build_num,
-				&Utc::now(),
+				&DateTime::from(Utc::now()),
 			)
 			.await?;
 		}
@@ -542,7 +542,7 @@ pub async fn process_request(
 						&mut *connection,
 						&build_id.repo_id,
 						build_id.build_num,
-						&Utc::now(),
+						&DateTime::from(Utc::now()),
 					)
 					.await?;
 				}
@@ -572,7 +572,7 @@ pub async fn process_request(
 						&mut *connection,
 						&build_id.repo_id,
 						build_id.build_num,
-						&Utc::now(),
+						&DateTime::from(Utc::now()),
 					)
 					.await?;
 				}

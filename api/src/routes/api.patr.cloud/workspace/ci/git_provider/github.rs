@@ -1,6 +1,6 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{
-	models::workspace::ci2::github::{
+	models::workspace::ci::github::{
 		ActivateGithubRepoRequest,
 		ActivateGithubRepoResponse,
 		BuildLogs,
@@ -21,7 +21,7 @@ use api_models::{
 		RestartBuildResponse,
 		StopBuildResponse,
 	},
-	utils::Uuid,
+	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
@@ -1086,7 +1086,7 @@ async fn restart_build(
 		&previous_build.git_ref,
 		&previous_build.git_commit,
 		BuildStatus::Running,
-		&Utc::now(),
+		&DateTime::from(Utc::now()),
 	)
 	.await?;
 
