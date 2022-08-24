@@ -601,7 +601,8 @@ async fn list_static_sites_upload_history(
 	.map(|deploy_history| StaticSiteUploadHistory {
 		upload_id: deploy_history.id,
 		message: deploy_history.message,
-		uploaded_by: deploy_history.uploaded_by,
+		user_id: deploy_history.user_id,
+		username: deploy_history.username,
 		created: deploy_history.created,
 	})
 	.collect();

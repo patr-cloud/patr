@@ -17,7 +17,8 @@ pub struct StaticSite {
 pub struct StaticSiteUploadHistory {
 	pub id: Uuid,
 	pub message: String,
-	pub uploaded_by: Uuid,
+	pub user_id: Uuid,
+	pub username: String,
 	pub created: DateTime<Utc>,
 }
 
@@ -318,12 +319,17 @@ pub async fn get_static_site_upload_history(
 		StaticSiteUploadHistory,
 		r#"
 		SELECT
-			upload_id as "id: _",
-			message,
-			uploaded_by as "uploaded_by: _",
-			created as "created: _"
+			static_site_upload_history.upload_id as "id: _",
+			static_site_upload_history.message,
+			static_site_upload_history.uploaded_by as "user_id: _",
+			"user".username as "username: _",
+			static_site_upload_history.created as "created: _"
 		FROM
 			static_site_upload_history
+		LEFT JOIN
+			"user"
+		ON
+			"user".id = static_site_upload_history.uploaded_by
 		WHERE
 			static_site_id = $1;
 		"#,
@@ -341,14 +347,19 @@ pub async fn get_static_site_upload_history_by_upload_id(
 		StaticSiteUploadHistory,
 		r#"
 		SELECT
-			upload_id as "id: _",
-			message,
-			uploaded_by as "uploaded_by: _",
-			created as "created: _"
+			static_site_upload_history.upload_id as "id: _",
+			static_site_upload_history.message,
+			static_site_upload_history.uploaded_by as "user_id: _",
+			"user".username as "username: _",
+			static_site_upload_history.created as "created: _"
 		FROM
 			static_site_upload_history
+		LEFT JOIN
+			"user"
+		ON
+			"user".id = static_site_upload_history.uploaded_by
 		WHERE
-			upload_id = $1;
+			static_site_id = $1;
 		"#,
 		upload_id as _,
 	)
@@ -364,16 +375,21 @@ pub async fn get_latest_upload_for_static_site(
 		StaticSiteUploadHistory,
 		r#"
 		SELECT
-			upload_id as "id: _",
-			message,
-			uploaded_by as "uploaded_by: _",
-			created as "created: _"
+			static_site_upload_history.upload_id as "id: _",
+			static_site_upload_history.message,
+			static_site_upload_history.uploaded_by as "user_id: _",
+			"user".username as "username: _",
+			static_site_upload_history.created as "created: _"
 		FROM
 			static_site_upload_history
+		LEFT JOIN
+			"user"
+		ON
+			"user".id = static_site_upload_history.uploaded_by
 		WHERE
 			static_site_id = $1
 		ORDER BY
-			created DESC
+			static_site_upload_history.created DESC
 		LIMIT 1;
 		"#,
 		static_site_id as _,
