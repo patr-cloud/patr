@@ -6,8 +6,6 @@ pub mod logger;
 pub mod settings;
 pub mod validator;
 
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
 use chrono::Utc;
 pub use eve_context::*;
 pub use eve_middlewares::*;

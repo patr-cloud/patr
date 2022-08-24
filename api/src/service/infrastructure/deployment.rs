@@ -12,9 +12,9 @@ use api_models::{
 		Metric,
 		PatrRegistry,
 	},
-	utils::{constants, Base64String, DateTime, StringifiedU16, Uuid},
+	utils::{constants, Base64String, StringifiedU16, Uuid},
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use eve_rs::AsError;
 use k8s_openapi::api::core::v1::Event;
 use reqwest::Client;
@@ -126,7 +126,7 @@ pub async fn create_deployment_in_workspace(
 			.get(rbac::resource_types::DEPLOYMENT)
 			.unwrap(),
 		workspace_id,
-		created_time.timestamp_millis() as u64,
+		&created_time,
 	)
 	.await?;
 	log::trace!("request_id: {} - Created resource", request_id);
@@ -819,10 +819,11 @@ pub async fn get_deployment_metrics(
 			};
 
 			prom_metric.values.into_iter().for_each(|value| {
-				let metric_item = if let Some(item) =
-					pod_item.metrics.iter_mut().find(|item| {
-						item.timestamp == value.timestamp
-					}) {
+				let metric_item = if let Some(item) = pod_item
+					.metrics
+					.iter_mut()
+					.find(|item| item.timestamp == value.timestamp)
+				{
 					item
 				} else {
 					return;

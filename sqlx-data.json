@@ -110,7 +110,7 @@
           "Uuid",
           "Uuid",
           "Text",
-          "Int8"
+          "Timestamptz"
         ]
       }
     },
@@ -255,7 +255,7 @@
         {
           "name": "otp_expiry",
           "ordinal": 13,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "coupon_code",
@@ -441,7 +441,7 @@
         {
           "name": "created",
           "ordinal": 4,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         }
       ],
       "nullable": [
@@ -559,7 +559,7 @@
           "Varchar",
           "Uuid",
           "Uuid",
-          "Int8"
+          "Timestamptz"
         ]
       }
     },
@@ -583,7 +583,7 @@
         "Left": [
           "Uuid",
           "Text",
-          "Int8"
+          "Timestamptz"
         ]
       }
     },
@@ -692,7 +692,7 @@
         {
           "name": "dob",
           "ordinal": 5,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "bio",
@@ -707,7 +707,7 @@
         {
           "name": "created",
           "ordinal": 8,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "recovery_email_local",
@@ -802,7 +802,7 @@
         {
           "name": "dob",
           "ordinal": 5,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "bio",
@@ -817,7 +817,7 @@
         {
           "name": "created",
           "ordinal": 8,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "recovery_email_local",
@@ -1033,16 +1033,6 @@
     },
     "query": "CREATE INDEX business_email_idx_user_id ON business_email (user_id);"
   },
-  "14b453faa2e6aa5aaa8922ea8acef257a36d4e7a9c32812d489aaba1847405eb": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE docker_registry_repository_manifest( repository_id UUID NOT NULL CONSTRAINT docker_registry_repository_manifest_fk_repository_id REFERENCES docker_registry_repository(id), manifest_digest TEXT NOT NULL, size BIGINT NOT NULL CONSTRAINT docker_registry_repository_manifest_chk_size_unsigned CHECK(size >= 0), created BIGINT NOT NULL CONSTRAINT docker_registry_repository_manifest_chk_created_unsigned CHECK( created >= 0 ), CONSTRAINT docker_registry_repository_manifest_pk PRIMARY KEY( repository_id, manifest_digest ) );"
-  },
   "14da6d3904de6025049163bd747b1b346d7da4620259d5aab5f437f50b02a3b2": {
     "describe": {
       "columns": [],
@@ -1185,7 +1175,7 @@
         {
           "name": "verification_token_expiry",
           "ordinal": 4,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         }
       ],
       "nullable": [
@@ -1254,7 +1244,7 @@
         {
           "name": "last_updated",
           "ordinal": 1,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         }
       ],
       "nullable": [
@@ -1443,7 +1433,7 @@
         {
           "name": "token_expiry",
           "ordinal": 2,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         }
       ],
       "nullable": [
@@ -1469,6 +1459,16 @@
     },
     "query": "CREATE TYPE MANAGED_DATABASE_STATUS AS ENUM( 'creating', /* Started the creation of database */ 'running', /* Database is running successfully */ 'stopped', /* Database is stopped by the user */ 'errored', /* Database encountered errors */ 'deleted' /* Database is deled by the user */ );"
   },
+  "20218e0a712439ae1abc46a87157e91f0ec5055cb74545f47f5a7aeaecd3ff85": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE resource( id UUID CONSTRAINT resource_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, resource_type_id UUID NOT NULL CONSTRAINT resource_fk_resource_type_id REFERENCES resource_type(id), owner_id UUID NOT NULL CONSTRAINT resource_fk_owner_id REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE, created TIMESTAMPTZ NOT NULL, CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id) );"
+  },
   "2051f9929ae7b78d7594f0451130cc67700bb81d54c7df6191ddeb29eed577af": {
     "describe": {
       "columns": [],
@@ -1477,14 +1477,24 @@
         "Left": [
           "Uuid",
           "Text",
-          "Int8",
+          "Timestamptz",
           "Uuid",
-          "Int8",
-          "Int8"
+          "Timestamptz",
+          "Timestamptz"
         ]
       }
     },
     "query": "INSERT INTO user_login( login_id, refresh_token, token_expiry, user_id, last_login, last_activity ) VALUES ($1, $2, $3, $4, $5, $6);"
+  },
+  "20f736989c504fea89b7b628d5b86cc285e43ce798a9688f32c5977e6e6bedec": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE user_to_sign_up( username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY CONSTRAINT user_to_sign_up_chk_username_is_valid CHECK( /* Username is a-z, 0-9, _, cannot begin or end with a . or - */ username ~ '^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$' AND username NOT LIKE '%..%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%' ), account_type RESOURCE_OWNER_TYPE NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, /* Personal email address OR recovery email */ recovery_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_recovery_email_is_lower_case CHECK( recovery_email_local = LOWER(recovery_email_local) ), recovery_email_domain_id UUID CONSTRAINT user_to_sign_up_fk_recovery_email_domain_id REFERENCES personal_domain(id), recovery_phone_country_code CHAR(2) CONSTRAINT user_to_sign_up_fk_recovery_phone_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_to_sign_up_chk_recovery_phone_country_code_upper_case CHECK( recovery_phone_country_code = UPPER(recovery_phone_country_code) ), recovery_phone_number VARCHAR(15) CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK( LENGTH(recovery_phone_number) >= 7 AND LENGTH(recovery_phone_number) <= 15 AND CAST(recovery_phone_number AS BIGINT) > 0 ), /* Workspace email address */ business_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_business_email_local_is_lower_case CHECK( business_email_local = LOWER(business_email_local) ), business_domain_name TEXT CONSTRAINT user_to_sign_up_chk_business_domain_name_is_valid CHECK( business_domain_name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' ), business_domain_tld TEXT CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_length_valid CHECK( LENGTH(business_domain_tld) >= 2 AND LENGTH(business_domain_tld) <= 6 ) CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_valid CHECK( business_domain_tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) CONSTRAINT user_to_sign_up_fk_business_domain_tld REFERENCES domain_tld(tld), business_name VARCHAR(100) CONSTRAINT user_to_sign_up_chk_business_name_is_lower_case CHECK(business_name = LOWER(business_name)), otp_hash TEXT NOT NULL, otp_expiry TIMESTAMPTZ NOT NULL, coupon_code TEXT CONSTRAINT user_to_sign_up_fk_coupon_code REFERENCES coupon_code(code), CONSTRAINT user_to_sign_up_chk_max_domain_name_length CHECK( (LENGTH(business_domain_name) + LENGTH(business_domain_tld)) < 255 ), CONSTRAINT user_to_sign_up_chk_business_details_valid CHECK( ( account_type = 'personal' AND ( business_email_local IS NULL AND business_domain_name IS NULL AND business_domain_tld IS NULL AND business_name IS NULL ) ) OR ( account_type = 'business' AND ( business_email_local IS NOT NULL AND business_domain_name IS NOT NULL AND business_domain_tld IS NOT NULL AND business_name IS NOT NULL ) ) ), CONSTRAINT user_to_sign_up_chk_recovery_details CHECK( ( recovery_email_local IS NOT NULL AND recovery_email_domain_id IS NOT NULL AND recovery_phone_country_code IS NULL AND recovery_phone_number IS NULL ) OR ( recovery_email_local IS NULL AND recovery_email_domain_id IS NULL AND recovery_phone_country_code IS NOT NULL AND recovery_phone_number IS NOT NULL ) ) );"
   },
   "228e6bc3a8eb9c3113acda6e4fa32f347b99cf44fb9935e39461eaa8e8cef7e7": {
     "describe": {
@@ -1663,7 +1673,7 @@
         {
           "name": "token_expiry",
           "ordinal": 2,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "user_id: Uuid",
@@ -1673,12 +1683,12 @@
         {
           "name": "last_login",
           "ordinal": 4,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "last_activity",
           "ordinal": 5,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         }
       ],
       "nullable": [
@@ -1937,6 +1947,16 @@
     },
     "query": "CREATE TABLE static_site( id UUID CONSTRAINT static_site_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT static_site_chk_name_is_trimmed CHECK( name = TRIM(name) ), status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, current_live_upload UUID, CONSTRAINT static_site_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT static_site_uq_id_workspace_id UNIQUE(id, workspace_id) );"
   },
+  "30f10ebb8542d7757cb0129ed6c9d027044688493162356dd695c5eba6824717": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE user_unverified_phone_number( country_code CHAR(2) NOT NULL CONSTRAINT user_unverified_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_unverified_phone_number_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), phone_number VARCHAR(15) NOT NULL, user_id UUID NOT NULL CONSTRAINT user_unverified_phone_number_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry TIMESTAMPTZ NOT NULL CONSTRAINT user_unverified_phone_number_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_univerified_phone_number_pk PRIMARY KEY(country_code, phone_number), CONSTRAINT user_univerified_phone_number_uq_country_code_phone_number UNIQUE(user_id, country_code, phone_number) );"
+  },
   "31fa3365a18b7cdbb3532ea5559f8a6fafda313ec59e82c3d790c31ac45fb452": {
     "describe": {
       "columns": [],
@@ -1956,6 +1976,16 @@
       }
     },
     "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, startup_probe_port INTEGER, startup_probe_path VARCHAR(255), startup_probe_port_type EXPOSED_PORT_TYPE, liveness_probe_port INTEGER, liveness_probe_path VARCHAR(255), liveness_probe_port_type EXPOSED_PORT_TYPE, current_live_digest TEXT, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ), CONSTRAINT deployment_chk_image_tag_is_valid CHECK( image_tag != '' ), CONSTRAINT deployment_chk_startup_probe_is_valid CHECK( ( startup_probe_port IS NULL AND startup_probe_path IS NULL AND startup_probe_port_type IS NULL ) OR ( startup_probe_port IS NOT NULL AND startup_probe_path IS NOT NULL AND startup_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_liveness_probe_is_valid CHECK( ( liveness_probe_port IS NULL AND liveness_probe_path IS NULL AND liveness_probe_port_type IS NULL ) OR ( liveness_probe_port IS NOT NULL AND liveness_probe_path IS NOT NULL AND liveness_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_startup_probe_port_type_is_http CHECK( startup_probe_port_type = 'http' ), CONSTRAINT deployment_chk_liveness_probe_port_type_is_http CHECK( liveness_probe_port_type = 'http' ) );"
+  },
+  "323ff237ec894a004099b34bd25139f02d11f52146168fb896863deee8b20431": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE user_login( login_id UUID CONSTRAINT user_login_uq_login_id UNIQUE, refresh_token TEXT NOT NULL, token_expiry TIMESTAMPTZ NOT NULL, user_id UUID NOT NULL CONSTRAINT user_login_fk_user_id REFERENCES \"user\"(id), last_login TIMESTAMPTZ NOT NULL, last_activity TIMESTAMPTZ NOT NULL, CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id) );"
   },
   "3334e28110faf0232961070ce434f6a734654efe7efb754422a3a1d402410472": {
     "describe": {
@@ -2404,7 +2434,7 @@
         {
           "name": "verification_token_expiry",
           "ordinal": 4,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         }
       ],
       "nullable": [
@@ -2483,6 +2513,26 @@
       }
     },
     "query": "ALTER TABLE workspace_audit_log ADD CONSTRAINT workspace_audit_log_fk_action FOREIGN KEY(action) REFERENCES permission(id);"
+  },
+  "438908e0e0d2439d37d5368ab76a4378b78a241f906c8c9348cf5010e1e947cf": {
+    "describe": {
+      "columns": [
+        {
+          "name": "last_updated!",
+          "ordinal": 0,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT GREATEST( resource.created, ( SELECT COALESCE(created, TO_TIMESTAMP(0)) FROM docker_registry_repository_manifest WHERE repository_id = $1 ORDER BY created DESC LIMIT 1 ), ( SELECT COALESCE(last_updated, TO_TIMESTAMP(0)) FROM docker_registry_repository_tag WHERE repository_id = $1 ORDER BY created DESC LIMIT 1 ) ) as \"last_updated!\" FROM resource WHERE resource.id = $1;"
   },
   "43b108e4d477b96005f366911f84ab89cfb0b7c4f9046d0fb3c00e2f751d018c": {
     "describe": {
@@ -2624,7 +2674,7 @@
         {
           "name": "dob",
           "ordinal": 5,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "bio",
@@ -2639,7 +2689,7 @@
         {
           "name": "created",
           "ordinal": 8,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "recovery_email_local",
@@ -2751,7 +2801,7 @@
         {
           "name": "dob",
           "ordinal": 5,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "bio",
@@ -2766,7 +2816,7 @@
         {
           "name": "created",
           "ordinal": 8,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "recovery_email_local",
@@ -2935,50 +2985,6 @@
     },
     "query": "INSERT INTO deployment_deploy_history( deployment_id, image_digest, repository_id, created ) VALUES ($1, $2, $3, $4);"
   },
-  "4bd9a22a3f2ac8aab228c971872edde263118a43760697b2fd73b05a66630c35": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "workspace_id: Uuid",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: String",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "size!",
-          "ordinal": 3,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "last_updated!",
-          "ordinal": 4,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        null,
-        null,
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: Uuid\", workspace_id as \"workspace_id: Uuid\", name::TEXT as \"name!: String\", COALESCE(size, 0) as \"size!\", ( SELECT GREATEST( resource.created, ( SELECT COALESCE(created, 0) FROM docker_registry_repository_manifest WHERE repository_id = docker_registry_repository.id ORDER BY created DESC LIMIT 1 ), ( SELECT COALESCE(last_updated, 0) FROM docker_registry_repository_tag WHERE repository_id = docker_registry_repository.id ORDER BY created DESC LIMIT 1 ) ) FROM resource WHERE resource.id = docker_registry_repository.id ) as \"last_updated!\" FROM docker_registry_repository LEFT JOIN ( SELECT SUM(size) as size, repository_id FROM docker_registry_repository_manifest GROUP BY repository_id ) docker_registry_repository_manifest ON docker_registry_repository_manifest.repository_id = docker_registry_repository.id WHERE workspace_id = $1 AND name NOT LIKE 'patr-deleted:%';"
-  },
   "4c0d5a07f426d2d09eff3fa6ae2b90f0d8d49106c94357eaa4ce24d4b32bee9f": {
     "describe": {
       "columns": [
@@ -3029,16 +3035,6 @@
       }
     },
     "query": "UPDATE managed_database SET digitalocean_db_id = $1 WHERE id = $2;"
-  },
-  "4e0cdb9cdbfb4d2360aa8eff5c49dfa18da9969f601ae2532cc2c13588d2011c": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE user_unverified_personal_email( local VARCHAR(64) NOT NULL CONSTRAINT user_unverified_personal_email_chk_local_is_lower_case CHECK( local = LOWER(local) ), domain_id UUID NOT NULL CONSTRAINT user_unverified_personal_email_fk_domain_id REFERENCES personal_domain(id), user_id UUID NOT NULL CONSTRAINT user_unverified_personal_email_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry BIGINT NOT NULL CONSTRAINT user_unverified_personal_email_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_unverified_personal_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT user_unverified_personal_email_uq_user_id_local_domain_id UNIQUE(user_id, local, domain_id) );"
   },
   "4f1a513b45750aa514a8928122a22edd728e7ae6bb07301dd58885e7ac3da3e4": {
     "describe": {
@@ -3173,7 +3169,7 @@
           "Uuid",
           "Text",
           "Int8",
-          "Int8"
+          "Timestamptz"
         ]
       }
     },
@@ -3445,7 +3441,7 @@
         "Left": [
           "Varchar",
           "Varchar",
-          "Int8",
+          "Timestamptz",
           "Varchar",
           "Varchar",
           "Uuid"
@@ -3544,7 +3540,7 @@
         {
           "name": "created",
           "ordinal": 2,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         }
       ],
       "nullable": [
@@ -3713,7 +3709,7 @@
         {
           "name": "created",
           "ordinal": 4,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         }
       ],
       "nullable": [
@@ -3899,7 +3895,7 @@
         {
           "name": "dob",
           "ordinal": 5,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "bio",
@@ -3914,7 +3910,7 @@
         {
           "name": "created",
           "ordinal": 8,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "recovery_email_local",
@@ -4151,7 +4147,7 @@
           "Varchar",
           "Uuid",
           "Text",
-          "Int8"
+          "Timestamptz"
         ]
       }
     },
@@ -4511,7 +4507,7 @@
       "parameters": {
         "Left": [
           "Text",
-          "Int8",
+          "Timestamptz",
           "Text"
         ]
       }
@@ -4950,7 +4946,7 @@
         {
           "name": "otp_expiry",
           "ordinal": 13,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "coupon_code",
@@ -5195,16 +5191,6 @@
     },
     "query": "UPDATE coupon_code SET uses_remaining = $1 WHERE code = $2;"
   },
-  "7ae0df885a9934a03c971b5bd5986c84f721d3e257285b0886fd5b6dc9e17a25": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE \"user\"( id UUID CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uq_username UNIQUE CONSTRAINT user_chk_username_is_valid CHECK( /* Username is a-z, 0-9, _, cannot begin or end with a . or - */ username ~ '^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$' AND username NOT LIKE '%..%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%' ), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT DEFAULT NULL CONSTRAINT user_chk_dob_unsigned CHECK(dob >= 0), bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT NOT NULL CONSTRAINT user_chk_created_unsigned CHECK(created >= 0), /* Recovery options */ recovery_email_local VARCHAR(64) CONSTRAINT user_chk_recovery_email_is_lower_case CHECK( recovery_email_local = LOWER(recovery_email_local) ), recovery_email_domain_id UUID, recovery_phone_country_code CHAR(2) CONSTRAINT user_chk_recovery_phone_country_code_is_upper_case CHECK( recovery_phone_country_code = UPPER(recovery_phone_country_code) ), recovery_phone_number VARCHAR(15), workspace_limit INTEGER NOT NULL, sign_up_coupon TEXT CONSTRAINT user_fk_sign_up_coupon REFERENCES coupon_code(code), CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id UNIQUE(recovery_email_local, recovery_email_domain_id), CONSTRAINT user_uq_recovery_phone_country_code_recovery_phone_number UNIQUE(recovery_phone_country_code, recovery_phone_number), CONSTRAINT user_chk_rcvry_eml_or_rcvry_phn_present CHECK( ( recovery_email_local IS NOT NULL AND recovery_email_domain_id IS NOT NULL ) OR ( recovery_phone_country_code IS NOT NULL AND recovery_phone_number IS NOT NULL ) ) );"
-  },
   "7b54510289828e668085a233f5c5fe0d6f5f5c1f406073f4cbe5e96cb181f0b3": {
     "describe": {
       "columns": [
@@ -5274,7 +5260,7 @@
         {
           "name": "created",
           "ordinal": 2,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         }
       ],
       "nullable": [
@@ -5443,16 +5429,6 @@
       }
     },
     "query": "CREATE INDEX role_permissions_resource_type_idx_role_id_resource_type_id ON role_permissions_resource_type (role_id, resource_type_id);"
-  },
-  "800be378aa534e253f75a64c956799e120102f6b9ae464053f8a38d493f46877": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE user_unverified_phone_number( country_code CHAR(2) NOT NULL CONSTRAINT user_unverified_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_unverified_phone_number_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), phone_number VARCHAR(15) NOT NULL, user_id UUID NOT NULL CONSTRAINT user_unverified_phone_number_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry BIGINT NOT NULL CONSTRAINT user_unverified_phone_number_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_univerified_phone_number_pk PRIMARY KEY(country_code, phone_number), CONSTRAINT user_univerified_phone_number_uq_country_code_phone_number UNIQUE(user_id, country_code, phone_number) );"
   },
   "80fa0cff43932600e815f32385f983ff6c643e04f261fd5df7ff43b8ca98a9cf": {
     "describe": {
@@ -5660,6 +5636,50 @@
       }
     },
     "query": "SELECT id FROM transaction WHERE id = $1;"
+  },
+  "83cfd3714caae2a73b7b6742aa9b6599f391ef8c7fa0caba9b7bc4fb02809a63": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "workspace_id: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: String",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "size!",
+          "ordinal": 3,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "last_updated!",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        null,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: Uuid\", workspace_id as \"workspace_id: Uuid\", name::TEXT as \"name!: String\", COALESCE(size, 0) as \"size!\", ( SELECT GREATEST( resource.created, ( SELECT COALESCE(created, TO_TIMESTAMP(0)) FROM docker_registry_repository_manifest WHERE repository_id = docker_registry_repository.id ORDER BY created DESC LIMIT 1 ), ( SELECT COALESCE(last_updated, TO_TIMESTAMP(0)) FROM docker_registry_repository_tag WHERE repository_id = docker_registry_repository.id ORDER BY created DESC LIMIT 1 ) ) FROM resource WHERE resource.id = docker_registry_repository.id ) as \"last_updated!\" FROM docker_registry_repository LEFT JOIN ( SELECT SUM(size) as size, repository_id FROM docker_registry_repository_manifest GROUP BY repository_id ) docker_registry_repository_manifest ON docker_registry_repository_manifest.repository_id = docker_registry_repository.id WHERE workspace_id = $1 AND name NOT LIKE 'patr-deleted:%';"
   },
   "83db18e7233378a31ef04c463d2a7bd04f5f9e4cf4750385044a1c8e724e7df1": {
     "describe": {
@@ -5917,7 +5937,7 @@
           "Uuid",
           "Text",
           "Text",
-          "Int8"
+          "Timestamptz"
         ]
       }
     },
@@ -5956,7 +5976,7 @@
           "Text",
           "Varchar",
           "Text",
-          "Int8",
+          "Timestamptz",
           "Text"
         ]
       }
@@ -6220,6 +6240,16 @@
     },
     "query": "CREATE TABLE static_site_upload_history( upload_id UUID CONSTRAINT static_site_upload_history_pk PRIMARY KEY, static_site_id UUID NOT NULL CONSTRAINT static_site_upload_history_fk_static_site_id REFERENCES static_site(id), message TEXT NOT NULL, uploaded_by UUID NOT NULL CONSTRAINT static_site_upload_history_fk_uploaded_by REFERENCES \"user\"(id), created TIMESTAMPTZ NOT NULL, CONSTRAINT static_site_upload_history_uq_upload_id_static_site_id UNIQUE(upload_id, static_site_id) );"
   },
+  "8dd9ad32929ef5443c4e6f9f66062e31b9efc2a2bdd9d525c9d557b7a69c1187": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE password_reset_request( user_id UUID CONSTRAINT password_reset_request_pk PRIMARY KEY CONSTRAINT password_reset_request_fk_user_id REFERENCES \"user\"(id), token TEXT NOT NULL, token_expiry TIMESTAMPTZ NOT NULL );"
+  },
   "8e7433b1af4c66de9bc7eba31cb2639190f235a410264641ba86b0cd6890c736": {
     "describe": {
       "columns": [],
@@ -6255,16 +6285,6 @@
       }
     },
     "query": "INSERT INTO deployment_config_mounts( path, file, deployment_id ) VALUES ($1, $2, $3);"
-  },
-  "8f40c85c9a884c7baefc91aace67efcf5d1966aa9589f1b2d408e3f27cadd6e9": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE resource( id UUID CONSTRAINT resource_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, resource_type_id UUID NOT NULL CONSTRAINT resource_fk_resource_type_id REFERENCES resource_type(id), owner_id UUID NOT NULL CONSTRAINT resource_fk_owner_id REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE, created BIGINT NOT NULL CONSTRAINT resource_created_chk_unsigned CHECK(created >= 0), CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id) );"
   },
   "8fb06ab213ca20a26e9c0fd8e49d22cb63e385f4737d2771d9b4ab01b909704b": {
     "describe": {
@@ -6491,7 +6511,7 @@
         {
           "name": "otp_expiry",
           "ordinal": 13,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "coupon_code",
@@ -6668,7 +6688,7 @@
         {
           "name": "token_expiry",
           "ordinal": 2,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "user_id",
@@ -6678,12 +6698,12 @@
         {
           "name": "last_login",
           "ordinal": 4,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "last_activity",
           "ordinal": 5,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         }
       ],
       "nullable": [
@@ -7321,6 +7341,16 @@
     },
     "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE resource_id = $1;"
   },
+  "aa6078c50de2eee25c3505b5f60602b4ca43f0de5b9b80dfb1e433706ac8c9bf": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE \"user\"( id UUID CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uq_username UNIQUE CONSTRAINT user_chk_username_is_valid CHECK( /* Username is a-z, 0-9, _, cannot begin or end with a . or - */ username ~ '^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$' AND username NOT LIKE '%..%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%' ), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob TIMESTAMPTZ DEFAULT NULL, bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created TIMESTAMPTZ NOT NULL, /* Recovery options */ recovery_email_local VARCHAR(64) CONSTRAINT user_chk_recovery_email_is_lower_case CHECK( recovery_email_local = LOWER(recovery_email_local) ), recovery_email_domain_id UUID, recovery_phone_country_code CHAR(2) CONSTRAINT user_chk_recovery_phone_country_code_is_upper_case CHECK( recovery_phone_country_code = UPPER(recovery_phone_country_code) ), recovery_phone_number VARCHAR(15), workspace_limit INTEGER NOT NULL, sign_up_coupon TEXT CONSTRAINT user_fk_sign_up_coupon REFERENCES coupon_code(code), CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id UNIQUE(recovery_email_local, recovery_email_domain_id), CONSTRAINT user_uq_recovery_phone_country_code_recovery_phone_number UNIQUE(recovery_phone_country_code, recovery_phone_number), CONSTRAINT user_chk_rcvry_eml_or_rcvry_phn_present CHECK( ( recovery_email_local IS NOT NULL AND recovery_email_domain_id IS NOT NULL ) OR ( recovery_phone_country_code IS NOT NULL AND recovery_phone_number IS NOT NULL ) ) );"
+  },
   "aa89f69db4362344f8d29df3d18bc3da669f3ddf77a68cdeefd1aad1ba8b3e85": {
     "describe": {
       "columns": [
@@ -7440,7 +7470,7 @@
         {
           "name": "otp_expiry",
           "ordinal": 13,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "coupon_code",
@@ -7964,7 +7994,7 @@
         {
           "name": "dob",
           "ordinal": 5,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "bio",
@@ -7979,7 +8009,7 @@
         {
           "name": "created",
           "ordinal": 8,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "recovery_email_local",
@@ -8081,8 +8111,8 @@
       "nullable": [],
       "parameters": {
         "Left": [
-          "Int8",
-          "Int8",
+          "Timestamptz",
+          "Timestamptz",
           "Uuid"
         ]
       }
@@ -8101,16 +8131,6 @@
       }
     },
     "query": "UPDATE workspace SET address_id = $1 WHERE id = $2;"
-  },
-  "b41738c7605efcd21d9375ecfc3e12a26f9bda66fbd01138f10f49565231b7f0": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE user_to_sign_up( username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY CONSTRAINT user_to_sign_up_chk_username_is_valid CHECK( /* Username is a-z, 0-9, _, cannot begin or end with a . or - */ username ~ '^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$' AND username NOT LIKE '%..%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%' ), account_type RESOURCE_OWNER_TYPE NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, /* Personal email address OR recovery email */ recovery_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_recovery_email_is_lower_case CHECK( recovery_email_local = LOWER(recovery_email_local) ), recovery_email_domain_id UUID CONSTRAINT user_to_sign_up_fk_recovery_email_domain_id REFERENCES personal_domain(id), recovery_phone_country_code CHAR(2) CONSTRAINT user_to_sign_up_fk_recovery_phone_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_to_sign_up_chk_recovery_phone_country_code_upper_case CHECK( recovery_phone_country_code = UPPER(recovery_phone_country_code) ), recovery_phone_number VARCHAR(15) CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK( LENGTH(recovery_phone_number) >= 7 AND LENGTH(recovery_phone_number) <= 15 AND CAST(recovery_phone_number AS BIGINT) > 0 ), /* Workspace email address */ business_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_business_email_local_is_lower_case CHECK( business_email_local = LOWER(business_email_local) ), business_domain_name TEXT CONSTRAINT user_to_sign_up_chk_business_domain_name_is_valid CHECK( business_domain_name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' ), business_domain_tld TEXT CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_length_valid CHECK( LENGTH(business_domain_tld) >= 2 AND LENGTH(business_domain_tld) <= 6 ) CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_valid CHECK( business_domain_tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) CONSTRAINT user_to_sign_up_fk_business_domain_tld REFERENCES domain_tld(tld), business_name VARCHAR(100) CONSTRAINT user_to_sign_up_chk_business_name_is_lower_case CHECK(business_name = LOWER(business_name)), otp_hash TEXT NOT NULL, otp_expiry BIGINT NOT NULL CONSTRAINT user_to_sign_up_chk_expiry_unsigned CHECK(otp_expiry >= 0), coupon_code TEXT CONSTRAINT user_to_sign_up_fk_coupon_code REFERENCES coupon_code(code), CONSTRAINT user_to_sign_up_chk_max_domain_name_length CHECK( (LENGTH(business_domain_name) + LENGTH(business_domain_tld)) < 255 ), CONSTRAINT user_to_sign_up_chk_business_details_valid CHECK( ( account_type = 'personal' AND ( business_email_local IS NULL AND business_domain_name IS NULL AND business_domain_tld IS NULL AND business_name IS NULL ) ) OR ( account_type = 'business' AND ( business_email_local IS NOT NULL AND business_domain_name IS NOT NULL AND business_domain_tld IS NOT NULL AND business_name IS NOT NULL ) ) ), CONSTRAINT user_to_sign_up_chk_recovery_details CHECK( ( recovery_email_local IS NOT NULL AND recovery_email_domain_id IS NOT NULL AND recovery_phone_country_code IS NULL AND recovery_phone_number IS NULL ) OR ( recovery_email_local IS NULL AND recovery_email_domain_id IS NULL AND recovery_phone_country_code IS NOT NULL AND recovery_phone_number IS NOT NULL ) ) );"
   },
   "b4684d68753faf8ee81f7b2895f7921daed064064015ed6ef01b70d2d7b5c1f9": {
     "describe": {
@@ -8220,7 +8240,7 @@
         {
           "name": "token_expiry",
           "ordinal": 2,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "user_id: Uuid",
@@ -8230,12 +8250,12 @@
         {
           "name": "last_login",
           "ordinal": 4,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "last_activity",
           "ordinal": 5,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         }
       ],
       "nullable": [
@@ -8271,7 +8291,7 @@
         {
           "name": "token_expiry",
           "ordinal": 2,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "user_id: Uuid",
@@ -8281,12 +8301,12 @@
         {
           "name": "last_login",
           "ordinal": 4,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "last_activity",
           "ordinal": 5,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         }
       ],
       "nullable": [
@@ -8540,7 +8560,7 @@
         {
           "name": "verification_token_expiry",
           "ordinal": 4,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         }
       ],
       "nullable": [
@@ -8688,7 +8708,7 @@
           "Bpchar",
           "Varchar",
           "Text",
-          "Int8",
+          "Timestamptz",
           "Text"
         ]
       }
@@ -8797,16 +8817,6 @@
       }
     },
     "query": "ALTER TABLE deployment ADD CONSTRAINT deployment_fk_current_live_digest FOREIGN KEY(id, current_live_digest) REFERENCES deployment_deploy_history(deployment_id, image_digest);"
-  },
-  "bfe39187b7925d9987415d6f1430adb8ea31e32dbbf15528aaebf81923e1d1fe": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE user_login( login_id UUID CONSTRAINT user_login_uq_login_id UNIQUE, refresh_token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT user_login_chk_token_expiry_unsigned CHECK(token_expiry >= 0), user_id UUID NOT NULL CONSTRAINT user_login_fk_user_id REFERENCES \"user\"(id), last_login BIGINT NOT NULL CONSTRAINT user_login_chk_last_login_unsigned CHECK(last_login >= 0), last_activity BIGINT NOT NULL CONSTRAINT user_login_chk_last_activity_unsigned CHECK(last_activity >= 0), CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id) );"
   },
   "bfe6671a7279db81d2d3ab0cad2af992cb0657fea991be71ceba2de25e6f8b78": {
     "describe": {
@@ -9205,7 +9215,7 @@
         {
           "name": "last_updated",
           "ordinal": 1,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "manifest_digest",
@@ -9226,6 +9236,16 @@
       }
     },
     "query": "SELECT tag, last_updated, manifest_digest FROM docker_registry_repository_tag WHERE repository_id = $1 AND tag = $2;"
+  },
+  "d3d08674a34b872f9407cd28eeda8b305024f133dd62536f51dc7618e35738b6": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE docker_registry_repository_manifest( repository_id UUID NOT NULL CONSTRAINT docker_registry_repository_manifest_fk_repository_id REFERENCES docker_registry_repository(id), manifest_digest TEXT NOT NULL, size BIGINT NOT NULL CONSTRAINT docker_registry_repository_manifest_chk_size_unsigned CHECK(size >= 0), created TIMESTAMPTZ NOT NULL, CONSTRAINT docker_registry_repository_manifest_pk PRIMARY KEY( repository_id, manifest_digest ) );"
   },
   "d513b0c8950ab92cb26b919d4611b976d25c5a4c7ff14db6bee61cf348d58704": {
     "describe": {
@@ -9424,6 +9444,16 @@
       }
     },
     "query": "SELECT COUNT(*) as \"count\" FROM managed_url WHERE domain_id = $1 AND sub_domain NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
+  },
+  "d7e60cbbd6b83c7176f0e04faf6540b7bc9952273aa83cf7783626886748671c": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE user_unverified_personal_email( local VARCHAR(64) NOT NULL CONSTRAINT user_unverified_personal_email_chk_local_is_lower_case CHECK( local = LOWER(local) ), domain_id UUID NOT NULL CONSTRAINT user_unverified_personal_email_fk_domain_id REFERENCES personal_domain(id), user_id UUID NOT NULL CONSTRAINT user_unverified_personal_email_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry TIMESTAMPTZ NOT NULL, CONSTRAINT user_unverified_personal_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT user_unverified_personal_email_uq_user_id_local_domain_id UNIQUE(user_id, local, domain_id) );"
   },
   "d855be524f5d626e1d40358b55e487b367473da4728a18242664950c5c44b244": {
     "describe": {
@@ -9995,7 +10025,7 @@
           "Text",
           "Varchar",
           "Varchar",
-          "Int8",
+          "Timestamptz",
           "Varchar",
           "Uuid",
           "Bpchar",
@@ -10051,7 +10081,7 @@
         {
           "name": "last_updated",
           "ordinal": 2,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         }
       ],
       "nullable": [
@@ -10274,19 +10304,6 @@
     },
     "query": "DELETE FROM domain WHERE id = $1;"
   },
-  "e35ed129acf987dfdfc82522eca202c00f16058bf9b0e385f50a6028f38a6adb": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE user_login SET token_expiry = 0 WHERE login_id = $1 AND user_id = $2;"
-  },
   "e405e549ca372c70c43c95f50900a83ea1786bf780daf93775f2aca73ce73823": {
     "describe": {
       "columns": [],
@@ -10390,6 +10407,19 @@
       }
     },
     "query": "UPDATE managed_database_payment_history SET deletion_time = $2 WHERE database_id = $1 AND deletion_time IS NULL;"
+  },
+  "e4c25ca4a2b5c68cdf24f9c447008e7a0a21c1a6b86dacc1001abd82041322f3": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE user_login SET token_expiry = TO_TIMESTAMP(0) WHERE login_id = $1 AND user_id = $2;"
   },
   "e5d15755b015b3c4f87308a59c8c625ad75a29974645d8e24875d8daa1919901": {
     "describe": {
@@ -10499,26 +10529,6 @@
     },
     "query": "INSERT INTO deployment( id, name, registry, repository_id, image_name, image_tag, status, workspace_id, region, min_horizontal_scale, max_horizontal_scale, machine_type, deploy_on_push, startup_probe_port, startup_probe_path, startup_probe_port_type, liveness_probe_port, liveness_probe_path, liveness_probe_port_type ) VALUES ( $1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16 );"
   },
-  "e9d0764903c5d929f560f8069e0e610181f2724a5642fe65ba3a94dcba724460": {
-    "describe": {
-      "columns": [
-        {
-          "name": "last_updated!",
-          "ordinal": 0,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT GREATEST( resource.created, ( SELECT COALESCE(created, 0) FROM docker_registry_repository_manifest WHERE repository_id = $1 ORDER BY created DESC LIMIT 1 ), ( SELECT COALESCE(last_updated, 0) FROM docker_registry_repository_tag WHERE repository_id = $1 ORDER BY created DESC LIMIT 1 ) ) as \"last_updated!\" FROM resource WHERE resource.id = $1;"
-  },
   "eae55af4308b23ddda0f1baddb26ab64d833bd6135785f365fbc23b89e29ef2c": {
     "describe": {
       "columns": [
@@ -10616,16 +10626,6 @@
     },
     "query": "ALTER TABLE workspace ADD CONSTRAINT workspace_fk_address_id FOREIGN KEY(address_id) REFERENCES address(id);"
   },
-  "ed03b82d7f2dae1014156e82999b9804b120f50fbd13d06969daca39c47e3c88": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE password_reset_request( user_id UUID CONSTRAINT password_reset_request_pk PRIMARY KEY CONSTRAINT password_reset_request_fk_user_id REFERENCES \"user\"(id), token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT password_reset_request_token_expiry_chk_unsigned CHECK(token_expiry >= 0) );"
-  },
   "ed964d5972036bd49e17512f2588da16a94a81f63db84cdd4a5713b9adeca9be": {
     "describe": {
       "columns": [],
@@ -10705,7 +10705,7 @@
         {
           "name": "verification_token_expiry",
           "ordinal": 4,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         }
       ],
       "nullable": [
@@ -10770,7 +10770,7 @@
         {
           "name": "token_expiry",
           "ordinal": 2,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "user_id: Uuid",
@@ -10780,12 +10780,12 @@
         {
           "name": "last_login",
           "ordinal": 4,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "last_activity",
           "ordinal": 5,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         }
       ],
       "nullable": [
@@ -11316,7 +11316,7 @@
         {
           "name": "otp_expiry",
           "ordinal": 13,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "coupon_code",
@@ -11603,7 +11603,7 @@
         {
           "name": "dob",
           "ordinal": 5,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "bio",
@@ -11618,7 +11618,7 @@
         {
           "name": "created",
           "ordinal": 8,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "recovery_email_local",
@@ -11717,7 +11717,7 @@
         {
           "name": "dob",
           "ordinal": 5,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "bio",
@@ -11732,7 +11732,7 @@
         {
           "name": "created",
           "ordinal": 8,
-          "type_info": "Int8"
+          "type_info": "Timestamptz"
         },
         {
           "name": "recovery_email_local",

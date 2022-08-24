@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use api_models::utils::Uuid;
+use api_models::utils::{Uuid, DateTime};
+use chrono::Utc;
 use jsonwebtoken::{
 	errors::Error,
 	Algorithm,
@@ -75,5 +76,5 @@ pub struct ExposedUserData {
 	pub username: String,
 	pub first_name: String,
 	pub last_name: String,
-	pub created: u64,
+	pub created: DateTime<Utc>,
 }

@@ -12,7 +12,7 @@ use api_models::{
 		Workspace,
 		WorkspaceAuditLog,
 	},
-	utils::Uuid,
+	utils::{Uuid, DateTime},
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
@@ -647,7 +647,7 @@ async fn get_workspace_audit_log(
 	.into_iter()
 	.map(|log| WorkspaceAuditLog {
 		id: log.id,
-		date: log.date,
+		date: DateTime(log.date),
 		ip_address: log.ip_address,
 		workspace_id: log.workspace_id,
 		user_id: log.user_id,
@@ -707,7 +707,7 @@ async fn get_resource_audit_log(
 	.into_iter()
 	.map(|log| WorkspaceAuditLog {
 		id: log.id,
-		date: log.date,
+		date: DateTime(log.date),
 		ip_address: log.ip_address,
 		workspace_id: log.workspace_id,
 		user_id: log.user_id,

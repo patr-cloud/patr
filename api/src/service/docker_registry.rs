@@ -17,7 +17,7 @@ use crate::{
 		RegistryTokenAccess,
 		V1Compatibility,
 	},
-	utils::{get_current_time, settings::Settings, Error},
+	utils::{settings::Settings, Error},
 	Database,
 };
 
@@ -90,7 +90,7 @@ pub async fn delete_docker_repository_image(
 			.await?
 			.unwrap();
 
-	let iat = get_current_time().as_secs();
+	let iat = Utc::now().timestamp() as u64;
 
 	log::trace!("request_id: {} - Deleting docker repository image with digest: {} from the registry", request_id, digest);
 	let response_code = reqwest::Client::new()
@@ -212,7 +212,7 @@ pub async fn delete_docker_repository(
 			.await?
 			.unwrap();
 
-	let iat = get_current_time().as_secs();
+	let iat = Utc::now().timestamp() as u64;
 
 	log::trace!("request_id: {} - Deleting docker images of the repositories from the registry", request_id);
 	for image in images {
@@ -282,7 +282,7 @@ pub async fn get_exposed_port_for_docker_image(
 			.await?
 			.unwrap();
 
-	let iat = get_current_time().as_secs();
+	let iat = Utc::now().timestamp() as u64;
 
 	let exposed_ports = reqwest::Client::new()
 		.get(format!(

@@ -1372,8 +1372,8 @@ async fn get_logs(
 	let logs = service::get_deployment_container_logs(
 		context.get_database_connection(),
 		&deployment_id,
-		&Utc.timestamp_millis(start_time.as_u64()).into(),
-		Utc::now(),
+		&Utc.timestamp_millis(start_time.as_u64() as i64),
+		&Utc::now(),
 		&config,
 		&request_id,
 	)
@@ -1855,7 +1855,7 @@ async fn get_build_logs(
 		timestamp: build_log
 			.metadata
 			.creation_timestamp
-			.map(|timestamp| timestamp.0.into()),
+			.map(|timestamp| timestamp.0.timestamp_millis() as u64),
 		reason: build_log.reason,
 		message: build_log.message,
 	})

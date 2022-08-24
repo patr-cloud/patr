@@ -1,4 +1,5 @@
 use api_models::{models::auth::*, utils::Uuid, ErrorType};
+use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, HttpMethod, NextHandler};
 use serde_json::json;
 
@@ -1070,7 +1071,7 @@ async fn docker_registry_login(
 		)?;
 	}
 
-	let iat = get_current_time().as_secs();
+	let iat = Utc::now().timestamp() as u64;
 
 	let token = RegistryToken::new(
 		config.docker_registry.issuer.clone(),
@@ -1458,7 +1459,7 @@ async fn docker_registry_authenticate(
 		}
 	}
 
-	let iat = get_current_time().as_secs();
+	let iat = Utc::now().timestamp() as u64;
 
 	let token = RegistryToken::new(
 		config.docker_registry.issuer.clone(),

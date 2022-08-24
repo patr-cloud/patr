@@ -19,7 +19,7 @@ use crate::{
 		Db,
 	},
 	service,
-	utils::{get_current_time, settings::Settings, Error},
+	utils::{settings::Settings, Error, get_current_time_millis},
 	Database,
 };
 
@@ -42,7 +42,7 @@ pub(super) async fn create_managed_database_cluster(
 	);
 	let client = Client::new();
 
-	let do_db_name = format!("database-{}", get_current_time().as_millis());
+	let do_db_name = format!("database-{}", get_current_time_millis());
 
 	let db_engine = match engine {
 		ManagedDatabaseEngine::Postgres => "pg",

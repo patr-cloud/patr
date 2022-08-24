@@ -377,7 +377,7 @@ pub async fn get_list_of_tags_for_docker_repository(
 		(
 			DockerRepositoryTagInfo {
 				tag: row.tag,
-				last_updated: row.last_updated,
+				last_updated: row.last_updated.into(),
 			},
 			row.manifest_digest,
 		)
@@ -411,7 +411,7 @@ pub async fn get_tags_for_docker_repository_image(
 	.into_iter()
 	.map(|row| DockerRepositoryTagInfo {
 		tag: row.tag,
-		last_updated: row.last_updated,
+		last_updated: row.last_updated.into(),
 	})
 	.collect();
 
@@ -488,7 +488,7 @@ pub async fn get_docker_repository_image_by_digest(
 		row.map(|row| DockerRepositoryImageInfo {
 			digest: row.manifest_digest,
 			size: row.size as u64,
-			created: row.created,
+			created: row.created.into(),
 		})
 	})
 }
@@ -520,7 +520,7 @@ pub async fn get_docker_repository_tag_details(
 			(
 				DockerRepositoryTagInfo {
 					tag: row.tag,
-					last_updated: row.last_updated,
+					last_updated: row.last_updated.into(),
 				},
 				row.manifest_digest,
 			)
@@ -551,7 +551,7 @@ pub async fn get_list_of_digests_for_docker_repository(
 	.map(|row| DockerRepositoryImageInfo {
 		digest: row.manifest_digest,
 		size: row.size as u64,
-		created: row.created,
+		created: row.created.into(),
 	})
 	.collect();
 

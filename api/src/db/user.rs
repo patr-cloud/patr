@@ -1776,7 +1776,7 @@ pub async fn update_user_to_sign_up_with_otp(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	username: &str,
 	verification_token: &str,
-	token_expiry: DateTime<Utc>,
+	token_expiry: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1840,7 +1840,7 @@ pub async fn add_phone_number_to_be_verified_for_user(
 	phone_number: &str,
 	user_id: &Uuid,
 	verification_token: &str,
-	token_expiry: DateTime<Utc>,
+	token_expiry: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -2152,7 +2152,7 @@ pub async fn create_user(
 	username: &str,
 	password: &str,
 	(first_name, last_name): (&str, &str),
-	created: DateTime<Utc>,
+	created: &DateTime<Utc>,
 
 	recovery_email_local: Option<&str>,
 	recovery_email_domain_id: Option<&Uuid>,
@@ -2490,7 +2490,7 @@ pub async fn update_user_data(
 	user_id: &Uuid,
 	first_name: Option<&str>,
 	last_name: Option<&str>,
-	dob: Option<DateTime<Utc>>,
+	dob: Option<&DateTime<Utc>>,
 	bio: Option<&str>,
 	location: Option<&str>,
 ) -> Result<(), sqlx::Error> {
@@ -2598,7 +2598,7 @@ pub async fn add_password_reset_request(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 	token_hash: &str,
-	token_expiry: DateTime<Utc>,
+	token_expiry: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"

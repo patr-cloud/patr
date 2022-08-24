@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
 use api_models::utils::Uuid;
-use chrono::{DateTime, Utc};
 
 use super::{Permission, Role};
 use crate::{db::User, query, query_as, Database};

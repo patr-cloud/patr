@@ -36,7 +36,7 @@ use api_models::{
 		},
 		workspace::Workspace,
 	},
-	utils::Uuid,
+	utils::{DateTime, Uuid},
 };
 use eve_rs::{App as EveApp, AsError, NextHandler};
 
@@ -330,8 +330,8 @@ async fn get_user_info(
 			bio,
 			location,
 		},
-		birthday: dob,
-		created,
+		birthday: dob.map(DateTime),
+		created: DateTime(created),
 		recovery_email,
 		secondary_emails,
 		recovery_phone_number,
@@ -461,7 +461,7 @@ async fn update_user_info(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let dob_string = birthday.map(|value| value.to_string());
+	let dob_string = birthday.as_ref().map(|value| value.to_string());
 
 	// If no parameters to update
 	first_name
@@ -480,7 +480,7 @@ async fn update_user_info(
 		&user_id,
 		first_name.as_deref(),
 		last_name.as_deref(),
-		birthday,
+		birthday.map(|bday| bday.0).as_ref(),
 		bio.as_deref(),
 		location.as_deref(),
 	)
@@ -1201,9 +1201,9 @@ async fn get_all_logins_for_user(
 	.into_iter()
 	.map(|login| UserLogin {
 		login_id: login.login_id,
-		token_expiry: login.token_expiry,
-		last_login: login.last_login,
-		last_activity: login.last_activity,
+		token_expiry: DateTime(login.token_expiry),
+		last_login: DateTime(login.last_login),
+		last_activity: DateTime(login.last_activity),
 	})
 	.collect::<Vec<_>>();
 
@@ -1226,9 +1226,9 @@ async fn get_login_info(
 			.await?
 			.map(|login| UserLogin {
 				login_id: login.login_id,
-				token_expiry: login.token_expiry,
-				last_login: login.last_login,
-				last_activity: login.last_activity,
+				token_expiry: DateTime(login.token_expiry),
+				last_login: DateTime(login.last_login),
+				last_activity: DateTime(login.last_activity),
 			})
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string())?;

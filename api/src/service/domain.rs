@@ -47,7 +47,6 @@ use crate::{
 	models::rbac::{self, resource_types},
 	utils::{
 		constants,
-		get_current_time_millis,
 		settings::Settings,
 		validator,
 		Error,
@@ -201,7 +200,7 @@ pub async fn add_domain_to_workspace(
 			.get(rbac::resource_types::DOMAIN)
 			.unwrap(),
 		workspace_id,
-		creation_time.timestamp_millis() as u64,
+		&creation_time,
 	)
 	.await?;
 	db::create_generic_domain(
@@ -403,7 +402,7 @@ pub async fn is_domain_used_for_sign_up(
 		)
 		.await?;
 	if let Some(workspace_domain_status) = workspace_domain_status {
-		if workspace_domain_status.otp_expiry > get_current_time_millis() {
+		if workspace_domain_status.otp_expiry > Utc::now() {
 			return Ok(false);
 		}
 	}
@@ -477,7 +476,7 @@ pub async fn create_patr_domain_dns_record(
 			.get(resource_types::DNS_RECORD)
 			.unwrap(),
 		workspace_id,
-		get_current_time_millis(),
+		&Utc::now(),
 	)
 	.await?;
 
