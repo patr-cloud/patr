@@ -389,6 +389,20 @@ pub async fn update_kubernetes_deployment(
 	let deployment_api =
 		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace);
 
+	if !&running_details.config_mounts.is_empty() &&
+		super::deployment_exists(
+			&deployment.id,
+			kubernetes_client.clone(),
+			namespace,
+		)
+		.await?
+	{
+		log::info!("Config maps updated for already existing deployment, hence restarting deployment: {} manually", deployment.id);
+		let _ = deployment_api
+			.restart(&format!("deployment-{}", deployment.id))
+			.await?;
+	};
+
 	deployment_api
 		.patch(
 			&format!("deployment-{}", deployment.id),
