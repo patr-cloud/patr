@@ -245,6 +245,23 @@ pub async fn update_static_site(
 		.await?;
 
 		log::trace!(
+			"updating static site: {} with upload id: {} in kubernetes",
+			static_site_id,
+			upload_id
+		);
+		update_static_site_and_db_status(
+			connection,
+			workspace_id,
+			static_site_id,
+			Some(&file),
+			&upload_id,
+			&StaticSiteDetails {},
+			config,
+			request_id,
+		)
+		.await?;
+
+		log::trace!(
 			"request_id: {} - Creating Static-site upload resource",
 			request_id
 		);
