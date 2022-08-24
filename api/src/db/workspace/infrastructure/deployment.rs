@@ -3,9 +3,9 @@ use api_models::{
 		deployment::{DeploymentProbe, DeploymentStatus, ExposedPortType},
 		DeploymentCloudProvider,
 	},
-	utils::{DateTime, Uuid},
+	utils::Uuid,
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 
 use crate::{
 	db::{self, WorkspaceAuditLog},

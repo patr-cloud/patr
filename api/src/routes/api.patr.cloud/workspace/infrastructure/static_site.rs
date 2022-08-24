@@ -20,7 +20,7 @@ use api_models::{
 			UpdateStaticSiteResponse,
 		},
 	},
-	utils::Uuid,
+	utils::{DateTime, Uuid},
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
@@ -602,7 +602,7 @@ async fn list_static_sites_upload_history(
 		upload_id: deploy_history.id,
 		message: deploy_history.message,
 		uploaded_by: deploy_history.uploaded_by,
-		created: deploy_history.created,
+		created: DateTime(deploy_history.created),
 	})
 	.collect();
 

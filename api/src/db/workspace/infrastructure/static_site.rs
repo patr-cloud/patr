@@ -1,8 +1,8 @@
 use api_models::{
 	models::workspace::infrastructure::deployment::DeploymentStatus,
-	utils::{DateTime, Uuid},
+	utils::Uuid,
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 
 use crate::{query, query_as, Database};
 

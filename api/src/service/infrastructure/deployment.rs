@@ -273,8 +273,8 @@ pub async fn get_deployment_container_logs(
 	let logs = get_container_logs(
 		&deployment.workspace_id,
 		deployment_id,
-		start_time,
-		end_time,
+		start_time.timestamp_millis() as u64,
+		end_time.timestamp_millis() as u64,
 		config,
 		request_id,
 	)
@@ -819,11 +819,10 @@ pub async fn get_deployment_metrics(
 			};
 
 			prom_metric.values.into_iter().for_each(|value| {
-				let metric_item = if let Some(item) = pod_item
-					.metrics
-					.iter_mut()
-					.find(|item| item.timestamp == value.timestamp)
-				{
+				let metric_item = if let Some(item) =
+					pod_item.metrics.iter_mut().find(|item| {
+						item.timestamp == value.timestamp
+					}) {
 					item
 				} else {
 					return;

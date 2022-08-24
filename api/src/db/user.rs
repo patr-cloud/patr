@@ -1,8 +1,8 @@
 use api_models::{
 	models::user::{BasicUserInfo, UserPhoneNumber},
-	utils::{DateTime, ResourceType, Uuid},
+	utils::{ResourceType, Uuid},
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 
 use crate::{db::Workspace, query, query_as, Database};
 
@@ -952,10 +952,10 @@ pub async fn get_user_by_username_email_or_phone_number(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		dob: row.dob.map(|dob| DateTime::from(dob)),
+		dob: row.dob,
 		bio: row.bio,
 		location: row.location,
-		created: row.created.into(),
+		created: row.created,
 		recovery_email_local: row.recovery_email_local,
 		recovery_email_domain_id: row.recovery_email_domain_id,
 		recovery_phone_country_code: row.recovery_phone_country_code,
@@ -1030,10 +1030,10 @@ pub async fn get_user_by_email(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		dob: row.dob.map(|dob| DateTime::from(dob)),
+		dob: row.dob,
 		bio: row.bio,
 		location: row.location,
-		created: row.created.into(),
+		created: row.created,
 		recovery_email_local: row.recovery_email_local,
 		recovery_email_domain_id: row.recovery_email_domain_id,
 		recovery_phone_country_code: row.recovery_phone_country_code,
@@ -1089,10 +1089,10 @@ pub async fn get_user_by_phone_number(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		dob: row.dob.map(|dob| DateTime::from(dob)),
+		dob: row.dob,
 		bio: row.bio,
 		location: row.location,
-		created: row.created.into(),
+		created: row.created,
 		recovery_email_local: row.recovery_email_local,
 		recovery_email_domain_id: row.recovery_email_domain_id,
 		recovery_phone_country_code: row.recovery_phone_country_code,
@@ -1141,10 +1141,10 @@ pub async fn get_user_by_username(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		dob: row.dob.map(|dob| DateTime::from(dob)),
+		dob: row.dob,
 		bio: row.bio,
 		location: row.location,
-		created: row.created.into(),
+		created: row.created,
 		recovery_email_local: row.recovery_email_local,
 		recovery_email_domain_id: row.recovery_email_domain_id,
 		recovery_phone_country_code: row.recovery_phone_country_code,
@@ -1193,10 +1193,10 @@ pub async fn get_user_by_user_id(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		dob: row.dob.map(|dob| DateTime::from(dob)),
+		dob: row.dob,
 		bio: row.bio,
 		location: row.location,
-		created: row.created.into(),
+		created: row.created,
 		recovery_email_local: row.recovery_email_local,
 		recovery_email_domain_id: row.recovery_email_domain_id,
 		recovery_phone_country_code: row.recovery_phone_country_code,
@@ -1520,7 +1520,7 @@ pub async fn get_user_to_sign_up_by_username(
 		business_domain_name: row.business_domain_name,
 		business_name: row.business_name,
 		otp_hash: row.otp_hash,
-		otp_expiry: row.otp_expiry.into(),
+		otp_expiry: row.otp_expiry,
 		coupon_code: row.coupon_code,
 	});
 
@@ -1580,7 +1580,7 @@ pub async fn get_user_to_sign_up_by_phone_number(
 		business_domain_name: row.business_domain_name,
 		business_name: row.business_name,
 		otp_hash: row.otp_hash,
-		otp_expiry: row.otp_expiry.into(),
+		otp_expiry: row.otp_expiry,
 		coupon_code: row.coupon_code,
 	});
 
@@ -1651,7 +1651,7 @@ pub async fn get_user_to_sign_up_by_email(
 		business_domain_name: row.business_domain_name,
 		business_name: row.business_name,
 		otp_hash: row.otp_hash,
-		otp_expiry: row.otp_expiry.into(),
+		otp_expiry: row.otp_expiry,
 		coupon_code: row.coupon_code,
 	});
 
@@ -1708,7 +1708,7 @@ pub async fn get_user_to_sign_up_by_business_name(
 		business_domain_name: row.business_domain_name,
 		business_name: row.business_name,
 		otp_hash: row.otp_hash,
-		otp_expiry: row.otp_expiry.into(),
+		otp_expiry: row.otp_expiry,
 		coupon_code: row.coupon_code,
 	});
 
@@ -1765,7 +1765,7 @@ pub async fn get_user_to_sign_up_by_business_domain_name(
 		business_domain_name: row.business_domain_name,
 		business_name: row.business_name,
 		otp_hash: row.otp_hash,
-		otp_expiry: row.otp_expiry.into(),
+		otp_expiry: row.otp_expiry,
 		coupon_code: row.coupon_code,
 	});
 
@@ -1904,7 +1904,7 @@ pub async fn get_personal_email_to_be_verified_for_user(
 		domain_id: row.domain_id,
 		user_id: row.user_id,
 		verification_token_hash: row.verification_token_hash,
-		verification_token_expiry: row.verification_token_expiry.into(),
+		verification_token_expiry: row.verification_token_expiry,
 	});
 
 	Ok(email)
@@ -1940,7 +1940,7 @@ pub async fn get_personal_email_to_be_verified_by_email(
 		domain_id: row.domain_id,
 		user_id: row.user_id,
 		verification_token_hash: row.verification_token_hash,
-		verification_token_expiry: row.verification_token_expiry.into(),
+		verification_token_expiry: row.verification_token_expiry,
 	});
 
 	Ok(email)
@@ -2007,7 +2007,7 @@ pub async fn get_phone_number_to_be_verified_for_user(
 		phone_number: row.phone_number,
 		user_id: row.user_id,
 		verification_token_hash: row.verification_token_hash,
-		verification_token_expiry: row.verification_token_expiry.into(),
+		verification_token_expiry: row.verification_token_expiry,
 	});
 
 	Ok(phone_number)
@@ -2042,7 +2042,7 @@ pub async fn get_phone_number_to_be_verified_by_phone_number(
 		phone_number: row.phone_number,
 		user_id: row.user_id,
 		verification_token_hash: row.verification_token_hash,
-		verification_token_expiry: row.verification_token_expiry.into(),
+		verification_token_expiry: row.verification_token_expiry,
 	});
 
 	Ok(phone_number)
@@ -2290,10 +2290,10 @@ pub async fn get_user_login(
 	.map(|row| UserLogin {
 		login_id: row.login_id,
 		refresh_token: row.refresh_token,
-		token_expiry: row.token_expiry.into(),
+		token_expiry: row.token_expiry,
 		user_id: row.user_id,
-		last_login: row.last_login.into(),
-		last_activity: row.last_activity.into(),
+		last_login: row.last_login,
+		last_activity: row.last_activity,
 	});
 
 	Ok(login)
@@ -2327,10 +2327,10 @@ pub async fn get_user_login_for_user(
 	.map(|row| UserLogin {
 		login_id: row.login_id,
 		refresh_token: row.refresh_token,
-		token_expiry: row.token_expiry.into(),
+		token_expiry: row.token_expiry,
 		user_id: row.user_id,
-		last_login: row.last_login.into(),
-		last_activity: row.last_activity.into(),
+		last_login: row.last_login,
+		last_activity: row.last_activity,
 	});
 
 	Ok(row)
@@ -2389,10 +2389,10 @@ pub async fn get_all_logins_for_user(
 	.map(|row| UserLogin {
 		login_id: row.login_id,
 		refresh_token: row.refresh_token,
-		token_expiry: row.token_expiry.into(),
+		token_expiry: row.token_expiry,
 		user_id: row.user_id,
-		last_login: row.last_login.into(),
-		last_activity: row.last_activity.into(),
+		last_login: row.last_login,
+		last_activity: row.last_activity,
 	})
 	.collect();
 
@@ -2427,10 +2427,10 @@ pub async fn get_login_for_user_with_refresh_token(
 	.map(|row| UserLogin {
 		login_id: row.login_id,
 		refresh_token: row.refresh_token,
-		token_expiry: row.token_expiry.into(),
+		token_expiry: row.token_expiry,
 		user_id: row.user_id,
-		last_login: row.last_login.into(),
-		last_activity: row.last_activity.into(),
+		last_login: row.last_login,
+		last_activity: row.last_activity,
 	});
 
 	Ok(login)
@@ -2646,7 +2646,7 @@ pub async fn get_password_reset_request_for_user(
 	.map(|row| PasswordResetRequest {
 		user_id: row.user_id,
 		token: row.token,
-		token_expiry: row.token_expiry.into(),
+		token_expiry: row.token_expiry,
 	});
 
 	Ok(reset)

@@ -17,7 +17,6 @@ use crate::{
 	service::{self, get_access_token_expiry},
 	utils::{
 		constants::request_keys,
-		get_current_time,
 		get_current_time_millis,
 		validator,
 		Error,

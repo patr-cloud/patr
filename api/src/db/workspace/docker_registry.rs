@@ -3,9 +3,9 @@ use api_models::{
 		DockerRepositoryImageInfo,
 		DockerRepositoryTagInfo,
 	},
-	utils::{DateTime, Uuid},
+	utils::Uuid,
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use num_traits::ToPrimitive;
 
 use crate::{query, query_as, Database};
@@ -377,7 +377,7 @@ pub async fn get_list_of_tags_for_docker_repository(
 		(
 			DockerRepositoryTagInfo {
 				tag: row.tag,
-				last_updated: row.last_updated.into(),
+				last_updated: row.last_updated,
 			},
 			row.manifest_digest,
 		)
@@ -411,7 +411,7 @@ pub async fn get_tags_for_docker_repository_image(
 	.into_iter()
 	.map(|row| DockerRepositoryTagInfo {
 		tag: row.tag,
-		last_updated: row.last_updated.into(),
+		last_updated: row.last_updated,
 	})
 	.collect();
 
@@ -488,7 +488,7 @@ pub async fn get_docker_repository_image_by_digest(
 		row.map(|row| DockerRepositoryImageInfo {
 			digest: row.manifest_digest,
 			size: row.size as u64,
-			created: row.created.into(),
+			created: row.created,
 		})
 	})
 }
@@ -520,7 +520,7 @@ pub async fn get_docker_repository_tag_details(
 			(
 				DockerRepositoryTagInfo {
 					tag: row.tag,
-					last_updated: row.last_updated.into(),
+					last_updated: row.last_updated,
 				},
 				row.manifest_digest,
 			)
@@ -551,7 +551,7 @@ pub async fn get_list_of_digests_for_docker_repository(
 	.map(|row| DockerRepositoryImageInfo {
 		digest: row.manifest_digest,
 		size: row.size as u64,
-		created: row.created.into(),
+		created: row.created,
 	})
 	.collect();
 
@@ -721,5 +721,5 @@ pub async fn get_last_updated_for_docker_repository(
 	)
 	.fetch_one(&mut *connection)
 	.await
-	.map(|row| row.last_updated.into())
+	.map(|row| row.last_updated)
 }

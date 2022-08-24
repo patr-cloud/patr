@@ -43,7 +43,7 @@ pub async fn create_new_secret_in_workspace(
 
 	let resource_id = db::generate_new_resource_id(connection).await?;
 
-	let creation_time = Utc::now();
+	let creation_time = Utc::now().into();
 	log::trace!("request_id: {} - Creating resource", request_id);
 	db::create_resource(
 		connection,
@@ -55,7 +55,7 @@ pub async fn create_new_secret_in_workspace(
 			.get(rbac::resource_types::SECRET)
 			.unwrap(),
 		workspace_id,
-		creation_time.timestamp_millis() as u64,
+		&creation_time,
 	)
 	.await?;
 

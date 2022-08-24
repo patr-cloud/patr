@@ -99,7 +99,7 @@ pub async fn create_managed_database_in_workspace(
 			.get(rbac::resource_types::MANAGED_DATABASE)
 			.unwrap(),
 		workspace_id,
-		creation_time.timestamp_millis() as u64,
+		&creation_time,
 	)
 	.await?;
 

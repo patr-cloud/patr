@@ -227,7 +227,7 @@ async fn migrate_from_bigint_to_timestamptz(
 
 	query!(
 		r#"
-		ALTER TABLE docker_registry_tag
+		ALTER TABLE docker_registry_repository_tag
 		DROP CONSTRAINT docker_registry_repository_tag_chk_last_updated_unsigned;
 		"#
 	)

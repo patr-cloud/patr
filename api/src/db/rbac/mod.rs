@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use api_models::utils::{DateTime, Uuid};
-use chrono::Utc;
+use api_models::utils::Uuid;
+use chrono::{DateTime, Utc};
 
 use crate::{
 	db::Workspace,

@@ -36,7 +36,7 @@ use api_models::{
 		},
 		WorkspaceAuditLog,
 	},
-	utils::{constants, Uuid, get_current_time},
+	utils::{constants, Uuid, get_current_time, DateTime},
 };
 use chrono::{TimeZone, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
@@ -1922,7 +1922,7 @@ async fn get_build_events(
 	.into_iter()
 	.map(|event| WorkspaceAuditLog {
 		id: event.id,
-		date: event.date,
+		date: DateTime(event.date),
 		ip_address: event.ip_address,
 		workspace_id: event.workspace_id,
 		user_id: event.user_id,
