@@ -1,0 +1,120 @@
+{
+	"port": 3000,
+	"bindAddress": "0.0.0.0",
+	"basePath": "/",
+	"passwordPepper": "keyboard cat",
+	"jwtSecret": "keyboard cat",
+	"s3": {
+		"endpoint": "s3.localhost",
+		"region": "sample-region",
+		"bucket": "sample-bucket",
+		"key": "key123",
+		"secret": "secret123"
+	},
+	"database": {
+		"host": "postgres",
+		"port": 5432,
+		"user": "username",
+		"password": "psql123",
+		"database": "api",
+		"connectionLimit": 10
+	},
+	"mongodb": {
+		"host": "localhost",
+		"port": 27017,
+		"user": "root",
+		"password": "mongodb",
+		"database": "api",
+		"connectionLimit": 10
+	},
+	"redis": {
+		"host": "redis",
+		"port": 6379,
+		"user": null,
+		"password": null,
+		"database": 0,
+		"connectionLimit": 10,
+		"secure": false
+	},
+	"email": {
+		"host": "smtp.example.com",
+		"port": 587,
+		"secure": true,
+		"username": "no-reply@example.com",
+		"from": "no-reply@example.com",
+		"password": "password"
+	},
+	"twilio": {
+		"username": "<example-user-name>",
+		"accessToken": "<ACCESS-TOKEN-HHERE>",
+		"fromNumber": "+0123456789"
+	},
+	"cloudflare": {
+		"accountId": "<example-account-id>",
+		"accountEmail": "account@example.com",
+		"apiToken": "<example-api-token>"
+	},
+	"dockerRegistry": {
+		"serviceName": "Patr Registry Service",
+		"issuer": "patr",
+		"registryUrl": "http://registry:5000",
+		"privateKey" : "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQghpop7vNwD7AhPCHk\nwDKfcAqZXgAYisVDM9i5I8QvmzWhRANCAAScCaCVfxuweUuwgwCeHLFaSwKVvDsA\nZYrVL8O87ztaBbmGi1IKdL47sEgHWVjqps54N5H8eYsXjzUn2kU9TETh\n-----END PRIVATE KEY-----\n",
+		"publicKey": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEnAmglX8bsHlLsIMAnhyxWksClbw7\nAGWK1S/DvO87WgW5hotSCnS+O7BIB1lY6qbOeDeR/HmLF481J9pFPUxE4Q==\n-----END PUBLIC KEY-----\n",
+		"publicKeyDer": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEnAmglX8bsHlLsIMAnhyxWksClbw7AGWK1S/DvO87WgW5hotSCnS+O7BIB1lY6qbOeDeR/HmLF481J9pFPUxE4Q==",
+		"authorizationHeader": 1234567890
+	},
+	"digitalocean": {
+		"apiKey": "key",
+		"registry": "test"
+	},
+	"kubernetes": {
+        "certificateAuthorityData": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURKekNDQWcrZ0F3SUJBZ0lDQm5Vd0RRWUpLb1pJaHZjTkFRRUxCUUF3TXpFVk1CTUdBMVVFQ2hNTVJHbG4KYVhSaGJFOWpaV0Z1TVJvd0dBWURWUVFERXhGck9ITmhZWE1nUTJ4MWMzUmxjaUJEUVRBZUZ3MHlNakF5TWpFeApNVEF5TWpCYUZ3MDBNakF5TWpFeE1UQXlNakJhTURNeEZUQVRCZ05WQkFvVERFUnBaMmwwWVd4UFkyVmhiakVhCk1CZ0dBMVVFQXhNUmF6aHpZV0Z6SUVOc2RYTjBaWElnUTBFd2dnRWlNQTBHQ1NxR1NJYjNEUUVCQVFVQUE0SUIKRHdBd2dnRUtBb0lCQVFEWktHcjF3SnR2R1IzSzljT0hCMnhkaG9vbVNTNk5yUWJBcFZ2bktxWWtDaXNlZHVjQgphMGlQdVVWc2E0T29uMm4vY3czdkRlT25CcFJqMlhVS2JZOFBVYXlCcXpOV2czVjNESHZTdVRiU2E2NW1YNitHCmdHTDhSY2owRDNZYXl2TnNKVkdnamtYY2FQRXNWdUtOZVd2VHd0blBBd0tYZEV3c1g4Yzh2cmVQVUh4VmVudlgKb0xGcnBwODdPdG5FYTNES2p4NnhBZnNRUEw3a3BUNG9SMW5PWXpXZ1Y4dnpzb1lRamdYWnJ0MHE3L2M0K3dpegozcU1QTCtvRlI5VWpoNG9DNWU3M2w4YWxYN291QTgxVy9saFo5VGEwZjBqRXd5SGJFVk9Jc2QrSTBKS1NDYmd4CjIwcEVqWnk2bTYyT25yUnljV0hyeHFOeTNBSm9MblJkSThuZkFnTUJBQUdqUlRCRE1BNEdBMVVkRHdFQi93UUUKQXdJQmhqQVNCZ05WSFJNQkFmOEVDREFHQVFIL0FnRUFNQjBHQTFVZERnUVdCQlNDZ3pPUHNGZDQrU1FxeWdxRApSU2k5c2lyWmNqQU5CZ2txaGtpRzl3MEJBUXNGQUFPQ0FRRUFWVkU1ZGM3ZXRPQ2Z6c0xhSFZzcG1GMG5LK1VBCnUrczBzMDRCeGhDbzhDUmViR0NWem52eEVNTldWVUU3T2FPMVVLMW1WQVhpT2k4SVQ1NmNValVxaGYwa3hJOHoKc0Y3S3h4L3hzeWtORko5VCtxOWVsVTNqRTA5RCtFWXJqbFJmMTNiTGVyd2ZOd3ppcEpSRW03c3VUNi9Mc2lBeApQZCtyV2FuVXQ0ZDlnZDA4SjdhQVkyZ2paRVlINGhid1lPYTNCbVFoaWFuNEIzR0podm9xd3JJVG95eXkvSnduClRaSlp0N01DZ2xocm5IVi9rRzhKcStMNFhiMFdjUU8zYU1IVlM2d3hFRiswbnFsamVQSE5ySjRoYTFHQVp6RXoKak5DNlBMaFBkNTVmcGxVWUNmZm5hQnA2N1Y5VFRuN1NWNnJzU1NSRWJtLzA3d3ZTSGM5RDE4N2pYdz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+        "clusterName": "do-blr1-patr-dev-cluster",
+        "clusterUrl": "https://686aeeff-e478-4bdf-91e6-7b883d0591c8.k8s.ondigitalocean.com",
+        "authName": "do-blr1-patr-dev-cluster-admin",
+        "authUsername": "do-blr1-patr-dev-cluster-admin",
+        "authToken": "3ed41164e309f77b0f184c77a19fa025b4342df8eec161875a841f45243d9d4f",
+        "contextName": "do-blr1-patr-dev-cluster",
+        "certIssuerHttp": "letsencrypt-prod-http",
+        "certIssuerDns": "letsencrypt-prod-dns",
+        "staticSiteProxyService": "proxy-static-site-service.default.svc.cluster.local",
+        "alertWebhookSecret": "MqpqDtC719U0CbbyESQbtquzpkiEiz9xQJ21s6bdG27d6eYJbsIamnA2DU55D8T1"
+    },
+	"prometheus": {
+		"host": "prometheus.samyakgangwal.com",
+		"username": "admin",
+		"password": "admin"
+	},
+	"rabbitmq": {
+		"host": "rabbitmq",
+		"port": 5672,
+		"queue": "infrastructure",
+		"username": "guest",
+		"password": "guest"
+	},
+	"vault": {
+		"address": "https://vault.example.com",
+		"token": "<vault token>"
+	},
+	"loki": {
+		"host": "prometheus.samyakgangwal.com",
+		"username": "admin",
+		"password": "admin"
+	},
+	"mailchimp": {
+		"apiKey": "example-api-key",
+		"listId": "example-list-id"
+	},
+	"drone": {
+		"url": "drone-ip"
+	},
+	"github": {
+		"clientId": "app-client-id",
+		"clientSecret": "app-client-secret"
+	},
+	"stripe": {
+        "publishableKey": "pk_test_51K6CWBSFDPAh3GrIxirhWofupcgBoEi1DjJt9A9LqLmi1op3BHP8ZHwts4RWxukGaXxLGWBEAH3Nfpeg2klGWTGb004ilC9CIf",
+        "secretKey": "sk_test_51K6CWBSFDPAh3GrIQmpl4QEjryPEqn727Ax8Eo8oksiiTQoain04bXFPvZhaAZVpRWQ9n4tbJGRxYCR0ENhxMTHC00X5Uf3uz5",
+        "customerId": "cus_Lt2cqSthD12crF"
+    }
+}

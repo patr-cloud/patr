@@ -9,7 +9,9 @@
 
 /config/*
 !/config/*.sample.*
+!/config/dev.json
 .env
+!.devcontainer/.env
 .localData
 
 .devcontainer/target-dev
