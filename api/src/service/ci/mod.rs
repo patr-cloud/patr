@@ -4,7 +4,7 @@ use std::{
 };
 
 use api_models::{
-	models::workspace::ci::github::{
+	models::workspace::ci::git_provider::{
 		BuildStepStatus,
 		GitProviderType,
 		RepoStatus,

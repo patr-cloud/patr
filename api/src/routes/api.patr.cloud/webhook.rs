@@ -1,7 +1,7 @@
 use api_models::{
 	models::workspace::{
 		billing::PaymentStatus,
-		ci::github::{BuildStatus, RepoStatus},
+		ci::git_provider::{BuildStatus, RepoStatus},
 		infrastructure::deployment::DeploymentStatus,
 	},
 	utils::{DateTime, Uuid},

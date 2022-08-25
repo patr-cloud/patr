@@ -114,7 +114,7 @@ pub enum CIData {
 		build_step: BuildStep,
 		request_id: Uuid,
 	},
-	StopBuild {
+	CancelBuild {
 		build_id: BuildId,
 		request_id: Uuid,
 	},

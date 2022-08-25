@@ -1,11 +1,12 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{
-	models::workspace::ci::github::{
-		ActivateGithubRepoRequest,
-		ActivateGithubRepoResponse,
+	models::workspace::ci::git_provider::{
+		ActivateRepoRequest,
+		ActivateRepoResponse,
 		BuildLogs,
 		BuildStatus,
-		DeactivateGithubRepoResponse,
+		CancelBuildResponse,
+		DeactivateRepoResponse,
 		GetBuildInfoResponse,
 		GetBuildListResponse,
 		GetBuildLogResponse,
@@ -13,13 +14,12 @@ use api_models::{
 		GithubAuthCallbackRequest,
 		GithubAuthCallbackResponse,
 		GithubAuthResponse,
-		GithubListReposResponse,
-		GithubRepository,
 		GithubSignOutResponse,
-		GithubSyncReposResponse,
+		ListReposResponse,
 		RepoStatus,
+		RepositoryDetails,
 		RestartBuildResponse,
-		StopBuildResponse,
+		SyncReposResponse,
 	},
 	utils::{DateTime, Uuid},
 };
@@ -338,7 +338,7 @@ pub fn create_sub_app(
 	);
 
 	app.post(
-		"/repo/:repoId/build/:buildNum/stop",
+		"/repo/:repoId/build/:buildNum/cancel",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::ci::git_provider::repo::build::VIEW,
@@ -364,7 +364,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(stop_build)),
+			EveMiddleware::CustomFunction(pin_fn!(cancel_build)),
 		],
 	);
 
@@ -593,7 +593,7 @@ async fn sync_repositories(
 	)
 	.await?;
 
-	context.success(GithubSyncReposResponse {});
+	context.success(SyncReposResponse {});
 	Ok(context)
 }
 
@@ -622,8 +622,8 @@ async fn list_repositories(
 	)
 	.await?
 	.into_iter()
-	.map(|repo| GithubRepository {
-		id: repo.id,
+	.map(|repo| RepositoryDetails {
+		id: repo.git_provider_repo_uid,
 		name: repo.repo_name,
 		repo_owner: repo.repo_owner,
 		clone_url: repo.clone_url,
@@ -632,7 +632,7 @@ async fn list_repositories(
 	})
 	.collect();
 
-	context.success(GithubListReposResponse { repos });
+	context.success(ListReposResponse { repos });
 	Ok(context)
 }
 
@@ -641,17 +641,16 @@ async fn activate_repo(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
-	let _workspace_id =
+	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let repo_id =
-		Uuid::parse_str(context.get_param(request_keys::REPO_ID).unwrap())
-			.unwrap();
+	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
 
 	log::trace!("request_id: {request_id} - Activating CI for repo {repo_id}");
 
-	let repo = db::get_repo_details_using_id(
+	let repo = db::get_repo_details_using_github_uid_for_workspace(
 		context.get_database_connection(),
+		&workspace_id,
 		&repo_id,
 	)
 	.await?
@@ -668,7 +667,7 @@ async fn activate_repo(
 		.zip(git_provider.password)
 		.status(500)?;
 
-	let ActivateGithubRepoRequest {
+	let ActivateRepoRequest {
 		workspace_id: _,
 		repo_id: _,
 		build_machine_type_id,
@@ -688,7 +687,7 @@ async fn activate_repo(
 
 	let webhook_secret = db::activate_ci_for_repo(
 		context.get_database_connection(),
-		&repo_id,
+		&repo.id,
 		&build_machine_type_id,
 	)
 	.await?;
@@ -728,7 +727,7 @@ async fn activate_repo(
 		.ok()
 		.status(500)?;
 
-	context.success(ActivateGithubRepoResponse {});
+	context.success(ActivateRepoResponse {});
 	Ok(context)
 }
 
@@ -737,19 +736,18 @@ async fn deactivate_repo(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
-	let _workspace_id =
+	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let repo_id =
-		Uuid::parse_str(context.get_param(request_keys::REPO_ID).unwrap())
-			.unwrap();
+	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
 
 	log::trace!(
 		"request_id: {request_id} - Deactivating CI for repo {repo_id}"
 	);
 
-	let repo = db::get_repo_details_using_id(
+	let repo = db::get_repo_details_using_github_uid_for_workspace(
 		context.get_database_connection(),
+		&workspace_id,
 		&repo_id,
 	)
 	.await?
@@ -812,7 +810,7 @@ async fn deactivate_repo(
 		}
 	}
 
-	context.success(DeactivateGithubRepoResponse {});
+	context.success(DeactivateRepoResponse {});
 	Ok(context)
 }
 
@@ -821,19 +819,18 @@ async fn get_build_list(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
-	let _workspace_id =
+	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let repo_id =
-		Uuid::parse_str(context.get_param(request_keys::REPO_ID).unwrap())
-			.unwrap();
+	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
 
 	log::trace!(
 		"request_id: {request_id} - Getting build list for repo {repo_id}"
 	);
 
-	let repo = db::get_repo_details_using_id(
+	let repo = db::get_repo_details_using_github_uid_for_workspace(
 		context.get_database_connection(),
+		&workspace_id,
 		&repo_id,
 	)
 	.await?
@@ -854,12 +851,10 @@ async fn get_build_info(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
-	let _workspace_id =
+	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let repo_id =
-		Uuid::parse_str(context.get_param(request_keys::REPO_ID).unwrap())
-			.unwrap();
+	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
 	let build_num = context
 		.get_param(request_keys::BUILD_NUM)
 		.unwrap()
@@ -867,8 +862,9 @@ async fn get_build_info(
 
 	log::trace!("request_id: {request_id} - Getting build info for repo {repo_id} - {build_num}");
 
-	let repo = db::get_repo_details_using_id(
+	let repo = db::get_repo_details_using_github_uid_for_workspace(
 		context.get_database_connection(),
+		&workspace_id,
 		&repo_id,
 	)
 	.await?
@@ -895,9 +891,7 @@ async fn get_build_logs(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let repo_id =
-		Uuid::parse_str(context.get_param(request_keys::REPO_ID).unwrap())
-			.unwrap();
+	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
 	let build_num = context
 		.get_param(request_keys::BUILD_NUM)
 		.unwrap()
@@ -909,8 +903,9 @@ async fn get_build_logs(
 
 	log::trace!("request_id: {request_id} - Getting build logs for repo {repo_id} - {build_num} - {step}");
 
-	let repo = db::get_repo_details_using_id(
+	let repo = db::get_repo_details_using_github_uid_for_workspace(
 		context.get_database_connection(),
+		&workspace_id,
 		&repo_id,
 	)
 	.await?
@@ -974,7 +969,7 @@ async fn get_build_logs(
 	Ok(context)
 }
 
-async fn stop_build(
+async fn cancel_build(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -982,9 +977,7 @@ async fn stop_build(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let repo_id =
-		Uuid::parse_str(context.get_param(request_keys::REPO_ID).unwrap())
-			.unwrap();
+	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
 	let build_num = context
 		.get_param(request_keys::BUILD_NUM)
 		.unwrap()
@@ -992,8 +985,9 @@ async fn stop_build(
 
 	log::trace!("request_id: {request_id} - Stopping build for repo {repo_id} - {build_num}");
 
-	let repo = db::get_repo_details_using_id(
+	let repo = db::get_repo_details_using_github_uid_for_workspace(
 		context.get_database_connection(),
+		&workspace_id,
 		&repo_id,
 	)
 	.await?
@@ -1009,7 +1003,7 @@ async fn stop_build(
 	.body("Build does not exists")?;
 
 	if build.status == BuildStatus::Running {
-		service::queue_stop_ci_build_pipeline(
+		service::queue_cancel_ci_build_pipeline(
 			BuildId {
 				repo_workspace_id: workspace_id,
 				repo_id: repo.id,
@@ -1021,7 +1015,7 @@ async fn stop_build(
 		.await?;
 	}
 
-	context.success(StopBuildResponse {});
+	context.success(CancelBuildResponse {});
 	Ok(context)
 }
 
@@ -1030,12 +1024,10 @@ async fn restart_build(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
-	let _workspace_id =
+	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let repo_id =
-		Uuid::parse_str(context.get_param(request_keys::REPO_ID).unwrap())
-			.unwrap();
+	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
 	let build_num = context
 		.get_param(request_keys::BUILD_NUM)
 		.unwrap()
@@ -1043,8 +1035,9 @@ async fn restart_build(
 
 	log::trace!("request_id: {request_id} - Restarting build for repo {repo_id} - {build_num}");
 
-	let repo = db::get_repo_details_using_id(
+	let repo = db::get_repo_details_using_github_uid_for_workspace(
 		context.get_database_connection(),
+		&workspace_id,
 		&repo_id,
 	)
 	.await?

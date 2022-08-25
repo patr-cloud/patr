@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, fmt::Display, time::Duration};
 
 use api_models::{
-	models::workspace::ci::github::{BuildStatus, BuildStepStatus},
+	models::workspace::ci::git_provider::{BuildStatus, BuildStepStatus},
 	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
@@ -248,9 +248,9 @@ pub async fn process_request(
 					build_step.id.build_id.build_num,
 				)
 				.await?
-				.unwrap_or(BuildStatus::Stopped); // TODO: handle none case
+				.unwrap_or(BuildStatus::Cancelled); // TODO: handle none case
 
-				if build_status == BuildStatus::Stopped {
+				if build_status == BuildStatus::Cancelled {
 					log::info!("request_id: {request_id} - Build step `{build_step_job_name}` stopped");
 					jobs_api
 						.delete_opt(
@@ -268,7 +268,7 @@ pub async fn process_request(
 						&build_step.id.build_id.repo_id,
 						build_step.id.build_id.build_num,
 						build_step.id.step_id,
-						BuildStepStatus::Stopped,
+						BuildStepStatus::Cancelled,
 					)
 					.await?;
 					db::update_build_step_finished_time(
@@ -443,14 +443,14 @@ pub async fn process_request(
 						)
 						.await?;
 					}
-					BuildStepStatus::Stopped => {
+					BuildStepStatus::Cancelled => {
 						log::info!("request_id: {request_id} - Build step `{build_step_job_name}` stopped");
 						db::update_build_step_status(
 							connection,
 							&build_step.id.build_id.repo_id,
 							build_step.id.build_id.build_num,
 							build_step.id.step_id,
-							BuildStepStatus::Stopped,
+							BuildStepStatus::Cancelled,
 						)
 						.await?;
 						db::update_build_step_started_time(
@@ -520,7 +520,7 @@ pub async fn process_request(
 				}
 			}
 		}
-		CIData::StopBuild {
+		CIData::CancelBuild {
 			build_id,
 			request_id,
 		} => {
@@ -529,7 +529,7 @@ pub async fn process_request(
 				&mut *connection,
 				&build_id.repo_id,
 				build_id.build_num,
-				BuildStatus::Stopped,
+				BuildStatus::Cancelled,
 			)
 			.await?;
 			db::update_build_finished_time(
@@ -624,7 +624,7 @@ pub async fn process_request(
 					)
 					.await?;
 				}
-				BuildStepStatus::Stopped => {
+				BuildStepStatus::Cancelled => {
 					log::debug!("request_id: {request_id} - Cleaning stopped build `{build_id}`");
 					Api::<Namespace>::all(kube_client)
 						.delete_opt(

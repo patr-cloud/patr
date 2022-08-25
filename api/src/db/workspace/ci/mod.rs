@@ -1,8 +1,8 @@
 use api_macros::query;
 use api_models::{
 	models::workspace::ci::{
-		github::{
-			Build,
+		git_provider::{
+			BuildDetails,
 			BuildStatus,
 			BuildStepStatus,
 			GitProviderType,
@@ -41,13 +41,22 @@ pub struct Repository {
 	pub git_provider_repo_uid: String,
 }
 
-struct BuildTableRecord {
-	pub repo_id: Uuid,
+pub struct BuildRecord {
 	pub build_num: i64,
 	pub git_ref: String,
 	pub git_commit: String,
 	pub status: BuildStatus,
 	pub created: DateTime<Utc>,
+	pub finished: Option<DateTime<Utc>>,
+}
+
+pub struct StepRecord {
+	pub step_id: i32,
+	pub step_name: String,
+	pub base_image: String,
+	pub commands: String,
+	pub status: BuildStepStatus,
+	pub started: Option<DateTime<Utc>>,
 	pub finished: Option<DateTime<Utc>>,
 }
 
@@ -176,7 +185,7 @@ pub async fn initialize_ci_pre(
 		CREATE TYPE CI_BUILD_STATUS AS ENUM (
 			'running',
 			'succeeded',
-			'stopped',
+			'cancelled',
 			'errored'
 		);
 		"#
@@ -209,7 +218,7 @@ pub async fn initialize_ci_pre(
 			'waiting_to_start',
 			'running',
 			'succeeded',
-			'stopped',
+			'cancelled',
 			'errored',
 			'skipped_dep_error'
 		);
@@ -545,15 +554,19 @@ pub async fn list_repos_for_git_provider(
 	.await
 }
 
-pub async fn get_repo_details_using_id(
+// since we currently only have github route only, using github direclty in the
+// where clause while supporting multiple git providers, we need to pass git
+// provider id
+pub async fn get_repo_details_using_github_uid_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	repo_id: &Uuid,
+	workspace_id: &Uuid,
+	git_provider_repo_uid: &str,
 ) -> Result<Option<Repository>, sqlx::Error> {
 	query_as!(
 		Repository,
 		r#"
 		SELECT
-			id as "id: _",
+			ci_repos.id as "id: _",
 			repo_owner,
 			repo_name,
 			clone_url,
@@ -564,10 +577,18 @@ pub async fn get_repo_details_using_id(
 			git_provider_repo_uid
 		FROM
 			ci_repos
-		WHERE
-			id = $1;
+		INNER JOIN
+			ci_git_provider
+			ON
+				ci_git_provider.id = ci_repos.git_provider_id
+		WHERE (
+			ci_git_provider.workspace_id = $1
+			AND ci_repos.git_provider_repo_uid = $2
+			AND ci_git_provider.domain_name = 'github.com'
+		);
 		"#,
-		repo_id as _,
+		workspace_id as _,
+		git_provider_repo_uid
 	)
 	.fetch_optional(connection)
 	.await
@@ -750,10 +771,9 @@ pub async fn get_build_status(
 	build_num: i64,
 ) -> Result<Option<BuildStatus>, sqlx::Error> {
 	let result = query_as!(
-		BuildTableRecord,
+		BuildRecord,
 		r#"
 		SELECT
-			repo_id as "repo_id: _",
 			build_num,
 			git_ref,
 			git_commit,
@@ -805,9 +825,9 @@ pub async fn list_build_steps_for_build(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
 	build_num: i64,
-) -> Result<Vec<Step>, sqlx::Error> {
+) -> Result<Vec<StepRecord>, sqlx::Error> {
 	query_as!(
-		Step,
+		StepRecord,
 		r#"
 		SELECT
 			step_id,
@@ -835,12 +855,11 @@ pub async fn list_build_steps_for_build(
 pub async fn list_build_details_for_repo(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
-) -> Result<Vec<Build>, sqlx::Error> {
+) -> Result<Vec<BuildDetails>, sqlx::Error> {
 	let builds = query_as!(
-		BuildTableRecord,
+		BuildRecord,
 		r#"
 		SELECT
-			repo_id as "repo_id: _",
 			build_num,
 			git_ref,
 			git_commit,
@@ -865,10 +884,20 @@ pub async fn list_build_details_for_repo(
 			repo_id,
 			build.build_num,
 		)
-		.await?;
-		result.push(Build {
-			repo_id: build.repo_id,
-			build_num: build.build_num,
+		.await?
+		.into_iter()
+		.map(|step_record| Step {
+			step_id: step_record.step_id as u32,
+			step_name: step_record.step_name,
+			base_image: step_record.base_image,
+			commands: step_record.commands,
+			status: step_record.status,
+			started: step_record.started,
+			finished: step_record.finished,
+		})
+		.collect();
+		result.push(BuildDetails {
+			build_num: build.build_num as u64,
 			git_ref: build.git_ref,
 			git_commit: build.git_commit,
 			status: build.status,
@@ -885,12 +914,11 @@ pub async fn get_build_details_for_build(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
 	build_num: i64,
-) -> Result<Option<Build>, sqlx::Error> {
+) -> Result<Option<BuildDetails>, sqlx::Error> {
 	let build = query_as!(
-		BuildTableRecord,
+		BuildRecord,
 		r#"
 		SELECT
-			repo_id as "repo_id: _",
 			build_num,
 			git_ref,
 			git_commit,
@@ -912,9 +940,8 @@ pub async fn get_build_details_for_build(
 	.await?;
 
 	let result = match build {
-		Some(build) => Some(Build {
-			repo_id: build.repo_id,
-			build_num: build.build_num,
+		Some(build) => Some(BuildDetails {
+			build_num: build.build_num as u64,
 			git_ref: build.git_ref,
 			git_commit: build.git_commit,
 			status: build.status,
@@ -925,7 +952,18 @@ pub async fn get_build_details_for_build(
 				repo_id,
 				build.build_num,
 			)
-			.await?,
+			.await?
+			.into_iter()
+			.map(|step_record| Step {
+				step_id: step_record.step_id as u32,
+				step_name: step_record.step_name,
+				base_image: step_record.base_image,
+				commands: step_record.commands,
+				status: step_record.status,
+				started: step_record.started,
+				finished: step_record.finished,
+			})
+			.collect(),
 		}),
 		None => None,
 	};
