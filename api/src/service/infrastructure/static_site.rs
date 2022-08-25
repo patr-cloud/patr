@@ -244,22 +244,32 @@ pub async fn update_static_site(
 		)
 		.await?;
 
-		log::trace!(
-			"updating static site: {} with upload id: {} in kubernetes",
-			static_site_id,
-			upload_id
-		);
-		update_static_site_and_db_status(
-			connection,
-			workspace_id,
-			static_site_id,
-			Some(&file),
-			&upload_id,
-			&StaticSiteDetails {},
-			config,
-			request_id,
-		)
-		.await?;
+		// Can create a new function only to fetch status if needed
+		let static_site =
+			db::get_static_site_by_id(connection, static_site_id).await?;
+
+		if let Some(static_site) = static_site {
+			if static_site.status.to_string() != *"stopped" {
+				log::trace!(
+					"updating static site: {} with upload id: {} in kubernetes",
+					static_site_id,
+					upload_id
+				);
+				update_static_site_and_db_status(
+					connection,
+					workspace_id,
+					static_site_id,
+					Some(&file),
+					&upload_id,
+					&StaticSiteDetails {},
+					config,
+					request_id,
+				)
+				.await?;
+			} else {
+				log::trace!("Static site with ID: {} is stopped manully, skipping update static site k8s api call", static_site_id);
+			}
+		}
 
 		log::trace!(
 			"request_id: {} - Creating Static-site upload resource",
