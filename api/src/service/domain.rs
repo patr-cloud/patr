@@ -45,12 +45,7 @@ use crate::{
 	db::{self, DnsRecordType, DomainPlan},
 	error,
 	models::rbac::{self, resource_types},
-	utils::{
-		constants,
-		settings::Settings,
-		validator,
-		Error,
-	},
+	utils::{constants, settings::Settings, validator, Error},
 	Database,
 };
 

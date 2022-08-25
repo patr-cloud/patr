@@ -15,12 +15,7 @@ use crate::{
 	db::{self, PaymentType},
 	error,
 	models::{billing::StripeAddress, rbac},
-	utils::{
-		constants::default_limits,
-		settings::Settings,
-		validator,
-		Error,
-	},
+	utils::{constants::default_limits, settings::Settings, validator, Error},
 	Database,
 };
 

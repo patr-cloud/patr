@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use api_models::utils::{Uuid, DateTime};
+use api_models::utils::{DateTime, Uuid};
 use chrono::Utc;
 use jsonwebtoken::{
 	errors::Error,
@@ -49,8 +49,8 @@ impl AccessTokenData {
 	}
 
 	pub fn new(
-		iat: u64,
-		exp: u64,
+		iat: &chrono::DateTime<Utc>,
+		exp: &chrono::DateTime<Utc>,
 		workspaces: HashMap<Uuid, WorkspacePermissions>,
 		login_id: Uuid,
 		user: ExposedUserData,
@@ -58,9 +58,9 @@ impl AccessTokenData {
 		AccessTokenData {
 			iss: String::from("https://api.patr.cloud"),
 			aud: String::from("https://*.patr.cloud"),
-			iat,
+			iat: iat.timestamp_millis() as u64,
 			typ: String::from("accessToken"),
-			exp,
+			exp: exp.timestamp_millis() as u64,
 			workspaces,
 			login_id,
 			user,

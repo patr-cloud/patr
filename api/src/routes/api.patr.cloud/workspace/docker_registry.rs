@@ -15,7 +15,7 @@ use api_models::{
 		ListDockerRepositoriesResponse,
 		ListDockerRepositoryTagsResponse,
 	},
-	utils::{Uuid, DateTime},
+	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};

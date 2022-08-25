@@ -1,5 +1,5 @@
 use api_models::{models::auth::*, utils::Uuid, ErrorType};
-use chrono::Utc;
+use chrono::{Duration, Utc};
 use eve_rs::{App as EveApp, AsError, Context, HttpMethod, NextHandler};
 use serde_json::json;
 
@@ -18,7 +18,6 @@ use crate::{
 	service::{self, get_access_token_expiry},
 	utils::{
 		constants::request_keys,
-		get_current_time_millis,
 		validator,
 		Error,
 		ErrorData,
@@ -332,12 +331,12 @@ async fn sign_out(
 	)
 	.await?;
 
-	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
+	let ttl = get_access_token_expiry() + Duration::hours(2); // 2 hrs buffer time
 	redis::revoke_login_tokens_created_before_timestamp(
 		context.get_redis_connection(),
 		&login_id,
-		get_current_time_millis(),
-		Some(ttl),
+		&Utc::now(),
+		Some(&ttl),
 	)
 	.await?;
 

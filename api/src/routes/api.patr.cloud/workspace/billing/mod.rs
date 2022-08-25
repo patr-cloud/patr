@@ -21,7 +21,7 @@ use api_models::{
 		UpdateBillingAddressRequest,
 		UpdateBillingAddressResponse,
 	},
-	utils::{Uuid, DateTime},
+	utils::{DateTime, Uuid},
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 

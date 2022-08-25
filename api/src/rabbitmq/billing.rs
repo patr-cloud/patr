@@ -392,14 +392,7 @@ pub(super) async fn process_request(
 				return Ok(());
 			} else if last_transaction.payment_status == PaymentStatus::Failed {
 				// Check timestamp
-				if Utc::now()
-					.sub({
-						let chrono_date: chrono::DateTime<Utc> =
-							last_transaction.date.into();
-						chrono_date
-					})
-					.num_hours()
-					.abs() > 24
+				if Utc::now().sub(last_transaction.date).num_hours().abs() > 24
 				{
 					// It's been more than 24 hours since the last transaction
 					// attempt
@@ -458,7 +451,7 @@ pub(super) async fn process_request(
 				last_transaction.month,
 				last_transaction.amount,
 				Some(&payment_intent_id),
-				&(Utc::now().into()),
+				&Utc::now(),
 				&TransactionType::Payment,
 				&PaymentStatus::Success,
 				None,

@@ -1,6 +1,7 @@
 use std::{str, time::Duration};
 
 use api_models::utils::Uuid;
+use chrono::Utc;
 use eve_rs::AsError;
 use reqwest::Client;
 use tokio::{task, time};
@@ -19,7 +20,7 @@ use crate::{
 		Db,
 	},
 	service,
-	utils::{settings::Settings, Error, get_current_time_millis},
+	utils::{settings::Settings, Error},
 	Database,
 };
 
@@ -42,7 +43,7 @@ pub(super) async fn create_managed_database_cluster(
 	);
 	let client = Client::new();
 
-	let do_db_name = format!("database-{}", get_current_time_millis());
+	let do_db_name = format!("database-{}", Utc::now().timestamp_millis());
 
 	let db_engine = match engine {
 		ManagedDatabaseEngine::Postgres => "pg",

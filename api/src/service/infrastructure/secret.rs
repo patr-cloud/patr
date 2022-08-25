@@ -43,7 +43,7 @@ pub async fn create_new_secret_in_workspace(
 
 	let resource_id = db::generate_new_resource_id(connection).await?;
 
-	let creation_time = Utc::now().into();
+	let creation_time = Utc::now();
 	log::trace!("request_id: {} - Creating resource", request_id);
 	db::create_resource(
 		connection,
@@ -116,7 +116,7 @@ pub async fn create_new_secret_for_deployment(
 ) -> Result<Uuid, Error> {
 	let resource_id = db::generate_new_resource_id(connection).await?;
 
-	let creation_time = Utc::now().into();
+	let creation_time = Utc::now();
 	log::trace!("request_id: {} - Creating resource", request_id);
 	db::create_resource(
 		connection,

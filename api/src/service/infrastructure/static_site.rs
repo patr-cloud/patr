@@ -146,7 +146,7 @@ pub async fn create_static_site_in_workspace(
 			&static_site_id,
 			message,
 			uploaded_by,
-			&Utc::now().into(),
+			&Utc::now(),
 		)
 		.await?;
 		db::update_current_live_upload_for_static_site(
@@ -223,7 +223,7 @@ pub async fn update_static_site(
 			static_site_id,
 			message,
 			uploaded_by,
-			&now.into(),
+			&now,
 		)
 		.await?;
 		db::update_current_live_upload_for_static_site(

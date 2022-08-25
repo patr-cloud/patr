@@ -1,5 +1,5 @@
 use api_models::utils::Uuid;
-use chrono::{Duration, Utc};
+use chrono::Utc;
 use eve_rs::AsError;
 
 use crate::{
@@ -55,8 +55,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 
 	let otp = service::generate_new_otp();
 
-	let token_expiry =
-		Utc::now() + Duration::milliseconds(service::get_join_token_expiry() as i64);
+	let token_expiry = Utc::now() + service::get_join_token_expiry();
 	let verification_token = service::hash(otp.as_bytes())?;
 
 	service::send_email_verification_otp(
@@ -356,8 +355,7 @@ pub async fn add_phone_number_to_be_verified_for_user(
 
 	let otp = service::generate_new_otp();
 
-	let token_expiry = Utc::now() +
-		Duration::milliseconds(service::get_join_token_expiry() as i64);
+	let token_expiry = Utc::now() + service::get_join_token_expiry();
 	let verification_token = service::hash(otp.as_bytes())?;
 
 	db::add_phone_number_to_be_verified_for_user(

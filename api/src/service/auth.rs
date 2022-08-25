@@ -8,7 +8,7 @@ use api_models::{
 	},
 	utils::{DateTime, ResourceType, Uuid},
 };
-use chrono::{Datelike, Duration, TimeZone, Utc};
+use chrono::{Datelike, Duration, Utc};
 use eve_rs::AsError;
 
 /// This module validates user info and performs tasks related to user
@@ -20,8 +20,8 @@ use crate::{
 	db::{self, User, UserLogin, UserToSignUp},
 	error,
 	models::{rbac, AccessTokenData, ExposedUserData},
-	service::{self, get_refresh_token_expiry},
-	utils::{get_current_time_millis, settings::Settings, validator, Error},
+	service,
+	utils::{settings::Settings, validator, Error},
 	Database,
 };
 
@@ -68,9 +68,7 @@ pub async fn is_username_allowed(
 
 	if let Some(status) = sign_up_status {
 		// return in-valid (`false`) if expiry is greater than current time
-		if (status.otp_expiry.timestamp_millis() as u64) >
-			get_current_time_millis()
-		{
+		if status.otp_expiry > Utc::now() {
 			return Ok(false);
 		}
 	}
@@ -118,9 +116,7 @@ pub async fn is_email_allowed(
 	let sign_up_status =
 		db::get_user_to_sign_up_by_email(connection, email).await?;
 	if let Some(status) = sign_up_status {
-		if (status.otp_expiry.timestamp_millis() as u64) >
-			get_current_time_millis()
-		{
+		if status.otp_expiry > Utc::now() {
 			return Ok(false);
 		}
 	}
@@ -191,9 +187,7 @@ pub async fn is_phone_number_allowed(
 	.await?;
 
 	if let Some(status) = sign_up_status {
-		if (status.otp_expiry.timestamp_millis() as u64) >
-			get_current_time_millis()
-		{
+		if status.otp_expiry > Utc::now() {
 			return Ok(false);
 		}
 	}
@@ -304,10 +298,7 @@ pub async fn create_user_join_request(
 	}
 
 	let otp = service::generate_new_otp();
-	let token_expiry =
-		get_current_time_millis() + service::get_join_token_expiry();
-
-	let token_expiry = Utc.timestamp_millis(token_expiry as i64);
+	let token_expiry = Utc::now() + service::get_join_token_expiry();
 
 	let password = service::hash(password.as_bytes())?;
 	let token_hash = service::hash(otp.as_bytes())?;
@@ -346,9 +337,7 @@ pub async fn create_user_join_request(
 			)
 			.await?;
 			if let Some(user_sign_up) = user_sign_up {
-				if (user_sign_up.otp_expiry.timestamp_millis() as u64) <
-					get_current_time_millis()
-				{
+				if user_sign_up.otp_expiry < Utc::now() {
 					Error::as_result()
 						.status(200)
 						.body(error!(WORKSPACE_EXISTS).to_string())?;
@@ -406,7 +395,7 @@ pub async fn create_user_join_request(
 				business_domain_name: Some(format!("{}.{}", domain_name, tld)),
 				business_name: Some(workspace_name.to_string()),
 				otp_hash: token_hash,
-				otp_expiry: token_expiry.into(),
+				otp_expiry: token_expiry,
 				coupon_code: coupon_code.map(|code| code.to_string()),
 			}
 		}
@@ -440,7 +429,7 @@ pub async fn create_user_join_request(
 				business_domain_name: None,
 				business_name: None,
 				otp_hash: token_hash,
-				otp_expiry: token_expiry.into(),
+				otp_expiry: token_expiry,
 				coupon_code: coupon_code.map(|code| code.to_string()),
 			}
 		}
@@ -488,8 +477,7 @@ pub async fn create_login_for_user(
 		service::generate_new_refresh_token_for_user(connection, user_id)
 			.await?;
 	let now = Utc::now();
-	let expiry =
-		now + Duration::microseconds(get_refresh_token_expiry() as i64);
+	let expiry = now + service::get_refresh_token_expiry();
 
 	db::add_user_login(
 		connection,
@@ -507,8 +495,7 @@ pub async fn create_login_for_user(
 		last_activity: now,
 		last_login: now,
 		refresh_token: hashed_refresh_token,
-		token_expiry: now +
-			Duration::microseconds(get_refresh_token_expiry() as i64),
+		token_expiry: now + service::get_refresh_token_expiry(),
 	};
 
 	Ok((user_login, refresh_token))
@@ -600,10 +587,8 @@ pub async fn generate_access_token(
 	// get roles and permissions of user for rbac here
 	// use that info to populate the data in the token_data
 	let now = Utc::now();
-	let exp =
-		now + Duration::milliseconds(service::get_access_token_expiry() as i64); // 3 days
-	let refresh_token_expiry = now +
-		Duration::milliseconds(service::get_refresh_token_expiry() as i64);
+	let exp = now + service::get_access_token_expiry(); // 3 days
+	let refresh_token_expiry = now + service::get_refresh_token_expiry();
 	let workspaces =
 		db::get_all_workspace_roles_for_user(connection, &user_login.user_id)
 			.await?;
@@ -637,8 +622,8 @@ pub async fn generate_access_token(
 	};
 
 	let token_data = AccessTokenData::new(
-		now.timestamp_millis() as u64,
-		exp.timestamp_millis() as u64,
+		&now,
+		&exp,
 		workspaces,
 		user_login.login_id.clone(),
 		user,
@@ -797,9 +782,7 @@ pub async fn join_user(
 			.body(error!(INVALID_OTP).to_string())?;
 	}
 
-	if (user_data.otp_expiry.timestamp_millis() as u64) <
-		get_current_time_millis()
-	{
+	if user_data.otp_expiry < Utc::now() {
 		Error::as_result()
 			.status(200)
 			.body(error!(OTP_EXPIRED).to_string())?;
@@ -1150,8 +1133,7 @@ pub async fn resend_user_sign_up_otp(
 	}
 
 	let otp = service::generate_new_otp();
-	let token_expiry = Utc::now() +
-		Duration::milliseconds(service::get_join_token_expiry() as i64);
+	let token_expiry = Utc::now() + service::get_join_token_expiry();
 
 	let token_hash = service::hash(otp.as_bytes())?;
 

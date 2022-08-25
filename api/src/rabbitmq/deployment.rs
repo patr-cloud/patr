@@ -20,7 +20,7 @@ use crate::{
 		DeploymentMetadata,
 	},
 	service,
-	utils::{get_current_time_millis, settings::Settings, Error},
+	utils::{settings::Settings, Error},
 	Database,
 };
 
@@ -356,7 +356,7 @@ async fn update_deployment_and_db_status(
 
 		Err(err)
 	} else {
-		let start_time = get_current_time_millis();
+		let start_time = Utc::now();
 
 		loop {
 			let status = service::get_kubernetes_deployment_status(
@@ -379,7 +379,7 @@ async fn update_deployment_and_db_status(
 			}
 			time::sleep(Duration::from_millis(500)).await;
 
-			if get_current_time_millis() - start_time > 30000 {
+			if Utc::now() - start_time > chrono::Duration::seconds(30) {
 				break;
 			}
 		}

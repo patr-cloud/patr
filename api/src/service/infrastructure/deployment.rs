@@ -244,7 +244,7 @@ pub async fn create_deployment_in_workspace(
 		&deployment_id,
 		machine_type,
 		deployment_running_details.min_horizontal_scale as i32,
-		&DateTime::from(created_time),
+		&created_time,
 	)
 	.await?;
 

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use api_models::utils::Uuid;
-use chrono::{TimeZone, Utc};
+use chrono::Utc;
 use eve_rs::AsError;
 use k8s_openapi::api::networking::v1::{
 	HTTPIngressPath,
@@ -35,7 +35,7 @@ use sqlx::Row;
 
 use crate::{
 	migrate_query as query,
-	utils::{get_current_time_millis, settings::Settings, Error},
+	utils::{settings::Settings, Error},
 	Database,
 };
 
@@ -802,7 +802,7 @@ async fn populate_deployment_deploy_history(
 			&deployment_id,
 			&manifest_digest,
 			repository_id,
-			&Utc.timestamp_millis(get_current_time_millis() as i64)
+			&Utc::now()
 		)
 		.execute(&mut *connection)
 		.await?;

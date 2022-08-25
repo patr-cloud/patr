@@ -219,12 +219,8 @@ pub async fn delete_managed_database(
 	)
 	.await?;
 
-	db::stop_database_usage_history(
-		connection,
-		database_id,
-		&Utc::now().into(),
-	)
-	.await?;
+	db::stop_database_usage_history(connection, database_id, &Utc::now())
+		.await?;
 	Ok(())
 }
 

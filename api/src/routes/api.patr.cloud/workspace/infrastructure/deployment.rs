@@ -36,7 +36,7 @@ use api_models::{
 		},
 		WorkspaceAuditLog,
 	},
-	utils::{constants, Uuid, get_current_time, DateTime},
+	utils::{constants, get_current_time, DateTime, Uuid},
 };
 use chrono::{TimeZone, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
@@ -909,7 +909,7 @@ async fn create_deployment(
 					&id,
 					repository_id,
 					&digest,
-					&now.into(),
+					&now,
 				)
 				.await?;
 
@@ -1129,7 +1129,7 @@ async fn start_deployment(
 					&deployment_id,
 					repository_id,
 					&digest,
-					&now.into(),
+					&now,
 				)
 				.await?;
 			}
@@ -1440,7 +1440,7 @@ async fn delete_deployment(
 	db::stop_deployment_usage_history(
 		context.get_database_connection(),
 		&deployment_id,
-		&Utc::now().into(),
+		&Utc::now(),
 	)
 	.await?;
 
@@ -1607,7 +1607,7 @@ async fn update_deployment(
 			// Don't update deployments that are explicitly stopped or deleted
 		}
 		_ => {
-			let current_time = Utc::now().into();
+			let current_time = Utc::now();
 			db::stop_deployment_usage_history(
 				context.get_database_connection(),
 				&deployment_id,

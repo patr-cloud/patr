@@ -1,5 +1,5 @@
-use api_models::utils::{Uuid};
-use chrono::{Utc, DateTime};
+use api_models::utils::Uuid;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::{query, query_as, Database};
