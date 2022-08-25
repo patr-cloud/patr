@@ -1,5 +1,5 @@
 use std::{
-	collections::{HashMap, HashSet},
+	collections::{BTreeMap, HashMap, HashSet},
 	fmt::Display,
 };
 
@@ -12,6 +12,7 @@ use api_models::{
 	utils::Uuid,
 };
 use eve_rs::AsError;
+use globset::{Glob, GlobSetBuilder};
 use k8s_openapi::{
 	api::{
 		apps::v1::{Deployment, DeploymentSpec},
@@ -24,7 +25,6 @@ use k8s_openapi::{
 			PodSpec,
 			PodTemplateSpec,
 			ResourceRequirements,
-			Service,
 			ServicePort,
 			ServiceSpec,
 		},
@@ -41,7 +41,16 @@ use crate::{
 	db::{self, GitProvider},
 	models::ci::{
 		self,
-		file_format::{CiFlow, EnvVarValue, Step},
+		file_format::{
+			CiFlow,
+			Decision,
+			EnvVarValue,
+			LabelName,
+			Service,
+			Step,
+			When,
+			Work,
+		},
 	},
 	rabbitmq::{BuildId, BuildStep, BuildStepId},
 	service,
@@ -90,13 +99,18 @@ pub async fn parse_ci_file_content(
 
 	// check for name duplication
 	let CiFlow::Pipeline(pipeline) = &ci_flow;
+
 	let mut step_names = HashSet::new();
 	for step in &pipeline.steps {
-		if !step_names.insert(step.name.as_str()) {
+		let name = match step {
+			Step::Work(work) => &work.name,
+			Step::Decision(decision) => &decision.name,
+		};
+		if !step_names.insert(name.as_str()) {
 			log::info!(
 				"request_id: {} - Duplicate step name `{}` found",
 				request_id,
-				step.name
+				name
 			);
 			return Ok(ParseStatus::Error);
 		}
@@ -123,15 +137,15 @@ pub async fn parse_ci_file_content(
 
 	let CiFlow::Pipeline(pipeline) = &mut ci_flow;
 	for service in &mut pipeline.services {
-		for env in &mut service.env {
-			if let EnvVarValue::ValueFromSecret(secret_name) = &mut env.value {
-				if let Some(secret_id) = workspace_secrets.get(&*secret_name) {
-					*secret_name = secret_id.to_string();
+		for value in service.env.values_mut() {
+			if let EnvVarValue::ValueFromSecret { from_secret } = value {
+				if let Some(secret_id) = workspace_secrets.get(&*from_secret) {
+					*from_secret = secret_id.to_string();
 				} else {
 					log::info!(
 						"request_id: {} - Invalid secret name `{}` found",
 						request_id,
-						secret_name
+						from_secret
 					);
 					return Ok(ParseStatus::Error);
 				}
@@ -139,17 +153,21 @@ pub async fn parse_ci_file_content(
 		}
 	}
 	for step in &mut pipeline.steps {
-		for env in &mut step.env {
-			if let EnvVarValue::ValueFromSecret(secret_name) = &mut env.value {
-				if let Some(secret_id) = workspace_secrets.get(&*secret_name) {
-					*secret_name = secret_id.to_string();
-				} else {
-					log::info!(
-						"request_id: {} - Invalid secret name `{}` found",
-						request_id,
-						secret_name
-					);
-					return Ok(ParseStatus::Error);
+		if let Step::Work(work) = step {
+			for value in work.env.values_mut() {
+				if let EnvVarValue::ValueFromSecret { from_secret } = value {
+					if let Some(secret_id) =
+						workspace_secrets.get(&*from_secret)
+					{
+						*from_secret = secret_id.to_string();
+					} else {
+						log::info!(
+							"request_id: {} - Invalid secret name `{}` found",
+							request_id,
+							from_secret
+						);
+						return Ok(ParseStatus::Error);
+					}
 				}
 			}
 		}
@@ -158,11 +176,74 @@ pub async fn parse_ci_file_content(
 	Ok(ParseStatus::Success(ci_flow))
 }
 
+pub fn evaluate_work_steps_for_ci(
+	steps: Vec<Step>,
+	branch_name: Option<&str>,
+) -> Result<Vec<Work>, Error> {
+	let mut works = vec![];
+
+	let mut next_step: Option<LabelName> = None;
+	for step in steps {
+		if let Some(next_step) = next_step.as_ref() {
+			let step_name = match &step {
+				Step::Work(work) => &work.name,
+				Step::Decision(decision) => &decision.name,
+			};
+
+			if next_step != step_name {
+				continue;
+			}
+		}
+
+		match step {
+			Step::Work(work) => {
+				works.push(work);
+				next_step.take();
+			}
+			Step::Decision(Decision {
+				name: _,
+				when: When { branch },
+				then,
+				else_,
+			}) => {
+				let branch_name = match branch_name {
+					Some(branch_name) => branch_name,
+					None => continue,
+				};
+
+				let globset = {
+					let mut globset = GlobSetBuilder::new();
+					for glob_str in Vec::from(branch) {
+						globset.add(Glob::new(&glob_str)?);
+					}
+					globset.build()?
+				};
+
+				if globset.is_match(branch_name) {
+					next_step.replace(then);
+				} else if let Some(else_) = else_ {
+					next_step.replace(else_);
+				} else {
+					next_step.take();
+				}
+			}
+		}
+	}
+
+	if next_step.is_some() {
+		Error::as_result()
+			.status(400)
+			.body("incomplete workflow in pipeline")?;
+	}
+
+	Ok(works)
+}
+
 pub async fn add_build_steps_in_db(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
 	build_num: i64,
-	ci_flow: &CiFlow,
+	works: &[Work],
 	request_id: &Uuid,
 ) -> Result<(), eve_rs::Error<()>> {
 	log::trace!("request_id: {request_id} - Adding build steps in db");
@@ -181,16 +262,15 @@ pub async fn add_build_steps_in_db(
 	.await?;
 
 	// add build steps provider in ci file
-	let CiFlow::Pipeline(pipeline) = ci_flow;
 	for (
 		step_count,
-		Step {
+		Work {
 			name,
 			image,
-			commands,
+			command,
 			env: _,
 		},
-	) in pipeline.steps.iter().enumerate()
+	) in works.iter().enumerate()
 	{
 		db::add_ci_step_for_build(
 			connection,
@@ -199,7 +279,7 @@ pub async fn add_build_steps_in_db(
 			step_count as i32 + 1,
 			name,
 			image,
-			&commands.to_string(),
+			&Vec::from(command.clone()).join("\n"),
 			BuildStepStatus::WaitingToStart,
 		)
 		.await?;
@@ -213,7 +293,8 @@ pub async fn add_build_steps_in_k8s(
 	config: &Settings,
 	repo_id: &Uuid,
 	build_id: &BuildId,
-	ci_flow: CiFlow,
+	services: Vec<Service>,
+	work_steps: Vec<Work>,
 	netrc: Option<Netrc>,
 	repo_clone_url: &str,
 	repo_name: &str,
@@ -279,8 +360,7 @@ pub async fn add_build_steps_in_k8s(
 	)
 	.await?;
 
-	let CiFlow::Pipeline(pipeline) = ci_flow;
-	for service in &pipeline.services {
+	for service in services {
 		create_background_service_for_pipeline(
 			kube_client.clone(),
 			build_id,
@@ -298,7 +378,7 @@ pub async fn add_build_steps_in_k8s(
 				step_id: 0,
 			},
 			image: "alpine/git".to_string(),
-			env_vars: vec![],
+			env_vars: BTreeMap::new(),
 			commands: vec![
 				format!(
 					r#"echo "{}" > ~/.netrc"#,
@@ -319,13 +399,13 @@ pub async fn add_build_steps_in_k8s(
 	// queue build steps
 	for (
 		step_id,
-		Step {
+		Work {
 			name: _,
 			image,
-			commands,
+			command,
 			env,
 		},
-	) in pipeline.steps.into_iter().enumerate()
+	) in work_steps.into_iter().enumerate()
 	{
 		// TODO: use step name as dependent instead of step id
 		let step_id = 1 + step_id as i32;
@@ -341,7 +421,7 @@ pub async fn add_build_steps_in_k8s(
 				commands: vec![
 					format!(r#"cd "/mnt/workdir/{repo_name}""#),
 					"set -x".to_owned(),
-					commands.to_string(),
+					Vec::from(command).join("\n"),
 				],
 			},
 			config,
@@ -365,18 +445,18 @@ pub async fn add_build_steps_in_k8s(
 async fn create_background_service_for_pipeline(
 	kube_client: kube::Client,
 	build_id: &BuildId,
-	service: &ci::file_format::Service,
+	service: ci::file_format::Service,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let env = (!service.env.is_empty()).then(|| {
 		service
 			.env
 			.iter()
-			.map(|ci::file_format::EnvVar { name, value }| EnvVar {
+			.map(|(name, value)| EnvVar {
 				name: name.clone(),
 				value: Some(match value {
 					EnvVarValue::Value(value) => value.clone(),
-					EnvVarValue::ValueFromSecret(from_secret) => format!(
+					EnvVarValue::ValueFromSecret { from_secret } => format!(
 						"vault:secret/data/{}/{}#data",
 						build_id.repo_workspace_id, from_secret
 					),
@@ -444,15 +524,13 @@ async fn create_background_service_for_pipeline(
 							image: Some(service.image.clone()),
 							image_pull_policy: Some("Always".to_string()),
 							env,
-							command: service.commands.as_ref().map(
-								|commands| {
-									vec![
-										"sh".to_string(),
-										"-ce".to_string(),
-										commands.to_string(),
-									]
-								},
-							),
+							command: service.command.map(|command| {
+								vec![
+									"sh".to_string(),
+									"-ce".to_string(),
+									Vec::from(command).join("\n"),
+								]
+							}),
 							..Default::default()
 						}],
 						..Default::default()
@@ -465,29 +543,32 @@ async fn create_background_service_for_pipeline(
 	)
 	.await?;
 
-	Api::<Service>::namespaced(kube_client, &build_id.get_build_namespace())
-		.create(
-			&Default::default(),
-			&Service {
-				metadata: ObjectMeta {
-					name: Some(service.name.to_string()),
-					..Default::default()
-				},
-				spec: Some(ServiceSpec {
-					selector: Some(
-						[("app".to_string(), service.name.to_string())].into(),
-					),
-					ports: Some(vec![ServicePort {
-						port: service.port,
-						target_port: Some(IntOrString::Int(service.port)),
-						..Default::default()
-					}]),
-					..Default::default()
-				}),
+	Api::<k8s_openapi::api::core::v1::Service>::namespaced(
+		kube_client,
+		&build_id.get_build_namespace(),
+	)
+	.create(
+		&Default::default(),
+		&k8s_openapi::api::core::v1::Service {
+			metadata: ObjectMeta {
+				name: Some(service.name.to_string()),
 				..Default::default()
 			},
-		)
-		.await?;
+			spec: Some(ServiceSpec {
+				selector: Some(
+					[("app".to_string(), service.name.to_string())].into(),
+				),
+				ports: Some(vec![ServicePort {
+					port: service.port,
+					target_port: Some(IntOrString::Int(service.port)),
+					..Default::default()
+				}]),
+				..Default::default()
+			}),
+			..Default::default()
+		},
+	)
+	.await?;
 
 	Ok(())
 }

@@ -1,4 +1,4 @@
-use std::{fmt::Display, ops::Deref};
+use std::{collections::BTreeMap, fmt::Display, ops::Deref};
 
 use monostate::MustBe;
 use serde::{Deserialize, Serialize};
@@ -19,28 +19,64 @@ pub struct Pipeline {
 	pub version: MustBe!("v1"),
 	/// name of pipeline
 	pub name: LabelName,
-	/// list of steps to be executed in a single pipeline
-	pub steps: Vec<Step>,
 	/// list of services to run in background while executing pipeline
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
 	pub services: Vec<Service>,
+	/// list of steps to be executed in a single pipeline
+	pub steps: Vec<Step>,
 }
 
-/// Step represent a single unit of work which will be done in pipeline
+/// Step represent a single unit of work or a decision block which will be done
+/// in pipeline
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Step {
+	Work(Work),
+	Decision(Decision),
+}
+
+/// A decision block decides the next steps based on the branches and events
+/// during CI initialization
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Step {
-	/// name of the step
+pub struct Decision {
+	/// name of the decision
+	pub name: LabelName,
+	/// a condition which will return either true or false based on the brach
+	/// and events
+	pub when: When,
+	/// if condition is evaluated to true, then clause will be executed next
+	pub then: LabelName,
+	/// an optional else case which will be executed next, if the condition
+	/// evaluates to false
+	#[serde(alias = "else")]
+	pub else_: Option<LabelName>,
+}
+
+/// A decision block decides the next steps based on the branches and events
+/// during CI initialization
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct When {
+	/// Represents the list of branch in glob pattern which will be matched
+	pub branch: OneOrMany<String>,
+}
+
+/// Work represent a single unit of work which will be done in pipeline
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Work {
+	/// name of the work
 	pub name: LabelName,
 	/// image can be any docker image hosted publicly on docker hub
 	pub image: String,
 	/// list of commands to be executed with the given image.
 	/// these commands will start executing from the repo source
-	pub commands: Commands,
+	pub command: OneOrMany<String>,
 	/// list of environmental variables that has to be defined while
 	/// initializing container
-	#[serde(default, skip_serializing_if = "Vec::is_empty")]
-	pub env: Vec<EnvVar>,
+	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+	pub env: BTreeMap<String, EnvVarValue>,
 }
 
 /// Service represents a background job which will run during pipeline
@@ -54,50 +90,39 @@ pub struct Service {
 	/// list of commands to be executed with the given image.
 	/// these commands will start executing from the repo source
 	#[serde(default, skip_serializing_if = "Option::is_none")]
-	pub commands: Option<Commands>,
+	pub command: Option<OneOrMany<String>>,
 	/// list of environmental variables that has to be defined while
 	/// initializing container
-	#[serde(default, skip_serializing_if = "Vec::is_empty")]
-	pub env: Vec<EnvVar>,
+	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+	pub env: BTreeMap<String, EnvVarValue>,
 	/// TCP port to access this service
 	pub port: i32,
 }
 
-// Commands which are passed to the docker image
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, untagged)]
-pub enum Commands {
-	// a single command
-	SingleStr(String),
-	// list of commands
-	VecStr(Vec<String>),
+/// A decorative wrapper to use either a one or many values of same type
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum OneOrMany<T> {
+	/// A single value
+	One(T),
+	/// Multiple values
+	Many(Vec<T>),
 }
 
-impl Display for Commands {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Commands::SingleStr(command) => write!(f, "{}", command),
-			Commands::VecStr(commands) => write!(f, "{}", commands.join("\n")),
+impl<T> From<OneOrMany<T>> for Vec<T> {
+	fn from(from: OneOrMany<T>) -> Self {
+		match from {
+			OneOrMany::One(value) => vec![value],
+			OneOrMany::Many(values) => values,
 		}
 	}
 }
 
-/// Environmental variable which can be used to init containers
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
-pub struct EnvVar {
-	/// key name of the environment variable
-	pub name: String,
-	/// value of the environment varialbe
-	#[serde(flatten)]
-	pub value: EnvVarValue,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
+#[serde(untagged, rename_all = "snake_case")]
 pub enum EnvVarValue {
 	Value(String),
-	ValueFromSecret(String),
+	ValueFromSecret { from_secret: String },
 }
 
 /// A wrapped string type used to represent the valid naming

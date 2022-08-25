@@ -15,6 +15,7 @@ use crate::{
 	db::{self},
 	error,
 	models::{
+		ci::file_format::CiFlow,
 		deployment::KubernetesEventData,
 		error::{id as ErrorId, message as ErrorMessage},
 		Action,
@@ -629,6 +630,8 @@ async fn handle_ci_hooks(
 				.status(400)
 				.body("invalid repo name")?;
 
+			let branch_name = push_event_data.ref_.strip_prefix("refs/heads/");
+
 			let git_provider = db::get_connected_git_provider_details_by_id(
 				context.get_database_connection(),
 				&repo.git_provider_id,
@@ -681,11 +684,30 @@ async fn handle_ci_hooks(
 				}
 			};
 
+			let CiFlow::Pipeline(pipeline) = ci_flow;
+			let works = match service::evaluate_work_steps_for_ci(
+				pipeline.steps,
+				branch_name,
+			) {
+				Ok(works) => works,
+				Err(err) => {
+					log::info!("request_id: {request_id} - Error while evaluating ci work steps {err:#?}");
+					db::update_build_status(
+						context.get_database_connection(),
+						&repo.id,
+						build_num,
+						BuildStatus::Errored,
+					)
+					.await?;
+					return Ok(context);
+				}
+			};
+
 			service::add_build_steps_in_db(
 				context.get_database_connection(),
 				&repo.id,
 				build_num,
-				&ci_flow,
+				&works,
 				&request_id,
 			)
 			.await?;
@@ -701,7 +723,8 @@ async fn handle_ci_hooks(
 					repo_id: repo.id.clone(),
 					build_num,
 				},
-				ci_flow,
+				pipeline.services,
+				works,
 				Some(Netrc {
 					machine: "github.com".to_owned(),
 					login: login_name,

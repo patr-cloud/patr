@@ -81,6 +81,7 @@ octorust = { git = "https://github.com/kavin-kr/third-party-api-clients", rev = 
 serde_yaml = "0.8.24"
 monostate = "0.1.0"
 either = "1.7.0"
+globset = "0.4.9"
 
 [dependencies.log4rs]
 default-features = false

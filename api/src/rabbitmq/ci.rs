@@ -31,10 +31,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
 	db,
-	models::{
-		ci::{self, file_format::EnvVarValue},
-		rabbitmq::CIData,
-	},
+	models::{ci::file_format::EnvVarValue, rabbitmq::CIData},
 	service::{self, ext_traits::DeleteOpt},
 	utils::{settings::Settings, Error},
 	Database,
@@ -82,7 +79,7 @@ impl BuildStepId {
 pub struct BuildStep {
 	pub id: BuildStepId,
 	pub image: String,
-	pub env_vars: Vec<ci::file_format::EnvVar>,
+	pub env_vars: BTreeMap<String, EnvVarValue>,
 	pub commands: Vec<String>,
 }
 
@@ -102,11 +99,11 @@ async fn get_job_manifest(
 		build_step
 			.env_vars
 			.iter()
-			.map(|ci::file_format::EnvVar { name, value }| EnvVar {
+			.map(|(name, value)| EnvVar {
 				name: name.clone(),
 				value: Some(match value {
 					EnvVarValue::Value(value) => value.clone(),
-					EnvVarValue::ValueFromSecret(from_secret) => format!(
+					EnvVarValue::ValueFromSecret { from_secret } => format!(
 						"vault:secret/data/{}/{}#data",
 						build_step.id.build_id.repo_workspace_id, from_secret
 					),
@@ -366,6 +363,47 @@ pub async fn process_request(
 					}
 				}
 			} else {
+				let db_status_for_this_step = db::get_build_step_status(
+					connection,
+					&build_step.id.build_id.repo_id,
+					build_step.id.build_id.build_num,
+					build_step.id.step_id,
+				)
+				.await?
+				.unwrap_or(BuildStepStatus::Errored);
+
+				if db_status_for_this_step == BuildStepStatus::Running {
+					// job is missing in k8s, so mark as errored
+					log::info!("request_id: {request_id} - Job is missing in k8s, marking step `{build_step_job_name}` as errored");
+					jobs_api
+						.delete_opt(
+							&build_step_job_name,
+							&DeleteParams {
+								propagation_policy: Some(
+									PropagationPolicy::Foreground,
+								),
+								..Default::default()
+							},
+						)
+						.await?;
+					db::update_build_step_status(
+						connection,
+						&build_step.id.build_id.repo_id,
+						build_step.id.build_id.build_num,
+						build_step.id.step_id,
+						BuildStepStatus::Errored,
+					)
+					.await?;
+					db::update_build_step_finished_time(
+						&mut *connection,
+						&build_step.id.build_id.repo_id,
+						build_step.id.build_id.build_num,
+						build_step.id.step_id,
+						&DateTime::from(Utc::now()),
+					)
+					.await?;
+				}
+
 				let dependency_status = db::get_build_step_status(
 					connection,
 					&build_step.id.build_id.repo_id,

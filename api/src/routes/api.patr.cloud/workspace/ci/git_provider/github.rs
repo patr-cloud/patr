@@ -39,7 +39,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::{deployment::Logs, rbac::permissions},
+	models::{ci::file_format::CiFlow, deployment::Logs, rbac::permissions},
 	pin_fn,
 	rabbitmq::{BuildId, BuildStepId},
 	service::{self, Netrc, ParseStatus},
@@ -1111,11 +1111,32 @@ async fn restart_build(
 		}
 	};
 
+	let branch_name = previous_build.git_ref.strip_prefix("refs/heads/");
+
+	let CiFlow::Pipeline(pipeline) = ci_flow;
+	let works = match service::evaluate_work_steps_for_ci(
+		pipeline.steps,
+		branch_name,
+	) {
+		Ok(works) => works,
+		Err(err) => {
+			log::info!("request_id: {request_id} - Error while evaluating ci work steps {err:#?}");
+			db::update_build_status(
+				context.get_database_connection(),
+				&repo.id,
+				build_num,
+				BuildStatus::Errored,
+			)
+			.await?;
+			return Ok(context);
+		}
+	};
+
 	service::add_build_steps_in_db(
 		context.get_database_connection(),
 		&repo.id,
 		build_num,
-		&ci_flow,
+		&works,
 		&request_id,
 	)
 	.await?;
@@ -1131,7 +1152,8 @@ async fn restart_build(
 			repo_id: repo.id.clone(),
 			build_num,
 		},
-		ci_flow,
+		pipeline.services,
+		works,
 		Some(Netrc {
 			machine: "github.com".to_owned(),
 			login: login_name,
