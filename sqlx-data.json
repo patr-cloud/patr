@@ -1805,6 +1805,50 @@
     },
     "query": "CREATE EXTENSION IF NOT EXISTS postgis;"
   },
+  "2a75e6b31b3cb768f7037e6c47fdf2f2ee0eaf1b508a32c784c779eca04a70a5": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "message",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "user_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username: _",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT static_site_upload_history.upload_id as \"id: _\", static_site_upload_history.message, static_site_upload_history.uploaded_by as \"user_id: _\", \"user\".username as \"username: _\", static_site_upload_history.created as \"created: _\" FROM static_site_upload_history LEFT JOIN \"user\" ON \"user\".id = static_site_upload_history.uploaded_by WHERE static_site_id = $1;"
+  },
   "2a8531f5a4448c2d77be6b5353946591bf213407b9a58b0b342a03bef0acd99c": {
     "describe": {
       "columns": [],
@@ -2850,44 +2894,6 @@
       }
     },
     "query": "UPDATE deployment_payment_history SET stop_time = $1 WHERE deployment_id = $2 AND stop_time IS NULL;"
-  },
-  "49128d72cfcf56510f8626929eba9b55e03e697e97414cfbdc5fed6372068dc4": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "message",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "uploaded_by: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "created: _",
-          "ordinal": 3,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT upload_id as \"id: _\", message, uploaded_by as \"uploaded_by: _\", created as \"created: _\" FROM static_site_upload_history WHERE upload_id = $1;"
   },
   "4a59dfecc6411d998b7f8b8b4a8d32a9f565197e1cc4ef5518b2290c243ffddf": {
     "describe": {
@@ -7321,44 +7327,6 @@
     },
     "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE resource_id = $1;"
   },
-  "aa89f69db4362344f8d29df3d18bc3da669f3ddf77a68cdeefd1aad1ba8b3e85": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "message",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "uploaded_by: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "created: _",
-          "ordinal": 3,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT upload_id as \"id: _\", message, uploaded_by as \"uploaded_by: _\", created as \"created: _\" FROM static_site_upload_history WHERE static_site_id = $1 ORDER BY created DESC LIMIT 1;"
-  },
   "ac016a17b868bc255b30dd49c718fce7c6c28637f5cb4f94a83c993f959627dd": {
     "describe": {
       "columns": [
@@ -8558,6 +8526,50 @@
     },
     "query": "SELECT user_unverified_personal_email.local, user_unverified_personal_email.domain_id as \"domain_id: Uuid\", user_unverified_personal_email.user_id as \"user_id: Uuid\", user_unverified_personal_email.verification_token_hash, user_unverified_personal_email.verification_token_expiry FROM user_unverified_personal_email INNER JOIN domain ON domain.id = user_unverified_personal_email.domain_id WHERE CONCAT(local, '@', domain.name, '.', domain.tld) = $1;"
   },
+  "bc3c8d40609cd35d1d04b8c2266894d2137f15a0fb27b40e49550c0a179cc0c1": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "message",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "user_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username: _",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT static_site_upload_history.upload_id as \"id: _\", static_site_upload_history.message, static_site_upload_history.uploaded_by as \"user_id: _\", \"user\".username as \"username: _\", static_site_upload_history.created as \"created: _\" FROM static_site_upload_history LEFT JOIN \"user\" ON \"user\".id = static_site_upload_history.uploaded_by WHERE static_site_id = $1 ORDER BY static_site_upload_history.created DESC LIMIT 1;"
+  },
   "bc99fb8fb755978abf04e2db1da08b6236b07afd722505bd031cbc1e6a1f281e": {
     "describe": {
       "columns": [],
@@ -8882,44 +8894,6 @@
       }
     },
     "query": "UPDATE static_site SET status = $1 WHERE id = $2;"
-  },
-  "c440a9f8f932cc5e74e11bf9830cb51c4dba11c883cc7621a08db9fc2977742f": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "message",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "uploaded_by: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "created: _",
-          "ordinal": 3,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT upload_id as \"id: _\", message, uploaded_by as \"uploaded_by: _\", created as \"created: _\" FROM static_site_upload_history WHERE static_site_id = $1;"
   },
   "c4926f8d59dc7bc4e9ee1f2472a6362d47d65337c1644b6a0487cd9318d28d11": {
     "describe": {
