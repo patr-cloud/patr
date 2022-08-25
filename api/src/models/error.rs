@@ -74,6 +74,7 @@ pub mod id {
 	pub const PAYMENT_METHOD_REQUIRED: &str = "paymentMethodRequired";
 	pub const ADDRESS_REQUIRED: &str = "addressRequired";
 	pub const TAG_NOT_FOUND: &str = "TagNotFound";
+	pub const DOMAIN_TRANSFERRED: &str = "DomainTransferred";
 }
 
 #[allow(dead_code)]
@@ -206,4 +207,5 @@ pub mod message {
 	pub const PAYMENT_METHOD_REQUIRED: &str = "It seems that you have not added any payment method. Please add a payment method to continue";
 	pub const ADDRESS_REQUIRED: &str = "You need to add your billing address inorder to proceed with the transaction";
 	pub const TAG_NOT_FOUND: &str = "The tag does not exist";
+	pub const DOMAIN_TRANSFERRED: &str = "It seems like transfer domain to patr is successfull. Cannot cancel now";
 }

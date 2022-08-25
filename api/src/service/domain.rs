@@ -42,7 +42,7 @@ use trust_dns_client::{
 
 use super::infrastructure;
 use crate::{
-	db::{self, DnsRecordType, DomainPlan},
+	db::{self, DnsRecordType, DomainPlan, WorkspaceDomain},
 	error,
 	models::rbac::{self, resource_types},
 	utils::{constants, settings::Settings, validator, Error},
@@ -356,6 +356,42 @@ pub async fn transfer_domain_to_patr(
 	Ok(())
 }
 
+pub async fn cancel_transfer_domain_to_patr(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} checking if domain is already transferred or not",
+		request_id
+	);
+	let domain = db::get_domain_from_user_transferring_domain_to_patr(
+		connection, domain_id,
+	)
+	.await?;
+
+	if domain.is_some() {
+		log::trace!(
+			"Found domain with ID: {}, deleting it from database",
+			domain_id
+		);
+		db::delete_user_transfer_domain_by_id(connection, domain_id).await?;
+
+		db::delete_transfer_domain_from_workspace_domain(connection, domain_id)
+			.await?;
+	} else {
+		log::trace!(
+			"Cannot find domain with ID: {}, may be already verified",
+			domain_id
+		);
+		return Error::as_result()
+			.status(500)
+			.body(error!(DOMAIN_TRANSFERRED).to_string());
+	}
+
+	Ok(())
+}
+
 /// # Description
 /// This function checks if the domain is verified or not
 ///
@@ -393,7 +429,6 @@ pub async fn is_domain_verified(
 		}
 
 		log::trace!("request_id: {} - Domain is internal", request_id);
-		let client = get_cloudflare_client(config).await?;
 
 		let zone_identifier =
 			db::get_patr_controlled_domain_by_id(connection, domain_id)
@@ -403,13 +438,9 @@ pub async fn is_domain_verified(
 				.zone_identifier;
 
 		log::trace!("request_id: {} - Checking if zone is active", request_id);
-		let zone = client
-			.request(&ZoneDetails {
-				identifier: &zone_identifier,
-			})
-			.await?;
+		let is_domain_active = is_zone_active(config, &zone_identifier).await?;
 
-		if let Status::Active = zone.result.status {
+		if is_domain_active {
 			log::trace!("request_id: {} - Zone is active", request_id);
 			log::trace!(
 				"request_id: {} - Updating domain verification status",
@@ -440,13 +471,13 @@ pub async fn is_domain_verified(
 
 		Ok(false)
 	} else {
-		let user_domain = db::get_user_controlled_domain_by_id(connection, domain_id).await?;
+		let user_domain =
+			db::get_user_controlled_domain_by_id(connection, domain_id).await?;
 		if domain.is_verified && user_domain.transferring_domain.is_some() {
 			log::trace!(
 				"request_id: {} - Domain is being transferred",
 				request_id
 			);
-			let client = get_cloudflare_client(config).await?;
 
 			let zone_identifier =
 				db::get_user_transferring_domain_to_patr(connection, domain_id)
@@ -459,64 +490,23 @@ pub async fn is_domain_verified(
 				"request_id: {} - Checking if zone is active",
 				request_id
 			);
-			let zone = client
-				.request(&ZoneDetails {
-					identifier: &zone_identifier,
-				})
-				.await?;
+			let is_domain_verified =
+				is_zone_active(config, &zone_identifier).await?;
 
-			if let Status::Active = zone.result.status {
+			if is_domain_verified {
 				log::trace!("request_id: {} - Zone is active", request_id);
-				log::trace!(
-					"request_id: {} - Updating domain verification status",
-					request_id
-				);
-
-				db::delete_transfer_domain_from_workspace_domain(
-					connection, domain_id,
-				)
-				.await?;
-
-				db::delete_user_transfer_domain_by_id(connection, domain_id)
-					.await?;
-
-				db::delete_user_contolled_domain(connection, domain_id).await?;
-
-				db::update_workspace_domain_nameserver_type(
-					connection, domain_id,
-				)
-				.await?;
-
-				db::add_patr_controlled_domain(
+				update_user_transfer_domain_details(
 					connection,
-					domain_id,
-					&zone_identifier,
-				)
-				.await?;
-
-				db::update_workspace_domain_status(
-					connection,
-					domain_id,
-					true,
-					Utc::now(),
-				)
-				.await?;
-
-				log::trace!("request_id: {} - Creating wild card certiifcate for internal domain", request_id);
-				infrastructure::create_certificates(
 					workspace_id,
-					&format!("certificate-{}", domain_id),
-					&format!("tls-{}", domain_id),
-					vec![format!("*.{}", domain.name), domain.name.clone()],
-					true,
+					&zone_identifier,
+					domain_id,
+					&domain,
 					config,
 					request_id,
 				)
 				.await?;
-				log::trace!("request_id: {} - Domain verified", request_id);
 				return Ok(true);
 			}
-
 			Ok(false)
 		} else {
 			log::trace!("request_id: {} - Domain is not internal", request_id);
@@ -1050,4 +1040,70 @@ async fn domain_limit_crossed(
 	}
 
 	Ok(false)
+}
+
+async fn is_zone_active(
+	config: &Settings,
+	zone_identifier: &str,
+) -> Result<bool, Error> {
+	let client = get_cloudflare_client(config).await?;
+
+	let zone = client
+		.request(&ZoneDetails {
+			identifier: zone_identifier,
+		})
+		.await?;
+	Ok(matches!(zone.result.status, Status::Active))
+}
+
+async fn update_user_transfer_domain_details(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	zone_identifier: &str,
+	domain_id: &Uuid,
+	domain: &WorkspaceDomain,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Updating domain verification status",
+		request_id
+	);
+
+	db::delete_transfer_domain_from_workspace_domain(connection, domain_id)
+		.await?;
+
+	db::delete_user_transfer_domain_by_id(connection, domain_id).await?;
+
+	db::delete_user_contolled_domain(connection, domain_id).await?;
+
+	db::update_workspace_domain_nameserver_type(connection, domain_id).await?;
+
+	db::add_patr_controlled_domain(connection, domain_id, zone_identifier)
+		.await?;
+
+	db::update_workspace_domain_status(
+		connection,
+		domain_id,
+		true,
+		&Utc::now(),
+	)
+	.await?;
+
+	log::trace!(
+		"request_id: {} - Creating wild card certiifcate for transferred external domain",
+		request_id
+	);
+	infrastructure::create_certificates(
+		workspace_id,
+		&format!("certificate-{}", domain_id),
+		&format!("tls-{}", domain_id),
+		vec![format!("*.{}", domain.name), domain.name.clone()],
+		true,
+		config,
+		request_id,
+	)
+	.await?;
+	log::trace!("request_id: {} - Domain verified", request_id);
+	Ok(())
 }

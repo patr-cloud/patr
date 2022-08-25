@@ -601,7 +601,7 @@ async fn verify_transfer_domain_to_patr() -> Result<(), Error> {
 			&mut connection,
 			&unverified_domain.id,
 			true,
-			Utc::now(),
+			&Utc::now(),
 		)
 		.await?;
 

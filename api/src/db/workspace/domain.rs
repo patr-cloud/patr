@@ -1426,9 +1426,10 @@ pub async fn delete_user_transfer_domain_by_id(
 	.map(|_| ())
 }
 
-pub async fn get_all_unverified_transferred_domains(
+pub async fn get_domain_from_user_transferring_domain_to_patr(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<UserTransferringDomain>, sqlx::Error> {
+	domain_id: &Uuid,
+) -> Result<Option<UserTransferringDomain>, sqlx::Error> {
 	query_as!(
 		UserTransferringDomain,
 		r#"
@@ -1443,27 +1444,10 @@ pub async fn get_all_unverified_transferred_domains(
 		ON
 			domain.id = user_transferring_domain_to_patr.domain_id
 		WHERE
-			is_verified = false;
-		"#
-	)
-	.fetch_all(&mut *connection)
-	.await
-}
-
-pub async fn delete_user_transferred_domain_by_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		DELETE FROM 
-			user_transferring_domain_to_patr
-		WHERE
 			domain_id = $1;
 		"#,
 		domain_id as _,
 	)
-	.execute(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await
-	.map(|_| ())
 }

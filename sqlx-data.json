@@ -322,6 +322,38 @@
     },
     "query": "SELECT id as \"id: _\", workspace_id as \"workspace_id: _\", name::TEXT as \"name!: _\" FROM docker_registry_repository WHERE name = $1 AND workspace_id = $2 AND name NOT LIKE 'patr-deleted:%';"
   },
+  "05b5720e613ffa8ffd90537d1683cf4a8690e10066ff62c8964fd1ca587f4b81": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id!: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "zone_identifier!",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "name!",
+          "ordinal": 2,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT user_transferring_domain_to_patr.domain_id as \"id!: _\", user_transferring_domain_to_patr.zone_identifier as \"zone_identifier!\", CONCAT(domain.name, '.', domain.tld) as \"name!\" FROM user_transferring_domain_to_patr LEFT JOIN domain ON domain.id = user_transferring_domain_to_patr.domain_id WHERE user_transferring_domain_to_patr.domain_id = $1;"
+  },
   "06996105bdcc06ade90e67db371aa915dc31e8e8d1a4aa8a778a78909a585f74": {
     "describe": {
       "columns": [],
@@ -2288,6 +2320,38 @@
     },
     "query": "CREATE TABLE static_site( id UUID CONSTRAINT static_site_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT static_site_chk_name_is_trimmed CHECK( name = TRIM(name) ), status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, current_live_upload UUID, CONSTRAINT static_site_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT static_site_uq_id_workspace_id UNIQUE(id, workspace_id) );"
   },
+  "311b72d5b13411a05552d8aebffe6b8f2af2e9c47faf18e1d193422f065946cb": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id!: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "zone_identifier!",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "name!",
+          "ordinal": 2,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT user_transferring_domain_to_patr.domain_id as \"id!: _\", user_transferring_domain_to_patr.zone_identifier as \"zone_identifier!\", CONCAT(domain.name, '.', domain.tld) as \"name!\" FROM user_transferring_domain_to_patr LEFT JOIN domain ON domain.id = user_transferring_domain_to_patr.domain_id WHERE domain_id = $1;"
+  },
   "31fa3365a18b7cdbb3532ea5559f8a6fafda313ec59e82c3d790c31ac45fb452": {
     "describe": {
       "columns": [],
@@ -3455,6 +3519,18 @@
       }
     },
     "query": "SELECT country_code, phone_number, user_id as \"user_id: _\", verification_token_hash, verification_token_expiry FROM user_unverified_phone_number WHERE country_code = $1 AND phone_number = $2;"
+  },
+  "50a7f483b9dfc6abb7d1cc0cb5030bfdeb4fd9ccba6d84f83959d181f166824c": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "DELETE FROM user_controlled_domain WHERE domain_id = $1;"
   },
   "51b48c931af24c0048305a577d2d0c1203f4bbfe08d39fec8106d6fec8fcb13b": {
     "describe": {
@@ -7658,80 +7734,6 @@
     },
     "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id!: Uuid\", workspace_domain.domain_type as \"domain_type!: ResourceType\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: DomainNameserverType\", workspace_domain.last_unverified as \"last_unverified!\", patr_controlled_domain.zone_identifier as \"zone_identifier?\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id LEFT JOIN patr_controlled_domain ON patr_controlled_domain.domain_id = workspace_domain.id WHERE is_verified = TRUE AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
   },
-  "a1d6b54fddda05b038af3e43c50863f0384be527268cf04f65984dc0dd8a52b4": {
-    "describe": {
-      "columns": [
-        {
-          "name": "name!",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "id!: Uuid",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "domain_type!: ResourceType",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              },
-              "name": "resource_owner_type"
-            }
-          }
-        },
-        {
-          "name": "is_verified!",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "nameserver_type!: DomainNameserverType",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "internal",
-                  "external"
-                ]
-              },
-              "name": "domain_nameserver_type"
-            }
-          }
-        },
-        {
-          "name": "last_unverified!",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "zone_identifier?",
-          "ordinal": 6,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        null,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id!: Uuid\", workspace_domain.domain_type as \"domain_type!: ResourceType\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: DomainNameserverType\", workspace_domain.last_unverified as \"last_unverified!\", patr_controlled_domain.zone_identifier as \"zone_identifier?\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id LEFT JOIN patr_controlled_domain ON patr_controlled_domain.domain_id = workspace_domain.id WHERE is_verified = TRUE AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
-  },
   "a1ef5b3c2269453d465e5f47f7bd9a8d8e7cd237085cf1a59a4c55ddd093c269": {
     "describe": {
       "columns": [
@@ -8523,16 +8525,6 @@
       }
     },
     "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tmonth,\n\t\t\tamount,\n\t\t\tpayment_intent_id,\n\t\t\tdate as \"date: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\ttransaction_type as \"transaction_type: _\",\n\t\t\tpayment_status as \"payment_status: _\",\n\t\t\tdescription\n\t\tFROM\n\t\t\ttransaction\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\tpayment_intent_id = $2;\n\t\t"
-  },
-  "b2570af8ca7311aff26e71673f7b4a7e10881cc888e41a64b8b8dac482d0e992": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE user_controlled_domain( domain_id UUID NOT NULL CONSTRAINT user_controlled_domain_pk PRIMARY KEY, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL CONSTRAINT user_controlled_domain_chk_nameserver_type CHECK( nameserver_type = 'external' ), CONSTRAINT user_controlled_domain_fk_domain_id_nameserver_type FOREIGN KEY(domain_id, nameserver_type) REFERENCES workspace_domain(id, nameserver_type) );"
   },
   "b27e78f8804b797ac37d45e828f0070405b23e9018b59ad40534b6fe8b853527": {
     "describe": {
@@ -11143,18 +11135,6 @@
       }
     },
     "query": "INSERT INTO workspace_audit_log( id, date, ip_address, workspace_id, user_id, login_id, resource_id, action, request_id, metadata, patr_action, success ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);"
-  },
-  "eeb3b85d9326f43e41668cc30359da5e9c1096f1d9775eda9b6edd8a6504f205": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "INSERT INTO user_controlled_domain( domain_id, nameserver_type ) VALUES ($1, 'external');"
   },
   "efa0a6ff35f40c8f91021798d83cbff7e35471895783a4ca95ec64d173dbdddf": {
     "describe": {
