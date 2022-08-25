@@ -2122,6 +2122,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "monostate"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "485f66074452199a6b1ae87b19002aaff1f60ff145fbd85ccf1c5df3305be71f"
+dependencies = [
+ "monostate-impl",
+ "serde",
+]
+
+[[package]]
+name = "monostate-impl"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6840647326d04ee133e371bafe54df3a5bca286b581c4cb31d4a45289dd41cbc"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "native-tls"
 version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2456,6 +2477,7 @@ dependencies = [
  "dateparser",
  "lazy_static",
  "log",
+ "monostate",
  "regex",
  "reqwest",
  "serde",

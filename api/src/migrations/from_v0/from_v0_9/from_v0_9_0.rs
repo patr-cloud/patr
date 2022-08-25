@@ -799,15 +799,28 @@ async fn update_user_login_table_with_more_info(
 			token_expiry TIMESTAMPTZ NOT NULL,
 			user_id UUID NOT NULL
 				CONSTRAINT user_login_fk_user_id REFERENCES "user"(id),
-			last_login TIMESTAMPTZ NOT NULL,
-			last_activity TIMESTAMPTZ NOT NULL,
 			created TIMESTAMPTZ NOT NULL,
 			created_ip INET NOT NULL,
 			created_location GEOMETRY NOT NULL,
+			last_login TIMESTAMPTZ NOT NULL,
+			last_activity TIMESTAMPTZ NOT NULL,
 			last_activity_ip INET NOT NULL,
 			last_activity_location GEOMETRY NOT NULL,
 			last_activity_user_agent TEXT NOT NULL,
-			CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id);
+			CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			user_login_idx_user_id
+		ON
+			user_login
+		(user_id);
 		"#
 	)
 	.execute(&mut *connection)
