@@ -408,10 +408,7 @@ pub async fn initialize_users_post(
 				CONSTRAINT user_unverified_phone_number_fk_user_id
 					REFERENCES "user"(id),
 			verification_token_hash TEXT NOT NULL,
-			verification_token_expiry TIMESTAMPTZ NOT NULL
-				CONSTRAINT
-					user_unverified_phone_number_chk_token_expiry_unsigned
-					CHECK(verification_token_expiry >= 0),
+			verification_token_expiry TIMESTAMPTZ NOT NULL,
 
 			CONSTRAINT user_univerified_phone_number_pk
 				PRIMARY KEY(country_code, phone_number),

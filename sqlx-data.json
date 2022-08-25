@@ -2251,16 +2251,6 @@
     },
     "query": "CREATE TABLE static_site( id UUID CONSTRAINT static_site_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT static_site_chk_name_is_trimmed CHECK( name = TRIM(name) ), status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, current_live_upload UUID, CONSTRAINT static_site_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT static_site_uq_id_workspace_id UNIQUE(id, workspace_id) );"
   },
-  "30f10ebb8542d7757cb0129ed6c9d027044688493162356dd695c5eba6824717": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE user_unverified_phone_number( country_code CHAR(2) NOT NULL CONSTRAINT user_unverified_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_unverified_phone_number_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), phone_number VARCHAR(15) NOT NULL, user_id UUID NOT NULL CONSTRAINT user_unverified_phone_number_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry TIMESTAMPTZ NOT NULL CONSTRAINT user_unverified_phone_number_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_univerified_phone_number_pk PRIMARY KEY(country_code, phone_number), CONSTRAINT user_univerified_phone_number_uq_country_code_phone_number UNIQUE(user_id, country_code, phone_number) );"
-  },
   "31fa3365a18b7cdbb3532ea5559f8a6fafda313ec59e82c3d790c31ac45fb452": {
     "describe": {
       "columns": [],
@@ -11219,6 +11209,16 @@
       }
     },
     "query": "UPDATE resource SET name = $2 WHERE id = $1;"
+  },
+  "f586863518a7bc2ad7980aa354656d0373289758bc9de1605b1123fffe485f12": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE user_unverified_phone_number( country_code CHAR(2) NOT NULL CONSTRAINT user_unverified_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_unverified_phone_number_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), phone_number VARCHAR(15) NOT NULL, user_id UUID NOT NULL CONSTRAINT user_unverified_phone_number_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry TIMESTAMPTZ NOT NULL, CONSTRAINT user_univerified_phone_number_pk PRIMARY KEY(country_code, phone_number), CONSTRAINT user_univerified_phone_number_uq_country_code_phone_number UNIQUE(user_id, country_code, phone_number) );"
   },
   "f5b7bf00eb407d889619e638614750a5deab18378edd398c074adb012b209f75": {
     "describe": {
