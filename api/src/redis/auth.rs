@@ -1,5 +1,5 @@
 use api_models::utils::Uuid;
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Duration, TimeZone, Utc};
 use redis::{
 	aio::MultiplexedConnection as RedisConnection,
 	AsyncCommands,
@@ -25,16 +25,21 @@ fn get_key_for_global_revocation() -> String {
 pub async fn get_token_revoked_timestamp_for_user(
 	redis_conn: &mut RedisConnection,
 	user_id: &Uuid,
-) -> Result<Option<u64>, RedisError> {
-	redis_conn.get(get_key_for_user_revocation(user_id)).await
+) -> Result<Option<DateTime<Utc>>, RedisError> {
+	let timestamp: Option<i64> =
+		redis_conn.get(get_key_for_user_revocation(user_id)).await?;
+	Ok(timestamp.map(|timestamp| Utc.timestamp_millis(timestamp)))
 }
 
 /// returns last set revocation timestamp (in millis) for the given login
 pub async fn get_token_revoked_timestamp_for_login(
 	redis_conn: &mut RedisConnection,
 	login_id: &Uuid,
-) -> Result<Option<u64>, RedisError> {
-	redis_conn.get(get_key_for_login_revocation(login_id)).await
+) -> Result<Option<DateTime<Utc>>, RedisError> {
+	let timestamp: Option<i64> = redis_conn
+		.get(get_key_for_login_revocation(login_id))
+		.await?;
+	Ok(timestamp.map(|timestamp| Utc.timestamp_millis(timestamp)))
 }
 
 /// returns last set revocation timestamp (in millis) for the given
@@ -42,17 +47,20 @@ pub async fn get_token_revoked_timestamp_for_login(
 pub async fn get_token_revoked_timestamp_for_workspace(
 	redis_conn: &mut RedisConnection,
 	workspace_id: &Uuid,
-) -> Result<Option<u64>, RedisError> {
-	redis_conn
+) -> Result<Option<DateTime<Utc>>, RedisError> {
+	let timestamp: Option<i64> = redis_conn
 		.get(get_key_for_workspace_revocation(workspace_id))
-		.await
+		.await?;
+	Ok(timestamp.map(|timestamp| Utc.timestamp_millis(timestamp)))
 }
 
 /// returns last set revocation timestamp (in millis) for global tokens
 pub async fn get_global_token_revoked_timestamp(
 	redis_conn: &mut RedisConnection,
-) -> Result<Option<u64>, RedisError> {
-	redis_conn.get(get_key_for_global_revocation()).await
+) -> Result<Option<DateTime<Utc>>, RedisError> {
+	let timestamp: Option<i64> =
+		redis_conn.get(get_key_for_global_revocation()).await?;
+	Ok(timestamp.map(|timestamp| Utc.timestamp_millis(timestamp)))
 }
 
 /// if ttl_in_secs is None, then key will live forever

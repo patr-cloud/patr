@@ -1070,11 +1070,9 @@ async fn docker_registry_login(
 		)?;
 	}
 
-	let iat = Utc::now().timestamp() as u64;
-
 	let token = RegistryToken::new(
 		config.docker_registry.issuer.clone(),
-		iat,
+		Utc::now(),
 		username.to_string(),
 		&config,
 		vec![],
@@ -1458,11 +1456,9 @@ async fn docker_registry_authenticate(
 		}
 	}
 
-	let iat = Utc::now().timestamp() as u64;
-
 	let token = RegistryToken::new(
 		config.docker_registry.issuer.clone(),
-		iat,
+		Utc::now(),
 		username.to_string(),
 		&config,
 		vec![RegistryTokenAccess {

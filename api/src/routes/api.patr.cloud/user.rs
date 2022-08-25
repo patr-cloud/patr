@@ -480,7 +480,7 @@ async fn update_user_info(
 		&user_id,
 		first_name.as_deref(),
 		last_name.as_deref(),
-		birthday.map(|bday| bday.0).as_ref(),
+		birthday.map(|DateTime(bday)| bday).as_ref(),
 		bio.as_deref(),
 		location.as_deref(),
 	)

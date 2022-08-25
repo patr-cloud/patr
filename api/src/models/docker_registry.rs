@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use jsonwebtoken::{
 	errors::Error as JWTError,
 	Algorithm,
@@ -22,9 +22,12 @@ pub struct RegistryToken {
 	pub iss: String,
 	pub sub: String,
 	pub aud: String,
-	pub exp: u64,
-	pub nbf: u64,
-	pub iat: u64,
+	#[serde(with = "datetime_as_seconds")]
+	pub exp: DateTime<Utc>,
+	#[serde(with = "datetime_as_seconds")]
+	pub nbf: DateTime<Utc>,
+	#[serde(with = "datetime_as_seconds")]
+	pub iat: DateTime<Utc>,
 	pub jti: String,
 	pub access: Vec<RegistryTokenAccess>,
 }
@@ -39,7 +42,7 @@ pub struct RegistryTokenAccess {
 impl RegistryToken {
 	pub fn new(
 		iss: String,
-		iat: u64,
+		iat: DateTime<Utc>,
 		sub: String,
 		config: &Settings,
 		access: Vec<RegistryTokenAccess>,
@@ -48,8 +51,8 @@ impl RegistryToken {
 			iss,
 			sub,
 			aud: config.docker_registry.service_name.clone(),
-			exp: iat + (600), // 5 mins
-			nbf: iat,
+			exp: iat + Duration::minutes(5), // 5 mins
+			nbf: iat.clone(),
 			iat,
 			jti: thread_rng()
 				.sample_iter(Alphanumeric)
@@ -225,4 +228,29 @@ pub struct V1Compatibility {
 #[serde(rename_all = "PascalCase")]
 pub struct DockerRepositoryExposedPort {
 	pub exposed_ports: Option<HashMap<String, Value>>,
+}
+
+mod datetime_as_seconds {
+	use chrono::{DateTime, TimeZone, Utc};
+	use serde::{Deserialize, Deserializer, Serializer};
+
+	pub fn serialize<S>(
+		value: &DateTime<Utc>,
+		serializer: S,
+	) -> Result<S::Ok, S::Error>
+	where
+		S: Serializer,
+	{
+		serializer.serialize_i64(value.timestamp())
+	}
+
+	pub fn deserialize<'de, D>(
+		deserializer: D,
+	) -> Result<DateTime<Utc>, D::Error>
+	where
+		D: Deserializer<'de>,
+	{
+		i64::deserialize(deserializer)
+			.map(|timestamp| Utc.timestamp(timestamp, 0))
+	}
 }

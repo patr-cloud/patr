@@ -236,7 +236,7 @@ async fn validate_access_token(
 	access_token: &AccessTokenData,
 ) -> Result<(), Error> {
 	// check whether access token has expired
-	if access_token.exp < Utc::now().timestamp_millis() as u64 {
+	if access_token.exp < Utc::now() {
 		return Error::as_result()
 			.status(401)
 			.body(error!(EXPIRED).to_string())?;

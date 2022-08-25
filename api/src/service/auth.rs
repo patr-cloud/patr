@@ -618,12 +618,12 @@ pub async fn generate_access_token(
 		username,
 		first_name,
 		last_name,
-		created: DateTime(created),
+		created,
 	};
 
 	let token_data = AccessTokenData::new(
-		&now,
-		&exp,
+		now,
+		exp,
 		workspaces,
 		user_login.login_id.clone(),
 		user,

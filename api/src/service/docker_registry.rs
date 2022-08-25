@@ -90,8 +90,6 @@ pub async fn delete_docker_repository_image(
 			.await?
 			.unwrap();
 
-	let iat = Utc::now().timestamp() as u64;
-
 	log::trace!("request_id: {} - Deleting docker repository image with digest: {} from the registry", request_id, digest);
 	let response_code = reqwest::Client::new()
 		.delete(format!(
@@ -108,7 +106,7 @@ pub async fn delete_docker_repository_image(
 		.bearer_auth(
 			RegistryToken::new(
 				config.docker_registry.issuer.clone(),
-				iat,
+				Utc::now(),
 				god_user.username.clone(),
 				config,
 				vec![RegistryTokenAccess {
@@ -212,8 +210,6 @@ pub async fn delete_docker_repository(
 			.await?
 			.unwrap();
 
-	let iat = Utc::now().timestamp() as u64;
-
 	log::trace!("request_id: {} - Deleting docker images of the repositories from the registry", request_id);
 	for image in images {
 		let response_code = client
@@ -232,7 +228,7 @@ pub async fn delete_docker_repository(
 			.bearer_auth(
 				RegistryToken::new(
 					config.docker_registry.issuer.clone(),
-					iat,
+					Utc::now(),
 					god_user.username.clone(),
 					config,
 					vec![RegistryTokenAccess {
@@ -282,8 +278,6 @@ pub async fn get_exposed_port_for_docker_image(
 			.await?
 			.unwrap();
 
-	let iat = Utc::now().timestamp() as u64;
-
 	let exposed_ports = reqwest::Client::new()
 		.get(format!(
 			"{}://{}/v2/{}/manifests/{}",
@@ -299,7 +293,7 @@ pub async fn get_exposed_port_for_docker_image(
 		.bearer_auth(
 			RegistryToken::new(
 				config.docker_registry.issuer.clone(),
-				iat,
+				Utc::now(),
 				god_user.username.clone(),
 				config,
 				vec![RegistryTokenAccess {
