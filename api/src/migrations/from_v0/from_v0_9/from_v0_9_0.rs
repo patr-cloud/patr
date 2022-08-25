@@ -21,7 +21,7 @@ async fn migrate_from_bigint_to_timestamptz(
 ) -> Result<(), Error> {
 	query!(
 		r#"
-		ALTER TABLE resource 
+		ALTER TABLE resource
 		DROP CONSTRAINT resource_created_chk_unsigned;
 		"#
 	)
@@ -211,7 +211,7 @@ async fn migrate_from_bigint_to_timestamptz(
 
 	query!(
 		r#"
-		ALTER TABLE docker_registry_repository_manifest 
+		ALTER TABLE docker_registry_repository_manifest
 		DROP CONSTRAINT docker_registry_repository_manifest_chk_created_unsigned;
 		"#
 	)
