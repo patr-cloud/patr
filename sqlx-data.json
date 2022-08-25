@@ -10022,16 +10022,6 @@
     },
     "query": "ALTER TABLE \"user\" ADD CONSTRAINT user_fk_id_recovery_phone_country_code_recovery_phone_number FOREIGN KEY( id, recovery_phone_country_code, recovery_phone_number ) REFERENCES user_phone_number( user_id, country_code, number ) DEFERRABLE INITIALLY IMMEDIATE;"
   },
-  "da3a2a4c83ec7e8493498fd89100204a9e32d02efd05ed9a75da9783998eb39e": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE docker_registry_repository_tag( repository_id UUID NOT NULL CONSTRAINT docker_registry_repository_tag_fk_repository_id REFERENCES docker_registry_repository(id), tag TEXT NOT NULL, manifest_digest TEXT NOT NULL, last_updated BIGINT NOT NULL CONSTRAINT docker_registry_repository_tag_chk_last_updated_unsigned CHECK( last_updated >= 0 ), CONSTRAINT docker_registry_repository_tag_pk PRIMARY KEY( repository_id, tag ), CONSTRAINT docker_registry_repository_tag_fk_repository_id_manifest_digest FOREIGN KEY(repository_id, manifest_digest) REFERENCES docker_registry_repository_manifest( repository_id, manifest_digest ) );"
-  },
   "daf8c5cc27ae0095c77760d86448ba3374082cc0cf5df1c59313342b992b59a8": {
     "describe": {
       "columns": [],
@@ -11209,6 +11199,16 @@
       }
     },
     "query": "UPDATE resource SET name = $2 WHERE id = $1;"
+  },
+  "f529f42b92758abe5d34e957fbf23757c50fb6b0100e0b3029d2bd8082f1ca5f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE docker_registry_repository_tag( repository_id UUID NOT NULL CONSTRAINT docker_registry_repository_tag_fk_repository_id REFERENCES docker_registry_repository(id), tag TEXT NOT NULL, manifest_digest TEXT NOT NULL, last_updated TIMESTAMPTZ NOT NULL, CONSTRAINT docker_registry_repository_tag_pk PRIMARY KEY( repository_id, tag ), CONSTRAINT docker_registry_repository_tag_fk_repository_id_manifest_digest FOREIGN KEY(repository_id, manifest_digest) REFERENCES docker_registry_repository_manifest( repository_id, manifest_digest ) );"
   },
   "f586863518a7bc2ad7980aa354656d0373289758bc9de1605b1123fffe485f12": {
     "describe": {

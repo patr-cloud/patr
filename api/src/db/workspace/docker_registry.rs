@@ -68,10 +68,7 @@ pub async fn initialize_docker_registry_pre(
 					REFERENCES docker_registry_repository(id),
 			tag TEXT NOT NULL,
 			manifest_digest TEXT NOT NULL,
-			last_updated BIGINT NOT NULL CONSTRAINT
-				docker_registry_repository_tag_chk_last_updated_unsigned CHECK(
-					last_updated >= 0
-				),
+			last_updated TIMESTAMPTZ NOT NULL,
 			CONSTRAINT docker_registry_repository_tag_pk PRIMARY KEY(
 				repository_id, tag
 			),
