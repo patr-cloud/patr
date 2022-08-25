@@ -142,7 +142,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					&mut connection,
 					&unverified_domain.id,
 					true,
-					Utc::now(),
+					&Utc::now(),
 				)
 				.await?;
 				let notification_email = db::get_notification_email_for_domain(
@@ -499,7 +499,7 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 			&mut connection,
 			&verified_domain.id,
 			false,
-			Utc::now(),
+			&Utc::now(),
 		)
 		.await?;
 

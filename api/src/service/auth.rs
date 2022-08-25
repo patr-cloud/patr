@@ -8,7 +8,7 @@ use api_models::{
 	},
 	utils::{DateTime, ResourceType, Uuid},
 };
-use chrono::{Datelike, Utc};
+use chrono::{Datelike, Duration, Utc};
 use eve_rs::AsError;
 
 /// This module validates user info and performs tasks related to user
@@ -20,8 +20,8 @@ use crate::{
 	db::{self, User, UserLogin, UserToSignUp},
 	error,
 	models::{rbac, AccessTokenData, ExposedUserData},
-	service::{self, get_refresh_token_expiry},
-	utils::{get_current_time_millis, settings::Settings, validator, Error},
+	service,
+	utils::{settings::Settings, validator, Error},
 	Database,
 };
 
@@ -68,7 +68,7 @@ pub async fn is_username_allowed(
 
 	if let Some(status) = sign_up_status {
 		// return in-valid (`false`) if expiry is greater than current time
-		if status.otp_expiry > get_current_time_millis() {
+		if status.otp_expiry > Utc::now() {
 			return Ok(false);
 		}
 	}
@@ -108,7 +108,7 @@ pub async fn is_email_allowed(
 		db::get_personal_email_to_be_verified_by_email(connection, email)
 			.await?;
 	if let Some(verify_status) = verify_status {
-		if verify_status.verification_token_expiry > get_current_time_millis() {
+		if verify_status.verification_token_expiry > Utc::now() {
 			return Ok(false);
 		}
 	}
@@ -116,7 +116,7 @@ pub async fn is_email_allowed(
 	let sign_up_status =
 		db::get_user_to_sign_up_by_email(connection, email).await?;
 	if let Some(status) = sign_up_status {
-		if status.otp_expiry > get_current_time_millis() {
+		if status.otp_expiry > Utc::now() {
 			return Ok(false);
 		}
 	}
@@ -174,7 +174,7 @@ pub async fn is_phone_number_allowed(
 	.await?;
 
 	if let Some(verify_status) = verify_status {
-		if verify_status.verification_token_expiry > get_current_time_millis() {
+		if verify_status.verification_token_expiry > Utc::now() {
 			return Ok(false);
 		}
 	}
@@ -187,7 +187,7 @@ pub async fn is_phone_number_allowed(
 	.await?;
 
 	if let Some(status) = sign_up_status {
-		if status.otp_expiry > get_current_time_millis() {
+		if status.otp_expiry > Utc::now() {
 			return Ok(false);
 		}
 	}
@@ -298,8 +298,7 @@ pub async fn create_user_join_request(
 	}
 
 	let otp = service::generate_new_otp();
-	let token_expiry =
-		get_current_time_millis() + service::get_join_token_expiry();
+	let token_expiry = Utc::now() + service::get_join_token_expiry();
 
 	let password = service::hash(password.as_bytes())?;
 	let token_hash = service::hash(otp.as_bytes())?;
@@ -338,7 +337,7 @@ pub async fn create_user_join_request(
 			)
 			.await?;
 			if let Some(user_sign_up) = user_sign_up {
-				if user_sign_up.otp_expiry < get_current_time_millis() {
+				if user_sign_up.otp_expiry < Utc::now() {
 					Error::as_result()
 						.status(200)
 						.body(error!(WORKSPACE_EXISTS).to_string())?;
@@ -377,7 +376,7 @@ pub async fn create_user_join_request(
 				tld,
 				workspace_name,
 				&token_hash,
-				token_expiry,
+				&token_expiry,
 				coupon_code,
 			)
 			.await?;
@@ -411,7 +410,7 @@ pub async fn create_user_join_request(
 				phone_country_code.as_deref(),
 				phone_number.as_deref(),
 				&token_hash,
-				token_expiry,
+				&token_expiry,
 				coupon_code,
 			)
 			.await?;
@@ -477,25 +476,26 @@ pub async fn create_login_for_user(
 	let (refresh_token, hashed_refresh_token) =
 		service::generate_new_refresh_token_for_user(connection, user_id)
 			.await?;
-	let iat = get_current_time_millis();
+	let now = Utc::now();
+	let expiry = now + service::get_refresh_token_expiry();
 
 	db::add_user_login(
 		connection,
 		&login_id,
 		&hashed_refresh_token,
-		iat + get_refresh_token_expiry(),
+		&expiry,
 		user_id,
-		iat,
-		iat,
+		&now,
+		&now,
 	)
 	.await?;
 	let user_login = UserLogin {
 		login_id,
 		user_id: user_id.clone(),
-		last_activity: iat,
-		last_login: iat,
+		last_activity: now,
+		last_login: now,
 		refresh_token: hashed_refresh_token,
-		token_expiry: iat + get_refresh_token_expiry(),
+		token_expiry: now + service::get_refresh_token_expiry(),
 	};
 
 	Ok((user_login, refresh_token))
@@ -557,7 +557,7 @@ pub async fn get_user_login_for_login_id(
 		.status(200)
 		.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
 
-	if user_login.token_expiry < get_current_time_millis() {
+	if user_login.token_expiry < Utc::now() {
 		// Token has expired
 		Error::as_result()
 			.status(200)
@@ -586,8 +586,9 @@ pub async fn generate_access_token(
 ) -> Result<String, Error> {
 	// get roles and permissions of user for rbac here
 	// use that info to populate the data in the token_data
-	let iat = get_current_time_millis();
-	let exp = iat + service::get_access_token_expiry(); // 3 days
+	let now = Utc::now();
+	let exp = now + service::get_access_token_expiry(); // 3 days
+	let refresh_token_expiry = now + service::get_refresh_token_expiry();
 	let workspaces =
 		db::get_all_workspace_roles_for_user(connection, &user_login.user_id)
 			.await?;
@@ -607,8 +608,8 @@ pub async fn generate_access_token(
 	db::set_login_expiry(
 		connection,
 		&user_login.login_id,
-		iat,
-		iat + service::get_refresh_token_expiry(),
+		&now,
+		&refresh_token_expiry,
 	)
 	.await?;
 
@@ -621,7 +622,7 @@ pub async fn generate_access_token(
 	};
 
 	let token_data = AccessTokenData::new(
-		iat,
+		now,
 		exp,
 		workspaces,
 		user_login.login_id.clone(),
@@ -660,7 +661,7 @@ pub async fn forgot_password(
 
 	let otp = service::generate_new_otp();
 
-	let token_expiry = get_current_time_millis() + (1000 * 60 * 60 * 2); // 2 hours
+	let token_expiry = Utc::now() + Duration::hours(2);
 
 	let token_hash = service::hash(otp.as_bytes())?;
 
@@ -668,7 +669,7 @@ pub async fn forgot_password(
 		connection,
 		&user.id,
 		&token_hash,
-		token_expiry,
+		&token_expiry,
 	)
 	.await?;
 
@@ -781,7 +782,7 @@ pub async fn join_user(
 			.body(error!(INVALID_OTP).to_string())?;
 	}
 
-	if user_data.otp_expiry < get_current_time_millis() {
+	if user_data.otp_expiry < Utc::now() {
 		Error::as_result()
 			.status(200)
 			.body(error!(OTP_EXPIRED).to_string())?;
@@ -796,7 +797,6 @@ pub async fn join_user(
 
 	let user_id = db::generate_new_user_id(connection).await?;
 	let now = Utc::now();
-	let created = now.timestamp_millis() as u64;
 
 	if rbac::GOD_USER_ID.get().is_none() {
 		rbac::GOD_USER_ID
@@ -852,7 +852,7 @@ pub async fn join_user(
 		&user_data.username,
 		&user_data.password,
 		(&user_data.first_name, &user_data.last_name),
-		created,
+		&now,
 		recovery_email_local,
 		recovery_email_domain_id,
 		recovery_phone_country_code,
@@ -917,10 +917,8 @@ pub async fn join_user(
 				db::get_sign_up_coupon_by_code(connection, coupon_code).await?
 			{
 				// Add coupon credits for their business account
-				let is_not_expired = coupon
-					.expiry
-					.map(|expiry| chrono::DateTime::from(expiry) > now)
-					.unwrap_or(true);
+				let is_not_expired =
+					coupon.expiry.map(|expiry| expiry > now).unwrap_or(true);
 				let has_usage_remaining = coupon
 					.uses_remaining
 					.map(|uses_remaining| uses_remaining > 0)
@@ -1060,10 +1058,8 @@ pub async fn join_user(
 				db::get_sign_up_coupon_by_code(connection, coupon_code).await?
 			{
 				// Add coupon credits for their personal account
-				let is_not_expired = coupon
-					.expiry
-					.map(|expiry| chrono::DateTime::from(expiry) > now)
-					.unwrap_or(true);
+				let is_not_expired =
+					coupon.expiry.map(|expiry| expiry > now).unwrap_or(true);
 				let has_usage_remaining = coupon
 					.uses_remaining
 					.map(|uses_remaining| uses_remaining > 0)
@@ -1137,8 +1133,7 @@ pub async fn resend_user_sign_up_otp(
 	}
 
 	let otp = service::generate_new_otp();
-	let token_expiry =
-		get_current_time_millis() + service::get_join_token_expiry();
+	let token_expiry = Utc::now() + service::get_join_token_expiry();
 
 	let token_hash = service::hash(otp.as_bytes())?;
 
@@ -1146,7 +1141,7 @@ pub async fn resend_user_sign_up_otp(
 		connection,
 		username,
 		&token_hash,
-		token_expiry,
+		&token_expiry,
 	)
 	.await?;
 

@@ -15,13 +15,7 @@ use crate::{
 	db::{self, PaymentType},
 	error,
 	models::{billing::StripeAddress, rbac},
-	utils::{
-		constants::default_limits,
-		get_current_time_millis,
-		settings::Settings,
-		validator,
-		Error,
-	},
+	utils::{constants::default_limits, settings::Settings, validator, Error},
 	Database,
 };
 
@@ -65,7 +59,7 @@ pub async fn is_workspace_name_allowed(
 			.await?;
 
 	if let Some(status) = workspace_sign_up_status {
-		if status.otp_expiry > get_current_time_millis() {
+		if status.otp_expiry > Utc::now() {
 			return Ok(false);
 		}
 	}
@@ -136,7 +130,7 @@ pub async fn create_workspace(
 			.get(rbac::resource_types::WORKSPACE)
 			.unwrap(),
 		&resource_id,
-		get_current_time_millis(),
+		&Utc::now(),
 	)
 	.await?;
 

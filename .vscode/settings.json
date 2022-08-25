@@ -3,6 +3,7 @@
     "rust-analyzer.checkOnSave.command": "cargo check",
     "rust-analyzer.checkOnSave.enable": true,
     "rust-analyzer.checkOnSave.overrideCommand": [
-        "./exec", "run-ra-check"
+        "./exec",
+        "run-ra-check"
     ]
 }

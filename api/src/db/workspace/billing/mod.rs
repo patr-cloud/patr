@@ -1,9 +1,9 @@
 use api_macros::query;
 use api_models::{
 	models::workspace::billing::{PaymentStatus, TransactionType},
-	utils::{DateTime, Uuid},
+	utils::Uuid,
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::query_as;
 

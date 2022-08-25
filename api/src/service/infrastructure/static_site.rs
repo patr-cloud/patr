@@ -86,7 +86,7 @@ pub async fn create_static_site_in_workspace(
 			.get(rbac::resource_types::STATIC_SITE)
 			.unwrap(),
 		workspace_id,
-		creation_time.timestamp_millis() as u64,
+		&creation_time,
 	)
 	.await?;
 
@@ -109,7 +109,7 @@ pub async fn create_static_site_in_workspace(
 		connection,
 		workspace_id,
 		&static_site_plan,
-		&DateTime::from(creation_time),
+		&creation_time,
 	)
 	.await?;
 
@@ -136,7 +136,7 @@ pub async fn create_static_site_in_workspace(
 				.get(rbac::resource_types::STATIC_SITE_UPLOAD)
 				.unwrap(),
 			workspace_id,
-			creation_time.timestamp_millis() as u64,
+			&creation_time,
 		)
 		.await?;
 
@@ -146,7 +146,7 @@ pub async fn create_static_site_in_workspace(
 			&static_site_id,
 			message,
 			uploaded_by,
-			&Utc::now().into(),
+			&Utc::now(),
 		)
 		.await?;
 		db::update_current_live_upload_for_static_site(
@@ -212,7 +212,7 @@ pub async fn update_static_site(
 				.get(rbac::resource_types::STATIC_SITE_UPLOAD)
 				.unwrap(),
 			workspace_id,
-			now.timestamp_millis() as u64,
+			&now,
 		)
 		.await?;
 
@@ -223,7 +223,7 @@ pub async fn update_static_site(
 			static_site_id,
 			message,
 			uploaded_by,
-			&now.into(),
+			&now,
 		)
 		.await?;
 		db::update_current_live_upload_for_static_site(

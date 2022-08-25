@@ -227,10 +227,7 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 			.stop_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date);
-		let start_time = max(
-			chrono::DateTime::from(deployment_usage.start_time),
-			*month_start_date,
-		);
+		let start_time = max(deployment_usage.start_time, *month_start_date);
 		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
@@ -316,10 +313,7 @@ pub async fn calculate_database_bill_for_workspace_till(
 			.deletion_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date);
-		let start_time = max(
-			chrono::DateTime::from(database_usage.start_time),
-			*month_start_date,
-		);
+		let start_time = max(database_usage.start_time, *month_start_date);
 		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
@@ -387,10 +381,7 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 			.stop_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date);
-		let start_time = max(
-			chrono::DateTime::from(static_sites_usage.start_time),
-			*month_start_date,
-		);
+		let start_time = max(static_sites_usage.start_time, *month_start_date);
 		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
@@ -438,10 +429,7 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 			.stop_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date);
-		let start_time = max(
-			chrono::DateTime::from(managed_url_usage.start_time),
-			*month_start_date,
-		);
+		let start_time = max(managed_url_usage.start_time, *month_start_date);
 		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
@@ -500,10 +488,8 @@ pub async fn calculate_docker_repository_bill_for_workspace_till(
 			.stop_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date);
-		let start_time = max(
-			chrono::DateTime::from(docker_repository_usage.start_time),
-			*month_start_date,
-		);
+		let start_time =
+			max(docker_repository_usage.start_time, *month_start_date);
 		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
@@ -554,10 +540,7 @@ pub async fn calculate_domains_bill_for_workspace_till(
 			.stop_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date);
-		let start_time = max(
-			chrono::DateTime::from(domains_usage.start_time),
-			*month_start_date,
-		);
+		let start_time = max(domains_usage.start_time, *month_start_date);
 		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
@@ -605,10 +588,7 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 			.stop_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date);
-		let start_time = max(
-			chrono::DateTime::from(secrets_usage.start_time),
-			*month_start_date,
-		);
+		let start_time = max(secrets_usage.start_time, *month_start_date);
 		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()

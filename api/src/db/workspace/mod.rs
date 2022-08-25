@@ -1,5 +1,5 @@
-use api_models::utils::{DateTime, Uuid};
-use chrono::Utc;
+use api_models::utils::Uuid;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::{query, query_as, Database};
@@ -390,9 +390,8 @@ pub async fn create_workspace(
 		0 as i32
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn get_workspace_info(
@@ -526,7 +525,7 @@ pub async fn create_workspace_audit_log(
 	id: &Uuid,
 	workspace_id: &Uuid,
 	ip_address: &str,
-	date: DateTime<Utc>,
+	date: &DateTime<Utc>,
 	user_id: Option<&Uuid>,
 	login_id: Option<&Uuid>,
 	resource_id: &Uuid,

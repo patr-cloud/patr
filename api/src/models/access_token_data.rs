@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use api_models::utils::Uuid;
+use chrono::{DateTime, Utc};
 use jsonwebtoken::{
 	errors::Error,
 	Algorithm,
@@ -18,9 +19,11 @@ use crate::models::rbac::WorkspacePermissions;
 pub struct AccessTokenData {
 	pub iss: String,
 	pub aud: String,
-	pub iat: u64,
+	#[serde(with = "datetime_as_seconds")]
+	pub iat: DateTime<Utc>,
 	pub typ: String,
-	pub exp: u64,
+	#[serde(with = "datetime_as_seconds")]
+	pub exp: DateTime<Utc>,
 	pub workspaces: HashMap<Uuid, WorkspacePermissions>,
 	pub login_id: Uuid,
 	pub user: ExposedUserData,
@@ -48,8 +51,8 @@ impl AccessTokenData {
 	}
 
 	pub fn new(
-		iat: u64,
-		exp: u64,
+		iat: DateTime<Utc>,
+		exp: DateTime<Utc>,
 		workspaces: HashMap<Uuid, WorkspacePermissions>,
 		login_id: Uuid,
 		user: ExposedUserData,
@@ -75,5 +78,30 @@ pub struct ExposedUserData {
 	pub username: String,
 	pub first_name: String,
 	pub last_name: String,
-	pub created: u64,
+	pub created: DateTime<Utc>,
+}
+
+mod datetime_as_seconds {
+	use chrono::{DateTime, TimeZone, Utc};
+	use serde::{Deserialize, Deserializer, Serializer};
+
+	pub fn serialize<S>(
+		value: &DateTime<Utc>,
+		serializer: S,
+	) -> Result<S::Ok, S::Error>
+	where
+		S: Serializer,
+	{
+		serializer.serialize_i64(value.timestamp())
+	}
+
+	pub fn deserialize<'de, D>(
+		deserializer: D,
+	) -> Result<DateTime<Utc>, D::Error>
+	where
+		D: Deserializer<'de>,
+	{
+		i64::deserialize(deserializer)
+			.map(|timestamp| Utc.timestamp(timestamp, 0))
+	}
 }

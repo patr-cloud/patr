@@ -15,8 +15,9 @@ use api_models::{
 		ListDockerRepositoriesResponse,
 		ListDockerRepositoryTagsResponse,
 	},
-	utils::Uuid,
+	utils::{DateTime, Uuid},
 };
+use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
@@ -28,7 +29,6 @@ use crate::{
 	service,
 	utils::{
 		constants::request_keys,
-		get_current_time_millis,
 		validator,
 		Error,
 		ErrorData,
@@ -505,7 +505,7 @@ async fn create_docker_repository(
 			.get(rbac::resource_types::DOCKER_REPOSITORY)
 			.unwrap(),
 		&workspace_id,
-		get_current_time_millis(),
+		&Utc::now(),
 	)
 	.await?;
 
@@ -579,7 +579,7 @@ async fn list_docker_repositories(
 		id: repository.id,
 		name: repository.name,
 		size,
-		last_updated,
+		last_updated: DateTime(last_updated),
 	})
 	.collect::<Vec<_>>();
 
@@ -658,7 +658,7 @@ async fn get_docker_repository_info(
 			id: repository_id,
 			name: repository.name,
 			size,
-			last_updated,
+			last_updated: DateTime(last_updated),
 		},
 		images,
 	});

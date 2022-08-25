@@ -99,7 +99,7 @@ pub async fn create_managed_database_in_workspace(
 			.get(rbac::resource_types::MANAGED_DATABASE)
 			.unwrap(),
 		workspace_id,
-		creation_time.timestamp_millis() as u64,
+		&creation_time,
 	)
 	.await?;
 
@@ -219,12 +219,8 @@ pub async fn delete_managed_database(
 	)
 	.await?;
 
-	db::stop_database_usage_history(
-		connection,
-		database_id,
-		&Utc::now().into(),
-	)
-	.await?;
+	db::stop_database_usage_history(connection, database_id, &Utc::now())
+		.await?;
 	Ok(())
 }
 

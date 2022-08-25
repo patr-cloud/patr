@@ -11,6 +11,7 @@ use argon2::{
 	PasswordHasher,
 	Version,
 };
+use chrono::Duration;
 use eve_rs::AsError;
 
 use crate::{
@@ -77,8 +78,8 @@ pub fn hash(pwd: &[u8]) -> Result<String, Error> {
 ///
 /// # Returns
 /// This function returns unsigned 64 bit integer (unix time)
-pub fn get_join_token_expiry() -> u64 {
-	1000 * 60 * 60 * 2
+pub fn get_join_token_expiry() -> Duration {
+	Duration::hours(2)
 }
 
 /// # Description
@@ -87,8 +88,8 @@ pub fn get_join_token_expiry() -> u64 {
 ///
 /// # Returns
 /// This function returns unsigned 64 bit integer (unix time)
-pub fn get_access_token_expiry() -> u64 {
-	1000 * 60 * 60 * 24 * 3
+pub fn get_access_token_expiry() -> Duration {
+	Duration::days(3)
 }
 
 /// # Description
@@ -97,8 +98,8 @@ pub fn get_access_token_expiry() -> u64 {
 ///
 /// # Returns
 /// This function returns unsigned 64 bit integer (unix time)
-pub fn get_refresh_token_expiry() -> u64 {
-	1000 * 60 * 60 * 24 * 30
+pub fn get_refresh_token_expiry() -> Duration {
+	Duration::days(30)
 }
 
 /// # Description

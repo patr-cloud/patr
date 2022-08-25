@@ -8,6 +8,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use chrono::{Duration, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
@@ -20,7 +21,6 @@ use crate::{
 	service::get_access_token_expiry,
 	utils::{
 		constants::request_keys,
-		get_current_time_millis,
 		Error,
 		ErrorData,
 		EveContext,
@@ -221,12 +221,12 @@ async fn add_user_to_workspace(
 	)
 	.await?;
 
-	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
+	let ttl = get_access_token_expiry() + Duration::hours(2); // 2 hrs buffer time
 	revoke_user_tokens_created_before_timestamp(
 		context.get_redis_connection(),
 		&user_id,
-		get_current_time_millis(),
-		Some(ttl),
+		&Utc::now(),
+		Some(&ttl),
 	)
 	.await?;
 
@@ -270,12 +270,12 @@ async fn update_user_roles_for_workspace(
 	)
 	.await?;
 
-	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
+	let ttl = get_access_token_expiry() + Duration::hours(2); // 2 hrs buffer time
 	revoke_user_tokens_created_before_timestamp(
 		context.get_redis_connection(),
 		&user_id,
-		get_current_time_millis(),
-		Some(ttl),
+		&Utc::now(),
+		Some(&ttl),
 	)
 	.await?;
 
@@ -314,12 +314,12 @@ async fn remove_user_from_workspace(
 		user_id
 	);
 
-	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
+	let ttl = get_access_token_expiry() + Duration::hours(2); // 2 hrs buffer time
 	revoke_user_tokens_created_before_timestamp(
 		context.get_redis_connection(),
 		&user_id,
-		get_current_time_millis(),
-		Some(ttl),
+		&Utc::now(),
+		Some(&ttl),
 	)
 	.await?;
 

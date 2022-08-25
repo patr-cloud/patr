@@ -209,7 +209,7 @@ async fn notification_handler(
 				})
 				.map(|reference| reference.size)
 				.sum(),
-			current_time.timestamp_millis() as u64,
+			&current_time,
 		)
 		.await?;
 
@@ -241,7 +241,7 @@ async fn notification_handler(
 			&repository.id,
 			&target.tag,
 			&target.digest,
-			current_time.timestamp_millis() as u64,
+			&current_time,
 		)
 		.await?;
 

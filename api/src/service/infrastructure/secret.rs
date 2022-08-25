@@ -55,7 +55,7 @@ pub async fn create_new_secret_in_workspace(
 			.get(rbac::resource_types::SECRET)
 			.unwrap(),
 		workspace_id,
-		creation_time.timestamp_millis() as u64,
+		&creation_time,
 	)
 	.await?;
 
@@ -128,7 +128,7 @@ pub async fn create_new_secret_for_deployment(
 			.get(rbac::resource_types::SECRET)
 			.unwrap(),
 		workspace_id,
-		creation_time.timestamp_millis() as u64,
+		&creation_time,
 	)
 	.await?;
 

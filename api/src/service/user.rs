@@ -1,11 +1,12 @@
 use api_models::utils::Uuid;
+use chrono::Utc;
 use eve_rs::AsError;
 
 use crate::{
 	db::{self, User},
 	error,
 	service,
-	utils::{get_current_time_millis, validator, Error},
+	utils::{validator, Error},
 	Database,
 };
 
@@ -54,8 +55,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 
 	let otp = service::generate_new_otp();
 
-	let token_expiry =
-		get_current_time_millis() + service::get_join_token_expiry();
+	let token_expiry = Utc::now() + service::get_join_token_expiry();
 	let verification_token = service::hash(otp.as_bytes())?;
 
 	service::send_email_verification_otp(
@@ -75,7 +75,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 		&personal_domain_id,
 		user_id,
 		&verification_token,
-		token_expiry,
+		&token_expiry,
 	)
 	.await?;
 
@@ -122,9 +122,7 @@ pub async fn verify_personal_email_address_for_user(
 			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
 	}
 
-	if email_verification_data.verification_token_expiry <
-		get_current_time_millis()
-	{
+	if email_verification_data.verification_token_expiry < Utc::now() {
 		Error::as_result()
 			.status(200)
 			.body(error!(EMAIL_TOKEN_EXPIRED).to_string())?;
@@ -357,8 +355,7 @@ pub async fn add_phone_number_to_be_verified_for_user(
 
 	let otp = service::generate_new_otp();
 
-	let token_expiry =
-		get_current_time_millis() + service::get_join_token_expiry();
+	let token_expiry = Utc::now() + service::get_join_token_expiry();
 	let verification_token = service::hash(otp.as_bytes())?;
 
 	db::add_phone_number_to_be_verified_for_user(
@@ -367,7 +364,7 @@ pub async fn add_phone_number_to_be_verified_for_user(
 		phone_number,
 		user_id,
 		&verification_token,
-		token_expiry,
+		&token_expiry,
 	)
 	.await?;
 
@@ -396,9 +393,7 @@ pub async fn verify_phone_number_for_user(
 		&phone_verification_data.verification_token_hash,
 	)?;
 
-	if phone_verification_data.verification_token_expiry <
-		get_current_time_millis()
-	{
+	if phone_verification_data.verification_token_expiry < Utc::now() {
 		Error::as_result()
 			.status(200)
 			.body(error!(PHONE_NUMBER_TOKEN_EXPIRED).to_string())?;
