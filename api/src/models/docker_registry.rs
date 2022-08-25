@@ -52,7 +52,7 @@ impl RegistryToken {
 			sub,
 			aud: config.docker_registry.service_name.clone(),
 			exp: iat + Duration::minutes(5), // 5 mins
-			nbf: iat.clone(),
+			nbf: iat,
 			iat,
 			jti: thread_rng()
 				.sample_iter(Alphanumeric)

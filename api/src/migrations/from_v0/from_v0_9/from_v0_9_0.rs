@@ -1,3 +1,6 @@
+use chrono::{Duration, Utc};
+use redis::{AsyncCommands, Client};
+
 use crate::{
 	migrate_query as query,
 	utils::{settings::Settings, Error},
@@ -14,7 +17,7 @@ pub(super) async fn migrate(
 
 async fn migrate_from_bigint_to_timestamptz(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
+	config: &Settings,
 ) -> Result<(), Error> {
 	query!(
 		r#"
@@ -243,6 +246,36 @@ async fn migrate_from_bigint_to_timestamptz(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	// Globally expire all user tokens, so that they're all generated again
+	let key = "token-revoked:global";
+	let schema = if config.redis.secure {
+		"rediss"
+	} else {
+		"redis"
+	};
+	let username = config.redis.user.as_deref().unwrap_or("");
+	let password = config
+		.redis
+		.password
+		.as_deref()
+		.map_or_else(|| "".to_string(), |pwd| format!(":{}@", pwd));
+	let host = config.redis.host.as_str();
+	let port = config.redis.port;
+	let database = config.redis.database.unwrap_or(0);
+
+	let mut redis = Client::open(format!(
+		"{schema}://{username}{password}{host}:{port}/{database}"
+	))?
+	.get_multiplexed_tokio_connection()
+	.await?;
+	redis
+		.set_ex(
+			key,
+			Utc::now().timestamp_millis(),
+			Duration::days(30).num_seconds() as usize,
+		)
+		.await?;
 
 	Ok(())
 }

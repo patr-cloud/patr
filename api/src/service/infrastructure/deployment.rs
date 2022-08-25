@@ -273,8 +273,8 @@ pub async fn get_deployment_container_logs(
 	let logs = get_container_logs(
 		&deployment.workspace_id,
 		deployment_id,
-		&start_time,
-		&end_time,
+		start_time,
+		end_time,
 		config,
 		request_id,
 	)
@@ -549,8 +549,8 @@ pub async fn get_full_deployment_config(
 pub async fn get_deployment_metrics(
 	deployment_id: &Uuid,
 	config: &Settings,
-	start_time: u64,
-	end_time: u64,
+	start_time: &DateTime<Utc>,
+	end_time: &DateTime<Utc>,
 	step: &str,
 	request_id: &Uuid,
 ) -> Result<Vec<DeploymentMetrics>, Error> {
@@ -577,8 +577,24 @@ pub async fn get_deployment_metrics(
 	) = tokio::join!(
 		async {
 			log::trace!("request_id: {} - Getting cpu metrics", request_id);
-			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_cpu_usage_seconds_total{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
-				.basic_auth(&config.prometheus.username, Some(&config.prometheus.password))
+			client
+				.post(format!(
+					concat!(
+						"https://{}/api/v1/query_range?query=",
+						"sum(rate(container_cpu_usage_seconds_total",
+						"{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)",
+						"&start={}&end={}&step={step}"
+					),
+					config.prometheus.host,
+					deployment_id,
+					start_time.timestamp_millis(),
+					end_time.timestamp(),
+					step = step
+				))
+				.basic_auth(
+					&config.prometheus.username,
+					Some(&config.prometheus.password),
+				)
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
@@ -589,8 +605,24 @@ pub async fn get_deployment_metrics(
 				"request_id: {} - Getting memory usage metrics",
 				request_id
 			);
-			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_memory_usage_bytes{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
-				.basic_auth(&config.prometheus.username, Some(&config.prometheus.password))
+			client
+				.post(format!(
+					concat!(
+						"https://{}/api/v1/query_range?query=",
+						"sum(rate(container_memory_usage_bytes",
+						"{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)",
+						"&start={}&end={}&step={step}"
+					),
+					config.prometheus.host,
+					deployment_id,
+					start_time.timestamp_millis(),
+					end_time.timestamp(),
+					step = step
+				))
+				.basic_auth(
+					&config.prometheus.username,
+					Some(&config.prometheus.password),
+				)
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
@@ -601,8 +633,24 @@ pub async fn get_deployment_metrics(
 				"request_id: {} - Getting network usage transmit metrics",
 				request_id
 			);
-			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_network_transmit_bytes_total{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
-				.basic_auth(&config.prometheus.username, Some(&config.prometheus.password))
+			client
+				.post(format!(
+					concat!(
+						"https://{}/api/v1/query_range?query=",
+						"sum(rate(container_network_transmit_bytes_total",
+						"{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)",
+						"&start={}&end={}&step={step}"
+					),
+					config.prometheus.host,
+					deployment_id,
+					start_time.timestamp_millis(),
+					end_time.timestamp(),
+					step = step
+				))
+				.basic_auth(
+					&config.prometheus.username,
+					Some(&config.prometheus.password),
+				)
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
@@ -613,8 +661,24 @@ pub async fn get_deployment_metrics(
 				"request_id: {} - Getting network usage recieve metrics",
 				request_id
 			);
-			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_network_receive_bytes_total{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
-				.basic_auth(&config.prometheus.username, Some(&config.prometheus.password))
+			client
+				.post(format!(
+					concat!(
+						"https://{}/api/v1/query_range?query=",
+						"sum(rate(container_network_receive_bytes_total",
+						"{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)",
+						"&start={}&end={}&step={step}"
+					),
+					config.prometheus.host,
+					deployment_id,
+					start_time.timestamp_millis(),
+					end_time.timestamp(),
+					step = step
+				))
+				.basic_auth(
+					&config.prometheus.username,
+					Some(&config.prometheus.password),
+				)
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
@@ -894,8 +958,8 @@ async fn get_container_logs(
 pub async fn get_deployment_build_logs(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-	start_time: u64,
-	end_time: u64,
+	start_time: &DateTime<Utc>,
+	end_time: &DateTime<Utc>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Vec<Event>, Error> {
@@ -905,14 +969,25 @@ pub async fn get_deployment_build_logs(
 		deployment_id
 	);
 	let client = Client::new();
-	let logs = client.get(format!("https://{}/loki/api/v1/query_range?direction=BACKWARD&query={{app=\"eventrouter\",namespace=\"{}\"}}&start={}&end={}", config.loki.host, workspace_id, start_time, end_time))
-				.basic_auth(&config.loki.username, Some(&config.loki.password))
-				.send()
-				.await?
-				.json::<Logs>()
-				.await?
-				.data
-				.result;
+	let logs = client
+		.get(format!(
+			concat!(
+				"https://{}/loki/api/v1/query_range?direction=BACKWARD&",
+				"query={{app=\"eventrouter\",namespace=\"{}\"}}",
+				"&start={}&end={}"
+			),
+			config.loki.host,
+			workspace_id,
+			start_time.timestamp_millis(),
+			end_time.timestamp_millis()
+		))
+		.basic_auth(&config.loki.username, Some(&config.loki.password))
+		.send()
+		.await?
+		.json::<Logs>()
+		.await?
+		.data
+		.result;
 
 	// TODO: you will get only one element in result array. From that result
 	// array get the element and parse that json and from that json filter the

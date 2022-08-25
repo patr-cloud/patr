@@ -36,10 +36,11 @@ use api_models::{
 		},
 		WorkspaceAuditLog,
 	},
-	utils::{constants, get_current_time, DateTime, Uuid},
+	utils::{constants, DateTime, Uuid},
 };
 use chrono::{Duration, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -1770,12 +1771,20 @@ async fn get_deployment_metrics(
 		request_id,
 		deployment_id
 	);
-	let start_time = context
-		.get_request()
-		.get_query()
-		.get(request_keys::START_TIME)
-		.and_then(|value| value.parse::<Interval>().ok())
-		.unwrap_or(Interval::Hour);
+	let start_time = Utc::now() -
+		match context
+			.get_request()
+			.get_query()
+			.get(request_keys::START_TIME)
+			.and_then(|value| value.parse::<Interval>().ok())
+			.unwrap_or(Interval::Hour)
+		{
+			Interval::Hour => Duration::hours(1),
+			Interval::Day => Duration::days(1),
+			Interval::Week => Duration::weeks(1),
+			Interval::Month => Duration::days(30),
+			Interval::Year => Duration::days(365),
+		};
 
 	let step = context
 		.get_request()
@@ -1789,8 +1798,8 @@ async fn get_deployment_metrics(
 	let deployment_metrics = service::get_deployment_metrics(
 		&deployment_id,
 		&config,
-		start_time.as_u64(),
-		get_current_time().as_secs(),
+		&start_time,
+		&Utc::now(),
 		&step.to_string(),
 		&request_id,
 	)
@@ -1844,15 +1853,22 @@ async fn get_build_logs(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let start_time = start_time.unwrap_or(Interval::Hour);
+	let start_time = Utc::now() -
+		match start_time.unwrap_or(Interval::Hour) {
+			Interval::Hour => Duration::hours(1),
+			Interval::Day => Duration::days(1),
+			Interval::Week => Duration::weeks(1),
+			Interval::Month => Duration::days(30),
+			Interval::Year => Duration::days(365),
+		};
 
 	log::trace!("request_id: {} - Getting build logs", request_id);
 	// stop the running container, if it exists
 	let logs = service::get_deployment_build_logs(
 		&workspace_id,
 		&deployment_id,
-		start_time.as_u64(),
-		get_current_time().as_secs(),
+		&start_time,
+		&Utc::now(),
 		&config,
 		&request_id,
 	)
@@ -1862,7 +1878,7 @@ async fn get_build_logs(
 		timestamp: build_log
 			.metadata
 			.creation_timestamp
-			.map(|timestamp| timestamp.0.timestamp_millis() as u64),
+			.map(|Time(timestamp)| timestamp.timestamp_millis() as u64),
 		reason: build_log.reason,
 		message: build_log.message,
 	})
