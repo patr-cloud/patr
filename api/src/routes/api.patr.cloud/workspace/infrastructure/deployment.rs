@@ -38,7 +38,7 @@ use api_models::{
 	},
 	utils::{constants, get_current_time, DateTime, Uuid},
 };
-use chrono::{TimeZone, Utc};
+use chrono::{Duration, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
@@ -1365,14 +1365,21 @@ async fn get_logs(
 
 	let config = context.get_state().config.clone();
 
-	let start_time = start_time.unwrap_or(Interval::Hour);
+	let start_time = Utc::now() -
+		match start_time.unwrap_or(Interval::Hour) {
+			Interval::Hour => Duration::hours(1),
+			Interval::Day => Duration::days(1),
+			Interval::Week => Duration::weeks(1),
+			Interval::Month => Duration::days(30),
+			Interval::Year => Duration::days(365),
+		};
 
 	log::trace!("request_id: {} - Getting logs", request_id);
 	// stop the running container, if it exists
 	let logs = service::get_deployment_container_logs(
 		context.get_database_connection(),
 		&deployment_id,
-		&Utc.timestamp_millis(start_time.as_u64() as i64),
+		&start_time,
 		&Utc::now(),
 		&config,
 		&request_id,

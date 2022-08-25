@@ -273,8 +273,8 @@ pub async fn get_deployment_container_logs(
 	let logs = get_container_logs(
 		&deployment.workspace_id,
 		deployment_id,
-		start_time.timestamp_millis() as u64,
-		end_time.timestamp_millis() as u64,
+		&start_time,
+		&end_time,
 		config,
 		request_id,
 	)
@@ -838,8 +838,8 @@ pub async fn get_deployment_metrics(
 async fn get_container_logs(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-	start_time: u64,
-	end_time: u64,
+	start_time: &DateTime<Utc>,
+	end_time: &DateTime<Utc>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<String, Error> {
@@ -849,14 +849,26 @@ async fn get_container_logs(
 		deployment_id
 	);
 	let client = Client::new();
-	let logs = client.get(format!("https://{}/loki/api/v1/query_range?direction=BACKWARD&query={{container=\"deployment-{}\",namespace=\"{}\"}}&start={}&end={}", config.loki.host, deployment_id, workspace_id, start_time, end_time))
-				.basic_auth(&config.loki.username, Some(&config.loki.password))
-				.send()
-				.await?
-				.json::<Logs>()
-				.await?
-				.data
-				.result;
+	let logs = client
+		.get(format!(
+			concat!(
+				"https://{}/loki/api/v1/query_range?direction=BACKWARD&",
+				"query={{container=\"deployment-{}\",namespace=\"{}\"}}",
+				"&start={}&end={}"
+			),
+			config.loki.host,
+			deployment_id,
+			workspace_id,
+			start_time.timestamp_millis(),
+			end_time.timestamp_millis()
+		))
+		.basic_auth(&config.loki.username, Some(&config.loki.password))
+		.send()
+		.await?
+		.json::<Logs>()
+		.await?
+		.data
+		.result;
 
 	let mut combined_build_logs = Vec::new();
 
