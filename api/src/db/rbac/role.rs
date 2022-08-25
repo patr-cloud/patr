@@ -307,10 +307,11 @@ pub async fn get_all_users_with_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &Uuid,
 ) -> Result<Vec<User>, sqlx::Error> {
-	let rows = query!(
+	query_as!(
+		User,
 		r#"
 		SELECT
-			"user".id as "id: Uuid",
+			"user".id as "id: _",
 			"user".username,
 			"user".password,
 			"user".first_name,
@@ -320,7 +321,7 @@ pub async fn get_all_users_with_role(
 			"user".location,
 			"user".created,
 			"user".recovery_email_local,
-			"user".recovery_email_domain_id as "recovery_email_domain_id: Uuid",
+			"user".recovery_email_domain_id as "recovery_email_domain_id: _",
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
 			"user".workspace_limit,
@@ -337,28 +338,7 @@ pub async fn get_all_users_with_role(
 		role_id as _
 	)
 	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| User {
-		id: row.id,
-		username: row.username,
-		password: row.password,
-		first_name: row.first_name,
-		last_name: row.last_name,
-		dob: row.dob,
-		bio: row.bio,
-		location: row.location,
-		created: row.created,
-		recovery_email_local: row.recovery_email_local,
-		recovery_email_domain_id: row.recovery_email_domain_id,
-		recovery_phone_country_code: row.recovery_phone_country_code,
-		recovery_phone_number: row.recovery_phone_number,
-		workspace_limit: row.workspace_limit,
-		sign_up_coupon: row.sign_up_coupon,
-	})
-	.collect();
-
-	Ok(rows)
+	.await
 }
 
 pub async fn remove_all_users_from_role(
@@ -375,8 +355,8 @@ pub async fn remove_all_users_from_role(
 		role_id as _
 	)
 	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn update_role_name_and_description(
@@ -400,7 +380,6 @@ pub async fn update_role_name_and_description(
 		role_id as _,
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+	.map(|_| ())
 }

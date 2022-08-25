@@ -217,7 +217,7 @@ pub async fn add_domain_to_workspace(
 		connection,
 		&domain_id,
 		nameserver_type,
-		Utc::now(),
+		&Utc::now(),
 	)
 	.await?;
 
@@ -350,7 +350,7 @@ pub async fn is_domain_verified(
 				connection,
 				domain_id,
 				true,
-				Utc::now(),
+				&Utc::now(),
 			)
 			.await?;
 
@@ -718,7 +718,7 @@ pub async fn verify_external_domain(
 			connection,
 			domain_id,
 			true,
-			Utc::now(),
+			&Utc::now(),
 		)
 		.await?;
 
@@ -759,7 +759,7 @@ pub async fn delete_domain_in_workspace(
 		connection,
 		&domain.id,
 		false,
-		Utc::now(),
+		&Utc::now(),
 	)
 	.await?;
 	db::update_generic_domain_name(

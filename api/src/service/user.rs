@@ -76,7 +76,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 		&personal_domain_id,
 		user_id,
 		&verification_token,
-		token_expiry,
+		&token_expiry,
 	)
 	.await?;
 

@@ -307,7 +307,7 @@ pub async fn create_user_join_request(
 	let token_expiry =
 		get_current_time_millis() + service::get_join_token_expiry();
 
-	let token_expiry = Utc.timestamp_millis(token_expiry as i64).into();
+	let token_expiry = Utc.timestamp_millis(token_expiry as i64);
 
 	let password = service::hash(password.as_bytes())?;
 	let token_hash = service::hash(otp.as_bytes())?;
@@ -421,7 +421,7 @@ pub async fn create_user_join_request(
 				phone_country_code.as_deref(),
 				phone_number.as_deref(),
 				&token_hash,
-				token_expiry.clone().into(),
+				&token_expiry,
 				coupon_code,
 			)
 			.await?;
@@ -488,15 +488,17 @@ pub async fn create_login_for_user(
 		service::generate_new_refresh_token_for_user(connection, user_id)
 			.await?;
 	let now = Utc::now();
+	let expiry =
+		now + Duration::microseconds(get_refresh_token_expiry() as i64);
 
 	db::add_user_login(
 		connection,
 		&login_id,
 		&hashed_refresh_token,
-		now + Duration::microseconds(get_refresh_token_expiry() as i64),
+		&expiry,
 		user_id,
-		now,
-		now,
+		&now,
+		&now,
 	)
 	.await?;
 	let user_login = UserLogin {
@@ -598,7 +600,10 @@ pub async fn generate_access_token(
 	// get roles and permissions of user for rbac here
 	// use that info to populate the data in the token_data
 	let now = Utc::now();
-	let exp = now + Duration::milliseconds(service::get_access_token_expiry() as i64); // 3 days
+	let exp =
+		now + Duration::milliseconds(service::get_access_token_expiry() as i64); // 3 days
+	let refresh_token_expiry = now +
+		Duration::milliseconds(service::get_refresh_token_expiry() as i64);
 	let workspaces =
 		db::get_all_workspace_roles_for_user(connection, &user_login.user_id)
 			.await?;
@@ -618,8 +623,8 @@ pub async fn generate_access_token(
 	db::set_login_expiry(
 		connection,
 		&user_login.login_id,
-		now,
-		now + Duration::milliseconds(service::get_refresh_token_expiry() as i64),
+		&now,
+		&refresh_token_expiry,
 	)
 	.await?;
 
@@ -929,10 +934,8 @@ pub async fn join_user(
 				db::get_sign_up_coupon_by_code(connection, coupon_code).await?
 			{
 				// Add coupon credits for their business account
-				let is_not_expired = coupon
-					.expiry
-					.map(|expiry| expiry > now)
-					.unwrap_or(true);
+				let is_not_expired =
+					coupon.expiry.map(|expiry| expiry > now).unwrap_or(true);
 				let has_usage_remaining = coupon
 					.uses_remaining
 					.map(|uses_remaining| uses_remaining > 0)
@@ -1072,10 +1075,8 @@ pub async fn join_user(
 				db::get_sign_up_coupon_by_code(connection, coupon_code).await?
 			{
 				// Add coupon credits for their personal account
-				let is_not_expired = coupon
-					.expiry
-					.map(|expiry| expiry > now)
-					.unwrap_or(true);
+				let is_not_expired =
+					coupon.expiry.map(|expiry| expiry > now).unwrap_or(true);
 				let has_usage_remaining = coupon
 					.uses_remaining
 					.map(|uses_remaining| uses_remaining > 0)
@@ -1149,8 +1150,8 @@ pub async fn resend_user_sign_up_otp(
 	}
 
 	let otp = service::generate_new_otp();
-	let token_expiry =
-		Utc::now() + Duration::milliseconds(service::get_join_token_expiry() as i64);
+	let token_expiry = Utc::now() +
+		Duration::milliseconds(service::get_join_token_expiry() as i64);
 
 	let token_hash = service::hash(otp.as_bytes())?;
 

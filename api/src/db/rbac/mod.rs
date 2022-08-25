@@ -613,7 +613,7 @@ pub async fn create_resource(
 		resource_name,
 		resource_type_id as _,
 		owner_id as _,
-		created as _
+		created
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -652,13 +652,14 @@ pub async fn get_resource_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &Uuid,
 ) -> Result<Option<Resource>, sqlx::Error> {
-	let resource = query!(
+	query_as!(
+		Resource,
 		r#"
 		SELECT
-			id as "id: Uuid",
+			id as "id: _",
 			name,
-			resource_type_id as "resource_type_id: Uuid",
-			owner_id as "owner_id: Uuid",
+			resource_type_id as "resource_type_id: _",
+			owner_id as "owner_id: _",
 			created 
 		FROM
 			resource
@@ -668,16 +669,7 @@ pub async fn get_resource_by_id(
 		resource_id as _
 	)
 	.fetch_optional(&mut *connection)
-	.await?
-	.map(|row| Resource {
-		id: row.id,
-		name: row.name,
-		resource_type_id: row.resource_type_id,
-		owner_id: row.owner_id,
-		created: row.created.into(),
-	});
-
-	Ok(resource)
+	.await
 }
 
 pub async fn update_resource_name(

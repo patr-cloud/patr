@@ -875,7 +875,7 @@ async fn create_deployment(
 		&audit_log_id,
 		&workspace_id,
 		&ip_address,
-		now.into(),
+		&now,
 		Some(&user_id),
 		Some(&login_id),
 		&id,

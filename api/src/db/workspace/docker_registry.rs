@@ -132,8 +132,8 @@ pub async fn create_docker_repository(
 		name as _
 	)
 	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn get_docker_repository_by_name(
@@ -237,7 +237,7 @@ pub async fn get_docker_repositories_for_workspace(
 				workspace_id: row.workspace_id,
 			},
 			row.size.to_u64().unwrap_or(0),
-			row.last_updated.into(),
+			row.last_updated,
 		)
 	})
 	.collect();

@@ -414,7 +414,7 @@ pub async fn add_to_workspace_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	nameserver_type: &DomainNameserverType,
-	last_unverified: DateTime<Utc>,
+	last_unverified: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1054,7 +1054,7 @@ pub async fn update_workspace_domain_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	is_verified: bool,
-	last_unverified: DateTime<Utc>,
+	last_unverified: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
