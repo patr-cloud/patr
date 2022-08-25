@@ -2752,6 +2752,50 @@
     },
     "query": "CREATE TABLE meta_data( id VARCHAR(100) CONSTRAINT meta_data_pk PRIMARY KEY, value TEXT NOT NULL );"
   },
+  "466af40b59b7f812425e58e64b14db3657dea0e24b15080ea3808fc35589d0ad": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "message",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "user_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username: _",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT static_site_upload_history.upload_id as \"id: _\", static_site_upload_history.message, static_site_upload_history.uploaded_by as \"user_id: _\", \"user\".username as \"username: _\", static_site_upload_history.created as \"created: _\" FROM static_site_upload_history LEFT JOIN \"user\" ON \"user\".id = static_site_upload_history.uploaded_by WHERE upload_id = $1;"
+  },
   "4708633ea62017c02ca996b71833126bb09c45aa717a610231a61c39f4abd3ed": {
     "describe": {
       "columns": [],

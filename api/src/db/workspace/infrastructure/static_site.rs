@@ -359,7 +359,7 @@ pub async fn get_static_site_upload_history_by_upload_id(
 		ON
 			"user".id = static_site_upload_history.uploaded_by
 		WHERE
-			static_site_id = $1;
+			upload_idclear = $1;
 		"#,
 		upload_id as _,
 	)
