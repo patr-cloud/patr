@@ -910,6 +910,39 @@ async fn update_static_site(
 	)
 	.await?;
 
+	context.commit_database_transaction().await?;
+
+	log::trace!(
+		"request_id: {} checking managed url for static_site with ID: {}",
+		request_id,
+		static_site_id
+	);
+
+	let managed_urls = db::get_managed_url_for_static_siite(
+		context.get_database_connection(),
+		&static_site_id,
+	)
+	.await?;
+
+	for managed_url in managed_urls {
+		service::update_kubernetes_managed_url(
+			&workspace_id,
+			&ManagedUrl {
+				id: managed_url.id,
+				sub_domain: managed_url.sub_domain,
+				domain_id: managed_url.domain_id,
+				path: managed_url.path,
+				url_type: ManagedUrlType::ProxyStaticSite {
+					static_site_id: static_site_id.to_owned(),
+				},
+				is_configured: managed_url.is_configured,
+			},
+			&config,
+			&request_id,
+		)
+		.await?;
+	}
+
 	context.success(UpdateStaticSiteResponse { upload_id });
 	Ok(context)
 }
