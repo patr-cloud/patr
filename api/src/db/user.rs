@@ -2104,7 +2104,7 @@ pub async fn generate_new_login_id(
 		let exists = query!(
 			r#"
 			SELECT
-				*
+				login_id
 			FROM
 				user_login
 			WHERE

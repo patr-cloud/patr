@@ -11,9 +11,9 @@ use api_models::{
 		},
 		BuildMachineType,
 	},
-	utils::{DateTime, Uuid},
+	utils::{self, Uuid},
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use sqlx::query_as;
 
 use crate::{db, Database};
@@ -892,8 +892,8 @@ pub async fn list_build_details_for_repo(
 			base_image: step_record.base_image,
 			commands: step_record.commands,
 			status: step_record.status,
-			started: step_record.started,
-			finished: step_record.finished,
+			started: step_record.started.map(utils::DateTime),
+			finished: step_record.finished.map(utils::DateTime),
 		})
 		.collect();
 		result.push(BuildDetails {
@@ -901,8 +901,8 @@ pub async fn list_build_details_for_repo(
 			git_ref: build.git_ref,
 			git_commit: build.git_commit,
 			status: build.status,
-			created: build.created,
-			finished: build.finished,
+			created: utils::DateTime(build.created),
+			finished: build.finished.map(utils::DateTime),
 			steps,
 		})
 	}
@@ -945,8 +945,8 @@ pub async fn get_build_details_for_build(
 			git_ref: build.git_ref,
 			git_commit: build.git_commit,
 			status: build.status,
-			created: build.created,
-			finished: build.finished,
+			created: utils::DateTime(build.created),
+			finished: build.finished.map(utils::DateTime),
 			steps: list_build_steps_for_build(
 				&mut *connection,
 				repo_id,
@@ -960,8 +960,8 @@ pub async fn get_build_details_for_build(
 				base_image: step_record.base_image,
 				commands: step_record.commands,
 				status: step_record.status,
-				started: step_record.started,
-				finished: step_record.finished,
+				started: step_record.started.map(utils::DateTime),
+				finished: step_record.finished.map(utils::DateTime),
 			})
 			.collect(),
 		}),

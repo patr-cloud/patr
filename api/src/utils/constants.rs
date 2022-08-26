@@ -53,6 +53,8 @@ pub mod request_keys {
 	pub const SECRET_ID: &str = "secretId";
 	pub const REPO_ID: &str = "repoId";
 	pub const BUILD_NUM: &str = "buildNum";
+	pub const BRANCH_NAME: &str = "branchName";
+	pub const GIT_REF: &str = "gitRef";
 	pub const STEP: &str = "step";
 	pub const PAYMENT_METHOD_ID: &str = "paymentMethodId";
 }

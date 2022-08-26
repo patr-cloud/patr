@@ -47,7 +47,7 @@ pub async fn fetch_ci_file_content_from_github_repo(
 	owner_name: &str,
 	repo_name: &str,
 	access_token: &str,
-	git_commit: &str,
+	git_ref: &str, // name of the commit/branch/tag
 ) -> Result<Vec<u8>, Error> {
 	let github_client = octorust::Client::new(
 		"patr",
@@ -63,7 +63,7 @@ pub async fn fetch_ci_file_content_from_github_repo(
 
 	let ci_file = github_client
 		.repos()
-		.get_content_file(owner_name, repo_name, "patr.yml", git_commit)
+		.get_content_file(owner_name, repo_name, "patr.yml", git_ref)
 		.await
 		.ok()
 		.status(400)

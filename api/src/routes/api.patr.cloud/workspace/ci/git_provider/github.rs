@@ -10,6 +10,7 @@ use api_models::{
 		GetBuildInfoResponse,
 		GetBuildListResponse,
 		GetBuildLogResponse,
+		GetPatrCiFileResponse,
 		GitProviderType,
 		GithubAuthCallbackRequest,
 		GithubAuthCallbackResponse,
@@ -21,7 +22,7 @@ use api_models::{
 		RestartBuildResponse,
 		SyncReposResponse,
 	},
-	utils::{DateTime, Uuid},
+	utils::{Base64String, DateTime, Uuid},
 };
 use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
@@ -396,6 +397,68 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(restart_build)),
+		],
+	);
+
+	app.post(
+		"/repo/:repoId/branch/:branchName/start",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::ci::git_provider::repo::build::RESTART,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(start_build_for_branch)),
+		],
+	);
+
+	app.get(
+		"/repo/:repoId/patr-ci-file/:gitRef",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::ci::git_provider::repo::LIST,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_patr_ci_file)),
 		],
 	);
 
@@ -1161,6 +1224,208 @@ async fn restart_build(
 
 	context.success(RestartBuildResponse {
 		build_num: build_num as u64,
+	});
+	Ok(context)
+}
+
+async fn start_build_for_branch(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
+	let branch_name = context
+		.get_param(request_keys::BRANCH_NAME)
+		.unwrap()
+		.clone();
+
+	log::trace!("request_id: {request_id} - Starting build for repo {repo_id} at branch {branch_name}");
+
+	let repo = db::get_repo_details_using_github_uid_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+		&repo_id,
+	)
+	.await?
+	.status(500)?;
+
+	let git_provider = db::get_connected_git_provider_details_by_id(
+		context.get_database_connection(),
+		&repo.git_provider_id,
+	)
+	.await?
+	.status(500)?;
+	let (login_name, access_token) = git_provider
+		.login_name
+		.zip(git_provider.password)
+		.status(500)?;
+
+	let github_client =
+		octorust::Client::new("patr", Credentials::Token(access_token.clone()))
+			.map_err(|err| {
+				log::info!("error while octorust init: {err:#}");
+				err
+			})
+			.ok()
+			.status(500)?;
+
+	let github_branch = github_client
+		.repos()
+		.get_branch(&repo.repo_owner, &repo.repo_name, &branch_name)
+		.await
+		.map_err(|err| {
+			log::info!("error while getting webhooks list: {err:#}");
+			err
+		})
+		.ok()
+		.status(500)?;
+
+	let config = context.get_state().config.clone();
+	let git_commit = &github_branch.commit.sha;
+
+	let ci_file_content = service::fetch_ci_file_content_from_github_repo(
+		&repo.repo_owner,
+		&repo.repo_name,
+		&access_token,
+		git_commit,
+	)
+	.await?;
+
+	let build_num = db::generate_new_build_for_repo(
+		context.get_database_connection(),
+		&repo.id,
+		&format!("refs/heads/{branch_name}"),
+		git_commit,
+		BuildStatus::Running,
+		&DateTime::from(Utc::now()),
+	)
+	.await?;
+
+	let ci_flow = match service::parse_ci_file_content(
+		context.get_database_connection(),
+		&git_provider.workspace_id,
+		&ci_file_content,
+		&request_id,
+	)
+	.await?
+	{
+		ParseStatus::Success(ci_file) => ci_file,
+		ParseStatus::Error => {
+			db::update_build_status(
+				context.get_database_connection(),
+				&repo.id,
+				build_num,
+				BuildStatus::Errored,
+			)
+			.await?;
+			return Ok(context);
+		}
+	};
+
+	let CiFlow::Pipeline(pipeline) = ci_flow;
+	let works = match service::evaluate_work_steps_for_ci(
+		pipeline.steps,
+		Some(&branch_name),
+	) {
+		Ok(works) => works,
+		Err(err) => {
+			log::info!("request_id: {request_id} - Error while evaluating ci work steps {err:#?}");
+			db::update_build_status(
+				context.get_database_connection(),
+				&repo.id,
+				build_num,
+				BuildStatus::Errored,
+			)
+			.await?;
+			return Ok(context);
+		}
+	};
+
+	service::add_build_steps_in_db(
+		context.get_database_connection(),
+		&repo.id,
+		build_num,
+		&works,
+		&request_id,
+	)
+	.await?;
+
+	context.commit_database_transaction().await?;
+
+	service::add_build_steps_in_k8s(
+		context.get_database_connection(),
+		&config,
+		&repo.id,
+		&BuildId {
+			repo_workspace_id: git_provider.workspace_id,
+			repo_id: repo.id.clone(),
+			build_num,
+		},
+		pipeline.services,
+		works,
+		Some(Netrc {
+			machine: "github.com".to_owned(),
+			login: login_name,
+			password: access_token,
+		}),
+		&repo.clone_url,
+		&repo.repo_name,
+		git_commit,
+		&request_id,
+	)
+	.await?;
+
+	context.success(RestartBuildResponse {
+		build_num: build_num as u64,
+	});
+	Ok(context)
+}
+
+async fn get_patr_ci_file(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
+	let git_ref = context.get_param(request_keys::GIT_REF).unwrap().clone();
+
+	log::trace!("request_id: {request_id} - Fetching CI file for {repo_id} at ref {git_ref}");
+
+	let repo = db::get_repo_details_using_github_uid_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+		&repo_id,
+	)
+	.await?
+	.status(500)?;
+
+	let git_provider = db::get_connected_git_provider_details_by_id(
+		context.get_database_connection(),
+		&repo.git_provider_id,
+	)
+	.await?
+	.status(500)?;
+	let (_login_name, access_token) = git_provider
+		.login_name
+		.zip(git_provider.password)
+		.status(500)?;
+
+	let ci_file_content = service::fetch_ci_file_content_from_github_repo(
+		&repo.repo_owner,
+		&repo.repo_name,
+		&access_token,
+		&git_ref,
+	)
+	.await?;
+
+	context.success(GetPatrCiFileResponse {
+		file_content: Base64String::from(ci_file_content),
 	});
 	Ok(context)
 }

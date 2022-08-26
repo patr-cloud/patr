@@ -1,3 +1,4 @@
+use api_models::utils::Uuid;
 use chrono::{Duration, Utc};
 use redis::{AsyncCommands, Client};
 
