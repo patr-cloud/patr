@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use api_models::utils::{DateTime, Uuid};
+use api_models::utils::Uuid;
 use chrono::{DateTime, Utc};
 use jsonwebtoken::{
 	errors::Error,

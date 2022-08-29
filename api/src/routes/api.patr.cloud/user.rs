@@ -45,7 +45,7 @@ use api_models::{
 	},
 	utils::{DateTime, Location, Uuid},
 };
-use chrono::{Duration, Utc};
+use chrono::{DateTime as ChronoDateTime, Duration, Utc};
 use eve_rs::{App as EveApp, AsError, NextHandler};
 
 use crate::{
@@ -1416,7 +1416,7 @@ async fn create_api_token(
 		&name,
 		&resource_permissions,
 		&resource_type_permissions,
-		ttl,
+		ttl.map(ChronoDateTime::<Utc>::from),
 		is_super_admin,
 		&request_id,
 	)
@@ -1493,9 +1493,9 @@ async fn list_api_token_for_user(
 	.map(|token| UserApiToken {
 		name: token.name,
 		token: token.token,
-		ttl: token.token_expiry,
+		ttl: token.token_expiry.map(DateTime::<Utc>::from),
 		user_id: token.user_id,
-		created: token.created,
+		created: DateTime::from(token.created),
 	})
 	.collect::<Vec<_>>();
 

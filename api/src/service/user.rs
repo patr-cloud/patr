@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashSet};
 
-use api_models::utils::{DateTime, Uuid};
-use chrono::Utc;
+use api_models::utils::Uuid;
+use chrono::{DateTime, Utc};
 use eve_rs::AsError;
 
 use crate::{
@@ -510,6 +510,7 @@ pub async fn create_api_token_for_user(
 		request_id,
 		user_id
 	);
+
 	db::create_api_token_for_user(connection, &token, user_id, name, ttl)
 		.await?;
 

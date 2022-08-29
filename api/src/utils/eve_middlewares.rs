@@ -1,6 +1,6 @@
 use std::{collections::HashMap, future::Future, pin::Pin};
 
-use api_models::utils::{DateTime, Uuid};
+use api_models::utils::Uuid;
 use async_trait::async_trait;
 use chrono::Utc;
 use eve_rs::{
@@ -66,6 +66,7 @@ pub enum EveMiddleware {
 }
 
 #[derive(Clone, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum TokenData {
 	AccessTokenData(AccessTokenData),
 	ApiTokenData(ApiTokenData),
@@ -234,7 +235,7 @@ async fn decode_access_token(
 		if let Some(api_token) = api_token {
 			let is_token_valid = if let Some(expiry) = &api_token.token_expiry {
 				let token_expiry = expiry.timestamp_millis();
-				let current_time = DateTime::<Utc>::now().timestamp_millis();
+				let current_time = Utc::now().timestamp_millis();
 				token_expiry < current_time
 			} else {
 				true
@@ -341,9 +342,7 @@ async fn validate_api_token(api_token: &ApiTokenData) -> Result<(), Error> {
 	// check whether access token has expired
 	match &api_token.exp {
 		Some(exp) => {
-			if exp.timestamp_millis() >
-				DateTime::<Utc>::now().timestamp_millis()
-			{
+			if exp.timestamp_millis() > Utc::now().timestamp_millis() {
 				return Error::as_result()
 					.status(401)
 					.body(error!(EXPIRED).to_string())?;
