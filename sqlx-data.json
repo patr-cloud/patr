@@ -1050,8 +1050,18 @@
           "type_info": "Text"
         },
         {
-          "name": "name!",
+          "name": "is_oauth_user",
           "ordinal": 15,
+          "type_info": "Bool"
+        },
+        {
+          "name": "oauth_access_token",
+          "ordinal": 16,
+          "type_info": "Text"
+        },
+        {
+          "name": "name!",
+          "ordinal": 17,
           "type_info": "Text"
         }
       ],
@@ -1070,6 +1080,8 @@
         true,
         true,
         false,
+        true,
+        true,
         true,
         null
       ],
@@ -1111,74 +1123,15 @@
     },
     "query": "ALTER TABLE managed_database ADD CONSTRAINT managed_database_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);"
   },
-  "15d87835a0325786c12ed8f4c1b141f8a3a3346a930148b1446891cbc9e58031": {
+  "1514dbe6627ea40494e2588d9759ff721ef5d14f478eaebe49c992b36bb033f0": {
     "describe": {
-      "columns": [
-        {
-          "name": "build_num",
-          "ordinal": 0,
-          "type_info": "Int8"
-        },
-        {
-          "name": "git_ref",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "git_commit",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 3,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "running",
-                  "succeeded",
-                  "cancelled",
-                  "errored"
-                ]
-              },
-              "name": "ci_build_status"
-            }
-          }
-        },
-        {
-          "name": "created: _",
-          "ordinal": 4,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "finished: _",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "message",
-          "ordinal": 6,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true
-      ],
+      "columns": [],
+      "nullable": [],
       "parameters": {
-        "Left": [
-          "Uuid",
-          "Int8"
-        ]
+        "Left": []
       }
     },
-    "query": "\n\t\tSELECT\n\t\t\tbuild_num,\n\t\t\tgit_ref,\n\t\t\tgit_commit,\n\t\t\tstatus as \"status: _\",\n\t\t\tcreated as \"created: _\",\n\t\t\tfinished as \"finished: _\",\n\t\t\tmessage\n\t\tFROM\n\t\t\tci_builds\n\t\tWHERE\n\t\t\t(repo_id = $1 AND build_num = $2);\n\t\t"
+    "query": "CREATE TABLE \"user\"( id UUID CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uq_username UNIQUE CONSTRAINT user_chk_username_is_valid CHECK( /* Username is a-z, 0-9, _, cannot begin or end with a . or - */ username ~ '^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$' AND username NOT LIKE '%..%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%' ), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob TIMESTAMPTZ DEFAULT NULL, bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created TIMESTAMPTZ NOT NULL, /* Recovery options */ recovery_email_local VARCHAR(64) CONSTRAINT user_chk_recovery_email_is_lower_case CHECK( recovery_email_local = LOWER(recovery_email_local) ), recovery_email_domain_id UUID, recovery_phone_country_code CHAR(2) CONSTRAINT user_chk_recovery_phone_country_code_is_upper_case CHECK( recovery_phone_country_code = UPPER(recovery_phone_country_code) ), recovery_phone_number VARCHAR(15), workspace_limit INTEGER NOT NULL, sign_up_coupon TEXT CONSTRAINT user_fk_sign_up_coupon REFERENCES coupon_code(code), is_oauth_user BOOLEAN DEFAULT false, oauth_access_token TEXT, CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id UNIQUE(recovery_email_local, recovery_email_domain_id), CONSTRAINT user_uq_recovery_phone_country_code_recovery_phone_number UNIQUE(recovery_phone_country_code, recovery_phone_number), CONSTRAINT user_chk_rcvry_eml_or_rcvry_phn_present CHECK( ( recovery_email_local IS NOT NULL AND recovery_email_domain_id IS NOT NULL ) OR ( recovery_phone_country_code IS NOT NULL AND recovery_phone_number IS NOT NULL ) ) );"
   },
   "15d97c8249593f00516ac5b30598779bda9d6214d2341d0166ada2e5dbc4a9e5": {
     "describe": {
@@ -3927,6 +3880,20 @@
     },
     "query": "SELECT country_code, phone_number, user_id as \"user_id: _\", verification_token_hash, verification_token_expiry FROM user_unverified_phone_number WHERE country_code = $1 AND phone_number = $2;"
   },
+  "5090035869f238b2a69b4efdf59312c8d40de7c09d4181f25439da6e7a18ff72": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Bool",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE \"user\" SET oauth_access_token = $1, is_oauth_user = $2 WHERE id = $3;"
+  },
   "51b48c931af24c0048305a577d2d0c1203f4bbfe08d39fec8106d6fec8fcb13b": {
     "describe": {
       "columns": [],
@@ -5198,6 +5165,16 @@
           "name": "sign_up_coupon",
           "ordinal": 14,
           "type_info": "Text"
+        },
+        {
+          "name": "is_oauth_user",
+          "ordinal": 15,
+          "type_info": "Bool"
+        },
+        {
+          "name": "oauth_access_token",
+          "ordinal": 16,
+          "type_info": "Text"
         }
       ],
       "nullable": [
@@ -5215,6 +5192,8 @@
         true,
         true,
         false,
+        true,
+        true,
         true
       ],
       "parameters": {
@@ -8948,17 +8927,7 @@
     },
     "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE resource_id = $1;"
   },
-  "aa6078c50de2eee25c3505b5f60602b4ca43f0de5b9b80dfb1e433706ac8c9bf": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE \"user\"( id UUID CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uq_username UNIQUE CONSTRAINT user_chk_username_is_valid CHECK( /* Username is a-z, 0-9, _, cannot begin or end with a . or - */ username ~ '^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$' AND username NOT LIKE '%..%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%' ), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob TIMESTAMPTZ DEFAULT NULL, bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created TIMESTAMPTZ NOT NULL, /* Recovery options */ recovery_email_local VARCHAR(64) CONSTRAINT user_chk_recovery_email_is_lower_case CHECK( recovery_email_local = LOWER(recovery_email_local) ), recovery_email_domain_id UUID, recovery_phone_country_code CHAR(2) CONSTRAINT user_chk_recovery_phone_country_code_is_upper_case CHECK( recovery_phone_country_code = UPPER(recovery_phone_country_code) ), recovery_phone_number VARCHAR(15), workspace_limit INTEGER NOT NULL, sign_up_coupon TEXT CONSTRAINT user_fk_sign_up_coupon REFERENCES coupon_code(code), CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id UNIQUE(recovery_email_local, recovery_email_domain_id), CONSTRAINT user_uq_recovery_phone_country_code_recovery_phone_number UNIQUE(recovery_phone_country_code, recovery_phone_number), CONSTRAINT user_chk_rcvry_eml_or_rcvry_phn_present CHECK( ( recovery_email_local IS NOT NULL AND recovery_email_domain_id IS NOT NULL ) OR ( recovery_phone_country_code IS NOT NULL AND recovery_phone_number IS NOT NULL ) ) );"
-  },
-  "ab86e112417e84418ee80dcff6b7e4097ff8d5f44ec01e5bb34e1dcec2fbdd26": {
+  "aa89f69db4362344f8d29df3d18bc3da669f3ddf77a68cdeefd1aad1ba8b3e85": {
     "describe": {
       "columns": [
         {
