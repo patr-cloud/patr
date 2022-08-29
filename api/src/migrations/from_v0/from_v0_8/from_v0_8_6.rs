@@ -9,13 +9,6 @@ pub(super) async fn migrate(
 	config: &Settings,
 ) -> Result<(), Error> {
 	create_static_site_upload_history(&mut *connection, config).await?;
-	add_static_site_upload_resource_type(&mut *connection, config).await?;
-	add_upload_id_for_existing_users(&mut *connection, config).await?;
-	rename_all_deployment_static_site_to_just_static_site(
-		&mut *connection,
-		config,
-	)
-	.await?;
 
 	Ok(())
 }
