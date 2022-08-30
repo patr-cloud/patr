@@ -286,12 +286,6 @@ pub async fn update_static_site(
 			.await?;
 			Some(upload_id)
 		}
-
-		log::trace!(
-			"request_id: {} - Creating Static-site upload resource",
-			request_id
-		);
-
 		Some(upload_id)
 	} else {
 		None
