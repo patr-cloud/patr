@@ -346,7 +346,7 @@ pub async fn transfer_domain_to_patr(
 	)
 	.await?;
 
-	db::update_workspace_domain_transfer_domain(
+	db::update_user_controlled_domain_transfer_domain(
 		connection,
 		&user_controlled_domain.domain_id,
 		&user_controlled_domain.domain_id,
@@ -375,10 +375,12 @@ pub async fn cancel_transfer_domain_to_patr(
 			"Found domain with ID: {}, deleting it from database",
 			domain_id
 		);
-		db::delete_user_transfer_domain_by_id(connection, domain_id).await?;
+		db::delete_transferring_domain_for_user_controlled_domain(
+			connection, domain_id,
+		)
+		.await?;
 
-		db::delete_transfer_domain_from_workspace_domain(connection, domain_id)
-			.await?;
+		db::delete_user_transfer_domain_by_id(connection, domain_id).await?;
 	} else {
 		log::trace!(
 			"Cannot find domain with ID: {}, may be already verified",
@@ -1069,9 +1071,6 @@ async fn update_user_transfer_domain_details(
 		"request_id: {} - Updating domain verification status",
 		request_id
 	);
-
-	db::delete_transfer_domain_from_workspace_domain(connection, domain_id)
-		.await?;
 
 	db::delete_user_transfer_domain_by_id(connection, domain_id).await?;
 

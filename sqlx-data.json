@@ -869,19 +869,6 @@
     },
     "query": "UPDATE workspace_domain SET is_verified = $2, last_unverified = $3 WHERE id = $1;"
   },
-  "0fd9c540bc839084b3d28bd84a79e3b348e1801e5d38321e74e92572e0fa0d0c": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE workspace_domain SET transfer_domain = $1 WHERE id = $2;"
-  },
   "110c6de8705e8c81ffed132f6d39b63c04ce568598ba515b0e76d497eca2d6a9": {
     "describe": {
       "columns": [],
@@ -1031,8 +1018,18 @@
           "type_info": "Text"
         },
         {
-          "name": "name!",
+          "name": "is_oauth_user",
           "ordinal": 15,
+          "type_info": "Bool"
+        },
+        {
+          "name": "oauth_access_token",
+          "ordinal": 16,
+          "type_info": "Text"
+        },
+        {
+          "name": "name!",
+          "ordinal": 17,
           "type_info": "Text"
         }
       ],
@@ -1051,6 +1048,8 @@
         true,
         true,
         false,
+        true,
+        true,
         true,
         null
       ],
@@ -1071,6 +1070,19 @@
       }
     },
     "query": "ALTER TABLE workspace_audit_log ADD CONSTRAINT workspace_audit_log_fk_resource_id FOREIGN KEY(resource_id) REFERENCES resource(id);"
+  },
+  "146aafeb69c0f9da04503e933de6552fae81bf492d4377402f3f569638ac3a86": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE user_controlled_domain SET transferring_domain = $1 WHERE domain_id = $2;"
   },
   "1478ab87ac54089ccc6c59067496f8b816c33113043dbd3af5e76e0194986b8f": {
     "describe": {
@@ -4083,18 +4095,6 @@
     },
     "query": "CREATE TABLE IF NOT EXISTS payment_method( payment_method_id TEXT CONSTRAINT payment_method_pk PRIMARY KEY, workspace_id UUID NOT NULL );"
   },
-  "5bec9576f0ce54b0043d662089af2f3cc37a98c4fce6ea42575be15dafbf4996": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE workspace_domain SET transfer_domain = NULL WHERE id = $1;"
-  },
   "5c84574cad76ff198efeefbf0c39672e9321303784575e158c2cd68fe36aaa3c": {
     "describe": {
       "columns": [
@@ -4470,6 +4470,16 @@
           "name": "sign_up_coupon",
           "ordinal": 14,
           "type_info": "Text"
+        },
+        {
+          "name": "is_oauth_user",
+          "ordinal": 15,
+          "type_info": "Bool"
+        },
+        {
+          "name": "oauth_access_token",
+          "ordinal": 16,
+          "type_info": "Text"
         }
       ],
       "nullable": [
@@ -4487,6 +4497,8 @@
         true,
         true,
         false,
+        true,
+        true,
         true
       ],
       "parameters": {
@@ -10724,6 +10736,18 @@
       }
     },
     "query": "SELECT id as \"id: _\", name, description, owner_id as \"owner_id: _\" FROM role WHERE owner_id = $1;"
+  },
+  "e19154fab2a2cd2f6c5c423cc33c69fe52d0cb944e43b017320e9913b2112a91": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE user_controlled_domain SET transferring_domain = NULL WHERE domain_id = $1;"
   },
   "e311b717d9499a73b00b7e568b36e93b9af06b1c42b534d45663262e5be5328b": {
     "describe": {

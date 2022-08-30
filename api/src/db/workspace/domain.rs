@@ -819,27 +819,7 @@ pub async fn update_workspace_domain_nameserver_type(
 	.map(|_| ())
 }
 
-pub async fn delete_transfer_domain_from_workspace_domain(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			workspace_domain
-		SET
-			transfer_domain = NULL
-		WHERE
-			id = $1;
-		"#,
-		domain_id as _,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn update_workspace_domain_transfer_domain(
+pub async fn update_user_controlled_domain_transfer_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	transfer_domain: &Uuid,
@@ -847,11 +827,11 @@ pub async fn update_workspace_domain_transfer_domain(
 	query!(
 		r#"
 		UPDATE
-			workspace_domain
+			user_controlled_domain
 		SET
-			transfer_domain = $1
+			transferring_domain = $1
 		WHERE
-			id = $2;
+			domain_id = $2;
 		"#,
 		domain_id as _,
 		transfer_domain as _,
@@ -1416,6 +1396,26 @@ pub async fn delete_user_transfer_domain_by_id(
 		r#"
 		DELETE FROM 
 			user_transferring_domain_to_patr
+		WHERE
+			domain_id = $1;
+		"#,
+		domain_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn delete_transferring_domain_for_user_controlled_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE 
+			user_controlled_domain
+		SET
+			transferring_domain = NULL
 		WHERE
 			domain_id = $1;
 		"#,
