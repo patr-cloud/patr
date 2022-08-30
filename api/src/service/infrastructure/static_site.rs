@@ -172,6 +172,7 @@ pub async fn create_static_site_in_workspace(
 			Some(&file),
 			&upload_id,
 			&StaticSiteDetails {},
+			&DeploymentStatus::Deploying,
 			config,
 			request_id,
 		)
@@ -238,17 +239,27 @@ pub async fn update_static_site(
 			request_id
 		);
 
-		update_static_site_and_db_status(
-			connection,
-			workspace_id,
-			static_site_id,
-			Some(&file),
-			&upload_id,
-			&StaticSiteDetails {},
-			config,
-			request_id,
-		)
-		.await?;
+		let static_site =
+			db::get_static_site_by_id(connection, static_site_id).await?;
+		if let Some(site) = static_site {
+			service::update_static_site_and_db_status(
+				connection,
+				workspace_id,
+				static_site_id,
+				Some(&file),
+				&upload_id,
+				&StaticSiteDetails {},
+				&site.status,
+				config,
+				request_id,
+			)
+			.await?;
+		} else {
+			log::trace!("No static site found with id: {}", static_site_id);
+			return Error::as_result()
+				.status(404)
+				.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+		}
 
 		log::trace!(
 			"request_id: {} - Creating Static-site upload resource",
@@ -509,6 +520,7 @@ pub async fn update_static_site_and_db_status(
 	file: Option<&str>,
 	upload_id: &Uuid,
 	_running_details: &StaticSiteDetails,
+	status: &DeploymentStatus,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -527,75 +539,65 @@ pub async fn update_static_site_and_db_status(
 		)
 		.await?;
 	}
+	if status == &DeploymentStatus::Stopped {
+		log::trace!("Static site with ID: {} is stopped manully, skipping update static site k8s api call", static_site_id);
+		Ok(())
+	} else {
+		log::trace!(
+			"updating static site: {} with upload id: {} in kubernetes",
+			static_site_id,
+			upload_id
+		);
+		let result = service::update_kubernetes_static_site(
+			workspace_id,
+			static_site_id,
+			upload_id,
+			&StaticSiteDetails {},
+			config,
+			request_id,
+		)
+		.await;
 
-	// Can create a new function only to fetch status if needed
-	let static_site =
-		db::get_static_site_by_id(connection, static_site_id).await?;
+		if let Err(err) = result {
+			log::error!(
+				"request_id: {} - Error occured while deploying site `{}`: {}",
+				request_id,
+				static_site_id,
+				err.get_error()
+			);
+			// TODO log in audit log that there was an error while
+			// deploying
+			db::update_static_site_status(
+				connection,
+				static_site_id,
+				&DeploymentStatus::Errored,
+			)
+			.await?;
 
-	if let Some(static_site) = static_site {
-		match static_site.status {
-			DeploymentStatus::Stopped => {
-				log::trace!("Static site with ID: {} is stopped manully, skipping update static site k8s api call", static_site_id);
-				return Ok(());
-			}
-			_ => {
-				log::trace!(
-					"updating static site: {} with upload id: {} in kubernetes",
-					static_site_id,
-					upload_id
-				);
-				let result = service::update_kubernetes_static_site(
-					workspace_id,
-					static_site_id,
-					upload_id,
-					&StaticSiteDetails {},
-					config,
-					request_id,
-				)
-				.await;
+			db::update_current_live_upload_for_static_site(
+				connection,
+				static_site_id,
+				upload_id,
+			)
+			.await?;
 
-				if let Err(err) = result {
-					log::error!(
-						"request_id: {} - Error occured while deploying site `{}`: {}",
-						request_id,
-						static_site_id,
-						err.get_error()
-					);
-					// TODO log in audit log that there was an error while
-					// deploying
-					db::update_static_site_status(
-						connection,
-						static_site_id,
-						&DeploymentStatus::Errored,
-					)
-					.await?;
+			Err(err)
+		} else {
+			db::update_static_site_status(
+				connection,
+				static_site_id,
+				&DeploymentStatus::Running,
+			)
+			.await?;
 
-					db::update_current_live_upload_for_static_site(
-						connection,
-						static_site_id,
-						upload_id,
-					)
-					.await?;
+			db::update_current_live_upload_for_static_site(
+				connection,
+				static_site_id,
+				upload_id,
+			)
+			.await?;
 
-					return Err(err);
-				} else {
-					db::update_static_site_status(
-						connection,
-						static_site_id,
-						&DeploymentStatus::Running,
-					)
-					.await?;
-
-					db::update_current_live_upload_for_static_site(
-						connection,
-						static_site_id,
-						upload_id,
-					)
-					.await?;
-
-					return Ok(());
-				}
-			}
+			Ok(())
 		}
 	}
 }
