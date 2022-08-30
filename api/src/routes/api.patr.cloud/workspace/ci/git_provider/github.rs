@@ -22,9 +22,8 @@ use api_models::{
 		RestartBuildResponse,
 		SyncReposResponse,
 	},
-	utils::{Base64String, DateTime, Uuid},
+	utils::{Base64String, Uuid},
 };
-use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use http::header::ACCEPT;
 use octorust::{
@@ -40,7 +39,11 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::{ci::file_format::CiFlow, deployment::Logs, rbac::permissions},
+	models::{
+		ci::{file_format::CiFlow, Commit, EventType, PullRequest, Tag},
+		deployment::Logs,
+		rbac::permissions,
+	},
 	pin_fn,
 	rabbitmq::{BuildId, BuildStepId},
 	service::{self, Netrc, ParseStatus},
@@ -778,7 +781,7 @@ async fn activate_repo(
 					token: "".to_string(),
 					url: github_webhook_url,
 				}),
-				events: vec!["push".to_string()],
+				events: vec!["push".to_string(), "pull_request".to_string()],
 				name: "web".to_string(),
 			},
 		)
@@ -1125,24 +1128,82 @@ async fn restart_build(
 	.await?
 	.status(500)?;
 
-	let config = context.get_state().config.clone();
-	let git_commit = previous_build.git_commit.as_ref();
+	let event_type = if let Some(branch_name) =
+		previous_build.git_ref.strip_prefix("refs/heads/")
+	{
+		EventType::Commit(Commit {
+			repo_owner: repo.repo_owner,
+			repo_name: repo.repo_name.clone(),
+			commit_sha: previous_build.git_commit,
+			committed_branch_name: branch_name.to_string(),
+		})
+	} else if let Some(tag_name) =
+		previous_build.git_ref.strip_prefix("refs/tags/")
+	{
+		EventType::Tag(Tag {
+			repo_owner: repo.repo_owner,
+			repo_name: repo.repo_name.clone(),
+			commit_sha: previous_build.git_commit,
+			tag_name: tag_name.to_string(),
+		})
+	} else if let Some(pull_number) = previous_build
+		.git_ref
+		.strip_prefix("refs/pull/")
+		.and_then(|pr| pr.parse::<i64>().ok())
+	{
+		let github_client = octorust::Client::new(
+			"patr",
+			Credentials::Token(access_token.clone()),
+		)
+		.map_err(|err| {
+			log::info!("error while octorust init: {err:#}");
+			err
+		})
+		.ok()
+		.status(500)?;
 
-	let ci_file_content = service::fetch_ci_file_content_from_github_repo(
-		&repo.repo_owner,
-		&repo.repo_name,
-		&access_token,
-		git_commit,
-	)
-	.await?;
+		let pr_details = github_client
+			.pulls()
+			.get(&repo.repo_owner, &repo.repo_name, pull_number)
+			.await
+			.map_err(|err| {
+				log::info!("error while getting pull request details: {err:#}");
+				err
+			})
+			.ok()
+			.status(500)?;
 
-	let build_num = db::generate_new_build_for_repo(
+		EventType::PullRequest(PullRequest {
+			head_repo_owner: pr_details
+				.head
+				.repo
+				.as_ref()
+				.map(|repo| repo.owner.login.clone())
+				.unwrap_or(repo.repo_owner),
+			head_repo_name: pr_details
+				.head
+				.repo
+				.map(|repo| repo.name)
+				.unwrap_or_else(|| repo.repo_name.clone()),
+			commit_sha: previous_build.git_commit,
+			pr_number: pull_number.to_string(),
+			to_be_committed_branch_name: pr_details.base.ref_,
+		})
+	} else {
+		return Error::as_result().status(500)?;
+	};
+
+	let ci_file_content =
+		service::fetch_ci_file_content_from_github_repo_based_on_event(
+			&event_type,
+			&access_token,
+		)
+		.await?;
+
+	let build_num = service::create_build_for_repo(
 		context.get_database_connection(),
 		&repo.id,
-		&previous_build.git_ref,
-		&previous_build.git_commit,
-		BuildStatus::Running,
-		&DateTime::from(Utc::now()),
+		&event_type,
 	)
 	.await?;
 
@@ -1167,12 +1228,10 @@ async fn restart_build(
 		}
 	};
 
-	let branch_name = previous_build.git_ref.strip_prefix("refs/heads/");
-
 	let CiFlow::Pipeline(pipeline) = ci_flow;
 	let works = match service::evaluate_work_steps_for_ci(
 		pipeline.steps,
-		branch_name,
+		&event_type,
 	) {
 		Ok(works) => works,
 		Err(err) => {
@@ -1199,10 +1258,12 @@ async fn restart_build(
 
 	context.commit_database_transaction().await?;
 
+	let config = context.get_state().config.clone();
 	service::add_build_steps_in_k8s(
 		context.get_database_connection(),
 		&config,
 		&repo.id,
+		&repo.repo_name,
 		&BuildId {
 			repo_workspace_id: git_provider.workspace_id,
 			repo_id: repo.id.clone(),
@@ -1215,9 +1276,8 @@ async fn restart_build(
 			login: login_name,
 			password: access_token,
 		}),
+		event_type,
 		&repo.clone_url,
-		&repo.repo_name,
-		git_commit,
 		&request_id,
 	)
 	.await?;
@@ -1284,23 +1344,24 @@ async fn start_build_for_branch(
 		.status(500)?;
 
 	let config = context.get_state().config.clone();
-	let git_commit = &github_branch.commit.sha;
+	let event_type = EventType::Commit(Commit {
+		repo_owner: repo.repo_owner,
+		repo_name: repo.repo_name.clone(),
+		commit_sha: github_branch.commit.sha,
+		committed_branch_name: branch_name,
+	});
 
-	let ci_file_content = service::fetch_ci_file_content_from_github_repo(
-		&repo.repo_owner,
-		&repo.repo_name,
-		&access_token,
-		git_commit,
-	)
-	.await?;
+	let ci_file_content =
+		service::fetch_ci_file_content_from_github_repo_based_on_event(
+			&event_type,
+			&access_token,
+		)
+		.await?;
 
-	let build_num = db::generate_new_build_for_repo(
+	let build_num = service::create_build_for_repo(
 		context.get_database_connection(),
 		&repo.id,
-		&format!("refs/heads/{branch_name}"),
-		git_commit,
-		BuildStatus::Running,
-		&DateTime::from(Utc::now()),
+		&event_type,
 	)
 	.await?;
 
@@ -1328,7 +1389,7 @@ async fn start_build_for_branch(
 	let CiFlow::Pipeline(pipeline) = ci_flow;
 	let works = match service::evaluate_work_steps_for_ci(
 		pipeline.steps,
-		Some(&branch_name),
+		&event_type,
 	) {
 		Ok(works) => works,
 		Err(err) => {
@@ -1359,6 +1420,7 @@ async fn start_build_for_branch(
 		context.get_database_connection(),
 		&config,
 		&repo.id,
+		&repo.repo_name,
 		&BuildId {
 			repo_workspace_id: git_provider.workspace_id,
 			repo_id: repo.id.clone(),
@@ -1371,9 +1433,8 @@ async fn start_build_for_branch(
 			login: login_name,
 			password: access_token,
 		}),
+		event_type,
 		&repo.clone_url,
-		&repo.repo_name,
-		git_commit,
 		&request_id,
 	)
 	.await?;

@@ -45,12 +45,17 @@ use crate::{
 			CiFlow,
 			Decision,
 			EnvVarValue,
+			Event,
 			LabelName,
 			Service,
 			Step,
 			When,
 			Work,
 		},
+		Commit,
+		EventType,
+		PullRequest,
+		Tag,
 	},
 	rabbitmq::{BuildId, BuildStep, BuildStepId},
 	service,
@@ -178,8 +183,18 @@ pub async fn parse_ci_file_content(
 
 pub fn evaluate_work_steps_for_ci(
 	steps: Vec<Step>,
-	branch_name: Option<&str>,
+	event_type: &EventType,
 ) -> Result<Vec<Work>, Error> {
+	let (branch_name, event_type) = match event_type {
+		EventType::Commit(commit) => {
+			(Some(&commit.committed_branch_name), Event::Commit)
+		}
+		EventType::Tag(_) => (None, Event::Tag),
+		EventType::PullRequest(pull_request) => {
+			(Some(&pull_request.to_be_committed_branch_name), Event::Pull)
+		}
+	};
+
 	let mut works = vec![];
 
 	let mut next_step: Option<LabelName> = None;
@@ -202,24 +217,38 @@ pub fn evaluate_work_steps_for_ci(
 			}
 			Step::Decision(Decision {
 				name: _,
-				when: When { branch },
+				when: When {
+					branch: branches,
+					event: events,
+				},
 				then,
 				else_,
 			}) => {
-				let branch_name = match branch_name {
-					Some(branch_name) => branch_name,
-					None => continue,
-				};
+				let is_branch_matched = {
+					if branches.is_empty() {
+						true
+					} else if let Some(branch_name) = branch_name {
+						let globset = {
+							let mut globset = GlobSetBuilder::new();
+							for glob_str in branches {
+								globset.add(Glob::new(&glob_str)?);
+							}
+							globset.build()?
+						};
 
-				let globset = {
-					let mut globset = GlobSetBuilder::new();
-					for glob_str in Vec::from(branch) {
-						globset.add(Glob::new(&glob_str)?);
+						globset.is_match(branch_name)
+					} else {
+						false
 					}
-					globset.build()?
 				};
 
-				if globset.is_match(branch_name) {
+				let is_event_matched = if events.is_empty() {
+					true
+				} else {
+					events.iter().any(|event| event == &event_type)
+				};
+
+				if is_branch_matched && is_event_matched {
 					next_step.replace(then);
 				} else if let Some(else_) = else_ {
 					next_step.replace(else_);
@@ -292,13 +321,13 @@ pub async fn add_build_steps_in_k8s(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 	repo_id: &Uuid,
+	repo_name: &str,
 	build_id: &BuildId,
 	services: Vec<Service>,
 	work_steps: Vec<Work>,
 	netrc: Option<Netrc>,
-	repo_clone_url: &str,
-	repo_name: &str,
-	git_commit: &str,
+	event_type: EventType,
+	clone_url: &str,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {request_id} - Adding build steps in k8s");
@@ -371,6 +400,26 @@ pub async fn add_build_steps_in_k8s(
 	}
 
 	// queue clone job
+	let git_clone_commands = [
+		format!(
+			r#"echo "{}" > ~/.netrc"#,
+			netrc.map_or("".to_string(), |netrc| netrc.to_string())
+		),
+		r#"cd "/mnt/workdir/""#.to_string(),
+		"set -x".to_string(),
+		format!("mkdir {repo_name}"),
+		format!(r#"cd "/mnt/workdir/{repo_name}""#),
+		r#"export GIT_AUTHOR_NAME=patr-ci"#.to_string(),
+		r#"export GIT_AUTHOR_EMAIL=patr-ci@localhost"#.to_string(),
+		r#"export GIT_COMMITTER_NAME=patr-ci"#.to_string(),
+		r#"export GIT_COMMITTER_EMAIL=patr-ci@localhost"#.to_string(),
+		"git init -q".to_string(),
+		format!("git remote add origin {clone_url}"),
+	]
+	.into_iter()
+	.chain(get_clone_command_based_on_event_type(&event_type).into_iter())
+	.collect();
+
 	service::queue_create_ci_build_step(
 		BuildStep {
 			id: BuildStepId {
@@ -379,17 +428,7 @@ pub async fn add_build_steps_in_k8s(
 			},
 			image: "alpine/git".to_string(),
 			env_vars: BTreeMap::new(),
-			commands: vec![
-				format!(
-					r#"echo "{}" > ~/.netrc"#,
-					netrc.map_or("".to_string(), |netrc| netrc.to_string())
-				),
-				r#"cd "/mnt/workdir/""#.to_string(),
-				"set -x".to_string(),
-				format!(r#"git clone "{repo_clone_url}""#),
-				format!(r#"cd "/mnt/workdir/{repo_name}""#),
-				format!(r#"git checkout "{git_commit}""#),
-			],
+			commands: git_clone_commands,
 		},
 		config,
 		request_id,
@@ -648,4 +687,43 @@ pub async fn sync_repos_in_db(
 	}
 
 	Ok(())
+}
+
+fn get_clone_command_based_on_event_type(
+	event_type: &EventType,
+) -> Vec<String> {
+	match event_type {
+		EventType::Commit(Commit {
+			repo_owner: _,
+			repo_name: _,
+			commit_sha,
+			committed_branch_name,
+		}) => vec![
+			format!("git fetch origin +refs/heads/{committed_branch_name}:"),
+			format!("git checkout {commit_sha} -b {committed_branch_name}"),
+		],
+		EventType::Tag(Tag {
+			repo_owner: _,
+			repo_name: _,
+			commit_sha: _,
+			tag_name,
+		}) => vec![
+			format!("git fetch origin +refs/tags/{tag_name}:"),
+			format!("git checkout -qf FETCH_HEAD"),
+		],
+		EventType::PullRequest(PullRequest {
+			head_repo_owner: _,
+			head_repo_name: _,
+			commit_sha,
+			pr_number: pull_number,
+			to_be_committed_branch_name,
+		}) => vec![
+			format!(
+				"git fetch origin +refs/heads/{to_be_committed_branch_name}:"
+			),
+			format!("git checkout {to_be_committed_branch_name}"),
+			format!("git fetch origin +refs/pull/{pull_number}/head:"),
+			format!("git merge {commit_sha}"),
+		],
+	}
 }

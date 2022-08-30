@@ -59,7 +59,22 @@ pub struct Decision {
 #[serde(deny_unknown_fields)]
 pub struct When {
 	/// Represents the list of branch in glob pattern which will be matched
-	pub branch: OneOrMany<String>,
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub branch: Vec<String>,
+	/// Represents the list of events which will match one of git event
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub event: Vec<Event>,
+	// TODO: need to add constraint that atleast one of the condition should be
+	// defined
+}
+
+/// Event represents a type of action in git provider
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Event {
+	Commit,
+	Tag,
+	Pull,
 }
 
 /// Work represent a single unit of work which will be done in pipeline

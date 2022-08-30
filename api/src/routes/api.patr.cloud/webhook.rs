@@ -15,7 +15,14 @@ use crate::{
 	db::{self},
 	error,
 	models::{
-		ci::file_format::CiFlow,
+		ci::{
+			file_format::CiFlow,
+			webhook_payload::github::Events,
+			Commit,
+			EventType,
+			PullRequest,
+			Tag,
+		},
 		deployment::KubernetesEventData,
 		error::{id as ErrorId, message as ErrorMessage},
 		Action,
@@ -617,128 +624,180 @@ async fn handle_ci_hooks(
 			})
 			.status(500)?;
 
-		// handle push events
-		if event.eq_ignore_ascii_case("push") {
-			let push_event_data =
-				context.get_body_as::<service::payload_types::PushEvent>()?;
-			let config = context.get_state().config.clone();
+		let event = context.get_body_as::<Events>()?;
 
-			let (owner_name, repo_name) = push_event_data
-				.repository
-				.full_name
-				.rsplit_once('/')
-				.status(400)
-				.body("invalid repo name")?;
+		let event_type = match event {
+			Events::Push(pushed) => {
+				if pushed.after == "0000000000000000000000000000000000000000" {
+					// push event is triggered for delete branch and delete tag
+					// with empty commit sha, skip those events
+					return Ok(context);
+				}
 
-			let branch_name = push_event_data.ref_.strip_prefix("refs/heads/");
+				if let Some(branch_name) =
+					pushed.ref_.strip_prefix("refs/heads/")
+				{
+					EventType::Commit(Commit {
+						repo_owner: pushed.repository.owner.login,
+						repo_name: pushed.repository.name,
+						committed_branch_name: branch_name.to_string(),
+						commit_sha: pushed.after,
+					})
+				} else if let Some(tag_name) =
+					pushed.ref_.strip_prefix("refs/tags/")
+				{
+					EventType::Tag(Tag {
+						repo_owner: pushed.repository.owner.login,
+						repo_name: pushed.repository.name,
+						commit_sha: pushed.after,
+						tag_name: tag_name.to_string(),
+					})
+				} else {
+					log::trace!(
+						"request_id: {request_id} - Error while parsing ref {}",
+						pushed.ref_
+					);
+					return Error::as_result().status(500)?;
+				}
+			}
+			Events::PullRequestOpened(pull_opened) => {
+				EventType::PullRequest(PullRequest {
+					head_repo_owner: pull_opened
+						.pull_request
+						.head
+						.repo
+						.owner
+						.login,
+					head_repo_name: pull_opened.pull_request.head.repo.name,
+					commit_sha: pull_opened.pull_request.head.sha,
+					to_be_committed_branch_name: pull_opened
+						.pull_request
+						.base
+						.ref_,
+					pr_number: pull_opened.pull_request.number.to_string(),
+				})
+			}
+			Events::PullRequestSynchronize(pull_synced) => {
+				EventType::PullRequest(PullRequest {
+					head_repo_owner: pull_synced
+						.pull_request
+						.head
+						.repo
+						.owner
+						.login,
+					head_repo_name: pull_synced.pull_request.head.repo.name,
+					to_be_committed_branch_name: pull_synced
+						.pull_request
+						.base
+						.ref_,
+					pr_number: pull_synced.pull_request.number.to_string(),
+					commit_sha: pull_synced.pull_request.head.sha,
+				})
+			}
+		};
 
-			let git_provider = db::get_connected_git_provider_details_by_id(
-				context.get_database_connection(),
-				&repo.git_provider_id,
-			)
-			.await?
+		let git_provider = db::get_connected_git_provider_details_by_id(
+			context.get_database_connection(),
+			&repo.git_provider_id,
+		)
+		.await?
+		.status(500)?;
+
+		let (login_name, access_token) = git_provider
+			.login_name
+			.zip(git_provider.password)
 			.status(500)?;
 
-			let (login_name, access_token) = git_provider
-				.login_name
-				.zip(git_provider.password)
-				.status(500)?;
+		let ci_file_content =
+			service::fetch_ci_file_content_from_github_repo_based_on_event(
+				&event_type,
+				&access_token,
+			)
+			.await?;
 
-			let ci_file_content =
-				service::fetch_ci_file_content_from_github_repo(
-					owner_name,
-					repo_name,
-					&access_token,
-					&push_event_data.after,
+		let build_num = service::create_build_for_repo(
+			context.get_database_connection(),
+			&repo.id,
+			&event_type,
+		)
+		.await?;
+
+		let ci_flow = match service::parse_ci_file_content(
+			context.get_database_connection(),
+			&git_provider.workspace_id,
+			&ci_file_content,
+			&request_id,
+		)
+		.await?
+		{
+			ParseStatus::Success(ci_file) => ci_file,
+			ParseStatus::Error => {
+				db::update_build_status(
+					context.get_database_connection(),
+					&repo.id,
+					build_num,
+					BuildStatus::Errored,
 				)
 				.await?;
+				return Ok(context);
+			}
+		};
 
-			let build_num = db::generate_new_build_for_repo(
-				context.get_database_connection(),
-				&repo.id,
-				&push_event_data.ref_,
-				&push_event_data.after,
-				BuildStatus::Running,
-				&DateTime::from(Utc::now()),
-			)
-			.await?;
-
-			let ci_flow = match service::parse_ci_file_content(
-				context.get_database_connection(),
-				&git_provider.workspace_id,
-				&ci_file_content,
-				&request_id,
-			)
-			.await?
-			{
-				ParseStatus::Success(ci_file) => ci_file,
-				ParseStatus::Error => {
-					db::update_build_status(
-						context.get_database_connection(),
-						&repo.id,
-						build_num,
-						BuildStatus::Errored,
-					)
-					.await?;
-					return Ok(context);
-				}
-			};
-
-			let CiFlow::Pipeline(pipeline) = ci_flow;
-			let works = match service::evaluate_work_steps_for_ci(
-				pipeline.steps,
-				branch_name,
-			) {
-				Ok(works) => works,
-				Err(err) => {
-					log::info!("request_id: {request_id} - Error while evaluating ci work steps {err:#?}");
-					db::update_build_status(
-						context.get_database_connection(),
-						&repo.id,
-						build_num,
-						BuildStatus::Errored,
-					)
-					.await?;
-					return Ok(context);
-				}
-			};
-
-			service::add_build_steps_in_db(
-				context.get_database_connection(),
-				&repo.id,
-				build_num,
-				&works,
-				&request_id,
-			)
-			.await?;
-
-			context.commit_database_transaction().await?;
-
-			service::add_build_steps_in_k8s(
-				context.get_database_connection(),
-				&config,
-				&repo.id,
-				&BuildId {
-					repo_workspace_id: git_provider.workspace_id,
-					repo_id: repo.id.clone(),
+		let CiFlow::Pipeline(pipeline) = ci_flow;
+		let works = match service::evaluate_work_steps_for_ci(
+			pipeline.steps,
+			&event_type,
+		) {
+			Ok(works) => works,
+			Err(err) => {
+				log::info!("request_id: {request_id} - Error while evaluating ci work steps {err:#?}");
+				db::update_build_status(
+					context.get_database_connection(),
+					&repo.id,
 					build_num,
-				},
-				pipeline.services,
-				works,
-				Some(Netrc {
-					machine: "github.com".to_owned(),
-					login: login_name,
-					password: access_token,
-				}),
-				&repo.clone_url,
-				repo_name,
-				&push_event_data.after,
-				&request_id,
-			)
-			.await?;
+					BuildStatus::Errored,
+				)
+				.await?;
+				return Ok(context);
+			}
+		};
 
-			return Ok(context);
-		}
+		service::add_build_steps_in_db(
+			context.get_database_connection(),
+			&repo.id,
+			build_num,
+			&works,
+			&request_id,
+		)
+		.await?;
+
+		context.commit_database_transaction().await?;
+
+		let config = context.get_state().config.clone();
+		service::add_build_steps_in_k8s(
+			context.get_database_connection(),
+			&config,
+			&repo.id,
+			&repo.repo_name,
+			&BuildId {
+				repo_workspace_id: git_provider.workspace_id,
+				repo_id: repo.id.clone(),
+				build_num,
+			},
+			pipeline.services,
+			works,
+			Some(Netrc {
+				machine: "github.com".to_owned(),
+				login: login_name,
+				password: access_token,
+			}),
+			event_type,
+			&repo.clone_url,
+			&request_id,
+		)
+		.await?;
+
+		return Ok(context);
 	}
 
 	// none of the know payload type is matched return client error

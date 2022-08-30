@@ -1,6 +1,10 @@
 use std::collections::HashMap;
 
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::ci::git_provider::BuildStatus,
+	utils::Uuid,
+};
+use chrono::Utc;
 use eve_rs::AsError;
 use hmac::{Hmac, Mac};
 use octorust::{
@@ -10,11 +14,9 @@ use octorust::{
 use sha2::Sha256;
 
 use super::MutableRepoValues;
-use crate::{db, service, utils::Error, Database};
+use crate::{db, models::ci::EventType, service, utils::Error, Database};
 
 type HmacSha256 = Hmac<Sha256>;
-
-pub mod payload_types;
 
 pub const X_HUB_SIGNATURE_256: &str = "x-hub-signature-256";
 pub const X_GITHUB_EVENT: &str = "x-github-event";
@@ -41,6 +43,66 @@ pub fn verify_github_payload_signature_256(
 	payload_signature.verify_slice(&x_hub_signature)?;
 
 	Ok(())
+}
+
+pub async fn create_build_for_repo(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
+	event_type: &EventType,
+) -> Result<i64, Error> {
+	let (git_ref, commit_sha) = match &event_type {
+		EventType::Commit(commit) => (
+			format!("refs/heads/{}", commit.committed_branch_name),
+			&commit.commit_sha,
+		),
+		EventType::Tag(tag) => {
+			(format!("refs/tags/{}", tag.tag_name), &tag.commit_sha)
+		}
+		EventType::PullRequest(pull_request) => (
+			format!("refs/pull/{}", pull_request.pr_number),
+			&pull_request.commit_sha,
+		),
+	};
+
+	let build_num = db::generate_new_build_for_repo(
+		connection,
+		repo_id,
+		&git_ref,
+		commit_sha,
+		BuildStatus::Running,
+		&Utc::now(),
+	)
+	.await?;
+
+	Ok(build_num)
+}
+
+pub async fn fetch_ci_file_content_from_github_repo_based_on_event(
+	event_type: &EventType,
+	access_token: &str,
+) -> Result<Vec<u8>, Error> {
+	// fetch ci file from remote repo for forked pull requests
+	let (owner_name, repo_name, commit_sha) = match event_type {
+		EventType::Commit(commit) => {
+			(&commit.repo_owner, &commit.repo_name, &commit.commit_sha)
+		}
+		EventType::Tag(tag) => {
+			(&tag.repo_owner, &tag.repo_name, &tag.commit_sha)
+		}
+		EventType::PullRequest(pull_request) => (
+			&pull_request.head_repo_owner,
+			&pull_request.head_repo_name,
+			&pull_request.commit_sha,
+		),
+	};
+
+	fetch_ci_file_content_from_github_repo(
+		owner_name,
+		repo_name,
+		access_token,
+		commit_sha,
+	)
+	.await
 }
 
 pub async fn fetch_ci_file_content_from_github_repo(
