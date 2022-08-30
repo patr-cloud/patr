@@ -12,6 +12,7 @@ use api_models::{
 		GetDomainDnsRecordsResponse,
 		GetDomainInfoResponse,
 		GetDomainsForWorkspaceResponse,
+		GetTransferDomainStateResponse,
 		PatrDomainDnsRecord,
 		TransferDomainNameserverToPatrResponse,
 		UpdateDomainDnsRecordRequest,
@@ -157,6 +158,47 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(transfer_domain_to_patr)),
+		],
+	);
+
+	// Transfer user controller domain to patr controller domain
+	app.get(
+		"/:domainId/transfer-state",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::domain::VERIFY,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let domain_id_string =
+						context.get_param(request_keys::DOMAIN_ID).unwrap();
+					let domain_id = Uuid::parse_str(domain_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&domain_id,
+					)
+					.await?
+					.filter(|resource| resource.owner_id == workspace_id);
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(
+				transfer_domain_to_patr_state
+			)),
 		],
 	);
 
@@ -665,6 +707,40 @@ async fn cancel_transfer_domain_to_patr(
 
 	context.success(CancelTransferDomainResponse {});
 
+	Ok(context)
+}
+
+async fn transfer_domain_to_patr_state(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!(
+		"request_id: {} - Checking status for transferring domain",
+		request_id
+	);
+	let domain_id =
+		Uuid::parse_str(context.get_param(request_keys::DOMAIN_ID).unwrap())
+			.unwrap();
+	db::get_workspace_domain_by_id(
+		context.get_database_connection(),
+		&domain_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	db::get_user_transferring_domain_to_patr(
+		context.get_database_connection(),
+		&domain_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	context.success(GetTransferDomainStateResponse {
+		is_transferring: true,
+	});
 	Ok(context)
 }
 
