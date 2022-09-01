@@ -1,13 +1,10 @@
 use std::{
 	fmt::{Debug, Formatter},
-	sync::Arc,
 };
 
 use api_models::{ApiResponse, ErrorType};
 use eve_rs::{
-	handlebars::Handlebars,
 	Context,
-	RenderEngine,
 	Request,
 	Response,
 };
@@ -23,7 +20,6 @@ pub struct EveContext {
 	request: Request,
 	response: Response,
 	body_object: Value,
-	render_register: Option<Arc<Handlebars<'static>>>,
 	state: App,
 	db_connection: Option<Transaction<'static, Database>>,
 	access_token_data: Option<AccessTokenData>,
@@ -31,12 +27,10 @@ pub struct EveContext {
 
 impl EveContext {
 	pub fn new(request: Request, state: &App) -> Self {
-		let render_register = Some(state.render_register.clone());
 		EveContext {
 			request,
 			response: Response::new(),
 			body_object: Value::Null,
-			render_register,
 			state: state.clone(),
 			db_connection: None,
 			access_token_data: None,
@@ -138,16 +132,6 @@ impl EveContext {
 	{
 		serde_qs::from_str(&self.get_query_string())
 			.map_err(|err| Error::new(Box::new(err)))
-	}
-}
-
-impl RenderEngine for EveContext {
-	fn get_register(&self) -> &Arc<Handlebars> {
-		self.render_register.as_ref().unwrap()
-	}
-
-	fn set_register(&mut self, register: Arc<Handlebars<'static>>) {
-		self.render_register = Some(register);
 	}
 }
 

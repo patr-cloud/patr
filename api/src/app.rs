@@ -1,14 +1,11 @@
 use std::{
 	fmt::{Debug, Formatter},
 	process,
-	sync::Arc,
 	time::{Duration, Instant},
 };
 
-use colored::Colorize;
 use deadpool_lapin::Pool as RabbitmqPool;
 use eve_rs::{
-	handlebars::Handlebars,
 	listen,
 	App as EveApp,
 	AsError,
@@ -34,7 +31,6 @@ pub struct App {
 	pub config: Settings,
 	pub database: Pool<Database>,
 	pub redis: RedisConnection,
-	pub render_register: Arc<Handlebars<'static>>,
 	pub rabbitmq: RabbitmqPool,
 }
 
@@ -201,14 +197,7 @@ fn log_request(
 		"{} {} {} {} - {}",
 		method,
 		path,
-		match *status {
-			100..=199 => format!("{}", status).normal(),
-			200..=299 => format!("{}", status).green(),
-			300..=399 => format!("{}", status).cyan(),
-			400..=499 => format!("{}", status).yellow(),
-			500..=599 => format!("{}", status).red(),
-			_ => format!("{}", status).purple(),
-		},
+		format!("{}", status),
 		if elapsed_time.as_millis() > 0 {
 			format!("{} ms", elapsed_time.as_millis())
 		} else {
