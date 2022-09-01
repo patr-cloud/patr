@@ -21,20 +21,14 @@ askama = "0.11"
 async-trait = "0.1"
 base32 = "0.4"
 base64 = "0.13"
-bytes = "1"
 chrono = "0.4"
-clap = { version = "3", features = ["cargo", "wrap_help"] }
 cloudflare = { git = "https://github.com/vicara-hq/cloudflare-rs" }
-colored = "2"
 config_rs = { version = "0.13", package = "config" }
 cron = "0.11"
 deadpool = "*"
 deadpool-lapin = "0.10"
 eve-rs = { git = "https://github.com/vicara-hq/eve-rs", branch = "develop" }
 futures = "0.3"
-handlebars = "4.0"
-hex = "0.4"
-http = "0.2"
 jsonwebtoken = "8"
 k8s-openapi = { version = "0.15", default-features = true, features = [
   "v1_21",
@@ -43,7 +37,6 @@ kube = { version = "0.74", default-features = true, features = [
   "derive",
   "runtime",
 ] } # Library for talking to Kubernetes API
-lapin = "2"
 lazy_static = "1"
 lettre = { version = "0.10", default-features = false, features = [
   "tokio1",
@@ -68,7 +61,6 @@ serde = { version = "1", features = ["serde_derive"] }
 serde_json = "1"
 serde_qs = "0.10"
 sha2 = "0.10"
-shiplift = "0.7"
 sqlx = { version = "0.6", features = [
   "bigdecimal",
   "chrono",
@@ -85,6 +77,8 @@ trust-dns-client = "0.21"
 vaultrs = "0.6"
 zeroize = "1"
 zip = "0.6"
+lapin = "2.1.1"
+handlebars = "4.3.3"
 
 [dependencies.log4rs]
 default-features = false

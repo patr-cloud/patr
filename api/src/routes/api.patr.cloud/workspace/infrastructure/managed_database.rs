@@ -306,7 +306,7 @@ async fn create_database_cluster(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::DATABASE_ID: hex::encode(database_id.as_bytes())
+		request_keys::DATABASE_ID: database_id.as_str()
 	}));
 	Ok(context)
 }
