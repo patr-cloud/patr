@@ -344,7 +344,7 @@ def build_code(step_name, release, sqlx_offline):
         "name": step_name,
         "image": "rust:1.63",
         "commands": [
-            "wget -o sccache.tar.gz https://github.com/mozilla/sccache/releases/download/v0.3.0/sccache-v0.3.0-x86_64-unknown-linux-musl.tar.gz",
+            "curl -L -o sccache.tar.gz https://github.com/mozilla/sccache/releases/download/v0.3.0/sccache-v0.3.0-x86_64-unknown-linux-musl.tar.gz",
             "tar -xf sccache.tar.gz",
             "mv ./sccache-v0.3.0-x86_64-unknown-linux-musl/sccache ./sccache",
             "chmod +x ./sccache",
