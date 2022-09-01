@@ -125,7 +125,8 @@
 		"scope": "",
 		"clientId": "",
 		"clientSecret": "",
-		"userInfoUrl": ""
+		"userInfoUrl": "",
+		"state":""
 	},
 	"stripe": {
 		"publishableKey": "pk_test_123",
