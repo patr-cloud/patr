@@ -1,13 +1,7 @@
-use std::{
-	fmt::{Debug, Formatter},
-};
+use std::fmt::{Debug, Formatter};
 
 use api_models::{ApiResponse, ErrorType};
-use eve_rs::{
-	Context,
-	Request,
-	Response,
-};
+use eve_rs::{Context, Request, Response};
 use redis::aio::MultiplexedConnection as RedisConnection;
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
