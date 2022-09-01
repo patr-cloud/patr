@@ -235,7 +235,7 @@ pub fn create_sub_app(
 	);
 
 	app.put(
-		"/api-token/:apiToken",
+		"/api-token/:apiToken/revoke",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(revoke_api_token)),
@@ -1459,6 +1459,7 @@ async fn revoke_api_token(
 		&api_token,
 		&user_id,
 		true,
+		format!("patr-deleted-{}", api_token),
 	)
 	.await?;
 

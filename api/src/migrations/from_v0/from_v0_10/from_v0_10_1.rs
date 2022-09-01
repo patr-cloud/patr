@@ -1113,7 +1113,16 @@ async fn create_api_token_x_relations(
 			created TIMESTAMPTZ NOT NULL,
 			revoked BOOLEAN NOT NULL DEFAULT FALSE,
 			revoked_by UUID,
-			is_super_admin BOOLEAN NOT NULL DEFAULT FALSE
+			CONSTRAINT api_token_chk_revoked_revoked_by_valid
+				CHECK(
+					(
+						revoked IS false AND
+						revoked_by IS NULL
+					) OR (
+						revoked IS true AND
+						revoked_by IS NOT NULL
+					)
+				)
 		);
 		"#
 	)
@@ -1123,13 +1132,18 @@ async fn create_api_token_x_relations(
 	query!(
 		r#"
 		CREATE TABLE api_token_resource_permission(
-			token UUID NOT NULL,
-			workspace_id UUID NOT NULL,
-			permission_id UUID NOT NULL,
-			resource_id UUID NOT NULL,
-			CONSTRAINT api_token_resource_permission_fk_token
-				FOREIGN KEY(token)
-					REFERENCES api_token(token)
+			token UUID NOT NULL
+				CONSTRAINT api_token_resource_permission_fk_token
+					REFERENCES api_token(token),
+			workspace_id UUID NOT NULL
+				CONSTRAINT api_token_resource_permission_fk_workspace_id
+					REFERENCES workspace(id),
+			permission_id UUID NOT NULL
+				CONSTRAINT api_token_resource_permission_fk_permission_id
+					REFERENCES permission(id),
+			resource_id UUID NOT NULL
+				CONSTRAINT api_token_resource_permission_fk_resource_id
+					REFERENCES resource(id)
 		);
 		"#
 	)
@@ -1139,13 +1153,18 @@ async fn create_api_token_x_relations(
 	query!(
 		r#"
 		CREATE TABLE api_token_resource_type_permission(
-			token UUID NOT NULL,
-			workspace_id UUID NOT NULL,
-			permission_id UUID NOT NULL,
-			resource_type_id UUID NOT NULL,
-			CONSTRAINT api_token_resource_permission_type_fk_token
-				FOREIGN KEY(token)
-					REFERENCES api_token(token)
+			token UUID NOT NULL
+				CONSTRAINT api_token_resource_permission_type_fk_token
+					REFERENCES api_token(token),
+			workspace_id UUID NOT NULL
+				CONSTRAINT api_token_resource_type_permission_fk_workspace_id
+					REFERENCES workspace(id),
+			permission_id UUID NOT NULL
+				CONSTRAINT api_token_resource_type_permission_fk_permission_id
+					REFERENCES permission (id),
+			resource_type_id UUID NOT NULL
+				CONSTRAINT api_token_resource_type_permission_fk_resource_type_id
+					REFERENCES resource_type(id)
 		);
 		"#
 	)
@@ -1166,7 +1185,9 @@ async fn create_api_token_x_relations(
 	query!(
 		r#"
 		CREATE TABLE api_token_workspace_super_admin(
-			token UUID NOT NULL,
+			token UUID NOT NULL
+				CONSTRAINT api_token_workspace_super_admin_fk_token
+					REFERENCES api_token(token),
 			workspace_id UUID NOT NULL,
 			super_admin_id UUID NOT NULL,
 			CONSTRAINT api_token_fk_workspace_id_super_admin_id

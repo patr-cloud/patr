@@ -43,7 +43,6 @@ pub async fn initialize_api_token_pre(
 			created TIMESTAMPTZ NOT NULL,
 			revoked BOOLEAN NOT NULL DEFAULT FALSE,
 			revoked_by UUID,
-            is_super_admin BOOLEAN NOT NULL DEFAULT FALSE,
             CONSTRAINT api_token_chk_revoked_revoked_by_valid
                 CHECK(
                     (
@@ -63,13 +62,18 @@ pub async fn initialize_api_token_pre(
 	query!(
 		r#"
 		CREATE TABLE api_token_resource_permission(
-			token UUID NOT NULL,
-			workspace_id UUID NOT NULL,
-			permission_id UUID NOT NULL,
-			resource_id UUID NOT NULL,
-			CONSTRAINT api_token_resource_permission_fk_token
-				FOREIGN KEY(token)
-					REFERENCES api_token(token)
+			token UUID NOT NULL
+				CONSTRAINT api_token_resource_permission_fk_token
+					REFERENCES api_token(token),
+			workspace_id UUID NOT NULL
+				CONSTRAINT api_token_resource_permission_fk_workspace_id
+					REFERENCES workspace(id),
+			permission_id UUID NOT NULL
+				CONSTRAINT api_token_resource_permission_fk_permission_id
+					REFERENCES permission(id),
+			resource_id UUID NOT NULL
+				CONSTRAINT api_token_resource_permission_fk_resource_id
+					REFERENCES resource(id)
 		);
 		"#
 	)
@@ -79,13 +83,18 @@ pub async fn initialize_api_token_pre(
 	query!(
 		r#"
 		CREATE TABLE api_token_resource_type_permission(
-			token UUID NOT NULL,
-			workspace_id UUID NOT NULL,
-			permission_id UUID NOT NULL,
-			resource_type_id UUID NOT NULL,
-			CONSTRAINT api_token_resource_permission_type_fk_token
-				FOREIGN KEY(token)
-					REFERENCES api_token(token)
+			token UUID NOT NULL
+				CONSTRAINT api_token_resource_permission_type_fk_token
+					REFERENCES api_token(token),
+			workspace_id UUID NOT NULL
+				CONSTRAINT api_token_resource_type_permission_fk_workspace_id
+					REFERENCES workspace(id),
+			permission_id UUID NOT NULL
+				CONSTRAINT api_token_resource_type_permission_fk_permission_id
+					REFERENCES permission (id),
+			resource_type_id UUID NOT NULL
+				CONSTRAINT api_token_resource_type_permission_fk_resource_type_id
+					REFERENCES resource_type(id)
 		);
 		"#
 	)
@@ -95,7 +104,9 @@ pub async fn initialize_api_token_pre(
 	query!(
 		r#"
 		CREATE TABLE api_token_workspace_super_admin(
-			token UUID NOT NULL,
+			token UUID NOT NULL
+				CONSTRAINT api_token_workspace_super_admin_fk_token
+					REFERENCES api_token(token),
 			workspace_id UUID NOT NULL,
 			super_admin_id UUID NOT NULL,
 			CONSTRAINT api_token_fk_workspace_id_super_admin_id
@@ -121,6 +132,7 @@ pub async fn revoke_user_api_token(
 	token: &Uuid,
 	revoked_by: &Uuid,
 	revoked: bool,
+	name: String,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -128,12 +140,14 @@ pub async fn revoke_user_api_token(
 			api_token
 		SET
 			revoked = $1,
-			revoked_by = $2
+			revoked_by = $2,
+			name = $3
 		WHERE
-			token = $3;
+			token = $4;
 		"#,
 		revoked,
 		revoked_by as _,
+		name,
 		token as _,
 	)
 	.execute(&mut *connection)
