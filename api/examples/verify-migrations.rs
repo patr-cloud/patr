@@ -1,6 +1,6 @@
 use std::{env, process::Stdio};
 
-use clap::crate_version;
+use api_macros::version;
 use futures::StreamExt;
 use regex::Regex;
 use reqwest::Client;
@@ -59,7 +59,7 @@ struct ReleaseAssetResponse {
 
 #[tokio::main]
 async fn main() {
-	let crate_version = crate_version!();
+	let crate_version = version!();
 	println!(
 		"Testing all migrations up till version {}...",
 		crate_version
