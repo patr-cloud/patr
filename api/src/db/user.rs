@@ -2539,6 +2539,35 @@ pub async fn update_recovery_phone_number_for_user(
 	.map(|_| ())
 }
 
+pub async fn add_password_reset_request(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+	token_hash: &str,
+	token_expiry: &DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			password_reset_request(
+				user_id,
+				token,
+				token_expiry
+			)
+		VALUES
+			($1, $2, $3)
+		ON CONFLICT(user_id) DO UPDATE SET
+			token = EXCLUDED.token,
+			token_expiry = EXCLUDED.token_expiry;
+		"#,
+		user_id as _,
+		token_hash,
+		token_expiry as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn update_user_oauth_info(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	access_token: &str,
