@@ -27,7 +27,7 @@ use api_models::utils::Uuid;
 use app::App;
 use chrono::{Datelike, Utc};
 use futures::future;
-use tokio::{runtime::Builder};
+use tokio::runtime::Builder;
 use utils::{logger, Error as EveError};
 
 use crate::models::rabbitmq::{RequestMessage, WorkspaceRequestData};
