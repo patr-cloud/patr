@@ -154,17 +154,17 @@ async fn notification_handler(
 
 		// Update the docker registry db with details on the image
 		let repository_name = target.repository;
-		let (workspace_name, image_name) =
+		let (workspace_id_str, image_name) =
 			if let Some(value) = repository_name.split_once('/') {
 				value
 			} else {
 				continue;
 			};
-
+		let workspace_id = Uuid::parse_str(workspace_id_str).unwrap();
 		log::trace!("request_id: {} - Getting the workspace", request_id);
-		let workspace = db::get_workspace_by_name(
+		let workspace = db::get_workspace_info(
 			context.get_database_connection(),
-			workspace_name,
+			&workspace_id,
 		)
 		.await?;
 		let workspace = if let Some(workspace) = workspace {
