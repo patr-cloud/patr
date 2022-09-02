@@ -1298,7 +1298,9 @@ async fn docker_registry_authenticate(
 		)?;
 	}
 
-	let workspace_name = split_array.get(0).unwrap(); // get first index from the vector
+	let workspace_id_str = split_array.get(0).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id_str).unwrap();
+	 // get first index from the vector
 	let repo_name = split_array.get(1).unwrap();
 
 	// check if repo name is valid
@@ -1315,9 +1317,9 @@ async fn docker_registry_authenticate(
 			.to_string(),
 		)?;
 	}
-	let workspace = db::get_workspace_by_name(
+	let workspace = db::get_workspace_info(
 		context.get_database_connection(),
-		workspace_name,
+		&workspace_id,
 	)
 	.await?
 	.status(400)
