@@ -33,11 +33,7 @@ where
 	) -> Result<Option<Either<T, Status>>> {
 		match self.delete(name, dp).await {
 			Ok(obj) => Ok(Some(obj)),
-			Err(Error::Api(ErrorResponse { reason, .. }))
-				if &reason == "NotFound" =>
-			{
-				Ok(None)
-			}
+			Err(Error::Api(ErrorResponse { code: 404, .. })) => Ok(None),
 			Err(err) => Err(err),
 		}
 	}

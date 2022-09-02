@@ -348,7 +348,7 @@ pub async fn add_git_provider_to_workspace(
 	.map(|_| id)
 }
 
-pub async fn get_connected_git_provider_details_by_id(
+pub async fn get_git_provider_details_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	git_provider_id: &Uuid,
 ) -> Result<Option<GitProvider>, sqlx::Error> {
@@ -672,16 +672,15 @@ pub async fn get_build_machine_type_for_repo(
 	.await
 }
 
-pub async fn get_repos_by_domain_and_uid(
+pub async fn get_repo_using_patr_repo_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	git_provider_domain_name: &str,
-	git_provider_repo_uid: &str,
-) -> Result<Vec<Repository>, sqlx::Error> {
+	repo_id: &Uuid,
+) -> Result<Option<Repository>, sqlx::Error> {
 	query_as!(
 		Repository,
 		r#"
 		SELECT
-			ci_repos.id as "id: _",
+			id as "id: _",
 			repo_owner,
 			repo_name,
 			clone_url,
@@ -692,19 +691,12 @@ pub async fn get_repos_by_domain_and_uid(
 			git_provider_repo_uid
 		FROM
 			ci_repos
-		INNER JOIN
-			ci_git_provider
-			ON
-				ci_repos.git_provider_id = ci_git_provider.id
-		WHERE (
-			ci_git_provider.domain_name = $1
-			AND ci_repos.git_provider_repo_uid = $2
-		);
+		WHERE 
+			id = $1;
 		"#,
-		git_provider_domain_name,
-		git_provider_repo_uid as _,
+		repo_id as _,
 	)
-	.fetch_all(connection)
+	.fetch_optional(connection)
 	.await
 }
 

@@ -4,44 +4,8 @@ use std::{
 };
 
 use api_models::{
-	models::workspace::ci::git_provider::{
-		BuildStepStatus,
-		GitProviderType,
-		RepoStatus,
-	},
-	utils::Uuid,
-};
-use eve_rs::AsError;
-use globset::{Glob, GlobSetBuilder};
-use k8s_openapi::{
-	api::{
-		apps::v1::{Deployment, DeploymentSpec},
-		core::v1::{
-			Container,
-			EnvVar,
-			Namespace,
-			PersistentVolumeClaim,
-			PersistentVolumeClaimSpec,
-			PodSpec,
-			PodTemplateSpec,
-			ResourceRequirements,
-			ServicePort,
-			ServiceSpec,
-		},
-	},
-	apimachinery::pkg::{
-		api::resource::Quantity,
-		apis::meta::v1::LabelSelector,
-		util::intstr::IntOrString,
-	},
-};
-use kube::{api::ObjectMeta, Api};
-
-use crate::{
-	db::{self, GitProvider},
-	models::ci::{
-		self,
-		file_format::{
+	models::{
+		ci::file_format::{
 			CiFlow,
 			Decision,
 			EnvVarValue,
@@ -52,11 +16,20 @@ use crate::{
 			When,
 			Work,
 		},
-		Commit,
-		EventType,
-		PullRequest,
-		Tag,
+		workspace::ci::git_provider::{
+			BuildStepStatus,
+			GitProviderType,
+			RepoStatus,
+		},
 	},
+	utils::Uuid,
+};
+use eve_rs::AsError;
+use globset::{Glob, GlobSetBuilder};
+
+use crate::{
+	db::{self, GitProvider},
+	models::ci::{Commit, EventType, PullRequest, Tag},
 	rabbitmq::{BuildId, BuildStep, BuildStepId},
 	service,
 	utils::{settings::Settings, Error},
@@ -86,6 +59,13 @@ impl Display for Netrc {
 pub enum ParseStatus {
 	Success(CiFlow),
 	Error,
+}
+
+pub fn get_webhook_url_for_repo(
+	frontend_domain: &str,
+	repo_id: &Uuid,
+) -> String {
+	format!("{frontend_domain}/webhook/ci/repo/{repo_id}")
 }
 
 pub async fn parse_ci_file_content(
@@ -337,64 +317,29 @@ pub async fn add_build_steps_in_k8s(
 			.await?
 			.status(500)?;
 
-	let kube_client = service::get_kubernetes_config(config).await?;
-
-	// create a new namespace
-	Api::<Namespace>::all(kube_client.clone())
-		.create(
-			&Default::default(),
-			&Namespace {
-				metadata: ObjectMeta {
-					name: Some(build_id.get_build_namespace()),
-					..Default::default()
-				},
-				..Default::default()
-			},
-		)
-		.await?;
-
-	// create a storage space for building
-	Api::<PersistentVolumeClaim>::namespaced(
-		kube_client.clone(),
+	service::infrastructure::create_kubernetes_namespace(
 		&build_id.get_build_namespace(),
+		config,
+		request_id,
 	)
-	.create(
-		&Default::default(),
-		&PersistentVolumeClaim {
-			metadata: ObjectMeta {
-				name: Some(build_id.get_pvc_name()),
-				..Default::default()
-			},
-			spec: Some(PersistentVolumeClaimSpec {
-				access_modes: Some(vec!["ReadWriteOnce".to_string()]),
-				storage_class_name: Some("do-block-storage".to_string()),
-				resources: Some(ResourceRequirements {
-					requests: Some(
-						[(
-							"storage".to_string(),
-							Quantity(format!(
-								"{}Gi",
-								build_machine_type.volume
-							)),
-						)]
-						.into(),
-					),
-					..Default::default()
-				}),
-				volume_mode: Some("Filesystem".to_string()),
-				..Default::default()
-			}),
-			..Default::default()
-		},
+	.await?;
+
+	service::infrastructure::create_pvc_for_workspace(
+		&build_id.get_build_namespace(),
+		&build_id.get_pvc_name(),
+		build_machine_type.volume as u32,
+		config,
+		request_id,
 	)
 	.await?;
 
 	for service in services {
-		create_background_service_for_pipeline(
-			kube_client.clone(),
-			build_id,
+		service::create_background_service_for_ci_in_kubernetes(
+			&build_id.get_build_namespace(),
+			build_id.repo_workspace_id.as_str(),
 			service,
 			config,
+			request_id,
 		)
 		.await?;
 	}
@@ -478,137 +423,6 @@ pub async fn add_build_steps_in_k8s(
 	.await?;
 
 	log::debug!("request_id: {request_id} - Successfully created a ci pipeline for build `{build_id}`");
-	Ok(())
-}
-
-async fn create_background_service_for_pipeline(
-	kube_client: kube::Client,
-	build_id: &BuildId,
-	service: ci::file_format::Service,
-	config: &Settings,
-) -> Result<(), Error> {
-	let env = (!service.env.is_empty()).then(|| {
-		service
-			.env
-			.iter()
-			.map(|(name, value)| EnvVar {
-				name: name.clone(),
-				value: Some(match value {
-					EnvVarValue::Value(value) => value.clone(),
-					EnvVarValue::ValueFromSecret { from_secret } => format!(
-						"vault:secret/data/{}/{}#data",
-						build_id.repo_workspace_id, from_secret
-					),
-				}),
-				..Default::default()
-			})
-			.collect()
-	});
-
-	let annotations = [
-		(
-			"vault.security.banzaicloud.io/vault-addr".to_string(),
-			config.vault.address.clone(),
-		),
-		(
-			"vault.security.banzaicloud.io/vault-role".to_string(),
-			"vault".to_string(),
-		),
-		(
-			"vault.security.banzaicloud.io/vault-skip-verify".to_string(),
-			"true".to_string(),
-		),
-		(
-			"vault.security.banzaicloud.io/vault-agent".to_string(),
-			"false".to_string(),
-		),
-		(
-			"vault.security.banzaicloud.io/vault-path".to_string(),
-			"kubernetes".to_string(),
-		),
-	]
-	.into_iter()
-	.collect();
-
-	Api::<Deployment>::namespaced(
-		kube_client.clone(),
-		&build_id.get_build_namespace(),
-	)
-	.create(
-		&Default::default(),
-		&Deployment {
-			metadata: ObjectMeta {
-				name: Some(service.name.to_string()),
-				..Default::default()
-			},
-			spec: Some(DeploymentSpec {
-				selector: LabelSelector {
-					match_labels: Some(
-						[("app".to_string(), service.name.to_string())].into(),
-					),
-					..Default::default()
-				},
-				template: PodTemplateSpec {
-					metadata: Some(ObjectMeta {
-						labels: Some(
-							[("app".to_string(), service.name.to_string())]
-								.into(),
-						),
-						annotations: Some(annotations),
-						..Default::default()
-					}),
-					spec: Some(PodSpec {
-						containers: vec![Container {
-							name: service.name.to_string(),
-							image: Some(service.image.clone()),
-							image_pull_policy: Some("Always".to_string()),
-							env,
-							command: service.command.map(|command| {
-								vec![
-									"sh".to_string(),
-									"-ce".to_string(),
-									Vec::from(command).join("\n"),
-								]
-							}),
-							..Default::default()
-						}],
-						..Default::default()
-					}),
-				},
-				..Default::default()
-			}),
-			..Default::default()
-		},
-	)
-	.await?;
-
-	Api::<k8s_openapi::api::core::v1::Service>::namespaced(
-		kube_client,
-		&build_id.get_build_namespace(),
-	)
-	.create(
-		&Default::default(),
-		&k8s_openapi::api::core::v1::Service {
-			metadata: ObjectMeta {
-				name: Some(service.name.to_string()),
-				..Default::default()
-			},
-			spec: Some(ServiceSpec {
-				selector: Some(
-					[("app".to_string(), service.name.to_string())].into(),
-				),
-				ports: Some(vec![ServicePort {
-					port: service.port,
-					target_port: Some(IntOrString::Int(service.port)),
-					..Default::default()
-				}]),
-				..Default::default()
-			}),
-			..Default::default()
-		},
-	)
-	.await?;
-
 	Ok(())
 }
 

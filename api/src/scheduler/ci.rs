@@ -6,7 +6,7 @@ use crate::{db, service, utils::Error};
 // Every day at 6 AM
 pub(super) fn sync_repo_job() -> Job {
 	Job::new(
-		String::from("Update bills of workspaces"),
+		String::from("Sync repo for CI"),
 		"0 0 6 * * *".parse().unwrap(),
 		|| Box::pin(sync_repos()),
 	)

@@ -18,9 +18,6 @@ use crate::{db, models::ci::EventType, service, utils::Error, Database};
 
 type HmacSha256 = Hmac<Sha256>;
 
-pub const X_HUB_SIGNATURE_256: &str = "x-hub-signature-256";
-pub const X_GITHUB_EVENT: &str = "x-github-event";
-
 /// Returns error if payload signature is different from header signature
 pub fn verify_github_payload_signature_256(
 	signature_from_header: &str,

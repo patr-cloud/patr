@@ -1,26 +1,29 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{
-	models::workspace::ci::git_provider::{
-		ActivateRepoRequest,
-		ActivateRepoResponse,
-		BuildLogs,
-		BuildStatus,
-		CancelBuildResponse,
-		DeactivateRepoResponse,
-		GetBuildInfoResponse,
-		GetBuildListResponse,
-		GetBuildLogResponse,
-		GetPatrCiFileResponse,
-		GitProviderType,
-		GithubAuthCallbackRequest,
-		GithubAuthCallbackResponse,
-		GithubAuthResponse,
-		GithubSignOutResponse,
-		ListReposResponse,
-		RepoStatus,
-		RepositoryDetails,
-		RestartBuildResponse,
-		SyncReposResponse,
+	models::{
+		ci::file_format::CiFlow,
+		workspace::ci::git_provider::{
+			ActivateRepoRequest,
+			ActivateRepoResponse,
+			BuildLogs,
+			BuildStatus,
+			CancelBuildResponse,
+			DeactivateRepoResponse,
+			GetBuildInfoResponse,
+			GetBuildListResponse,
+			GetBuildLogResponse,
+			GetPatrCiFileResponse,
+			GitProviderType,
+			GithubAuthCallbackRequest,
+			GithubAuthCallbackResponse,
+			GithubAuthResponse,
+			GithubSignOutResponse,
+			ListReposResponse,
+			RepoStatus,
+			RepositoryDetails,
+			RestartBuildResponse,
+			SyncReposResponse,
+		},
 	},
 	utils::{Base64String, Uuid},
 };
@@ -40,7 +43,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		ci::{file_format::CiFlow, Commit, EventType, PullRequest, Tag},
+		ci::{Commit, EventType, PullRequest, Tag},
 		deployment::Logs,
 		rbac::permissions,
 	},
@@ -722,7 +725,7 @@ async fn activate_repo(
 	.await?
 	.status(500)?;
 
-	let git_provider = db::get_connected_git_provider_details_by_id(
+	let git_provider = db::get_git_provider_details_by_id(
 		context.get_database_connection(),
 		&repo.git_provider_id,
 	)
@@ -758,14 +761,6 @@ async fn activate_repo(
 	)
 	.await?;
 
-	let github_webhook_url =
-		context.get_state().config.callback_domain_url.clone() + "/webhook/ci";
-
-	// TODO:
-	// - either store the returned webhook id and then during deactivation use
-	//   that hook id
-	// - else create a custome webhook url for each repo based on repo_id and
-	//   then use it (revaluate)
 	let _configured_webhook = github_client
 		.repos()
 		.create_webhook(
@@ -779,7 +774,10 @@ async fn activate_repo(
 					insecure_ssl: None,
 					secret: webhook_secret,
 					token: "".to_string(),
-					url: github_webhook_url,
+					url: service::get_webhook_url_for_repo(
+						&context.get_state().config.frontend_domin,
+						&repo.id,
+					),
 				}),
 				events: vec!["push".to_string(), "pull_request".to_string()],
 				name: "web".to_string(),
@@ -819,7 +817,7 @@ async fn deactivate_repo(
 	.await?
 	.status(500)?;
 
-	let git_provider = db::get_connected_git_provider_details_by_id(
+	let git_provider = db::get_git_provider_details_by_id(
 		context.get_database_connection(),
 		&repo.git_provider_id,
 	)
@@ -858,8 +856,10 @@ async fn deactivate_repo(
 		.ok()
 		.status(500)?;
 
-	let github_webhook_url =
-		context.get_state().config.callback_domain_url.clone() + "/webhook/ci";
+	let github_webhook_url = service::get_webhook_url_for_repo(
+		&context.get_state().config.frontend_domin,
+		&repo.id,
+	);
 
 	for webhook in all_webhooks {
 		if webhook.config.url == github_webhook_url {
@@ -1109,7 +1109,7 @@ async fn restart_build(
 	.await?
 	.status(500)?;
 
-	let git_provider = db::get_connected_git_provider_details_by_id(
+	let git_provider = db::get_git_provider_details_by_id(
 		context.get_database_connection(),
 		&repo.git_provider_id,
 	)
@@ -1312,7 +1312,7 @@ async fn start_build_for_branch(
 	.await?
 	.status(500)?;
 
-	let git_provider = db::get_connected_git_provider_details_by_id(
+	let git_provider = db::get_git_provider_details_by_id(
 		context.get_database_connection(),
 		&repo.git_provider_id,
 	)
@@ -1466,7 +1466,7 @@ async fn get_patr_ci_file(
 	.await?
 	.status(500)?;
 
-	let git_provider = db::get_connected_git_provider_details_by_id(
+	let git_provider = db::get_git_provider_details_by_id(
 		context.get_database_connection(),
 		&repo.git_provider_id,
 	)
@@ -1538,8 +1538,6 @@ async fn sign_out(
 	.filter(|repo| repo.status == RepoStatus::Active)
 	.collect::<Vec<_>>();
 
-	let github_webhook_url =
-		context.get_state().config.callback_domain_url.clone() + "/webhook/ci";
 	for repo in repos {
 		db::update_repo_status(
 			context.get_database_connection(),
@@ -1560,6 +1558,10 @@ async fn sign_out(
 			.ok()
 			.status(500)?;
 
+		let github_webhook_url = service::get_webhook_url_for_repo(
+			&context.get_state().config.frontend_domin,
+			&repo.id,
+		);
 		for webhook in webhooks {
 			if webhook.config.url == github_webhook_url {
 				github_client

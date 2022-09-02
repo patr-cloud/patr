@@ -57,6 +57,10 @@ pub mod request_keys {
 	pub const GIT_REF: &str = "gitRef";
 	pub const STEP: &str = "step";
 	pub const PAYMENT_METHOD_ID: &str = "paymentMethodId";
+
+	// github constants for CI
+	pub const X_HUB_SIGNATURE_256: &str = "x-hub-signature-256";
+	pub const X_GITHUB_EVENT: &str = "x-github-event";
 }
 
 pub mod default_limits {

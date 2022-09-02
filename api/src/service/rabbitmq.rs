@@ -427,8 +427,7 @@ pub async fn queue_create_ci_build_step(
 		config,
 		request_id,
 	)
-	.await?;
-	Ok(())
+	.await
 }
 
 pub async fn queue_cancel_ci_build_pipeline(
@@ -444,9 +443,7 @@ pub async fn queue_cancel_ci_build_pipeline(
 		config,
 		request_id,
 	)
-	.await?;
-
-	Ok(())
+	.await
 }
 
 pub async fn queue_clean_ci_build_pipeline(
@@ -462,6 +459,5 @@ pub async fn queue_clean_ci_build_pipeline(
 		config,
 		request_id,
 	)
-	.await?;
-	Ok(())
+	.await
 }

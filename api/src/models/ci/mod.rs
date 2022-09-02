@@ -1,4 +1,3 @@
-pub mod file_format;
 pub mod webhook_payload;
 
 pub enum EventType {

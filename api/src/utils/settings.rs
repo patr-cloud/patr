@@ -47,11 +47,11 @@ pub struct Settings {
 	pub password_pepper: String,
 	#[serde(alias = "jwtsecret")]
 	pub jwt_secret: String,
-	// the callback domain used for exposing patr webhooks to internet
-	// for prod, it will be https://app.patr.cloud
-	// for dev and testing, use ngrok's domain
+	// Callback domain used for exposing patr webhooks/apis to internet.
+	// For prod, it will be https://app.patr.cloud
+	// For dev and testing, use ngrok's domain
 	#[serde(alias = "callbackdomainurl")]
-	pub callback_domain_url: String,
+	pub frontend_domin: String,
 	pub environment: RunningEnvironment,
 	pub s3: S3Settings,
 	pub database: DatabaseSettings,
@@ -70,7 +70,6 @@ pub struct Settings {
 	pub loki: LokiSettings,
 	pub mailchimp: MailchimpSettings,
 	pub github: GithubSettings,
-	pub drone: DroneSettings,
 	pub stripe: StripeSettings,
 }
 
@@ -263,12 +262,6 @@ pub struct MailchimpSettings {
 	pub api_key: String,
 	#[serde(alias = "listid")]
 	pub list_id: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DroneSettings {
-	pub url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

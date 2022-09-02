@@ -3027,6 +3027,85 @@
     },
     "query": "CREATE TABLE user_phone_number( user_id UUID NOT NULL CONSTRAINT user_phone_number_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, country_code CHAR(2) NOT NULL CONSTRAINT user_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_phone_number_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), number VARCHAR(15) NOT NULL CONSTRAINT user_phone_number_chk_number_valid CHECK( LENGTH(number) >= 7 AND LENGTH(number) <= 15 AND CAST(number AS BIGINT) > 0 ), CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number), CONSTRAINT user_phone_number_uq_user_id_country_code_number UNIQUE(user_id, country_code, number) );"
   },
+  "4519f22e2c320ef6608c5f63ef50c5d2811ead7cda93692aa874bd1203988353": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "repo_owner",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "repo_name",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "clone_url",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "webhook_secret",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_machine_type_id: _",
+          "ordinal": 5,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 6,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "active",
+                  "inactive",
+                  "deleted"
+                ]
+              },
+              "name": "ci_repo_status"
+            }
+          }
+        },
+        {
+          "name": "git_provider_id: _",
+          "ordinal": 7,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "git_provider_repo_uid",
+          "ordinal": 8,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\trepo_owner,\n\t\t\trepo_name,\n\t\t\tclone_url,\n\t\t\twebhook_secret,\n\t\t\tbuild_machine_type_id as \"build_machine_type_id: _\",\n\t\t\tstatus as \"status: _\",\n\t\t\tgit_provider_id as \"git_provider_id: _\",\n\t\t\tgit_provider_repo_uid\n\t\tFROM\n\t\t\tci_repos\n\t\tWHERE \n\t\t\tid = $1;\n\t\t"
+  },
   "45b112cd94638051582357e64c62266311f37807da782620abefdf3921297603": {
     "describe": {
       "columns": [
@@ -5098,86 +5177,6 @@
       }
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE workspace_id = $1 AND status != 'deleted';"
-  },
-  "67ae193344a330443e52897fef84cee64e19477e8f6597ac3b26f8b2f575aaca": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "repo_owner",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "repo_name",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "clone_url",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "webhook_secret",
-          "ordinal": 4,
-          "type_info": "Text"
-        },
-        {
-          "name": "build_machine_type_id: _",
-          "ordinal": 5,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 6,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "active",
-                  "inactive",
-                  "deleted"
-                ]
-              },
-              "name": "ci_repo_status"
-            }
-          }
-        },
-        {
-          "name": "git_provider_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "git_provider_repo_uid",
-          "ordinal": 8,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Text"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tci_repos.id as \"id: _\",\n\t\t\trepo_owner,\n\t\t\trepo_name,\n\t\t\tclone_url,\n\t\t\twebhook_secret,\n\t\t\tbuild_machine_type_id as \"build_machine_type_id: _\",\n\t\t\tstatus as \"status: _\",\n\t\t\tgit_provider_id as \"git_provider_id: _\",\n\t\t\tgit_provider_repo_uid\n\t\tFROM\n\t\t\tci_repos\n\t\tINNER JOIN\n\t\t\tci_git_provider\n\t\t\tON\n\t\t\t\tci_repos.git_provider_id = ci_git_provider.id\n\t\tWHERE (\n\t\t\tci_git_provider.domain_name = $1\n\t\t\tAND ci_repos.git_provider_repo_uid = $2\n\t\t);\n\t\t"
   },
   "696749fb5dd8e4bb7c3d80c5619417e05c78691505add6a7af389858cb3bf0d4": {
     "describe": {

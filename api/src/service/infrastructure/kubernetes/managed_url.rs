@@ -31,6 +31,7 @@ use kube::{
 	core::ObjectMeta,
 	Api,
 };
+use kubernetes::ext_traits::DeleteOpt;
 
 use crate::{
 	db,
@@ -413,63 +414,25 @@ pub async fn delete_kubernetes_managed_url(
 		managed_url_id
 	);
 
-	if super::service_exists(
-		managed_url_id,
-		kubernetes_client.clone(),
-		namespace,
-	)
-	.await?
-	{
-		log::trace!(
-			"request_id: {} - service exists as {}",
-			request_id,
-			managed_url_id
-		);
+	Api::<Service>::namespaced(kubernetes_client.clone(), namespace)
+		.delete_opt(
+			&format!("service-{}", managed_url_id),
+			&DeleteParams::default(),
+		)
+		.await?;
 
-		Api::<Service>::namespaced(kubernetes_client.clone(), namespace)
-			.delete(
-				&format!("service-{}", managed_url_id),
-				&DeleteParams::default(),
-			)
-			.await?;
-		log::trace!(
-			"request_id: {} - deployment deleted successfully!",
-			request_id
-		);
-	} else {
-		log::trace!(
-			"request_id: {} - managed URL service doesn't exist as service-{}",
-			request_id,
-			managed_url_id
-		);
-	}
+	log::trace!(
+		"request_id: {} - deleting ingress {}",
+		request_id,
+		managed_url_id
+	);
 
-	if super::ingress_exists(
-		managed_url_id,
-		kubernetes_client.clone(),
-		namespace,
-	)
-	.await?
-	{
-		log::trace!(
-			"request_id: {} - ingress exists as {}",
-			request_id,
-			managed_url_id
-		);
-
-		Api::<Ingress>::namespaced(kubernetes_client, namespace)
-			.delete(
-				&format!("ingress-{}", managed_url_id),
-				&DeleteParams::default(),
-			)
-			.await?;
-	} else {
-		log::trace!(
-			"request_id: {} - managed URL ingress doesn't exist as ingress-{}",
-			request_id,
-			managed_url_id
-		);
-	}
+	Api::<Ingress>::namespaced(kubernetes_client, namespace)
+		.delete_opt(
+			&format!("ingress-{}", managed_url_id),
+			&DeleteParams::default(),
+		)
+		.await?;
 
 	log::trace!(
 		"request_id: {} - managed URL deleted successfully!",
@@ -636,69 +599,25 @@ pub async fn delete_kubernetes_managed_url_verification(
 		managed_url_id
 	);
 
-	if match Api::<Service>::namespaced(kubernetes_client.clone(), namespace)
-		.get(&format!("service-{}-verification", managed_url_id))
-		.await
-	{
-		Err(kube::Error::Api(kube::error::ErrorResponse {
-			code: 404, ..
-		})) => Ok(false),
-		Err(err) => Err(err),
-		Ok(_) => Ok(true),
-	}? {
-		log::trace!(
-			"request_id: {} - service exists as {}",
-			request_id,
-			managed_url_id
-		);
+	Api::<Service>::namespaced(kubernetes_client.clone(), namespace)
+		.delete_opt(
+			&format!("service-{}-verification", managed_url_id),
+			&DeleteParams::default(),
+		)
+		.await?;
 
-		Api::<Service>::namespaced(kubernetes_client.clone(), namespace)
-			.delete(
-				&format!("service-{}-verification", managed_url_id),
-				&DeleteParams::default(),
-			)
-			.await?;
-		log::trace!(
-			"request_id: {} - deployment deleted successfully!",
-			request_id
-		);
-	} else {
-		log::trace!(
-			"request_id: {} - managed URL service doesn't exist as service-{}",
-			request_id,
-			managed_url_id
-		);
-	}
+	log::trace!(
+		"request_id: {} - deleting ingress {}",
+		request_id,
+		managed_url_id
+	);
 
-	if match Api::<Ingress>::namespaced(kubernetes_client.clone(), namespace)
-		.get(&format!("ingress-{}-verification", managed_url_id))
-		.await
-	{
-		Err(kube::Error::Api(kube::error::ErrorResponse {
-			code: 404, ..
-		})) => Ok(false),
-		Err(err) => Err(err),
-		Ok(_) => Ok(true),
-	}? {
-		log::trace!(
-			"request_id: {} - ingress exists as {}",
-			request_id,
-			managed_url_id
-		);
-
-		Api::<Ingress>::namespaced(kubernetes_client, namespace)
-			.delete(
-				&format!("ingress-{}-verification", managed_url_id),
-				&DeleteParams::default(),
-			)
-			.await?;
-	} else {
-		log::trace!(
-			"request_id: {} - managed URL ingress doesn't exist as ingress-{}",
-			request_id,
-			managed_url_id
-		);
-	}
+	Api::<Ingress>::namespaced(kubernetes_client, namespace)
+		.delete_opt(
+			&format!("ingress-{}-verification", managed_url_id),
+			&DeleteParams::default(),
+		)
+		.await?;
 
 	log::trace!(
 		"request_id: {} - managed URL deleted successfully!",

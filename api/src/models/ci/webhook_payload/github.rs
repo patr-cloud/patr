@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(untagged)]
-pub enum Events {
+pub enum Event {
 	Push(PushEvent),
 	PullRequestOpened(PullRequestOpened),
 	PullRequestSynchronize(PullRequestSynchronize),
