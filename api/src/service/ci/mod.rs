@@ -10,7 +10,6 @@ use api_models::{
 			Decision,
 			EnvVarValue,
 			Event,
-			LabelName,
 			Service,
 			Step,
 			When,
@@ -175,10 +174,15 @@ pub async fn parse_ci_file_content(
 	Ok(ParseStatus::Success(ci_flow))
 }
 
+pub enum EvaluationStatus {
+	Success(Vec<Work>),
+	Error(String),
+}
+
 pub fn evaluate_work_steps_for_ci(
 	steps: Vec<Step>,
 	event_type: &EventType,
-) -> Result<Vec<Work>, Error> {
+) -> Result<EvaluationStatus, Error> {
 	let (branch_name, event_type) = match event_type {
 		EventType::Commit(commit) => {
 			(Some(&commit.committed_branch_name), Event::Commit)
@@ -189,25 +193,82 @@ pub fn evaluate_work_steps_for_ci(
 		}
 	};
 
-	let mut works = vec![];
+	// if there are no decision blocks and no next step defined,
+	// do the work in the defined order
+	let is_steps_linear = steps
+		.iter()
+		.all(|step| matches!(step, Step::Work(work) if work.next == None));
+	if is_steps_linear {
+		let works = steps
+			.into_iter()
+			.filter_map(|step| match step {
+				Step::Work(work) => Some(work),
+				_ => None, // safe to do as it is validated in previous check
+			})
+			.collect();
+		return Ok(EvaluationStatus::Success(works));
+	};
 
-	let mut next_step: Option<LabelName> = None;
-	for step in steps {
-		if let Some(next_step) = next_step.as_ref() {
-			let step_name = match &step {
+	// handle graph of steps
+	let first_step = {
+		let mut all_step_names = steps
+			.iter()
+			.map(|step| match step {
 				Step::Work(work) => &work.name,
 				Step::Decision(decision) => &decision.name,
-			};
+			})
+			.collect::<HashSet<_>>();
 
-			if next_step != step_name {
-				continue;
-			}
+		steps
+			.iter()
+			.flat_map(|step| match step {
+				Step::Work(work) => vec![work.next.clone()].into_iter(),
+				Step::Decision(decision) => {
+					vec![Some(decision.then.clone()), decision.else_.clone()]
+						.into_iter()
+				}
+			})
+			.flatten()
+			.for_each(|label| {
+				all_step_names.remove(&label);
+			});
+
+		if all_step_names.len() == 1 {
+			all_step_names.into_iter().next().unwrap().clone()
+		} else {
+			return Ok(EvaluationStatus::Error(
+				"Unable to find starting step in ci".to_owned(),
+			));
 		}
+	};
+
+	// from first step find until next step in none
+	let mut works = vec![];
+	let mut steps = steps
+		.into_iter()
+		.map(|step| {
+			let name = match &step {
+				Step::Work(work) => work.name.clone(),
+				Step::Decision(decision) => decision.name.clone(),
+			};
+			(name, step)
+		})
+		.collect::<HashMap<_, _>>();
+
+	let mut next_step = Some(first_step);
+	while let Some(next_step_name) = next_step.take() {
+		let step = if let Some(step) = steps.remove(&next_step_name) {
+			step
+		} else {
+			return Ok(EvaluationStatus::Error(format!(
+				"Error: unknown step name {next_step_name}"
+			)));
+		};
 
 		match step {
 			Step::Work(work) => {
+				next_step = work.next.clone();
 				works.push(work);
-				next_step.take();
 			}
 			Step::Decision(Decision {
 				name: _,
@@ -243,23 +304,15 @@ pub fn evaluate_work_steps_for_ci(
 				};
 
 				if is_branch_matched && is_event_matched {
-					next_step.replace(then);
-				} else if let Some(else_) = else_ {
-					next_step.replace(else_);
+					next_step = Some(then);
 				} else {
-					next_step.take();
+					next_step = else_
 				}
 			}
-		}
+		};
 	}
 
-	if next_step.is_some() {
-		Error::as_result()
-			.status(400)
-			.body("incomplete workflow in pipeline")?;
-	}
-
-	Ok(works)
+	Ok(EvaluationStatus::Success(works))
 }
 
 pub async fn add_build_steps_in_db(
@@ -292,6 +345,7 @@ pub async fn add_build_steps_in_db(
 			image,
 			command,
 			env: _,
+			next: _,
 		},
 	) in works.iter().enumerate()
 	{
@@ -402,6 +456,7 @@ pub async fn add_build_steps_in_k8s(
 			image,
 			command,
 			env,
+			next: _,
 		},
 	) in work_steps.into_iter().enumerate()
 	{

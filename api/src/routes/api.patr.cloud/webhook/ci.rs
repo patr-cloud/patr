@@ -220,7 +220,26 @@ async fn handle_ci_hooks_for_repo(
 		pipeline.steps,
 		&event_type,
 	) {
-		Ok(works) => works,
+		Ok(works) => match works {
+			service::EvaluationStatus::Success(works) => works,
+			service::EvaluationStatus::Error(err) => {
+				db::update_build_status(
+					context.get_database_connection(),
+					&repo.id,
+					build_num,
+					BuildStatus::Errored,
+				)
+				.await?;
+				db::update_build_message(
+					context.get_database_connection(),
+					&repo.id,
+					build_num,
+					&err,
+				)
+				.await?;
+				return Ok(context);
+			}
+		},
 		Err(err) => {
 			log::info!("request_id: {request_id} - Error while evaluating ci work steps {err:#?}");
 			db::update_build_status(
