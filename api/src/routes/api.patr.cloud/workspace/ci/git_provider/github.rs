@@ -775,7 +775,7 @@ async fn activate_repo(
 					secret: webhook_secret,
 					token: "".to_string(),
 					url: service::get_webhook_url_for_repo(
-						&context.get_state().config.frontend_domin,
+						&context.get_state().config.frontend_domain,
 						&repo.id,
 					),
 				}),
@@ -857,7 +857,7 @@ async fn deactivate_repo(
 		.status(500)?;
 
 	let github_webhook_url = service::get_webhook_url_for_repo(
-		&context.get_state().config.frontend_domin,
+		&context.get_state().config.frontend_domain,
 		&repo.id,
 	);
 
@@ -1216,12 +1216,19 @@ async fn restart_build(
 	.await?
 	{
 		ParseStatus::Success(ci_file) => ci_file,
-		ParseStatus::Error => {
+		ParseStatus::Error(err) => {
 			db::update_build_status(
 				context.get_database_connection(),
 				&repo.id,
 				build_num,
 				BuildStatus::Errored,
+			)
+			.await?;
+			db::update_build_message(
+				context.get_database_connection(),
+				&repo.id,
+				build_num,
+				&err,
 			)
 			.await?;
 			return Ok(context);
@@ -1374,12 +1381,19 @@ async fn start_build_for_branch(
 	.await?
 	{
 		ParseStatus::Success(ci_file) => ci_file,
-		ParseStatus::Error => {
+		ParseStatus::Error(err) => {
 			db::update_build_status(
 				context.get_database_connection(),
 				&repo.id,
 				build_num,
 				BuildStatus::Errored,
+			)
+			.await?;
+			db::update_build_message(
+				context.get_database_connection(),
+				&repo.id,
+				build_num,
+				&err,
 			)
 			.await?;
 			return Ok(context);
@@ -1559,7 +1573,7 @@ async fn sign_out(
 			.status(500)?;
 
 		let github_webhook_url = service::get_webhook_url_for_repo(
-			&context.get_state().config.frontend_domin,
+			&context.get_state().config.frontend_domain,
 			&repo.id,
 		);
 		for webhook in webhooks {

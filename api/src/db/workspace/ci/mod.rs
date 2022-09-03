@@ -48,6 +48,7 @@ pub struct BuildRecord {
 	pub status: BuildStatus,
 	pub created: DateTime<Utc>,
 	pub finished: Option<DateTime<Utc>>,
+	pub message: Option<String>,
 }
 
 pub struct StepRecord {
@@ -203,6 +204,7 @@ pub async fn initialize_ci_pre(
 			status 		CI_BUILD_STATUS NOT NULL,
 			created 	TIMESTAMPTZ NOT NULL,
 			finished 	TIMESTAMPTZ,
+			message		TEXT,
 
 			CONSTRAINT ci_builds_pk_repo_id_build_num
 				PRIMARY KEY (repo_id, build_num)
@@ -771,7 +773,8 @@ pub async fn get_build_status(
 			git_commit,
 			status as "status: _",
 			created as "created: _",
-			finished as "finished: _"
+			finished as "finished: _",
+			message
 		FROM
 			ci_builds
 		WHERE
@@ -807,6 +810,32 @@ pub async fn update_build_finished_time(
 		repo_id as _,
 		build_num,
 		finished as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_build_message(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
+	build_num: i64,
+	message: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			ci_builds
+		SET
+			message = $3
+		WHERE (
+			repo_id = $1
+			AND build_num = $2
+		);
+		"#,
+		repo_id as _,
+		build_num,
+		message
 	)
 	.execute(&mut *connection)
 	.await
@@ -857,7 +886,8 @@ pub async fn list_build_details_for_repo(
 			git_commit,
 			status as "status: _",
 			created as "created: _",
-			finished as "finished: _"
+			finished as "finished: _",
+			message
 		FROM
 			ci_builds
 		WHERE
@@ -895,6 +925,7 @@ pub async fn list_build_details_for_repo(
 			status: build.status,
 			created: utils::DateTime(build.created),
 			finished: build.finished.map(utils::DateTime),
+			message: build.message,
 			steps,
 		})
 	}
@@ -916,7 +947,8 @@ pub async fn get_build_details_for_build(
 			git_commit,
 			status as "status: _",
 			created as "created: _",
-			finished as "finished: _"
+			finished as "finished: _",
+			message
 		FROM
 			ci_builds
 		WHERE (
@@ -939,6 +971,7 @@ pub async fn get_build_details_for_build(
 			status: build.status,
 			created: utils::DateTime(build.created),
 			finished: build.finished.map(utils::DateTime),
+			message: build.message,
 			steps: list_build_steps_for_build(
 				&mut *connection,
 				repo_id,

@@ -58,7 +58,7 @@ impl Display for Netrc {
 
 pub enum ParseStatus {
 	Success(CiFlow),
-	Error,
+	Error(String),
 }
 
 pub fn get_webhook_url_for_repo(
@@ -78,7 +78,9 @@ pub async fn parse_ci_file_content(
 		Ok(ci_flow) => ci_flow,
 		Err(err) => {
 			log::info!("request_id: {request_id} - Error while parsing CI config file {err}");
-			return Ok(ParseStatus::Error);
+			return Ok(ParseStatus::Error(String::from(
+				"Error: CI file parse error",
+			)));
 		}
 	};
 
@@ -97,7 +99,10 @@ pub async fn parse_ci_file_content(
 				request_id,
 				name
 			);
-			return Ok(ParseStatus::Error);
+			return Ok(ParseStatus::Error(format!(
+				"Error: Duplicate step name found - {}",
+				name
+			)));
 		}
 	}
 	let mut service_names = HashSet::new();
@@ -108,7 +113,10 @@ pub async fn parse_ci_file_content(
 				request_id,
 				service.name
 			);
-			return Ok(ParseStatus::Error);
+			return Ok(ParseStatus::Error(format!(
+				"Error: Duplicate service name found - {}",
+				service.name
+			)));
 		}
 	}
 
@@ -132,7 +140,10 @@ pub async fn parse_ci_file_content(
 						request_id,
 						from_secret
 					);
-					return Ok(ParseStatus::Error);
+					return Ok(ParseStatus::Error(format!(
+						"Error: Invalid secret name - {}",
+						from_secret
+					)));
 				}
 			}
 		}
@@ -151,7 +162,10 @@ pub async fn parse_ci_file_content(
 							request_id,
 							from_secret
 						);
-						return Ok(ParseStatus::Error);
+						return Ok(ParseStatus::Error(format!(
+							"Error: Invalid secret name - {}",
+							from_secret
+						)));
 					}
 				}
 			}

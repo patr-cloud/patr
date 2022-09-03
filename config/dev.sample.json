@@ -4,7 +4,7 @@
 	"basePath": "/",
 	"passwordPepper": "keyboard cat",
 	"jwtSecret": "keyboard cat",
-	"callbackDomainUrl": "https://app.patr.cloud",
+	"frontendDomain": "https://app.patr.cloud",
 	"s3": {
 		"endpoint": "s3.localhost",
 		"region": "sample-region",

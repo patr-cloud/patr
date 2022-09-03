@@ -196,12 +196,19 @@ async fn handle_ci_hooks_for_repo(
 	.await?
 	{
 		ParseStatus::Success(ci_file) => ci_file,
-		ParseStatus::Error => {
+		ParseStatus::Error(err) => {
 			db::update_build_status(
 				context.get_database_connection(),
 				&repo.id,
 				build_num,
 				BuildStatus::Errored,
+			)
+			.await?;
+			db::update_build_message(
+				context.get_database_connection(),
+				&repo.id,
+				build_num,
+				&err,
 			)
 			.await?;
 			return Ok(context);
