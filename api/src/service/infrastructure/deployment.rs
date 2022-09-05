@@ -471,14 +471,11 @@ pub async fn get_full_deployment_config(
 					.await?
 					.status(404)
 					.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-			let workspace =
-				db::get_workspace_info(connection, &repository.workspace_id)
-					.await?
-					.status(500)?;
+
 			format!(
 				"{}/{}/{}",
 				constants::PATR_REGISTRY,
-				workspace.name,
+				repository.workspace_id,
 				repository.name
 			)
 		}

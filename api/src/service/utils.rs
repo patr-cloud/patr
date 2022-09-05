@@ -337,19 +337,12 @@ pub async fn get_image_name_and_digest_for_deployment_image(
 				"request_id: {} - Getting workspace details from the database",
 				request_id
 			);
-			let workspace_name = db::get_workspace_info(
-				connection,
-				&repository_details.workspace_id,
-			)
-			.await?
-			.status(500)?
-			.name;
 
 			Ok((
 				format!(
 					"{}/{}/{}",
 					config.docker_registry.registry_url,
-					workspace_name,
+					repository_details.workspace_id,
 					repository_details.name
 				),
 				digest,

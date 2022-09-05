@@ -11,7 +11,7 @@ use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
-	db::{self},
+	db,
 	error,
 	models::{
 		deployment::KubernetesEventData,
@@ -154,23 +154,19 @@ async fn notification_handler(
 
 		// Update the docker registry db with details on the image
 		let repository_name = target.repository;
-		let (workspace_name, image_name) =
+		let (workspace_id_str, image_name) =
 			if let Some(value) = repository_name.split_once('/') {
 				value
 			} else {
 				continue;
 			};
 
-		log::trace!("request_id: {} - Getting the workspace", request_id);
-		let workspace = db::get_workspace_by_name(
-			context.get_database_connection(),
-			workspace_name,
-		)
-		.await?;
-		let workspace = if let Some(workspace) = workspace {
-			workspace
-		} else {
-			continue;
+		let workspace_id = match Uuid::parse_str(workspace_id_str) {
+			Ok(workspace_id) => workspace_id,
+			Err(err) => {
+				log::trace!("request_id: {} - Unable to parse workspace_id: {} - error - {}", request_id, workspace_id_str, err);
+				continue;
+			}
 		};
 
 		log::trace!(
@@ -180,7 +176,7 @@ async fn notification_handler(
 		let repository = db::get_docker_repository_by_name(
 			context.get_database_connection(),
 			image_name,
-			&workspace.id,
+			&workspace_id,
 		)
 		.await?;
 		let repository = if let Some(repository) = repository {
@@ -216,12 +212,12 @@ async fn notification_handler(
 		let total_storage =
 			db::get_total_size_of_docker_repositories_for_workspace(
 				context.get_database_connection(),
-				&workspace.id,
+				&workspace_id,
 			)
 			.await?;
 		db::update_docker_repo_usage_history(
 			context.get_database_connection(),
-			&workspace.id,
+			&workspace_id,
 			&(((total_storage as f64) / (1000f64 * 1000f64 * 1000f64)).ceil()
 				as i64),
 			&current_time,
@@ -254,7 +250,7 @@ async fn notification_handler(
 				context.get_database_connection(),
 				image_name,
 				&target.tag,
-				&workspace.id,
+				&workspace_id,
 			)
 			.await?;
 
