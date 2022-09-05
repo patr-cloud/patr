@@ -742,30 +742,25 @@ async fn revert_static_site(
 
 	let config = context.get_state().config.clone();
 
-	let static_site = db::get_static_site_by_id(
+	db::get_static_site_by_id(
 		context.get_database_connection(),
 		&static_site_id,
 	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	service::update_static_site_and_db_status(
+		context.get_database_connection(),
+		&workspace_id,
+		&static_site_id,
+		None,
+		&upload_id,
+		&StaticSiteDetails {},
+		&config,
+		&request_id,
+	)
 	.await?;
-	if let Some(site) = static_site {
-		service::update_static_site_and_db_status(
-			context.get_database_connection(),
-			&workspace_id,
-			&static_site_id,
-			None,
-			&upload_id,
-			&StaticSiteDetails {},
-			&site.status,
-			&config,
-			&request_id,
-		)
-		.await?;
-	} else {
-		log::trace!("No static site found with id: {}", static_site_id);
-		return Error::as_result()
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-	}
 	context.success(RevertStaticSiteResponse {});
 	Ok(context)
 }
@@ -832,30 +827,25 @@ async fn start_static_site(
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	};
 
-	let static_site = db::get_static_site_by_id(
+	db::get_static_site_by_id(
 		context.get_database_connection(),
 		&static_site_id,
 	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	service::update_static_site_and_db_status(
+		context.get_database_connection(),
+		&workspace_id,
+		&static_site_id,
+		None,
+		&upload_id,
+		&StaticSiteDetails {},
+		&config,
+		&request_id,
+	)
 	.await?;
-	if let Some(site) = static_site {
-		service::update_static_site_and_db_status(
-			context.get_database_connection(),
-			&workspace_id,
-			&static_site_id,
-			None,
-			&upload_id,
-			&StaticSiteDetails {},
-			&site.status,
-			&config,
-			&request_id,
-		)
-		.await?;
-	} else {
-		log::trace!("No static site found with id: {}", static_site_id);
-		return Error::as_result()
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-	}
 
 	context.success(StartStaticSiteResponse {});
 	Ok(context)
