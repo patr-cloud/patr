@@ -1299,19 +1299,26 @@ async fn docker_registry_authenticate(
 	}
 
 	let workspace_id_str = split_array.get(0).unwrap();
-	let workspace_id = match Uuid::parse_str(workspace_id_str) {
-		Ok(workspace_id) => workspace_id,
-		Err(err) => {
+	let workspace_id = Uuid::parse_str(workspace_id_str)
+		.map_err(|err| {
 			log::trace!(
 				"Unable to parse workspace_id: {} - error - {}",
 				workspace_id_str,
 				err
 			);
-			return Error::as_result()
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string())?;
-		}
-	};
+			err
+		})
+		.status(500)
+		.body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::INVALID_REQUEST,
+					request_keys::MESSAGE: ErrorMessage::NO_WORKSPACE_OR_REPOSITORY,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)?;
 
 	// get first index from the vector
 	let repo_name = split_array.get(1).unwrap();

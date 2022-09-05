@@ -165,23 +165,9 @@ async fn notification_handler(
 			Ok(workspace_id) => workspace_id,
 			Err(err) => {
 				log::trace!("request_id: {} - Unable to parse workspace_id: {} - error - {}", request_id, workspace_id_str, err);
-				return Error::as_result()
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+				continue;
 			}
 		};
-
-		log::trace!(
-			"request_id: {} - Checking if workspace exists",
-			request_id
-		);
-		db::get_workspace_info(
-			context.get_database_connection(),
-			&workspace_id,
-		)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 		log::trace!(
 			"request_id: {} - Getting the docker repository info",

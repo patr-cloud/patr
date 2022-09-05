@@ -337,13 +337,6 @@ pub async fn get_image_name_and_digest_for_deployment_image(
 				"request_id: {} - Getting workspace details from the database",
 				request_id
 			);
-			db::get_workspace_info(
-				connection,
-				&repository_details.workspace_id,
-			)
-			.await?
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 			Ok((
 				format!(
