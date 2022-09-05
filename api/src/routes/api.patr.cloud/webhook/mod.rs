@@ -1,3 +1,5 @@
+mod ci;
+
 use api_models::{
 	models::workspace::{
 		billing::PaymentStatus,
@@ -63,6 +65,8 @@ pub fn create_sub_app(
 		"/stripe-webhook",
 		[EveMiddleware::CustomFunction(pin_fn!(stripe_webhook))],
 	);
+
+	sub_app.use_sub_app("/ci", ci::create_sub_app(app));
 
 	sub_app
 }

@@ -2104,7 +2104,7 @@ pub async fn generate_new_login_id(
 		let exists = query!(
 			r#"
 			SELECT
-				*
+				login_id
 			FROM
 				user_login
 			WHERE
@@ -2411,8 +2411,6 @@ pub async fn get_all_workspaces_for_user(
 			workspace.super_admin_id as "super_admin_id: _",
 			workspace.active,
 			workspace.alert_emails,
-			workspace.drone_username,
-			workspace.drone_token,
 			workspace.payment_type as "payment_type: _",
 			workspace.default_payment_method_id as "default_payment_method_id: _",
 			workspace.deployment_limit,
@@ -2461,8 +2459,6 @@ pub async fn get_all_workspaces_owned_by_user(
 			super_admin_id as "super_admin_id: _",
 			active,
 			alert_emails,
-			drone_username,
-			drone_token,
 			payment_type as "payment_type: _",
 			default_payment_method_id as "default_payment_method_id: _",
 			deployment_limit,

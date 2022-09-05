@@ -13,13 +13,14 @@ use crate::{
 	db::{self, Workspace},
 	models::{
 		rabbitmq::{
+			CIData,
 			DeploymentRequestData,
 			RequestMessage,
 			WorkspaceRequestData,
 		},
 		DeploymentMetadata,
 	},
-	rabbitmq,
+	rabbitmq::{self, BuildId, BuildStep},
 	service,
 	utils::{settings::Settings, Error},
 	Database,
@@ -411,4 +412,52 @@ pub async fn send_message_to_rabbit_mq(
 			Error::from(e)
 		})?;
 	Ok(())
+}
+
+pub async fn queue_create_ci_build_step(
+	build_step: BuildStep,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_rabbit_mq(
+		&RequestMessage::ContinuousIntegration(CIData::BuildStep {
+			build_step,
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await
+}
+
+pub async fn queue_cancel_ci_build_pipeline(
+	build_id: BuildId,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_rabbit_mq(
+		&RequestMessage::ContinuousIntegration(CIData::CancelBuild {
+			build_id,
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await
+}
+
+pub async fn queue_clean_ci_build_pipeline(
+	build_id: BuildId,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_rabbit_mq(
+		&RequestMessage::ContinuousIntegration(CIData::CleanBuild {
+			build_id,
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await
 }

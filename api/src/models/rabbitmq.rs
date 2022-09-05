@@ -8,7 +8,10 @@ use api_models::{
 use serde::{Deserialize, Serialize};
 
 use super::DeploymentMetadata;
-use crate::db::Workspace;
+use crate::{
+	db::Workspace,
+	rabbitmq::{BuildId, BuildStep},
+};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "resource", rename_all = "camelCase")]
@@ -17,6 +20,7 @@ pub enum RequestMessage {
 	Deployment(DeploymentRequestData),
 	Database {},
 	Workspace(WorkspaceRequestData),
+	ContinuousIntegration(CIData),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -98,6 +102,24 @@ pub enum WorkspaceRequestData {
 	ConfirmPaymentIntent {
 		payment_intent_id: String,
 		workspace_id: Uuid,
+		request_id: Uuid,
+	},
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "action", rename_all = "camelCase")]
+#[allow(clippy::large_enum_variant)]
+pub enum CIData {
+	BuildStep {
+		build_step: BuildStep,
+		request_id: Uuid,
+	},
+	CancelBuild {
+		build_id: BuildId,
+		request_id: Uuid,
+	},
+	CleanBuild {
+		build_id: BuildId,
 		request_id: Uuid,
 	},
 }

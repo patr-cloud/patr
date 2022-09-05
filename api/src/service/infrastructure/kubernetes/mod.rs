@@ -1,16 +1,13 @@
 mod certificate;
+mod ci;
 mod deployment;
 mod managed_url;
 mod static_site;
 mod workspace;
 
-use api_models::utils::Uuid;
-use k8s_openapi::api::{
-	apps::v1::Deployment as K8sDeployment,
-	autoscaling::v1::HorizontalPodAutoscaler,
-	core::v1::{ConfigMap, Secret, Service},
-	networking::v1::Ingress,
-};
+pub mod ext_traits;
+
+use k8s_openapi::api::core::v1::Secret;
 use kube::{
 	config::{
 		AuthInfo,
@@ -29,6 +26,7 @@ use kube::{
 
 pub use self::{
 	certificate::*,
+	ci::*,
 	deployment::*,
 	managed_url::*,
 	static_site::*,
@@ -84,86 +82,6 @@ async fn get_kubernetes_config(
 	let client = kube::Client::try_from(config)?;
 
 	Ok(client)
-}
-
-async fn service_exists(
-	service_id: &Uuid,
-	kubernetes_client: kube::Client,
-	namespace: &str,
-) -> Result<bool, KubeError> {
-	let service = Api::<Service>::namespaced(kubernetes_client, namespace)
-		.get(&format!("service-{}", service_id))
-		.await;
-	match service {
-		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),
-		Err(err) => Err(err),
-		Ok(_) => Ok(true),
-	}
-}
-
-async fn deployment_exists(
-	deployment_id: &Uuid,
-	kubernetes_client: kube::Client,
-	namespace: &str,
-) -> Result<bool, KubeError> {
-	let deployment_app =
-		Api::<K8sDeployment>::namespaced(kubernetes_client, namespace)
-			.get(&format!("deployment-{}", deployment_id))
-			.await;
-	match deployment_app {
-		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),
-		Err(err) => Err(err),
-		Ok(_) => Ok(true),
-	}
-}
-
-async fn config_mounts_map_exists(
-	deployment_id: &Uuid,
-	kubernetes_client: kube::Client,
-	namespace: &str,
-) -> Result<bool, KubeError> {
-	let deployment_app =
-		Api::<ConfigMap>::namespaced(kubernetes_client, namespace)
-			.get(&format!("config-mount-{}", deployment_id))
-			.await;
-	match deployment_app {
-		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),
-		Err(err) => Err(err),
-		Ok(_) => Ok(true),
-	}
-}
-
-async fn hpa_exists(
-	hpa_id: &Uuid,
-	kubernetes_client: kube::Client,
-	namespace: &str,
-) -> Result<bool, KubeError> {
-	let hpa = Api::<HorizontalPodAutoscaler>::namespaced(
-		kubernetes_client,
-		namespace,
-	)
-	.get(&format!("hpa-{}", hpa_id))
-	.await;
-	match hpa {
-		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),
-		Err(err) => Err(err),
-		Ok(_) => Ok(true),
-	}
-}
-
-async fn ingress_exists(
-	managed_url_id: &Uuid,
-	kubernetes_client: kube::Client,
-	namespace: &str,
-) -> Result<bool, KubeError> {
-	let ingress = Api::<Ingress>::namespaced(kubernetes_client, namespace)
-		.get(&format!("ingress-{}", managed_url_id))
-		.await;
-	match ingress {
-		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),
-		Err(err) => Err(err),
-		Ok(_) => Ok(true),
-	}
 }
 
 async fn certificate_exists(

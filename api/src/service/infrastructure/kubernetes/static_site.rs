@@ -27,6 +27,7 @@ use kube::{
 	core::ObjectMeta,
 	Api,
 };
+use kubernetes::ext_traits::DeleteOpt;
 
 use crate::{
 	error,
@@ -196,60 +197,24 @@ pub async fn delete_kubernetes_static_site(
 		static_site_id
 	);
 
-	if super::service_exists(
-		static_site_id,
-		kubernetes_client.clone(),
-		namespace,
-	)
-	.await?
-	{
-		log::trace!(
-			"request_id: {} - static site service exists as service-{}",
-			request_id,
-			static_site_id
-		);
+	Api::<Service>::namespaced(kubernetes_client.clone(), namespace)
+		.delete_opt(
+			&format!("service-{}", static_site_id),
+			&DeleteParams::default(),
+		)
+		.await?;
 
-		Api::<Service>::namespaced(kubernetes_client.clone(), namespace)
-			.delete(
-				&format!("service-{}", static_site_id),
-				&DeleteParams::default(),
-			)
-			.await?;
-	} else {
-		log::trace!(
-			"request_id: {} - static site doesn't exist as service-{} in the namespace: {}",
-			request_id,
-			static_site_id,
-			namespace,
-		);
-	}
-
-	if super::ingress_exists(
-		static_site_id,
-		kubernetes_client.clone(),
-		namespace,
-	)
-	.await?
-	{
-		log::trace!(
-			"request_id: {} - ingress exists as ingress-{}",
-			request_id,
-			static_site_id
-		);
-		Api::<Ingress>::namespaced(kubernetes_client, namespace)
-			.delete(
-				&format!("ingress-{}", static_site_id),
-				&DeleteParams::default(),
-			)
-			.await?;
-	} else {
-		log::trace!(
-			"request_id: {} - static site ingress doesn't exist as ingress-{} in the namespace: {}",
-			request_id,
-			static_site_id,
-			namespace,
-		);
-	}
+	log::trace!(
+		"request_id: {} - deleting ingress {}",
+		request_id,
+		static_site_id
+	);
+	Api::<Ingress>::namespaced(kubernetes_client, namespace)
+		.delete_opt(
+			&format!("ingress-{}", static_site_id),
+			&DeleteParams::default(),
+		)
+		.await?;
 
 	log::trace!(
 		"request_id: {} - static site deleted successfully!",

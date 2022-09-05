@@ -68,6 +68,7 @@ use crate::{
 	db,
 	error,
 	models::deployment,
+	service::ext_traits::DeleteOpt,
 	utils::{constants::request_keys, settings::Settings, Error},
 	Database,
 };
@@ -576,160 +577,57 @@ pub async fn delete_kubernetes_deployment(
 ) -> Result<(), Error> {
 	let kubernetes_client = super::get_kubernetes_config(config).await?;
 
-	if super::deployment_exists(
-		deployment_id,
+	log::trace!("request_id: {} - deleting the deployment", request_id);
+
+	Api::<K8sDeployment>::namespaced(
 		kubernetes_client.clone(),
 		workspace_id.as_str(),
 	)
-	.await?
-	{
-		log::trace!(
-			"request_id: {} - Deployment exists as deployment-{}",
-			request_id,
-			deployment_id
-		);
+	.delete_opt(
+		&format!("deployment-{}", deployment_id),
+		&DeleteParams::default(),
+	)
+	.await?;
 
-		log::trace!("request_id: {} - deleting the deployment", request_id);
+	log::trace!("request_id: {} - deleting the config map", request_id);
 
-		Api::<K8sDeployment>::namespaced(
-			kubernetes_client.clone(),
-			workspace_id.as_str(),
-		)
-		.delete(
-			&format!("deployment-{}", deployment_id),
+	Api::<ConfigMap>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.delete_opt(
+		&format!("config-mount-{}", deployment_id),
+		&DeleteParams::default(),
+	)
+	.await?;
+
+	log::trace!("request_id: {} - deleting the service", request_id);
+	Api::<Service>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.delete_opt(
+		&format!("service-{}", deployment_id),
+		&DeleteParams::default(),
+	)
+	.await?;
+
+	log::trace!("request_id: {} - deleting the hpa", request_id);
+
+	Api::<HorizontalPodAutoscaler>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.delete_opt(&format!("hpa-{}", deployment_id), &DeleteParams::default())
+	.await?;
+
+	log::trace!("request_id: {} - deleting the ingress", request_id);
+	Api::<Ingress>::namespaced(kubernetes_client, workspace_id.as_str())
+		.delete_opt(
+			&format!("ingress-{}", deployment_id),
 			&DeleteParams::default(),
 		)
 		.await?;
-	} else {
-		log::trace!(
-			"request_id: {} - No deployment found with name deployment-{} in namespace: {}",
-			request_id,
-			deployment_id,
-			workspace_id,
-		);
-	}
-
-	if super::config_mounts_map_exists(
-		deployment_id,
-		kubernetes_client.clone(),
-		workspace_id.as_str(),
-	)
-	.await?
-	{
-		log::trace!(
-			"request_id: {} - config map exists as config-mount-{}",
-			request_id,
-			deployment_id
-		);
-
-		log::trace!("request_id: {} - deleting the config map", request_id);
-
-		Api::<ConfigMap>::namespaced(
-			kubernetes_client.clone(),
-			workspace_id.as_str(),
-		)
-		.delete(
-			&format!("config-mount-{}", deployment_id),
-			&DeleteParams::default(),
-		)
-		.await?;
-	} else {
-		log::trace!(
-			"request_id: {} - No config map found with name config-{} in namespace: {}",
-			request_id,
-			deployment_id,
-			workspace_id,
-		);
-	}
-
-	if super::service_exists(
-		deployment_id,
-		kubernetes_client.clone(),
-		workspace_id.as_str(),
-	)
-	.await?
-	{
-		log::trace!(
-			"request_id: {} - Service exists as service-{}",
-			request_id,
-			deployment_id
-		);
-		log::trace!("request_id: {} - deleting the service", request_id);
-		Api::<Service>::namespaced(
-			kubernetes_client.clone(),
-			workspace_id.as_str(),
-		)
-		.delete(
-			&format!("service-{}", deployment_id),
-			&DeleteParams::default(),
-		)
-		.await?;
-	} else {
-		log::trace!(
-			"request_id: {} - No deployment service found with name deployment-{} in namespace: {}",
-			request_id,
-			deployment_id,
-			workspace_id,
-		);
-	}
-
-	if super::hpa_exists(
-		deployment_id,
-		kubernetes_client.clone(),
-		workspace_id.as_str(),
-	)
-	.await?
-	{
-		log::trace!(
-			"request_id: {} - hpa exists as hpa-{}",
-			request_id,
-			deployment_id
-		);
-
-		log::trace!("request_id: {} - deleting the hpa", request_id);
-
-		Api::<HorizontalPodAutoscaler>::namespaced(
-			kubernetes_client.clone(),
-			workspace_id.as_str(),
-		)
-		.delete(&format!("hpa-{}", deployment_id), &DeleteParams::default())
-		.await?;
-	} else {
-		log::trace!(
-			"request_id: {} - No hpa found with name hpa-{} in namespace: {}",
-			request_id,
-			deployment_id,
-			workspace_id,
-		);
-	}
-
-	if super::ingress_exists(
-		deployment_id,
-		kubernetes_client.clone(),
-		workspace_id.as_str(),
-	)
-	.await?
-	{
-		log::trace!(
-			"request_id: {} - Ingress exists as ingress-{}",
-			request_id,
-			deployment_id
-		);
-		log::trace!("request_id: {} - deleting the ingress", request_id);
-		Api::<Ingress>::namespaced(kubernetes_client, workspace_id.as_str())
-			.delete(
-				&format!("ingress-{}", deployment_id),
-				&DeleteParams::default(),
-			)
-			.await?;
-	} else {
-		log::trace!(
-			"request_id: {} - No deployment ingress found with name deployment-{} in namespace: {}",
-			request_id,
-			deployment_id,
-			workspace_id,
-		);
-	}
 
 	log::trace!(
 		"request_id: {} - deployment deleted successfully!",

@@ -8,7 +8,10 @@ use kube::{
 };
 use serde_json::json;
 
-use crate::utils::{settings::Settings, Error};
+use crate::{
+	service::ext_traits::DeleteOpt,
+	utils::{settings::Settings, Error},
+};
 
 // TODO: add logs
 pub async fn create_certificates(
@@ -108,23 +111,9 @@ pub async fn delete_certificates_for_domain(
 
 	// delete secret and then certificate
 	log::trace!("request_id: {} - Deleting secret", request_id);
-	if super::secret_exists(secret_name, kubernetes_client.clone(), namespace)
-		.await?
-	{
-		Api::<Secret>::namespaced(kubernetes_client.clone(), namespace)
-			.delete(secret_name, &DeleteParams::default())
-			.await?;
-	}
-
-	if !super::certificate_exists(
-		certificate_name,
-		kubernetes_client.clone(),
-		namespace,
-	)
-	.await?
-	{
-		return Ok(());
-	}
+	Api::<Secret>::namespaced(kubernetes_client.clone(), namespace)
+		.delete_opt(secret_name, &DeleteParams::default())
+		.await?;
 
 	let certificate_resource = ApiResource {
 		group: "cert-manager.io".to_string(),
@@ -143,7 +132,7 @@ pub async fn delete_certificates_for_domain(
 		namespace,
 		&certificate_resource,
 	)
-	.delete(certificate_name, &DeleteParams::default())
+	.delete_opt(certificate_name, &DeleteParams::default())
 	.await?;
 
 	Ok(())
