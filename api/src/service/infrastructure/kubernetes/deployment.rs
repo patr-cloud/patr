@@ -63,6 +63,7 @@ use kube::{
 	Api,
 	Error as KubeError,
 };
+use sha2::{Digest, Sha512};
 
 use crate::{
 	db,
@@ -139,9 +140,21 @@ pub async fn update_kubernetes_deployment(
 		.patch(
 			&format!("config-mount-{}", deployment.id),
 			&PatchParams::apply(&format!("config-mount-{}", deployment.id)),
-			&Patch::Apply(kubernetes_config_map),
+			&Patch::Apply(kubernetes_config_map.clone()),
 		)
 		.await?;
+
+	let mut hasher = Sha512::new();
+	kubernetes_config_map
+		.binary_data
+		.unwrap_or_default()
+		.into_iter()
+		.for_each(|(key, value)| {
+			hasher.update(key.as_bytes());
+			hasher.update(value.0);
+		});
+
+	let config_map_hash = hex::encode(hasher.finalize());
 
 	// get this from machine type
 	let (cpu_count, memory_count) = deployment::MACHINE_TYPES
@@ -314,6 +327,11 @@ pub async fn update_kubernetes_deployment(
 									EnvVar {
 										name: "DEPLOYMENT_NAME".to_string(),
 										value: Some(deployment.name.clone()),
+										..EnvVar::default()
+									},
+									EnvVar {
+										name: "CONFIG_MAP_HASH".to_string(),
+										value: Some(config_map_hash),
 										..EnvVar::default()
 									},
 								])
