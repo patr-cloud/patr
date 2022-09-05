@@ -28,7 +28,6 @@ use api_models::{
 	utils::{Base64String, Uuid},
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use http::header::ACCEPT;
 use octorust::{
 	self,
 	auth::Credentials,
@@ -589,7 +588,7 @@ async fn github_oauth_callback(
 			),
 			("code", code),
 		])
-		.header(ACCEPT, "application/json")
+		.header("accept", "application/json")
 		.send()
 		.await?
 		.error_for_status()?

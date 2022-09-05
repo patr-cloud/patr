@@ -470,6 +470,7 @@ async fn add_migrations_for_ci(
 			status 		CI_BUILD_STATUS NOT NULL,
 			created 	TIMESTAMPTZ NOT NULL,
 			finished 	TIMESTAMPTZ,
+			message		TEXT,
 
 			CONSTRAINT ci_builds_pk_repo_id_build_num
 				PRIMARY KEY (repo_id, build_num)
