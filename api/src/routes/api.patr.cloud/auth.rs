@@ -1299,8 +1299,21 @@ async fn docker_registry_authenticate(
 	}
 
 	let workspace_id_str = split_array.get(0).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id_str).unwrap();
-	 // get first index from the vector
+	let workspace_id = match Uuid::parse_str(workspace_id_str) {
+		Ok(workspace_id) => workspace_id,
+		Err(err) => {
+			log::trace!(
+				"Unable to parse workspace_id: {} - error - {}",
+				workspace_id_str,
+				err
+			);
+			return Error::as_result()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?;
+		}
+	};
+
+	// get first index from the vector
 	let repo_name = split_array.get(1).unwrap();
 
 	// check if repo name is valid
@@ -1317,27 +1330,24 @@ async fn docker_registry_authenticate(
 			.to_string(),
 		)?;
 	}
-	let workspace = db::get_workspace_info(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?
-	.status(400)
-	.body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::INVALID_REQUEST,
-				request_keys::MESSAGE: ErrorMessage::RESOURCE_DOES_NOT_EXIST,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
+	db::get_workspace_info(context.get_database_connection(), &workspace_id)
+		.await?
+		.status(400)
+		.body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::INVALID_REQUEST,
+					request_keys::MESSAGE: ErrorMessage::RESOURCE_DOES_NOT_EXIST,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)?;
 
 	let repository = db::get_docker_repository_by_name(
 		context.get_database_connection(),
 		repo_name,
-		&workspace.id,
+		&workspace_id,
 	)
 	.await?
 	// reject request if repository does not exist
@@ -1371,7 +1381,7 @@ async fn docker_registry_authenticate(
 		.to_string(),
 	)?;
 
-	if resource.owner_id != workspace.id {
+	if resource.owner_id != workspace_id {
 		log::error!(
 			"Resource owner_id is not the same as workspace id. This is illegal"
 		);
@@ -1397,7 +1407,7 @@ async fn docker_registry_authenticate(
 	)
 	.await?;
 
-	let required_role_for_user = user_roles.get(&workspace.id);
+	let required_role_for_user = user_roles.get(&workspace_id);
 	let mut approved_permissions = vec![];
 
 	for permission in required_permissions {
