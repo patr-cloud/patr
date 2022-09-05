@@ -13,7 +13,7 @@ use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
-	db::{self},
+	db,
 	error,
 	models::{
 		deployment::KubernetesEventData,

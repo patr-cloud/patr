@@ -76,7 +76,7 @@ pub mod id {
 	pub const TAG_NOT_FOUND: &str = "TagNotFound";
 
 	// error constants for CI
-	pub const INVALID_STATUS_VALUE: &str = "invalidStatusValue";
+	pub const INVALID_STATE_VALUE: &str = "invalidStateValue";
 }
 
 #[allow(dead_code)]
@@ -211,6 +211,6 @@ pub mod message {
 	pub const TAG_NOT_FOUND: &str = "The tag does not exist";
 
 	// error constants for CI
-	pub const INVALID_STATUS_VALUE: &str =
-		"Invalid/Expired value for parameter: `status`";
+	pub const INVALID_STATE_VALUE: &str =
+		"Invalid/Expired value for parameter: `state`";
 }

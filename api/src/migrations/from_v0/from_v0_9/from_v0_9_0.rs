@@ -518,6 +518,46 @@ async fn add_migrations_for_ci(
 	.execute(&mut *connection)
 	.await?;
 
+	// add ci_repo as a resource type
+	let resource_type_id = loop {
+		let resource_type_id = Uuid::new_v4();
+
+		let exists = query!(
+			r#"
+				SELECT
+					*
+				FROM
+					resource_type
+				WHERE
+					id = $1;
+				"#,
+			&resource_type_id
+		)
+		.fetch_optional(&mut *connection)
+		.await?
+		.is_some();
+
+		if !exists {
+			break resource_type_id;
+		}
+	};
+
+	query!(
+		r#"
+			INSERT INTO
+				resource_type(
+					id,
+					name,
+					description
+				)
+			VALUES
+				($1, 'ciRepo', '');
+			"#,
+		&resource_type_id
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	// add permissions for CI
 	for &permission in [
 		"workspace::ci::git_provider::connect",

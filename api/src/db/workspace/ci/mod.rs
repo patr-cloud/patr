@@ -456,14 +456,13 @@ pub async fn get_git_provider_details_for_workspace_using_domain(
 
 pub async fn add_repo_for_git_provider(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
 	git_provider_id: &Uuid,
 	git_provider_repo_uid: &str,
 	repo_owner: &str,
 	repo_name: &str,
 	clone_url: &str,
-) -> Result<Uuid, sqlx::Error> {
-	let id = Uuid::new_v4();
-
+) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO ci_repos (
@@ -480,7 +479,7 @@ pub async fn add_repo_for_git_provider(
 		VALUES
 			($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		"#,
-		id as _,
+		repo_id as _,
 		repo_owner,
 		repo_name,
 		clone_url,
@@ -491,9 +490,8 @@ pub async fn add_repo_for_git_provider(
 		git_provider_repo_uid
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(id)
+	.await
+	.map(|_| ())
 }
 
 pub async fn update_repo_details_for_git_provider(

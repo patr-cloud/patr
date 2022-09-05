@@ -52,7 +52,8 @@ async fn handle_ci_hooks_for_repo(
 	let request_id = Uuid::new_v4();
 	let repo_id =
 		Uuid::parse_str(context.get_param(request_keys::REPO_ID).unwrap())
-			.unwrap();
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	log::trace!(
 		"request_id: {request_id} - Processing ci webhook for repo {repo_id}"

@@ -194,17 +194,31 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::ci::git_provider::repo::ACTIVATE,
 				closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
+					let workspace_id = Uuid::parse_str(
+						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
 					)
-					.await?;
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?;
+					let repo_id = context
+						.get_param(request_keys::REPO_ID)
+						.unwrap()
+						.clone();
+					let repo =
+						db::get_repo_details_using_github_uid_for_workspace(
+							context.get_database_connection(),
+							&workspace_id,
+							&repo_id,
+						)
+						.await?;
+					let resource = if let Some(repo) = repo {
+						db::get_resource_by_id(
+							context.get_database_connection(),
+							&repo.id,
+						)
+						.await?
+					} else {
+						None
+					};
 
 					if resource.is_none() {
 						context
@@ -225,17 +239,31 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::ci::git_provider::repo::DEACTIVATE,
 				closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
+					let workspace_id = Uuid::parse_str(
+						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
 					)
-					.await?;
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?;
+					let repo_id = context
+						.get_param(request_keys::REPO_ID)
+						.unwrap()
+						.clone();
+					let repo =
+						db::get_repo_details_using_github_uid_for_workspace(
+							context.get_database_connection(),
+							&workspace_id,
+							&repo_id,
+						)
+						.await?;
+					let resource = if let Some(repo) = repo {
+						db::get_resource_by_id(
+							context.get_database_connection(),
+							&repo.id,
+						)
+						.await?
+					} else {
+						None
+					};
 
 					if resource.is_none() {
 						context
@@ -256,17 +284,31 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::ci::git_provider::repo::build::VIEW,
 				closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
+					let workspace_id = Uuid::parse_str(
+						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
 					)
-					.await?;
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?;
+					let repo_id = context
+						.get_param(request_keys::REPO_ID)
+						.unwrap()
+						.clone();
+					let repo =
+						db::get_repo_details_using_github_uid_for_workspace(
+							context.get_database_connection(),
+							&workspace_id,
+							&repo_id,
+						)
+						.await?;
+					let resource = if let Some(repo) = repo {
+						db::get_resource_by_id(
+							context.get_database_connection(),
+							&repo.id,
+						)
+						.await?
+					} else {
+						None
+					};
 
 					if resource.is_none() {
 						context
@@ -287,17 +329,31 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::ci::git_provider::repo::build::VIEW,
 				closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
+					let workspace_id = Uuid::parse_str(
+						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
 					)
-					.await?;
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?;
+					let repo_id = context
+						.get_param(request_keys::REPO_ID)
+						.unwrap()
+						.clone();
+					let repo =
+						db::get_repo_details_using_github_uid_for_workspace(
+							context.get_database_connection(),
+							&workspace_id,
+							&repo_id,
+						)
+						.await?;
+					let resource = if let Some(repo) = repo {
+						db::get_resource_by_id(
+							context.get_database_connection(),
+							&repo.id,
+						)
+						.await?
+					} else {
+						None
+					};
 
 					if resource.is_none() {
 						context
@@ -318,17 +374,31 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::ci::git_provider::repo::build::VIEW,
 				closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
+					let workspace_id = Uuid::parse_str(
+						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
 					)
-					.await?;
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?;
+					let repo_id = context
+						.get_param(request_keys::REPO_ID)
+						.unwrap()
+						.clone();
+					let repo =
+						db::get_repo_details_using_github_uid_for_workspace(
+							context.get_database_connection(),
+							&workspace_id,
+							&repo_id,
+						)
+						.await?;
+					let resource = if let Some(repo) = repo {
+						db::get_resource_by_id(
+							context.get_database_connection(),
+							&repo.id,
+						)
+						.await?
+					} else {
+						None
+					};
 
 					if resource.is_none() {
 						context
@@ -349,17 +419,31 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::ci::git_provider::repo::build::VIEW,
 				closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
+					let workspace_id = Uuid::parse_str(
+						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
 					)
-					.await?;
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?;
+					let repo_id = context
+						.get_param(request_keys::REPO_ID)
+						.unwrap()
+						.clone();
+					let repo =
+						db::get_repo_details_using_github_uid_for_workspace(
+							context.get_database_connection(),
+							&workspace_id,
+							&repo_id,
+						)
+						.await?;
+					let resource = if let Some(repo) = repo {
+						db::get_resource_by_id(
+							context.get_database_connection(),
+							&repo.id,
+						)
+						.await?
+					} else {
+						None
+					};
 
 					if resource.is_none() {
 						context
@@ -380,17 +464,31 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::ci::git_provider::repo::build::RESTART,
 				closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
+					let workspace_id = Uuid::parse_str(
+						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
 					)
-					.await?;
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?;
+					let repo_id = context
+						.get_param(request_keys::REPO_ID)
+						.unwrap()
+						.clone();
+					let repo =
+						db::get_repo_details_using_github_uid_for_workspace(
+							context.get_database_connection(),
+							&workspace_id,
+							&repo_id,
+						)
+						.await?;
+					let resource = if let Some(repo) = repo {
+						db::get_resource_by_id(
+							context.get_database_connection(),
+							&repo.id,
+						)
+						.await?
+					} else {
+						None
+					};
 
 					if resource.is_none() {
 						context
@@ -411,17 +509,31 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::ci::git_provider::repo::build::RESTART,
 				closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
+					let workspace_id = Uuid::parse_str(
+						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
 					)
-					.await?;
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?;
+					let repo_id = context
+						.get_param(request_keys::REPO_ID)
+						.unwrap()
+						.clone();
+					let repo =
+						db::get_repo_details_using_github_uid_for_workspace(
+							context.get_database_connection(),
+							&workspace_id,
+							&repo_id,
+						)
+						.await?;
+					let resource = if let Some(repo) = repo {
+						db::get_resource_by_id(
+							context.get_database_connection(),
+							&repo.id,
+						)
+						.await?
+					} else {
+						None
+					};
 
 					if resource.is_none() {
 						context
@@ -442,17 +554,31 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::ci::git_provider::repo::LIST,
 				closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
+					let workspace_id = Uuid::parse_str(
+						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
 					)
-					.await?;
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?;
+					let repo_id = context
+						.get_param(request_keys::REPO_ID)
+						.unwrap()
+						.clone();
+					let repo =
+						db::get_repo_details_using_github_uid_for_workspace(
+							context.get_database_connection(),
+							&workspace_id,
+							&repo_id,
+						)
+						.await?;
+					let resource = if let Some(repo) = repo {
+						db::get_resource_by_id(
+							context.get_database_connection(),
+							&repo.id,
+						)
+						.await?
+					} else {
+						None
+					};
 
 					if resource.is_none() {
 						context
@@ -560,7 +686,7 @@ async fn github_oauth_callback(
 	{
 		Error::as_result()
 			.status(400)
-			.body(error!(INVALID_STATUS_VALUE).to_string())?
+			.body(error!(INVALID_STATE_VALUE).to_string())?
 	}
 
 	#[derive(Deserialize)]
@@ -655,6 +781,7 @@ async fn sync_repositories(
 
 	service::sync_github_repos(
 		context.get_database_connection(),
+		&git_provider.workspace_id,
 		&git_provider.id,
 		access_token,
 		&request_id,

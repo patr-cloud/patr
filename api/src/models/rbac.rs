@@ -182,4 +182,5 @@ pub mod resource_types {
 	pub const MANAGED_URL: &str = "managedUrl";
 	pub const SECRET: &str = "secret";
 	pub const STATIC_SITE_UPLOAD: &str = "staticSiteUpload";
+	pub const CI_REPO: &str = "ciRepo";
 }

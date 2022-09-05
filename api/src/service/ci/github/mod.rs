@@ -142,6 +142,7 @@ pub async fn fetch_ci_file_content_from_github_repo(
 
 pub async fn sync_github_repos(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
 	git_provider_id: &Uuid,
 	github_access_token: String,
 	request_id: &Uuid,
@@ -210,9 +211,11 @@ pub async fn sync_github_repos(
 
 	service::sync_repos_in_db(
 		connection,
+		workspace_id,
 		git_provider_id,
 		repos_in_github,
 		repos_in_db,
+		request_id,
 	)
 	.await?;
 
