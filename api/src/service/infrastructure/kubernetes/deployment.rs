@@ -136,25 +136,23 @@ pub async fn update_kubernetes_deployment(
 		deployment.id
 	);
 
+	let mut hasher = Sha512::new();
+	if let Some(configs) = &kubernetes_config_map.binary_data {
+		configs.iter().for_each(|(key, value)| {
+			hasher.update(key.as_bytes());
+			hasher.update(&value.0);
+		})
+	}
+
+	let config_map_hash = hex::encode(hasher.finalize());
+
 	Api::<ConfigMap>::namespaced(kubernetes_client.clone(), namespace)
 		.patch(
 			&format!("config-mount-{}", deployment.id),
 			&PatchParams::apply(&format!("config-mount-{}", deployment.id)),
-			&Patch::Apply(kubernetes_config_map.clone()),
+			&Patch::Apply(kubernetes_config_map),
 		)
 		.await?;
-
-	let mut hasher = Sha512::new();
-	kubernetes_config_map
-		.binary_data
-		.unwrap_or_default()
-		.into_iter()
-		.for_each(|(key, value)| {
-			hasher.update(key.as_bytes());
-			hasher.update(value.0);
-		});
-
-	let config_map_hash = hex::encode(hasher.finalize());
 
 	// get this from machine type
 	let (cpu_count, memory_count) = deployment::MACHINE_TYPES
@@ -406,20 +404,6 @@ pub async fn update_kubernetes_deployment(
 	log::trace!("request_id: {} - creating deployment", request_id);
 	let deployment_api =
 		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace);
-
-	if !&running_details.config_mounts.is_empty() &&
-		super::deployment_exists(
-			&deployment.id,
-			kubernetes_client.clone(),
-			namespace,
-		)
-		.await?
-	{
-		log::info!("Config maps updated for already existing deployment, hence restarting deployment: {} manually", deployment.id);
-		let _ = deployment_api
-			.restart(&format!("deployment-{}", deployment.id))
-			.await?;
-	};
 
 	deployment_api
 		.patch(
