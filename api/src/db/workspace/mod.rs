@@ -424,7 +424,12 @@ pub async fn get_workspace_info(
 		FROM
 			workspace
 		WHERE
-			id = $1;
+			id = $1 AND
+			name NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
 		"#,
 		workspace_id as _,
 	)
