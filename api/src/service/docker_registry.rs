@@ -38,14 +38,12 @@ pub async fn delete_docker_repository_image(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let repo_name = format!(
-		"{}/{}",
-		db::get_workspace_info(connection, &repository.workspace_id)
-			.await?
-			.status(500)?
-			.name,
-		repository.name
-	);
+	db::get_workspace_info(connection, &repository.workspace_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let repo_name = format!("{}/{}", repository.workspace_id, repository.name);
 
 	// First, delete all tags for the given image
 	log::trace!(
@@ -160,14 +158,7 @@ pub async fn delete_docker_repository(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let repo_name = format!(
-		"{}/{}",
-		db::get_workspace_info(connection, &repository.workspace_id)
-			.await?
-			.status(500)?
-			.name,
-		repository.name
-	);
+	let repo_name = format!("{}/{}", &repository.workspace_id, repository.name);
 
 	let images = db::get_list_of_digests_for_docker_repository(
 		connection,
