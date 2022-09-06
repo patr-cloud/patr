@@ -38,11 +38,6 @@ pub async fn delete_docker_repository_image(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	db::get_workspace_info(connection, &repository.workspace_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
 	let repo_name = format!("{}/{}", repository.workspace_id, repository.name);
 
 	// First, delete all tags for the given image
