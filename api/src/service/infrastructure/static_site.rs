@@ -165,11 +165,24 @@ pub async fn create_static_site_in_workspace(
 		)
 		.await?;
 
+		log::trace!(
+			"request_id: {} - Uploading static site files to S3",
+			request_id
+		);
+		service::upload_static_site_files_to_s3(
+			connection,
+			&file,
+			&static_site_id,
+			&upload_id,
+			config,
+			request_id,
+		)
+		.await?;
+
 		update_static_site_and_db_status(
 			connection,
 			workspace_id,
 			&static_site_id,
-			Some(&file),
 			&upload_id,
 			&StaticSiteDetails {},
 			config,
@@ -243,6 +256,20 @@ pub async fn update_static_site(
 			.status(404)
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
+		log::trace!(
+			"request_id: {} - Uploading static site files to S3",
+			request_id
+		);
+		service::upload_static_site_files_to_s3(
+			connection,
+			&file,
+			static_site_id,
+			&upload_id,
+			config,
+			request_id,
+		)
+		.await?;
+
 		if static_site.status == DeploymentStatus::Stopped {
 			log::trace!("Static site with ID: {} is stopped manully, skipping update static site k8s api call", static_site_id);
 			Some(upload_id)
@@ -251,7 +278,6 @@ pub async fn update_static_site(
 				connection,
 				workspace_id,
 				static_site_id,
-				Some(&file),
 				&upload_id,
 				&StaticSiteDetails {},
 				config,
@@ -515,28 +541,11 @@ pub async fn update_static_site_and_db_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	static_site_id: &Uuid,
-	file: Option<&str>,
 	upload_id: &Uuid,
 	_running_details: &StaticSiteDetails,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	if let Some(file) = file {
-		log::trace!(
-			"request_id: {} - Uploading static site files to S3",
-			request_id
-		);
-		service::upload_static_site_files_to_s3(
-			connection,
-			file,
-			static_site_id,
-			upload_id,
-			config,
-			request_id,
-		)
-		.await?;
-	}
-
 	log::trace!(
 		"updating static site: {} with upload id: {} in kubernetes",
 		static_site_id,
