@@ -758,10 +758,12 @@ async fn get_repository_image_exposed_port(
 	.status(404)
 	.body(error!(TAG_NOT_FOUND).to_string())?;
 
+	let repo_name = format!("{}/{}", repository.workspace_id, repository.name);
+
 	let ports = service::get_exposed_port_for_docker_image(
 		context.get_database_connection(),
 		&config,
-		&repository.name,
+		&repo_name,
 		&tag,
 	)
 	.await?;
