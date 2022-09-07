@@ -50,7 +50,7 @@ pub struct Settings {
 	// Callback domain used for exposing patr webhooks/apis to internet.
 	// For prod, it will be https://app.patr.cloud
 	// For dev and testing, use ngrok's domain
-	#[serde(alias = "callbackdomainurl")]
+	#[serde(alias = "frontenddomain")]
 	pub frontend_domain: String,
 	pub environment: RunningEnvironment,
 	pub s3: S3Settings,
