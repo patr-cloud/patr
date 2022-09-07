@@ -4,21 +4,17 @@
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
 #-------------------------------------------------------------------------------------------------------------
 #
-# Docs: https://github.com/microsoft/vscode-dev-containers/blob/main/script-library/docs/docker.md
+# Docs: https://github.com/microsoft/vscode-dev-containers/blob/main/script-library/docs/docker-in-docker.md
 # Maintainer: The VS Code and Codespaces Teams
 #
-# Syntax: ./docker-debian.sh [enable non-root docker socket access flag] [source socket] [target socket] [non-root user] [use moby] [CLI version] [Major version for docker-compose]
+# Syntax: ./docker-in-docker-debian.sh [enable non-root docker access flag] [non-root user] [use moby] [Engine/CLI Version] [Major version for docker-compose]
 
 ENABLE_NONROOT_DOCKER=${1:-"true"}
-SOURCE_SOCKET=${2:-"/var/run/docker-host.sock"}
-TARGET_SOCKET=${3:-"/var/run/docker.sock"}
-USERNAME=${4:-"automatic"}
-USE_MOBY=${5:-"true"}
-DOCKER_VERSION=${6:-"latest"}
-DOCKER_DASH_COMPOSE_VERSION=${7:-"v1"} # v1 or v2
+USERNAME=${2:-"automatic"}
+USE_MOBY=${3:-"true"}
+DOCKER_VERSION=${4:-"latest"} # The Docker/Moby Engine + CLI should match in version
+DOCKER_DASH_COMPOSE_VERSION=${5:-"v1"} # v1 or v2
 MICROSOFT_GPG_KEYS_URI="https://packages.microsoft.com/keys/microsoft.asc"
-DOCKER_MOBY_ARCHIVE_VERSION_CODENAMES="buster bullseye bionic focal jammy"
-DOCKER_LICENSED_ARCHIVE_VERSION_CODENAMES="buster bullseye bionic focal hirsute impish jammy"
 
 set -e
 
@@ -116,10 +112,16 @@ find_version_from_git_tags() {
 export DEBIAN_FRONTEND=noninteractive
 
 # Install dependencies
-check_packages apt-transport-https curl ca-certificates gnupg2 dirmngr
+check_packages apt-transport-https curl ca-certificates pigz iptables gnupg2 dirmngr
 if ! type git > /dev/null 2>&1; then
     apt_get_update_if_needed
     apt-get -y install git
+fi
+
+# Swap to legacy iptables for compatibility
+if type iptables-legacy > /dev/null 2>&1; then
+    update-alternatives --set iptables /usr/sbin/iptables-legacy
+    update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
 fi
 
 # Source /etc/os-release to get OS info
@@ -127,29 +129,11 @@ fi
 # Fetch host/container arch.
 architecture="$(dpkg --print-architecture)"
 
-# Check if distro is suppported
-if [ "${USE_MOBY}" = "true" ]; then
-    # 'get_common_setting' allows attribute to be updated remotely
-    get_common_setting DOCKER_MOBY_ARCHIVE_VERSION_CODENAMES
-    if [[ "${DOCKER_MOBY_ARCHIVE_VERSION_CODENAMES}" != *"${VERSION_CODENAME}"* ]]; then
-        err "Unsupported  distribution version '${VERSION_CODENAME}'. To resolve, either: (1) set feature option '\"moby\": false' , or (2) choose a compatible OS distribution"
-        err "Support distributions include:  ${DOCKER_MOBY_ARCHIVE_VERSION_CODENAMES}"
-        exit 1
-    fi
-    echo "Distro codename  '${VERSION_CODENAME}'  matched filter  '${DOCKER_MOBY_ARCHIVE_VERSION_CODENAMES}'"
-else
-    get_common_setting DOCKER_LICENSED_ARCHIVE_VERSION_CODENAMES
-    if [[ "${DOCKER_LICENSED_ARCHIVE_VERSION_CODENAMES}" != *"${VERSION_CODENAME}"* ]]; then
-        err "Unsupported distribution version '${VERSION_CODENAME}'. To resolve, please choose a compatible OS distribution"
-        err "Support distributions include:  ${DOCKER_LICENSED_ARCHIVE_VERSION_CODENAMES}"
-        exit 1
-    fi
-    echo "Distro codename  '${VERSION_CODENAME}'  matched filter  '${DOCKER_LICENSED_ARCHIVE_VERSION_CODENAMES}'"
-fi
-
 # Set up the necessary apt repos (either Microsoft's or Docker's)
 if [ "${USE_MOBY}" = "true" ]; then
 
+    # Name of open source engine/cli
+    engine_package_name="moby-engine"
     cli_package_name="moby-cli"
 
     # Import key safely and import Microsoft apt repo
@@ -157,7 +141,8 @@ if [ "${USE_MOBY}" = "true" ]; then
     curl -sSL ${MICROSOFT_GPG_KEYS_URI} | gpg --dearmor > /usr/share/keyrings/microsoft-archive-keyring.gpg
     echo "deb [arch=${architecture} signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/repos/microsoft-${ID}-${VERSION_CODENAME}-prod ${VERSION_CODENAME} main" > /etc/apt/sources.list.d/microsoft.list
 else
-    # Name of proprietary engine package
+    # Name of licensed engine/cli
+    engine_package_name="docker-ce"
     cli_package_name="docker-ce-cli"
 
     # Import key safely and import Docker apt repo
@@ -168,11 +153,12 @@ fi
 # Refresh apt lists
 apt-get update
 
-# Soft version matching for CLI
+# Soft version matching
 if [ "${DOCKER_VERSION}" = "latest" ] || [ "${DOCKER_VERSION}" = "lts" ] || [ "${DOCKER_VERSION}" = "stable" ]; then
     # Empty, meaning grab whatever "latest" is in apt repo
+    engine_version_suffix=""
     cli_version_suffix=""
-else    
+else
     # Fetch a valid version from the apt-cache (eg: the Microsoft repo appends +azure, breakfix, etc...)
     docker_version_dot_escaped="${DOCKER_VERSION//./\\.}"
     docker_version_dot_plus_escaped="${docker_version_dot_escaped//+/\\+}"
@@ -180,38 +166,41 @@ else
     docker_version_regex="^(.+:)?${docker_version_dot_plus_escaped}([\\.\\+ ~:-]|$)"
     set +e # Don't exit if finding version fails - will handle gracefully
     cli_version_suffix="=$(apt-cache madison ${cli_package_name} | awk -F"|" '{print $2}' | sed -e 's/^[ \t]*//' | grep -E -m 1 "${docker_version_regex}")"
+    engine_version_suffix="=$(apt-cache madison ${engine_package_name} | awk -F"|" '{print $2}' | sed -e 's/^[ \t]*//' | grep -E -m 1 "${docker_version_regex}")"
     set -e
-    if [ -z "${cli_version_suffix}" ] || [ "${cli_version_suffix}" = "=" ]; then
+    if [ -z "${engine_version_suffix}" ] || [ "${engine_version_suffix}" = "=" ] || [ -z "${cli_version_suffix}" ] || [ "${cli_version_suffix}" = "=" ] ; then
         echo "(!) No full or partial Docker / Moby version match found for \"${DOCKER_VERSION}\" on OS ${ID} ${VERSION_CODENAME} (${architecture}). Available versions:"
         apt-cache madison ${cli_package_name} | awk -F"|" '{print $2}' | grep -oP '^(.+:)?\K.+'
         exit 1
     fi
+    echo "engine_version_suffix ${engine_version_suffix}"
     echo "cli_version_suffix ${cli_version_suffix}"
 fi
 
 # Install Docker / Moby CLI if not already installed
-if type docker > /dev/null 2>&1; then
-    echo "Docker / Moby CLI already installed."
+if type docker > /dev/null 2>&1 && type dockerd > /dev/null 2>&1; then
+    echo "Docker / Moby CLI and Engine already installed."
 else
     if [ "${USE_MOBY}" = "true" ]; then
-        apt-get -y install --no-install-recommends moby-cli${cli_version_suffix} moby-buildx
+        apt-get -y install --no-install-recommends moby-cli${cli_version_suffix} moby-buildx moby-engine${engine_version_suffix}
         apt-get -y install --no-install-recommends moby-compose || echo "(*) Package moby-compose (Docker Compose v2) not available for OS ${ID} ${VERSION_CODENAME} (${architecture}). Skipping."
     else
-        apt-get -y install --no-install-recommends docker-ce-cli${cli_version_suffix}
-        apt-get -y install --no-install-recommends docker-compose-plugin || echo "(*) Package docker-compose-plugin (Docker Compose v2) not available for OS ${ID} ${VERSION_CODENAME} (${architecture}). Skipping."
+        apt-get -y install --no-install-recommends docker-ce-cli${cli_version_suffix} docker-ce${engine_version_suffix}
     fi
 fi
 
-# Install Docker Compose if not already installed  and is on a supported architecture
+echo "Finished installing docker / moby!"
+
+# Install Docker Compose if not already installed and is on a supported architecture
 if type docker-compose > /dev/null 2>&1; then
-    echo "Docker Compose already installed."
+    echo "Docker Compose v1 already installed."
 else
-    TARGET_COMPOSE_ARCH="$(uname -m)"
-    if [ "${TARGET_COMPOSE_ARCH}" = "amd64" ]; then
-        TARGET_COMPOSE_ARCH="x86_64"
+    target_compose_arch="${architecture}"
+    if [ "${target_compose_arch}" = "amd64" ]; then
+        target_compose_arch="x86_64"
     fi
-    if [ "${TARGET_COMPOSE_ARCH}" != "x86_64" ]; then
-        # Use pip to get a version that runns on this architecture
+    if [ "${target_compose_arch}" != "x86_64" ]; then
+        # Use pip to get a version that runs on this architecture
         if ! dpkg -s python3-minimal python3-pip libffi-dev python3-venv > /dev/null 2>&1; then
             apt_get_update_if_needed
             apt-get -y install python3-minimal python3-pip libffi-dev python3-venv
@@ -228,7 +217,7 @@ else
         fi
         ${pipx_bin} install --pip-args '--no-cache-dir --force-reinstall' docker-compose
         rm -rf /tmp/pip-tmp
-    else 
+    else
         compose_v1_version="1"
         find_version_from_git_tags compose_v1_version "https://github.com/docker/compose" "tags/"
         echo "(*) Installing docker-compose ${compose_v1_version}..."
@@ -261,39 +250,23 @@ fi
 
 # If init file already exists, exit
 if [ -f "/usr/local/share/docker-init.sh" ]; then
+    echo "/usr/local/share/docker-init.sh already exists, so exiting."
     exit 0
 fi
 echo "docker-init doesnt exist, adding..."
 
-# By default, make the source and target sockets the same
-if [ "${SOURCE_SOCKET}" != "${TARGET_SOCKET}" ]; then
-    touch "${SOURCE_SOCKET}"
-    ln -s "${SOURCE_SOCKET}" "${TARGET_SOCKET}"
+# Add user to the docker group
+if [ "${ENABLE_NONROOT_DOCKER}" = "true" ]; then
+    if ! getent group docker > /dev/null 2>&1; then
+        groupadd docker
+    fi
+
+    usermod -aG docker ${USERNAME}
 fi
 
-# Add a stub if not adding non-root user access, user is root
-if [ "${ENABLE_NONROOT_DOCKER}" = "false" ] || [ "${USERNAME}" = "root" ]; then
-    echo -e '#!/usr/bin/env bash\nexec "$@"' > /usr/local/share/docker-init.sh
-    chmod +x /usr/local/share/docker-init.sh
-    exit 0
-fi
-
-# Setup a docker group in the event the docker socket's group is not root
-if ! grep -qE '^docker:' /etc/group; then
-    groupadd --system docker
-fi
-usermod -aG docker "${USERNAME}"
-DOCKER_GID="$(grep -oP '^docker:x:\K[^:]+' /etc/group)"
-
-# If enabling non-root access and specified user is found, setup socat and add script
-chown -h "${USERNAME}":root "${TARGET_SOCKET}"        
-if ! dpkg -s socat > /dev/null 2>&1; then
-    apt_get_update_if_needed
-    apt-get -y install socat
-fi
 tee /usr/local/share/docker-init.sh > /dev/null \
-<< EOF 
-#!/usr/bin/env bash
+<< 'EOF'
+#!/bin/sh
 #-------------------------------------------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
@@ -301,55 +274,73 @@ tee /usr/local/share/docker-init.sh > /dev/null \
 
 set -e
 
-SOCAT_PATH_BASE=/tmp/vscr-docker-from-docker
-SOCAT_LOG=\${SOCAT_PATH_BASE}.log
-SOCAT_PID=\${SOCAT_PATH_BASE}.pid
+dockerd_start="$(cat << 'INNEREOF'
+    # explicitly remove dockerd and containerd PID file to ensure that it can start properly if it was stopped uncleanly
+    # ie: docker kill <ID>
+    find /run /var/run -iname 'docker*.pid' -delete || :
+    find /run /var/run -iname 'container*.pid' -delete || :
 
-# Wrapper function to only use sudo if not already root
-sudoIf()
-{
-    if [ "\$(id -u)" -ne 0 ]; then
-        sudo "\$@"
-    else
-        "\$@"
+    ## Dind wrapper script from docker team, adapted to a function
+    # Maintained: https://github.com/moby/moby/blob/master/hack/dind
+
+    export container=docker
+
+    if [ -d /sys/kernel/security ] && ! mountpoint -q /sys/kernel/security; then
+        mount -t securityfs none /sys/kernel/security || {
+            echo >&2 'Could not mount /sys/kernel/security.'
+            echo >&2 'AppArmor detection and --privileged mode might break.'
+        }
     fi
-}
 
-# Log messages
-log()
-{
-    echo -e "[\$(date)] \$@" | sudoIf tee -a \${SOCAT_LOG} > /dev/null
-}
-
-echo -e "\n** \$(date) **" | sudoIf tee -a \${SOCAT_LOG} > /dev/null
-log "Ensuring ${USERNAME} has access to ${SOURCE_SOCKET} via ${TARGET_SOCKET}"
-
-# If enabled, try to update the docker group with the right GID. If the group is root, 
-# fall back on using socat to forward the docker socket to another unix socket so 
-# that we can set permissions on it without affecting the host.
-if [ "${ENABLE_NONROOT_DOCKER}" = "true" ] && [ "${SOURCE_SOCKET}" != "${TARGET_SOCKET}" ] && [ "${USERNAME}" != "root" ] && [ "${USERNAME}" != "0" ]; then
-    SOCKET_GID=\$(stat -c '%g' ${SOURCE_SOCKET})
-    if [ "\${SOCKET_GID}" != "0" ] && [ "\${SOCKET_GID}" != "${DOCKER_GID}" ] && ! grep -E ".+:x:\${SOCKET_GID}" /etc/group; then
-        sudoIf groupmod --gid "\${SOCKET_GID}" docker
-    else
-        # Enable proxy if not already running
-        if [ ! -f "\${SOCAT_PID}" ] || ! ps -p \$(cat \${SOCAT_PID}) > /dev/null; then
-            log "Enabling socket proxy."
-            log "Proxying ${SOURCE_SOCKET} to ${TARGET_SOCKET} for vscode"
-            sudoIf rm -rf ${TARGET_SOCKET}
-            (sudoIf socat UNIX-LISTEN:${TARGET_SOCKET},fork,mode=660,user=${USERNAME} UNIX-CONNECT:${SOURCE_SOCKET} 2>&1 | sudoIf tee -a \${SOCAT_LOG} > /dev/null & echo "\$!" | sudoIf tee \${SOCAT_PID} > /dev/null)
-        else
-            log "Socket proxy already running."
-        fi
+    # Mount /tmp (conditionally)
+    if ! mountpoint -q /tmp; then
+        mount -t tmpfs none /tmp
     fi
-    log "Success"
+
+    # cgroup v2: enable nesting
+    if [ -f /sys/fs/cgroup/cgroup.controllers ]; then
+        # move the processes from the root group to the /init group,
+        # otherwise writing subtree_control fails with EBUSY.
+        # An error during moving non-existent process (i.e., "cat") is ignored.
+        mkdir -p /sys/fs/cgroup/init
+        xargs -rn1 < /sys/fs/cgroup/cgroup.procs > /sys/fs/cgroup/init/cgroup.procs || :
+        # enable controllers
+        sed -e 's/ / +/g' -e 's/^/+/' < /sys/fs/cgroup/cgroup.controllers \
+            > /sys/fs/cgroup/cgroup.subtree_control
+    fi
+    ## Dind wrapper over.
+
+    # Handle DNS
+    set +e
+    cat /etc/resolv.conf | grep -i 'internal.cloudapp.net'
+    if [ $? -eq 0 ]
+    then
+        echo "Setting dockerd Azure DNS."
+        CUSTOMDNS="--dns 168.63.129.16"
+    else
+        echo "Not setting dockerd DNS manually."
+        CUSTOMDNS=""
+    fi
+    set -e
+
+    # Start docker/moby engine
+    ( dockerd $CUSTOMDNS > /tmp/dockerd.log 2>&1 ) &
+INNEREOF
+)"
+
+# Start using sudo if not invoked as root
+if [ "$(id -u)" -ne 0 ]; then
+    sudo /bin/sh -c "${dockerd_start}"
+else
+    eval "${dockerd_start}"
 fi
 
-# Execute whatever commands were passed in (if any). This allows us 
-# to set this script to ENTRYPOINT while still executing the default CMD.
 set +e
-exec "\$@"
+
+# Execute whatever commands were passed in (if any). This allows us
+# to set this script to ENTRYPOINT while still executing the default CMD.
+exec "$@"
 EOF
+
 chmod +x /usr/local/share/docker-init.sh
 chown ${USERNAME}:root /usr/local/share/docker-init.sh
-echo "Done!"
