@@ -732,6 +732,7 @@ async fn revert_static_site(
 	// check if upload_id is present in the deploy history
 	db::get_static_site_upload_history_by_upload_id(
 		context.get_database_connection(),
+		&static_site_id,
 		&upload_id,
 	)
 	.await?
@@ -760,6 +761,7 @@ async fn revert_static_site(
 		&request_id,
 	)
 	.await?;
+
 	context.success(RevertStaticSiteResponse {});
 	Ok(context)
 }
@@ -816,20 +818,6 @@ async fn start_static_site(
 		context.get_database_connection(),
 		&static_site_id,
 	)
-	.await?;
-	// Get the latest upload_id from deploy history
-	let upload_id = if let Some(upload) = upload {
-		upload.id
-	} else {
-		return Error::as_result()
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-	};
-
-	db::get_static_site_by_id(
-		context.get_database_connection(),
-		&static_site_id,
-	)
 	.await?
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
@@ -838,7 +826,7 @@ async fn start_static_site(
 		context.get_database_connection(),
 		&workspace_id,
 		&static_site_id,
-		&upload_id,
+		&upload.id,
 		&StaticSiteDetails {},
 		&config,
 		&request_id,
