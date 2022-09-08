@@ -20,9 +20,27 @@ def main(ctx):
                 }
             },
             {
-                "name": "target-folder",
+                "name": "target-folder-debug-deps",
                 "host": {
-                    "path": "/home/rakshith/Runner/volumes/vicara-api/target"
+                    "path": "/home/rakshith/Runner/volumes/vicara-api/target/debug/deps"
+                }
+            },
+            {
+                "name": "target-folder-debug-inc",
+                "host": {
+                    "path": "/home/rakshith/Runner/volumes/vicara-api/target/debug/incremental"
+                }
+            },
+            {
+                "name": "target-folder-release-deps",
+                "host": {
+                    "path": "/home/rakshith/Runner/volumes/vicara-api/target/release/deps"
+                }
+            },
+            {
+                "name": "target-folder-release-inc",
+                "host": {
+                    "path": "/home/rakshith/Runner/volumes/vicara-api/target/release/incremental"
                 }
             }
         ],
@@ -49,7 +67,10 @@ def get_pipeline_steps(ctx):
             # Check if formatting is fine
             check_formatting("Check formatting"),
             # Check clippy lints
-            check_clippy("Check clippy lints"),
+            check_clippy(
+                "Check clippy lints",
+                release=False,
+            ),
 
             # Create sample config
             copy_config("Copy sample config"),
@@ -62,7 +83,10 @@ def get_pipeline_steps(ctx):
             ),
 
             # Clean build cache of `api`
-            clean_api_build("Clean build cache"),
+            clean_api_build(
+                "Clean build cache",
+                release=False,
+            ),
             # Run cargo check again, but this time with SQLX_OFFLINE=false
             check_code(
                 "Recheck code with live database",
@@ -99,7 +123,10 @@ def get_pipeline_steps(ctx):
             # Check if formatting is fine
             check_formatting("Check formatting"),
             # Check clippy lints
-            check_clippy("Check clippy lints"),
+            check_clippy(
+                "Check clippy lints",
+                release=True,
+            ),
 
             # Create sample config
             copy_config("Copy sample config"),
@@ -112,7 +139,10 @@ def get_pipeline_steps(ctx):
             ),
 
             # Clean build cache of `api`
-            clean_api_build("Clean build cache"),
+            clean_api_build(
+                "Clean build cache",
+                release=True,
+            ),
             # Run cargo check again, but this time with SQLX_OFFLINE=false
             check_code(
                 "Recheck code with live database",
@@ -149,7 +179,10 @@ def get_pipeline_steps(ctx):
             # Check if formatting is fine
             check_formatting("Check formatting"),
             # Check clippy lints
-            check_clippy("Check clippy lints"),
+            check_clippy(
+                "Check clippy lints",
+                release=True,
+            ),
 
             # Create sample config
             copy_config("Copy sample config"),
@@ -162,7 +195,10 @@ def get_pipeline_steps(ctx):
             ),
 
             # Clean build cache of `api`
-            clean_api_build("Clean build cache"),
+            clean_api_build(
+                "Clean build cache",
+                release=True,
+            ),
             # Run cargo check again, but this time with SQLX_OFFLINE=false
             check_code(
                 "Recheck code with live database",
@@ -210,7 +246,10 @@ def get_pipeline_steps(ctx):
             ),
 
             # Clean build cache of `api`
-            clean_api_build("Clean build cache"),
+            clean_api_build(
+                "Clean build cache",
+                release=False,
+            ),
             # Run cargo check again, but this time with SQLX_OFFLINE=false
             check_code(
                 "Recheck code with live database",
@@ -245,7 +284,10 @@ def get_pipeline_steps(ctx):
             ),
 
             # Clean build cache of `api`
-            clean_api_build("Clean build cache"),
+            clean_api_build(
+                "Clean build cache",
+                release=True,
+            ),
             # Run cargo check again, but this time with SQLX_OFFLINE=false
             check_code(
                 "Recheck code with live database",
@@ -295,7 +337,10 @@ def get_pipeline_steps(ctx):
             ),
 
             # Clean build cache of `api`
-            clean_api_build("Clean build cache"),
+            clean_api_build(
+                "Clean build cache",
+                release=True,
+            ),
             # Run cargo check again, but this time with SQLX_OFFLINE=false
             check_code(
                 "Recheck code with live database",
@@ -371,8 +416,12 @@ def build_code(step_name, release, sqlx_offline):
                 "path": "/usr/local/cargo/registry/index"
             },
             {
-                "name": "target-folder",
-                "path": "/drone/src/target"
+                "name": "target-folder-{}-deps".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/deps".format("release" if release == True else "debug")
+            },
+            {
+                "name": "target-folder-{}-inc".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/incremental".format("release" if release == True else "debug")
             }
         ],
         "environment": {
@@ -394,13 +443,18 @@ def check_formatting(step_name):
     }
 
 
-def check_clippy(step_name):
+def check_clippy(step_name, release):
+
+    release_flag = ""
+    if release == True:
+        release_flag = "--release"
+
     return {
         "name": step_name,
         "image": "rust:1.63",
         "commands": [
             "rustup component add clippy",
-            "cargo clippy -- -D warnings"
+            "cargo clippy {} -- -D warnings".format(release_flag)
         ],
         "volumes": [
             {
@@ -408,8 +462,12 @@ def check_clippy(step_name):
                 "path": "/usr/local/cargo/registry/index"
             },
             {
-                "name": "target-folder",
-                "path": "/drone/src/target"
+                "name": "target-folder-{}-deps".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/deps".format("release" if release == True else "debug")
+            },
+            {
+                "name": "target-folder-{}-inc".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/incremental".format("release" if release == True else "debug")
             }
         ],
         "environment": {
@@ -460,7 +518,7 @@ def init_database(step_name, release, env):
     }
 
 
-def clean_api_build(step_name):
+def clean_api_build(step_name, release):
     return {
         "name": step_name,
         "image": "rust:1.63",
@@ -473,8 +531,12 @@ def clean_api_build(step_name):
                 "path": "/usr/local/cargo/registry/index"
             },
             {
-                "name": "target-folder",
-                "path": "/drone/src/target"
+                "name": "target-folder-{}-deps".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/deps".format("release" if release == True else "debug")
+            },
+            {
+                "name": "target-folder-{}-inc".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/incremental".format("release" if release == True else "debug")
             }
         ],
         "environment": {
@@ -507,8 +569,12 @@ def check_code(step_name, release, sqlx_offline):
                 "path": "/usr/local/cargo/registry/index"
             },
             {
-                "name": "target-folder",
-                "path": "/drone/src/target"
+                "name": "target-folder-{}-deps".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/deps".format("release" if release == True else "debug")
+            },
+            {
+                "name": "target-folder-{}-inc".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/incremental".format("release" if release == True else "debug")
             }
         ],
         "environment": {
@@ -549,8 +615,12 @@ def create_gitea_release(step_name, staging):
                 "path": "/usr/local/cargo/registry/index"
             },
             {
-                "name": "target-folder",
-                "path": "/drone/src/target"
+                "name": "target-folder-{}-deps".format("release" if staging == True else "debug"),
+                "path": "/drone/src/target/{}/deps".format("release" if staging == True else "debug")
+            },
+            {
+                "name": "target-folder-{}-inc".format("release" if staging == True else "debug"),
+                "path": "/drone/src/target/{}/incremental".format("release" if staging == True else "debug")
             }
         ],
         "environment": {
@@ -585,8 +655,12 @@ def build_examples(step_name, release, sqlx_offline):
                 "path": "/usr/local/cargo/registry/index"
             },
             {
-                "name": "target-folder",
-                "path": "/drone/src/target"
+                "name": "target-folder-{}-deps".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/deps".format("release" if release == True else "debug")
+            },
+            {
+                "name": "target-folder-{}-inc".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/incremental".format("release" if release == True else "debug")
             }
         ],
         "environment": {
