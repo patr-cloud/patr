@@ -12,6 +12,21 @@ def main(ctx):
         "steps": steps,
         "services": services,
 
+        "volumes": [
+            {
+                "name": "crates-registry-index",
+                "host": {
+                    "path": "/home/rakshith/Runner/volumes/vicara-api/crates-registry-index"
+                }
+            },
+            {
+                "name": "target-folder",
+                "host": {
+                    "path": "/home/rakshith/Runner/volumes/vicara-api/target"
+                }
+            }
+        ],
+
         "trigger": {
             "event": [ctx.build.event],
             "branch": [branch]
@@ -350,6 +365,16 @@ def build_code(step_name, release, sqlx_offline):
             "chmod +x ./sccache",
             "cargo build {}".format(release_flag)
         ],
+        "volumes": [
+            {
+                "name": "crates-registry-index",
+                "path": "/usr/local/cargo/registry/index"
+            },
+            {
+                "name": "target-folder",
+                "path": "/drone/src/target"
+            }
+        ],
         "environment": {
             "SQLX_OFFLINE": "{}".format(offline).lower(),
             "DATABASE_URL": "postgres://postgres:{}@database:5432/api".format(get_database_password()),
@@ -376,6 +401,16 @@ def check_clippy(step_name):
         "commands": [
             "rustup component add clippy",
             "cargo clippy -- -D warnings"
+        ],
+        "volumes": [
+            {
+                "name": "crates-registry-index",
+                "path": "/usr/local/cargo/registry/index"
+            },
+            {
+                "name": "target-folder",
+                "path": "/drone/src/target"
+            }
         ],
         "environment": {
             "RUSTC_WRAPPER": "/drone/src/sccache",
@@ -432,6 +467,16 @@ def clean_api_build(step_name):
         "commands": [
             "cargo clean -p api"
         ],
+        "volumes": [
+            {
+                "name": "crates-registry-index",
+                "path": "/usr/local/cargo/registry/index"
+            },
+            {
+                "name": "target-folder",
+                "path": "/drone/src/target"
+            }
+        ],
         "environment": {
             "RUSTC_WRAPPER": "/drone/src/sccache",
             "SCCACHE_REDIS": "redis://10.10.0.37:6379/5"
@@ -455,6 +500,16 @@ def check_code(step_name, release, sqlx_offline):
         "image": "rust:1.63",
         "commands": [
             "cargo check {}".format(release_flag)
+        ],
+        "volumes": [
+            {
+                "name": "crates-registry-index",
+                "path": "/usr/local/cargo/registry/index"
+            },
+            {
+                "name": "target-folder",
+                "path": "/drone/src/target"
+            }
         ],
         "environment": {
             "SQLX_OFFLINE": "{}".format(offline).lower(),
@@ -488,6 +543,16 @@ def create_gitea_release(step_name, staging):
             "echo \"$GITEA_IP develop.vicara.co\" >> /etc/hosts",
             "cargo run {} --example create-gitea-release".format(release_flag)
         ],
+        "volumes": [
+            {
+                "name": "crates-registry-index",
+                "path": "/usr/local/cargo/registry/index"
+            },
+            {
+                "name": "target-folder",
+                "path": "/drone/src/target"
+            }
+        ],
         "environment": {
             "GITEA_TOKEN": {
                 "from_secret": "gitea_token"
@@ -498,56 +563,6 @@ def create_gitea_release(step_name, staging):
             "RUSTC_WRAPPER": "/drone/src/sccache",
             "SCCACHE_REDIS": "redis://10.10.0.37:6379/5"
         }
-    }
-
-
-def database_service(pwd):
-    return {
-        "name": "database",
-        "image": "postgis/postgis:13-3.2",
-        "environment": {
-            "POSTGRES_PASSWORD": pwd,
-            "POSTGRES_DB": "api"
-        }
-    }
-
-
-def redis_service():
-    return {
-        "name": "cache",
-        "image": "redis"
-    }
-
-def rabbitmq_service():
-    return {
-        "name": "event-queue",
-        "image": "rabbitmq:3",
-        "environment": {
-            "RABBITMQ_DEFAULT_USER": "guest",
-            "RABBITMQ_DEFAULT_PASS": "guest"
-        }
-    }
-
-
-def get_database_password():
-    return "dAtAbAsEpAsSwOrD"
-
-
-def get_app_running_environment():
-    return {
-        "APP_DATABASE_HOST": "database",
-        "APP_DATABASE_PORT": 5432,
-        "APP_DATABASE_USER": "postgres",
-        "APP_DATABASE_PASSWORD": get_database_password(),
-        "APP_DATABASE_DATABASE": "api",
-
-        "APP_RABBITMQ_HOST": "event-queue",
-        "APP_RABBITMQ_PORT": 5672,
-        "APP_RABBITMQ_QUEUE": "default",
-        "APP_RABBITMQ_USERNAME": "guest",
-        "APP_RABBITMQ_PASSWORD": "guest",
-
-        "APP_REDIS_HOST": "cache",
     }
 
 
@@ -563,6 +578,16 @@ def build_examples(step_name, release, sqlx_offline):
         "commands": [
             "cargo build {}".format(release_flag),
             "cargo build {} --examples".format(release_flag)
+        ],
+        "volumes": [
+            {
+                "name": "crates-registry-index",
+                "path": "/usr/local/cargo/registry/index"
+            },
+            {
+                "name": "target-folder",
+                "path": "/drone/src/target"
+            }
         ],
         "environment": {
             "GITEA_TOKEN": {
@@ -598,4 +623,55 @@ def test_migrations(step_name, release, env):
             bin_location
         ],
         "environment": env
+    }
+
+
+def database_service(pwd):
+    return {
+        "name": "database",
+        "image": "postgis/postgis:13-3.2",
+        "environment": {
+            "POSTGRES_PASSWORD": pwd,
+            "POSTGRES_DB": "api"
+        }
+    }
+
+
+def redis_service():
+    return {
+        "name": "cache",
+        "image": "redis"
+    }
+
+
+def rabbitmq_service():
+    return {
+        "name": "event-queue",
+        "image": "rabbitmq:3",
+        "environment": {
+            "RABBITMQ_DEFAULT_USER": "guest",
+            "RABBITMQ_DEFAULT_PASS": "guest"
+        }
+    }
+
+
+def get_database_password():
+    return "dAtAbAsEpAsSwOrD"
+
+
+def get_app_running_environment():
+    return {
+        "APP_DATABASE_HOST": "database",
+        "APP_DATABASE_PORT": 5432,
+        "APP_DATABASE_USER": "postgres",
+        "APP_DATABASE_PASSWORD": get_database_password(),
+        "APP_DATABASE_DATABASE": "api",
+
+        "APP_RABBITMQ_HOST": "event-queue",
+        "APP_RABBITMQ_PORT": 5672,
+        "APP_RABBITMQ_QUEUE": "default",
+        "APP_RABBITMQ_USERNAME": "guest",
+        "APP_RABBITMQ_PASSWORD": "guest",
+
+        "APP_REDIS_HOST": "cache",
     }
