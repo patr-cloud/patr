@@ -36,7 +36,7 @@ use api_models::{
 		},
 		workspace::Workspace,
 	},
-	utils::{DateTime, Uuid},
+	utils::{DateTime, Location, Uuid},
 };
 use chrono::{Duration, Utc};
 use eve_rs::{App as EveApp, AsError, NextHandler};
@@ -1202,8 +1202,20 @@ async fn get_all_logins_for_user(
 	.map(|login| UserLogin {
 		login_id: login.login_id,
 		token_expiry: DateTime(login.token_expiry),
+		created: DateTime(login.created),
+		created_ip: login.created_ip,
+		created_location: Location {
+			lat: login.created_location_latitude,
+			lng: login.created_location_longitude,
+		},
 		last_login: DateTime(login.last_login),
 		last_activity: DateTime(login.last_activity),
+		last_activity_ip: login.last_activity_ip,
+		last_activity_location: Location {
+			lat: login.last_activity_location_latitude,
+			lng: login.last_activity_location_longitude,
+		},
+		last_activity_user_agent: login.last_activity_user_agent,
 	})
 	.collect::<Vec<_>>();
 
@@ -1227,8 +1239,20 @@ async fn get_login_info(
 			.map(|login| UserLogin {
 				login_id: login.login_id,
 				token_expiry: DateTime(login.token_expiry),
+				created: DateTime(login.created),
+				created_ip: login.created_ip,
+				created_location: Location {
+					lat: login.created_location_latitude,
+					lng: login.created_location_longitude,
+				},
 				last_login: DateTime(login.last_login),
 				last_activity: DateTime(login.last_activity),
+				last_activity_ip: login.last_activity_ip,
+				last_activity_location: Location {
+					lat: login.last_activity_location_latitude,
+					lng: login.last_activity_location_longitude,
+				},
+				last_activity_user_agent: login.last_activity_user_agent,
 			})
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string())?;

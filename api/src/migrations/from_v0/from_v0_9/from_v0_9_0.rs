@@ -16,6 +16,7 @@ pub(super) async fn migrate(
 	add_migrations_for_ci(&mut *connection, config).await?;
 	clean_up_drone_ci(&mut *connection, config).await?;
 	reset_permission_order(&mut *connection, config).await?;
+	update_user_login_table_with_more_info(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -765,6 +766,75 @@ async fn reset_permission_order(
 		.execute(&mut *connection)
 		.await?;
 	}
+
+	Ok(())
+}
+
+async fn update_user_login_table_with_more_info(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE workspace_audit_log
+		DROP CONSTRAINT workspace_audit_log_fk_login_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DROP TABLE user_login;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_login(
+			login_id UUID CONSTRAINT user_login_uq_login_id UNIQUE,
+			refresh_token TEXT NOT NULL,
+			token_expiry TIMESTAMPTZ NOT NULL,
+			user_id UUID NOT NULL
+				CONSTRAINT user_login_fk_user_id REFERENCES "user"(id),
+			created TIMESTAMPTZ NOT NULL,
+			created_ip INET NOT NULL,
+			created_location GEOMETRY NOT NULL,
+			last_login TIMESTAMPTZ NOT NULL,
+			last_activity TIMESTAMPTZ NOT NULL,
+			last_activity_ip INET NOT NULL,
+			last_activity_location GEOMETRY NOT NULL,
+			last_activity_user_agent TEXT NOT NULL,
+			CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			user_login_idx_user_id
+		ON
+			user_login
+		(user_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace_audit_log
+		ADD CONSTRAINT workspace_audit_log_fk_login_id
+		FOREIGN KEY(user_id, login_id) REFERENCES user_login(user_id, login_id);
+	"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }
