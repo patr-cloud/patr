@@ -335,6 +335,7 @@ pub async fn get_static_site_upload_history(
 
 pub async fn get_static_site_upload_history_by_upload_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &Uuid,
 	upload_id: &Uuid,
 ) -> Result<Option<StaticSiteUploadHistory>, sqlx::Error> {
 	query_as!(
@@ -348,8 +349,10 @@ pub async fn get_static_site_upload_history_by_upload_id(
 		FROM
 			static_site_upload_history
 		WHERE
-			upload_id = $1;
+			static_site_id = $1 AND
+			upload_id = $2;
 		"#,
+		static_site_id as _,
 		upload_id as _,
 	)
 	.fetch_optional(&mut *connection)
