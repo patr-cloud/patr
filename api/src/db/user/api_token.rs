@@ -1,6 +1,7 @@
-use std::net::IpAddr;
-use std::collections::{BTreeMap, HashSet};
-use std::collections::{HashSet, HashMap};
+use std::{
+	collections::{BTreeMap, HashMap, HashSet},
+	net::IpAddr,
+};
 
 use api_models::{
 	models::user::{BasicUserInfo, UserPhoneNumber},
@@ -15,21 +16,27 @@ pub struct ApiToken {
 	pub user_id: Uuid,
 	pub token_expiry: Option<DateTime<Utc>>,
 	pub created: DateTime<Utc>,
-    pub is_super_admin: bool,
+	pub is_super_admin: bool,
 }
 
 pub struct SuperAdminApiToken {
-    pub token: Uuid,
-    pub workspace_id: Uuid,
-    pub super_admin_id: Uuid,
+	pub token: Uuid,
+	pub workspace_id: Uuid,
+	pub super_admin_id: Uuid,
 }
 
 pub struct Permission {
-    pub resource_permissions: HashMap<Uuid, Vec<Uuid>>,
-    pub resource_type_permissions: HashMap<Uuid, Vec<Uuid>>,
+	pub resource_permissions: HashMap<Uuid, Vec<Uuid>>,
+	pub resource_type_permissions: HashMap<Uuid, Vec<Uuid>>,
 }
 
 pub async fn initialize_api_token_pre(
+	_connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
+	Ok(())
+}
+
+pub async fn initialize_api_token_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -118,12 +125,6 @@ pub async fn initialize_api_token_pre(
 	.execute(&mut *connection)
 	.await?;
 
-	Ok(())
-}
-
-pub async fn initialize_api_token_post(
-	_connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
 	Ok(())
 }
 
@@ -220,7 +221,6 @@ pub async fn create_api_token_for_user(
 	.map(|_| ())
 }
 
-
 pub async fn add_super_admin_info_for_api_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	token: &Uuid,
@@ -250,7 +250,6 @@ pub async fn add_super_admin_info_for_api_token(
 	.await
 	.map(|_| ())
 }
-
 
 pub async fn add_resource_permission_for_api_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -413,7 +412,7 @@ pub async fn is_user_super_admin(
 	)
 	.fetch_optional(&mut *connection)
 	.await?
-    .map(|row| row.super_admin_id);
+	.map(|row| row.super_admin_id);
 
 	Ok(record)
 }
@@ -562,4 +561,3 @@ pub async fn get_super_admin_api_token(
 	.fetch_optional(&mut *connection)
 	.await
 }
-
