@@ -14,9 +14,15 @@ def main(ctx):
 
         "volumes": [
             {
-                "name": "crates-registry-index",
+                "name": "crates-registry-registry",
                 "host": {
-                    "path": "/home/rakshith/Runner/volumes/vicara-api/crates-registry-index"
+                    "path": "/home/rakshith/Runner/volumes/vicara-api/crates-registry-registry"
+                }
+            },
+            {
+                "name": "crates-registry-git",
+                "host": {
+                    "path": "/home/rakshith/Runner/volumes/vicara-api/crates-registry-git"
                 }
             },
             {
@@ -412,8 +418,12 @@ def build_code(step_name, release, sqlx_offline):
         ],
         "volumes": [
             {
-                "name": "crates-registry-index",
-                "path": "/usr/local/cargo/registry/index"
+                "name": "crates-registry-registry",
+                "path": "/usr/local/cargo/registry"
+            },
+            {
+                "name": "crates-registry-git",
+                "path": "/usr/local/cargo/git"
             },
             {
                 "name": "target-folder-{}-deps".format("release" if release == True else "debug"),
@@ -458,8 +468,12 @@ def check_clippy(step_name, release):
         ],
         "volumes": [
             {
-                "name": "crates-registry-index",
-                "path": "/usr/local/cargo/registry/index"
+                "name": "crates-registry-registry",
+                "path": "/usr/local/cargo/registry"
+            },
+            {
+                "name": "crates-registry-git",
+                "path": "/usr/local/cargo/git"
             },
             {
                 "name": "target-folder-{}-deps".format("release" if release == True else "debug"),
@@ -527,8 +541,12 @@ def clean_api_build(step_name, release):
         ],
         "volumes": [
             {
-                "name": "crates-registry-index",
-                "path": "/usr/local/cargo/registry/index"
+                "name": "crates-registry-registry",
+                "path": "/usr/local/cargo/registry"
+            },
+            {
+                "name": "crates-registry-git",
+                "path": "/usr/local/cargo/git"
             },
             {
                 "name": "target-folder-{}-deps".format("release" if release == True else "debug"),
@@ -565,8 +583,12 @@ def check_code(step_name, release, sqlx_offline):
         ],
         "volumes": [
             {
-                "name": "crates-registry-index",
-                "path": "/usr/local/cargo/registry/index"
+                "name": "crates-registry-registry",
+                "path": "/usr/local/cargo/registry"
+            },
+            {
+                "name": "crates-registry-git",
+                "path": "/usr/local/cargo/git"
             },
             {
                 "name": "target-folder-{}-deps".format("release" if release == True else "debug"),
@@ -611,8 +633,12 @@ def create_gitea_release(step_name, staging):
         ],
         "volumes": [
             {
-                "name": "crates-registry-index",
-                "path": "/usr/local/cargo/registry/index"
+                "name": "crates-registry-registry",
+                "path": "/usr/local/cargo/registry"
+            },
+            {
+                "name": "crates-registry-git",
+                "path": "/usr/local/cargo/git"
             },
             {
                 "name": "target-folder-{}-deps".format("release" if staging == True else "debug"),
@@ -651,8 +677,12 @@ def build_examples(step_name, release, sqlx_offline):
         ],
         "volumes": [
             {
-                "name": "crates-registry-index",
-                "path": "/usr/local/cargo/registry/index"
+                "name": "crates-registry-registry",
+                "path": "/usr/local/cargo/registry"
+            },
+            {
+                "name": "crates-registry-git",
+                "path": "/usr/local/cargo/git"
             },
             {
                 "name": "target-folder-{}-deps".format("release" if release == True else "debug"),
