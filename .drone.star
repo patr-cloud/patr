@@ -12,6 +12,45 @@ def main(ctx):
         "steps": steps,
         "services": services,
 
+        "volumes": [
+            {
+                "name": "crates-registry-registry",
+                "host": {
+                    "path": "/home/rakshith/Runner/volumes/vicara-api/crates-registry-registry"
+                }
+            },
+            {
+                "name": "crates-registry-git",
+                "host": {
+                    "path": "/home/rakshith/Runner/volumes/vicara-api/crates-registry-git"
+                }
+            },
+            {
+                "name": "target-folder-debug-deps",
+                "host": {
+                    "path": "/home/rakshith/Runner/volumes/vicara-api/target/debug/deps"
+                }
+            },
+            {
+                "name": "target-folder-debug-inc",
+                "host": {
+                    "path": "/home/rakshith/Runner/volumes/vicara-api/target/debug/incremental"
+                }
+            },
+            {
+                "name": "target-folder-release-deps",
+                "host": {
+                    "path": "/home/rakshith/Runner/volumes/vicara-api/target/release/deps"
+                }
+            },
+            {
+                "name": "target-folder-release-inc",
+                "host": {
+                    "path": "/home/rakshith/Runner/volumes/vicara-api/target/release/incremental"
+                }
+            }
+        ],
+
         "trigger": {
             "event": [ctx.build.event],
             "branch": [branch]
@@ -34,7 +73,10 @@ def get_pipeline_steps(ctx):
             # Check if formatting is fine
             check_formatting("Check formatting"),
             # Check clippy lints
-            check_clippy("Check clippy lints"),
+            check_clippy(
+                "Check clippy lints",
+                release=False,
+            ),
 
             # Create sample config
             copy_config("Copy sample config"),
@@ -47,7 +89,10 @@ def get_pipeline_steps(ctx):
             ),
 
             # Clean build cache of `api`
-            clean_api_build("Clean build cache"),
+            clean_api_build(
+                "Clean build cache",
+                release=False,
+            ),
             # Run cargo check again, but this time with SQLX_OFFLINE=false
             check_code(
                 "Recheck code with live database",
@@ -84,7 +129,10 @@ def get_pipeline_steps(ctx):
             # Check if formatting is fine
             check_formatting("Check formatting"),
             # Check clippy lints
-            check_clippy("Check clippy lints"),
+            check_clippy(
+                "Check clippy lints",
+                release=True,
+            ),
 
             # Create sample config
             copy_config("Copy sample config"),
@@ -97,7 +145,10 @@ def get_pipeline_steps(ctx):
             ),
 
             # Clean build cache of `api`
-            clean_api_build("Clean build cache"),
+            clean_api_build(
+                "Clean build cache",
+                release=True,
+            ),
             # Run cargo check again, but this time with SQLX_OFFLINE=false
             check_code(
                 "Recheck code with live database",
@@ -134,7 +185,10 @@ def get_pipeline_steps(ctx):
             # Check if formatting is fine
             check_formatting("Check formatting"),
             # Check clippy lints
-            check_clippy("Check clippy lints"),
+            check_clippy(
+                "Check clippy lints",
+                release=True,
+            ),
 
             # Create sample config
             copy_config("Copy sample config"),
@@ -147,7 +201,10 @@ def get_pipeline_steps(ctx):
             ),
 
             # Clean build cache of `api`
-            clean_api_build("Clean build cache"),
+            clean_api_build(
+                "Clean build cache",
+                release=True,
+            ),
             # Run cargo check again, but this time with SQLX_OFFLINE=false
             check_code(
                 "Recheck code with live database",
@@ -195,7 +252,10 @@ def get_pipeline_steps(ctx):
             ),
 
             # Clean build cache of `api`
-            clean_api_build("Clean build cache"),
+            clean_api_build(
+                "Clean build cache",
+                release=False,
+            ),
             # Run cargo check again, but this time with SQLX_OFFLINE=false
             check_code(
                 "Recheck code with live database",
@@ -230,7 +290,10 @@ def get_pipeline_steps(ctx):
             ),
 
             # Clean build cache of `api`
-            clean_api_build("Clean build cache"),
+            clean_api_build(
+                "Clean build cache",
+                release=True,
+            ),
             # Run cargo check again, but this time with SQLX_OFFLINE=false
             check_code(
                 "Recheck code with live database",
@@ -280,7 +343,10 @@ def get_pipeline_steps(ctx):
             ),
 
             # Clean build cache of `api`
-            clean_api_build("Clean build cache"),
+            clean_api_build(
+                "Clean build cache",
+                release=True,
+            ),
             # Run cargo check again, but this time with SQLX_OFFLINE=false
             check_code(
                 "Recheck code with live database",
@@ -350,6 +416,24 @@ def build_code(step_name, release, sqlx_offline):
             "chmod +x ./sccache",
             "cargo build {}".format(release_flag)
         ],
+        "volumes": [
+            {
+                "name": "crates-registry-registry",
+                "path": "/usr/local/cargo/registry"
+            },
+            {
+                "name": "crates-registry-git",
+                "path": "/usr/local/cargo/git"
+            },
+            {
+                "name": "target-folder-{}-deps".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/deps".format("release" if release == True else "debug")
+            },
+            {
+                "name": "target-folder-{}-inc".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/incremental".format("release" if release == True else "debug")
+            }
+        ],
         "environment": {
             "SQLX_OFFLINE": "{}".format(offline).lower(),
             "DATABASE_URL": "postgres://postgres:{}@database:5432/api".format(get_database_password()),
@@ -369,13 +453,36 @@ def check_formatting(step_name):
     }
 
 
-def check_clippy(step_name):
+def check_clippy(step_name, release):
+
+    release_flag = ""
+    if release == True:
+        release_flag = "--release"
+
     return {
         "name": step_name,
         "image": "rust:1.63",
         "commands": [
             "rustup component add clippy",
-            "cargo clippy -- -D warnings"
+            "cargo clippy {} -- -D warnings".format(release_flag)
+        ],
+        "volumes": [
+            {
+                "name": "crates-registry-registry",
+                "path": "/usr/local/cargo/registry"
+            },
+            {
+                "name": "crates-registry-git",
+                "path": "/usr/local/cargo/git"
+            },
+            {
+                "name": "target-folder-{}-deps".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/deps".format("release" if release == True else "debug")
+            },
+            {
+                "name": "target-folder-{}-inc".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/incremental".format("release" if release == True else "debug")
+            }
         ],
         "environment": {
             "RUSTC_WRAPPER": "/drone/src/sccache",
@@ -425,12 +532,30 @@ def init_database(step_name, release, env):
     }
 
 
-def clean_api_build(step_name):
+def clean_api_build(step_name, release):
     return {
         "name": step_name,
         "image": "rust:1.63",
         "commands": [
             "cargo clean -p api"
+        ],
+        "volumes": [
+            {
+                "name": "crates-registry-registry",
+                "path": "/usr/local/cargo/registry"
+            },
+            {
+                "name": "crates-registry-git",
+                "path": "/usr/local/cargo/git"
+            },
+            {
+                "name": "target-folder-{}-deps".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/deps".format("release" if release == True else "debug")
+            },
+            {
+                "name": "target-folder-{}-inc".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/incremental".format("release" if release == True else "debug")
+            }
         ],
         "environment": {
             "RUSTC_WRAPPER": "/drone/src/sccache",
@@ -455,6 +580,24 @@ def check_code(step_name, release, sqlx_offline):
         "image": "rust:1.63",
         "commands": [
             "cargo check {}".format(release_flag)
+        ],
+        "volumes": [
+            {
+                "name": "crates-registry-registry",
+                "path": "/usr/local/cargo/registry"
+            },
+            {
+                "name": "crates-registry-git",
+                "path": "/usr/local/cargo/git"
+            },
+            {
+                "name": "target-folder-{}-deps".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/deps".format("release" if release == True else "debug")
+            },
+            {
+                "name": "target-folder-{}-inc".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/incremental".format("release" if release == True else "debug")
+            }
         ],
         "environment": {
             "SQLX_OFFLINE": "{}".format(offline).lower(),
@@ -488,6 +631,24 @@ def create_gitea_release(step_name, staging):
             "echo \"$GITEA_IP develop.vicara.co\" >> /etc/hosts",
             "cargo run {} --example create-gitea-release".format(release_flag)
         ],
+        "volumes": [
+            {
+                "name": "crates-registry-registry",
+                "path": "/usr/local/cargo/registry"
+            },
+            {
+                "name": "crates-registry-git",
+                "path": "/usr/local/cargo/git"
+            },
+            {
+                "name": "target-folder-{}-deps".format("release" if staging == True else "debug"),
+                "path": "/drone/src/target/{}/deps".format("release" if staging == True else "debug")
+            },
+            {
+                "name": "target-folder-{}-inc".format("release" if staging == True else "debug"),
+                "path": "/drone/src/target/{}/incremental".format("release" if staging == True else "debug")
+            }
+        ],
         "environment": {
             "GITEA_TOKEN": {
                 "from_secret": "gitea_token"
@@ -498,56 +659,6 @@ def create_gitea_release(step_name, staging):
             "RUSTC_WRAPPER": "/drone/src/sccache",
             "SCCACHE_REDIS": "redis://10.10.0.37:6379/5"
         }
-    }
-
-
-def database_service(pwd):
-    return {
-        "name": "database",
-        "image": "postgis/postgis:13-3.2",
-        "environment": {
-            "POSTGRES_PASSWORD": pwd,
-            "POSTGRES_DB": "api"
-        }
-    }
-
-
-def redis_service():
-    return {
-        "name": "cache",
-        "image": "redis"
-    }
-
-def rabbitmq_service():
-    return {
-        "name": "event-queue",
-        "image": "rabbitmq:3",
-        "environment": {
-            "RABBITMQ_DEFAULT_USER": "guest",
-            "RABBITMQ_DEFAULT_PASS": "guest"
-        }
-    }
-
-
-def get_database_password():
-    return "dAtAbAsEpAsSwOrD"
-
-
-def get_app_running_environment():
-    return {
-        "APP_DATABASE_HOST": "database",
-        "APP_DATABASE_PORT": 5432,
-        "APP_DATABASE_USER": "postgres",
-        "APP_DATABASE_PASSWORD": get_database_password(),
-        "APP_DATABASE_DATABASE": "api",
-
-        "APP_RABBITMQ_HOST": "event-queue",
-        "APP_RABBITMQ_PORT": 5672,
-        "APP_RABBITMQ_QUEUE": "default",
-        "APP_RABBITMQ_USERNAME": "guest",
-        "APP_RABBITMQ_PASSWORD": "guest",
-
-        "APP_REDIS_HOST": "cache",
     }
 
 
@@ -563,6 +674,24 @@ def build_examples(step_name, release, sqlx_offline):
         "commands": [
             "cargo build {}".format(release_flag),
             "cargo build {} --examples".format(release_flag)
+        ],
+        "volumes": [
+            {
+                "name": "crates-registry-registry",
+                "path": "/usr/local/cargo/registry"
+            },
+            {
+                "name": "crates-registry-git",
+                "path": "/usr/local/cargo/git"
+            },
+            {
+                "name": "target-folder-{}-deps".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/deps".format("release" if release == True else "debug")
+            },
+            {
+                "name": "target-folder-{}-inc".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/incremental".format("release" if release == True else "debug")
+            }
         ],
         "environment": {
             "GITEA_TOKEN": {
@@ -598,4 +727,55 @@ def test_migrations(step_name, release, env):
             bin_location
         ],
         "environment": env
+    }
+
+
+def database_service(pwd):
+    return {
+        "name": "database",
+        "image": "postgis/postgis:13-3.2",
+        "environment": {
+            "POSTGRES_PASSWORD": pwd,
+            "POSTGRES_DB": "api"
+        }
+    }
+
+
+def redis_service():
+    return {
+        "name": "cache",
+        "image": "redis"
+    }
+
+
+def rabbitmq_service():
+    return {
+        "name": "event-queue",
+        "image": "rabbitmq:3",
+        "environment": {
+            "RABBITMQ_DEFAULT_USER": "guest",
+            "RABBITMQ_DEFAULT_PASS": "guest"
+        }
+    }
+
+
+def get_database_password():
+    return "dAtAbAsEpAsSwOrD"
+
+
+def get_app_running_environment():
+    return {
+        "APP_DATABASE_HOST": "database",
+        "APP_DATABASE_PORT": 5432,
+        "APP_DATABASE_USER": "postgres",
+        "APP_DATABASE_PASSWORD": get_database_password(),
+        "APP_DATABASE_DATABASE": "api",
+
+        "APP_RABBITMQ_HOST": "event-queue",
+        "APP_RABBITMQ_PORT": 5672,
+        "APP_RABBITMQ_QUEUE": "default",
+        "APP_RABBITMQ_USERNAME": "guest",
+        "APP_RABBITMQ_PASSWORD": "guest",
+
+        "APP_REDIS_HOST": "cache",
     }
