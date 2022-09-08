@@ -1108,6 +1108,9 @@ async fn create_api_token_x_relations(
 			token UUID
 				CONSTRAINT api_token_pk PRIMARY KEY,
 			user_id UUID NOT NULL,
+				CONSTRAINT api_token_fk_user_id
+					FOREIGN KEY(user_id)
+						REFERENCES "user"(id),
 			name TEXT NOT NULL UNIQUE,
 			token_expiry TIMESTAMPTZ,
 			created TIMESTAMPTZ NOT NULL,
