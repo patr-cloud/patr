@@ -815,12 +815,15 @@ pub async fn delete_kubernetes_deployment(
 	.await?;
 
 	log::trace!("request_id: {} - deleting the ingress", request_id);
-	Api::<Ingress>::namespaced(kubernetes_client, workspace_id.as_str())
-		.delete_opt(
-			&format!("ingress-{}", deployment_id),
-			&DeleteParams::default(),
-		)
-		.await?;
+	Api::<Ingress>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.delete_opt(
+		&format!("ingress-{}", deployment_id),
+		&DeleteParams::default(),
+	)
+	.await?;
 
 	log::trace!("request_id: {} - deleting the service monitor", request_id);
 
