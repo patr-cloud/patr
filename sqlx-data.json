@@ -5537,32 +5537,6 @@
     },
     "query": "CREATE INDEX role_permissions_resource_idx_role_id ON role_permissions_resource (role_id);"
   },
-  "6684afded21a486e0b2246c1376483e58abfe453a4831dd2b84eb6a7ae16d252": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "digitalocean"
-                ]
-              },
-              "name": "deployment_cloud_provider"
-            }
-          },
-          "Float8",
-          "Float8",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "INSERT INTO deployment_region( id, name, provider, location, parent_region_id ) VALUES ($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6);"
-  },
   "6714984cd52ecf759cd6cb912a65e0c7d3189afd7a613eafb425a57146fceb2d": {
     "describe": {
       "columns": [
@@ -6226,16 +6200,6 @@
       }
     },
     "query": "ALTER TABLE static_site_upload_history ADD CONSTRAINT static_site_upload_history_fk_upload_id_resource_id FOREIGN KEY(upload_id) REFERENCES resource(id);"
-  },
-  "7401f9df0e6e0b99c923aed5a8e8be4ed52aa49dc8780e4ded18882872b8b95d": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment_region( id UUID CONSTRAINT deployment_region_pk PRIMARY KEY, name TEXT NOT NULL, provider DEPLOYMENT_CLOUD_PROVIDER, location GEOMETRY, parent_region_id UUID CONSTRAINT deployment_region_fk_parent_region_id REFERENCES deployment_region(id), CONSTRAINT deployment_region_chk_provider_location_parent_region_is_valid CHECK( ( location IS NULL AND provider IS NULL ) OR ( provider IS NOT NULL AND location IS NOT NULL AND parent_region_id IS NOT NULL ) ) );"
   },
   "750e6d8fd5d59fef2dcdd28aa933c18d55de4b070389c777772b919e78a004a5": {
     "describe": {
@@ -10056,6 +10020,31 @@
     },
     "query": "UPDATE ci_steps SET finished = $4 WHERE ( repo_id = $1 AND build_num = $2 AND step_id = $3 );"
   },
+  "bba2512a796443bec8dcaaf7ee9fbc9ec30adb16577f3768b4022c973788d2f6": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "digitalocean"
+                ]
+              },
+              "name": "deployment_cloud_provider"
+            }
+          },
+          "Float8",
+          "Float8"
+        ]
+      }
+    },
+    "query": "INSERT INTO deployment_region( id, name, provider, location ) VALUES ($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326));"
+  },
   "bc99fb8fb755978abf04e2db1da08b6236b07afd722505bd031cbc1e6a1f281e": {
     "describe": {
       "columns": [],
@@ -12122,92 +12111,15 @@
     },
     "query": "DELETE FROM domain WHERE id = $1;"
   },
-  "e3de49a9aa8858cbfd5d37f89a87b03c086db40efc6d5942c4e8981829c8adfd": {
+  "e362f4bd9de8cdece5a4f892203018ab8ac2eba42757258a900a58e6315bb6d8": {
     "describe": {
-      "columns": [
-        {
-          "name": "build_num",
-          "ordinal": 0,
-          "type_info": "Int8"
-        },
-        {
-          "name": "git_ref",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "git_commit",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 3,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "running",
-                  "succeeded",
-                  "cancelled",
-                  "errored"
-                ]
-              },
-              "name": "ci_build_status"
-            }
-          }
-        },
-        {
-          "name": "created: _",
-          "ordinal": 4,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "finished: _",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "message",
-          "ordinal": 6,
-          "type_info": "Text"
-        },
-        {
-          "name": "author",
-          "ordinal": 7,
-          "type_info": "Text"
-        },
-        {
-          "name": "git_pr_title",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "git_commit_message",
-          "ordinal": 9,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        false,
-        true,
-        true
-      ],
+      "columns": [],
+      "nullable": [],
       "parameters": {
-        "Left": [
-          "Uuid",
-          "Int8"
-        ]
+        "Left": []
       }
     },
-    "query": "\n\t\tSELECT\n\t\t\tbuild_num,\n\t\t\tgit_ref,\n\t\t\tgit_commit,\n\t\t\tstatus as \"status: _\",\n\t\t\tcreated as \"created: _\",\n\t\t\tfinished as \"finished: _\",\n\t\t\tmessage,\n\t\t\tauthor,\n\t\t\tgit_pr_title,\n\t\t\tgit_commit_message\n\t\tFROM\n\t\t\tci_builds\n\t\tWHERE\n\t\t\t(repo_id = $1 AND build_num = $2);\n\t\t"
+    "query": "CREATE TABLE deployment_region( id UUID CONSTRAINT deployment_region_pk PRIMARY KEY, name TEXT NOT NULL, provider DEPLOYMENT_CLOUD_PROVIDER NOT NULL, location GEOMETRY NOT NULL, workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id REFERENCES workspace(id), kubernetes_ca_data TEXT NOT NULL, kubernetes_cluster_name TEXT NOT NULL, kubernetes_cluster_url TEXT NOT NULL, kubernetes_auth_name TEXT NOT NULL, kubernetes_auth_username TEXT NOT NULL, kubernetes_auth_token TEXT NOT NULL, kubernetes_context_name TEXT NOT NULL );"
   },
   "e44c154107c5fb3d88b9c38b24ac19303760e8d8fde96510bb66ea9932b29e22": {
     "describe": {
@@ -12339,20 +12251,6 @@
       }
     },
     "query": "INSERT INTO personal_domain( id, domain_type ) VALUES ($1, 'personal');"
-  },
-  "e6e8a22e20dcaef3c260e70803a308e6f1f0523b4ffc0ff5ec25270ab14d25da": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "INSERT INTO deployment_region( id, name, provider, location, parent_region_id ) VALUES ($1, $2, NULL, NULL, $3);"
   },
   "e81e9ae94ddf11703dbc9098c7b284d48a832f3bc292e898f4409c3870006d38": {
     "describe": {
