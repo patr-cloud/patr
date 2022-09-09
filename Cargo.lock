@@ -2544,7 +2544,7 @@ checksum = "8835116a5c179084a830efb3adc117ab007512b535bc1a21c991d3b32a6b44dd"
 
 [[package]]
 name = "patr-api-dto"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "base64 0.13.0",
  "chrono",

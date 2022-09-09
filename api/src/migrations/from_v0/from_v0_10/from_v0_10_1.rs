@@ -1081,23 +1081,6 @@ async fn unique_workspac_id_super_admin_id(
 	Ok(())
 }
 
-async fn unique_workspac_id_super_admin_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
-) -> Result<(), Error> {
-	query!(
-		r#"
-		ALTER TABLE workspace
-		ADD CONSTRAINT workspace_uq_id_super_admin_id
-		UNIQUE(id, super_admin_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
-}
-
 async fn create_api_token_x_relations(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,

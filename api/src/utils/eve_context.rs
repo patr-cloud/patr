@@ -7,7 +7,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 use sqlx::Transaction;
 
-use super::Error;
+use super::{Error, TokenData};
 use crate::{
 	app::App,
 	models::{AccessTokenData, ApiTokenData},
@@ -118,12 +118,15 @@ impl EveContext {
 		self.access_token_data.as_mut()
 	}
 
-	pub fn set_token_data(&mut self, token_data: AccessTokenData) {
-		self.access_token_data = Some(token_data);
-	}
-
-	pub fn set_api_token_data(&mut self, api_token_data: ApiTokenData) {
-		self.api_token_data = Some(api_token_data);
+	pub fn set_token_data(&mut self, token_data: TokenData) {
+		match token_data {
+			TokenData::AccessTokenData(token_data) => {
+				self.access_token_data = Some(token_data)
+			}
+			TokenData::ApiTokenData(token_data) => {
+				self.api_token_data = Some(token_data)
+			}
+		}
 	}
 
 	pub fn get_param(&self, param_id: &str) -> Option<&String> {

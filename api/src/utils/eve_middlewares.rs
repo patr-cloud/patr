@@ -120,11 +120,15 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 							&token_data,
 						)
 						.await?;
-						context.set_token_data(token_data);
+						context.set_token_data(TokenData::AccessTokenData(
+							token_data,
+						));
 					}
 					TokenData::ApiTokenData(token_data) => {
 						validate_api_token(&token_data).await?;
-						context.set_api_token_data(token_data);
+						context.set_token_data(TokenData::ApiTokenData(
+							token_data,
+						));
 					}
 				}
 				next(context).await
@@ -151,7 +155,9 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 						)
 						.await?;
 
-						context.set_token_data(token_data.clone());
+						context.set_token_data(TokenData::AccessTokenData(
+							token_data.clone(),
+						));
 						let allowed = has_permission_to_access_resource(
 							&resource,
 							permission_required,
@@ -159,7 +165,9 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 						);
 
 						if allowed {
-							context.set_token_data(token_data.clone());
+							context.set_token_data(TokenData::AccessTokenData(
+								token_data.clone(),
+							));
 							next(context).await
 						} else {
 							context.status(401).json(error!(UNAUTHORIZED));
@@ -169,7 +177,9 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					TokenData::ApiTokenData(token_data) => {
 						validate_api_token(&token_data).await?;
 
-						context.set_api_token_data(token_data.clone());
+						context.set_token_data(TokenData::ApiTokenData(
+							token_data.clone(),
+						));
 						let allowed = has_permission_to_access_resource(
 							&resource,
 							permission_required,
@@ -177,7 +187,9 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 						);
 
 						if allowed {
-							context.set_api_token_data(token_data.clone());
+							context.set_token_data(TokenData::ApiTokenData(
+								token_data.clone(),
+							));
 							return next(context).await;
 						} else {
 							context.status(401).json(error!(UNAUTHORIZED));
@@ -202,9 +214,15 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				}
 			}
 			EveMiddleware::BlockApiToken => {
-				let authorization = context
-					.get_header("Authorization")
-					.expect("Authorization header not found");
+				let authorization =
+					if let Some(header) = context.get_header("Authorization") {
+						header
+					} else {
+						log::trace!("Authorization header not found");
+						return Error::as_result()
+							.status(401)
+							.body(error!(UNAUTHORIZED).to_string())?;
+					};
 
 				let is_api_token = Uuid::parse_str(&authorization).is_ok();
 				if !is_api_token {

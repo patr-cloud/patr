@@ -1,22 +1,16 @@
-use std::{
-	collections::{BTreeMap, HashMap, HashSet},
-	net::IpAddr,
-};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
-use api_models::{
-	models::user::{BasicUserInfo, UserPhoneNumber},
-	utils::{ResourceType, Uuid},
-};
+use api_models::utils::Uuid;
 use chrono::{DateTime, Utc};
 
-use crate::{db::Workspace, query, query_as, Database};
+use crate::{query, query_as, Database};
 
 pub struct ApiToken {
 	pub token: Uuid,
 	pub user_id: Uuid,
+	pub name: String,
 	pub token_expiry: Option<DateTime<Utc>>,
 	pub created: DateTime<Utc>,
-	pub is_super_admin: bool,
 }
 
 pub struct SuperAdminApiToken {
@@ -167,6 +161,7 @@ pub async fn get_api_token_by_id(
 		SELECT
 			token as "token: _",
 			user_id as "user_id: _",
+			name,
 			token_expiry as "token_expiry!: _",
 			created as "created: _"
 		FROM
@@ -400,7 +395,7 @@ pub async fn is_user_super_admin(
 	let record = query!(
 		r#"
 		SELECT
-			super_admin_id
+			super_admin_id AS "super_admin_id: Uuid"
 		FROM
 			workspace
 		WHERE

@@ -720,6 +720,26 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tbuild_num,\n\t\t\tgit_ref,\n\t\t\tgit_commit,\n\t\t\tstatus as \"status: _\",\n\t\t\tcreated as \"created: _\",\n\t\t\tfinished as \"finished: _\",\n\t\t\tmessage,\n\t\t\tauthor,\n\t\t\tgit_pr_title,\n\t\t\tgit_commit_message\n\t\tFROM\n\t\t\tci_builds\n\t\tWHERE (\n\t\t\trepo_id = $1\n\t\t\tAND build_num = $2\n\t\t)\n\t\tORDER BY build_num DESC;\n\t\t"
   },
+  "0fccb436645c8acc6fed4823a02bcb72a04f18a77c3253c71d07f8f3a8660a59": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT workspace_id as \"workspace_id: Uuid\" FROM api_token_resource_permission WHERE token = $1;"
+  },
   "117cf2f33ceb30129812a98389512975c4e4be5a736a0b28e7ee38c77330eae1": {
     "describe": {
       "columns": [
@@ -2114,6 +2134,32 @@
     },
     "query": "CREATE EXTENSION IF NOT EXISTS postgis;"
   },
+  "293a9751394c88681457a916baecdee1ab6784999838587b4489a8b1b14f581e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "resource_type_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "permission_id: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT resource_type_id as \"resource_type_id: Uuid\", permission_id as \"permission_id: Uuid\" FROM api_token_resource_type_permission WHERE token = $1;"
+  },
   "29b392dc6ab5a493ba0b8d45379f8ee927cee923c6dea63b7c0ad8cf7a847f42": {
     "describe": {
       "columns": [],
@@ -2247,6 +2293,21 @@
       }
     },
     "query": "CREATE TABLE IF NOT EXISTS docker_repo_payment_history( workspace_id UUID NOT NULL, storage BIGINT NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
+  },
+  "2f6590a5ff97d869b58bb7a02ba95d3e656e5f969b8dec99c29dffb715b6c981": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO api_token_resource_type_permission( token, workspace_id, resource_type_id, permission_id ) VALUES ($1, $2, $3, $4);"
   },
   "301ac59183d2b8cc900ec3527edf564ff317862f629022d4177446b52ac73442": {
     "describe": {
@@ -2890,6 +2951,26 @@
     },
     "query": "CREATE TABLE phone_number_country_code( country_code CHAR(2) CONSTRAINT phone_number_country_code_pk PRIMARY KEY CONSTRAINT phone_number_country_code_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), phone_code VARCHAR(5) NOT NULL, country_name VARCHAR(80) NOT NULL );"
   },
+  "375387066937d5e1892142aa2fbf9ee79b50b59d69b691f4badd2d017521ad64": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT workspace_id as \"workspace_id: Uuid\" FROM api_token_resource_type_permission WHERE token = $1;"
+  },
   "37dc576df13781c4bed0a92f38f7c2053b1a1736fa5b3333d114781ee654e00d": {
     "describe": {
       "columns": [],
@@ -3323,6 +3404,32 @@
     },
     "query": "CREATE TABLE user_phone_number( user_id UUID NOT NULL CONSTRAINT user_phone_number_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, country_code CHAR(2) NOT NULL CONSTRAINT user_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_phone_number_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), number VARCHAR(15) NOT NULL CONSTRAINT user_phone_number_chk_number_valid CHECK( LENGTH(number) >= 7 AND LENGTH(number) <= 15 AND CAST(number AS BIGINT) > 0 ), CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number), CONSTRAINT user_phone_number_uq_user_id_country_code_number UNIQUE(user_id, country_code, number) );"
   },
+  "44cffac6709f245730d2c95b2eb0a2f4bf0838123c775a9fcb1b47f38a32e380": {
+    "describe": {
+      "columns": [
+        {
+          "name": "resource_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "permission_id: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT resource_id as \"resource_id: Uuid\", permission_id as \"permission_id: Uuid\" FROM api_token_resource_permission WHERE token = $1;"
+  },
   "4519f22e2c320ef6608c5f63ef50c5d2811ead7cda93692aa874bd1203988353": {
     "describe": {
       "columns": [
@@ -3401,16 +3508,6 @@
       }
     },
     "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\trepo_owner,\n\t\t\trepo_name,\n\t\t\tclone_url,\n\t\t\twebhook_secret,\n\t\t\tbuild_machine_type_id as \"build_machine_type_id: _\",\n\t\t\tstatus as \"status: _\",\n\t\t\tgit_provider_id as \"git_provider_id: _\",\n\t\t\tgit_provider_repo_uid\n\t\tFROM\n\t\t\tci_repos\n\t\tWHERE \n\t\t\tid = $1;\n\t\t"
-  },
-  "452b7070d954007d81b648636a8954468298a6fdc33cd16aae6b12f9f235c35b": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, alert_emails VARCHAR(320) [] NOT NULL, payment_type PAYMENT_TYPE NOT NULL, default_payment_method_id TEXT, deployment_limit INTEGER NOT NULL, database_limit INTEGER NOT NULL, static_site_limit INTEGER NOT NULL, managed_url_limit INTEGER NOT NULL, docker_repository_storage_limit INTEGER NOT NULL, domain_limit INTEGER NOT NULL, secret_limit INTEGER NOT NULL, stripe_customer_id TEXT NOT NULL, address_id UUID, amount_due DOUBLE PRECISION NOT NULL, deleted TIMESTAMPTZ );"
   },
   "452c88d9bf883330d3bdd5bbc28e23e2498f117130c41917c5b0f92ba7d64e72": {
     "describe": {
@@ -3748,6 +3845,21 @@
       }
     },
     "query": "CREATE TABLE ci_steps ( repo_id UUID NOT NULL, build_num BIGINT NOT NULL, step_id INTEGER NOT NULL CONSTRAINT ci_steps_chk_step_id_unsigned CHECK (build_num >= 0), step_name TEXT NOT NULL, base_image TEXT NOT NULL, commands TEXT NOT NULL, status CI_BUILD_STEP_STATUS NOT NULL, started TIMESTAMPTZ, finished TIMESTAMPTZ, CONSTRAINT ci_steps_fk_repo_id_build_num FOREIGN KEY (repo_id, build_num) REFERENCES ci_builds(repo_id, build_num), CONSTRAINT ci_steps_pk_repo_id_build_num_step_id PRIMARY KEY (repo_id, build_num, step_id) );"
+  },
+  "4a885c57641aa31f7a7a18b2021062d90c79e737474dae54a9eb114547e1a245": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Bool",
+          "Uuid",
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE api_token SET revoked = $1, revoked_by = $2, name = $3 WHERE token = $4;"
   },
   "4ad162a09a93c81ecf060512762bff0448c21d8feb97bb8df9a6ae4c825e3853": {
     "describe": {
@@ -4198,6 +4310,16 @@
     },
     "query": "UPDATE secrets_payment_history SET stop_time = $1 WHERE workspace_id = $2 AND stop_time IS NULL;"
   },
+  "57823a87ab1e628e5be9ebc133420401262f6727eb6634710064a12f961ec8ea": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE api_token_resource_permission( token UUID NOT NULL CONSTRAINT api_token_resource_permission_fk_token REFERENCES api_token(token), workspace_id UUID NOT NULL CONSTRAINT api_token_resource_permission_fk_workspace_id REFERENCES workspace(id), permission_id UUID NOT NULL CONSTRAINT api_token_resource_permission_fk_permission_id REFERENCES permission(id), resource_id UUID NOT NULL CONSTRAINT api_token_resource_permission_fk_resource_id REFERENCES resource(id) );"
+  },
   "57a89c653f90b904c143d6263df053d108a12bd115950afeeb8a973fe2c12716": {
     "describe": {
       "columns": [],
@@ -4457,6 +4579,16 @@
       }
     },
     "query": "UPDATE address SET first_name = $2, last_name = $3, address_line_1 = $4, address_line_2 = $5, address_line_3 = $6, city = $7, state = $8, zip = $9, country = $10 WHERE id = $1;"
+  },
+  "5db6340ab073d3a7538ac4c31372e93232e25abdf969d72041015d64eb3d12c8": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE api_token( token UUID CONSTRAINT api_token_pk PRIMARY KEY, user_id UUID NOT NULL, name TEXT NOT NULL, token_expiry TIMESTAMPTZ, created TIMESTAMPTZ NOT NULL, revoked BOOLEAN NOT NULL DEFAULT FALSE, revoked_by UUID, CONSTRAINT api_token_chk_revoked_revoked_by_valid CHECK( ( revoked IS false AND revoked_by IS NULL ) OR ( revoked IS true AND revoked_by IS NOT NULL ) ) );"
   },
   "5f1d0325462a97c5165fdae1c672a40d3589e067a8785b7b2da2e1256010aae9": {
     "describe": {
@@ -4905,6 +5037,33 @@
     },
     "query": "UPDATE managed_database SET host = $1, port = $2, username = $3, password = $4 WHERE id = $5;"
   },
+  "61fa0b797465123162c9c312e200d7370732ecca96b2331b41162470abb7fe61": {
+    "describe": {
+      "columns": [
+        {
+          "name": "resource_type_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "permission_id: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT resource_type_id as \"resource_type_id: Uuid\", permission_id as \"permission_id: Uuid\" FROM role_permissions_resource_type LEFT JOIN workspace_user ON workspace_user.role_id = role_permissions_resource_type.role_id WHERE workspace_user.workspace_id = $1 AND workspace_user.user_id = $2;"
+  },
   "629c00298724c7b118fa471652c112c774ebc0c0d08a288c41c1cf7b9a27b5f9": {
     "describe": {
       "columns": [
@@ -5125,6 +5284,38 @@
       }
     },
     "query": "UPDATE workspace SET address_id = NULL WHERE id = $1;"
+  },
+  "6988c0424c39d2dabd48fb9555016081af68037edaca816f440e667581eecb7c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "token: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "super_admin_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT token as \"token: _\", workspace_id as \"workspace_id: _\", super_admin_id as \"super_admin_id: _\" FROM api_token_workspace_super_admin WHERE token = $1;"
   },
   "6999f19e5e1ad4aee4a493e96f5fbc66939c7361345b0108cd310fa6f6142ab0": {
     "describe": {
@@ -5647,6 +5838,50 @@
       }
     },
     "query": "ALTER TABLE static_site_upload_history ADD CONSTRAINT static_site_upload_history_fk_upload_id_resource_id FOREIGN KEY(upload_id) REFERENCES resource(id);"
+  },
+  "737482aa5f1684f5b6aa85708dd616137120c0a0711bc342828ce13d23503c59": {
+    "describe": {
+      "columns": [
+        {
+          "name": "token: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "user_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "token_expiry!: _",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "created: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT token as \"token: _\", name, user_id as \"user_id: _\", token_expiry as \"token_expiry!: _\", created as \"created: _\" FROM api_token WHERE user_id = $1 AND revoked = false;"
   },
   "750e6d8fd5d59fef2dcdd28aa933c18d55de4b070389c777772b919e78a004a5": {
     "describe": {
@@ -6259,6 +6494,16 @@
       }
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", workspace_id as \"workspace_id: _\", deployment_id as \"deployment_id: _\" FROM secret WHERE id = $1;"
+  },
+  "82603a5340d9d51f63cd8a052def05c7261bd4029ba6c3db719eb05fe90ba5d4": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE api_token_resource_type_permission( token UUID NOT NULL CONSTRAINT api_token_resource_permission_type_fk_token REFERENCES api_token(token), workspace_id UUID NOT NULL CONSTRAINT api_token_resource_type_permission_fk_workspace_id REFERENCES workspace(id), permission_id UUID NOT NULL CONSTRAINT api_token_resource_type_permission_fk_permission_id REFERENCES permission (id), resource_type_id UUID NOT NULL CONSTRAINT api_token_resource_type_permission_fk_resource_type_id REFERENCES resource_type(id) );"
   },
   "826e599fedc33685020d1747bd3893a23f22c5de69b36cd64fb0e2efceab782d": {
     "describe": {
@@ -11125,6 +11370,16 @@
     },
     "query": "CREATE TABLE IF NOT EXISTS deployment_payment_history( workspace_id UUID NOT NULL, deployment_id UUID NOT NULL, machine_type UUID NOT NULL, num_instance INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
   },
+  "c7d4049cb7643049a2fa400afb07e2ab20f0ba06d22a2d5a9f7ca41e73fa6746": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, alert_emails VARCHAR(320) [] NOT NULL, payment_type PAYMENT_TYPE NOT NULL, default_payment_method_id TEXT, deployment_limit INTEGER NOT NULL, database_limit INTEGER NOT NULL, static_site_limit INTEGER NOT NULL, managed_url_limit INTEGER NOT NULL, docker_repository_storage_limit INTEGER NOT NULL, domain_limit INTEGER NOT NULL, secret_limit INTEGER NOT NULL, stripe_customer_id TEXT NOT NULL, address_id UUID, amount_due DOUBLE PRECISION NOT NULL, deleted TIMESTAMPTZ, CONSTRAINT workspace_uq_id_super_admin_id UNIQUE(id, super_admin_id) );"
+  },
   "c87d54dcbae7cef4dc3148366e6a348e2cbdf5adc647c1dfbc60b394b3f7021b": {
     "describe": {
       "columns": [],
@@ -11374,6 +11629,27 @@
     },
     "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, is_configured FROM managed_url WHERE static_site_id = $1 AND deleted IS NULL;"
   },
+  "d1b2dab722f7a13a51a35cdeca8f58bea39959afc1b2a28165822a01795a1ae7": {
+    "describe": {
+      "columns": [
+        {
+          "name": "super_admin_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT super_admin_id AS \"super_admin_id: Uuid\" FROM workspace WHERE super_admin_id = $1 AND id = $2;"
+  },
   "d1e1febd0a0dbe742a5c274ed6a9dca234879d15a9ab32b8249f6abda4a5363f": {
     "describe": {
       "columns": [],
@@ -11561,6 +11837,21 @@
     },
     "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" INNER JOIN user_phone_number ON \"user\".id = user_phone_number.user_id WHERE user_phone_number.country_code = $1 AND user_phone_number.number = $2;"
   },
+  "d3fe354af8faf915fc296629dabf89cc931acd7cce8e226982481cd57773a9ca": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "INSERT INTO api_token( token, name, user_id, token_expiry, created, revoked, revoked_by ) VALUES ( $1, $2, $3, $4, now(), false, NULL );"
+  },
   "d5244a5633b4ad41c1ccbf69122b6800a97876579b85eb06aaf0cf3b024e6d6d": {
     "describe": {
       "columns": [
@@ -11695,6 +11986,50 @@
       }
     },
     "query": "CREATE INDEX workspace_idx_super_admin_id ON workspace (super_admin_id);"
+  },
+  "d89a4d44aa135b51c24b1381e95f9396e9206bf3f79ae9b209dacb3c5cd3aeb6": {
+    "describe": {
+      "columns": [
+        {
+          "name": "token: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "user_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "token_expiry!: _",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "created: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT token as \"token: _\", user_id as \"user_id: _\", name, token_expiry as \"token_expiry!: _\", created as \"created: _\" FROM api_token WHERE token = $1 AND revoked = false;"
   },
   "d8feb73a06ee671347cc894b097feabe1a428fc4fcae88a905d95fd33193a9f8": {
     "describe": {
@@ -11947,6 +12282,21 @@
       }
     },
     "query": "SELECT id as \"id: Uuid\", workspace_id as \"workspace_id: Uuid\", name::TEXT as \"name!: String\", COALESCE(size, 0) as \"size!\", ( SELECT GREATEST( resource.created, ( SELECT COALESCE(created, TO_TIMESTAMP(0)) FROM docker_registry_repository_manifest WHERE repository_id = docker_registry_repository.id ORDER BY created DESC LIMIT 1 ), ( SELECT COALESCE(last_updated, TO_TIMESTAMP(0)) FROM docker_registry_repository_tag WHERE repository_id = docker_registry_repository.id ORDER BY created DESC LIMIT 1 ) ) FROM resource WHERE resource.id = docker_registry_repository.id ) as \"last_updated!\" FROM docker_registry_repository LEFT JOIN ( SELECT SUM(size) as size, repository_id FROM docker_registry_repository_manifest GROUP BY repository_id ) docker_registry_repository_manifest ON docker_registry_repository_manifest.repository_id = docker_registry_repository.id WHERE workspace_id = $1 AND deleted IS NULL;"
+  },
+  "db959bbee219c75874e3ee5391c49afe72e9ad9b5d6e38502f5caf854f696e50": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO api_token_resource_permission( token, workspace_id, resource_id, permission_id ) VALUES ($1, $2, $3, $4);"
   },
   "dc143c1965f5cd576eced73955f378a1330ab5e8cb535bbd6ac7c202e95520ee": {
     "describe": {
@@ -12392,6 +12742,33 @@
     },
     "query": "SELECT id as \"id: _\", name, description, owner_id as \"owner_id: _\" FROM role WHERE owner_id = $1;"
   },
+  "e2f78e02dc18443614afed4c773f2e2e84cf704af8cdeb009a308c1c494e77ab": {
+    "describe": {
+      "columns": [
+        {
+          "name": "resource_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "permission_id: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT resource_id as \"resource_id: Uuid\", permission_id as \"permission_id: Uuid\" FROM role_permissions_resource LEFT JOIN workspace_user ON workspace_user.role_id = role_permissions_resource.role_id WHERE workspace_user.workspace_id = $1 AND workspace_user.user_id = $2;"
+  },
   "e311b717d9499a73b00b7e568b36e93b9af06b1c42b534d45663262e5be5328b": {
     "describe": {
       "columns": [],
@@ -12814,6 +13191,20 @@
     },
     "query": "SELECT COUNT(*) as \"count!\" FROM user_to_sign_up;"
   },
+  "f2a1fb844f12ef011239fa9034f5a0876e478ef8ffc7be6c11cccb67247a78fa": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO api_token_workspace_super_admin( token, workspace_id, super_admin_id ) VALUES ( $1, $2, $3 );"
+  },
   "f2a34d60ffd9cc0e462838dfb409c817fcb584cab7cfed5e63813881afe56d54": {
     "describe": {
       "columns": [
@@ -13135,6 +13526,16 @@
       }
     },
     "query": "SELECT permission_id as \"permission_id: Uuid\", resource_id as \"resource_id: Uuid\", name, description FROM role_permissions_resource INNER JOIN permission ON role_permissions_resource.permission_id = permission.id WHERE role_permissions_resource.role_id = $1;"
+  },
+  "f870acb2623cc0f8d86363e9442829546c9051528ba3b163b81ff487b40495e5": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE api_token_workspace_super_admin( token UUID NOT NULL CONSTRAINT api_token_workspace_super_admin_fk_token REFERENCES api_token(token), workspace_id UUID NOT NULL, super_admin_id UUID NOT NULL, CONSTRAINT api_token_fk_workspace_id_super_admin_id FOREIGN KEY(workspace_id, super_admin_id) REFERENCES workspace(id, super_admin_id) );"
   },
   "f8b70ccc8687361430f17086e79357a1d2d97c79f40fabd3f39d44ffe7d95cba": {
     "describe": {
