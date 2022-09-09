@@ -108,7 +108,7 @@ mod datetime_as_seconds {
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct IpAddressInfoResponse {
+pub struct IpAddressInfo {
 	pub country: String,
 	pub region: String,
 	pub city: String,

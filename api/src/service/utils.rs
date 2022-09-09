@@ -15,11 +15,12 @@ use argon2::{
 };
 use chrono::Duration;
 use eve_rs::AsError;
+use serde::Deserialize;
 
 use crate::{
 	db,
 	error,
-	models::IpAddressInfoResponse,
+	models::IpAddressInfo,
 	service,
 	utils::{settings::Settings, validator, Error},
 	Database,
@@ -368,10 +369,66 @@ pub async fn get_image_name_and_digest_for_deployment_image(
 pub async fn get_ip_address_info(
 	ip_addr: &IpAddr,
 	token: &str,
-) -> Result<IpAddressInfoResponse, Error> {
-	reqwest::get(format!("https://ipinfo.io/{}?token={}", ip_addr, token))
+) -> Result<IpAddressInfo, Error> {
+	#[derive(Deserialize, Debug)]
+	pub struct ValidIp {
+		pub country: String,
+		pub region: String,
+		pub city: String,
+		pub postal: String,
+		pub loc: String,
+		pub timezone: String,
+	}
+
+	#[derive(Deserialize, Debug)]
+	pub struct BogonIp {
+		pub ip: String,
+		pub bogon: bool,
+	}
+
+	#[derive(Deserialize, Debug)]
+	#[serde(untagged)]
+	pub enum IpInfo {
+		Bogon(BogonIp),
+		Valid(ValidIp),
+	}
+
+	let default_value = IpAddressInfo {
+		country: "ZZ".to_owned(),
+		region: "Unknown".to_owned(),
+		city: "Unknown".to_owned(),
+		postal: "000000".to_owned(),
+		loc: "0,0".to_owned(),
+		timezone: "UTC".to_owned(),
+	};
+
+	let result = if cfg!(debug_assertions) {
+		default_value
+	} else {
+		let response = reqwest::get(format!(
+			"https://ipinfo.io/{}?token={}",
+			ip_addr, token
+		))
 		.await?
-		.json()
+		.json::<IpInfo>()
 		.await
-		.map_err(|err| Error::new(Box::new(err)))
+		.map_err(|err| Error::new(Box::new(err)))?;
+
+		match response {
+			IpInfo::Bogon(bogon_ip) => {
+				log::info!("Bogon/Unknown IP address found: {}", bogon_ip.ip);
+				default_value
+			}
+			IpInfo::Valid(valid) => IpAddressInfo {
+				country: valid.country,
+				region: valid.region,
+				city: valid.city,
+				postal: valid.postal,
+				loc: valid.loc,
+				timezone: valid.timezone,
+			},
+		}
+	};
+
+	Ok(result)
 }
