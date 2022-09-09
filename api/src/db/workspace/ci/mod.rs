@@ -585,6 +585,7 @@ pub async fn get_repo_details_using_github_uid_for_workspace(
 			ci_git_provider.workspace_id = $1
 			AND ci_repos.git_provider_repo_uid = $2
 			AND ci_git_provider.domain_name = 'github.com'
+			AND ci_git_provider.is_deleted = FALSE
 		);
 		"#,
 		workspace_id as _,
