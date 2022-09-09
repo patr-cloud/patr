@@ -10,8 +10,8 @@ services:
     privileged: true
     init: true
     volumes:
-      # - /var/run/docker.sock:/var/run/docker-host.sock
       - ..:/workspace:cached
+      # - ./volume/docker:/var/lib/docker
 
     entrypoint: /usr/local/share/docker-init.sh
     command: sleep infinity
