@@ -6,8 +6,8 @@
 	"workspaceFolder": "/workspace",
 
 	"customizations": {
-		"vscode": {		
-			"settings": { 
+		"vscode": {
+			"settings": {
 				"rust-analyzer.checkOnSave.extraArgs": [
 					"--target-dir=./.devcontainer/volume/rust-analyzer"
 				],
@@ -18,7 +18,7 @@
 					"**/target/**": true,
 					"./devcontainer/volume/**": true
 				}
-			},			
+			},
 
 			"extensions": [
 				"ms-azuretools.vscode-docker",
@@ -38,13 +38,16 @@
 	"forwardPorts": [
 		// 3000,	// patr backend
 		// 5432,	// postgres
-		// 6379, 	// redis 
+		// 6379, 	// redis
 		// 5672,	// rabbitmq
 		// 15672, 	// rabbitmq-ui
 		// 5000,	// docker-registry
 	],
 
-	"initializeCommand": "bash -c ./.devcontainer/scripts/initializeCommand.sh && ./initEnvFile.sh",
+	// TODO: initializeCommand runs in host OS shell, so its better
+	// to move these commands to other stages so that we don't need to depend on host OS
+	// but the only exception is COMPOSE_PROJECT_NAME where it set unique before calling docker-compose
+	"initializeCommand": "bash -c ./.devcontainer/scripts/initCerts.sh && ./initEnvFile.sh",
 
 	"postCreateCommand": "echo devcontainer created successfully",
 
@@ -53,3 +56,11 @@
 	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "vscode"
 }
+
+// TODO:
+// 1. K8s cluster init script
+// 		- regcred secret
+// 		- tls certificate secret
+// 		- setting up the cert manger and other needed services
+// 		- Setup the private CA of docker registry in minikube cluster
+// 			https://minikube.sigs.k8s.io/docs/handbook/untrusted_certs/
