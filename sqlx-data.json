@@ -10401,6 +10401,86 @@
     },
     "query": "SELECT id as \"id: _\", name, description, owner_id as \"owner_id: _\" FROM role WHERE id = $1;"
   },
+  "c7570aad636a1f68745a7988f76711eda08b357ae84c0cd693e35231f14a11cf": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "repo_owner",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "repo_name",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "clone_url",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "webhook_secret",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_machine_type_id: _",
+          "ordinal": 5,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 6,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "active",
+                  "inactive",
+                  "deleted"
+                ]
+              },
+              "name": "ci_repo_status"
+            }
+          }
+        },
+        {
+          "name": "git_provider_id: _",
+          "ordinal": 7,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "git_provider_repo_uid",
+          "ordinal": 8,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tci_repos.id as \"id: _\",\n\t\t\trepo_owner,\n\t\t\trepo_name,\n\t\t\tclone_url,\n\t\t\twebhook_secret,\n\t\t\tbuild_machine_type_id as \"build_machine_type_id: _\",\n\t\t\tstatus as \"status: _\",\n\t\t\tgit_provider_id as \"git_provider_id: _\",\n\t\t\tgit_provider_repo_uid\n\t\tFROM\n\t\t\tci_repos\n\t\tINNER JOIN\n\t\t\tci_git_provider\n\t\t\tON\n\t\t\t\tci_git_provider.id = ci_repos.git_provider_id\n\t\tWHERE (\n\t\t\tci_git_provider.workspace_id = $1\n\t\t\tAND ci_repos.git_provider_repo_uid = $2\n\t\t\tAND ci_git_provider.domain_name = 'github.com'\n\t\t\tAND ci_git_provider.is_deleted = FALSE\n\t\t);\n\t\t"
+  },
   "c75ad18a3c0cafe8f5c950ebd90c760645d0eb5ba8a7dbcac73b43b2175bf2c7": {
     "describe": {
       "columns": [],
@@ -11014,86 +11094,6 @@
       }
     },
     "query": "UPDATE domain SET name = $1 WHERE id = $2;"
-  },
-  "d796b57415c51b1eefa3bc5cd4e76ca75f6534df4487216df47058cc55057c8c": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "repo_owner",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "repo_name",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "clone_url",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "webhook_secret",
-          "ordinal": 4,
-          "type_info": "Text"
-        },
-        {
-          "name": "build_machine_type_id: _",
-          "ordinal": 5,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 6,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "active",
-                  "inactive",
-                  "deleted"
-                ]
-              },
-              "name": "ci_repo_status"
-            }
-          }
-        },
-        {
-          "name": "git_provider_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "git_provider_repo_uid",
-          "ordinal": 8,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tci_repos.id as \"id: _\",\n\t\t\trepo_owner,\n\t\t\trepo_name,\n\t\t\tclone_url,\n\t\t\twebhook_secret,\n\t\t\tbuild_machine_type_id as \"build_machine_type_id: _\",\n\t\t\tstatus as \"status: _\",\n\t\t\tgit_provider_id as \"git_provider_id: _\",\n\t\t\tgit_provider_repo_uid\n\t\tFROM\n\t\t\tci_repos\n\t\tINNER JOIN\n\t\t\tci_git_provider\n\t\t\tON\n\t\t\t\tci_git_provider.id = ci_repos.git_provider_id\n\t\tWHERE (\n\t\t\tci_git_provider.workspace_id = $1\n\t\t\tAND ci_repos.git_provider_repo_uid = $2\n\t\t\tAND ci_git_provider.domain_name = 'github.com'\n\t\t);\n\t\t"
   },
   "d79988d4260a269130ee6b5a02f6b937e5f01652e3e25cddf8590f3373bd5b14": {
     "describe": {
