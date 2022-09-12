@@ -1058,7 +1058,6 @@ pub async fn update_deployment_details(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	name: Option<&str>,
-	region: Option<&Uuid>,
 	machine_type: Option<&Uuid>,
 	deploy_on_push: Option<bool>,
 	min_horizontal_scale: Option<u16>,
@@ -1072,7 +1071,6 @@ pub async fn update_deployment_details(
 			deployment
 		SET
 			name = COALESCE($1, name),
-			region = COALESCE($2, region),
 			machine_type = COALESCE($3, machine_type),
 			deploy_on_push = COALESCE($4, deploy_on_push),
 			min_horizontal_scale = COALESCE($5, min_horizontal_scale),
@@ -1133,7 +1131,6 @@ pub async fn update_deployment_details(
 			id = $11;
 		"#,
 		name as _,
-		region as _,
 		machine_type as _,
 		deploy_on_push,
 		min_horizontal_scale.map(|v| v as i16),
