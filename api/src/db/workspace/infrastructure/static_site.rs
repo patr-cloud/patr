@@ -21,6 +21,14 @@ pub struct StaticSiteUploadHistory {
 	pub created: DateTime<Utc>,
 }
 
+pub struct StaticSiteManagedUrl {
+	pub id: Uuid,
+	pub sub_domain: String,
+	pub domain_id: Uuid,
+	pub path: String,
+	pub is_configured: bool,
+}
+
 pub async fn initialize_static_site_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
@@ -229,6 +237,35 @@ pub async fn update_current_live_upload_for_static_site(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn get_managed_url_for_static_siite(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &Uuid,
+) -> Result<Vec<StaticSiteManagedUrl>, sqlx::Error> {
+	query_as!(
+		StaticSiteManagedUrl,
+		r#"
+		SELECT
+			id as "id: _",
+			sub_domain,
+			domain_id as "domain_id: _",
+			path,
+			is_configured
+		FROM
+			managed_url
+		WHERE
+			static_site_id = $1 AND
+			sub_domain NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
+		"#,
+		static_site_id as _,
+	)
+	.fetch_all(&mut *connection)
+	.await
 }
 
 pub async fn update_static_site_name(
