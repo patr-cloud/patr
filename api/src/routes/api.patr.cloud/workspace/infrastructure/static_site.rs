@@ -552,9 +552,9 @@ async fn list_static_sites(
 }
 
 /// # Description
-/// This function is used to list of all the static sites present with the user
+/// This function is used to list of all the static sites upload history
 /// required inputs:
-/// WorkspaceId in url
+/// staticSiteId in url
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
@@ -569,7 +569,7 @@ async fn list_static_sites(
 /// ```
 /// {
 ///    success:
-///    staticSites: []
+///    uploads: []
 /// }
 /// ```
 ///
@@ -618,7 +618,6 @@ async fn list_static_sites_upload_history(
 /// ```
 /// {
 ///    name: ,
-///    domainName:
 /// }
 /// ```
 /// # Arguments
@@ -837,11 +836,10 @@ async fn start_static_site(
 		request_id,
 		static_site_id
 	);
-	// start the container running the image, if doesn't exist
 	let config = context.get_state().config.clone();
 
-	// Get the latest upload_id
-	let upload = db::get_latest_upload_for_static_site(
+	// Get current_live_upload from static_site
+	let static_site = db::get_static_site_by_id(
 		context.get_database_connection(),
 		&static_site_id,
 	)
@@ -849,16 +847,23 @@ async fn start_static_site(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	service::update_static_site_and_db_status(
-		context.get_database_connection(),
-		&workspace_id,
-		&static_site_id,
-		&upload.id,
-		&StaticSiteDetails {},
-		&config,
-		&request_id,
-	)
-	.await?;
+	// Check if upload_id is present or not
+	if let Some(upload_id) = static_site.current_live_upload {
+		service::update_static_site_and_db_status(
+			context.get_database_connection(),
+			&workspace_id,
+			&static_site_id,
+			&upload_id,
+			&StaticSiteDetails {},
+			&config,
+			&request_id,
+		)
+		.await?;
+	} else {
+		return Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	};
 
 	context.success(StartStaticSiteResponse {});
 	Ok(context)
