@@ -1660,6 +1660,18 @@
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", status as \"status: _\", workspace_id as \"workspace_id: _\", current_live_upload as \"current_live_upload: _\" FROM static_site WHERE id = $1 AND status != 'deleted';"
   },
+  "1d5f200a33e3117bee5ef3db17614804d6f05742a6ea8b99c12c55fbcaeab1c3": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "DELETE FROM deployment_deploy_history WHERE deployment_id = $1;"
+  },
   "1e9f9c42861e8bc6a5c383d96212e6d271a9a46447b30e1a3fdec17afda99352": {
     "describe": {
       "columns": [],
@@ -4622,12 +4634,12 @@
       ],
       "nullable": [
         null,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true
+        true,
+        true,
+        true,
+        true,
+        true,
+        false
       ],
       "parameters": {
         "Left": []
@@ -5824,7 +5836,7 @@
       "nullable": [
         false,
         false,
-        false
+        true
       ],
       "parameters": {
         "Left": []
@@ -8468,12 +8480,12 @@
       ],
       "nullable": [
         null,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true
+        true,
+        true,
+        true,
+        true,
+        true,
+        false
       ],
       "parameters": {
         "Left": []
@@ -11400,6 +11412,18 @@
       }
     },
     "query": "CREATE TABLE managed_database( id UUID CONSTRAINT managed_database_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT managed_database_chk_name_is_trimmed CHECK( name = TRIM(name) ), db_name VARCHAR(255) NOT NULL CONSTRAINT managed_database_chk_db_name_is_trimmed CHECK( db_name = TRIM(db_name) ), engine MANAGED_DATABASE_ENGINE NOT NULL, version TEXT NOT NULL, num_nodes INTEGER NOT NULL, database_plan MANAGED_DATABASE_PLAN NOT NULL, region TEXT NOT NULL, status MANAGED_DATABASE_STATUS NOT NULL, host TEXT NOT NULL, port INTEGER NOT NULL, username TEXT NOT NULL, password TEXT NOT NULL, workspace_id UUID NOT NULL, digitalocean_db_id TEXT CONSTRAINT managed_database_uq_digitalocean_db_id UNIQUE, CONSTRAINT managed_database_uq_name_workspace_id UNIQUE(name, workspace_id) );"
+  },
+  "da22ec743e0b18271884fda1d084b16a7f01f72128caccb9985720c266d0fa3e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE deployment SET current_live_digest = NULL WHERE id = $1;"
   },
   "da3901cb1079f58c9b722ee678e97e05baa99e5ee5747e51b084a3c1a60063d7": {
     "describe": {

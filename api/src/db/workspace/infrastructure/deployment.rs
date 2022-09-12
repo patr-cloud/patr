@@ -1461,3 +1461,41 @@ pub async fn get_all_digest_for_deployment(
 	.fetch_all(&mut *connection)
 	.await
 }
+
+pub async fn delete_deployment_deploy_history(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			deployment_deploy_history
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn delete_deployment_current_live_update(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			current_live_digest = NULL
+		WHERE
+			id = $1;
+		"#,
+		deployment_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}

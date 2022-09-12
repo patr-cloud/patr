@@ -191,6 +191,20 @@ pub async fn queue_delete_deployment(
 	)
 	.await?;
 
+	log::trace!(
+		"request_id: {} - deleting current live update from deployment",
+		request_id
+	);
+	db::delete_deployment_current_live_update(connection, deployment_id)
+		.await?;
+
+	// Delete deployment deploy history
+	log::trace!(
+		"request_id: {} - Deleting user deployment deploy history",
+		request_id
+	);
+	db::delete_deployment_deploy_history(connection, deployment_id).await?;
+
 	send_message_to_rabbit_mq(
 		&RequestMessage::Deployment(DeploymentRequestData::Delete {
 			workspace_id: workspace_id.clone(),
