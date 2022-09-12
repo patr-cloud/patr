@@ -1499,29 +1499,3 @@ pub async fn delete_deployment_current_live_update(
 	.await
 	.map(|_| ())
 }
-
-pub async fn exists_deploy_history_with_id_and_digest(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	image_digest: &str,
-) -> Result<bool, sqlx::Error> {
-	let history = query!(
-		r#"
-		SELECT
-			deployment_id as "deployment_id: Uuid",
-			image_digest
-		FROM
-			deployment_deploy_history
-		WHERE
-			deployment_id = $1 AND
-			image_digest = $2;
-		"#,
-		deployment_id as _,
-		image_digest
-	)
-	.fetch_optional(&mut *connection)
-	.await?
-	.is_some();
-
-	Ok(history)
-}
