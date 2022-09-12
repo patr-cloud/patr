@@ -280,7 +280,15 @@ async fn notification_handler(
 			);
 			let repository_id = db_deployment.repository_id.status(500)?;
 
-			if !repository_id.is_nil() {
+			let deploy_history_exists =
+				db::exists_deploy_history_with_id_and_digest(
+					context.get_database_connection(),
+					&deployment.id,
+					&target.digest,
+				)
+				.await?;
+
+			if !repository_id.is_nil() && !deploy_history_exists {
 				db::add_digest_to_deployment_deploy_history(
 					context.get_database_connection(),
 					&deployment.id,

@@ -12588,6 +12588,33 @@
     },
     "query": "CREATE INDEX user_idx_created ON \"user\" (created);"
   },
+  "f5f70ff8b0acd5c000a57cff49b0c768cf2301cf1e68e027d6fd10da852bc31b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "deployment_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "image_digest",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT deployment_id as \"deployment_id: Uuid\", image_digest FROM deployment_deploy_history WHERE deployment_id = $1 AND image_digest = $2;"
+  },
   "f64a974f4fb86abd802186e8a8fd86f98a1bfac51f17ea166dd26bead23352cd": {
     "describe": {
       "columns": [],
