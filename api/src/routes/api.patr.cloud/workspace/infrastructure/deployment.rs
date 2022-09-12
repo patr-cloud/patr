@@ -1518,7 +1518,6 @@ async fn update_deployment(
 		workspace_id: _,
 		deployment_id: _,
 		name,
-		region,
 		machine_type,
 		deploy_on_push,
 		min_horizontal_scale,
@@ -1542,7 +1541,6 @@ async fn update_deployment(
 
 	// Is any one value present?
 	if name.is_none() &&
-		region.is_none() &&
 		machine_type.is_none() &&
 		deploy_on_push.is_none() &&
 		min_horizontal_scale.is_none() &&
@@ -1562,7 +1560,6 @@ async fn update_deployment(
 
 	let metadata = DeploymentMetadata::Update {
 		name: name.map(|n| n.to_string()),
-		region: region.clone(),
 		machine_type: machine_type.clone(),
 		deploy_on_push,
 		min_horizontal_scale,
@@ -1577,7 +1574,6 @@ async fn update_deployment(
 		context.get_database_connection(),
 		&deployment_id,
 		name,
-		region.as_ref(),
 		machine_type.as_ref(),
 		deploy_on_push,
 		min_horizontal_scale,

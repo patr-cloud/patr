@@ -1058,7 +1058,6 @@ pub async fn update_deployment_details(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	name: Option<&str>,
-	region: Option<&Uuid>,
 	machine_type: Option<&Uuid>,
 	deploy_on_push: Option<bool>,
 	min_horizontal_scale: Option<u16>,
@@ -1072,32 +1071,31 @@ pub async fn update_deployment_details(
 			deployment
 		SET
 			name = COALESCE($1, name),
-			region = COALESCE($2, region),
-			machine_type = COALESCE($3, machine_type),
-			deploy_on_push = COALESCE($4, deploy_on_push),
-			min_horizontal_scale = COALESCE($5, min_horizontal_scale),
-			max_horizontal_scale = COALESCE($6, max_horizontal_scale),
+			machine_type = COALESCE($2, machine_type),
+			deploy_on_push = COALESCE($3, deploy_on_push),
+			min_horizontal_scale = COALESCE($4, min_horizontal_scale),
+			max_horizontal_scale = COALESCE($5, max_horizontal_scale),
 			startup_probe_port = (
 				CASE
-					WHEN $7 = 0 THEN
+					WHEN $6 = 0 THEN
+						NULL
+					ELSE
+						$6
+				END
+			),
+			startup_probe_path = (
+				CASE
+					WHEN $6 = 0 THEN
 						NULL
 					ELSE
 						$7
 				END
 			),
-			startup_probe_path = (
-				CASE
-					WHEN $7 = 0 THEN
-						NULL
-					ELSE
-						$8
-				END
-			),
 			startup_probe_port_type = (
 				CASE
-					WHEN $7 = 0 THEN
+					WHEN $6 = 0 THEN
 						NULL
-					WHEN $7 IS NULL THEN
+					WHEN $6 IS NULL THEN
 						startup_probe_port_type
 					ELSE
 						'http'::EXPOSED_PORT_TYPE
@@ -1105,35 +1103,34 @@ pub async fn update_deployment_details(
 			),
 			liveness_probe_port = (
 				CASE
-					WHEN $9 = 0 THEN
+					WHEN $8 = 0 THEN
+						NULL
+					ELSE
+						$8
+				END
+			),
+			liveness_probe_path = (
+				CASE
+					WHEN $8 = 0 THEN
 						NULL
 					ELSE
 						$9
 				END
 			),
-			liveness_probe_path = (
-				CASE
-					WHEN $9 = 0 THEN
-						NULL
-					ELSE
-						$10
-				END
-			),
 			liveness_probe_port_type = (
 				CASE
-					WHEN $9 = 0 THEN
+					WHEN $8 = 0 THEN
 						NULL
-					WHEN $9 IS NULL THEN
+					WHEN $8 IS NULL THEN
 						liveness_probe_port_type
 					ELSE
 						'http'::EXPOSED_PORT_TYPE
 				END
 			)
 		WHERE
-			id = $11;
+			id = $10;
 		"#,
 		name as _,
-		region as _,
 		machine_type as _,
 		deploy_on_push,
 		min_horizontal_scale.map(|v| v as i16),

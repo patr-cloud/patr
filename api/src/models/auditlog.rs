@@ -24,8 +24,6 @@ pub enum DeploymentMetadata {
 		#[serde(skip_serializing_if = "Option::is_none")]
 		name: Option<String>,
 		#[serde(skip_serializing_if = "Option::is_none")]
-		region: Option<Uuid>,
-		#[serde(skip_serializing_if = "Option::is_none")]
 		machine_type: Option<Uuid>,
 		#[serde(skip_serializing_if = "Option::is_none")]
 		deploy_on_push: Option<bool>,
