@@ -139,41 +139,32 @@ pub async fn create_static_site_in_workspace(
 	Ok(static_site_id)
 }
 
-pub async fn update_static_site(
+pub async fn upload_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	static_site_id: &Uuid,
-	name: Option<&str>,
-	file: Option<String>,
+	file: &str,
 	message: &str,
 	uploaded_by: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
-) -> Result<Option<Uuid>, Error> {
+) -> Result<Uuid, Error> {
 	log::trace!("request_id: {} - getting static site details", request_id);
 
-	if let Some(name) = name {
-		db::update_static_site_name(connection, static_site_id, name).await?;
-	}
 	let creation_time = Utc::now();
-	let upload_id = if let Some(file) = file {
-		let upload_id = create_static_site_upload(
-			connection,
-			workspace_id,
-			static_site_id,
-			&file,
-			message,
-			uploaded_by,
-			&creation_time,
-			true,
-			config,
-			request_id,
-		)
-		.await?;
-		Some(upload_id)
-	} else {
-		None
-	};
+	let upload_id = create_static_site_upload(
+		connection,
+		workspace_id,
+		static_site_id,
+		file,
+		message,
+		uploaded_by,
+		&creation_time,
+		true,
+		config,
+		request_id,
+	)
+	.await?;
 
 	log::trace!(
 		"request_id: {} - Creating Static-site upload resource",
