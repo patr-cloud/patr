@@ -3592,21 +3592,6 @@
     },
     "query": "INSERT INTO ci_steps ( repo_id, build_num, step_id, step_name, base_image, commands, status ) VALUES ($1, $2, $3, $4, $5, $6, $7);"
   },
-  "4b60bb4fd27a655220c0db3f4ffb85f463bcf799d4d58f7f89220bcd3303bb9f": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          "Uuid",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "INSERT INTO deployment_deploy_history( deployment_id, image_digest, repository_id, created ) VALUES ($1, $2, $3, $4);"
-  },
   "4c0d5a07f426d2d09eff3fa6ae2b90f0d8d49106c94357eaa4ce24d4b32bee9f": {
     "describe": {
       "columns": [
@@ -8553,6 +8538,21 @@
       }
     },
     "query": "SELECT id as \"id: _\", cpu_count, memory_count FROM deployment_machine_type;"
+  },
+  "a232f8a0ee2540ec14e4ec2784e0bc6164aa9bcce5850333499639eab83181a4": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "INSERT INTO deployment_deploy_history( deployment_id, image_digest, repository_id, created ) VALUES ($1, $2, $3, $4) ON CONFLICT (deployment_id, image_digest) DO NOTHING;"
   },
   "a26aaae9c578adae831230251acca207c63e94e7962a88ed7aa95c55a0769adc": {
     "describe": {

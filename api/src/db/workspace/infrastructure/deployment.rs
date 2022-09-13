@@ -1383,7 +1383,10 @@ pub async fn add_digest_to_deployment_deploy_history(
 				created
 			)
 		VALUES
-			($1, $2, $3, $4);
+			($1, $2, $3, $4)
+		ON CONFLICT
+			(deployment_id, image_digest)
+		DO NOTHING;
 		"#,
 		deployment_id as _,
 		digest as _,
