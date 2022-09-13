@@ -129,17 +129,9 @@ impl EveContext {
 	}
 }
 
-#[cfg(debug_assertions)]
 impl Debug for EveContext {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		write!(f, "Context: {} - {}", self.get_method(), self.get_path())
-	}
-}
-
-#[cfg(not(debug_assertions))]
-impl Debug for EveContext {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{:#?}", self)
 	}
 }
 
