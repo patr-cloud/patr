@@ -2960,16 +2960,6 @@
     },
     "query": "UPDATE deployment SET status = $1 WHERE id = $2;"
   },
-  "3f63f9a6b222e551531bb498008d3bf8f0480314169237fc545b158e065bb432": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment_exposed_port( deployment_id UUID NOT NULL CONSTRAINT deployment_exposed_port_fk_deployment_id REFERENCES deployment(id), port INTEGER NOT NULL CONSTRAINT deployment_exposed_port_chk_port_u16 CHECK( port > 0 AND port <= 65535 ), port_type EXPOSED_PORT_TYPE NOT NULL, CONSTRAINT deployment_exposed_port_pk PRIMARY KEY(deployment_id, port), CONSTRAINT deployment_exposed_port_uq_deployment_id_port_port_type UNIQUE(deployment_id, port, port_type) );"
-  },
   "4053dec2108305416589c2bf8fcf17e70285a65a574121e5cd55693e32705110": {
     "describe": {
       "columns": [
@@ -4343,6 +4333,47 @@
       }
     },
     "query": "INSERT INTO managed_database( id, name, db_name, engine, version, num_nodes, database_plan, region, status, host, port, username, password, workspace_id, digitalocean_db_id ) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, 'creating', $9, $10, $11, $12, $13, NULL );"
+  },
+  "5622389108835faaa1d226a8493d5982de0315c186bcee7d326dc33a0c590f25": {
+    "describe": {
+      "columns": [
+        {
+          "name": "port",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "port_type: ExposedPortType",
+          "ordinal": 1,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "http"
+                ]
+              },
+              "name": "exposed_port_type"
+            }
+          }
+        },
+        {
+          "name": "is_internal",
+          "ordinal": 2,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT port, port_type as \"port_type: ExposedPortType\", is_internal FROM deployment_exposed_port WHERE deployment_id = $1;"
   },
   "56227fccf9e60c797a9f7bfb575ab4cc57e2109bb04661317b53900682745de4": {
     "describe": {
@@ -7033,6 +7064,16 @@
     },
     "query": "ALTER TABLE transaction ADD CONSTRAINT transaction_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id);"
   },
+  "854676b32a425904142325240f6badf04e18030eddc0b46dc3a579a91d48c107": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_exposed_port( deployment_id UUID NOT NULL CONSTRAINT deployment_exposed_port_fk_deployment_id REFERENCES deployment(id), port INTEGER NOT NULL CONSTRAINT deployment_exposed_port_chk_port_u16 CHECK( port > 0 AND port <= 65535 ), port_type EXPOSED_PORT_TYPE NOT NULL, is_internal BOOLEAN NOT NULL, CONSTRAINT deployment_exposed_port_pk PRIMARY KEY(deployment_id, port), CONSTRAINT deployment_exposed_port_uq_deployment_id_port_port_type UNIQUE(deployment_id, port, port_type) );"
+  },
   "855f26245fffa3c12a4f05b04f8e55b9d5ce33eeccf371b8412962fc60ac7dd1": {
     "describe": {
       "columns": [],
@@ -7510,41 +7551,6 @@
       }
     },
     "query": "SELECT user_unverified_phone_number.country_code, user_unverified_phone_number.phone_number, user_unverified_phone_number.user_id as \"user_id: _\", user_unverified_phone_number.verification_token_hash, user_unverified_phone_number.verification_token_expiry FROM user_unverified_phone_number INNER JOIN phone_number_country_code ON user_unverified_phone_number.country_code = phone_number_country_code.country_code WHERE user_id = $1 AND user_unverified_phone_number.country_code = $2 AND user_unverified_phone_number.phone_number = $3;"
-  },
-  "8ba7e810211002c1b6033836493c2f48f72dbf7718a0ee8571cf200f07bbeb4d": {
-    "describe": {
-      "columns": [
-        {
-          "name": "port",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "port_type: ExposedPortType",
-          "ordinal": 1,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "http"
-                ]
-              },
-              "name": "exposed_port_type"
-            }
-          }
-        }
-      ],
-      "nullable": [
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT port, port_type as \"port_type: ExposedPortType\" FROM deployment_exposed_port WHERE deployment_id = $1;"
   },
   "8bec30e0e151a3799bc9bd16af35722042a7cab86a61d46549c18b9ba6e449c1": {
     "describe": {
@@ -9616,6 +9622,30 @@
       }
     },
     "query": "UPDATE workspace SET address_id = $1 WHERE id = $2;"
+  },
+  "b44185b433c8978dc986d8f389f1cceb3aa3629fb6632f3196404cbb9a2707a1": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Int4",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "http"
+                ]
+              },
+              "name": "exposed_port_type"
+            }
+          },
+          "Bool"
+        ]
+      }
+    },
+    "query": "INSERT INTO deployment_exposed_port( deployment_id, port, port_type, is_internal ) VALUES ($1, $2, $3, $4);"
   },
   "b4684d68753faf8ee81f7b2895f7921daed064064015ed6ef01b70d2d7b5c1f9": {
     "describe": {
@@ -12530,29 +12560,6 @@
       }
     },
     "query": "SELECT deployment.id as \"id: _\", deployment.name::TEXT as \"name!: _\", deployment.registry, deployment.repository_id as \"repository_id: _\", deployment.image_name, deployment.image_tag, deployment.status as \"status: _\", deployment.workspace_id as \"workspace_id: _\", deployment.region as \"region: _\", deployment.min_horizontal_scale, deployment.max_horizontal_scale, deployment.machine_type as \"machine_type: _\", deployment.deploy_on_push, deployment.startup_probe_port, deployment.startup_probe_path, deployment.liveness_probe_port, deployment.liveness_probe_path, current_live_digest FROM deployment LEFT JOIN docker_registry_repository ON docker_registry_repository.id = deployment.repository_id WHERE ( ( deployment.registry = 'registry.patr.cloud' AND docker_registry_repository.name = $1 ) OR ( deployment.registry != 'registry.patr.cloud' AND deployment.image_name = $1 ) ) AND deployment.image_tag = $2 AND deployment.workspace_id = $3 AND deployment.status != 'deleted';"
-  },
-  "f3add12d973a1a460a8ee92f18cae2939b0f9bf515747eb082ff3f342951439d": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Int4",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "http"
-                ]
-              },
-              "name": "exposed_port_type"
-            }
-          }
-        ]
-      }
-    },
-    "query": "INSERT INTO deployment_exposed_port( deployment_id, port, port_type ) VALUES ($1, $2, $3);"
   },
   "f473ae6a47061c72bf61cc766b89b157e689bdea800ac4a3d6523bd2fec8547b": {
     "describe": {

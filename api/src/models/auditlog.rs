@@ -6,7 +6,7 @@ use api_models::{
 		DeploymentProbe,
 		DeploymentRunningDetails,
 		EnvironmentVariableValue,
-		ExposedPortType,
+		ExposedPortDetails,
 	},
 	utils::{StringifiedU16, Uuid},
 };
@@ -32,7 +32,7 @@ pub enum DeploymentMetadata {
 		#[serde(skip_serializing_if = "Option::is_none")]
 		max_horizontal_scale: Option<u16>,
 		#[serde(skip_serializing_if = "Option::is_none")]
-		ports: Option<BTreeMap<StringifiedU16, ExposedPortType>>,
+		ports: Option<BTreeMap<StringifiedU16, ExposedPortDetails>>,
 		#[serde(skip_serializing_if = "Option::is_none")]
 		environment_variables:
 			Option<BTreeMap<String, EnvironmentVariableValue>>,

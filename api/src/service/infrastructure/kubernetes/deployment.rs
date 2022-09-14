@@ -6,6 +6,7 @@ use api_models::{
 		DeploymentRunningDetails,
 		DeploymentStatus,
 		EnvironmentVariableValue,
+		ExposedPortDetails,
 		ExposedPortType,
 	},
 	utils::Uuid,
@@ -413,6 +414,25 @@ pub async fn update_kubernetes_deployment(
 		)
 		.await?;
 
+	#[rustfmt::skip]
+	// TODO: handle internal ports
+	// 1. Using k8s service:
+	// 		for each internal and external ports create a service under name
+	// 		`{port}-{deployment_id}-patr-cloud` so that it can be easily accessed by
+	// 		pods within the same namespace.
+	// 2. Handle it using coredns: -> reloading the coredns has to be done
+	// 		- using core dns rewrite plugin (generic) 
+	// 			rewrite { 
+	// 				name regex ([0-9])-([0-9a-fA-F]{32})\.example\.com {2}.<how-to-find-namespace-of-this-service>.svc.cluster.local:{1}
+    // 			}
+	// 			**but finding namespace in rewrite plugin is yet unknown**
+	// 		- using core dns file, etcd or redis plugin
+	// 			whenever a deployment is made add an entry in file, etcd or redis plugin 
+	// 			so that those values will be used whenever a dns query is made. But this
+	// 			make the whole dns system complex and adding/removing dns entry in file
+	// 			or redis should adhere to the specified format
+
+	// service will contain both internal and external ports
 	let kubernetes_service = Service {
 		metadata: ObjectMeta {
 			name: Some(format!("service-{}", deployment.id)),
@@ -506,7 +526,13 @@ pub async fn update_kubernetes_deployment(
 	let (default_ingress_rules, default_tls_rules) = running_details
 		.ports
 		.iter()
-		.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
+		.filter(|(_, port_details)| {
+			*port_details ==
+				&ExposedPortDetails {
+					type_: ExposedPortType::Http,
+					is_internal: false,
+				}
+		})
 		.map(|(port, _)| {
 			(
 				IngressRule {
@@ -576,7 +602,13 @@ pub async fn update_kubernetes_deployment(
 		running_details
 			.ports
 			.iter()
-			.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
+			.filter(|(_, port_details)| {
+				*port_details ==
+					&ExposedPortDetails {
+						type_: ExposedPortType::Http,
+						is_internal: false,
+					}
+			})
 			.map(|(port, _)| format!("{}-{}.patr.cloud", port, deployment.id))
 			.collect::<Vec<_>>()
 			.join(",")

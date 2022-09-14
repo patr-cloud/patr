@@ -8,7 +8,7 @@ use api_models::{
 		DeploymentRegistry,
 		DeploymentRunningDetails,
 		EnvironmentVariableValue,
-		ExposedPortType,
+		ExposedPortDetails,
 		Metric,
 		PatrRegistry,
 	},
@@ -185,7 +185,7 @@ pub async fn create_deployment_in_workspace(
 			"request_id: {} - Adding exposed port entry to database",
 			request_id
 		);
-		db::add_exposed_port_for_deployment(
+		db::add_exposed_port_details_for_deployment(
 			connection,
 			&deployment_id,
 			port.value(),
@@ -293,7 +293,7 @@ pub async fn update_deployment(
 	deploy_on_push: Option<bool>,
 	min_horizontal_scale: Option<u16>,
 	max_horizontal_scale: Option<u16>,
-	ports: Option<&BTreeMap<u16, ExposedPortType>>,
+	ports: Option<&BTreeMap<u16, ExposedPortDetails>>,
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
@@ -321,7 +321,7 @@ pub async fn update_deployment(
 		db::remove_all_exposed_ports_for_deployment(connection, deployment_id)
 			.await?;
 		for (port, exposed_port_type) in ports {
-			db::add_exposed_port_for_deployment(
+			db::add_exposed_port_details_for_deployment(
 				connection,
 				deployment_id,
 				*port,
@@ -485,11 +485,14 @@ pub async fn get_full_deployment_config(
 		}
 	};
 
-	let ports = db::get_exposed_ports_for_deployment(connection, deployment_id)
-		.await?
-		.into_iter()
-		.map(|(port, port_type)| (StringifiedU16::new(port), port_type))
-		.collect();
+	let ports =
+		db::get_exposed_port_details_for_deployment(connection, deployment_id)
+			.await?
+			.into_iter()
+			.map(|(port, port_details)| {
+				(StringifiedU16::new(port), port_details)
+			})
+			.collect();
 
 	let environment_variables =
 		db::get_environment_variables_for_deployment(connection, deployment_id)

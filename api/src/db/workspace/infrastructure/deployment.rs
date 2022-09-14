@@ -1,6 +1,11 @@
 use api_models::{
 	models::workspace::infrastructure::{
-		deployment::{DeploymentProbe, DeploymentStatus, ExposedPortType},
+		deployment::{
+			DeploymentProbe,
+			DeploymentStatus,
+			ExposedPortDetails,
+			ExposedPortType,
+		},
 		DeploymentCloudProvider,
 	},
 	utils::Uuid,
@@ -319,6 +324,7 @@ pub async fn initialize_deployment_pre(
 					port > 0 AND port <= 65535
 				),
 			port_type EXPOSED_PORT_TYPE NOT NULL,
+			is_internal BOOLEAN NOT NULL,
 			CONSTRAINT deployment_exposed_port_pk
 				PRIMARY KEY(deployment_id, port),
 			CONSTRAINT deployment_exposed_port_uq_deployment_id_port_port_type
@@ -985,15 +991,16 @@ pub async fn remove_all_environment_variables_for_deployment(
 	.map(|_| ())
 }
 
-pub async fn get_exposed_ports_for_deployment(
+pub async fn get_exposed_port_details_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
-) -> Result<Vec<(u16, ExposedPortType)>, sqlx::Error> {
+) -> Result<Vec<(u16, ExposedPortDetails)>, sqlx::Error> {
 	let rows = query!(
 		r#"
 		SELECT
 			port,
-			port_type as "port_type: ExposedPortType"
+			port_type as "port_type: ExposedPortType",
+			is_internal
 		FROM
 			deployment_exposed_port
 		WHERE
@@ -1004,17 +1011,25 @@ pub async fn get_exposed_ports_for_deployment(
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
-	.map(|row| (row.port as u16, row.port_type))
+	.map(|row| {
+		(
+			row.port as u16,
+			ExposedPortDetails {
+				type_: row.port_type,
+				is_internal: row.is_internal,
+			},
+		)
+	})
 	.collect();
 
 	Ok(rows)
 }
 
-pub async fn add_exposed_port_for_deployment(
+pub async fn add_exposed_port_details_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	port: u16,
-	exposed_port_type: &ExposedPortType,
+	exposed_port_details: &ExposedPortDetails,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1022,14 +1037,16 @@ pub async fn add_exposed_port_for_deployment(
 			deployment_exposed_port(
 				deployment_id,
 				port,
-				port_type
+				port_type,
+				is_internal
 			)
 		VALUES
-			($1, $2, $3);
+			($1, $2, $3, $4);
 		"#,
 		deployment_id as _,
 		port as i32,
-		exposed_port_type as _
+		exposed_port_details.type_ as _,
+		exposed_port_details.is_internal
 	)
 	.execute(&mut *connection)
 	.await

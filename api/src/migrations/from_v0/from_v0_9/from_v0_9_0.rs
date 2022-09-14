@@ -17,6 +17,7 @@ pub(super) async fn migrate(
 	clean_up_drone_ci(&mut *connection, config).await?;
 	reset_permission_order(&mut *connection, config).await?;
 	update_user_login_table_with_more_info(&mut *connection, config).await?;
+	add_internal_ports_for_deployments(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -832,6 +833,24 @@ async fn update_user_login_table_with_more_info(
 		ADD CONSTRAINT workspace_audit_log_fk_login_id
 		FOREIGN KEY(user_id, login_id) REFERENCES user_login(user_id, login_id);
 	"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn add_internal_ports_for_deployments(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE
+			deployment_exposed_port
+		ADD COLUMN
+			is_internal BOOLEAN NOT NULL;
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;

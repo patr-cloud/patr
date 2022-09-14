@@ -1,7 +1,10 @@
 use std::{collections::BTreeMap, str::FromStr};
 
 use api_models::{
-	models::workspace::infrastructure::deployment::ExposedPortType,
+	models::workspace::{
+		docker_registry::DockerImageExposedPortDetails,
+		infrastructure::deployment::ExposedPortType,
+	},
 	utils::{DateTime, StringifiedU16, Uuid},
 };
 use chrono::Utc;
@@ -258,7 +261,7 @@ pub async fn get_exposed_port_for_docker_image(
 	config: &Settings,
 	repository_name: &str,
 	tag: &str,
-) -> Result<BTreeMap<StringifiedU16, ExposedPortType>, Error> {
+) -> Result<BTreeMap<StringifiedU16, DockerImageExposedPortDetails>, Error> {
 	let god_user =
 		db::get_user_by_user_id(connection, rbac::GOD_USER_ID.get().unwrap())
 			.await?
@@ -320,7 +323,9 @@ pub async fn get_exposed_port_for_docker_image(
 			if let Some((port, "tcp")) = port.split_once('/') {
 				Some((
 					StringifiedU16::from_str(port).ok()?,
-					ExposedPortType::Http,
+					DockerImageExposedPortDetails {
+						type_: ExposedPortType::Http,
+					},
 				))
 			} else {
 				None
