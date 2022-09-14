@@ -5,6 +5,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
@@ -212,6 +213,13 @@ async fn handle_ci_hooks_for_repo(
 				&err,
 			)
 			.await?;
+			db::update_build_finished_time(
+				context.get_database_connection(),
+				&repo.id,
+				build_num,
+				&Utc::now(),
+			)
+			.await?;
 			return Ok(context);
 		}
 	};
@@ -238,6 +246,13 @@ async fn handle_ci_hooks_for_repo(
 					&err,
 				)
 				.await?;
+				db::update_build_finished_time(
+					context.get_database_connection(),
+					&repo.id,
+					build_num,
+					&Utc::now(),
+				)
+				.await?;
 				return Ok(context);
 			}
 		},
@@ -248,6 +263,13 @@ async fn handle_ci_hooks_for_repo(
 				&repo.id,
 				build_num,
 				BuildStatus::Errored,
+			)
+			.await?;
+			db::update_build_finished_time(
+				context.get_database_connection(),
+				&repo.id,
+				build_num,
+				&Utc::now(),
 			)
 			.await?;
 			return Ok(context);
