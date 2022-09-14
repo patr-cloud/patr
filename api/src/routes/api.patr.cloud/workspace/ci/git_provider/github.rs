@@ -27,6 +27,7 @@ use api_models::{
 	},
 	utils::{Base64String, Uuid},
 };
+use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use octorust::{
 	self,
@@ -1357,6 +1358,13 @@ async fn restart_build(
 				&err,
 			)
 			.await?;
+			db::update_build_finished_time(
+				context.get_database_connection(),
+				&repo.id,
+				build_num,
+				&Utc::now(),
+			)
+			.await?;
 			return Ok(context);
 		}
 	};
@@ -1383,6 +1391,13 @@ async fn restart_build(
 					&err,
 				)
 				.await?;
+				db::update_build_finished_time(
+					context.get_database_connection(),
+					&repo.id,
+					build_num,
+					&Utc::now(),
+				)
+				.await?;
 				return Ok(context);
 			}
 		},
@@ -1393,6 +1408,13 @@ async fn restart_build(
 				&repo.id,
 				build_num,
 				BuildStatus::Errored,
+			)
+			.await?;
+			db::update_build_finished_time(
+				context.get_database_connection(),
+				&repo.id,
+				build_num,
+				&Utc::now(),
 			)
 			.await?;
 			return Ok(context);
@@ -1541,6 +1563,13 @@ async fn start_build_for_branch(
 				&err,
 			)
 			.await?;
+			db::update_build_finished_time(
+				context.get_database_connection(),
+				&repo.id,
+				build_num,
+				&Utc::now(),
+			)
+			.await?;
 			return Ok(context);
 		}
 	};
@@ -1567,6 +1596,13 @@ async fn start_build_for_branch(
 					&err,
 				)
 				.await?;
+				db::update_build_finished_time(
+					context.get_database_connection(),
+					&repo.id,
+					build_num,
+					&Utc::now(),
+				)
+				.await?;
 				return Ok(context);
 			}
 		},
@@ -1577,6 +1613,13 @@ async fn start_build_for_branch(
 				&repo.id,
 				build_num,
 				BuildStatus::Errored,
+			)
+			.await?;
+			db::update_build_finished_time(
+				context.get_database_connection(),
+				&repo.id,
+				build_num,
+				&Utc::now(),
 			)
 			.await?;
 			return Ok(context);
