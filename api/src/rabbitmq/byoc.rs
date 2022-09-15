@@ -1,7 +1,10 @@
+use tokio::process::Command;
+
 use crate::{
+	db,
 	models::rabbitmq::BYOCData,
 	utils::{settings::Settings, Error},
-	Database, db,
+	Database,
 };
 
 pub(super) async fn process_request(
@@ -29,6 +32,8 @@ pub(super) async fn process_request(
 				);
 				return Ok(());
 			};
+
+			install_with_helm().await?;
 			Ok(())
 		}
 		BYOCData::CreateDigitaloceanCluster {
@@ -38,4 +43,16 @@ pub(super) async fn process_request(
 			request_id: _,
 		} => Ok(()),
 	}
+}
+
+async fn install_with_helm(
+	local_name: &str,
+	repo_name: &str,
+) -> Result<(), Error> {
+	Command::new("helm")
+		.arg("install")
+		.arg(local_name)
+		.arg(repo_name)
+		.arg("--kube-apiserver");
+	Ok(())
 }
