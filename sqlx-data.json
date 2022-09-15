@@ -105,16 +105,6 @@
     },
     "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id: _\", workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.nameserver_type as \"nameserver_type: _\", workspace_domain.last_unverified as \"last_unverified!\" FROM domain INNER JOIN workspace_domain ON workspace_domain.id = domain.id INNER JOIN resource ON domain.id = resource.id WHERE resource.owner_id = $1 AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
   },
-  "014218cb95e441c6cd559825f5ed01df173088d2fb86e4220e77976fd1b045dd": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE domain( id UUID CONSTRAINT domain_pk PRIMARY KEY, name TEXT NOT NULL CONSTRAINT domain_chk_name_is_valid CHECK( name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' OR name LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' ) ), type RESOURCE_OWNER_TYPE NOT NULL, tld TEXT NOT NULL CONSTRAINT domain_fk_tld REFERENCES domain_tld(tld), CONSTRAINT domain_uq_name_tld UNIQUE(name, tld), CONSTRAINT domain_chk_max_domain_name_length CHECK( (LENGTH(name) + LENGTH(tld)) < 255 ), CONSTRAINT domain_uq_name_type UNIQUE(id, type) );"
-  },
   "01ae581baf799dd8d8063809601ab527eb44e4c8f0649405b07c6bd00acd525e": {
     "describe": {
       "columns": [
@@ -347,6 +337,19 @@
     },
     "query": "CREATE TABLE role_permissions_resource_type( role_id UUID CONSTRAINT role_permissions_resource_type_fk_role_id REFERENCES role(id), permission_id UUID CONSTRAINT role_permissions_resource_type_fk_permission_id REFERENCES permission(id), resource_type_id UUID CONSTRAINT role_permissions_resource_type_fk_resource_type_id REFERENCES resource_type(id), CONSTRAINT role_permissions_resource_type_pk PRIMARY KEY(role_id, permission_id, resource_type_id) );"
   },
+  "06f09f5908c9e8b4a681ce35a5f028e0b07c175ac99d31b1881262f40faeb570": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "UPDATE static_site SET deleted = $2 WHERE id = $1;"
+  },
   "07177688d8c236f615400391dd0e71b93f67477d32c92213e9b2bf3fd8c2cd9a": {
     "describe": {
       "columns": [
@@ -450,16 +453,6 @@
       }
     },
     "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" WHERE username = $1;"
-  },
-  "07341d8b9887f3bdabaee7d54cf9fe672c2624065eed24580ad383e411fef384": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE secret( id UUID CONSTRAINT secret_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)), workspace_id UUID NOT NULL, deployment_id UUID, /* For deployment specific secrets */ CONSTRAINT secret_uq_workspace_id_name UNIQUE(workspace_id, name) );"
   },
   "07aac19835c6180a151a944003e5e014a8ba26aac47a3122cc32bf5c9be6af26": {
     "describe": {
@@ -799,22 +792,6 @@
       }
     },
     "query": "UPDATE user_login SET last_activity = $1, last_activity_ip = $2, last_activity_location = ST_SetSRID(POINT($3, $4)::GEOMETRY, 4326), last_activity_country = $5, last_activity_region = $6, last_activity_city = $7, last_activity_timezone = $8, last_activity_user_agent = $9 WHERE login_id = $10;"
-  },
-  "0cb6df9a6140b8e068b846e7096392003fff3554a2f2b8b7f6e36a0981dcf1d0": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Varchar",
-          "Uuid",
-          "Uuid",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "INSERT INTO resource( id, name, resource_type_id, owner_id, created ) VALUES ($1, $2, $3, $4, $5);"
   },
   "0d262a2cdb70f0c2af1b7b788df13c6d6da8ce31fd6172023a0490f6cbda6d94": {
     "describe": {
@@ -1778,6 +1755,19 @@
     },
     "query": "SELECT image_digest, created as \"created: _\" FROM deployment_deploy_history WHERE image_digest = $1;"
   },
+  "1f5096c1f8b5ce6a0c7413b5c075458a1e258ec87f4102b82d8dd2c097cf9196": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "UPDATE domain SET deleted = $2 WHERE id = $1;"
+  },
   "1fbbf7824b6eec88e9a07501d790b7ec4a3d154754defc787de7e4c8ba323981": {
     "describe": {
       "columns": [],
@@ -2129,6 +2119,16 @@
     },
     "query": "UPDATE ci_builds SET status = $3 WHERE (repo_id = $1 AND build_num = $2);"
   },
+  "2416db57fa4893fbbb99e3ce247846a51fbb73bf83a9fc054b9ab51be8e43ba8": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE UNIQUE INDEX secret_uq_workspace_id_name ON secret(workspace_id, name) WHERE deleted IS NULL;"
+  },
   "241d2d5275d061fa9f24043adb72590b240a691cf68bf703dc63546fa7705ec8": {
     "describe": {
       "columns": [
@@ -2356,16 +2356,6 @@
     },
     "query": "SELECT COUNT(*) as \"count!\" FROM static_site INNER JOIN workspace ON static_site.workspace_id = workspace.id WHERE status = 'deleted' AND workspace.super_admin_id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );"
   },
-  "28c3a8d03871bb820d4ea57bc7ded4e77e4aa8c0fd19556827bc401e16648cac": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE docker_registry_repository( id UUID CONSTRAINT docker_registry_repository_pk PRIMARY KEY, workspace_id UUID NOT NULL CONSTRAINT docker_registry_repository_fk_workspace_id REFERENCES workspace(id), name CITEXT NOT NULL, CONSTRAINT docker_registry_repository_uq_workspace_id_name UNIQUE(workspace_id, name), CONSTRAINT docker_registry_repository_uq_id_workspace_id UNIQUE( id, workspace_id ) );"
-  },
   "292b36a0ab84f6022c19fafc224ce4d2a090fa4a4df94a861480c5835ff6f864": {
     "describe": {
       "columns": [],
@@ -2375,6 +2365,16 @@
       }
     },
     "query": "CREATE EXTENSION IF NOT EXISTS postgis;"
+  },
+  "29b392dc6ab5a493ba0b8d45379f8ee927cee923c6dea63b7c0ad8cf7a847f42": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE UNIQUE INDEX managed_database_uq_workspace_id_name ON managed_database(workspace_id, name) WHERE deleted IS NULL;"
   },
   "2a8531f5a4448c2d77be6b5353946591bf213407b9a58b0b342a03bef0acd99c": {
     "describe": {
@@ -2541,16 +2541,6 @@
     },
     "query": "DELETE FROM resource WHERE id = $1;"
   },
-  "309d01450e54bfe97ed9852aefa751bd8ac59a0095771bfd4a9a26ecc824c464": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE static_site( id UUID CONSTRAINT static_site_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT static_site_chk_name_is_trimmed CHECK( name = TRIM(name) ), status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, current_live_upload UUID, CONSTRAINT static_site_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT static_site_uq_id_workspace_id UNIQUE(id, workspace_id) );"
-  },
   "31fa3365a18b7cdbb3532ea5559f8a6fafda313ec59e82c3d790c31ac45fb452": {
     "describe": {
       "columns": [],
@@ -2560,16 +2550,6 @@
       }
     },
     "query": "CREATE TABLE business_email( user_id UUID NOT NULL CONSTRAINT business_email_fk_user_id REFERENCES \"user\"(id), local VARCHAR(64) NOT NULL CONSTRAINT business_email_chk_local_is_lower_case CHECK( local = LOWER(local) ), domain_id UUID NOT NULL CONSTRAINT business_email_fk_domain_id REFERENCES workspace_domain(id), CONSTRAINT business_email_pk PRIMARY KEY(local, domain_id) );"
-  },
-  "3228fe8c7141cac85ec7797e59df9e3bdf9f5163ec9e39f80b08602770a7a6dd": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, startup_probe_port INTEGER, startup_probe_path VARCHAR(255), startup_probe_port_type EXPOSED_PORT_TYPE, liveness_probe_port INTEGER, liveness_probe_path VARCHAR(255), liveness_probe_port_type EXPOSED_PORT_TYPE, current_live_digest TEXT, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ), CONSTRAINT deployment_chk_image_tag_is_valid CHECK( image_tag != '' ), CONSTRAINT deployment_chk_startup_probe_is_valid CHECK( ( startup_probe_port IS NULL AND startup_probe_path IS NULL AND startup_probe_port_type IS NULL ) OR ( startup_probe_port IS NOT NULL AND startup_probe_path IS NOT NULL AND startup_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_liveness_probe_is_valid CHECK( ( liveness_probe_port IS NULL AND liveness_probe_path IS NULL AND liveness_probe_port_type IS NULL ) OR ( liveness_probe_port IS NOT NULL AND liveness_probe_path IS NOT NULL AND liveness_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_startup_probe_port_type_is_http CHECK( startup_probe_port_type = 'http' ), CONSTRAINT deployment_chk_liveness_probe_port_type_is_http CHECK( liveness_probe_port_type = 'http' ) );"
   },
   "33846eaf8014085364f0ee8032337df4c4d8c4c7fe4df6df74c76049dd3a43f8": {
     "describe": {
@@ -3181,6 +3161,16 @@
       }
     },
     "query": "CREATE TABLE deployment_exposed_port( deployment_id UUID NOT NULL CONSTRAINT deployment_exposed_port_fk_deployment_id REFERENCES deployment(id), port INTEGER NOT NULL CONSTRAINT deployment_exposed_port_chk_port_u16 CHECK( port > 0 AND port <= 65535 ), port_type EXPOSED_PORT_TYPE NOT NULL, CONSTRAINT deployment_exposed_port_pk PRIMARY KEY(deployment_id, port), CONSTRAINT deployment_exposed_port_uq_deployment_id_port_port_type UNIQUE(deployment_id, port, port_type) );"
+  },
+  "40e213237274b508f85079ac87d33957d3e73d15109e31d13c379a5eb7dc0f3b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE UNIQUE INDEX static_site_uq_name_workspace_id ON static_site(workspace_id, name) WHERE deleted IS NULL;"
   },
   "4217b5c9e77af640372166ff2de14ff5dfc8f7b66d4e5c99a0363a61c84448df": {
     "describe": {
@@ -3794,6 +3784,19 @@
       }
     },
     "query": "UPDATE deployment_payment_history SET stop_time = $1 WHERE deployment_id = $2 AND stop_time IS NULL;"
+  },
+  "48d3e18917fe8e188b3321d666c02f78898a56cbc7e462398fe905fb868f011d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "UPDATE managed_url SET deleted = $2 WHERE id = $1;"
   },
   "4a59dfecc6411d998b7f8b8b4a8d32a9f565197e1cc4ef5518b2290c243ffddf": {
     "describe": {
@@ -6707,6 +6710,16 @@
     },
     "query": "CREATE INDEX role_permissions_resource_type_idx_role_id_resource_type_id ON role_permissions_resource_type (role_id, resource_type_id);"
   },
+  "7f9b090cc0013aadd0daed235a689086d001a05e18d401f0b03292615a7ad234": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE secret( id UUID CONSTRAINT secret_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)), workspace_id UUID NOT NULL, deployment_id UUID, /* For deployment specific secrets */ deleted TIMESTAMPTZ );"
+  },
   "80fa0cff43932600e815f32385f983ff6c643e04f261fd5df7ff43b8ca98a9cf": {
     "describe": {
       "columns": [],
@@ -6891,6 +6904,19 @@
       }
     },
     "query": "SELECT * FROM workspace_audit_log WHERE id = $1;"
+  },
+  "8353c224b120838e7c36321c8e9d8980f342f07c8f0c34ba85658636bd2c1751": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "UPDATE deployment SET deleted = $2 WHERE id = $1;"
   },
   "83912ed29e82fb53ea784afaefd393bd6362298a50c7688e3db952ed59ae81dc": {
     "describe": {
@@ -7852,6 +7878,16 @@
     },
     "query": "DELETE FROM deployment_environment_variable WHERE deployment_id = $1;"
   },
+  "8d7e84d1eeda0a1f776ce67ed1ca9d6c1b6aa7e1fe83278eadf900c40035118b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE managed_database( id UUID CONSTRAINT managed_database_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT managed_database_chk_name_is_trimmed CHECK( name = TRIM(name) ), db_name VARCHAR(255) NOT NULL CONSTRAINT managed_database_chk_db_name_is_trimmed CHECK( db_name = TRIM(db_name) ), engine MANAGED_DATABASE_ENGINE NOT NULL, version TEXT NOT NULL, num_nodes INTEGER NOT NULL, database_plan MANAGED_DATABASE_PLAN NOT NULL, region TEXT NOT NULL, status MANAGED_DATABASE_STATUS NOT NULL, host TEXT NOT NULL, port INTEGER NOT NULL, username TEXT NOT NULL, password TEXT NOT NULL, workspace_id UUID NOT NULL, digitalocean_db_id TEXT CONSTRAINT managed_database_uq_digitalocean_db_id UNIQUE, deleted TIMESTAMPTZ );"
+  },
   "8dbbc56eaf00c56d73e71c025b963dc0ce7f63cbda606b34e32259e819480ff3": {
     "describe": {
       "columns": [],
@@ -7971,13 +8007,24 @@
       "parameters": {
         "Left": [
           "Uuid",
-          "Varchar",
-          "Varchar",
-          "Uuid"
+          "Timestamptz"
         ]
       }
     },
-    "query": "INSERT INTO role( id, name, description, owner_id ) VALUES ($1, $2, $3, $4);"
+    "query": "UPDATE workspace SET deleted = $2 WHERE id = $1;"
+  },
+  "952f42b0030d1b48598da906a35a064518a1b9be64340da3cb3d4eebb0f1ea34": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "UPDATE workspace SET deleted = $2 WHERE id = $1;"
   },
   "9581388fb7bb98001ffa0a401a9b5e263bea871ef4cb5f1305b65af163ed3205": {
     "describe": {
@@ -8036,6 +8083,19 @@
       }
     },
     "query": "CREATE TABLE workspace_user( user_id UUID NOT NULL CONSTRAINT workspace_user_fk_user_id REFERENCES \"user\"(id), workspace_id UUID NOT NULL CONSTRAINT workspace_user_fk_workspace_id REFERENCES workspace(id), role_id UUID NOT NULL CONSTRAINT workspace_user_fk_role_id REFERENCES role(id), CONSTRAINT workspace_user_pk PRIMARY KEY(user_id, workspace_id, role_id) );"
+  },
+  "96d11900613e569e4ecf29c2759bcd20a853c8df35a2443e48e3f9c63b614a14": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "UPDATE managed_database SET deleted = $2 WHERE id = $1;"
   },
   "96e525b047f0838a7c25a1277bae273d2ce2aaf541f0b2aad82404728baecc42": {
     "describe": {
@@ -8221,18 +8281,6 @@
       }
     },
     "query": "CREATE TABLE role_permissions_resource( role_id UUID CONSTRAINT role_permissions_resource_fk_role_id REFERENCES role(id), permission_id UUID CONSTRAINT role_permissions_resource_fk_permission_id REFERENCES permission(id), resource_id UUID CONSTRAINT role_permissions_resource_fk_resource_id REFERENCES resource(id), CONSTRAINT role_permissions_resource_pk PRIMARY KEY(role_id, permission_id, resource_id) );"
-  },
-  "9e8e2ff3a720e95dfb284e5fe053621df3a009d454eb5c571d73782e59507efb": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "DELETE FROM docker_registry_repository WHERE id = $1;"
   },
   "9eb0993ca671ecb32e1ed2303b5bd741a025fb8b0c7ce6a1600cc64f57eb8002": {
     "describe": {
@@ -8787,6 +8835,16 @@
     },
     "query": "SELECT * FROM permission WHERE id = $1;"
   },
+  "a4bce5f77a33d10edc794f92f55096a576d89fca38c10b055ba1932950f1b3c6": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE static_site( id UUID CONSTRAINT static_site_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT static_site_chk_name_is_trimmed CHECK( name = TRIM(name) ), status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, current_live_upload UUID, deleted TIMESTAMPTZ, CONSTRAINT static_site_uq_id_workspace_id UNIQUE(id, workspace_id) );"
+  },
   "a52af9e8867c7460b1f9958bed22d9164e0e57977225a2c94d4fb0dad48b595f": {
     "describe": {
       "columns": [],
@@ -8850,6 +8908,19 @@
     },
     "query": "ALTER TABLE domain_payment_history ADD CONSTRAINT domain_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id);"
   },
+  "a6387ef3e282f83f9202a09d5133c1777152420d750e7897c7167aec8298d344": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "UPDATE docker_registry_repository SET deleted = $2 WHERE id = $1;"
+  },
   "a69106420eb20523380486866b32d9b4d3c45c39b139274c4aeb9442bb823300": {
     "describe": {
       "columns": [
@@ -8892,6 +8963,19 @@
     },
     "query": "DELETE FROM password_reset_request WHERE user_id = $1;"
   },
+  "a81cf328200edaabf69a7dcf02287b59b9642b9d6e516292028a7aba2093e5e9": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "UPDATE secret SET deleted = $2 WHERE id = $1;"
+  },
   "a8688bba56bf919a5196740c13a1ef1e2637281c3da4d2ffed0cf1264fd7ee54": {
     "describe": {
       "columns": [],
@@ -8902,23 +8986,15 @@
     },
     "query": "CREATE TABLE coupon_code( code TEXT CONSTRAINT coupon_code_pk PRIMARY KEY, credits INTEGER NOT NULL CONSTRAINT coupon_code_chk_credits_positive CHECK(credits >= 0), expiry TIMESTAMPTZ, uses_remaining INTEGER CONSTRAINT coupon_code_chk_uses_remaining_positive CHECK( uses_remaining IS NULL OR uses_remaining > 0 ) );"
   },
-  "a98cea2a8f8fc45db9251140e9bdedf0f23cfb31386c6a9ff0b4496068407532": {
+  "a9a634c3397b4ce26869b2d7eb6b61d5707ed4440dd3f9973fa2f5b8806fdb7b": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
-        "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          }
-        ]
+        "Left": []
       }
     },
-    "query": "UPDATE docker_registry_repository SET name = $2 WHERE id = $1;"
+    "query": "CREATE UNIQUE INDEX domain_uq_name_tld ON domain(name, tld) WHERE deleted IS NULL;"
   },
   "aa02302c781df12aec94b98737d6d284570ac6032aeb4222f2a08980a6c11e19": {
     "describe": {
@@ -9417,6 +9493,16 @@
       }
     },
     "query": "UPDATE ci_steps SET status = $4 WHERE ( repo_id = $1 AND build_num = $2 AND step_id = $3 );"
+  },
+  "ae3a24a227a85c5d90137a35f40edd089ec2a5a6f2465ce4bd0c0893ac35ace1": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE managed_url( id UUID CONSTRAINT managed_url_pk PRIMARY KEY, sub_domain TEXT NOT NULL CONSTRAINT managed_url_chk_sub_domain_valid CHECK( sub_domain ~ '^(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])$' OR sub_domain = '@' ), domain_id UUID NOT NULL, path TEXT NOT NULL, url_type MANAGED_URL_TYPE NOT NULL, deployment_id UUID, port INTEGER CONSTRAINT managed_url_chk_port_u16 CHECK( port > 0 AND port <= 65535 ), static_site_id UUID, url TEXT, workspace_id UUID NOT NULL, is_configured BOOLEAN NOT NULL, deleted TIMESTAMPTZ, CONSTRAINT managed_url_chk_values_null_or_not_null CHECK( ( url_type = 'proxy_to_deployment' AND deployment_id IS NOT NULL AND port IS NOT NULL AND static_site_id IS NULL AND url IS NULL ) OR ( url_type = 'proxy_to_static_site' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NOT NULL AND url IS NULL ) OR ( url_type = 'proxy_url' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NULL AND url IS NOT NULL ) OR ( url_type = 'redirect' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NULL AND url IS NOT NULL ) ) );"
   },
   "ae41156d89527be463294943976764f6e16e645eb799bdbd47aa1efdb637d4f1": {
     "describe": {
@@ -9948,24 +10034,6 @@
     },
     "query": "CREATE TABLE IF NOT EXISTS static_sites_payment_history( workspace_id UUID NOT NULL, static_site_plan STATIC_SITE_PLAN NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
   },
-  "b79c1ad5a898a5fb9d24f0782c9f1990888899670a40f6d6bca7abc7161b4f67": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE workspace SET name = $1 WHERE id = $2;"
-  },
   "b80c3e5c6e1620ccee068d08214bc0c787967400a6a10f45c6065ba22bea4369": {
     "describe": {
       "columns": [],
@@ -10222,24 +10290,6 @@
       }
     },
     "query": "INSERT INTO transaction( id, month, amount, payment_intent_id, date, workspace_id, transaction_type, payment_status, description ) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9 );"
-  },
-  "be816fa44f70a6aed2285bf950575d5939a16b3d61d3009772afee9ad7a22cb3": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE managed_database SET name = $1 WHERE id = $2;"
   },
   "beb72702ef21c33f9f6cb5f1778823f19becd161d3694e181eb9014f682b81e1": {
     "describe": {
@@ -10929,6 +10979,16 @@
     },
     "query": "INSERT INTO static_sites_payment_history( workspace_id, static_site_plan, start_time, stop_time ) VALUES ( $1, $2, $3, NULL );"
   },
+  "cd1f8fbc9c705660787c29afb0d9ddcc8ede094fe6d4b9f896055a8f3c07727d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE UNIQUE INDEX workspace_uq_name ON workspace(name) WHERE deleted IS NULL;"
+  },
   "cdb7e6beee050fd108b0b8966a75045b383014f735c26cf1fd17e0cd0ecb0a60": {
     "describe": {
       "columns": [
@@ -10992,6 +11052,16 @@
       }
     },
     "query": "DELETE FROM patr_domain_dns_record WHERE id = $1;"
+  },
+  "d00b61ccba2dbddb76a5b76a2c35c1faddaf9cda04cd1e19e89789cff90d57f3": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE docker_registry_repository( id UUID CONSTRAINT docker_registry_repository_pk PRIMARY KEY, workspace_id UUID NOT NULL CONSTRAINT docker_registry_repository_fk_workspace_id REFERENCES workspace(id), name CITEXT NOT NULL, deleted TIMESTAMPTZ, CONSTRAINT docker_registry_repository_uq_id_workspace_id UNIQUE( id, workspace_id ) );"
   },
   "d09ad91d4dddfd2c60d821588041b59feb517af01266fe52980e0b4aca9b87ef": {
     "describe": {
@@ -11803,16 +11873,6 @@
     },
     "query": "UPDATE workspace SET name = COALESCE($1, name), alert_emails = COALESCE($2, alert_emails), default_payment_method_id = COALESCE($3, default_payment_method_id) WHERE id = $4;"
   },
-  "da1189d39d4d092b648061fd074d1e847a2142cd3a13efd0bb18abd92978baca": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE managed_database( id UUID CONSTRAINT managed_database_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT managed_database_chk_name_is_trimmed CHECK( name = TRIM(name) ), db_name VARCHAR(255) NOT NULL CONSTRAINT managed_database_chk_db_name_is_trimmed CHECK( db_name = TRIM(db_name) ), engine MANAGED_DATABASE_ENGINE NOT NULL, version TEXT NOT NULL, num_nodes INTEGER NOT NULL, database_plan MANAGED_DATABASE_PLAN NOT NULL, region TEXT NOT NULL, status MANAGED_DATABASE_STATUS NOT NULL, host TEXT NOT NULL, port INTEGER NOT NULL, username TEXT NOT NULL, password TEXT NOT NULL, workspace_id UUID NOT NULL, digitalocean_db_id TEXT CONSTRAINT managed_database_uq_digitalocean_db_id UNIQUE, CONSTRAINT managed_database_uq_name_workspace_id UNIQUE(name, workspace_id) );"
-  },
   "da3901cb1079f58c9b722ee678e97e05baa99e5ee5747e51b084a3c1a60063d7": {
     "describe": {
       "columns": [],
@@ -12066,24 +12126,6 @@
     },
     "query": "INSERT INTO \"user\"( id, username, password, first_name, last_name, dob, bio, location, created, recovery_email_local, recovery_email_domain_id, recovery_phone_country_code, recovery_phone_number, workspace_limit, sign_up_coupon ) VALUES ( $1, $2, $3, $4, $5, NULL, NULL, NULL, $6, $7, $8, $9, $10, $11, $12 );"
   },
-  "dca6992cc85f4d617680b1e89577f622f75a94f85adbe7e5142eb8b056e115b2": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET name = $1 WHERE id = $2;"
-  },
   "dca7ef80973e51ffe78bd9f717ae1cbcd73aaf19b3530b322a77c9d39edf26fb": {
     "describe": {
       "columns": [],
@@ -12125,16 +12167,6 @@
       }
     },
     "query": "SELECT tag, manifest_digest, last_updated FROM docker_registry_repository_tag WHERE repository_id = $1;"
-  },
-  "dd53a10ba55022dc5327808dbed2ece67642a885e9337f296960f60c619d1a76": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, alert_emails VARCHAR(320) [] NOT NULL, payment_type PAYMENT_TYPE NOT NULL, default_payment_method_id TEXT, deployment_limit INTEGER NOT NULL, database_limit INTEGER NOT NULL, static_site_limit INTEGER NOT NULL, managed_url_limit INTEGER NOT NULL, docker_repository_storage_limit INTEGER NOT NULL, domain_limit INTEGER NOT NULL, secret_limit INTEGER NOT NULL, stripe_customer_id TEXT NOT NULL, address_id UUID, amount_due DOUBLE PRECISION NOT NULL );"
   },
   "dd7882d7a050b27d0474f90e0b4335e7b604155c424347a65123b56a2379284d": {
     "describe": {
@@ -12835,6 +12867,26 @@
       }
     },
     "query": "SELECT COUNT(*) \"count!\" FROM deployment INNER JOIN workspace ON deployment.workspace_id = workspace.id WHERE deployment.status = 'deleted' AND workspace.super_admin_id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );"
+  },
+  "efc0c18b2d00b77f3f4b37a5879ce1cfd7a5f74054560859702767aa47e46c7d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, startup_probe_port INTEGER, startup_probe_path VARCHAR(255), startup_probe_port_type EXPOSED_PORT_TYPE, liveness_probe_port INTEGER, liveness_probe_path VARCHAR(255), liveness_probe_port_type EXPOSED_PORT_TYPE, current_live_digest TEXT, deleted TIMESTAMPTZ, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ), CONSTRAINT deployment_chk_image_tag_is_valid CHECK( image_tag != '' ), CONSTRAINT deployment_chk_startup_probe_is_valid CHECK( ( startup_probe_port IS NULL AND startup_probe_path IS NULL AND startup_probe_port_type IS NULL ) OR ( startup_probe_port IS NOT NULL AND startup_probe_path IS NOT NULL AND startup_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_liveness_probe_is_valid CHECK( ( liveness_probe_port IS NULL AND liveness_probe_path IS NULL AND liveness_probe_port_type IS NULL ) OR ( liveness_probe_port IS NOT NULL AND liveness_probe_path IS NOT NULL AND liveness_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_startup_probe_port_type_is_http CHECK( startup_probe_port_type = 'http' ), CONSTRAINT deployment_chk_liveness_probe_port_type_is_http CHECK( liveness_probe_port_type = 'http' ) );"
+  },
+  "f0d89c52ec908f391a5753b69b004cabf7f3635d492317901a9c140198634bfb": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE UNIQUE INDEX deployment_uq_workspace_id_name ON deployment(workspace_id, name) WHERE deleted IS NULL;"
   },
   "f0f61d6c683953e8f0ad3c94e7493b7f2fe5520d7d98420eed7c6fdab0d1ecc2": {
     "describe": {
@@ -13708,6 +13760,16 @@
       }
     },
     "query": "ALTER TABLE payment_method ADD CONSTRAINT payment_method_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE;"
+  },
+  "fec3fe8449ddbd177423ae0688af76ad62da36bfebf3f25635f7ddad533d6b22": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE UNIQUE INDEX managed_url_uq_sub_domain_domain_id_path ON managed_url(sub_domain, domain_id, path) WHERE deleted IS NULL;"
   },
   "ff096d079cff3057d77210c78f787da16294324cc159a2f05367ca370a7069c7": {
     "describe": {

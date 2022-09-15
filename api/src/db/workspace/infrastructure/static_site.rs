@@ -44,8 +44,7 @@ pub async fn initialize_static_site_pre(
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
 			workspace_id UUID NOT NULL,
 			current_live_upload UUID,
-			CONSTRAINT static_site_uq_name_workspace_id
-				UNIQUE(name, workspace_id),
+			deleted TIMESTAMPTZ,
 			CONSTRAINT static_site_uq_id_workspace_id
 				UNIQUE(id, workspace_id)
 		);
@@ -97,6 +96,19 @@ pub async fn initialize_static_site_post(
 		ADD CONSTRAINT static_site_fk_current_live_upload
 		FOREIGN KEY(id, current_live_upload) REFERENCES
 		static_site_upload_history(static_site_id, upload_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			static_site_uq_name_workspace_id
+		ON
+			static_site(workspace_id, name)
+		WHERE
+			deleted IS NULL;
 		"#
 	)
 	.execute(&mut *connection)
@@ -284,6 +296,28 @@ pub async fn update_static_site_name(
 		"#,
 		name as _,
 		static_site_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn delete_static_site(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &Uuid,
+	deletion_time: &DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			static_site
+		SET
+			deleted = $2
+		WHERE
+			id = $1;
+		"#,
+		static_site_id as _,
+		deletion_time
 	)
 	.execute(&mut *connection)
 	.await

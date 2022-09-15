@@ -28,8 +28,7 @@ pub async fn initialize_docker_registry_pre(
 				CONSTRAINT docker_registry_repository_fk_workspace_id
 					REFERENCES workspace(id),
 			name CITEXT NOT NULL,
-			CONSTRAINT docker_registry_repository_uq_workspace_id_name
-				UNIQUE(workspace_id, name),
+			deleted TIMESTAMPTZ,
 			CONSTRAINT docker_registry_repository_uq_id_workspace_id UNIQUE(
 				id, workspace_id
 			)
@@ -98,6 +97,19 @@ pub async fn initialize_docker_registry_post(
 		ALTER TABLE docker_registry_repository
 		ADD CONSTRAINT docker_registry_repository_fk_id_workspace_id
 		FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			docker_registry_repository_uq_workspace_id_name
+		ON
+			docker_registry_repository(workspace_id, name)
+		WHERE
+			deleted IS NULL;
 		"#
 	)
 	.execute(&mut *connection)
@@ -265,22 +277,22 @@ pub async fn get_docker_repository_by_id(
 	.await
 }
 
-pub async fn update_docker_repository_name(
+pub async fn delete_docker_repository(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	repository_id: &Uuid,
-	name: &str,
+	docker_repository_id: &Uuid,
+	deletion_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		UPDATE
 			docker_registry_repository
 		SET
-			name = $2
+			deleted = $2
 		WHERE
 			id = $1;
 		"#,
-		repository_id as _,
-		name as _
+		docker_repository_id as _,
+		deletion_time
 	)
 	.execute(&mut *connection)
 	.await
@@ -608,25 +620,6 @@ pub async fn delete_all_images_for_docker_repository(
 			docker_registry_repository_manifest
 		WHERE
 			repository_id = $1;
-		"#,
-		repository_id as _
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-#[allow(dead_code)]
-pub async fn delete_docker_repository(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	repository_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		DELETE FROM
-			docker_registry_repository
-		WHERE
-			id = $1;
 		"#,
 		repository_id as _
 	)

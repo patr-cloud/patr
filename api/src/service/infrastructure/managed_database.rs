@@ -204,12 +204,7 @@ pub async fn delete_managed_database(
 		}
 	}
 
-	db::update_managed_database_name(
-		connection,
-		database_id,
-		&format!("patr-deleted: {}-{}", database.name, database.id),
-	)
-	.await?;
+	db::delete_managed_database(connection, database_id, &Utc::now()).await?;
 
 	db::update_managed_database_status(
 		connection,

@@ -344,15 +344,7 @@ pub async fn delete_managed_url(
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
 
-	db::update_managed_url_sub_domain(
-		connection,
-		managed_url_id,
-		&format!(
-			"patr-deleted: {}@{}",
-			managed_url.id, managed_url.sub_domain
-		),
-	)
-	.await?;
+	db::delete_managed_url(connection, managed_url_id, &Utc::now()).await?;
 
 	let num_managed_urls =
 		db::get_all_managed_urls_in_workspace(connection, workspace_id)

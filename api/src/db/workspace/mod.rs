@@ -109,8 +109,7 @@ pub async fn initialize_workspaces_pre(
 		CREATE TABLE workspace(
 			id UUID
 				CONSTRAINT workspace_pk PRIMARY KEY,
-			name CITEXT NOT NULL
-				CONSTRAINT workspace_uq_name UNIQUE,
+			name CITEXT NOT NULL,
 			super_admin_id UUID NOT NULL
 				CONSTRAINT workspace_fk_super_admin_id
 					REFERENCES "user"(id),
@@ -127,7 +126,8 @@ pub async fn initialize_workspaces_pre(
 			secret_limit INTEGER NOT NULL,
 			stripe_customer_id TEXT NOT NULL,
 			address_id UUID,
-			amount_due DOUBLE PRECISION NOT NULL
+			amount_due DOUBLE PRECISION NOT NULL,
+			deleted TIMESTAMPTZ
 		);
 		"#
 	)
@@ -312,6 +312,19 @@ pub async fn initialize_workspaces_post(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			workspace_uq_name
+		ON
+			workspace(name)
+		WHERE
+			deleted IS NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	domain::initialize_domain_post(connection).await?;
 	docker_registry::initialize_docker_registry_post(connection).await?;
 	secret::initialize_secret_post(connection).await?;
@@ -462,22 +475,22 @@ pub async fn get_workspace_by_name(
 	.await
 }
 
-pub async fn update_workspace_name(
+pub async fn delete_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	name: &str,
+	deletion_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		UPDATE
 			workspace
 		SET
-			name = $1
+			deleted = $2
 		WHERE
-			id = $2;
+			id = $1;
 		"#,
-		name as _,
 		workspace_id as _,
+		deletion_time
 	)
 	.execute(&mut *connection)
 	.await

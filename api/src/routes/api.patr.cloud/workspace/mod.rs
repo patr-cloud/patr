@@ -548,7 +548,7 @@ async fn delete_workspace(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let workspace = db::get_workspace_info(
+	let _workspace = db::get_workspace_info(
 		context.get_database_connection(),
 		&workspace_id,
 	)
@@ -556,7 +556,6 @@ async fn delete_workspace(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
-	let name = format!("patr-deleted: {}@{}", workspace_id, workspace.name);
 	let namespace = workspace_id.as_str();
 
 	let config = context.get_state().config.clone();
@@ -624,10 +623,10 @@ async fn delete_workspace(
 	)
 	.await?;
 
-	db::update_workspace_name(
+	db::delete_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		&name,
+		&Utc::now(),
 	)
 	.await?;
 

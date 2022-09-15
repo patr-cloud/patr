@@ -223,12 +223,7 @@ pub async fn delete_static_site(
 	)
 	.await?;
 
-	db::update_static_site_name(
-		connection,
-		static_site_id,
-		&format!("patr-deleted: {}-{}", static_site.name, static_site_id),
-	)
-	.await?;
+	db::delete_static_site(connection, static_site_id, &Utc::now()).await?;
 
 	db::update_static_site_status(
 		connection,

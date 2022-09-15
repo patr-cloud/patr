@@ -2,6 +2,7 @@ use std::{fmt::Display, str::FromStr};
 
 use api_macros::{query, query_as};
 use api_models::utils::Uuid;
+use chrono::{DateTime, Utc};
 use eve_rs::AsError;
 
 use crate::{error, utils::Error, Database};
@@ -214,8 +215,7 @@ pub async fn initialize_managed_database_pre(
 			workspace_id UUID NOT NULL,
 			digitalocean_db_id TEXT
 				CONSTRAINT managed_database_uq_digitalocean_db_id UNIQUE,
-			CONSTRAINT managed_database_uq_name_workspace_id
-				UNIQUE(name, workspace_id)
+			deleted TIMESTAMPTZ
 		);
 		"#
 	)
@@ -234,6 +234,19 @@ pub async fn initialize_managed_database_post(
 		ALTER TABLE managed_database 
 		ADD CONSTRAINT managed_database_fk_id_workspace_id
 		FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			managed_database_uq_workspace_id_name
+		ON
+			managed_database(workspace_id, name)
+		WHERE
+			deleted IS NULL;
 		"#
 	)
 	.execute(&mut *connection)
@@ -338,22 +351,22 @@ pub async fn update_managed_database_status(
 	.map(|_| ())
 }
 
-pub async fn update_managed_database_name(
+pub async fn delete_managed_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	database_id: &Uuid,
-	name: &str,
+	deletion_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		UPDATE
 			managed_database
 		SET
-			name = $1
+			deleted = $2
 		WHERE
-			id = $2;
+			id = $1;
 		"#,
-		name as _,
 		database_id as _,
+		deletion_time
 	)
 	.execute(&mut *connection)
 	.await

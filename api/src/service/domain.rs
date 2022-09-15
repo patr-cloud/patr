@@ -756,12 +756,7 @@ pub async fn delete_domain_in_workspace(
 		&Utc::now(),
 	)
 	.await?;
-	db::update_generic_domain_name(
-		connection,
-		&domain.id,
-		&format!("patr-deleted: {}@{}", domain.id, domain.name),
-	)
-	.await?;
+	db::delete_domain(connection, domain_id, &Utc::now()).await?;
 
 	let domain_plan =
 		match db::get_domains_for_workspace(connection, workspace_id)

@@ -140,6 +140,7 @@ pub async fn initialize_deployment_pre(
 			liveness_probe_path VARCHAR(255),
 			liveness_probe_port_type EXPOSED_PORT_TYPE,
 			current_live_digest TEXT,
+			deleted TIMESTAMPTZ,
 			CONSTRAINT deployment_fk_repository_id_workspace_id
 				FOREIGN KEY(repository_id, workspace_id)
 					REFERENCES docker_registry_repository(id, workspace_id),
@@ -359,6 +360,19 @@ pub async fn initialize_deployment_post(
 		ADD CONSTRAINT deployment_fk_current_live_digest
 		FOREIGN KEY(id, current_live_digest) REFERENCES
 		deployment_deploy_history(deployment_id, image_digest);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			deployment_uq_workspace_id_name
+		ON
+			deployment(workspace_id, name)
+		WHERE
+			deleted IS NULL;
 		"#
 	)
 	.execute(&mut *connection)
@@ -831,22 +845,22 @@ pub async fn update_deployment_status(
 	.map(|_| ())
 }
 
-pub async fn update_deployment_name(
+pub async fn delete_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
-	name: &str,
+	deletion_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		UPDATE
 			deployment
 		SET
-			name = $1
+			deleted = $2
 		WHERE
-			id = $2;
+			id = $1;
 		"#,
-		name as _,
-		deployment_id as _
+		deployment_id as _,
+		deletion_time
 	)
 	.execute(&mut *connection)
 	.await

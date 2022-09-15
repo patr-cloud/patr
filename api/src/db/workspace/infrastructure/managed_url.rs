@@ -1,4 +1,5 @@
 use api_models::utils::Uuid;
+use chrono::{DateTime, Utc};
 
 use crate::{query, query_as, Database};
 
@@ -49,12 +50,7 @@ pub async fn initialize_managed_url_pre(
 			sub_domain TEXT NOT NULL
 				CONSTRAINT managed_url_chk_sub_domain_valid CHECK(
 					sub_domain ~ '^(([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])$' OR
-					sub_domain = '@' OR
-					sub_domain LIKE CONCAT(
-						'patr-deleted: ',
-						REPLACE(id::TEXT, '-', ''),
-						'@%'
-					)
+					sub_domain = '@'
 				),
 			domain_id UUID NOT NULL,
 			path TEXT NOT NULL,
@@ -67,9 +63,7 @@ pub async fn initialize_managed_url_pre(
 			url TEXT,
 			workspace_id UUID NOT NULL,
 			is_configured BOOLEAN NOT NULL,
-			CONSTRAINT managed_url_uq_sub_domain_domain_id_path UNIQUE(
-				sub_domain, domain_id, path
-			),
+			deleted TIMESTAMPTZ,
 			CONSTRAINT managed_url_chk_values_null_or_not_null CHECK(
 				(
 					url_type = 'proxy_to_deployment' AND
@@ -136,6 +130,19 @@ pub async fn initialize_managed_url_post(
 			ADD CONSTRAINT managed_url_fk_id_workspace_id
 				FOREIGN KEY(id, workspace_id)
 					REFERENCES resource(id, owner_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			managed_url_uq_sub_domain_domain_id_path
+		ON
+			managed_url(sub_domain, domain_id, path)
+		WHERE
+			deleted IS NULL;
 		"#
 	)
 	.execute(&mut *connection)
@@ -403,41 +410,22 @@ pub async fn update_managed_url_configuration_status(
 	.map(|_| ())
 }
 
-pub async fn update_managed_url_sub_domain(
+pub async fn delete_managed_url(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	managed_url_id: &Uuid,
-	sub_domain: &str,
+	deletion_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		UPDATE
 			managed_url
 		SET
-			sub_domain = $2
+			deleted = $2
 		WHERE
 			id = $1;
 		"#,
 		managed_url_id as _,
-		sub_domain
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-#[allow(dead_code)]
-pub async fn delete_managed_url(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	managed_url_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		DELETE FROM
-			managed_url
-		WHERE
-			id = $1;
-		"#,
-		managed_url_id as _,
+		deletion_time
 	)
 	.execute(&mut *connection)
 	.await

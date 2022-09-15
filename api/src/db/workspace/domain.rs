@@ -126,17 +126,12 @@ pub async fn initialize_domain_pre(
 			id UUID CONSTRAINT domain_pk PRIMARY KEY,
 			name TEXT NOT NULL
 				CONSTRAINT domain_chk_name_is_valid CHECK(
-					name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' OR
-					name LIKE CONCAT(
-						'patr-deleted: ',
-						REPLACE(id::TEXT, '-', ''),
-						'@%'
-					)
+					name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$'
 				),
 			type RESOURCE_OWNER_TYPE NOT NULL,
 			tld TEXT NOT NULL CONSTRAINT domain_fk_tld
 					REFERENCES domain_tld(tld),
-			CONSTRAINT domain_uq_name_tld UNIQUE(name, tld),
+			deleted TIMESTAMPTZ,
 			CONSTRAINT domain_chk_max_domain_name_length CHECK(
 				(LENGTH(name) + LENGTH(tld)) < 255
 			),
@@ -325,6 +320,19 @@ pub async fn initialize_domain_post(
 		ALTER TABLE patr_domain_dns_record
 		ADD CONSTRAINT patr_domain_dns_record_fk_id
 		FOREIGN KEY(id) REFERENCES resource(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			domain_uq_name_tld
+		ON
+			domain(name, tld)
+		WHERE
+			deleted IS NULL;
 		"#
 	)
 	.execute(&mut *connection)
@@ -713,22 +721,22 @@ pub async fn delete_personal_domain(
 	.map(|_| ())
 }
 
-pub async fn update_generic_domain_name(
+pub async fn delete_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
-	name: &str,
+	deletion_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		UPDATE
 			domain
 		SET
-			name = $1
+			deleted = $2
 		WHERE
-			id = $2;
+			id = $1;
 		"#,
-		name,
 		domain_id as _,
+		deletion_time
 	)
 	.execute(&mut *connection)
 	.await
@@ -754,7 +762,7 @@ pub async fn delete_domain_from_workspace(
 	.map(|_| ())
 }
 
-#[allow(dead_code)]
+// TODO: do we really need to delete a domain?
 pub async fn delete_generic_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
