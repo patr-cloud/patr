@@ -87,6 +87,7 @@ pub async fn initialize(app: &App) -> Result<(), Error> {
 				},
 			),
 			&app.config,
+			"patr-bills",
 			&request_id,
 		)
 		.await?;

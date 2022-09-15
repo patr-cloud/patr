@@ -117,6 +117,7 @@ async fn async_main() -> Result<(), EveError> {
 				},
 			),
 			&app.config,
+			"patr-bills",
 			&request_id,
 		)
 		.await?;
