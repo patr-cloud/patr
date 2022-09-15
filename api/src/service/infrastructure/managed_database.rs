@@ -92,7 +92,6 @@ pub async fn create_managed_database_in_workspace(
 	db::create_resource(
 		connection,
 		&database_id,
-		&format!("{}-database-{}", provider, database_id),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()

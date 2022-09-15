@@ -565,6 +565,16 @@
     },
     "query": "SELECT \"user\".recovery_phone_country_code as \"country_code!\", \"user\".recovery_phone_number as \"phone_number!\" FROM \"user\" WHERE \"user\".id = $1 AND \"user\".recovery_phone_number IS NOT NULL AND \"user\".recovery_phone_country_code IS NOT NULL;"
   },
+  "0b25100517e5ae7a75af8f37e8c07fed3a5ca55708c377b76f9d19eeede33a6d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE resource( id UUID CONSTRAINT resource_pk PRIMARY KEY, resource_type_id UUID NOT NULL CONSTRAINT resource_fk_resource_type_id REFERENCES resource_type(id), owner_id UUID NOT NULL CONSTRAINT resource_fk_owner_id REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE, created TIMESTAMPTZ NOT NULL, CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id) );"
+  },
   "0c01c22d7fe36d4c3ff79a1e95d189fc096164ce95f2d88105940d03e4929ac4": {
     "describe": {
       "columns": [
@@ -1777,16 +1787,6 @@
       }
     },
     "query": "CREATE TYPE MANAGED_DATABASE_STATUS AS ENUM( 'creating', /* Started the creation of database */ 'running', /* Database is running successfully */ 'stopped', /* Database is stopped by the user */ 'errored', /* Database encountered errors */ 'deleted' /* Database is deled by the user */ );"
-  },
-  "20218e0a712439ae1abc46a87157e91f0ec5055cb74545f47f5a7aeaecd3ff85": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE resource( id UUID CONSTRAINT resource_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, resource_type_id UUID NOT NULL CONSTRAINT resource_fk_resource_type_id REFERENCES resource_type(id), owner_id UUID NOT NULL CONSTRAINT resource_fk_owner_id REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE, created TIMESTAMPTZ NOT NULL, CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id) );"
   },
   "2084346a17fcb4a3eb17ba52cf7ac11d62fc37aa5d4c56abe1d4fe27d69316df": {
     "describe": {
@@ -4989,28 +4989,22 @@
           "type_info": "Uuid"
         },
         {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
           "name": "resource_type_id",
-          "ordinal": 2,
+          "ordinal": 1,
           "type_info": "Uuid"
         },
         {
           "name": "owner_id",
-          "ordinal": 3,
+          "ordinal": 2,
           "type_info": "Uuid"
         },
         {
           "name": "created",
-          "ordinal": 4,
+          "ordinal": 3,
           "type_info": "Timestamptz"
         }
       ],
       "nullable": [
-        false,
         false,
         false,
         false,
@@ -5562,6 +5556,47 @@
     },
     "query": "CREATE INDEX role_permissions_resource_idx_role_id ON role_permissions_resource (role_id);"
   },
+  "6638f3d38152434f1b147c298fc950412cd5c6fa322eac6a7a075aca3351983f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "INSERT INTO resource( id, resource_type_id, owner_id, created ) VALUES ($1, $2, $3, $4);"
+  },
+  "6684afded21a486e0b2246c1376483e58abfe453a4831dd2b84eb6a7ae16d252": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "digitalocean"
+                ]
+              },
+              "name": "deployment_cloud_provider"
+            }
+          },
+          "Float8",
+          "Float8",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO deployment_region( id, name, provider, location, parent_region_id ) VALUES ($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6);"
+  },
   "6714984cd52ecf759cd6cb912a65e0c7d3189afd7a613eafb425a57146fceb2d": {
     "describe": {
       "columns": [
@@ -6099,7 +6134,7 @@
     },
     "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE workspace_id = $1;"
   },
-  "6d896c2c6f62d4bcc1812ed51719195eb95b0b7127252c2087a6a6af578cafe3": {
+  "6f7f9061d9b0ef20410537f9f662cc3a501d0a3ec931a68f7ef6c0891bfa4a06": {
     "describe": {
       "columns": [
         {
@@ -6110,38 +6145,33 @@
         {
           "name": "name",
           "ordinal": 1,
-          "type_info": "Varchar"
+          "type_info": "Text"
         },
         {
-          "name": "resource_type_id: _",
+          "name": "cloud_provider: _",
           "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "owner_id: _",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "created",
-          "ordinal": 4,
-          "type_info": "Timestamptz"
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "digitalocean"
+                ]
+              },
+              "name": "deployment_cloud_provider"
+            }
+          }
         }
       ],
       "nullable": [
         false,
         false,
-        false,
-        false,
-        false
+        true
       ],
       "parameters": {
-        "Left": [
-          "Uuid"
-        ]
+        "Left": []
       }
     },
-    "query": "SELECT id as \"id: _\", name, resource_type_id as \"resource_type_id: _\", owner_id as \"owner_id: _\", created FROM resource WHERE id = $1;"
+    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\" FROM deployment_region;"
   },
   "71851c0dceb357cee7d00bff65ca31965f2aef6778a2f86283fa626ec6359412": {
     "describe": {
@@ -10416,6 +10446,44 @@
     },
     "query": "CREATE TABLE user_login( login_id UUID CONSTRAINT user_login_uq_login_id UNIQUE, refresh_token TEXT NOT NULL, token_expiry TIMESTAMPTZ NOT NULL, user_id UUID NOT NULL CONSTRAINT user_login_fk_user_id REFERENCES \"user\"(id), created TIMESTAMPTZ NOT NULL, created_ip INET NOT NULL, created_location GEOMETRY NOT NULL, created_country TEXT NOT NULL, created_region TEXT NOT NULL, created_city TEXT NOT NULL, created_timezone TEXT NOT NULL, last_login TIMESTAMPTZ NOT NULL, last_activity TIMESTAMPTZ NOT NULL, last_activity_ip INET NOT NULL, last_activity_location GEOMETRY NOT NULL, last_activity_country TEXT NOT NULL, last_activity_region TEXT NOT NULL, last_activity_city TEXT NOT NULL, last_activity_timezone TEXT NOT NULL, last_activity_user_agent TEXT NOT NULL, CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id) );"
   },
+  "c2c5554babaeb567146bb698d7debe9797a1e1d65081c59c15c2e711ae174980": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "resource_type_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "owner_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "created",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", resource_type_id as \"resource_type_id: _\", owner_id as \"owner_id: _\", created FROM resource WHERE id = $1;"
+  },
   "c379470f391c63ff9276165e9f94a9ba29990c1712c1efa9473954fb444c0997": {
     "describe": {
       "columns": [],
@@ -12963,28 +13031,22 @@
     },
     "query": "CREATE UNIQUE INDEX ci_git_provider_uq_workspace_id_domain_name ON ci_git_provider(workspace_id, domain_name) WHERE is_deleted = FALSE;"
   },
-  "f4b563086869478fb23e33f2b2b76c74ba71561f61443053053ae9591126a81e": {
+  "f529f42b92758abe5d34e957fbf23757c50fb6b0100e0b3029d2bd8082f1ca5f": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
         "Left": [
           "Uuid",
-          "Varchar"
+          "Text",
+          "Text",
+          "Text",
+          "Text",
+          "Inet"
         ]
       }
     },
-    "query": "UPDATE resource SET name = $2 WHERE id = $1;"
-  },
-  "f529f42b92758abe5d34e957fbf23757c50fb6b0100e0b3029d2bd8082f1ca5f": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE docker_registry_repository_tag( repository_id UUID NOT NULL CONSTRAINT docker_registry_repository_tag_fk_repository_id REFERENCES docker_registry_repository(id), tag TEXT NOT NULL, manifest_digest TEXT NOT NULL, last_updated TIMESTAMPTZ NOT NULL, CONSTRAINT docker_registry_repository_tag_pk PRIMARY KEY( repository_id, tag ), CONSTRAINT docker_registry_repository_tag_fk_repository_id_manifest_digest FOREIGN KEY(repository_id, manifest_digest) REFERENCES docker_registry_repository_manifest( repository_id, manifest_digest ) );"
+    "query": "UPDATE deployment_region SET ready = TRUE, kubernetes_cluster_url = $2, kubernetes_auth_username = $3, kubernetes_auth_token = $4, kubernetes_ca_data = $5, kubernetes_ingress_ip_addr = $6 WHERE id = $1;"
   },
   "f580af1d3dd23ca8b5a158eb610cb5b28b4e26ea0137e55679a92fc6bd33d42d": {
     "describe": {

@@ -134,7 +134,6 @@ pub async fn create_deployment_in_workspace(
 	db::create_resource(
 		connection,
 		&deployment_id,
-		&format!("Deployment: {}", name),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()

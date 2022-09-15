@@ -48,7 +48,6 @@ pub async fn create_new_secret_in_workspace(
 	db::create_resource(
 		connection,
 		&resource_id,
-		&format!("Secret: {}", name),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
@@ -121,7 +120,6 @@ pub async fn create_new_secret_for_deployment(
 	db::create_resource(
 		connection,
 		&resource_id,
-		&format!("Secret: {}", name),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()

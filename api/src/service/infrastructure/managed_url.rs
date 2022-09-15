@@ -61,7 +61,6 @@ pub async fn create_new_managed_url_in_workspace(
 	db::create_resource(
 		connection,
 		&managed_url_id,
-		&format!("Managed URL: {}", managed_url_id),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()

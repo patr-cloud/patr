@@ -20,6 +20,7 @@ pub(super) async fn migrate(
 	add_permission_and_resource_type_for_region(&mut *connection, config)
 		.await?;
 	reset_permission_order(&mut *connection, config).await?;
+	refactor_resource_deletion(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -1098,6 +1099,22 @@ async fn add_permission_and_resource_type_for_region(
 		.fetch_optional(&mut *connection)
 		.await?;
 	}
+
+	Ok(())
+}
+
+async fn refactor_resource_deletion(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE resource
+		DROP COLUMN name;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }
