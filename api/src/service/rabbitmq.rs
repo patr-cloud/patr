@@ -73,6 +73,7 @@ pub async fn queue_create_deployment(
 			request_id: request_id.clone(),
 		}),
 		config,
+		"patr-infra",
 		request_id,
 	)
 	.await
@@ -122,6 +123,7 @@ pub async fn queue_start_deployment(
 			request_id: request_id.clone(),
 		}),
 		config,
+		"patr-infra",
 		request_id,
 	)
 	.await
@@ -156,6 +158,7 @@ pub async fn queue_stop_deployment(
 			request_id: request_id.clone(),
 		}),
 		config,
+		"patr-infra",
 		request_id,
 	)
 	.await
@@ -201,6 +204,7 @@ pub async fn queue_delete_deployment(
 			request_id: request_id.clone(),
 		}),
 		config,
+		"patr-infra",
 		request_id,
 	)
 	.await
@@ -259,6 +263,7 @@ pub async fn queue_update_deployment(
 			request_id: request_id.clone(),
 		}),
 		config,
+		"patr-infra",
 		request_id,
 	)
 	.await
@@ -310,6 +315,7 @@ pub async fn queue_update_deployment_image(
 			request_id: request_id.clone(),
 		}),
 		config,
+		"patr-infra",
 		request_id,
 	)
 	.await
@@ -328,6 +334,7 @@ pub async fn queue_process_payment(
 			request_id: request_id.clone(),
 		}),
 		config,
+		"patr-bills",
 		&request_id,
 	)
 	.await
@@ -348,6 +355,7 @@ pub async fn queue_confirm_payment_intent(
 			},
 		),
 		config,
+		"patr-bills",
 		&request_id,
 	)
 	.await
@@ -369,6 +377,7 @@ pub async fn queue_generate_invoice_for_workspace(
 			request_id: request_id.clone(),
 		}),
 		config,
+		"patr-bills",
 		&request_id,
 	)
 	.await
@@ -376,7 +385,8 @@ pub async fn queue_generate_invoice_for_workspace(
 
 pub async fn send_message_to_rabbit_mq(
 	message: &RequestMessage,
-	config: &Settings,
+	_config: &Settings,
+	queue: &str,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let app = service::get_app();
@@ -386,7 +396,7 @@ pub async fn send_message_to_rabbit_mq(
 	let confirmation = channel
 		.basic_publish(
 			"",
-			config.rabbit_mq.queue.as_str(),
+			queue,
 			BasicPublishOptions::default(),
 			serde_json::to_string(&message)?.as_bytes(),
 			BasicProperties::default(),
@@ -425,6 +435,7 @@ pub async fn queue_create_ci_build_step(
 			request_id: request_id.clone(),
 		}),
 		config,
+		"patr-ci",
 		request_id,
 	)
 	.await
@@ -441,6 +452,7 @@ pub async fn queue_cancel_ci_build_pipeline(
 			request_id: request_id.clone(),
 		}),
 		config,
+		"patr-ci",
 		request_id,
 	)
 	.await
@@ -457,6 +469,7 @@ pub async fn queue_clean_ci_build_pipeline(
 			request_id: request_id.clone(),
 		}),
 		config,
+		"patr-ci",
 		request_id,
 	)
 	.await
