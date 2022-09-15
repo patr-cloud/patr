@@ -1,7 +1,8 @@
 use api_models::{
-	models::workspace::infrastructure::{
-		deployment::{DeploymentProbe, DeploymentStatus, ExposedPortType},
-		DeploymentCloudProvider,
+	models::workspace::infrastructure::deployment::{
+		DeploymentProbe,
+		DeploymentStatus,
+		ExposedPortType,
 	},
 	utils::Uuid,
 };
@@ -9,21 +10,11 @@ use chrono::{DateTime, Utc};
 
 use crate::{
 	db::{self, WorkspaceAuditLog},
-	models::deployment::{
-		DefaultDeploymentRegion,
-		DEFAULT_DEPLOYMENT_REGIONS,
-		DEFAULT_MACHINE_TYPES,
-	},
+	models::deployment::DEFAULT_MACHINE_TYPES,
 	query,
 	query_as,
 	Database,
 };
-
-pub struct DeploymentRegion {
-	pub id: Uuid,
-	pub name: String,
-	pub cloud_provider: Option<DeploymentCloudProvider>,
-}
 
 pub struct DeploymentMachineType {
 	pub id: Uuid,
@@ -85,49 +76,6 @@ pub async fn initialize_deployment_pre(
 			'stopped', /* Deployment is stopped by the user */
 			'errored', /* Deployment is stopped because of too many errors */
 			'deleted' /* Deployment is deleted by the user */
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TYPE DEPLOYMENT_CLOUD_PROVIDER AS ENUM(
-			'digitalocean'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE deployment_region(
-			id UUID CONSTRAINT deployment_region_pk PRIMARY KEY,
-			name TEXT NOT NULL,
-			provider DEPLOYMENT_CLOUD_PROVIDER NOT NULL,
-			location GEOMETRY NOT NULL,
-			workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id
-				REFERENCES workspace(id),
-			ready BOOLEAN NOT NULL,
-			message_log TEXT NOT NULL,
-			kubernetes_ca_data TEXT,
-			kubernetes_auth_username TEXT,
-			kubernetes_auth_token TEXT,
-			CONSTRAINT deployment_region_chk_ready_or_not CHECK(
-				(
-					ready = TRUE AND
-					kubernetes_ca_data IS NOT NULL AND
-					kubernetes_auth_username IS NOT NULL AND
-					kubernetes_auth_token IS NOT NULL AND
-				) OR (
-					ready = FALSE AND
-					kubernetes_ca_data IS NULL AND
-					kubernetes_auth_username IS NULL AND
-					kubernetes_auth_token IS NULL AND
-				)
-			)
 		);
 		"#
 	)
@@ -436,10 +384,6 @@ pub async fn initialize_deployment_post(
 		)
 		.execute(&mut *connection)
 		.await?;
-	}
-
-	for continent in &DEFAULT_DEPLOYMENT_REGIONS {
-		populate_region(&mut *connection, continent).await?;
 	}
 
 	Ok(())
@@ -1218,75 +1162,6 @@ pub async fn get_all_deployment_machine_types(
 			memory_count
 		FROM
 			deployment_machine_type;
-		"#
-	)
-	.fetch_all(&mut *connection)
-	.await
-}
-
-async fn populate_region(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	region: &DefaultDeploymentRegion,
-) -> Result<Uuid, sqlx::Error> {
-	let region_id = loop {
-		let region_id = Uuid::new_v4();
-
-		let row = query!(
-			r#"
-			SELECT
-				id as "id: Uuid"
-			FROM
-				deployment_region
-			WHERE
-				id = $1;
-			"#,
-			region_id as _
-		)
-		.fetch_optional(&mut *connection)
-		.await?;
-
-		if row.is_none() {
-			break region_id;
-		}
-	};
-
-	// Populate leaf node
-	query!(
-		r#"
-		INSERT INTO
-			deployment_region(
-				id,
-				name,
-				provider,
-				location
-			)
-		VALUES
-			($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326));
-		"#,
-		region_id as _,
-		region.name,
-		region.cloud_provider as _,
-		region.coordinates.0,
-		region.coordinates.1,
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(region_id)
-}
-
-pub async fn get_all_deployment_regions(
-	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<DeploymentRegion>, sqlx::Error> {
-	query_as!(
-		DeploymentRegion,
-		r#"
-		SELECT
-			id as "id: _",
-			name,
-			provider as "cloud_provider: _"
-		FROM
-			deployment_region;
 		"#
 	)
 	.fetch_all(&mut *connection)

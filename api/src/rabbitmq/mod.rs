@@ -32,6 +32,7 @@ mod billing;
 mod ci;
 mod database;
 mod deployment;
+mod byoc;
 
 pub use ci::{BuildId, BuildStep, BuildStepId};
 

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use api_models::{
-	models::workspace::infrastructure::DeploymentCloudProvider,
+	models::workspace::region::InfrastructureCloudProvider,
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
@@ -21,61 +21,48 @@ pub const DEFAULT_MACHINE_TYPES: [(i16, i32); 5] = [
 pub const DEFAULT_DEPLOYMENT_REGIONS: [DefaultDeploymentRegion; 9] = [
 	DefaultDeploymentRegion {
 		name: "Singapore",
-		cloud_provider: DeploymentCloudProvider::Digitalocean,
-		coordinates: (1.3521, 103.8198),
+		cloud_provider: InfrastructureCloudProvider::Digitalocean,
 	},
 	DefaultDeploymentRegion {
 		name: "Bangalore",
-		cloud_provider: DeploymentCloudProvider::Digitalocean,
-		coordinates: (2.9716, 77.5946),
+		cloud_provider: InfrastructureCloudProvider::Digitalocean,
 	},
 	DefaultDeploymentRegion {
 		name: "London",
-		cloud_provider: DeploymentCloudProvider::Digitalocean,
-		coordinates: (51.5072, 0.1276),
+		cloud_provider: InfrastructureCloudProvider::Digitalocean,
 	},
 	DefaultDeploymentRegion {
 		name: "Amsterdam",
-		cloud_provider: DeploymentCloudProvider::Digitalocean,
-		coordinates: (52.3676, 4.9041),
+		cloud_provider: InfrastructureCloudProvider::Digitalocean,
 	},
 	DefaultDeploymentRegion {
 		name: "Frankfurt",
-		cloud_provider: DeploymentCloudProvider::Digitalocean,
-		coordinates: (50.1109, 8.6821),
+		cloud_provider: InfrastructureCloudProvider::Digitalocean,
 	},
 	DefaultDeploymentRegion {
 		name: "Toronto",
-		cloud_provider: DeploymentCloudProvider::Digitalocean,
-		coordinates: (43.6532, 79.3832),
+		cloud_provider: InfrastructureCloudProvider::Digitalocean,
 	},
 	DefaultDeploymentRegion {
 		name: "New-York 1",
-		cloud_provider: DeploymentCloudProvider::Digitalocean,
-		coordinates: (40.7128, 74.0060),
+		cloud_provider: InfrastructureCloudProvider::Digitalocean,
 	},
 	DefaultDeploymentRegion {
 		name: "New-York 2",
-		cloud_provider: DeploymentCloudProvider::Digitalocean,
-		coordinates: (40.7128, 74.0060),
+		cloud_provider: InfrastructureCloudProvider::Digitalocean,
 	},
 	DefaultDeploymentRegion {
 		name: "San Francisco",
-		cloud_provider: DeploymentCloudProvider::Digitalocean,
-		coordinates: (37.7749, 122.4194),
+		cloud_provider: InfrastructureCloudProvider::Digitalocean,
 	},
 ];
 
 pub static MACHINE_TYPES: OnceCell<HashMap<Uuid, (i16, i32)>> = OnceCell::new();
-pub static REGIONS: OnceCell<
-	HashMap<Uuid, (String, Option<DeploymentCloudProvider>)>,
-> = OnceCell::new();
 
 #[derive(Debug, Clone)]
 pub struct DefaultDeploymentRegion {
 	pub name: &'static str,
-	pub cloud_provider: DeploymentCloudProvider,
-	pub coordinates: (f64, f64),
+	pub cloud_provider: InfrastructureCloudProvider,
 }
 
 #[derive(Debug, Clone, Deserialize)]

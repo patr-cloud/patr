@@ -171,15 +171,6 @@ pub async fn initialize(app: &App) -> Result<(), Error> {
 			.set(machine_types)
 			.expect("MACHINE_TYPES is already set");
 
-		let regions = db::get_all_deployment_regions(&mut transaction)
-			.await?
-			.into_iter()
-			.map(|region| (region.id, (region.name, region.cloud_provider)))
-			.collect();
-		deployment::REGIONS
-			.set(regions)
-			.expect("REGIONS is already set");
-
 		drop(transaction);
 
 		Ok(())
