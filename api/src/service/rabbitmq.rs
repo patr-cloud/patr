@@ -13,6 +13,7 @@ use lapin::{options::BasicPublishOptions, BasicProperties};
 use crate::{
 	db::Workspace,
 	models::rabbitmq::{
+			BYOCData,
 		CIData,
 		DeploymentRequestData,
 		Queue,
@@ -30,7 +31,99 @@ pub async fn queue_check_and_update_deployment_status(
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	send_message_to_infra_queue(
-		&DeploymentRequestData::CheckAndUpdateStatus {
+		&DeploymentRequestData::Create {
+			workspace_id: workspace_id.clone(),
+			deployment: Deployment {
+				id: deployment_id.clone(),
+				name: name.to_string(),
+				registry: registry.clone(),
+				image_tag: image_tag.to_string(),
+				status: DeploymentStatus::Pushed,
+				region: region.clone(),
+				machine_type: machine_type.clone(),
+				current_live_digest: digest.clone(),
+			},
+			image_name,
+			digest,
+			running_details: deployment_running_details.clone(),
+			request_id: request_id.clone(),
+		},
+		config,
+		request_id,
+	)
+	.await
+}
+
+pub async fn queue_start_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	deployment: &Deployment,
+	deployment_running_details: &DeploymentRunningDetails,
+	user_id: &Uuid,
+	login_id: &Uuid,
+	ip_address: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	// If deploy_on_create is true, then tell the consumer to create a
+	// deployment
+	let (image_name, digest) =
+		service::get_image_name_and_digest_for_deployment_image(
+			connection,
+			&deployment.registry,
+			&deployment.image_tag,
+			config,
+			request_id,
+		)
+		.await?;
+
+	db::update_deployment_status(
+		connection,
+		deployment_id,
+		&DeploymentStatus::Deploying,
+	)
+	.await?;
+
+	send_message_to_infra_queue(
+		&DeploymentRequestData::Start {
+			workspace_id: workspace_id.clone(),
+			deployment: deployment.clone(),
+			image_name,
+			digest,
+			running_details: deployment_running_details.clone(),
+			user_id: user_id.clone(),
+			login_id: login_id.clone(),
+			ip_address: ip_address.to_string(),
+			request_id: request_id.clone(),
+		},
+		config,
+		request_id,
+	)
+	.await
+}
+
+pub async fn queue_stop_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	user_id: &Uuid,
+	login_id: &Uuid,
+	ip_address: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	// TODO: implement logic for handling domains of the stopped deployment
+	log::trace!("request_id: {} - Updating deployment status", request_id);
+	db::update_deployment_status(
+		connection,
+		deployment_id,
+		&DeploymentStatus::Stopped,
+	)
+	.await?;
+
+	send_message_to_infra_queue(
+		&DeploymentRequestData::Stop {
 			workspace_id: workspace_id.clone(),
 			deployment_id: deployment_id.clone(),
 		},
@@ -307,6 +400,28 @@ pub async fn queue_clean_ci_build_pipeline(
 			build_id,
 			request_id: request_id.clone(),
 		},
+		config,
+		request_id,
+	)
+	.await
+}
+
+pub async fn queue_setup_kubernetes_cluster(
+	region_id: &Uuid,
+	certificate_authority_data: &str,
+	auth_username: &str,
+	auth_token: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_rabbit_mq(
+		&RequestMessage::BYOC(BYOCData::SetupKubernetesCluster {
+			region_id: region_id.clone(),
+			certificate_authority_data: certificate_authority_data.to_string(),
+			auth_username: auth_username.to_string(),
+			auth_token: auth_token.to_string(),
+			request_id: request_id.clone(),
+		}),
 		config,
 		request_id,
 	)
