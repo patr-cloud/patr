@@ -36,7 +36,7 @@ mod deployment;
 pub use ci::{BuildId, BuildStep, BuildStepId};
 
 pub async fn start_consumer(app: &App) {
-	let _ = future::join_all(Queue::iterator().map(|queue| {
+	future::join_all(Queue::iterator().map(|queue| {
 		let app = app.clone();
 		tokio::spawn(async move {
 			let (channel, connection) =
@@ -180,7 +180,8 @@ pub async fn start_consumer(app: &App) {
 	}))
 	.await
 	.into_iter()
-	.collect::<Result<Vec<_>, _>>();
+	.collect::<Result<Vec<_>, _>>()
+	.expect("Error occurred while spawing a task");
 }
 
 async fn process_infra_queue_payload(
