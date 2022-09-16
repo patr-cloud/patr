@@ -22,7 +22,7 @@ use crate::{
 	models::rabbitmq::{
 		CIData,
 		DeploymentRequestData,
-		RequestMessage,
+		Queue,
 		WorkspaceRequestData,
 	},
 	utils::{settings::Settings, Error},
@@ -36,9 +36,7 @@ mod deployment;
 pub use ci::{BuildId, BuildStep, BuildStepId};
 
 pub async fn start_consumer(app: &App) {
-	let queues = vec!["patr-infra", "patr-ci", "patr-bills"];
-	// Create connection
-	for queue in queues {
+	for queue in Queue::iterator() {
 		let app = app.clone();
 		tokio::spawn(async move {
 			let (channel, connection) =
@@ -48,7 +46,7 @@ pub async fn start_consumer(app: &App) {
 			// Create Queue
 			channel
 				.queue_declare(
-					queue,
+					&queue.to_string(),
 					QueueDeclareOptions::default(),
 					FieldTable::default(),
 				)
@@ -57,7 +55,7 @@ pub async fn start_consumer(app: &App) {
 
 			let mut consumer = channel
 				.basic_consume(
-					queue,
+					&queue.to_string(),
 					&format!("patr_queue_{}", queue),
 					BasicConsumeOptions::default(),
 					FieldTable::default(),
@@ -88,69 +86,65 @@ pub async fn start_consumer(app: &App) {
 					Some(Err(_)) => continue,
 					None => panic!("Delivery None"),
 				};
-				let payload = serde_json::from_slice(&delivery.data);
 
-				let payload = match payload {
-					Ok(payload) => payload,
-					Err(err) => {
-						log::error!(
-							"Unknown payload recieved: `{}`",
-							String::from_utf8(delivery.data)
-								.unwrap_or_default()
-						);
-						log::error!("Error parsing payload: {}", err);
-						continue;
-					}
-				};
 				let result = match queue {
-					"patr-infra" => {
-						if let RequestMessage::Deployment(payload) = payload {
-							process_infra_queue_payload(payload, &app).await
-						} else {
-							log::trace!(concat!(
-								"Payload does not belong to this queue",
-								"This should not happen in the first place",
-								"Needs a rectification"
-							));
-							continue;
-						}
+					Queue::Infrastructure => {
+						let payload = serde_json::from_slice::<
+							DeploymentRequestData,
+						>(&delivery.data);
+
+						let payload =
+							match payload {
+								Ok(payload) => payload,
+								Err(err) => {
+									log::error!(
+										"Unknown payload recieved: `{}`",
+										String::from_utf8(delivery.data)
+											.unwrap_or_default()
+									);
+									log::error!("Error parsing payload: {} for infra queue", err);
+									continue;
+								}
+							};
+						process_infra_queue_payload(payload, &app).await
 					}
-					"patr-ci" => {
-						if let RequestMessage::ContinuousIntegration(payload) =
-							payload
-						{
-							process_ci_queue_payload(payload, &app).await
-						} else {
-							log::trace!(concat!(
-								"Payload does not belong to this queue",
-								"This should not happen in the first place",
-								"Needs a rectification"
-							));
-							continue;
-						}
+					Queue::Ci => {
+						let payload =
+							serde_json::from_slice::<CIData>(&delivery.data);
+
+						let payload =
+							match payload {
+								Ok(payload) => payload,
+								Err(err) => {
+									log::error!(
+										"Unknown payload recieved: `{}`",
+										String::from_utf8(delivery.data)
+											.unwrap_or_default()
+									);
+									log::error!("Error parsing payload: {} for CI queue", err);
+									continue;
+								}
+							};
+						process_ci_queue_payload(payload, &app).await
 					}
-					"patr-bills" => {
-						if let RequestMessage::Workspace(payload) = payload {
-							process_bills_queue_payload(payload, &app).await
-						} else {
-							log::trace!(concat!(
-								"Payload does not belong to this queue",
-								"This should not happen in the first place",
-								"Needs a rectification"
-							));
-							continue;
-						}
-					}
-					_ => {
-						log::error!("queue not found..");
-						// panic or error not sure which to return
-						panic!(
-							"The program should never enter here something
-						is wrong."
-						);
-						// return Error::as_result()
-						// 	.status(500)
-						// 	.body(error!(SERVER_ERROR).to_string())?;
+					Queue::Billing => {
+						let payload = serde_json::from_slice::<
+							WorkspaceRequestData,
+						>(&delivery.data);
+
+						let payload = match payload {
+							Ok(payload) => payload,
+							Err(err) => {
+								log::error!(
+									"Unknown payload recieved: `{}`",
+									String::from_utf8(delivery.data)
+										.unwrap_or_default()
+								);
+								log::error!("Error parsing payload: {}  for workspace queue", err);
+								continue;
+							}
+						};
+						process_billing_queue_payload(payload, &app).await
 					}
 				};
 				let ack_result = if let Err(error) = result {
@@ -202,6 +196,7 @@ async fn process_infra_queue_payload(
 			error
 		})
 }
+
 async fn process_ci_queue_payload(
 	data: CIData,
 	app: &App,
@@ -218,7 +213,8 @@ async fn process_ci_queue_payload(
 			error
 		})
 }
-async fn process_bills_queue_payload(
+
+async fn process_billing_queue_payload(
 	data: WorkspaceRequestData,
 	app: &App,
 ) -> Result<(), Error> {
