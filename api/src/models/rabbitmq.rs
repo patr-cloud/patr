@@ -1,3 +1,5 @@
+use std::{fmt, slice::Iter};
+
 use api_models::{
 	models::workspace::infrastructure::deployment::{
 		Deployment,
@@ -14,13 +16,29 @@ use crate::{
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(tag = "resource", rename_all = "camelCase")]
-#[allow(clippy::large_enum_variant)]
-pub enum RequestMessage {
-	Deployment(DeploymentRequestData),
-	Database {},
-	Workspace(WorkspaceRequestData),
-	ContinuousIntegration(CIData),
+#[serde(rename_all = "camelCase")]
+pub enum Queue {
+	Infrastructure,
+	Ci,
+	Billing,
+}
+
+impl Queue {
+	pub fn iterator() -> Iter<'static, Queue> {
+		static QUEUE: [Queue; 3] =
+			[Queue::Infrastructure, Queue::Ci, Queue::Billing];
+		QUEUE.iter()
+	}
+}
+
+impl fmt::Display for Queue {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			Queue::Infrastructure => write!(f, "infrastructure"),
+			Queue::Ci => write!(f, "ci"),
+			Queue::Billing => write!(f, "billing"),
+		}
+	}
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

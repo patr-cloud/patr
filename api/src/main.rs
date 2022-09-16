@@ -30,7 +30,7 @@ use futures::future;
 use tokio::runtime::Builder;
 use utils::{logger, Error as EveError};
 
-use crate::models::rabbitmq::{RequestMessage, WorkspaceRequestData};
+use crate::models::rabbitmq::WorkspaceRequestData;
 
 type Database = sqlx::Postgres;
 
@@ -108,14 +108,12 @@ async fn async_main() -> Result<(), EveError> {
 		let month = now.month();
 		let year = now.year();
 		let request_id = Uuid::new_v4();
-		service::send_message_to_rabbit_mq(
-			&RequestMessage::Workspace(
-				WorkspaceRequestData::ProcessWorkspaces {
-					month: if month == 12 { 1 } else { month + 1 },
-					year: if month == 12 { year + 1 } else { year },
-					request_id: request_id.clone(),
-				},
-			),
+		service::send_message_to_billing_queue(
+			&WorkspaceRequestData::ProcessWorkspaces {
+				month: if month == 12 { 1 } else { month + 1 },
+				year: if month == 12 { year + 1 } else { year },
+				request_id: request_id.clone(),
+			},
 			&app.config,
 			&request_id,
 		)
