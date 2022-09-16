@@ -15,7 +15,7 @@ use crate::{
 		rabbitmq::{
 			CIData,
 			DeploymentRequestData,
-			RequestMessage,
+			Queue,
 			WorkspaceRequestData,
 		},
 		DeploymentMetadata,
@@ -54,8 +54,8 @@ pub async fn queue_create_deployment(
 	)
 	.await?;
 
-	send_message_to_rabbit_mq(
-		&RequestMessage::Deployment(DeploymentRequestData::Create {
+	send_message_to_infra_queue(
+		&DeploymentRequestData::Create {
 			workspace_id: workspace_id.clone(),
 			deployment: Deployment {
 				id: deployment_id.clone(),
@@ -71,9 +71,8 @@ pub async fn queue_create_deployment(
 			digest,
 			running_details: deployment_running_details.clone(),
 			request_id: request_id.clone(),
-		}),
+		},
 		config,
-		"patr-infra",
 		request_id,
 	)
 	.await
@@ -110,8 +109,8 @@ pub async fn queue_start_deployment(
 	)
 	.await?;
 
-	send_message_to_rabbit_mq(
-		&RequestMessage::Deployment(DeploymentRequestData::Start {
+	send_message_to_infra_queue(
+		&DeploymentRequestData::Start {
 			workspace_id: workspace_id.clone(),
 			deployment: deployment.clone(),
 			image_name,
@@ -121,9 +120,8 @@ pub async fn queue_start_deployment(
 			login_id: login_id.clone(),
 			ip_address: ip_address.to_string(),
 			request_id: request_id.clone(),
-		}),
+		},
 		config,
-		"patr-infra",
 		request_id,
 	)
 	.await
@@ -148,17 +146,16 @@ pub async fn queue_stop_deployment(
 	)
 	.await?;
 
-	send_message_to_rabbit_mq(
-		&RequestMessage::Deployment(DeploymentRequestData::Stop {
+	send_message_to_infra_queue(
+		&DeploymentRequestData::Stop {
 			workspace_id: workspace_id.clone(),
 			deployment_id: deployment_id.clone(),
 			user_id: user_id.clone(),
 			login_id: login_id.clone(),
 			ip_address: ip_address.to_string(),
 			request_id: request_id.clone(),
-		}),
+		},
 		config,
-		"patr-infra",
 		request_id,
 	)
 	.await
@@ -194,17 +191,16 @@ pub async fn queue_delete_deployment(
 	)
 	.await?;
 
-	send_message_to_rabbit_mq(
-		&RequestMessage::Deployment(DeploymentRequestData::Delete {
+	send_message_to_infra_queue(
+		&DeploymentRequestData::Delete {
 			workspace_id: workspace_id.clone(),
 			deployment_id: deployment_id.clone(),
 			user_id: user_id.clone(),
 			login_id: login_id.clone(),
 			ip_address: ip_address.to_string(),
 			request_id: request_id.clone(),
-		}),
+		},
 		config,
-		"patr-infra",
 		request_id,
 	)
 	.await
@@ -240,8 +236,8 @@ pub async fn queue_update_deployment(
 	)
 	.await?;
 
-	send_message_to_rabbit_mq(
-		&RequestMessage::Deployment(DeploymentRequestData::Update {
+	send_message_to_infra_queue(
+		&DeploymentRequestData::Update {
 			workspace_id: workspace_id.clone(),
 			deployment: Deployment {
 				id: deployment_id.clone(),
@@ -261,9 +257,8 @@ pub async fn queue_update_deployment(
 			ip_address: ip_address.to_string(),
 			metadata: metadata.clone(),
 			request_id: request_id.clone(),
-		}),
+		},
 		config,
-		"patr-infra",
 		request_id,
 	)
 	.await
@@ -296,8 +291,8 @@ pub async fn queue_update_deployment_image(
 	)
 	.await?;
 
-	send_message_to_rabbit_mq(
-		&RequestMessage::Deployment(DeploymentRequestData::UpdateImage {
+	send_message_to_infra_queue(
+		&DeploymentRequestData::UpdateImage {
 			workspace_id: workspace_id.clone(),
 			deployment: Deployment {
 				id: deployment_id.clone(),
@@ -313,9 +308,8 @@ pub async fn queue_update_deployment_image(
 			digest: Some(digest.to_string()),
 			running_details: deployment_running_details.clone(),
 			request_id: request_id.clone(),
-		}),
+		},
 		config,
-		"patr-infra",
 		request_id,
 	)
 	.await
@@ -327,14 +321,13 @@ pub async fn queue_process_payment(
 	config: &Settings,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-	send_message_to_rabbit_mq(
-		&RequestMessage::Workspace(WorkspaceRequestData::ProcessWorkspaces {
+	send_message_to_billing_queue(
+		&WorkspaceRequestData::ProcessWorkspaces {
 			month,
 			year,
 			request_id: request_id.clone(),
-		}),
+		},
 		config,
-		"patr-bills",
 		&request_id,
 	)
 	.await
@@ -346,16 +339,13 @@ pub async fn queue_confirm_payment_intent(
 	config: &Settings,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-	send_message_to_rabbit_mq(
-		&RequestMessage::Workspace(
-			WorkspaceRequestData::ConfirmPaymentIntent {
-				payment_intent_id,
-				workspace_id: workspace_id.clone(),
-				request_id: request_id.clone(),
-			},
-		),
+	send_message_to_billing_queue(
+		&WorkspaceRequestData::ConfirmPaymentIntent {
+			payment_intent_id,
+			workspace_id: workspace_id.clone(),
+			request_id: request_id.clone(),
+		},
 		config,
-		"patr-bills",
 		&request_id,
 	)
 	.await
@@ -369,24 +359,22 @@ pub async fn queue_generate_invoice_for_workspace(
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 
-	send_message_to_rabbit_mq(
-		&RequestMessage::Workspace(WorkspaceRequestData::GenerateInvoice {
+	send_message_to_billing_queue(
+		&WorkspaceRequestData::GenerateInvoice {
 			month,
 			year,
 			workspace,
 			request_id: request_id.clone(),
-		}),
+		},
 		config,
-		"patr-bills",
 		&request_id,
 	)
 	.await
 }
 
-pub async fn send_message_to_rabbit_mq(
-	message: &RequestMessage,
+pub async fn send_message_to_infra_queue(
+	message: &DeploymentRequestData,
 	_config: &Settings,
-	queue: &str,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let app = service::get_app();
@@ -396,7 +384,87 @@ pub async fn send_message_to_rabbit_mq(
 	let confirmation = channel
 		.basic_publish(
 			"",
-			queue,
+			&Queue::Infrastructure.to_string(),
+			BasicPublishOptions::default(),
+			serde_json::to_string(&message)?.as_bytes(),
+			BasicProperties::default(),
+		)
+		.await?
+		.await?;
+
+	if !confirmation.is_ack() {
+		log::error!("request_id: {} - RabbitMQ publish failed", request_id);
+		return Err(Error::empty());
+	}
+
+	channel.close(200, "Normal shutdown").await.map_err(|e| {
+		log::error!("Error closing rabbitmq channel: {}", e);
+		Error::from(e)
+	})?;
+
+	rabbitmq_connection
+		.close(200, "Normal shutdown")
+		.await
+		.map_err(|e| {
+			log::error!("Error closing rabbitmq connection: {}", e);
+			Error::from(e)
+		})?;
+	Ok(())
+}
+
+pub async fn send_message_to_ci_queue(
+	message: &CIData,
+	_config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let app = service::get_app();
+	let (channel, rabbitmq_connection) =
+		rabbitmq::get_rabbitmq_connection_channel(&app.rabbitmq).await?;
+
+	let confirmation = channel
+		.basic_publish(
+			"",
+			&Queue::Ci.to_string(),
+			BasicPublishOptions::default(),
+			serde_json::to_string(&message)?.as_bytes(),
+			BasicProperties::default(),
+		)
+		.await?
+		.await?;
+
+	if !confirmation.is_ack() {
+		log::error!("request_id: {} - RabbitMQ publish failed", request_id);
+		return Err(Error::empty());
+	}
+
+	channel.close(200, "Normal shutdown").await.map_err(|e| {
+		log::error!("Error closing rabbitmq channel: {}", e);
+		Error::from(e)
+	})?;
+
+	rabbitmq_connection
+		.close(200, "Normal shutdown")
+		.await
+		.map_err(|e| {
+			log::error!("Error closing rabbitmq connection: {}", e);
+			Error::from(e)
+		})?;
+	Ok(())
+}
+
+pub async fn send_message_to_billing_queue(
+	message: &WorkspaceRequestData,
+	_config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let app = service::get_app();
+	let (channel, rabbitmq_connection) =
+		rabbitmq::get_rabbitmq_connection_channel(&app.rabbitmq).await?;
+
+	let confirmation = channel
+		.basic_publish(
+			"",
+			&Queue::Billing.to_string(),
 			BasicPublishOptions::default(),
 			serde_json::to_string(&message)?.as_bytes(),
 			BasicProperties::default(),
@@ -429,13 +497,12 @@ pub async fn queue_create_ci_build_step(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	send_message_to_rabbit_mq(
-		&RequestMessage::ContinuousIntegration(CIData::BuildStep {
+	send_message_to_ci_queue(
+		&CIData::BuildStep {
 			build_step,
 			request_id: request_id.clone(),
-		}),
+		},
 		config,
-		"patr-ci",
 		request_id,
 	)
 	.await
@@ -446,13 +513,12 @@ pub async fn queue_cancel_ci_build_pipeline(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	send_message_to_rabbit_mq(
-		&RequestMessage::ContinuousIntegration(CIData::CancelBuild {
+	send_message_to_ci_queue(
+		&CIData::CancelBuild {
 			build_id,
 			request_id: request_id.clone(),
-		}),
+		},
 		config,
-		"patr-ci",
 		request_id,
 	)
 	.await
@@ -463,13 +529,12 @@ pub async fn queue_clean_ci_build_pipeline(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	send_message_to_rabbit_mq(
-		&RequestMessage::ContinuousIntegration(CIData::CleanBuild {
+	send_message_to_ci_queue(
+		&CIData::CleanBuild {
 			build_id,
 			request_id: request_id.clone(),
-		}),
+		},
 		config,
-		"patr-ci",
 		request_id,
 	)
 	.await
