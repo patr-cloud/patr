@@ -36,7 +36,7 @@ mod deployment;
 pub use ci::{BuildId, BuildStep, BuildStepId};
 
 pub async fn start_consumer(app: &App) {
-	for queue in Queue::iterator() {
+	let _ = future::join_all(Queue::iterator().map(|queue| {
 		let app = app.clone();
 		tokio::spawn(async move {
 			let (channel, connection) =
@@ -56,7 +56,7 @@ pub async fn start_consumer(app: &App) {
 			let mut consumer = channel
 				.basic_consume(
 					&queue.to_string(),
-					&format!("patr_queue_{}", queue),
+					&queue.to_string(),
 					BasicConsumeOptions::default(),
 					FieldTable::default(),
 				)
@@ -176,8 +176,11 @@ pub async fn start_consumer(app: &App) {
 				.await
 				.expect("Connection close failed");
 			println!("Shutting down consumer");
-		});
-	}
+		})
+	}))
+	.await
+	.into_iter()
+	.collect::<Result<Vec<_>, _>>();
 }
 
 async fn process_infra_queue_payload(
