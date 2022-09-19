@@ -16,7 +16,7 @@ pub struct DeploymentRegion {
 	pub cloud_provider: InfrastructureCloudProvider,
 	pub ready: bool,
 	pub workspace_id: Option<Uuid>,
-	pub message_log: String,
+	pub message_log: Option<String>,
 }
 
 pub async fn initialize_region_pre(
@@ -46,7 +46,7 @@ pub async fn initialize_region_pre(
 			kubernetes_auth_username TEXT,
 			kubernetes_auth_token TEXT,
 			kubernetes_ca_data TEXT,
-			message_log TEXT NOT NULL,
+			message_log TEXT,
 			CONSTRAINT deployment_region_chk_ready_or_not CHECK(
 				(
 					ready = TRUE AND
@@ -114,10 +114,11 @@ async fn populate_region(
 			deployment_region(
 				id,
 				name,
-				provider
+				provider,
+				ready
 			)
 		VALUES
-			($1, $2, $3);
+			($1, $2, $3, FALSE);
 		"#,
 		region_id as _,
 		region.name,

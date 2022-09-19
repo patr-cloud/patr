@@ -150,7 +150,7 @@ pub fn create_sub_app(
 	sub_app.use_sub_app("/:workspaceId/rbac", rbac_routes::create_sub_app(app));
 	sub_app.use_sub_app("/:workspaceId/secret", secret::create_sub_app(app));
 	sub_app.use_sub_app("/:workspaceId/ci", ci::create_sub_app(app));
-	sub_app.use_sub_app("/workspaceId/region", region::create_sub_app(app));
+	sub_app.use_sub_app("/:workspaceId/region", region::create_sub_app(app));
 
 	sub_app.delete(
 		"/:workspaceId",

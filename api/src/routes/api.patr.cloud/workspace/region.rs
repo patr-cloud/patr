@@ -36,7 +36,7 @@ pub fn create_sub_app(
 
 	// List all regions
 	app.get(
-		"/region",
+		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::region::LIST,
