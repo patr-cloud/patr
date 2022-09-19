@@ -93,7 +93,8 @@ async fn initialize_k8s_cluster(
 		connection,
 		&region_id,
 		std::str::from_utf8(&output.stdout)?,
-	).await?;
+	)
+	.await?;
 
 	db::mark_deployment_region_as_ready(
 		connection,
