@@ -29,10 +29,10 @@ use crate::{
 };
 
 mod billing;
+mod byoc;
 mod ci;
 mod database;
 mod deployment;
-mod byoc;
 
 pub use ci::{BuildId, BuildStep, BuildStepId};
 

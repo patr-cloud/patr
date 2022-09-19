@@ -1517,6 +1517,7 @@ async fn update_deployment(
 	let UpdateDeploymentRequest {
 		workspace_id: _,
 		deployment_id: _,
+		region: _,
 		name,
 		machine_type,
 		deploy_on_push,

@@ -1,4 +1,7 @@
-use tokio::process::Command;
+use std::time::Duration;
+
+use api_models::utils::Uuid;
+use tokio::{fs, process::Command};
 
 use crate::{
 	db,
@@ -10,17 +13,18 @@ use crate::{
 pub(super) async fn process_request(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	request_data: BYOCData,
-	config: &Settings,
+	_config: &Settings,
 ) -> Result<(), Error> {
 	match request_data {
 		BYOCData::SetupKubernetesCluster {
 			region_id,
+			cluster_url,
 			certificate_authority_data,
 			auth_username,
 			auth_token,
 			request_id,
 		} => {
-			let region = if let Some(region) =
+			let _region = if let Some(region) =
 				db::get_region_by_id(connection, &region_id).await?
 			{
 				region
@@ -33,7 +37,16 @@ pub(super) async fn process_request(
 				return Ok(());
 			};
 
-			install_with_helm().await?;
+			initialize_k8s_cluster(
+				connection,
+				region_id,
+				&cluster_url,
+				&auth_username,
+				&auth_token,
+				&certificate_authority_data,
+			)
+			.await?;
+
 			Ok(())
 		}
 		BYOCData::CreateDigitaloceanCluster {
@@ -45,14 +58,84 @@ pub(super) async fn process_request(
 	}
 }
 
-async fn install_with_helm(
-	local_name: &str,
-	repo_name: &str,
+async fn initialize_k8s_cluster(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	region_id: Uuid,
+	cluster_url: &str,
+	auth_user: &str,
+	auth_token: &str,
+	certficate_authority_data: &str,
 ) -> Result<(), Error> {
-	Command::new("helm")
-		.arg("install")
-		.arg(local_name)
-		.arg(repo_name)
-		.arg("--kube-apiserver");
+	let kubeconfig_content = generate_kubeconfig_from_template(
+		cluster_url,
+		auth_user,
+		auth_token,
+		certficate_authority_data,
+	);
+
+	let kubeconfig_path = format!("{region_id}.yml");
+
+	// todo: use temp file and clean up resources
+	fs::write(&kubeconfig_path, &kubeconfig_content).await?;
+
+	let output = Command::new("k8s/fresh/k8s_init.sh")
+		.args(&[region_id.as_str(), &kubeconfig_path])
+		.output()
+		.await?;
+
+	if !output.status.success() {
+		log::info!("Error while initializing cluster {region_id}\n{output:?}");
+		tokio::time::sleep(Duration::from_secs(5)).await;
+		log::info!("Retry initializing the cluster {region_id}");
+	}
+
+	db::append_messge_log_for_region(
+		connection,
+		&region_id,
+		std::str::from_utf8(&output.stdout)?,
+	).await?;
+
+	db::mark_deployment_region_as_ready(
+		connection,
+		&region_id,
+		cluster_url,
+		auth_user,
+		auth_token,
+		certficate_authority_data,
+	)
+	.await?;
+
+	log::info!("Initialized cluster {region_id} successfully");
+
 	Ok(())
+}
+
+fn generate_kubeconfig_from_template(
+	cluster_url: &str,
+	auth_user: &str,
+	auth_token: &str,
+	certificate_authority_data: &str,
+) -> String {
+	format!(
+		r#"
+apiVersion: v1
+kind: Config
+clusters:
+  - name: kubernetesCluster
+    cluster:
+      certificate-authority-data: {certificate_authority_data}
+      server: {cluster_url}
+users:
+  - name: {auth_user}
+    user:
+      token: {auth_token}
+contexts:
+  - name: kubernetesCluster
+    context:
+      cluster: kubernetesCluster
+      user: {auth_user}
+current-context: kubernetesCluster
+preferences: {{}}
+		"#
+	)
 }

@@ -543,6 +543,7 @@ pub async fn queue_clean_ci_build_pipeline(
 
 pub async fn queue_setup_kubernetes_cluster(
 	region_id: &Uuid,
+	cluster_url: &str,
 	certificate_authority_data: &str,
 	auth_username: &str,
 	auth_token: &str,
@@ -552,6 +553,7 @@ pub async fn queue_setup_kubernetes_cluster(
 	send_message_to_rabbit_mq(
 		&RequestMessage::BYOC(BYOCData::SetupKubernetesCluster {
 			region_id: region_id.clone(),
+			cluster_url: cluster_url.to_owned(),
 			certificate_authority_data: certificate_authority_data.to_string(),
 			auth_username: auth_username.to_string(),
 			auth_token: auth_token.to_string(),
