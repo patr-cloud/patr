@@ -16,6 +16,7 @@ use crate::{
 			BYOCData,
 			CIData,
 			DeploymentRequestData,
+			InfraRequestData,
 			Queue,
 			WorkspaceRequestData,
 		},
@@ -56,7 +57,7 @@ pub async fn queue_create_deployment(
 	.await?;
 
 	send_message_to_infra_queue(
-		&DeploymentRequestData::Create {
+		&InfraRequestData::Deployment(DeploymentRequestData::Create {
 			workspace_id: workspace_id.clone(),
 			deployment: Deployment {
 				id: deployment_id.clone(),
@@ -72,7 +73,7 @@ pub async fn queue_create_deployment(
 			digest,
 			running_details: deployment_running_details.clone(),
 			request_id: request_id.clone(),
-		},
+		}),
 		config,
 		request_id,
 	)
@@ -111,7 +112,7 @@ pub async fn queue_start_deployment(
 	.await?;
 
 	send_message_to_infra_queue(
-		&DeploymentRequestData::Start {
+		&InfraRequestData::Deployment(DeploymentRequestData::Start {
 			workspace_id: workspace_id.clone(),
 			deployment: deployment.clone(),
 			image_name,
@@ -121,7 +122,7 @@ pub async fn queue_start_deployment(
 			login_id: login_id.clone(),
 			ip_address: ip_address.to_string(),
 			request_id: request_id.clone(),
-		},
+		}),
 		config,
 		request_id,
 	)
@@ -148,14 +149,14 @@ pub async fn queue_stop_deployment(
 	.await?;
 
 	send_message_to_infra_queue(
-		&DeploymentRequestData::Stop {
+		&InfraRequestData::Deployment(DeploymentRequestData::Stop {
 			workspace_id: workspace_id.clone(),
 			deployment_id: deployment_id.clone(),
 			user_id: user_id.clone(),
 			login_id: login_id.clone(),
 			ip_address: ip_address.to_string(),
 			request_id: request_id.clone(),
-		},
+		}),
 		config,
 		request_id,
 	)
@@ -193,14 +194,14 @@ pub async fn queue_delete_deployment(
 	.await?;
 
 	send_message_to_infra_queue(
-		&DeploymentRequestData::Delete {
+		&InfraRequestData::Deployment(DeploymentRequestData::Delete {
 			workspace_id: workspace_id.clone(),
 			deployment_id: deployment_id.clone(),
 			user_id: user_id.clone(),
 			login_id: login_id.clone(),
 			ip_address: ip_address.to_string(),
 			request_id: request_id.clone(),
-		},
+		}),
 		config,
 		request_id,
 	)
@@ -238,7 +239,7 @@ pub async fn queue_update_deployment(
 	.await?;
 
 	send_message_to_infra_queue(
-		&DeploymentRequestData::Update {
+		&InfraRequestData::Deployment(DeploymentRequestData::Update {
 			workspace_id: workspace_id.clone(),
 			deployment: Deployment {
 				id: deployment_id.clone(),
@@ -258,7 +259,7 @@ pub async fn queue_update_deployment(
 			ip_address: ip_address.to_string(),
 			metadata: metadata.clone(),
 			request_id: request_id.clone(),
-		},
+		}),
 		config,
 		request_id,
 	)
@@ -293,7 +294,7 @@ pub async fn queue_update_deployment_image(
 	.await?;
 
 	send_message_to_infra_queue(
-		&DeploymentRequestData::UpdateImage {
+		&InfraRequestData::Deployment(DeploymentRequestData::UpdateImage {
 			workspace_id: workspace_id.clone(),
 			deployment: Deployment {
 				id: deployment_id.clone(),
@@ -309,7 +310,7 @@ pub async fn queue_update_deployment_image(
 			digest: Some(digest.to_string()),
 			running_details: deployment_running_details.clone(),
 			request_id: request_id.clone(),
-		},
+		}),
 		config,
 		request_id,
 	)
@@ -374,7 +375,7 @@ pub async fn queue_generate_invoice_for_workspace(
 }
 
 pub async fn send_message_to_infra_queue(
-	message: &DeploymentRequestData,
+	message: &InfraRequestData,
 	_config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -550,8 +551,8 @@ pub async fn queue_setup_kubernetes_cluster(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	send_message_to_rabbit_mq(
-		&RequestMessage::BYOC(BYOCData::SetupKubernetesCluster {
+	send_message_to_infra_queue(
+		&InfraRequestData::BYOC(BYOCData::SetupKubernetesCluster {
 			region_id: region_id.clone(),
 			cluster_url: cluster_url.to_owned(),
 			certificate_authority_data: certificate_authority_data.to_string(),
