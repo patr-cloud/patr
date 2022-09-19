@@ -42,18 +42,21 @@ pub async fn initialize_region_pre(
 			workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id
 				REFERENCES workspace(id),
 			ready BOOLEAN NOT NULL,
-			message_log TEXT NOT NULL,
-			kubernetes_ca_data TEXT,
+			kubernetes_cluster_url TEXT,
 			kubernetes_auth_username TEXT,
 			kubernetes_auth_token TEXT,
+			kubernetes_ca_data TEXT,
+			message_log TEXT NOT NULL,
 			CONSTRAINT deployment_region_chk_ready_or_not CHECK(
 				(
 					ready = TRUE AND
+					kubernetes_cluster_url IS NOT NULL AND
 					kubernetes_ca_data IS NOT NULL AND
 					kubernetes_auth_username IS NOT NULL AND
 					kubernetes_auth_token IS NOT NULL
 				) OR (
 					ready = FALSE AND
+					kubernetes_cluster_url IS NULL AND
 					kubernetes_ca_data IS NULL AND
 					kubernetes_auth_username IS NULL AND
 					kubernetes_auth_token IS NULL
@@ -183,9 +186,6 @@ pub async fn add_deployment_region_to_workspace(
 	name: &str,
 	cloud_provider: &InfrastructureCloudProvider,
 	workspace_id: &Uuid,
-	kubernetes_ca_data: &str,
-	kubernetes_auth_username: &str,
-	kubernetes_auth_token: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -196,21 +196,73 @@ pub async fn add_deployment_region_to_workspace(
 				provider,
 				workspace_id,
 				ready,
-				message_log,
-				kubernetes_ca_data,
+				kubernetes_cluster_url,
 				kubernetes_auth_username,
-				kubernetes_auth_token
+				kubernetes_auth_token,
+				kubernetes_ca_data,
+				message_log
 			)
 		VALUES
-			($1, $2, $3, $4, FALSE, '', $5, $6, $7);
+			($1, $2, $3, $4, FALSE, NULL, NULL, NULL, NULL, NULL);
 		"#,
 		region_id as _,
 		name,
 		cloud_provider as _,
 		workspace_id as _,
-		kubernetes_ca_data,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn mark_deployment_region_as_ready(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	region_id: &Uuid,
+	kubernetes_cluster_url: &str,
+	kubernetes_auth_username: &str,
+	kubernetes_auth_token: &str,
+	kubernetes_ca_data: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment_region
+		SET
+			ready = TRUE,
+			kubernetes_cluster_url = $2,
+			kubernetes_auth_username = $3,
+			kubernetes_auth_token = $4,
+			kubernetes_ca_data = $5
+		WHERE
+			id = $1;
+		"#,
+		region_id as _,
+		kubernetes_cluster_url,
 		kubernetes_auth_username,
-		kubernetes_auth_token
+		kubernetes_auth_token,
+		kubernetes_ca_data,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn append_messge_log_for_region(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	region_id: &Uuid,
+	message: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment_region
+		SET
+			message_log = CONCAT(message_log, $2::TEXT)
+		WHERE
+			id = $1;
+		"#,
+		region_id as _,
+		message
 	)
 	.execute(&mut *connection)
 	.await

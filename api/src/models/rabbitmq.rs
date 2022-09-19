@@ -109,6 +109,7 @@ pub enum CIData {
 pub enum BYOCData {
 	SetupKubernetesCluster {
 		region_id: Uuid,
+		cluster_url: String,
 		certificate_authority_data: String,
 		auth_username: String,
 		auth_token: String,

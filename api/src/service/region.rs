@@ -60,9 +60,6 @@ pub async fn add_new_region_to_workspace(
 				name,
 				&InfrastructureCloudProvider::Other,
 				workspace_id,
-				&certificate_authority_data,
-				&auth_username,
-				&auth_token,
 			)
 			.await?;
 
@@ -97,9 +94,10 @@ pub async fn add_new_region_to_workspace(
 
 			service::queue_setup_kubernetes_cluster(
 				&region_id,
-				&certificate_authority_data,
-				&auth_username,
-				&auth_token,
+				cluster_url,
+				certificate_authority_data,
+				auth_username,
+				auth_token,
 				config,
 				request_id,
 			)
