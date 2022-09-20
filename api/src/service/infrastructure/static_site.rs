@@ -5,9 +5,9 @@ use api_models::{
 		deployment::DeploymentStatus,
 		static_site::StaticSiteDetails,
 	},
-	utils::{DateTime, Uuid},
+	utils::Uuid,
 };
-use chrono::{DateTime as ChronoDateTime, Utc};
+use chrono::{DateTime, Utc};
 use eve_rs::AsError;
 use s3::{creds::Credentials, Bucket, Region};
 use zip::ZipArchive;
@@ -129,7 +129,6 @@ pub async fn create_static_site_in_workspace(
 			message,
 			uploaded_by,
 			&creation_time,
-			false,
 			config,
 			request_id,
 		)
@@ -160,7 +159,6 @@ pub async fn upload_static_site(
 		message,
 		uploaded_by,
 		&creation_time,
-		true,
 		config,
 		request_id,
 	)
@@ -257,7 +255,7 @@ pub async fn delete_static_site(
 		connection,
 		&static_site.workspace_id,
 		&static_site_plan,
-		&DateTime::from(Utc::now()),
+		&Utc::now(),
 	)
 	.await?;
 
@@ -637,8 +635,7 @@ async fn create_static_site_upload(
 	file: &str,
 	message: &str,
 	uploaded_by: &Uuid,
-	creation_time: &ChronoDateTime<Utc>,
-	is_update: bool,
+	creation_time: &DateTime<Utc>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
@@ -690,14 +687,12 @@ async fn create_static_site_upload(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	if !is_update {
-		db::update_static_site_status(
-			connection,
-			static_site_id,
-			&DeploymentStatus::Deploying,
-		)
-		.await?;
-	}
+	db::update_static_site_status(
+		connection,
+		static_site_id,
+		&DeploymentStatus::Deploying,
+	)
+	.await?;
 
 	log::trace!(
 		"request_id: {} - Uploading static site files to S3",
