@@ -45,10 +45,13 @@ pub struct BuildRecord {
 	pub build_num: i64,
 	pub git_ref: String,
 	pub git_commit: String,
+	pub author: String,
 	pub status: BuildStatus,
 	pub created: DateTime<Utc>,
 	pub finished: Option<DateTime<Utc>>,
 	pub message: Option<String>,
+	pub git_commit_message: Option<String>,
+	pub git_pr_title: Option<String>,
 }
 
 pub struct StepRecord {
@@ -205,6 +208,9 @@ pub async fn initialize_ci_pre(
 			created 	TIMESTAMPTZ NOT NULL,
 			finished 	TIMESTAMPTZ,
 			message		TEXT,
+			author		TEXT NOT NULL,
+			git_commit_message		TEXT,
+			git_pr_title		TEXT,
 
 			CONSTRAINT ci_builds_pk_repo_id_build_num
 				PRIMARY KEY (repo_id, build_num)
@@ -708,18 +714,24 @@ pub async fn generate_new_build_for_repo(
 	git_commit: &str,
 	status: BuildStatus,
 	created: &DateTime<Utc>,
+	author: str,
+	git_commit_message: Option<&str>,
+	git_pr_title: Option<&str>,
 ) -> Result<i64, sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
-			ci_builds (repo_id, build_num, git_ref, git_commit, status, created)
+			ci_builds (repo_id, build_num, git_ref, git_commit, status, created, author, git_commit_message, git_pr_title)
 		VALUES (
 			$1,
 			1 + (SELECT COUNT(*) FROM ci_builds WHERE repo_id = $1),
 			$2,
 			$3,
 			$4,
-			$5
+			$5,
+			$6,
+			$7,
+			$8
 		)
 		RETURNING build_num;
 		"#,
@@ -728,6 +740,9 @@ pub async fn generate_new_build_for_repo(
 		git_commit as _,
 		status as _,
 		created as _,
+		author as _,
+		git_commit_message as _,
+		git_pr_title as _,
 	)
 	.fetch_one(connection)
 	.await
@@ -773,7 +788,10 @@ pub async fn get_build_status(
 			status as "status: _",
 			created as "created: _",
 			finished as "finished: _",
-			message
+			message,
+			author,
+			git_pr_title,
+			git_commit_message
 		FROM
 			ci_builds
 		WHERE
@@ -886,7 +904,10 @@ pub async fn list_build_details_for_repo(
 			status as "status: _",
 			created as "created: _",
 			finished as "finished: _",
-			message
+			message,
+			author,
+			git_pr_title,
+			git_commit_message
 		FROM
 			ci_builds
 		WHERE
@@ -925,7 +946,10 @@ pub async fn list_build_details_for_repo(
 			created: utils::DateTime(build.created),
 			finished: build.finished.map(utils::DateTime),
 			message: build.message,
-			steps,
+			steps: build.steps,
+			author: build.author,
+			git_pr_title: build.git_pr_title,
+			git_commit_message: build.git_commit_message,
 		})
 	}
 
@@ -947,7 +971,10 @@ pub async fn get_build_details_for_build(
 			status as "status: _",
 			created as "created: _",
 			finished as "finished: _",
-			message
+			message,
+			author,
+			git_pr_title,
+			git_commit_message
 		FROM
 			ci_builds
 		WHERE (
@@ -971,6 +998,9 @@ pub async fn get_build_details_for_build(
 			created: utils::DateTime(build.created),
 			finished: build.finished.map(utils::DateTime),
 			message: build.message,
+			author: build.author,
+			git_pr_title: build.git_pr_title,
+			git_commit_message: build.git_commit_message,
 			steps: list_build_steps_for_build(
 				&mut *connection,
 				repo_id,
