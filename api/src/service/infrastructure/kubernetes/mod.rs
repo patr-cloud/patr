@@ -32,7 +32,58 @@ pub use self::{
 	static_site::*,
 	workspace::*,
 };
-use crate::utils::{settings::Settings, Error};
+use crate::{
+	service::KubernetesConfig,
+	utils::{settings::Settings, Error},
+};
+
+async fn get_kubernetes_client(
+	kubeconfig: KubernetesConfig,
+) -> Result<kube::Client, Error> {
+	let kubeconfig = Config::from_custom_kubeconfig(
+		Kubeconfig {
+			api_version: Some("v1".to_string()),
+			kind: Some("Config".to_string()),
+			clusters: vec![NamedCluster {
+				name: "kubernetesCluster".to_owned(),
+				cluster: Cluster {
+					server: kubeconfig.cluster_url,
+					certificate_authority_data: Some(
+						kubeconfig.certificate_authority_data,
+					),
+					insecure_skip_tls_verify: None,
+					certificate_authority: None,
+					proxy_url: None,
+					extensions: None,
+				},
+			}],
+			auth_infos: vec![NamedAuthInfo {
+				name: kubeconfig.auth_username.clone(),
+				auth_info: AuthInfo {
+					token: Some(kubeconfig.auth_token.into()),
+					..Default::default()
+				},
+			}],
+			contexts: vec![NamedContext {
+				name: "kubernetesContext".to_owned(),
+				context: Context {
+					cluster: "kubernetesCluster".to_owned(),
+					user: kubeconfig.auth_username,
+					extensions: None,
+					namespace: None,
+				},
+			}],
+			current_context: Some("kubernetesContext".to_owned()),
+			preferences: None,
+			extensions: None,
+		},
+		&Default::default(),
+	)
+	.await?;
+
+	let kube_client = kube::Client::try_from(kubeconfig)?;
+	Ok(kube_client)
+}
 
 async fn get_kubernetes_config(
 	config: &Settings,

@@ -190,6 +190,7 @@ pub(super) async fn process_request(
 		DeploymentRequestData::Stop {
 			workspace_id,
 			deployment_id,
+			region_id,
 			user_id,
 			login_id,
 			ip_address,
@@ -219,10 +220,14 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
+			let kubeconfig = service::get_kubernetes_config_for_region(
+				connection, &region_id, config,
+			)
+			.await?;
 			service::delete_kubernetes_deployment(
 				&workspace_id,
 				&deployment_id,
-				config,
+				kubeconfig,
 				&request_id,
 			)
 			.await
@@ -278,6 +283,7 @@ pub(super) async fn process_request(
 		DeploymentRequestData::Delete {
 			workspace_id,
 			deployment_id,
+			region_id,
 			user_id,
 			login_id,
 			ip_address,
@@ -307,10 +313,14 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
+			let kubeconfig = service::get_kubernetes_config_for_region(
+				connection, &region_id, config,
+			)
+			.await?;
 			service::delete_kubernetes_deployment(
 				&workspace_id,
 				&deployment_id,
-				config,
+				kubeconfig,
 				&request_id,
 			)
 			.await
@@ -328,12 +338,20 @@ async fn update_deployment_and_db_status(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
+	let kubeconfig = service::get_kubernetes_config_for_region(
+		connection,
+		&deployment.region,
+		config,
+	)
+	.await?;
+
 	let result = service::update_kubernetes_deployment(
 		workspace_id,
 		deployment,
 		image_name,
 		digest,
 		running_details,
+		kubeconfig,
 		config,
 		request_id,
 	)

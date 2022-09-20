@@ -17,6 +17,10 @@ pub struct DeploymentRegion {
 	pub ready: bool,
 	pub workspace_id: Option<Uuid>,
 	pub message_log: Option<String>,
+	pub kubernetes_cluster_url: Option<String>,
+	pub kubernetes_auth_username: Option<String>,
+	pub kubernetes_auth_token: Option<String>,
+	pub kubernetes_ca_data: Option<String>,
 }
 
 pub async fn initialize_region_pre(
@@ -48,21 +52,32 @@ pub async fn initialize_region_pre(
 			kubernetes_ca_data TEXT,
 			message_log TEXT,
 			CONSTRAINT deployment_region_chk_ready_or_not CHECK(
-				workspace_id IS NOT NULL AND
 				(
-					(
-						ready = TRUE AND
-						kubernetes_cluster_url IS NOT NULL AND
-						kubernetes_ca_data IS NOT NULL AND
-						kubernetes_auth_username IS NOT NULL AND
-						kubernetes_auth_token IS NOT NULL
-					) OR (
-						ready = FALSE AND
-						kubernetes_cluster_url IS NULL AND
-						kubernetes_ca_data IS NULL AND
-						kubernetes_auth_username IS NULL AND
-						kubernetes_auth_token IS NULL
+					workspace_id IS NOT NULL
+					AND (
+						(
+							ready = TRUE
+							AND kubernetes_cluster_url IS NOT NULL
+							AND kubernetes_ca_data IS NOT NULL
+							AND kubernetes_auth_username IS NOT NULL
+							AND kubernetes_auth_token IS NOT NULL
+						)
+						OR (
+							ready = FALSE
+							AND kubernetes_cluster_url IS NULL
+							AND kubernetes_ca_data IS NULL
+							AND kubernetes_auth_username IS NULL
+							AND kubernetes_auth_token IS NULL
+						)
 					)
+				)
+				OR (
+					workspace_id IS NULL
+					AND ready = FALSE
+					AND kubernetes_cluster_url IS NULL
+					AND kubernetes_ca_data IS NULL
+					AND kubernetes_auth_username IS NULL
+					AND kubernetes_auth_token IS NULL
 				)
 			)
 		);
@@ -146,7 +161,11 @@ pub async fn get_region_by_id(
 			provider as "cloud_provider: _",
 			ready,
 			workspace_id as "workspace_id: _",
-			message_log
+			message_log,
+			kubernetes_cluster_url,
+			kubernetes_auth_username,
+			kubernetes_auth_token,
+			kubernetes_ca_data
 		FROM
 			deployment_region
 		WHERE
@@ -171,7 +190,11 @@ pub async fn get_all_deployment_regions_for_workspace(
 			provider as "cloud_provider: _",
 			ready,
 			workspace_id as "workspace_id: _",
-			message_log
+			message_log,
+			kubernetes_cluster_url,
+			kubernetes_auth_username,
+			kubernetes_auth_token,
+			kubernetes_ca_data
 		FROM
 			deployment_region
 		WHERE

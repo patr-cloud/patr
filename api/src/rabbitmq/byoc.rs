@@ -83,7 +83,12 @@ async fn initialize_k8s_cluster(
 		.output()
 		.await?;
 
-	log::debug!("Cluster init output: {output:?}");
+	log::debug!(
+		"Cluster init output: \nStatus: {}\nStderr: {}\nStdout: {}",
+		output.status,
+		std::str::from_utf8(&output.stderr)?,
+		std::str::from_utf8(&output.stdout)?
+	);
 
 	db::append_messge_log_for_region(
 		connection,
@@ -118,7 +123,7 @@ async fn initialize_k8s_cluster(
 
 fn generate_kubeconfig_from_template(
 	cluster_url: &str,
-	auth_user: &str,
+	auth_username: &str,
 	auth_token: &str,
 	certificate_authority_data: &str,
 ) -> String {
@@ -131,15 +136,15 @@ clusters:
       certificate-authority-data: {certificate_authority_data}
       server: {cluster_url}
 users:
-  - name: {auth_user}
+  - name: {auth_username}
     user:
       token: {auth_token}
 contexts:
-  - name: kubernetesCluster
+  - name: kubernetesContext
     context:
       cluster: kubernetesCluster
-      user: {auth_user}
-current-context: kubernetesCluster
+      user: {auth_username}
+current-context: kubernetesContext
 preferences: {{}}"#
 	)
 }

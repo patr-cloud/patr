@@ -102,6 +102,7 @@ pub enum DeploymentRequestData {
 	Stop {
 		workspace_id: Uuid,
 		deployment_id: Uuid,
+		region_id: Uuid,
 		user_id: Uuid,
 		login_id: Uuid,
 		ip_address: String,
@@ -122,6 +123,7 @@ pub enum DeploymentRequestData {
 	Delete {
 		workspace_id: Uuid,
 		deployment_id: Uuid,
+		region_id: Uuid,
 		user_id: Uuid,
 		login_id: Uuid,
 		ip_address: String,
