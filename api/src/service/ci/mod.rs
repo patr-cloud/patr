@@ -391,7 +391,7 @@ pub async fn add_build_steps_in_k8s(
 
 	service::infrastructure::create_kubernetes_namespace(
 		&build_id.get_build_namespace(),
-		config,
+		service::get_kubernetes_config_for_default_region(config),
 		request_id,
 	)
 	.await?;

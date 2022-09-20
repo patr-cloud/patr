@@ -175,7 +175,7 @@ pub async fn create_workspace(
 
 	super::create_kubernetes_namespace(
 		resource_id.as_str(),
-		config,
+		super::get_kubernetes_config_for_default_region(config),
 		&Uuid::new_v4(),
 	)
 	.await?;
