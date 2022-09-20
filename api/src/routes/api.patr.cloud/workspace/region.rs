@@ -1,9 +1,12 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{
 	models::workspace::{
+		domain::DnsRecordValue,
 		region::{
+			AddRegionToWorkspaceData,
 			AddRegionToWorkspaceRequest,
 			AddRegionToWorkspaceResponse,
+			InfrastructureCloudProvider,
 			ListRegionsForWorkspaceResponse,
 			Region,
 		},
@@ -11,13 +14,15 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use reqwest::Url;
 
 use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::permissions,
+	models::rbac::{self, permissions},
 	pin_fn,
 	service,
 	utils::{
@@ -188,15 +193,94 @@ async fn add_region(
 		request_id,
 		workspace_id,
 	);
-	let region_id = service::add_new_region_to_workspace(
+
+	let region_id =
+		db::generate_new_resource_id(context.get_database_connection()).await?;
+
+	db::create_resource(
 		context.get_database_connection(),
+		&region_id,
+		&format!("Region: {}", name),
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(crate::models::rbac::resource_types::DEPLOYMENT_REGION)
+			.unwrap(),
 		&workspace_id,
-		&name,
-		&data,
-		&config,
-		&request_id,
+		&Utc::now(),
 	)
 	.await?;
+
+	match data {
+		AddRegionToWorkspaceData::Digitalocean {
+			cloud_provider: _,
+			region: _,
+			api_token: _,
+		} => todo!(),
+		AddRegionToWorkspaceData::KubernetesCluster {
+			certificate_authority_data,
+			cluster_url,
+			auth_username,
+			auth_token,
+		} => {
+			db::add_deployment_region_to_workspace(
+				context.get_database_connection(),
+				&region_id,
+				&name,
+				&InfrastructureCloudProvider::Other,
+				&workspace_id,
+			)
+			.await?;
+
+			let url = Url::parse(&cluster_url)?;
+
+			let patr_domain = db::get_domain_by_name(
+				context.get_database_connection(),
+				"patr.cloud",
+			)
+			.await?
+			.status(500)?;
+
+			let resource = db::get_resource_by_id(
+				context.get_database_connection(),
+				&patr_domain.id,
+			)
+			.await?
+			.status(500)?;
+
+			service::create_patr_domain_dns_record(
+				context.get_database_connection(),
+				&resource.owner_id,
+				&patr_domain.id,
+				region_id.as_str(),
+				0,
+				&DnsRecordValue::CNAME {
+					target: url
+						.domain()
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?
+						.to_string(),
+					proxied: false,
+				},
+				&config,
+				&request_id,
+			)
+			.await?;
+
+			context.commit_database_transaction().await?;
+
+			service::queue_setup_kubernetes_cluster(
+				&region_id,
+				&cluster_url,
+				&certificate_authority_data,
+				&auth_username,
+				&auth_token,
+				&config,
+				&request_id,
+			)
+			.await?;
+		}
+	}
 
 	log::trace!("request_id: {} - Returning new secret", request_id);
 	context.success(AddRegionToWorkspaceResponse { region_id });
