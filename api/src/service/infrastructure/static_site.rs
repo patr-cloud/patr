@@ -687,13 +687,6 @@ async fn create_static_site_upload(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	db::update_static_site_status(
-		connection,
-		static_site_id,
-		&DeploymentStatus::Deploying,
-	)
-	.await?;
-
 	log::trace!(
 		"request_id: {} - Uploading static site files to S3",
 		request_id
