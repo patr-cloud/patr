@@ -48,18 +48,21 @@ pub async fn initialize_region_pre(
 			kubernetes_ca_data TEXT,
 			message_log TEXT,
 			CONSTRAINT deployment_region_chk_ready_or_not CHECK(
+				workspace_id IS NOT NULL AND
 				(
-					ready = TRUE AND
-					kubernetes_cluster_url IS NOT NULL AND
-					kubernetes_ca_data IS NOT NULL AND
-					kubernetes_auth_username IS NOT NULL AND
-					kubernetes_auth_token IS NOT NULL
-				) OR (
-					ready = FALSE AND
-					kubernetes_cluster_url IS NULL AND
-					kubernetes_ca_data IS NULL AND
-					kubernetes_auth_username IS NULL AND
-					kubernetes_auth_token IS NULL
+					(
+						ready = TRUE AND
+						kubernetes_cluster_url IS NOT NULL AND
+						kubernetes_ca_data IS NOT NULL AND
+						kubernetes_auth_username IS NOT NULL AND
+						kubernetes_auth_token IS NOT NULL
+					) OR (
+						ready = FALSE AND
+						kubernetes_cluster_url IS NULL AND
+						kubernetes_ca_data IS NULL AND
+						kubernetes_auth_username IS NULL AND
+						kubernetes_auth_token IS NULL
+					)
 				)
 			)
 		);
