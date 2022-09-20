@@ -759,18 +759,16 @@ pub async fn get_total_bill(
 ) -> Result<f64, sqlx::Error> {
 	query!(
 		r#"
-		WITH calculated_transaction(amount) as (
-			SELECT CASE
-				"transaction".transaction_type
-					WHEN 'bill' THEN "transaction".amount
-					ELSE - "transaction".amount
-				END
-			FROM "transaction"
-			WHERE "transaction".workspace_id = $1
-		)
-		SELECT COALESCE(SUM(calculated_transaction.amount), 0)
-			as "total_amount!" 
-		FROM calculated_transaction;
+		SELECT SUM(
+			CASE transaction_type
+				WHEN 'bill' THEN amount
+				ELSE - amount
+			END
+		) as "total_amount!"
+		FROM
+			transaction
+		WHERE
+			workspace_id = $1;
 		"#,
 		workspace_id as _,
 	)
