@@ -3509,6 +3509,16 @@
     },
     "query": "UPDATE deployment_payment_history SET stop_time = $1 WHERE deployment_id = $2 AND stop_time IS NULL;"
   },
+  "49be6edcd80824467a72a86112f280be2a64bba5fedf52a94880fa14b4039b56": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_region( id UUID CONSTRAINT deployment_region_pk PRIMARY KEY, name TEXT NOT NULL, provider INFRASTRUCTURE_CLOUD_PROVIDER NOT NULL, workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id REFERENCES workspace(id), ready BOOLEAN NOT NULL, kubernetes_cluster_url TEXT, kubernetes_auth_username TEXT, kubernetes_auth_token TEXT, kubernetes_ca_data TEXT, message_log TEXT, CONSTRAINT deployment_region_chk_ready_or_not CHECK( workspace_id IS NOT NULL AND ( ( ready = TRUE AND kubernetes_cluster_url IS NOT NULL AND kubernetes_ca_data IS NOT NULL AND kubernetes_auth_username IS NOT NULL AND kubernetes_auth_token IS NOT NULL ) OR ( ready = FALSE AND kubernetes_cluster_url IS NULL AND kubernetes_ca_data IS NULL AND kubernetes_auth_username IS NULL AND kubernetes_auth_token IS NULL ) ) ) );"
+  },
   "4a59dfecc6411d998b7f8b8b4a8d32a9f565197e1cc4ef5518b2290c243ffddf": {
     "describe": {
       "columns": [],
@@ -9982,16 +9992,6 @@
       }
     },
     "query": "UPDATE ci_steps SET finished = $4 WHERE ( repo_id = $1 AND build_num = $2 AND step_id = $3 );"
-  },
-  "bb96662748b47ffd580cb0579e2061c9f7de4a9728e82b0dd6f64071da1d5946": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment_region( id UUID CONSTRAINT deployment_region_pk PRIMARY KEY, name TEXT NOT NULL, provider INFRASTRUCTURE_CLOUD_PROVIDER NOT NULL, workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id REFERENCES workspace(id), ready BOOLEAN NOT NULL, kubernetes_cluster_url TEXT, kubernetes_auth_username TEXT, kubernetes_auth_token TEXT, kubernetes_ca_data TEXT, message_log TEXT, CONSTRAINT deployment_region_chk_ready_or_not CHECK( ( ready = TRUE AND kubernetes_cluster_url IS NOT NULL AND kubernetes_ca_data IS NOT NULL AND kubernetes_auth_username IS NOT NULL AND kubernetes_auth_token IS NOT NULL ) OR ( ready = FALSE AND kubernetes_cluster_url IS NULL AND kubernetes_ca_data IS NULL AND kubernetes_auth_username IS NULL AND kubernetes_auth_token IS NULL ) ) );"
   },
   "bc99fb8fb755978abf04e2db1da08b6236b07afd722505bd031cbc1e6a1f281e": {
     "describe": {
