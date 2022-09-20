@@ -617,8 +617,12 @@ async fn delete_workspace(
 			.body(error!(CANNOT_DELETE_WORKSPACE).to_string()));
 	}
 
-	service::delete_kubernetes_namespace(namespace, &config, &request_id)
-		.await?;
+	service::delete_kubernetes_namespace(
+		namespace,
+		service::get_kubernetes_config_for_default_region(&config),
+		&request_id,
+	)
+	.await?;
 
 	db::update_workspace_name(
 		context.get_database_connection(),

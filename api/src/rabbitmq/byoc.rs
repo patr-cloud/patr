@@ -1,11 +1,13 @@
 use std::time::Duration;
 
 use api_models::utils::Uuid;
+use eve_rs::AsError;
 use tokio::{fs, process::Command};
 
 use crate::{
 	db,
 	models::rabbitmq::BYOCData,
+	service,
 	utils::{settings::Settings, Error},
 	Database,
 };
@@ -13,7 +15,7 @@ use crate::{
 pub(super) async fn process_request(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	request_data: BYOCData,
-	_config: &Settings,
+	config: &Settings,
 ) -> Result<(), Error> {
 	match request_data {
 		BYOCData::SetupKubernetesCluster {
@@ -24,7 +26,7 @@ pub(super) async fn process_request(
 			auth_token,
 			request_id,
 		} => {
-			let _region = if let Some(region) =
+			let region = if let Some(region) =
 				db::get_region_by_id(connection, &region_id).await?
 			{
 				region
@@ -39,11 +41,22 @@ pub(super) async fn process_request(
 
 			initialize_k8s_cluster(
 				connection,
-				region_id,
+				&region_id,
 				&cluster_url,
 				&auth_username,
 				&auth_token,
 				&certificate_authority_data,
+			)
+			.await?;
+
+			let kubeconfig = service::get_kubernetes_config_for_region(
+				connection, &region_id, config,
+			)
+			.await?;
+			service::create_kubernetes_namespace(
+				region.workspace_id.status(500)?.as_str(),
+				kubeconfig,
+				&request_id,
 			)
 			.await?;
 
@@ -60,7 +73,7 @@ pub(super) async fn process_request(
 
 async fn initialize_k8s_cluster(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	region_id: Uuid,
+	region_id: &Uuid,
 	cluster_url: &str,
 	auth_user: &str,
 	auth_token: &str,
@@ -92,7 +105,7 @@ async fn initialize_k8s_cluster(
 
 	db::append_messge_log_for_region(
 		connection,
-		&region_id,
+		region_id,
 		std::str::from_utf8(&output.stdout)?,
 	)
 	.await?;
@@ -108,7 +121,7 @@ async fn initialize_k8s_cluster(
 
 	db::mark_deployment_region_as_ready(
 		connection,
-		&region_id,
+		region_id,
 		cluster_url,
 		auth_user,
 		auth_token,

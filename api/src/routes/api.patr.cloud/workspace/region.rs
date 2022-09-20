@@ -266,6 +266,24 @@ async fn add_region(
 				&request_id,
 			)
 			.await?;
+			service::create_patr_domain_dns_record(
+				context.get_database_connection(),
+				&resource.owner_id,
+				&patr_domain.id,
+				&format!("*.{}", region_id.as_str()),
+				0,
+				&DnsRecordValue::CNAME {
+					target: url
+						.domain()
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?
+						.to_string(),
+					proxied: false,
+				},
+				&config,
+				&request_id,
+			)
+			.await?;
 
 			context.commit_database_transaction().await?;
 
