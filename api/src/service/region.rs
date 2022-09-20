@@ -18,7 +18,8 @@ use crate::{
 	Database,
 };
 
-pub async fn add_new_region_to_workspace(
+// TODO: remove it
+pub async fn _add_new_region_to_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	name: &str,

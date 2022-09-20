@@ -1,14 +1,16 @@
 #!/bin/bash
 
-set -ue
+set -uex
 
 CLUSTER_NAME=${1:?"Missing parameter: CLUSTER_NAME"}
 KUBECONFIG_PATH=${2:?"Missing parameter: KUBECONFIG_PATH"}
 
-if [! -f $KUBECONFIG_PATH ]; then 
+if [ ! -f $KUBECONFIG_PATH ]; then
     echo "Kubeconfig file not found: $KUBECONFIG_PATH"
     exit 1
 fi
+
+export KUBECONFIG=$KUBECONFIG_PATH
 
 SCRIPT_DIR="$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)"
 CONFIG_DIR="$SCRIPT_DIR/config"

@@ -83,11 +83,7 @@ async fn initialize_k8s_cluster(
 		.output()
 		.await?;
 
-	if !output.status.success() {
-		log::info!("Error while initializing cluster {region_id}\n{output:?}");
-		tokio::time::sleep(Duration::from_secs(5)).await;
-		log::info!("Retry initializing the cluster {region_id}");
-	}
+	log::debug!("Cluster init output: {output:?}");
 
 	db::append_messge_log_for_region(
 		connection,
@@ -95,6 +91,15 @@ async fn initialize_k8s_cluster(
 		std::str::from_utf8(&output.stdout)?,
 	)
 	.await?;
+
+	if !output.status.success() {
+		log::info!("Error while initializing cluster {region_id}\n{output:?}");
+		tokio::time::sleep(Duration::from_secs(5)).await;
+		log::info!("Retry initializing the cluster {region_id}");
+		// TODO: don't return error, manually requeue it again as the
+		// transaction is not getting committed
+		return Err(Error::empty());
+	}
 
 	db::mark_deployment_region_as_ready(
 		connection,
@@ -118,8 +123,7 @@ fn generate_kubeconfig_from_template(
 	certificate_authority_data: &str,
 ) -> String {
 	format!(
-		r#"
-apiVersion: v1
+		r#"apiVersion: v1
 kind: Config
 clusters:
   - name: kubernetesCluster
@@ -136,7 +140,6 @@ contexts:
       cluster: kubernetesCluster
       user: {auth_user}
 current-context: kubernetesCluster
-preferences: {{}}
-		"#
+preferences: {{}}"#
 	)
 }
