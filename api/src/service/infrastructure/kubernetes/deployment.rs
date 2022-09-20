@@ -69,7 +69,7 @@ use crate::{
 	db,
 	error,
 	models::deployment,
-	service::ext_traits::DeleteOpt,
+	service::{self, ext_traits::DeleteOpt, KubernetesConfig},
 	utils::{constants::request_keys, settings::Settings, Error},
 	Database,
 };
@@ -80,10 +80,11 @@ pub async fn update_kubernetes_deployment(
 	full_image: &str,
 	digest: Option<&str>,
 	running_details: &DeploymentRunningDetails,
+	kubeconfig: KubernetesConfig,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
 
 	// the namespace is workspace id
 	let namespace = workspace_id.as_str();
@@ -588,10 +589,10 @@ pub async fn update_kubernetes_deployment(
 pub async fn delete_kubernetes_deployment(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-	config: &Settings,
+	kubeconfig: KubernetesConfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
 
 	log::trace!("request_id: {} - deleting the deployment", request_id);
 
@@ -664,7 +665,14 @@ pub async fn get_kubernetes_deployment_status(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let kubeconfig = service::get_kubernetes_config_for_region(
+		connection,
+		&deployment.region,
+		config,
+	)
+	.await?;
+	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
+
 	let deployment_result =
 		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace)
 			.get(&format!("deployment-{}", deployment.id))

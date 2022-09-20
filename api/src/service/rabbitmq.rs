@@ -110,6 +110,7 @@ pub async fn queue_stop_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
+	region_id: &Uuid,
 	user_id: &Uuid,
 	login_id: &Uuid,
 	ip_address: &str,
@@ -129,6 +130,7 @@ pub async fn queue_stop_deployment(
 		&InfraRequestData::Deployment(DeploymentRequestData::Stop {
 			workspace_id: workspace_id.clone(),
 			deployment_id: deployment_id.clone(),
+			region_id: region_id.clone(),
 			user_id: user_id.clone(),
 			login_id: login_id.clone(),
 			ip_address: ip_address.to_string(),
@@ -144,6 +146,7 @@ pub async fn queue_delete_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
+	region_id: &Uuid,
 	name: &str,
 	user_id: &Uuid,
 	login_id: &Uuid,
@@ -174,6 +177,7 @@ pub async fn queue_delete_deployment(
 		&InfraRequestData::Deployment(DeploymentRequestData::Delete {
 			workspace_id: workspace_id.clone(),
 			deployment_id: deployment_id.clone(),
+			region_id: region_id.clone(),
 			user_id: user_id.clone(),
 			login_id: login_id.clone(),
 			ip_address: ip_address.to_string(),
