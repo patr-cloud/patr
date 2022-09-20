@@ -753,6 +753,32 @@ pub async fn get_credits_for_workspace(
 	.await
 }
 
+pub async fn get_total_bill(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<f64, sqlx::Error> {
+	query!(
+		r#"
+		WITH calculated_transaction(amount) as (
+			SELECT CASE
+				"transaction".transaction_type
+					WHEN 'bill' THEN "transaction".amount
+					ELSE - "transaction".amount
+				END
+			FROM "transaction"
+			WHERE "transaction".workspace_id = $1
+		)
+		SELECT COALESCE(SUM(calculated_transaction.amount), 0)
+			as "total_amount!" 
+		FROM calculated_transaction;
+		"#,
+		workspace_id as _,
+	)
+	.fetch_one(&mut *connection)
+	.await
+	.map(|row| row.total_amount as f64)
+}
+
 pub async fn get_transaction_by_payment_intent_id_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,

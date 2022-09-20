@@ -3055,6 +3055,18 @@
     },
     "query": "SELECT COUNT(*) as \"count\" FROM patr_domain_dns_record WHERE domain_id = $1;"
   },
+  "3d8792ce0e8a95c3fd6856422d017ab4eadc446e4bd79d75545daab3ee18b263": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE workspace SET deployment_limit = 0, database_limit = 0, static_site_limit = 0, managed_url_limit = 0, docker_repository_storage_limit = 0, domain_limit = 0, secret_limit = 0 WHERE id = $1;"
+  },
   "3e20e6ddcb6cc30e911912b5f5738f294930e66613e421b6c0a4b20ab33fed69": {
     "describe": {
       "columns": [],
@@ -3251,6 +3263,26 @@
       }
     },
     "query": "SELECT login_id as \"login_id: _\", refresh_token, token_expiry, user_id as \"user_id: _\", created, created_ip as \"created_ip: _\", ST_Y(ST_Centroid(ST_Transform(created_location, 4326))) as \"created_location_latitude!: _\", ST_X(ST_Centroid(ST_Transform(created_location, 4326))) as \"created_location_longitude!: _\", created_country, created_region, created_city, created_timezone, last_login, last_activity, last_activity_ip as \"last_activity_ip: _\", ST_Y(ST_Centroid(ST_Transform(last_activity_location, 4326))) as \"last_activity_location_latitude!: _\", ST_X(ST_Centroid(ST_Transform(last_activity_location, 4326))) as \"last_activity_location_longitude!: _\", last_activity_country, last_activity_region, last_activity_city, last_activity_timezone, last_activity_user_agent FROM user_login WHERE login_id = $1;"
+  },
+  "41bfadd8b55c5a3350517ba56cb4b7ddd4e61cc6e0924623b6eee47f3abfd40e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "total_amount!",
+          "ordinal": 0,
+          "type_info": "Float8"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "WITH calculated_transaction(amount) as ( SELECT CASE \"transaction\".transaction_type WHEN 'bill' THEN \"transaction\".amount ELSE - \"transaction\".amount END FROM \"transaction\" WHERE \"transaction\".workspace_id = $1 ) SELECT COALESCE(SUM(calculated_transaction.amount), 0) as \"total_amount!\" FROM calculated_transaction;"
   },
   "4357441a58d66b47fffabe8c10fa5ddedbe067c22d5c59d00cb492be40abc1a8": {
     "describe": {
