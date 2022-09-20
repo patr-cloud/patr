@@ -5,9 +5,9 @@ use api_models::{
 		deployment::DeploymentStatus,
 		static_site::StaticSiteDetails,
 	},
-	utils::{DateTime, Uuid},
+	utils::Uuid,
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use eve_rs::AsError;
 use s3::{creds::Credentials, Bucket, Region};
 use zip::ZipArchive;
@@ -58,6 +58,7 @@ pub async fn create_static_site_in_workspace(
 
 	let static_site_id = db::generate_new_resource_id(connection).await?;
 
+	// Check if user's all resources limit is exceeded
 	log::trace!("request_id: {} - Checking resource limit", request_id);
 	if super::resource_limit_crossed(connection, workspace_id, request_id)
 		.await?
@@ -67,6 +68,7 @@ pub async fn create_static_site_in_workspace(
 			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
 	}
 
+	// Check if user's static site limit is exceeded
 	log::trace!("request_id: {} - Checking static site limit", request_id);
 	if static_site_limit_crossed(connection, workspace_id, request_id).await? {
 		return Error::as_result()
@@ -119,72 +121,14 @@ pub async fn create_static_site_in_workspace(
 	);
 
 	if let Some(file) = file {
-		log::trace!(
-			"request_id: {} - Creating Static-site upload resource",
-			request_id
-		);
-		let upload_id = db::generate_new_resource_id(connection).await?;
-		log::trace!("request_id: {} - Creating upload history", request_id);
-
-		db::create_resource(
+		create_static_site_upload(
 			connection,
-			&upload_id,
-			&format!("Static site upload: {}", upload_id),
-			rbac::RESOURCE_TYPES
-				.get()
-				.unwrap()
-				.get(rbac::resource_types::STATIC_SITE_UPLOAD)
-				.unwrap(),
 			workspace_id,
-			&creation_time,
-		)
-		.await?;
-
-		db::create_static_site_upload_history(
-			connection,
-			&upload_id,
 			&static_site_id,
+			&file,
 			message,
 			uploaded_by,
-			&Utc::now(),
-		)
-		.await?;
-		db::update_current_live_upload_for_static_site(
-			connection,
-			&static_site_id,
-			&upload_id,
-		)
-		.await?;
-
-		log::trace!("request_id: {} - Starting static site", request_id);
-
-		db::update_static_site_status(
-			connection,
-			&static_site_id,
-			&DeploymentStatus::Deploying,
-		)
-		.await?;
-
-		log::trace!(
-			"request_id: {} - Uploading static site files to S3",
-			request_id
-		);
-		service::upload_static_site_files_to_s3(
-			connection,
-			&file,
-			&static_site_id,
-			&upload_id,
-			config,
-			request_id,
-		)
-		.await?;
-
-		update_static_site_and_db_status(
-			connection,
-			workspace_id,
-			&static_site_id,
-			&upload_id,
-			&StaticSiteDetails {},
+			&creation_time,
 			config,
 			request_id,
 		)
@@ -194,101 +138,31 @@ pub async fn create_static_site_in_workspace(
 	Ok(static_site_id)
 }
 
-pub async fn update_static_site(
+pub async fn upload_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	static_site_id: &Uuid,
-	name: Option<&str>,
-	file: Option<String>,
+	file: &str,
 	message: &str,
 	uploaded_by: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
-) -> Result<Option<Uuid>, Error> {
+) -> Result<Uuid, Error> {
 	log::trace!("request_id: {} - getting static site details", request_id);
 
-	if let Some(name) = name {
-		db::update_static_site_name(connection, static_site_id, name).await?;
-	}
-
-	let upload_id = if let Some(file) = file {
-		let upload_id = db::generate_new_resource_id(connection).await?;
-		let now = Utc::now();
-
-		db::create_resource(
-			connection,
-			&upload_id,
-			&format!("Static site upload: {}", upload_id),
-			rbac::RESOURCE_TYPES
-				.get()
-				.unwrap()
-				.get(rbac::resource_types::STATIC_SITE_UPLOAD)
-				.unwrap(),
-			workspace_id,
-			&now,
-		)
-		.await?;
-
-		log::trace!("request_id: {} - Creating upload history", request_id);
-		db::create_static_site_upload_history(
-			connection,
-			&upload_id,
-			static_site_id,
-			message,
-			uploaded_by,
-			&now,
-		)
-		.await?;
-		db::update_current_live_upload_for_static_site(
-			connection,
-			static_site_id,
-			&upload_id,
-		)
-		.await?;
-
-		log::trace!(
-			"request_id: {} - Updating the static site and db status",
-			request_id
-		);
-
-		let static_site = db::get_static_site_by_id(connection, static_site_id)
-			.await?
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-		log::trace!(
-			"request_id: {} - Uploading static site files to S3",
-			request_id
-		);
-		service::upload_static_site_files_to_s3(
-			connection,
-			&file,
-			static_site_id,
-			&upload_id,
-			config,
-			request_id,
-		)
-		.await?;
-
-		if static_site.status == DeploymentStatus::Stopped {
-			log::trace!("Static site with ID: {} is stopped manully, skipping update static site k8s api call", static_site_id);
-			Some(upload_id)
-		} else {
-			service::update_static_site_and_db_status(
-				connection,
-				workspace_id,
-				static_site_id,
-				&upload_id,
-				&StaticSiteDetails {},
-				config,
-				request_id,
-			)
-			.await?;
-			Some(upload_id)
-		}
-	} else {
-		None
-	};
+	let creation_time = Utc::now();
+	let upload_id = create_static_site_upload(
+		connection,
+		workspace_id,
+		static_site_id,
+		file,
+		message,
+		uploaded_by,
+		&creation_time,
+		config,
+		request_id,
+	)
+	.await?;
 
 	log::trace!(
 		"request_id: {} - Creating Static-site upload resource",
@@ -381,7 +255,7 @@ pub async fn delete_static_site(
 		connection,
 		&static_site.workspace_id,
 		&static_site_plan,
-		&DateTime::from(Utc::now()),
+		&Utc::now(),
 	)
 	.await?;
 
@@ -752,4 +626,95 @@ async fn static_site_limit_crossed(
 	}
 
 	Ok(false)
+}
+
+async fn create_static_site_upload(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	static_site_id: &Uuid,
+	file: &str,
+	message: &str,
+	uploaded_by: &Uuid,
+	creation_time: &DateTime<Utc>,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<Uuid, Error> {
+	log::trace!(
+		"request_id: {} - Creating Static-site upload resource",
+		request_id
+	);
+	let upload_id = db::generate_new_resource_id(connection).await?;
+
+	db::create_resource(
+		connection,
+		&upload_id,
+		&format!("Static site upload: {}", upload_id),
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::STATIC_SITE_UPLOAD)
+			.unwrap(),
+		workspace_id,
+		creation_time,
+	)
+	.await?;
+
+	log::trace!("request_id: {} - Creating upload history", request_id);
+	db::create_static_site_upload_history(
+		connection,
+		&upload_id,
+		static_site_id,
+		message,
+		uploaded_by,
+		creation_time,
+	)
+	.await?;
+
+	db::update_current_live_upload_for_static_site(
+		connection,
+		static_site_id,
+		&upload_id,
+	)
+	.await?;
+
+	log::trace!(
+		"request_id: {} - Updating the static site and db status",
+		request_id
+	);
+
+	let static_site = db::get_static_site_by_id(connection, static_site_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	log::trace!(
+		"request_id: {} - Uploading static site files to S3",
+		request_id
+	);
+	service::upload_static_site_files_to_s3(
+		connection,
+		file,
+		static_site_id,
+		&upload_id,
+		config,
+		request_id,
+	)
+	.await?;
+
+	if static_site.status == DeploymentStatus::Stopped {
+		log::trace!("Static site with ID: {} is stopped manully, skipping update static site k8s api call", static_site_id);
+		Ok(upload_id)
+	} else {
+		service::update_static_site_and_db_status(
+			connection,
+			workspace_id,
+			static_site_id,
+			&upload_id,
+			&StaticSiteDetails {},
+			config,
+			request_id,
+		)
+		.await?;
+		Ok(upload_id)
+	}
 }
