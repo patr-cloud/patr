@@ -505,12 +505,42 @@ async fn get_access_token(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let ip_address = super::get_request_ip_address(&context);
+	let user_agent = context.get_header("user-agent").unwrap_or_default();
+
 	let config = context.get_state().config.clone();
 	let user_login = service::get_user_login_for_login_id(
 		context.get_database_connection(),
 		&login_id,
 	)
 	.await?;
+
+	log::trace!("Upading user login");
+	let ip_addr = &ip_address
+		.parse()
+		.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
+
+	let ip_info =
+		service::get_ip_address_info(ip_addr, &config.ipinfo_token).await?;
+
+	let (lat, lng) = ip_info.loc.split_once(',').status(500)?;
+	let (lat, lng): (f64, f64) = (lat.parse()?, lng.parse()?);
+
+	db::update_user_login_last_activity_info(
+		context.get_database_connection(),
+		&login_id,
+		&Utc::now(),
+		ip_addr,
+		lat,
+		lng,
+		&ip_info.country,
+		&ip_info.region,
+		&ip_info.city,
+		&ip_info.timezone,
+		&user_agent,
+	)
+	.await?;
+
 	let success =
 		service::validate_hash(&refresh_token, &user_login.refresh_token)?;
 

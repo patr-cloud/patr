@@ -828,6 +828,27 @@
     },
     "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured FROM managed_url WHERE is_configured = FALSE AND sub_domain NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
   },
+  "0c8676820b404db9b35db31be3736fd9c3a9eb4154cf1211c6be8a5504e1cc62": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Timestamptz",
+          "Inet",
+          "Float8",
+          "Float8",
+          "Text",
+          "Text",
+          "Text",
+          "Text",
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE user_login SET last_activity = $1, last_activity_ip = $2, last_activity_location = ST_SetSRID(POINT($3, $4)::GEOMETRY, 4326), last_activity_country = $5, last_activity_region = $6, last_activity_city = $7, last_activity_timezone = $8, last_activity_user_agent = $9 WHERE login_id = $10;"
+  },
   "0cb6df9a6140b8e068b846e7096392003fff3554a2f2b8b7f6e36a0981dcf1d0": {
     "describe": {
       "columns": [],
