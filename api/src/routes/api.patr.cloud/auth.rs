@@ -515,15 +515,30 @@ async fn get_access_token(
 	)
 	.await?;
 
-	log::trace!("Creating user login");
-	let (user_login, _) = service::create_login_for_user(
+	log::trace!("Upading user login");
+	let ip_addr = &ip_address
+		.parse()
+		.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
+
+	let ip_info =
+		service::get_ip_address_info(ip_addr, &config.ipinfo_token).await?;
+
+	let (lat, lng) = ip_info.loc.split_once(',').status(500)?;
+	let (lat, lng): (f64, f64) = (lat.parse()?, lng.parse()?);
+
+	db::update_user_login_last_activity_info(
 		context.get_database_connection(),
-		&user_login.user_id,
-		&ip_address
-			.parse()
-			.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+		&login_id,
+		&Utc::now(),
+		&Utc::now(),
+		ip_addr,
+		lat,
+		lng,
+		&ip_info.country,
+		&ip_info.region,
+		&ip_info.city,
+		&ip_info.timezone,
 		&user_agent,
-		&config,
 	)
 	.await?;
 

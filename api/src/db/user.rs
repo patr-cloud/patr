@@ -2226,6 +2226,54 @@ pub async fn get_user_login_for_user(
 	.await
 }
 
+pub async fn update_user_login_last_activity_info(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	login_id: &Uuid,
+	last_login: &DateTime<Utc>,
+	last_activity: &DateTime<Utc>,
+	last_activity_ip: &IpAddr,
+	last_activity_location_latitude: f64,
+	last_activity_location_longitude: f64,
+	last_activity_country: &str,
+	last_activity_region: &str,
+	last_activity_city: &str,
+	last_activity_timezone: &str,
+	last_activity_user_agent: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			user_login
+		SET
+			last_login = $1,
+			last_activity = $2,
+			last_activity_ip = $3,
+			last_activity_location = ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326),
+			last_activity_country = $6,
+			last_activity_region = $7,
+			last_activity_city = $8,
+			last_activity_timezone = $9,
+			last_activity_user_agent = $10
+		WHERE
+			login_id = $11;
+		"#,
+		last_login,
+		last_activity,
+		last_activity_ip as _,
+		last_activity_location_latitude,
+		last_activity_location_longitude,
+		last_activity_country,
+		last_activity_region,
+		last_activity_city,
+		last_activity_timezone,
+		last_activity_user_agent,
+		login_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn generate_new_login_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
