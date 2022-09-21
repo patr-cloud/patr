@@ -153,15 +153,16 @@ pub async fn add_domain_to_workspace(
 				.status(500)
 				.body(error!(DOMAIN_IS_PERSONAL).to_string())?;
 		} else {
-			// check if personal domain given by the user is registerd as a
-			// workspace domain
-			if !is_domain_used_for_sign_up(connection, full_domain_name).await?
-			{
-				Error::as_result()
-					.status(400)
-					.body(error!(DOMAIN_EXISTS).to_string())?;
-			}
+			Error::as_result()
+				.status(400)
+				.body(error!(DOMAIN_EXISTS).to_string())?;
 		}
+	} else if is_domain_used_for_sign_up(connection, full_domain_name).await? {
+		// check if personal domain given by the user is registerd as a
+		// workspace domain
+		Error::as_result()
+			.status(400)
+			.body(error!(DOMAIN_EXISTS).to_string())?;
 	}
 
 	log::trace!("request_id: {} - Generating new domain id", request_id);
@@ -398,10 +399,10 @@ pub async fn is_domain_used_for_sign_up(
 		.await?;
 	if let Some(workspace_domain_status) = workspace_domain_status {
 		if workspace_domain_status.otp_expiry > Utc::now() {
-			return Ok(false);
+			return Ok(true);
 		}
 	}
-	Ok(true)
+	Ok(false)
 }
 
 pub async fn create_patr_domain_dns_record(
