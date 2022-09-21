@@ -36,11 +36,19 @@ pub struct UserLogin {
 	pub created_ip: IpAddr,
 	pub created_location_latitude: f64,
 	pub created_location_longitude: f64,
+	pub created_country: String,
+	pub created_region: String,
+	pub created_city: String,
+	pub created_timezone: String,
 	pub last_login: DateTime<Utc>,
 	pub last_activity: DateTime<Utc>,
 	pub last_activity_ip: IpAddr,
 	pub last_activity_location_latitude: f64,
 	pub last_activity_location_longitude: f64,
+	pub last_activity_country: String,
+	pub last_activity_region: String,
+	pub last_activity_city: String,
+	pub last_activity_timezone: String,
 	pub last_activity_user_agent: String,
 }
 
@@ -204,10 +212,18 @@ pub async fn initialize_users_pre(
 			created TIMESTAMPTZ NOT NULL,
 			created_ip INET NOT NULL,
 			created_location GEOMETRY NOT NULL,
+			created_country TEXT NOT NULL,
+			created_region TEXT NOT NULL,
+			created_city TEXT NOT NULL,
+			created_timezone TEXT NOT NULL,
 			last_login TIMESTAMPTZ NOT NULL,
 			last_activity TIMESTAMPTZ NOT NULL,
 			last_activity_ip INET NOT NULL,
 			last_activity_location GEOMETRY NOT NULL,
+			last_activity_country TEXT NOT NULL,
+			last_activity_region TEXT NOT NULL,
+			last_activity_city TEXT NOT NULL,
+			last_activity_timezone TEXT NOT NULL,
 			last_activity_user_agent TEXT NOT NULL,
 			CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id)
 		);
@@ -2022,6 +2038,7 @@ pub async fn create_user(
 	.map(|_| ())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn add_user_login(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &Uuid,
@@ -2032,11 +2049,19 @@ pub async fn add_user_login(
 	created_ip: &IpAddr,
 	created_location_latitude: f64,
 	created_location_longitude: f64,
+	created_country: &str,
+	created_region: &str,
+	created_city: &str,
+	created_timezone: &str,
 	last_login: &DateTime<Utc>,
 	last_activity: &DateTime<Utc>,
 	last_activity_ip: &IpAddr,
 	last_activity_location_latitude: f64,
 	last_activity_location_longitude: f64,
+	last_activity_country: &str,
+	last_activity_region: &str,
+	last_activity_city: &str,
+	last_activity_timezone: &str,
 	last_activity_user_agent: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -2050,10 +2075,18 @@ pub async fn add_user_login(
 				created,
 				created_ip,
 				created_location,
+				created_country,
+				created_region,
+				created_city,
+				created_timezone,
 				last_login, 
 				last_activity,
 				last_activity_ip,
 				last_activity_location,
+				last_activity_country,
+				last_activity_region,
+				last_activity_city,
+				last_activity_timezone,
 				last_activity_user_agent
 			)
 		VALUES
@@ -2068,8 +2101,16 @@ pub async fn add_user_login(
 				$9,
 				$10,
 				$11,
-				ST_SetSRID(POINT($12, $13)::GEOMETRY, 4326),
-				$14
+				$12,
+				$13,
+				$14,
+				$15,
+				ST_SetSRID(POINT($16, $17)::GEOMETRY, 4326),
+				$18,
+				$19,
+				$20,
+				$21,
+				$22
 			);
 		"#,
 		login_id as _,
@@ -2080,11 +2121,19 @@ pub async fn add_user_login(
 		created_ip as _,
 		created_location_latitude as _,
 		created_location_longitude as _,
+		created_country,
+		created_region,
+		created_city,
+		created_timezone,
 		last_login as _,
 		last_activity as _,
 		last_activity_ip as _,
 		last_activity_location_latitude as _,
 		last_activity_location_longitude as _,
+		last_activity_country,
+		last_activity_region,
+		last_activity_city,
+		last_activity_timezone,
 		last_activity_user_agent,
 	)
 	.execute(&mut *connection)
@@ -2108,11 +2157,19 @@ pub async fn get_user_login(
 			created_ip as "created_ip: _",
 			ST_Y(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_latitude!: _",
 			ST_X(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_longitude!: _",
+			created_country,
+			created_region,
+			created_city,
+			created_timezone,
 			last_login,
 			last_activity,
 			last_activity_ip as "last_activity_ip: _",
 			ST_Y(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_latitude!: _",
 			ST_X(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_longitude!: _",
+			last_activity_country,
+			last_activity_region,
+			last_activity_city,
+			last_activity_timezone,
 			last_activity_user_agent
 		FROM
 			user_login
@@ -2142,11 +2199,19 @@ pub async fn get_user_login_for_user(
 			created_ip as "created_ip: _",
 			ST_Y(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_latitude!: _",
 			ST_X(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_longitude!: _",
+			created_country,
+			created_region,
+			created_city,
+			created_timezone,
 			last_login,
 			last_activity,
 			last_activity_ip as "last_activity_ip: _",
 			ST_Y(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_latitude!: _",
 			ST_X(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_longitude!: _",
+			last_activity_country,
+			last_activity_region,
+			last_activity_city,
+			last_activity_timezone,
 			last_activity_user_agent
 		FROM
 			user_login
@@ -2204,11 +2269,19 @@ pub async fn get_all_logins_for_user(
 			created_ip as "created_ip: _",
 			ST_Y(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_latitude!: _",
 			ST_X(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_longitude!: _",
+			created_country,
+			created_region,
+			created_city,
+			created_timezone,
 			last_login,
 			last_activity,
 			last_activity_ip as "last_activity_ip: _",
 			ST_Y(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_latitude!: _",
 			ST_X(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_longitude!: _",
+			last_activity_country,
+			last_activity_region,
+			last_activity_city,
+			last_activity_timezone,
 			last_activity_user_agent
 		FROM
 			user_login
@@ -2238,11 +2311,19 @@ pub async fn get_login_for_user_with_refresh_token(
 			created_ip as "created_ip: _",
 			ST_Y(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_latitude!: _",
 			ST_X(ST_Centroid(ST_Transform(created_location, 4326))) as "created_location_longitude!: _",
+			created_country,
+			created_region,
+			created_city,
+			created_timezone,
 			last_login,
 			last_activity,
 			last_activity_ip as "last_activity_ip: _",
 			ST_Y(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_latitude!: _",
 			ST_X(ST_Centroid(ST_Transform(last_activity_location, 4326))) as "last_activity_location_longitude!: _",
+			last_activity_country,
+			last_activity_region,
+			last_activity_city,
+			last_activity_timezone,
 			last_activity_user_agent
 		FROM
 			user_login
