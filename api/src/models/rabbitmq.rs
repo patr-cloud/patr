@@ -52,7 +52,15 @@ pub enum InfraRequestData {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum BYOCData {
-	SetupKubernetesCluster {
+	InitKubernetesCluster {
+		region_id: Uuid,
+		cluster_url: String,
+		certificate_authority_data: String,
+		auth_username: String,
+		auth_token: String,
+		request_id: Uuid,
+	},
+	CheckClusterForReadiness {
 		region_id: Uuid,
 		cluster_url: String,
 		certificate_authority_data: String,

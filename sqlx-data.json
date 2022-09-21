@@ -658,90 +658,6 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdomain_plan as \"domain_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tdomain_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t);\n\t\t\t"
   },
-  "08b4372242d3439a4f832e4879f6e7a93b456b862489e3ee6d93a50cbc0c24ac": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "cloud_provider: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "digitalocean",
-                  "other"
-                ]
-              },
-              "name": "infrastructure_cloud_provider"
-            }
-          }
-        },
-        {
-          "name": "ready",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 4,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "message_log",
-          "ordinal": 5,
-          "type_info": "Text"
-        },
-        {
-          "name": "kubernetes_cluster_url",
-          "ordinal": 6,
-          "type_info": "Text"
-        },
-        {
-          "name": "kubernetes_auth_username",
-          "ordinal": 7,
-          "type_info": "Text"
-        },
-        {
-          "name": "kubernetes_auth_token",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "kubernetes_ca_data",
-          "ordinal": 9,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", ready, workspace_id as \"workspace_id: _\", message_log, kubernetes_cluster_url, kubernetes_auth_username, kubernetes_auth_token, kubernetes_ca_data FROM deployment_region WHERE workspace_id IS NULL OR workspace_id = $1;"
-  },
   "08ef2fd52eb3904957a929e714d54f703b24f785d52aecebe5bc50deed2c0ab6": {
     "describe": {
       "columns": [],
@@ -3837,22 +3753,6 @@
       }
     },
     "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tstatic_site_plan as \"static_site_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tstatic_sites_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t);\n\t\t"
-  },
-  "5015a0bcac4764933d330d04d64a51f9dde64cbd7057b29501573e25feb5503c": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          "Text",
-          "Text",
-          "Text"
-        ]
-      }
-    },
-    "query": "UPDATE deployment_region SET ready = TRUE, kubernetes_cluster_url = $2, kubernetes_auth_username = $3, kubernetes_auth_token = $4, kubernetes_ca_data = $5 WHERE id = $1;"
   },
   "50282dcc98562ef247ea4d4978153d7ea74dc9001b89ed36885a6446f8543fc8": {
     "describe": {
@@ -7102,6 +7002,96 @@
     },
     "query": "CREATE TABLE IF NOT EXISTS secrets_payment_history( workspace_id UUID NOT NULL, secret_count INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
   },
+  "859b2ac76132077d2114cfdff6a02be762b3fdfc6e42af1eb70a87fb68c651cf": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "cloud_provider: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "digitalocean",
+                  "other"
+                ]
+              },
+              "name": "infrastructure_cloud_provider"
+            }
+          }
+        },
+        {
+          "name": "ready",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 4,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "message_log",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "kubernetes_cluster_url",
+          "ordinal": 6,
+          "type_info": "Text"
+        },
+        {
+          "name": "kubernetes_auth_username",
+          "ordinal": 7,
+          "type_info": "Text"
+        },
+        {
+          "name": "kubernetes_auth_token",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "kubernetes_ca_data",
+          "ordinal": 9,
+          "type_info": "Text"
+        },
+        {
+          "name": "kubernetes_ingress_ip_addr: _",
+          "ordinal": 10,
+          "type_info": "Inet"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", ready, workspace_id as \"workspace_id: _\", message_log, kubernetes_cluster_url, kubernetes_auth_username, kubernetes_auth_token, kubernetes_ca_data, kubernetes_ingress_ip_addr as \"kubernetes_ingress_ip_addr: _\" FROM deployment_region WHERE workspace_id IS NULL OR workspace_id = $1;"
+  },
   "85c2b0a9bf48c5cc257af57e4ecf5b439153fe1b82d213953db1f10bdc14fd87": {
     "describe": {
       "columns": [
@@ -7880,90 +7870,6 @@
     },
     "query": "DELETE FROM user_unverified_phone_number WHERE user_id = $1 AND country_code = $2 AND phone_number = $3;"
   },
-  "966068997c9b0608e973948e9b3dcdbbbde97880728a9607818e26fa62c368f0": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "cloud_provider: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "digitalocean",
-                  "other"
-                ]
-              },
-              "name": "infrastructure_cloud_provider"
-            }
-          }
-        },
-        {
-          "name": "ready",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 4,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "message_log",
-          "ordinal": 5,
-          "type_info": "Text"
-        },
-        {
-          "name": "kubernetes_cluster_url",
-          "ordinal": 6,
-          "type_info": "Text"
-        },
-        {
-          "name": "kubernetes_auth_username",
-          "ordinal": 7,
-          "type_info": "Text"
-        },
-        {
-          "name": "kubernetes_auth_token",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "kubernetes_ca_data",
-          "ordinal": 9,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", ready, workspace_id as \"workspace_id: _\", message_log, kubernetes_cluster_url, kubernetes_auth_username, kubernetes_auth_token, kubernetes_ca_data FROM deployment_region WHERE id = $1;"
-  },
   "9686b1e80681fe0d1573016b1689ac9aee11045ead93c2de9dafb97715303b7f": {
     "describe": {
       "columns": [],
@@ -8131,16 +8037,6 @@
       }
     },
     "query": "CREATE INDEX role_permissions_resource_type_idx_role_id ON role_permissions_resource_type (role_id);"
-  },
-  "9c45fd16e799e812ef1ca16d8f1e037aa9f3a1c3c84006b1db1a6bf8ebfb1cbe": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment_region( id UUID CONSTRAINT deployment_region_pk PRIMARY KEY, name TEXT NOT NULL, provider INFRASTRUCTURE_CLOUD_PROVIDER NOT NULL, workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id REFERENCES workspace(id), ready BOOLEAN NOT NULL, kubernetes_cluster_url TEXT, kubernetes_auth_username TEXT, kubernetes_auth_token TEXT, kubernetes_ca_data TEXT, message_log TEXT, CONSTRAINT deployment_region_chk_ready_or_not CHECK( ( workspace_id IS NOT NULL AND ( ( ready = TRUE AND kubernetes_cluster_url IS NOT NULL AND kubernetes_ca_data IS NOT NULL AND kubernetes_auth_username IS NOT NULL AND kubernetes_auth_token IS NOT NULL ) OR ( ready = FALSE AND kubernetes_cluster_url IS NULL AND kubernetes_ca_data IS NULL AND kubernetes_auth_username IS NULL AND kubernetes_auth_token IS NULL ) ) ) OR ( workspace_id IS NULL AND ready = FALSE AND kubernetes_cluster_url IS NULL AND kubernetes_ca_data IS NULL AND kubernetes_auth_username IS NULL AND kubernetes_auth_token IS NULL ) ) );"
   },
   "9cf0a9094118925bd1079644c538862c90d31b9ec0ad9c0dc8c5711c58c27b3a": {
     "describe": {
@@ -11103,6 +10999,96 @@
     },
     "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" INNER JOIN user_phone_number ON \"user\".id = user_phone_number.user_id WHERE user_phone_number.country_code = $1 AND user_phone_number.number = $2;"
   },
+  "d5244a5633b4ad41c1ccbf69122b6800a97876579b85eb06aaf0cf3b024e6d6d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "cloud_provider: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "digitalocean",
+                  "other"
+                ]
+              },
+              "name": "infrastructure_cloud_provider"
+            }
+          }
+        },
+        {
+          "name": "ready",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 4,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "message_log",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "kubernetes_cluster_url",
+          "ordinal": 6,
+          "type_info": "Text"
+        },
+        {
+          "name": "kubernetes_auth_username",
+          "ordinal": 7,
+          "type_info": "Text"
+        },
+        {
+          "name": "kubernetes_auth_token",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "kubernetes_ca_data",
+          "ordinal": 9,
+          "type_info": "Text"
+        },
+        {
+          "name": "kubernetes_ingress_ip_addr: _",
+          "ordinal": 10,
+          "type_info": "Inet"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", ready, workspace_id as \"workspace_id: _\", message_log, kubernetes_cluster_url, kubernetes_auth_username, kubernetes_auth_token, kubernetes_ca_data, kubernetes_ingress_ip_addr as \"kubernetes_ingress_ip_addr: _\" FROM deployment_region WHERE id = $1;"
+  },
   "d554e0cdaefed7bec784a16adfa3a7e2e844251ddab8d60a00e481b7adc938d9": {
     "describe": {
       "columns": [],
@@ -12155,6 +12141,16 @@
     },
     "query": "DELETE FROM domain WHERE id = $1;"
   },
+  "e43a636b97c16c2f10144716fb4714c3266c1d4e089c072820ee8970eb9627a8": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_region( id UUID CONSTRAINT deployment_region_pk PRIMARY KEY, name TEXT NOT NULL, provider INFRASTRUCTURE_CLOUD_PROVIDER NOT NULL, workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id REFERENCES workspace(id), ready BOOLEAN NOT NULL, kubernetes_cluster_url TEXT, kubernetes_auth_username TEXT, kubernetes_auth_token TEXT, kubernetes_ca_data TEXT, kubernetes_ingress_ip_addr INET, message_log TEXT, CONSTRAINT deployment_region_chk_ready_or_not CHECK( ( workspace_id IS NOT NULL AND ( ( ready = TRUE AND kubernetes_cluster_url IS NOT NULL AND kubernetes_ca_data IS NOT NULL AND kubernetes_auth_username IS NOT NULL AND kubernetes_auth_token IS NOT NULL AND kubernetes_ingress_ip_addr IS NOT NULL ) OR ( ready = FALSE AND kubernetes_cluster_url IS NULL AND kubernetes_ca_data IS NULL AND kubernetes_auth_username IS NULL AND kubernetes_auth_username IS NULL AND kubernetes_ingress_ip_addr IS NULL ) ) ) OR ( workspace_id IS NULL AND ready = FALSE AND kubernetes_cluster_url IS NULL AND kubernetes_ca_data IS NULL AND kubernetes_auth_username IS NULL AND kubernetes_auth_token IS NULL AND kubernetes_ingress_ip_addr IS NULL ) ) );"
+  },
   "e44c154107c5fb3d88b9c38b24ac19303760e8d8fde96510bb66ea9932b29e22": {
     "describe": {
       "columns": [
@@ -12753,6 +12749,23 @@
       }
     },
     "query": "CREATE TABLE docker_registry_repository_tag( repository_id UUID NOT NULL CONSTRAINT docker_registry_repository_tag_fk_repository_id REFERENCES docker_registry_repository(id), tag TEXT NOT NULL, manifest_digest TEXT NOT NULL, last_updated TIMESTAMPTZ NOT NULL, CONSTRAINT docker_registry_repository_tag_pk PRIMARY KEY( repository_id, tag ), CONSTRAINT docker_registry_repository_tag_fk_repository_id_manifest_digest FOREIGN KEY(repository_id, manifest_digest) REFERENCES docker_registry_repository_manifest( repository_id, manifest_digest ) );"
+  },
+  "f580af1d3dd23ca8b5a158eb610cb5b28b4e26ea0137e55679a92fc6bd33d42d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Text",
+          "Text",
+          "Text",
+          "Inet"
+        ]
+      }
+    },
+    "query": "UPDATE deployment_region SET ready = TRUE, kubernetes_cluster_url = $2, kubernetes_auth_username = $3, kubernetes_auth_token = $4, kubernetes_ca_data = $5, kubernetes_ingress_ip_addr = $6 WHERE id = $1;"
   },
   "f586863518a7bc2ad7980aa354656d0373289758bc9de1605b1123fffe485f12": {
     "describe": {

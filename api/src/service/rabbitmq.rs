@@ -556,7 +556,7 @@ pub async fn queue_setup_kubernetes_cluster(
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	send_message_to_infra_queue(
-		&InfraRequestData::BYOC(BYOCData::SetupKubernetesCluster {
+		&InfraRequestData::BYOC(BYOCData::InitKubernetesCluster {
 			region_id: region_id.clone(),
 			cluster_url: cluster_url.to_owned(),
 			certificate_authority_data: certificate_authority_data.to_string(),
