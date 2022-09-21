@@ -1211,7 +1211,6 @@ async fn get_all_logins_for_user(
 		created_country: login.created_country,
 		created_region: login.created_region,
 		created_city: login.created_city,
-		created_postal: login.created_postal,
 		created_timezone: login.created_timezone,
 		last_login: DateTime(login.last_login),
 		last_activity: DateTime(login.last_activity),
@@ -1221,6 +1220,10 @@ async fn get_all_logins_for_user(
 			lng: login.last_activity_location_longitude,
 		},
 		last_activity_user_agent: login.last_activity_user_agent,
+		last_activity_country: login.last_activity_country,
+		last_activity_region: login.last_activity_region,
+		last_activity_city: login.last_activity_city,
+		last_activity_timezone: login.last_activity_timezone,
 	})
 	.collect::<Vec<_>>();
 
@@ -1253,7 +1256,6 @@ async fn get_login_info(
 				created_country: login.created_country,
 				created_region: login.created_region,
 				created_city: login.created_city,
-				created_postal: login.created_postal,
 				created_timezone: login.created_timezone,
 				last_login: DateTime(login.last_login),
 				last_activity: DateTime(login.last_activity),
@@ -1263,6 +1265,10 @@ async fn get_login_info(
 					lng: login.last_activity_location_longitude,
 				},
 				last_activity_user_agent: login.last_activity_user_agent,
+				last_activity_country: login.last_activity_country,
+				last_activity_region: login.last_activity_region,
+				last_activity_city: login.last_activity_city,
+				last_activity_timezone: login.last_activity_timezone,
 			})
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string())?;

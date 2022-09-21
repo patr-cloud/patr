@@ -811,6 +811,10 @@ async fn update_user_login_table_with_more_info(
 			last_activity TIMESTAMPTZ NOT NULL,
 			last_activity_ip INET NOT NULL,
 			last_activity_location GEOMETRY NOT NULL,
+			last_activity_country TEXT NOT NULL,
+			last_activity_region TEXT NOT NULL,
+			last_activity_city TEXT NOT NULL,
+			last_activity_timezone TEXT NOT NULL,
 			last_activity_user_agent TEXT NOT NULL,
 			CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id)
 		);
