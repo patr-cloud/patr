@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use eve_rs::AsError;
 use tokio::{fs, process::Command};
 
 use crate::{
@@ -24,7 +25,7 @@ pub(super) async fn process_request(
 			auth_token,
 			request_id,
 		} => {
-			let _region = if let Some(region) =
+			let region = if let Some(region) =
 				db::get_region_by_id(connection, &region_id).await?
 			{
 				region
@@ -49,8 +50,20 @@ pub(super) async fn process_request(
 			// todo: use temp file and clean up resources
 			fs::write(&kubeconfig_path, &kubeconfig_content).await?;
 
+			// safe to return as only customer cluster is initalized here,
+			// so workspace_id will be present
+			let parent_workspace = region
+				.workspace_id
+				.map(|id| id.as_str().to_owned())
+				.status(500)?;
+
+			// todo: get both stdout and stderr in same stream
 			let output = Command::new("k8s/fresh/k8s_init.sh")
-				.args(&[region_id.as_str(), &kubeconfig_path])
+				.args(&[
+					region_id.as_str(),
+					&parent_workspace,
+					&kubeconfig_path,
+				])
 				.output()
 				.await?;
 
@@ -142,6 +155,19 @@ pub(super) async fn process_request(
 					return Ok(());
 				}
 			};
+
+			let region = db::get_region_by_id(connection, &region_id)
+				.await?
+				.status(500)?;
+
+			service::create_external_service_for_region(
+				region.workspace_id.status(500)?.as_str(),
+				&region_id,
+				&ip_addr,
+				service::get_kubernetes_config_for_default_region(config)
+					.auth_details,
+			)
+			.await?;
 
 			db::mark_deployment_region_as_ready(
 				connection,
