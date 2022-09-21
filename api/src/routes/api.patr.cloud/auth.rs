@@ -505,12 +505,28 @@ async fn get_access_token(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let ip_address = super::get_request_ip_address(&context);
+	let user_agent = context.get_header("user-agent").unwrap_or_default();
+
 	let config = context.get_state().config.clone();
 	let user_login = service::get_user_login_for_login_id(
 		context.get_database_connection(),
 		&login_id,
 	)
 	.await?;
+
+	log::trace!("Creating user login");
+	let (user_login, _) = service::create_login_for_user(
+		context.get_database_connection(),
+		&user_login.user_id,
+		&ip_address
+			.parse()
+			.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+		&user_agent,
+		&config,
+	)
+	.await?;
+
 	let success =
 		service::validate_hash(&refresh_token, &user_login.refresh_token)?;
 
