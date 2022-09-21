@@ -8,16 +8,16 @@ use kube::{
 };
 
 use crate::{
-	service::{ext_traits::DeleteOpt, KubernetesConfig},
+	service::{ext_traits::DeleteOpt, KubernetesConfigDetails},
 	utils::Error,
 };
 
 pub async fn create_kubernetes_namespace(
 	namespace_name: &str,
-	kubeconfig: KubernetesConfig,
+	kubeconfig: KubernetesConfigDetails,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_client(kubeconfig).await?;
+	let client = super::get_kubernetes_client(kubeconfig.auth_details).await?;
 
 	log::trace!("request_id: {} - creating namespace", request_id);
 	let kubernetes_namespace = Namespace {
@@ -38,10 +38,10 @@ pub async fn create_kubernetes_namespace(
 
 pub async fn delete_kubernetes_namespace(
 	namespace_name: &str,
-	kubeconfig: KubernetesConfig,
+	kubeconfig: KubernetesConfigDetails,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_client(kubeconfig).await?;
+	let client = super::get_kubernetes_client(kubeconfig.auth_details).await?;
 
 	log::trace!("request_id: {} - deleting namespace", request_id);
 

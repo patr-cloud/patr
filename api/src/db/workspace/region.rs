@@ -1,3 +1,5 @@
+use std::net::IpAddr;
+
 use api_models::{
 	models::workspace::region::InfrastructureCloudProvider,
 	utils::Uuid,
@@ -21,6 +23,7 @@ pub struct DeploymentRegion {
 	pub kubernetes_auth_username: Option<String>,
 	pub kubernetes_auth_token: Option<String>,
 	pub kubernetes_ca_data: Option<String>,
+	pub kubernetes_ingress_ip_addr: Option<IpAddr>,
 }
 
 pub async fn initialize_region_pre(
@@ -50,6 +53,7 @@ pub async fn initialize_region_pre(
 			kubernetes_auth_username TEXT,
 			kubernetes_auth_token TEXT,
 			kubernetes_ca_data TEXT,
+			kubernetes_ingress_ip_addr INET,
 			message_log TEXT,
 			CONSTRAINT deployment_region_chk_ready_or_not CHECK(
 				(
@@ -61,13 +65,15 @@ pub async fn initialize_region_pre(
 							AND kubernetes_ca_data IS NOT NULL
 							AND kubernetes_auth_username IS NOT NULL
 							AND kubernetes_auth_token IS NOT NULL
+							AND kubernetes_ingress_ip_addr IS NOT NULL
 						)
 						OR (
 							ready = FALSE
 							AND kubernetes_cluster_url IS NULL
 							AND kubernetes_ca_data IS NULL
 							AND kubernetes_auth_username IS NULL
-							AND kubernetes_auth_token IS NULL
+							AND kubernetes_auth_username IS NULL
+							AND kubernetes_ingress_ip_addr IS NULL
 						)
 					)
 				)
@@ -78,6 +84,7 @@ pub async fn initialize_region_pre(
 					AND kubernetes_ca_data IS NULL
 					AND kubernetes_auth_username IS NULL
 					AND kubernetes_auth_token IS NULL
+					AND kubernetes_ingress_ip_addr IS NULL
 				)
 			)
 		);
@@ -165,7 +172,8 @@ pub async fn get_region_by_id(
 			kubernetes_cluster_url,
 			kubernetes_auth_username,
 			kubernetes_auth_token,
-			kubernetes_ca_data
+			kubernetes_ca_data,
+			kubernetes_ingress_ip_addr as "kubernetes_ingress_ip_addr: _"
 		FROM
 			deployment_region
 		WHERE
@@ -194,7 +202,8 @@ pub async fn get_all_deployment_regions_for_workspace(
 			kubernetes_cluster_url,
 			kubernetes_auth_username,
 			kubernetes_auth_token,
-			kubernetes_ca_data
+			kubernetes_ca_data,
+			kubernetes_ingress_ip_addr as "kubernetes_ingress_ip_addr: _"
 		FROM
 			deployment_region
 		WHERE
@@ -249,6 +258,7 @@ pub async fn mark_deployment_region_as_ready(
 	kubernetes_auth_username: &str,
 	kubernetes_auth_token: &str,
 	kubernetes_ca_data: &str,
+	kubernetes_ingress_ip_addr: &IpAddr,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -259,7 +269,8 @@ pub async fn mark_deployment_region_as_ready(
 			kubernetes_cluster_url = $2,
 			kubernetes_auth_username = $3,
 			kubernetes_auth_token = $4,
-			kubernetes_ca_data = $5
+			kubernetes_ca_data = $5,
+			kubernetes_ingress_ip_addr = $6
 		WHERE
 			id = $1;
 		"#,
@@ -268,6 +279,7 @@ pub async fn mark_deployment_region_as_ready(
 		kubernetes_auth_username,
 		kubernetes_auth_token,
 		kubernetes_ca_data,
+		kubernetes_ingress_ip_addr as _
 	)
 	.execute(&mut *connection)
 	.await
