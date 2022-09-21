@@ -498,6 +498,11 @@ pub async fn create_login_for_user(
 		created_ip,
 		lat,
 		lng,
+		&ipinfo.country,
+		&ipinfo.region,
+		&ipinfo.city,
+		&ipinfo.postal,
+		&ipinfo.timezone,
 		&now,
 		&now,
 		created_ip,
@@ -521,6 +526,11 @@ pub async fn create_login_for_user(
 		last_activity_location_latitude: lat,
 		last_activity_location_longitude: lng,
 		last_activity_user_agent: user_agent.to_string(),
+		created_country: ipinfo.country,
+		created_region: ipinfo.region,
+		created_city: ipinfo.city,
+		created_postal: ipinfo.postal,
+		created_timezone: ipinfo.timezone,
 	};
 
 	Ok((user_login, refresh_token))
