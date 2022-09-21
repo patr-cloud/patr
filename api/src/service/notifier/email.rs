@@ -394,6 +394,72 @@ pub async fn send_invoice_email(
 	.await
 }
 
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/bill-not-paid-delete-resources/template.json"]
+struct DeleteUnpaidResource {
+	username: String,
+	workspace_name: String,
+	month: String,
+	year: i32,
+	total_bill: f64,
+}
+
+pub async fn send_delete_unpaid_resource_email(
+	email: Mailbox,
+	username: String,
+	workspace_name: String,
+	month: String,
+	year: i32,
+	total_bill: f64,
+) -> Result<(), Error> {
+	send_email(
+		DeleteUnpaidResource {
+			username,
+			workspace_name,
+			month,
+			year,
+			total_bill,
+		},
+		email,
+		None,
+		"Patr resource deleted",
+	)
+	.await
+}
+
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/bill-not-paid-reminder/template.json"]
+struct BillNotPaid {
+	username: String,
+	workspace_name: String,
+	month: String,
+	year: i32,
+	total_bill: f64,
+}
+
+pub async fn send_bill_not_paid_reminder_email(
+	email: Mailbox,
+	username: String,
+	workspace_name: String,
+	month: String,
+	year: i32,
+	total_bill: f64,
+) -> Result<(), Error> {
+	send_email(
+		BillNotPaid {
+			username,
+			workspace_name,
+			month,
+			year,
+			total_bill,
+		},
+		email,
+		None,
+		"Patr bills",
+	)
+	.await
+}
+
 /// # Description
 /// This function is used to send the email to a recipient
 ///

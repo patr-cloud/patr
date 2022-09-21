@@ -331,7 +331,7 @@ pub async fn send_forgot_password_otp(
 /// address or an error
 ///
 /// [`Transaction`]: Transaction
-async fn get_user_email(
+pub async fn get_user_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	email_string: &str,
@@ -477,6 +477,78 @@ pub async fn send_invoice_email(
 		total_bill,
 		month,
 		year,
+	)
+	.await
+}
+
+pub async fn send_delete_unpaid_resource_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	super_admin_id: Uuid,
+	workspace_name: String,
+	month: String,
+	year: i32,
+	total_bill: f64,
+) -> Result<(), Error> {
+	let user = db::get_user_by_user_id(connection, &super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_delete_unpaid_resource_email(
+		user_email.parse()?,
+		user.first_name,
+		workspace_name,
+		month,
+		year,
+		total_bill,
+	)
+	.await
+}
+
+pub async fn send_bill_not_paid_reminder_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	super_admin_id: Uuid,
+	workspace_name: String,
+	month: String,
+	year: i32,
+	total_bill: f64,
+) -> Result<(), Error> {
+	let user = db::get_user_by_user_id(connection, &super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_bill_not_paid_reminder_email(
+		user_email.parse()?,
+		user.first_name,
+		workspace_name,
+		month,
+		year,
+		total_bill,
 	)
 	.await
 }
