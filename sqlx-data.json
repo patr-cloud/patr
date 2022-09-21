@@ -828,6 +828,27 @@
     },
     "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured FROM managed_url WHERE is_configured = FALSE AND sub_domain NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
   },
+  "0c8676820b404db9b35db31be3736fd9c3a9eb4154cf1211c6be8a5504e1cc62": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Timestamptz",
+          "Inet",
+          "Float8",
+          "Float8",
+          "Text",
+          "Text",
+          "Text",
+          "Text",
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE user_login SET last_activity = $1, last_activity_ip = $2, last_activity_location = ST_SetSRID(POINT($3, $4)::GEOMETRY, 4326), last_activity_country = $5, last_activity_region = $6, last_activity_city = $7, last_activity_timezone = $8, last_activity_user_agent = $9 WHERE login_id = $10;"
+  },
   "0cb6df9a6140b8e068b846e7096392003fff3554a2f2b8b7f6e36a0981dcf1d0": {
     "describe": {
       "columns": [],
@@ -5372,28 +5393,6 @@
       }
     },
     "query": "SELECT COUNT(*) as \"count!\" FROM managed_database INNER JOIN workspace ON managed_database.workspace_id = workspace.id WHERE status = 'deleted' AND workspace.super_admin_id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );"
-  },
-  "62c93079b6e9347f0d82c7771489b0489516bff519eb26fd391d20f5560c3417": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Timestamptz",
-          "Timestamptz",
-          "Inet",
-          "Float8",
-          "Float8",
-          "Text",
-          "Text",
-          "Text",
-          "Text",
-          "Text",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE user_login SET last_login = $1, last_activity = $2, last_activity_ip = $3, last_activity_location = ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), last_activity_country = $6, last_activity_region = $7, last_activity_city = $8, last_activity_timezone = $9, last_activity_user_agent = $10 WHERE login_id = $11;"
   },
   "62fb0148b3f71ab7dc2bc59d826bf780fec38cee98fd4c70c364da4801452f4d": {
     "describe": {
