@@ -2229,7 +2229,6 @@ pub async fn get_user_login_for_user(
 pub async fn update_user_login_last_activity_info(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &Uuid,
-	last_login: &DateTime<Utc>,
 	last_activity: &DateTime<Utc>,
 	last_activity_ip: &IpAddr,
 	last_activity_location_latitude: f64,
@@ -2245,19 +2244,17 @@ pub async fn update_user_login_last_activity_info(
 		UPDATE
 			user_login
 		SET
-			last_login = $1,
-			last_activity = $2,
-			last_activity_ip = $3,
-			last_activity_location = ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326),
-			last_activity_country = $6,
-			last_activity_region = $7,
-			last_activity_city = $8,
-			last_activity_timezone = $9,
-			last_activity_user_agent = $10
+			last_activity = $1,
+			last_activity_ip = $2,
+			last_activity_location = ST_SetSRID(POINT($3, $4)::GEOMETRY, 4326),
+			last_activity_country = $5,
+			last_activity_region = $6,
+			last_activity_city = $7,
+			last_activity_timezone = $8,
+			last_activity_user_agent = $9
 		WHERE
-			login_id = $11;
+			login_id = $10;
 		"#,
-		last_login,
 		last_activity,
 		last_activity_ip as _,
 		last_activity_location_latitude,

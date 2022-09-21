@@ -530,7 +530,6 @@ async fn get_access_token(
 		context.get_database_connection(),
 		&login_id,
 		&Utc::now(),
-		&Utc::now(),
 		ip_addr,
 		lat,
 		lng,
