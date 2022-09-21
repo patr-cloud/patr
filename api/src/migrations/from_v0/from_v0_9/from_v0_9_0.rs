@@ -805,7 +805,6 @@ async fn update_user_login_table_with_more_info(
 			created_country TEXT NOT NULL,
 			created_region TEXT NOT NULL,
 			created_city TEXT NOT NULL,
-			created_postal TEXT NOT NULL,
 			created_timezone TEXT NOT NULL,
 			last_login TIMESTAMPTZ NOT NULL,
 			last_activity TIMESTAMPTZ NOT NULL,
