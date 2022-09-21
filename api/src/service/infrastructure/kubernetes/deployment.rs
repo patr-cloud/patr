@@ -579,8 +579,12 @@ pub async fn update_kubernetes_deployment(
 		)
 		.await?;
 
-	if let ClusterType::UserOwned { ingress_ip_addr } = cluster_type {
-		// create a svc in patr cluster to point to user's cluster
+	if let ClusterType::UserOwned {
+		region_id,
+		ingress_ip_addr: _,
+	} = cluster_type
+	{
+		// create a ingress in patr cluster to point to user's cluster
 		let kubernetes_client = super::get_kubernetes_client(
 			get_kubernetes_config_for_default_region(config).auth_details,
 		)
@@ -589,53 +593,16 @@ pub async fn update_kubernetes_deployment(
 		let exposted_ports = running_details
 			.ports
 			.iter()
-			.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
-			.collect::<Vec<_>>();
+			.filter(|(_, port_type)| *port_type == &ExposedPortType::Http);
 
-		for (port, _) in &exposted_ports {
-			let kubernetes_service = Service {
-				metadata: ObjectMeta {
-					name: Some(format!("service-{}-{}", deployment.id, port)),
-					..ObjectMeta::default()
-				},
-				spec: Some(ServiceSpec {
-					type_: Some("ExternalName".to_string()),
-					external_name: Some(ingress_ip_addr.to_string()),
-					..ServiceSpec::default()
-				}),
-				..Service::default()
-			};
-			// Create the service defined above
-			log::trace!(
-				"request_id: {} - creating ExternalName service for deployment in user cluster",
-				request_id,
-			);
-			let service_api: Api<Service> =
-				Api::namespaced(kubernetes_client.clone(), namespace);
-			service_api
-				.patch(
-					&format!("service-{}-{}", deployment.id, port),
-					&PatchParams::apply(&format!(
-						"service-{}-{}",
-						deployment.id, port
-					)),
-					&Patch::Apply(kubernetes_service),
-				)
-				.await?
-				.status
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string())?;
-
+		for (port, _) in exposted_ports {
 			let ingress_rule = IngressRule {
 				host: Some(format!("{}-{}.patr.cloud", port, deployment.id)),
 				http: Some(HTTPIngressRuleValue {
 					paths: vec![HTTPIngressPath {
 						backend: IngressBackend {
 							service: Some(IngressServiceBackend {
-								name: format!(
-									"service-{}-{}",
-									deployment.id, port
-								),
+								name: format!("service-{}", region_id.as_str()),
 								port: Some(ServiceBackendPort {
 									number: Some(80),
 									..ServiceBackendPort::default()

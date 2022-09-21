@@ -12,7 +12,10 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClusterType {
 	PatrOwned,
-	UserOwned { ingress_ip_addr: IpAddr },
+	UserOwned {
+		region_id: Uuid,
+		ingress_ip_addr: IpAddr,
+	},
 }
 
 #[derive(Debug, Clone)]
@@ -77,7 +80,10 @@ pub async fn get_kubernetes_config_for_region(
 				Some(certificate_authority_data),
 				Some(ingress_ip_addr),
 			) => KubernetesConfigDetails {
-				cluster_type: ClusterType::UserOwned { ingress_ip_addr },
+				cluster_type: ClusterType::UserOwned {
+					region_id: region.id,
+					ingress_ip_addr,
+				},
 				auth_details: KubernetesAuthDetails {
 					cluster_url,
 					auth_username,
