@@ -33,4 +33,7 @@ echo "Ingress controller is ready"
 echo "Creating parent workspace in new cluster"
 kubectl create namespace "$PARENT_WORKSPACE_ID"
 
+echo "Turn off SSL redirects"
+kubectl patch configmap ingress-nginx-controller --namespace ingress-nginx --type strategic --patch '{ "data": { "ssl-redirect": "false" }}'
+
 echo "Successfully initialized cluster $CLUSTER_ID"

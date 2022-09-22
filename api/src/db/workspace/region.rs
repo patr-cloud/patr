@@ -79,7 +79,6 @@ pub async fn initialize_region_pre(
 				)
 				OR (
 					workspace_id IS NULL
-					AND ready = FALSE
 					AND kubernetes_cluster_url IS NULL
 					AND kubernetes_ca_data IS NULL
 					AND kubernetes_auth_username IS NULL

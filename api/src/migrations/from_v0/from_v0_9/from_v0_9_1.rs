@@ -17,6 +17,7 @@ pub(super) async fn migrate(
 	clean_up_drone_ci(&mut *connection, config).await?;
 	reset_permission_order(&mut *connection, config).await?;
 	update_user_login_table_with_more_info(&mut *connection, config).await?;
+	refactor_deployment_region_table(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -851,6 +852,117 @@ async fn update_user_login_table_with_more_info(
 		ADD CONSTRAINT workspace_audit_log_fk_login_id
 		FOREIGN KEY(user_id, login_id) REFERENCES user_login(user_id, login_id);
 	"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn refactor_deployment_region_table(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TYPE DEPLOYMENT_CLOUD_PROVIDER
+		RENAME TO INFRASTRUCTURE_CLOUD_PROVIDER;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TYPE INFRASTRUCTURE_CLOUD_PROVIDER
+			ADD VALUE 'other';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_region
+			DROP COLUMN parent_region_id,
+			DROP COLUMN location;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DELETE FROM deployment_region
+			WHERE provider IS NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_region
+			ALTER COLUMN provider SET NOT NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_region
+			ADD COLUMN workspace_id UUID
+				CONSTRAINT deployment_region_fk_workspace_id REFERENCES workspace(id),
+			ADD COLUMN ready BOOLEAN NOT NULL DEFAULT FALSE,
+			ADD COLUMN kubernetes_cluster_url TEXT,
+			ADD COLUMN kubernetes_auth_username TEXT,
+			ADD COLUMN kubernetes_auth_token TEXT,
+			ADD COLUMN kubernetes_ca_data TEXT,
+			ADD COLUMN kubernetes_ingress_ip_addr INET,
+			ADD COLUMN message_log TEXT,
+
+			ADD CONSTRAINT deployment_region_chk_ready_or_not CHECK(
+				(
+					workspace_id IS NOT NULL
+					AND (
+						(
+							ready = TRUE
+							AND kubernetes_cluster_url IS NOT NULL
+							AND kubernetes_ca_data IS NOT NULL
+							AND kubernetes_auth_username IS NOT NULL
+							AND kubernetes_auth_token IS NOT NULL
+							AND kubernetes_ingress_ip_addr IS NOT NULL
+						)
+						OR (
+							ready = FALSE
+							AND kubernetes_cluster_url IS NULL
+							AND kubernetes_ca_data IS NULL
+							AND kubernetes_auth_username IS NULL
+							AND kubernetes_auth_username IS NULL
+							AND kubernetes_ingress_ip_addr IS NULL
+						)
+					)
+				)
+				OR (
+					workspace_id IS NULL
+					AND kubernetes_cluster_url IS NULL
+					AND kubernetes_ca_data IS NULL
+					AND kubernetes_auth_username IS NULL
+					AND kubernetes_auth_token IS NULL
+					AND kubernetes_ingress_ip_addr IS NULL
+				)
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_region
+			ALTER COLUMN ready DROP DEFAULT;
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;
