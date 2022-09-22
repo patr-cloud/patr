@@ -47,7 +47,6 @@ pub(super) async fn process_request(
 
 			let kubeconfig_path = format!("{region_id}.yml");
 
-			// todo: use temp file and clean up resources
 			fs::write(&kubeconfig_path, &kubeconfig_content).await?;
 
 			// safe to return as only customer cluster is initalized here,
@@ -57,7 +56,7 @@ pub(super) async fn process_request(
 				.map(|id| id.as_str().to_owned())
 				.status(500)?;
 
-			// todo: get both stdout and stderr in same stream
+			// todo: get both stdout and stderr in same stream -> use subprocess crate in future
 			let output = Command::new("k8s/fresh/k8s_init.sh")
 				.args(&[
 					region_id.as_str(),
@@ -83,7 +82,13 @@ pub(super) async fn process_request(
                     std::str::from_utf8(&output.stderr)?,
                     std::str::from_utf8(&output.stdout)?
                 );
-				tokio::time::sleep(Duration::from_secs(2 * 60)).await;
+				tokio::time::sleep(Duration::from_secs(5 * 60)).await;
+				db::append_messge_log_for_region(
+					connection,
+					&region_id,
+					std::str::from_utf8(&output.stderr)?,
+				)
+				.await?;
 				return Err(
 					Error::empty().body("Error while initializing the cluster")
 				);
@@ -187,7 +192,9 @@ pub(super) async fn process_request(
 			digitalocean_region: _,
 			access_token: _,
 			request_id: _,
-		} => todo!("not supported yet"),
+		} => Err(
+			Error::empty().body("Currently creating cluster through digital ocean cluster is not supported")
+		),
 	}
 }
 
