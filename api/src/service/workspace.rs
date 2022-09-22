@@ -1,13 +1,7 @@
 use api_models::{
-	models::workspace::billing::{
-		Address,
-		PaymentStatus,
-		StripeCustomer,
-		TransactionType,
-	},
-	utils::{DateTime, Uuid},
+	models::workspace::billing::{Address, StripeCustomer},
+	utils::Uuid,
 };
-use chrono::{Datelike, Utc};
 use eve_rs::AsError;
 use reqwest::Client;
 
@@ -154,24 +148,6 @@ pub async fn create_workspace(
 	)
 	.await?;
 	db::end_deferred_constraints(connection).await?;
-
-	let id = db::generate_new_transaction_id(connection).await?;
-
-	let date = Utc::now();
-
-	db::create_transaction(
-		connection,
-		&resource_id,
-		&id,
-		date.month() as i32,
-		25.into(),
-		Some("sign-up-credits"),
-		&DateTime::from(date),
-		&TransactionType::Credits,
-		&PaymentStatus::Success,
-		Some("Sign up credits"),
-	)
-	.await?;
 
 	super::create_kubernetes_namespace(
 		resource_id.as_str(),
