@@ -11,6 +11,7 @@ mod from_v0_5;
 mod from_v0_6;
 mod from_v0_7;
 mod from_v0_8;
+mod from_v0_9;
 
 /// # Description
 /// The function is used to migrate the database from one version to another
