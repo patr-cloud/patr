@@ -100,3 +100,13 @@ pub async fn get_kubernetes_config_for_region(
 
 	Ok(kubeconfig)
 }
+
+pub async fn is_deployed_on_patr_cluster(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	region_id: &Uuid,
+) -> Result<bool, Error> {
+	let region = db::get_region_by_id(connection, region_id)
+		.await?
+		.status(500)?;
+	Ok(region.workspace_id.is_none())
+}

@@ -1446,12 +1446,19 @@ async fn delete_deployment(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	db::stop_deployment_usage_history(
+	if crate::service::is_deployed_on_patr_cluster(
 		context.get_database_connection(),
-		&deployment_id,
-		&Utc::now(),
+		&deployment.region,
 	)
-	.await?;
+	.await?
+	{
+		db::stop_deployment_usage_history(
+			context.get_database_connection(),
+			&deployment_id,
+			&Utc::now(),
+		)
+		.await?;
+	}
 
 	log::trace!("request_id: {} - Queuing delete deployment", request_id);
 	service::queue_delete_deployment(
@@ -1614,21 +1621,28 @@ async fn update_deployment(
 		}
 		_ => {
 			let current_time = Utc::now();
-			db::stop_deployment_usage_history(
+			if crate::service::is_deployed_on_patr_cluster(
 				context.get_database_connection(),
-				&deployment_id,
-				&current_time,
+				&deployment.region,
 			)
-			.await?;
-			db::start_deployment_usage_history(
-				context.get_database_connection(),
-				&workspace_id,
-				&deployment_id,
-				&deployment.machine_type,
-				deployment_running_details.min_horizontal_scale as i32,
-				&current_time,
-			)
-			.await?;
+			.await?
+			{
+				db::stop_deployment_usage_history(
+					context.get_database_connection(),
+					&deployment_id,
+					&current_time,
+				)
+				.await?;
+				db::start_deployment_usage_history(
+					context.get_database_connection(),
+					&workspace_id,
+					&deployment_id,
+					&deployment.machine_type,
+					deployment_running_details.min_horizontal_scale as i32,
+					&current_time,
+				)
+				.await?;
+			}
 
 			service::queue_update_deployment(
 				context.get_database_connection(),
