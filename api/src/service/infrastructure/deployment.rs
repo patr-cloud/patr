@@ -241,15 +241,17 @@ pub async fn create_deployment_in_workspace(
 		.await?;
 	}
 
-	db::start_deployment_usage_history(
-		connection,
-		workspace_id,
-		&deployment_id,
-		machine_type,
-		deployment_running_details.min_horizontal_scale as i32,
-		&created_time,
-	)
-	.await?;
+	if crate::service::is_deployed_on_patr_cluster(connection, region).await? {
+		db::start_deployment_usage_history(
+			connection,
+			workspace_id,
+			&deployment_id,
+			machine_type,
+			deployment_running_details.min_horizontal_scale as i32,
+			&created_time,
+		)
+		.await?;
+	};
 
 	Ok(deployment_id)
 }
