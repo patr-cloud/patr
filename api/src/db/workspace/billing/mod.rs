@@ -753,7 +753,7 @@ pub async fn get_credits_for_workspace(
 	.await
 }
 
-pub async fn get_total_bill(
+pub async fn get_total_amount_to_pay_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 ) -> Result<f64, sqlx::Error> {

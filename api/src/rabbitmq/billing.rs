@@ -7,8 +7,9 @@ use api_models::{
 	models::workspace::billing::{PaymentStatus, TransactionType},
 	utils::{DateTime, True},
 };
-use chrono::{TimeZone, Utc};
+use chrono::{Datelike, Month, TimeZone, Utc};
 use eve_rs::AsError;
+use num_traits::FromPrimitive;
 use reqwest::Client;
 use tokio::time;
 
@@ -89,8 +90,9 @@ pub(super) async fn process_request(
 			request_id,
 		} => {
 			log::trace!(
-				"request_id: {} - Generating invoice for {} {}",
+				"request_id: {} - Generating invoice for  workspace_id: {} for month: {} and year: {}",
 				request_id,
+				workspace.id,
 				month,
 				year
 			);
@@ -405,8 +407,8 @@ pub(super) async fn process_request(
 						.body(error!(SERVER_ERROR).to_string())?;
 				}
 			}
-			// confirming payment intent and charging the user
 
+			// confirming payment intent and charging the user
 			let client = Client::new();
 
 			let password: Option<String> = None;
@@ -439,9 +441,97 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-				return Error::as_result()
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+				// reminder mail
+				let now = Utc::now();
+				// Get the day of the month as invoice is generated at the end
+				// of the month, with that logic current month should start from
+				// 1st of every month
+				let current_month_day = now.day();
+
+				let workspace =
+					db::get_workspace_info(connection, &workspace_id).await?;
+
+				if let Some(workspace) = workspace {
+					let total_amount =
+						db::get_total_amount_to_pay_for_workspace(
+							connection,
+							&workspace_id,
+						)
+						.await?;
+					if total_amount > 0.0 {
+						// Get previous month
+						let month = Month::from_u32(now.date().month())
+							.unwrap()
+							.pred()
+							.name();
+
+						// Checking if current month is january then the year
+						// should be last year else the current year
+						// e.g if the bill is generated in year 2023 the bill
+						// would be for december 2022
+						let year = if now.date().month() == 1 {
+							now.date().year() - 1
+						} else {
+							now.date().year()
+						};
+
+						if current_month_day < 15 {
+							// sent reminder mail for payment daily for 15 days
+							service::send_bill_not_paid_reminder_email(
+								connection,
+								workspace.super_admin_id,
+								workspace.name,
+								month.to_owned(),
+								year,
+								total_amount,
+							)
+							.await?;
+
+							// re-queue this because want the transaction to get
+							// committed which is for the failed transaction
+							return Error::as_result()
+								.status(500)
+								.body(error!(SERVER_ERROR).to_string())?;
+						} else {
+							// delete all resources
+							service::delete_all_resources_in_workspace(
+								connection,
+								&workspace_id,
+								&workspace.super_admin_id,
+								config,
+								&request_id,
+							)
+							.await?;
+
+							// Reset resource limit to zero
+							db::set_resource_limit_on_workspace(
+								connection,
+								&workspace_id,
+								0,
+								0,
+								0,
+								0,
+								0,
+								0,
+								0,
+							)
+							.await?;
+
+							// send an mail
+							service::send_delete_unpaid_resource_email(
+								connection,
+								workspace.super_admin_id.clone(),
+								workspace.name.clone(),
+								month.to_string(),
+								year,
+								total_amount,
+							)
+							.await?;
+
+							return Ok(());
+						}
+					}
+				}
 			}
 
 			db::create_transaction(

@@ -2377,6 +2377,25 @@
     },
     "query": "CREATE TABLE deployment_config_mounts( path TEXT NOT NULL CONSTRAINT deployment_config_mounts_chk_path_valid CHECK(path ~ '^[a-zA-Z0-9_\\-\\.\\(\\)]+$'), file BYTEA NOT NULL, deployment_id UUID NOT NULL CONSTRAINT deployment_config_mounts_fk_deployment_id REFERENCES deployment(id), CONSTRAINT deployment_config_mounts_pk PRIMARY KEY( deployment_id, path ) );"
   },
+  "2d582fb54a50b46aaa578687c9a0f41736c000cc049c28d22a62a4e67e15a79d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4",
+          "Int4",
+          "Int4",
+          "Int4",
+          "Int4",
+          "Int4",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE workspace SET deployment_limit = $1, database_limit = $2, static_site_limit = $3, managed_url_limit = $4, docker_repository_storage_limit = $5, domain_limit = $6, secret_limit = $7 WHERE id = $8;"
+  },
   "2d9bd34aec2d4a7e2b0a0a989686426764736a4d4c82d91fa157b387bc0a4642": {
     "describe": {
       "columns": [
@@ -3074,18 +3093,6 @@
       }
     },
     "query": "SELECT COUNT(*) as \"count\" FROM patr_domain_dns_record WHERE domain_id = $1;"
-  },
-  "3d8792ce0e8a95c3fd6856422d017ab4eadc446e4bd79d75545daab3ee18b263": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE workspace SET deployment_limit = 0, database_limit = 0, static_site_limit = 0, managed_url_limit = 0, docker_repository_storage_limit = 0, domain_limit = 0, secret_limit = 0 WHERE id = $1;"
   },
   "3e20e6ddcb6cc30e911912b5f5738f294930e66613e421b6c0a4b20ab33fed69": {
     "describe": {
@@ -4943,12 +4950,12 @@
       ],
       "nullable": [
         null,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
       ],
       "parameters": {
         "Left": []
@@ -8625,12 +8632,12 @@
       ],
       "nullable": [
         null,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
       ],
       "parameters": {
         "Left": []
