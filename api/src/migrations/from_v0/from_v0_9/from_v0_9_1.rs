@@ -836,6 +836,14 @@ async fn update_user_login_table_with_more_info(
 
 	query!(
 		r#"
+		DELETE FROM workspace_audit_log;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		ALTER TABLE workspace_audit_log
 		ADD CONSTRAINT workspace_audit_log_fk_login_id
 		FOREIGN KEY(user_id, login_id) REFERENCES user_login(user_id, login_id);
