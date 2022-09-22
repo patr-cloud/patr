@@ -1,7 +1,6 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{
 	models::workspace::{
-		domain::DnsRecordValue,
 		region::{
 			AddRegionToWorkspaceData,
 			AddRegionToWorkspaceRequest,
@@ -16,7 +15,6 @@ use api_models::{
 };
 use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use reqwest::Url;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -232,59 +230,6 @@ async fn add_region(
 				&name,
 				&InfrastructureCloudProvider::Other,
 				&workspace_id,
-			)
-			.await?;
-
-			let url = Url::parse(&cluster_url)?;
-
-			let patr_domain = db::get_domain_by_name(
-				context.get_database_connection(),
-				"patr.cloud",
-			)
-			.await?
-			.status(500)?;
-
-			let resource = db::get_resource_by_id(
-				context.get_database_connection(),
-				&patr_domain.id,
-			)
-			.await?
-			.status(500)?;
-
-			service::create_patr_domain_dns_record(
-				context.get_database_connection(),
-				&resource.owner_id,
-				&patr_domain.id,
-				region_id.as_str(),
-				0,
-				&DnsRecordValue::CNAME {
-					target: url
-						.domain()
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?
-						.to_string(),
-					proxied: false,
-				},
-				&config,
-				&request_id,
-			)
-			.await?;
-			service::create_patr_domain_dns_record(
-				context.get_database_connection(),
-				&resource.owner_id,
-				&patr_domain.id,
-				&format!("*.{}", region_id.as_str()),
-				0,
-				&DnsRecordValue::CNAME {
-					target: url
-						.domain()
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?
-						.to_string(),
-					proxied: false,
-				},
-				&config,
-				&request_id,
 			)
 			.await?;
 

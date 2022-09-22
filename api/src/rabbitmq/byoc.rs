@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use api_models::models::workspace::domain::DnsRecordValue;
 use eve_rs::AsError;
 use tokio::{fs, process::Command};
 
@@ -166,11 +167,43 @@ pub(super) async fn process_request(
 				.status(500)?;
 
 			service::create_external_service_for_region(
-				region.workspace_id.status(500)?.as_str(),
+				region.workspace_id.as_ref().status(500)?.as_str(),
 				&region_id,
 				&ip_addr,
 				service::get_kubernetes_config_for_default_region(config)
 					.auth_details,
+			)
+			.await?;
+
+			let patr_domain = db::get_domain_by_name(
+				connection,
+				"patr.cloud",
+			)
+			.await?
+			.status(500)?;
+
+			let resource = db::get_resource_by_id(
+				connection,
+				&patr_domain.id,
+			)
+			.await?
+			.status(500)?;
+
+
+			let dns_record = match ip_addr {
+				std::net::IpAddr::V4(ip_v4) => DnsRecordValue::A { target: ip_v4, proxied: false },
+				std::net::IpAddr::V6(ip_v6) => DnsRecordValue::AAAA { target: ip_v6, proxied: false },
+			};
+
+			service::create_patr_domain_dns_record(
+				connection,
+				&resource.owner_id,
+				&patr_domain.id,
+				region_id.as_str(),
+				0,
+				&dns_record,
+				config,
+				&request_id,
 			)
 			.await?;
 
