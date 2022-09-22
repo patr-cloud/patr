@@ -393,7 +393,9 @@ pub async fn update_kubernetes_deployment(
 						.registry
 						.is_patr_registry()
 						.then(|| {
-							// TODO: inject patr registry cred in user cluster
+							// TODO: for now patr registry is not supported for
+							// user clusters, need to create a separate secret
+							// for each private repo in future
 							vec![LocalObjectReference {
 								name: Some("patr-regcred".to_string()),
 							}]

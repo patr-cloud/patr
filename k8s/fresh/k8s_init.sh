@@ -11,6 +11,8 @@ if [ ! -f $KUBECONFIG_PATH ]; then
     exit 1
 fi
 
+chmod go-r $KUBECONFIG_PATH
+
 export KUBECONFIG=$KUBECONFIG_PATH
 
 SCRIPT_DIR="$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)"
@@ -35,5 +37,7 @@ kubectl create namespace "$PARENT_WORKSPACE_ID"
 
 echo "Turn off SSL redirects"
 kubectl patch configmap ingress-nginx-controller --namespace ingress-nginx --type strategic --patch '{ "data": { "ssl-redirect": "false" }}'
+
+rm $KUBECONFIG_PATH
 
 echo "Successfully initialized cluster $CLUSTER_ID"

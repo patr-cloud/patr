@@ -216,7 +216,10 @@ async fn add_region(
 			cloud_provider: _,
 			region: _,
 			api_token: _,
-		} => todo!(),
+		} => {
+			return Err(Error::empty()
+				.body("Currently digital ocean api is not supported"))
+		}
 		AddRegionToWorkspaceData::KubernetesCluster {
 			certificate_authority_data,
 			cluster_url,
