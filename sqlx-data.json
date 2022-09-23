@@ -5354,7 +5354,7 @@
     },
     "query": "UPDATE patr_domain_dns_record SET record_identifier = $1 WHERE id = $2;"
   },
-  "608f24df85727cf7e46222aece1fb883e77f85671c096f065c1ba9bdad37a90a": {
+  "6064d7179d72c8f4c97d38239ca97bbfc246e2123939077f0a0c4e43a80664ef": {
     "describe": {
       "columns": [],
       "nullable": [],
@@ -5362,7 +5362,7 @@
         "Left": []
       }
     },
-    "query": "CREATE TABLE ci_builds ( repo_id UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id), build_num BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK (build_num > 0), git_ref TEXT NOT NULL, git_commit TEXT NOT NULL, status CI_BUILD_STATUS NOT NULL, created TIMESTAMPTZ NOT NULL, finished TIMESTAMPTZ, message TEXT, author TEXT NOT NULL, git_commit_message TEXT, git_pr_title TEXT, CONSTRAINT ci_builds_pk_repo_id_build_num PRIMARY KEY (repo_id, build_num) );"
+    "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, startup_probe_port INTEGER, startup_probe_path VARCHAR(255), startup_probe_port_type EXPOSED_PORT_TYPE, liveness_probe_port INTEGER, liveness_probe_path VARCHAR(255), liveness_probe_port_type EXPOSED_PORT_TYPE, current_live_digest TEXT, deleted TIMESTAMPTZ, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ), CONSTRAINT deployment_chk_image_tag_is_valid CHECK( image_tag != '' ), CONSTRAINT deployment_chk_startup_probe_is_valid CHECK( ( startup_probe_port IS NULL AND startup_probe_path IS NULL AND startup_probe_port_type IS NULL ) OR ( startup_probe_port IS NOT NULL AND startup_probe_path IS NOT NULL AND startup_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_liveness_probe_is_valid CHECK( ( liveness_probe_port IS NULL AND liveness_probe_path IS NULL AND liveness_probe_port_type IS NULL ) OR ( liveness_probe_port IS NOT NULL AND liveness_probe_path IS NOT NULL AND liveness_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_startup_probe_port_type_is_http CHECK( startup_probe_port_type = 'http' ), CONSTRAINT deployment_chk_liveness_probe_port_type_is_http CHECK( liveness_probe_port_type = 'http' ) );"
   },
   "60a973c0325d830a4327ef4406a8e8f4e878d1d0c69a5b98ec7dcad2c252e264": {
     "describe": {
@@ -12867,16 +12867,6 @@
       }
     },
     "query": "SELECT COUNT(*) \"count!\" FROM deployment INNER JOIN workspace ON deployment.workspace_id = workspace.id WHERE deployment.status = 'deleted' AND workspace.super_admin_id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );"
-  },
-  "efc0c18b2d00b77f3f4b37a5879ce1cfd7a5f74054560859702767aa47e46c7d": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, startup_probe_port INTEGER, startup_probe_path VARCHAR(255), startup_probe_port_type EXPOSED_PORT_TYPE, liveness_probe_port INTEGER, liveness_probe_path VARCHAR(255), liveness_probe_port_type EXPOSED_PORT_TYPE, current_live_digest TEXT, deleted TIMESTAMPTZ, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ), CONSTRAINT deployment_chk_image_tag_is_valid CHECK( image_tag != '' ), CONSTRAINT deployment_chk_startup_probe_is_valid CHECK( ( startup_probe_port IS NULL AND startup_probe_path IS NULL AND startup_probe_port_type IS NULL ) OR ( startup_probe_port IS NOT NULL AND startup_probe_path IS NOT NULL AND startup_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_liveness_probe_is_valid CHECK( ( liveness_probe_port IS NULL AND liveness_probe_path IS NULL AND liveness_probe_port_type IS NULL ) OR ( liveness_probe_port IS NOT NULL AND liveness_probe_path IS NOT NULL AND liveness_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_startup_probe_port_type_is_http CHECK( startup_probe_port_type = 'http' ), CONSTRAINT deployment_chk_liveness_probe_port_type_is_http CHECK( liveness_probe_port_type = 'http' ) );"
   },
   "f0d89c52ec908f391a5753b69b004cabf7f3635d492317901a9c140198634bfb": {
     "describe": {
