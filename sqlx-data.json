@@ -337,19 +337,6 @@
     },
     "query": "CREATE TABLE role_permissions_resource_type( role_id UUID CONSTRAINT role_permissions_resource_type_fk_role_id REFERENCES role(id), permission_id UUID CONSTRAINT role_permissions_resource_type_fk_permission_id REFERENCES permission(id), resource_type_id UUID CONSTRAINT role_permissions_resource_type_fk_resource_type_id REFERENCES resource_type(id), CONSTRAINT role_permissions_resource_type_pk PRIMARY KEY(role_id, permission_id, resource_type_id) );"
   },
-  "06f09f5908c9e8b4a681ce35a5f028e0b07c175ac99d31b1881262f40faeb570": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "UPDATE static_site SET deleted = $2 WHERE id = $1;"
-  },
   "07177688d8c236f615400391dd0e71b93f67477d32c92213e9b2bf3fd8c2cd9a": {
     "describe": {
       "columns": [
@@ -2498,6 +2485,19 @@
       }
     },
     "query": "UPDATE ci_builds SET finished = $3 WHERE ( repo_id = $1 AND build_num = $2 );"
+  },
+  "2de43c75b0dc4e818603638bd8f4c5f6bf203d2ed8cde0a29c27dce4f49d876e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "UPDATE managed_database SET deleted = $2, status = 'deleted' WHERE id = $1;"
   },
   "2e9439603b1408a8218602004066137d20d8dfa79cf17fee654b0f80819b65a4": {
     "describe": {
@@ -6295,6 +6295,19 @@
     },
     "query": "ALTER TABLE docker_repo_payment_history ADD CONSTRAINT docker_repo_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id);"
   },
+  "775361d2f342bcaa78e130156b2b158f7970cffced22d8d276b7683b48f72bf1": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "UPDATE deployment SET deleted = $2, status = 'deleted' WHERE id = $1;"
+  },
   "7885b932c3917472e81037e333d5c751c905897033559c9c41e3eab48a707973": {
     "describe": {
       "columns": [
@@ -6904,19 +6917,6 @@
       }
     },
     "query": "SELECT * FROM workspace_audit_log WHERE id = $1;"
-  },
-  "8353c224b120838e7c36321c8e9d8980f342f07c8f0c34ba85658636bd2c1751": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET deleted = $2 WHERE id = $1;"
   },
   "83912ed29e82fb53ea784afaefd393bd6362298a50c7688e3db952ed59ae81dc": {
     "describe": {
@@ -8083,19 +8083,6 @@
       }
     },
     "query": "CREATE TABLE workspace_user( user_id UUID NOT NULL CONSTRAINT workspace_user_fk_user_id REFERENCES \"user\"(id), workspace_id UUID NOT NULL CONSTRAINT workspace_user_fk_workspace_id REFERENCES workspace(id), role_id UUID NOT NULL CONSTRAINT workspace_user_fk_role_id REFERENCES role(id), CONSTRAINT workspace_user_pk PRIMARY KEY(user_id, workspace_id, role_id) );"
-  },
-  "96d11900613e569e4ecf29c2759bcd20a853c8df35a2443e48e3f9c63b614a14": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "UPDATE managed_database SET deleted = $2 WHERE id = $1;"
   },
   "96e525b047f0838a7c25a1277bae273d2ce2aaf541f0b2aad82404728baecc42": {
     "describe": {

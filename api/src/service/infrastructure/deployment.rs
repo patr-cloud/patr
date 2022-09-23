@@ -7,7 +7,6 @@ use api_models::{
 		DeploymentProbe,
 		DeploymentRegistry,
 		DeploymentRunningDetails,
-		DeploymentStatus,
 		EnvironmentVariableValue,
 		ExposedPortType,
 		Metric,
@@ -432,14 +431,6 @@ pub async fn delete_deployment(
 		request_id
 	);
 	db::delete_deployment(connection, deployment_id, &Utc::now()).await?;
-
-	log::trace!("request_id: {} - Updating deployment status", request_id);
-	db::update_deployment_status(
-		connection,
-		deployment_id,
-		&DeploymentStatus::Deleted,
-	)
-	.await?;
 
 	let audit_log_id =
 		db::generate_new_workspace_audit_log_id(connection).await?;

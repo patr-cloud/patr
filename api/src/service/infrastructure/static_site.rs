@@ -225,13 +225,6 @@ pub async fn delete_static_site(
 
 	db::delete_static_site(connection, static_site_id, &Utc::now()).await?;
 
-	db::update_static_site_status(
-		connection,
-		static_site_id,
-		&DeploymentStatus::Deleted,
-	)
-	.await?;
-
 	let static_site_plan = match db::get_static_sites_for_workspace(
 		connection,
 		&static_site.workspace_id,

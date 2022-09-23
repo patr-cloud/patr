@@ -361,7 +361,8 @@ pub async fn delete_managed_database(
 		UPDATE
 			managed_database
 		SET
-			deleted = $2
+			deleted = $2,
+			status = 'deleted'
 		WHERE
 			id = $1;
 		"#,

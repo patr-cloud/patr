@@ -853,7 +853,8 @@ pub async fn delete_deployment(
 		UPDATE
 			deployment
 		SET
-			deleted = $2
+			deleted = $2,
+			status = 'deleted'
 		WHERE
 			id = $1;
 		"#,

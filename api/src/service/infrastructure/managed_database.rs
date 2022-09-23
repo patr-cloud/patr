@@ -3,12 +3,7 @@ use chrono::Utc;
 use eve_rs::AsError;
 
 use crate::{
-	db::{
-		self,
-		ManagedDatabaseEngine,
-		ManagedDatabasePlan,
-		ManagedDatabaseStatus,
-	},
+	db::{self, ManagedDatabaseEngine, ManagedDatabasePlan},
 	error,
 	models::rbac,
 	service::infrastructure::digitalocean,
@@ -205,13 +200,6 @@ pub async fn delete_managed_database(
 	}
 
 	db::delete_managed_database(connection, database_id, &Utc::now()).await?;
-
-	db::update_managed_database_status(
-		connection,
-		database_id,
-		&ManagedDatabaseStatus::Deleted,
-	)
-	.await?;
 
 	db::stop_database_usage_history(connection, database_id, &Utc::now())
 		.await?;
