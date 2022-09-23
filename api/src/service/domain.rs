@@ -87,7 +87,7 @@ pub async fn ensure_personal_domain_exists(
 	} else {
 		// check if personal domain given by the user is registerd as a
 		// workspace domain
-		if !is_domain_used_for_sign_up(connection, domain_name).await? {
+		if is_domain_used_for_sign_up(connection, domain_name).await? {
 			Error::as_result()
 				.status(400)
 				.body(error!(DOMAIN_BELONGS_TO_WORKSPACE).to_string())?;
