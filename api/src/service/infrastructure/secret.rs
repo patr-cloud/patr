@@ -237,12 +237,25 @@ pub async fn delete_secret_in_workspace(
 		secret_id,
 	);
 
-	let _secret = db::get_secret_by_id(connection, secret_id)
+	// Make sure that a secret with that ID exists. Users shouldn't be allowed
+	// to delete a secret that doesn't exist
+	db::get_secret_by_id(connection, secret_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	//TODO: check if the secret is connected to a deployment or not
+	// check if the secret is connected to a deployment or not
+	let used_in_deployment =
+		db::get_deployments_with_secret_as_environment_variable(
+			connection, secret_id,
+		)
+		.await?
+		.len() > 0;
+	if used_in_deployment {
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(RESOURCE_IN_USE).to_string()));
+	}
 
 	let client = VaultClient::new(
 		VaultClientSettingsBuilder::default()

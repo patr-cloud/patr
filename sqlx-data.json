@@ -8938,6 +8938,26 @@
     },
     "query": "CREATE TYPE TRANSACTION_TYPE as ENUM( 'bill', 'credits', 'payment' );"
   },
+  "a7382247c1bafb7da517ecd2278860dc111017c4a07466319105f5abb4bb0900": {
+    "describe": {
+      "columns": [
+        {
+          "name": "deployment_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT DISTINCT deployment_id as \"deployment_id: Uuid\" FROM deployment_environment_variable WHERE secret_id = $1;"
+  },
   "a780a4512b2ca58787f293e3033771d289cd7b0308573b4271865e3d63121215": {
     "describe": {
       "columns": [],

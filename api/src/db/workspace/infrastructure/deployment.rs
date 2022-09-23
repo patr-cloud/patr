@@ -936,6 +936,30 @@ pub async fn remove_all_environment_variables_for_deployment(
 	.map(|_| ())
 }
 
+pub async fn get_deployments_with_secret_as_environment_variable(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	secret_id: &Uuid,
+) -> Result<Vec<Uuid>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT DISTINCT
+			deployment_id as "deployment_id: Uuid"
+		FROM
+			deployment_environment_variable
+		WHERE
+			secret_id = $1;
+		"#,
+		secret_id as _,
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| row.deployment_id)
+	.collect();
+
+	Ok(rows)
+}
+
 pub async fn get_exposed_ports_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
