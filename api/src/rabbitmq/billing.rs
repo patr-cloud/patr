@@ -302,6 +302,16 @@ pub(super) async fn process_request(
 						None,
 					)
 					.await?;
+
+					// Setting a reminder to user to pay for the resource they
+					// used as they have not added there card and there is
+					// generated
+					log::trace!("Addresss not found for workspace: {} not found calling reminder queue to send the mail reminder to pay for there usage", workspace.id);
+					service::queue_resource_usage_reminder(
+						&workspace.id,
+						config,
+					)
+					.await?;
 				}
 			} else {
 				// create transactions for all types of resources
@@ -441,97 +451,9 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-				// reminder mail
-				let now = Utc::now();
-				// Get the day of the month as invoice is generated at the end
-				// of the month, with that logic current month should start from
-				// 1st of every month
-				let current_month_day = now.day();
-
-				let workspace =
-					db::get_workspace_info(connection, &workspace_id).await?;
-
-				if let Some(workspace) = workspace {
-					let total_amount =
-						db::get_total_amount_to_pay_for_workspace(
-							connection,
-							&workspace_id,
-						)
-						.await?;
-					if total_amount > 0.0 {
-						// Get previous month
-						let month = Month::from_u32(now.date().month())
-							.unwrap()
-							.pred()
-							.name();
-
-						// Checking if current month is january then the year
-						// should be last year else the current year
-						// e.g if the bill is generated in year 2023 the bill
-						// would be for december 2022
-						let year = if now.date().month() == 1 {
-							now.date().year() - 1
-						} else {
-							now.date().year()
-						};
-
-						if current_month_day < 15 {
-							// sent reminder mail for payment daily for 15 days
-							service::send_bill_not_paid_reminder_email(
-								connection,
-								workspace.super_admin_id,
-								workspace.name,
-								month.to_owned(),
-								year,
-								total_amount,
-							)
-							.await?;
-
-							// re-queue this because want the transaction to get
-							// committed which is for the failed transaction
-							return Error::as_result()
-								.status(500)
-								.body(error!(SERVER_ERROR).to_string())?;
-						} else {
-							// delete all resources
-							service::delete_all_resources_in_workspace(
-								connection,
-								&workspace_id,
-								&workspace.super_admin_id,
-								config,
-								&request_id,
-							)
-							.await?;
-
-							// Reset resource limit to zero
-							db::set_resource_limit_on_workspace(
-								connection,
-								&workspace_id,
-								0,
-								0,
-								0,
-								0,
-								0,
-								0,
-								0,
-							)
-							.await?;
-
-							// send an mail
-							service::send_delete_unpaid_resource_email(
-								connection,
-								workspace.super_admin_id.clone(),
-								workspace.name.clone(),
-								month.to_string(),
-								year,
-								total_amount,
-							)
-							.await?;
-
-							return Ok(());
-						}
-					}
-				}
+				log::trace!("payment for workspace: {} is not completed, setting a reminder job in queue", workspace_id);
+				service::queue_resource_usage_reminder(&workspace_id, config)
+					.await?;
 			}
 
 			db::create_transaction(
@@ -548,6 +470,102 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
+			Ok(())
+		}
+
+		WorkspaceRequestData::ResourceUsageReminder {
+			workspace_id,
+			request_id,
+		} => {
+			// reminder mail
+			let now = Utc::now();
+			// Get the day of the month as invoice is generated at the end
+			// of the month, with that logic current month should start from
+			// 1st of every month
+			let current_month_day = now.day();
+			let workspace =
+				db::get_workspace_info(connection, &workspace_id).await?;
+
+			if let Some(workspace) = workspace {
+				let total_amount = db::get_total_amount_to_pay_for_workspace(
+					connection,
+					&workspace_id,
+				)
+				.await?;
+				if total_amount > 0.0 {
+					// Get previous month
+					let month = Month::from_u32(now.date().month())
+						.unwrap()
+						.pred()
+						.name();
+
+					// Checking if current month is january then the year
+					// should be last year else the current year
+					// e.g if the bill is generated in year 2023 the bill
+					// would be for december 2022
+					let year = if now.date().month() == 1 {
+						now.date().year() - 1
+					} else {
+						now.date().year()
+					};
+					if current_month_day < 15 {
+						// send reminder mail for payment daily for 15 days
+						service::send_bill_not_paid_reminder_email(
+							connection,
+							workspace.super_admin_id,
+							workspace.name,
+							month.to_owned(),
+							year,
+							total_amount,
+						)
+						.await?;
+
+						return Ok(());
+					} else {
+						// delete all resources
+						service::delete_all_resources_in_workspace(
+							connection,
+							&workspace_id,
+							&workspace.super_admin_id,
+							config,
+							&request_id,
+						)
+						.await?;
+
+						// Reset resource limit to zero
+						db::set_resource_limit_on_workspace(
+							connection,
+							&workspace_id,
+							0,
+							0,
+							0,
+							0,
+							0,
+							0,
+							0,
+						)
+						.await?;
+
+						// send an mail
+						service::send_delete_unpaid_resource_email(
+							connection,
+							workspace.super_admin_id.clone(),
+							workspace.name.clone(),
+							month.to_string(),
+							year,
+							total_amount,
+						)
+						.await?;
+
+						return Ok(());
+					}
+				} else {
+					log::trace!(
+						"The amount is not payable as of now, continueing.."
+					);
+					return Ok(());
+				}
+			}
 			Ok(())
 		}
 	}

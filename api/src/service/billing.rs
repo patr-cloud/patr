@@ -216,6 +216,7 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 		&mut *connection,
 		workspace_id,
 		&DateTime::from(*month_start_date),
+		till_date,
 	)
 	.await?;
 
@@ -303,6 +304,7 @@ pub async fn calculate_database_bill_for_workspace_till(
 		&mut *connection,
 		workspace_id,
 		&DateTime::from(*month_start_date),
+		till_date,
 	)
 	.await?;
 
@@ -372,6 +374,7 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 		&mut *connection,
 		workspace_id,
 		&DateTime::from(*month_start_date),
+		till_date,
 	)
 	.await?;
 
@@ -420,6 +423,7 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 		&mut *connection,
 		workspace_id,
 		&DateTime::from(*month_start_date),
+		till_date,
 	)
 	.await?;
 
@@ -478,6 +482,7 @@ pub async fn calculate_docker_repository_bill_for_workspace_till(
 		&mut *connection,
 		workspace_id,
 		&DateTime::from(*month_start_date),
+		till_date,
 	)
 	.await?;
 
@@ -531,6 +536,7 @@ pub async fn calculate_domains_bill_for_workspace_till(
 		&mut *connection,
 		workspace_id,
 		&DateTime::from(*month_start_date),
+		till_date,
 	)
 	.await?;
 
@@ -579,6 +585,7 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 		&mut *connection,
 		workspace_id,
 		&DateTime::from(*month_start_date),
+		till_date,
 	)
 	.await?;
 

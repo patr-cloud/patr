@@ -391,6 +391,7 @@ pub async fn get_all_deployment_usage(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	month_start_date: &DateTime<Utc>,
+	till_date: &DateTime<Utc>,
 ) -> Result<Vec<DeploymentPaymentHistory>, sqlx::Error> {
 	query_as!(
 		DeploymentPaymentHistory,
@@ -409,10 +410,12 @@ pub async fn get_all_deployment_usage(
 			(
 				stop_time IS NULL OR
 				stop_time > $2
-			);
+			) AND 
+			start_time < $3;
 		"#,
 		workspace_id as _,
 		month_start_date as _,
+		till_date as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -422,6 +425,7 @@ pub async fn get_all_database_usage(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
+	till_date: &DateTime<Utc>,
 ) -> Result<Vec<ManagedDatabasePaymentHistory>, sqlx::Error> {
 	query_as!(
 		ManagedDatabasePaymentHistory,
@@ -439,10 +443,12 @@ pub async fn get_all_database_usage(
 			(
 				deletion_time IS NULL OR
 				deletion_time > $2
-			);
+			) AND 
+			start_time < $3;
 		"#,
 		workspace_id as _,
 		start_date as _,
+		till_date as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -452,6 +458,7 @@ pub async fn get_all_static_site_usages(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
+	till_date: &DateTime<Utc>,
 ) -> Result<Vec<StaticSitesPaymentHistory>, sqlx::Error> {
 	query_as!(
 		StaticSitesPaymentHistory,
@@ -468,10 +475,12 @@ pub async fn get_all_static_site_usages(
 			(
 				stop_time IS NULL OR
 				stop_time > $2
-			);
+			) AND 
+			start_time < $3;		
 		"#,
 		workspace_id as _,
 		start_date as _,
+		till_date as _
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -481,6 +490,7 @@ pub async fn get_all_managed_url_usages(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
+	till_date: &DateTime<Utc>,
 ) -> Result<Vec<ManagedUrlPaymentHistory>, sqlx::Error> {
 	query_as!(
 		ManagedUrlPaymentHistory,
@@ -497,10 +507,12 @@ pub async fn get_all_managed_url_usages(
 			(
 				stop_time IS NULL OR
 				stop_time > $2
-			);
+			) AND 
+			start_time < $3;
 		"#,
 		workspace_id as _,
 		start_date as _,
+		till_date as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -509,6 +521,7 @@ pub async fn get_all_docker_repository_usages(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
+	till_date: &DateTime<Utc>,
 ) -> Result<Vec<DockerRepoPaymentHistory>, sqlx::Error> {
 	query_as!(
 		DockerRepoPaymentHistory,
@@ -525,10 +538,12 @@ pub async fn get_all_docker_repository_usages(
 			(
 				stop_time IS NULL OR
 				stop_time > $2
-			);
+			) AND 
+			start_time < $3;
 		"#,
 		workspace_id as _,
 		start_date as _,
+		till_date as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -537,6 +552,7 @@ pub async fn get_all_domains_usages(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
+	till_date: &DateTime<Utc>,
 ) -> Result<Vec<DomainPaymentHistory>, sqlx::Error> {
 	query_as!(
 		DomainPaymentHistory,
@@ -553,10 +569,12 @@ pub async fn get_all_domains_usages(
 			(
 				stop_time IS NULL OR
 				stop_time > $2
-			);
+			) AND 
+			start_time < $3;
 			"#,
 		workspace_id as _,
 		start_date as _,
+		till_date as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -566,6 +584,7 @@ pub async fn get_all_secrets_usages(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	month_start_date: &DateTime<Utc>,
+	till_date: &DateTime<Utc>,
 ) -> Result<Vec<SecretPaymentHistory>, sqlx::Error> {
 	query_as!(
 		SecretPaymentHistory,
@@ -582,10 +601,12 @@ pub async fn get_all_secrets_usages(
 			(
 				stop_time IS NULL OR
 				stop_time > $2
-			);
+			) AND 
+			start_time < $3;
 		"#,
 		workspace_id as _,
 		month_start_date as _,
+		till_date as _,
 	)
 	.fetch_all(&mut *connection)
 	.await

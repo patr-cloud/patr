@@ -122,6 +122,10 @@ pub enum WorkspaceRequestData {
 		workspace_id: Uuid,
 		request_id: Uuid,
 	},
+	ResourceUsageReminder {
+		workspace_id: Uuid,
+		request_id: Uuid,
+	},
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

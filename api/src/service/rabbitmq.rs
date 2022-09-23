@@ -351,6 +351,22 @@ pub async fn queue_confirm_payment_intent(
 	.await
 }
 
+pub async fn queue_resource_usage_reminder(
+	workspace_id: &Uuid,
+	config: &Settings,
+) -> Result<(), Error> {
+	let request_id = Uuid::new_v4();
+	send_message_to_billing_queue(
+		&WorkspaceRequestData::ResourceUsageReminder {
+			workspace_id: workspace_id.clone(),
+			request_id: request_id.clone(),
+		},
+		config,
+		&request_id,
+	)
+	.await
+}
+
 pub async fn queue_generate_invoice_for_workspace(
 	config: &Settings,
 	workspace: Workspace,
