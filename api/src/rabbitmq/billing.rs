@@ -1,13 +1,10 @@
-use std::{
-	ops::{Add, Sub},
-	time::Duration,
-};
+use std::ops::{Add, Sub};
 
 use api_models::{
 	models::workspace::billing::{PaymentStatus, TransactionType},
-	utils::{DateTime, True},
+	utils::True,
 };
-use chrono::{Datelike, Month, TimeZone, Utc};
+use chrono::{Datelike, Duration, Month, TimeZone, Utc};
 use eve_rs::AsError;
 use num_traits::FromPrimitive;
 use reqwest::Client;
@@ -39,7 +36,7 @@ pub(super) async fn process_request(
 			if Utc::now() < Utc.ymd(year, month, 1).and_hms(0, 0, 0) {
 				// It's not yet time to process the workspace. Wait and try
 				// again later
-				time::sleep(Duration::from_millis(
+				time::sleep(time::Duration::from_millis(
 					if cfg!(debug_assertions) { 1000 } else { 60_000 },
 				))
 				.await;
@@ -104,7 +101,7 @@ pub(super) async fn process_request(
 					1,
 				)
 				.and_hms(0, 0, 0)
-				.sub(chrono::Duration::nanoseconds(1));
+				.sub(Duration::nanoseconds(1));
 
 			let month_string = match month {
 				1 => "January",
@@ -123,69 +120,6 @@ pub(super) async fn process_request(
 			};
 
 			// Step 1: Calculate bill for this entire cycle
-			let _deployment_usages =
-				service::calculate_deployment_bill_for_workspace_till(
-					connection,
-					&workspace.id,
-					&month_start_date,
-					&next_month_start_date,
-				)
-				.await?;
-
-			let _database_usages =
-				service::calculate_database_bill_for_workspace_till(
-					connection,
-					&workspace.id,
-					&month_start_date,
-					&next_month_start_date,
-				)
-				.await?;
-
-			let _static_sites_usages =
-				service::calculate_static_sites_bill_for_workspace_till(
-					connection,
-					&workspace.id,
-					&month_start_date,
-					&next_month_start_date,
-				)
-				.await?;
-
-			let _managed_url_usages =
-				service::calculate_managed_urls_bill_for_workspace_till(
-					connection,
-					&workspace.id,
-					&month_start_date,
-					&next_month_start_date,
-				)
-				.await?;
-
-			let _docker_repository_usages =
-				service::calculate_docker_repository_bill_for_workspace_till(
-					connection,
-					&workspace.id,
-					&month_start_date,
-					&next_month_start_date,
-				)
-				.await?;
-
-			let _domains_usages =
-				service::calculate_domains_bill_for_workspace_till(
-					connection,
-					&workspace.id,
-					&month_start_date,
-					&next_month_start_date,
-				)
-				.await?;
-
-			let _secrets_usages =
-				service::calculate_secrets_bill_for_workspace_till(
-					connection,
-					&workspace.id,
-					&month_start_date,
-					&next_month_start_date,
-				)
-				.await?;
-
 			let total_bill = service::calculate_total_bill_for_workspace_till(
 				connection,
 				&workspace.id,
@@ -194,19 +128,29 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
-			let total_credits =
-				db::get_credits_for_workspace(connection, &workspace.id)
-					.await?
-					.into_iter()
-					.fold(0.0, |accu, item| {
-						accu + if item.month == month as i32 {
-							item.amount
-						} else {
-							0.0
-						}
-					});
+			// create transactions for all types of resources
+			let transaction_id =
+				db::generate_new_transaction_id(connection).await?;
+			db::create_transaction(
+				connection,
+				&workspace.id,
+				&transaction_id,
+				month as i32,
+				total_bill,
+				None,
+				// 1st of next month,
+				&next_month_start_date.add(Duration::nanoseconds(1)),
+				&TransactionType::Bill,
+				&PaymentStatus::Success,
+				Some(&format!("Bill for {} {}", month_string, year)),
+			)
+			.await?;
 
-			let payable_bill = total_bill - total_credits;
+			let payable_bill = db::get_total_amount_to_pay_for_workspace(
+				connection,
+				&workspace.id,
+			)
+			.await?;
 
 			// Step 2: Create payment intent with the given bill
 			let password: Option<String> = None;
@@ -254,26 +198,6 @@ pub(super) async fn process_request(
 						.json::<PaymentIntentObject>()
 						.await?;
 
-					// create transactions for all types of resources
-					let transaction_id =
-						db::generate_new_transaction_id(connection).await?;
-					db::create_transaction(
-						connection,
-						&workspace.id,
-						&transaction_id,
-						month as i32,
-						total_bill,
-						Some(&payment_intent_object.id),
-						&DateTime::from(
-							next_month_start_date
-								.add(chrono::Duration::nanoseconds(1)),
-						), // 1st of next month,
-						&TransactionType::Bill,
-						&PaymentStatus::Success,
-						None,
-					)
-					.await?;
-
 					service::queue_confirm_payment_intent(
 						&workspace.id,
 						payment_intent_object.id,
@@ -284,24 +208,6 @@ pub(super) async fn process_request(
 					// TODO: notify about the missing address id and reinitiate
 					// the payment process once added. For now, using the
 					// payment_indent_id as NULL
-					let transaction_id =
-						db::generate_new_transaction_id(connection).await?;
-					db::create_transaction(
-						connection,
-						&workspace.id,
-						&transaction_id,
-						month as i32,
-						total_bill,
-						None,
-						&DateTime::from(
-							next_month_start_date
-								.add(chrono::Duration::nanoseconds(1)),
-						), // 1st of next month,
-						&TransactionType::Bill,
-						&PaymentStatus::Success,
-						None,
-					)
-					.await?;
 
 					// Setting a reminder to user to pay for the resource they
 					// used as they have not added there card and there is
@@ -314,26 +220,6 @@ pub(super) async fn process_request(
 					.await?;
 				}
 			} else {
-				// create transactions for all types of resources
-				let transaction_id =
-					db::generate_new_transaction_id(connection).await?;
-				db::create_transaction(
-					connection,
-					&workspace.id,
-					&transaction_id,
-					month as i32,
-					total_bill,
-					Some("enterprise-plan-bill"),
-					&DateTime::from(
-						next_month_start_date
-							.add(chrono::Duration::nanoseconds(1)),
-					), // 1st of next month,
-					&TransactionType::Bill,
-					&PaymentStatus::Success,
-					None,
-				)
-				.await?;
-
 				// Enterprise plan. Just assume a payment is made
 				let transaction_id =
 					db::generate_new_transaction_id(connection).await?;
@@ -344,10 +230,8 @@ pub(super) async fn process_request(
 					month as i32,
 					total_bill,
 					Some("enterprise-plan-payment"),
-					&DateTime::from(
-						next_month_start_date
-							.add(chrono::Duration::nanoseconds(1)),
-					), // 1st of next month,
+					// 1st of next month,
+					&next_month_start_date.add(Duration::nanoseconds(1)),
 					&TransactionType::Payment,
 					&PaymentStatus::Success,
 					None,
@@ -411,7 +295,7 @@ pub(super) async fn process_request(
 				} else {
 					// It's been less than 24 hours since the last transaction
 					// attempt Wait for a while and requeue this task
-					time::sleep(Duration::from_millis(60_000)).await;
+					time::sleep(time::Duration::from_millis(60_000)).await;
 					return Error::as_result()
 						.status(500)
 						.body(error!(SERVER_ERROR).to_string())?;
@@ -444,7 +328,7 @@ pub(super) async fn process_request(
 					last_transaction.month,
 					last_transaction.amount,
 					Some(&payment_intent_id),
-					&DateTime::from(Utc::now()),
+					&Utc::now(),
 					&TransactionType::Payment,
 					&PaymentStatus::Failed,
 					None,
@@ -472,7 +356,6 @@ pub(super) async fn process_request(
 
 			Ok(())
 		}
-
 		WorkspaceRequestData::ResourceUsageReminder {
 			workspace_id,
 			request_id,
@@ -509,6 +392,7 @@ pub(super) async fn process_request(
 						now.date().year()
 					};
 					if current_month_day < 15 {
+						
 						// send reminder mail for payment daily for 15 days
 						service::send_bill_not_paid_reminder_email(
 							connection,

@@ -261,17 +261,17 @@ pub async fn initialize_billing_pre(
 			workspace_id UUID NOT NULL,
 			transaction_type TRANSACTION_TYPE NOT NULL,
 			payment_status PAYMENT_STATUS NOT NULL
-				CONSTRAINT transaction_payment_status_check CHECK (
+				CONSTRAINT transaction_payment_status_check CHECK(
 					(
-					payment_status = 'success' AND
-					transaction_type = 'bill'
+						payment_status = 'success' AND
+						transaction_type = 'bill'
 					) OR
 					(
 						transaction_type != 'bill'
 					)
 				),
 			description TEXT
-				CONSTRAINT transaction_description_check CHECK (
+				CONSTRAINT transaction_description_check CHECK(
 					(
 						transaction_type = 'credits' AND
 						description IS NOT NULL
@@ -785,14 +785,19 @@ pub async fn get_total_amount_to_pay_for_workspace(
 				CASE transaction_type
 					WHEN 'bill' THEN
 						amount
-					ELSE
+					WHEN 'credits' THEN
 						-amount
+					WHEN 'payment' THEN
+						-amount
+					ELSE
+						0
 				END
 			) as "total_amount!"
 		FROM
 			transaction
 		WHERE
-			workspace_id = $1;
+			workspace_id = $1 AND
+			payment_status = 'success';
 		"#,
 		workspace_id as _,
 	)
