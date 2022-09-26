@@ -1046,6 +1046,105 @@ async fn deployment_limit_crossed(
 	Ok(false)
 }
 
+pub async fn start_created_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	name: &str,
+	registry: &DeploymentRegistry,
+	image_tag: &str,
+	region: &Uuid,
+	machine_type: &Uuid,
+	deployment_running_details: &DeploymentRunningDetails,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	// If deploy_on_create is true, then tell the consumer to create a
+	// deployment
+	let (image_name, digest) =
+		service::get_image_name_and_digest_for_deployment_image(
+			connection, registry, image_tag, config, request_id,
+		)
+		.await?;
+
+	db::update_deployment_status(
+		connection,
+		deployment_id,
+		&DeploymentStatus::Created,
+	)
+	.await?;
+
+	let deployment = Deployment {
+		id: deployment_id.clone(),
+		name: name.to_string(),
+		registry: registry.clone(),
+		image_tag: image_tag.to_string(),
+		status: DeploymentStatus::Pushed,
+		region: region.clone(),
+		machine_type: machine_type.clone(),
+		current_live_digest: digest.clone(),
+	};
+
+	if let DeploymentRegistry::PatrRegistry { repository_id, .. } =
+		&deployment.registry
+	{
+		if db::get_docker_repository_tag_details(
+			connection,
+			repository_id,
+			&deployment.image_tag,
+		)
+		.await?
+		.is_none()
+		{
+			return Ok(());
+		};
+	}
+
+	db::update_deployment_status(
+		connection,
+		&deployment.id,
+		&DeploymentStatus::Deploying,
+	)
+	.await?;
+
+	let audit_log_id =
+		db::generate_new_workspace_audit_log_id(connection).await?;
+
+	db::create_workspace_audit_log(
+		connection,
+		&audit_log_id,
+		workspace_id,
+		"0.0.0.0",
+		&Utc::now(),
+		None,
+		None,
+		&deployment.id,
+		rbac::PERMISSIONS
+			.get()
+			.unwrap()
+			.get(permissions::workspace::infrastructure::deployment::EDIT)
+			.unwrap(),
+		request_id,
+		&serde_json::to_value(DeploymentMetadata::Start {})?,
+		true,
+		true,
+	)
+	.await?;
+
+	service::update_kubernetes_deployment(
+		workspace_id,
+		&deployment,
+		&image_name,
+		digest.as_deref(),
+		deployment_running_details,
+		config,
+		request_id,
+	)
+	.await?;
+
+	Ok(())
+}
+
 pub async fn start_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,

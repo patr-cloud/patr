@@ -50,14 +50,6 @@ pub enum DeploymentRequestData {
 		workspace_id: Uuid,
 		deployment_id: Uuid,
 	},
-	Create {
-		workspace_id: Uuid,
-		deployment: Deployment,
-		image_name: String,
-		digest: Option<String>,
-		running_details: DeploymentRunningDetails,
-		request_id: Uuid,
-	},
 	UpdateImage {
 		workspace_id: Uuid,
 		deployment: Deployment,

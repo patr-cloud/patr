@@ -922,7 +922,8 @@ async fn create_deployment(
 				.await?;
 			}
 		}
-		service::queue_create_deployment(
+
+		service::start_created_deployment(
 			context.get_database_connection(),
 			&workspace_id,
 			&id,
@@ -932,6 +933,16 @@ async fn create_deployment(
 			&region,
 			&machine_type,
 			&deployment_running_details,
+			&config,
+			&request_id,
+		)
+		.await?;
+
+		context.commit_database_transaction().await?;
+
+		service::queue_check_and_update_deployment_status(
+			&workspace_id,
+			&id,
 			&config,
 			&request_id,
 		)

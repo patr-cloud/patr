@@ -3,7 +3,6 @@ use std::time::Duration;
 use api_models::{
 	models::workspace::infrastructure::deployment::{
 		Deployment,
-		DeploymentRegistry,
 		DeploymentRunningDetails,
 		DeploymentStatus,
 	},
@@ -17,7 +16,6 @@ use crate::{
 	models::{
 		rabbitmq::DeploymentRequestData,
 		rbac::{self, permissions},
-		DeploymentMetadata,
 	},
 	service,
 	utils::{settings::Settings, Error},
@@ -66,72 +64,6 @@ pub(super) async fn process_request(
 
 			// requeue it again
 			Err(Error::empty())
-		}
-		DeploymentRequestData::Create {
-			workspace_id,
-			deployment,
-			image_name,
-			digest,
-			running_details,
-			request_id,
-		} => {
-			if let DeploymentRegistry::PatrRegistry { repository_id, .. } =
-				&deployment.registry
-			{
-				if db::get_docker_repository_tag_details(
-					connection,
-					repository_id,
-					&deployment.image_tag,
-				)
-				.await?
-				.is_none()
-				{
-					return Ok(());
-				};
-			}
-
-			db::update_deployment_status(
-				connection,
-				&deployment.id,
-				&DeploymentStatus::Deploying,
-			)
-			.await?;
-
-			let audit_log_id =
-				db::generate_new_workspace_audit_log_id(connection).await?;
-
-			db::create_workspace_audit_log(
-				connection,
-				&audit_log_id,
-				&workspace_id,
-				"0.0.0.0",
-				&Utc::now(),
-				None,
-				None,
-				&deployment.id,
-				rbac::PERMISSIONS
-					.get()
-					.unwrap()
-					.get(permissions::workspace::infrastructure::deployment::EDIT)
-					.unwrap(),
-				&request_id,
-				&serde_json::to_value(DeploymentMetadata::Start {})?,
-				true,
-				true,
-			)
-			.await?;
-
-			update_deployment_and_db_status(
-				connection,
-				&workspace_id,
-				&deployment,
-				&image_name,
-				digest.as_deref(),
-				&running_details,
-				config,
-				&request_id,
-			)
-			.await
 		}
 		DeploymentRequestData::UpdateImage {
 			workspace_id,

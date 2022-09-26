@@ -27,58 +27,6 @@ use crate::{
 	Database,
 };
 
-pub async fn queue_create_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	deployment_id: &Uuid,
-	name: &str,
-	registry: &DeploymentRegistry,
-	image_tag: &str,
-	region: &Uuid,
-	machine_type: &Uuid,
-	deployment_running_details: &DeploymentRunningDetails,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	// If deploy_on_create is true, then tell the consumer to create a
-	// deployment
-	let (image_name, digest) =
-		service::get_image_name_and_digest_for_deployment_image(
-			connection, registry, image_tag, config, request_id,
-		)
-		.await?;
-
-	db::update_deployment_status(
-		connection,
-		deployment_id,
-		&DeploymentStatus::Created,
-	)
-	.await?;
-
-	send_message_to_infra_queue(
-		&DeploymentRequestData::Create {
-			workspace_id: workspace_id.clone(),
-			deployment: Deployment {
-				id: deployment_id.clone(),
-				name: name.to_string(),
-				registry: registry.clone(),
-				image_tag: image_tag.to_string(),
-				status: DeploymentStatus::Pushed,
-				region: region.clone(),
-				machine_type: machine_type.clone(),
-				current_live_digest: digest.clone(),
-			},
-			image_name,
-			digest,
-			running_details: deployment_running_details.clone(),
-			request_id: request_id.clone(),
-		},
-		config,
-		request_id,
-	)
-	.await
-}
-
 pub async fn queue_update_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
