@@ -141,41 +141,51 @@ pub(super) async fn process_request(
 			running_details,
 			request_id,
 		} => {
-			let audit_log_id =
-				db::generate_new_workspace_audit_log_id(connection).await?;
-
-			db::create_workspace_audit_log(
+			let result = service::update_deployment_image(
 				connection,
-				&audit_log_id,
 				&workspace_id,
-				"0.0.0.0",
-				&Utc::now(),
-				None,
-				None,
 				&deployment.id,
-				rbac::PERMISSIONS
-					.get()
-					.unwrap()
-					.get(permissions::workspace::infrastructure::deployment::EDIT)
-					.unwrap(),
-				&request_id,
-				&serde_json::to_value(DeploymentMetadata::Start {})?,
-				true,
-				true,
-			)
-			.await?;
-
-			update_deployment_and_db_status(
-				connection,
-				&workspace_id,
-				&deployment,
+				&deployment.name,
+				&deployment.registry,
+				&digest,
+				&deployment.image_tag,
 				&image_name,
-				digest.as_deref(),
+				&deployment.region,
+				&deployment.machine_type,
 				&running_details,
 				config,
 				&request_id,
 			)
-			.await
+			.await;
+
+			if let Err(err) = result {
+				log::error!(
+					"request_id: {} - Error occured while updating deployment `{}` to image `{}` : {}",
+					request_id,
+					deployment.id,
+					digest,
+					err.get_error()
+				);
+				// TODO log in audit log that there was an error while deploying
+				db::update_deployment_status(
+					connection,
+					&deployment.id,
+					&DeploymentStatus::Errored,
+				)
+				.await?;
+
+				return Ok(());
+			}
+
+			service::queue_check_and_update_deployment_status(
+				&workspace_id,
+				&deployment.id,
+				config,
+				&request_id,
+			)
+			.await?;
+
+			Ok(())
 		}
 		DeploymentRequestData::Update {
 			workspace_id,

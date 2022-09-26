@@ -197,7 +197,7 @@ pub async fn queue_update_deployment_image(
 				current_live_digest: Some(digest.to_string()),
 			},
 			image_name,
-			digest: Some(digest.to_string()),
+			digest: digest.to_string(),
 			running_details: deployment_running_details.clone(),
 			request_id: request_id.clone(),
 		},

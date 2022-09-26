@@ -1316,7 +1316,24 @@ async fn revert_deployment(
 		request_id
 	);
 
-	service::queue_update_deployment_image(
+	let (image_name, _) =
+		service::get_image_name_and_digest_for_deployment_image(
+			context.get_database_connection(),
+			&deployment.registry,
+			&deployment.image_tag,
+			&config,
+			&request_id,
+		)
+		.await?;
+
+	db::update_deployment_status(
+		context.get_database_connection(),
+		&deployment_id,
+		&DeploymentStatus::Deploying,
+	)
+	.await?;
+
+	service::update_deployment_image(
 		context.get_database_connection(),
 		&workspace_id,
 		&deployment_id,
@@ -1324,9 +1341,20 @@ async fn revert_deployment(
 		&deployment.registry,
 		&image_digest,
 		&deployment.image_tag,
+		&image_name,
 		&deployment.region,
 		&deployment.machine_type,
 		&deployment_running_details,
+		&config,
+		&request_id,
+	)
+	.await?;
+
+	context.commit_database_transaction().await?;
+
+	service::queue_check_and_update_deployment_status(
+		&workspace_id,
+		&deployment_id,
 		&config,
 		&request_id,
 	)

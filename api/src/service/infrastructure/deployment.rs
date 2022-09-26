@@ -1115,6 +1115,68 @@ pub async fn start_deployment(
 	Ok(())
 }
 
+pub async fn update_deployment_image(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	name: &str,
+	registry: &DeploymentRegistry,
+	digest: &str,
+	image_tag: &str,
+	image_name: &str,
+	region: &Uuid,
+	machine_type: &Uuid,
+	deployment_running_details: &DeploymentRunningDetails,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let audit_log_id =
+		db::generate_new_workspace_audit_log_id(connection).await?;
+
+	db::create_workspace_audit_log(
+		connection,
+		&audit_log_id,
+		workspace_id,
+		"0.0.0.0",
+		&Utc::now(),
+		None,
+		None,
+		deployment_id,
+		rbac::PERMISSIONS
+			.get()
+			.unwrap()
+			.get(permissions::workspace::infrastructure::deployment::EDIT)
+			.unwrap(),
+		request_id,
+		&serde_json::to_value(DeploymentMetadata::Start {})?,
+		true,
+		true,
+	)
+	.await?;
+
+	service::update_kubernetes_deployment(
+		workspace_id,
+		&Deployment {
+			id: deployment_id.clone(),
+			name: name.to_string(),
+			registry: registry.clone(),
+			image_tag: image_tag.to_string(),
+			status: DeploymentStatus::Pushed,
+			region: region.clone(),
+			machine_type: machine_type.clone(),
+			current_live_digest: Some(digest.to_string()),
+		},
+		image_name,
+		Some(digest),
+		deployment_running_details,
+		config,
+		request_id,
+	)
+	.await?;
+
+	Ok(())
+}
+
 pub async fn stop_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,

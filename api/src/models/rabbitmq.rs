@@ -62,7 +62,7 @@ pub enum DeploymentRequestData {
 		workspace_id: Uuid,
 		deployment: Deployment,
 		image_name: String,
-		digest: Option<String>,
+		digest: String,
 		running_details: DeploymentRunningDetails,
 		request_id: Uuid,
 	},
