@@ -10,7 +10,6 @@ use api_models::{
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use super::DeploymentMetadata;
 use crate::{
 	db::Workspace,
 	rabbitmq::{BuildId, BuildStep},
@@ -56,18 +55,6 @@ pub enum DeploymentRequestData {
 		image_name: String,
 		digest: String,
 		running_details: DeploymentRunningDetails,
-		request_id: Uuid,
-	},
-	Update {
-		workspace_id: Uuid,
-		deployment: Deployment,
-		image_name: String,
-		digest: Option<String>,
-		running_details: DeploymentRunningDetails,
-		user_id: Uuid,
-		login_id: Uuid,
-		ip_address: String,
-		metadata: DeploymentMetadata,
 		request_id: Uuid,
 	},
 }

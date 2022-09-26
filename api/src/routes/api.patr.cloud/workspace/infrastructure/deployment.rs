@@ -1678,7 +1678,7 @@ async fn update_deployment(
 			)
 			.await?;
 
-			service::queue_update_deployment(
+			service::start_updated_deployment(
 				context.get_database_connection(),
 				&workspace_id,
 				&deployment_id,
@@ -1692,6 +1692,16 @@ async fn update_deployment(
 				&login_id,
 				&ip_address,
 				&metadata,
+				&config,
+				&request_id,
+			)
+			.await?;
+
+			context.commit_database_transaction().await?;
+
+			service::queue_check_and_update_deployment_status(
+				&workspace_id,
+				&deployment_id,
 				&config,
 				&request_id,
 			)

@@ -12,78 +12,17 @@ use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
 	db::{self, Workspace},
-	models::{
-		rabbitmq::{
-			CIData,
-			DeploymentRequestData,
-			Queue,
-			WorkspaceRequestData,
-		},
-		DeploymentMetadata,
+	models::rabbitmq::{
+		CIData,
+		DeploymentRequestData,
+		Queue,
+		WorkspaceRequestData,
 	},
 	rabbitmq::{self, BuildId, BuildStep},
 	service,
 	utils::{settings::Settings, Error},
 	Database,
 };
-
-pub async fn queue_update_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	deployment_id: &Uuid,
-	name: &str,
-	registry: &DeploymentRegistry,
-	image_tag: &str,
-	region: &Uuid,
-	machine_type: &Uuid,
-	deployment_running_details: &DeploymentRunningDetails,
-	user_id: &Uuid,
-	login_id: &Uuid,
-	ip_address: &str,
-	metadata: &DeploymentMetadata,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	let (image_name, digest) =
-		service::get_image_name_and_digest_for_deployment_image(
-			connection, registry, image_tag, config, request_id,
-		)
-		.await?;
-
-	db::update_deployment_status(
-		connection,
-		deployment_id,
-		&DeploymentStatus::Deploying,
-	)
-	.await?;
-
-	send_message_to_infra_queue(
-		&DeploymentRequestData::Update {
-			workspace_id: workspace_id.clone(),
-			deployment: Deployment {
-				id: deployment_id.clone(),
-				name: name.to_string(),
-				registry: registry.clone(),
-				image_tag: image_tag.to_string(),
-				status: DeploymentStatus::Pushed,
-				region: region.clone(),
-				machine_type: machine_type.clone(),
-				current_live_digest: digest.clone(),
-			},
-			image_name,
-			digest,
-			running_details: deployment_running_details.clone(),
-			user_id: user_id.clone(),
-			login_id: login_id.clone(),
-			ip_address: ip_address.to_string(),
-			metadata: metadata.clone(),
-			request_id: request_id.clone(),
-		},
-		config,
-		request_id,
-	)
-	.await
-}
 
 pub async fn queue_check_and_update_deployment_status(
 	workspace_id: &Uuid,
