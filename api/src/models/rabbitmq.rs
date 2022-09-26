@@ -46,6 +46,10 @@ impl fmt::Display for Queue {
 #[serde(tag = "action", rename_all = "camelCase")]
 #[allow(clippy::large_enum_variant)]
 pub enum DeploymentRequestData {
+	CheckAndUpdateStatus {
+		workspace_id: Uuid,
+		deployment_id: Uuid,
+	},
 	Create {
 		workspace_id: Uuid,
 		deployment: Deployment,
@@ -60,17 +64,6 @@ pub enum DeploymentRequestData {
 		image_name: String,
 		digest: Option<String>,
 		running_details: DeploymentRunningDetails,
-		request_id: Uuid,
-	},
-	Start {
-		workspace_id: Uuid,
-		deployment: Deployment,
-		image_name: String,
-		digest: Option<String>,
-		running_details: DeploymentRunningDetails,
-		user_id: Uuid,
-		login_id: Uuid,
-		ip_address: String,
 		request_id: Uuid,
 	},
 	Update {

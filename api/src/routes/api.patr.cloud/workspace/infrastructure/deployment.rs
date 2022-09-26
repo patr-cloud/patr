@@ -1137,8 +1137,8 @@ async fn start_deployment(
 		}
 	}
 
-	log::trace!("request_id: {} - RabbitMQ to start deployment", request_id);
-	service::queue_start_deployment(
+	log::trace!("request_id: {} - Start deployment", request_id);
+	service::start_deployment(
 		context.get_database_connection(),
 		&workspace_id,
 		&deployment_id,
@@ -1147,6 +1147,16 @@ async fn start_deployment(
 		&user_id,
 		&login_id,
 		&ip_address,
+		&config,
+		&request_id,
+	)
+	.await?;
+
+	context.commit_database_transaction().await?;
+
+	service::queue_check_and_update_deployment_status(
+		&workspace_id,
+		&deployment_id,
 		&config,
 		&request_id,
 	)

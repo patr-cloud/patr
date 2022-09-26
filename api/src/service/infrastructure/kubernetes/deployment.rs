@@ -682,6 +682,8 @@ pub async fn get_kubernetes_deployment_status(
 			.body(error!(SERVER_ERROR).to_string())?,
 	};
 
+	// TODO: add logic to check the image crash loop or pull backoff
+
 	if deployment_status.available_replicas ==
 		Some(deployment.min_horizontal_scale.into())
 	{
