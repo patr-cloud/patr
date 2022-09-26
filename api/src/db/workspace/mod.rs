@@ -943,7 +943,7 @@ pub async fn set_default_payment_method_for_workspace(
 	.map(|_| ())
 }
 
-pub async fn set_resource_limit_on_workspace(
+pub async fn set_resource_limit_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	deployment_limit: i32,

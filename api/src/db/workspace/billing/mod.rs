@@ -410,7 +410,7 @@ pub async fn get_all_deployment_usage(
 			(
 				stop_time IS NULL OR
 				stop_time > $2
-			) AND 
+			) AND
 			start_time < $3;
 		"#,
 		workspace_id as _,
@@ -443,7 +443,7 @@ pub async fn get_all_database_usage(
 			(
 				deletion_time IS NULL OR
 				deletion_time > $2
-			) AND 
+			) AND
 			start_time < $3;
 		"#,
 		workspace_id as _,
@@ -475,7 +475,7 @@ pub async fn get_all_static_site_usages(
 			(
 				stop_time IS NULL OR
 				stop_time > $2
-			) AND 
+			) AND
 			start_time < $3;		
 		"#,
 		workspace_id as _,
@@ -507,7 +507,7 @@ pub async fn get_all_managed_url_usages(
 			(
 				stop_time IS NULL OR
 				stop_time > $2
-			) AND 
+			) AND
 			start_time < $3;
 		"#,
 		workspace_id as _,
@@ -538,7 +538,7 @@ pub async fn get_all_docker_repository_usages(
 			(
 				stop_time IS NULL OR
 				stop_time > $2
-			) AND 
+			) AND
 			start_time < $3;
 		"#,
 		workspace_id as _,
@@ -569,7 +569,7 @@ pub async fn get_all_domains_usages(
 			(
 				stop_time IS NULL OR
 				stop_time > $2
-			) AND 
+			) AND
 			start_time < $3;
 			"#,
 		workspace_id as _,
@@ -601,7 +601,7 @@ pub async fn get_all_secrets_usages(
 			(
 				stop_time IS NULL OR
 				stop_time > $2
-			) AND 
+			) AND
 			start_time < $3;
 		"#,
 		workspace_id as _,
@@ -780,12 +780,15 @@ pub async fn get_total_amount_to_pay_for_workspace(
 ) -> Result<f64, sqlx::Error> {
 	query!(
 		r#"
-		SELECT SUM(
-			CASE transaction_type
-				WHEN 'bill' THEN amount
-				ELSE - amount
-			END
-		) as "total_amount!"
+		SELECT
+			SUM(
+				CASE transaction_type
+					WHEN 'bill' THEN
+						amount
+					ELSE
+						-amount
+				END
+			) as "total_amount!"
 		FROM
 			transaction
 		WHERE

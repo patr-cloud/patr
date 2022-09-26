@@ -999,6 +999,46 @@
     },
     "query": "SELECT deployment_id as \"deployment_id: _\", name, value, secret_id as \"secret_id: _\" FROM deployment_environment_variable WHERE deployment_id = $1;"
   },
+  "119c8bebf183159fcff9db2da15216daee3416b7290de200927e764a5fbef8f8": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "storage: _",
+          "ordinal": 1,
+          "type_info": "Int8"
+        },
+        {
+          "name": "start_time: _",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "stop_time: _",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tstorage as \"storage: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tdocker_repo_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t) AND\n\t\t\tstart_time < $3;\n\t\t"
+  },
   "12052215860013600805e2c9935efaf8ac383cf889dbd65fe42205a927024455": {
     "describe": {
       "columns": [],
@@ -1997,6 +2037,57 @@
     },
     "query": "DELETE FROM user_phone_number WHERE user_id = $1 AND country_code = $2 AND number = $3;"
   },
+  "22df2b30add19d76f1a5bfe1545e352546975f56c5e86d67f0a2dd704483f23e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "static_site_plan: _",
+          "ordinal": 1,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "free",
+                  "pro",
+                  "unlimited"
+                ]
+              },
+              "name": "static_site_plan"
+            }
+          }
+        },
+        {
+          "name": "start_time: _",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "stop_time: _",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tstatic_site_plan as \"static_site_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tstatic_sites_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t) AND\n\t\t\tstart_time < $3;\t\t\n\t\t"
+  },
   "23bb8f9797fd073f661ce8e1db702fe75a68ac93438b8239cd0d9a95e32b177d": {
     "describe": {
       "columns": [],
@@ -2393,26 +2484,6 @@
     },
     "query": "UPDATE ci_builds SET finished = $3 WHERE ( repo_id = $1 AND build_num = $2 );"
   },
-  "2e335a1974750d90a2a38f272e851ddc25929695bca01b306b2039b8e77cbfea": {
-    "describe": {
-      "columns": [
-        {
-          "name": "total_amount!",
-          "ordinal": 0,
-          "type_info": "Float8"
-        }
-      ],
-      "nullable": [
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT SUM( CASE transaction_type WHEN 'bill' THEN amount ELSE - amount END ) as \"total_amount!\" FROM transaction WHERE workspace_id = $1;"
-  },
   "2e9439603b1408a8218602004066137d20d8dfa79cf17fee654b0f80819b65a4": {
     "describe": {
       "columns": [],
@@ -2464,6 +2535,26 @@
       }
     },
     "query": "CREATE TABLE static_site( id UUID CONSTRAINT static_site_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT static_site_chk_name_is_trimmed CHECK( name = TRIM(name) ), status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, current_live_upload UUID, CONSTRAINT static_site_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT static_site_uq_id_workspace_id UNIQUE(id, workspace_id) );"
+  },
+  "31ae268393d413ef744294174a3b0406a2353209ceb40ea69015332e38c1b676": {
+    "describe": {
+      "columns": [
+        {
+          "name": "total_amount!",
+          "ordinal": 0,
+          "type_info": "Float8"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT SUM( CASE transaction_type WHEN 'bill' THEN amount ELSE -amount END ) as \"total_amount!\" FROM transaction WHERE workspace_id = $1;"
   },
   "31fa3365a18b7cdbb3532ea5559f8a6fafda313ec59e82c3d790c31ac45fb452": {
     "describe": {
@@ -3903,6 +3994,56 @@
       }
     },
     "query": "DELETE FROM role_permissions_resource WHERE role_id = $1;"
+  },
+  "4f6b72964dcfe71df254f8a3e4bf66a431aecf0e91906a6f9ea024488a62f2e3": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "domain_plan: _",
+          "ordinal": 1,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "free",
+                  "unlimited"
+                ]
+              },
+              "name": "domain_plan"
+            }
+          }
+        },
+        {
+          "name": "start_time: _",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "stop_time: _",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdomain_plan as \"domain_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tdomain_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t) AND\n\t\t\tstart_time < $3;\n\t\t\t"
   },
   "50282dcc98562ef247ea4d4978153d7ea74dc9001b89ed36885a6446f8543fc8": {
     "describe": {
@@ -5778,6 +5919,68 @@
       }
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE repository_id = $1 AND status != 'deleted';"
+  },
+  "6b18983b69af0d62dbb84e875d9c6d72e74be2f46fb70ba33a0ddafbb62ead3e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "database_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "db_plan: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "nano",
+                  "micro",
+                  "small",
+                  "medium",
+                  "large",
+                  "xlarge",
+                  "xxlarge",
+                  "mammoth"
+                ]
+              },
+              "name": "managed_database_plan"
+            }
+          }
+        },
+        {
+          "name": "start_time: _",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "deletion_time: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdatabase_id as \"database_id: _\",\n\t\t\tdb_plan as \"db_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tdeletion_time as \"deletion_time: _\"\n\t\tFROM\n\t\t\tmanaged_database_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tdeletion_time IS NULL OR\n\t\t\t\tdeletion_time > $2\n\t\t\t) AND\n\t\t\tstart_time < $3;\n\t\t"
   },
   "6b678ec64a61d5c20d7ea207efa6fce83058481b7af34fb81a36022b0a52dbc6": {
     "describe": {
@@ -8466,46 +8669,6 @@
     },
     "query": "CREATE TYPE PAYMENT_STATUS as ENUM( 'success', 'failed' );"
   },
-  "a2c1bd2dfe3d91dbd81faf3a446b0352fa003da75f31acd37c4239055cff1bb8": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "url_count: _",
-          "ordinal": 1,
-          "type_info": "Int4"
-        },
-        {
-          "name": "start_time: _",
-          "ordinal": 2,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "stop_time: _",
-          "ordinal": 3,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\turl_count as \"url_count: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tmanaged_url_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t) AND \n\t\t\tstart_time < $3;\n\t\t"
-  },
   "a3d44c2d7c66de013a3510d3f42bf75f60a71f34682522a2882471f9a1f4414e": {
     "describe": {
       "columns": [
@@ -9073,6 +9236,98 @@
       }
     },
     "query": "\n\t\tSELECT\n\t\t\tstep_id,\n\t\t\tstep_name,\n\t\t\tbase_image,\n\t\t\tcommands,\n\t\t\tstatus as \"status: _\",\n\t\t\tstarted as \"started: _\",\n\t\t\tfinished as \"finished: _\"\n\t\tFROM\n\t\t\tci_steps\n\t\tWHERE (\n\t\t\trepo_id = $1\n\t\t\tAND build_num = $2\n\t\t)\n\t\tORDER BY step_id ASC;\n\t\t"
+  },
+  "acd51b03ec8c77134d035a4cf4313ca1a3f83b18cfba0c8c6865ce3427936a1b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "deployment_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "machine_type: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "num_instance: _",
+          "ordinal": 3,
+          "type_info": "Int4"
+        },
+        {
+          "name": "start_time: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "stop_time: _",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdeployment_id as \"deployment_id: _\",\n\t\t\tmachine_type as \"machine_type: _\",\n\t\t\tnum_instance as \"num_instance: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tdeployment_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t) AND\n\t\t\tstart_time < $3;\n\t\t"
+  },
+  "acdd41996e25d151ebea8d367ed1904dddb7fa7dec5de566beff6601d0f0c593": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "secret_count: _",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "start_time: _",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "stop_time: _",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tsecret_count as \"secret_count: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tsecrets_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t) AND\n\t\t\tstart_time < $3;\n\t\t"
   },
   "ad5a7c7be16f5716783720238effa32880444232dc3490bf9b31357090274380": {
     "describe": {
@@ -10563,58 +10818,6 @@
     },
     "query": "INSERT INTO static_sites_payment_history( workspace_id, static_site_plan, start_time, stop_time ) VALUES ( $1, $2, $3, NULL );"
   },
-  "cd75aed4a95d6e14c98458696ff86d9f5474d229dbec50dc1f58a1cb7a7ccfe0": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "machine_type: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "num_instance: _",
-          "ordinal": 3,
-          "type_info": "Int4"
-        },
-        {
-          "name": "start_time: _",
-          "ordinal": 4,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "stop_time: _",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdeployment_id as \"deployment_id: _\",\n\t\t\tmachine_type as \"machine_type: _\",\n\t\t\tnum_instance as \"num_instance: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tdeployment_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t) AND \n\t\t\tstart_time < $3;\n\t\t"
-  },
   "cdb7e6beee050fd108b0b8966a75045b383014f735c26cf1fd17e0cd0ecb0a60": {
     "describe": {
       "columns": [
@@ -10666,46 +10869,6 @@
       }
     },
     "query": "ALTER TABLE managed_database_payment_history ADD CONSTRAINT managed_database_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id);"
-  },
-  "cfde9146acf6e76c669ae061613653a2017eab909a16098f7afbc0a7fe73a06d": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "secret_count: _",
-          "ordinal": 1,
-          "type_info": "Int4"
-        },
-        {
-          "name": "start_time: _",
-          "ordinal": 2,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "stop_time: _",
-          "ordinal": 3,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tsecret_count as \"secret_count: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tsecrets_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t) AND \n\t\t\tstart_time < $3;\n\t\t"
   },
   "cfe90f397141fe6f605a54f2036a466cb0b5bc000b7ad716e6d271980d91dfe8": {
     "describe": {
@@ -11091,57 +11254,6 @@
       }
     },
     "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" INNER JOIN user_phone_number ON \"user\".id = user_phone_number.user_id WHERE user_phone_number.country_code = $1 AND user_phone_number.number = $2;"
-  },
-  "d52fa03b83abadda28e055e0ba3da9a4425e387627efb91dc65533cfcf0a4ad0": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "static_site_plan: _",
-          "ordinal": 1,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "free",
-                  "pro",
-                  "unlimited"
-                ]
-              },
-              "name": "static_site_plan"
-            }
-          }
-        },
-        {
-          "name": "start_time: _",
-          "ordinal": 2,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "stop_time: _",
-          "ordinal": 3,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tstatic_site_plan as \"static_site_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tstatic_sites_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t) AND \n\t\t\tstart_time < $3;\t\t\n\t\t"
   },
   "d554e0cdaefed7bec784a16adfa3a7e2e844251ddab8d60a00e481b7adc938d9": {
     "describe": {
@@ -12046,68 +12158,6 @@
     },
     "query": "CREATE INDEX user_login_idx_user_id ON user_login (user_id);"
   },
-  "dffdbd08fc003b45f56c7e34daa01a4555b2b2baa9b8d03463f84e3488ba2878": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "database_id: _",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "db_plan: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "nano",
-                  "micro",
-                  "small",
-                  "medium",
-                  "large",
-                  "xlarge",
-                  "xxlarge",
-                  "mammoth"
-                ]
-              },
-              "name": "managed_database_plan"
-            }
-          }
-        },
-        {
-          "name": "start_time: _",
-          "ordinal": 3,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "deletion_time: _",
-          "ordinal": 4,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdatabase_id as \"database_id: _\",\n\t\t\tdb_plan as \"db_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tdeletion_time as \"deletion_time: _\"\n\t\tFROM\n\t\t\tmanaged_database_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tdeletion_time IS NULL OR\n\t\t\t\tdeletion_time > $2\n\t\t\t) AND \n\t\t\tstart_time < $3;\n\t\t"
-  },
   "e00ba20ea9ff654465b2212550e00cfd2af001338161b3003005ab81b3ca834e": {
     "describe": {
       "columns": [
@@ -12349,56 +12399,6 @@
       }
     },
     "query": "SELECT patr_domain_dns_record.id as \"id: _\", patr_domain_dns_record.record_identifier, patr_domain_dns_record.domain_id as \"domain_id: _\", patr_domain_dns_record.name, patr_domain_dns_record.type as \"type: _\", patr_domain_dns_record.value, patr_domain_dns_record.priority, patr_domain_dns_record.ttl, patr_domain_dns_record.proxied FROM patr_domain_dns_record INNER JOIN domain ON patr_domain_dns_record.domain_id = domain.id WHERE patr_domain_dns_record.domain_id = $1 AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
-  },
-  "e4ba2e3034959a5e1c4c3447c74e145e74367e62eeef4cdb7e34dba94e5c2252": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "domain_plan: _",
-          "ordinal": 1,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "free",
-                  "unlimited"
-                ]
-              },
-              "name": "domain_plan"
-            }
-          }
-        },
-        {
-          "name": "start_time: _",
-          "ordinal": 2,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "stop_time: _",
-          "ordinal": 3,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdomain_plan as \"domain_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tdomain_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t) AND \n\t\t\tstart_time < $3;\n\t\t\t"
   },
   "e4bde43b0c682fac1c3d75723e1d9a9f133ff21525cec4fcdbea36908407284a": {
     "describe": {
@@ -12899,46 +12899,6 @@
     },
     "query": "INSERT INTO deployment_exposed_port( deployment_id, port, port_type ) VALUES ($1, $2, $3);"
   },
-  "f46d1af6bb913b71e964d964e67b53e5754491c5b8b703720e3440ab7c305e79": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "storage: _",
-          "ordinal": 1,
-          "type_info": "Int8"
-        },
-        {
-          "name": "start_time: _",
-          "ordinal": 2,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "stop_time: _",
-          "ordinal": 3,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tstorage as \"storage: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tdocker_repo_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t) AND \n\t\t\tstart_time < $3;\n\t\t"
-  },
   "f473ae6a47061c72bf61cc766b89b157e689bdea800ac4a3d6523bd2fec8547b": {
     "describe": {
       "columns": [],
@@ -13407,6 +13367,46 @@
       }
     },
     "query": "SELECT DISTINCT workspace.id as \"id: _\", workspace.name::TEXT as \"name!: _\", workspace.super_admin_id as \"super_admin_id: _\", workspace.active, workspace.alert_emails as \"alert_emails: _\", workspace.payment_type as \"payment_type: _\", workspace.default_payment_method_id as \"default_payment_method_id: _\", workspace.deployment_limit, workspace.static_site_limit, workspace.database_limit, workspace.managed_url_limit, workspace.secret_limit, workspace.domain_limit, workspace.docker_repository_storage_limit, workspace.stripe_customer_id, workspace.address_id as \"address_id: _\", workspace.amount_due FROM workspace WHERE workspace.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
+  },
+  "fb6635456de0ba3bd56c117b8ca93a75cd7120ac54408f1f7d7f70776b7332ef": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "url_count: _",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "start_time: _",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "stop_time: _",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\turl_count as \"url_count: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tmanaged_url_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t) AND\n\t\t\tstart_time < $3;\n\t\t"
   },
   "fb97eba66b6b6448bed531336a20c58c9f58d29a2bcf19b1e7808750b460cea7": {
     "describe": {

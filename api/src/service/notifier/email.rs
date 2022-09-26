@@ -422,7 +422,7 @@ pub async fn send_delete_unpaid_resource_email(
 		},
 		email,
 		None,
-		"Patr resource deleted",
+		"[Action required] Patr resources deleted",
 	)
 	.await
 }
@@ -455,7 +455,7 @@ pub async fn send_bill_not_paid_reminder_email(
 		},
 		email,
 		None,
-		"Patr bills",
+		"[Action required] Patr bill payment pending",
 	)
 	.await
 }

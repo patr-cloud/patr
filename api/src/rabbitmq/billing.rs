@@ -533,7 +533,7 @@ pub(super) async fn process_request(
 						.await?;
 
 						// Reset resource limit to zero
-						db::set_resource_limit_on_workspace(
+						db::set_resource_limit_for_workspace(
 							connection,
 							&workspace_id,
 							0,
