@@ -73,14 +73,6 @@ pub enum DeploymentRequestData {
 		ip_address: String,
 		request_id: Uuid,
 	},
-	Stop {
-		workspace_id: Uuid,
-		deployment_id: Uuid,
-		user_id: Uuid,
-		login_id: Uuid,
-		ip_address: String,
-		request_id: Uuid,
-	},
 	Update {
 		workspace_id: Uuid,
 		deployment: Deployment,
@@ -91,14 +83,6 @@ pub enum DeploymentRequestData {
 		login_id: Uuid,
 		ip_address: String,
 		metadata: DeploymentMetadata,
-		request_id: Uuid,
-	},
-	Delete {
-		workspace_id: Uuid,
-		deployment_id: Uuid,
-		user_id: Uuid,
-		login_id: Uuid,
-		ip_address: String,
 		request_id: Uuid,
 	},
 }

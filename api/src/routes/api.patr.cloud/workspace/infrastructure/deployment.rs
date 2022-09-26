@@ -1206,10 +1206,11 @@ async fn stop_deployment(
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	log::trace!(
-		"request_id: {} - queuing stop the deployment request",
-		request_id
+		"request_id: {} - Stopping the deployment {}",
+		request_id,
+		deployment_id
 	);
-	service::queue_stop_deployment(
+	service::stop_deployment(
 		context.get_database_connection(),
 		&deployment.workspace_id,
 		&deployment_id,
@@ -1452,8 +1453,8 @@ async fn delete_deployment(
 	)
 	.await?;
 
-	log::trace!("request_id: {} - Queuing delete deployment", request_id);
-	service::queue_delete_deployment(
+	log::trace!("request_id: {} - Deleting deployment", request_id);
+	service::delete_deployment(
 		context.get_database_connection(),
 		&deployment.workspace_id,
 		&deployment_id,
