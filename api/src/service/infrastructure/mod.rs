@@ -138,6 +138,7 @@ pub async fn delete_all_resources_in_workspace(
 		workspace_id
 	);
 	// Get managed url and delete all the managed url for a workspace
+	log::trace!("deleting all mananged urls for workspace: {}", workspace_id);
 	let managed_url =
 		db::get_all_managed_urls_in_workspace(connection, workspace_id).await?;
 
@@ -153,6 +154,7 @@ pub async fn delete_all_resources_in_workspace(
 	}
 
 	// Get domain and delete all the domain for a workspace
+	log::trace!("deleting all domains for workspace: {}", workspace_id);
 	let domains =
 		db::get_domains_for_workspace(connection, workspace_id).await?;
 
@@ -167,6 +169,7 @@ pub async fn delete_all_resources_in_workspace(
 		.await?;
 	}
 
+	log::trace!("deleting all databases for workspace: {}", workspace_id);
 	let managed_database =
 		db::get_all_database_clusters_for_workspace(connection, workspace_id)
 			.await?;
@@ -184,6 +187,7 @@ pub async fn delete_all_resources_in_workspace(
 	}
 
 	// Get deployments and delete all the deployment for a workspace
+	log::trace!("deleting all deployments for workspace: {}", workspace_id);
 	let deployments =
 		db::get_deployments_for_workspace(connection, workspace_id).await?;
 
@@ -203,6 +207,7 @@ pub async fn delete_all_resources_in_workspace(
 	}
 
 	// Get static sites and delete all the static site for a workspace
+	log::trace!("deleting all static site for workspace: {}", workspace_id);
 	let static_site =
 		db::get_static_sites_for_workspace(connection, workspace_id).await?;
 
@@ -219,6 +224,10 @@ pub async fn delete_all_resources_in_workspace(
 
 	// Get docker repositories and delete all the docker repositories for a
 	// workspace
+	log::trace!(
+		"deleting all docker repository for workspace: {}",
+		workspace_id
+	);
 	let docker_repositories =
 		db::get_docker_repositories_for_workspace(connection, workspace_id)
 			.await?;
@@ -232,6 +241,7 @@ pub async fn delete_all_resources_in_workspace(
 
 	// Get connected_git_provider and delete all the connected git providers for
 	// a workspace
+	log::trace!("deleting all git provider for workspace: {}", workspace_id);
 	let connected_git_providers =
 		db::list_connected_git_providers_for_workspace(
 			connection,
@@ -242,6 +252,21 @@ pub async fn delete_all_resources_in_workspace(
 	for git_provider in connected_git_providers {
 		db::remove_git_provider_credentials(connection, &git_provider.id)
 			.await?;
+	}
+
+	log::trace!("deleting all secrets for workspace: {}", workspace_id);
+	let secrets =
+		db::get_all_secrets_in_workspace(connection, workspace_id).await?;
+
+	for secret in secrets {
+		service::delete_secret_in_workspace(
+			connection,
+			workspace_id,
+			&secret.id,
+			config,
+			request_id,
+		)
+		.await?;
 	}
 
 	log::trace!(

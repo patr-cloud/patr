@@ -396,7 +396,7 @@ pub async fn send_invoice_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/bill-not-paid-delete-resources/template.json"]
-struct DeleteUnpaidResource {
+struct UnpaidResourcesDeletedEmail {
 	username: String,
 	workspace_name: String,
 	month: String,
@@ -413,7 +413,7 @@ pub async fn send_delete_unpaid_resource_email(
 	total_bill: f64,
 ) -> Result<(), Error> {
 	send_email(
-		DeleteUnpaidResource {
+		UnpaidResourcesDeletedEmail {
 			username,
 			workspace_name,
 			month,
@@ -429,7 +429,7 @@ pub async fn send_delete_unpaid_resource_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/bill-not-paid-reminder/template.json"]
-struct BillNotPaid {
+struct BillNotPaidReminderEmail {
 	username: String,
 	workspace_name: String,
 	month: String,
@@ -446,7 +446,7 @@ pub async fn send_bill_not_paid_reminder_email(
 	total_bill: f64,
 ) -> Result<(), Error> {
 	send_email(
-		BillNotPaid {
+		BillNotPaidReminderEmail {
 			username,
 			workspace_name,
 			month,

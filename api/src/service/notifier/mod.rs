@@ -331,7 +331,7 @@ pub async fn send_forgot_password_otp(
 /// address or an error
 ///
 /// [`Transaction`]: Transaction
-pub async fn get_user_email(
+async fn get_user_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	email_string: &str,
