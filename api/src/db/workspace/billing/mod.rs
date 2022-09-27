@@ -693,37 +693,6 @@ pub async fn generate_new_transaction_id(
 	}
 }
 
-pub async fn get_last_bill_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	payment_intent_id: String,
-) -> Result<Option<Transaction>, sqlx::Error> {
-	query_as!(
-		Transaction,
-		r#"
-		SELECT
-			id as "id: _",
-			month,
-			amount,
-			payment_intent_id,
-			date as "date: _",
-			workspace_id as "workspace_id: _",
-			transaction_type as "transaction_type: _",
-			payment_status as "payment_status: _",
-			description
-		FROM
-			transaction
-		WHERE
-			workspace_id = $1 AND
-			payment_intent_id = $2;
-		"#,
-		workspace_id as _,
-		payment_intent_id,
-	)
-	.fetch_optional(&mut *connection)
-	.await
-}
-
 pub async fn get_payment_methods_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,

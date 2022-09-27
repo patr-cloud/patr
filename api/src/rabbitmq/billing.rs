@@ -2,7 +2,7 @@ use std::ops::{Add, Sub};
 
 use api_models::{
 	models::workspace::billing::{PaymentStatus, TransactionType},
-	utils::True,
+	utils::{True, Uuid},
 };
 use chrono::{Datelike, Duration, Month, TimeZone, Utc};
 use eve_rs::AsError;
@@ -177,15 +177,23 @@ pub(super) async fn process_request(
 			year,
 			request_id,
 		} => {
-			log::trace!("request_id: {} attempting to make payment", request_id);
+			// removed function "get_last_bill_for_workspace()" as it is not
+			// being used after splitting generate invoice rmq job and clubbing
+			// attempt_payment, confirm_payment and reminder jobs
+
+			log::trace!(
+				"request_id: {} attempting to make payment",
+				request_id
+			);
+
+			if payable_bill <= 0.0 {
+				// If the bill is zero, don't bother charging them
+				return Ok(());
+			}
+
 			// Step 2: Create payment intent with the given bill
 			let password: Option<String> = None;
 			if let PaymentType::Card = workspace.payment_type {
-				if payable_bill <= 0.0 {
-					// If the bill is zero, don't bother charging them
-					return Ok(());
-				}
-
 				if let Some(address_id) = &workspace.address_id {
 					let (currency, amount) =
 						if db::get_billing_address(connection, address_id)
@@ -203,7 +211,7 @@ pub(super) async fn process_request(
 
 					let payment_intent_object = Client::new()
 						.post("https://api.stripe.com/v1/payment_intents")
-						.basic_auth(&config.stripe.secret_key, password)
+						.basic_auth(&config.stripe.secret_key, password.clone())
 						.form(&PaymentIntent {
 							amount,
 							currency,
@@ -223,13 +231,75 @@ pub(super) async fn process_request(
 						.json::<PaymentIntentObject>()
 						.await?;
 
-					service::queue_confirm_payment_intent(
-						&workspace.id,
-						payment_intent_object.id,
-						payable_bill,
-						config,
-					)
-					.await?;
+					let transaction_id =
+						db::generate_new_transaction_id(connection).await?;
+
+					let payment_status = Client::new()
+						.post(format!(
+							"https://api.stripe.com/v1/payment_intents/{}/confirm",
+							payment_intent_object.id
+						))
+						.basic_auth(&config.stripe.secret_key, password)
+						.send()
+						.await?
+						.status();
+
+					// Payment will only has successful or failed state
+					// according to stripe docs. For more information.
+					// check - https://stripe.com/docs/payments/payment-intents/verifying-status
+					if !payment_status.is_success() {
+						db::create_transaction(
+							connection,
+							&workspace.id,
+							&transaction_id,
+							month as i32,
+							payable_bill,
+							Some(&payment_intent_object.id),
+							&Utc::now(),
+							&TransactionType::Payment,
+							&PaymentStatus::Failed,
+							None,
+						)
+						.await?;
+
+						// TODO - notify customer when the payment is failed
+
+						// "pseudo code"
+						// service::send_payment_failed_notification(
+						// connection,
+						// workspace.super_admin_id,
+						// workspace.name,
+						// month.to_owned(),
+						// year,
+						// ).await?;
+
+						// Call reminder function which will take care of
+						// reminder mail and deleting resource when unpaid
+
+						patr_resource_usage_reminder(
+							connection,
+							&workspace.id,
+							config,
+							&request_id,
+						)
+						.await?;
+						Ok(())
+					} else {
+						db::create_transaction(
+							connection,
+							&workspace.id,
+							&transaction_id,
+							month as i32,
+							payable_bill,
+							Some(&payment_intent_object.id),
+							&Utc::now(),
+							&TransactionType::Payment,
+							&PaymentStatus::Success,
+							None,
+						)
+						.await?;
+						Ok(())
+					}
 				} else {
 					// TODO: notify about the missing address id and reinitiate
 					// the payment process once added. For now, using the
@@ -239,12 +309,14 @@ pub(super) async fn process_request(
 					// used as they have not added there card and there is
 					// generated
 					log::trace!("Addresss not found for workspace: {}, calling reminder queue to send the mail reminder to pay for there usage", workspace.id);
-					service::queue_resource_usage_reminder(
+					patr_resource_usage_reminder(
+						connection,
 						&workspace.id,
-						payable_bill,
 						config,
+						&request_id,
 					)
 					.await?;
+					Ok(())
 				}
 			} else {
 				// Enterprise plan. Just assume a payment is made
@@ -264,6 +336,7 @@ pub(super) async fn process_request(
 					None,
 				)
 				.await?;
+				Ok(())
 			}
 
 			// TODO: for now disabled the invoice email,
@@ -285,233 +358,102 @@ pub(super) async fn process_request(
 			// 	year,
 			// )
 			// .await?;
-			Ok(())
 		}
+	}
+}
 
-		WorkspaceRequestData::ConfirmPaymentIntent {
-			payment_intent_id,
-			payable_bill,
-			workspace_id,
-			request_id,
-		} => {
-			let last_transaction = db::get_last_bill_for_workspace(
-				&mut *connection,
-				&workspace_id,
-				payment_intent_id.clone(),
-			)
-			.await?;
-			let last_transaction = if let Some(transaction) = last_transaction {
-				transaction
+pub async fn patr_resource_usage_reminder(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	// reminder mail
+	let now = Utc::now();
+	// Get the day of the month as invoice is generated at the end
+	// of the month, with that logic current month should start from
+	// 1st of every month
+	let current_month_day = now.day();
+	let workspace = db::get_workspace_info(connection, workspace_id).await?;
+
+	if let Some(workspace) = workspace {
+		let total_amount =
+			db::get_total_amount_to_pay_for_workspace(connection, workspace_id)
+				.await?;
+		if total_amount > 0.0 {
+			// Get previous month
+			let month =
+				Month::from_u32(now.date().month()).unwrap().pred().name();
+
+			// Checking if current month is january then the year
+			// should be last year else the current year
+			// e.g if the bill is generated in year 2023 the bill
+			// would be for december 2022
+			let year = if now.date().month() == 1 {
+				now.date().year() - 1
 			} else {
-				// TODO report here
-				return Ok(());
+				now.date().year()
 			};
-
-			if last_transaction.payment_status == PaymentStatus::Success {
-				log::warn!(
-					"request_id: {} - Already paid for workspace: {}",
-					request_id,
-					workspace_id
-				);
-				return Ok(());
-			} else if last_transaction.payment_status == PaymentStatus::Failed {
-				// Check timestamp
-				if Utc::now().sub(last_transaction.date).num_hours().abs() > 24
-				{
-					// It's been more than 24 hours since the last transaction
-					// attempt
-				} else {
-					// It's been less than 24 hours since the last transaction
-					// attempt Wait for a while and requeue this task
-					time::sleep(time::Duration::from_millis(60_000)).await;
-					return Error::as_result()
-						.status(500)
-						.body(error!(SERVER_ERROR).to_string())?;
-				}
-			}
-
-			// confirming payment intent and charging the user
-			let client = Client::new();
-
-			let password: Option<String> = None;
-
-			let transaction_id =
-				db::generate_new_transaction_id(connection).await?;
-
-			let payment_status = client
-				.post(format!(
-					"https://api.stripe.com/v1/payment_intents/{}/confirm",
-					payment_intent_id
-				))
-				.basic_auth(&config.stripe.secret_key, password)
-				.send()
-				.await?
-				.status();
-
-			if !payment_status.is_success() {
-				db::create_transaction(
+			if current_month_day < 15 {
+				// send reminder mail for payment daily for 15 days
+				service::send_bill_not_paid_reminder_email(
 					connection,
-					&workspace_id,
-					&transaction_id,
-					last_transaction.month,
-					last_transaction.amount,
-					Some(&payment_intent_id),
-					&Utc::now(),
-					&TransactionType::Payment,
-					&PaymentStatus::Failed,
-					None,
+					workspace.super_admin_id,
+					workspace.name,
+					month.to_owned(),
+					year,
+					total_amount,
 				)
 				.await?;
 
-				log::trace!("payment for workspace: {} is not completed, setting a reminder job in queue", workspace_id);
-				service::queue_resource_usage_reminder(
-					&workspace_id,
-					payable_bill,
+				Ok(())
+			} else {
+				// delete all resources
+				service::delete_all_resources_in_workspace(
+					connection,
+					workspace_id,
+					&workspace.super_admin_id,
 					config,
+					request_id,
 				)
 				.await?;
-			}
 
-			db::create_transaction(
-				connection,
-				&workspace_id,
-				&transaction_id,
-				last_transaction.month,
-				last_transaction.amount,
-				Some(&payment_intent_id),
-				&Utc::now(),
-				&TransactionType::Payment,
-				&PaymentStatus::Success,
-				None,
-			)
-			.await?;
-
-			Ok(())
-		}
-		WorkspaceRequestData::ResourceUsageReminder {
-			workspace_id,
-			payable_bill,
-			request_id,
-		} => {
-			// reminder mail
-			let now = Utc::now();
-			// Get the day of the month as invoice is generated at the end
-			// of the month, with that logic current month should start from
-			// 1st of every month
-			let current_month_day = now.day();
-			let workspace =
-				db::get_workspace_info(connection, &workspace_id).await?;
-			let month = now.month();
-			let year = now.year();
-			let next_month_start_date = Utc
-				.ymd(
-					if month == 12 { year + 1 } else { year },
-					if month == 12 { 1 } else { month + 1 },
-					1,
-				)
-				.and_hms(0, 0, 0)
-				.sub(Duration::nanoseconds(1));
-
-			if let Some(workspace) = workspace {
-				let total_amount = db::get_total_amount_to_pay_for_workspace(
+				// Reset resource limit to zero
+				db::set_resource_limit_for_workspace(
 					connection,
-					&workspace_id,
+					workspace_id,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
 				)
 				.await?;
-				if total_amount > 0.0 {
-					// Get previous month
-					let month = Month::from_u32(now.date().month())
-						.unwrap()
-						.pred()
-						.name();
 
-					// Checking if current month is january then the year
-					// should be last year else the current year
-					// e.g if the bill is generated in year 2023 the bill
-					// would be for december 2022
-					let year = if now.date().month() == 1 {
-						now.date().year() - 1
-					} else {
-						now.date().year()
-					};
-					if current_month_day < 15 {
-						// check if user has added a card
-						if workspace.address_id.is_some() {
-							// Card got added attempt to make a payment
-							service::queue_attempt_payment_intent(
-								&workspace,
-								total_amount,
-								payable_bill,
-								month,
-								if now.month() == 1 {
-									12
-								} else {
-									now.month() - 1
-								},
-								&next_month_start_date,
-								year,
-								config,
-							)
-							.await?;
-						}
-						// send reminder mail for payment daily for 15 days
-						service::send_bill_not_paid_reminder_email(
-							connection,
-							workspace.super_admin_id,
-							workspace.name,
-							month.to_owned(),
-							year,
-							total_amount,
-						)
-						.await?;
+				// send an mail
+				service::send_delete_unpaid_resource_email(
+					connection,
+					workspace.super_admin_id.clone(),
+					workspace.name.clone(),
+					month.to_string(),
+					year,
+					total_amount,
+				)
+				.await?;
 
-						return Ok(());
-					} else {
-						// delete all resources
-						service::delete_all_resources_in_workspace(
-							connection,
-							&workspace_id,
-							&workspace.super_admin_id,
-							config,
-							&request_id,
-						)
-						.await?;
-
-						// Reset resource limit to zero
-						db::set_resource_limit_for_workspace(
-							connection,
-							&workspace_id,
-							0,
-							0,
-							0,
-							0,
-							0,
-							0,
-							0,
-						)
-						.await?;
-
-						// send an mail
-						service::send_delete_unpaid_resource_email(
-							connection,
-							workspace.super_admin_id.clone(),
-							workspace.name.clone(),
-							month.to_string(),
-							year,
-							total_amount,
-						)
-						.await?;
-
-						return Ok(());
-					}
-				} else {
-					log::trace!(
-						"The amount is not payable as of now, continueing.."
-					);
-					return Ok(());
-				}
+				Ok(())
 			}
+		} else {
+			log::trace!("The amount is not payable as of now, continueing..");
 			Ok(())
 		}
+	} else {
+		log::trace!(
+			"Workspace: {} not found. Not possible. Check logic",
+			workspace_id
+		);
+		Ok(())
 	}
 }

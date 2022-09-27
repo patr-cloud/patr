@@ -118,17 +118,6 @@ pub enum WorkspaceRequestData {
 		workspace: Workspace,
 		request_id: Uuid,
 	},
-	ConfirmPaymentIntent {
-		payment_intent_id: String,
-		workspace_id: Uuid,
-		payable_bill: f64,
-		request_id: Uuid,
-	},
-	ResourceUsageReminder {
-		workspace_id: Uuid,
-		payable_bill: f64,
-		request_id: Uuid,
-	},
 	AttemptPaymentIntent {
 		workspace: Workspace,
 		total_bill: f64,
