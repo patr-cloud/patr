@@ -460,6 +460,38 @@ pub async fn send_bill_not_paid_reminder_email(
 	.await
 }
 
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/payment-failure/template.json"]
+struct PaymentFailedEmail {
+	username: String,
+	workspace_name: String,
+	month: String,
+	year: i32,
+	total_bill: f64,
+}
+pub async fn send_payment_failed_mail(
+	email: Mailbox,
+	username: String,
+	workspace_name: String,
+	month: String,
+	year: i32,
+	total_bill: f64,
+) -> Result<(), Error> {
+	send_email(
+		PaymentFailedEmail {
+			username,
+			workspace_name,
+			month,
+			year,
+			total_bill,
+		},
+		email,
+		None,
+		"[Action required] Patr resources deleted",
+	)
+	.await
+}
+
 /// # Description
 /// This function is used to send the email to a recipient
 ///

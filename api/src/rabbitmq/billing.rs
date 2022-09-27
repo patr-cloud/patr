@@ -264,14 +264,15 @@ pub(super) async fn process_request(
 
 						// TODO - notify customer when the payment is failed
 
-						// "pseudo code"
-						// service::send_payment_failed_notification(
-						// connection,
-						// workspace.super_admin_id,
-						// workspace.name,
-						// month.to_owned(),
-						// year,
-						// ).await?;
+						service::send_payment_failed_notification(
+							connection,
+							workspace.super_admin_id,
+							workspace.name,
+							month_string,
+							year,
+							payable_bill,
+						)
+						.await?;
 
 						// Call reminder function which will take care of
 						// reminder mail and deleting resource when unpaid
