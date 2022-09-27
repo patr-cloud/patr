@@ -279,6 +279,23 @@ async fn update_secret(
 	)
 	.await?;
 
+	// Notify users for the action
+
+	// psuedo code for email
+	/*
+	   service::resource_action_email(
+		   resource_id,
+		   resource_name,
+		   resource_type,
+		   super_admin_firstname,
+		   ip_address,
+		   city,
+		   region,
+		   country,
+		   action (enum)
+	   ).await?;
+	*/
+
 	if let Some(mut value) = value {
 		value.zeroize();
 	}
@@ -311,6 +328,23 @@ async fn delete_secret(
 		&request_id,
 	)
 	.await?;
+
+	// Notify users for the action
+
+	// psuedo code for email
+	/*
+	   service::resource_action_email(
+		   resource_id,
+		   resource_name,
+		   resource_type,
+		   super_admin_firstname,
+		   ip_address,
+		   city,
+		   region,
+		   country,
+		   action (enum)
+	   ).await?;
+	*/
 
 	context.success(DeleteSecretResponse {});
 	Ok(context)

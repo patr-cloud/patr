@@ -777,6 +777,7 @@ pub async fn delete_kubernetes_deployment(
 		"request_id: {} - deployment deleted successfully!",
 		request_id
 	);
+
 	Ok(())
 }
 
