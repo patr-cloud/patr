@@ -757,6 +757,23 @@ async fn delete_domain_in_workspace(
 	)
 	.await?;
 
+	// Notify users for the action
+
+	// psuedo code for email
+	/*
+	   service::resource_action_email(
+		   resource_id,
+		   resource_name,
+		   resource_type,
+		   super_admin_firstname,
+		   ip_address,
+		   city,
+		   region,
+		   country,
+		   action (enum)
+	   ).await?;
+	*/
+
 	log::trace!("request_id: {} - Deleted domain in workspace", request_id);
 	// TODO: add the info to patr metrics
 	context.success(DeleteDomainResponse {});
@@ -911,6 +928,23 @@ async fn update_dns_record(
 	)
 	.await?;
 
+	// Notify users for the action
+
+	// psuedo code for email
+	/*
+	   service::resource_action_email(
+		   resource_id,
+		   resource_name,
+		   resource_type,
+		   super_admin_firstname,
+		   ip_address,
+		   city,
+		   region,
+		   country,
+		   action (enum)
+	   ).await?;
+	*/
+
 	log::trace!("request_id: {} - Updated dns record", request_id);
 	context.success(UpdateDomainDnsRecordResponse {});
 	Ok(context)
@@ -938,6 +972,23 @@ async fn delete_dns_record(
 		&request_id,
 	)
 	.await?;
+
+	// Notify users for the action
+
+	// psuedo code for email
+	/*
+	   service::resource_action_email(
+		   resource_id,
+		   resource_name,
+		   resource_type,
+		   super_admin_firstname,
+		   ip_address,
+		   city,
+		   region,
+		   country,
+		   action (enum)
+	   ).await?;
+	*/
 
 	log::trace!("request_id: {} - Deleted dns record", request_id);
 	context.success(DeleteDnsRecordResponse {});

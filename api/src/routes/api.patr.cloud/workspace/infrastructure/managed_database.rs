@@ -377,6 +377,23 @@ async fn delete_managed_database(
 	)
 	.await?;
 
+	// Notify users for the action
+
+	// psuedo code for email
+	/*
+	   service::resource_action_email(
+			resource_id,
+			resource_name,
+			resource_type,
+			super_admin_firstname,
+			ip_address,
+			city,
+			region,
+			country,
+			action (enum)
+	   ).await?;
+	*/
+
 	let _ = service::get_internal_metrics(
 		context.get_database_connection(),
 		"A database instance has been deleted",

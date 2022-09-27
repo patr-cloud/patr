@@ -1321,6 +1321,22 @@ async fn stop_deployment(
 	)
 	.await?;
 
+	// Notify users for the action
+
+	// psuedo code for email
+	/*
+	   service::resource_action_email(
+		   resource_id,
+		   resource_name,
+		   super_admin_user_name,
+		   ip_address,
+		   city,
+		   region,
+		   country,
+		   action (enum)
+	   ).await?;
+	*/
+
 	context.success(StopDeploymentResponse {});
 	Ok(context)
 }
@@ -1627,6 +1643,23 @@ async fn delete_deployment(
 	)
 	.await;
 
+	// Notify users for the action
+
+	// psuedo code for email
+	/*
+	   service::resource_action_email(
+			resource_id,
+			resource_name,
+			resource_type,
+			super_admin_firstname,
+			ip_address,
+			city,
+			region,
+			country,
+			action (enum)
+	   ).await?;
+	*/
+
 	context.success(DeleteDeploymentResponse {});
 	Ok(context)
 }
@@ -1816,6 +1849,23 @@ async fn update_deployment(
 			.await?;
 		}
 	}
+
+	// Notify users for the action
+
+	// psuedo code for email
+	/*
+	   service::resource_action_email(
+			resource_id,
+			resource_name,
+			resource_type,
+			super_admin_firstname,
+			ip_address,
+			city,
+			region,
+			country,
+			action (enum)
+	   ).await?;
+	*/
 
 	context.success(UpdateDeploymentResponse {});
 	Ok(context)
