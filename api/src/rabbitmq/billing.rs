@@ -152,9 +152,34 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
+			service::queue_attempt_payment_intent(
+				&workspace,
+				total_bill,
+				payable_bill,
+				month_string,
+				month,
+				&next_month_start_date,
+				year,
+				config,
+			)
+			.await?;
+
+			Ok(())
+		}
+
+		WorkspaceRequestData::AttemptPaymentIntent {
+			workspace,
+			total_bill,
+			payable_bill,
+			month_string,
+			month,
+			next_month_start_date,
+			year,
+			request_id,
+		} => {
+			log::trace!("request_id: {} attempting to make payment", request_id);
 			// Step 2: Create payment intent with the given bill
 			let password: Option<String> = None;
-
 			if let PaymentType::Card = workspace.payment_type {
 				if payable_bill <= 0.0 {
 					// If the bill is zero, don't bother charging them
@@ -201,6 +226,7 @@ pub(super) async fn process_request(
 					service::queue_confirm_payment_intent(
 						&workspace.id,
 						payment_intent_object.id,
+						payable_bill,
 						config,
 					)
 					.await?;
@@ -212,9 +238,10 @@ pub(super) async fn process_request(
 					// Setting a reminder to user to pay for the resource they
 					// used as they have not added there card and there is
 					// generated
-					log::trace!("Addresss not found for workspace: {} not found calling reminder queue to send the mail reminder to pay for there usage", workspace.id);
+					log::trace!("Addresss not found for workspace: {}, calling reminder queue to send the mail reminder to pay for there usage", workspace.id);
 					service::queue_resource_usage_reminder(
 						&workspace.id,
+						payable_bill,
 						config,
 					)
 					.await?;
@@ -258,11 +285,12 @@ pub(super) async fn process_request(
 			// 	year,
 			// )
 			// .await?;
-
 			Ok(())
 		}
+
 		WorkspaceRequestData::ConfirmPaymentIntent {
 			payment_intent_id,
+			payable_bill,
 			workspace_id,
 			request_id,
 		} => {
@@ -336,8 +364,12 @@ pub(super) async fn process_request(
 				.await?;
 
 				log::trace!("payment for workspace: {} is not completed, setting a reminder job in queue", workspace_id);
-				service::queue_resource_usage_reminder(&workspace_id, config)
-					.await?;
+				service::queue_resource_usage_reminder(
+					&workspace_id,
+					payable_bill,
+					config,
+				)
+				.await?;
 			}
 
 			db::create_transaction(
@@ -358,6 +390,7 @@ pub(super) async fn process_request(
 		}
 		WorkspaceRequestData::ResourceUsageReminder {
 			workspace_id,
+			payable_bill,
 			request_id,
 		} => {
 			// reminder mail
@@ -368,6 +401,16 @@ pub(super) async fn process_request(
 			let current_month_day = now.day();
 			let workspace =
 				db::get_workspace_info(connection, &workspace_id).await?;
+			let month = now.month();
+			let year = now.year();
+			let next_month_start_date = Utc
+				.ymd(
+					if month == 12 { year + 1 } else { year },
+					if month == 12 { 1 } else { month + 1 },
+					1,
+				)
+				.and_hms(0, 0, 0)
+				.sub(Duration::nanoseconds(1));
 
 			if let Some(workspace) = workspace {
 				let total_amount = db::get_total_amount_to_pay_for_workspace(
@@ -392,7 +435,25 @@ pub(super) async fn process_request(
 						now.date().year()
 					};
 					if current_month_day < 15 {
-						
+						// check if user has added a card
+						if workspace.address_id.is_some() {
+							// Card got added attempt to make a payment
+							service::queue_attempt_payment_intent(
+								&workspace,
+								total_amount,
+								payable_bill,
+								month,
+								if now.month() == 1 {
+									12
+								} else {
+									now.month() - 1
+								},
+								&next_month_start_date,
+								year,
+								config,
+							)
+							.await?;
+						}
 						// send reminder mail for payment daily for 15 days
 						service::send_bill_not_paid_reminder_email(
 							connection,

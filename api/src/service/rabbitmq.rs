@@ -7,6 +7,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use chrono::{DateTime, Utc};
 use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
@@ -336,6 +337,7 @@ pub async fn queue_process_payment(
 pub async fn queue_confirm_payment_intent(
 	workspace_id: &Uuid,
 	payment_intent_id: String,
+	payable_bill: f64,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
@@ -343,6 +345,7 @@ pub async fn queue_confirm_payment_intent(
 		&WorkspaceRequestData::ConfirmPaymentIntent {
 			payment_intent_id,
 			workspace_id: workspace_id.clone(),
+			payable_bill,
 			request_id: request_id.clone(),
 		},
 		config,
@@ -353,12 +356,42 @@ pub async fn queue_confirm_payment_intent(
 
 pub async fn queue_resource_usage_reminder(
 	workspace_id: &Uuid,
+	payable_bill: f64,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	send_message_to_billing_queue(
 		&WorkspaceRequestData::ResourceUsageReminder {
 			workspace_id: workspace_id.clone(),
+			payable_bill,
+			request_id: request_id.clone(),
+		},
+		config,
+		&request_id,
+	)
+	.await
+}
+
+pub async fn queue_attempt_payment_intent(
+	workspace: &Workspace,
+	total_bill: f64,
+	payable_bill: f64,
+	month_string: &str,
+	month: u32,
+	next_month_start_date: &DateTime<Utc>,
+	year: i32,
+	config: &Settings,
+) -> Result<(), Error> {
+	let request_id = Uuid::new_v4();
+	send_message_to_billing_queue(
+		&WorkspaceRequestData::AttemptPaymentIntent {
+			workspace: workspace.clone(),
+			total_bill,
+			payable_bill,
+			month_string: month_string.to_string(),
+			month,
+			next_month_start_date: *next_month_start_date,
+			year,
 			request_id: request_id.clone(),
 		},
 		config,

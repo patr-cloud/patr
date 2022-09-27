@@ -7,6 +7,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use super::DeploymentMetadata;
@@ -120,10 +121,22 @@ pub enum WorkspaceRequestData {
 	ConfirmPaymentIntent {
 		payment_intent_id: String,
 		workspace_id: Uuid,
+		payable_bill: f64,
 		request_id: Uuid,
 	},
 	ResourceUsageReminder {
 		workspace_id: Uuid,
+		payable_bill: f64,
+		request_id: Uuid,
+	},
+	AttemptPaymentIntent {
+		workspace: Workspace,
+		total_bill: f64,
+		payable_bill: f64,
+		month_string: String,
+		month: u32,
+		next_month_start_date: DateTime<Utc>,
+		year: i32,
 		request_id: Uuid,
 	},
 }
