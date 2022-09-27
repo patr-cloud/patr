@@ -49,7 +49,7 @@ pub async fn create_build_for_repo(
 ) -> Result<i64, Error> {
 	let build_num = match &event_type {
 		EventType::Commit(commit) => {
-			(db::generate_new_build_for_repo(
+			db::generate_new_build_for_repo(
 				connection,
 				repo_id,
 				&format!("refs/heads/{}", commit.committed_branch_name),
@@ -57,13 +57,13 @@ pub async fn create_build_for_repo(
 				BuildStatus::Running,
 				&Utc::now(),
 				&commit.author,
-				&commit.commit_message,
+				commit.commit_message.as_deref(),
 				None,
 			)
-			.await?)
+			.await?
 		}
 		EventType::Tag(tag) => {
-			(db::generate_new_build_for_repo(
+			db::generate_new_build_for_repo(
 				connection,
 				repo_id,
 				&format!("refs/tags/{}", tag.tag_name),
@@ -71,13 +71,13 @@ pub async fn create_build_for_repo(
 				BuildStatus::Running,
 				&Utc::now(),
 				&tag.author,
-				&tag.commit_message,
+				tag.commit_message.as_deref(),
 				None,
 			)
-			.await?)
+			.await?
 		}
 		EventType::PullRequest(pull_request) => {
-			(db::generate_new_build_for_repo(
+			db::generate_new_build_for_repo(
 				connection,
 				repo_id,
 				&format!("refs/pull/{}", pull_request.pr_number),
@@ -86,9 +86,9 @@ pub async fn create_build_for_repo(
 				&Utc::now(),
 				&pull_request.author,
 				None,
-				&pull_request.pr_title,
+				Some(&pull_request.pr_title),
 			)
-			.await?)
+			.await?
 		}
 	};
 

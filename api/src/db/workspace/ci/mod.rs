@@ -714,7 +714,7 @@ pub async fn generate_new_build_for_repo(
 	git_commit: &str,
 	status: BuildStatus,
 	created: &DateTime<Utc>,
-	author: str,
+	author: &str,
 	git_commit_message: Option<&str>,
 	git_pr_title: Option<&str>,
 ) -> Result<i64, sqlx::Error> {

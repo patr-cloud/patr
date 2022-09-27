@@ -22,14 +22,14 @@ pub struct Tag {
 	pub commit_sha: String,
 	pub tag_name: String,
 	pub author: String,
-	pub commit_message: String,
+	pub commit_message: Option<String>,
 }
 
 pub struct Commit {
 	pub repo_owner: String,
 	pub repo_name: String,
 	pub commit_sha: String,
-	pub commit_message: String,
+	pub commit_message: Option<String>,
 	pub author: String,
 	pub committed_branch_name: String,
 }

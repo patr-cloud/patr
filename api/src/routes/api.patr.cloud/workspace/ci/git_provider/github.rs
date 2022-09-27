@@ -1319,7 +1319,7 @@ async fn restart_build(
 			commit_sha: previous_build.git_commit,
 			pr_number: pull_number.to_string(),
 			author: previous_build.author,
-			pr_title: previous_build.git_pr_title,
+			pr_title: previous_build.git_pr_title.unwrap_or_default(),
 			to_be_committed_branch_name: pr_details.base.ref_,
 		})
 	} else {
@@ -1529,8 +1529,12 @@ async fn start_build_for_branch(
 		repo_name: repo.repo_name.clone(),
 		commit_sha: github_branch.commit.sha,
 		committed_branch_name: branch_name,
-		author: github_branch.commit.author,
-		commit_message: github_branch.commit.commit.message,
+		author: github_branch
+			.commit
+			.author
+			.map(|author| author.name)
+			.unwrap_or_default(),
+		commit_message: Some(github_branch.commit.commit.message),
 	});
 
 	let ci_file_content =
