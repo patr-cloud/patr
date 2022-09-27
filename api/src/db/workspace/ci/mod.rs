@@ -946,7 +946,7 @@ pub async fn list_build_details_for_repo(
 			created: utils::DateTime(build.created),
 			finished: build.finished.map(utils::DateTime),
 			message: build.message,
-			steps: build.steps,
+			steps,
 			author: build.author,
 			git_pr_title: build.git_pr_title,
 			git_commit_message: build.git_commit_message,
