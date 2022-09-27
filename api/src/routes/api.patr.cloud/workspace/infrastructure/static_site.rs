@@ -972,6 +972,23 @@ async fn update_static_site(
 	)
 	.await?;
 
+	// Notify users for the action
+
+	// psuedo code for email
+	/*
+	  service::resource_action_email(
+			resource_id,
+			resource_name,
+			resource_type,
+			super_admin_firstname,
+			ip_address,
+			city,
+			region,
+			country,
+			action (enum)
+	   ).await?;
+	*/
+
 	context.success(UpdateStaticSiteResponse {});
 	Ok(context)
 }
@@ -1115,6 +1132,23 @@ async fn stop_static_site(
 	)
 	.await?;
 
+	// Notify users for the action
+
+	// psuedo code for email
+	/*
+	   service::resource_action_email(
+			resource_id,
+			resource_name,
+			resource_type,
+			super_admin_firstname,
+			ip_address,
+			city,
+			region,
+			country,
+			action (enum)
+	   ).await?;
+	*/
+
 	context.success(StopStaticSiteResponse {});
 	Ok(context)
 }
@@ -1174,6 +1208,25 @@ async fn delete_static_site(
 		&request_id,
 	)
 	.await?;
+
+	// Notify users for the action
+
+	// psuedo code for email
+	/*
+	   service::resource_action_email(
+			resource_id,
+			resource_name,
+			resource_type,
+			super_admin_firstname, -> might not be needed can pass workspace_id and
+									then can fetch the value from there will prevent code
+									repetition in all resources
+			ip_address,
+			city,
+			region,
+			country,
+			action (enum)
+	   ).await?;
+	*/
 
 	let _ = service::get_internal_metrics(
 		context.get_database_connection(),

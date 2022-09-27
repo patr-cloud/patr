@@ -936,6 +936,23 @@ async fn delete_docker_repository_image(
 	)
 	.await?;
 
+	// Notify users for the action
+
+	// psuedo code for email
+	/*
+	   service::resource_action_email(
+		   resource_id,
+		   resource_name,
+		   resource_type,
+		   super_admin_firstname,
+		   ip_address,
+		   city,
+		   region,
+		   country,
+		   action (enum)
+	   ).await?;
+	*/
+
 	log::trace!(
 		"request_id: {} - Docker repository image deleted",
 		request_id
@@ -1004,6 +1021,23 @@ async fn delete_docker_repository(
 		&request_id,
 	)
 	.await?;
+
+	// Notify users for the action
+
+	// psuedo code for email
+	/*
+	   service::resource_action_email(
+		   resource_id,
+		   resource_name,
+		   resource_type,
+		   super_admin_firstname,
+		   ip_address,
+		   city,
+		   region,
+		   country,
+		   action (enum)
+	   ).await?;
+	*/
 
 	log::trace!("request_id: {} - Docker repository deleted", request_id);
 	context.success(DeleteDockerRepositoryResponse {});

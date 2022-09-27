@@ -364,6 +364,23 @@ async fn update_managed_url(
 	)
 	.await?;
 
+	// Notify users for the action
+
+	// psuedo code for email
+	/*
+	   service::resource_action_email(
+			resource_id,
+			resource_name,
+			resource_type,
+			super_admin_firstname,
+			ip_address,
+			city,
+			region,
+			country,
+			action (enum)
+	   ).await?;
+	*/
+
 	context.success(UpdateManagedUrlResponse {});
 	Ok(context)
 }
@@ -441,6 +458,23 @@ async fn delete_managed_url(
 		&request_id,
 	)
 	.await?;
+
+	// Notify users for the action
+
+	// psuedo code for email
+	/*
+	   service::resource_action_email(
+			resource_id,
+			resource_name,
+			resource_type,
+			super_admin_firstname,
+			ip_address,
+			city,
+			region,
+			country,
+			action (enum)
+	   ).await?;
+	*/
 
 	context.success(DeleteManagedUrlResponse {});
 	Ok(context)
