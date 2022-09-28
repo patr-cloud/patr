@@ -10590,30 +10590,6 @@
     },
     "query": "CREATE TABLE user_login( login_id UUID CONSTRAINT user_login_uq_login_id UNIQUE, refresh_token TEXT NOT NULL, token_expiry TIMESTAMPTZ NOT NULL, user_id UUID NOT NULL CONSTRAINT user_login_fk_user_id REFERENCES \"user\"(id), created TIMESTAMPTZ NOT NULL, created_ip INET NOT NULL, created_location GEOMETRY NOT NULL, created_country TEXT NOT NULL, created_region TEXT NOT NULL, created_city TEXT NOT NULL, created_timezone TEXT NOT NULL, last_login TIMESTAMPTZ NOT NULL, last_activity TIMESTAMPTZ NOT NULL, last_activity_ip INET NOT NULL, last_activity_location GEOMETRY NOT NULL, last_activity_country TEXT NOT NULL, last_activity_region TEXT NOT NULL, last_activity_city TEXT NOT NULL, last_activity_timezone TEXT NOT NULL, last_activity_user_agent TEXT NOT NULL, CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id) );"
   },
-  "c1d8ba745affce06b2440b84f8f3ba3b1b9311a09ab90f6120f9a9ca0f3ecc19": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "digitalocean",
-                  "other"
-                ]
-              },
-              "name": "infrastructure_cloud_provider"
-            }
-          }
-        ]
-      }
-    },
-    "query": "INSERT INTO deployment_region( id, name, provider ) VALUES ($1, $2, $3);"
-  },
   "c379470f391c63ff9276165e9f94a9ba29990c1712c1efa9473954fb444c0997": {
     "describe": {
       "columns": [],
