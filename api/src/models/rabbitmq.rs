@@ -5,7 +5,7 @@ use api_models::{
 		Deployment,
 		DeploymentRunningDetails,
 	},
-	utils::{Uuid, DateTime},
+	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
 use serde::{Deserialize, Serialize};

@@ -247,9 +247,10 @@ pub(super) async fn process_request(
 
 			// Step 2: Create payment intent with the given bill
 			if let PaymentType::Card = workspace.payment_type {
-				if let (Some(address_id), Some(payment_method_id)) =
-					(&workspace.address_id, &workspace.default_payment_method_id)
-				{
+				if let (Some(address_id), Some(payment_method_id)) = (
+					&workspace.address_id,
+					&workspace.default_payment_method_id,
+				) {
 					let (currency, stripe_amount) =
 						if db::get_billing_address(connection, address_id)
 							.await?
@@ -288,9 +289,8 @@ pub(super) async fn process_request(
 						intent.customer = Some(CustomerId::from_str(
 							&workspace.stripe_customer_id,
 						)?);
-						intent.payment_method = Some(
-							PaymentMethodId::from_str(payment_method_id)?,
-						);
+						intent.payment_method =
+							Some(PaymentMethodId::from_str(payment_method_id)?);
 						intent.payment_method_types =
 							Some(vec!["card".to_string()]);
 						intent.setup_future_usage =
