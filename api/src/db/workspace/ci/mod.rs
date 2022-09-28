@@ -721,7 +721,17 @@ pub async fn generate_new_build_for_repo(
 	query!(
 		r#"
 		INSERT INTO
-			ci_builds (repo_id, build_num, git_ref, git_commit, status, created, author, git_commit_message, git_pr_title)
+			ci_builds(
+				repo_id,
+				build_num,
+				git_ref,
+				git_commit,
+				status,
+				created,
+				author,
+				git_commit_message,
+				git_pr_title
+			)
 		VALUES (
 			$1,
 			1 + (SELECT COUNT(*) FROM ci_builds WHERE repo_id = $1),
