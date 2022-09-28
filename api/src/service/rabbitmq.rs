@@ -7,6 +7,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use chrono::{DateTime, Utc};
 use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
@@ -333,16 +334,24 @@ pub async fn queue_process_payment(
 	.await
 }
 
-pub async fn queue_confirm_payment_intent(
-	workspace_id: &Uuid,
-	payment_intent_id: String,
+pub async fn queue_attempt_to_charge_workspace(
+	workspace: &Workspace,
+	process_after: &DateTime<Utc>,
+	total_bill: f64,
+	amount_due: f64,
+	month: u32,
+	year: i32,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	send_message_to_billing_queue(
-		&WorkspaceRequestData::ConfirmPaymentIntent {
-			payment_intent_id,
-			workspace_id: workspace_id.clone(),
+		&WorkspaceRequestData::AttemptToChargeWorkspace {
+			workspace: workspace.clone(),
+			process_after: (*process_after).into(),
+			total_bill,
+			amount_due,
+			month,
+			year,
 			request_id: request_id.clone(),
 		},
 		config,

@@ -685,7 +685,8 @@ async fn add_payment_method(
 		&config,
 	)
 	.await?
-	.client_secret;
+	.client_secret
+	.status(500)?;
 	context.success(AddPaymentMethodResponse { client_secret });
 	Ok(context)
 }

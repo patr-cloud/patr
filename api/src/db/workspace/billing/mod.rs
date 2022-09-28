@@ -261,17 +261,17 @@ pub async fn initialize_billing_pre(
 			workspace_id UUID NOT NULL,
 			transaction_type TRANSACTION_TYPE NOT NULL,
 			payment_status PAYMENT_STATUS NOT NULL
-				CONSTRAINT transaction_payment_status_check CHECK (
+				CONSTRAINT transaction_payment_status_check CHECK(
 					(
-					payment_status = 'success' AND
-					transaction_type = 'bill'
+						payment_status = 'success' AND
+						transaction_type = 'bill'
 					) OR
 					(
 						transaction_type != 'bill'
 					)
 				),
 			description TEXT
-				CONSTRAINT transaction_description_check CHECK (
+				CONSTRAINT transaction_description_check CHECK(
 					(
 						transaction_type = 'credits' AND
 						description IS NOT NULL
@@ -391,6 +391,7 @@ pub async fn get_all_deployment_usage(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	month_start_date: &DateTime<Utc>,
+	till_date: &DateTime<Utc>,
 ) -> Result<Vec<DeploymentPaymentHistory>, sqlx::Error> {
 	query_as!(
 		DeploymentPaymentHistory,
@@ -409,10 +410,12 @@ pub async fn get_all_deployment_usage(
 			(
 				stop_time IS NULL OR
 				stop_time > $2
-			);
+			) AND
+			start_time < $3;
 		"#,
 		workspace_id as _,
 		month_start_date as _,
+		till_date as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -422,6 +425,7 @@ pub async fn get_all_database_usage(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
+	till_date: &DateTime<Utc>,
 ) -> Result<Vec<ManagedDatabasePaymentHistory>, sqlx::Error> {
 	query_as!(
 		ManagedDatabasePaymentHistory,
@@ -439,10 +443,12 @@ pub async fn get_all_database_usage(
 			(
 				deletion_time IS NULL OR
 				deletion_time > $2
-			);
+			) AND
+			start_time < $3;
 		"#,
 		workspace_id as _,
 		start_date as _,
+		till_date as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -452,6 +458,7 @@ pub async fn get_all_static_site_usages(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
+	till_date: &DateTime<Utc>,
 ) -> Result<Vec<StaticSitesPaymentHistory>, sqlx::Error> {
 	query_as!(
 		StaticSitesPaymentHistory,
@@ -468,10 +475,12 @@ pub async fn get_all_static_site_usages(
 			(
 				stop_time IS NULL OR
 				stop_time > $2
-			);
+			) AND
+			start_time < $3;		
 		"#,
 		workspace_id as _,
 		start_date as _,
+		till_date as _
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -481,6 +490,7 @@ pub async fn get_all_managed_url_usages(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
+	till_date: &DateTime<Utc>,
 ) -> Result<Vec<ManagedUrlPaymentHistory>, sqlx::Error> {
 	query_as!(
 		ManagedUrlPaymentHistory,
@@ -497,10 +507,12 @@ pub async fn get_all_managed_url_usages(
 			(
 				stop_time IS NULL OR
 				stop_time > $2
-			);
+			) AND
+			start_time < $3;
 		"#,
 		workspace_id as _,
 		start_date as _,
+		till_date as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -509,6 +521,7 @@ pub async fn get_all_docker_repository_usages(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
+	till_date: &DateTime<Utc>,
 ) -> Result<Vec<DockerRepoPaymentHistory>, sqlx::Error> {
 	query_as!(
 		DockerRepoPaymentHistory,
@@ -525,10 +538,12 @@ pub async fn get_all_docker_repository_usages(
 			(
 				stop_time IS NULL OR
 				stop_time > $2
-			);
+			) AND
+			start_time < $3;
 		"#,
 		workspace_id as _,
 		start_date as _,
+		till_date as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -537,6 +552,7 @@ pub async fn get_all_domains_usages(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
+	till_date: &DateTime<Utc>,
 ) -> Result<Vec<DomainPaymentHistory>, sqlx::Error> {
 	query_as!(
 		DomainPaymentHistory,
@@ -553,10 +569,12 @@ pub async fn get_all_domains_usages(
 			(
 				stop_time IS NULL OR
 				stop_time > $2
-			);
+			) AND
+			start_time < $3;
 			"#,
 		workspace_id as _,
 		start_date as _,
+		till_date as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -566,6 +584,7 @@ pub async fn get_all_secrets_usages(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	month_start_date: &DateTime<Utc>,
+	till_date: &DateTime<Utc>,
 ) -> Result<Vec<SecretPaymentHistory>, sqlx::Error> {
 	query_as!(
 		SecretPaymentHistory,
@@ -582,10 +601,12 @@ pub async fn get_all_secrets_usages(
 			(
 				stop_time IS NULL OR
 				stop_time > $2
-			);
+			) AND
+			start_time < $3;
 		"#,
 		workspace_id as _,
 		month_start_date as _,
+		till_date as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -672,37 +693,6 @@ pub async fn generate_new_transaction_id(
 	}
 }
 
-pub async fn get_last_bill_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	payment_intent_id: String,
-) -> Result<Option<Transaction>, sqlx::Error> {
-	query_as!(
-		Transaction,
-		r#"
-		SELECT
-			id as "id: _",
-			month,
-			amount,
-			payment_intent_id,
-			date as "date: _",
-			workspace_id as "workspace_id: _",
-			transaction_type as "transaction_type: _",
-			payment_status as "payment_status: _",
-			description
-		FROM
-			transaction
-		WHERE
-			workspace_id = $1 AND
-			payment_intent_id = $2;
-		"#,
-		workspace_id as _,
-		payment_intent_id,
-	)
-	.fetch_optional(&mut *connection)
-	.await
-}
-
 pub async fn get_payment_methods_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
@@ -751,6 +741,38 @@ pub async fn get_credits_for_workspace(
 	)
 	.fetch_all(&mut *connection)
 	.await
+}
+
+pub async fn get_total_amount_to_pay_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<f64, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			SUM(
+				CASE transaction_type
+					WHEN 'bill' THEN
+						amount
+					WHEN 'credits' THEN
+						-amount
+					WHEN 'payment' THEN
+						-amount
+					ELSE
+						0
+				END
+			) as "total_amount!"
+		FROM
+			transaction
+		WHERE
+			workspace_id = $1 AND
+			payment_status = 'success';
+		"#,
+		workspace_id as _,
+	)
+	.fetch_one(&mut *connection)
+	.await
+	.map(|row| row.total_amount as f64)
 }
 
 pub async fn get_transaction_by_payment_intent_id_in_workspace(
@@ -1260,37 +1282,6 @@ pub async fn add_payment_method_info(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
-}
-
-pub async fn get_transaction_by_description_in_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	description: &str,
-) -> Result<Option<Transaction>, sqlx::Error> {
-	query_as!(
-		Transaction,
-		r#"
-		SELECT
-			id as "id: _",
-			month,
-			amount,
-			payment_intent_id,
-			date as "date: _",
-			workspace_id as "workspace_id: _",
-			transaction_type as "transaction_type: _",
-			payment_status as "payment_status: _",
-			description
-		FROM
-			transaction
-		WHERE
-			workspace_id = $1 AND
-			description = $2;
-		"#,
-		workspace_id as _,
-		description,
-	)
-	.fetch_optional(&mut *connection)
-	.await
 }
 
 pub async fn get_transactions_in_workspace(

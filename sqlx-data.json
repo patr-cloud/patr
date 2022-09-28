@@ -35,16 +35,6 @@
     },
     "query": "CREATE INDEX deployment_idx_registry_image_name_image_tag ON deployment (registry, image_name, image_tag);"
   },
-  "0074a8b0927d199278aaeaadbeee923a8cb9a14b14dcd4c24560148bf0143d91": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE IF NOT EXISTS transaction( id UUID CONSTRAINT transaction_pk PRIMARY KEY, month INTEGER NOT NULL, amount DOUBLE PRECISION NOT NULL, payment_intent_id TEXT, date TIMESTAMPTZ NOT NULL, workspace_id UUID NOT NULL, transaction_type TRANSACTION_TYPE NOT NULL, payment_status PAYMENT_STATUS NOT NULL CONSTRAINT transaction_payment_status_check CHECK ( ( payment_status = 'success' AND transaction_type = 'bill' ) OR ( transaction_type != 'bill' ) ), description TEXT CONSTRAINT transaction_description_check CHECK ( ( transaction_type = 'credits' AND description IS NOT NULL ) OR ( transaction_type != 'credits' ) ) );"
-  },
   "00e94ea7eac693fcf22a16ed0591a9f089ef238deca8a5ae0a1eb0ffb9de9d95": {
     "describe": {
       "columns": [
@@ -511,55 +501,6 @@
     },
     "query": "SELECT CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) as \"email!: String\" FROM personal_email INNER JOIN domain ON personal_email.domain_id = domain.id WHERE personal_email.user_id = $1;"
   },
-  "0891c883b91842e7ee8a15ab26448fb19ff07a8a9ca26bee5e97b75db0641d22": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "domain_plan: _",
-          "ordinal": 1,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "free",
-                  "unlimited"
-                ]
-              },
-              "name": "domain_plan"
-            }
-          }
-        },
-        {
-          "name": "start_time: _",
-          "ordinal": 2,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "stop_time: _",
-          "ordinal": 3,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdomain_plan as \"domain_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tdomain_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t);\n\t\t\t"
-  },
   "08ef2fd52eb3904957a929e714d54f703b24f785d52aecebe5bc50deed2c0ab6": {
     "describe": {
       "columns": [],
@@ -856,7 +797,7 @@
       "parameters": {
         "Left": [
           "Uuid",
-          "Text",
+          "Varchar",
           "Uuid",
           "Uuid",
           "Timestamptz"
@@ -1047,6 +988,46 @@
       }
     },
     "query": "SELECT deployment_id as \"deployment_id: _\", name, value, secret_id as \"secret_id: _\" FROM deployment_environment_variable WHERE deployment_id = $1;"
+  },
+  "119c8bebf183159fcff9db2da15216daee3416b7290de200927e764a5fbef8f8": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "storage: _",
+          "ordinal": 1,
+          "type_info": "Int8"
+        },
+        {
+          "name": "start_time: _",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "stop_time: _",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tstorage as \"storage: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tdocker_repo_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t) AND\n\t\t\tstart_time < $3;\n\t\t"
   },
   "12052215860013600805e2c9935efaf8ac383cf889dbd65fe42205a927024455": {
     "describe": {
@@ -2046,6 +2027,57 @@
     },
     "query": "DELETE FROM user_phone_number WHERE user_id = $1 AND country_code = $2 AND number = $3;"
   },
+  "22df2b30add19d76f1a5bfe1545e352546975f56c5e86d67f0a2dd704483f23e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "static_site_plan: _",
+          "ordinal": 1,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "free",
+                  "pro",
+                  "unlimited"
+                ]
+              },
+              "name": "static_site_plan"
+            }
+          }
+        },
+        {
+          "name": "start_time: _",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "stop_time: _",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tstatic_site_plan as \"static_site_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tstatic_sites_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t) AND\n\t\t\tstart_time < $3;\t\t\n\t\t"
+  },
   "23bb8f9797fd073f661ce8e1db702fe75a68ac93438b8239cd0d9a95e32b177d": {
     "describe": {
       "columns": [],
@@ -2376,6 +2408,25 @@
       }
     },
     "query": "CREATE TABLE deployment_config_mounts( path TEXT NOT NULL CONSTRAINT deployment_config_mounts_chk_path_valid CHECK(path ~ '^[a-zA-Z0-9_\\-\\.\\(\\)]+$'), file BYTEA NOT NULL, deployment_id UUID NOT NULL CONSTRAINT deployment_config_mounts_fk_deployment_id REFERENCES deployment(id), CONSTRAINT deployment_config_mounts_pk PRIMARY KEY( deployment_id, path ) );"
+  },
+  "2d582fb54a50b46aaa578687c9a0f41736c000cc049c28d22a62a4e67e15a79d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4",
+          "Int4",
+          "Int4",
+          "Int4",
+          "Int4",
+          "Int4",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE workspace SET deployment_limit = $1, database_limit = $2, static_site_limit = $3, managed_url_limit = $4, docker_repository_storage_limit = $5, domain_limit = $6, secret_limit = $7 WHERE id = $8;"
   },
   "2d9bd34aec2d4a7e2b0a0a989686426764736a4d4c82d91fa157b387bc0a4642": {
     "describe": {
@@ -3914,7 +3965,7 @@
     },
     "query": "DELETE FROM role_permissions_resource WHERE role_id = $1;"
   },
-  "4fc67c80b78c9f9d4ff136bd47a532e88a08669303e880cc5ce5ab08cd92e17d": {
+  "4f6b72964dcfe71df254f8a3e4bf66a431aecf0e91906a6f9ea024488a62f2e3": {
     "describe": {
       "columns": [
         {
@@ -3923,18 +3974,17 @@
           "type_info": "Uuid"
         },
         {
-          "name": "static_site_plan: _",
+          "name": "domain_plan: _",
           "ordinal": 1,
           "type_info": {
             "Custom": {
               "kind": {
                 "Enum": [
                   "free",
-                  "pro",
                   "unlimited"
                 ]
               },
-              "name": "static_site_plan"
+              "name": "domain_plan"
             }
           }
         },
@@ -3958,11 +4008,12 @@
       "parameters": {
         "Left": [
           "Uuid",
+          "Timestamptz",
           "Timestamptz"
         ]
       }
     },
-    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tstatic_site_plan as \"static_site_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tstatic_sites_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t);\n\t\t"
+    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdomain_plan as \"domain_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tdomain_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t) AND\n\t\t\tstart_time < $3;\n\t\t\t"
   },
   "50282dcc98562ef247ea4d4978153d7ea74dc9001b89ed36885a6446f8543fc8": {
     "describe": {
@@ -4310,57 +4361,6 @@
       }
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", super_admin_id as \"super_admin_id: _\", active, alert_emails, payment_type as \"payment_type: _\", default_payment_method_id as \"default_payment_method_id: _\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, stripe_customer_id, address_id as \"address_id: _\", amount_due FROM workspace WHERE super_admin_id = $1 AND name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
-  },
-  "540418ebd247783fe0b10d409202ea69fd56a56abde26a3c944b4b378f6e2851": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "machine_type: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "num_instance: _",
-          "ordinal": 3,
-          "type_info": "Int4"
-        },
-        {
-          "name": "start_time: _",
-          "ordinal": 4,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "stop_time: _",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdeployment_id as \"deployment_id: _\",\n\t\t\tmachine_type as \"machine_type: _\",\n\t\t\tnum_instance as \"num_instance: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tdeployment_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t);\n\t\t"
   },
   "5443d8492257b3f1a81aea2c8b8995bc0b754d4df43d87fb305e442e914f2cc5": {
     "describe": {
@@ -4911,12 +4911,12 @@
       ],
       "nullable": [
         null,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
       ],
       "parameters": {
         "Left": []
@@ -4964,24 +4964,24 @@
           "type_info": "Uuid"
         },
         {
-          "name": "resource_type_id",
+          "name": "name",
           "ordinal": 1,
-          "type_info": "Uuid"
+          "type_info": "Varchar"
         },
         {
-          "name": "owner_id",
+          "name": "resource_type_id",
           "ordinal": 2,
           "type_info": "Uuid"
         },
         {
-          "name": "created",
+          "name": "owner_id",
           "ordinal": 3,
-          "type_info": "Timestamptz"
+          "type_info": "Uuid"
         },
         {
-          "name": "name",
+          "name": "created",
           "ordinal": 4,
-          "type_info": "Text"
+          "type_info": "Timestamptz"
         }
       ],
       "nullable": [
@@ -5890,6 +5890,68 @@
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE repository_id = $1 AND status != 'deleted';"
   },
+  "6b18983b69af0d62dbb84e875d9c6d72e74be2f46fb70ba33a0ddafbb62ead3e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "database_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "db_plan: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "nano",
+                  "micro",
+                  "small",
+                  "medium",
+                  "large",
+                  "xlarge",
+                  "xxlarge",
+                  "mammoth"
+                ]
+              },
+              "name": "managed_database_plan"
+            }
+          }
+        },
+        {
+          "name": "start_time: _",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "deletion_time: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdatabase_id as \"database_id: _\",\n\t\t\tdb_plan as \"db_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tdeletion_time as \"deletion_time: _\"\n\t\tFROM\n\t\t\tmanaged_database_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tdeletion_time IS NULL OR\n\t\t\t\tdeletion_time > $2\n\t\t\t) AND\n\t\t\tstart_time < $3;\n\t\t"
+  },
   "6b678ec64a61d5c20d7ea207efa6fce83058481b7af34fb81a36022b0a52dbc6": {
     "describe": {
       "columns": [],
@@ -6049,7 +6111,7 @@
         {
           "name": "name",
           "ordinal": 1,
-          "type_info": "Text"
+          "type_info": "Varchar"
         },
         {
           "name": "resource_type_id: _",
@@ -6140,45 +6202,6 @@
       }
     },
     "query": "SELECT COALESCE(SUM(size), 0)::BIGINT as \"size!\" FROM docker_registry_repository_manifest INNER JOIN docker_registry_repository ON docker_registry_repository.id = docker_registry_repository_manifest.repository_id WHERE docker_registry_repository.workspace_id = $1;"
-  },
-  "72d8cd05f53c2978750dff7afcbecdd5b308a8351a2677f7c6406a327532f375": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "url_count: _",
-          "ordinal": 1,
-          "type_info": "Int4"
-        },
-        {
-          "name": "start_time: _",
-          "ordinal": 2,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "stop_time: _",
-          "ordinal": 3,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\turl_count as \"url_count: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tmanaged_url_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t);\n\t\t"
   },
   "730e9f142cd4f0cb849096125987af0f9279a9d31e8eac0086715c53f2c75bc5": {
     "describe": {
@@ -7871,67 +7894,6 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tcpu,\n\t\t\tram,\n\t\t\tvolume\n\t\tFROM\n\t\t\tci_build_machine_type\n\t\t"
   },
-  "9443444e07501e0364dc35e7d31d502bcd12e55aa1ea182091ad0b4c7765a55d": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "database_id: _",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "db_plan: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "nano",
-                  "micro",
-                  "small",
-                  "medium",
-                  "large",
-                  "xlarge",
-                  "xxlarge",
-                  "mammoth"
-                ]
-              },
-              "name": "managed_database_plan"
-            }
-          }
-        },
-        {
-          "name": "start_time: _",
-          "ordinal": 3,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "deletion_time: _",
-          "ordinal": 4,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdatabase_id as \"database_id: _\",\n\t\t\tdb_plan as \"db_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tdeletion_time as \"deletion_time: _\"\n\t\tFROM\n\t\t\tmanaged_database_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tdeletion_time IS NULL OR\n\t\t\t\tdeletion_time > $2\n\t\t\t);\n\t\t"
-  },
   "950e9b68ae5974afe26208b12498d2863660e67871aa2ad387b54a03255d339d": {
     "describe": {
       "columns": [],
@@ -8432,6 +8394,16 @@
     },
     "query": "SELECT username, account_type as \"account_type: _\", password, first_name, last_name, recovery_email_local, recovery_email_domain_id as \"recovery_email_domain_id: _\", recovery_phone_country_code, recovery_phone_number, business_email_local, CASE WHEN business_domain_name IS NULL THEN NULL ELSE CONCAT(business_domain_name, '.', business_domain_tld) END as \"business_domain_name: _\", business_name, otp_hash, otp_expiry, coupon_code FROM user_to_sign_up WHERE business_name = $1;"
   },
+  "9f5ebbfec9d0d3a865a84d2ed96d2a16f519147128ba1f5d862fd98f7b461298": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE IF NOT EXISTS transaction( id UUID CONSTRAINT transaction_pk PRIMARY KEY, month INTEGER NOT NULL, amount DOUBLE PRECISION NOT NULL, payment_intent_id TEXT, date TIMESTAMPTZ NOT NULL, workspace_id UUID NOT NULL, transaction_type TRANSACTION_TYPE NOT NULL, payment_status PAYMENT_STATUS NOT NULL CONSTRAINT transaction_payment_status_check CHECK( ( payment_status = 'success' AND transaction_type = 'bill' ) OR ( transaction_type != 'bill' ) ), description TEXT CONSTRAINT transaction_description_check CHECK( ( transaction_type = 'credits' AND description IS NOT NULL ) OR ( transaction_type != 'credits' ) ) );"
+  },
   "9fbae237f57d2ec4e73a150869fbb399fb6f4906afae729c85f93002b27d894b": {
     "describe": {
       "columns": [],
@@ -8593,12 +8565,12 @@
       ],
       "nullable": [
         null,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
       ],
       "parameters": {
         "Left": []
@@ -9245,6 +9217,98 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tstep_id,\n\t\t\tstep_name,\n\t\t\tbase_image,\n\t\t\tcommands,\n\t\t\tstatus as \"status: _\",\n\t\t\tstarted as \"started: _\",\n\t\t\tfinished as \"finished: _\"\n\t\tFROM\n\t\t\tci_steps\n\t\tWHERE (\n\t\t\trepo_id = $1\n\t\t\tAND build_num = $2\n\t\t)\n\t\tORDER BY step_id ASC;\n\t\t"
   },
+  "acd51b03ec8c77134d035a4cf4313ca1a3f83b18cfba0c8c6865ce3427936a1b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "deployment_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "machine_type: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "num_instance: _",
+          "ordinal": 3,
+          "type_info": "Int4"
+        },
+        {
+          "name": "start_time: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "stop_time: _",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdeployment_id as \"deployment_id: _\",\n\t\t\tmachine_type as \"machine_type: _\",\n\t\t\tnum_instance as \"num_instance: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tdeployment_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t) AND\n\t\t\tstart_time < $3;\n\t\t"
+  },
+  "acdd41996e25d151ebea8d367ed1904dddb7fa7dec5de566beff6601d0f0c593": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "secret_count: _",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "start_time: _",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "stop_time: _",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tsecret_count as \"secret_count: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tsecrets_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t) AND\n\t\t\tstart_time < $3;\n\t\t"
+  },
   "ad5a7c7be16f5716783720238effa32880444232dc3490bf9b31357090274380": {
     "describe": {
       "columns": [],
@@ -9312,45 +9376,6 @@
       }
     },
     "query": "INSERT INTO static_site( id, name, status, workspace_id ) VALUES ($1, $2, 'created', $3);"
-  },
-  "aeaaf611c5978293e755257fd456cb6cba9fbe721eef97cf7a1e40903958f75e": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "storage: _",
-          "ordinal": 1,
-          "type_info": "Int8"
-        },
-        {
-          "name": "start_time: _",
-          "ordinal": 2,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "stop_time: _",
-          "ordinal": 3,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tstorage as \"storage: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tdocker_repo_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t);\n\t\t"
   },
   "aec6e34747f88716757f9bda17cfea7cef75d08125220026cbea614587c05706": {
     "describe": {
@@ -11295,45 +11320,6 @@
     },
     "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id: _\", workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.nameserver_type as \"nameserver_type: _\", workspace_domain.last_unverified as \"last_unverified!: _\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE domain.id = $1 AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
   },
-  "d613849146adeb62cd527df8c3c9242264d98e259532580f2f45390033c19d8d": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "secret_count: _",
-          "ordinal": 1,
-          "type_info": "Int4"
-        },
-        {
-          "name": "start_time: _",
-          "ordinal": 2,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "stop_time: _",
-          "ordinal": 3,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tsecret_count as \"secret_count: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tsecrets_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t);\n\t\t"
-  },
   "d7547e8a9cba4b11e5c2cc4558ea436d609f0c4cdf65c06c70cf4f300e2dafce": {
     "describe": {
       "columns": [],
@@ -12910,7 +12896,7 @@
       "parameters": {
         "Left": [
           "Uuid",
-          "Text"
+          "Varchar"
         ]
       }
     },
@@ -13362,6 +13348,46 @@
     },
     "query": "SELECT DISTINCT workspace.id as \"id: _\", workspace.name::TEXT as \"name!: _\", workspace.super_admin_id as \"super_admin_id: _\", workspace.active, workspace.alert_emails as \"alert_emails: _\", workspace.payment_type as \"payment_type: _\", workspace.default_payment_method_id as \"default_payment_method_id: _\", workspace.deployment_limit, workspace.static_site_limit, workspace.database_limit, workspace.managed_url_limit, workspace.secret_limit, workspace.domain_limit, workspace.docker_repository_storage_limit, workspace.stripe_customer_id, workspace.address_id as \"address_id: _\", workspace.amount_due FROM workspace WHERE workspace.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
   },
+  "fb6635456de0ba3bd56c117b8ca93a75cd7120ac54408f1f7d7f70776b7332ef": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "url_count: _",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "start_time: _",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "stop_time: _",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\turl_count as \"url_count: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tmanaged_url_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t) AND\n\t\t\tstart_time < $3;\n\t\t"
+  },
   "fb97eba66b6b6448bed531336a20c58c9f58d29a2bcf19b1e7808750b460cea7": {
     "describe": {
       "columns": [
@@ -13485,6 +13511,26 @@
       }
     },
     "query": "INSERT INTO phone_number_country_code( country_code, phone_code, country_name ) VALUES ($$AF$$, $$93$$, $$Afghanistan$$), ($$AX$$, $$358$$, $$Aland Islands$$), ($$AL$$, $$355$$, $$Albania$$), ($$DZ$$, $$213$$, $$Algeria$$), ($$AS$$, $$1684$$, $$American Samoa$$), ($$AD$$, $$376$$, $$Andorra$$), ($$AO$$, $$244$$, $$Angola$$), ($$AI$$, $$1264$$, $$Anguilla$$), ($$AQ$$, $$672$$, $$Antarctica$$), ($$AG$$, $$1268$$, $$Antigua and Barbuda$$), ($$AR$$, $$54$$, $$Argentina$$), ($$AM$$, $$374$$, $$Armenia$$), ($$AW$$, $$297$$, $$Aruba$$), ($$AU$$, $$61$$, $$Australia$$), ($$AT$$, $$43$$, $$Austria$$), ($$AZ$$, $$994$$, $$Azerbaijan$$), ($$BS$$, $$1242$$, $$Bahamas$$), ($$BH$$, $$973$$, $$Bahrain$$), ($$BD$$, $$880$$, $$Bangladesh$$), ($$BB$$, $$1246$$, $$Barbados$$), ($$BY$$, $$375$$, $$Belarus$$), ($$BE$$, $$32$$, $$Belgium$$), ($$BZ$$, $$501$$, $$Belize$$), ($$BJ$$, $$229$$, $$Benin$$), ($$BM$$, $$1441$$, $$Bermuda$$), ($$BT$$, $$975$$, $$Bhutan$$), ($$BO$$, $$591$$, $$Bolivia$$), ($$BQ$$, $$599$$, $$Bonaire, Sint Eustatius and Saba$$), ($$BA$$, $$387$$, $$Bosnia and Herzegovina$$), ($$BW$$, $$267$$, $$Botswana$$), ($$BV$$, $$55$$, $$Bouvet Island$$), ($$BR$$, $$55$$, $$Brazil$$), ($$IO$$, $$246$$, $$British Indian Ocean Territory$$), ($$BN$$, $$673$$, $$Brunei Darussalam$$), ($$BG$$, $$359$$, $$Bulgaria$$), ($$BF$$, $$226$$, $$Burkina Faso$$), ($$BI$$, $$257$$, $$Burundi$$), ($$KH$$, $$855$$, $$Cambodia$$), ($$CM$$, $$237$$, $$Cameroon$$), ($$CA$$, $$1$$, $$Canada$$), ($$CV$$, $$238$$, $$Cape Verde$$), ($$KY$$, $$1345$$, $$Cayman Islands$$), ($$CF$$, $$236$$, $$Central African Republic$$), ($$TD$$, $$235$$, $$Chad$$), ($$CL$$, $$56$$, $$Chile$$), ($$CN$$, $$86$$, $$China$$), ($$CX$$, $$61$$, $$Christmas Island$$), ($$CC$$, $$672$$, $$Cocos (Keeling) Islands$$), ($$CO$$, $$57$$, $$Colombia$$), ($$KM$$, $$269$$, $$Comoros$$), ($$CG$$, $$242$$, $$Congo$$), ($$CD$$, $$242$$, $$Congo, Democratic Republic of the Congo$$), ($$CK$$, $$682$$, $$Cook Islands$$), ($$CR$$, $$506$$, $$Costa Rica$$), ($$CI$$, $$225$$, $$Cote D'Ivoire$$), ($$HR$$, $$385$$, $$Croatia$$), ($$CU$$, $$53$$, $$Cuba$$), ($$CW$$, $$599$$, $$Curacao$$), ($$CY$$, $$357$$, $$Cyprus$$), ($$CZ$$, $$420$$, $$Czech Republic$$), ($$DK$$, $$45$$, $$Denmark$$), ($$DJ$$, $$253$$, $$Djibouti$$), ($$DM$$, $$1767$$, $$Dominica$$), ($$DO$$, $$1809$$, $$Dominican Republic$$), ($$EC$$, $$593$$, $$Ecuador$$), ($$EG$$, $$20$$, $$Egypt$$), ($$SV$$, $$503$$, $$El Salvador$$), ($$GQ$$, $$240$$, $$Equatorial Guinea$$), ($$ER$$, $$291$$, $$Eritrea$$), ($$EE$$, $$372$$, $$Estonia$$), ($$ET$$, $$251$$, $$Ethiopia$$), ($$FK$$, $$500$$, $$Falkland Islands (Malvinas)$$), ($$FO$$, $$298$$, $$Faroe Islands$$), ($$FJ$$, $$679$$, $$Fiji$$), ($$FI$$, $$358$$, $$Finland$$), ($$FR$$, $$33$$, $$France$$), ($$GF$$, $$594$$, $$French Guiana$$), ($$PF$$, $$689$$, $$French Polynesia$$), ($$TF$$, $$262$$, $$French Southern Territories$$), ($$GA$$, $$241$$, $$Gabon$$), ($$GM$$, $$220$$, $$Gambia$$), ($$GE$$, $$995$$, $$Georgia$$), ($$DE$$, $$49$$, $$Germany$$), ($$GH$$, $$233$$, $$Ghana$$), ($$GI$$, $$350$$, $$Gibraltar$$), ($$GR$$, $$30$$, $$Greece$$), ($$GL$$, $$299$$, $$Greenland$$), ($$GD$$, $$1473$$, $$Grenada$$), ($$GP$$, $$590$$, $$Guadeloupe$$), ($$GU$$, $$1671$$, $$Guam$$), ($$GT$$, $$502$$, $$Guatemala$$), ($$GG$$, $$44$$, $$Guernsey$$), ($$GN$$, $$224$$, $$Guinea$$), ($$GW$$, $$245$$, $$Guinea-Bissau$$), ($$GY$$, $$592$$, $$Guyana$$), ($$HT$$, $$509$$, $$Haiti$$), ($$HM$$, $$0$$, $$Heard Island and Mcdonald Islands$$), ($$VA$$, $$39$$, $$Holy See (Vatican City State)$$), ($$HN$$, $$504$$, $$Honduras$$), ($$HK$$, $$852$$, $$Hong Kong$$), ($$HU$$, $$36$$, $$Hungary$$), ($$IS$$, $$354$$, $$Iceland$$), ($$IN$$, $$91$$, $$India$$), ($$ID$$, $$62$$, $$Indonesia$$), ($$IR$$, $$98$$, $$Iran, Islamic Republic of$$), ($$IQ$$, $$964$$, $$Iraq$$), ($$IE$$, $$353$$, $$Ireland$$), ($$IM$$, $$44$$, $$Isle of Man$$), ($$IL$$, $$972$$, $$Israel$$), ($$IT$$, $$39$$, $$Italy$$), ($$JM$$, $$1876$$, $$Jamaica$$), ($$JP$$, $$81$$, $$Japan$$), ($$JE$$, $$44$$, $$Jersey$$), ($$JO$$, $$962$$, $$Jordan$$), ($$KZ$$, $$7$$, $$Kazakhstan$$), ($$KE$$, $$254$$, $$Kenya$$), ($$KI$$, $$686$$, $$Kiribati$$), ($$KP$$, $$850$$, $$Korea, Democratic People's Republic of$$), ($$KR$$, $$82$$, $$Korea, Republic of$$), ($$XK$$, $$381$$, $$Kosovo$$), ($$KW$$, $$965$$, $$Kuwait$$), ($$KG$$, $$996$$, $$Kyrgyzstan$$), ($$LA$$, $$856$$, $$Lao People's Democratic Republic$$), ($$LV$$, $$371$$, $$Latvia$$), ($$LB$$, $$961$$, $$Lebanon$$), ($$LS$$, $$266$$, $$Lesotho$$), ($$LR$$, $$231$$, $$Liberia$$), ($$LY$$, $$218$$, $$Libyan Arab Jamahiriya$$), ($$LI$$, $$423$$, $$Liechtenstein$$), ($$LT$$, $$370$$, $$Lithuania$$), ($$LU$$, $$352$$, $$Luxembourg$$), ($$MO$$, $$853$$, $$Macao$$), ($$MK$$, $$389$$, $$Macedonia, the Former Yugoslav Republic of$$), ($$MG$$, $$261$$, $$Madagascar$$), ($$MW$$, $$265$$, $$Malawi$$), ($$MY$$, $$60$$, $$Malaysia$$), ($$MV$$, $$960$$, $$Maldives$$), ($$ML$$, $$223$$, $$Mali$$), ($$MT$$, $$356$$, $$Malta$$), ($$MH$$, $$692$$, $$Marshall Islands$$), ($$MQ$$, $$596$$, $$Martinique$$), ($$MR$$, $$222$$, $$Mauritania$$), ($$MU$$, $$230$$, $$Mauritius$$), ($$YT$$, $$269$$, $$Mayotte$$), ($$MX$$, $$52$$, $$Mexico$$), ($$FM$$, $$691$$, $$Micronesia, Federated States of$$), ($$MD$$, $$373$$, $$Moldova, Republic of$$), ($$MC$$, $$377$$, $$Monaco$$), ($$MN$$, $$976$$, $$Mongolia$$), ($$ME$$, $$382$$, $$Montenegro$$), ($$MS$$, $$1664$$, $$Montserrat$$), ($$MA$$, $$212$$, $$Morocco$$), ($$MZ$$, $$258$$, $$Mozambique$$), ($$MM$$, $$95$$, $$Myanmar$$), ($$NA$$, $$264$$, $$Namibia$$), ($$NR$$, $$674$$, $$Nauru$$), ($$NP$$, $$977$$, $$Nepal$$), ($$NL$$, $$31$$, $$Netherlands$$), ($$AN$$, $$599$$, $$Netherlands Antilles$$), ($$NC$$, $$687$$, $$New Caledonia$$), ($$NZ$$, $$64$$, $$New Zealand$$), ($$NI$$, $$505$$, $$Nicaragua$$), ($$NE$$, $$227$$, $$Niger$$), ($$NG$$, $$234$$, $$Nigeria$$), ($$NU$$, $$683$$, $$Niue$$), ($$NF$$, $$672$$, $$Norfolk Island$$), ($$MP$$, $$1670$$, $$Northern Mariana Islands$$), ($$NO$$, $$47$$, $$Norway$$), ($$OM$$, $$968$$, $$Oman$$), ($$PK$$, $$92$$, $$Pakistan$$), ($$PW$$, $$680$$, $$Palau$$), ($$PS$$, $$970$$, $$Palestinian Territory, Occupied$$), ($$PA$$, $$507$$, $$Panama$$), ($$PG$$, $$675$$, $$Papua New Guinea$$), ($$PY$$, $$595$$, $$Paraguay$$), ($$PE$$, $$51$$, $$Peru$$), ($$PH$$, $$63$$, $$Philippines$$), ($$PN$$, $$64$$, $$Pitcairn$$), ($$PL$$, $$48$$, $$Poland$$), ($$PT$$, $$351$$, $$Portugal$$), ($$PR$$, $$1787$$, $$Puerto Rico$$), ($$QA$$, $$974$$, $$Qatar$$), ($$RE$$, $$262$$, $$Reunion$$), ($$RO$$, $$40$$, $$Romania$$), ($$RU$$, $$70$$, $$Russian Federation$$), ($$RW$$, $$250$$, $$Rwanda$$), ($$BL$$, $$590$$, $$Saint Barthelemy$$), ($$SH$$, $$290$$, $$Saint Helena$$), ($$KN$$, $$1869$$, $$Saint Kitts and Nevis$$), ($$LC$$, $$1758$$, $$Saint Lucia$$), ($$MF$$, $$590$$, $$Saint Martin$$), ($$PM$$, $$508$$, $$Saint Pierre and Miquelon$$), ($$VC$$, $$1784$$, $$Saint Vincent and the Grenadines$$), ($$WS$$, $$684$$, $$Samoa$$), ($$SM$$, $$378$$, $$San Marino$$), ($$ST$$, $$239$$, $$Sao Tome and Principe$$), ($$SA$$, $$966$$, $$Saudi Arabia$$), ($$SN$$, $$221$$, $$Senegal$$), ($$RS$$, $$381$$, $$Serbia$$), ($$CS$$, $$381$$, $$Serbia and Montenegro$$), ($$SC$$, $$248$$, $$Seychelles$$), ($$SL$$, $$232$$, $$Sierra Leone$$), ($$SG$$, $$65$$, $$Singapore$$), ($$SX$$, $$1$$, $$Sint Maarten$$), ($$SK$$, $$421$$, $$Slovakia$$), ($$SI$$, $$386$$, $$Slovenia$$), ($$SB$$, $$677$$, $$Solomon Islands$$), ($$SO$$, $$252$$, $$Somalia$$), ($$ZA$$, $$27$$, $$South Africa$$), ($$GS$$, $$500$$, $$South Georgia and the South Sandwich Islands$$), ($$SS$$, $$211$$, $$South Sudan$$), ($$ES$$, $$34$$, $$Spain$$), ($$LK$$, $$94$$, $$Sri Lanka$$), ($$SD$$, $$249$$, $$Sudan$$), ($$SR$$, $$597$$, $$Suriname$$), ($$SJ$$, $$47$$, $$Svalbard and Jan Mayen$$), ($$SZ$$, $$268$$, $$Swaziland$$), ($$SE$$, $$46$$, $$Sweden$$), ($$CH$$, $$41$$, $$Switzerland$$), ($$SY$$, $$963$$, $$Syrian Arab Republic$$), ($$TW$$, $$886$$, $$Taiwan, Province of China$$), ($$TJ$$, $$992$$, $$Tajikistan$$), ($$TZ$$, $$255$$, $$Tanzania, United Republic of$$), ($$TH$$, $$66$$, $$Thailand$$), ($$TL$$, $$670$$, $$Timor-Leste$$), ($$TG$$, $$228$$, $$Togo$$), ($$TK$$, $$690$$, $$Tokelau$$), ($$TO$$, $$676$$, $$Tonga$$), ($$TT$$, $$1868$$, $$Trinidad and Tobago$$), ($$TN$$, $$216$$, $$Tunisia$$), ($$TR$$, $$90$$, $$Turkey$$), ($$TM$$, $$7370$$, $$Turkmenistan$$), ($$TC$$, $$1649$$, $$Turks and Caicos Islands$$), ($$TV$$, $$688$$, $$Tuvalu$$), ($$UG$$, $$256$$, $$Uganda$$), ($$UA$$, $$380$$, $$Ukraine$$), ($$AE$$, $$971$$, $$United Arab Emirates$$), ($$GB$$, $$44$$, $$United Kingdom$$), ($$US$$, $$1$$, $$United States$$), ($$UM$$, $$1$$, $$United States Minor Outlying Islands$$), ($$UY$$, $$598$$, $$Uruguay$$), ($$UZ$$, $$998$$, $$Uzbekistan$$), ($$VU$$, $$678$$, $$Vanuatu$$), ($$VE$$, $$58$$, $$Venezuela$$), ($$VN$$, $$84$$, $$Viet Nam$$), ($$VG$$, $$1284$$, $$Virgin Islands, British$$), ($$VI$$, $$1340$$, $$Virgin Islands, U.s.$$), ($$WF$$, $$681$$, $$Wallis and Futuna$$), ($$EH$$, $$212$$, $$Western Sahara$$), ($$YE$$, $$967$$, $$Yemen$$), ($$ZM$$, $$260$$, $$Zambia$$), ($$ZW$$, $$263$$, $$Zimbabwe$$);"
+  },
+  "fd955efffd136d1cdcfdbe890f1cc6e922d5f2063d8108cf51f85ea94dfd4634": {
+    "describe": {
+      "columns": [
+        {
+          "name": "total_amount!",
+          "ordinal": 0,
+          "type_info": "Float8"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT SUM( CASE transaction_type WHEN 'bill' THEN amount WHEN 'credits' THEN -amount WHEN 'payment' THEN -amount ELSE 0 END ) as \"total_amount!\" FROM transaction WHERE workspace_id = $1 AND payment_status = 'success';"
   },
   "fe84284d0561dc586bf1441d648319e13304f2a503699b3a1f920f784439c9f9": {
     "describe": {

@@ -394,6 +394,104 @@ pub async fn send_invoice_email(
 	.await
 }
 
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/bill-not-paid-delete-resources/template.json"]
+struct UnpaidResourcesDeletedEmail {
+	username: String,
+	workspace_name: String,
+	month: String,
+	year: i32,
+	total_bill: f64,
+}
+
+pub async fn send_unpaid_resources_deleted_email(
+	email: Mailbox,
+	username: String,
+	workspace_name: String,
+	month: String,
+	year: i32,
+	total_bill: f64,
+) -> Result<(), Error> {
+	send_email(
+		UnpaidResourcesDeletedEmail {
+			username,
+			workspace_name,
+			month,
+			year,
+			total_bill,
+		},
+		email,
+		None,
+		"[Action required] Patr resources deleted",
+	)
+	.await
+}
+
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/bill-not-paid-reminder/template.json"]
+struct BillNotPaidReminderEmail {
+	username: String,
+	workspace_name: String,
+	month: String,
+	year: i32,
+	total_bill: f64,
+}
+
+pub async fn send_bill_not_paid_reminder_email(
+	email: Mailbox,
+	username: String,
+	workspace_name: String,
+	month: String,
+	year: i32,
+	total_bill: f64,
+) -> Result<(), Error> {
+	send_email(
+		BillNotPaidReminderEmail {
+			username,
+			workspace_name,
+			month,
+			year,
+			total_bill,
+		},
+		email,
+		None,
+		"[Action required] Patr bill payment pending",
+	)
+	.await
+}
+
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/payment-failure/template.json"]
+struct PaymentFailedEmail {
+	username: String,
+	workspace_name: String,
+	month: String,
+	year: i32,
+	total_bill: f64,
+}
+pub async fn send_payment_failed_email(
+	email: Mailbox,
+	username: String,
+	workspace_name: String,
+	month: String,
+	year: i32,
+	total_bill: f64,
+) -> Result<(), Error> {
+	send_email(
+		PaymentFailedEmail {
+			username,
+			workspace_name,
+			month,
+			year,
+			total_bill,
+		},
+		email,
+		None,
+		"[Action required] Patr payment failed",
+	)
+	.await
+}
+
 /// # Description
 /// This function is used to send the email to a recipient
 ///

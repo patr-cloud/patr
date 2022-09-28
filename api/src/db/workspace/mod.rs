@@ -942,3 +942,43 @@ pub async fn set_default_payment_method_for_workspace(
 	.await
 	.map(|_| ())
 }
+
+pub async fn set_resource_limit_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_limit: i32,
+	database_limit: i32,
+	static_site_limit: i32,
+	managed_url_limit: i32,
+	docker_repository_storage_limit: i32,
+	domain_limit: i32,
+	secret_limit: i32,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace
+		SET
+			deployment_limit = $1,
+			database_limit = $2,
+			static_site_limit = $3,
+			managed_url_limit = $4,
+			docker_repository_storage_limit = $5,
+			domain_limit = $6,
+			secret_limit = $7
+		WHERE
+			id = $8;
+		"#,
+		deployment_limit,
+		database_limit,
+		static_site_limit,
+		managed_url_limit,
+		docker_repository_storage_limit,
+		domain_limit,
+		secret_limit,
+		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
