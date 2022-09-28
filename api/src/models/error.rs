@@ -81,6 +81,8 @@ pub mod id {
 
 	// error constants for region
 	pub const REGION_NOT_READY_YET: &str = "regionNotReadyYet";
+	pub const FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER: &str =
+		"featureNotSupportedForCustomCluster";
 }
 
 #[allow(dead_code)]
@@ -221,4 +223,6 @@ pub mod message {
 
 	// error constants for region
 	pub const REGION_NOT_READY_YET: &str = "The cluster is not initialized yet, wait for some time and then try again";
+	pub const FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER: &str =
+		"For custom cluster this feature is not supported";
 }
