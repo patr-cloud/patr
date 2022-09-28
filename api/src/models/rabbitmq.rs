@@ -5,9 +5,9 @@ use api_models::{
 		Deployment,
 		DeploymentRunningDetails,
 	},
-	utils::Uuid,
+	utils::{Uuid, DateTime},
 };
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 use super::DeploymentMetadata;
@@ -118,13 +118,12 @@ pub enum WorkspaceRequestData {
 		workspace: Workspace,
 		request_id: Uuid,
 	},
-	AttemptPaymentIntent {
+	AttemptToChargeWorkspace {
 		workspace: Workspace,
+		process_after: DateTime<Utc>,
 		total_bill: f64,
-		payable_bill: f64,
-		month_string: String,
+		amount_due: f64,
 		month: u32,
-		next_month_start_date: DateTime<Utc>,
 		year: i32,
 		request_id: Uuid,
 	},

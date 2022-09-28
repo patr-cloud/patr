@@ -18,13 +18,14 @@ api_models = { path = "../api-models", package = "patr-api-dto", features = [
 ] }
 argon2 = "0.4"
 askama = "0.11"
+async-stripe = { version = "0.15", features = ["runtime-tokio-hyper"] }
 async-trait = "0.1"
 base32 = "0.4"
 base64 = "0.13"
 chrono = "0.4"
 cloudflare = { git = "https://github.com/vicara-hq/cloudflare-rs" }
 config_rs = { version = "0.13", package = "config" }
-cron = "0.11"
+cron = "0.12"
 deadpool = "*"
 deadpool-lapin = "0.10"
 either = "1"
@@ -35,10 +36,10 @@ handlebars = "4"
 hex = "0.4"
 hmac = "0.12"
 jsonwebtoken = "8"
-k8s-openapi = { version = "0.15", default-features = true, features = [
+k8s-openapi = { version = "0.16", default-features = true, features = [
   "v1_21",
 ] } # Kube-rs depends on k8s-openapi
-kube = { version = "0.74", default-features = true, features = [
+kube = { version = "0.75", default-features = true, features = [
   "derive",
   "runtime",
 ] } # Library for talking to Kubernetes API

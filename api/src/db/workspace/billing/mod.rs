@@ -1284,37 +1284,6 @@ pub async fn add_payment_method_info(
 	.map(|_| ())
 }
 
-pub async fn get_transaction_by_description_in_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	description: &str,
-) -> Result<Option<Transaction>, sqlx::Error> {
-	query_as!(
-		Transaction,
-		r#"
-		SELECT
-			id as "id: _",
-			month,
-			amount,
-			payment_intent_id,
-			date as "date: _",
-			workspace_id as "workspace_id: _",
-			transaction_type as "transaction_type: _",
-			payment_status as "payment_status: _",
-			description
-		FROM
-			transaction
-		WHERE
-			workspace_id = $1 AND
-			description = $2;
-		"#,
-		workspace_id as _,
-		description,
-	)
-	.fetch_optional(&mut *connection)
-	.await
-}
-
 pub async fn get_transactions_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,

@@ -404,7 +404,7 @@ struct UnpaidResourcesDeletedEmail {
 	total_bill: f64,
 }
 
-pub async fn send_delete_unpaid_resource_email(
+pub async fn send_unpaid_resources_deleted_email(
 	email: Mailbox,
 	username: String,
 	workspace_name: String,
@@ -469,7 +469,7 @@ struct PaymentFailedEmail {
 	year: i32,
 	total_bill: f64,
 }
-pub async fn send_payment_failed_mail(
+pub async fn send_payment_failed_email(
 	email: Mailbox,
 	username: String,
 	workspace_name: String,
@@ -487,7 +487,7 @@ pub async fn send_payment_failed_mail(
 		},
 		email,
 		None,
-		"[Action required] Patr resources deleted",
+		"[Action required] Patr payment failed",
 	)
 	.await
 }

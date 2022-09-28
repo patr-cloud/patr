@@ -334,25 +334,23 @@ pub async fn queue_process_payment(
 	.await
 }
 
-pub async fn queue_attempt_payment_intent(
+pub async fn queue_attempt_to_charge_workspace(
 	workspace: &Workspace,
+	process_after: &DateTime<Utc>,
 	total_bill: f64,
-	payable_bill: f64,
-	month_string: &str,
+	amount_due: f64,
 	month: u32,
-	next_month_start_date: &DateTime<Utc>,
 	year: i32,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	send_message_to_billing_queue(
-		&WorkspaceRequestData::AttemptPaymentIntent {
+		&WorkspaceRequestData::AttemptToChargeWorkspace {
 			workspace: workspace.clone(),
+			process_after: (*process_after).into(),
 			total_bill,
-			payable_bill,
-			month_string: month_string.to_string(),
+			amount_due,
 			month,
-			next_month_start_date: *next_month_start_date,
 			year,
 			request_id: request_id.clone(),
 		},
