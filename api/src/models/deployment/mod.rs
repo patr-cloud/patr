@@ -22,38 +22,47 @@ pub const DEFAULT_DEPLOYMENT_REGIONS: [DefaultDeploymentRegion; 9] = [
 	DefaultDeploymentRegion {
 		name: "Singapore",
 		cloud_provider: InfrastructureCloudProvider::Digitalocean,
+		is_ready: true,
 	},
 	DefaultDeploymentRegion {
 		name: "Bangalore",
 		cloud_provider: InfrastructureCloudProvider::Digitalocean,
+		is_ready: false,
 	},
 	DefaultDeploymentRegion {
 		name: "London",
 		cloud_provider: InfrastructureCloudProvider::Digitalocean,
+		is_ready: false,
 	},
 	DefaultDeploymentRegion {
 		name: "Amsterdam",
 		cloud_provider: InfrastructureCloudProvider::Digitalocean,
+		is_ready: false,
 	},
 	DefaultDeploymentRegion {
 		name: "Frankfurt",
 		cloud_provider: InfrastructureCloudProvider::Digitalocean,
+		is_ready: false,
 	},
 	DefaultDeploymentRegion {
 		name: "Toronto",
 		cloud_provider: InfrastructureCloudProvider::Digitalocean,
+		is_ready: false,
 	},
 	DefaultDeploymentRegion {
 		name: "New-York 1",
 		cloud_provider: InfrastructureCloudProvider::Digitalocean,
+		is_ready: false,
 	},
 	DefaultDeploymentRegion {
 		name: "New-York 2",
 		cloud_provider: InfrastructureCloudProvider::Digitalocean,
+		is_ready: false,
 	},
 	DefaultDeploymentRegion {
 		name: "San Francisco",
 		cloud_provider: InfrastructureCloudProvider::Digitalocean,
+		is_ready: false,
 	},
 ];
 
@@ -63,6 +72,7 @@ pub static MACHINE_TYPES: OnceCell<HashMap<Uuid, (i16, i32)>> = OnceCell::new();
 pub struct DefaultDeploymentRegion {
 	pub name: &'static str,
 	pub cloud_provider: InfrastructureCloudProvider,
+	pub is_ready: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]

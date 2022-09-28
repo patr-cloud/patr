@@ -78,6 +78,18 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(INVALID_DEPLOYMENT_NAME).to_string()));
 	}
 
+	// validate whether the deployment region is ready
+	let region_details = db::get_region_by_id(connection, region)
+		.await?
+		.status(400)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	if !(region_details.ready || region_details.workspace_id.is_none()) {
+		return Err(Error::empty()
+			.status(500)
+			.body(error!(REGION_NOT_READY_YET).to_string()));
+	}
+
 	log::trace!(
 		"request_id: {} - Checking if the deployment name already exists",
 		request_id

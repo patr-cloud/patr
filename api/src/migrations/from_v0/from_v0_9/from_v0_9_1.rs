@@ -973,6 +973,16 @@ async fn refactor_deployment_region_table(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		UPDATE deployment_region
+		SET ready = true
+		WHERE name = 'Singapore';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 

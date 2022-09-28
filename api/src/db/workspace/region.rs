@@ -142,11 +142,12 @@ async fn populate_region(
 				ready
 			)
 		VALUES
-			($1, $2, $3, FALSE);
+			($1, $2, $3, $4);
 		"#,
 		region_id as _,
 		region.name,
 		region.cloud_provider as _,
+		region.is_ready
 	)
 	.execute(&mut *connection)
 	.await?;

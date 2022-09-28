@@ -3068,30 +3068,6 @@
     },
     "query": "CREATE TABLE resource_type( id UUID CONSTRAINT resource_type_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE, description VARCHAR(500) NOT NULL );"
   },
-  "3958a84cb8c2409b81766722f1af076ab9e1d2cb6251a1d7f398a43af37ff447": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "digitalocean",
-                  "other"
-                ]
-              },
-              "name": "infrastructure_cloud_provider"
-            }
-          }
-        ]
-      }
-    },
-    "query": "INSERT INTO deployment_region( id, name, provider, ready ) VALUES ($1, $2, $3, FALSE);"
-  },
   "3965581880bfbe752b776a4c3b8cd706b08ab342b24781170ad0025fd8133a5f": {
     "describe": {
       "columns": [],
@@ -12649,6 +12625,31 @@
       }
     },
     "query": "INSERT INTO deployment( id, name, registry, repository_id, image_name, image_tag, status, workspace_id, region, min_horizontal_scale, max_horizontal_scale, machine_type, deploy_on_push, startup_probe_port, startup_probe_path, startup_probe_port_type, liveness_probe_port, liveness_probe_path, liveness_probe_port_type ) VALUES ( $1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16 );"
+  },
+  "ea6f7fd3b30a58622ef6a5fffc13023b34d991b9d8681ae557be90c7f7a69b9f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "digitalocean",
+                  "other"
+                ]
+              },
+              "name": "infrastructure_cloud_provider"
+            }
+          },
+          "Bool"
+        ]
+      }
+    },
+    "query": "INSERT INTO deployment_region( id, name, provider, ready ) VALUES ($1, $2, $3, $4);"
   },
   "eae55af4308b23ddda0f1baddb26ab64d833bd6135785f365fbc23b89e29ef2c": {
     "describe": {
