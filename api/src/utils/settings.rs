@@ -73,6 +73,7 @@ pub struct Settings {
 	pub stripe: StripeSettings,
 	#[serde(alias = "ipinfotoken")]
 	pub ipinfo_token: String,
+	pub mimir: MimirSettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -282,4 +283,12 @@ pub struct StripeSettings {
 	pub secret_key: String,
 	#[serde(alias = "publishablekey")]
 	pub publishable_key: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MimirSettings {
+	pub host: String,
+	pub username: String,
+	pub password: String,
 }
