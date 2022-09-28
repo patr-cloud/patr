@@ -77,6 +77,8 @@ pub mod id {
 
 	// error constants for CI
 	pub const INVALID_STATE_VALUE: &str = "invalidStateValue";
+
+	pub const FILE_SIZE_TOO_LARGE: &str = "fileSizeTooLarge";
 }
 
 #[allow(dead_code)]
@@ -213,4 +215,6 @@ pub mod message {
 	// error constants for CI
 	pub const INVALID_STATE_VALUE: &str =
 		"Invalid/Expired value for parameter: `state`";
+
+	pub const FILE_SIZE_TOO_LARGE: &str = "The file that you uploaded is too large. Maximum size allowed is 100MB";
 }
