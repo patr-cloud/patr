@@ -278,17 +278,8 @@ pub async fn upload_static_site_files_to_s3(
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-	let file_data = base64::decode(file)?;
-	// For now checking for fize size to be 100mb, so that we can accomodate for
-	// static site that have large assests like, high-resolution images etc
-	// Later if we want to decide on the size we can change this to desired
-	// limit
-	if file_data.len() > 100000000 {
-		return Error::as_result()
-			.status(400)
-			.body(error!(FILE_SIZE_TOO_LARGE).to_string())?;
-	}
 
+	let file_data = base64::decode(file)?;
 	log::trace!(
 		"request_id: {} - logging into the s3 for uploading static site files",
 		request_id
@@ -387,6 +378,20 @@ pub async fn upload_static_site_files_to_s3(
 			file_content,
 			mime_string.to_string(),
 		));
+	}
+
+	if !files_vec.is_empty() {
+		let mut file_size = 0;
+		for (_, file_content, _) in &files_vec {
+			file_size += file_content.len();
+		}
+
+		// For now restricting user to upload file of size 100mb max
+		if file_size > 100000000 {
+			return Error::as_result()
+				.status(400)
+				.body(error!(FILE_SIZE_TOO_LARGE).to_string())?;
+		}
 	}
 
 	for (file_name, file_content, mime_string) in files_vec {
