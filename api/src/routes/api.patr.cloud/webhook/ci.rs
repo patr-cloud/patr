@@ -125,8 +125,18 @@ async fn handle_ci_hooks_for_repo(
 					repo_name: pushed.repository.name,
 					committed_branch_name: branch_name.to_string(),
 					commit_sha: pushed.after,
-					author: pushed.commits[0].author.name.clone(),
-					commit_message: Some(pushed.commits[0].message.clone()),
+					author: pushed
+						.commits
+						.first()
+						.map(|commit| commit.author.name.clone())
+						.unwrap_or_else(|| "unknown".to_string()),
+					commit_message: Some(
+						pushed
+							.commits
+							.first()
+							.map(|commit| commit.message.clone())
+							.unwrap_or_else(|| "unknown".to_string()),
+					),
 				})
 			} else if let Some(tag_name) =
 				pushed.ref_.strip_prefix("refs/tags/")
@@ -175,7 +185,7 @@ async fn handle_ci_hooks_for_repo(
 					.head
 					.user
 					.name
-					.unwrap_or_default(),
+					.unwrap_or_else(|| "unknown".to_string()),
 				pr_title: pull_synced.pull_request.title,
 			})
 		}
