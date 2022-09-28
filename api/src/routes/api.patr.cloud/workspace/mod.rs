@@ -78,34 +78,8 @@ pub fn create_sub_app(
 	sub_app.get(
 		"/:workspaceId/info",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				// For now keeping permission as "EDIT" otherwise has to write
-				// to migrations for to add that permission. If in future
-				// wanted to add more permission on workspace then we can
-				// change this
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
+			EveMiddleware::HasWorkspaceAceess,
+			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(get_workspace_info)),
 		],
 	);
