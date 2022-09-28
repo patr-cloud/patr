@@ -75,7 +75,6 @@ pub(super) async fn process_request(
 			.await?;
 
 			if !output.status.success() {
-				// error occured not wait for 2 mins and then requeue it again
 				log::debug!(
                     "Error while initializing the cluster {}:\nStatus: {}\nStderr: {}\nStdout: {}",
                     region_id,
@@ -83,17 +82,16 @@ pub(super) async fn process_request(
                     std::str::from_utf8(&output.stderr)?,
                     std::str::from_utf8(&output.stdout)?
                 );
-				tokio::time::sleep(Duration::from_secs(5 * 60)).await;
 				db::append_messge_log_for_region(
 					connection,
 					&region_id,
 					std::str::from_utf8(&output.stderr)?,
 				)
 				.await?;
-				return Err(
-					Error::empty().body("Error while initializing the cluster")
-				);
+				// don't requeue
+				return Ok(());
 			}
+
 			log::info!("Initialized cluster {region_id} successfully");
 
 			service::send_message_to_infra_queue(

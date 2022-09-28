@@ -729,14 +729,7 @@ async fn reset_permission_order(
 		"workspace::region::list",
 		"workspace::region::add",
 		"workspace::region::remove",
-		// ci (old)
-		"workspace::ci::github::connect",
-		"workspace::ci::github::activate",
-		"workspace::ci::github::deactivate",
-		"workspace::ci::github::viewBuilds",
-		"workspace::ci::github::restartBuilds",
-		"workspace::ci::github::disconnect",
-		// ci (new)
+		// ci
 		"workspace::ci::git_provider::connect",
 		"workspace::ci::git_provider::disconnect",
 		"workspace::ci::git_provider::repo::activate",
