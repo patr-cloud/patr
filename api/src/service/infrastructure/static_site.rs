@@ -379,6 +379,16 @@ pub async fn upload_static_site_files_to_s3(
 		));
 	}
 
+	let file_size: usize =
+		files_vec.iter().map(|(_, file, _)| file.len()).sum();
+
+	// For now restricting user to upload file of size 100mb max
+	if file_size > 100000000 {
+		return Error::as_result()
+			.status(400)
+			.body(error!(FILE_SIZE_TOO_LARGE).to_string())?;
+	}
+
 	for (file_name, file_content, mime_string) in files_vec {
 		let code = bucket
 			.put_object_with_content_type(
