@@ -81,11 +81,6 @@ pub fn create_sub_app(
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(move |mut context, next| {
 				Box::pin(async move {
-					// Using unwarp while getting token_data because
-					// AccessTokenData will never be empty
-					// as PlainTokenAuthenticator above won't allow it
-					let workspaces =
-						context.get_token_data().cloned().unwrap().workspaces;
 					let workspace_id_str = context
 						.get_param(request_keys::WORKSPACE_ID)
 						.status(400)
@@ -94,6 +89,12 @@ pub fn create_sub_app(
 					let workspace_id = Uuid::parse_str(workspace_id_str)
 						.status(401)
 						.body(error!(UNAUTHORIZED).to_string())?;
+
+					// Using unwarp while getting token_data because
+					// AccessTokenData will never be empty
+					// as PlainTokenAuthenticator above won't allow it
+					let workspaces =
+						&context.get_token_data().unwrap().workspaces;
 
 					if workspaces.get(&workspace_id).is_none() {
 						context.status(401).json(error!(UNAUTHORIZED));
