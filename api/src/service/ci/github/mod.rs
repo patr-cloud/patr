@@ -47,29 +47,50 @@ pub async fn create_build_for_repo(
 	repo_id: &Uuid,
 	event_type: &EventType,
 ) -> Result<i64, Error> {
-	let (git_ref, commit_sha) = match &event_type {
-		EventType::Commit(commit) => (
-			format!("refs/heads/{}", commit.committed_branch_name),
-			&commit.commit_sha,
-		),
-		EventType::Tag(tag) => {
-			(format!("refs/tags/{}", tag.tag_name), &tag.commit_sha)
+	let build_num = match &event_type {
+		EventType::Commit(commit) => {
+			db::generate_new_build_for_repo(
+				connection,
+				repo_id,
+				&format!("refs/heads/{}", commit.committed_branch_name),
+				&commit.commit_sha,
+				BuildStatus::Running,
+				&Utc::now(),
+				&commit.author,
+				commit.commit_message.as_deref(),
+				None,
+			)
+			.await?
 		}
-		EventType::PullRequest(pull_request) => (
-			format!("refs/pull/{}", pull_request.pr_number),
-			&pull_request.commit_sha,
-		),
+		EventType::Tag(tag) => {
+			db::generate_new_build_for_repo(
+				connection,
+				repo_id,
+				&format!("refs/tags/{}", tag.tag_name),
+				&tag.commit_sha,
+				BuildStatus::Running,
+				&Utc::now(),
+				&tag.author,
+				tag.commit_message.as_deref(),
+				None,
+			)
+			.await?
+		}
+		EventType::PullRequest(pull_request) => {
+			db::generate_new_build_for_repo(
+				connection,
+				repo_id,
+				&format!("refs/pull/{}", pull_request.pr_number),
+				&pull_request.commit_sha,
+				BuildStatus::Running,
+				&Utc::now(),
+				&pull_request.author,
+				None,
+				Some(&pull_request.pr_title),
+			)
+			.await?
+		}
 	};
-
-	let build_num = db::generate_new_build_for_repo(
-		connection,
-		repo_id,
-		&git_ref,
-		commit_sha,
-		BuildStatus::Running,
-		&Utc::now(),
-	)
-	.await?;
 
 	Ok(build_num)
 }

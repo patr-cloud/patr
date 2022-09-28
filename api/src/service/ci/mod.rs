@@ -637,6 +637,8 @@ fn get_clone_command_based_on_event_type(
 		EventType::Commit(Commit {
 			repo_owner: _,
 			repo_name: _,
+			author: _,
+			commit_message: _,
 			commit_sha,
 			committed_branch_name,
 		}) => vec![
@@ -646,6 +648,8 @@ fn get_clone_command_based_on_event_type(
 		EventType::Tag(Tag {
 			repo_owner: _,
 			repo_name: _,
+			author: _,
+			commit_message: _,
 			commit_sha: _,
 			tag_name,
 		}) => vec![
@@ -655,6 +659,8 @@ fn get_clone_command_based_on_event_type(
 		EventType::PullRequest(PullRequest {
 			head_repo_owner: _,
 			head_repo_name: _,
+			author: _,
+			pr_title: _,
 			commit_sha,
 			pr_number: pull_number,
 			to_be_committed_branch_name,

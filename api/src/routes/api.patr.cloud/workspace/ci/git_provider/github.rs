@@ -1263,6 +1263,8 @@ async fn restart_build(
 			repo_name: repo.repo_name.clone(),
 			commit_sha: previous_build.git_commit,
 			committed_branch_name: branch_name.to_string(),
+			author: previous_build.author,
+			commit_message: previous_build.git_commit_message,
 		})
 	} else if let Some(tag_name) =
 		previous_build.git_ref.strip_prefix("refs/tags/")
@@ -1272,6 +1274,8 @@ async fn restart_build(
 			repo_name: repo.repo_name.clone(),
 			commit_sha: previous_build.git_commit,
 			tag_name: tag_name.to_string(),
+			author: previous_build.author,
+			commit_message: previous_build.git_commit_message,
 		})
 	} else if let Some(pull_number) = previous_build
 		.git_ref
@@ -1314,6 +1318,8 @@ async fn restart_build(
 				.unwrap_or_else(|| repo.repo_name.clone()),
 			commit_sha: previous_build.git_commit,
 			pr_number: pull_number.to_string(),
+			author: previous_build.author,
+			pr_title: previous_build.git_pr_title.unwrap_or_default(),
 			to_be_committed_branch_name: pr_details.base.ref_,
 		})
 	} else {
@@ -1523,6 +1529,12 @@ async fn start_build_for_branch(
 		repo_name: repo.repo_name.clone(),
 		commit_sha: github_branch.commit.sha,
 		committed_branch_name: branch_name,
+		author: github_branch
+			.commit
+			.author
+			.map(|author| author.name)
+			.unwrap_or_default(),
+		commit_message: Some(github_branch.commit.commit.message),
 	});
 
 	let ci_file_content =

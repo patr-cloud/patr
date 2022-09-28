@@ -464,14 +464,17 @@ async fn add_migrations_for_ci(
 	query!(
 		r#"
 		CREATE TABLE ci_builds (
-			repo_id 	UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id),
-			build_num 	BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK (build_num > 0),
-			git_ref 	TEXT NOT NULL,
-			git_commit 	TEXT NOT NULL,
-			status 		CI_BUILD_STATUS NOT NULL,
-			created 	TIMESTAMPTZ NOT NULL,
-			finished 	TIMESTAMPTZ,
-			message		TEXT,
+			repo_id 			UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id),
+			build_num 			BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK (build_num > 0),
+			git_ref 			TEXT NOT NULL,
+			git_commit 			TEXT NOT NULL,
+			status 				CI_BUILD_STATUS NOT NULL,
+			created 			TIMESTAMPTZ NOT NULL,
+			finished 			TIMESTAMPTZ,
+			message				TEXT,
+			author				TEXT NOT NULL,
+			git_commit_message	TEXT,
+			git_pr_title		TEXT,
 
 			CONSTRAINT ci_builds_pk_repo_id_build_num
 				PRIMARY KEY (repo_id, build_num)
