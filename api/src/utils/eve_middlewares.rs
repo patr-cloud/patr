@@ -1,6 +1,5 @@
 use std::{future::Future, pin::Pin};
 
-use api_models::utils::Uuid;
 use async_trait::async_trait;
 use chrono::Utc;
 use eve_rs::{
@@ -19,7 +18,6 @@ use eve_rs::{
 };
 use redis::aio::MultiplexedConnection as RedisConnection;
 
-use super::constants::request_keys;
 use crate::{
 	app::App,
 	db::Resource,
@@ -62,7 +60,6 @@ pub enum EveMiddleware {
 		String,
 		Box<EveApp<EveContext, EveMiddleware, App, ErrorData>>,
 	),
-	HasWorkspaceAceess,
 }
 
 #[async_trait]
@@ -214,30 +211,6 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				} else {
 					next(context).await
 				}
-			}
-			EveMiddleware::HasWorkspaceAceess => {
-				let access_data =
-					if let Some(token) = decode_access_token(&context) {
-						token
-					} else {
-						context.status(401).json(error!(UNAUTHORIZED));
-						return Ok(context);
-					};
-
-				let workspace_id_str = context
-					.get_param(request_keys::WORKSPACE_ID)
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string())?;
-
-				let workspace_id = Uuid::parse_str(workspace_id_str)
-					.status(401)
-					.body(error!(UNAUTHORIZED).to_string())?;
-
-				if access_data.workspaces.get(&workspace_id).is_none() {
-					context.status(401).json(error!(UNAUTHORIZED));
-					return Ok(context);
-				}
-				next(context).await
 			}
 		}
 	}
