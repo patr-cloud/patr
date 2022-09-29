@@ -192,7 +192,7 @@ pub async fn delete_all_resources_in_workspace(
 		db::get_deployments_for_workspace(connection, workspace_id).await?;
 
 	for deployment in deployments {
-		service::queue_delete_deployment(
+		service::delete_deployment(
 			connection,
 			&deployment.workspace_id,
 			&deployment.id,
