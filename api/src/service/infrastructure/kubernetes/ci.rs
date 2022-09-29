@@ -313,9 +313,9 @@ pub async fn create_background_service_for_ci_in_kubernetes(
 		namespace_name
 	);
 
-	let env = (!service.env.is_empty()).then(|| {
+	let env = (!service.environment.is_empty()).then(|| {
 		service
-			.env
+			.environment
 			.iter()
 			.map(|(name, value)| EnvVar {
 				name: name.clone(),
@@ -387,7 +387,7 @@ pub async fn create_background_service_for_ci_in_kubernetes(
 								image: Some(service.image.clone()),
 								image_pull_policy: Some("Always".to_string()),
 								env,
-								command: service.command.map(|command| {
+								command: service.commands.map(|command| {
 									vec![
 										"sh".to_string(),
 										"-ce".to_string(),
@@ -419,8 +419,10 @@ pub async fn create_background_service_for_ci_in_kubernetes(
 						[("app".to_string(), service.name.to_string())].into(),
 					),
 					ports: Some(vec![ServicePort {
-						port: service.port,
-						target_port: Some(IntOrString::Int(service.port)),
+						port: service.port as i32,
+						target_port: Some(IntOrString::Int(
+							service.port as i32,
+						)),
 						..Default::default()
 					}]),
 					..Default::default()
