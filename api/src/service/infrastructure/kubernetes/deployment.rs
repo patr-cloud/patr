@@ -633,14 +633,8 @@ pub async fn update_kubernetes_deployment(
 					),
 					"HTTP".to_string(),
 				),
-				// (
-				// 	"cert-manager.io/cluster-issuer".to_string(),
-				// 	if domain.is_ns_internal() {
-				// 		config.kubernetes.cert_issuer_dns.clone()
-				// 	} else {
-				// 		config.kubernetes.cert_issuer_http.clone()
-				// 	},
-				// ),
+				// TODO: add cert manager annotations,
+				// once ssl certificate is used in customers cluster
 			]
 			.into_iter()
 			.collect();

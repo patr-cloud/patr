@@ -1564,7 +1564,7 @@ async fn delete_deployment(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	if crate::service::is_deployed_on_patr_cluster(
+	if service::is_deployed_on_patr_cluster(
 		context.get_database_connection(),
 		&deployment.region,
 	)
@@ -1739,7 +1739,7 @@ async fn update_deployment(
 		}
 		_ => {
 			let current_time = Utc::now();
-			if crate::service::is_deployed_on_patr_cluster(
+			if service::is_deployed_on_patr_cluster(
 				context.get_database_connection(),
 				&deployment.region,
 			)

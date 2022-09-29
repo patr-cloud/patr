@@ -728,7 +728,6 @@ async fn reset_permission_order(
 		// region
 		"workspace::region::list",
 		"workspace::region::add",
-		"workspace::region::remove",
 		// ci
 		"workspace::ci::git_provider::connect",
 		"workspace::ci::git_provider::disconnect",
@@ -976,6 +975,46 @@ async fn refactor_deployment_region_table(
 	.execute(&mut *connection)
 	.await?;
 
+	for region in [
+		"Singapore",
+		"Bangalore",
+		"London",
+		"Amsterdam",
+		"Frankfurt",
+		"Toronto",
+		"New-York 1",
+		"New-York 2",
+		"San Francisco",
+	] {
+		query!(
+			r#"
+			UPDATE
+				deployment_region
+			SET
+				name = CONCAT('test::', name)
+			WHERE
+				name = $1;
+			"#,
+			region,
+		)
+		.execute(&mut *connection)
+		.await?;
+
+		query!(
+			r#"
+			UPDATE
+				deployment_region
+			SET
+				name = $1
+			WHERE
+				name = CONCAT('test::', $1);
+			"#,
+			region,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
 	Ok(())
 }
 
@@ -1024,12 +1063,8 @@ async fn add_permission_and_resource_type_for_region(
 	.await?;
 
 	// add permissions for region
-	for &permission in [
-		"workspace::region::list",
-		"workspace::region::add",
-		"workspace::region::remove",
-	]
-	.iter()
+	for &permission in
+		["workspace::region::list", "workspace::region::add"].iter()
 	{
 		let uuid = loop {
 			let uuid = Uuid::new_v4();
