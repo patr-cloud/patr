@@ -638,74 +638,72 @@ pub async fn send_payment_failed_notification(
 	)
 	.await
 }
-/*
 
-pub enum PatrActionType {
-	Delete,
-	Update,
-	Stop.
-	DomainVerified,
-	DomainUnverified,
-}
+// pub enum PatrActionType {
+// 	Delete,
+// 	Update,
+// 	Stop,
+// 	DomainVerified,
+// 	DomainUnverified,
+// }
 
+// pub async fn resource_action_email(
+// 	resource_id: &Uuid,
+// 	resource_name: &str,
+// 	super_admin_firstname: &str, might not be needed can pass workspace_id and
+// 									then can fetch the value from there will prevent code
+// 									repetition in all resources
+// 	ip_address: &IpAddr,
+// 	city: &str,
+// 	region: &str,
+// 	country: &str,
+// 	action: &PatrActionType,
+// ) -> Result<(), Error> {
+// 	match action {
+// 		PatrAction::Delete => {
+// 			email::send_resource_deleted_email(
+// 				resource_id,
+// 				resource_name,
+// 				super_admin_firstname,
+// 				ip_address,
+// 				city,
+// 				region,
+// 				country,
+// 				email,
+// 			)
+// 			.await?;
+// 			Ok(())
+// 		}
+// 		PatrAction::Stop => {
+// 			email::send_resource_stopped_email(
+// 				resource_id,
+// 				resource_name,
+// 				super_admin_firstname,
+// 				ip_address,
+// 				city,
+// 				region,
+// 				country,
+// 				action,
+// 			)
+// 			.await?;
+// 			Ok(())
+// 		}
+// 		PatrAction::Update => {
+// 			email::send_resource_updated_email(
+// 				resource_id,
+// 				resource_name,
+// 				super_admin_firstname,
+// 				ip_address,
+// 				city,
+// 				region,
+// 				country,
+// 				action,
+// 			)
+// 			.await?;
+// 			Ok(())
+// 		}
+// 		PatrAction::DomainVerified => todo!(),
+// 		PatrAction::DomainUnerified => todo!()
+// 	}
+// }
 
-pub async fn resource_action_email(
-	resource_id: &Uuid,
-	resource_name: &str,
-	super_admin_firstname: &str, might not be needed can pass workspace_id and
-									then can fetch the value from there will prevent code
-									repetition in all resources
-	ip_address: &IpAddr,
-	city: &str,
-	region: &str,
-	country: &str,
-	action: &PatrActionType,
-) -> Result<(), Error> {
-	match action {
-		PatrAction::Delete => {
-			email::send_resource_deleted_email(
-				resource_id,
-				resource_name,
-				super_admin_firstname,
-				ip_address,
-				city,
-				region,
-				country,
-				action,
-			)
-			.await?;
-			Ok(())
-		}
-		PatrAction::Stop => {
-			email::send_resource_stopped_email(
-				resource_id,
-				resource_name,
-				super_admin_firstname,
-				ip_address,
-				city,
-				region,
-				country,
-				action,
-			)
-			.await?;
-			Ok(())
-		}
-		PatrAction::Update => {
-			email::send_resource_updated_email(
-				resource_id,
-				resource_name,
-				super_admin_firstname,
-				ip_address,
-				city,
-				region,
-				country,
-				action,
-			)
-			.await?;
-			Ok(())
-		}
-		PatrAction::DomainVerified => todo!(),
-		PatrAction::DomainUnerified => todo!()
-	}
-}
-*/
