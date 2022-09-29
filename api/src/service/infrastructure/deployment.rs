@@ -7,6 +7,7 @@ use api_models::{
 		DeploymentProbe,
 		DeploymentRegistry,
 		DeploymentRunningDetails,
+		DeploymentStatus,
 		EnvironmentVariableValue,
 		ExposedPortType,
 		Metric,
@@ -24,8 +25,10 @@ use crate::{
 	error,
 	models::{
 		deployment::{Logs, PrometheusResponse},
-		rbac,
+		rbac::{self, permissions},
+		DeploymentMetadata,
 	},
+	service,
 	utils::{settings::Settings, validator, Error},
 	Database,
 };
@@ -1041,4 +1044,257 @@ async fn deployment_limit_crossed(
 	}
 
 	Ok(false)
+}
+
+pub async fn start_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	deployment: &Deployment,
+	deployment_running_details: &DeploymentRunningDetails,
+	user_id: &Uuid,
+	login_id: &Uuid,
+	ip_address: &str,
+	metadata: &DeploymentMetadata,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	// If deploy_on_create is true, then tell the consumer to create a
+	// deployment
+	let (image_name, digest) =
+		service::get_image_name_and_digest_for_deployment_image(
+			connection,
+			&deployment.registry,
+			&deployment.image_tag,
+			config,
+			request_id,
+		)
+		.await?;
+
+	db::update_deployment_status(
+		connection,
+		deployment_id,
+		&DeploymentStatus::Deploying,
+	)
+	.await?;
+
+	let audit_log_id =
+		db::generate_new_workspace_audit_log_id(connection).await?;
+
+	db::create_workspace_audit_log(
+		connection,
+		&audit_log_id,
+		workspace_id,
+		ip_address,
+		&Utc::now(),
+		Some(user_id),
+		Some(login_id),
+		&deployment.id,
+		rbac::PERMISSIONS
+			.get()
+			.unwrap()
+			.get(permissions::workspace::infrastructure::deployment::EDIT)
+			.unwrap(),
+		request_id,
+		&serde_json::to_value(metadata)?,
+		false,
+		true,
+	)
+	.await?;
+
+	service::update_kubernetes_deployment(
+		workspace_id,
+		deployment,
+		&image_name,
+		digest.as_deref(),
+		deployment_running_details,
+		config,
+		request_id,
+	)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn update_deployment_image(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	name: &str,
+	registry: &DeploymentRegistry,
+	digest: &str,
+	image_tag: &str,
+	image_name: &str,
+	region: &Uuid,
+	machine_type: &Uuid,
+	deployment_running_details: &DeploymentRunningDetails,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let audit_log_id =
+		db::generate_new_workspace_audit_log_id(connection).await?;
+
+	db::create_workspace_audit_log(
+		connection,
+		&audit_log_id,
+		workspace_id,
+		"0.0.0.0",
+		&Utc::now(),
+		None,
+		None,
+		deployment_id,
+		rbac::PERMISSIONS
+			.get()
+			.unwrap()
+			.get(permissions::workspace::infrastructure::deployment::EDIT)
+			.unwrap(),
+		request_id,
+		&serde_json::to_value(DeploymentMetadata::Start {})?,
+		true,
+		true,
+	)
+	.await?;
+
+	service::update_kubernetes_deployment(
+		workspace_id,
+		&Deployment {
+			id: deployment_id.clone(),
+			name: name.to_string(),
+			registry: registry.clone(),
+			image_tag: image_tag.to_string(),
+			status: DeploymentStatus::Pushed,
+			region: region.clone(),
+			machine_type: machine_type.clone(),
+			current_live_digest: Some(digest.to_string()),
+		},
+		image_name,
+		Some(digest),
+		deployment_running_details,
+		config,
+		request_id,
+	)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn stop_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	user_id: &Uuid,
+	login_id: &Uuid,
+	ip_address: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	// TODO: implement logic for handling domains of the stopped deployment
+	log::trace!(
+		"request_id: {} - Updating deployment status as stopped",
+		request_id
+	);
+	db::update_deployment_status(
+		connection,
+		deployment_id,
+		&DeploymentStatus::Stopped,
+	)
+	.await?;
+
+	let audit_log_id =
+		db::generate_new_workspace_audit_log_id(connection).await?;
+
+	db::create_workspace_audit_log(
+		connection,
+		&audit_log_id,
+		workspace_id,
+		ip_address,
+		&Utc::now(),
+		Some(user_id),
+		Some(login_id),
+		deployment_id,
+		rbac::PERMISSIONS
+			.get()
+			.unwrap()
+			.get(permissions::workspace::infrastructure::deployment::EDIT)
+			.unwrap(),
+		request_id,
+		&serde_json::to_value(DeploymentMetadata::Stop {})?,
+		false,
+		true,
+	)
+	.await?;
+
+	service::delete_kubernetes_deployment(
+		workspace_id,
+		deployment_id,
+		config,
+		request_id,
+	)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn delete_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	name: &str,
+	user_id: &Uuid,
+	login_id: &Uuid,
+	ip_address: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Updating the deployment name in the database",
+		request_id
+	);
+	db::update_deployment_name(
+		connection,
+		deployment_id,
+		&format!("patr-deleted: {}-{}", name, deployment_id),
+	)
+	.await?;
+
+	log::trace!("request_id: {} - Updating deployment status", request_id);
+	db::update_deployment_status(
+		connection,
+		deployment_id,
+		&DeploymentStatus::Deleted,
+	)
+	.await?;
+
+	let audit_log_id =
+		db::generate_new_workspace_audit_log_id(connection).await?;
+	db::create_workspace_audit_log(
+		connection,
+		&audit_log_id,
+		workspace_id,
+		ip_address,
+		&Utc::now(),
+		Some(user_id),
+		Some(login_id),
+		deployment_id,
+		rbac::PERMISSIONS
+			.get()
+			.unwrap()
+			.get(permissions::workspace::infrastructure::deployment::EDIT)
+			.unwrap(),
+		request_id,
+		&serde_json::to_value(DeploymentMetadata::Delete {})?,
+		false,
+		true,
+	)
+	.await?;
+
+	service::delete_kubernetes_deployment(
+		workspace_id,
+		deployment_id,
+		config,
+		request_id,
+	)
+	.await?;
+
+	Ok(())
 }

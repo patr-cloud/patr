@@ -895,6 +895,7 @@ async fn create_deployment(
 	context.commit_database_transaction().await?;
 
 	if deploy_on_create {
+		let mut is_deployed = false;
 		if let DeploymentRegistry::PatrRegistry { repository_id, .. } =
 			&registry
 		{
@@ -920,22 +921,80 @@ async fn create_deployment(
 					&digest,
 				)
 				.await?;
+
+				if db::get_docker_repository_tag_details(
+					context.get_database_connection(),
+					repository_id,
+					image_tag,
+				)
+				.await?
+				.is_some()
+				{
+					service::start_deployment(
+						context.get_database_connection(),
+						&workspace_id,
+						&id,
+						&Deployment {
+							id: id.clone(),
+							name: name.to_string(),
+							registry: registry.clone(),
+							image_tag: image_tag.to_string(),
+							status: DeploymentStatus::Pushed,
+							region: region.clone(),
+							machine_type: machine_type.clone(),
+							current_live_digest: Some(digest),
+						},
+						&deployment_running_details,
+						&user_id,
+						&login_id,
+						&ip_address,
+						&DeploymentMetadata::Start {},
+						&config,
+						&request_id,
+					)
+					.await?;
+					is_deployed = true;
+				}
 			}
+		} else {
+			// external registry
+			service::start_deployment(
+				context.get_database_connection(),
+				&workspace_id,
+				&id,
+				&Deployment {
+					id: id.clone(),
+					name: name.to_string(),
+					registry: registry.clone(),
+					image_tag: image_tag.to_string(),
+					status: DeploymentStatus::Pushed,
+					region: region.clone(),
+					machine_type: machine_type.clone(),
+					current_live_digest: None,
+				},
+				&deployment_running_details,
+				&user_id,
+				&login_id,
+				&ip_address,
+				&DeploymentMetadata::Start {},
+				&config,
+				&request_id,
+			)
+			.await?;
+			is_deployed = true;
 		}
-		service::queue_create_deployment(
-			context.get_database_connection(),
-			&workspace_id,
-			&id,
-			name,
-			&registry,
-			image_tag,
-			&region,
-			&machine_type,
-			&deployment_running_details,
-			&config,
-			&request_id,
-		)
-		.await?;
+
+		if is_deployed {
+			context.commit_database_transaction().await?;
+
+			service::queue_check_and_update_deployment_status(
+				&workspace_id,
+				&id,
+				&config,
+				&request_id,
+			)
+			.await?;
+		}
 	}
 
 	let _ = service::get_internal_metrics(
@@ -1137,8 +1196,8 @@ async fn start_deployment(
 		}
 	}
 
-	log::trace!("request_id: {} - RabbitMQ to start deployment", request_id);
-	service::queue_start_deployment(
+	log::trace!("request_id: {} - Start deployment", request_id);
+	service::start_deployment(
 		context.get_database_connection(),
 		&workspace_id,
 		&deployment_id,
@@ -1147,6 +1206,17 @@ async fn start_deployment(
 		&user_id,
 		&login_id,
 		&ip_address,
+		&DeploymentMetadata::Start {},
+		&config,
+		&request_id,
+	)
+	.await?;
+
+	context.commit_database_transaction().await?;
+
+	service::queue_check_and_update_deployment_status(
+		&workspace_id,
+		&deployment_id,
 		&config,
 		&request_id,
 	)
@@ -1206,10 +1276,11 @@ async fn stop_deployment(
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	log::trace!(
-		"request_id: {} - queuing stop the deployment request",
-		request_id
+		"request_id: {} - Stopping the deployment {}",
+		request_id,
+		deployment_id
 	);
-	service::queue_stop_deployment(
+	service::stop_deployment(
 		context.get_database_connection(),
 		&deployment.workspace_id,
 		&deployment_id,
@@ -1305,7 +1376,24 @@ async fn revert_deployment(
 		request_id
 	);
 
-	service::queue_update_deployment_image(
+	let (image_name, _) =
+		service::get_image_name_and_digest_for_deployment_image(
+			context.get_database_connection(),
+			&deployment.registry,
+			&deployment.image_tag,
+			&config,
+			&request_id,
+		)
+		.await?;
+
+	db::update_deployment_status(
+		context.get_database_connection(),
+		&deployment_id,
+		&DeploymentStatus::Deploying,
+	)
+	.await?;
+
+	service::update_deployment_image(
 		context.get_database_connection(),
 		&workspace_id,
 		&deployment_id,
@@ -1313,9 +1401,20 @@ async fn revert_deployment(
 		&deployment.registry,
 		&image_digest,
 		&deployment.image_tag,
+		&image_name,
 		&deployment.region,
 		&deployment.machine_type,
 		&deployment_running_details,
+		&config,
+		&request_id,
+	)
+	.await?;
+
+	context.commit_database_transaction().await?;
+
+	service::queue_check_and_update_deployment_status(
+		&workspace_id,
+		&deployment_id,
 		&config,
 		&request_id,
 	)
@@ -1452,8 +1551,8 @@ async fn delete_deployment(
 	)
 	.await?;
 
-	log::trace!("request_id: {} - Queuing delete deployment", request_id);
-	service::queue_delete_deployment(
+	log::trace!("request_id: {} - Deleting deployment", request_id);
+	service::delete_deployment(
 		context.get_database_connection(),
 		&deployment.workspace_id,
 		&deployment_id,
@@ -1628,20 +1727,26 @@ async fn update_deployment(
 			)
 			.await?;
 
-			service::queue_update_deployment(
+			service::start_deployment(
 				context.get_database_connection(),
 				&workspace_id,
 				&deployment_id,
-				&deployment.name,
-				&deployment.registry,
-				&deployment.image_tag,
-				&deployment.region,
-				&deployment.machine_type,
+				&deployment,
 				&deployment_running_details,
 				&user_id,
 				&login_id,
 				&ip_address,
 				&metadata,
+				&config,
+				&request_id,
+			)
+			.await?;
+
+			context.commit_database_transaction().await?;
+
+			service::queue_check_and_update_deployment_status(
+				&workspace_id,
+				&deployment_id,
 				&config,
 				&request_id,
 			)

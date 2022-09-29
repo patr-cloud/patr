@@ -10,7 +10,6 @@ use api_models::{
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use super::DeploymentMetadata;
 use crate::{
 	db::Workspace,
 	rabbitmq::{BuildId, BuildStep},
@@ -46,59 +45,16 @@ impl fmt::Display for Queue {
 #[serde(tag = "action", rename_all = "camelCase")]
 #[allow(clippy::large_enum_variant)]
 pub enum DeploymentRequestData {
-	Create {
+	CheckAndUpdateStatus {
 		workspace_id: Uuid,
-		deployment: Deployment,
-		image_name: String,
-		digest: Option<String>,
-		running_details: DeploymentRunningDetails,
-		request_id: Uuid,
+		deployment_id: Uuid,
 	},
 	UpdateImage {
 		workspace_id: Uuid,
 		deployment: Deployment,
 		image_name: String,
-		digest: Option<String>,
+		digest: String,
 		running_details: DeploymentRunningDetails,
-		request_id: Uuid,
-	},
-	Start {
-		workspace_id: Uuid,
-		deployment: Deployment,
-		image_name: String,
-		digest: Option<String>,
-		running_details: DeploymentRunningDetails,
-		user_id: Uuid,
-		login_id: Uuid,
-		ip_address: String,
-		request_id: Uuid,
-	},
-	Stop {
-		workspace_id: Uuid,
-		deployment_id: Uuid,
-		user_id: Uuid,
-		login_id: Uuid,
-		ip_address: String,
-		request_id: Uuid,
-	},
-	Update {
-		workspace_id: Uuid,
-		deployment: Deployment,
-		image_name: String,
-		digest: Option<String>,
-		running_details: DeploymentRunningDetails,
-		user_id: Uuid,
-		login_id: Uuid,
-		ip_address: String,
-		metadata: DeploymentMetadata,
-		request_id: Uuid,
-	},
-	Delete {
-		workspace_id: Uuid,
-		deployment_id: Uuid,
-		user_id: Uuid,
-		login_id: Uuid,
-		ip_address: String,
 		request_id: Uuid,
 	},
 }
