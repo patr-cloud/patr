@@ -895,6 +895,7 @@ async fn create_deployment(
 	context.commit_database_transaction().await?;
 
 	if deploy_on_create {
+		let mut is_deployed = false;
 		if let DeploymentRegistry::PatrRegistry { repository_id, .. } =
 			&registry
 		{
@@ -920,33 +921,80 @@ async fn create_deployment(
 					&digest,
 				)
 				.await?;
+
+				if db::get_docker_repository_tag_details(
+					context.get_database_connection(),
+					repository_id,
+					image_tag,
+				)
+				.await?
+				.is_some()
+				{
+					service::start_deployment(
+						context.get_database_connection(),
+						&workspace_id,
+						&id,
+						&Deployment {
+							id: id.clone(),
+							name: name.to_string(),
+							registry: registry.clone(),
+							image_tag: image_tag.to_string(),
+							status: DeploymentStatus::Pushed,
+							region: region.clone(),
+							machine_type: machine_type.clone(),
+							current_live_digest: Some(digest),
+						},
+						&deployment_running_details,
+						&user_id,
+						&login_id,
+						&ip_address,
+						&DeploymentMetadata::Start {},
+						&config,
+						&request_id,
+					)
+					.await?;
+					is_deployed = true;
+				}
 			}
+		} else {
+			// external registry
+			service::start_deployment(
+				context.get_database_connection(),
+				&workspace_id,
+				&id,
+				&Deployment {
+					id: id.clone(),
+					name: name.to_string(),
+					registry: registry.clone(),
+					image_tag: image_tag.to_string(),
+					status: DeploymentStatus::Pushed,
+					region: region.clone(),
+					machine_type: machine_type.clone(),
+					current_live_digest: None,
+				},
+				&deployment_running_details,
+				&user_id,
+				&login_id,
+				&ip_address,
+				&DeploymentMetadata::Start {},
+				&config,
+				&request_id,
+			)
+			.await?;
+			is_deployed = true;
 		}
 
-		service::start_created_deployment(
-			context.get_database_connection(),
-			&workspace_id,
-			&id,
-			name,
-			&registry,
-			image_tag,
-			&region,
-			&machine_type,
-			&deployment_running_details,
-			&config,
-			&request_id,
-		)
-		.await?;
+		if is_deployed {
+			context.commit_database_transaction().await?;
 
-		context.commit_database_transaction().await?;
-
-		service::queue_check_and_update_deployment_status(
-			&workspace_id,
-			&id,
-			&config,
-			&request_id,
-		)
-		.await?;
+			service::queue_check_and_update_deployment_status(
+				&workspace_id,
+				&id,
+				&config,
+				&request_id,
+			)
+			.await?;
+		}
 	}
 
 	let _ = service::get_internal_metrics(
@@ -1158,6 +1206,7 @@ async fn start_deployment(
 		&user_id,
 		&login_id,
 		&ip_address,
+		&DeploymentMetadata::Start {},
 		&config,
 		&request_id,
 	)
@@ -1678,15 +1727,11 @@ async fn update_deployment(
 			)
 			.await?;
 
-			service::start_updated_deployment(
+			service::start_deployment(
 				context.get_database_connection(),
 				&workspace_id,
 				&deployment_id,
-				&deployment.name,
-				&deployment.registry,
-				&deployment.image_tag,
-				&deployment.region,
-				&deployment.machine_type,
+				&deployment,
 				&deployment_running_details,
 				&user_id,
 				&login_id,

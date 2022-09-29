@@ -304,12 +304,31 @@ async fn notification_handler(
 				deployment.id
 			);
 
-			service::queue_update_deployment_image(
+			let (image_name, _) =
+				service::get_image_name_and_digest_for_deployment_image(
+					context.get_database_connection(),
+					&deployment.registry,
+					&deployment.image_tag,
+					&config,
+					&request_id,
+				)
+				.await?;
+
+			db::update_deployment_status(
 				context.get_database_connection(),
+				&deployment.id,
+				&DeploymentStatus::Deploying,
+			)
+			.await?;
+
+			context.commit_database_transaction().await?;
+
+			service::queue_update_deployment_image(
 				&workspace_id,
 				&deployment.id,
 				&deployment.name,
 				&deployment.registry,
+				&image_name,
 				&target.digest,
 				&deployment.image_tag,
 				&deployment.region,

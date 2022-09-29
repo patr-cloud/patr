@@ -11,7 +11,7 @@ use chrono::{DateTime, Utc};
 use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
-	db::{self, Workspace},
+	db::Workspace,
 	models::rabbitmq::{
 		CIData,
 		DeploymentRequestData,
@@ -21,7 +21,6 @@ use crate::{
 	rabbitmq::{self, BuildId, BuildStep},
 	service,
 	utils::{settings::Settings, Error},
-	Database,
 };
 
 pub async fn queue_check_and_update_deployment_status(
@@ -44,11 +43,11 @@ pub async fn queue_check_and_update_deployment_status(
 }
 
 pub async fn queue_update_deployment_image(
-	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
 	name: &str,
 	registry: &DeploymentRegistry,
+	image_name: &str,
 	digest: &str,
 	image_tag: &str,
 	region: &Uuid,
@@ -57,19 +56,6 @@ pub async fn queue_update_deployment_image(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let (image_name, _) =
-		service::get_image_name_and_digest_for_deployment_image(
-			connection, registry, image_tag, config, request_id,
-		)
-		.await?;
-
-	db::update_deployment_status(
-		connection,
-		deployment_id,
-		&DeploymentStatus::Deploying,
-	)
-	.await?;
-
 	send_message_to_infra_queue(
 		&DeploymentRequestData::UpdateImage {
 			workspace_id: workspace_id.clone(),
@@ -83,7 +69,7 @@ pub async fn queue_update_deployment_image(
 				machine_type: machine_type.clone(),
 				current_live_digest: Some(digest.to_string()),
 			},
-			image_name,
+			image_name: image_name.to_owned(),
 			digest: digest.to_string(),
 			running_details: deployment_running_details.clone(),
 			request_id: request_id.clone(),
