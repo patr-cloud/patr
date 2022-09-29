@@ -133,7 +133,7 @@ pub async fn parse_ci_file_content(
 
 	let CiFlow::Pipeline(pipeline) = &mut ci_flow;
 	for service in &mut pipeline.services {
-		for value in service.env.values_mut() {
+		for value in service.environment.values_mut() {
 			if let EnvVarValue::ValueFromSecret { from_secret } = value {
 				if let Some(secret_id) = workspace_secrets.get(&*from_secret) {
 					*from_secret = secret_id.to_string();
@@ -153,7 +153,7 @@ pub async fn parse_ci_file_content(
 	}
 	for step in &mut pipeline.steps {
 		if let Step::Work(work) = step {
-			for value in work.env.values_mut() {
+			for value in work.environment.values_mut() {
 				if let EnvVarValue::ValueFromSecret { from_secret } = value {
 					if let Some(secret_id) =
 						workspace_secrets.get(&*from_secret)
@@ -347,8 +347,8 @@ pub async fn add_build_steps_in_db(
 		Work {
 			name,
 			image,
-			command,
-			env: _,
+			commands: command,
+			environment: _,
 			next: _,
 		},
 	) in works.iter().enumerate()
@@ -458,8 +458,8 @@ pub async fn add_build_steps_in_k8s(
 		Work {
 			name: _,
 			image,
-			command,
-			env,
+			commands: command,
+			environment: env,
 			next: _,
 		},
 	) in work_steps.into_iter().enumerate()
