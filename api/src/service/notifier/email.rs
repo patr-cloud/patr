@@ -491,6 +491,123 @@ pub async fn send_payment_failed_email(
 	.await
 }
 
+// #[derive(EmailTemplate, Serialize)]
+// // todo change path when actual file comes
+// // #[template_path = "assets/emails/payment-failure/template.json"]
+// struct ResourceDeletedEmail {
+// 	resource_id: String, // Before merging verify if this is not required
+// 	resource_name: String,
+// 	super_admin_firstname: String,
+// 	ip_address: String, // Before merging verify if this is not required
+// 	city: String,
+// 	region: String,
+// 	country: String,
+// }
+// pub async fn send_resource_deleted_email(
+// 	resource_id: String,
+// 	resource_name: String,
+// 	super_admin_firstname: String,
+// 	ip_address: String,
+// 	city: String,
+// 	region: String,
+// 	country: String,
+// 	email: String,
+// ) -> Result<(), Error> {
+// 	send_email(
+// 		ResourceDeletedEmail {
+// 			resource_id,
+// 			resource_name,
+// 			super_admin_firstname,
+// 			ip_address,
+// 			city,
+// 			region,
+// 			country,
+// 		},
+// 		email,
+// 		None,
+// 		"Patr resource deleted",
+// 	)
+// 	.await
+// }
+
+// #[derive(EmailTemplate, Serialize)]
+// // todo change path when actual file comes
+// // #[template_path = "assets/emails/payment-failure/template.json"]
+// struct ResourceDeletedEmail {
+// 	resource_id: String, // Before merging verify if this is not required
+// 	resource_name: String,
+// 	super_admin_firstname: String,
+// 	ip_address: String, // Before merging verify if this is not required
+// 	city: String,
+// 	region: String,
+// 	country: String,
+// }
+// pub async fn send_resource_stopped_email(
+// 	resource_id: String,
+// 	resource_name: String,
+// 	super_admin_firstname: String,
+// 	ip_address: String,
+// 	city: String,
+// 	region: String,
+// 	country: String,
+// 	email: String,
+// ) -> Result<(), Error> {
+// 	send_email(
+// 		ResourceStoppedEmail {
+// 			resource_id,
+// 			resource_name,
+// 			super_admin_firstname,
+// 			ip_address,
+// 			city,
+// 			region,
+// 			country,
+// 		},
+// 		email,
+// 		None,
+// 		"Patr resource Stopped",
+// 	)
+// 	.await
+// }
+
+// #[derive(EmailTemplate, Serialize)]
+// // todo change path when actual file comes
+// // #[template_path = "assets/emails/payment-failure/template.json"]
+// struct ResourceUpdatedEmail {
+// 	resource_id: String, // Before merging verify if this is not required
+// 	resource_name: String,
+// 	super_admin_firstname: String,
+// 	ip_address: String, // Before merging verify if this is not required
+// 	city: String,
+// 	region: String,
+// 	country: String,
+// }
+
+// pub async fn send_resource_updated_email(
+// 	resource_id: String,
+// 	resource_name: String,
+// 	super_admin_firstname: String,
+// 	ip_address: String,
+// 	city: String,
+// 	region: String,
+// 	country: String,
+// 	email: String,
+// ) -> Result<(), Error> {
+// 	send_email(
+// 		ResourceUpdatedEmail {
+// 			resource_id,
+// 			resource_name,
+// 			super_admin_firstname,
+// 			ip_address,
+// 			city,
+// 			region,
+// 			country,
+// 		},
+// 		email,
+// 		None,
+// 		"Patr resource updated",
+// 	)
+// 	.await
+// }
 /// # Description
 /// This function is used to send the email to a recipient
 ///
