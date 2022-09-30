@@ -9625,6 +9625,16 @@
     },
     "query": "SELECT image_digest, created as \"created: _\" FROM deployment_deploy_history WHERE deployment_id = $1;"
   },
+  "b1c11b9398027cdddaddf9cfeea526ffb4d80115242f06f5479359aaaf8e2360": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_region( id UUID CONSTRAINT deployment_region_pk PRIMARY KEY, name TEXT NOT NULL, provider INFRASTRUCTURE_CLOUD_PROVIDER NOT NULL, workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id REFERENCES workspace(id), ready BOOLEAN NOT NULL, kubernetes_cluster_url TEXT, kubernetes_auth_username TEXT, kubernetes_auth_token TEXT, kubernetes_ca_data TEXT, kubernetes_ingress_ip_addr INET, message_log TEXT, CONSTRAINT deployment_region_chk_ready_or_not CHECK( ( ready = TRUE AND kubernetes_cluster_url IS NOT NULL AND kubernetes_ca_data IS NOT NULL AND kubernetes_auth_username IS NOT NULL AND kubernetes_auth_token IS NOT NULL AND kubernetes_ingress_ip_addr IS NOT NULL ) OR ( ready = FALSE AND kubernetes_cluster_url IS NULL AND kubernetes_ca_data IS NULL AND kubernetes_auth_username IS NULL AND kubernetes_auth_username IS NULL AND kubernetes_ingress_ip_addr IS NULL ) ) );"
+  },
   "b214965bc8ea98855fc7ad482af084d4d42ab90aa577f64f9c30ce925188a8cf": {
     "describe": {
       "columns": [
@@ -10385,16 +10395,6 @@
       }
     },
     "query": "INSERT INTO secrets_payment_history( workspace_id, secret_count, start_time, stop_time ) VALUES ( $1, $2, $3, NULL );"
-  },
-  "c132cd2a43e49c65ed9e25bb188f999e0f7dbfc788d0c52f5bb7aa078d9cdf9b": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment_region( id UUID CONSTRAINT deployment_region_pk PRIMARY KEY, name TEXT NOT NULL, provider INFRASTRUCTURE_CLOUD_PROVIDER NOT NULL, workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id REFERENCES workspace(id), ready BOOLEAN NOT NULL, kubernetes_cluster_url TEXT, kubernetes_auth_username TEXT, kubernetes_auth_token TEXT, kubernetes_ca_data TEXT, kubernetes_ingress_ip_addr INET, message_log TEXT, CONSTRAINT deployment_region_chk_ready_or_not CHECK( ( workspace_id IS NOT NULL AND ( ( ready = TRUE AND kubernetes_cluster_url IS NOT NULL AND kubernetes_ca_data IS NOT NULL AND kubernetes_auth_username IS NOT NULL AND kubernetes_auth_token IS NOT NULL AND kubernetes_ingress_ip_addr IS NOT NULL ) OR ( ready = FALSE AND kubernetes_cluster_url IS NULL AND kubernetes_ca_data IS NULL AND kubernetes_auth_username IS NULL AND kubernetes_auth_username IS NULL AND kubernetes_ingress_ip_addr IS NULL ) ) ) OR ( workspace_id IS NULL AND kubernetes_cluster_url IS NULL AND kubernetes_ca_data IS NULL AND kubernetes_auth_username IS NULL AND kubernetes_auth_token IS NULL AND kubernetes_ingress_ip_addr IS NULL ) ) );"
   },
   "c15c9714352f98ccb6ae73eb80f523db23e3f5381f3cb368ddac0743bfae3dcf": {
     "describe": {
