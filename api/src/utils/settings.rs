@@ -48,10 +48,10 @@ pub struct Settings {
 	#[serde(alias = "jwtsecret")]
 	pub jwt_secret: String,
 	// Callback domain used for exposing patr webhooks/apis to internet.
-	// For prod, it will be https://app.patr.cloud
+	// For prod, it will be https://api.patr.cloud
 	// For dev and testing, use ngrok's domain
-	#[serde(alias = "frontenddomain")]
-	pub frontend_domain: String,
+	#[serde(alias = "apiurl")]
+	pub api_url: String,
 	pub environment: RunningEnvironment,
 	pub s3: S3Settings,
 	pub database: DatabaseSettings,

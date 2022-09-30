@@ -902,7 +902,7 @@ async fn activate_repo(
 					secret: webhook_secret,
 					token: "".to_string(),
 					url: service::get_webhook_url_for_repo(
-						&context.get_state().config.frontend_domain,
+						&context.get_state().config.api_url,
 						&repo.id,
 					),
 				}),
@@ -984,7 +984,7 @@ async fn deactivate_repo(
 		.status(500)?;
 
 	let github_webhook_url = service::get_webhook_url_for_repo(
-		&context.get_state().config.frontend_domain,
+		&context.get_state().config.api_url,
 		&repo.id,
 	);
 
@@ -1792,7 +1792,7 @@ async fn sign_out(
 			.status(500)?;
 
 		let github_webhook_url = service::get_webhook_url_for_repo(
-			&context.get_state().config.frontend_domain,
+			&context.get_state().config.api_url,
 			&repo.id,
 		);
 		for webhook in webhooks {

@@ -64,11 +64,8 @@ pub enum ParseStatus {
 	Error(String),
 }
 
-pub fn get_webhook_url_for_repo(
-	frontend_domain: &str,
-	repo_id: &Uuid,
-) -> String {
-	format!("{frontend_domain}/webhook/ci/repo/{repo_id}")
+pub fn get_webhook_url_for_repo(api_url: &str, repo_id: &Uuid) -> String {
+	format!("{api_url}/webhook/ci/repo/{repo_id}")
 }
 
 pub async fn parse_ci_file_content(
