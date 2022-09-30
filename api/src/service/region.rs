@@ -93,7 +93,9 @@ pub async fn get_kubernetes_config_for_region(
 			},
 			_ => {
 				log::info!("cluster {region_id} is not yet initialized");
-				return Err(Error::empty());
+				return Err(Error::empty().body(format!(
+					"cluster {region_id} is not yet initialized"
+				)));
 			}
 		}
 	};

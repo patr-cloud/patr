@@ -42,7 +42,7 @@ impl fmt::Display for Queue {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(tag = "action", rename_all = "camelCase")]
+#[serde(tag = "resource", rename_all = "camelCase")]
 #[allow(clippy::large_enum_variant, clippy::upper_case_acronyms)]
 pub enum InfraRequestData {
 	Deployment(DeploymentRequestData),
@@ -50,7 +50,7 @@ pub enum InfraRequestData {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(tag = "action", rename_all = "camelCase")]
 pub enum BYOCData {
 	InitKubernetesCluster {
 		region_id: Uuid,
@@ -77,7 +77,7 @@ pub enum BYOCData {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(tag = "action", rename_all = "camelCase")]
 #[allow(clippy::large_enum_variant)]
 pub enum DeploymentRequestData {
 	CheckAndUpdateStatus {

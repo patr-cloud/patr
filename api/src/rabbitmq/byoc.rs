@@ -79,8 +79,8 @@ pub(super) async fn process_request(
                     "Error while initializing the cluster {}:\nStatus: {}\nStderr: {}\nStdout: {}",
                     region_id,
                     output.status,
-                    std::str::from_utf8(&output.stderr)?,
-                    std::str::from_utf8(&output.stdout)?
+                    String::from_utf8_lossy(&output.stderr),
+                    String::from_utf8_lossy(&output.stdout)
                 );
 				db::append_messge_log_for_region(
 					connection,
