@@ -921,18 +921,29 @@ async fn refactor_deployment_region_table(
 			ADD COLUMN message_log TEXT,
 			ADD CONSTRAINT deployment_region_chk_ready_or_not CHECK(
 				(
-					ready = TRUE AND
-					kubernetes_cluster_url IS NOT NULL AND
-					kubernetes_ca_data IS NOT NULL AND
-					kubernetes_auth_username IS NOT NULL AND
-					kubernetes_auth_token IS NOT NULL AND
-					kubernetes_ingress_ip_addr IS NOT NULL
+					workspace_id IS NOT NULL AND (
+						(
+							ready = TRUE AND
+							kubernetes_cluster_url IS NOT NULL AND
+							kubernetes_ca_data IS NOT NULL AND
+							kubernetes_auth_username IS NOT NULL AND
+							kubernetes_auth_token IS NOT NULL AND
+							kubernetes_ingress_ip_addr IS NOT NULL
+						) OR (
+							ready = FALSE AND
+							kubernetes_cluster_url IS NULL AND
+							kubernetes_ca_data IS NULL AND
+							kubernetes_auth_username IS NULL AND
+							kubernetes_auth_username IS NULL AND
+							kubernetes_ingress_ip_addr IS NULL
+						)
+					)
 				) OR (
-					ready = FALSE AND
+					workspace_id IS NULL AND
 					kubernetes_cluster_url IS NULL AND
 					kubernetes_ca_data IS NULL AND
 					kubernetes_auth_username IS NULL AND
-					kubernetes_auth_username IS NULL AND
+					kubernetes_auth_token IS NULL AND
 					kubernetes_ingress_ip_addr IS NULL
 				)
 			);
