@@ -58,7 +58,7 @@ pub(super) async fn process_request(
 				.status(500)?;
 
 			// todo: get both stdout and stderr in same stream -> use subprocess crate in future
-			let output = Command::new("k8s/fresh/k8s_init.sh")
+			let output = Command::new("assets/k8s/fresh/k8s_init.sh")
 				.args(&[
 					region_id.as_str(),
 					&parent_workspace,
@@ -215,6 +215,12 @@ pub(super) async fn process_request(
 				&ip_addr,
 			)
 			.await?;
+
+			db::append_messge_log_for_region(
+				connection,
+				&region_id,
+				"Successfully assigned IP Addr for load balancer.\nRegion is now ready for deployments"
+			).await?;
 
 			Ok(())
 		}

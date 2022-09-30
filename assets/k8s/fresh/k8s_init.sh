@@ -41,3 +41,5 @@ kubectl patch configmap ingress-nginx-controller --namespace ingress-nginx --typ
 rm $KUBECONFIG_PATH
 
 echo "Successfully initialized cluster $CLUSTER_ID"
+
+echo "Waiting for load balancer to assign IP address..."
