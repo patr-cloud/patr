@@ -138,6 +138,11 @@ pub mod permissions {
 			}
 		}
 
+		pub mod region {
+			pub const LIST: &str = "workspace::region::list";
+			pub const ADD: &str = "workspace::region::add";
+		}
+
 		pub mod ci {
 			pub mod git_provider {
 				pub const CONNECT: &str =
@@ -183,4 +188,5 @@ pub mod resource_types {
 	pub const SECRET: &str = "secret";
 	pub const STATIC_SITE_UPLOAD: &str = "staticSiteUpload";
 	pub const CI_REPO: &str = "ciRepo";
+	pub const DEPLOYMENT_REGION: &str = "deploymentRegion";
 }

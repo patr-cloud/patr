@@ -19,16 +19,12 @@ use tokio::{signal, task};
 
 use crate::{
 	app::App,
-	models::rabbitmq::{
-		CIData,
-		DeploymentRequestData,
-		Queue,
-		WorkspaceRequestData,
-	},
+	models::rabbitmq::{CIData, InfraRequestData, Queue, WorkspaceRequestData},
 	utils::{settings::Settings, Error},
 };
 
 mod billing;
+mod byoc;
 mod ci;
 mod database;
 mod deployment;
@@ -89,9 +85,9 @@ pub async fn start_consumer(app: &App) {
 
 				let result = match queue {
 					Queue::Infrastructure => {
-						let payload = serde_json::from_slice::<
-							DeploymentRequestData,
-						>(&delivery.data);
+						let payload = serde_json::from_slice::<InfraRequestData>(
+							&delivery.data,
+						);
 
 						let payload =
 							match payload {
@@ -185,20 +181,40 @@ pub async fn start_consumer(app: &App) {
 }
 
 async fn process_infra_queue_payload(
-	data: DeploymentRequestData,
+	data: InfraRequestData,
 	app: &App,
 ) -> Result<(), Error> {
 	let config = &app.config;
 	let mut connection = app.database.acquire().await?;
-	deployment::process_request(&mut connection, data, config)
-		.await
-		.map_err(|error| {
-			log::error!(
-				"Error processing infra RabbitMQ message: {}",
-				error.get_error()
-			);
-			error
-		})
+
+	match data {
+		InfraRequestData::Deployment(deployment_data) => {
+			deployment::process_request(
+				&mut connection,
+				deployment_data,
+				config,
+			)
+			.await
+			.map_err(|error| {
+				log::error!(
+					"Error processing infra RabbitMQ message: {}",
+					error.get_error()
+				);
+				error
+			})
+		}
+		InfraRequestData::BYOC(byoc_data) => {
+			byoc::process_request(&mut connection, byoc_data, config)
+				.await
+				.map_err(|error| {
+					log::error!(
+						"Error processing infra RabbitMQ message: {}",
+						error.get_error()
+					);
+					error
+				})
+		}
+	}
 }
 
 async fn process_ci_queue_payload(

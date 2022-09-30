@@ -13,8 +13,10 @@ use lapin::{options::BasicPublishOptions, BasicProperties};
 use crate::{
 	db::Workspace,
 	models::rabbitmq::{
+		BYOCData,
 		CIData,
 		DeploymentRequestData,
+		InfraRequestData,
 		Queue,
 		WorkspaceRequestData,
 	},
@@ -30,16 +32,16 @@ pub async fn queue_check_and_update_deployment_status(
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	send_message_to_infra_queue(
-		&DeploymentRequestData::CheckAndUpdateStatus {
-			workspace_id: workspace_id.clone(),
-			deployment_id: deployment_id.clone(),
-		},
+		&InfraRequestData::Deployment(
+			DeploymentRequestData::CheckAndUpdateStatus {
+				workspace_id: workspace_id.clone(),
+				deployment_id: deployment_id.clone(),
+			},
+		),
 		config,
 		request_id,
 	)
-	.await?;
-
-	Ok(())
+	.await
 }
 
 pub async fn queue_update_deployment_image(
@@ -57,7 +59,7 @@ pub async fn queue_update_deployment_image(
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	send_message_to_infra_queue(
-		&DeploymentRequestData::UpdateImage {
+		&InfraRequestData::Deployment(DeploymentRequestData::UpdateImage {
 			workspace_id: workspace_id.clone(),
 			deployment: Deployment {
 				id: deployment_id.clone(),
@@ -73,7 +75,7 @@ pub async fn queue_update_deployment_image(
 			digest: digest.to_string(),
 			running_details: deployment_running_details.clone(),
 			request_id: request_id.clone(),
-		},
+		}),
 		config,
 		request_id,
 	)
@@ -146,7 +148,7 @@ pub async fn queue_generate_invoice_for_workspace(
 }
 
 pub async fn send_message_to_infra_queue(
-	message: &DeploymentRequestData,
+	message: &InfraRequestData,
 	_config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -307,6 +309,30 @@ pub async fn queue_clean_ci_build_pipeline(
 			build_id,
 			request_id: request_id.clone(),
 		},
+		config,
+		request_id,
+	)
+	.await
+}
+
+pub async fn queue_setup_kubernetes_cluster(
+	region_id: &Uuid,
+	cluster_url: &str,
+	certificate_authority_data: &str,
+	auth_username: &str,
+	auth_token: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_infra_queue(
+		&InfraRequestData::BYOC(BYOCData::InitKubernetesCluster {
+			region_id: region_id.clone(),
+			cluster_url: cluster_url.to_owned(),
+			certificate_authority_data: certificate_authority_data.to_string(),
+			auth_username: auth_username.to_string(),
+			auth_token: auth_token.to_string(),
+			request_id: request_id.clone(),
+		}),
 		config,
 		request_id,
 	)

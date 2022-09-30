@@ -400,7 +400,9 @@ pub async fn process_request(
 					);
 					service::delete_kubernetes_namespace(
 						&build_id.get_build_namespace(),
-						config,
+						service::get_kubernetes_config_for_default_region(
+							config,
+						),
 						&request_id,
 					)
 					.await?;
@@ -425,7 +427,9 @@ pub async fn process_request(
 					);
 					service::delete_kubernetes_namespace(
 						&build_id.get_build_namespace(),
-						config,
+						service::get_kubernetes_config_for_default_region(
+							config,
+						),
 						&request_id,
 					)
 					.await?;
@@ -458,7 +462,9 @@ pub async fn process_request(
 					log::debug!("request_id: {request_id} - Cleaning stopped build `{build_id}`");
 					service::delete_kubernetes_namespace(
 						&build_id.get_build_namespace(),
-						config,
+						service::get_kubernetes_config_for_default_region(
+							config,
+						),
 						&request_id,
 					)
 					.await?;

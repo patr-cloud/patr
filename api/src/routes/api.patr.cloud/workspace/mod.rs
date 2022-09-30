@@ -41,6 +41,7 @@ mod domain;
 mod infrastructure;
 #[path = "rbac/mod.rs"]
 mod rbac_routes;
+mod region;
 mod secret;
 
 /// # Description
@@ -149,6 +150,7 @@ pub fn create_sub_app(
 	sub_app.use_sub_app("/:workspaceId/rbac", rbac_routes::create_sub_app(app));
 	sub_app.use_sub_app("/:workspaceId/secret", secret::create_sub_app(app));
 	sub_app.use_sub_app("/:workspaceId/ci", ci::create_sub_app(app));
+	sub_app.use_sub_app("/:workspaceId/region", region::create_sub_app(app));
 
 	sub_app.delete(
 		"/:workspaceId",
@@ -615,8 +617,12 @@ async fn delete_workspace(
 			.body(error!(CANNOT_DELETE_WORKSPACE).to_string()));
 	}
 
-	service::delete_kubernetes_namespace(namespace, &config, &request_id)
-		.await?;
+	service::delete_kubernetes_namespace(
+		namespace,
+		service::get_kubernetes_config_for_default_region(&config),
+		&request_id,
+	)
+	.await?;
 
 	db::update_workspace_name(
 		context.get_database_connection(),

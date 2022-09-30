@@ -69,7 +69,13 @@ use crate::{
 	db,
 	error,
 	models::deployment,
-	service::ext_traits::DeleteOpt,
+	service::{
+		self,
+		ext_traits::DeleteOpt,
+		get_kubernetes_config_for_default_region,
+		ClusterType,
+		KubernetesConfigDetails,
+	},
 	utils::{constants::request_keys, settings::Settings, Error},
 	Database,
 };
@@ -80,20 +86,24 @@ pub async fn update_kubernetes_deployment(
 	full_image: &str,
 	digest: Option<&str>,
 	running_details: &DeploymentRunningDetails,
+	kubeconfig: KubernetesConfigDetails,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let cluster_type = kubeconfig.cluster_type;
+	let kubernetes_client =
+		super::get_kubernetes_client(kubeconfig.auth_details).await?;
 
 	// the namespace is workspace id
 	let namespace = workspace_id.as_str();
 
-	if !super::secret_exists(
-		"tls-domain-wildcard-patr-cloud",
-		kubernetes_client.clone(),
-		namespace,
-	)
-	.await?
+	if cluster_type == ClusterType::PatrOwned &&
+		!super::secret_exists(
+			"tls-domain-wildcard-patr-cloud",
+			kubernetes_client.clone(),
+			namespace,
+		)
+		.await?
 	{
 		return Error::as_result()
 			.status(500)
@@ -383,6 +393,9 @@ pub async fn update_kubernetes_deployment(
 						.registry
 						.is_patr_registry()
 						.then(|| {
+							// TODO: for now patr registry is not supported for
+							// user clusters, need to create a separate secret
+							// for each private repo in future
 							vec![LocalObjectReference {
 								name: Some("patr-regcred".to_string()),
 							}]
@@ -501,7 +514,7 @@ pub async fn update_kubernetes_deployment(
 		),
 	]
 	.into_iter()
-	.collect();
+	.collect::<BTreeMap<_, _>>();
 
 	let (default_ingress_rules, default_tls_rules) = running_details
 		.ports
@@ -545,12 +558,12 @@ pub async fn update_kubernetes_deployment(
 	let kubernetes_ingress = Ingress {
 		metadata: ObjectMeta {
 			name: Some(format!("ingress-{}", deployment.id)),
-			annotations: Some(annotations),
+			annotations: Some(annotations.clone()),
 			..ObjectMeta::default()
 		},
 		spec: Some(IngressSpec {
 			rules: Some(default_ingress_rules),
-			tls: Some(default_tls_rules),
+			tls: Some(default_tls_rules.clone()),
 			..IngressSpec::default()
 		}),
 		..Ingress::default()
@@ -567,6 +580,99 @@ pub async fn update_kubernetes_deployment(
 			&Patch::Apply(kubernetes_ingress),
 		)
 		.await?;
+
+	if let ClusterType::UserOwned {
+		region_id,
+		ingress_ip_addr: _,
+	} = cluster_type
+	{
+		// create a ingress in patr cluster to point to user's cluster
+		let kubernetes_client = super::get_kubernetes_client(
+			get_kubernetes_config_for_default_region(config).auth_details,
+		)
+		.await?;
+
+		let exposted_ports = running_details
+			.ports
+			.iter()
+			.filter(|(_, port_type)| *port_type == &ExposedPortType::Http);
+
+		for (port, _) in exposted_ports {
+			let ingress_rule = IngressRule {
+				host: Some(format!("{}-{}.patr.cloud", port, deployment.id)),
+				http: Some(HTTPIngressRuleValue {
+					paths: vec![HTTPIngressPath {
+						backend: IngressBackend {
+							service: Some(IngressServiceBackend {
+								name: format!("service-{}", region_id.as_str()),
+								port: Some(ServiceBackendPort {
+									number: Some(80),
+									..ServiceBackendPort::default()
+								}),
+							}),
+							..Default::default()
+						},
+						path: Some("/".to_string()),
+						path_type: Some("Prefix".to_string()),
+					}],
+				}),
+			};
+
+			let annotations = [
+				(
+					"kubernetes.io/ingress.class".to_string(),
+					"nginx".to_string(),
+				),
+				(
+					String::from("nginx.ingress.kubernetes.io/upstream-vhost"),
+					format!("{}-{}.patr.cloud", port, deployment.id),
+				),
+				(
+					String::from(
+						"nginx.ingress.kubernetes.io/backend-protocol",
+					),
+					"HTTP".to_string(),
+				),
+				// TODO: add cert manager annotations,
+				// once ssl certificate is used in customers cluster
+			]
+			.into_iter()
+			.collect();
+
+			let kubernetes_ingress = Ingress {
+				metadata: ObjectMeta {
+					name: Some(format!("ingress-{}", deployment.id)),
+					annotations: Some(annotations),
+					..ObjectMeta::default()
+				},
+				spec: Some(IngressSpec {
+					rules: Some(vec![ingress_rule]),
+					tls: Some(vec![IngressTLS {
+						hosts: Some(vec![
+							"*.patr.cloud".to_string(),
+							"patr.cloud".to_string(),
+						]),
+						secret_name: None,
+					}]),
+					..IngressSpec::default()
+				}),
+				..Ingress::default()
+			};
+
+			let ingress_api = Api::<Ingress>::namespaced(
+				kubernetes_client.clone(),
+				namespace,
+			);
+
+			ingress_api
+				.patch(
+					&format!("ingress-{}", deployment.id),
+					&PatchParams::apply(&format!("ingress-{}", deployment.id)),
+					&Patch::Apply(kubernetes_ingress),
+				)
+				.await?;
+		}
+	}
 
 	log::trace!("request_id: {} - deployment created", request_id);
 
@@ -588,10 +694,11 @@ pub async fn update_kubernetes_deployment(
 pub async fn delete_kubernetes_deployment(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-	config: &Settings,
+	kubeconfig: KubernetesConfigDetails,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let kubernetes_client =
+		super::get_kubernetes_client(kubeconfig.auth_details).await?;
 
 	log::trace!("request_id: {} - deleting the deployment", request_id);
 
@@ -664,7 +771,15 @@ pub async fn get_kubernetes_deployment_status(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let kubeconfig = service::get_kubernetes_config_for_region(
+		connection,
+		&deployment.region,
+		config,
+	)
+	.await?;
+	let kubernetes_client =
+		super::get_kubernetes_client(kubeconfig.auth_details).await?;
+
 	let deployment_result =
 		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace)
 			.get(&format!("deployment-{}", deployment.id))

@@ -1284,6 +1284,7 @@ async fn stop_deployment(
 		context.get_database_connection(),
 		&deployment.workspace_id,
 		&deployment_id,
+		&deployment.region,
 		&user_id,
 		&login_id,
 		&ip_address,
@@ -1463,6 +1464,25 @@ async fn get_logs(
 	)
 	.unwrap();
 
+	let deployment = db::get_deployment_by_id(
+		context.get_database_connection(),
+		&deployment_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	if !service::is_deployed_on_patr_cluster(
+		context.get_database_connection(),
+		&deployment.region,
+	)
+	.await?
+	{
+		return Err(Error::empty().status(500).body(
+			error!(FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER).to_string(),
+		));
+	}
+
 	let config = context.get_state().config.clone();
 
 	let start_time = Utc::now() -
@@ -1544,18 +1564,26 @@ async fn delete_deployment(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	db::stop_deployment_usage_history(
+	if service::is_deployed_on_patr_cluster(
 		context.get_database_connection(),
-		&deployment_id,
-		&Utc::now(),
+		&deployment.region,
 	)
-	.await?;
+	.await?
+	{
+		db::stop_deployment_usage_history(
+			context.get_database_connection(),
+			&deployment_id,
+			&Utc::now(),
+		)
+		.await?;
+	}
 
 	log::trace!("request_id: {} - Deleting deployment", request_id);
 	service::delete_deployment(
 		context.get_database_connection(),
 		&deployment.workspace_id,
 		&deployment_id,
+		&deployment.region,
 		&deployment.name,
 		&user_id,
 		&login_id,
@@ -1711,21 +1739,28 @@ async fn update_deployment(
 		}
 		_ => {
 			let current_time = Utc::now();
-			db::stop_deployment_usage_history(
+			if service::is_deployed_on_patr_cluster(
 				context.get_database_connection(),
-				&deployment_id,
-				&current_time,
+				&deployment.region,
 			)
-			.await?;
-			db::start_deployment_usage_history(
-				context.get_database_connection(),
-				&workspace_id,
-				&deployment_id,
-				&deployment.machine_type,
-				deployment_running_details.min_horizontal_scale as i32,
-				&current_time,
-			)
-			.await?;
+			.await?
+			{
+				db::stop_deployment_usage_history(
+					context.get_database_connection(),
+					&deployment_id,
+					&current_time,
+				)
+				.await?;
+				db::start_deployment_usage_history(
+					context.get_database_connection(),
+					&workspace_id,
+					&deployment_id,
+					&deployment.machine_type,
+					deployment_running_details.min_horizontal_scale as i32,
+					&current_time,
+				)
+				.await?;
+			}
 
 			service::start_deployment(
 				context.get_database_connection(),
@@ -1866,6 +1901,25 @@ async fn get_deployment_metrics(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
 	.unwrap();
+
+	let deployment = db::get_deployment_by_id(
+		context.get_database_connection(),
+		&deployment_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	if !service::is_deployed_on_patr_cluster(
+		context.get_database_connection(),
+		&deployment.region,
+	)
+	.await?
+	{
+		return Err(Error::empty().status(500).body(
+			error!(FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER).to_string(),
+		));
+	}
 
 	log::trace!(
 		"request_id: {} - Getting deployment metrics for deployment: {}",

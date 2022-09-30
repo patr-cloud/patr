@@ -15,8 +15,11 @@ pub(super) async fn migrate(
 	migrate_from_bigint_to_timestamptz(&mut *connection, config).await?;
 	add_migrations_for_ci(&mut *connection, config).await?;
 	clean_up_drone_ci(&mut *connection, config).await?;
-	reset_permission_order(&mut *connection, config).await?;
 	update_user_login_table_with_more_info(&mut *connection, config).await?;
+	refactor_deployment_region_table(&mut *connection, config).await?;
+	add_permission_and_resource_type_for_region(&mut *connection, config)
+		.await?;
+	reset_permission_order(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -722,14 +725,10 @@ async fn reset_permission_order(
 		"workspace::rbac::user::add",
 		"workspace::rbac::user::remove",
 		"workspace::rbac::user::updateRoles",
-		// ci (old)
-		"workspace::ci::github::connect",
-		"workspace::ci::github::activate",
-		"workspace::ci::github::deactivate",
-		"workspace::ci::github::viewBuilds",
-		"workspace::ci::github::restartBuilds",
-		"workspace::ci::github::disconnect",
-		// ci (new)
+		// region
+		"workspace::region::list",
+		"workspace::region::add",
+		// ci
 		"workspace::ci::git_provider::connect",
 		"workspace::ci::git_provider::disconnect",
 		"workspace::ci::git_provider::repo::activate",
@@ -854,6 +853,251 @@ async fn update_user_login_table_with_more_info(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	Ok(())
+}
+
+async fn refactor_deployment_region_table(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TYPE DEPLOYMENT_CLOUD_PROVIDER
+		RENAME TO INFRASTRUCTURE_CLOUD_PROVIDER;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TYPE INFRASTRUCTURE_CLOUD_PROVIDER
+			ADD VALUE 'other';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_region
+			DROP COLUMN parent_region_id,
+			DROP COLUMN location;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DELETE FROM deployment_region
+			WHERE provider IS NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_region
+			ALTER COLUMN provider SET NOT NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_region
+			ADD COLUMN workspace_id UUID
+				CONSTRAINT deployment_region_fk_workspace_id REFERENCES workspace(id),
+			ADD COLUMN ready BOOLEAN NOT NULL DEFAULT FALSE,
+			ADD COLUMN kubernetes_cluster_url TEXT,
+			ADD COLUMN kubernetes_auth_username TEXT,
+			ADD COLUMN kubernetes_auth_token TEXT,
+			ADD COLUMN kubernetes_ca_data TEXT,
+			ADD COLUMN kubernetes_ingress_ip_addr INET,
+			ADD COLUMN message_log TEXT,
+			ADD CONSTRAINT deployment_region_chk_ready_or_not CHECK(
+				(
+					workspace_id IS NOT NULL AND (
+						(
+							ready = TRUE AND
+							kubernetes_cluster_url IS NOT NULL AND
+							kubernetes_ca_data IS NOT NULL AND
+							kubernetes_auth_username IS NOT NULL AND
+							kubernetes_auth_token IS NOT NULL AND
+							kubernetes_ingress_ip_addr IS NOT NULL
+						) OR (
+							ready = FALSE AND
+							kubernetes_cluster_url IS NULL AND
+							kubernetes_ca_data IS NULL AND
+							kubernetes_auth_username IS NULL AND
+							kubernetes_auth_username IS NULL AND
+							kubernetes_ingress_ip_addr IS NULL
+						)
+					)
+				) OR (
+					workspace_id IS NULL AND
+					kubernetes_cluster_url IS NULL AND
+					kubernetes_ca_data IS NULL AND
+					kubernetes_auth_username IS NULL AND
+					kubernetes_auth_token IS NULL AND
+					kubernetes_ingress_ip_addr IS NULL
+				)
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_region
+			ALTER COLUMN ready DROP DEFAULT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE deployment_region
+		SET ready = true
+		WHERE name = 'Singapore';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	for region in [
+		"Singapore",
+		"Bangalore",
+		"London",
+		"Amsterdam",
+		"Frankfurt",
+		"Toronto",
+		"New-York 1",
+		"New-York 2",
+		"San Francisco",
+	] {
+		query!(
+			r#"
+			UPDATE
+				deployment_region
+			SET
+				name = CONCAT('test::', name)
+			WHERE
+				name = $1;
+			"#,
+			region,
+		)
+		.execute(&mut *connection)
+		.await?;
+
+		query!(
+			r#"
+			UPDATE
+				deployment_region
+			SET
+				name = $1
+			WHERE
+				name = CONCAT('test::', $1);
+			"#,
+			region,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	Ok(())
+}
+
+async fn add_permission_and_resource_type_for_region(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	// add region as a resource type
+	let resource_type_id = loop {
+		let resource_type_id = Uuid::new_v4();
+
+		let exists = query!(
+			r#"
+			SELECT
+				*
+			FROM
+				resource_type
+			WHERE
+				id = $1;
+			"#,
+			&resource_type_id
+		)
+		.fetch_optional(&mut *connection)
+		.await?
+		.is_some();
+
+		if !exists {
+			break resource_type_id;
+		}
+	};
+
+	query!(
+		r#"
+		INSERT INTO
+			resource_type(
+				id,
+				name,
+				description
+			)
+		VALUES
+			($1, 'deploymentRegion', '');
+		"#,
+		&resource_type_id
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// add permissions for region
+	for &permission in
+		["workspace::region::list", "workspace::region::add"].iter()
+	{
+		let uuid = loop {
+			let uuid = Uuid::new_v4();
+
+			let exists = query!(
+				r#"
+				SELECT
+					*
+				FROM
+					permission
+				WHERE
+					id = $1;
+				"#,
+				&uuid
+			)
+			.fetch_optional(&mut *connection)
+			.await?
+			.is_some();
+
+			if !exists {
+				break uuid;
+			}
+		};
+
+		query!(
+			r#"
+			INSERT INTO
+				permission
+			VALUES
+				($1, $2, '');
+			"#,
+			&uuid,
+			permission
+		)
+		.fetch_optional(&mut *connection)
+		.await?;
+	}
 
 	Ok(())
 }

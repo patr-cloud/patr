@@ -78,6 +78,18 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(INVALID_DEPLOYMENT_NAME).to_string()));
 	}
 
+	// validate whether the deployment region is ready
+	let region_details = db::get_region_by_id(connection, region)
+		.await?
+		.status(400)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	if !(region_details.ready || region_details.workspace_id.is_none()) {
+		return Err(Error::empty()
+			.status(500)
+			.body(error!(REGION_NOT_READY_YET).to_string()));
+	}
+
 	log::trace!(
 		"request_id: {} - Checking if the deployment name already exists",
 		request_id
@@ -241,15 +253,17 @@ pub async fn create_deployment_in_workspace(
 		.await?;
 	}
 
-	db::start_deployment_usage_history(
-		connection,
-		workspace_id,
-		&deployment_id,
-		machine_type,
-		deployment_running_details.min_horizontal_scale as i32,
-		&created_time,
-	)
-	.await?;
+	if service::is_deployed_on_patr_cluster(connection, region).await? {
+		db::start_deployment_usage_history(
+			connection,
+			workspace_id,
+			&deployment_id,
+			machine_type,
+			deployment_running_details.min_horizontal_scale as i32,
+			&created_time,
+		)
+		.await?;
+	};
 
 	Ok(deployment_id)
 }
@@ -1102,12 +1116,20 @@ pub async fn start_deployment(
 	)
 	.await?;
 
+	let kubeconfig = service::get_kubernetes_config_for_region(
+		connection,
+		&deployment.region,
+		config,
+	)
+	.await?;
+
 	service::update_kubernetes_deployment(
 		workspace_id,
 		deployment,
 		&image_name,
 		digest.as_deref(),
 		deployment_running_details,
+		kubeconfig,
 		config,
 		request_id,
 	)
@@ -1155,6 +1177,10 @@ pub async fn update_deployment_image(
 	)
 	.await?;
 
+	let kubeconfig =
+		service::get_kubernetes_config_for_region(connection, region, config)
+			.await?;
+
 	service::update_kubernetes_deployment(
 		workspace_id,
 		&Deployment {
@@ -1170,6 +1196,7 @@ pub async fn update_deployment_image(
 		image_name,
 		Some(digest),
 		deployment_running_details,
+		kubeconfig,
 		config,
 		request_id,
 	)
@@ -1182,6 +1209,7 @@ pub async fn stop_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
+	region_id: &Uuid,
 	user_id: &Uuid,
 	login_id: &Uuid,
 	ip_address: &str,
@@ -1224,10 +1252,15 @@ pub async fn stop_deployment(
 	)
 	.await?;
 
+	let kubeconfig = service::get_kubernetes_config_for_region(
+		connection, region_id, config,
+	)
+	.await?;
+
 	service::delete_kubernetes_deployment(
 		workspace_id,
 		deployment_id,
-		config,
+		kubeconfig,
 		request_id,
 	)
 	.await?;
@@ -1239,6 +1272,7 @@ pub async fn delete_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
+	region_id: &Uuid,
 	name: &str,
 	user_id: &Uuid,
 	login_id: &Uuid,
@@ -1288,10 +1322,15 @@ pub async fn delete_deployment(
 	)
 	.await?;
 
+	let kubeconfig = service::get_kubernetes_config_for_region(
+		connection, region_id, config,
+	)
+	.await?;
+
 	service::delete_kubernetes_deployment(
 		workspace_id,
 		deployment_id,
-		config,
+		kubeconfig,
 		request_id,
 	)
 	.await?;

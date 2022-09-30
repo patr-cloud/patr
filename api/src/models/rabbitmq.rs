@@ -1,9 +1,9 @@
 use std::{fmt, slice::Iter};
 
 use api_models::{
-	models::workspace::infrastructure::deployment::{
-		Deployment,
-		DeploymentRunningDetails,
+	models::workspace::{
+		infrastructure::deployment::{Deployment, DeploymentRunningDetails},
+		region::DigitaloceanRegion,
 	},
 	utils::{DateTime, Uuid},
 };
@@ -39,6 +39,41 @@ impl fmt::Display for Queue {
 			Queue::Billing => write!(f, "billing"),
 		}
 	}
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "resource", rename_all = "camelCase")]
+#[allow(clippy::large_enum_variant, clippy::upper_case_acronyms)]
+pub enum InfraRequestData {
+	Deployment(DeploymentRequestData),
+	BYOC(BYOCData),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "action", rename_all = "camelCase")]
+pub enum BYOCData {
+	InitKubernetesCluster {
+		region_id: Uuid,
+		cluster_url: String,
+		certificate_authority_data: String,
+		auth_username: String,
+		auth_token: String,
+		request_id: Uuid,
+	},
+	CheckClusterForReadiness {
+		region_id: Uuid,
+		cluster_url: String,
+		certificate_authority_data: String,
+		auth_username: String,
+		auth_token: String,
+		request_id: Uuid,
+	},
+	CreateDigitaloceanCluster {
+		region_id: Uuid,
+		digitalocean_region: DigitaloceanRegion,
+		access_token: String,
+		request_id: Uuid,
+	},
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -4,7 +4,7 @@
 	"basePath": "/",
 	"passwordPepper": "keyboard cat",
 	"jwtSecret": "keyboard cat",
-	"frontendDomain": "https://app.patr.cloud",
+	"apiUrl": "https://api.patr.cloud",
 	"s3": {
 		"endpoint": "s3.localhost",
 		"region": "sample-region",
