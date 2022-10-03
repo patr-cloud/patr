@@ -101,13 +101,12 @@ pub async fn add_credits_to_workspace(
 		intent.payment_method =
 			Some(PaymentMethodId::from_str(&default_payment_method_id)?);
 		intent.payment_method_types = Some(vec!["card".to_string()]);
-		// intent.setup_future_usage =
-		// 	Some(PaymentIntentSetupFutureUsage::OffSession);
 
 		intent
 	})
 	.await;
 
+	// handling errors explicitely as `?` doesn't provide enough information
 	let payment_intent = match payment_intent {
 		Ok(payment) => payment,
 		Err(err) => {
