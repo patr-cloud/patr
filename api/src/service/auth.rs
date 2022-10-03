@@ -599,8 +599,8 @@ pub async fn get_user_login_for_login_id(
 ) -> Result<UserLogin, Error> {
 	let user_login = db::get_user_login(connection, login_id)
 		.await?
-		.status(200)
-		.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
+		.status(401)
+		.body(error!(UNAUTHORIZED).to_string())?;
 
 	if user_login.token_expiry < Utc::now() {
 		// Token has expired
