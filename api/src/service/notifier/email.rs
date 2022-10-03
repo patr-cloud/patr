@@ -18,6 +18,7 @@ use crate::{
 		},
 		deployment::KubernetesEventData,
 		EmailTemplate,
+		ResourceType,
 	},
 	utils::Error,
 };
@@ -491,96 +492,66 @@ pub async fn send_payment_failed_email(
 	.await
 }
 
-// #[derive(EmailTemplate, Serialize)]
-// // todo change path when actual file comes
-// // #[template_path = "assets/emails/payment-failure/template.json"]
-// struct ResourceDeletedEmail {
-// 	resource_id: String, // Before merging verify if this is not required
-// 	resource_name: String,
-// 	super_admin_firstname: String,
-// 	ip_address: String, // Before merging verify if this is not required
-// 	city: String,
-// 	region: String,
-// 	country: String,
-// }
-// pub async fn send_resource_deleted_email(
-// 	resource_id: String,
-// 	resource_name: String,
-// 	super_admin_firstname: String,
-// 	ip_address: String,
-// 	city: String,
-// 	region: String,
-// 	country: String,
-// 	email: String,
-// ) -> Result<(), Error> {
-// 	send_email(
-// 		ResourceDeletedEmail {
-// 			resource_id,
-// 			resource_name,
-// 			super_admin_firstname,
-// 			ip_address,
-// 			city,
-// 			region,
-// 			country,
-// 		},
-// 		email,
-// 		None,
-// 		"Patr resource deleted",
-// 	)
-// 	.await
-// }
+#[derive(EmailTemplate, Serialize)]
+// todo change path when actual file comes
+#[template_path = "assets/emails/payment-failure/template.json"]
+struct ResourceDeletedEmail {
+	resource_name: String,
+	username: String,
+	resource_type: String,
+}
 
-// #[derive(EmailTemplate, Serialize)]
-// // todo change path when actual file comes
-// // #[template_path = "assets/emails/payment-failure/template.json"]
-// struct ResourceDeletedEmail {
-// 	resource_id: String, // Before merging verify if this is not required
-// 	resource_name: String,
-// 	super_admin_firstname: String,
-// 	ip_address: String, // Before merging verify if this is not required
-// 	city: String,
-// 	region: String,
-// 	country: String,
-// }
-// pub async fn send_resource_stopped_email(
-// 	resource_id: String,
-// 	resource_name: String,
-// 	super_admin_firstname: String,
-// 	ip_address: String,
-// 	city: String,
-// 	region: String,
-// 	country: String,
-// 	email: String,
-// ) -> Result<(), Error> {
-// 	send_email(
-// 		ResourceStoppedEmail {
-// 			resource_id,
-// 			resource_name,
-// 			super_admin_firstname,
-// 			ip_address,
-// 			city,
-// 			region,
-// 			country,
-// 		},
-// 		email,
-// 		None,
-// 		"Patr resource Stopped",
-// 	)
-// 	.await
-// }
+pub async fn send_resource_deleted_email(
+	resource_name: String,
+	username: String,
+	resource_type: String,
+	email: Mailbox,
+) -> Result<(), Error> {
+	send_email(
+		ResourceDeletedEmail {
+			resource_name,
+			username,
+			resource_type,
+		},
+		email,
+		None,
+		"Patr resource deleted",
+	)
+	.await
+}
 
-// #[derive(EmailTemplate, Serialize)]
-// // todo change path when actual file comes
-// // #[template_path = "assets/emails/payment-failure/template.json"]
-// struct ResourceUpdatedEmail {
-// 	resource_id: String, // Before merging verify if this is not required
-// 	resource_name: String,
-// 	super_admin_firstname: String,
-// 	ip_address: String, // Before merging verify if this is not required
-// 	city: String,
-// 	region: String,
-// 	country: String,
-// }
+#[derive(EmailTemplate, Serialize)]
+// todo change path when actual file comes
+#[template_path = "assets/emails/payment-failure/template.json"]
+struct DomainVerification {
+	domain: String,
+	username: String,
+}
+
+pub async fn send_domain_verification_email(
+	domain: String,
+	username: String,
+	is_verified: bool,
+	email: Mailbox,
+) -> Result<(), Error> {
+	if is_verified {
+		send_email(
+			DomainVerification { domain, username },
+			email,
+			None,
+			"Domain Verified",
+		)
+		.await
+	} else {
+		send_email(
+			DomainVerification { domain, username },
+			email,
+			None,
+			"Domain not verified",
+		)
+		.await
+	}
+}
 
 // pub async fn send_resource_updated_email(
 // 	resource_id: String,

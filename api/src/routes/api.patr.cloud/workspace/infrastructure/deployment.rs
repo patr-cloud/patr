@@ -49,6 +49,7 @@ use crate::{
 	models::{
 		rbac::{self, permissions},
 		DeploymentMetadata,
+		ResourceType,
 	},
 	pin_fn,
 	routes,
@@ -1321,22 +1322,6 @@ async fn stop_deployment(
 	)
 	.await?;
 
-	// Notify users for the action
-
-	// psuedo code for email
-	/*
-	   service::resource_action_email(
-		   resource_id,
-		   resource_name,
-		   super_admin_user_name,
-		   ip_address,
-		   city,
-		   region,
-		   country,
-		   action (enum)
-	   ).await?;
-	*/
-
 	context.success(StopDeploymentResponse {});
 	Ok(context)
 }
@@ -1643,22 +1628,17 @@ async fn delete_deployment(
 	)
 	.await;
 
-	// Notify users for the action
+	// Commiting transaction so that even if the mailing function fails the
+	// resource should be deleted
+	context.commit_database_transaction().await?;
 
-	// psuedo code for email
-	/*
-	   service::resource_action_email(
-			resource_id,
-			resource_name,
-			resource_type,
-			super_admin_firstname,
-			ip_address,
-			city,
-			region,
-			country,
-			action (enum)
-	   ).await?;
-	*/
+	service::resource_action_email(
+		context.get_database_connection(),
+		&deployment.name,
+		&deployment.workspace_id,
+		&ResourceType::Deployment,
+	)
+	.await?;
 
 	context.success(DeleteDeploymentResponse {});
 	Ok(context)
@@ -1849,23 +1829,6 @@ async fn update_deployment(
 			.await?;
 		}
 	}
-
-	// Notify users for the action
-
-	// psuedo code for email
-	/*
-	   service::resource_action_email(
-			resource_id,
-			resource_name,
-			resource_type,
-			super_admin_firstname,
-			ip_address,
-			city,
-			region,
-			country,
-			action (enum)
-	   ).await?;
-	*/
 
 	context.success(UpdateDeploymentResponse {});
 	Ok(context)
