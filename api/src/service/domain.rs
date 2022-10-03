@@ -45,13 +45,7 @@ use crate::{
 	db::{self, DnsRecordType, DomainPlan},
 	error,
 	models::rbac::{self, resource_types},
-	utils::{
-		constants,
-		get_current_time_millis,
-		settings::Settings,
-		validator,
-		Error,
-	},
+	utils::{constants, settings::Settings, validator, Error},
 	Database,
 };
 
@@ -93,7 +87,7 @@ pub async fn ensure_personal_domain_exists(
 	} else {
 		// check if personal domain given by the user is registerd as a
 		// workspace domain
-		if !is_domain_used_for_sign_up(connection, domain_name).await? {
+		if is_domain_used_for_sign_up(connection, domain_name).await? {
 			Error::as_result()
 				.status(400)
 				.body(error!(DOMAIN_BELONGS_TO_WORKSPACE).to_string())?;
@@ -159,15 +153,16 @@ pub async fn add_domain_to_workspace(
 				.status(500)
 				.body(error!(DOMAIN_IS_PERSONAL).to_string())?;
 		} else {
-			// check if personal domain given by the user is registerd as a
-			// workspace domain
-			if !is_domain_used_for_sign_up(connection, full_domain_name).await?
-			{
-				Error::as_result()
-					.status(400)
-					.body(error!(DOMAIN_EXISTS).to_string())?;
-			}
+			Error::as_result()
+				.status(400)
+				.body(error!(DOMAIN_EXISTS).to_string())?;
 		}
+	} else if is_domain_used_for_sign_up(connection, full_domain_name).await? {
+		// check if personal domain given by the user is registerd as a
+		// workspace domain
+		Error::as_result()
+			.status(400)
+			.body(error!(DOMAIN_EXISTS).to_string())?;
 	}
 
 	log::trace!("request_id: {} - Generating new domain id", request_id);
@@ -201,7 +196,7 @@ pub async fn add_domain_to_workspace(
 			.get(rbac::resource_types::DOMAIN)
 			.unwrap(),
 		workspace_id,
-		creation_time.timestamp_millis() as u64,
+		&creation_time,
 	)
 	.await?;
 	db::create_generic_domain(
@@ -218,7 +213,7 @@ pub async fn add_domain_to_workspace(
 		connection,
 		&domain_id,
 		nameserver_type,
-		Utc::now(),
+		&Utc::now(),
 	)
 	.await?;
 
@@ -351,7 +346,7 @@ pub async fn is_domain_verified(
 				connection,
 				domain_id,
 				true,
-				Utc::now(),
+				&Utc::now(),
 			)
 			.await?;
 
@@ -403,11 +398,11 @@ pub async fn is_domain_used_for_sign_up(
 		)
 		.await?;
 	if let Some(workspace_domain_status) = workspace_domain_status {
-		if workspace_domain_status.otp_expiry > get_current_time_millis() {
-			return Ok(false);
+		if workspace_domain_status.otp_expiry > Utc::now() {
+			return Ok(true);
 		}
 	}
-	Ok(true)
+	Ok(false)
 }
 
 pub async fn create_patr_domain_dns_record(
@@ -477,7 +472,7 @@ pub async fn create_patr_domain_dns_record(
 			.get(resource_types::DNS_RECORD)
 			.unwrap(),
 		workspace_id,
-		get_current_time_millis(),
+		&Utc::now(),
 	)
 	.await?;
 
@@ -719,7 +714,7 @@ pub async fn verify_external_domain(
 			connection,
 			domain_id,
 			true,
-			Utc::now(),
+			&Utc::now(),
 		)
 		.await?;
 
@@ -760,7 +755,7 @@ pub async fn delete_domain_in_workspace(
 		connection,
 		&domain.id,
 		false,
-		Utc::now(),
+		&Utc::now(),
 	)
 	.await?;
 	db::update_generic_domain_name(

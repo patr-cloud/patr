@@ -1,8 +1,8 @@
 use api_models::{
 	models::workspace::infrastructure::deployment::DeploymentStatus,
-	utils::{DateTime, Uuid},
+	utils::Uuid,
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 
 use crate::{query, query_as, Database};
 
@@ -19,6 +19,14 @@ pub struct StaticSiteUploadHistory {
 	pub message: String,
 	pub uploaded_by: Uuid,
 	pub created: DateTime<Utc>,
+}
+
+pub struct StaticSiteManagedUrl {
+	pub id: Uuid,
+	pub sub_domain: String,
+	pub domain_id: Uuid,
+	pub path: String,
+	pub is_configured: bool,
 }
 
 pub async fn initialize_static_site_pre(
@@ -231,6 +239,35 @@ pub async fn update_current_live_upload_for_static_site(
 	.map(|_| ())
 }
 
+pub async fn get_managed_url_for_static_siite(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &Uuid,
+) -> Result<Vec<StaticSiteManagedUrl>, sqlx::Error> {
+	query_as!(
+		StaticSiteManagedUrl,
+		r#"
+		SELECT
+			id as "id: _",
+			sub_domain,
+			domain_id as "domain_id: _",
+			path,
+			is_configured
+		FROM
+			managed_url
+		WHERE
+			static_site_id = $1 AND
+			sub_domain NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
+		"#,
+		static_site_id as _,
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
 pub async fn update_static_site_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &Uuid,
@@ -335,6 +372,7 @@ pub async fn get_static_site_upload_history(
 
 pub async fn get_static_site_upload_history_by_upload_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &Uuid,
 	upload_id: &Uuid,
 ) -> Result<Option<StaticSiteUploadHistory>, sqlx::Error> {
 	query_as!(
@@ -348,35 +386,11 @@ pub async fn get_static_site_upload_history_by_upload_id(
 		FROM
 			static_site_upload_history
 		WHERE
-			upload_id = $1;
-		"#,
-		upload_id as _,
-	)
-	.fetch_optional(&mut *connection)
-	.await
-}
-
-pub async fn get_latest_upload_for_static_site(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	static_site_id: &Uuid,
-) -> Result<Option<StaticSiteUploadHistory>, sqlx::Error> {
-	query_as!(
-		StaticSiteUploadHistory,
-		r#"
-		SELECT
-			upload_id as "id: _",
-			message,
-			uploaded_by as "uploaded_by: _",
-			created as "created: _"
-		FROM
-			static_site_upload_history
-		WHERE
-			static_site_id = $1
-		ORDER BY
-			created DESC
-		LIMIT 1;
+			static_site_id = $1 AND
+			upload_id = $2;
 		"#,
 		static_site_id as _,
+		upload_id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await

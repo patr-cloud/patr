@@ -2,19 +2,22 @@ use api_models::utils::Uuid;
 use k8s_openapi::{self, api::core::v1::Namespace};
 use kube::{
 	self,
-	api::{DeleteParams, PostParams},
+	api::{DeleteParams, PostParams, PropagationPolicy},
 	core::ObjectMeta,
 	Api,
 };
 
-use crate::utils::{settings::Settings, Error};
+use crate::{
+	service::{ext_traits::DeleteOpt, KubernetesConfigDetails},
+	utils::Error,
+};
 
 pub async fn create_kubernetes_namespace(
 	namespace_name: &str,
-	config: &Settings,
+	kubeconfig: KubernetesConfigDetails,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_config(config).await?;
+	let client = super::get_kubernetes_client(kubeconfig.auth_details).await?;
 
 	log::trace!("request_id: {} - creating namespace", request_id);
 	let kubernetes_namespace = Namespace {
@@ -35,10 +38,10 @@ pub async fn create_kubernetes_namespace(
 
 pub async fn delete_kubernetes_namespace(
 	namespace_name: &str,
-	config: &Settings,
+	kubeconfig: KubernetesConfigDetails,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_config(config).await?;
+	let client = super::get_kubernetes_client(kubeconfig.auth_details).await?;
 
 	log::trace!("request_id: {} - deleting namespace", request_id);
 
@@ -46,7 +49,13 @@ pub async fn delete_kubernetes_namespace(
 	// all the resources automatically that are present inside that namespace
 	let namespace_api = Api::<Namespace>::all(client);
 	namespace_api
-		.delete(namespace_name, &DeleteParams::default())
+		.delete_opt(
+			namespace_name,
+			&DeleteParams {
+				propagation_policy: Some(PropagationPolicy::Foreground),
+				..Default::default()
+			},
+		)
 		.await?;
 	log::trace!("request_id: {} - deleted namespace", request_id);
 

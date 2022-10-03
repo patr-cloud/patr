@@ -138,18 +138,33 @@ pub mod permissions {
 			}
 		}
 
+		pub mod region {
+			pub const LIST: &str = "workspace::region::list";
+			pub const ADD: &str = "workspace::region::add";
+		}
+
 		pub mod ci {
-			pub mod github {
-				pub const CONNECT: &str = "workspace::ci::github::connect";
-				pub const ACTIVATE: &str = "workspace::ci::github::activate";
-				pub const DEACTIVATE: &str =
-					"workspace::ci::github::deactivate";
-				pub const VIEW_BUILDS: &str =
-					"workspace::ci::github::viewBuilds";
-				pub const RESTART_BUILDS: &str =
-					"workspace::ci::github::restartBuilds";
+			pub mod git_provider {
+				pub const CONNECT: &str =
+					"workspace::ci::git_provider::connect";
 				pub const DISCONNECT: &str =
-					"workspace::ci::github::disconnect";
+					"workspace::ci::git_provider::disconnect";
+
+				pub mod repo {
+					pub const ACTIVATE: &str =
+						"workspace::ci::git_provider::repo::activate";
+					pub const DEACTIVATE: &str =
+						"workspace::ci::git_provider::repo::deactivate";
+					pub const LIST: &str =
+						"workspace::ci::git_provider::repo::list";
+
+					pub mod build {
+						pub const VIEW: &str =
+							"workspace::ci::git_provider::repo::build::view";
+						pub const RESTART: &str =
+							"workspace::ci::git_provider::repo::build::restart";
+					}
+				}
 			}
 		}
 
@@ -172,4 +187,6 @@ pub mod resource_types {
 	pub const MANAGED_URL: &str = "managedUrl";
 	pub const SECRET: &str = "secret";
 	pub const STATIC_SITE_UPLOAD: &str = "staticSiteUpload";
+	pub const CI_REPO: &str = "ciRepo";
+	pub const DEPLOYMENT_REGION: &str = "deploymentRegion";
 }

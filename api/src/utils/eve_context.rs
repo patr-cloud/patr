@@ -1,16 +1,7 @@
-use std::{
-	fmt::{Debug, Formatter},
-	sync::Arc,
-};
+use std::fmt::{Debug, Formatter};
 
 use api_models::{ApiResponse, ErrorType};
-use eve_rs::{
-	handlebars::Handlebars,
-	Context,
-	RenderEngine,
-	Request,
-	Response,
-};
+use eve_rs::{Context, Request, Response};
 use redis::aio::MultiplexedConnection as RedisConnection;
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
@@ -23,7 +14,6 @@ pub struct EveContext {
 	request: Request,
 	response: Response,
 	body_object: Value,
-	render_register: Option<Arc<Handlebars<'static>>>,
 	state: App,
 	db_connection: Option<Transaction<'static, Database>>,
 	access_token_data: Option<AccessTokenData>,
@@ -31,12 +21,10 @@ pub struct EveContext {
 
 impl EveContext {
 	pub fn new(request: Request, state: &App) -> Self {
-		let render_register = Some(state.render_register.clone());
 		EveContext {
 			request,
 			response: Response::new(),
 			body_object: Value::Null,
-			render_register,
 			state: state.clone(),
 			db_connection: None,
 			access_token_data: None,
@@ -141,27 +129,9 @@ impl EveContext {
 	}
 }
 
-impl RenderEngine for EveContext {
-	fn get_register(&self) -> &Arc<Handlebars> {
-		self.render_register.as_ref().unwrap()
-	}
-
-	fn set_register(&mut self, register: Arc<Handlebars<'static>>) {
-		self.render_register = Some(register);
-	}
-}
-
-#[cfg(debug_assertions)]
 impl Debug for EveContext {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		write!(f, "Context: {} - {}", self.get_method(), self.get_path())
-	}
-}
-
-#[cfg(not(debug_assertions))]
-impl Debug for EveContext {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{:#?}", self)
 	}
 }
 

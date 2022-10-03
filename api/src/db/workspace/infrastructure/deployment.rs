@@ -1,29 +1,20 @@
 use api_models::{
-	models::workspace::infrastructure::{
-		deployment::{DeploymentProbe, DeploymentStatus, ExposedPortType},
-		DeploymentCloudProvider,
+	models::workspace::infrastructure::deployment::{
+		DeploymentProbe,
+		DeploymentStatus,
+		ExposedPortType,
 	},
-	utils::{DateTime, Uuid},
+	utils::Uuid,
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 
 use crate::{
 	db::{self, WorkspaceAuditLog},
-	models::deployment::{
-		DefaultDeploymentRegion,
-		DEFAULT_DEPLOYMENT_REGIONS,
-		DEFAULT_MACHINE_TYPES,
-	},
+	models::deployment::DEFAULT_MACHINE_TYPES,
 	query,
 	query_as,
 	Database,
 };
-
-pub struct DeploymentRegion {
-	pub id: Uuid,
-	pub name: String,
-	pub cloud_provider: Option<DeploymentCloudProvider>,
-}
 
 pub struct DeploymentMachineType {
 	pub id: Uuid,
@@ -85,45 +76,6 @@ pub async fn initialize_deployment_pre(
 			'stopped', /* Deployment is stopped by the user */
 			'errored', /* Deployment is stopped because of too many errors */
 			'deleted' /* Deployment is deleted by the user */
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TYPE DEPLOYMENT_CLOUD_PROVIDER AS ENUM(
-			'digitalocean'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	// TODO FIX REGION STORAGE
-	query!(
-		r#"
-		CREATE TABLE deployment_region(
-			id UUID CONSTRAINT deployment_region_pk PRIMARY KEY,
-			name TEXT NOT NULL,
-			provider DEPLOYMENT_CLOUD_PROVIDER,
-			location GEOMETRY,
-			parent_region_id UUID
-				CONSTRAINT deployment_region_fk_parent_region_id
-					REFERENCES deployment_region(id),
-			CONSTRAINT
-				deployment_region_chk_provider_location_parent_region_is_valid
-					CHECK(
-						(
-							location IS NULL AND
-							provider IS NULL
-						) OR (
-							provider IS NOT NULL AND
-							location IS NOT NULL AND
-							parent_region_id IS NOT NULL
-						)
-					)
 		);
 		"#
 	)
@@ -432,20 +384,6 @@ pub async fn initialize_deployment_post(
 		)
 		.execute(&mut *connection)
 		.await?;
-	}
-
-	for continent in DEFAULT_DEPLOYMENT_REGIONS.iter() {
-		let region_id =
-			populate_region(&mut *connection, None, continent).await?;
-		for country in continent.child_regions.iter() {
-			let region_id =
-				populate_region(&mut *connection, Some(&region_id), country)
-					.await?;
-			for city in country.child_regions.iter() {
-				populate_region(&mut *connection, Some(&region_id), city)
-					.await?;
-			}
-		}
 	}
 
 	Ok(())
@@ -1058,7 +996,6 @@ pub async fn update_deployment_details(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	name: Option<&str>,
-	region: Option<&Uuid>,
 	machine_type: Option<&Uuid>,
 	deploy_on_push: Option<bool>,
 	min_horizontal_scale: Option<u16>,
@@ -1072,32 +1009,31 @@ pub async fn update_deployment_details(
 			deployment
 		SET
 			name = COALESCE($1, name),
-			region = COALESCE($2, region),
-			machine_type = COALESCE($3, machine_type),
-			deploy_on_push = COALESCE($4, deploy_on_push),
-			min_horizontal_scale = COALESCE($5, min_horizontal_scale),
-			max_horizontal_scale = COALESCE($6, max_horizontal_scale),
+			machine_type = COALESCE($2, machine_type),
+			deploy_on_push = COALESCE($3, deploy_on_push),
+			min_horizontal_scale = COALESCE($4, min_horizontal_scale),
+			max_horizontal_scale = COALESCE($5, max_horizontal_scale),
 			startup_probe_port = (
 				CASE
-					WHEN $7 = 0 THEN
+					WHEN $6 = 0 THEN
+						NULL
+					ELSE
+						$6
+				END
+			),
+			startup_probe_path = (
+				CASE
+					WHEN $6 = 0 THEN
 						NULL
 					ELSE
 						$7
 				END
 			),
-			startup_probe_path = (
-				CASE
-					WHEN $7 = 0 THEN
-						NULL
-					ELSE
-						$8
-				END
-			),
 			startup_probe_port_type = (
 				CASE
-					WHEN $7 = 0 THEN
+					WHEN $6 = 0 THEN
 						NULL
-					WHEN $7 IS NULL THEN
+					WHEN $6 IS NULL THEN
 						startup_probe_port_type
 					ELSE
 						'http'::EXPOSED_PORT_TYPE
@@ -1105,35 +1041,34 @@ pub async fn update_deployment_details(
 			),
 			liveness_probe_port = (
 				CASE
-					WHEN $9 = 0 THEN
+					WHEN $8 = 0 THEN
+						NULL
+					ELSE
+						$8
+				END
+			),
+			liveness_probe_path = (
+				CASE
+					WHEN $8 = 0 THEN
 						NULL
 					ELSE
 						$9
 				END
 			),
-			liveness_probe_path = (
-				CASE
-					WHEN $9 = 0 THEN
-						NULL
-					ELSE
-						$10
-				END
-			),
 			liveness_probe_port_type = (
 				CASE
-					WHEN $9 = 0 THEN
+					WHEN $8 = 0 THEN
 						NULL
-					WHEN $9 IS NULL THEN
+					WHEN $8 IS NULL THEN
 						liveness_probe_port_type
 					ELSE
 						'http'::EXPOSED_PORT_TYPE
 				END
 			)
 		WHERE
-			id = $11;
+			id = $10;
 		"#,
 		name as _,
-		region as _,
 		machine_type as _,
 		deploy_on_push,
 		min_horizontal_scale.map(|v| v as i16),
@@ -1233,101 +1168,6 @@ pub async fn get_all_deployment_machine_types(
 	.await
 }
 
-async fn populate_region(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	parent_region_id: Option<&Uuid>,
-	region: &DefaultDeploymentRegion,
-) -> Result<Uuid, sqlx::Error> {
-	let region_id = loop {
-		let region_id = Uuid::new_v4();
-
-		let row = query!(
-			r#"
-			SELECT
-				id as "id: Uuid"
-			FROM
-				deployment_region
-			WHERE
-				id = $1;
-			"#,
-			region_id as _
-		)
-		.fetch_optional(&mut *connection)
-		.await?;
-
-		if row.is_none() {
-			break region_id;
-		}
-	};
-
-	if region.child_regions.is_empty() {
-		// Populate leaf node
-		query!(
-			r#"
-			INSERT INTO
-				deployment_region(
-					id,
-					name,
-					provider,
-					location,
-					parent_region_id
-				)
-			VALUES
-				($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6);
-			"#,
-			region_id as _,
-			region.name,
-			region.cloud_provider.as_ref().unwrap() as _,
-			region.coordinates.unwrap().0,
-			region.coordinates.unwrap().1,
-			parent_region_id as _,
-		)
-		.execute(&mut *connection)
-		.await?;
-	} else {
-		// Populate parent node
-		query!(
-			r#"
-			INSERT INTO
-				deployment_region(
-					id,
-					name,
-					provider,
-					location,
-					parent_region_id
-				)
-			VALUES
-				($1, $2, NULL, NULL, $3);
-			"#,
-			region_id as _,
-			region.name,
-			parent_region_id as _,
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	Ok(region_id)
-}
-
-pub async fn get_all_deployment_regions(
-	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<DeploymentRegion>, sqlx::Error> {
-	query_as!(
-		DeploymentRegion,
-		r#"
-		SELECT
-			id as "id: _",
-			name,
-			provider as "cloud_provider: _"
-		FROM
-			deployment_region;
-		"#
-	)
-	.fetch_all(&mut *connection)
-	.await
-}
-
 pub async fn get_build_events_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
@@ -1386,7 +1226,10 @@ pub async fn add_digest_to_deployment_deploy_history(
 				created
 			)
 		VALUES
-			($1, $2, $3, $4);
+			($1, $2, $3, $4)
+		ON CONFLICT
+			(deployment_id, image_digest)
+		DO NOTHING;
 		"#,
 		deployment_id as _,
 		digest as _,

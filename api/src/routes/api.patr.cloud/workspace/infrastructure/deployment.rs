@@ -36,10 +36,11 @@ use api_models::{
 		},
 		WorkspaceAuditLog,
 	},
-	utils::{constants, Uuid},
+	utils::{constants, DateTime, Uuid},
 };
-use chrono::Utc;
+use chrono::{Duration, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -54,7 +55,6 @@ use crate::{
 	service,
 	utils::{
 		constants::request_keys,
-		get_current_time,
 		Error,
 		ErrorData,
 		EveContext,
@@ -876,7 +876,7 @@ async fn create_deployment(
 		&audit_log_id,
 		&workspace_id,
 		&ip_address,
-		now.into(),
+		&now,
 		Some(&user_id),
 		Some(&login_id),
 		&id,
@@ -895,6 +895,7 @@ async fn create_deployment(
 	context.commit_database_transaction().await?;
 
 	if deploy_on_create {
+		let mut is_deployed = false;
 		if let DeploymentRegistry::PatrRegistry { repository_id, .. } =
 			&registry
 		{
@@ -910,7 +911,7 @@ async fn create_deployment(
 					&id,
 					repository_id,
 					&digest,
-					&now.into(),
+					&now,
 				)
 				.await?;
 
@@ -920,22 +921,80 @@ async fn create_deployment(
 					&digest,
 				)
 				.await?;
+
+				if db::get_docker_repository_tag_details(
+					context.get_database_connection(),
+					repository_id,
+					image_tag,
+				)
+				.await?
+				.is_some()
+				{
+					service::start_deployment(
+						context.get_database_connection(),
+						&workspace_id,
+						&id,
+						&Deployment {
+							id: id.clone(),
+							name: name.to_string(),
+							registry: registry.clone(),
+							image_tag: image_tag.to_string(),
+							status: DeploymentStatus::Pushed,
+							region: region.clone(),
+							machine_type: machine_type.clone(),
+							current_live_digest: Some(digest),
+						},
+						&deployment_running_details,
+						&user_id,
+						&login_id,
+						&ip_address,
+						&DeploymentMetadata::Start {},
+						&config,
+						&request_id,
+					)
+					.await?;
+					is_deployed = true;
+				}
 			}
+		} else {
+			// external registry
+			service::start_deployment(
+				context.get_database_connection(),
+				&workspace_id,
+				&id,
+				&Deployment {
+					id: id.clone(),
+					name: name.to_string(),
+					registry: registry.clone(),
+					image_tag: image_tag.to_string(),
+					status: DeploymentStatus::Pushed,
+					region: region.clone(),
+					machine_type: machine_type.clone(),
+					current_live_digest: None,
+				},
+				&deployment_running_details,
+				&user_id,
+				&login_id,
+				&ip_address,
+				&DeploymentMetadata::Start {},
+				&config,
+				&request_id,
+			)
+			.await?;
+			is_deployed = true;
 		}
-		service::queue_create_deployment(
-			context.get_database_connection(),
-			&workspace_id,
-			&id,
-			name,
-			&registry,
-			image_tag,
-			&region,
-			&machine_type,
-			&deployment_running_details,
-			&config,
-			&request_id,
-		)
-		.await?;
+
+		if is_deployed {
+			context.commit_database_transaction().await?;
+
+			service::queue_check_and_update_deployment_status(
+				&workspace_id,
+				&id,
+				&config,
+				&request_id,
+			)
+			.await?;
+		}
 	}
 
 	let _ = service::get_internal_metrics(
@@ -1130,15 +1189,15 @@ async fn start_deployment(
 					&deployment_id,
 					repository_id,
 					&digest,
-					&now.into(),
+					&now,
 				)
 				.await?;
 			}
 		}
 	}
 
-	log::trace!("request_id: {} - RabbitMQ to start deployment", request_id);
-	service::queue_start_deployment(
+	log::trace!("request_id: {} - Start deployment", request_id);
+	service::start_deployment(
 		context.get_database_connection(),
 		&workspace_id,
 		&deployment_id,
@@ -1147,6 +1206,17 @@ async fn start_deployment(
 		&user_id,
 		&login_id,
 		&ip_address,
+		&DeploymentMetadata::Start {},
+		&config,
+		&request_id,
+	)
+	.await?;
+
+	context.commit_database_transaction().await?;
+
+	service::queue_check_and_update_deployment_status(
+		&workspace_id,
+		&deployment_id,
 		&config,
 		&request_id,
 	)
@@ -1206,13 +1276,15 @@ async fn stop_deployment(
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	log::trace!(
-		"request_id: {} - queuing stop the deployment request",
-		request_id
+		"request_id: {} - Stopping the deployment {}",
+		request_id,
+		deployment_id
 	);
-	service::queue_stop_deployment(
+	service::stop_deployment(
 		context.get_database_connection(),
 		&deployment.workspace_id,
 		&deployment_id,
+		&deployment.region,
 		&user_id,
 		&login_id,
 		&ip_address,
@@ -1305,7 +1377,24 @@ async fn revert_deployment(
 		request_id
 	);
 
-	service::queue_update_deployment_image(
+	let (image_name, _) =
+		service::get_image_name_and_digest_for_deployment_image(
+			context.get_database_connection(),
+			&deployment.registry,
+			&deployment.image_tag,
+			&config,
+			&request_id,
+		)
+		.await?;
+
+	db::update_deployment_status(
+		context.get_database_connection(),
+		&deployment_id,
+		&DeploymentStatus::Deploying,
+	)
+	.await?;
+
+	service::update_deployment_image(
 		context.get_database_connection(),
 		&workspace_id,
 		&deployment_id,
@@ -1313,9 +1402,20 @@ async fn revert_deployment(
 		&deployment.registry,
 		&image_digest,
 		&deployment.image_tag,
+		&image_name,
 		&deployment.region,
 		&deployment.machine_type,
 		&deployment_running_details,
+		&config,
+		&request_id,
+	)
+	.await?;
+
+	context.commit_database_transaction().await?;
+
+	service::queue_check_and_update_deployment_status(
+		&workspace_id,
+		&deployment_id,
 		&config,
 		&request_id,
 	)
@@ -1364,17 +1464,43 @@ async fn get_logs(
 	)
 	.unwrap();
 
+	let deployment = db::get_deployment_by_id(
+		context.get_database_connection(),
+		&deployment_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	if !service::is_deployed_on_patr_cluster(
+		context.get_database_connection(),
+		&deployment.region,
+	)
+	.await?
+	{
+		return Err(Error::empty().status(500).body(
+			error!(FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER).to_string(),
+		));
+	}
+
 	let config = context.get_state().config.clone();
 
-	let start_time = start_time.unwrap_or(Interval::Hour);
+	let start_time = Utc::now() -
+		match start_time.unwrap_or(Interval::Hour) {
+			Interval::Hour => Duration::hours(1),
+			Interval::Day => Duration::days(1),
+			Interval::Week => Duration::weeks(1),
+			Interval::Month => Duration::days(30),
+			Interval::Year => Duration::days(365),
+		};
 
 	log::trace!("request_id: {} - Getting logs", request_id);
 	// stop the running container, if it exists
 	let logs = service::get_deployment_container_logs(
 		context.get_database_connection(),
 		&deployment_id,
-		start_time.as_u64(),
-		get_current_time().as_secs(),
+		&start_time,
+		&Utc::now(),
 		&config,
 		&request_id,
 	)
@@ -1438,18 +1564,26 @@ async fn delete_deployment(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	db::stop_deployment_usage_history(
+	if service::is_deployed_on_patr_cluster(
 		context.get_database_connection(),
-		&deployment_id,
-		&Utc::now().into(),
+		&deployment.region,
 	)
-	.await?;
+	.await?
+	{
+		db::stop_deployment_usage_history(
+			context.get_database_connection(),
+			&deployment_id,
+			&Utc::now(),
+		)
+		.await?;
+	}
 
-	log::trace!("request_id: {} - Queuing delete deployment", request_id);
-	service::queue_delete_deployment(
+	log::trace!("request_id: {} - Deleting deployment", request_id);
+	service::delete_deployment(
 		context.get_database_connection(),
 		&deployment.workspace_id,
 		&deployment_id,
+		&deployment.region,
 		&deployment.name,
 		&user_id,
 		&login_id,
@@ -1511,7 +1645,6 @@ async fn update_deployment(
 		workspace_id: _,
 		deployment_id: _,
 		name,
-		region,
 		machine_type,
 		deploy_on_push,
 		min_horizontal_scale,
@@ -1535,7 +1668,6 @@ async fn update_deployment(
 
 	// Is any one value present?
 	if name.is_none() &&
-		region.is_none() &&
 		machine_type.is_none() &&
 		deploy_on_push.is_none() &&
 		min_horizontal_scale.is_none() &&
@@ -1555,7 +1687,6 @@ async fn update_deployment(
 
 	let metadata = DeploymentMetadata::Update {
 		name: name.map(|n| n.to_string()),
-		region: region.clone(),
 		machine_type: machine_type.clone(),
 		deploy_on_push,
 		min_horizontal_scale,
@@ -1570,7 +1701,6 @@ async fn update_deployment(
 		context.get_database_connection(),
 		&deployment_id,
 		name,
-		region.as_ref(),
 		machine_type.as_ref(),
 		deploy_on_push,
 		min_horizontal_scale,
@@ -1608,37 +1738,50 @@ async fn update_deployment(
 			// Don't update deployments that are explicitly stopped or deleted
 		}
 		_ => {
-			let current_time = Utc::now().into();
-			db::stop_deployment_usage_history(
+			let current_time = Utc::now();
+			if service::is_deployed_on_patr_cluster(
 				context.get_database_connection(),
-				&deployment_id,
-				&current_time,
-			)
-			.await?;
-			db::start_deployment_usage_history(
-				context.get_database_connection(),
-				&workspace_id,
-				&deployment_id,
-				&deployment.machine_type,
-				deployment_running_details.min_horizontal_scale as i32,
-				&current_time,
-			)
-			.await?;
-
-			service::queue_update_deployment(
-				context.get_database_connection(),
-				&workspace_id,
-				&deployment_id,
-				&deployment.name,
-				&deployment.registry,
-				&deployment.image_tag,
 				&deployment.region,
-				&deployment.machine_type,
+			)
+			.await?
+			{
+				db::stop_deployment_usage_history(
+					context.get_database_connection(),
+					&deployment_id,
+					&current_time,
+				)
+				.await?;
+				db::start_deployment_usage_history(
+					context.get_database_connection(),
+					&workspace_id,
+					&deployment_id,
+					&deployment.machine_type,
+					deployment_running_details.min_horizontal_scale as i32,
+					&current_time,
+				)
+				.await?;
+			}
+
+			service::start_deployment(
+				context.get_database_connection(),
+				&workspace_id,
+				&deployment_id,
+				&deployment,
 				&deployment_running_details,
 				&user_id,
 				&login_id,
 				&ip_address,
 				&metadata,
+				&config,
+				&request_id,
+			)
+			.await?;
+
+			context.commit_database_transaction().await?;
+
+			service::queue_check_and_update_deployment_status(
+				&workspace_id,
+				&deployment_id,
 				&config,
 				&request_id,
 			)
@@ -1759,17 +1902,44 @@ async fn get_deployment_metrics(
 	)
 	.unwrap();
 
+	let deployment = db::get_deployment_by_id(
+		context.get_database_connection(),
+		&deployment_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	if !service::is_deployed_on_patr_cluster(
+		context.get_database_connection(),
+		&deployment.region,
+	)
+	.await?
+	{
+		return Err(Error::empty().status(500).body(
+			error!(FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER).to_string(),
+		));
+	}
+
 	log::trace!(
 		"request_id: {} - Getting deployment metrics for deployment: {}",
 		request_id,
 		deployment_id
 	);
-	let start_time = context
-		.get_request()
-		.get_query()
-		.get(request_keys::START_TIME)
-		.and_then(|value| value.parse::<Interval>().ok())
-		.unwrap_or(Interval::Hour);
+	let start_time = Utc::now() -
+		match context
+			.get_request()
+			.get_query()
+			.get(request_keys::START_TIME)
+			.and_then(|value| value.parse::<Interval>().ok())
+			.unwrap_or(Interval::Hour)
+		{
+			Interval::Hour => Duration::hours(1),
+			Interval::Day => Duration::days(1),
+			Interval::Week => Duration::weeks(1),
+			Interval::Month => Duration::days(30),
+			Interval::Year => Duration::days(365),
+		};
 
 	let step = context
 		.get_request()
@@ -1783,8 +1953,8 @@ async fn get_deployment_metrics(
 	let deployment_metrics = service::get_deployment_metrics(
 		&deployment_id,
 		&config,
-		start_time.as_u64(),
-		get_current_time().as_secs(),
+		&start_time,
+		&Utc::now(),
 		&step.to_string(),
 		&request_id,
 	)
@@ -1838,15 +2008,22 @@ async fn get_build_logs(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let start_time = start_time.unwrap_or(Interval::Hour);
+	let start_time = Utc::now() -
+		match start_time.unwrap_or(Interval::Hour) {
+			Interval::Hour => Duration::hours(1),
+			Interval::Day => Duration::days(1),
+			Interval::Week => Duration::weeks(1),
+			Interval::Month => Duration::days(30),
+			Interval::Year => Duration::days(365),
+		};
 
 	log::trace!("request_id: {} - Getting build logs", request_id);
 	// stop the running container, if it exists
 	let logs = service::get_deployment_build_logs(
 		&workspace_id,
 		&deployment_id,
-		start_time.as_u64(),
-		get_current_time().as_secs(),
+		&start_time,
+		&Utc::now(),
 		&config,
 		&request_id,
 	)
@@ -1856,7 +2033,7 @@ async fn get_build_logs(
 		timestamp: build_log
 			.metadata
 			.creation_timestamp
-			.map(|timestamp| timestamp.0.into()),
+			.map(|Time(timestamp)| timestamp.timestamp_millis() as u64),
 		reason: build_log.reason,
 		message: build_log.message,
 	})
@@ -1923,7 +2100,7 @@ async fn get_build_events(
 	.into_iter()
 	.map(|event| WorkspaceAuditLog {
 		id: event.id,
-		date: event.date,
+		date: DateTime(event.date),
 		ip_address: event.ip_address,
 		workspace_id: event.workspace_id,
 		user_id: event.user_id,

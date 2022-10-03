@@ -480,3 +480,162 @@ pub async fn send_invoice_email(
 	)
 	.await
 }
+
+/// # Description
+/// This function is used to notify the user that their resources has been
+/// deleted because they haven't paid their bill
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `super_admin_id` - the ID of the user who owns the workspace
+/// * `workspace_name` - the name of the workspace
+/// * `month` - the month for which the bill wasn't paid
+/// * `year` - the year for which the bill wasn't paid
+/// * `total_bill` - the amount due by the user
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
+pub async fn send_unpaid_resources_deleted_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	super_admin_id: Uuid,
+	workspace_name: String,
+	month: String,
+	year: i32,
+	total_bill: f64,
+) -> Result<(), Error> {
+	let user = db::get_user_by_user_id(connection, &super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_unpaid_resources_deleted_email(
+		user_email.parse()?,
+		user.username,
+		workspace_name,
+		month,
+		year,
+		total_bill,
+	)
+	.await
+}
+
+/// # Description
+/// This function is used to notify the user that their bill hasn't been paid
+/// for and that their resources will be deleted soon if they don't pay
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `super_admin_id` - the ID of the user who owns the workspace
+/// * `workspace_name` - the name of the workspace
+/// * `month` - the month for which the bill wasn't paid
+/// * `year` - the year for which the bill wasn't paid
+/// * `total_bill` - the amount due by the user
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
+pub async fn send_bill_not_paid_reminder_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	super_admin_id: Uuid,
+	workspace_name: String,
+	month: String,
+	year: i32,
+	total_bill: f64,
+) -> Result<(), Error> {
+	let user = db::get_user_by_user_id(connection, &super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_bill_not_paid_reminder_email(
+		user_email.parse()?,
+		user.username,
+		workspace_name,
+		month,
+		year,
+		total_bill,
+	)
+	.await
+}
+
+/// # Description
+/// This function is used to notify the user that their card was charged and the
+/// payment failed.
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `super_admin_id` - the ID of the user who owns the workspace
+/// * `workspace_name` - the name of the workspace
+/// * `month` - the month for which the bill wasn't paid
+/// * `year` - the year for which the bill wasn't paid
+/// * `total_bill` - the amount due by the user
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
+pub async fn send_payment_failed_notification(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	super_admin_id: Uuid,
+	workspace_name: String,
+	month: String,
+	year: i32,
+	total_bill: f64,
+) -> Result<(), Error> {
+	let user = db::get_user_by_user_id(connection, &super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_payment_failed_email(
+		user_email.parse()?,
+		user.username,
+		workspace_name,
+		month,
+		year,
+		total_bill,
+	)
+	.await
+}

@@ -5,6 +5,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use chrono::{DateTime, Utc};
 use num_traits::ToPrimitive;
 
 use crate::{query, query_as, Database};
@@ -49,10 +50,7 @@ pub async fn initialize_docker_registry_pre(
 				CONSTRAINT
 					docker_registry_repository_manifest_chk_size_unsigned
 						CHECK(size >= 0),
-			created BIGINT NOT NULL CONSTRAINT
-				docker_registry_repository_manifest_chk_created_unsigned CHECK(
-					created >= 0
-				),
+			created TIMESTAMPTZ NOT NULL,
 			CONSTRAINT docker_registry_repository_manifest_pk PRIMARY KEY(
 				repository_id, manifest_digest
 			)
@@ -70,10 +68,7 @@ pub async fn initialize_docker_registry_pre(
 					REFERENCES docker_registry_repository(id),
 			tag TEXT NOT NULL,
 			manifest_digest TEXT NOT NULL,
-			last_updated BIGINT NOT NULL CONSTRAINT
-				docker_registry_repository_tag_chk_last_updated_unsigned CHECK(
-					last_updated >= 0
-				),
+			last_updated TIMESTAMPTZ NOT NULL,
 			CONSTRAINT docker_registry_repository_tag_pk PRIMARY KEY(
 				repository_id, tag
 			),
@@ -134,8 +129,8 @@ pub async fn create_docker_repository(
 		name as _
 	)
 	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn get_docker_repository_by_name(
@@ -168,7 +163,7 @@ pub async fn get_docker_repository_by_name(
 pub async fn get_docker_repositories_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<Vec<(DockerRepository, u64, u64)>, sqlx::Error> {
+) -> Result<Vec<(DockerRepository, u64, DateTime<Utc>)>, sqlx::Error> {
 	let rows = query!(
 		r#"
 		SELECT
@@ -182,7 +177,7 @@ pub async fn get_docker_repositories_for_workspace(
 						resource.created,
 						(
 							SELECT
-								COALESCE(created, 0)
+								COALESCE(created, TO_TIMESTAMP(0))
 							FROM
 								docker_registry_repository_manifest
 							WHERE
@@ -193,7 +188,7 @@ pub async fn get_docker_repositories_for_workspace(
 						),
 						(
 							SELECT
-								COALESCE(last_updated, 0)
+								COALESCE(last_updated, TO_TIMESTAMP(0))
 							FROM
 								docker_registry_repository_tag
 							WHERE
@@ -239,7 +234,7 @@ pub async fn get_docker_repositories_for_workspace(
 				workspace_id: row.workspace_id,
 			},
 			row.size.to_u64().unwrap_or(0),
-			row.last_updated.to_u64().unwrap_or(0),
+			row.last_updated,
 		)
 	})
 	.collect();
@@ -297,7 +292,7 @@ pub async fn create_docker_repository_digest(
 	repository_id: &Uuid,
 	digest: &str,
 	size: u64,
-	created: u64,
+	created: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -315,7 +310,7 @@ pub async fn create_docker_repository_digest(
 		repository_id as _,
 		digest,
 		size as i64,
-		created as i64
+		created as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -327,7 +322,7 @@ pub async fn set_docker_repository_tag_details(
 	repository_id: &Uuid,
 	tag: &str,
 	digest: &str,
-	last_updated: u64,
+	last_updated: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -348,7 +343,7 @@ pub async fn set_docker_repository_tag_details(
 		repository_id as _,
 		tag,
 		digest,
-		last_updated as i64
+		last_updated as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -379,7 +374,7 @@ pub async fn get_list_of_tags_for_docker_repository(
 		(
 			DockerRepositoryTagInfo {
 				tag: row.tag,
-				last_updated: row.last_updated as u64,
+				last_updated: row.last_updated.into(),
 			},
 			row.manifest_digest,
 		)
@@ -413,7 +408,7 @@ pub async fn get_tags_for_docker_repository_image(
 	.into_iter()
 	.map(|row| DockerRepositoryTagInfo {
 		tag: row.tag,
-		last_updated: row.last_updated as u64,
+		last_updated: row.last_updated.into(),
 	})
 	.collect();
 
@@ -490,7 +485,7 @@ pub async fn get_docker_repository_image_by_digest(
 		row.map(|row| DockerRepositoryImageInfo {
 			digest: row.manifest_digest,
 			size: row.size as u64,
-			created: row.created as u64,
+			created: row.created.into(),
 		})
 	})
 }
@@ -522,7 +517,7 @@ pub async fn get_docker_repository_tag_details(
 			(
 				DockerRepositoryTagInfo {
 					tag: row.tag,
-					last_updated: row.last_updated as u64,
+					last_updated: row.last_updated.into(),
 				},
 				row.manifest_digest,
 			)
@@ -553,7 +548,7 @@ pub async fn get_list_of_digests_for_docker_repository(
 	.map(|row| DockerRepositoryImageInfo {
 		digest: row.manifest_digest,
 		size: row.size as u64,
-		created: row.created as u64,
+		created: row.created.into(),
 	})
 	.collect();
 
@@ -685,7 +680,7 @@ pub async fn delete_tag_from_docker_repository(
 pub async fn get_last_updated_for_docker_repository(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repository_id: &Uuid,
-) -> Result<u64, sqlx::Error> {
+) -> Result<DateTime<Utc>, sqlx::Error> {
 	query!(
 		r#"
 		SELECT 
@@ -693,7 +688,7 @@ pub async fn get_last_updated_for_docker_repository(
 				resource.created, 
 				(
 					SELECT 
-						COALESCE(created, 0) 
+						COALESCE(created, TO_TIMESTAMP(0)) 
 					FROM 
 						docker_registry_repository_manifest 
 					WHERE 
@@ -704,7 +699,7 @@ pub async fn get_last_updated_for_docker_repository(
 				), 
 				(
 					SELECT 
-						COALESCE(last_updated, 0) 
+						COALESCE(last_updated, TO_TIMESTAMP(0)) 
 					FROM 
 						docker_registry_repository_tag 
 					WHERE 
@@ -723,5 +718,5 @@ pub async fn get_last_updated_for_docker_repository(
 	)
 	.fetch_one(&mut *connection)
 	.await
-	.map(|row| row.last_updated as u64)
+	.map(|row| row.last_updated)
 }

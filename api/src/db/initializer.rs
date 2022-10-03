@@ -7,11 +7,7 @@ use crate::{
 	app::App,
 	db::{self, get_database_version, set_database_version},
 	migrations,
-	models::{
-		deployment,
-		rabbitmq::{RequestMessage, WorkspaceRequestData},
-		rbac,
-	},
+	models::{deployment, rabbitmq::WorkspaceRequestData, rbac},
 	query,
 	service,
 	utils::{constants, Error},
@@ -78,14 +74,12 @@ pub async fn initialize(app: &App) -> Result<(), Error> {
 		let month = now.month();
 		let year = now.year();
 		let request_id = Uuid::new_v4();
-		service::send_message_to_rabbit_mq(
-			&RequestMessage::Workspace(
-				WorkspaceRequestData::ProcessWorkspaces {
-					month: if month == 12 { 1 } else { month + 1 },
-					year: if month == 12 { year + 1 } else { year },
-					request_id: request_id.clone(),
-				},
-			),
+		service::send_message_to_billing_queue(
+			&WorkspaceRequestData::ProcessWorkspaces {
+				month: if month == 12 { 1 } else { month + 1 },
+				year: if month == 12 { year + 1 } else { year },
+				request_id: request_id.clone(),
+			},
 			&app.config,
 			&request_id,
 		)
@@ -176,15 +170,6 @@ pub async fn initialize(app: &App) -> Result<(), Error> {
 		deployment::MACHINE_TYPES
 			.set(machine_types)
 			.expect("MACHINE_TYPES is already set");
-
-		let regions = db::get_all_deployment_regions(&mut transaction)
-			.await?
-			.into_iter()
-			.map(|region| (region.id, (region.name, region.cloud_provider)))
-			.collect();
-		deployment::REGIONS
-			.set(regions)
-			.expect("REGIONS is already set");
 
 		drop(transaction);
 

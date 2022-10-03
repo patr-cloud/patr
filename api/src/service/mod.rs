@@ -6,12 +6,14 @@
 //! [`App`]: App
 mod auth;
 mod billing;
+mod ci;
 mod docker_registry;
 mod domain;
 mod infrastructure;
 mod metrics;
 mod notifier;
 mod rabbitmq;
+mod region;
 mod user;
 mod utils;
 mod workspace;
@@ -19,12 +21,14 @@ mod workspace;
 pub use self::{
 	auth::*,
 	billing::*,
+	ci::*,
 	docker_registry::*,
 	domain::*,
 	infrastructure::*,
 	metrics::*,
 	notifier::*,
 	rabbitmq::*,
+	region::*,
 	user::*,
 	utils::*,
 	workspace::*,

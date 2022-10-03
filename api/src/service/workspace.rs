@@ -1,21 +1,18 @@
+use std::str::FromStr;
+
 use api_models::{
 	models::workspace::billing::{Address, StripeCustomer},
 	utils::Uuid,
 };
+use chrono::Utc;
 use eve_rs::AsError;
-use reqwest::Client;
+use stripe::{Client, CreateCustomer, Customer, CustomerId, UpdateCustomer};
 
 use crate::{
 	db::{self, PaymentType},
 	error,
-	models::{billing::StripeAddress, rbac},
-	utils::{
-		constants::default_limits,
-		get_current_time_millis,
-		settings::Settings,
-		validator,
-		Error,
-	},
+	models::rbac,
+	utils::{constants::default_limits, settings::Settings, validator, Error},
 	Database,
 };
 
@@ -59,7 +56,7 @@ pub async fn is_workspace_name_allowed(
 			.await?;
 
 	if let Some(status) = workspace_sign_up_status {
-		if status.otp_expiry > get_current_time_millis() {
+		if status.otp_expiry > Utc::now() {
 			return Ok(false);
 		}
 	}
@@ -130,7 +127,7 @@ pub async fn create_workspace(
 			.get(rbac::resource_types::WORKSPACE)
 			.unwrap(),
 		&resource_id,
-		get_current_time_millis(),
+		&Utc::now(),
 	)
 	.await?;
 
@@ -157,7 +154,7 @@ pub async fn create_workspace(
 
 	super::create_kubernetes_namespace(
 		resource_id.as_str(),
-		config,
+		super::get_kubernetes_config_for_default_region(config),
 		&Uuid::new_v4(),
 	)
 	.await?;
@@ -219,9 +216,7 @@ pub async fn add_billing_address(
 	db::add_billing_address_to_workspace(connection, workspace_id, &address_id)
 		.await?;
 
-	let client = Client::new();
-
-	let password: Option<String> = None;
+	let client = Client::new(&config.stripe.secret_key);
 
 	let address_line_2 = if let (Some(line2), Some(line3)) = (
 		address_details.address_line_2.clone(),
@@ -232,23 +227,25 @@ pub async fn add_billing_address(
 		address_details.address_line_2
 	};
 
-	client
-		.post(format!(
-			"https://api.stripe.com/v1/customers/{}",
-			workspace.stripe_customer_id
-		))
-		.basic_auth(config.stripe.secret_key.as_str(), password.as_ref())
-		.form(&StripeAddress {
-			city: address_details.city,
-			country: address_details.country,
-			line1: address_details.address_line_1,
-			line2: address_line_2,
-			postal_code: address_details.zip,
-			state: address_details.state,
-		})
-		.send()
-		.await?
-		.error_for_status()?;
+	Customer::update(
+		&client,
+		&CustomerId::from_str(&workspace.stripe_customer_id)?,
+		{
+			let mut update_customer = UpdateCustomer::new();
+
+			update_customer.address = Some(stripe::Address {
+				city: Some(address_details.city),
+				country: Some(address_details.country),
+				line1: Some(address_details.address_line_1),
+				line2: address_line_2,
+				postal_code: Some(address_details.zip),
+				state: Some(address_details.state),
+			});
+
+			update_customer
+		},
+	)
+	.await?;
 
 	Ok(())
 }
@@ -294,15 +291,18 @@ async fn create_stripe_customer(
 	workspace_id: &Uuid,
 	config: &Settings,
 ) -> Result<StripeCustomer, Error> {
-	let client = Client::new();
-	let password: Option<String> = None;
-	client
-		.post("https://api.stripe.com/v1/customers")
-		.basic_auth(&config.stripe.secret_key, password)
-		.query(&[("name", workspace_id.as_str())])
-		.send()
-		.await?
-		.json::<StripeCustomer>()
-		.await
-		.map_err(|e| e.into())
+	let client = Client::new(&config.stripe.secret_key);
+	let customer = Customer::create(&client, {
+		let mut create_customer = CreateCustomer::new();
+
+		create_customer.name = Some(workspace_id.as_str());
+
+		create_customer
+	})
+	.await?;
+
+	Ok(StripeCustomer {
+		id: customer.id.to_string(),
+		name: customer.name.status(500)?,
+	})
 }

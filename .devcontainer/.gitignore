@@ -1,0 +1,2 @@
+# don't track "./.devcontainer/volume" folder as it is used for cache purposes
+/volume

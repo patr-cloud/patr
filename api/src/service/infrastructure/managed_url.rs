@@ -68,7 +68,7 @@ pub async fn create_new_managed_url_in_workspace(
 			.get(rbac::resource_types::MANAGED_URL)
 			.unwrap(),
 		workspace_id,
-		creation_time.timestamp_millis() as u64,
+		&creation_time,
 	)
 	.await?;
 

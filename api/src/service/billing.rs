@@ -1,19 +1,36 @@
 use std::{
 	cmp::{max, min},
 	collections::HashMap,
+	str::FromStr,
 };
 
 use api_models::{
 	models::workspace::billing::{
 		PaymentMethod,
 		PaymentStatus,
+		StripePaymentMethodType,
 		TransactionType,
 	},
-	utils::{DateTime, True, Uuid},
+	utils::{DateTime, Uuid},
 };
-use chrono::{Datelike, Utc};
+use chrono::{Datelike, TimeZone, Utc};
 use eve_rs::AsError;
-use reqwest::Client;
+use stripe::{
+	Client,
+	CreatePaymentIntent,
+	CreateRefund,
+	CreateSetupIntent,
+	Currency,
+	CustomerId,
+	OffSessionOther,
+	PaymentIntent,
+	PaymentIntentConfirmationMethod,
+	PaymentIntentOffSession,
+	PaymentIntentStatus,
+	PaymentMethodId,
+	Refund,
+	SetupIntent,
+};
 
 use crate::{
 	db::{self, DomainPlan, ManagedDatabasePlan, StaticSitePlan},
@@ -26,9 +43,6 @@ use crate::{
 			DockerRepositoryBill,
 			DomainBill,
 			ManagedUrlBill,
-			PaymentIntent,
-			PaymentIntentObject,
-			PaymentMethodStatus,
 			SecretsBill,
 			StaticSiteBill,
 		},
@@ -44,116 +58,93 @@ pub async fn add_credits_to_workspace(
 	credits: u32,
 	config: &Settings,
 ) -> Result<(), Error> {
-	let client = Client::new();
-
-	let password: Option<String> = None;
-
-	let default_payment_method_id =
-		db::get_workspace_info(connection, workspace_id)
-			.await?
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?
-			.default_payment_method_id;
-
-	if default_payment_method_id.is_none() {
-		return Error::as_result()
-			.status(402)
-			.body(error!(PAYMENT_METHOD_REQUIRED).to_string())?;
-	}
-
-	let address_id = db::get_workspace_info(connection, workspace_id)
+	let workspace = db::get_workspace_info(connection, workspace_id)
 		.await?
-		.status(500)?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let default_payment_method_id = workspace
+		.default_payment_method_id
+		.status(402)
+		.body(error!(PAYMENT_METHOD_REQUIRED).to_string())?;
+
+	let address_id = workspace
 		.address_id
 		.status(400)
 		.body(error!(ADDRESS_REQUIRED).to_string())?;
 
-	const EARLY_ADOPTER_50: &str = "Patr Early Adopter 50";
-	const EARLY_ADOPTER_125: &str = "Patr Early Adopter 125";
-	const NORMAL_CREDITS: &str = "Patr charge: Additional credits";
-
-	let (dollars, description) = if credits == 50 {
-		let transaction_exists =
-			db::get_transaction_by_description_in_workspace(
-				connection,
-				workspace_id,
-				EARLY_ADOPTER_50,
-			)
-			.await?;
-		if transaction_exists.is_some() {
-			// This transaction has already been purchased
-			(50, NORMAL_CREDITS)
-		} else {
-			(10, EARLY_ADOPTER_50)
-		}
-	} else if credits == 125 {
-		let transaction_exists =
-			db::get_transaction_by_description_in_workspace(
-				connection,
-				workspace_id,
-				EARLY_ADOPTER_125,
-			)
-			.await?;
-		if transaction_exists.is_some() {
-			// This transaction has already been purchased
-			(125, NORMAL_CREDITS)
-		} else {
-			(25, EARLY_ADOPTER_125)
-		}
-	} else {
-		(credits, NORMAL_CREDITS)
-	};
+	let (dollars, description) = (credits, "Patr charge: Additional credits");
 
 	let (currency, amount) = if db::get_billing_address(connection, &address_id)
 		.await?
 		.status(500)?
 		.country == *"IN"
 	{
-		("inr".to_string(), (dollars * 100 * 80) as u64)
+		(Currency::INR, (dollars * 100 * 80) as i64)
 	} else {
-		("usd".to_string(), (dollars * 100) as u64)
+		(Currency::USD, (dollars * 100) as i64)
 	};
 
-	let description = description.to_string();
+	let client = Client::new(&config.stripe.secret_key);
 
-	let payment_intent_object = client
-		.post("https://api.stripe.com/v1/payment_intents")
-		.basic_auth(&config.stripe.secret_key, password)
-		.form(&PaymentIntent {
-			amount,
-			currency,
-			confirm: True,
-			off_session: true,
-			description: description.clone(),
-			customer: db::get_workspace_info(connection, workspace_id)
-				.await?
-				.status(500)?
-				.stripe_customer_id,
-			payment_method: default_payment_method_id,
-			payment_method_types: "card".to_string(),
-			setup_future_usage: None,
+	let payment_intent = PaymentIntent::create(&client, {
+		let mut intent = CreatePaymentIntent::new(amount, currency);
+
+		intent.confirm = Some(true);
+		intent.confirmation_method =
+			Some(PaymentIntentConfirmationMethod::Automatic);
+		intent.off_session =
+			Some(PaymentIntentOffSession::Other(OffSessionOther::OneOff));
+		intent.description = Some(description);
+		intent.customer =
+			Some(CustomerId::from_str(&workspace.stripe_customer_id)?);
+		intent.payment_method =
+			Some(PaymentMethodId::from_str(&default_payment_method_id)?);
+		intent.payment_method_types = Some(vec!["card".to_string()]);
+
+		intent
+	})
+	.await;
+
+	// handling errors explicitely as `?` doesn't provide enough information
+	let payment_intent = match payment_intent {
+		Ok(payment) => payment,
+		Err(err) => {
+			log::error!("Error from stripe: {}", err);
+			return Error::as_result()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?;
+		}
+	};
+
+	if payment_intent.status != PaymentIntentStatus::Succeeded {
+		Refund::create(&client, {
+			let mut refund = CreateRefund::new();
+
+			refund.payment_intent = Some(payment_intent.id);
+
+			refund
 		})
-		.send()
-		.await?
-		.error_for_status()?
-		.json::<PaymentIntentObject>()
 		.await?;
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(PAYMENT_FAILED).to_string()));
+	}
 
-	let id = db::generate_new_transaction_id(connection).await?;
-
+	let transaction_id = db::generate_new_transaction_id(connection).await?;
 	let date = Utc::now();
 
 	db::create_transaction(
 		connection,
 		workspace_id,
-		&id,
+		&transaction_id,
 		date.month() as i32,
 		credits.into(),
-		Some(&payment_intent_object.id),
-		&DateTime::from(date),
+		Some(&payment_intent.id),
+		&date,
 		&TransactionType::Credits,
 		&PaymentStatus::Success,
-		Some(&description),
+		Some(description),
 	)
 	.await?;
 
@@ -166,9 +157,6 @@ pub async fn confirm_payment_method(
 	payment_intent_id: &str,
 	config: &Settings,
 ) -> Result<bool, Error> {
-	let client = Client::new();
-	let password: Option<String> = None;
-
 	let transaction = db::get_transaction_by_payment_intent_id_in_workspace(
 		connection,
 		workspace_id,
@@ -183,23 +171,12 @@ pub async fn confirm_payment_method(
 			.body(error!(WRONG_PARAMETERS).to_string())?;
 	}
 
-	let payment_intent_object = client
-		.get(
-			format!(
-				"https://api.stripe.com/v1/payment_intents/{}",
-				payment_intent_id
-			)
-			.as_str(),
-		)
-		.basic_auth(&config.stripe.secret_key, password)
-		.send()
-		.await?
-		.json::<PaymentIntentObject>()
-		.await?;
+	let client = Client::new(&config.stripe.secret_key);
+	let payment_intent =
+		PaymentIntent::confirm(&client, payment_intent_id, Default::default())
+			.await?;
 
-	if payment_intent_object.status != Some(PaymentMethodStatus::Succeeded) &&
-		payment_intent_object.amount == Some(transaction.amount)
-	{
+	if payment_intent.status != PaymentIntentStatus::Succeeded {
 		return Ok(false);
 	}
 
@@ -216,6 +193,7 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 		&mut *connection,
 		workspace_id,
 		&DateTime::from(*month_start_date),
+		till_date,
 	)
 	.await?;
 
@@ -227,10 +205,7 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 			.stop_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date);
-		let start_time = max(
-			chrono::DateTime::from(deployment_usage.start_time),
-			*month_start_date,
-		);
+		let start_time = max(deployment_usage.start_time, *month_start_date);
 		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
@@ -306,6 +281,7 @@ pub async fn calculate_database_bill_for_workspace_till(
 		&mut *connection,
 		workspace_id,
 		&DateTime::from(*month_start_date),
+		till_date,
 	)
 	.await?;
 
@@ -316,10 +292,7 @@ pub async fn calculate_database_bill_for_workspace_till(
 			.deletion_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date);
-		let start_time = max(
-			chrono::DateTime::from(database_usage.start_time),
-			*month_start_date,
-		);
+		let start_time = max(database_usage.start_time, *month_start_date);
 		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
@@ -378,6 +351,7 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 		&mut *connection,
 		workspace_id,
 		&DateTime::from(*month_start_date),
+		till_date,
 	)
 	.await?;
 
@@ -387,10 +361,7 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 			.stop_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date);
-		let start_time = max(
-			chrono::DateTime::from(static_sites_usage.start_time),
-			*month_start_date,
-		);
+		let start_time = max(static_sites_usage.start_time, *month_start_date);
 		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
@@ -429,6 +400,7 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 		&mut *connection,
 		workspace_id,
 		&DateTime::from(*month_start_date),
+		till_date,
 	)
 	.await?;
 
@@ -438,10 +410,7 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 			.stop_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date);
-		let start_time = max(
-			chrono::DateTime::from(managed_url_usage.start_time),
-			*month_start_date,
-		);
+		let start_time = max(managed_url_usage.start_time, *month_start_date);
 		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
@@ -490,6 +459,7 @@ pub async fn calculate_docker_repository_bill_for_workspace_till(
 		&mut *connection,
 		workspace_id,
 		&DateTime::from(*month_start_date),
+		till_date,
 	)
 	.await?;
 
@@ -500,10 +470,8 @@ pub async fn calculate_docker_repository_bill_for_workspace_till(
 			.stop_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date);
-		let start_time = max(
-			chrono::DateTime::from(docker_repository_usage.start_time),
-			*month_start_date,
-		);
+		let start_time =
+			max(docker_repository_usage.start_time, *month_start_date);
 		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
@@ -545,6 +513,7 @@ pub async fn calculate_domains_bill_for_workspace_till(
 		&mut *connection,
 		workspace_id,
 		&DateTime::from(*month_start_date),
+		till_date,
 	)
 	.await?;
 
@@ -554,10 +523,7 @@ pub async fn calculate_domains_bill_for_workspace_till(
 			.stop_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date);
-		let start_time = max(
-			chrono::DateTime::from(domains_usage.start_time),
-			*month_start_date,
-		);
+		let start_time = max(domains_usage.start_time, *month_start_date);
 		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
@@ -596,6 +562,7 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 		&mut *connection,
 		workspace_id,
 		&DateTime::from(*month_start_date),
+		till_date,
 	)
 	.await?;
 
@@ -605,10 +572,7 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 			.stop_time
 			.map(chrono::DateTime::from)
 			.unwrap_or_else(|| *till_date);
-		let start_time = max(
-			chrono::DateTime::from(secrets_usage.start_time),
-			*month_start_date,
-		);
+		let start_time = max(secrets_usage.start_time, *month_start_date);
 		let hours = min(
 			720,
 			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
@@ -651,8 +615,7 @@ pub async fn add_card_details(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	config: &Settings,
-) -> Result<PaymentIntentObject, Error> {
-	let client = Client::new();
+) -> Result<SetupIntent, Error> {
 	let workspace = db::get_workspace_info(connection, workspace_id)
 		.await?
 		.status(500)?;
@@ -663,21 +626,17 @@ pub async fn add_card_details(
 			.body(error!(ADDRESS_REQUIRED).to_string())?;
 	}
 
-	let password: Option<String> = None;
-	client
-		.post("https://api.stripe.com/v1/setup_intents")
-		.basic_auth(&config.stripe.secret_key, password)
-		.query(&[
-			("customer", workspace.stripe_customer_id.as_str()),
-			// for now only accepting cards, other payment methods will be
-			// accepted at later point of time
-			("payment_method_types[]", "card"),
-		])
-		.send()
-		.await?
-		.json::<PaymentIntentObject>()
-		.await
-		.map_err(|e| e.into())
+	SetupIntent::create(&Client::new(&config.stripe.secret_key), {
+		let mut intent = CreateSetupIntent::new();
+
+		intent.customer =
+			Some(CustomerId::from_str(workspace.stripe_customer_id.as_str())?);
+		intent.payment_method_types = Some(vec!["card".to_string()]);
+
+		intent
+	})
+	.await
+	.map_err(|err| err.into())
 }
 
 pub async fn get_card_details(
@@ -689,20 +648,36 @@ pub async fn get_card_details(
 		db::get_payment_methods_for_workspace(connection, workspace_id).await?;
 
 	let mut cards = Vec::new();
-	let client = Client::new();
+	let client = Client::new(&config.stripe.secret_key);
 	for payment_source in payment_source_list {
-		let url = format!(
-			"https://api.stripe.com/v1/payment_methods/{}",
-			payment_source.payment_method_id
-		);
-		let password: Option<String> = None;
-		let card_details = client
-			.get(&url)
-			.basic_auth(&config.stripe.secret_key, password)
-			.send()
-			.await?
-			.json::<PaymentMethod>()
-			.await?;
+		let card_details = stripe::PaymentMethod::retrieve(
+			&client,
+			&PaymentMethodId::from_str(&payment_source.payment_method_id)?,
+			&[],
+		)
+		.await?;
+
+		let card_details = PaymentMethod {
+			id: card_details.id.to_string(),
+			customer: card_details.customer.status(500)?.id().to_string(),
+			r#type: match card_details.type_ {
+				stripe::PaymentMethodType::Card => {
+					StripePaymentMethodType::CardPresent
+				}
+				stripe::PaymentMethodType::CardPresent => {
+					StripePaymentMethodType::CardPresent
+				}
+				_ => {
+					return Error::as_result()
+						.status(500)
+						.body(error!(SERVER_ERROR).to_string())?
+				}
+			},
+			card: serde_json::from_str(&serde_json::to_string(
+				&card_details.card.status(500)?,
+			)?)?,
+			created: DateTime::from(Utc.timestamp_millis(card_details.created)),
+		};
 		cards.push(card_details);
 	}
 	Ok(cards)
@@ -739,22 +714,14 @@ pub async fn delete_payment_method(
 			.body(error!(CHANGE_PRIMARY_PAYMENT_METHOD).to_string())?;
 	}
 	db::delete_payment_method(connection, payment_method_id).await?;
-	let client = Client::new();
-	let password: Option<String> = None;
-	let deletion_status = client
-		.post(format!(
-			"https://api.stripe.com/v1/payment_methods/{}/detach",
-			payment_method_id
-		))
-		.basic_auth(&config.stripe.secret_key, password)
-		.send()
-		.await?
-		.status();
-	if !deletion_status.is_success() {
-		return Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
-	}
+
+	let client = Client::new(&config.stripe.secret_key);
+	stripe::PaymentMethod::detach(
+		&client,
+		&PaymentMethodId::from_str(payment_method_id)?,
+	)
+	.await?;
+
 	Ok(())
 }
 

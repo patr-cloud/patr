@@ -1,14 +1,13 @@
 use std::env;
 
-use clap::crate_version;
+use api_macros::version;
 use reqwest::multipart::{Form, Part};
-use semver::Version;
 use serde_json::{json, Value};
 use tokio::fs;
 
 #[tokio::main]
 async fn main() {
-	let crate_version = crate_version!();
+	let crate_version = version!();
 	println!("Creating release for version {}...", crate_version);
 
 	let branch = env::var("DRONE_BRANCH").expect("DRONE_BRANCH is not set");
@@ -23,13 +22,11 @@ async fn main() {
 
 	let gitea_token = env::var("GITEA_TOKEN").expect("GITEA_TOKEN not set");
 	let release_version = {
-		let version = Version::parse(crate_version)
-			.expect("unable to parse crate version");
 		format!(
 			"v{}.{}.{}{}",
-			version.major,
-			version.minor,
-			version.patch,
+			crate_version.major,
+			crate_version.minor,
+			crate_version.patch,
 			if branch == "staging" { "-beta" } else { "" }
 		)
 	};

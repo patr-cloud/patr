@@ -1,4 +1,7 @@
+use std::net::{IpAddr, Ipv4Addr};
+
 use api_models::{models::auth::*, utils::Uuid, ErrorType};
+use chrono::{Duration, Utc};
 use eve_rs::{App as EveApp, AsError, Context, HttpMethod, NextHandler};
 use serde_json::json;
 
@@ -17,8 +20,6 @@ use crate::{
 	service::{self, get_access_token_expiry},
 	utils::{
 		constants::request_keys,
-		get_current_time,
-		get_current_time_millis,
 		validator,
 		Error,
 		ErrorData,
@@ -168,10 +169,17 @@ async fn sign_in(
 	}
 
 	let config = context.get_state().config.clone();
+	let ip_address = super::get_request_ip_address(&context);
+	let user_agent = context.get_header("user-agent").unwrap_or_default();
+
 	let (UserLogin { login_id, .. }, access_token, refresh_token) =
 		service::sign_in_user(
 			context.get_database_connection(),
 			&user_data.id,
+			&ip_address
+				.parse()
+				.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+			&user_agent,
 			&config,
 		)
 		.await?;
@@ -332,12 +340,12 @@ async fn sign_out(
 	)
 	.await?;
 
-	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
+	let ttl = get_access_token_expiry() + Duration::hours(2); // 2 hrs buffer time
 	redis::revoke_login_tokens_created_before_timestamp(
 		context.get_redis_connection(),
 		&login_id,
-		get_current_time_millis(),
-		Some(ttl),
+		&Utc::now(),
+		Some(&ttl),
 	)
 	.await?;
 
@@ -388,11 +396,18 @@ async fn join(
 
 	let config = context.get_state().config.clone();
 
+	let ip_address = super::get_request_ip_address(&context);
+	let user_agent = context.get_header("user-agent").unwrap_or_default();
+
 	let join_user = service::join_user(
 		context.get_database_connection(),
-		&config,
 		&verification_token,
 		username.to_lowercase().trim(),
+		&ip_address
+			.parse()
+			.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+		&user_agent,
+		&config,
 	)
 	.await?;
 
@@ -490,12 +505,42 @@ async fn get_access_token(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let ip_address = super::get_request_ip_address(&context);
+	let user_agent = context.get_header("user-agent").unwrap_or_default();
+
 	let config = context.get_state().config.clone();
 	let user_login = service::get_user_login_for_login_id(
 		context.get_database_connection(),
 		&login_id,
 	)
 	.await?;
+
+	log::trace!("Upading user login");
+	let ip_addr = &ip_address
+		.parse()
+		.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
+
+	let ip_info =
+		service::get_ip_address_info(ip_addr, &config.ipinfo_token).await?;
+
+	let (lat, lng) = ip_info.loc.split_once(',').status(500)?;
+	let (lat, lng): (f64, f64) = (lat.parse()?, lng.parse()?);
+
+	db::update_user_login_last_activity_info(
+		context.get_database_connection(),
+		&login_id,
+		&Utc::now(),
+		ip_addr,
+		lat,
+		lng,
+		&ip_info.country,
+		&ip_info.region,
+		&ip_info.city,
+		&ip_info.timezone,
+		&user_agent,
+	)
+	.await?;
+
 	let success =
 		service::validate_hash(&refresh_token, &user_login.refresh_token)?;
 
@@ -1071,11 +1116,9 @@ async fn docker_registry_login(
 		)?;
 	}
 
-	let iat = get_current_time().as_secs();
-
 	let token = RegistryToken::new(
 		config.docker_registry.issuer.clone(),
-		iat,
+		Utc::now(),
 		username.to_string(),
 		&config,
 		vec![],
@@ -1301,7 +1344,29 @@ async fn docker_registry_authenticate(
 		)?;
 	}
 
-	let workspace_name = split_array.get(0).unwrap(); // get first index from the vector
+	let workspace_id_str = split_array.get(0).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id_str)
+		.map_err(|err| {
+			log::trace!(
+				"Unable to parse workspace_id: {} - error - {}",
+				workspace_id_str,
+				err
+			);
+			err
+		})
+		.status(500)
+		.body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::INVALID_REQUEST,
+					request_keys::MESSAGE: ErrorMessage::NO_WORKSPACE_OR_REPOSITORY,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)?;
+
+	// get first index from the vector
 	let repo_name = split_array.get(1).unwrap();
 
 	// check if repo name is valid
@@ -1318,27 +1383,24 @@ async fn docker_registry_authenticate(
 			.to_string(),
 		)?;
 	}
-	let workspace = db::get_workspace_by_name(
-		context.get_database_connection(),
-		workspace_name,
-	)
-	.await?
-	.status(400)
-	.body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::INVALID_REQUEST,
-				request_keys::MESSAGE: ErrorMessage::RESOURCE_DOES_NOT_EXIST,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
+	db::get_workspace_info(context.get_database_connection(), &workspace_id)
+		.await?
+		.status(400)
+		.body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::INVALID_REQUEST,
+					request_keys::MESSAGE: ErrorMessage::RESOURCE_DOES_NOT_EXIST,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)?;
 
 	let repository = db::get_docker_repository_by_name(
 		context.get_database_connection(),
 		repo_name,
-		&workspace.id,
+		&workspace_id,
 	)
 	.await?
 	// reject request if repository does not exist
@@ -1372,7 +1434,7 @@ async fn docker_registry_authenticate(
 		.to_string(),
 	)?;
 
-	if resource.owner_id != workspace.id {
+	if resource.owner_id != workspace_id {
 		log::error!(
 			"Resource owner_id is not the same as workspace id. This is illegal"
 		);
@@ -1398,7 +1460,7 @@ async fn docker_registry_authenticate(
 	)
 	.await?;
 
-	let required_role_for_user = user_roles.get(&workspace.id);
+	let required_role_for_user = user_roles.get(&workspace_id);
 	let mut approved_permissions = vec![];
 
 	for permission in required_permissions {
@@ -1459,11 +1521,9 @@ async fn docker_registry_authenticate(
 		}
 	}
 
-	let iat = get_current_time().as_secs();
-
 	let token = RegistryToken::new(
 		config.docker_registry.issuer.clone(),
-		iat,
+		Utc::now(),
 		username.to_string(),
 		&config,
 		vec![RegistryTokenAccess {

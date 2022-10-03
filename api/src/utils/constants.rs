@@ -1,13 +1,7 @@
 use api_macros::version;
-use clap::{crate_authors, crate_description, crate_name, crate_version};
 use semver::Version;
 
 pub const DATABASE_VERSION: Version = version!();
-
-pub const APP_NAME: &str = crate_name!();
-pub const APP_VERSION: &str = crate_version!();
-pub const APP_AUTHORS: &str = crate_authors!();
-pub const APP_ABOUT: &str = crate_description!();
 
 pub const DNS_RESOLVER: &str = "1.1.1.1:53";
 
@@ -57,12 +51,16 @@ pub mod request_keys {
 	pub const START_TIME: &str = "startTime";
 	pub const INTERVAL: &str = "interval";
 	pub const SECRET_ID: &str = "secretId";
-	pub const REPO_OWNER: &str = "repoOwner";
-	pub const REPO_NAME: &str = "repoName";
+	pub const REPO_ID: &str = "repoId";
 	pub const BUILD_NUM: &str = "buildNum";
-	pub const STAGE: &str = "stage";
+	pub const BRANCH_NAME: &str = "branchName";
+	pub const GIT_REF: &str = "gitRef";
 	pub const STEP: &str = "step";
 	pub const PAYMENT_METHOD_ID: &str = "paymentMethodId";
+
+	// github constants for CI
+	pub const X_HUB_SIGNATURE_256: &str = "x-hub-signature-256";
+	pub const X_GITHUB_EVENT: &str = "x-github-event";
 }
 
 pub mod default_limits {

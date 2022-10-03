@@ -36,8 +36,9 @@ use api_models::{
 		},
 		workspace::Workspace,
 	},
-	utils::Uuid,
+	utils::{DateTime, Location, Uuid},
 };
+use chrono::{Duration, Utc};
 use eve_rs::{App as EveApp, AsError, NextHandler};
 
 use crate::{
@@ -49,7 +50,6 @@ use crate::{
 	service::{self, get_access_token_expiry},
 	utils::{
 		constants::request_keys,
-		get_current_time_millis,
 		Error,
 		ErrorData,
 		EveContext,
@@ -330,8 +330,8 @@ async fn get_user_info(
 			bio,
 			location,
 		},
-		birthday: dob,
-		created,
+		birthday: dob.map(DateTime),
+		created: DateTime(created),
 		recovery_email,
 		secondary_emails,
 		recovery_phone_number,
@@ -461,7 +461,7 @@ async fn update_user_info(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let dob_string = birthday.map(|value| value.to_string());
+	let dob_string = birthday.as_ref().map(|value| value.to_string());
 
 	// If no parameters to update
 	first_name
@@ -480,7 +480,7 @@ async fn update_user_info(
 		&user_id,
 		first_name.as_deref(),
 		last_name.as_deref(),
-		birthday,
+		birthday.map(|DateTime(bday)| bday).as_ref(),
 		bio.as_deref(),
 		location.as_deref(),
 	)
@@ -1201,9 +1201,29 @@ async fn get_all_logins_for_user(
 	.into_iter()
 	.map(|login| UserLogin {
 		login_id: login.login_id,
-		token_expiry: login.token_expiry,
-		last_login: login.last_login,
-		last_activity: login.last_activity,
+		token_expiry: DateTime(login.token_expiry),
+		created: DateTime(login.created),
+		created_ip: login.created_ip,
+		created_location: Location {
+			lat: login.created_location_latitude,
+			lng: login.created_location_longitude,
+		},
+		created_country: login.created_country,
+		created_region: login.created_region,
+		created_city: login.created_city,
+		created_timezone: login.created_timezone,
+		last_login: DateTime(login.last_login),
+		last_activity: DateTime(login.last_activity),
+		last_activity_ip: login.last_activity_ip,
+		last_activity_location: Location {
+			lat: login.last_activity_location_latitude,
+			lng: login.last_activity_location_longitude,
+		},
+		last_activity_user_agent: login.last_activity_user_agent,
+		last_activity_country: login.last_activity_country,
+		last_activity_region: login.last_activity_region,
+		last_activity_city: login.last_activity_city,
+		last_activity_timezone: login.last_activity_timezone,
 	})
 	.collect::<Vec<_>>();
 
@@ -1226,9 +1246,29 @@ async fn get_login_info(
 			.await?
 			.map(|login| UserLogin {
 				login_id: login.login_id,
-				token_expiry: login.token_expiry,
-				last_login: login.last_login,
-				last_activity: login.last_activity,
+				token_expiry: DateTime(login.token_expiry),
+				created: DateTime(login.created),
+				created_ip: login.created_ip,
+				created_location: Location {
+					lat: login.created_location_latitude,
+					lng: login.created_location_longitude,
+				},
+				created_country: login.created_country,
+				created_region: login.created_region,
+				created_city: login.created_city,
+				created_timezone: login.created_timezone,
+				last_login: DateTime(login.last_login),
+				last_activity: DateTime(login.last_activity),
+				last_activity_ip: login.last_activity_ip,
+				last_activity_location: Location {
+					lat: login.last_activity_location_latitude,
+					lng: login.last_activity_location_longitude,
+				},
+				last_activity_user_agent: login.last_activity_user_agent,
+				last_activity_country: login.last_activity_country,
+				last_activity_region: login.last_activity_region,
+				last_activity_city: login.last_activity_city,
+				last_activity_timezone: login.last_activity_timezone,
 			})
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -1256,12 +1296,12 @@ async fn delete_user_login(
 	)
 	.await?;
 
-	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
+	let ttl = get_access_token_expiry() + Duration::hours(2); // 2 hrs buffer time
 	redis::revoke_login_tokens_created_before_timestamp(
 		context.get_redis_connection(),
 		&login_id,
-		get_current_time_millis(),
-		Some(ttl),
+		&Utc::now(),
+		Some(&ttl),
 	)
 	.await?;
 

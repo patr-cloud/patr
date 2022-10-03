@@ -12,8 +12,9 @@ use api_models::{
 		Workspace,
 		WorkspaceAuditLog,
 	},
-	utils::Uuid,
+	utils::{DateTime, Uuid},
 };
+use chrono::{Duration, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
@@ -26,7 +27,6 @@ use crate::{
 	service::{self, get_access_token_expiry},
 	utils::{
 		constants::request_keys,
-		get_current_time_millis,
 		Error,
 		ErrorData,
 		EveContext,
@@ -41,6 +41,7 @@ mod domain;
 mod infrastructure;
 #[path = "rbac/mod.rs"]
 mod rbac_routes;
+mod region;
 mod secret;
 
 /// # Description
@@ -79,6 +80,30 @@ pub fn create_sub_app(
 		"/:workspaceId/info",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(move |mut context, next| {
+				Box::pin(async move {
+					let workspace_id_str = context
+						.get_param(request_keys::WORKSPACE_ID)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let workspace_id = Uuid::parse_str(workspace_id_str)
+						.status(401)
+						.body(error!(UNAUTHORIZED).to_string())?;
+
+					// Using unwarp while getting token_data because
+					// AccessTokenData will never be empty
+					// as PlainTokenAuthenticator above won't allow it
+					let workspaces =
+						&context.get_token_data().unwrap().workspaces;
+
+					if workspaces.get(&workspace_id).is_none() {
+						context.status(401).json(error!(UNAUTHORIZED));
+						return Ok(context);
+					}
+					next(context).await
+				})
+			}),
 			EveMiddleware::CustomFunction(pin_fn!(get_workspace_info)),
 		],
 	);
@@ -125,6 +150,7 @@ pub fn create_sub_app(
 	sub_app.use_sub_app("/:workspaceId/rbac", rbac_routes::create_sub_app(app));
 	sub_app.use_sub_app("/:workspaceId/secret", secret::create_sub_app(app));
 	sub_app.use_sub_app("/:workspaceId/ci", ci::create_sub_app(app));
+	sub_app.use_sub_app("/:workspaceId/region", region::create_sub_app(app));
 
 	sub_app.delete(
 		"/:workspaceId",
@@ -415,12 +441,12 @@ async fn create_new_workspace(
 	)
 	.await?;
 
-	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
+	let ttl = get_access_token_expiry() + Duration::hours(2); // 2 hrs buffer time
 	redis::revoke_user_tokens_created_before_timestamp(
 		context.get_redis_connection(),
 		&user_id,
-		get_current_time_millis(),
-		Some(ttl),
+		&Utc::now(),
+		Some(&ttl),
 	)
 	.await?;
 
@@ -571,20 +597,32 @@ async fn delete_workspace(
 	)
 	.await?;
 
+	let connected_git_providers =
+		db::list_connected_git_providers_for_workspace(
+			context.get_database_connection(),
+			&workspace_id,
+		)
+		.await?;
+
 	if !domains.is_empty() ||
 		!docker_repositories.is_empty() ||
 		!managed_database.is_empty() ||
 		!deployments.is_empty() ||
 		!static_site.is_empty() ||
-		!managed_url.is_empty()
+		!managed_url.is_empty() ||
+		!connected_git_providers.is_empty()
 	{
 		return Err(Error::empty()
 			.status(424)
 			.body(error!(CANNOT_DELETE_WORKSPACE).to_string()));
 	}
 
-	service::delete_kubernetes_namespace(namespace, &config, &request_id)
-		.await?;
+	service::delete_kubernetes_namespace(
+		namespace,
+		service::get_kubernetes_config_for_default_region(&config),
+		&request_id,
+	)
+	.await?;
 
 	db::update_workspace_name(
 		context.get_database_connection(),
@@ -593,12 +631,12 @@ async fn delete_workspace(
 	)
 	.await?;
 
-	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
+	let ttl = get_access_token_expiry() + Duration::hours(2); // 2 hrs buffer time
 	redis::revoke_workspace_tokens_created_before_timestamp(
 		context.get_redis_connection(),
 		&workspace_id,
-		get_current_time_millis(),
-		Some(ttl),
+		&Utc::now(),
+		Some(&ttl),
 	)
 	.await?;
 
@@ -647,7 +685,7 @@ async fn get_workspace_audit_log(
 	.into_iter()
 	.map(|log| WorkspaceAuditLog {
 		id: log.id,
-		date: log.date,
+		date: DateTime(log.date),
 		ip_address: log.ip_address,
 		workspace_id: log.workspace_id,
 		user_id: log.user_id,
@@ -707,7 +745,7 @@ async fn get_resource_audit_log(
 	.into_iter()
 	.map(|log| WorkspaceAuditLog {
 		id: log.id,
-		date: log.date,
+		date: DateTime(log.date),
 		ip_address: log.ip_address,
 		workspace_id: log.workspace_id,
 		user_id: log.user_id,

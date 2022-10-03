@@ -1,5 +1,5 @@
-use api_models::utils::{DateTime, Uuid};
-use chrono::Utc;
+use api_models::utils::Uuid;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::{query, query_as, Database};
@@ -10,6 +10,7 @@ mod docker_registry;
 mod domain;
 mod infrastructure;
 mod metrics;
+mod region;
 mod secret;
 
 pub use self::{
@@ -19,6 +20,7 @@ pub use self::{
 	domain::*,
 	infrastructure::*,
 	metrics::*,
+	region::*,
 	secret::*,
 };
 
@@ -29,8 +31,6 @@ pub struct Workspace {
 	pub super_admin_id: Uuid,
 	pub active: bool,
 	pub alert_emails: Vec<String>,
-	pub drone_username: Option<String>,
-	pub drone_token: Option<String>,
 	pub payment_type: PaymentType,
 	pub default_payment_method_id: Option<String>,
 	pub deployment_limit: i32,
@@ -116,17 +116,6 @@ pub async fn initialize_workspaces_pre(
 					REFERENCES "user"(id),
 			active BOOLEAN NOT NULL DEFAULT FALSE,
 			alert_emails VARCHAR(320) [] NOT NULL,
-			drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE,
-			drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null
-				CHECK(
-					(
-						drone_username IS NULL AND
-						drone_token IS NULL
-					) OR (
-						drone_username IS NOT NULL AND
-						drone_token IS NOT NULL
-					)
-				),
 			payment_type PAYMENT_TYPE NOT NULL,
 			default_payment_method_id TEXT,
 			deployment_limit INTEGER NOT NULL,
@@ -238,8 +227,10 @@ pub async fn initialize_workspaces_pre(
 	domain::initialize_domain_pre(connection).await?;
 	docker_registry::initialize_docker_registry_pre(connection).await?;
 	secret::initialize_secret_pre(connection).await?;
+	region::initialize_region_pre(connection).await?;
 	infrastructure::initialize_infrastructure_pre(connection).await?;
 	billing::initialize_billing_pre(connection).await?;
+	ci::initialize_ci_pre(connection).await?;
 
 	Ok(())
 }
@@ -324,8 +315,10 @@ pub async fn initialize_workspaces_post(
 	domain::initialize_domain_post(connection).await?;
 	docker_registry::initialize_docker_registry_post(connection).await?;
 	secret::initialize_secret_post(connection).await?;
+	region::initialize_region_post(connection).await?;
 	infrastructure::initialize_infrastructure_post(connection).await?;
 	billing::initialize_billing_post(connection).await?;
+	ci::initialize_ci_post(connection).await?;
 
 	Ok(())
 }
@@ -355,8 +348,6 @@ pub async fn create_workspace(
 				super_admin_id,
 				active,
 				alert_emails,
-				drone_username,
-				drone_token,
 				payment_type,
 				default_payment_method_id,
 				deployment_limit,
@@ -371,7 +362,7 @@ pub async fn create_workspace(
 				amount_due
 			)
 		VALUES
-			($1, $2, $3, $4, $5, NULL, NULL, $6, NULL, $7, $8, $9, $10, $11, $12, $13, $14, NULL, $15);
+			($1, $2, $3, $4, $5, $6, NULL, $7, $8, $9, $10, $11, $12, $13, $14, NULL, $15);
 		"#,
 		workspace_id as _,
 		name as _,
@@ -390,9 +381,8 @@ pub async fn create_workspace(
 		0 as i32
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn get_workspace_info(
@@ -408,8 +398,6 @@ pub async fn get_workspace_info(
 			super_admin_id as "super_admin_id: _",
 			active,
 			alert_emails as "alert_emails: _",
-			drone_username,
-			drone_token,
 			payment_type as "payment_type: _",
 			default_payment_method_id as "default_payment_method_id: _",
 			deployment_limit,
@@ -425,7 +413,12 @@ pub async fn get_workspace_info(
 		FROM
 			workspace
 		WHERE
-			id = $1;
+			id = $1 AND
+			name NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
 		"#,
 		workspace_id as _,
 	)
@@ -446,8 +439,6 @@ pub async fn get_workspace_by_name(
 			super_admin_id as "super_admin_id: _",
 			active,
 			alert_emails as "alert_emails: _",
-			drone_username,
-			drone_token,
 			payment_type as "payment_type: _",
 			default_payment_method_id as "default_payment_method_id: _",
 			deployment_limit,
@@ -526,7 +517,7 @@ pub async fn create_workspace_audit_log(
 	id: &Uuid,
 	workspace_id: &Uuid,
 	ip_address: &str,
-	date: DateTime<Utc>,
+	date: &DateTime<Utc>,
 	user_id: Option<&Uuid>,
 	login_id: Option<&Uuid>,
 	resource_id: &Uuid,
@@ -683,8 +674,6 @@ pub async fn get_all_workspaces(
 			workspace.super_admin_id as "super_admin_id: _",
 			workspace.active,
 			workspace.alert_emails as "alert_emails: _",
-			workspace.drone_username,
-			workspace.drone_token,
 			workspace.payment_type as "payment_type: _",
 			workspace.default_payment_method_id as "default_payment_method_id: _",
 			workspace.deployment_limit,
@@ -951,6 +940,46 @@ pub async fn set_default_payment_method_for_workspace(
 			id = $2
 		"#,
 		payment_method_id,
+		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn set_resource_limit_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_limit: i32,
+	database_limit: i32,
+	static_site_limit: i32,
+	managed_url_limit: i32,
+	docker_repository_storage_limit: i32,
+	domain_limit: i32,
+	secret_limit: i32,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace
+		SET
+			deployment_limit = $1,
+			database_limit = $2,
+			static_site_limit = $3,
+			managed_url_limit = $4,
+			docker_repository_storage_limit = $5,
+			domain_limit = $6,
+			secret_limit = $7
+		WHERE
+			id = $8;
+		"#,
+		deployment_limit,
+		database_limit,
+		static_site_limit,
+		managed_url_limit,
+		docker_repository_storage_limit,
+		domain_limit,
+		secret_limit,
 		workspace_id as _,
 	)
 	.execute(&mut *connection)

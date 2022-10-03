@@ -1,3 +1,5 @@
+use std::net::IpAddr;
+
 use api_models::{
 	models::workspace::infrastructure::deployment::DeploymentRegistry,
 	utils::Uuid,
@@ -11,11 +13,14 @@ use argon2::{
 	PasswordHasher,
 	Version,
 };
+use chrono::Duration;
 use eve_rs::AsError;
+use serde::Deserialize;
 
 use crate::{
 	db,
 	error,
+	models::IpAddressInfo,
 	service,
 	utils::{settings::Settings, validator, Error},
 	Database,
@@ -77,8 +82,8 @@ pub fn hash(pwd: &[u8]) -> Result<String, Error> {
 ///
 /// # Returns
 /// This function returns unsigned 64 bit integer (unix time)
-pub fn get_join_token_expiry() -> u64 {
-	1000 * 60 * 60 * 2
+pub fn get_join_token_expiry() -> Duration {
+	Duration::hours(2)
 }
 
 /// # Description
@@ -87,8 +92,8 @@ pub fn get_join_token_expiry() -> u64 {
 ///
 /// # Returns
 /// This function returns unsigned 64 bit integer (unix time)
-pub fn get_access_token_expiry() -> u64 {
-	1000 * 60 * 60 * 24 * 3
+pub fn get_access_token_expiry() -> Duration {
+	Duration::days(3)
 }
 
 /// # Description
@@ -97,8 +102,8 @@ pub fn get_access_token_expiry() -> u64 {
 ///
 /// # Returns
 /// This function returns unsigned 64 bit integer (unix time)
-pub fn get_refresh_token_expiry() -> u64 {
-	1000 * 60 * 60 * 24 * 30
+pub fn get_refresh_token_expiry() -> Duration {
+	Duration::days(30)
 }
 
 /// # Description
@@ -336,19 +341,12 @@ pub async fn get_image_name_and_digest_for_deployment_image(
 				"request_id: {} - Getting workspace details from the database",
 				request_id
 			);
-			let workspace_name = db::get_workspace_info(
-				connection,
-				&repository_details.workspace_id,
-			)
-			.await?
-			.status(500)?
-			.name;
 
 			Ok((
 				format!(
 					"{}/{}/{}",
 					config.docker_registry.registry_url,
-					workspace_name,
+					repository_details.workspace_id,
 					repository_details.name
 				),
 				digest,
@@ -366,4 +364,71 @@ pub async fn get_image_name_and_digest_for_deployment_image(
 			_ => Ok((format!("{}/{}", registry, image_name), None)),
 		},
 	}
+}
+
+pub async fn get_ip_address_info(
+	ip_addr: &IpAddr,
+	token: &str,
+) -> Result<IpAddressInfo, Error> {
+	#[derive(Deserialize, Debug)]
+	pub struct ValidIp {
+		pub country: String,
+		pub region: String,
+		pub city: String,
+		pub postal: String,
+		pub loc: String,
+		pub timezone: String,
+	}
+
+	#[derive(Deserialize, Debug)]
+	pub struct BogonIp {
+		pub ip: String,
+		pub bogon: bool,
+	}
+
+	#[derive(Deserialize, Debug)]
+	#[serde(untagged)]
+	pub enum IpInfo {
+		Bogon(BogonIp),
+		Valid(ValidIp),
+	}
+
+	let default_value = IpAddressInfo {
+		country: "ZZ".to_owned(),
+		region: "Unknown".to_owned(),
+		city: "Unknown".to_owned(),
+		postal: "000000".to_owned(),
+		loc: "0,0".to_owned(),
+		timezone: "UTC".to_owned(),
+	};
+
+	let result = if cfg!(debug_assertions) {
+		default_value
+	} else {
+		let response = reqwest::get(format!(
+			"https://ipinfo.io/{}?token={}",
+			ip_addr, token
+		))
+		.await?
+		.json::<IpInfo>()
+		.await
+		.map_err(|err| Error::new(Box::new(err)))?;
+
+		match response {
+			IpInfo::Bogon(bogon_ip) => {
+				log::info!("Bogon/Unknown IP address found: {}", bogon_ip.ip);
+				default_value
+			}
+			IpInfo::Valid(valid) => IpAddressInfo {
+				country: valid.country,
+				region: valid.region,
+				city: valid.city,
+				postal: valid.postal,
+				loc: valid.loc,
+				timezone: valid.timezone,
+			},
+		}
+	};
+
+	Ok(result)
 }

@@ -17,7 +17,7 @@ use crate::{
 		RegistryTokenAccess,
 		V1Compatibility,
 	},
-	utils::{get_current_time, settings::Settings, Error},
+	utils::{settings::Settings, Error},
 	Database,
 };
 
@@ -38,14 +38,7 @@ pub async fn delete_docker_repository_image(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let repo_name = format!(
-		"{}/{}",
-		db::get_workspace_info(connection, &repository.workspace_id)
-			.await?
-			.status(500)?
-			.name,
-		repository.name
-	);
+	let repo_name = format!("{}/{}", repository.workspace_id, repository.name);
 
 	// First, delete all tags for the given image
 	log::trace!(
@@ -90,8 +83,6 @@ pub async fn delete_docker_repository_image(
 			.await?
 			.unwrap();
 
-	let iat = get_current_time().as_secs();
-
 	log::trace!("request_id: {} - Deleting docker repository image with digest: {} from the registry", request_id, digest);
 	let response_code = reqwest::Client::new()
 		.delete(format!(
@@ -108,7 +99,7 @@ pub async fn delete_docker_repository_image(
 		.bearer_auth(
 			RegistryToken::new(
 				config.docker_registry.issuer.clone(),
-				iat,
+				Utc::now(),
 				god_user.username.clone(),
 				config,
 				vec![RegistryTokenAccess {
@@ -162,14 +153,7 @@ pub async fn delete_docker_repository(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let repo_name = format!(
-		"{}/{}",
-		db::get_workspace_info(connection, &repository.workspace_id)
-			.await?
-			.status(500)?
-			.name,
-		repository.name
-	);
+	let repo_name = format!("{}/{}", &repository.workspace_id, repository.name);
 
 	let images = db::get_list_of_digests_for_docker_repository(
 		connection,
@@ -212,8 +196,6 @@ pub async fn delete_docker_repository(
 			.await?
 			.unwrap();
 
-	let iat = get_current_time().as_secs();
-
 	log::trace!("request_id: {} - Deleting docker images of the repositories from the registry", request_id);
 	for image in images {
 		let response_code = client
@@ -232,7 +214,7 @@ pub async fn delete_docker_repository(
 			.bearer_auth(
 				RegistryToken::new(
 					config.docker_registry.issuer.clone(),
-					iat,
+					Utc::now(),
 					god_user.username.clone(),
 					config,
 					vec![RegistryTokenAccess {
@@ -282,8 +264,6 @@ pub async fn get_exposed_port_for_docker_image(
 			.await?
 			.unwrap();
 
-	let iat = get_current_time().as_secs();
-
 	let exposed_ports = reqwest::Client::new()
 		.get(format!(
 			"{}://{}/v2/{}/manifests/{}",
@@ -299,7 +279,7 @@ pub async fn get_exposed_port_for_docker_image(
 		.bearer_auth(
 			RegistryToken::new(
 				config.docker_registry.issuer.clone(),
-				iat,
+				Utc::now(),
 				god_user.username.clone(),
 				config,
 				vec![RegistryTokenAccess {

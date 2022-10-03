@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use api_models::utils::Uuid;
+use chrono::{DateTime, Utc};
 
 use crate::{
 	db::Workspace,
@@ -26,7 +27,7 @@ pub struct Resource {
 	pub name: String,
 	pub resource_type_id: Uuid,
 	pub owner_id: Uuid,
-	pub created: u64,
+	pub created: DateTime<Utc>,
 }
 
 pub struct Role {
@@ -77,9 +78,7 @@ pub async fn initialize_rbac_pre(
 			owner_id UUID NOT NULL
 				CONSTRAINT resource_fk_owner_id REFERENCES workspace(id)
 					DEFERRABLE INITIALLY IMMEDIATE,
-			created BIGINT NOT NULL
-				CONSTRAINT resource_created_chk_unsigned
-						CHECK(created >= 0),
+			created TIMESTAMPTZ NOT NULL,
 			CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id)
 		);
 		"#
@@ -456,8 +455,6 @@ pub async fn get_all_workspace_roles_for_user(
 			super_admin_id as "super_admin_id: _",
 			active,
 			alert_emails as "alert_emails: _",
-			drone_username,
-			drone_token,
 			payment_type as "payment_type: _",
 			default_payment_method_id as "default_payment_method_id: _",
 			deployment_limit,
@@ -595,7 +592,7 @@ pub async fn create_resource(
 	resource_name: &str,
 	resource_type_id: &Uuid,
 	owner_id: &Uuid,
-	created: u64,
+	created: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -614,7 +611,7 @@ pub async fn create_resource(
 		resource_name,
 		resource_type_id as _,
 		owner_id as _,
-		created as i64
+		created
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -653,14 +650,15 @@ pub async fn get_resource_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &Uuid,
 ) -> Result<Option<Resource>, sqlx::Error> {
-	let resource = query!(
+	query_as!(
+		Resource,
 		r#"
 		SELECT
-			id as "id: Uuid",
+			id as "id: _",
 			name,
-			resource_type_id as "resource_type_id: Uuid",
-			owner_id as "owner_id: Uuid",
-			created
+			resource_type_id as "resource_type_id: _",
+			owner_id as "owner_id: _",
+			created 
 		FROM
 			resource
 		WHERE
@@ -669,16 +667,7 @@ pub async fn get_resource_by_id(
 		resource_id as _
 	)
 	.fetch_optional(&mut *connection)
-	.await?
-	.map(|row| Resource {
-		id: row.id,
-		name: row.name,
-		resource_type_id: row.resource_type_id,
-		owner_id: row.owner_id,
-		created: row.created as u64,
-	});
-
-	Ok(resource)
+	.await
 }
 
 pub async fn update_resource_name(

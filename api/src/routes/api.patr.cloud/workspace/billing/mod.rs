@@ -21,7 +21,7 @@ use api_models::{
 		UpdateBillingAddressRequest,
 		UpdateBillingAddressResponse,
 	},
-	utils::Uuid,
+	utils::{DateTime, Uuid},
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
@@ -685,7 +685,8 @@ async fn add_payment_method(
 		&config,
 	)
 	.await?
-	.client_secret;
+	.client_secret
+	.status(500)?;
 	context.success(AddPaymentMethodResponse { client_secret });
 	Ok(context)
 }
@@ -906,7 +907,7 @@ async fn get_transaction_history(
 		month: transaction.month,
 		amount: transaction.amount,
 		payment_intent_id: transaction.payment_intent_id,
-		date: transaction.date,
+		date: DateTime(transaction.date),
 		workspace_id: transaction.workspace_id,
 		payment_status: transaction.payment_status,
 		description: transaction.description,

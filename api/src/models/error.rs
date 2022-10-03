@@ -74,6 +74,15 @@ pub mod id {
 	pub const PAYMENT_METHOD_REQUIRED: &str = "paymentMethodRequired";
 	pub const ADDRESS_REQUIRED: &str = "addressRequired";
 	pub const TAG_NOT_FOUND: &str = "TagNotFound";
+	pub const FILE_SIZE_TOO_LARGE: &str = "fileSizeTooLarge";
+
+	// error constants for CI
+	pub const INVALID_STATE_VALUE: &str = "invalidStateValue";
+
+	// error constants for region
+	pub const REGION_NOT_READY_YET: &str = "regionNotReadyYet";
+	pub const FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER: &str =
+		"featureNotSupportedForCustomCluster";
 }
 
 #[allow(dead_code)]
@@ -206,4 +215,14 @@ pub mod message {
 	pub const PAYMENT_METHOD_REQUIRED: &str = "It seems that you have not added any payment method. Please add a payment method to continue";
 	pub const ADDRESS_REQUIRED: &str = "You need to add your billing address inorder to proceed with the transaction";
 	pub const TAG_NOT_FOUND: &str = "The tag does not exist";
+	pub const FILE_SIZE_TOO_LARGE: &str = "The file that you uploaded is too large. Maximum size allowed is 100MB";
+
+	// error constants for CI
+	pub const INVALID_STATE_VALUE: &str =
+		"Invalid/Expired value for parameter: `state`";
+
+	// error constants for region
+	pub const REGION_NOT_READY_YET: &str = "The cluster is not initialized yet, wait for some time and then try again";
+	pub const FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER: &str =
+		"For custom cluster this feature is not supported";
 }

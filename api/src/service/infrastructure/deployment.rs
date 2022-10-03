@@ -7,14 +7,15 @@ use api_models::{
 		DeploymentProbe,
 		DeploymentRegistry,
 		DeploymentRunningDetails,
+		DeploymentStatus,
 		EnvironmentVariableValue,
 		ExposedPortType,
 		Metric,
 		PatrRegistry,
 	},
-	utils::{constants, Base64String, DateTime, StringifiedU16, Uuid},
+	utils::{constants, Base64String, StringifiedU16, Uuid},
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use eve_rs::AsError;
 use k8s_openapi::api::core::v1::Event;
 use reqwest::Client;
@@ -24,8 +25,10 @@ use crate::{
 	error,
 	models::{
 		deployment::{Logs, PrometheusResponse},
-		rbac,
+		rbac::{self, permissions},
+		DeploymentMetadata,
 	},
+	service,
 	utils::{settings::Settings, validator, Error},
 	Database,
 };
@@ -73,6 +76,18 @@ pub async fn create_deployment_in_workspace(
 		return Err(Error::empty()
 			.status(200)
 			.body(error!(INVALID_DEPLOYMENT_NAME).to_string()));
+	}
+
+	// validate whether the deployment region is ready
+	let region_details = db::get_region_by_id(connection, region)
+		.await?
+		.status(400)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	if !(region_details.ready || region_details.workspace_id.is_none()) {
+		return Err(Error::empty()
+			.status(500)
+			.body(error!(REGION_NOT_READY_YET).to_string()));
 	}
 
 	log::trace!(
@@ -126,7 +141,7 @@ pub async fn create_deployment_in_workspace(
 			.get(rbac::resource_types::DEPLOYMENT)
 			.unwrap(),
 		workspace_id,
-		created_time.timestamp_millis() as u64,
+		&created_time,
 	)
 	.await?;
 	log::trace!("request_id: {} - Created resource", request_id);
@@ -238,15 +253,17 @@ pub async fn create_deployment_in_workspace(
 		.await?;
 	}
 
-	db::start_deployment_usage_history(
-		connection,
-		workspace_id,
-		&deployment_id,
-		machine_type,
-		deployment_running_details.min_horizontal_scale as i32,
-		&DateTime::from(created_time),
-	)
-	.await?;
+	if service::is_deployed_on_patr_cluster(connection, region).await? {
+		db::start_deployment_usage_history(
+			connection,
+			workspace_id,
+			&deployment_id,
+			machine_type,
+			deployment_running_details.min_horizontal_scale as i32,
+			&created_time,
+		)
+		.await?;
+	};
 
 	Ok(deployment_id)
 }
@@ -254,8 +271,8 @@ pub async fn create_deployment_in_workspace(
 pub async fn get_deployment_container_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
-	start_time: u64,
-	end_time: u64,
+	start_time: &DateTime<Utc>,
+	end_time: &DateTime<Utc>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<String, Error> {
@@ -289,7 +306,6 @@ pub async fn update_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	name: Option<&str>,
-	region: Option<&Uuid>,
 	machine_type: Option<&Uuid>,
 	deploy_on_push: Option<bool>,
 	min_horizontal_scale: Option<u16>,
@@ -335,7 +351,6 @@ pub async fn update_deployment(
 		connection,
 		deployment_id,
 		name,
-		region,
 		machine_type,
 		deploy_on_push,
 		min_horizontal_scale,
@@ -471,14 +486,11 @@ pub async fn get_full_deployment_config(
 					.await?
 					.status(404)
 					.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-			let workspace =
-				db::get_workspace_info(connection, &repository.workspace_id)
-					.await?
-					.status(500)?;
+
 			format!(
 				"{}/{}/{}",
 				constants::PATR_REGISTRY,
-				workspace.name,
+				repository.workspace_id,
 				repository.name
 			)
 		}
@@ -549,8 +561,8 @@ pub async fn get_full_deployment_config(
 pub async fn get_deployment_metrics(
 	deployment_id: &Uuid,
 	config: &Settings,
-	start_time: u64,
-	end_time: u64,
+	start_time: &DateTime<Utc>,
+	end_time: &DateTime<Utc>,
 	step: &str,
 	request_id: &Uuid,
 ) -> Result<Vec<DeploymentMetrics>, Error> {
@@ -577,8 +589,24 @@ pub async fn get_deployment_metrics(
 	) = tokio::join!(
 		async {
 			log::trace!("request_id: {} - Getting cpu metrics", request_id);
-			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_cpu_usage_seconds_total{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
-				.basic_auth(&config.prometheus.username, Some(&config.prometheus.password))
+			client
+				.post(format!(
+					concat!(
+						"https://{}/prometheus/api/v1/query_range?query=",
+						"sum(rate(container_cpu_usage_seconds_total",
+						"{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)",
+						"&start={}&end={}&step={step}"
+					),
+					config.mimir.host,
+					deployment_id,
+					start_time.timestamp_millis(),
+					end_time.timestamp(),
+					step = step
+				))
+				.basic_auth(
+					&config.mimir.username,
+					Some(&config.mimir.password),
+				)
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
@@ -589,8 +617,24 @@ pub async fn get_deployment_metrics(
 				"request_id: {} - Getting memory usage metrics",
 				request_id
 			);
-			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_memory_usage_bytes{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
-				.basic_auth(&config.prometheus.username, Some(&config.prometheus.password))
+			client
+				.post(format!(
+					concat!(
+						"https://{}/prometheus/api/v1/query_range?query=",
+						"sum(rate(container_memory_usage_bytes",
+						"{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)",
+						"&start={}&end={}&step={step}"
+					),
+					config.mimir.host,
+					deployment_id,
+					start_time.timestamp_millis(),
+					end_time.timestamp(),
+					step = step
+				))
+				.basic_auth(
+					&config.mimir.username,
+					Some(&config.mimir.password),
+				)
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
@@ -601,8 +645,24 @@ pub async fn get_deployment_metrics(
 				"request_id: {} - Getting network usage transmit metrics",
 				request_id
 			);
-			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_network_transmit_bytes_total{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
-				.basic_auth(&config.prometheus.username, Some(&config.prometheus.password))
+			client
+				.post(format!(
+					concat!(
+						"https://{}/prometheus/api/v1/query_range?query=",
+						"sum(rate(container_network_transmit_bytes_total",
+						"{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)",
+						"&start={}&end={}&step={step}"
+					),
+					config.mimir.host,
+					deployment_id,
+					start_time.timestamp_millis(),
+					end_time.timestamp(),
+					step = step
+				))
+				.basic_auth(
+					&config.mimir.username,
+					Some(&config.mimir.password),
+				)
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
@@ -613,8 +673,24 @@ pub async fn get_deployment_metrics(
 				"request_id: {} - Getting network usage recieve metrics",
 				request_id
 			);
-			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_network_receive_bytes_total{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
-				.basic_auth(&config.prometheus.username, Some(&config.prometheus.password))
+			client
+				.post(format!(
+					concat!(
+						"https://{}/prometheus/api/v1/query_range?query=",
+						"sum(rate(container_network_receive_bytes_total",
+						"{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)",
+						"&start={}&end={}&step={step}"
+					),
+					config.mimir.host,
+					deployment_id,
+					start_time.timestamp_millis(),
+					end_time.timestamp(),
+					step = step
+				))
+				.basic_auth(
+					&config.mimir.username,
+					Some(&config.mimir.password),
+				)
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
@@ -838,8 +914,8 @@ pub async fn get_deployment_metrics(
 async fn get_container_logs(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-	start_time: u64,
-	end_time: u64,
+	start_time: &DateTime<Utc>,
+	end_time: &DateTime<Utc>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<String, Error> {
@@ -849,14 +925,26 @@ async fn get_container_logs(
 		deployment_id
 	);
 	let client = Client::new();
-	let logs = client.get(format!("https://{}/loki/api/v1/query_range?direction=BACKWARD&query={{container=\"deployment-{}\",namespace=\"{}\"}}&start={}&end={}", config.loki.host, deployment_id, workspace_id, start_time, end_time))
-				.basic_auth(&config.loki.username, Some(&config.loki.password))
-				.send()
-				.await?
-				.json::<Logs>()
-				.await?
-				.data
-				.result;
+	let logs = client
+		.get(format!(
+			concat!(
+				"https://{}/loki/api/v1/query_range?direction=BACKWARD&",
+				"query={{container=\"deployment-{}\",namespace=\"{}\"}}",
+				"&start={}&end={}"
+			),
+			config.loki.host,
+			deployment_id,
+			workspace_id,
+			start_time.timestamp_millis(),
+			end_time.timestamp_millis()
+		))
+		.basic_auth(&config.loki.username, Some(&config.loki.password))
+		.send()
+		.await?
+		.json::<Logs>()
+		.await?
+		.data
+		.result;
 
 	let mut combined_build_logs = Vec::new();
 
@@ -882,8 +970,8 @@ async fn get_container_logs(
 pub async fn get_deployment_build_logs(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-	start_time: u64,
-	end_time: u64,
+	start_time: &DateTime<Utc>,
+	end_time: &DateTime<Utc>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Vec<Event>, Error> {
@@ -893,14 +981,25 @@ pub async fn get_deployment_build_logs(
 		deployment_id
 	);
 	let client = Client::new();
-	let logs = client.get(format!("https://{}/loki/api/v1/query_range?direction=BACKWARD&query={{app=\"eventrouter\",namespace=\"{}\"}}&start={}&end={}", config.loki.host, workspace_id, start_time, end_time))
-				.basic_auth(&config.loki.username, Some(&config.loki.password))
-				.send()
-				.await?
-				.json::<Logs>()
-				.await?
-				.data
-				.result;
+	let logs = client
+		.get(format!(
+			concat!(
+				"https://{}/loki/api/v1/query_range?direction=BACKWARD&",
+				"query={{app=\"eventrouter\",namespace=\"{}\"}}",
+				"&start={}&end={}"
+			),
+			config.loki.host,
+			workspace_id,
+			start_time.timestamp_millis(),
+			end_time.timestamp_millis()
+		))
+		.basic_auth(&config.loki.username, Some(&config.loki.password))
+		.send()
+		.await?
+		.json::<Logs>()
+		.await?
+		.data
+		.result;
 
 	// TODO: you will get only one element in result array. From that result
 	// array get the element and parse that json and from that json filter the
@@ -959,4 +1058,282 @@ async fn deployment_limit_crossed(
 	}
 
 	Ok(false)
+}
+
+pub async fn start_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	deployment: &Deployment,
+	deployment_running_details: &DeploymentRunningDetails,
+	user_id: &Uuid,
+	login_id: &Uuid,
+	ip_address: &str,
+	metadata: &DeploymentMetadata,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	// If deploy_on_create is true, then tell the consumer to create a
+	// deployment
+	let (image_name, digest) =
+		service::get_image_name_and_digest_for_deployment_image(
+			connection,
+			&deployment.registry,
+			&deployment.image_tag,
+			config,
+			request_id,
+		)
+		.await?;
+
+	db::update_deployment_status(
+		connection,
+		deployment_id,
+		&DeploymentStatus::Deploying,
+	)
+	.await?;
+
+	let audit_log_id =
+		db::generate_new_workspace_audit_log_id(connection).await?;
+
+	db::create_workspace_audit_log(
+		connection,
+		&audit_log_id,
+		workspace_id,
+		ip_address,
+		&Utc::now(),
+		Some(user_id),
+		Some(login_id),
+		&deployment.id,
+		rbac::PERMISSIONS
+			.get()
+			.unwrap()
+			.get(permissions::workspace::infrastructure::deployment::EDIT)
+			.unwrap(),
+		request_id,
+		&serde_json::to_value(metadata)?,
+		false,
+		true,
+	)
+	.await?;
+
+	let kubeconfig = service::get_kubernetes_config_for_region(
+		connection,
+		&deployment.region,
+		config,
+	)
+	.await?;
+
+	service::update_kubernetes_deployment(
+		workspace_id,
+		deployment,
+		&image_name,
+		digest.as_deref(),
+		deployment_running_details,
+		kubeconfig,
+		config,
+		request_id,
+	)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn update_deployment_image(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	name: &str,
+	registry: &DeploymentRegistry,
+	digest: &str,
+	image_tag: &str,
+	image_name: &str,
+	region: &Uuid,
+	machine_type: &Uuid,
+	deployment_running_details: &DeploymentRunningDetails,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let audit_log_id =
+		db::generate_new_workspace_audit_log_id(connection).await?;
+
+	db::create_workspace_audit_log(
+		connection,
+		&audit_log_id,
+		workspace_id,
+		"0.0.0.0",
+		&Utc::now(),
+		None,
+		None,
+		deployment_id,
+		rbac::PERMISSIONS
+			.get()
+			.unwrap()
+			.get(permissions::workspace::infrastructure::deployment::EDIT)
+			.unwrap(),
+		request_id,
+		&serde_json::to_value(DeploymentMetadata::Start {})?,
+		true,
+		true,
+	)
+	.await?;
+
+	let kubeconfig =
+		service::get_kubernetes_config_for_region(connection, region, config)
+			.await?;
+
+	service::update_kubernetes_deployment(
+		workspace_id,
+		&Deployment {
+			id: deployment_id.clone(),
+			name: name.to_string(),
+			registry: registry.clone(),
+			image_tag: image_tag.to_string(),
+			status: DeploymentStatus::Pushed,
+			region: region.clone(),
+			machine_type: machine_type.clone(),
+			current_live_digest: Some(digest.to_string()),
+		},
+		image_name,
+		Some(digest),
+		deployment_running_details,
+		kubeconfig,
+		config,
+		request_id,
+	)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn stop_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	region_id: &Uuid,
+	user_id: &Uuid,
+	login_id: &Uuid,
+	ip_address: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	// TODO: implement logic for handling domains of the stopped deployment
+	log::trace!(
+		"request_id: {} - Updating deployment status as stopped",
+		request_id
+	);
+	db::update_deployment_status(
+		connection,
+		deployment_id,
+		&DeploymentStatus::Stopped,
+	)
+	.await?;
+
+	let audit_log_id =
+		db::generate_new_workspace_audit_log_id(connection).await?;
+
+	db::create_workspace_audit_log(
+		connection,
+		&audit_log_id,
+		workspace_id,
+		ip_address,
+		&Utc::now(),
+		Some(user_id),
+		Some(login_id),
+		deployment_id,
+		rbac::PERMISSIONS
+			.get()
+			.unwrap()
+			.get(permissions::workspace::infrastructure::deployment::EDIT)
+			.unwrap(),
+		request_id,
+		&serde_json::to_value(DeploymentMetadata::Stop {})?,
+		false,
+		true,
+	)
+	.await?;
+
+	let kubeconfig = service::get_kubernetes_config_for_region(
+		connection, region_id, config,
+	)
+	.await?;
+
+	service::delete_kubernetes_deployment(
+		workspace_id,
+		deployment_id,
+		kubeconfig,
+		request_id,
+	)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn delete_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	region_id: &Uuid,
+	name: &str,
+	user_id: &Uuid,
+	login_id: &Uuid,
+	ip_address: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Updating the deployment name in the database",
+		request_id
+	);
+	db::update_deployment_name(
+		connection,
+		deployment_id,
+		&format!("patr-deleted: {}-{}", name, deployment_id),
+	)
+	.await?;
+
+	log::trace!("request_id: {} - Updating deployment status", request_id);
+	db::update_deployment_status(
+		connection,
+		deployment_id,
+		&DeploymentStatus::Deleted,
+	)
+	.await?;
+
+	let audit_log_id =
+		db::generate_new_workspace_audit_log_id(connection).await?;
+	db::create_workspace_audit_log(
+		connection,
+		&audit_log_id,
+		workspace_id,
+		ip_address,
+		&Utc::now(),
+		Some(user_id),
+		Some(login_id),
+		deployment_id,
+		rbac::PERMISSIONS
+			.get()
+			.unwrap()
+			.get(permissions::workspace::infrastructure::deployment::EDIT)
+			.unwrap(),
+		request_id,
+		&serde_json::to_value(DeploymentMetadata::Delete {})?,
+		false,
+		true,
+	)
+	.await?;
+
+	let kubeconfig = service::get_kubernetes_config_for_region(
+		connection, region_id, config,
+	)
+	.await?;
+
+	service::delete_kubernetes_deployment(
+		workspace_id,
+		deployment_id,
+		kubeconfig,
+		request_id,
+	)
+	.await?;
+
+	Ok(())
 }

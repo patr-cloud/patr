@@ -1,6 +1,7 @@
 use std::{future::Future, pin::Pin};
 
 use async_trait::async_trait;
+use chrono::Utc;
 use eve_rs::{
 	default_middlewares::{
 		compression::CompressionHandler,
@@ -17,7 +18,6 @@ use eve_rs::{
 };
 use redis::aio::MultiplexedConnection as RedisConnection;
 
-use super::get_current_time_millis;
 use crate::{
 	app::App,
 	db::Resource,
@@ -236,7 +236,7 @@ async fn validate_access_token(
 	access_token: &AccessTokenData,
 ) -> Result<(), Error> {
 	// check whether access token has expired
-	if access_token.exp < get_current_time_millis() {
+	if access_token.exp < Utc::now() {
 		return Error::as_result()
 			.status(401)
 			.body(error!(EXPIRED).to_string())?;

@@ -1,8 +1,10 @@
-use eve_rs::{App as EveApp, Context};
+use api_models::models::GetVersionResponse;
+use eve_rs::{App as EveApp, Context, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
-	utils::{ErrorData, EveContext, EveMiddleware},
+	pin_fn,
+	utils::{constants, Error, ErrorData, EveContext, EveMiddleware},
 };
 
 mod auth;
@@ -35,8 +37,22 @@ pub fn create_sub_app(
 	sub_app.use_sub_app("/user", user::create_sub_app(app));
 	sub_app.use_sub_app("/workspace", workspace::create_sub_app(app));
 	sub_app.use_sub_app("/webhook", webhook::create_sub_app(app));
+	sub_app.get(
+		"/version",
+		[EveMiddleware::CustomFunction(pin_fn!(get_version_number))],
+	);
 
 	sub_app
+}
+
+async fn get_version_number(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	context.success(GetVersionResponse {
+		version: constants::DATABASE_VERSION.to_string(),
+	});
+	Ok(context)
 }
 
 pub fn get_request_ip_address(context: &EveContext) -> String {
