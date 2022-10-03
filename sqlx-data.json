@@ -10415,6 +10415,16 @@
     },
     "query": "UPDATE deployment_region SET message_log = CONCAT(message_log, $2::TEXT) WHERE id = $1;"
   },
+  "c01e1cdcabfe53756654a2160d7458bcb64e1749e38198252f522e4d2f5a1b5c": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE workspace_domain( id UUID CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_domain_type CHECK( domain_type = 'business' ), is_verified BOOLEAN NOT NULL, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL, last_unverified TIMESTAMPTZ NOT NULL, CONSTRAINT workspace_domain_uq_id_nameserver_type UNIQUE(id, nameserver_type), CONSTRAINT workspace_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );"
+  },
   "c0c17a0c6a75242acff00efaf8d8431359561110af0f76f7d19410edd32e0674": {
     "describe": {
       "columns": [],
@@ -13658,16 +13668,6 @@
       }
     },
     "query": "ALTER TABLE payment_method ADD CONSTRAINT payment_method_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE;"
-  },
-  "feb2d9a94f737f5734051b80c8c07ed89f1f759b1ca2bc4c42d4b49c9ad25346": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE workspace_domain( id UUID CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_domain_type CHECK( domain_type = 'business' ), is_verified BOOLEAN NOT NULL, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL, last_unverified TIMESTAMPTZ NOT NULL, CONSTRAINT workspace_domain_uq_id_nameserver_type UNIQUE(id, nameserver_type) );"
   },
   "fec3fe8449ddbd177423ae0688af76ad62da36bfebf3f25635f7ddad533d6b22": {
     "describe": {

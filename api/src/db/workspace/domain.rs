@@ -186,7 +186,9 @@ pub async fn initialize_domain_pre(
 			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL,
 			last_unverified TIMESTAMPTZ NOT NULL,
 			CONSTRAINT workspace_domain_uq_id_nameserver_type
-				UNIQUE(id, nameserver_type)
+				UNIQUE(id, nameserver_type),
+			CONSTRAINT workspace_domain_fk_id_domain_type
+				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
 		);
 		"#
 	)
