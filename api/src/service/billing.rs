@@ -8,11 +8,12 @@ use api_models::{
 	models::workspace::billing::{
 		PaymentMethod,
 		PaymentStatus,
+		StripePaymentMethodType,
 		TransactionType,
 	},
 	utils::{DateTime, Uuid},
 };
-use chrono::{Datelike, Utc};
+use chrono::{Datelike, TimeZone, Utc};
 use eve_rs::AsError;
 use stripe::{
 	Client,
@@ -25,7 +26,6 @@ use stripe::{
 	PaymentIntent,
 	PaymentIntentConfirmationMethod,
 	PaymentIntentOffSession,
-	PaymentIntentSetupFutureUsage,
 	PaymentIntentStatus,
 	PaymentMethodId,
 	Refund,
@@ -101,16 +101,22 @@ pub async fn add_credits_to_workspace(
 		intent.payment_method =
 			Some(PaymentMethodId::from_str(&default_payment_method_id)?);
 		intent.payment_method_types = Some(vec!["card".to_string()]);
-		intent.setup_future_usage =
-			Some(PaymentIntentSetupFutureUsage::OffSession);
+		// intent.setup_future_usage =
+		// 	Some(PaymentIntentSetupFutureUsage::OffSession);
 
 		intent
 	})
-	.await?;
+	.await;
 
-	let payment_intent =
-		PaymentIntent::confirm(&client, &payment_intent.id, Default::default())
-			.await?;
+	let payment_intent = match payment_intent {
+		Ok(payment) => payment,
+		Err(err) => {
+			log::error!("Error from stripe: {}", err);
+			return Error::as_result()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?;
+		}
+	};
 
 	if payment_intent.status != PaymentIntentStatus::Succeeded {
 		Refund::create(&client, {
@@ -651,8 +657,28 @@ pub async fn get_card_details(
 			&[],
 		)
 		.await?;
-		let card_details =
-			serde_json::from_str(&serde_json::to_string(&card_details)?)?;
+
+		let card_details = PaymentMethod {
+			id: card_details.id.to_string(),
+			customer: card_details.customer.status(500)?.id().to_string(),
+			r#type: match card_details.type_ {
+				stripe::PaymentMethodType::Card => {
+					StripePaymentMethodType::CardPresent
+				}
+				stripe::PaymentMethodType::CardPresent => {
+					StripePaymentMethodType::CardPresent
+				}
+				_ => {
+					return Error::as_result()
+						.status(500)
+						.body(error!(SERVER_ERROR).to_string())?
+				}
+			},
+			card: serde_json::from_str(&serde_json::to_string(
+				&card_details.card.status(500)?,
+			)?)?,
+			created: DateTime::from(Utc.timestamp_millis(card_details.created)),
+		};
 		cards.push(card_details);
 	}
 	Ok(cards)
