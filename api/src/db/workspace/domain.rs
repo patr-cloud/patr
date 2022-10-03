@@ -135,7 +135,8 @@ pub async fn initialize_domain_pre(
 			CONSTRAINT domain_chk_max_domain_name_length CHECK(
 				(LENGTH(name) + LENGTH(tld)) < 255
 			),
-			CONSTRAINT domain_uq_name_type UNIQUE(id, type)
+			CONSTRAINT domain_uq_id_type UNIQUE (id, type),
+			CONSTRAINT domain_uq_id_type_deleted UNIQUE (id, type, deleted)
 		);
 		"#
 	)
@@ -161,8 +162,12 @@ pub async fn initialize_domain_pre(
 				CONSTRAINT personal_domain_chk_domain_type CHECK(
 					domain_type = 'personal'
 				),
-			CONSTRAINT personal_domain_fk_id_domain_type
-				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
+			deleted TIMESTAMPTZ
+				CONSTRAINT personal_domain_chk_deletion CHECK(
+					deleted IS NULL
+				),
+			CONSTRAINT personal_domain_fk_id_domain_type_deleted
+				FOREIGN KEY(id, domain_type, deleted) REFERENCES domain(id, type, deleted)
 		);
 		"#
 	)
@@ -181,9 +186,7 @@ pub async fn initialize_domain_pre(
 			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL,
 			last_unverified TIMESTAMPTZ NOT NULL,
 			CONSTRAINT workspace_domain_uq_id_nameserver_type
-				UNIQUE(id, nameserver_type),
-			CONSTRAINT workspace_domain_fk_id_domain_type
-				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
+				UNIQUE(id, nameserver_type)
 		);
 		"#
 	)
@@ -721,7 +724,7 @@ pub async fn delete_personal_domain(
 	.map(|_| ())
 }
 
-pub async fn delete_domain(
+pub async fn mark_domain_as_deleted(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	deletion_time: &DateTime<Utc>,
@@ -737,44 +740,6 @@ pub async fn delete_domain(
 		"#,
 		domain_id as _,
 		deletion_time
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-#[allow(dead_code)]
-pub async fn delete_domain_from_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		DELETE FROM
-			workspace_domain
-		WHERE
-			id = $1;
-		"#,
-		domain_id as _
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-// TODO: do we really need to delete a domain?
-pub async fn delete_generic_domain(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		DELETE FROM
-			domain
-		WHERE
-			id = $1;
-		"#,
-		domain_id as _
 	)
 	.execute(&mut *connection)
 	.await

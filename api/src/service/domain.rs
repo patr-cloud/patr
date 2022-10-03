@@ -756,7 +756,7 @@ pub async fn delete_domain_in_workspace(
 		&Utc::now(),
 	)
 	.await?;
-	db::delete_domain(connection, domain_id, &Utc::now()).await?;
+	db::mark_domain_as_deleted(connection, domain_id, &Utc::now()).await?;
 
 	let domain_plan =
 		match db::get_domains_for_workspace(connection, workspace_id)

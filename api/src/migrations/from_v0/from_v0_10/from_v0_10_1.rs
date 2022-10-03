@@ -359,6 +359,32 @@ async fn refactor_domain_deletion(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE domain
+		ADD CONSTRAINT domain_uq_id_type_deleted UNIQUE (id, type, deleted);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE personal_domain
+			ADD COLUMN deleted TIMESTAMPTZ
+				CONSTRAINT personal_domain_chk_deletion CHECK(
+					deleted IS NULL
+				),
+			DROP CONSTRAINT personal_domain_fk_id_domain_type,
+			ADD CONSTRAINT personal_domain_fk_id_domain_type_deleted
+				FOREIGN KEY(id, domain_type, deleted) REFERENCES domain(id, type, deleted);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// TODO: migration for personal_domain and workspace_domain too
+
 	Ok(())
 }
 
