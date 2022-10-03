@@ -157,12 +157,13 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 						"You might have a dangling resource for the domain"
 					);
 				} else {
-					// TODO change this to notifier
-					// mailer::send_domain_verified_mail(
-					// 	config.config.clone(),
-					// 	notification_email.unwrap(),
-					// 	unverified_domain.name,
-					// );
+					service::domain_verification_email(
+						connection, // todo change this to connection
+						&unverified_domain.name,
+						&workspace_id,
+						true,
+					)
+					.await?
 				}
 				connection.commit().await?;
 			} else {
@@ -238,6 +239,16 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					"Could not verify domain `{}`",
 					unverified_domain.name
 				);
+
+				// Sending mail
+				service::domain_verification_email(
+					connection, // todo change this to connection
+					&unverified_domain.name,
+					&workspace_id,
+					false,
+				)
+				.await?;
+
 				let last_unverified = Utc::now()
 					.signed_duration_since(unverified_domain.last_unverified);
 				let last_unverified_days = last_unverified.num_days();

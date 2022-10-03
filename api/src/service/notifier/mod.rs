@@ -17,6 +17,7 @@ use crate::{
 			StaticSiteBill,
 		},
 		deployment::KubernetesEventData,
+		ResourceType,
 	},
 	utils::Error,
 	Database,
@@ -639,71 +640,82 @@ pub async fn send_payment_failed_notification(
 	.await
 }
 
-// pub enum PatrActionType {
-// 	Delete,
-// 	Update,
-// 	Stop,
-// 	DomainVerified,
-// 	DomainUnverified,
-// }
+pub async fn resource_action_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	resource_name: &str,
+	workspace_id: &Uuid,
+	resource_type: &ResourceType,
+) -> Result<(), Error> {
+	let super_admin_id = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?
+		.super_admin_id;
 
-// pub async fn resource_action_email(
-// 	resource_id: &Uuid,
-// 	resource_name: &str,
-// 	super_admin_firstname: &str, might not be needed can pass workspace_id and
-// 									then can fetch the value from there will prevent code
-// 									repetition in all resources
-// 	ip_address: &IpAddr,
-// 	city: &str,
-// 	region: &str,
-// 	country: &str,
-// 	action: &PatrActionType,
-// ) -> Result<(), Error> {
-// 	match action {
-// 		PatrAction::Delete => {
-// 			email::send_resource_deleted_email(
-// 				resource_id,
-// 				resource_name,
-// 				super_admin_firstname,
-// 				ip_address,
-// 				city,
-// 				region,
-// 				country,
-// 				email,
-// 			)
-// 			.await?;
-// 			Ok(())
-// 		}
-// 		PatrAction::Stop => {
-// 			email::send_resource_stopped_email(
-// 				resource_id,
-// 				resource_name,
-// 				super_admin_firstname,
-// 				ip_address,
-// 				city,
-// 				region,
-// 				country,
-// 				action,
-// 			)
-// 			.await?;
-// 			Ok(())
-// 		}
-// 		PatrAction::Update => {
-// 			email::send_resource_updated_email(
-// 				resource_id,
-// 				resource_name,
-// 				super_admin_firstname,
-// 				ip_address,
-// 				city,
-// 				region,
-// 				country,
-// 				action,
-// 			)
-// 			.await?;
-// 			Ok(())
-// 		}
-// 		PatrAction::DomainVerified => todo!(),
-// 		PatrAction::DomainUnerified => todo!()
-// 	}
-// }
+	// TODO -  change this and move to one function. Changes are done in PR #600
+	let user = db::get_user_by_user_id(connection, &super_admin_id)
+		.await?
+		.status(500)?;
 
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_resource_deleted_email(
+		resource_name.to_string(),
+		user.first_name,
+		resource_type.to_string(), /* converting to string as email template
+		                            * does not support an enum as field in
+		                            * it's struct */
+		user_email.parse()?,
+	)
+	.await?;
+	Ok(())
+}
+
+pub async fn domain_verification_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain: &str,
+	workspace_id: &Uuid,
+	is_verified: bool,
+) -> Result<(), Error> {
+	let super_admin_id = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?
+		.super_admin_id;
+
+	// TODO -  change this and move to one function. Changes are done in PR #600
+	let user = db::get_user_by_user_id(connection, &super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_domain_verification_email(
+		domain.to_string(),
+		user.first_name,
+		is_verified,
+		user_email.parse()?,
+	)
+	.await?;
+	Ok(())
+}
