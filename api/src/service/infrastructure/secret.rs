@@ -250,7 +250,7 @@ pub async fn delete_secret_in_workspace(
 			connection, secret_id,
 		)
 		.await?
-		.len() > 0;
+		.is_empty();
 	if used_in_deployment {
 		return Err(Error::empty()
 			.status(400)

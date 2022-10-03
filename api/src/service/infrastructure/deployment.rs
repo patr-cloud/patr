@@ -7,6 +7,7 @@ use api_models::{
 		DeploymentProbe,
 		DeploymentRegistry,
 		DeploymentRunningDetails,
+		DeploymentStatus,
 		EnvironmentVariableValue,
 		ExposedPortType,
 		Metric,
@@ -420,6 +421,7 @@ pub async fn delete_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
+	region_id: &Uuid,
 	user_id: &Uuid,
 	login_id: &Uuid,
 	ip_address: &str,
@@ -455,10 +457,15 @@ pub async fn delete_deployment(
 	)
 	.await?;
 
+	let kubeconfig = service::get_kubernetes_config_for_region(
+		connection, region_id, config,
+	)
+	.await?;
+
 	service::delete_kubernetes_deployment(
 		workspace_id,
 		deployment_id,
-		config,
+		kubeconfig,
 		request_id,
 	)
 	.await?;
@@ -1295,76 +1302,6 @@ pub async fn stop_deployment(
 			.unwrap(),
 		request_id,
 		&serde_json::to_value(DeploymentMetadata::Stop {})?,
-		false,
-		true,
-	)
-	.await?;
-
-	let kubeconfig = service::get_kubernetes_config_for_region(
-		connection, region_id, config,
-	)
-	.await?;
-
-	service::delete_kubernetes_deployment(
-		workspace_id,
-		deployment_id,
-		kubeconfig,
-		request_id,
-	)
-	.await?;
-
-	Ok(())
-}
-
-pub async fn delete_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	deployment_id: &Uuid,
-	region_id: &Uuid,
-	name: &str,
-	user_id: &Uuid,
-	login_id: &Uuid,
-	ip_address: &str,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Updating the deployment name in the database",
-		request_id
-	);
-	db::update_deployment_name(
-		connection,
-		deployment_id,
-		&format!("patr-deleted: {}-{}", name, deployment_id),
-	)
-	.await?;
-
-	log::trace!("request_id: {} - Updating deployment status", request_id);
-	db::update_deployment_status(
-		connection,
-		deployment_id,
-		&DeploymentStatus::Deleted,
-	)
-	.await?;
-
-	let audit_log_id =
-		db::generate_new_workspace_audit_log_id(connection).await?;
-	db::create_workspace_audit_log(
-		connection,
-		&audit_log_id,
-		workspace_id,
-		ip_address,
-		&Utc::now(),
-		Some(user_id),
-		Some(login_id),
-		deployment_id,
-		rbac::PERMISSIONS
-			.get()
-			.unwrap()
-			.get(permissions::workspace::infrastructure::deployment::EDIT)
-			.unwrap(),
-		request_id,
-		&serde_json::to_value(DeploymentMetadata::Delete {})?,
 		false,
 		true,
 	)

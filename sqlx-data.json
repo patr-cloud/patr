@@ -818,6 +818,19 @@
     },
     "query": "UPDATE workspace_domain SET is_verified = $2, last_unverified = $3 WHERE id = $1;"
   },
+  "0e7f9bcd50cb736fbc941ef6953a6fd8a79ed355f437aeb68a03a88ad245ea31": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "UPDATE static_site SET deleted = $2, status = 'deleted' WHERE id = $1;"
+  },
   "0ec85827c4c7be3f95578d0f47f1e82767fe0c20c24c2ed7f18c5a0b98400dab": {
     "describe": {
       "columns": [
@@ -3551,6 +3564,16 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\trepo_owner,\n\t\t\trepo_name,\n\t\t\tclone_url,\n\t\t\twebhook_secret,\n\t\t\tbuild_machine_type_id as \"build_machine_type_id: _\",\n\t\t\tstatus as \"status: _\",\n\t\t\tgit_provider_id as \"git_provider_id: _\",\n\t\t\tgit_provider_repo_uid\n\t\tFROM\n\t\t\tci_repos\n\t\tWHERE \n\t\t\tid = $1;\n\t\t"
   },
+  "452b7070d954007d81b648636a8954468298a6fdc33cd16aae6b12f9f235c35b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, alert_emails VARCHAR(320) [] NOT NULL, payment_type PAYMENT_TYPE NOT NULL, default_payment_method_id TEXT, deployment_limit INTEGER NOT NULL, database_limit INTEGER NOT NULL, static_site_limit INTEGER NOT NULL, managed_url_limit INTEGER NOT NULL, docker_repository_storage_limit INTEGER NOT NULL, domain_limit INTEGER NOT NULL, secret_limit INTEGER NOT NULL, stripe_customer_id TEXT NOT NULL, address_id UUID, amount_due DOUBLE PRECISION NOT NULL, deleted TIMESTAMPTZ );"
+  },
   "452c88d9bf883330d3bdd5bbc28e23e2498f117130c41917c5b0f92ba7d64e72": {
     "describe": {
       "columns": [
@@ -4031,7 +4054,7 @@
         ]
       }
     },
-    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tstatic_site_plan as \"static_site_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tstatic_sites_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t);\n\t\t"
+    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdomain_plan as \"domain_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tdomain_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t) AND\n\t\t\tstart_time < $3;\n\t\t\t"
   },
   "503b206db96ce1497dfb887e1d4099d16d782e1649067ecba6cecb0c5b8623fa": {
     "describe": {
@@ -4367,6 +4390,16 @@
       }
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", super_admin_id as \"super_admin_id: _\", active, alert_emails, payment_type as \"payment_type: _\", default_payment_method_id as \"default_payment_method_id: _\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, stripe_customer_id, address_id as \"address_id: _\", amount_due FROM workspace WHERE super_admin_id = $1 AND name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
+  },
+  "5308c1ba110f6bcd755d6c15fb6c69d940da99b08f11fe676c6ca3c5bbcac75b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE UNIQUE INDEX docker_registry_repository_uq_workspace_id_name ON docker_registry_repository(workspace_id, name) WHERE deleted IS NULL;"
   },
   "5443d8492257b3f1a81aea2c8b8995bc0b754d4df43d87fb305e442e914f2cc5": {
     "describe": {
@@ -5342,6 +5375,16 @@
     },
     "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, startup_probe_port INTEGER, startup_probe_path VARCHAR(255), startup_probe_port_type EXPOSED_PORT_TYPE, liveness_probe_port INTEGER, liveness_probe_path VARCHAR(255), liveness_probe_port_type EXPOSED_PORT_TYPE, current_live_digest TEXT, deleted TIMESTAMPTZ, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ), CONSTRAINT deployment_chk_image_tag_is_valid CHECK( image_tag != '' ), CONSTRAINT deployment_chk_startup_probe_is_valid CHECK( ( startup_probe_port IS NULL AND startup_probe_path IS NULL AND startup_probe_port_type IS NULL ) OR ( startup_probe_port IS NOT NULL AND startup_probe_path IS NOT NULL AND startup_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_liveness_probe_is_valid CHECK( ( liveness_probe_port IS NULL AND liveness_probe_path IS NULL AND liveness_probe_port_type IS NULL ) OR ( liveness_probe_port IS NOT NULL AND liveness_probe_path IS NOT NULL AND liveness_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_startup_probe_port_type_is_http CHECK( startup_probe_port_type = 'http' ), CONSTRAINT deployment_chk_liveness_probe_port_type_is_http CHECK( liveness_probe_port_type = 'http' ) );"
   },
+  "608f24df85727cf7e46222aece1fb883e77f85671c096f065c1ba9bdad37a90a": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE ci_builds ( repo_id UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id), build_num BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK (build_num > 0), git_ref TEXT NOT NULL, git_commit TEXT NOT NULL, status CI_BUILD_STATUS NOT NULL, created TIMESTAMPTZ NOT NULL, finished TIMESTAMPTZ, message TEXT, author TEXT NOT NULL, git_commit_message TEXT, git_pr_title TEXT, CONSTRAINT ci_builds_pk_repo_id_build_num PRIMARY KEY (repo_id, build_num) );"
+  },
   "60a973c0325d830a4327ef4406a8e8f4e878d1d0c69a5b98ec7dcad2c252e264": {
     "describe": {
       "columns": [],
@@ -5480,6 +5523,16 @@
     },
     "query": "UPDATE managed_database SET host = $1, port = $2, username = $3, password = $4 WHERE id = $5;"
   },
+  "61b0d98f03f5f54f431284b9ef9bfb3a3adbaf44e4817c87e585cbe07ea719b0": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE domain( id UUID CONSTRAINT domain_pk PRIMARY KEY, name TEXT NOT NULL CONSTRAINT domain_chk_name_is_valid CHECK( name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' ), type RESOURCE_OWNER_TYPE NOT NULL, tld TEXT NOT NULL CONSTRAINT domain_fk_tld REFERENCES domain_tld(tld), deleted TIMESTAMPTZ, CONSTRAINT domain_chk_max_domain_name_length CHECK( (LENGTH(name) + LENGTH(tld)) < 255 ), CONSTRAINT domain_uq_name_type UNIQUE (id, type), CONSTRAINT domain_uq_id_type_deleted UNIQUE (id, type, deleted) );"
+  },
   "629c00298724c7b118fa471652c112c774ebc0c0d08a288c41c1cf7b9a27b5f9": {
     "describe": {
       "columns": [
@@ -5551,32 +5604,6 @@
       }
     },
     "query": "INSERT INTO resource( id, resource_type_id, owner_id, created ) VALUES ($1, $2, $3, $4);"
-  },
-  "6684afded21a486e0b2246c1376483e58abfe453a4831dd2b84eb6a7ae16d252": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "digitalocean"
-                ]
-              },
-              "name": "deployment_cloud_provider"
-            }
-          },
-          "Float8",
-          "Float8",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "INSERT INTO deployment_region( id, name, provider, location, parent_region_id ) VALUES ($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6);"
   },
   "6714984cd52ecf759cd6cb912a65e0c7d3189afd7a613eafb425a57146fceb2d": {
     "describe": {
@@ -6114,45 +6141,6 @@
       }
     },
     "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE workspace_id = $1;"
-  },
-  "6f7f9061d9b0ef20410537f9f662cc3a501d0a3ec931a68f7ef6c0891bfa4a06": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "cloud_provider: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "digitalocean"
-                ]
-              },
-              "name": "deployment_cloud_provider"
-            }
-          }
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\" FROM deployment_region;"
   },
   "71851c0dceb357cee7d00bff65ca31965f2aef6778a2f86283fa626ec6359412": {
     "describe": {
@@ -7985,11 +7973,13 @@
       "parameters": {
         "Left": [
           "Uuid",
-          "Timestamptz"
+          "Varchar",
+          "Varchar",
+          "Uuid"
         ]
       }
     },
-    "query": "UPDATE workspace SET deleted = $2 WHERE id = $1;"
+    "query": "INSERT INTO role( id, name, description, owner_id ) VALUES ($1, $2, $3, $4);"
   },
   "952f42b0030d1b48598da906a35a064518a1b9be64340da3cb3d4eebb0f1ea34": {
     "describe": {
@@ -8090,18 +8080,6 @@
       }
     },
     "query": "INSERT INTO secret( id, name, workspace_id, deployment_id ) VALUES ($1, $2, $3, NULL);"
-  },
-  "97dc58af5c9c3baed320a573d34a5069c2f7919b6a3ace08bdbbf1a2e90b4789": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "DELETE FROM managed_url WHERE id = $1;"
   },
   "9812ea5c7c65e99cde5228c6e4d96194ada29029922f09ad6f5dc1fa7fb2c25f": {
     "describe": {
@@ -10029,6 +10007,16 @@
     },
     "query": "SET CONSTRAINTS ALL DEFERRED;"
   },
+  "b874dd7869b5c4f70136484593c0d9aa01fe0d322a896b68f33c1187925ed018": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE personal_domain( id UUID CONSTRAINT personal_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT personal_domain_chk_domain_type CHECK( domain_type = 'personal' ), deleted TIMESTAMPTZ CONSTRAINT personal_domain_chk_deletion CHECK( deleted IS NULL ), CONSTRAINT personal_domain_fk_id_domain_type_deleted FOREIGN KEY(id, domain_type, deleted) REFERENCES domain(id, type, deleted) );"
+  },
   "b9357a0670c6269e397b5c88dad2278ee579b678ff57c99f049d17026d2660a5": {
     "describe": {
       "columns": [],
@@ -10426,16 +10414,6 @@
       }
     },
     "query": "UPDATE deployment_region SET message_log = CONCAT(message_log, $2::TEXT) WHERE id = $1;"
-  },
-  "c01e1cdcabfe53756654a2160d7458bcb64e1749e38198252f522e4d2f5a1b5c": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE workspace_domain( id UUID CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_domain_type CHECK( domain_type = 'business' ), is_verified BOOLEAN NOT NULL, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL, last_unverified TIMESTAMPTZ NOT NULL, CONSTRAINT workspace_domain_uq_id_nameserver_type UNIQUE(id, nameserver_type), CONSTRAINT workspace_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );"
   },
   "c0c17a0c6a75242acff00efaf8d8431359561110af0f76f7d19410edd32e0674": {
     "describe": {
@@ -11596,19 +11574,6 @@
     },
     "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id: _\", workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.nameserver_type as \"nameserver_type: _\", workspace_domain.last_unverified as \"last_unverified!: _\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE domain.id = $1 AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
   },
-  "d7547e8a9cba4b11e5c2cc4558ea436d609f0c4cdf65c06c70cf4f300e2dafce": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE domain SET name = $1 WHERE id = $2;"
-  },
   "d79988d4260a269130ee6b5a02f6b937e5f01652e3e25cddf8590f3373bd5b14": {
     "describe": {
       "columns": [
@@ -11773,19 +11738,6 @@
       }
     },
     "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tmonth,\n\t\t\tamount,\n\t\t\tpayment_intent_id,\n\t\t\tdate as \"date: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\ttransaction_type as \"transaction_type: _\",\n\t\t\tpayment_status as \"payment_status: _\",\n\t\t\tdescription\n\t\tFROM\n\t\t\ttransaction\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\ttransaction_type = 'credits';\n\t\t"
-  },
-  "d9ab542f26064cd3798be53f2c1c85e109ef352cbd69f38ada8f317426cd404c": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text"
-        ]
-      }
-    },
-    "query": "UPDATE managed_url SET sub_domain = $2 WHERE id = $1;"
   },
   "d9c961d04aa3c242cdb6afdd780d5afe9049bf982d274a0fd208c18190bc294b": {
     "describe": {
@@ -12348,18 +12300,6 @@
     },
     "query": "INSERT INTO workspace_domain( id, domain_type, is_verified, nameserver_type, last_unverified ) VALUES ($1, 'business', FALSE, $2, $3);"
   },
-  "e313defa3d63bb79a1b84bbac09a430197050238b4076f03a1d8b90f0788f769": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "DELETE FROM domain WHERE id = $1;"
-  },
   "e3de49a9aa8858cbfd5d37f89a87b03c086db40efc6d5942c4e8981829c8adfd": {
     "describe": {
       "columns": [
@@ -12577,16 +12517,6 @@
       }
     },
     "query": "INSERT INTO personal_domain( id, domain_type ) VALUES ($1, 'personal');"
-  },
-  "e81e9ae94ddf11703dbc9098c7b284d48a832f3bc292e898f4409c3870006d38": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE managed_url( id UUID CONSTRAINT managed_url_pk PRIMARY KEY, sub_domain TEXT NOT NULL CONSTRAINT managed_url_chk_sub_domain_valid CHECK( sub_domain ~ '^(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])$' OR sub_domain = '@' OR sub_domain LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' ) ), domain_id UUID NOT NULL, path TEXT NOT NULL, url_type MANAGED_URL_TYPE NOT NULL, deployment_id UUID, port INTEGER CONSTRAINT managed_url_chk_port_u16 CHECK( port > 0 AND port <= 65535 ), static_site_id UUID, url TEXT, workspace_id UUID NOT NULL, is_configured BOOLEAN NOT NULL, CONSTRAINT managed_url_uq_sub_domain_domain_id_path UNIQUE( sub_domain, domain_id, path ), CONSTRAINT managed_url_chk_values_null_or_not_null CHECK( ( url_type = 'proxy_to_deployment' AND deployment_id IS NOT NULL AND port IS NOT NULL AND static_site_id IS NULL AND url IS NULL ) OR ( url_type = 'proxy_to_static_site' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NOT NULL AND url IS NULL ) OR ( url_type = 'proxy_url' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NULL AND url IS NOT NULL ) OR ( url_type = 'redirect' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NULL AND url IS NOT NULL ) ) );"
   },
   "e838972a49d95650b469757b993bedfd88a875d6ea455abb1d3e97ded2bb492c": {
     "describe": {
@@ -13063,17 +12993,10 @@
       "columns": [],
       "nullable": [],
       "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          "Text",
-          "Text",
-          "Text",
-          "Inet"
-        ]
+        "Left": []
       }
     },
-    "query": "UPDATE deployment_region SET ready = TRUE, kubernetes_cluster_url = $2, kubernetes_auth_username = $3, kubernetes_auth_token = $4, kubernetes_ca_data = $5, kubernetes_ingress_ip_addr = $6 WHERE id = $1;"
+    "query": "CREATE TABLE docker_registry_repository_tag( repository_id UUID NOT NULL CONSTRAINT docker_registry_repository_tag_fk_repository_id REFERENCES docker_registry_repository(id), tag TEXT NOT NULL, manifest_digest TEXT NOT NULL, last_updated TIMESTAMPTZ NOT NULL, CONSTRAINT docker_registry_repository_tag_pk PRIMARY KEY( repository_id, tag ), CONSTRAINT docker_registry_repository_tag_fk_repository_id_manifest_digest FOREIGN KEY(repository_id, manifest_digest) REFERENCES docker_registry_repository_manifest( repository_id, manifest_digest ) );"
   },
   "f580af1d3dd23ca8b5a158eb610cb5b28b4e26ea0137e55679a92fc6bd33d42d": {
     "describe": {
@@ -13735,6 +13658,16 @@
       }
     },
     "query": "ALTER TABLE payment_method ADD CONSTRAINT payment_method_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE;"
+  },
+  "feb2d9a94f737f5734051b80c8c07ed89f1f759b1ca2bc4c42d4b49c9ad25346": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE workspace_domain( id UUID CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_domain_type CHECK( domain_type = 'business' ), is_verified BOOLEAN NOT NULL, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL, last_unverified TIMESTAMPTZ NOT NULL, CONSTRAINT workspace_domain_uq_id_nameserver_type UNIQUE(id, nameserver_type) );"
   },
   "fec3fe8449ddbd177423ae0688af76ad62da36bfebf3f25635f7ddad533d6b22": {
     "describe": {

@@ -135,7 +135,7 @@ pub async fn initialize_domain_pre(
 			CONSTRAINT domain_chk_max_domain_name_length CHECK(
 				(LENGTH(name) + LENGTH(tld)) < 255
 			),
-			CONSTRAINT domain_uq_id_type UNIQUE (id, type),
+			CONSTRAINT domain_uq_name_type UNIQUE (id, type),
 			CONSTRAINT domain_uq_id_type_deleted UNIQUE (id, type, deleted)
 		);
 		"#
