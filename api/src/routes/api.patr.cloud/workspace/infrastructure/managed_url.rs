@@ -19,7 +19,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
-	models::rbac::permissions,
+	models::{rbac::permissions, ResourceType},
 	pin_fn,
 	service,
 	utils::{
@@ -364,23 +364,6 @@ async fn update_managed_url(
 	)
 	.await?;
 
-	// Notify users for the action
-
-	// psuedo code for email
-	/*
-	   service::resource_action_email(
-			resource_id,
-			resource_name,
-			resource_type,
-			super_admin_firstname,
-			ip_address,
-			city,
-			region,
-			country,
-			action (enum)
-	   ).await?;
-	*/
-
 	context.success(UpdateManagedUrlResponse {});
 	Ok(context)
 }
@@ -443,6 +426,14 @@ async fn delete_managed_url(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
+	let managed_url = db::get_managed_url_by_id(
+		context.get_database_connection(),
+		&managed_url_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
 	let config = context.get_state().config.clone();
 
 	log::trace!(
@@ -459,22 +450,17 @@ async fn delete_managed_url(
 	)
 	.await?;
 
-	// Notify users for the action
+	// Commiting transaction so that even if the mailing function fails the
+	// resource should be deleted
+	context.commit_database_transaction().await?;
 
-	// psuedo code for email
-	/*
-	   service::resource_action_email(
-			resource_id,
-			resource_name,
-			resource_type,
-			super_admin_firstname,
-			ip_address,
-			city,
-			region,
-			country,
-			action (enum)
-	   ).await?;
-	*/
+	service::resource_action_email(
+		context.get_database_connection(),
+		&managed_url.sub_domain,
+		&managed_url.workspace_id,
+		&ResourceType::ManagedUrl,
+	)
+	.await?;
 
 	context.success(DeleteManagedUrlResponse {});
 	Ok(context)

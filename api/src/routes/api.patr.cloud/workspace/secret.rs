@@ -18,7 +18,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::permissions,
+	models::{rbac::permissions, ResourceType},
 	pin_fn,
 	service,
 	utils::{
@@ -275,23 +275,6 @@ async fn update_secret(
 	)
 	.await?;
 
-	// Notify users for the action
-
-	// psuedo code for email
-	/*
-	   service::resource_action_email(
-		   resource_id,
-		   resource_name,
-		   resource_type,
-		   super_admin_firstname,
-		   ip_address,
-		   city,
-		   region,
-		   country,
-		   action (enum)
-	   ).await?;
-	*/
-
 	if let Some(mut value) = value {
 		value.zeroize();
 	}
@@ -313,6 +296,12 @@ async fn delete_secret(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
+	let secret =
+		db::get_secret_by_id(context.get_database_connection(), &secret_id)
+			.await?
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
 	let config = context.get_state().config.clone();
 
 	log::trace!("request_id: {} - Deleting secret {}", request_id, secret_id);
@@ -325,22 +314,17 @@ async fn delete_secret(
 	)
 	.await?;
 
-	// Notify users for the action
+	// Commiting transaction so that even if the mailing function fails the
+	// resource should be deleted
+	context.commit_database_transaction().await?;
 
-	// psuedo code for email
-	/*
-	   service::resource_action_email(
-		   resource_id,
-		   resource_name,
-		   resource_type,
-		   super_admin_firstname,
-		   ip_address,
-		   city,
-		   region,
-		   country,
-		   action (enum)
-	   ).await?;
-	*/
+	service::resource_action_email(
+		context.get_database_connection(),
+		&secret.name,
+		&secret.workspace_id,
+		&ResourceType::Secret,
+	)
+	.await?;
 
 	context.success(DeleteSecretResponse {});
 	Ok(context)

@@ -30,7 +30,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
-	models::rbac::permissions,
+	models::{rbac::permissions, ResourceType},
 	pin_fn,
 	service,
 	utils::{
@@ -972,23 +972,6 @@ async fn update_static_site(
 	)
 	.await?;
 
-	// Notify users for the action
-
-	// psuedo code for email
-	/*
-	  service::resource_action_email(
-			resource_id,
-			resource_name,
-			resource_type,
-			super_admin_firstname,
-			ip_address,
-			city,
-			region,
-			country,
-			action (enum)
-	   ).await?;
-	*/
-
 	context.success(UpdateStaticSiteResponse {});
 	Ok(context)
 }
@@ -1132,23 +1115,6 @@ async fn stop_static_site(
 	)
 	.await?;
 
-	// Notify users for the action
-
-	// psuedo code for email
-	/*
-	   service::resource_action_email(
-			resource_id,
-			resource_name,
-			resource_type,
-			super_admin_firstname,
-			ip_address,
-			city,
-			region,
-			country,
-			action (enum)
-	   ).await?;
-	*/
-
 	context.success(StopStaticSiteResponse {});
 	Ok(context)
 }
@@ -1192,6 +1158,14 @@ async fn delete_static_site(
 	)
 	.unwrap();
 
+	let site = db::get_static_site_by_id(
+		context.get_database_connection(),
+		&static_site_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
 	log::trace!(
 		"request_id: {} - Deleting the static site with id: {}",
 		request_id,
@@ -1209,30 +1183,23 @@ async fn delete_static_site(
 	)
 	.await?;
 
-	// Notify users for the action
-
-	// psuedo code for email
-	/*
-	   service::resource_action_email(
-			resource_id,
-			resource_name,
-			resource_type,
-			super_admin_firstname, -> might not be needed can pass workspace_id and
-									then can fetch the value from there will prevent code
-									repetition in all resources
-			ip_address,
-			city,
-			region,
-			country,
-			action (enum)
-	   ).await?;
-	*/
-
 	let _ = service::get_internal_metrics(
 		context.get_database_connection(),
 		"A static site has been deleted",
 	)
 	.await;
+
+	// Commiting transaction so that even if the mailing function fails the
+	// resource should be deleted
+	context.commit_database_transaction().await?;
+
+	service::resource_action_email(
+		context.get_database_connection(),
+		&site.name,
+		&site.workspace_id,
+		&ResourceType::StaticSite,
+	)
+	.await?;
 
 	context.success(DeleteStaticSiteResponse {});
 	Ok(context)
