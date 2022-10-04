@@ -189,8 +189,8 @@ pub async fn delete_kubernetes_static_site(
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	/*
-		This function won't delete the ingress fron release after 0.10.1.
-		Rather we modity the ingress and point to a static page based on
+		This function won't delete the ingress from release after 0.10.1.
+		Rather we modify the ingress and point to a static page based on
 		the action(stopped/deleted) on the static site.
 		This should Ideally be removed after certain amount of time
 		eg - after 30 days this ingress should be deleted automatically.
