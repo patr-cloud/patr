@@ -23,11 +23,10 @@ use k8s_openapi::{
 	apimachinery::pkg::util::intstr::IntOrString,
 };
 use kube::{
-	api::{DeleteParams, Patch, PatchParams},
+	api::{Patch, PatchParams},
 	core::ObjectMeta,
 	Api,
 };
-use kubernetes::ext_traits::DeleteOpt;
 
 use crate::{
 	error,
@@ -185,40 +184,105 @@ pub async fn update_kubernetes_static_site(
 pub async fn delete_kubernetes_static_site(
 	workspace_id: &Uuid,
 	static_site_id: &Uuid,
+	action_type: &str, // Can change to enum
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
+	/*
+		This function won't delete the ingress fron release after 0.10.1.
+		Rather we modity the ingress and point to a static page based on
+		the action(stopped/deleted) on the static site.
+		This should Ideally be removed after certain amount of time
+		eg - after 30 days this ingress should be deleted automatically.
+		If so we have to track deletion time and run a schedular on that.
+	*/
 	let kubernetes_client = super::get_kubernetes_config(config).await?;
 
 	let namespace = workspace_id.as_str();
-	log::trace!(
-		"request_id: {} - deleting service: service-{}",
-		request_id,
-		static_site_id
+
+	let mut annotations: BTreeMap<String, String> = BTreeMap::new();
+	annotations.insert(
+		"kubernetes.io/ingress.class".to_string(),
+		"nginx".to_string(),
+	);
+	annotations.insert(
+		"cert-manager.io/cluster-issuer".to_string(),
+		config.kubernetes.cert_issuer_dns.clone(),
+	);
+	annotations.insert(
+		"nginx.ingress.kubernetes.io/upstream-vhost".to_string(),
+		format!("{}-{}.patr.cloud", action_type, static_site_id),
 	);
 
-	Api::<Service>::namespaced(kubernetes_client.clone(), namespace)
-		.delete_opt(
-			&format!("service-{}", static_site_id),
-			&DeleteParams::default(),
-		)
-		.await?;
+	let ingress_rule = vec![IngressRule {
+		host: Some(format!("{}.patr.cloud", static_site_id)),
+		http: Some(HTTPIngressRuleValue {
+			paths: vec![HTTPIngressPath {
+				backend: IngressBackend {
+					service: Some(IngressServiceBackend {
+						name: format!("service-{}", static_site_id),
+						port: Some(ServiceBackendPort {
+							number: Some(80),
+							..ServiceBackendPort::default()
+						}),
+					}),
+					..Default::default()
+				},
+				path: Some("/".to_string()),
+				path_type: Some("Prefix".to_string()),
+			}],
+		}),
+	}];
 
 	log::trace!(
-		"request_id: {} - deleting ingress {}",
-		request_id,
-		static_site_id
-	);
-	Api::<Ingress>::namespaced(kubernetes_client, namespace)
-		.delete_opt(
-			&format!("ingress-{}", static_site_id),
-			&DeleteParams::default(),
-		)
-		.await?;
-
-	log::trace!(
-		"request_id: {} - static site deleted successfully!",
+		"request_id: {} - adding patr domain config to ingress",
 		request_id
 	);
+	let patr_domain_tls = vec![IngressTLS {
+		hosts: Some(vec!["*.patr.cloud".to_string(), "patr.cloud".to_string()]),
+		secret_name: None,
+	}];
+	log::trace!(
+		"request_id: {} - creating https certificates for domain",
+		request_id
+	);
+	let kubernetes_ingress = Ingress {
+		metadata: ObjectMeta {
+			name: Some(format!("ingress-{}", static_site_id)),
+			annotations: Some(annotations),
+			..ObjectMeta::default()
+		},
+		spec: Some(IngressSpec {
+			rules: Some(ingress_rule),
+			tls: Some(patr_domain_tls),
+			..IngressSpec::default()
+		}),
+		..Ingress::default()
+	};
+	log::trace!(
+		"request_id: {} updating ingress for {} static-site",
+		request_id,
+		action_type
+	);
+
+	let ingress_api: Api<Ingress> =
+		Api::namespaced(kubernetes_client, namespace);
+
+	ingress_api
+		.patch(
+			&format!("ingress-{}", static_site_id),
+			&PatchParams::apply(&format!("ingress-{}", static_site_id)),
+			&Patch::Apply(kubernetes_ingress),
+		)
+		.await?
+		.status
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	log::trace!(
+		"request_id: {} - static site ingress updated successfully!",
+		request_id
+	);
+
 	Ok(())
 }

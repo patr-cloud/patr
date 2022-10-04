@@ -184,6 +184,7 @@ pub async fn stop_static_site(
 	kubernetes::delete_kubernetes_static_site(
 		workspace_id,
 		static_site_id,
+		"stop", // Can change to enum
 		config,
 		request_id,
 	)
@@ -219,6 +220,7 @@ pub async fn delete_static_site(
 	kubernetes::delete_kubernetes_static_site(
 		workspace_id,
 		static_site_id,
+		"delete", // Can change to enum
 		config,
 		request_id,
 	)
