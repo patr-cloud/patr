@@ -2,7 +2,6 @@ use std::time::Duration;
 
 use api_models::models::workspace::infrastructure::deployment::DeploymentStatus;
 use chrono::Utc;
-use eve_rs::AsError;
 use tokio::time;
 
 use crate::{
@@ -23,13 +22,19 @@ pub(super) async fn process_request(
 			workspace_id,
 			deployment_id,
 		} => {
-			let deployment =
-				db::get_deployment_by_id(connection, &deployment_id)
-					.await?
-					.status(500)
-					.body(format!(
-						"expected deployment id {deployment_id} not present in db"
-					))?;
+			let deployment = db::get_deployment_by_id_including_deleted(
+				connection,
+				&deployment_id,
+			)
+			.await?;
+
+			let deployment = match deployment {
+				Some(deployment) => deployment,
+				None => {
+					log::info!("expected deployment id {deployment_id} not present in db");
+					return Ok(());
+				}
+			};
 
 			if deployment.status != DeploymentStatus::Deploying {
 				log::info!("Deployment {deployment_id} is not in deploying state. Hence stopping status check message");
