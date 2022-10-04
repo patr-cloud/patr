@@ -420,7 +420,7 @@ pub async fn add_build_steps_in_k8s(
 			netrc.map_or("".to_string(), |netrc| netrc.to_string())
 		),
 		r#"cd "/mnt/workdir/""#.to_string(),
-		"set -x".to_string(),
+		// "set -x".to_string(),
 		format!("mkdir {repo_name}"),
 		format!(r#"cd "/mnt/workdir/{repo_name}""#),
 		r#"export GIT_AUTHOR_NAME=patr-ci"#.to_string(),
@@ -474,7 +474,7 @@ pub async fn add_build_steps_in_k8s(
 				env_vars: env,
 				commands: vec![
 					format!(r#"cd "/mnt/workdir/{repo_name}""#),
-					"set -x".to_owned(),
+					// "set -x".to_owned(),
 					Vec::from(command).join("\n"),
 				],
 			},
