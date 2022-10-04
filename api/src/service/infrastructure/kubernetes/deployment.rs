@@ -97,19 +97,6 @@ pub async fn update_kubernetes_deployment(
 	// the namespace is workspace id
 	let namespace = workspace_id.as_str();
 
-	if cluster_type == ClusterType::PatrOwned &&
-		!super::secret_exists(
-			"tls-domain-wildcard-patr-cloud",
-			kubernetes_client.clone(),
-			namespace,
-		)
-		.await?
-	{
-		return Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
-	}
-
 	log::trace!(
 		"Deploying the container with id: {} on kubernetes with request_id: {}",
 		deployment.id,
