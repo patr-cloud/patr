@@ -299,18 +299,13 @@ pub async fn update_managed_url(
 				Some(url),
 			)
 			.await?;
-
-			log::trace!(
-				"request_id: {} upading redirect managedUrl",
-				request_id
-			);
 		}
 	}
 
 	service::update_kubernetes_managed_url(
 		&managed_url.workspace_id,
 		&ManagedUrl {
-			id: managed_url_id.clone(),
+			id: managed_url.id,
 			sub_domain: managed_url.sub_domain,
 			domain_id: managed_url.domain_id,
 			path: path.to_string(),
