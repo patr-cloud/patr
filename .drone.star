@@ -750,7 +750,7 @@ def redis_service():
 
 def rabbitmq_service():
     return {
-        "name": "event-queue",
+        "name": "event queue",
         "image": "rabbitmq:3",
         "environment": {
             "RABBITMQ_DEFAULT_USER": "guest",
@@ -771,7 +771,7 @@ def get_app_running_environment():
         "APP_DATABASE_PASSWORD": get_database_password(),
         "APP_DATABASE_DATABASE": "api",
 
-        "APP_RABBITMQ_HOST": "event-queue",
+        "APP_RABBITMQ_HOST": "event queue",
         "APP_RABBITMQ_PORT": 5672,
         "APP_RABBITMQ_QUEUE": "default",
         "APP_RABBITMQ_USERNAME": "guest",
