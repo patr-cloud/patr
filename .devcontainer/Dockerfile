@@ -3,12 +3,13 @@ FROM ubuntu:22.04
 
 SHELL ["/bin/bash", "-c"]
 RUN apt update
-RUN apt install -y build-essential git pkg-config libssl-dev docker.io postgresql-client sudo sed curl inetutils-ping telnet bash-completion nano
+RUN apt install -y build-essential git pkg-config libssl-dev docker.io postgresql-client sudo sed curl inetutils-ping telnet bash-completion nano dumb-init
 
 WORKDIR /etc/container-init-data
 COPY ./volume/init-data/user user
 COPY ./volume/init-data/group group
 COPY ./.bashrc bashrc
+COPY ./scripts/runc.sh /runc.sh
 RUN addgroup --gid $(cat ./group) vscode
 RUN adduser --uid $(cat ./user) --gid $(cat ./group) vscode
 RUN adduser vscode sudo
@@ -20,4 +21,4 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --profi
 RUN source "$HOME/.cargo/env" && rustup toolchain install nightly
 RUN cat /etc/container-init-data/bashrc >> $HOME/.bashrc
 
-CMD [ "sleep", "infinity" ]
+CMD [ "/bin/sh", "/runc.sh" ]

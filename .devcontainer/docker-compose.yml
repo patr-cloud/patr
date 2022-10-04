@@ -6,10 +6,10 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - ..:/workspace:cached
     # Overrides default command so things don't shut down after the process ends.
-    command: sleep infinity
+    command: /runc.sh
+    privileged: true
     cap_add:
      - SYS_PTRACE
     security_opt:

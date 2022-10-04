@@ -3,6 +3,9 @@
 baseDir=$(dirname $0)
 
 mkdir -p $baseDir/../volume/init-data
+mkdir -p $baseDir/../volume/docker-registry
+
+# TODO init docker registry credentials
 
 USER_ID=$(id -u)
 GROUP_ID=$(id -g)
