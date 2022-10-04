@@ -599,7 +599,7 @@ pub async fn get_deployment_metrics(
 					),
 					config.mimir.host,
 					deployment_id,
-					start_time.timestamp_millis(),
+					start_time.timestamp(),
 					end_time.timestamp(),
 					step = step
 				))
@@ -627,7 +627,7 @@ pub async fn get_deployment_metrics(
 					),
 					config.mimir.host,
 					deployment_id,
-					start_time.timestamp_millis(),
+					start_time.timestamp(),
 					end_time.timestamp(),
 					step = step
 				))
@@ -655,7 +655,7 @@ pub async fn get_deployment_metrics(
 					),
 					config.mimir.host,
 					deployment_id,
-					start_time.timestamp_millis(),
+					start_time.timestamp(),
 					end_time.timestamp(),
 					step = step
 				))
@@ -683,7 +683,7 @@ pub async fn get_deployment_metrics(
 					),
 					config.mimir.host,
 					deployment_id,
-					start_time.timestamp_millis(),
+					start_time.timestamp(),
 					end_time.timestamp(),
 					step = step
 				))

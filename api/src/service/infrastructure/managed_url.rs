@@ -308,28 +308,8 @@ pub async fn update_managed_url(
 			id: managed_url.id,
 			sub_domain: managed_url.sub_domain,
 			domain_id: managed_url.domain_id,
-			path: managed_url.path,
-			url_type: match managed_url.url_type {
-				DbManagedUrlType::ProxyToDeployment => {
-					ManagedUrlType::ProxyDeployment {
-						deployment_id: managed_url.deployment_id.status(500)?,
-						port: managed_url.port.status(500)? as u16,
-					}
-				}
-				DbManagedUrlType::ProxyToStaticSite => {
-					ManagedUrlType::ProxyStaticSite {
-						static_site_id: managed_url
-							.static_site_id
-							.status(500)?,
-					}
-				}
-				DbManagedUrlType::ProxyUrl => ManagedUrlType::ProxyUrl {
-					url: managed_url.url.status(500)?,
-				},
-				DbManagedUrlType::Redirect => ManagedUrlType::Redirect {
-					url: managed_url.url.status(500)?,
-				},
-			},
+			path: path.to_string(),
+			url_type: url_type.clone(),
 			is_configured: managed_url.is_configured,
 		},
 		config,
