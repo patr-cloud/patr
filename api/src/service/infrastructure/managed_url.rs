@@ -223,7 +223,7 @@ pub async fn update_managed_url(
 		request_id
 	);
 
-	let managed_url = db::get_managed_url_by_id(connection, managed_url_id)
+	let mut managed_url = db::get_managed_url_by_id(connection, managed_url_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
@@ -248,6 +248,15 @@ pub async fn update_managed_url(
 				None,
 			)
 			.await?;
+
+			log::trace!(
+				"request_id: {} upading proxyDeployment managedUrl",
+				request_id
+			);
+			managed_url.path = path.to_string();
+			managed_url.url_type = DbManagedUrlType::ProxyToDeployment;
+			managed_url.deployment_id = Some(deployment_id.clone());
+			managed_url.port = Some(*port as i32);
 		}
 		ManagedUrlType::ProxyStaticSite { static_site_id } => {
 			log::trace!(
@@ -265,6 +274,14 @@ pub async fn update_managed_url(
 				None,
 			)
 			.await?;
+
+			log::trace!(
+				"request_id: {} upading proxyStaticSite managedUrl",
+				request_id
+			);
+			managed_url.path = path.to_string();
+			managed_url.url_type = DbManagedUrlType::ProxyToStaticSite;
+			managed_url.static_site_id = Some(static_site_id.clone());
 		}
 		ManagedUrlType::ProxyUrl { url } => {
 			log::trace!(
@@ -282,6 +299,14 @@ pub async fn update_managed_url(
 				Some(url),
 			)
 			.await?;
+
+			log::trace!(
+				"request_id: {} upading proxyUrl managedUrl",
+				request_id
+			);
+			managed_url.path = path.to_string();
+			managed_url.url_type = DbManagedUrlType::ProxyUrl;
+			managed_url.url = Some(url.to_string());
 		}
 		ManagedUrlType::Redirect { url } => {
 			log::trace!(
@@ -299,6 +324,14 @@ pub async fn update_managed_url(
 				Some(url),
 			)
 			.await?;
+
+			log::trace!(
+				"request_id: {} upading redirect managedUrl",
+				request_id
+			);
+			managed_url.path = path.to_string();
+			managed_url.url_type = DbManagedUrlType::Redirect;
+			managed_url.url = Some(url.to_string());
 		}
 	}
 
