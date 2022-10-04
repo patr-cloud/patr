@@ -223,7 +223,7 @@ pub async fn update_managed_url(
 		request_id
 	);
 
-	let mut managed_url = db::get_managed_url_by_id(connection, managed_url_id)
+	let managed_url = db::get_managed_url_by_id(connection, managed_url_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
@@ -248,15 +248,6 @@ pub async fn update_managed_url(
 				None,
 			)
 			.await?;
-
-			log::trace!(
-				"request_id: {} upading proxyDeployment managedUrl",
-				request_id
-			);
-			managed_url.path = path.to_string();
-			managed_url.url_type = DbManagedUrlType::ProxyToDeployment;
-			managed_url.deployment_id = Some(deployment_id.clone());
-			managed_url.port = Some(*port as i32);
 		}
 		ManagedUrlType::ProxyStaticSite { static_site_id } => {
 			log::trace!(
@@ -274,14 +265,6 @@ pub async fn update_managed_url(
 				None,
 			)
 			.await?;
-
-			log::trace!(
-				"request_id: {} upading proxyStaticSite managedUrl",
-				request_id
-			);
-			managed_url.path = path.to_string();
-			managed_url.url_type = DbManagedUrlType::ProxyToStaticSite;
-			managed_url.static_site_id = Some(static_site_id.clone());
 		}
 		ManagedUrlType::ProxyUrl { url } => {
 			log::trace!(
@@ -299,14 +282,6 @@ pub async fn update_managed_url(
 				Some(url),
 			)
 			.await?;
-
-			log::trace!(
-				"request_id: {} upading proxyUrl managedUrl",
-				request_id
-			);
-			managed_url.path = path.to_string();
-			managed_url.url_type = DbManagedUrlType::ProxyUrl;
-			managed_url.url = Some(url.to_string());
 		}
 		ManagedUrlType::Redirect { url } => {
 			log::trace!(
@@ -329,40 +304,17 @@ pub async fn update_managed_url(
 				"request_id: {} upading redirect managedUrl",
 				request_id
 			);
-			managed_url.path = path.to_string();
-			managed_url.url_type = DbManagedUrlType::Redirect;
-			managed_url.url = Some(url.to_string());
 		}
 	}
 
 	service::update_kubernetes_managed_url(
 		&managed_url.workspace_id,
 		&ManagedUrl {
-			id: managed_url.id,
+			id: managed_url_id.clone(),
 			sub_domain: managed_url.sub_domain,
 			domain_id: managed_url.domain_id,
-			path: managed_url.path,
-			url_type: match managed_url.url_type {
-				DbManagedUrlType::ProxyToDeployment => {
-					ManagedUrlType::ProxyDeployment {
-						deployment_id: managed_url.deployment_id.status(500)?,
-						port: managed_url.port.status(500)? as u16,
-					}
-				}
-				DbManagedUrlType::ProxyToStaticSite => {
-					ManagedUrlType::ProxyStaticSite {
-						static_site_id: managed_url
-							.static_site_id
-							.status(500)?,
-					}
-				}
-				DbManagedUrlType::ProxyUrl => ManagedUrlType::ProxyUrl {
-					url: managed_url.url.status(500)?,
-				},
-				DbManagedUrlType::Redirect => ManagedUrlType::Redirect {
-					url: managed_url.url.status(500)?,
-				},
-			},
+			path: path.to_string(),
+			url_type: url_type.clone(),
 			is_configured: managed_url.is_configured,
 		},
 		config,
