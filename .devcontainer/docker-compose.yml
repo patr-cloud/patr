@@ -1,5 +1,8 @@
 version: '3'
 
+networks:
+  - vpc
+
 services:
   app:
     build:
@@ -10,20 +13,99 @@ services:
     # Overrides default command so things don't shut down after the process ends.
     command: /runc.sh
     privileged: true
-    cap_add:
-     - SYS_PTRACE
-    security_opt:
-      - seccomp:unconfined
     user: vscode
     environment:
-      - PGHOST=localhost
+      - PGHOST=postgres
       - PGUSER=postgres
       - PG_PASSWORD=postgres
+    depends_on:
+      - postgres
+      - reverseProxy
+    expose:
+      - 3000
+    hostname: backend
+    networks:
+      vpc:
+        aliases:
+          - backend
+
+  reverseProxy:
+    image: nginx:latest
+    restart: unless-stopped
+    volumes:
+      - ./volume/nginx-certs:/etc/volume/certs
+      - ./config/nginx:/etc/nginx/config.d
+    expose:
+      - 80
+      - 443
+    hostname: nginx
+    networks:
+      vpc:
+        aliases:
+          - api.patr.cloud
+          - registry.patr.cloud
 
   postgres:
-    container_name: postgres
     image: postgis/postgis:13-master
     restart: unless-stopped
-    network_mode: service:app
+    expose:
+      - 5432
     environment:
       - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=api
+    hostname: postgres
+    networks:
+      vpc:
+        aliases:
+          - postgres
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    expose:
+      - 6379
+    hostname: redis
+    networks:
+      vpc:
+        aliases:
+          - redis
+
+  registry:
+    image: registry:2
+    restart: always
+    expose:
+      - 5000
+    environment:
+      - REGISTRY_VERSION=0.1
+      - REGISTRY_LOG_FORMATTER=text
+      - REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=redis
+      - REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/data
+      - REGISTRY_STORAGE_DELETE_ENABLED=true
+      - REGISTRY_HTTP_ADDR="0.0.0.0:5000"
+      - REGISTRY_HTTP_SECRET="keyboard cat"
+      - REGISTRY_REDIS_ADDR="redis:6379"
+      - REGISTRY_REDIS_DB=2
+      - REGISTRY_REDIS_POOL_MAXIDLE=16
+      - REGISTRY_REDIS_POOL_MAXACTIVE=64
+      - REGISTRY_REDIS_POOL_IDLETIMEOUT=300s
+      - REGISTRY_AUTH_TOKEN_REALM=http://api.patr.cloud/auth/docker-registry-token
+      - REGISTRY_AUTH_TOKEN_SERVICE="Patr registry service"
+      - REGISTRY_AUTH_TOKEN_ISSUER="api.patr.cloud"
+      - REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE=/certs/ecdsa.pubkey.crt
+      - REGISTRY_NOTIFICATIONS_ENDPOINTS_EVENTS_INCLUDEREFERENCES=true
+      - |-
+        REGISTRY_NOTIFICATIONS_ENDPOINTS=name: api
+          url: http://api.patr.cloud/webhook/docker-registry/notification
+            headers:
+              Authorization: [authkey123456]
+            timeout: 30m
+            threshold: 5
+            backoff: 1m
+    volumes:
+      - ./target-dev/registry:/data
+      - ./assets/patr/certs:/certs
+    hostname: redis
+    networks:
+      vpc:
+        aliases:
+          - registry

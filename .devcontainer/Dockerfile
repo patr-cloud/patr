@@ -3,7 +3,7 @@ FROM ubuntu:22.04
 
 SHELL ["/bin/bash", "-c"]
 RUN apt update
-RUN apt install -y build-essential git pkg-config libssl-dev docker.io postgresql-client sudo sed curl inetutils-ping telnet bash-completion nano dumb-init
+RUN apt install -y build-essential git pkg-config libssl-dev docker.io postgresql-client sudo sed curl inetutils-ping telnet bash-completion nano dumb-init libnss3-tools
 
 WORKDIR /etc/container-init-data
 COPY ./volume/init-data/user user
