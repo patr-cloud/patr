@@ -10,7 +10,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ..:/workspace:cached
-      - ./volume/cargo:/home/vscode/.cargo
+      - ./volume/cargo:/home/vscode/.cargo-volume
     # Overrides default command so things don't shut down after the process ends.
     command: sudo /bin/dumb-init /runc.sh
     privileged: true

@@ -3,8 +3,14 @@
 baseDir=$(dirname $0)
 
 echo "Adding generated certificates to trust chain"
-cp /workspace/volume/nginx-certs/cert.crt /usr/share/local/ca-certificates/patr-cert.crt
-update-ca-certificates
+cp /workspace/.devcontainer/volume/nginx-certs/cert.crt /usr/share/local/ca-certificates/patr-cert.crt
+sudo update-ca-certificates
+
+mv ~/.cargo/bin ~/.cargo-volume/bin
+mv ~/.cargo/env ~/.cargo-volume/env
+ls -l ~/.cargo/
+rmdir ~/.cargo/
+ln -s ~/.cargo-volume ~/.cargo
 
 echo "Installing sqlx-cli"
 cargo install sqlx-cli

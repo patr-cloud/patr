@@ -5,6 +5,7 @@ baseDir=$(dirname $0)
 mkdir -p $baseDir/../volume/init-data
 mkdir -p $baseDir/../volume/docker-registry/certs
 mkdir -p $baseDir/../volume/nginx-certs
+mkdir -p $baseDir/../volume/cargo
 
 # Setup init-data
 
