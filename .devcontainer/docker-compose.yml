@@ -1,7 +1,7 @@
 version: '3'
 
 networks:
-  - vpc
+  vpc:
 
 services:
   app:
@@ -10,8 +10,9 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ..:/workspace:cached
+      - ./volume/cargo:/home/vscode/.cargo
     # Overrides default command so things don't shut down after the process ends.
-    command: /runc.sh
+    command: sudo /bin/dumb-init /runc.sh
     privileged: true
     user: vscode
     environment:
@@ -59,6 +60,21 @@ services:
         aliases:
           - postgres
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: unless-stopped
+    expose:
+      - 5672
+      - 15672
+    hostname: rabbitmq
+    networks:
+      vpc:
+        aliases:
+          - rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=rabbitmq
+      - RABBITMQ_DEFAULT_PASS=rabbitmq
+
   redis:
     image: redis:7
     restart: unless-stopped
@@ -73,6 +89,7 @@ services:
   registry:
     image: registry:2
     restart: always
+    command: apk update && apk add ca-certificates && cp /patr-ca-certs/cert.crt /usr/local/share/ca-certificates/patr-cert.crt && update-ca-certificates && /bin/registry /etc/docker/registry/config.yml
     expose:
       - 5000
     environment:
@@ -88,22 +105,23 @@ services:
       - REGISTRY_REDIS_POOL_MAXIDLE=16
       - REGISTRY_REDIS_POOL_MAXACTIVE=64
       - REGISTRY_REDIS_POOL_IDLETIMEOUT=300s
-      - REGISTRY_AUTH_TOKEN_REALM=http://api.patr.cloud/auth/docker-registry-token
+      - REGISTRY_AUTH_TOKEN_REALM=https://api.patr.cloud/auth/docker-registry-token
       - REGISTRY_AUTH_TOKEN_SERVICE="Patr registry service"
       - REGISTRY_AUTH_TOKEN_ISSUER="api.patr.cloud"
       - REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE=/certs/ecdsa.pubkey.crt
       - REGISTRY_NOTIFICATIONS_ENDPOINTS_EVENTS_INCLUDEREFERENCES=true
       - |-
-        REGISTRY_NOTIFICATIONS_ENDPOINTS=name: api
-          url: http://api.patr.cloud/webhook/docker-registry/notification
-            headers:
-              Authorization: [authkey123456]
-            timeout: 30m
-            threshold: 5
-            backoff: 1m
+        REGISTRY_NOTIFICATIONS_ENDPOINTS=- name: api
+          url: https://api.patr.cloud/webhook/docker-registry/notification
+          headers:
+            Authorization: [authkey123456]
+          timeout: 30m
+          threshold: 5
+          backoff: 1m
     volumes:
-      - ./target-dev/registry:/data
-      - ./assets/patr/certs:/certs
+      - ./volume/docker-registry/data:/data
+      - ./volume/docker-registry/certs:/certs
+      - ./volume/nginx-certs:/patr-ca-certs
     hostname: redis
     networks:
       vpc:

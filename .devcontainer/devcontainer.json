@@ -27,10 +27,7 @@
 			]
 		}
 	},
-	"forwardPorts": [
-		3000,
-		15672
-	],
+	"forwardPorts": [3000],
 	"postCreateCommand": "./.devcontainer/scripts/post-init.sh",
 	"initializeCommand": "./.devcontainer/scripts/pre-init.sh",
 	"remoteUser": "vscode"
