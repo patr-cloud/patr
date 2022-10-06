@@ -168,15 +168,15 @@ pub async fn initialize_ci_pre(
 			git_provider_repo_uid 	TEXT NOT NULL,
 
 			CONSTRAINT ci_repos_uq_git_provider_id_repo_uid
-				UNIQUE (git_provider_id, git_provider_repo_uid),
+				UNIQUE(git_provider_id, git_provider_repo_uid),
 			CONSTRAINT ci_repos_chk_status_machine_type_id_webhook_secret
-				CHECK (
+				CHECK(
 					(
 						status = 'active'
 						AND build_machine_type_id IS NOT NULL
 						AND webhook_secret IS NOT NULL
-					)
-					OR status != 'active'
+					) OR
+					status != 'active'
 				)
 		);
 		"#

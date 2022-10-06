@@ -174,11 +174,7 @@ pub async fn get_all_managed_urls_in_workspace(
 			managed_url
 		WHERE
 			workspace_id = $1 AND
-			sub_domain NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			deleted IS NULL;
 		"#,
 		workspace_id as _
 	)
@@ -209,11 +205,7 @@ pub async fn get_all_managed_urls_for_domain(
 			managed_url
 		WHERE
 			domain_id = $1 AND
-			sub_domain NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			deleted IS NULL;
 		"#,
 		domain_id as _
 	)
@@ -243,11 +235,7 @@ pub async fn get_all_unconfigured_managed_urls(
 			managed_url
 		WHERE
 			is_configured = FALSE AND
-			sub_domain NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			deleted IS NULL;
 		"#
 	)
 	.fetch_all(connection)
@@ -339,11 +327,7 @@ pub async fn get_managed_url_by_id(
 			managed_url
 		WHERE
 			id = $1 AND
-			sub_domain NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			deleted IS NULL;
 		"#,
 		managed_url_id as _,
 	)
@@ -496,11 +480,7 @@ pub async fn get_all_managed_urls_for_deployment(
 			managed_url_list
 		WHERE
 			managed_url_list.workspace_id = $2 AND
-			managed_url_list.sub_domain NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			managed_url_list.deleted IS NULL;
 		"#,
 		deployment_id as _,
 		workspace_id as _
@@ -573,11 +553,7 @@ pub async fn get_all_managed_urls_for_static_site(
 			managed_url_list
 		WHERE
 			managed_url_list.workspace_id = $2 AND
-			managed_url_list.sub_domain NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			managed_url_list.deleted IS NULL;
 		"#,
 		static_site_id as _,
 		workspace_id as _
@@ -598,11 +574,7 @@ pub async fn get_active_managed_url_count_for_domain(
 			managed_url
 		WHERE
 			domain_id = $1 AND
-			sub_domain NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			deleted IS NULL;
 		"#,
 		domain_id as _
 	)

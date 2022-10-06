@@ -1,3 +1,5 @@
+use sqlx::Row;
+
 use crate::{
 	migrate_query as query,
 	utils::{settings::Settings, Error},
@@ -69,9 +71,65 @@ async fn refactor_static_site_deletion(
 	.execute(&mut *connection)
 	.await?;
 
-	// TODO
-	// 1. populate the deleted column based on the name column
-	// 2. strip the patr-deleted prefix in static site name
+	query!(
+		r#"
+		UPDATE
+			static_site
+		SET
+			deleted = NOW()
+		WHERE
+			name LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	loop {
+		let static_sites_with_patr_deleted = query!(
+			r#"
+			SELECT
+				COUNT(*) as "count"
+			FROM
+				static_site
+			WHERE
+				name LIKE CONCAT(
+					'patr-deleted: ',
+					REPLACE(id::TEXT, '-', ''),
+					'@%'
+				);
+			"#
+		)
+		.fetch_one(&mut *connection)
+		.await?
+		.get::<i64, _>("count");
+
+		if static_sites_with_patr_deleted <= 0 {
+			break;
+		}
+
+		query!(
+			r#"
+			UPDATE
+				static_site
+			SET
+				name = REPLACE(
+					name,
+					CONCAT(
+						'patr-deleted: ',
+						REPLACE(id::TEXT, '-', ''),
+						'@'
+					),
+					''
+				);
+			"#
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
 
 	query!(
 		r#"
@@ -111,9 +169,65 @@ async fn refactor_secret_deletion(
 	.execute(&mut *connection)
 	.await?;
 
-	// TODO
-	// 1. populate the deleted column based on the name column
-	// 2. strip the patr-deleted prefix in static site name
+	query!(
+		r#"
+		UPDATE
+			secret
+		SET
+			deleted = NOW()
+		WHERE
+			name LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	loop {
+		let secrets_with_patr_deleted = query!(
+			r#"
+			SELECT
+				COUNT(*) as "count"
+			FROM
+				secret
+			WHERE
+				name LIKE CONCAT(
+					'patr-deleted: ',
+					REPLACE(id::TEXT, '-', ''),
+					'@%'
+				);
+			"#
+		)
+		.fetch_one(&mut *connection)
+		.await?
+		.get::<i64, _>("count");
+
+		if secrets_with_patr_deleted <= 0 {
+			break;
+		}
+
+		query!(
+			r#"
+			UPDATE
+				secret
+			SET
+				name = REPLACE(
+					name,
+					CONCAT(
+						'patr-deleted: ',
+						REPLACE(id::TEXT, '-', ''),
+						'@'
+					),
+					''
+				);
+			"#
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
 
 	query!(
 		r#"
@@ -153,9 +267,65 @@ async fn refactor_docker_repository_deletion(
 	.execute(&mut *connection)
 	.await?;
 
-	// TODO
-	// 1. populate the deleted column based on the name column
-	// 2. strip the patr-deleted prefix in static site name
+	query!(
+		r#"
+		UPDATE
+			docker_registry_repository
+		SET
+			deleted = NOW()
+		WHERE
+			name LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	loop {
+		let docker_repos_with_patr_deleted = query!(
+			r#"
+			SELECT
+				COUNT(*) as "count"
+			FROM
+				docker_registry_repository
+			WHERE
+				name LIKE CONCAT(
+					'patr-deleted: ',
+					REPLACE(id::TEXT, '-', ''),
+					'@%'
+				);
+			"#
+		)
+		.fetch_one(&mut *connection)
+		.await?
+		.get::<i64, _>("count");
+
+		if docker_repos_with_patr_deleted <= 0 {
+			break;
+		}
+
+		query!(
+			r#"
+			UPDATE
+				docker_registry_repository
+			SET
+				name = REPLACE(
+					name,
+					CONCAT(
+						'patr-deleted: ',
+						REPLACE(id::TEXT, '-', ''),
+						'@'
+					),
+					''
+				);
+			"#
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
 
 	query!(
 		r#"
@@ -195,9 +365,65 @@ async fn refactor_database_deletion(
 	.execute(&mut *connection)
 	.await?;
 
-	// TODO
-	// 1. populate the deleted column based on the name column
-	// 2. strip the patr-deleted prefix in static site name
+	query!(
+		r#"
+		UPDATE
+			managed_database
+		SET
+			deleted = NOW()
+		WHERE
+			name LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	loop {
+		let managed_databases_with_patr_deleted = query!(
+			r#"
+			SELECT
+				COUNT(*) as "count"
+			FROM
+				managed_database
+			WHERE
+				name LIKE CONCAT(
+					'patr-deleted: ',
+					REPLACE(id::TEXT, '-', ''),
+					'@%'
+				);
+			"#
+		)
+		.fetch_one(&mut *connection)
+		.await?
+		.get::<i64, _>("count");
+
+		if managed_databases_with_patr_deleted <= 0 {
+			break;
+		}
+
+		query!(
+			r#"
+			UPDATE
+				managed_database
+			SET
+				name = REPLACE(
+					name,
+					CONCAT(
+						'patr-deleted: ',
+						REPLACE(id::TEXT, '-', ''),
+						'@'
+					),
+					''
+				);
+			"#
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
 
 	query!(
 		r#"
@@ -237,9 +463,65 @@ async fn refactor_deployment_deletion(
 	.execute(&mut *connection)
 	.await?;
 
-	// TODO
-	// 1. populate the deleted column based on the name column
-	// 2. strip the patr-deleted prefix in static site name
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			deleted = NOW()
+		WHERE
+			name LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	loop {
+		let deployments_with_patr_deleted = query!(
+			r#"
+			SELECT
+				COUNT(*) as "count"
+			FROM
+				deployment
+			WHERE
+				name LIKE CONCAT(
+					'patr-deleted: ',
+					REPLACE(id::TEXT, '-', ''),
+					'@%'
+				);
+			"#
+		)
+		.fetch_one(&mut *connection)
+		.await?
+		.get::<i64, _>("count");
+
+		if deployments_with_patr_deleted <= 0 {
+			break;
+		}
+
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				name = REPLACE(
+					name,
+					CONCAT(
+						'patr-deleted: ',
+						REPLACE(id::TEXT, '-', ''),
+						'@'
+					),
+					''
+				);
+			"#
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
 
 	query!(
 		r#"
@@ -279,9 +561,65 @@ async fn refactor_workspace_deletion(
 	.execute(&mut *connection)
 	.await?;
 
-	// TODO
-	// 1. populate the deleted column based on the name column
-	// 2. strip the patr-deleted prefix in static site name
+	query!(
+		r#"
+		UPDATE
+			workspace
+		SET
+			deleted = NOW()
+		WHERE
+			name LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	loop {
+		let workspaces_with_patr_deleted = query!(
+			r#"
+			SELECT
+				COUNT(*) as "count"
+			FROM
+				workspace
+			WHERE
+				name LIKE CONCAT(
+					'patr-deleted: ',
+					REPLACE(id::TEXT, '-', ''),
+					'@%'
+				);
+			"#
+		)
+		.fetch_one(&mut *connection)
+		.await?
+		.get::<i64, _>("count");
+
+		if workspaces_with_patr_deleted <= 0 {
+			break;
+		}
+
+		query!(
+			r#"
+			UPDATE
+				workspace
+			SET
+				name = REPLACE(
+					name,
+					CONCAT(
+						'patr-deleted: ',
+						REPLACE(id::TEXT, '-', ''),
+						'@'
+					),
+					''
+				);
+			"#
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
 
 	query!(
 		r#"
@@ -330,17 +668,72 @@ async fn refactor_domain_deletion(
 	.execute(&mut *connection)
 	.await?;
 
-	// TODO
-	// 1. populate the deleted column based on the name column
-	// 2. strip the patr-deleted prefix in static site name
+	query!(
+		r#"
+		UPDATE
+			domain
+		SET
+			deleted = NOW()
+		WHERE
+			name LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	loop {
+		let domains_with_patr_deleted = query!(
+			r#"
+			SELECT
+				COUNT(*) as "count"
+			FROM
+				domain
+			WHERE
+				name LIKE CONCAT(
+					'patr-deleted: ',
+					REPLACE(id::TEXT, '-', ''),
+					'@%'
+				);
+			"#
+		)
+		.fetch_one(&mut *connection)
+		.await?
+		.get::<i64, _>("count");
+
+		if domains_with_patr_deleted <= 0 {
+			break;
+		}
+
+		query!(
+			r#"
+			UPDATE
+				domain
+			SET
+				name = REPLACE(
+					name,
+					CONCAT(
+						'patr-deleted: ',
+						REPLACE(id::TEXT, '-', ''),
+						'@'
+					),
+					''
+				);
+			"#
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
 
 	query!(
 		r#"
 		ALTER TABLE domain
-		ADD CONSTRAINT domain_chk_name_is_valid
-			CHECK(
-				name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$'
-			);
+		ADD CONSTRAINT domain_chk_name_is_valid CHECK(
+			name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$'
+		);
 		"#
 	)
 	.execute(&mut *connection)
@@ -362,11 +755,13 @@ async fn refactor_domain_deletion(
 	query!(
 		r#"
 		ALTER TABLE domain
-		ADD CONSTRAINT domain_uq_id_type_deleted UNIQUE (id, type, deleted);
+		ADD CONSTRAINT domain_uq_id_type_deleted UNIQUE(id, type, deleted);
 		"#
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	// TODO: migration for personal_domain and workspace_domain too
 
 	query!(
 		r#"
@@ -382,8 +777,6 @@ async fn refactor_domain_deletion(
 	)
 	.execute(&mut *connection)
 	.await?;
-
-	// TODO: migration for personal_domain and workspace_domain too
 
 	Ok(())
 }
@@ -419,9 +812,65 @@ async fn refactor_managed_url_deletion(
 	.execute(&mut *connection)
 	.await?;
 
-	// TODO
-	// 1. populate the deleted column based on the name column
-	// 2. strip the patr-deleted prefix in static site name
+	query!(
+		r#"
+		UPDATE
+			managed_url
+		SET
+			deleted = NOW()
+		WHERE
+			name LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	loop {
+		let managed_urls_with_patr_deleted = query!(
+			r#"
+			SELECT
+				COUNT(*) as "count"
+			FROM
+				managed_url
+			WHERE
+				name LIKE CONCAT(
+					'patr-deleted: ',
+					REPLACE(id::TEXT, '-', ''),
+					'@%'
+				);
+			"#
+		)
+		.fetch_one(&mut *connection)
+		.await?
+		.get::<i64, _>("count");
+
+		if managed_urls_with_patr_deleted <= 0 {
+			break;
+		}
+
+		query!(
+			r#"
+			UPDATE
+				managed_url
+			SET
+				name = REPLACE(
+					name,
+					CONCAT(
+						'patr-deleted: ',
+						REPLACE(id::TEXT, '-', ''),
+						'@'
+					),
+					''
+				);
+			"#
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
 
 	query!(
 		r#"

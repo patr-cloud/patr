@@ -268,11 +268,7 @@ pub async fn get_managed_url_for_static_siite(
 			managed_url
 		WHERE
 			static_site_id = $1 AND
-			sub_domain NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			deleted IS NULL;
 		"#,
 		static_site_id as _,
 	)

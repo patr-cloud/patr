@@ -427,11 +427,7 @@ pub async fn get_workspace_info(
 			workspace
 		WHERE
 			id = $1 AND
-			name NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			deleted IS NULL;
 		"#,
 		workspace_id as _,
 	)
@@ -682,31 +678,27 @@ pub async fn get_all_workspaces(
 		Workspace,
 		r#"
 		SELECT DISTINCT
-			workspace.id as "id: _",
-			workspace.name::TEXT as "name!: _",
-			workspace.super_admin_id as "super_admin_id: _",
-			workspace.active,
-			workspace.alert_emails as "alert_emails: _",
-			workspace.payment_type as "payment_type: _",
-			workspace.default_payment_method_id as "default_payment_method_id: _",
-			workspace.deployment_limit,
-			workspace.static_site_limit,
-			workspace.database_limit,
-			workspace.managed_url_limit,
-			workspace.secret_limit,
-			workspace.domain_limit,
-			workspace.docker_repository_storage_limit,
-			workspace.stripe_customer_id,
-			workspace.address_id as "address_id: _",
-			workspace.amount_due
+			id as "id: _",
+			name::TEXT as "name!: _",
+			super_admin_id as "super_admin_id: _",
+			active,
+			alert_emails as "alert_emails: _",
+			payment_type as "payment_type: _",
+			default_payment_method_id as "default_payment_method_id: _",
+			deployment_limit,
+			static_site_limit,
+			database_limit,
+			managed_url_limit,
+			secret_limit,
+			domain_limit,
+			docker_repository_storage_limit,
+			stripe_customer_id,
+			address_id as "address_id: _",
+			amount_due
 		FROM
 			workspace
 		WHERE
-			workspace.name NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			deleted IS NULL;
 		"#,
 	)
 	.fetch_all(&mut *connection)

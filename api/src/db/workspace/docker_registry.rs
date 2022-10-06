@@ -163,7 +163,7 @@ pub async fn get_docker_repository_by_name(
 			name = $1
 		AND
 			workspace_id = $2 AND
-			name NOT LIKE 'patr-deleted:%';
+			deleted IS NULL;
 		"#,
 		repository_name as _,
 		workspace_id as _
@@ -231,7 +231,7 @@ pub async fn get_docker_repositories_for_workspace(
 				docker_registry_repository.id
 		WHERE
 			workspace_id = $1 AND
-			name NOT LIKE 'patr-deleted:%';
+			deleted IS NULL;
 		"#,
 		workspace_id as _
 	)
@@ -269,7 +269,7 @@ pub async fn get_docker_repository_by_id(
 			docker_registry_repository
 		WHERE
 			id = $1 AND
-			name NOT LIKE 'patr-deleted:%';
+			deleted IS NULL;
 		"#,
 		repository_id as _
 	)

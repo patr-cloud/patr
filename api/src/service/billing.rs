@@ -235,12 +235,7 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 					&deployment_usage.deployment_id,
 				)
 				.await?
-				.map(|deployment| {
-					deployment
-						.name
-						.replace("patr-deleted: ", "")
-						.replace(format!("-{}", deployment.id).as_str(), "")
-				})
+				.map(|deployment| deployment.name)
 				.as_deref()
 				.unwrap_or("unknown")
 				.to_string(),
@@ -320,12 +315,7 @@ pub async fn calculate_database_bill_for_workspace_till(
 						&database_usage.database_id,
 					)
 					.await?
-					.map(|database| {
-						database
-							.name
-							.replace("patr-deleted: ", "")
-							.replace(format!("-{}", database.id).as_str(), "")
-					})
+					.map(|database| database.name)
 					.as_deref()
 					.unwrap_or("unknown")
 					.to_string(),
