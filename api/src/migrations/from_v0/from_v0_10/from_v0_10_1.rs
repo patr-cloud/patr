@@ -819,7 +819,7 @@ async fn refactor_managed_url_deletion(
 		SET
 			deleted = NOW()
 		WHERE
-			name LIKE CONCAT(
+			sub_domain LIKE CONCAT(
 				'patr-deleted: ',
 				REPLACE(id::TEXT, '-', ''),
 				'@%'
@@ -837,7 +837,7 @@ async fn refactor_managed_url_deletion(
 			FROM
 				managed_url
 			WHERE
-				name LIKE CONCAT(
+				sub_domain LIKE CONCAT(
 					'patr-deleted: ',
 					REPLACE(id::TEXT, '-', ''),
 					'@%'
@@ -857,8 +857,8 @@ async fn refactor_managed_url_deletion(
 			UPDATE
 				managed_url
 			SET
-				name = REPLACE(
-					name,
+				sub_domain = REPLACE(
+					sub_domain,
 					CONCAT(
 						'patr-deleted: ',
 						REPLACE(id::TEXT, '-', ''),
