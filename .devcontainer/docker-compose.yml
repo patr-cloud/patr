@@ -20,6 +20,7 @@ services:
       - 3000
     volumes:
       - ..:/workspace:cached
+      - /var/run/docker.sock:/var/run/docker-host.sock
       - ./volume/data/cargo:/home/vscode/.cargo-volume
       - ./volume/config/init-data/.bash_history:/home/vscode/.bash_history
       - ./volume/data/dockerd:/var/lib/docker
