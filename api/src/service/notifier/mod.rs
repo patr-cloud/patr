@@ -463,9 +463,27 @@ pub async fn send_invoice_email(
 	)
 	.await?;
 
+	// parsing personal-workspace-(uuid)
+	let displayed_workspace_name = if let Some(Ok(user_id)) = workspace_name
+		.strip_prefix("personal-workspace-")
+		.map(Uuid::parse_str)
+	{
+		let user = db::get_user_by_user_id(connection, &user_id).await?;
+		if let Some(user) = user {
+			format!(
+				"{} {}'s Personal Workspace",
+				user.first_name, user.last_name
+			)
+		} else {
+			workspace_name
+		}
+	} else {
+		workspace_name
+	};
+
 	email::send_invoice_email(
 		user_email.parse()?,
-		workspace_name,
+		displayed_workspace_name,
 		deployment_usages,
 		database_usages,
 		static_sites_usages,
