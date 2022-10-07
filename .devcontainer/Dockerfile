@@ -18,6 +18,8 @@ RUN sed -i 's/%sudo	ALL=(ALL:ALL) ALL/%sudo	ALL=(ALL:ALL) NOPASSWD:ALL/' /etc/su
 
 USER vscode
 WORKDIR /home/vscode
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+RUN source /home/vscode/.nvm/nvm.sh && nvm install 16
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --profile default -y
 RUN source "$HOME/.cargo/env" && rustup toolchain install nightly
 RUN cat /etc/container-init-data/bashrc >> $HOME/.bashrc
