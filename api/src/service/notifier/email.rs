@@ -358,7 +358,6 @@ struct InvoiceEmail {
 	year: i32,
 }
 
-#[allow(dead_code)]
 pub async fn send_invoice_email(
 	email: Mailbox,
 	workspace_name: String,
