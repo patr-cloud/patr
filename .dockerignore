@@ -9,4 +9,4 @@
 Dockerfile
 .dockerignore
 
-/.devcontainer/volume
+/.devcontainer

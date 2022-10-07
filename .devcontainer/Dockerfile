@@ -6,8 +6,8 @@ RUN apt update
 RUN apt install -y build-essential git pkg-config libssl-dev docker.io postgresql-client sudo sed curl inetutils-ping telnet bash-completion nano dumb-init libnss3-tools ca-certificates jq
 
 WORKDIR /etc/container-init-data
-COPY ./volume/init-data/user user
-COPY ./volume/init-data/group group
+COPY ./volume/config/init-data/user user
+COPY ./volume/config/init-data/group group
 COPY ./.bashrc bashrc
 COPY ./scripts/runc.sh /runc.sh
 RUN addgroup --gid $(cat ./group) vscode

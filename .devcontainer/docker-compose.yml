@@ -8,10 +8,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    volumes:
-      - ..:/workspace:cached
-      - ./volume/cargo:/home/vscode/.cargo-volume
-      - ${HOME}/.netrc:/home/vscode/.netrc
     # Overrides default command so things don't shut down after the process ends.
     command: sudo /bin/dumb-init /runc.sh
     privileged: true
@@ -20,11 +16,18 @@ services:
       - PGHOST=postgres
       - PGUSER=postgres
       - PG_PASSWORD=postgres
-    depends_on:
-      - postgres
-      - reverseProxy
     expose:
       - 3000
+    volumes:
+      - ..:/workspace:cached
+      - ./volume/data/cargo:/home/vscode/.cargo-volume
+      - ${HOME}/.netrc:/home/vscode/.netrc
+    depends_on:
+      - reverseProxy
+      - postgres
+      - rabbitmq
+      - redis
+      - registry
     hostname: backend
     networks:
       vpc:
@@ -34,12 +37,12 @@ services:
   reverseProxy:
     image: nginx:latest
     restart: unless-stopped
-    volumes:
-      - ./volume/nginx-certs:/etc/volume/certs
-      - ./config/nginx:/etc/nginx/conf.d
     expose:
       - 80
       - 443
+    volumes:
+      - ./volume/config/nginx-certs:/etc/volume/certs
+      - ./config/nginx:/etc/nginx/conf.d
     hostname: nginx
     networks:
       vpc:
@@ -50,11 +53,14 @@ services:
   postgres:
     image: postgis/postgis:13-master
     restart: unless-stopped
-    expose:
-      - 5432
     environment:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=api
+      - PGDATA=/var/lib/postgresql/data
+    expose:
+      - 5432
+    volumes:
+      - ./volume/data/postgres:/var/lib/postgresql/data
     hostname: postgres
     networks:
       vpc:
@@ -64,6 +70,9 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     restart: unless-stopped
+    environment:
+      - RABBITMQ_DEFAULT_USER=rabbitmq
+      - RABBITMQ_DEFAULT_PASS=rabbitmq
     expose:
       - 5672
       - 15672
@@ -72,9 +81,6 @@ services:
       vpc:
         aliases:
           - rabbitmq
-    environment:
-      - RABBITMQ_DEFAULT_USER=rabbitmq
-      - RABBITMQ_DEFAULT_PASS=rabbitmq
 
   redis:
     image: redis:7
@@ -91,8 +97,6 @@ services:
     image: registry:2
     restart: always
     command: /scripts/registry-runner.sh
-    expose:
-      - 5000
     environment:
       - REGISTRY_VERSION=0.1
       - REGISTRY_LOG_FORMATTER=text
@@ -119,11 +123,15 @@ services:
           timeout: 30m
           threshold: 5
           backoff: 1m
+    expose:
+      - 5000
     volumes:
-      - ./volume/docker-registry/data:/data
-      - ./volume/docker-registry/certs:/certs
-      - ./volume/nginx-certs:/patr-ca-certs
+      - ./volume/data/docker-registry:/data
+      - ./volume/config/docker-registry:/certs
+      - ./volume/config/nginx-certs:/patr-ca-certs
       - ./scripts/registry-runner.sh:/scripts/registry-runner.sh
+    depends_on:
+      - redis
     hostname: redis
     networks:
       vpc:
