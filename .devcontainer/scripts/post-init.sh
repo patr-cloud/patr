@@ -13,8 +13,8 @@ ln -s ~/.cargo-volume ~/.cargo
 echo "Installing sqlx-cli"
 cargo install sqlx-cli
 
-echo "Setting up dev.json"
 if [ ! -f /workspace/config/dev.json ]; then
+	echo "Setting up dev.json"
 	# Setup config.json
 	privateKey=$(cat $baseDir/../volume/docker-registry/certs/ecdsa.key.pem)
 	publicKey=$(cat $baseDir/../volume/docker-registry/certs/ecdsa.pubkey.pem)
