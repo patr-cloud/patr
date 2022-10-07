@@ -8,6 +8,7 @@ mkdir -p $baseDir/../volume/config/nginx-certs
 mkdir -p $baseDir/../volume/data/cargo
 mkdir -p $baseDir/../volume/data/docker-registry
 mkdir -p $baseDir/../volume/data/postgres
+mkdir -p $baseDir/../volume/data/dockerd
 
 # Setup init-data
 
@@ -35,5 +36,5 @@ fi
 
 if [ ! -f $baseDir/../volume/config/nginx-certs/cert.crt ]; then
 	# Setup NGINX certs
-	openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout $baseDir/../volume/config/nginx-certs/privkey.pem -out $baseDir/../volume/config/nginx-certs/cert.crt -subj "/C=IN/CN=*.patr.cloud"
+	openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout $baseDir/../volume/config/nginx-certs/privkey.pem -out $baseDir/../volume/config/nginx-certs/cert.crt -subj "/C=IN/CN=*.patr.cloud/SAN=*.patr.cloud"
 fi

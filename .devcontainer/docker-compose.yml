@@ -21,6 +21,8 @@ services:
     volumes:
       - ..:/workspace:cached
       - ./volume/data/cargo:/home/vscode/.cargo-volume
+      - ./volume/config/init-data/.bash_history:/home/vscode/.bash_history
+      - ./volume/data/dockerd:/var/lib/docker
       - ${HOME}/.netrc:/home/vscode/.netrc
     depends_on:
       - reverseProxy
