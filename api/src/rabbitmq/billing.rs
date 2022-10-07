@@ -162,17 +162,7 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
-			service::queue_attempt_to_charge_workspace(
-				&workspace,
-				&Utc::now(),
-				total_resource_usage_bill.total_cost,
-				payable_bill,
-				month,
-				year,
-				config,
-			)
-			.await?;
-
+			log::trace!("request_id: {} sending monthly invoice email to workspaceId: {}", request_id, workspace.id);
 			service::send_invoice_email(
 				connection,
 				&workspace.super_admin_id,
@@ -187,6 +177,17 @@ pub(super) async fn process_request(
 				total_resource_usage_bill.total_cost,
 				month_string.to_string(),
 				year,
+			)
+			.await?;
+
+			service::queue_attempt_to_charge_workspace(
+				&workspace,
+				&Utc::now(),
+				total_resource_usage_bill.total_cost,
+				payable_bill,
+				month,
+				year,
+				config,
 			)
 			.await?;
 
