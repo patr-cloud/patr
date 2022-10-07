@@ -62,6 +62,7 @@ use crate::{
 			DockerRepositoryBill,
 			DomainBill,
 			ManagedUrlBill,
+			ResourceUsageBill,
 			SecretsBill,
 			StaticSiteBill,
 		},
@@ -849,7 +850,7 @@ pub async fn calculate_total_bill_for_workspace_till(
 	workspace_id: &Uuid,
 	month_start_date: &chrono::DateTime<Utc>,
 	till_date: &chrono::DateTime<Utc>,
-) -> Result<f64, Error> {
+) -> Result<ResourceUsageBill, Error> {
 	let deployment_usages = calculate_deployment_bill_for_workspace_till(
 		&mut *connection,
 		workspace_id,
@@ -946,25 +947,26 @@ pub async fn calculate_total_bill_for_workspace_till(
 		managed_domain_cost +
 		managed_secret_cost;
 
+	let total_resource_usage_bill = ResourceUsageBill {
+		total_cost,
+		deployment_usages,
+		database_usages,
+		static_sites_usages,
+		managed_url_usages,
+		docker_repository_usages,
+		domains_usages,
+		secrets_usages,
+	};
+
 	if total_cost > 0.0 && cfg!(debug_assertions) {
 		log::trace!(
-			"Total bill for workspace `{}`: {}",
+			"Total bill for workspace `{}`: {:?}",
 			workspace_id,
-			serde_json::to_string(&serde_json::json!({
-				"cost": total_cost,
-				"deployment_usages": deployment_usages,
-				"database_usages": database_usages,
-				"static_sites_usages": static_sites_usages,
-				"managed_url_usages": managed_url_usages,
-				"docker_repository_usages": docker_repository_usages,
-				"domains_usages": domains_usages,
-				"secrets_usages": secrets_usages,
-			}))
-			.unwrap_or_default()
+			total_resource_usage_bill
 		);
 	}
 
-	Ok(total_cost)
+	Ok(total_resource_usage_bill)
 }
 
 pub async fn get_total_resource_usage(

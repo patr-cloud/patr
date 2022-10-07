@@ -129,13 +129,14 @@ pub(super) async fn process_request(
 			};
 
 			// Step 1: Calculate bill for this entire cycle
-			let total_bill = service::calculate_total_bill_for_workspace_till(
-				connection,
-				&workspace.id,
-				&month_start_date,
-				&next_month_start_date,
-			)
-			.await?;
+			let total_resource_usage_bill =
+				service::calculate_total_bill_for_workspace_till(
+					connection,
+					&workspace.id,
+					&month_start_date,
+					&next_month_start_date,
+				)
+				.await?;
 
 			// create transactions for the bill
 			let transaction_id =
@@ -145,7 +146,7 @@ pub(super) async fn process_request(
 				&workspace.id,
 				&transaction_id,
 				month as i32,
-				total_bill,
+				total_resource_usage_bill.total_cost,
 				None,
 				// 1st of next month,
 				&next_month_start_date.add(Duration::nanoseconds(1)),
@@ -164,7 +165,7 @@ pub(super) async fn process_request(
 			service::queue_attempt_to_charge_workspace(
 				&workspace,
 				&Utc::now(),
-				total_bill,
+				total_resource_usage_bill.total_cost,
 				payable_bill,
 				month,
 				year,
@@ -172,25 +173,22 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
-			// TODO: for now disabled the invoice email,
-			// but we need to enable this in next migration
-
-			// service::send_invoice_email(
-			// 	connection,
-			// 	&workspace.super_admin_id,
-			// 	workspace.name.clone(),
-			// 	deployment_usages,
-			// 	database_usages,
-			// 	static_sites_usages,
-			// 	managed_url_usages,
-			// 	docker_repository_usages,
-			// 	domains_usages,
-			// 	secrets_usages,
-			// 	total_bill,
-			// 	month_string.to_string(),
-			// 	year,
-			// )
-			// .await?;
+			service::send_invoice_email(
+				connection,
+				&workspace.super_admin_id,
+				workspace.name.clone(),
+				total_resource_usage_bill.deployment_usages,
+				total_resource_usage_bill.database_usages,
+				total_resource_usage_bill.static_sites_usages,
+				total_resource_usage_bill.managed_url_usages,
+				total_resource_usage_bill.docker_repository_usages,
+				total_resource_usage_bill.domains_usages,
+				total_resource_usage_bill.secrets_usages,
+				total_resource_usage_bill.total_cost,
+				month_string.to_string(),
+				year,
+			)
+			.await?;
 
 			Ok(())
 		}
