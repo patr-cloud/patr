@@ -35,7 +35,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./volume/nginx-certs:/etc/volume/certs
-      - ./config/nginx:/etc/nginx/config.d
+      - ./config/nginx:/etc/nginx/conf.d
     expose:
       - 80
       - 443
@@ -89,7 +89,7 @@ services:
   registry:
     image: registry:2
     restart: always
-    command: apk update && apk add ca-certificates && cp /patr-ca-certs/cert.crt /usr/local/share/ca-certificates/patr-cert.crt && update-ca-certificates && /bin/registry /etc/docker/registry/config.yml
+    command: /scripts/registry-runner.sh
     expose:
       - 5000
     environment:
@@ -122,6 +122,7 @@ services:
       - ./volume/docker-registry/data:/data
       - ./volume/docker-registry/certs:/certs
       - ./volume/nginx-certs:/patr-ca-certs
+      - ./scripts/registry-runner.sh:/scripts/registry-runner.sh
     hostname: redis
     networks:
       vpc:
