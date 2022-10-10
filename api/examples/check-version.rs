@@ -6,6 +6,7 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 pub struct ReleaseVersion {
 	tag_name: String,
+	name: String
 }
 
 async fn does_version_exist(version: &str) -> bool {
@@ -47,7 +48,7 @@ async fn does_version_exist(version: &str) -> bool {
 			break;
 		}
 		for release in response.iter() {
-			if version == release.tag_name {
+			if version == release.tag_name || version == release.name {
 				version_exists = true;
 			}
 		}
@@ -60,7 +61,7 @@ async fn does_version_exist(version: &str) -> bool {
 async fn main() {
 	let crate_version = version!();
 
-	let branch = String::from("staging");
+	let branch = env::var("DRONE_BRANCH").expect("DRONE_BRANCH is not set");
 
 	let release_version = {
 		format!(
