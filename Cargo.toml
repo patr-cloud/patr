@@ -5,6 +5,10 @@ members = [
   "api-models"
 ]
 
+[workspace.package]
+version = "0.11.0"
+rust-version = "1.64"
+
 [profile.release]
 codegen-units = 1
 lto = true
