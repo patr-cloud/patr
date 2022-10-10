@@ -168,6 +168,10 @@ pub mod permissions {
 			}
 		}
 
+		pub mod metrics {
+			pub const GET: &str = "workspace::infrastructure::metrics::get";
+		}
+
 		pub const EDIT: &str = "workspace::edit";
 		pub const DELETE: &str = "workspace::delete";
 	}
