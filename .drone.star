@@ -133,6 +133,8 @@ def get_pipeline_steps(ctx):
                 "Check clippy lints",
                 release=True,
             ),
+            # Check whether crate version is updated
+            check_version("Check version"),
 
             # Create sample config
             copy_config("Copy sample config"),
@@ -189,6 +191,8 @@ def get_pipeline_steps(ctx):
                 "Check clippy lints",
                 release=True,
             ),
+            # Check whether crate version is updated
+            check_version("Check version"),
 
             # Create sample config
             copy_config("Copy sample config"),
@@ -452,6 +456,19 @@ def check_formatting(step_name):
         ]
     }
 
+def check_version(step_name):
+    return {
+        "name": step_name,
+        "image": "rust:1.63",
+        "commands": [
+            "cargo run --examples check-version"
+        ],
+        "environment": {
+            "GITEA_TOKEN": {
+                "from_secret": "gitea_token"
+            },
+        }
+    }
 
 def check_clippy(step_name, release):
 
