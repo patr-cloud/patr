@@ -25,37 +25,39 @@ if [ ! -f /workspace/config/dev.json ]; then
 	privateKey=$(cat $baseDir/../volume/config/docker-registry/ecdsa.key.pem)
 	publicKey=$(cat $baseDir/../volume/config/docker-registry/ecdsa.pubkey.pem)
 	publicKeyDer=$(cat $baseDir/../volume/config/docker-registry/ecdsa.pubkey.der | base64 | tr -d '\n')
-	kubernetesCertificateAuthorityData=$(kubectl config view --output json --raw | jq ".clusters[0].cluster[\"certificate-authority-data\"]")
+	kubernetesCertificateAuthorityData=$(kubectl config view --output json --raw | jq ".clusters[0].cluster[\"certificate-authority-data\"]" | tr -d '"')
 	clusterAuthToken=$(todo generate a token using service accounts here)
 
-	cat $baseDir/../../config/dev.sample.json | \
-		jq '.bindAddress |= "0.0.0.0"' | \
-		jq '.database.host |= "postgres"' | \
-		jq '.database.port |= 5432' | \
-		jq '.database.user |= "postgres"' | \
-		jq '.database.password |= "postgres"' | \
-		jq '.redis.host |= "redis"' | \
-		jq '.dockerRegistry.serviceName |= "Patr registry service"' | \
-		jq '.dockerRegistry.issuer |= "api.patr.cloud"' | \
-		jq '.dockerRegistry.registryUrl |= "registry.patr.cloud"' | \
-		jq ".dockerRegistry.privateKey |= \"$privateKey\"" | \
-		jq ".dockerRegistry.publicKey |= \"$publicKey\"" | \
-		jq ".dockerRegistry.publicKeyDer |= \"$publicKeyDer\"" | \
-		jq '.dockerRegistry.authorizationHeader |= "authkey123456"' | \
-		jq '.rabbitmq.host |= "rabbitmq"' | \
-		jq '.rabbitmq.username |= "rabbitmq"' | \
-		jq '.rabbitmq.password |= "rabbitmq"' | \
-		jq ".kubernetes.certificateAuthorityData |= $kubernetesCertificateAuthorityData" | \
-		jq ".kubernetes.clusterName |= \"kind-$COMPOSE_PROJECT_NAME\"" | \
-		jq '.kubernetes.clusterUrl |= "https://k8s.patr.cloud"' | \
-		jq ".kubernetes.authName |= \"kind-$COMPOSE_PROJECT_NAME\"" | \
-		jq ".kubernetes.authUsername |= \"kind-$COMPOSE_PROJECT_NAME\"" | \
-		jq ".kubernetes.authToken |= \"$clusterAuthToken\"" | \
-		jq ".kubernetes.contextName |= \"kind-$COMPOSE_PROJECT_NAME\"" > $baseDir/../../config/dev.json
+	read -r -d '' jqQuery <<- EOF
+	.bindAddress |= "0.0.0.0" |
+	.database.host |= "postgres" |
+	.database.port |= 5432 |
+	.database.user |= "postgres" |
+	.database.password |= "postgres" |
+	.redis.host |= "redis" |
+	.dockerRegistry.serviceName |= "Patr registry service" |
+	.dockerRegistry.issuer |= "api.patr.cloud" |
+	.dockerRegistry.registryUrl |= "registry.patr.cloud" |
+	.dockerRegistry.privateKey |= "$privateKey" |
+	.dockerRegistry.publicKey |= "$publicKey" |
+	.dockerRegistry.publicKeyDer |= "$publicKeyDer" |
+	.dockerRegistry.authorizationHeader |= "authkey123456" |
+	.rabbitmq.host |= "rabbitmq" |
+	.rabbitmq.username |= "rabbitmq" |
+	.rabbitmq.password |= "rabbitmq" |
+	.kubernetes.certificateAuthorityData |= "$kubernetesCertificateAuthorityData" |
+	.kubernetes.clusterName |= "kind-$COMPOSE_PROJECT_NAME" |
+	.kubernetes.clusterUrl |= "https://k8s.patr.cloud" |
+	.kubernetes.authName |= "kind-$COMPOSE_PROJECT_NAME" |
+	.kubernetes.authUsername |= "kind-$COMPOSE_PROJECT_NAME" |
+	.kubernetes.authToken |= "$clusterAuthToken" |
+	.kubernetes.contextName |= "kind-$COMPOSE_PROJECT_NAME"
+	EOF
+	cat $baseDir/../../config/dev.sample.json | jq "$jqQuery" > $baseDir/../../config/dev.json
 fi
 
 echo "Setting up cargo-prepare"
-db=$(cat /workspace/config/dev.json | jq '.database.database' | tr -d '"')
+db=$(cat /workspace/config/dev.json | jq '.database.database' | tr -d '"' | tr -d "'")
 echo "cargo sqlx prepare --database-url=\"postgres://$PGUSER:$PG_PASSWORD@$PGHOST:5432/$db\" --merged" > ~/.cargo/bin/cargo-prepare
 chmod +x ~/.cargo/bin/cargo-prepare
 
