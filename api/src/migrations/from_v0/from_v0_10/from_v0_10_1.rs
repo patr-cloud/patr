@@ -1108,7 +1108,7 @@ async fn add_permission_for_metrics(
 	.fetch_optional(&mut *connection)
 	.await?;
 
-	todo!()
+	Ok(())
 }
 
 async fn reset_permission_order(
