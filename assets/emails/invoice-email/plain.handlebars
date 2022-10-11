@@ -3,19 +3,79 @@ Hello there, Below are the Invoice details for current billing period:
 Workspace:
 {{workspace_name}}
 Deployment Usage:
-{{deployment_usages}}
+{{#each deployment_usages}}
+  {{this.deployment_name}}:
+  {{#each this.bill_items}}
+    Machine Type:
+    {{this.machine_type}}
+  {{/each}}
+  {{#each this.bill_items}}
+    Number of Instances:
+    {{this.num_instances}}
+  {{/each}}
+  {{#each this.bill_items}}
+    Hours used:
+    {{this.hours}}
+  {{/each}}
+  {{#each this.bill_items}}
+    Bill Amount:
+    {{this.amount}}
+  {{/each}}
+{{/each}}
 Database Usage:
-{{database_usages}}
+{{#each database_usages}}
+  Name:
+  {{this.database_name}}
+  Hours used:
+  {{this.hours}}
+  Bill Amount:
+  {{this.amount}}
+{{/each}}
 Static Site Usage:
-{{static_sites_usages}}
+{{#each static_site_usages}}
+  Plan:
+  {{@key}}
+  Hours used:
+  {{this.hours}}
+  Bill Amount:
+  {{this.amount}}
+{{/each}}
 Managed URL Usage:
-{{managed_url_usages}}
+{{#each managed_url_usages}}
+  No.of URLs:
+  {{@key}}
+  Hours used:
+  {{this.hours}}
+  Bill Amount:
+  {{this.amount}}
+{{/each}}
 Docker Repository Usage:
-{{docker_repository_usages}}
+{{#each docker_repository_usages}}
+  Total Storage (GB):
+  {{@key}}
+  Hours used:
+  {{this.hours}}
+  Bill Amount:
+  {{this.amount}}
+{{/each}}
 Domain Usage:
-{{domains_usages}}
+{{#each domain_usages}}
+  Plan:
+  {{@key}}
+  Hours used:
+  {{this.hours}}
+  Bill Amount:
+  {{this.amount}}
+{{/each}}
 Secret Usage:
-{{secrets_usages}}
+{{#each secret_usages}}
+  No.of Secrets:
+  {{@key}}
+  Hours used:
+  {{this.hours}}
+  Bill Amount:
+  {{this.amount}}
+{{/each}}
 
 Total Bill:
 {{total_bill}}
@@ -25,6 +85,3 @@ Issued on:
 
 Join our Discord Community for the latest updates and chat with us here for
 instant technical support.
-
-{{! deployment usage: deployment_id - bill - hours }}
-{{! database usage: database_id - bill - hours }}
