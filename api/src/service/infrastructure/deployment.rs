@@ -1208,7 +1208,8 @@ pub async fn stop_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-	region_id: &Uuid,
+	deployment_running_details: &DeploymentRunningDetails,
+	deployment_region_id: &Uuid,
 	user_id: &Uuid,
 	login_id: &Uuid,
 	ip_address: &str,
@@ -1252,14 +1253,19 @@ pub async fn stop_deployment(
 	.await?;
 
 	let kubeconfig = service::get_kubernetes_config_for_region(
-		connection, region_id, config,
+		connection,
+		&deployment_region_id,
+		config,
 	)
 	.await?;
 
 	service::delete_kubernetes_deployment(
 		workspace_id,
 		deployment_id,
+		deployment_running_details,
 		kubeconfig,
+		"stopped",
+		config,
 		request_id,
 	)
 	.await?;
@@ -1271,7 +1277,9 @@ pub async fn delete_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-	region_id: &Uuid,
+	deployment_running_details: &DeploymentRunningDetails,
+	deployment_region_id: &Uuid,
+	deployment_name: &str,
 	user_id: &Uuid,
 	login_id: &Uuid,
 	ip_address: &str,
@@ -1308,14 +1316,19 @@ pub async fn delete_deployment(
 	.await?;
 
 	let kubeconfig = service::get_kubernetes_config_for_region(
-		connection, region_id, config,
+		connection,
+		deployment_region_id,
+		config,
 	)
 	.await?;
 
 	service::delete_kubernetes_deployment(
 		workspace_id,
 		deployment_id,
+		deployment_running_details,
 		kubeconfig,
+		"deleted",
+		config,
 		request_id,
 	)
 	.await?;

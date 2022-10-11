@@ -681,9 +681,20 @@ pub async fn update_kubernetes_deployment(
 pub async fn delete_kubernetes_deployment(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
+	deployment_running_details: &DeploymentRunningDetails,
 	kubeconfig: KubernetesConfigDetails,
+	action: &str,
+	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
+	/*
+		This function won't delete the svc and ingress from release after 0.10.1.
+		Rather we modify the ingress and point to a static page based on
+		the action(stopped/deleted) on the static site.
+		This should Ideally be removed after certain amount of time
+		eg - after 30 days this ingress should be deleted automatically.
+		If so we have to track deletion time and run a schedular on that.
+	*/
 	let kubernetes_client =
 		super::get_kubernetes_client(kubeconfig.auth_details).await?;
 
@@ -711,33 +722,152 @@ pub async fn delete_kubernetes_deployment(
 	)
 	.await?;
 
-	log::trace!("request_id: {} - deleting the service", request_id);
-	Api::<Service>::namespaced(
+	log::trace!(
+		"rqeuest_id: {} updaing service with type proxy-static-site",
+		request_id
+	);
+	/*
+		Creating a externalName service to let it serve via proxy-static-site
+	*/
+	let kubernetes_service = Service {
+		metadata: ObjectMeta {
+			name: Some(format!("service-{}", deployment_id)),
+			..ObjectMeta::default()
+		},
+		spec: Some(ServiceSpec {
+			type_: Some("ExternalName".to_string()),
+			external_name: Some(
+				config.kubernetes.static_site_proxy_service.to_string(),
+			),
+			ports: Some(vec![ServicePort {
+				port: 80,
+				name: Some("http".to_string()),
+				protocol: Some("TCP".to_string()),
+				target_port: Some(IntOrString::Int(80)),
+				..ServicePort::default()
+			}]),
+			..ServiceSpec::default()
+		}),
+		..Service::default()
+	};
+
+	log::trace!("request_id: {} - creating ClusterIP service", request_id);
+	let service_api: Api<Service> =
+		Api::namespaced(kubernetes_client.clone(), workspace_id.as_str());
+	service_api
+		.patch(
+			&format!("service-{}", deployment_id),
+			&PatchParams::apply(&format!("service-{}", deployment_id)),
+			&Patch::Apply(kubernetes_service),
+		)
+		.await?
+		.status
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	log::trace!("request_id: {} - created ExternalName service", request_id);
+
+	log::trace!("request_id: {} - deleting the ingress", request_id);
+	Api::<Ingress>::namespaced(
 		kubernetes_client.clone(),
 		workspace_id.as_str(),
 	)
 	.delete_opt(
-		&format!("service-{}", deployment_id),
+		&format!("ingress-{}", deployment_id),
 		&DeleteParams::default(),
 	)
 	.await?;
 
-	log::trace!("request_id: {} - deleting the hpa", request_id);
+	/*
+		Deleting ingress and creating new one as kubernetes
+		does not allow to edit annotations and we want upstream vhost to change
+		and point it to externalName service created above
+	*/
+	let mut annotations: BTreeMap<String, String> = BTreeMap::new();
+	annotations.insert(
+		"kubernetes.io/ingress.class".to_string(),
+		"nginx".to_string(),
+	);
+	annotations.insert(
+		"cert-manager.io/cluster-issuer".to_string(),
+		config.kubernetes.cert_issuer_dns.clone(),
+	);
+	annotations.insert(
+		"nginx.ingress.kubernetes.io/upstream-vhost".to_string(),
+		format!("{}-{}.patr.cloud", action, deployment_id), /* action can be
+		                                                     * converted to
+		                                                     * enum */
+	);
 
-	Api::<HorizontalPodAutoscaler>::namespaced(
+	let (default_ingress_rules, default_tls_rules) = deployment_running_details
+		.ports
+		.iter()
+		.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
+		.map(|(port, _)| {
+			(
+				IngressRule {
+					host: Some(format!(
+						"{}-{}.patr.cloud",
+						port, deployment_id
+					)),
+					http: Some(HTTPIngressRuleValue {
+						paths: vec![HTTPIngressPath {
+							backend: IngressBackend {
+								service: Some(IngressServiceBackend {
+									name: format!("service-{}", deployment_id),
+									port: Some(ServiceBackendPort {
+										number: Some(port.value() as i32),
+										..ServiceBackendPort::default()
+									}),
+								}),
+								..Default::default()
+							},
+							path: Some("/".to_string()),
+							path_type: Some("Prefix".to_string()),
+						}],
+					}),
+				},
+				IngressTLS {
+					hosts: Some(vec![
+						"*.patr.cloud".to_string(),
+						"patr.cloud".to_string(),
+					]),
+					secret_name: None,
+				},
+			)
+		})
+		.unzip::<_, _, Vec<_>, Vec<_>>();
+
+	let kubernetes_ingress = Ingress {
+		metadata: ObjectMeta {
+			name: Some(format!("ingress-{}", deployment_id)),
+			annotations: Some(annotations.clone()),
+			..ObjectMeta::default()
+		},
+		spec: Some(IngressSpec {
+			rules: Some(default_ingress_rules),
+			tls: Some(default_tls_rules.clone()),
+			..IngressSpec::default()
+		}),
+		..Ingress::default()
+	};
+	let ingress_api = Api::<Ingress>::namespaced(
 		kubernetes_client.clone(),
 		workspace_id.as_str(),
-	)
-	.delete_opt(&format!("hpa-{}", deployment_id), &DeleteParams::default())
-	.await?;
+	);
 
-	log::trace!("request_id: {} - deleting the ingress", request_id);
-	Api::<Ingress>::namespaced(kubernetes_client, workspace_id.as_str())
-		.delete_opt(
+	ingress_api
+		.patch(
 			&format!("ingress-{}", deployment_id),
-			&DeleteParams::default(),
+			&PatchParams::apply(&format!("ingress-{}", deployment_id)),
+			&Patch::Apply(kubernetes_ingress),
 		)
 		.await?;
+
+	log::trace!(
+		"request_id: {} created new ingress to point to static site page",
+		request_id
+	);
 
 	log::trace!(
 		"request_id: {} - deployment deleted successfully!",

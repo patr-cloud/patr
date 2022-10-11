@@ -192,10 +192,17 @@ pub async fn delete_all_resources_in_workspace(
 		db::get_deployments_for_workspace(connection, workspace_id).await?;
 
 	for deployment in deployments {
+		let (_, _, _, running_details) = service::get_full_deployment_config(
+			connection,
+			&deployment.id,
+			request_id,
+		)
+		.await?;
 		service::delete_deployment(
 			connection,
 			&deployment.workspace_id,
 			&deployment.id,
+			&running_details,
 			&deployment.region,
 			user_id,
 			&login_id,

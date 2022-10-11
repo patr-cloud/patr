@@ -1266,14 +1266,21 @@ async fn stop_deployment(
 	let login_id = context.get_token_data().unwrap().login_id.clone();
 
 	let config = context.get_state().config.clone();
-	log::trace!("request_id: {} - Getting deployment id from db", request_id);
-	let deployment = db::get_deployment_by_id(
-		context.get_database_connection(),
-		&deployment_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	log::trace!(
+		"request_id: {} - Getting full deployment config from db",
+		request_id
+	);
+	/*
+		Using `get_full_deployment_config` as it also checks for deployment to exists or not
+		Also we need deployment_running_detials and use all the ports for ingress
+	*/
+	let (deployment, workspace_id, _, deployment_running_details) =
+		service::get_full_deployment_config(
+			context.get_database_connection(),
+			&deployment_id,
+			&request_id,
+		)
+		.await?;
 
 	log::trace!(
 		"request_id: {} - Stopping the deployment {}",
@@ -1282,8 +1289,9 @@ async fn stop_deployment(
 	);
 	service::stop_deployment(
 		context.get_database_connection(),
-		&deployment.workspace_id,
+		&workspace_id,
 		&deployment_id,
+		&deployment_running_details,
 		&deployment.region,
 		&user_id,
 		&login_id,
@@ -1556,13 +1564,18 @@ async fn delete_deployment(
 	);
 	// stop and delete the container running the image, if it exists
 	let config = context.get_state().config.clone();
-	let deployment = db::get_deployment_by_id(
-		context.get_database_connection(),
-		&deployment_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	/*
+		Using `get_full_deployment_config` as it also checks for deployment to exists or not
+		Also we need deployment_running_detials and use all the ports for ingress
+	*/
+	log::trace!("request_id: {} getting full deployment details", request_id);
+	let (deployment, workspace_id, _, deployment_running_details) =
+		service::get_full_deployment_config(
+			context.get_database_connection(),
+			&deployment_id,
+			&request_id,
+		)
+		.await?;
 
 	if service::is_deployed_on_patr_cluster(
 		context.get_database_connection(),
@@ -1581,8 +1594,9 @@ async fn delete_deployment(
 	log::trace!("request_id: {} - Deleting deployment", request_id);
 	service::delete_deployment(
 		context.get_database_connection(),
-		&deployment.workspace_id,
+		&workspace_id,
 		&deployment_id,
+		&deployment_running_details,
 		&deployment.region,
 		&user_id,
 		&login_id,
