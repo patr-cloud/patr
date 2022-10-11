@@ -39,273 +39,338 @@
               <ul>
                 <li style="padding:5px 0px">
                   <strong>Deployment Usage</strong>
-                  <table
-                    style="margin: 5px 0px; border: 1px solid #ffffff80; border-collapse: collapse;"
-                  >
-                    <tbody>
+                  {{#unless deployment_usages}}
+                    <table style="margin: 5px 0px">
                       <tr>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Name</th>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Machine Type</th>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Instances</th>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Hours Used</th>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Bill Amount</th>
+                        <td>No Usage</td>
                       </tr>
-                      {{#each deployment_usages}}
+                    </table>
+                  {{/unless}}
+                  {{#if deployment_usages}}
+                    <table
+                      style="margin: 5px 0px; border: 1px solid #ffffff80; border-collapse: collapse;"
+                    >
+                      <tbody>
                         <tr>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >{{this.deployment_name}}</td>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >
-                            {{#each this.bill_items}}
-                              <span
-                                style="display: block"
-                              >{{this.machine_type}}</span>
-                            {{/each}}
-                          </td>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px; text-align:center"
-                          >
-                            {{#each this.bill_items}}
-                              <span
-                                style="display: block"
-                              >{{this.num_instances}}</span>
-                            {{/each}}
-                          </td>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >
-                            {{#each this.bill_items}}
-                              <span style="display: block">{{this.hours}}</span>
-                            {{/each}}
-                          </td>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px; text-align:center"
-                          >
-                            {{#each this.bill_items}}
-                              <span
-                                style="display: block"
-                              >{{this.amount}}</span>
-                            {{/each}}
-                          </td>
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Name</th>
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Machine Type</th>
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Instances</th>
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Hours Used</th>
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Bill Amount</th>
                         </tr>
-                      {{/each}}
-                    </tbody>
-                  </table>
+                        {{#each deployment_usages}}
+                          <tr>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >{{this.deployment_name}}</td>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >
+                              {{#each this.bill_items}}
+                                <span
+                                  style="display: block"
+                                >{{this.machine_type}}</span>
+                              {{/each}}
+                            </td>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px; text-align:center"
+                            >
+                              {{#each this.bill_items}}
+                                <span
+                                  style="display: block"
+                                >{{this.num_instances}}</span>
+                              {{/each}}
+                            </td>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >
+                              {{#each this.bill_items}}
+                                <span
+                                  style="display: block"
+                                >{{this.hours}}</span>
+                              {{/each}}
+                            </td>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px; text-align:center"
+                            >
+                              {{#each this.bill_items}}
+                                <span
+                                  style="display: block"
+                                >{{this.amount}}</span>
+                              {{/each}}
+                            </td>
+                          </tr>
+                        {{/each}}
+                      </tbody>
+                    </table>
+                  {{/if}}
                 </li>
                 <li style="padding:5px 0px">
                   <strong>Database Usage</strong>
-                  <table
-                    style="margin: 5px 0px; border: 1px solid #ffffff80; border-collapse: collapse;"
-                  >
-                    <tbody>
+                  {{#unless database_usages}}
+                    <table style="margin: 5px 0px">
                       <tr>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Name</th>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Hours Used</th>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Bill Amount</th>
+                        <td>No Usage</td>
                       </tr>
-                      {{#each database_usages}}
+                    </table>
+                  {{/unless}}
+                  {{#if database_usages}}
+                    <table
+                      style="margin: 5px 0px; border: 1px solid #ffffff80; border-collapse: collapse;"
+                    >
+                      <tbody>
                         <tr>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >{{this.database_name}}</td>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >{{this.hours}}</td>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >{{this.amount}}</td>
-
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Name</th>
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Hours Used</th>
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Bill Amount</th>
                         </tr>
-                      {{/each}}
-                    </tbody>
-                  </table>
+                        {{#each database_usages}}
+                          <tr>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >{{this.database_name}}</td>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >{{this.hours}}</td>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >{{this.amount}}</td>
+
+                          </tr>
+                        {{/each}}
+                      </tbody>
+                    </table>
+                  {{/if}}
                 </li>
                 <li style="padding:5px 0px">
                   <strong>Static Site Usage</strong>
-                  <table
-                    style="margin: 5px 0px; border: 1px solid #ffffff80; border-collapse: collapse;"
-                  >
-                    <tbody>
+                  {{#unless static_site_usages}}
+                    <table style="margin: 5px 0px">
                       <tr>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Plan</th>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Hours Used</th>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Bill Amount</th>
+                        <td>No Usage</td>
                       </tr>
-                      {{#each static_site_usages}}
+                    </table>
+                  {{/unless}}
+                  {{#if static_site_usages}}
+                    <table
+                      style="margin: 5px 0px; border: 1px solid #ffffff80; border-collapse: collapse;"
+                    >
+                      <tbody>
                         <tr>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >{{@key}}</td>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >{{this.hours}}</td>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >{{this.amount}}</td>
-
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Plan</th>
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Hours Used</th>
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Bill Amount</th>
                         </tr>
-                      {{/each}}
-                    </tbody>
-                  </table>
+                        {{#each static_site_usages}}
+                          <tr>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >{{@key}}</td>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >{{this.hours}}</td>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >{{this.amount}}</td>
+
+                          </tr>
+                        {{/each}}
+                      </tbody>
+                    </table>
+                  {{/if}}
                 </li>
                 <li style="padding:5px 0px">
                   <strong>Domain Usage</strong>
-                  <table
-                    style="margin: 5px 0px; border: 1px solid #ffffff80; border-collapse: collapse;"
-                  >
-                    <tbody>
+                  {{#unless domain_usages}}
+                    <table style="margin: 5px 0px">
                       <tr>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Plan</th>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Hours Used</th>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Bill Amount</th>
+                        <td>No Usage</td>
                       </tr>
-                      {{#each domain_usages}}
+                    </table>
+                  {{/unless}}
+                  {{#if domain_usages}}
+                    <table
+                      style="margin: 5px 0px; border: 1px solid #ffffff80; border-collapse: collapse;"
+                    >
+                      <tbody>
                         <tr>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >{{@key}}</td>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >{{this.hours}}</td>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >{{this.amount}}</td>
-
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Plan</th>
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Hours Used</th>
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Bill Amount</th>
                         </tr>
-                      {{/each}}
-                    </tbody>
-                  </table>
+                        {{#each domain_usages}}
+                          <tr>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >{{@key}}</td>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >{{this.hours}}</td>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >{{this.amount}}</td>
+
+                          </tr>
+                        {{/each}}
+                      </tbody>
+                    </table>
+                  {{/if}}
                 </li>
                 <li style="padding:5px 0px">
                   <strong>Managed URL Usage</strong>
-                  <table
-                    style="margin: 5px 0px; border: 1px solid #ffffff80; border-collapse: collapse;"
-                  >
-                    <tbody>
+                  {{#unless managed_url_usages}}
+                    <table style="margin: 5px 0px">
                       <tr>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >No.of URLs</th>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Hours Used</th>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Bill Amount</th>
+                        <td>No Usage</td>
                       </tr>
-                      {{#each managed_url_usages}}
+                    </table>
+                  {{/unless}}
+                  {{#if managed_url_usages}}
+                    <table
+                      style="margin: 5px 0px; border: 1px solid #ffffff80; border-collapse: collapse;"
+                    >
+                      <tbody>
                         <tr>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >{{@key}}</td>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >{{this.hours}}</td>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >{{this.amount}}</td>
-
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >No.of URLs</th>
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Hours Used</th>
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Bill Amount</th>
                         </tr>
-                      {{/each}}
-                    </tbody>
-                  </table>
+                        {{#each managed_url_usages}}
+                          <tr>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >{{@key}}</td>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >{{this.hours}}</td>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >{{this.amount}}</td>
+
+                          </tr>
+                        {{/each}}
+                      </tbody>
+                    </table>
+                  {{/if}}
                 </li>
                 <li style="padding:5px 0px">
                   <strong>Secrets Usage</strong>
-                  <table
-                    style="margin: 5px 0px; border: 1px solid #ffffff80; border-collapse: collapse;"
-                  >
-                    <tbody>
+                  {{#unless secret_usages}}
+                    <table style="margin: 5px 0px">
                       <tr>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >No.of Secrets</th>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Hours Used</th>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Bill Amount</th>
+                        <td>No Usage</td>
                       </tr>
-                      {{#each secret_usages}}
+                    </table>
+                  {{/unless}}
+                  {{#if secret_usages}}
+                    <table
+                      style="margin: 5px 0px; border: 1px solid #ffffff80; border-collapse: collapse;"
+                    >
+                      <tbody>
                         <tr>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >{{@key}}</td>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >{{this.hours}}</td>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >{{this.amount}}</td>
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >No.of Secrets</th>
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Hours Used</th>
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Bill Amount</th>
                         </tr>
-                      {{/each}}
-                    </tbody>
-                  </table>
+                        {{#each secret_usages}}
+                          <tr>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >{{@key}}</td>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >{{this.hours}}</td>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >{{this.amount}}</td>
+                          </tr>
+                        {{/each}}
+                      </tbody>
+                    </table>
+                  {{/if}}
                 </li>
                 <li style="padding:5px 0px">
                   <strong>Docker Repository Usage</strong>
-                  <table
-                    style="margin: 5px 0px; border: 1px solid #ffffff80; border-collapse: collapse;"
-                  >
-                    <tbody>
+                  {{#unless docker_repository_usages}}
+                    <table style="margin: 5px 0px">
                       <tr>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Total Storage (GB)</th>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Hours Used</th>
-                        <th
-                          style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
-                        >Bill Amount</th>
+                        <td>No Usage</td>
                       </tr>
-                      {{#each docker_repository_usages}}
+                    </table>
+                  {{/unless}}
+                  {{#if docker_repository_usages}}
+                    <table
+                      style="margin: 5px 0px; border: 1px solid #ffffff80; border-collapse: collapse;"
+                    >
+                      <tbody>
                         <tr>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >{{@key}}</td>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >{{this.hours}}</td>
-                          <td
-                            style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
-                          >{{this.amount}}</td>
-
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Total Storage (GB)</th>
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Hours Used</th>
+                          <th
+                            style="text-align:color: #ffffff; center; border: 1px solid #ffffff80;border-collapse: collapse; padding: 5px"
+                          >Bill Amount</th>
                         </tr>
-                      {{/each}}
-                    </tbody>
-                  </table>
+                        {{#each docker_repository_usages}}
+                          <tr>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >{{@key}}</td>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >{{this.hours}}</td>
+                            <td
+                              style="border: 1px solid #ffffff80;color: #ffffff; border-collapse: collapse; padding: 5px;text-align:center"
+                            >{{this.amount}}</td>
+
+                          </tr>
+                        {{/each}}
+                      </tbody>
+                    </table>
+                  {{/if}}
                 </li>
               </ul>
             </td>
