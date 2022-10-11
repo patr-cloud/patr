@@ -3,7 +3,8 @@ authors = ["Rakshith Ravi <rakshith.ravi@vicara.co>"]
 default-run = "api"
 edition = "2021"
 name = "api"
-version = "0.10.1"
+version.workspace = true
+rust-version.workspace = true
 
 [features]
 default = []

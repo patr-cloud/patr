@@ -1,70 +1,35 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
-// https://github.com/microsoft/vscode-dev-containers/tree/v0.245.0/containers/docker-from-docker-compose
 {
 	"dockerComposeFile": "docker-compose.yml",
+	"name": "Vicara API",
 	"service": "app",
 	"workspaceFolder": "/workspace",
-
-	// Use this environment variable if you need to bind mount your local source code into a new container.
-	// "remoteEnv": {
-	// 	"LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}"
-	// },
-
-	// Configure tool-specific properties.
 	"customizations": {
-		// Configure properties specific to VS Code.
-		"vscode": {		
-			// Set *default* container specific settings.json values on container create.
-			"settings": { 
+		"vscode": {
+			"settings": {
 				// runs rust analyzer in different folder so that cargo build won't wait to start compiling
 				"rust-analyzer.checkOnSave.extraArgs": [
-					"--target-dir=./.devcontainer/volume/rust-analyzer"
+					"--target-dir=./.devcontainer/volume/data/rust-analyzer"
 				],
-
-				// "lldb.executable": "/usr/bin/lldb",
-
-				// VS Code don't watch files under ./target
 				"files.watcherExclude": {
 					"**/target/**": true,
 					"./devcontainer/volume/**": true
 				}
-			},			
-
-			// Add the IDs of extensions you want installed when the container is created.
+			},
 			"extensions": [
-				"ms-azuretools.vscode-docker",
 				"vadimcn.vscode-lldb",
-				"mutantdino.resourcemonitor",
 				"rust-lang.rust-analyzer",
 				"tamasfe.even-better-toml",
 				"serayuzgur.crates",
 				"usernamehw.errorlens",
 				"eamodio.gitlens",
-				"mhutchie.git-graph"
+				"patr-cloud.patr-theme-live",
+				"be5invis.toml"
 			]
 		}
 	},
-
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	"forwardPorts": [
-		// 3000,	// patr backend
-		// 5432,	// postgres
-		// 6379, 	// redis 
-		// 5672,	// rabbitmq
-		// 15672, 	// rabbitmq-ui
-		// 5000,	// docker-registry
-	],
-
-	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "echo 'dev-container created'",
-
-	"initializeCommand": "echo \"COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-$USER}\" > .env",
-
-	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
-	"remoteUser": "vscode",
-	
-	"features": {
-		"docker-from-docker": "latest",
-		"rust": "latest"
-	}
+	"shutdownAction": "stopCompose",
+	"forwardPorts": [3000],
+	"postCreateCommand": "./.devcontainer/scripts/post-init.sh",
+	"initializeCommand": "./.devcontainer/scripts/pre-init.sh",
+	"remoteUser": "vscode"
 }
