@@ -26,7 +26,18 @@ if [ ! -f /workspace/config/dev.json ]; then
 	publicKey=$(cat $baseDir/../volume/config/docker-registry/ecdsa.pubkey.pem)
 	publicKeyDer=$(cat $baseDir/../volume/config/docker-registry/ecdsa.pubkey.der | base64 | tr -d '\n')
 	kubernetesCertificateAuthorityData=$(kubectl config view --output json --raw | jq ".clusters[0].cluster[\"certificate-authority-data\"]" | tr -d '"')
-	clusterAuthToken=$(todo generate a token using service accounts here)
+	kubectl create serviceaccount patr-admin-service-account
+	kubectl create clusterrolebinding patr-admin-role-binding --clusterrole=cluster-admin --serviceaccount=default:patr-admin-service-account
+	kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/service-account-token
+metadata:
+	name: patr-admin-service-account-token
+	annotations:
+		kubernetes.io/service-account.name: patr-admin-service-account
+EOF
+	clusterAuthToken=$(kubectl get secrets patr-admin-service-account-token -o=jsonpath='{.data.token}' | base64 -d)
 
 	read -r -d '' jqQuery <<- EOF
 	.bindAddress |= "0.0.0.0" |
@@ -48,8 +59,8 @@ if [ ! -f /workspace/config/dev.json ]; then
 	.kubernetes.certificateAuthorityData |= "$kubernetesCertificateAuthorityData" |
 	.kubernetes.clusterName |= "kind-$COMPOSE_PROJECT_NAME" |
 	.kubernetes.clusterUrl |= "https://k8s.patr.cloud" |
-	.kubernetes.authName |= "kind-$COMPOSE_PROJECT_NAME" |
-	.kubernetes.authUsername |= "kind-$COMPOSE_PROJECT_NAME" |
+	.kubernetes.authName |= "patr-admin-service-account" |
+	.kubernetes.authUsername |= "patr-admin-service-account" |
 	.kubernetes.authToken |= "$clusterAuthToken" |
 	.kubernetes.contextName |= "kind-$COMPOSE_PROJECT_NAME"
 	EOF
