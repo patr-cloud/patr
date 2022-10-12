@@ -1254,7 +1254,7 @@ pub async fn stop_deployment(
 
 	let kubeconfig = service::get_kubernetes_config_for_region(
 		connection,
-		&deployment_region_id,
+		deployment_region_id,
 		config,
 	)
 	.await?;
