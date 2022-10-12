@@ -1598,6 +1598,7 @@ async fn delete_deployment(
 		&deployment_id,
 		&deployment_running_details,
 		&deployment.region,
+		&deployment.name,
 		&user_id,
 		&login_id,
 		&ip_address,
