@@ -1,4 +1,5 @@
 use api_models::utils::Uuid;
+use chrono::{DateTime, Utc};
 
 use crate::{query, query_as, Database};
 
@@ -21,7 +22,7 @@ pub async fn initialize_secret_pre(
 				CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)),
 			workspace_id UUID NOT NULL,
 			deployment_id UUID, /* For deployment specific secrets */
-			CONSTRAINT secret_uq_workspace_id_name UNIQUE(workspace_id, name)
+			deleted TIMESTAMPTZ
 		);
 		"#
 	)
@@ -46,6 +47,19 @@ pub async fn initialize_secret_post(
 			ADD CONSTRAINT secret_fk_deployment_id_workspace_id
 				FOREIGN KEY(deployment_id, workspace_id)
 					REFERENCES deployment(id, workspace_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			secret_uq_workspace_id_name
+		ON
+			secret(workspace_id, name)
+		WHERE
+			deleted IS NULL;
 		"#
 	)
 	.execute(&mut *connection)
@@ -93,11 +107,7 @@ pub async fn get_all_secrets_in_workspace(
 			secret
 		WHERE
 			workspace_id = $1 AND
-			name NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			deleted IS NULL;
 		"#,
 		workspace_id as _,
 	)
@@ -178,6 +188,28 @@ pub async fn update_secret_name(
 		"#,
 		name as _,
 		secret_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn delete_secret(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	secret_id: &Uuid,
+	deletion_time: &DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			secret
+		SET
+			deleted = $2
+		WHERE
+			id = $1;
+		"#,
+		secret_id as _,
+		deletion_time
 	)
 	.execute(&mut *connection)
 	.await

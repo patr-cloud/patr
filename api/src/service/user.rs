@@ -293,7 +293,7 @@ pub async fn delete_personal_email_address(
 		db::delete_personal_domain(connection, &domain_id).await?;
 
 		// then from the main domain table
-		db::delete_generic_domain(connection, &domain_id).await?;
+		db::mark_domain_as_deleted(connection, &domain_id, &Utc::now()).await?;
 	}
 
 	Ok(())

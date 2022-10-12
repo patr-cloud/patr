@@ -178,16 +178,8 @@ pub async fn delete_docker_repository(
 		"request_id: {} - Updating the name of docker repository",
 		request_id
 	);
-	db::update_docker_repository_name(
-		connection,
-		repository_id,
-		&format!(
-			"patr-deleted: {}-{}",
-			repository.name,
-			repository_id.as_str()
-		),
-	)
-	.await?;
+	db::delete_docker_repository(connection, repository_id, &Utc::now())
+		.await?;
 
 	let client = reqwest::Client::new();
 

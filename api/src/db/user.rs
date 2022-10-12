@@ -2642,11 +2642,7 @@ pub async fn get_all_workspaces_for_user(
 				workspace.super_admin_id = $1 OR
 				workspace_user.user_id = $1
 			) AND
-			workspace.name NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			workspace.deleted IS NULL;
 		"#,
 		user_id as _,
 	)
@@ -2683,11 +2679,7 @@ pub async fn get_all_workspaces_owned_by_user(
 			workspace
 		WHERE
 			super_admin_id = $1 AND
-			name NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			deleted IS NULL;
 		"#,
 		user_id as _,
 	)

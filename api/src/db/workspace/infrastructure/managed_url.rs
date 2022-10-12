@@ -1,4 +1,5 @@
 use api_models::utils::Uuid;
+use chrono::{DateTime, Utc};
 
 use crate::{query, query_as, Database};
 
@@ -49,12 +50,7 @@ pub async fn initialize_managed_url_pre(
 			sub_domain TEXT NOT NULL
 				CONSTRAINT managed_url_chk_sub_domain_valid CHECK(
 					sub_domain ~ '^(([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])$' OR
-					sub_domain = '@' OR
-					sub_domain LIKE CONCAT(
-						'patr-deleted: ',
-						REPLACE(id::TEXT, '-', ''),
-						'@%'
-					)
+					sub_domain = '@'
 				),
 			domain_id UUID NOT NULL,
 			path TEXT NOT NULL,
@@ -67,9 +63,7 @@ pub async fn initialize_managed_url_pre(
 			url TEXT,
 			workspace_id UUID NOT NULL,
 			is_configured BOOLEAN NOT NULL,
-			CONSTRAINT managed_url_uq_sub_domain_domain_id_path UNIQUE(
-				sub_domain, domain_id, path
-			),
+			deleted TIMESTAMPTZ,
 			CONSTRAINT managed_url_chk_values_null_or_not_null CHECK(
 				(
 					url_type = 'proxy_to_deployment' AND
@@ -141,6 +135,19 @@ pub async fn initialize_managed_url_post(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			managed_url_uq_sub_domain_domain_id_path
+		ON
+			managed_url(sub_domain, domain_id, path)
+		WHERE
+			deleted IS NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
@@ -167,11 +174,7 @@ pub async fn get_all_managed_urls_in_workspace(
 			managed_url
 		WHERE
 			workspace_id = $1 AND
-			sub_domain NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			deleted IS NULL;
 		"#,
 		workspace_id as _
 	)
@@ -202,11 +205,7 @@ pub async fn get_all_managed_urls_for_domain(
 			managed_url
 		WHERE
 			domain_id = $1 AND
-			sub_domain NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			deleted IS NULL;
 		"#,
 		domain_id as _
 	)
@@ -236,11 +235,7 @@ pub async fn get_all_unconfigured_managed_urls(
 			managed_url
 		WHERE
 			is_configured = FALSE AND
-			sub_domain NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			deleted IS NULL;
 		"#
 	)
 	.fetch_all(connection)
@@ -332,11 +327,7 @@ pub async fn get_managed_url_by_id(
 			managed_url
 		WHERE
 			id = $1 AND
-			sub_domain NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			deleted IS NULL;
 		"#,
 		managed_url_id as _,
 	)
@@ -403,41 +394,22 @@ pub async fn update_managed_url_configuration_status(
 	.map(|_| ())
 }
 
-pub async fn update_managed_url_sub_domain(
+pub async fn delete_managed_url(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	managed_url_id: &Uuid,
-	sub_domain: &str,
+	deletion_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		UPDATE
 			managed_url
 		SET
-			sub_domain = $2
+			deleted = $2
 		WHERE
 			id = $1;
 		"#,
 		managed_url_id as _,
-		sub_domain
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-#[allow(dead_code)]
-pub async fn delete_managed_url(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	managed_url_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		DELETE FROM
-			managed_url
-		WHERE
-			id = $1;
-		"#,
-		managed_url_id as _,
+		deletion_time
 	)
 	.execute(&mut *connection)
 	.await
@@ -508,11 +480,7 @@ pub async fn get_all_managed_urls_for_deployment(
 			managed_url_list
 		WHERE
 			managed_url_list.workspace_id = $2 AND
-			managed_url_list.sub_domain NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			managed_url_list.deleted IS NULL;
 		"#,
 		deployment_id as _,
 		workspace_id as _
@@ -585,11 +553,7 @@ pub async fn get_all_managed_urls_for_static_site(
 			managed_url_list
 		WHERE
 			managed_url_list.workspace_id = $2 AND
-			managed_url_list.sub_domain NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			managed_url_list.deleted IS NULL;
 		"#,
 		static_site_id as _,
 		workspace_id as _
@@ -610,11 +574,7 @@ pub async fn get_active_managed_url_count_for_domain(
 			managed_url
 		WHERE
 			domain_id = $1 AND
-			sub_domain NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
-			);
+			deleted IS NULL;
 		"#,
 		domain_id as _
 	)

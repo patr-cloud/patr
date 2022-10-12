@@ -163,7 +163,6 @@ async fn add_region(
 	db::create_resource(
 		context.get_database_connection(),
 		&region_id,
-		&format!("Region: {}", name),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()

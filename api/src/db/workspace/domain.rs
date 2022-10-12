@@ -126,21 +126,17 @@ pub async fn initialize_domain_pre(
 			id UUID CONSTRAINT domain_pk PRIMARY KEY,
 			name TEXT NOT NULL
 				CONSTRAINT domain_chk_name_is_valid CHECK(
-					name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' OR
-					name LIKE CONCAT(
-						'patr-deleted: ',
-						REPLACE(id::TEXT, '-', ''),
-						'@%'
-					)
+					name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$'
 				),
 			type RESOURCE_OWNER_TYPE NOT NULL,
 			tld TEXT NOT NULL CONSTRAINT domain_fk_tld
 					REFERENCES domain_tld(tld),
-			CONSTRAINT domain_uq_name_tld UNIQUE(name, tld),
+			deleted TIMESTAMPTZ,
 			CONSTRAINT domain_chk_max_domain_name_length CHECK(
 				(LENGTH(name) + LENGTH(tld)) < 255
 			),
-			CONSTRAINT domain_uq_name_type UNIQUE(id, type)
+			CONSTRAINT domain_uq_name_type UNIQUE(id, type),
+			CONSTRAINT domain_uq_id_type_deleted UNIQUE(id, type, deleted)
 		);
 		"#
 	)
@@ -166,8 +162,13 @@ pub async fn initialize_domain_pre(
 				CONSTRAINT personal_domain_chk_domain_type CHECK(
 					domain_type = 'personal'
 				),
-			CONSTRAINT personal_domain_fk_id_domain_type
-				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
+			deleted TIMESTAMPTZ
+				CONSTRAINT personal_domain_chk_deletion CHECK(
+					deleted IS NULL
+				),
+			CONSTRAINT personal_domain_fk_id_domain_type_deleted
+				FOREIGN KEY(id, domain_type, deleted)
+					REFERENCES domain(id, type, deleted)
 		);
 		"#
 	)
@@ -325,6 +326,19 @@ pub async fn initialize_domain_post(
 		ALTER TABLE patr_domain_dns_record
 		ADD CONSTRAINT patr_domain_dns_record_fk_id
 		FOREIGN KEY(id) REFERENCES resource(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			domain_uq_name_tld
+		ON
+			domain(name, tld)
+		WHERE
+			deleted IS NULL;
 		"#
 	)
 	.execute(&mut *connection)
@@ -530,11 +544,7 @@ pub async fn get_domains_for_workspace(
 			domain.id = resource.id
 		WHERE
 			resource.owner_id = $1 AND
-			domain.name NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(domain.id::TEXT, '-', ''),
-				'@%'
-			);
+			domain.deleted IS NULL;
 		"#,
 		workspace_id as _
 	)
@@ -567,11 +577,7 @@ pub async fn get_all_unverified_domains(
 			patr_controlled_domain.domain_id = workspace_domain.id
 		WHERE
 			is_verified = FALSE AND
-			domain.name NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(domain.id::TEXT, '-', ''),
-				'@%'
-			);
+			domain.deleted IS NULL;
 		"#
 	)
 	.fetch_all(&mut *connection)
@@ -620,11 +626,7 @@ pub async fn get_all_verified_domains(
 			patr_controlled_domain.domain_id = workspace_domain.id
 		WHERE
 			is_verified = TRUE AND
-			domain.name NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(domain.id::TEXT, '-', ''),
-				'@%'
-			);
+			domain.deleted IS NULL;
 		"#
 	)
 	.fetch_all(&mut *connection)
@@ -713,60 +715,22 @@ pub async fn delete_personal_domain(
 	.map(|_| ())
 }
 
-pub async fn update_generic_domain_name(
+pub async fn mark_domain_as_deleted(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
-	name: &str,
+	deletion_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		UPDATE
 			domain
 		SET
-			name = $1
+			deleted = $2
 		WHERE
-			id = $2;
+			id = $1;
 		"#,
-		name,
 		domain_id as _,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-#[allow(dead_code)]
-pub async fn delete_domain_from_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		DELETE FROM
-			workspace_domain
-		WHERE
-			id = $1;
-		"#,
-		domain_id as _
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-#[allow(dead_code)]
-pub async fn delete_generic_domain(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		DELETE FROM
-			domain
-		WHERE
-			id = $1;
-		"#,
-		domain_id as _
+		deletion_time
 	)
 	.execute(&mut *connection)
 	.await
@@ -795,11 +759,7 @@ pub async fn get_workspace_domain_by_id(
 			domain.id = workspace_domain.id
 		WHERE
 			domain.id = $1 AND
-			domain.name NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(domain.id::TEXT, '-', ''),
-				'@%'
-			);
+			domain.deleted IS NULL;
 		"#,
 		domain_id as _
 	)
@@ -848,11 +808,7 @@ pub async fn get_domain_by_name(
 			domain
 		WHERE
 			CONCAT(domain.name, '.', domain.tld) = $1 AND
-			domain.name NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(domain.id::TEXT, '-', ''),
-				'@%'
-			);
+			domain.deleted IS NULL;
 		"#,
 		domain_name
 	)
@@ -885,11 +841,7 @@ pub async fn get_dns_records_by_domain_id(
 			patr_domain_dns_record.domain_id = domain.id
 		WHERE
 			patr_domain_dns_record.domain_id = $1 AND
-			domain.name NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(domain.id::TEXT, '-', ''),
-				'@%'
-			);
+			domain.deleted IS NULL;
 		"#,
 		domain_id as _
 	)
@@ -944,11 +896,7 @@ pub async fn get_dns_record_by_id(
 			patr_domain_dns_record.domain_id = domain.id
 		WHERE
 			patr_domain_dns_record.id = $1 AND
-			domain.name NOT LIKE CONCAT(
-				'patr-deleted: ',
-				REPLACE(domain.id::TEXT, '-', ''),
-				'@%'
-			);
+			domain.deleted IS NULL;
 		"#,
 		record_id as _
 	)

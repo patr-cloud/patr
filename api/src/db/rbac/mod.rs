@@ -24,7 +24,6 @@ pub struct ResourceType {
 
 pub struct Resource {
 	pub id: Uuid,
-	pub name: String,
 	pub resource_type_id: Uuid,
 	pub owner_id: Uuid,
 	pub created: DateTime<Utc>,
@@ -71,7 +70,6 @@ pub async fn initialize_rbac_pre(
 		r#"
 		CREATE TABLE resource(
 			id UUID CONSTRAINT resource_pk PRIMARY KEY,
-			name VARCHAR(100) NOT NULL,
 			resource_type_id UUID NOT NULL
 				CONSTRAINT resource_fk_resource_type_id
 					REFERENCES resource_type(id),
@@ -589,7 +587,6 @@ pub async fn get_all_permissions(
 pub async fn create_resource(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &Uuid,
-	resource_name: &str,
 	resource_type_id: &Uuid,
 	owner_id: &Uuid,
 	created: &DateTime<Utc>,
@@ -599,16 +596,14 @@ pub async fn create_resource(
 		INSERT INTO
 			resource(
 				id,
-				name,
 				resource_type_id,
 				owner_id,
 				created
 			)
 		VALUES
-			($1, $2, $3, $4, $5);
+			($1, $2, $3, $4);
 		"#,
 		resource_id as _,
-		resource_name,
 		resource_type_id as _,
 		owner_id as _,
 		created
@@ -655,7 +650,6 @@ pub async fn get_resource_by_id(
 		r#"
 		SELECT
 			id as "id: _",
-			name,
 			resource_type_id as "resource_type_id: _",
 			owner_id as "owner_id: _",
 			created 
@@ -668,28 +662,6 @@ pub async fn get_resource_by_id(
 	)
 	.fetch_optional(&mut *connection)
 	.await
-}
-
-pub async fn update_resource_name(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	resource_id: &Uuid,
-	name: &str,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			resource
-		SET
-			name = $2
-		WHERE
-			id = $1;
-		"#,
-		resource_id as _,
-		name
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
 }
 
 #[allow(dead_code)]

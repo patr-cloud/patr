@@ -140,11 +140,10 @@ pub async fn initialize_deployment_pre(
 			liveness_probe_path VARCHAR(255),
 			liveness_probe_port_type EXPOSED_PORT_TYPE,
 			current_live_digest TEXT,
+			deleted TIMESTAMPTZ,
 			CONSTRAINT deployment_fk_repository_id_workspace_id
 				FOREIGN KEY(repository_id, workspace_id)
 					REFERENCES docker_registry_repository(id, workspace_id),
-			CONSTRAINT deployment_uq_name_workspace_id
-				UNIQUE(name, workspace_id),
 			CONSTRAINT deployment_uq_id_workspace_id
 				UNIQUE(id, workspace_id),
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
@@ -359,6 +358,19 @@ pub async fn initialize_deployment_post(
 		ADD CONSTRAINT deployment_fk_current_live_digest
 		FOREIGN KEY(id, current_live_digest) REFERENCES
 		deployment_deploy_history(deployment_id, image_digest);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			deployment_uq_workspace_id_name
+		ON
+			deployment(workspace_id, name)
+		WHERE
+			deleted IS NULL;
 		"#
 	)
 	.execute(&mut *connection)
@@ -831,22 +843,23 @@ pub async fn update_deployment_status(
 	.map(|_| ())
 }
 
-pub async fn update_deployment_name(
+pub async fn delete_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
-	name: &str,
+	deletion_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		UPDATE
 			deployment
 		SET
-			name = $1
+			deleted = $2,
+			status = 'deleted'
 		WHERE
-			id = $2;
+			id = $1;
 		"#,
-		name as _,
-		deployment_id as _
+		deployment_id as _,
+		deletion_time
 	)
 	.execute(&mut *connection)
 	.await
@@ -921,6 +934,30 @@ pub async fn remove_all_environment_variables_for_deployment(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn get_deployments_with_secret_as_environment_variable(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	secret_id: &Uuid,
+) -> Result<Vec<Uuid>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT DISTINCT
+			deployment_id as "deployment_id: Uuid"
+		FROM
+			deployment_environment_variable
+		WHERE
+			secret_id = $1;
+		"#,
+		secret_id as _,
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| row.deployment_id)
+	.collect();
+
+	Ok(rows)
 }
 
 pub async fn get_exposed_ports_for_deployment(

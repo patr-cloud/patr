@@ -197,7 +197,6 @@ pub async fn delete_all_resources_in_workspace(
 			&deployment.workspace_id,
 			&deployment.id,
 			&deployment.region,
-			&deployment.name,
 			user_id,
 			&login_id,
 			"0.0.0.0",
