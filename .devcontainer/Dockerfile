@@ -4,7 +4,7 @@ FROM ubuntu:22.04
 SHELL ["/bin/bash", "-c"]
 RUN apt update
 # Install all deps
-RUN apt install -y build-essential git pkg-config libssl-dev docker.io postgresql-client sudo sed curl inetutils-ping telnet bash-completion nano dumb-init libnss3-tools ca-certificates jq apt-transport-https
+RUN apt install -y build-essential git pkg-config libssl-dev docker.io postgresql-client sudo sed curl inetutils-ping telnet bash-completion nano dumb-init libnss3-tools ca-certificates jq apt-transport-https software-properties-common
 
 # Setup user accounts
 WORKDIR /etc/container-init-data
@@ -44,7 +44,7 @@ RUN echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] htt
 RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
 RUN sudo apt update
 RUN sudo apt install -y kubectl helm yq
-RUN 'source <(kubectl completion bash)' >> /home/vscode/.bashrc
+RUN echo 'source <(kubectl completion bash)' >> /home/vscode/.bashrc
 
 # Create a bash_history file
 RUN touch /home/vscode/.bash_history

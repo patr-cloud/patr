@@ -19,6 +19,9 @@ cp /workspace/.devcontainer/volume/config/init-data/kube-config.yml ~/.kube/conf
 echo "Installing sqlx-cli"
 cargo install sqlx-cli
 
+echo "Connecting kind to existing network"
+sudo docker -H unix:///var/run/docker-host.sock network connect --alias "$COMPOSE_PROJECT_NAME-control-plane" ${COMPOSE_PROJECT_NAME}_vpc $COMPOSE_PROJECT_NAME-control-plane 2> /dev/null || echo "Kind already connected"
+
 if [ ! -f /workspace/config/dev.json ]; then
 	echo "Setting up dev.json"
 	# Setup config.json
@@ -33,9 +36,9 @@ apiVersion: v1
 kind: Secret
 type: kubernetes.io/service-account-token
 metadata:
-	name: patr-admin-service-account-token
-	annotations:
-		kubernetes.io/service-account.name: patr-admin-service-account
+  name: patr-admin-service-account-token
+  annotations:
+    kubernetes.io/service-account.name: patr-admin-service-account
 EOF
 	clusterAuthToken=$(kubectl get secrets patr-admin-service-account-token -o=jsonpath='{.data.token}' | base64 -d)
 
@@ -58,7 +61,7 @@ EOF
 	.rabbitmq.password |= "rabbitmq" |
 	.kubernetes.certificateAuthorityData |= "$kubernetesCertificateAuthorityData" |
 	.kubernetes.clusterName |= "kind-$COMPOSE_PROJECT_NAME" |
-	.kubernetes.clusterUrl |= "https://k8s.patr.cloud" |
+	.kubernetes.clusterUrl |= "https://$COMPOSE_PROJECT_NAME-control-plane:6443" |
 	.kubernetes.authName |= "patr-admin-service-account" |
 	.kubernetes.authUsername |= "patr-admin-service-account" |
 	.kubernetes.authToken |= "$clusterAuthToken" |
@@ -71,9 +74,6 @@ echo "Setting up cargo-prepare"
 db=$(cat /workspace/config/dev.json | jq '.database.database' | tr -d '"' | tr -d "'")
 echo "cargo sqlx prepare --database-url=\"postgres://$PGUSER:$PG_PASSWORD@$PGHOST:5432/$db\" --merged" > ~/.cargo/bin/cargo-prepare
 chmod +x ~/.cargo/bin/cargo-prepare
-
-echo "Connecting kind to existing network"
-sudo docker -H unix:///var/run/docker-host.sock network connect --alias k8s.patr.cloud ${COMPOSE_PROJECT_NAME}_vpc $COMPOSE_PROJECT_NAME-control-plane || echo "Kind already connected"
 
 # This might be over-automating it. These things can be done manually for now.
 # Can be uncommented in the future if this should be automated
