@@ -1,7 +1,4 @@
-use api_models::{
-	models::user::{BasicUserInfo},
-	utils::Uuid,
-};
+use api_models::{models::user::BasicUserInfo, utils::Uuid};
 use chrono::{DateTime, Utc};
 
 use crate::{db::Workspace, query, query_as, Database};
