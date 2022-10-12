@@ -1579,6 +1579,16 @@
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", status as \"status: _\", workspace_id as \"workspace_id: _\", current_live_upload as \"current_live_upload: _\" FROM static_site WHERE id = $1 AND status != 'deleted';"
   },
+  "1d93828025cfd2f2d8acb9984a7521c90f822160c28023d92f4c2daa04ee75ca": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "ALTER TABLE \"user\" ADD CONSTRAINT user_fk_sign_up_coupon FOREIGN KEY(sign_up_coupon) REFERENCES coupon_code(code);"
+  },
   "1e9f9c42861e8bc6a5c383d96212e6d271a9a46447b30e1a3fdec17afda99352": {
     "describe": {
       "columns": [],
@@ -8153,6 +8163,16 @@
     },
     "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured FROM managed_url WHERE workspace_id = $1 AND deleted IS NULL;"
   },
+  "9ae58f0e76f5994905f74bf55ab276548eb1a134422614dbbfa893be638e3e3f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE \"user\"( id UUID CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uq_username UNIQUE CONSTRAINT user_chk_username_is_valid CHECK( /* Username is a-z, 0-9, _, cannot begin or end with a . or - */ username ~ '^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$' AND username NOT LIKE '%..%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%' ), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob TIMESTAMPTZ DEFAULT NULL, bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created TIMESTAMPTZ NOT NULL, /* Recovery options */ recovery_email_local VARCHAR(64) CONSTRAINT user_chk_recovery_email_is_lower_case CHECK( recovery_email_local = LOWER(recovery_email_local) ), recovery_email_domain_id UUID, recovery_phone_country_code CHAR(2) CONSTRAINT user_chk_recovery_phone_country_code_is_upper_case CHECK( recovery_phone_country_code = UPPER(recovery_phone_country_code) ), recovery_phone_number VARCHAR(15), workspace_limit INTEGER NOT NULL, sign_up_coupon TEXT, CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id UNIQUE(recovery_email_local, recovery_email_domain_id), CONSTRAINT user_uq_recovery_phone_country_code_recovery_phone_number UNIQUE(recovery_phone_country_code, recovery_phone_number), CONSTRAINT user_chk_rcvry_eml_or_rcvry_phn_present CHECK( ( recovery_email_local IS NOT NULL AND recovery_email_domain_id IS NOT NULL ) OR ( recovery_phone_country_code IS NOT NULL AND recovery_phone_number IS NOT NULL ) ) );"
+  },
   "9b88d7c5fc101c3ee54f19f893dcd561664e63b7206aa46df6a7868ae52d5157": {
     "describe": {
       "columns": [],
@@ -9070,16 +9090,6 @@
       }
     },
     "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE resource_id = $1;"
-  },
-  "aa6078c50de2eee25c3505b5f60602b4ca43f0de5b9b80dfb1e433706ac8c9bf": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE \"user\"( id UUID CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uq_username UNIQUE CONSTRAINT user_chk_username_is_valid CHECK( /* Username is a-z, 0-9, _, cannot begin or end with a . or - */ username ~ '^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$' AND username NOT LIKE '%..%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%' ), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob TIMESTAMPTZ DEFAULT NULL, bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created TIMESTAMPTZ NOT NULL, /* Recovery options */ recovery_email_local VARCHAR(64) CONSTRAINT user_chk_recovery_email_is_lower_case CHECK( recovery_email_local = LOWER(recovery_email_local) ), recovery_email_domain_id UUID, recovery_phone_country_code CHAR(2) CONSTRAINT user_chk_recovery_phone_country_code_is_upper_case CHECK( recovery_phone_country_code = UPPER(recovery_phone_country_code) ), recovery_phone_number VARCHAR(15), workspace_limit INTEGER NOT NULL, sign_up_coupon TEXT CONSTRAINT user_fk_sign_up_coupon REFERENCES coupon_code(code), CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id UNIQUE(recovery_email_local, recovery_email_domain_id), CONSTRAINT user_uq_recovery_phone_country_code_recovery_phone_number UNIQUE(recovery_phone_country_code, recovery_phone_number), CONSTRAINT user_chk_rcvry_eml_or_rcvry_phn_present CHECK( ( recovery_email_local IS NOT NULL AND recovery_email_domain_id IS NOT NULL ) OR ( recovery_phone_country_code IS NOT NULL AND recovery_phone_number IS NOT NULL ) ) );"
   },
   "ac1034b956efa62c01ba79bff480479ba4614fa20e9fb63304173b92b3dbe01d": {
     "describe": {
