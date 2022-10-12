@@ -1279,7 +1279,6 @@ pub async fn delete_deployment(
 	deployment_id: &Uuid,
 	deployment_running_details: &DeploymentRunningDetails,
 	deployment_region_id: &Uuid,
-	deployment_name: &str,
 	user_id: &Uuid,
 	login_id: &Uuid,
 	ip_address: &str,
