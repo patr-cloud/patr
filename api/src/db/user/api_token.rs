@@ -5,7 +5,7 @@ use chrono::{DateTime, Utc};
 
 use crate::{query, query_as, Database};
 
-pub struct ApiToken {
+pub struct UserApiToken {
 	pub token: Uuid,
 	pub user_id: Uuid,
 	pub name: String,
@@ -35,25 +35,23 @@ pub async fn initialize_api_token_post(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		CREATE TABLE api_token(
-			token UUID
-				CONSTRAINT api_token_pk PRIMARY KEY,
+		CREATE TABLE user_api_token(
+			token UUID CONSTRAINT user_api_token_pk PRIMARY KEY,
 			user_id UUID NOT NULL,
 			name TEXT NOT NULL,
 			token_expiry TIMESTAMPTZ,
 			created TIMESTAMPTZ NOT NULL,
 			revoked BOOLEAN NOT NULL DEFAULT FALSE,
 			revoked_by UUID,
-            CONSTRAINT api_token_chk_revoked_revoked_by_valid
-                CHECK(
-                    (
-                        revoked IS false AND
-                        revoked_by IS NULL
-                    ) OR (
-                        revoked IS true AND
-                        revoked_by IS NOT NULL
-                    )
-                )
+			CONSTRAINT user_api_token_chk_revoked_revoked_by_valid CHECK(
+				(
+					revoked IS false AND
+					revoked_by IS NULL
+				) OR (
+					revoked IS true AND
+					revoked_by IS NOT NULL
+				)
+			)
 		);
 		"#
 	)
@@ -154,9 +152,9 @@ pub async fn revoke_user_api_token(
 pub async fn get_api_token_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	token: &Uuid,
-) -> Result<Option<ApiToken>, sqlx::Error> {
+) -> Result<Option<UserApiToken>, sqlx::Error> {
 	query_as!(
-		ApiToken,
+		UserApiToken,
 		r#"
 		SELECT
 			token as "token: _",
@@ -168,7 +166,7 @@ pub async fn get_api_token_by_id(
 			api_token
 		WHERE
 			token = $1 AND
-            revoked = false;
+			revoked = false;
 		"#,
 		token as _
 	)
@@ -415,7 +413,7 @@ pub async fn is_user_super_admin(
 pub async fn list_api_tokens_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
-) -> Result<Vec<ApiToken>, sqlx::Error> {
+) -> Result<Vec<UserApiToken>, sqlx::Error> {
 	query_as!(
 		ApiToken,
 		r#"
