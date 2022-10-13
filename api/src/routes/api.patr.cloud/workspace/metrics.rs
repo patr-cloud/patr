@@ -132,7 +132,9 @@ async fn get_metrics_based_on_tenant(
 		//
 		// its safe to skip 51 chars, as the route will come here only if those
 		// thing were matched
-		let trimmed_url = &url[51..];
+		let trimmed_url = &url[11..]; // strip `/workspace/`
+		let (_, trimmed_url) = trimmed_url.split_once('/').unwrap(); // strip workspace_id
+		let trimmed_url = &trimmed_url[7..]; // strip `metrics`
 
 		format!("https://{host}/prometheus{trimmed_url}")
 	};
