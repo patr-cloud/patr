@@ -55,4 +55,5 @@ do
 	docker cp $baseDir/../volume/config/nginx-certs/cert.crt $node:/usr/local/share/ca-certificates/patr-cert.crt
 	docker exec $node update-ca-certificates
 done
-kind get kubeconfig --name $COMPOSE_PROJECT_NAME | yq ".clusters[0].cluster.server |= \"https://$COMPOSE_PROJECT_NAME-control-plane:6443\"" > $baseDir/../volume/config/init-data/kube-config.yml
+config=$(kind get kubeconfig --name $COMPOSE_PROJECT_NAME | yq ".clusters[0].cluster.server |= \"https://$COMPOSE_PROJECT_NAME-control-plane:6443\"")
+echo "$config" > $baseDir/../volume/config/init-data/kube-config.yml
