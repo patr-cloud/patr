@@ -1,3 +1,26 @@
+use api_models::utils::Uuid;
+use k8s_openapi::{
+	api::{
+		apps::v1::{Deployment, DeploymentSpec},
+		core::v1::{Container, PodSpec, PodTemplateSpec, ResourceRequirements},
+	},
+	apimachinery::pkg::api::resource::Quantity,
+};
+use kube::{
+	api::PatchParams,
+	config::{
+		AuthInfo,
+		Cluster,
+		Context,
+		Kubeconfig,
+		NamedAuthInfo,
+		NamedCluster,
+		NamedContext,
+	},
+	error::ErrorResponse,
+	Api,
+	Config,
+};
 use sqlx::Row;
 
 use crate::{
@@ -29,6 +52,8 @@ async fn refactor_resource_deletion(
 	refactor_workspace_deletion(connection, config).await?;
 	refactor_domain_deletion(connection, config).await?;
 	refactor_managed_url_deletion(connection, config).await?;
+
+	add_resource_requests_for_running_deployments(connection, config).await?;
 
 	Ok(())
 }
@@ -897,6 +922,137 @@ async fn refactor_managed_url_deletion(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	Ok(())
+}
+
+async fn add_resource_requests_for_running_deployments(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+) -> Result<(), Error> {
+	let running_deployments = query!(
+		r#"
+		SELECT
+			workspace_id,
+			id as "deployment_id"
+		FROM deployment
+		WHERE
+			status = 'running'
+			AND deleted IS NULL;
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| {
+		(
+			row.get::<Uuid, _>("workspace_id"),
+			row.get::<Uuid, _>("deployment_id"),
+		)
+	})
+	.collect::<Vec<_>>();
+
+	// Kubernetes config
+	let kubernetes_config = Config::from_custom_kubeconfig(
+		Kubeconfig {
+			preferences: None,
+			clusters: vec![NamedCluster {
+				name: config.kubernetes.cluster_name.clone(),
+				cluster: Cluster {
+					server: config.kubernetes.cluster_url.clone(),
+					insecure_skip_tls_verify: None,
+					certificate_authority: None,
+					certificate_authority_data: Some(
+						config.kubernetes.certificate_authority_data.clone(),
+					),
+					proxy_url: None,
+					extensions: None,
+				},
+			}],
+			auth_infos: vec![NamedAuthInfo {
+				name: config.kubernetes.auth_name.clone(),
+				auth_info: AuthInfo {
+					username: Some(config.kubernetes.auth_username.clone()),
+					token: Some(config.kubernetes.auth_token.clone().into()),
+					..Default::default()
+				},
+			}],
+			contexts: vec![NamedContext {
+				name: config.kubernetes.context_name.clone(),
+				context: Context {
+					cluster: config.kubernetes.cluster_name.clone(),
+					user: config.kubernetes.auth_username.clone(),
+					extensions: None,
+					namespace: None,
+				},
+			}],
+			current_context: Some(config.kubernetes.context_name.clone()),
+			extensions: None,
+			kind: Some("Config".to_string()),
+			api_version: Some("v1".to_string()),
+		},
+		&Default::default(),
+	)
+	.await?;
+
+	let kubernetes_client = kube::Client::try_from(kubernetes_config)?;
+	for (workspace_id, deployment_id) in running_deployments {
+		let namespace = workspace_id.as_str();
+		let deployment_name = format!("deployment-{}", deployment_id.as_str());
+
+		let request_patch = Deployment {
+			spec: Some(DeploymentSpec {
+				template: PodTemplateSpec {
+					spec: Some(PodSpec {
+						containers: vec![Container {
+							name: deployment_name.clone(),
+							resources: Some(ResourceRequirements {
+								requests: Some(
+									[
+										(
+											"memory".to_string(),
+											Quantity("25M".to_owned()),
+										),
+										(
+											"cpu".to_string(),
+											Quantity("50m".to_owned()),
+										),
+									]
+									.into_iter()
+									.collect(),
+								),
+								..Default::default()
+							}),
+							..Default::default()
+						}],
+						..Default::default()
+					}),
+					..Default::default()
+				},
+				..Default::default()
+			}),
+			..Default::default()
+		};
+
+		let result =
+			Api::<Deployment>::namespaced(kubernetes_client.clone(), namespace)
+				.patch(
+					&deployment_name,
+					&PatchParams::default(),
+					&kube::api::Patch::Strategic(request_patch),
+				)
+				.await;
+
+		match result {
+			Ok(_deployment) => log::info!(
+				"Successfully added k8s resource requests for deployment `{deployment_name}` in namespace `{namespace}`"
+			),
+			Err(kube::Error::Api(ErrorResponse { code: 404, .. })) => log::error!(
+				"Deployment `{deployment_name}` not found in namespace `{namespace}`, hence skipped setting resource requests to it"
+			),
+			Err(err) => return Err(err)?,
+		}
+	}
 
 	Ok(())
 }
