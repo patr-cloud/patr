@@ -952,6 +952,11 @@ async fn add_resource_requests_for_running_deployments(
 	})
 	.collect::<Vec<_>>();
 
+	if running_deployments.is_empty() {
+		// added to skip CI error
+		return Ok(());
+	}
+
 	// Kubernetes config
 	let kubernetes_config = Config::from_custom_kubeconfig(
 		Kubeconfig {
