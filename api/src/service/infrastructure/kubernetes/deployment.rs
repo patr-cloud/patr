@@ -333,8 +333,28 @@ pub async fn update_kubernetes_deployment(
 								.collect::<Vec<_>>(),
 						),
 						resources: Some(ResourceRequirements {
-							limits: Some(machine_type.clone()),
-							..ResourceRequirements::default()
+							limits: Some(machine_type),
+							// https://blog.kubecost.com/blog/requests-and-limits/#the-tradeoffs
+							// using too low values for resource request will
+							// result in frequent pod restarts if memory usage
+							// increases and may result in starvation
+							//
+							// currently used 5% of the mininum deployment
+							// machine type as a request values
+							requests: Some(
+								[
+									(
+										"memory".to_string(),
+										Quantity("25M".to_owned()),
+									),
+									(
+										"cpu".to_string(),
+										Quantity("50m".to_owned()),
+									),
+								]
+								.into_iter()
+								.collect(),
+							),
 						}),
 						volume_mounts: if !running_details
 							.config_mounts
