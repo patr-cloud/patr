@@ -34,6 +34,7 @@ pub(super) async fn migrate(
 	config: &Settings,
 ) -> Result<(), Error> {
 	refactor_resource_deletion(&mut *connection, config).await?;
+	add_resource_requests_for_running_deployments(connection, config).await?;
 
 	Ok(())
 }
@@ -52,8 +53,6 @@ async fn refactor_resource_deletion(
 	refactor_workspace_deletion(connection, config).await?;
 	refactor_domain_deletion(connection, config).await?;
 	refactor_managed_url_deletion(connection, config).await?;
-
-	add_resource_requests_for_running_deployments(connection, config).await?;
 
 	Ok(())
 }
@@ -935,10 +934,11 @@ async fn add_resource_requests_for_running_deployments(
 		SELECT
 			workspace_id,
 			id as "deployment_id"
-		FROM deployment
+		FROM
+			deployment
 		WHERE
-			status = 'running'
-			AND deleted IS NULL;
+			status = 'running' AND
+			deleted IS NULL;
 		"#
 	)
 	.fetch_all(&mut *connection)
