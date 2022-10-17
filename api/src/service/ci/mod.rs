@@ -598,7 +598,6 @@ pub async fn add_repo_for_git_provider(
 	db::create_resource(
 		connection,
 		&repo_id,
-		&format!("CiRepo-{}-{}", repo_id, repo_name),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()

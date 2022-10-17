@@ -189,7 +189,6 @@ pub async fn add_domain_to_workspace(
 	db::create_resource(
 		connection,
 		&domain_id,
-		&format!("Domain: {}", full_domain_name),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
@@ -465,7 +464,6 @@ pub async fn create_patr_domain_dns_record(
 	db::create_resource(
 		connection,
 		&record_id,
-		&format!("DNS Record `{}.{}`: {}", name, domain_id, dns_record_type),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
@@ -758,18 +756,7 @@ pub async fn delete_domain_in_workspace(
 		&Utc::now(),
 	)
 	.await?;
-	db::update_generic_domain_name(
-		connection,
-		&domain.id,
-		&format!("patr-deleted: {}@{}", domain.id, domain.name),
-	)
-	.await?;
-	db::update_resource_name(
-		connection,
-		&domain.id,
-		&format!("Domain: patr-deleted: {}@{}", domain.id, domain.name),
-	)
-	.await?;
+	db::mark_domain_as_deleted(connection, domain_id, &Utc::now()).await?;
 
 	let domain_plan =
 		match db::get_domains_for_workspace(connection, workspace_id)

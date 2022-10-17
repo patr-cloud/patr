@@ -120,7 +120,6 @@ pub async fn create_workspace(
 	db::create_resource(
 		connection,
 		&resource_id,
-		&format!("Workspace: {}", workspace_name),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()

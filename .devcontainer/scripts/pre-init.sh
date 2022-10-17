@@ -38,3 +38,22 @@ if [ ! -f $baseDir/../volume/config/nginx-certs/cert.crt ]; then
 	# Setup NGINX certs
 	openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout $baseDir/../volume/config/nginx-certs/privkey.pem -out $baseDir/../volume/config/nginx-certs/cert.crt -subj "/C=IN/CN=*.patr.cloud/SAN=*.patr.cloud"
 fi
+
+function setup_cluster() {
+	if [ -f $baseDir/../config/kind/config.yml ]; then
+		kind create cluster --name $COMPOSE_PROJECT_NAME --config $baseDir/../config/kind/config.yml
+	else
+		kind create cluster --name $COMPOSE_PROJECT_NAME
+	fi
+}
+
+echo "Ensuring the local kubernetes cluster is running"
+kind get clusters | grep $COMPOSE_PROJECT_NAME > /dev/null || setup_cluster
+nodes=$(kind get nodes --name $COMPOSE_PROJECT_NAME)
+for node in $nodes
+do
+	docker cp $baseDir/../volume/config/nginx-certs/cert.crt $node:/usr/local/share/ca-certificates/patr-cert.crt
+	docker exec $node update-ca-certificates
+done
+config=$(kind get kubeconfig --name $COMPOSE_PROJECT_NAME | yq ".clusters[0].cluster.server |= \"https://$COMPOSE_PROJECT_NAME-control-plane:6443\"")
+echo "$config" > $baseDir/../volume/config/init-data/kube-config.yml

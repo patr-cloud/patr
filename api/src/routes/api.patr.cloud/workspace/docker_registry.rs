@@ -498,7 +498,6 @@ async fn create_docker_repository(
 	db::create_resource(
 		context.get_database_connection(),
 		&resource_id,
-		&repository,
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
