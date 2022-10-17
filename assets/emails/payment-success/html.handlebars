@@ -122,6 +122,960 @@
                                     </tr>
                                     <tr>
                                       <td
+                                        class="para"
+                                        style="padding-top: 1rem; letter-spacing: 0.3px; line-height: 1.3;"
+                                      >
+                                        <strong
+                                          class="txt-light txt-lg"
+                                          style="color: #ffffff;; font-size: 1.2rem"
+                                        >Detailed charges</strong>
+                                      </td>
+                                    </tr>
+                                    <tr>
+                                      <td>
+                                        <ul style="padding-left: 1rem;">
+                                          <li
+                                            class="txt-light txt-medium py-sm"
+                                            style="font-weight: 500; padding-top: 0.5rem; padding-bottom: 0.5rem; color: #ffffff;"
+                                          >
+                                            Deployment usages
+                                            <table
+                                              class="full-width"
+                                              style="width: 100%"
+                                            >
+                                              <tr>
+                                                <td
+                                                  class="pb-xs"
+                                                  style="padding-top: .25rem"
+                                                >
+                                                  {{#unless deployment_usage}}
+                                                    <table>
+                                                      <tbody>
+                                                        <tr>
+                                                          <td
+                                                            class="txt-light"
+                                                            style="color: #ffffff;"
+                                                          >
+                                                            No usages
+                                                          </td>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  {{/unless}}
+                                                  {{#if deployment_usage}}
+                                                    <table
+                                                      class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
+                                                      style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
+                                                      width="100%"
+                                                      bgcolor="#23203e"
+                                                    >
+                                                      <thead
+                                                        class="bg-secondary-medium"
+                                                        style="background-color: #2e2450;"
+                                                        bgcolor="#2e2450"
+                                                      >
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Name
+                                                        </th>
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Machine
+                                                        </th>
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Instances
+                                                        </th>
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Usage
+                                                        </th>
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Charges
+                                                        </th>
+                                                      </thead>
+                                                      <tbody>
+                                                        {{#each
+                                                          deployment_usage
+                                                        }}
+                                                          <tr>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              <a
+                                                                href="https://app.patr.cloud/deployment/{{@key}}"
+                                                                class="plain-link txt-primary"
+                                                                title="Open on Patr"
+                                                                style="color: #f89b41; text-decoration: none; font-weight: 500;"
+                                                              >{{this.deployment_name}}</a>
+                                                            </td>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              <table
+                                                                class="full-width"
+                                                                style="width: 100%"
+                                                              >
+                                                                <tbody>
+                                                                  {{#each
+                                                                    this.bill_items
+                                                                  }}
+                                                                    <tr>
+                                                                      <td
+                                                                        class="txt-light"
+                                                                        style="color: #ffffff; text-align: center"
+                                                                        align="center"
+                                                                      >
+                                                                        {{this.machine_type.cpu}}vCPU
+                                                                        {{this.machine_type.ram}}GB
+                                                                        RAM
+                                                                      </td>
+                                                                    </tr>
+                                                                  {{/each}}
+                                                                </tbody>
+                                                              </table>
+                                                            </td>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              <table
+                                                                class="full-width"
+                                                                style="width: 100%"
+                                                              >
+                                                                <tbody>
+                                                                  {{#each
+                                                                    this.bill_items
+                                                                  }}
+                                                                    <tr>
+                                                                      <td
+                                                                        class="txt-light"
+                                                                        style="color: #ffffff;text-align: center"
+                                                                        align="center"
+                                                                      >
+                                                                        {{this.num_instances}}
+                                                                      </td>
+                                                                    </tr>
+                                                                  {{/each}}
+                                                                </tbody>
+                                                              </table>
+                                                            </td>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              <table
+                                                                class="full-width"
+                                                                style="width: 100%"
+                                                              >
+                                                                <tbody>
+                                                                  {{#each
+                                                                    this.bill_items
+                                                                  }}
+                                                                    <tr>
+                                                                      <td
+                                                                        class="txt-light"
+                                                                        style="color: #ffffff;text-align: center"
+                                                                        align="center"
+                                                                      >
+                                                                        {{this.hours}}hr
+                                                                      </td>
+                                                                    </tr>
+                                                                  {{/each}}
+                                                                </tbody>
+                                                              </table>
+                                                            </td>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              <table
+                                                                class="full-width"
+                                                                style="width: 100%"
+                                                              >
+                                                                <tbody>
+                                                                  {{#each
+                                                                    this.bill_items
+                                                                  }}
+                                                                    <tr>
+                                                                      <td
+                                                                        class="txt-light"
+                                                                        style="color: #ffffff;text-align: center"
+                                                                        align="center"
+                                                                      >
+                                                                        ${{this.amount}}
+                                                                      </td>
+                                                                    </tr>
+                                                                  {{/each}}
+                                                                </tbody>
+                                                              </table>
+                                                            </td>
+                                                          </tr>
+                                                        {{/each}}
+                                                        <tr
+                                                          class="bg-secondary-medium"
+                                                          style="background-color:#2e2450"
+                                                          bgcolor="#2e2450"
+                                                        >
+                                                          <td
+                                                            colspan="4"
+                                                            class="txt-light px-md py-xs"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff;"
+                                                          >
+                                                            Total Deployment
+                                                            Charges
+                                                          </td>
+                                                          <td
+                                                            class="txt-primary px-md py-xs txt-center"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
+                                                            align="center"
+                                                          >${{deployment_bill}}</td>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  {{/if}}
+                                                </td>
+                                              </tr>
+                                            </table>
+                                          </li>
+                                          <li
+                                            class="txt-light txt-medium py-sm"
+                                            style="font-weight: 500; padding-top: 0.5rem; padding-bottom: 0.5rem; color: #ffffff;"
+                                          >
+                                            Database usages
+                                            <table
+                                              class="full-width"
+                                              style="width: 100%"
+                                            >
+                                              <tr>
+                                                <td
+                                                  class="pb-xs"
+                                                  style="padding-top: .25rem"
+                                                >
+                                                  {{#unless database_usage}}
+                                                    <table>
+                                                      <tbody>
+                                                        <tr>
+                                                          <td
+                                                            class="txt-light"
+                                                            style="color: #ffffff;"
+                                                          >
+                                                            No usages
+                                                          </td>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  {{/unless}}
+                                                  {{#if database_usage}}
+                                                    <table
+                                                      class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
+                                                      style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
+                                                      width="100%"
+                                                      bgcolor="#23203e"
+                                                    >
+                                                      <thead
+                                                        class="bg-secondary-medium"
+                                                        style="background-color: #2e2450;"
+                                                        bgcolor="#2e2450"
+                                                      >
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Name
+                                                        </th>
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Usage
+                                                        </th>
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Charges
+                                                        </th>
+                                                      </thead>
+                                                      <tbody>
+                                                        {{#each database_usage}}
+                                                          <tr>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              <a
+                                                                href="https://app.patr.cloud/database/{{@key}}"
+                                                                class="plain-link txt-primary"
+                                                                title="Open on Patr"
+                                                                style="color: #f89b41; text-decoration: none; font-weight: 500;"
+                                                              >{{this.database_name}}</a>
+                                                            </td>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              {{this.hours}}hr
+                                                            </td>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              ${{this.amount}}
+                                                            </td>
+                                                          </tr>
+                                                        {{/each}}
+                                                        <tr
+                                                          class="bg-secondary-medium"
+                                                          style="background-color:#2e2450"
+                                                          bgcolor="#2e2450"
+                                                        >
+                                                          <td
+                                                            colspan="2"
+                                                            class="txt-light px-md py-xs"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff;"
+                                                          >
+                                                            Total Database
+                                                            Charges
+                                                          </td>
+                                                          <td
+                                                            class="txt-primary px-md py-xs txt-center"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
+                                                            align="center"
+                                                          >${{database_bill}}</td>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  {{/if}}
+                                                </td>
+                                              </tr>
+                                            </table>
+                                          </li>
+                                          <li
+                                            class="txt-light txt-medium py-sm"
+                                            style="font-weight: 500; padding-top: 0.5rem; padding-bottom: 0.5rem; color: #ffffff;"
+                                          >
+                                            Static Site usages
+                                            <table
+                                              class="full-width"
+                                              style="width: 100%"
+                                            >
+                                              <tr>
+                                                <td
+                                                  class="pb-xs"
+                                                  style="padding-top: .25rem"
+                                                >
+                                                  {{#unless static_site_usage}}
+                                                    <table>
+                                                      <tbody>
+                                                        <tr>
+                                                          <td
+                                                            class="txt-light"
+                                                            style="color: #ffffff;"
+                                                          >
+                                                            No usages
+                                                          </td>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  {{/unless}}
+                                                  {{#if static_site_usage}}
+                                                    <table
+                                                      class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
+                                                      style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
+                                                      width="100%"
+                                                      bgcolor="#23203e"
+                                                    >
+                                                      <thead
+                                                        class="bg-secondary-medium"
+                                                        style="background-color: #2e2450;"
+                                                        bgcolor="#2e2450"
+                                                      >
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Plan
+                                                        </th>
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Usage
+                                                        </th>
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Charges
+                                                        </th>
+                                                      </thead>
+                                                      <tbody>
+                                                        {{#each
+                                                          static_site_usage
+                                                        }}
+                                                          <tr>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              {{@key}}
+                                                            </td>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              {{this.hours}}hr
+                                                            </td>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              ${{this.amount}}
+                                                            </td>
+                                                          </tr>
+                                                        {{/each}}
+                                                        <tr
+                                                          class="bg-secondary-medium"
+                                                          style="background-color:#2e2450"
+                                                          bgcolor="#2e2450"
+                                                        >
+                                                          <td
+                                                            colspan="2"
+                                                            class="txt-light px-md py-xs"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff;"
+                                                          >
+                                                            Total Static Site
+                                                            Charges
+                                                          </td>
+                                                          <td
+                                                            class="txt-primary px-md py-xs txt-center"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
+                                                            align="center"
+                                                          >${{static_site_bill}}</td>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  {{/if}}
+                                                </td>
+                                              </tr>
+                                            </table>
+                                          </li>
+                                          <li
+                                            class="txt-light txt-medium py-sm"
+                                            style="font-weight: 500; padding-top: 0.5rem; padding-bottom: 0.5rem; color: #ffffff;"
+                                          >
+                                            Domain usages
+                                            <table
+                                              class="full-width"
+                                              style="width: 100%"
+                                            >
+                                              <tr>
+                                                <td
+                                                  class="pb-xs"
+                                                  style="padding-top: .25rem"
+                                                >
+                                                  {{#unless domain_usage}}
+                                                    <table>
+                                                      <tbody>
+                                                        <tr>
+                                                          <td
+                                                            class="txt-light"
+                                                            style="color: #ffffff;"
+                                                          >
+                                                            No usages
+                                                          </td>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  {{/unless}}
+                                                  {{#if domain_usage}}
+                                                    <table
+                                                      class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
+                                                      style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
+                                                      width="100%"
+                                                      bgcolor="#23203e"
+                                                    >
+                                                      <thead
+                                                        class="bg-secondary-medium"
+                                                        style="background-color: #2e2450;"
+                                                        bgcolor="#2e2450"
+                                                      >
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Plan
+                                                        </th>
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Usage
+                                                        </th>
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Charges
+                                                        </th>
+                                                      </thead>
+                                                      <tbody>
+                                                        {{#each domain_usage}}
+                                                          <tr>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              {{@key}}
+                                                            </td>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              {{this.hours}}hr
+                                                            </td>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              ${{this.amount}}
+                                                            </td>
+                                                          </tr>
+                                                        {{/each}}
+                                                        <tr
+                                                          class="bg-secondary-medium"
+                                                          style="background-color:#2e2450"
+                                                          bgcolor="#2e2450"
+                                                        >
+                                                          <td
+                                                            colspan="2"
+                                                            class="txt-light px-md py-xs"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff;"
+                                                          >
+                                                            Total Domain Charges
+                                                          </td>
+                                                          <td
+                                                            class="txt-primary px-md py-xs txt-center"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
+                                                            align="center"
+                                                          >${{domain_bill}}</td>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  {{/if}}
+                                                </td>
+                                              </tr>
+                                            </table>
+                                          </li>
+                                          <li
+                                            class="txt-light txt-medium py-sm"
+                                            style="font-weight: 500; padding-top: 0.5rem; padding-bottom: 0.5rem; color: #ffffff;"
+                                          >
+                                            Managed URL usages
+                                            <table
+                                              class="full-width"
+                                              style="width: 100%"
+                                            >
+                                              <tr>
+                                                <td
+                                                  class="pb-xs"
+                                                  style="padding-top: .25rem"
+                                                >
+                                                  {{#unless managed_url_usage}}
+                                                    <table>
+                                                      <tbody>
+                                                        <tr>
+                                                          <td
+                                                            class="txt-light"
+                                                            style="color: #ffffff;"
+                                                          >
+                                                            No usages
+                                                          </td>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  {{/unless}}
+                                                  {{#if managed_url_usage}}
+                                                    <table
+                                                      class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
+                                                      style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
+                                                      width="100%"
+                                                      bgcolor="#23203e"
+                                                    >
+                                                      <thead
+                                                        class="bg-secondary-medium"
+                                                        style="background-color: #2e2450;"
+                                                        bgcolor="#2e2450"
+                                                      >
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          No.of URLs
+                                                        </th>
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Usage
+                                                        </th>
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Charges
+                                                        </th>
+                                                      </thead>
+                                                      <tbody>
+                                                        {{#each
+                                                          managed_url_usage
+                                                        }}
+                                                          <tr>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              {{@key}}
+                                                            </td>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              {{this.hours}}hr
+                                                            </td>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              ${{this.amount}}
+                                                            </td>
+                                                          </tr>
+                                                        {{/each}}
+                                                        <tr
+                                                          class="bg-secondary-medium"
+                                                          style="background-color:#2e2450"
+                                                          bgcolor="#2e2450"
+                                                        >
+                                                          <td
+                                                            colspan="2"
+                                                            class="txt-light px-md py-xs"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff;"
+                                                          >
+                                                            Total Managed URL
+                                                            Charges
+                                                          </td>
+                                                          <td
+                                                            class="txt-primary px-md py-xs txt-center"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
+                                                            align="center"
+                                                          >${{managed_url_bill}}</td>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  {{/if}}
+                                                </td>
+                                              </tr>
+                                            </table>
+                                          </li>
+                                          <li
+                                            class="txt-light txt-medium py-sm"
+                                            style="font-weight: 500; padding-top: 0.5rem; padding-bottom: 0.5rem; color: #ffffff;"
+                                          >
+                                            Secrets usages
+                                            <table
+                                              class="full-width"
+                                              style="width: 100%"
+                                            >
+                                              <tr>
+                                                <td
+                                                  class="pb-xs"
+                                                  style="padding-top: .25rem"
+                                                >
+                                                  {{#unless secrets_usage}}
+                                                    <table>
+                                                      <tbody>
+                                                        <tr>
+                                                          <td
+                                                            class="txt-light"
+                                                            style="color: #ffffff;"
+                                                          >
+                                                            No usages
+                                                          </td>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  {{/unless}}
+                                                  {{#if secrets_usage}}
+                                                    <table
+                                                      class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
+                                                      style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
+                                                      width="100%"
+                                                      bgcolor="#23203e"
+                                                    >
+                                                      <thead
+                                                        class="bg-secondary-medium"
+                                                        style="background-color: #2e2450;"
+                                                        bgcolor="#2e2450"
+                                                      >
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          No.of Secrets
+                                                        </th>
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Usage
+                                                        </th>
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Charges
+                                                        </th>
+                                                      </thead>
+                                                      <tbody>
+                                                        {{#each secrets_usage}}
+                                                          <tr>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              {{@key}}
+                                                            </td>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              {{this.hours}}hr
+                                                            </td>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              ${{this.amount}}
+                                                            </td>
+                                                          </tr>
+                                                        {{/each}}
+                                                        <tr
+                                                          class="bg-secondary-medium"
+                                                          style="background-color:#2e2450"
+                                                          bgcolor="#2e2450"
+                                                        >
+                                                          <td
+                                                            colspan="2"
+                                                            class="txt-light px-md py-xs"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff;"
+                                                          >
+                                                            Total Secrets
+                                                            Charges
+                                                          </td>
+                                                          <td
+                                                            class="txt-primary px-md py-xs txt-center"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
+                                                            align="center"
+                                                          >${{secrets_bill}}</td>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  {{/if}}
+                                                </td>
+                                              </tr>
+                                            </table>
+                                          </li>
+                                          <li
+                                            class="txt-light txt-medium pt-sm"
+                                            style="font-weight: 500; padding-top: 0.5rem; color: #ffffff;"
+                                          >
+                                            Docker Repository usages
+                                            <table
+                                              class="full-width"
+                                              style="width: 100%"
+                                            >
+                                              <tr>
+                                                <td
+                                                  class="pb-xs"
+                                                  style="padding-top: .25rem"
+                                                >
+                                                  {{#unless
+                                                    docker_repository_usage
+                                                  }}
+                                                    <table>
+                                                      <tbody>
+                                                        <tr>
+                                                          <td
+                                                            class="txt-light"
+                                                            style="color: #ffffff;"
+                                                          >
+                                                            No usages
+                                                          </td>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  {{/unless}}
+                                                  {{#if
+                                                    docker_repository_usage
+                                                  }}
+                                                    <table
+                                                      class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
+                                                      style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
+                                                      width="100%"
+                                                      bgcolor="#23203e"
+                                                    >
+                                                      <thead
+                                                        class="bg-secondary-medium"
+                                                        style="background-color: #2e2450;"
+                                                        bgcolor="#2e2450"
+                                                      >
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Storage
+                                                        </th>
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Usage
+                                                        </th>
+                                                        <th
+                                                          class="txt-light px-md py-sm txt-center"
+                                                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                          align="center"
+                                                        >
+                                                          Charges
+                                                        </th>
+                                                      </thead>
+                                                      <tbody>
+                                                        {{#each
+                                                          docker_repository_usage
+                                                        }}
+                                                          <tr>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              {{this.storage}}GB
+                                                            </td>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              {{this.hours}}hr
+                                                            </td>
+                                                            <td
+                                                              class="txt-light px-md py-xs txt-center"
+                                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                              align="center"
+                                                            >
+                                                              ${{this.amount}}
+                                                            </td>
+                                                          </tr>
+                                                        {{/each}}
+                                                        <tr
+                                                          class="bg-secondary-medium"
+                                                          style="background-color:#2e2450"
+                                                          bgcolor="#2e2450"
+                                                        >
+                                                          <td
+                                                            colspan="2"
+                                                            class="txt-light px-md py-xs"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff;"
+                                                          >
+                                                            Total Docker
+                                                            Repository Charges
+                                                          </td>
+                                                          <td
+                                                            class="txt-primary px-md py-xs txt-center"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
+                                                            align="center"
+                                                          >${{docker_repository_bill}}</td>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  {{/if}}
+                                                </td>
+                                              </tr>
+                                            </table>
+                                          </li>
+                                        </ul>
+                                      </td>
+                                    </tr>
+                                    <tr>
+                                      <td
+                                        class="para txt-light txt-medium px-sm"
+                                        style="color: #ffffff; letter-spacing: 0.3px; line-height: 1.3; font-weight: 500; text-align: right; padding-left: 0.5rem;padding-right: 0.5rem"
+                                      >
+                                        Grand Total:
+                                        <strong
+                                          class="txt-primary txt-lg"
+                                          style="color: #f89b41;font-size: 1.2rem"
+                                        >${{total_bill}}</strong>
+                                      </td>
+                                    </tr>
+                                    <tr>
+                                      <td
                                         class="para txt-light"
                                         style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
                                       >
