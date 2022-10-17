@@ -23,8 +23,7 @@ async fn does_version_exist(version: &str) -> bool {
 	let gitea_token = env::var("GITEA_TOKEN").expect("GITEA_TOKEN not set");
 
 	let mut version_exists = false;
-	let mut is_response_empty = false;
-	let mut page: u8 = 1;
+	let mut page = 1;
 
 	let client = reqwest::Client::new();
 
@@ -44,7 +43,6 @@ async fn does_version_exist(version: &str) -> bool {
 			.await
 			.expect("unable to parse response as json");
 		if response.len() == 0 {
-			is_response_empty = true;
 			break;
 		}
 		for release in response.iter() {
@@ -54,7 +52,7 @@ async fn does_version_exist(version: &str) -> bool {
 		}
 		page += 1;
 	}
-	version_exists || !is_response_empty
+	version_exists
 }
 
 #[tokio::main]
