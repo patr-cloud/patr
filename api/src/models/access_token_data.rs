@@ -112,7 +112,6 @@ pub struct IpAddressInfo {
 	pub country: String,
 	pub region: String,
 	pub city: String,
-	pub postal: String,
 	pub loc: String,
 	pub timezone: String,
 }
