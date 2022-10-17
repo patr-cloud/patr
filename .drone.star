@@ -459,7 +459,7 @@ def check_formatting(step_name):
 def check_version(step_name):
     return {
         "name": step_name,
-        "image": "rust:1.63",
+        "image": "rust:1.64",
         "commands": [
             "cargo run --example check-version"
         ],
