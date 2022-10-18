@@ -435,6 +435,7 @@ pub async fn send_alert_email_to_patr(
 pub async fn send_invoice_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
+	address_id: Option<&Uuid>,
 	workspace_name: String,
 	deployment_usages: HashMap<Uuid, DeploymentBill>,
 	database_usages: HashMap<Uuid, DatabaseBill>,
@@ -458,6 +459,7 @@ pub async fn send_invoice_email(
 		.await?
 		.status(500)?;
 
+	// Getting super admin email
 	let user_email = get_user_email(
 		connection,
 		user.recovery_email_domain_id
@@ -489,9 +491,32 @@ pub async fn send_invoice_email(
 		workspace_name
 	};
 
+	let mut billing_address: HashMap<String, String> = HashMap::new();
+	if let Some(address_id) = address_id {
+		let address = db::get_billing_address(connection, address_id)
+			.await?
+			.status(500)?;
+		billing_address.insert("first_name".to_owned(), address.first_name);
+		billing_address.insert("last_name".to_owned(), address.last_name);
+		billing_address
+			.insert("address_line_1".to_owned(), address.address_line_1);
+		billing_address.insert(
+			"address_line_2".to_owned(),
+			address.address_line_2.unwrap_or_default(),
+		);
+		billing_address.insert(
+			"address_line_3".to_owned(),
+			address.address_line_3.unwrap_or_default(),
+		);
+		billing_address.insert("city".to_owned(), address.city);
+		billing_address.insert("state".to_owned(), address.state);
+		billing_address.insert("zip".to_owned(), address.zip);
+	}
+
 	email::send_invoice_email(
 		user_email.parse()?,
 		displayed_workspace_name,
+		billing_address,
 		deployment_usages,
 		database_usages,
 		static_sites_usages,

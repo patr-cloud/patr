@@ -166,6 +166,7 @@ pub(super) async fn process_request(
 			service::send_invoice_email(
 				connection,
 				&workspace.super_admin_id,
+				workspace.address_id.as_ref(),
 				workspace.name.clone(),
 				total_resource_usage_bill.deployment_usages,
 				total_resource_usage_bill.database_usages,
