@@ -498,7 +498,7 @@ struct ResourceDeletedEmail {
 	resource_name: String,
 	username: String,
 	deleted_by: String,
-	message: Option<String>,
+	message: String,
 	resource_type: String,
 }
 
@@ -508,7 +508,7 @@ pub async fn send_resource_deleted_email(
 	username: String,
 	resource_type: String,
 	deleted_by: String,
-	message: Option<String>,
+	message: String,
 	email: Mailbox,
 ) -> Result<(), Error> {
 	send_email(
