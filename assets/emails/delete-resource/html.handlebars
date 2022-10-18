@@ -120,47 +120,49 @@
                                             >
                                               Deleted By
                                             </th>
-                                             <th
-                                              class="txt-light px-md py-sm txt-center"
-                                              style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
-                                              align="center"
-                                            >
-                                              Message
-                                            </th>
+                                            {{#if deleted_resource.message}}
+                                              <th
+                                                class="txt-light px-md py-sm txt-center"
+                                                style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                align="center"
+                                              >
+                                                Message
+                                              </th>
+                                            {{/if}}
                                           </thead>
                                           <tbody>
-                                            {{#each deleted_resources}}
-                                              <tr>
+                                            <tr>
+                                              <td
+                                                class="txt-light px-md py-xs txt-center"
+                                                style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                align="center"
+                                              >
+                                                {{deleted_resource.resource_type}}
+                                              </td>
+                                              <td
+                                                class="txt-light px-md py-xs txt-center"
+                                                style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                align="center"
+                                              >
+                                                {{deleted_resource.resource_name}}
+                                              </td>
+                                              <td
+                                                class="txt-light px-md py-xs txt-center"
+                                                style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                                                align="center"
+                                              >
+                                                {{deleted_resource.deleted_by}}
+                                              </td>
+                                              {{#if deleted_resource.message}}
                                                 <td
                                                   class="txt-light px-md py-xs txt-center"
                                                   style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                                                   align="center"
                                                 >
-                                                  {{this.resource_type}}
+                                                  {{deleted_resource.message}}
                                                 </td>
-                                                <td
-                                                  class="txt-light px-md py-xs txt-center"
-                                                  style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
-                                                  align="center"
-                                                >
-                                                  {{this.resource_name}}
-                                                </td>
-                                                <td
-                                                  class="txt-light px-md py-xs txt-center"
-                                                  style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
-                                                  align="center"
-                                                >
-                                                  {{this.deleted_by}}
-                                                </td>
-                                                <td
-                                                  class="txt-light px-md py-xs txt-center"
-                                                  style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
-                                                  align="center"
-                                                >
-                                                  {{this.message}}
-                                                </td>
-                                              </tr>
-                                            {{/each}}
+                                              {{/if}}
+                                            </tr>
                                           </tbody>
                                         </table>
                                       </td>
