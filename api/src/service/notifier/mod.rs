@@ -701,7 +701,7 @@ pub async fn resource_delete_action_email(
 		                            * does not support an enum as field in
 		                            * it's struct */
 		deleted_by,
-		None,
+		"".to_string(),
 		user_email.parse()?,
 	)
 	.await?;
