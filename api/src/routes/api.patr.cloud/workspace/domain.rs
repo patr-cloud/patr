@@ -737,6 +737,8 @@ async fn delete_domain_in_workspace(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id)?;
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 	// Uuid::parse_str throws an error for a wrong string
 	// This error is handled by the resource authenticator middleware
@@ -769,11 +771,12 @@ async fn delete_domain_in_workspace(
 	// resource should be deleted
 	context.commit_database_transaction().await?;
 
-	service::resource_action_email(
+	service::resource_delete_action_email(
 		context.get_database_connection(),
 		&domain.name,
 		&workspace_id,
 		&ResourceType::Domain,
+		&user_id,
 	)
 	.await?;
 
@@ -941,6 +944,8 @@ async fn delete_dns_record(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
@@ -972,11 +977,12 @@ async fn delete_dns_record(
 	// resource should be deleted
 	context.commit_database_transaction().await?;
 
-	service::resource_action_email(
+	service::resource_delete_action_email(
 		context.get_database_connection(),
 		&dns.name,
 		&workspace_id,
 		&ResourceType::DNSRecord,
+		&user_id,
 	)
 	.await?;
 

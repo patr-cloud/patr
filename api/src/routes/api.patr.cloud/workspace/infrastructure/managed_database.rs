@@ -359,6 +359,8 @@ async fn delete_managed_database(
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
 	let database_id =
 		Uuid::parse_str(context.get_param(request_keys::DATABASE_ID).unwrap())
 			.unwrap();
@@ -386,11 +388,12 @@ async fn delete_managed_database(
 	// resource should be deleted
 	context.commit_database_transaction().await?;
 
-	service::resource_action_email(
+	service::resource_delete_action_email(
 		context.get_database_connection(),
 		&database.name,
 		&database.workspace_id,
 		&ResourceType::ManagedDatabase,
+		&user_id,
 	)
 	.await?;
 

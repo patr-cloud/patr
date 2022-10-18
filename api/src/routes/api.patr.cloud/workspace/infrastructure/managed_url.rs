@@ -418,6 +418,8 @@ async fn delete_managed_url(
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
 	let managed_url_id = Uuid::parse_str(
 		context.get_param(request_keys::MANAGED_URL_ID).unwrap(),
 	)
@@ -454,11 +456,12 @@ async fn delete_managed_url(
 	// resource should be deleted
 	context.commit_database_transaction().await?;
 
-	service::resource_action_email(
+	service::resource_delete_action_email(
 		context.get_database_connection(),
 		&managed_url.sub_domain,
 		&managed_url.workspace_id,
 		&ResourceType::ManagedUrl,
+		&user_id,
 	)
 	.await?;
 

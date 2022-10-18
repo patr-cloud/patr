@@ -1151,6 +1151,8 @@ async fn delete_static_site(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
 	let request_id = Uuid::new_v4();
 
 	let static_site_id = Uuid::parse_str(
@@ -1193,11 +1195,12 @@ async fn delete_static_site(
 	// resource should be deleted
 	context.commit_database_transaction().await?;
 
-	service::resource_action_email(
+	service::resource_delete_action_email(
 		context.get_database_connection(),
 		&site.name,
 		&site.workspace_id,
 		&ResourceType::StaticSite,
+		&user_id,
 	)
 	.await?;
 
