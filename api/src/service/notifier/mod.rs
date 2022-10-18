@@ -431,6 +431,7 @@ pub async fn send_alert_email_to_patr(
 		.await
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn send_invoice_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
@@ -443,6 +444,13 @@ pub async fn send_invoice_email(
 	domains_usages: HashMap<DomainPlan, DomainBill>,
 	secrets_usages: HashMap<u64, SecretsBill>,
 	total_bill: f64,
+	deployment_bill: f64,
+	database_bill: f64,
+	static_site_bill: f64,
+	managed_url_bill: f64,
+	docker_repo_bill: f64,
+	managed_domain_bill: f64,
+	managed_secret_bill: f64,
 	month: String,
 	year: i32,
 ) -> Result<(), Error> {
@@ -492,6 +500,13 @@ pub async fn send_invoice_email(
 		domains_usages,
 		secrets_usages,
 		total_bill,
+		deployment_bill,
+		database_bill,
+		static_site_bill,
+		managed_url_bill,
+		docker_repo_bill,
+		managed_domain_bill,
+		managed_secret_bill,
 		month,
 		year,
 	)

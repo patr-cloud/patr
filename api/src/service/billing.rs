@@ -820,6 +820,13 @@ pub async fn calculate_total_bill_for_workspace_till(
 
 	let total_resource_usage_bill = ResourceUsageBill {
 		total_cost,
+		deployment_cost,
+		database_cost,
+		static_site_cost,
+		managed_url_cost,
+		docker_repo_cost,
+		managed_domain_cost,
+		managed_secret_cost,
 		deployment_usages,
 		database_usages,
 		static_sites_usages,

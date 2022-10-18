@@ -73,6 +73,13 @@ pub struct SecretsBill {
 #[serde(rename_all = "camelCase")]
 pub struct ResourceUsageBill {
 	pub total_cost: f64,
+	pub deployment_cost: f64,
+	pub database_cost: f64,
+	pub static_site_cost: f64,
+	pub managed_url_cost: f64,
+	pub docker_repo_cost: f64,
+	pub managed_domain_cost: f64,
+	pub managed_secret_cost: f64,
 	pub deployment_usages: HashMap<Uuid, DeploymentBill>,
 	pub database_usages: HashMap<Uuid, DatabaseBill>,
 	pub static_sites_usages: HashMap<StaticSitePlan, StaticSiteBill>,
