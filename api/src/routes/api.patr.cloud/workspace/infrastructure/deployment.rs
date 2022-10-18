@@ -1632,11 +1632,12 @@ async fn delete_deployment(
 	// resource should be deleted
 	context.commit_database_transaction().await?;
 
-	service::resource_action_email(
+	service::resource_delete_action_email(
 		context.get_database_connection(),
 		&deployment.name,
 		&deployment.workspace_id,
 		&ResourceType::Deployment,
+		&user_id,
 	)
 	.await?;
 

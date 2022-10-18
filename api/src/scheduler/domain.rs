@@ -158,7 +158,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					);
 				} else {
 					service::domain_verification_email(
-						connection, // todo change this to connection
+						&mut connection,
 						&unverified_domain.name,
 						&workspace_id,
 						true,
@@ -242,7 +242,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 
 				// Sending mail
 				service::domain_verification_email(
-					connection, // todo change this to connection
+					&mut connection,
 					&unverified_domain.name,
 					&workspace_id,
 					false,
@@ -490,6 +490,14 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 	};
 
 	for (verified_domain, zone_identifier) in verified_domains {
+		// getting workspace_id
+		let workspace_id =
+			db::get_resource_by_id(&mut connection, &verified_domain.id)
+				.await?
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?
+				.owner_id;
+
 		let zone_identifier = if let Some(zone_identifier) = zone_identifier {
 			zone_identifier
 		} else {
@@ -523,12 +531,18 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 			log::error!("Notification email for domain `{}` is None. You might have a dangling resource for the domain", verified_domain.name);
 			continue;
 		} else {
-			// TODO change this to notifier
-			// mailer::send_domain_unverified_mail(
-			// 	config.config.clone(),
-			// 	notification_email.unwrap(),
-			// 	verified_domain.name,
-			// );
+			log::trace!(
+				"domain: {} with id: {} is now unverfied",
+				verified_domain.name,
+				verified_domain.id
+			);
+			service::domain_verification_email(
+				&mut connection,
+				&verified_domain.name,
+				&workspace_id,
+				false,
+			)
+			.await?
 		}
 		// TODO delete certificates and managed urls after 3 days
 	}

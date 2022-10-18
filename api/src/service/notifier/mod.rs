@@ -640,19 +640,24 @@ pub async fn send_payment_failed_notification(
 	.await
 }
 
-pub async fn resource_action_email(
+pub async fn resource_delete_action_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_name: &str,
 	workspace_id: &Uuid,
 	resource_type: &ResourceType,
+	deleted_by_user_id: &Uuid,
 ) -> Result<(), Error> {
-	let super_admin_id = db::get_workspace_info(connection, workspace_id)
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
+
+	let deleted_by = db::get_user_by_user_id(connection, deleted_by_user_id)
 		.await?
 		.status(500)?
-		.super_admin_id;
+		.first_name;
 
 	// TODO -  change this and move to one function. Changes are done in PR #600
-	let user = db::get_user_by_user_id(connection, &super_admin_id)
+	let user = db::get_user_by_user_id(connection, &workspace.super_admin_id)
 		.await?
 		.status(500)?;
 
@@ -669,12 +674,34 @@ pub async fn resource_action_email(
 	)
 	.await?;
 
+	// parsing personal-workspace-(uuid)
+	let displayed_workspace_name = if let Some(Ok(user_id)) = workspace
+		.name
+		.strip_prefix("personal-workspace-")
+		.map(Uuid::parse_str)
+	{
+		let user = db::get_user_by_user_id(connection, &user_id).await?;
+		if let Some(user) = user {
+			format!(
+				"{} {}'s Personal Workspace",
+				user.first_name, user.last_name
+			)
+		} else {
+			workspace.name
+		}
+	} else {
+		workspace.name
+	};
+
 	email::send_resource_deleted_email(
+		displayed_workspace_name,
 		resource_name.to_string(),
 		user.first_name,
 		resource_type.to_string(), /* converting to string as email template
 		                            * does not support an enum as field in
 		                            * it's struct */
+		deleted_by,
+		None,
 		user_email.parse()?,
 	)
 	.await?;
@@ -710,12 +737,20 @@ pub async fn domain_verification_email(
 	)
 	.await?;
 
-	email::send_domain_verification_email(
-		domain.to_string(),
-		user.first_name,
-		is_verified,
-		user_email.parse()?,
-	)
-	.await?;
+	if is_verified {
+		email::send_domain_verified_email(
+			domain.to_string(),
+			user.first_name,
+			user_email.parse()?,
+		)
+		.await?;
+	} else {
+		email::send_domain_unverified_email(
+			domain.to_string(),
+			user.first_name,
+			user_email.parse()?,
+		)
+		.await?;
+	}
 	Ok(())
 }

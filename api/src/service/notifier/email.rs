@@ -18,7 +18,6 @@ use crate::{
 		},
 		deployment::KubernetesEventData,
 		EmailTemplate,
-		ResourceType,
 	},
 	utils::Error,
 };
@@ -493,24 +492,32 @@ pub async fn send_payment_failed_email(
 }
 
 #[derive(EmailTemplate, Serialize)]
-// todo change path when actual file comes
-#[template_path = "assets/emails/payment-failure/template.json"]
+#[template_path = "assets/emails/deleted-resource/template.json"]
 struct ResourceDeletedEmail {
+	workspace_name: String,
 	resource_name: String,
 	username: String,
+	deleted_by: String,
+	message: Option<String>,
 	resource_type: String,
 }
 
 pub async fn send_resource_deleted_email(
+	workspace_name: String,
 	resource_name: String,
 	username: String,
 	resource_type: String,
+	deleted_by: String,
+	message: Option<String>,
 	email: Mailbox,
 ) -> Result<(), Error> {
 	send_email(
 		ResourceDeletedEmail {
+			workspace_name,
 			resource_name,
 			username,
+			deleted_by,
+			message,
 			resource_type,
 		},
 		email,
@@ -521,36 +528,45 @@ pub async fn send_resource_deleted_email(
 }
 
 #[derive(EmailTemplate, Serialize)]
-// todo change path when actual file comes
-#[template_path = "assets/emails/payment-failure/template.json"]
-struct DomainVerification {
+#[template_path = "assets/emails/domain-not-verified/template.json"]
+struct DomainUnverified {
 	domain: String,
 	username: String,
 }
 
-pub async fn send_domain_verification_email(
+pub async fn send_domain_unverified_email(
 	domain: String,
 	username: String,
-	is_verified: bool,
 	email: Mailbox,
 ) -> Result<(), Error> {
-	if is_verified {
-		send_email(
-			DomainVerification { domain, username },
-			email,
-			None,
-			"Domain Verified",
-		)
-		.await
-	} else {
-		send_email(
-			DomainVerification { domain, username },
-			email,
-			None,
-			"Domain not verified",
-		)
-		.await
-	}
+	send_email(
+		DomainUnverified { domain, username },
+		email,
+		None,
+		"Domain not Verified",
+	)
+	.await
+}
+
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/domain-verified/template.json"]
+struct DomainVerified {
+	domain: String,
+	username: String,
+}
+
+pub async fn send_domain_verified_email(
+	domain: String,
+	username: String,
+	email: Mailbox,
+) -> Result<(), Error> {
+	send_email(
+		DomainVerified { domain, username },
+		email,
+		None,
+		"Domain Verified",
+	)
+	.await
 }
 
 // pub async fn send_resource_updated_email(
