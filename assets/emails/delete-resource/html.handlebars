@@ -120,7 +120,7 @@
                                             >
                                               Deleted By
                                             </th>
-                                            {{#if deleted_resource.message}}
+                                            {{#if message}}
                                               <th
                                                 class="txt-light px-md py-sm txt-center"
                                                 style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
@@ -137,29 +137,29 @@
                                                 style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                                                 align="center"
                                               >
-                                                {{deleted_resource.resource_type}}
+                                                {{resource_type}}
                                               </td>
                                               <td
                                                 class="txt-light px-md py-xs txt-center"
                                                 style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                                                 align="center"
                                               >
-                                                {{deleted_resource.resource_name}}
+                                                {{resource_name}}
                                               </td>
                                               <td
                                                 class="txt-light px-md py-xs txt-center"
                                                 style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                                                 align="center"
                                               >
-                                                {{deleted_resource.deleted_by}}
+                                                {{deleted_by}}
                                               </td>
-                                              {{#if deleted_resource.message}}
+                                              {{#if message}}
                                                 <td
                                                   class="txt-light px-md py-xs txt-center"
                                                   style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                                                   align="center"
                                                 >
-                                                  {{deleted_resource.message}}
+                                                  {{message}}
                                                 </td>
                                               {{/if}}
                                             </tr>

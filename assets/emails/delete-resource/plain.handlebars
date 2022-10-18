@@ -2,11 +2,11 @@ Hello {{username}},
 
 This is to notify you that the following resources on your workspace {{workspace_name}} has been deleted.
 
-Resource: {{deleted_resource.resource_type}}
-Name: {{deleted_resource.resource_name}}
-Delete By: {{deleted_resource.deleted_by}}
-{{#if deleted_resource.message}}
-Message: {{deleted_resource.message}}
+Resource: {{resource_type}}
+Name: {{resource_name}}
+Delete By: {{deleted_by}}
+{{#if message}}
+Message: {{message}}
 {{/if}}
 
 Reach out to us at support@patr.cloud.
