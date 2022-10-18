@@ -175,6 +175,13 @@ pub(super) async fn process_request(
 				total_resource_usage_bill.domains_usages,
 				total_resource_usage_bill.secrets_usages,
 				total_resource_usage_bill.total_cost,
+				total_resource_usage_bill.deployment_cost,
+				total_resource_usage_bill.database_cost,
+				total_resource_usage_bill.static_site_cost,
+				total_resource_usage_bill.managed_url_cost,
+				total_resource_usage_bill.docker_repo_cost,
+				total_resource_usage_bill.managed_domain_cost,
+				total_resource_usage_bill.managed_secret_cost,
 				month_string.to_string(),
 				year,
 			)
