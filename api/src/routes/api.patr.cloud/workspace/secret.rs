@@ -292,6 +292,7 @@ async fn delete_secret(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
+	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	let secret_id =
 		Uuid::parse_str(context.get_param(request_keys::SECRET_ID).unwrap())
@@ -322,11 +323,12 @@ async fn delete_secret(
 	// resource should be deleted
 	context.commit_database_transaction().await?;
 
-	service::resource_action_email(
+	service::resource_delete_action_email(
 		context.get_database_connection(),
 		&secret.name,
 		&secret.workspace_id,
 		&ResourceType::Secret,
+		&user_id,
 	)
 	.await?;
 

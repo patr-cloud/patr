@@ -997,6 +997,8 @@ async fn delete_docker_repository(
 	let repository_id = Uuid::parse_str(repo_id_string).unwrap();
 	let config = context.get_state().config.clone();
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
 	let running_deployments = db::get_deployments_by_repository_id(
 		context.get_database_connection(),
 		&repository_id,
@@ -1030,11 +1032,12 @@ async fn delete_docker_repository(
 	// resource should be deleted
 	context.commit_database_transaction().await?;
 
-	service::resource_action_email(
+	service::resource_delete_action_email(
 		context.get_database_connection(),
 		&repository.name,
 		&repository.workspace_id,
 		&ResourceType::DockerRepository,
+		&user_id,
 	)
 	.await?;
 
