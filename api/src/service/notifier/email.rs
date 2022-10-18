@@ -271,7 +271,6 @@ struct DeploymentAlertEmail {
 	deployment_id: String,
 	deployment_name: String,
 	message: String,
-	username: String,
 }
 
 /// # Description
@@ -294,7 +293,6 @@ pub async fn send_alert_email(
 	deployment_id: &Uuid,
 	deployment_name: &str,
 	message: &str,
-	username: &str,
 ) -> Result<(), Error> {
 	send_email(
 		DeploymentAlertEmail {
@@ -302,7 +300,6 @@ pub async fn send_alert_email(
 			workspace_name: workspace_name.to_string(),
 			deployment_id: deployment_id.to_string(),
 			deployment_name: deployment_name.to_string(),
-			username: username.to_string(),
 		},
 		email,
 		None,
