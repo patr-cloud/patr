@@ -30,14 +30,6 @@ pub struct AccessTokenData {
 	// Do we need to add more?
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ApiTokenData {
-	pub exp: Option<DateTime<Utc>>,
-	pub workspaces: HashMap<Uuid, WorkspacePermissions>,
-	pub user_id: Uuid,
-}
-
 impl AccessTokenData {
 	pub fn parse(token: String, key: &str) -> Result<AccessTokenData, Error> {
 		let decode_key = DecodingKey::from_secret(key.as_ref());

@@ -26,7 +26,7 @@ use crate::{
 	models::{
 		rbac::{self, WorkspacePermissions, GOD_USER_ID},
 		AccessTokenData,
-		ApiTokenData,
+		UserApiTokenData, UserAuthenticationData,
 	},
 	redis::is_access_token_revoked,
 	utils::{Error, ErrorData, EveContext},
@@ -62,14 +62,6 @@ pub enum EveMiddleware {
 		String,
 		Box<EveApp<EveContext, EveMiddleware, App, ErrorData>>,
 	),
-	BlockApiToken,
-}
-
-#[derive(Clone, Debug)]
-#[allow(clippy::large_enum_variant)]
-pub enum TokenData {
-	AccessTokenData(AccessTokenData),
-	ApiTokenData(ApiTokenData),
 }
 
 #[async_trait]
@@ -114,19 +106,19 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				let token_data = decode_access_token(&mut context).await?;
 
 				match token_data {
-					TokenData::AccessTokenData(token_data) => {
+					UserAuthenticationData::AccessToken(token_data) => {
 						validate_access_token(
 							context.get_redis_connection(),
 							&token_data,
 						)
 						.await?;
-						context.set_token_data(TokenData::AccessTokenData(
+						context.set_token_data(UserAuthenticationData::AccessToken(
 							token_data,
 						));
 					}
-					TokenData::ApiTokenData(token_data) => {
+					UserAuthenticationData::ApiToken(token_data) => {
 						validate_api_token(&token_data).await?;
-						context.set_token_data(TokenData::ApiTokenData(
+						context.set_token_data(UserAuthenticationData::ApiToken(
 							token_data,
 						));
 					}
@@ -148,24 +140,24 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				};
 
 				match token_data {
-					TokenData::AccessTokenData(token_data) => {
+					UserAuthenticationData::AccessToken(token_data) => {
 						validate_access_token(
 							context.get_redis_connection(),
 							&token_data,
 						)
 						.await?;
 
-						context.set_token_data(TokenData::AccessTokenData(
+						context.set_token_data(UserAuthenticationData::AccessToken(
 							token_data.clone(),
 						));
 						let allowed = has_permission_to_access_resource(
 							&resource,
 							permission_required,
-							TokenData::AccessTokenData(token_data.clone()),
+							UserAuthenticationData::AccessToken(token_data.clone()),
 						);
 
 						if allowed {
-							context.set_token_data(TokenData::AccessTokenData(
+							context.set_token_data(UserAuthenticationData::AccessToken(
 								token_data.clone(),
 							));
 							next(context).await
@@ -174,20 +166,20 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 							return Ok(context);
 						}
 					}
-					TokenData::ApiTokenData(token_data) => {
+					UserAuthenticationData::ApiToken(token_data) => {
 						validate_api_token(&token_data).await?;
 
-						context.set_token_data(TokenData::ApiTokenData(
+						context.set_token_data(UserAuthenticationData::ApiToken(
 							token_data.clone(),
 						));
 						let allowed = has_permission_to_access_resource(
 							&resource,
 							permission_required,
-							TokenData::ApiTokenData(token_data.clone()),
+							UserAuthenticationData::ApiToken(token_data.clone()),
 						);
 
 						if allowed {
-							context.set_token_data(TokenData::ApiTokenData(
+							context.set_token_data(UserAuthenticationData::ApiToken(
 								token_data.clone(),
 							));
 							return next(context).await;
@@ -213,33 +205,13 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					next(context).await
 				}
 			}
-			EveMiddleware::BlockApiToken => {
-				let authorization =
-					if let Some(header) = context.get_header("Authorization") {
-						header
-					} else {
-						log::trace!("Authorization header not found");
-						return Error::as_result()
-							.status(401)
-							.body(error!(UNAUTHORIZED).to_string())?;
-					};
-
-				let is_api_token = Uuid::parse_str(&authorization).is_ok();
-				if !is_api_token {
-					next(context).await
-				} else {
-					return Error::as_result()
-						.status(403)
-						.body(error!(UNPRIVILEGED).to_string());
-				}
-			}
 		}
 	}
 }
 
 async fn decode_access_token(
 	context: &mut EveContext,
-) -> Result<TokenData, Error> {
+) -> Result<UserAuthenticationData, Error> {
 	let authorization = context
 		.get_header("Authorization")
 		.expect("Authorization header not found");
@@ -251,7 +223,7 @@ async fn decode_access_token(
 				.await?;
 
 		if let Some(api_token) = api_token {
-			let is_token_valid = if let Some(expiry) = &api_token.token_expiry {
+			let is_token_valid = if let Some(expiry) = &api_token.token_exp {
 				let token_expiry = expiry.timestamp_millis();
 				let current_time = Utc::now().timestamp_millis();
 				token_expiry < current_time
@@ -295,8 +267,13 @@ async fn decode_access_token(
 				false
 			};
 
-			let api_token_data = ApiTokenData {
-				exp: api_token.token_expiry,
+			let api_token_data = UserApiTokenData {
+				token_id: api_token.token_id,
+				token_nbf: api_token.token_nbf,
+				token_exp: api_token.token_exp,
+				created: api_token.created,
+				revoked: api_token.revoked,
+				allowed_ips: api_token.allowed_ips,
 				workspaces: HashMap::from([(
 					workspace_id.unwrap(),
 					WorkspacePermissions {
@@ -308,7 +285,7 @@ async fn decode_access_token(
 				)]),
 				user_id: api_token.user_id,
 			};
-			Ok(TokenData::ApiTokenData(api_token_data))
+			Ok(UserAuthenticationData::ApiToken(api_token_data))
 		} else {
 			log::warn!("Invalid api token");
 			Error::as_result()
@@ -327,7 +304,7 @@ async fn decode_access_token(
 				.body(error!(UNAUTHORIZED).to_string());
 		}
 		let access_data = result.unwrap();
-		Ok(TokenData::AccessTokenData(access_data))
+		Ok(UserAuthenticationData::AccessToken(access_data))
 	}
 }
 
@@ -356,9 +333,9 @@ async fn validate_access_token(
 	Ok(())
 }
 
-async fn validate_api_token(api_token: &ApiTokenData) -> Result<(), Error> {
+async fn validate_api_token(api_token: &UserApiTokenData) -> Result<(), Error> {
 	// check whether access token has expired
-	match &api_token.exp {
+	match &api_token.token_exp {
 		Some(exp) => {
 			if exp.timestamp_millis() > Utc::now().timestamp_millis() {
 				return Error::as_result()
@@ -375,10 +352,10 @@ async fn validate_api_token(api_token: &ApiTokenData) -> Result<(), Error> {
 fn has_permission_to_access_resource(
 	resource: &Resource,
 	permission_required: &str,
-	token_data: TokenData,
+	token_data: UserAuthenticationData,
 ) -> bool {
 	match token_data {
-		TokenData::AccessTokenData(token_data) => {
+		UserAuthenticationData::AccessToken(token_data) => {
 			let workspace_id = &resource.owner_id;
 			let workspace_permission = if let Some(permission) =
 				token_data.workspaces.get(workspace_id)
@@ -428,7 +405,7 @@ fn has_permission_to_access_resource(
 			};
 			allowed
 		}
-		TokenData::ApiTokenData(token_data) => {
+		UserAuthenticationData::ApiToken(token_data) => {
 			let workspace_id = &resource.owner_id;
 			let workspace_permission = if let Some(permission) =
 				token_data.workspaces.get(workspace_id)

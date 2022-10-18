@@ -35,7 +35,7 @@ pub(super) async fn migrate(
 ) -> Result<(), Error> {
 	refactor_resource_deletion(&mut *connection, config).await?;
 	add_resource_requests_for_running_deployments(connection, config).await?;
-	unique_workspac_id_super_admin_id(connection, config).await?;
+	make_workspace_id_super_admin_id_unique(connection, config).await?;
 	create_api_token_x_relations(connection, config).await?;
 
 	Ok(())
@@ -1064,7 +1064,7 @@ async fn add_resource_requests_for_running_deployments(
 	Ok(())
 }
 
-async fn unique_workspac_id_super_admin_id(
+async fn make_workspace_id_super_admin_id_unique(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
