@@ -951,7 +951,7 @@
                                                   class="pb-xs"
                                                   style="padding-top: .25rem"
                                                 >
-                                                  {{#unless secrets_usage}}
+                                                  {{#unless secret_usage}}
                                                     <table>
                                                       <tbody>
                                                         <tr>
@@ -965,7 +965,7 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if secrets_usage}}
+                                                  {{#if secret_usage}}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -1000,7 +1000,7 @@
                                                         </th>
                                                       </thead>
                                                       <tbody>
-                                                        {{#each secrets_usage}}
+                                                        {{#each secret_usage}}
                                                           <tr>
                                                             <td
                                                               class="txt-light px-md py-xs txt-center"
