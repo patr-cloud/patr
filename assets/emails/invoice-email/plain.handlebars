@@ -3,7 +3,7 @@ Hello there, Below are the Invoice details for current billing period:
 Workspace:
 {{workspace_name}}
 Deployment Usage:
-{{#each deployment_usages}}
+{{#each deployment_usage}}
   {{this.deployment_name}}:
   {{#each this.bill_items}}
     Machine Type:
@@ -23,7 +23,7 @@ Deployment Usage:
   {{/each}}
 {{/each}}
 Database Usage:
-{{#each database_usages}}
+{{#each database_usage}}
   Name:
   {{this.database_name}}
   Hours used:
@@ -32,7 +32,7 @@ Database Usage:
   {{this.amount}}
 {{/each}}
 Static Site Usage:
-{{#each static_site_usages}}
+{{#each static_site_usage}}
   Plan:
   {{@key}}
   Hours used:
@@ -41,7 +41,7 @@ Static Site Usage:
   {{this.amount}}
 {{/each}}
 Managed URL Usage:
-{{#each managed_url_usages}}
+{{#each managed_url_usage}}
   No.of URLs:
   {{@key}}
   Hours used:
@@ -50,7 +50,7 @@ Managed URL Usage:
   {{this.amount}}
 {{/each}}
 Docker Repository Usage:
-{{#each docker_repository_usages}}
+{{#each docker_repository_usage}}
   Total Storage (GB):
   {{@key}}
   Hours used:
@@ -59,7 +59,7 @@ Docker Repository Usage:
   {{this.amount}}
 {{/each}}
 Domain Usage:
-{{#each domain_usages}}
+{{#each domain_usage}}
   Plan:
   {{@key}}
   Hours used:
@@ -68,7 +68,7 @@ Domain Usage:
   {{this.amount}}
 {{/each}}
 Secret Usage:
-{{#each secret_usages}}
+{{#each secret_usage}}
   No.of Secrets:
   {{@key}}
   Hours used:
