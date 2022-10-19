@@ -612,15 +612,6 @@ async fn verify_domain_in_workspace(
 	)
 	.await?;
 
-	context.commit_database_transaction().await?;
-
-	service::domain_verification_email(
-		context.get_database_connection(),
-		&domain.name,
-		&workspace_id,
-		verified,
-	)
-	.await?;
 	context.success(VerifyDomainResponse { verified });
 	Ok(context)
 }

@@ -771,6 +771,7 @@ pub async fn domain_verification_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain: &str,
 	workspace_id: &Uuid,
+	message: Option<String>,
 	is_verified: bool,
 ) -> Result<(), Error> {
 	let super_admin_id = db::get_workspace_info(connection, workspace_id)
@@ -807,6 +808,7 @@ pub async fn domain_verification_email(
 		email::send_domain_unverified_email(
 			domain.to_string(),
 			user.first_name,
+			message.unwrap_or_default(),
 			user_email.parse()?,
 		)
 		.await?;

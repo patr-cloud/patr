@@ -348,21 +348,21 @@ struct InvoiceEmail {
 	workspace_name: String,
 	username: String,
 	billing_address: HashMap<String, String>,
-	deployment_usages: HashMap<Uuid, DeploymentBill>,
-	database_usages: HashMap<Uuid, DatabaseBill>,
-	static_site_usages: HashMap<StaticSitePlan, StaticSiteBill>,
-	managed_url_usages: HashMap<u64, ManagedUrlBill>,
-	docker_repository_usages: Vec<DockerRepositoryBill>,
-	domain_usages: HashMap<DomainPlan, DomainBill>,
-	secret_usages: HashMap<u64, SecretsBill>,
+	deployment_usage: HashMap<Uuid, DeploymentBill>,
+	database_usage: HashMap<Uuid, DatabaseBill>,
+	static_site_usage: HashMap<StaticSitePlan, StaticSiteBill>,
+	managed_url_usage: HashMap<u64, ManagedUrlBill>,
+	docker_repository_usage: Vec<DockerRepositoryBill>,
+	domain_usage: HashMap<DomainPlan, DomainBill>,
+	secret_usage: HashMap<u64, SecretsBill>,
 	total_bill: f64,
 	deployment_bill: f64,
 	database_bill: f64,
 	static_site_bill: f64,
 	managed_url_bill: f64,
-	docker_repo_bill: f64,
-	managed_domain_bill: f64,
-	managed_secret_bill: f64,
+	docker_repository_bill: f64,
+	domain_bill: f64,
+	secrets_bill: f64,
 	month: String,
 	year: i32,
 }
@@ -373,21 +373,21 @@ pub async fn send_invoice_email(
 	workspace_name: String,
 	username: String,
 	billing_address: HashMap<String, String>,
-	deployment_usages: HashMap<Uuid, DeploymentBill>,
-	database_usages: HashMap<Uuid, DatabaseBill>,
-	static_site_usages: HashMap<StaticSitePlan, StaticSiteBill>,
-	managed_url_usages: HashMap<u64, ManagedUrlBill>,
-	docker_repository_usages: Vec<DockerRepositoryBill>,
-	domain_usages: HashMap<DomainPlan, DomainBill>,
-	secret_usages: HashMap<u64, SecretsBill>,
+	deployment_usage: HashMap<Uuid, DeploymentBill>,
+	database_usage: HashMap<Uuid, DatabaseBill>,
+	static_site_usage: HashMap<StaticSitePlan, StaticSiteBill>,
+	managed_url_usage: HashMap<u64, ManagedUrlBill>,
+	docker_repository_usage: Vec<DockerRepositoryBill>,
+	domain_usage: HashMap<DomainPlan, DomainBill>,
+	secret_usage: HashMap<u64, SecretsBill>,
 	total_bill: f64,
 	deployment_bill: f64,
 	database_bill: f64,
 	static_site_bill: f64,
 	managed_url_bill: f64,
-	docker_repo_bill: f64,
-	managed_domain_bill: f64,
-	managed_secret_bill: f64,
+	docker_repository_bill: f64,
+	domain_bill: f64,
+	secrets_bill: f64,
 	month: String,
 	year: i32,
 ) -> Result<(), Error> {
@@ -396,21 +396,21 @@ pub async fn send_invoice_email(
 			workspace_name,
 			username,
 			billing_address,
-			deployment_usages,
-			database_usages,
-			static_site_usages,
-			managed_url_usages,
-			docker_repository_usages,
-			domain_usages,
-			secret_usages,
+			deployment_usage,
+			database_usage,
+			static_site_usage,
+			managed_url_usage,
+			docker_repository_usage,
+			domain_usage,
+			secret_usage,
 			total_bill,
 			deployment_bill,
 			database_bill,
 			static_site_bill,
 			managed_url_bill,
-			docker_repo_bill,
-			managed_domain_bill,
-			managed_secret_bill,
+			docker_repository_bill,
+			domain_bill,
+			secrets_bill,
 			month,
 			year,
 		},
@@ -520,7 +520,7 @@ pub async fn send_payment_failed_email(
 }
 
 #[derive(EmailTemplate, Serialize)]
-#[template_path = "assets/emails/deleted-resource/template.json"]
+#[template_path = "assets/emails/delete-resource/template.json"]
 struct ResourceDeletedEmail {
 	workspace_name: String,
 	resource_name: String,
@@ -558,17 +558,23 @@ pub async fn send_resource_deleted_email(
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/domain-not-verified/template.json"]
 struct DomainUnverified {
-	domain: String,
+	domain_name: String,
 	username: String,
+	message: String,
 }
 
 pub async fn send_domain_unverified_email(
-	domain: String,
+	domain_name: String,
 	username: String,
+	message: String,
 	email: Mailbox,
 ) -> Result<(), Error> {
 	send_email(
-		DomainUnverified { domain, username },
+		DomainUnverified {
+			domain_name,
+			username,
+			message,
+		},
 		email,
 		None,
 		"Domain not Verified",
@@ -579,17 +585,20 @@ pub async fn send_domain_unverified_email(
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/domain-verified/template.json"]
 struct DomainVerified {
-	domain: String,
+	domain_name: String,
 	username: String,
 }
 
 pub async fn send_domain_verified_email(
-	domain: String,
+	domain_name: String,
 	username: String,
 	email: Mailbox,
 ) -> Result<(), Error> {
 	send_email(
-		DomainVerified { domain, username },
+		DomainVerified {
+			domain_name,
+			username,
+		},
 		email,
 		None,
 		"Domain Verified",
