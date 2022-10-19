@@ -346,6 +346,7 @@ pub async fn send_alert_email_to_patr(
 #[template_path = "assets/emails/invoice-email/template.json"]
 struct InvoiceEmail {
 	workspace_name: String,
+	username: String,
 	billing_address: HashMap<String, String>,
 	deployment_usages: HashMap<Uuid, DeploymentBill>,
 	database_usages: HashMap<Uuid, DatabaseBill>,
@@ -370,6 +371,7 @@ struct InvoiceEmail {
 pub async fn send_invoice_email(
 	email: Mailbox,
 	workspace_name: String,
+	username: String,
 	billing_address: HashMap<String, String>,
 	deployment_usages: HashMap<Uuid, DeploymentBill>,
 	database_usages: HashMap<Uuid, DatabaseBill>,
@@ -392,6 +394,7 @@ pub async fn send_invoice_email(
 	send_email(
 		InvoiceEmail {
 			workspace_name,
+			username,
 			billing_address,
 			deployment_usages,
 			database_usages,

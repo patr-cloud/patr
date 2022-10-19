@@ -517,6 +517,7 @@ pub async fn send_invoice_email(
 	email::send_invoice_email(
 		user_email.parse()?,
 		displayed_workspace_name,
+		user.first_name,
 		billing_address,
 		deployment_usages,
 		database_usages,
