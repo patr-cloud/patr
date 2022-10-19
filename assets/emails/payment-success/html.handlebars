@@ -93,7 +93,7 @@
                                         <strong
                                           class="txt-light"
                                           style="color: #ffffff;"
-                                        >{{workspace_name}}</strong>
+                                        >{{workspaceName}}</strong>
                                       </td>
                                     </tr>
                                     <tr>
@@ -105,7 +105,7 @@
                                         <strong
                                           class="txt-light"
                                           style="color: #ffffff;"
-                                        >${{total_bill}}</strong>
+                                        >${{totalBill}}</strong>
                                       </td>
                                     </tr>
                                     <tr>
@@ -117,7 +117,7 @@
                                         <strong
                                           class="txt-light"
                                           style="color: #ffffff;"
-                                        >${{amount_paid}}</strong>
+                                        >${{amountPaid}}</strong>
                                       </td>
                                     </tr>
                                     <tr>
@@ -148,7 +148,7 @@
                                                   class="pb-xs"
                                                   style="padding-top: .25rem"
                                                 >
-                                                  {{#unless deployment_usage}}
+                                                  {{#unless deploymentUsage}}
                                                     <table>
                                                       <tbody>
                                                         <tr>
@@ -162,7 +162,7 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if deployment_usage}}
+                                                  {{#if deploymentUsage}}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -212,7 +212,7 @@
                                                       </thead>
                                                       <tbody>
                                                         {{#each
-                                                          deployment_usage
+                                                          deploymentUsage
                                                         }}
                                                           <tr>
                                                             <td
@@ -225,7 +225,7 @@
                                                                 class="plain-link txt-primary"
                                                                 title="Open on Patr"
                                                                 style="color: #f89b41; text-decoration: none; font-weight: 500;"
-                                                              >{{this.deployment_name}}</a>
+                                                              >{{this.deploymentName}}</a>
                                                             </td>
                                                             <td
                                                               class="txt-light px-md py-xs txt-center"
@@ -238,7 +238,7 @@
                                                               >
                                                                 <tbody>
                                                                   {{#each
-                                                                    this.bill_items
+                                                                    this.billItems
                                                                   }}
                                                                     <tr>
                                                                       <td
@@ -246,8 +246,8 @@
                                                                         style="color: #ffffff; text-align: center"
                                                                         align="center"
                                                                       >
-                                                                        {{this.machine_type.cpu}}vCPU
-                                                                        {{this.machine_type.ram}}GB
+                                                                        {{this.machineType.cpu}}vCPU
+                                                                        {{this.machineType.ram}}GB
                                                                         RAM
                                                                       </td>
                                                                     </tr>
@@ -266,7 +266,7 @@
                                                               >
                                                                 <tbody>
                                                                   {{#each
-                                                                    this.bill_items
+                                                                    this.billItems
                                                                   }}
                                                                     <tr>
                                                                       <td
@@ -274,7 +274,7 @@
                                                                         style="color: #ffffff;text-align: center"
                                                                         align="center"
                                                                       >
-                                                                        {{this.num_instances}}
+                                                                        {{this.numInstances}}
                                                                       </td>
                                                                     </tr>
                                                                   {{/each}}
@@ -292,7 +292,7 @@
                                                               >
                                                                 <tbody>
                                                                   {{#each
-                                                                    this.bill_items
+                                                                    this.billItems
                                                                   }}
                                                                     <tr>
                                                                       <td
@@ -318,7 +318,7 @@
                                                               >
                                                                 <tbody>
                                                                   {{#each
-                                                                    this.bill_items
+                                                                    this.billItems
                                                                   }}
                                                                     <tr>
                                                                       <td
@@ -352,7 +352,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{deployment_bill}}</td>
+                                                          >${{deploymentBill}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -375,7 +375,7 @@
                                                   class="pb-xs"
                                                   style="padding-top: .25rem"
                                                 >
-                                                  {{#unless database_usage}}
+                                                  {{#unless databaseUsage}}
                                                     <table>
                                                       <tbody>
                                                         <tr>
@@ -389,7 +389,7 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if database_usage}}
+                                                  {{#if databaseUsage}}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -424,7 +424,7 @@
                                                         </th>
                                                       </thead>
                                                       <tbody>
-                                                        {{#each database_usage}}
+                                                        {{#each databaseUsage}}
                                                           <tr>
                                                             <td
                                                               class="txt-light px-md py-xs txt-center"
@@ -436,7 +436,7 @@
                                                                 class="plain-link txt-primary"
                                                                 title="Open on Patr"
                                                                 style="color: #f89b41; text-decoration: none; font-weight: 500;"
-                                                              >{{this.database_name}}</a>
+                                                              >{{this.databaseName}}</a>
                                                             </td>
                                                             <td
                                                               class="txt-light px-md py-xs txt-center"
@@ -471,7 +471,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{database_bill}}</td>
+                                                          >${{databaseBill}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -494,7 +494,7 @@
                                                   class="pb-xs"
                                                   style="padding-top: .25rem"
                                                 >
-                                                  {{#unless static_site_usage}}
+                                                  {{#unless staticSiteUsage}}
                                                     <table>
                                                       <tbody>
                                                         <tr>
@@ -508,7 +508,7 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if static_site_usage}}
+                                                  {{#if staticSiteUsage}}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -544,7 +544,7 @@
                                                       </thead>
                                                       <tbody>
                                                         {{#each
-                                                          static_site_usage
+                                                          staticSiteUsage
                                                         }}
                                                           <tr>
                                                             <td
@@ -587,7 +587,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{static_site_bill}}</td>
+                                                          >${{staticSiteBill}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -610,7 +610,7 @@
                                                   class="pb-xs"
                                                   style="padding-top: .25rem"
                                                 >
-                                                  {{#unless domain_usage}}
+                                                  {{#unless domainUsage}}
                                                     <table>
                                                       <tbody>
                                                         <tr>
@@ -624,7 +624,7 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if domain_usage}}
+                                                  {{#if domainUsage}}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -659,7 +659,7 @@
                                                         </th>
                                                       </thead>
                                                       <tbody>
-                                                        {{#each domain_usage}}
+                                                        {{#each domainUsage}}
                                                           <tr>
                                                             <td
                                                               class="txt-light px-md py-xs txt-center"
@@ -700,7 +700,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{domain_bill}}</td>
+                                                          >${{domainBill}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -723,7 +723,7 @@
                                                   class="pb-xs"
                                                   style="padding-top: .25rem"
                                                 >
-                                                  {{#unless managed_url_usage}}
+                                                  {{#unless managedUrlUsage}}
                                                     <table>
                                                       <tbody>
                                                         <tr>
@@ -737,7 +737,7 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if managed_url_usage}}
+                                                  {{#if managedUrlUsage}}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -773,7 +773,7 @@
                                                       </thead>
                                                       <tbody>
                                                         {{#each
-                                                          managed_url_usage
+                                                          managedUrlUsage
                                                         }}
                                                           <tr>
                                                             <td
@@ -816,7 +816,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{managed_url_bill}}</td>
+                                                          >${{managedUrlBill}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -839,7 +839,7 @@
                                                   class="pb-xs"
                                                   style="padding-top: .25rem"
                                                 >
-                                                  {{#unless secret_usage}}
+                                                  {{#unless secretUsage}}
                                                     <table>
                                                       <tbody>
                                                         <tr>
@@ -853,7 +853,7 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if secret_usage}}
+                                                  {{#if secretUsage}}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -888,7 +888,7 @@
                                                         </th>
                                                       </thead>
                                                       <tbody>
-                                                        {{#each secret_usage}}
+                                                        {{#each secretUsage}}
                                                           <tr>
                                                             <td
                                                               class="txt-light px-md py-xs txt-center"
@@ -930,7 +930,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{secrets_bill}}</td>
+                                                          >${{secretBill}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -954,7 +954,7 @@
                                                   style="padding-top: .25rem"
                                                 >
                                                   {{#unless
-                                                    docker_repository_usage
+                                                    dockerRepositoryUsage
                                                   }}
                                                     <table>
                                                       <tbody>
@@ -969,9 +969,7 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if
-                                                    docker_repository_usage
-                                                  }}
+                                                  {{#if dockerRepositoryUsage}}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -1007,7 +1005,7 @@
                                                       </thead>
                                                       <tbody>
                                                         {{#each
-                                                          docker_repository_usage
+                                                          dockerRepositoryUsage
                                                         }}
                                                           <tr>
                                                             <td
@@ -1050,7 +1048,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{docker_repository_bill}}</td>
+                                                          >${{dockerRepositoryBill}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -1071,7 +1069,7 @@
                                         <strong
                                           class="txt-primary txt-lg"
                                           style="color: #f89b41;font-size: 1.2rem"
-                                        >${{total_bill}}</strong>
+                                        >${{totalBill}}</strong>
                                       </td>
                                     </tr>
                                     <tr>
