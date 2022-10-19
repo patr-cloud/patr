@@ -1,28 +1,37 @@
-Hello
-{{username}}, Your
-{{month}}/{{year}}
-invoice is now available for workspace
-{{workspaceName}}. The balance was automatically charged from your credit card,
-so you don't need to do anything. Total usage charges for
-{{month}}
-{{year}}: ${{totalBill}}
-Amount paid: ${{amountPaid}}
+Hello {{username}}, 
 
-Detailed Charges Workspace:
-{{workspaceName}}
-Deployment Usage:
-{{deploymentUsage}}
-Database Usage:
-{{databaseUsage}}
-Static Site Usage:
-{{staticSiteUsage}}
-Managed URL Usage:
-{{managedUrlUsage}}
-Docker Repository Usage:
-{{dockerRepositoryUsage}}
-Domain Usage:
-{{domainUsage}}
-Secret Usage:
-{{secretUsage}}
+Your invoice for {{month}}/{{year}} is now available for the workspace {{workspaceName}}. 
+{{#if creditsAmount}}
+{{#if cardAmount}}
+The amount was automatically deducted using your card and Patr credits, so no further action is required.
+
+Total usage charges for {{month}}/{{year}}: ${{totalBill}}
+
+Amount paid using card: ${{cardAmount}}
+Amount paid using credits: ${{creditsAmount}}
+{{/if}}
+{{/if}}
+{{#if cardAmount}}
+{{#unless credits}}
+The amount was automatically charged to your card, so no action is required from your end. 
+
+Total usage charges for {{month}}/{{year}}: ${{totalBill}}
+
+Amount paid: ${{amountPaid}}
+{{/unless}}
+{{/if}}
+
+{{#if credits}}
+{{#unless cardAmount}}
+The amount was automatically charged from your Patr credits, so no action is required from your end. 
+
+Total usage charges for {{month}}/{{year}}: ${{totalBill}}
+
+Credits consumed: ${{amountPaid}}
+Credits remaining: ${{creditsRemaining}}
+{{/unless}}
+{{/if}}
 
 If you are facing any issues, please contact support at suppport@patr.cloud.
+
+Join our Discord community (https://patr.cloud/discord) for the latest updates and chat with us here (https://app.patr.cloud?openDrift=true) for instant technical support.
