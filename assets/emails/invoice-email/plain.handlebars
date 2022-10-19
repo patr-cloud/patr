@@ -1,38 +1,38 @@
 
 Hello there, Below are the Invoice details for current billing period:
 Workspace:
-{{workspace_name}}
+{{workspaceName}}
 Deployment Usage:
-{{#each deployment_usage}}
-  {{this.deployment_name}}:
-  {{#each this.bill_items}}
+{{#each deploymentUsage}}
+  {{this.deploymentName}}:
+  {{#each this.billItems}}
     Machine Type:
-    {{this.machine_type}}
+    {{this.machineType}}
   {{/each}}
-  {{#each this.bill_items}}
+  {{#each this.billItems}}
     Number of Instances:
-    {{this.num_instances}}
+    {{this.numInstances}}
   {{/each}}
-  {{#each this.bill_items}}
+  {{#each this.billItems}}
     Hours used:
     {{this.hours}}
   {{/each}}
-  {{#each this.bill_items}}
+  {{#each this.billItems}}
     Bill Amount:
     {{this.amount}}
   {{/each}}
 {{/each}}
 Database Usage:
-{{#each database_usage}}
+{{#each databaseUsage}}
   Name:
-  {{this.database_name}}
+  {{this.databaseName}}
   Hours used:
   {{this.hours}}
   Bill Amount:
   {{this.amount}}
 {{/each}}
 Static Site Usage:
-{{#each static_site_usage}}
+{{#each staticSiteUsage}}
   Plan:
   {{@key}}
   Hours used:
@@ -41,7 +41,7 @@ Static Site Usage:
   {{this.amount}}
 {{/each}}
 Managed URL Usage:
-{{#each managed_url_usage}}
+{{#each managedUrlUsage}}
   No.of URLs:
   {{@key}}
   Hours used:
@@ -50,7 +50,7 @@ Managed URL Usage:
   {{this.amount}}
 {{/each}}
 Docker Repository Usage:
-{{#each docker_repository_usage}}
+{{#each dockerRepositoryUsage}}
   Total Storage (GB):
   {{@key}}
   Hours used:
@@ -59,7 +59,7 @@ Docker Repository Usage:
   {{this.amount}}
 {{/each}}
 Domain Usage:
-{{#each domain_usage}}
+{{#each domainUsage}}
   Plan:
   {{@key}}
   Hours used:
@@ -68,7 +68,7 @@ Domain Usage:
   {{this.amount}}
 {{/each}}
 Secret Usage:
-{{#each secret_usage}}
+{{#each secretUsage}}
   No.of Secrets:
   {{@key}}
   Hours used:
@@ -78,7 +78,7 @@ Secret Usage:
 {{/each}}
 
 Total Bill:
-{{total_bill}}
+{{totalBill}}
 
 Issued on:
 {{month}}/{{year}}
