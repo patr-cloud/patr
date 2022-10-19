@@ -16,6 +16,7 @@ use sqlx::Connection;
 use crate::{
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
+	models::error::message,
 	scheduler::Job,
 	service,
 	utils::{validator, Error},
@@ -161,6 +162,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 						&mut connection,
 						&unverified_domain.name,
 						&workspace_id,
+						None,
 						true,
 					)
 					.await?
@@ -229,6 +231,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 		} else {
 			let response = service::verify_external_domain(
 				&mut connection,
+				&workspace_id,
 				&unverified_domain.name,
 				&unverified_domain.id,
 				&request_id,
@@ -245,6 +248,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					&mut connection,
 					&unverified_domain.name,
 					&workspace_id,
+					Some(message::NO_TXT_RECORD.to_string()),
 					false,
 				)
 				.await?;
@@ -540,6 +544,7 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 				&mut connection,
 				&verified_domain.name,
 				&workspace_id,
+				Some(message::NS_SERVER_NOT_FOUND.to_string()),
 				false,
 			)
 			.await?

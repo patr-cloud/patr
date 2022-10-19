@@ -44,7 +44,11 @@ use super::infrastructure;
 use crate::{
 	db::{self, DnsRecordType, DomainPlan},
 	error,
-	models::rbac::{self, resource_types},
+	models::{
+		error::message,
+		rbac::{self, resource_types},
+	},
+	service,
 	utils::{constants, settings::Settings, validator, Error},
 	Database,
 };
@@ -361,15 +365,37 @@ pub async fn is_domain_verified(
 			)
 			.await?;
 			log::trace!("request_id: {} - Domain verified", request_id);
+
+			service::domain_verification_email(
+				connection,
+				&domain.name,
+				workspace_id,
+				None,
+				true,
+			)
+			.await?;
 			return Ok(true);
 		}
-
+		service::domain_verification_email(
+			connection,
+			&domain.name,
+			workspace_id,
+			Some(message::NS_SERVER_NOT_FOUND.to_string()),
+			false,
+		)
+		.await?;
 		Ok(false)
 	} else {
 		log::trace!("request_id: {} - Domain is not internal", request_id);
 		log::trace!("request_id: {} - Verifying external domain", request_id);
-		verify_external_domain(connection, &domain.name, &domain.id, request_id)
-			.await
+		verify_external_domain(
+			connection,
+			workspace_id,
+			&domain.name,
+			&domain.id,
+			request_id,
+		)
+		.await
 	}
 }
 
@@ -675,6 +701,7 @@ pub async fn delete_patr_domain_dns_record(
 
 pub async fn verify_external_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
 	domain_name: &str,
 	domain_id: &Uuid,
 	request_id: &Uuid,
@@ -716,9 +743,25 @@ pub async fn verify_external_domain(
 		)
 		.await?;
 
+		service::domain_verification_email(
+			connection,
+			domain_name,
+			workspace_id,
+			None,
+			true,
+		)
+		.await?;
+
 		return Ok(true);
 	}
-
+	service::domain_verification_email(
+		connection,
+		domain_name,
+		workspace_id,
+		Some(message::NO_TXT_RECORD.to_string()),
+		true,
+	)
+	.await?;
 	Ok(false)
 }
 

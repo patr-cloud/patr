@@ -76,6 +76,9 @@ pub mod id {
 	pub const TAG_NOT_FOUND: &str = "TagNotFound";
 	pub const FILE_SIZE_TOO_LARGE: &str = "fileSizeTooLarge";
 	pub const NOT_A_SUPER_ADMIN: &str = "notASuperAdmin";
+	pub const NO_TXT_RECORD: &str = "TXT record not found";
+	pub const NS_SERVER_NOT_FOUND: &str =
+		"Nameserver does not exits within patr";
 
 	// error constants for CI
 	pub const INVALID_STATE_VALUE: &str = "invalidStateValue";
@@ -218,6 +221,9 @@ pub mod message {
 	pub const TAG_NOT_FOUND: &str = "The tag does not exist";
 	pub const FILE_SIZE_TOO_LARGE: &str = "The file that you uploaded is too large. Maximum size allowed is 100MB";
 	pub const NOT_A_SUPER_ADMIN: &str = "You have to be super admin to perform this action. If you wish to continue please contact your administrator";
+	pub const NO_TXT_RECORD: &str =
+		"No TXT  record found with name patrVerify in your dns records";
+	pub const NS_SERVER_NOT_FOUND: &str = "Unable to verify your domain. Please transfer your nameserver to patr nameservers";
 
 	// error constants for CI
 	pub const INVALID_STATE_VALUE: &str =
