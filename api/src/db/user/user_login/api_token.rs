@@ -20,6 +20,13 @@ pub struct UserApiToken {
 }
 
 pub async fn initialize_api_token_pre(
+	_connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
+	// tables are initialized in post due to workspace dependency
+	Ok(())
+}
+
+pub async fn initialize_api_token_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -124,12 +131,6 @@ pub async fn initialize_api_token_pre(
 	.execute(&mut *connection)
 	.await?;
 
-	Ok(())
-}
-
-pub async fn initialize_api_token_post(
-	_connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
 	Ok(())
 }
 
