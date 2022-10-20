@@ -7,12 +7,8 @@ use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 use sqlx::Transaction;
 
-use super::{Error};
-use crate::{
-	app::App,
-	models::UserAuthenticationData,
-	Database,
-};
+use super::Error;
+use crate::{app::App, models::UserAuthenticationData, Database};
 
 pub struct EveContext {
 	request: Request,

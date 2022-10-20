@@ -94,8 +94,10 @@ pub fn create_sub_app(
 					// Using unwarp while getting token_data because
 					// AccessTokenData will never be empty
 					// as PlainTokenAuthenticator above won't allow it
-					let workspaces =
-						&context.get_token_data().unwrap().workspaces;
+					let workspaces = &context
+						.get_token_data()
+						.unwrap()
+						.workspace_permissions();
 
 					if workspaces.get(&workspace_id).is_none() {
 						context.status(401).json(error!(UNAUTHORIZED));
@@ -298,8 +300,10 @@ async fn get_workspace_info(
 	let access_token_data = context.get_token_data().unwrap();
 	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
 
-	if !access_token_data.workspaces.contains_key(&workspace_id) &&
-		&access_token_data.user.id != god_user_id
+	if !access_token_data
+		.workspace_permissions()
+		.contains_key(&workspace_id) &&
+		access_token_data.user_id() != god_user_id
 	{
 		Error::as_result()
 			.status(404)
@@ -417,7 +421,7 @@ async fn create_new_workspace(
 
 	let config = context.get_state().config.clone();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let alert_emails = if let Some(recovery_email) =
 		db::get_recovery_email_for_user(

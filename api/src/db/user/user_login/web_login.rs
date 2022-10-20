@@ -3,9 +3,10 @@ use std::net::IpAddr;
 use api_models::utils::Uuid;
 use chrono::{DateTime, Utc};
 
+use super::UserLoginType;
 use crate::{query, query_as, Database};
 
-pub struct UserLogin {
+pub struct UserWebLogin {
 	pub login_id: Uuid,
 	/// Hashed refresh token
 	pub refresh_token: String,
@@ -31,17 +32,16 @@ pub struct UserLogin {
 	pub last_activity_user_agent: String,
 }
 
-pub async fn initialize_user_login_pre(
+pub async fn initialize_web_login_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		CREATE TABLE user_login(
-			login_id UUID CONSTRAINT user_login_uq_login_id UNIQUE,
+		CREATE TABLE web_login(
+			login_id UUID,
 			refresh_token TEXT NOT NULL,
 			token_expiry TIMESTAMPTZ NOT NULL,
-			user_id UUID NOT NULL
-				CONSTRAINT user_login_fk_user_id REFERENCES "user"(id),
+			user_id UUID NOT NULL,
 			created TIMESTAMPTZ NOT NULL,
 			created_ip INET NOT NULL,
 			created_location GEOMETRY NOT NULL,
@@ -58,7 +58,11 @@ pub async fn initialize_user_login_pre(
 			last_activity_city TEXT NOT NULL,
 			last_activity_timezone TEXT NOT NULL,
 			last_activity_user_agent TEXT NOT NULL,
-			CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id)
+			login_type USER_LOGIN_TYPE NOT NULL
+				GENERATED ALWAYS AS ('web_login') STORED,
+			CONSTRAINT web_login_fk
+				FOREIGN KEY(login_id, user_id, login_type)
+					REFERENCES user_login(login_id, user_id, login_type)
 		);
 		"#
 	)
@@ -68,10 +72,20 @@ pub async fn initialize_user_login_pre(
 	query!(
 		r#"
 		CREATE INDEX
-			user_login_idx_user_id
+			web_login_idx_user_id
 		ON
-			user_login
-		(user_id);
+			web_login(user_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			web_login_idx_login_id
+		ON
+			web_login(login_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -80,14 +94,14 @@ pub async fn initialize_user_login_pre(
 	Ok(())
 }
 
-pub async fn initialize_user_login_post(
+pub async fn initialize_web_login_post(
 	_connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn add_user_login(
+pub async fn add_user_web_login(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &Uuid,
 	refresh_token: &str,
@@ -112,10 +126,18 @@ pub async fn add_user_login(
 	last_activity_timezone: &str,
 	last_activity_user_agent: &str,
 ) -> Result<(), sqlx::Error> {
+	super::add_new_user_login(
+		connection,
+		login_id,
+		user_id,
+		&UserLoginType::WebLogin,
+	)
+	.await?;
+
 	query!(
 		r#"
 		INSERT INTO
-			user_login(
+			web_login(
 				login_id,
 				refresh_token, 
 				token_expiry, 
@@ -189,12 +211,12 @@ pub async fn add_user_login(
 	.map(|_| ())
 }
 
-pub async fn get_user_login(
+pub async fn get_user_web_login(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &Uuid,
-) -> Result<Option<UserLogin>, sqlx::Error> {
+) -> Result<Option<UserWebLogin>, sqlx::Error> {
 	query_as!(
-		UserLogin,
+		UserWebLogin,
 		r#"
 		SELECT
 			login_id as "login_id: _",
@@ -220,7 +242,7 @@ pub async fn get_user_login(
 			last_activity_timezone,
 			last_activity_user_agent
 		FROM
-			user_login
+			web_login
 		WHERE
 			login_id = $1;
 		"#,
@@ -230,13 +252,13 @@ pub async fn get_user_login(
 	.await
 }
 
-pub async fn get_user_login_for_user(
+pub async fn get_user_web_login_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &Uuid,
 	user_id: &Uuid,
-) -> Result<Option<UserLogin>, sqlx::Error> {
+) -> Result<Option<UserWebLogin>, sqlx::Error> {
 	query_as!(
-		UserLogin,
+		UserWebLogin,
 		r#"
 		SELECT
 			login_id as "login_id: _",
@@ -262,7 +284,7 @@ pub async fn get_user_login_for_user(
 			last_activity_timezone,
 			last_activity_user_agent
 		FROM
-			user_login
+			web_login
 		WHERE
 			login_id = $1 AND
 			user_id = $2;
@@ -274,7 +296,7 @@ pub async fn get_user_login_for_user(
 	.await
 }
 
-pub async fn update_user_login_last_activity_info(
+pub async fn update_user_web_login_last_activity_info(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &Uuid,
 	last_activity: &DateTime<Utc>,
@@ -290,7 +312,7 @@ pub async fn update_user_login_last_activity_info(
 	query!(
 		r#"
 		UPDATE
-			user_login
+			web_login
 		SET
 			last_activity = $1,
 			last_activity_ip = $2,
@@ -319,39 +341,12 @@ pub async fn update_user_login_last_activity_info(
 	.map(|_| ())
 }
 
-pub async fn generate_new_login_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Uuid, sqlx::Error> {
-	loop {
-		let uuid = Uuid::new_v4();
-
-		let exists = query!(
-			r#"
-			SELECT
-				login_id
-			FROM
-				user_login
-			WHERE
-				login_id = $1;
-			"#,
-			uuid as _
-		)
-		.fetch_optional(&mut *connection)
-		.await?
-		.is_some();
-
-		if !exists {
-			break Ok(uuid);
-		}
-	}
-}
-
-pub async fn get_all_logins_for_user(
+pub async fn get_all_web_logins_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
-) -> Result<Vec<UserLogin>, sqlx::Error> {
+) -> Result<Vec<UserWebLogin>, sqlx::Error> {
 	query_as!(
-		UserLogin,
+		UserWebLogin,
 		r#"
 		SELECT
 			login_id as "login_id: _",
@@ -377,7 +372,7 @@ pub async fn get_all_logins_for_user(
 			last_activity_timezone,
 			last_activity_user_agent
 		FROM
-			user_login
+			web_login
 		WHERE
 			user_id = $1;
 		"#,
@@ -387,13 +382,13 @@ pub async fn get_all_logins_for_user(
 	.await
 }
 
-pub async fn get_login_for_user_with_refresh_token(
+pub async fn get_web_login_for_user_with_refresh_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 	refresh_token: &str,
-) -> Result<Option<UserLogin>, sqlx::Error> {
+) -> Result<Option<UserWebLogin>, sqlx::Error> {
 	query_as!(
-		UserLogin,
+		UserWebLogin,
 		r#"
 		SELECT
 			login_id as "login_id: _",
@@ -419,7 +414,7 @@ pub async fn get_login_for_user_with_refresh_token(
 			last_activity_timezone,
 			last_activity_user_agent
 		FROM
-			user_login
+			web_login
 		WHERE
 			user_id = $1 AND
 			refresh_token = $2;
@@ -431,7 +426,7 @@ pub async fn get_login_for_user_with_refresh_token(
 	.await
 }
 
-pub async fn delete_user_login_by_id(
+pub async fn delete_user_web_login_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &Uuid,
 	user_id: &Uuid,
@@ -439,7 +434,7 @@ pub async fn delete_user_login_by_id(
 	query!(
 		r#"
 		UPDATE
-			user_login
+			web_login
 		SET
 			token_expiry = TO_TIMESTAMP(0)
 		WHERE
@@ -454,7 +449,7 @@ pub async fn delete_user_login_by_id(
 	.map(|_| ())
 }
 
-pub async fn set_login_expiry(
+pub async fn set_web_login_expiry(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &Uuid,
 	last_activity: &DateTime<Utc>,
@@ -463,7 +458,7 @@ pub async fn set_login_expiry(
 	query!(
 		r#"
 		UPDATE
-			user_login
+			web_login
 		SET
 			token_expiry = $1,
 			last_activity = $2

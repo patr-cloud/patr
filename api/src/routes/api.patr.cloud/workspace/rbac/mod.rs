@@ -78,8 +78,10 @@ async fn get_all_permissions(
 	let access_token_data = context.get_token_data().unwrap();
 	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
 
-	if !access_token_data.workspaces.contains_key(&workspace_id) &&
-		&access_token_data.user.id != god_user_id
+	if !access_token_data
+		.workspace_permissions()
+		.contains_key(&workspace_id) &&
+		access_token_data.user_id() != god_user_id
 	{
 		Error::as_result()
 			.status(404)
@@ -114,8 +116,10 @@ async fn get_all_resource_types(
 	let access_token_data = context.get_token_data().unwrap();
 	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
 
-	if !access_token_data.workspaces.contains_key(&workspace_id) &&
-		&access_token_data.user.id != god_user_id
+	if !access_token_data
+		.workspace_permissions()
+		.contains_key(&workspace_id) &&
+		access_token_data.user_id() != god_user_id
 	{
 		Error::as_result()
 			.status(404)

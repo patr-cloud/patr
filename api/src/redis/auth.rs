@@ -170,7 +170,7 @@ pub async fn is_access_token_revoked(
 	}
 
 	// check workspace revocation
-	for workspace_id in token.workspaces.keys() {
+	for workspace_id in token.workspace_permissions.keys() {
 		let revoked_timestamp =
 			get_token_revoked_timestamp_for_workspace(redis_conn, workspace_id)
 				.await?;

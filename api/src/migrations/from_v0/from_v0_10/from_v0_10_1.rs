@@ -35,7 +35,6 @@ pub(super) async fn migrate(
 ) -> Result<(), Error> {
 	refactor_resource_deletion(&mut *connection, config).await?;
 	add_resource_requests_for_running_deployments(connection, config).await?;
-	make_workspace_id_super_admin_id_unique(connection, config).await?;
 	create_api_token_x_relations(connection, config).await?;
 
 	Ok(())
@@ -1064,51 +1063,168 @@ async fn add_resource_requests_for_running_deployments(
 	Ok(())
 }
 
-async fn make_workspace_id_super_admin_id_unique(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
-) -> Result<(), Error> {
-	query!(
-		r#"
-		ALTER TABLE workspace
-		ADD CONSTRAINT workspace_uq_id_super_admin_id
-		UNIQUE(id, super_admin_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
-}
-
 async fn create_api_token_x_relations(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
 	query!(
 		r#"
-		CREATE TABLE api_token(
-			token UUID
-				CONSTRAINT api_token_pk PRIMARY KEY,
+		ALTER TABLE user_login
+			RENAME TO web_login;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER INDEX user_login_idx_user_id
+			RENAME TO web_login_idx_user_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX web_login_idx_login_id
+			ON web_login(login_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace_audit_log
+			DROP CONSTRAINT workspace_audit_log_fk_login_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+			DROP CONSTRAINT user_login_pk;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+			DROP CONSTRAINT user_login_uq_login_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+			DROP CONSTRAINT user_login_fk_user_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE USER_LOGIN_TYPE AS ENUM(
+			'api_token_login',
+			'web_login'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+			ADD COLUMN login_type USER_LOGIN_TYPE NOT NULL
+				GENERATED ALWAYS AS ('web_login') STORED;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_login(
+			login_id UUID
+				CONSTRAINT user_login_pk PRIMARY KEY,
+			user_id UUID NOT NULL
+				CONSTRAINT user_login_fk_user_id REFERENCES "user"(id),
+			login_type USER_LOGIN_TYPE NOT NULL,
+			created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			CONSTRAINT user_login_uk
+				UNIQUE(login_id, user_id),
+			CONSTRAINT user_login_login_id_user_id_login_type_uk
+				UNIQUE(login_id, user_id, login_type)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		INSERT INTO
+			user_login(login_id, user_id, login_type)
+		SELECT
+			login_id, user_id, 'web_login'
+		FROM
+			web_login;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace_audit_log
+			ADD CONSTRAINT workspace_audit_log_fk_login_id
+				FOREIGN KEY(user_id, login_id)
+					REFERENCES user_login(user_id, login_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+			ADD CONSTRAINT web_login_fk
+				FOREIGN KEY(login_id, user_id, login_type)
+					REFERENCES user_login(login_id, user_id, login_type);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_api_token(
+			token_id UUID
+				CONSTRAINT user_api_token_pk PRIMARY KEY,
+			name TEXT NOT NULL,
 			user_id UUID NOT NULL,
-				CONSTRAINT api_token_fk_user_id
-					FOREIGN KEY(user_id)
-						REFERENCES "user"(id),
-			name TEXT NOT NULL UNIQUE,
-			token_expiry TIMESTAMPTZ,
-			created TIMESTAMPTZ NOT NULL,
-			revoked BOOLEAN NOT NULL DEFAULT FALSE,
-			revoked_by UUID,
-			CONSTRAINT api_token_chk_revoked_revoked_by_valid
-				CHECK(
-					(
-						revoked IS false AND
-						revoked_by IS NULL
-					) OR (
-						revoked IS true AND
-						revoked_by IS NOT NULL
-					)
-				)
+			token_hash TEXT NOT NULL,
+			token_nbf TIMESTAMPTZ,
+			token_exp TIMESTAMPTZ,
+			allowed_ips INET[],
+			created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			revoked TIMESTAMPTZ,
+			login_type USER_LOGIN_TYPE NOT NULL
+				GENERATED ALWAYS AS ('api_token_login') STORED,
+			CONSTRAINT user_api_token_token_id_user_id_uk
+				UNIQUE (token_id, user_id),
+			CONSTRAINT user_api_token_token_id_user_id_login_type_fk
+				FOREIGN KEY(token_id, user_id, login_type)
+					REFERENCES user_login(login_id, user_id, login_type)
 		);
 		"#
 	)
@@ -1117,52 +1233,22 @@ async fn create_api_token_x_relations(
 
 	query!(
 		r#"
-		CREATE TABLE api_token_resource_permission(
-			token UUID NOT NULL
-				CONSTRAINT api_token_resource_permission_fk_token
-					REFERENCES api_token(token),
-			workspace_id UUID NOT NULL
-				CONSTRAINT api_token_resource_permission_fk_workspace_id
-					REFERENCES workspace(id),
-			permission_id UUID NOT NULL
-				CONSTRAINT api_token_resource_permission_fk_permission_id
-					REFERENCES permission(id),
-			resource_id UUID NOT NULL
-				CONSTRAINT api_token_resource_permission_fk_resource_id
-					REFERENCES resource(id)
-		);
+		CREATE UNIQUE INDEX
+			user_api_token_uq_name_user_id
+		ON
+			user_api_token(name, user_id)
+		WHERE
+			revoked IS NULL;
 		"#
 	)
 	.execute(&mut *connection)
 	.await?;
 
-	query!(
-		r#"
-		CREATE TABLE api_token_resource_type_permission(
-			token UUID NOT NULL
-				CONSTRAINT api_token_resource_permission_type_fk_token
-					REFERENCES api_token(token),
-			workspace_id UUID NOT NULL
-				CONSTRAINT api_token_resource_type_permission_fk_workspace_id
-					REFERENCES workspace(id),
-			permission_id UUID NOT NULL
-				CONSTRAINT api_token_resource_type_permission_fk_permission_id
-					REFERENCES permission (id),
-			resource_type_id UUID NOT NULL
-				CONSTRAINT api_token_resource_type_permission_fk_resource_type_id
-					REFERENCES resource_type(id)
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	// Before creating api_token_workspace_super_admin add constraint below
 	query!(
 		r#"
 		ALTER TABLE workspace
-		ADD CONSTRAINT workspace_uq_id_super_admin_id
-		UNIQUE(id, super_admin_id);
+			ADD CONSTRAINT workspace_uq_id_super_admin_id
+				UNIQUE(id, super_admin_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -1170,15 +1256,61 @@ async fn create_api_token_x_relations(
 
 	query!(
 		r#"
-		CREATE TABLE api_token_workspace_super_admin(
-			token UUID NOT NULL
-				CONSTRAINT api_token_workspace_super_admin_fk_token
-					REFERENCES api_token(token),
+		CREATE TABLE user_api_token_workspace_super_admin(
+			token_id UUID NOT NULL,
+			user_id UUID NOT NULL,
 			workspace_id UUID NOT NULL,
-			super_admin_id UUID NOT NULL,
-			CONSTRAINT api_token_fk_workspace_id_super_admin_id
-				FOREIGN KEY(workspace_id, super_admin_id)
+			CONSTRAINT user_api_token_workspace_super_admin_fk_token
+				FOREIGN KEY(token_id, user_id)
+					REFERENCES user_api_token(token_id, user_id),
+			CONSTRAINT user_api_token_workspace_super_admin_fk_workspace
+				FOREIGN KEY(workspace_id, user_id)
 					REFERENCES workspace(id, super_admin_id)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_api_token_resource_permission(
+			token_id UUID NOT NULL
+				CONSTRAINT user_api_token_resource_permission_fk_token_id
+					REFERENCES user_api_token(token_id),
+			workspace_id UUID NOT NULL,
+			resource_id UUID NOT NULL,
+			permission_id UUID NOT NULL
+				CONSTRAINT user_api_token_resource_permission_fk_permission_id
+					REFERENCES permission(id),
+			CONSTRAINT user_api_token_resource_permission_workspace_id_resource_id
+				FOREIGN KEY (workspace_id, resource_id)
+					REFERENCES resource(owner_id, id),
+			CONSTRAINT user_api_token_resource_permission_pk
+				PRIMARY KEY(token_id, permission_id, resource_id, workspace_id)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_api_token_resource_type_permission(
+			token_id UUID NOT NULL
+				CONSTRAINT user_api_token_resource_type_permission_fk_token_id
+					REFERENCES user_api_token(token_id),
+			workspace_id UUID NOT NULL
+				CONSTRAINT user_api_token_resource_type_permission_fk_workspace_id
+					REFERENCES workspace(id),
+			resource_type_id UUID NOT NULL
+				CONSTRAINT user_api_token_resource_type_permission_fk_resource_type_id
+					REFERENCES resource_type(id),
+			permission_id UUID NOT NULL
+				CONSTRAINT user_api_token_resource_type_permission_fk_permission_id
+					REFERENCES permission(id),
+			CONSTRAINT user_api_token_resource_type_permission_pk
+				PRIMARY KEY(token_id, permission_id, resource_type_id, workspace_id)
 		);
 		"#
 	)

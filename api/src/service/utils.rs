@@ -126,7 +126,7 @@ pub async fn generate_new_refresh_token_for_user(
 	loop {
 		let refresh_token = Uuid::new_v4();
 		let hashed = hash(refresh_token.as_str().as_bytes())?;
-		let login = db::get_login_for_user_with_refresh_token(
+		let login = db::get_web_login_for_user_with_refresh_token(
 			connection, user_id, &hashed,
 		)
 		.await?;

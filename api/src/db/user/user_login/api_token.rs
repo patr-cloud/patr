@@ -1,58 +1,47 @@
-use std::{
-	collections::{BTreeMap, HashMap, HashSet},
-	net::IpAddr,
-};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use api_models::utils::Uuid;
 use chrono::{DateTime, Utc};
 use sqlx::types::ipnetwork::IpNetwork;
 
-use crate::{query, query_as, Database};
+use super::UserLoginType;
+use crate::{models::rbac::WorkspacePermissions, query, query_as, Database};
 
 pub struct UserApiToken {
 	pub token_id: Uuid,
 	pub name: String,
 	pub user_id: Uuid,
-	pub token: String,
+	pub token_hash: String,
 	pub token_nbf: Option<DateTime<Utc>>,
 	pub token_exp: Option<DateTime<Utc>>,
 	pub allowed_ips: Option<Vec<IpNetwork>>,
-	pub created: DateTime<Utc>,
 	pub revoked: Option<DateTime<Utc>>,
-}
-
-pub struct UserApiTokenSuperAdmin {
-	pub token: Uuid,
-	pub workspace_id: Uuid,
-	pub super_admin_id: Uuid,
-}
-
-pub struct Permission {
-	pub resource_permissions: HashMap<Uuid, Vec<Uuid>>,
-	pub resource_type_permissions: HashMap<Uuid, Vec<Uuid>>,
+	pub created: DateTime<Utc>,
 }
 
 pub async fn initialize_api_token_pre(
-	_connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
-	Ok(())
-}
-
-pub async fn initialize_api_token_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		CREATE TABLE user_api_token(
-			token_id UUID CONSTRAINT user_api_token_pk PRIMARY KEY,
+			token_id UUID
+				CONSTRAINT user_api_token_pk PRIMARY KEY,
 			name TEXT NOT NULL,
 			user_id UUID NOT NULL,
 			token_hash TEXT NOT NULL,
 			token_nbf TIMESTAMPTZ, /* The token is not valid before this date */
 			token_exp TIMESTAMPTZ, /* The token is not valid after this date */
 			allowed_ips INET[],
-			created TIMESTAMPTZ NOT NULL,
-			revoked TIMESTAMPTZ
+			created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			revoked TIMESTAMPTZ,
+			login_type USER_LOGIN_TYPE NOT NULL
+				GENERATED ALWAYS AS ('api_token_login') STORED,
+			CONSTRAINT user_api_token_token_id_user_id_uk
+				UNIQUE (token_id, user_id),
+			CONSTRAINT user_api_token_token_id_user_id_login_type_fk
+				FOREIGN KEY(token_id, user_id, login_type)
+					REFERENCES user_login(login_id, user_id, login_type)
 		);
 		"#
 	)
@@ -75,19 +64,15 @@ pub async fn initialize_api_token_post(
 	query!(
 		r#"
 		CREATE TABLE user_api_token_workspace_super_admin(
-			token_id UUID NOT NULL
-				CONSTRAINT user_api_token_workspace_super_admin_fk_token_id
-					REFERENCES user_api_token(token_id),
+			token_id UUID NOT NULL,
 			user_id UUID NOT NULL,
 			workspace_id UUID NOT NULL,
 			CONSTRAINT user_api_token_workspace_super_admin_fk_token
-				FOREIGN KEY(token_id, user_id) REFERENCES user_api_token(
-					token_id, user_id
-				),
+				FOREIGN KEY(token_id, user_id)
+					REFERENCES user_api_token(token_id, user_id),
 			CONSTRAINT user_api_token_workspace_super_admin_fk_workspace
-				FOREIGN KEY(workspace_id, user_id) REFERENCES workspace(
-					id, super_admin_id
-				)
+				FOREIGN KEY(workspace_id, user_id)
+					REFERENCES workspace(id, super_admin_id)
 		);
 		"#
 	)
@@ -100,15 +85,16 @@ pub async fn initialize_api_token_post(
 			token_id UUID NOT NULL
 				CONSTRAINT user_api_token_resource_permission_fk_token_id
 					REFERENCES user_api_token(token_id),
+			workspace_id UUID NOT NULL,
+			resource_id UUID NOT NULL,
 			permission_id UUID NOT NULL
 				CONSTRAINT user_api_token_resource_permission_fk_permission_id
 					REFERENCES permission(id),
-			resource_id UUID NOT NULL
-				CONSTRAINT user_api_token_resource_permission_fk_resource_id
-					REFERENCES resource(id),
-			CONSTRAINT user_api_token_resource_permission_pk PRIMARY KEY(
-				token_id, permission_id, resource_id
-			)
+			CONSTRAINT user_api_token_resource_permission_workspace_id_resource_id
+				FOREIGN KEY (workspace_id, resource_id)
+					REFERENCES resource(owner_id, id),
+			CONSTRAINT user_api_token_resource_permission_pk 
+				PRIMARY KEY(token_id, permission_id, resource_id, workspace_id)
 		);
 		"#
 	)
@@ -121,15 +107,17 @@ pub async fn initialize_api_token_post(
 			token_id UUID NOT NULL
 				CONSTRAINT user_api_token_resource_type_permission_fk_token_id
 					REFERENCES user_api_token(token_id),
-			permission_id UUID NOT NULL
-				CONSTRAINT user_api_token_resource_type_permission_fk_permission_id
-					REFERENCES permission(id),
+			workspace_id UUID NOT NULL
+				CONSTRAINT user_api_token_resource_type_permission_fk_workspace_id
+					REFERENCES workspace(id),
 			resource_type_id UUID NOT NULL
 				CONSTRAINT user_api_token_resource_type_permission_fk_resource_type_id
 					REFERENCES resource_type(id),
-			CONSTRAINT user_api_token_resource_permission_pk PRIMARY KEY(
-				token_id, permission_id, resource_type_id
-			)
+			permission_id UUID NOT NULL
+				CONSTRAINT user_api_token_resource_type_permission_fk_permission_id
+					REFERENCES permission(id),
+			CONSTRAINT user_api_token_resource_type_permission_pk
+				PRIMARY KEY(token_id, permission_id, resource_type_id, workspace_id)
 		);
 		"#
 	)
@@ -139,28 +127,26 @@ pub async fn initialize_api_token_post(
 	Ok(())
 }
 
+pub async fn initialize_api_token_post(
+	_connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
+	Ok(())
+}
+
 pub async fn revoke_user_api_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	token: &Uuid,
-	revoked_by: &Uuid,
-	revoked: bool,
-	name: String,
+	token_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		UPDATE
-			api_token
+			user_api_token
 		SET
-			revoked = $1,
-			revoked_by = $2,
-			name = $3
+			revoked = NOW()
 		WHERE
-			token = $4;
+			token_id = $1;
 		"#,
-		revoked,
-		revoked_by as _,
-		name,
-		token as _,
+		token_id as _,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -168,26 +154,32 @@ pub async fn revoke_user_api_token(
 	Ok(())
 }
 
-pub async fn get_api_token_by_id(
+pub async fn get_currently_active_api_token_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	token: &Uuid,
+	token_id: &Uuid,
 ) -> Result<Option<UserApiToken>, sqlx::Error> {
 	query_as!(
 		UserApiToken,
 		r#"
 		SELECT
-			token as "token: _",
-			user_id as "user_id: _",
+			token_id as "token_id: _",
 			name,
-			token_expiry as "token_expiry!: _",
-			created as "created: _"
+			user_id as "user_id: _",
+			token_hash,
+			token_nbf,
+			token_exp,
+			allowed_ips,
+			created,
+			revoked
 		FROM
-			api_token
+			user_api_token
 		WHERE
-			token = $1 AND
-			revoked = false;
+			token_id = $1 AND
+			revoked IS NULL AND
+			(token_exp IS NULL OR token_exp > NOW()) AND
+			(token_nbf IS NULL OR token_nbf < NOW());
 		"#,
-		token as _
+		token_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -195,38 +187,44 @@ pub async fn get_api_token_by_id(
 
 pub async fn create_api_token_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	token: &Uuid,
-	user_id: &Uuid,
+	token_id: &Uuid,
 	name: &str,
-	ttl: Option<DateTime<Utc>>,
+	user_id: &Uuid,
+	token_hash: &str,
+	token_nbf: Option<&DateTime<Utc>>,
+	token_exp: Option<&DateTime<Utc>>,
+	allowed_ips: Option<&[IpNetwork]>,
 ) -> Result<(), sqlx::Error> {
+	super::add_new_user_login(
+		connection,
+		token_id,
+		user_id,
+		&UserLoginType::ApiTokenLogin,
+	)
+	.await?;
+
 	query!(
 		r#"
 		INSERT INTO
-			api_token(
-				token,
+			user_api_token (
+				token_id,
 				name,
 				user_id,
-				token_expiry,
-				created,
-				revoked,
-				revoked_by
+				token_hash,
+				token_nbf,
+				token_exp,
+				allowed_ips
 			)
 		VALUES
-			(
-				$1,
-				$2,
-				$3,
-				$4,
-				now(),
-				false,
-				NULL
-			);
+			($1, $2, $3, $4, $5, $6, $7);
 		"#,
-		token as _,
+		token_id as _,
 		name,
 		user_id as _,
-		ttl as _,
+		token_hash,
+		token_nbf,
+		token_exp,
+		allowed_ips
 	)
 	.execute(&mut *connection)
 	.await
@@ -235,28 +233,24 @@ pub async fn create_api_token_for_user(
 
 pub async fn add_super_admin_info_for_api_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	token: &Uuid,
+	token_id: &Uuid,
 	workspace_id: &Uuid,
-	super_admin_id: &Uuid,
+	user_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
-			api_token_workspace_super_admin(
-				token,
-				workspace_id,
-				super_admin_id
+			user_api_token_workspace_super_admin(
+				token_id,
+				user_id,
+				workspace_id
 			)
 		VALUES
-			(
-				$1,
-				$2,
-				$3
-			);
+			($1, $2, $3);
 		"#,
-		token as _,
+		token_id as _,
+		user_id as _,
 		workspace_id as _,
-		super_admin_id as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -265,7 +259,7 @@ pub async fn add_super_admin_info_for_api_token(
 
 pub async fn add_resource_permission_for_api_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	token: &Uuid,
+	token_id: &Uuid,
 	workspace_id: &Uuid,
 	resource_permissions: &BTreeMap<Uuid, Vec<Uuid>>,
 ) -> Result<(), sqlx::Error> {
@@ -274,8 +268,8 @@ pub async fn add_resource_permission_for_api_token(
 			query!(
 				r#"
 				INSERT INTO
-					api_token_resource_permission(
-						token,
+					user_api_token_resource_permission (
+						token_id,
 						workspace_id,
 						resource_id,
 						permission_id
@@ -283,7 +277,7 @@ pub async fn add_resource_permission_for_api_token(
 				VALUES
 					($1, $2, $3, $4);
 				"#,
-				token as _,
+				token_id as _,
 				workspace_id as _,
 				resource_id as _,
 				permission_id as _
@@ -297,17 +291,17 @@ pub async fn add_resource_permission_for_api_token(
 
 pub async fn add_resource_type_permission_for_api_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	token: &Uuid,
+	token_id: &Uuid,
 	workspace_id: &Uuid,
-	resource_permissions: &BTreeMap<Uuid, Vec<Uuid>>,
+	resource_type_permissions: &BTreeMap<Uuid, Vec<Uuid>>,
 ) -> Result<(), sqlx::Error> {
-	for (resource_type_id, permissions) in resource_permissions {
+	for (resource_type_id, permissions) in resource_type_permissions {
 		for permission_id in permissions {
 			query!(
 				r#"
 				INSERT INTO
-					api_token_resource_type_permission(
-						token,
+					user_api_token_resource_type_permission(
+						token_id,
 						workspace_id,
 						resource_type_id,
 						permission_id
@@ -315,7 +309,7 @@ pub async fn add_resource_type_permission_for_api_token(
 				VALUES
 					($1, $2, $3, $4);	
 				"#,
-				token as _,
+				token_id as _,
 				workspace_id as _,
 				resource_type_id as _,
 				permission_id as _
@@ -429,7 +423,7 @@ pub async fn is_user_super_admin(
 	Ok(record)
 }
 
-pub async fn list_api_tokens_for_user(
+pub async fn list_currently_active_api_tokens_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 ) -> Result<Vec<UserApiToken>, sqlx::Error> {
@@ -437,16 +431,22 @@ pub async fn list_api_tokens_for_user(
 		UserApiToken,
 		r#"
 		SELECT
-			token as "token: _",
+			token_id as "token_id: _",
 			name,
 			user_id as "user_id: _",
-			token_expiry as "token_expiry!: _",
-			created as "created: _"
+			token_hash,
+			token_nbf,
+			token_exp,
+			allowed_ips,
+			created,
+			revoked
 		FROM
-			api_token
+			user_api_token
 		WHERE
 			user_id = $1 AND
-			revoked = false;
+			revoked IS NULL AND
+			(token_exp IS NULL OR token_exp > NOW()) AND
+			(token_nbf IS NULL OR token_nbf < NOW());
 		"#,
 		user_id as _,
 	)
@@ -454,122 +454,103 @@ pub async fn list_api_tokens_for_user(
 	.await
 }
 
-pub async fn list_permissions_for_api_token(
+pub async fn get_all_permissions_for_api_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	token: &Uuid,
-) -> Result<Permission, sqlx::Error> {
-	let mut resource_permissions = HashMap::<Uuid, Vec<Uuid>>::new();
-	let mut resource_type_permissions = HashMap::<Uuid, Vec<Uuid>>::new();
+	token_id: &Uuid,
+) -> Result<HashMap<Uuid, WorkspacePermissions>, sqlx::Error> {
+	let mut workspace_permissions = HashMap::new();
 
-	let rows = query!(
+	// super admin permissions
+	query!(
 		r#"
 		SELECT
+			workspace_id as "workspace_id: Uuid"
+		FROM
+			user_api_token_workspace_super_admin
+		WHERE
+			token_id = $1;
+		"#,
+		token_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|record| record.workspace_id)
+	.for_each(|workspace_id: Uuid| {
+		let workspace_permission: &mut WorkspacePermissions =
+			workspace_permissions.entry(workspace_id).or_default();
+		workspace_permission.is_super_admin = true;
+	});
+
+	// resource permission
+	query!(
+		r#"
+		SELECT
+			workspace_id as "workspace_id: Uuid",
 			resource_id as "resource_id: Uuid",
-			permission_id as "permission_id: Uuid"
+			ARRAY_AGG(permission_id) as "permissions!: Vec<Uuid>"
 		FROM
-			api_token_resource_permission
+			user_api_token_resource_permission
 		WHERE
-			token = $1;
+			token_id = $1
+		GROUP BY
+			(workspace_id, resource_id);
 		"#,
-		token as _,
+		token_id as _
 	)
 	.fetch_all(&mut *connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|record| (record.workspace_id, record.resource_id, record.permissions))
+	.for_each(
+		|(workspace_id, resource_id, permissions): (Uuid, Uuid, Vec<Uuid>)| {
+			let workspace_permission: &mut WorkspacePermissions =
+				workspace_permissions.entry(workspace_id).or_default();
+			workspace_permission
+				.resources
+				.insert(resource_id, permissions);
+		},
+	);
 
-	for row in rows {
-		resource_permissions
-			.entry(row.resource_id)
-			.or_insert_with(Vec::new)
-			.push(row.permission_id);
-	}
-
-	let rows = query!(
+	// resource type permission
+	query!(
 		r#"
 		SELECT
+			workspace_id as "workspace_id: Uuid",
 			resource_type_id as "resource_type_id: Uuid",
-			permission_id as "permission_id: Uuid"
+			ARRAY_AGG(permission_id) as "permissions!: Vec<Uuid>"
 		FROM
-			api_token_resource_type_permission
+			user_api_token_resource_type_permission
 		WHERE
-			token = $1;
+			token_id = $1
+		GROUP BY
+			(workspace_id, resource_type_id);
 		"#,
-		token as _,
+		token_id as _
 	)
 	.fetch_all(&mut *connection)
-	.await?;
-
-	for row in rows {
-		resource_type_permissions
-			.entry(row.resource_type_id)
-			.or_insert_with(Vec::new)
-			.push(row.permission_id);
-	}
-
-	Ok(Permission {
-		resource_permissions,
-		resource_type_permissions,
+	.await?
+	.into_iter()
+	.map(|record| {
+		(
+			record.workspace_id,
+			record.resource_type_id,
+			record.permissions,
+		)
 	})
-}
+	.for_each(
+		|(workspace_id, resource_type_id, permissions): (
+			Uuid,
+			Uuid,
+			Vec<Uuid>,
+		)| {
+			let workspace_permission: &mut WorkspacePermissions =
+				workspace_permissions.entry(workspace_id).or_default();
+			workspace_permission
+				.resource_types
+				.insert(resource_type_id, permissions);
+		},
+	);
 
-pub async fn get_workspace_id_for_api_token(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	api_token: &Uuid,
-) -> Result<Option<Uuid>, sqlx::Error> {
-	let resource_permission_workspace_id = query!(
-		r#"
-		SELECT
-			workspace_id as "workspace_id: Uuid"
-		FROM
-			api_token_resource_permission
-		WHERE
-			token = $1;
-		"#,
-		api_token as _
-	)
-	.fetch_optional(&mut *connection)
-	.await?;
-
-	let resource_type_permission_workspace_id = query!(
-		r#"
-		SELECT
-			workspace_id as "workspace_id: Uuid"
-		FROM
-			api_token_resource_type_permission
-		WHERE
-			token = $1;
-		"#,
-		api_token as _
-	)
-	.fetch_optional(&mut *connection)
-	.await?;
-
-	if let Some(record) = resource_permission_workspace_id {
-		Ok(Some(record.workspace_id))
-	} else if let Some(record) = resource_type_permission_workspace_id {
-		Ok(Some(record.workspace_id))
-	} else {
-		Ok(None)
-	}
-}
-
-pub async fn get_super_admin_api_token(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	api_token: &Uuid,
-) -> Result<Option<UserApiTokenSuperAdmin>, sqlx::Error> {
-	query_as!(
-		UserApiTokenSuperAdmin,
-		r#"
-		SELECT
-			token as "token: _",
-			workspace_id as "workspace_id: _",
-			super_admin_id as "super_admin_id: _"
-		FROM
-			api_token_workspace_super_admin
-		WHERE
-			token = $1;
-		"#,
-		api_token as _
-	)
-	.fetch_optional(&mut *connection)
-	.await
+	Ok(workspace_permissions)
 }

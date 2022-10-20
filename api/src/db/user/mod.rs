@@ -1,6 +1,5 @@
 use crate::Database;
 
-mod api_token;
 mod sign_up;
 mod user_data;
 mod user_email;
@@ -8,7 +7,6 @@ mod user_login;
 mod user_phone;
 
 pub use self::{
-	api_token::*,
 	sign_up::*,
 	user_data::*,
 	user_email::*,
@@ -25,7 +23,6 @@ pub async fn initialize_users_pre(
 	user_phone::initialize_user_phone_pre(&mut *connection).await?;
 	user_login::initialize_user_login_pre(&mut *connection).await?;
 	sign_up::initialize_user_sign_up_pre(&mut *connection).await?;
-	api_token::initialize_api_token_pre(&mut *connection).await?;
 
 	Ok(())
 }
@@ -39,7 +36,6 @@ pub async fn initialize_users_post(
 	user_phone::initialize_user_phone_post(&mut *connection).await?;
 	user_login::initialize_user_login_post(&mut *connection).await?;
 	sign_up::initialize_user_sign_up_post(&mut *connection).await?;
-	api_token::initialize_api_token_post(&mut *connection).await?;
 
 	Ok(())
 }

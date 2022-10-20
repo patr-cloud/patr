@@ -811,8 +811,8 @@ async fn create_deployment(
 
 	let ip_address = api_patr_cloud::get_request_ip_address(&context);
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
-	let login_id = context.get_token_data().unwrap().login_id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
+	let login_id = context.get_token_data().unwrap().login_id().clone();
 
 	let CreateDeploymentRequest {
 		workspace_id: _,
@@ -1139,9 +1139,9 @@ async fn start_deployment(
 
 	let ip_address = api_patr_cloud::get_request_ip_address(&context);
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
-	let login_id = context.get_token_data().unwrap().login_id.clone();
+	let login_id = context.get_token_data().unwrap().login_id().clone();
 
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
@@ -1261,9 +1261,9 @@ async fn stop_deployment(
 
 	let ip_address = api_patr_cloud::get_request_ip_address(&context);
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
-	let login_id = context.get_token_data().unwrap().login_id.clone();
+	let login_id = context.get_token_data().unwrap().login_id().clone();
 
 	let config = context.get_state().config.clone();
 	log::trace!("request_id: {} - Getting deployment id from db", request_id);
@@ -1545,9 +1545,9 @@ async fn delete_deployment(
 
 	let ip_address = api_patr_cloud::get_request_ip_address(&context);
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
-	let login_id = context.get_token_data().unwrap().login_id.clone();
+	let login_id = context.get_token_data().unwrap().login_id().clone();
 
 	log::trace!(
 		"request_id: {} - Deleting the deployment with id: {}",
@@ -1660,9 +1660,9 @@ async fn update_deployment(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let name = name.as_ref().map(|name| name.trim());
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
-	let login_id = context.get_token_data().unwrap().login_id.clone();
+	let login_id = context.get_token_data().unwrap().login_id().clone();
 
 	let ip_address = api_patr_cloud::get_request_ip_address(&context);
 

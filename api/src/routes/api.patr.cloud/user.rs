@@ -34,12 +34,12 @@ use api_models::{
 			UpdateUserInfoRequest,
 			UpdateUserInfoResponse,
 			UserApiToken,
-			UserApiTokenPermission,
-			UserLogin,
+			UserWebLogin,
 			VerifyPersonalEmailRequest,
 			VerifyPersonalEmailResponse,
 			VerifyPhoneNumberRequest,
 			VerifyPhoneNumberResponse,
+			WorkspacePermissions,
 		},
 		workspace::Workspace,
 	},
@@ -304,7 +304,7 @@ async fn get_user_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 	let User {
 		id,
 		username,
@@ -514,7 +514,7 @@ async fn update_user_info(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	db::update_user_data(
 		context.get_database_connection(),
@@ -571,7 +571,7 @@ async fn add_email_address(
 			.body(error!(WRONG_PARAMETERS).to_string())?;
 	let email_address = email.to_lowercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	service::add_personal_email_to_be_verified_for_user(
 		context.get_database_connection(),
@@ -613,7 +613,7 @@ async fn list_email_addresses(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let recovery_email = db::get_recovery_email_for_user(
 		context.get_database_connection(),
@@ -676,7 +676,7 @@ async fn list_phone_numbers(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let recovery_phone_number = db::get_recovery_phone_number_for_user(
 		context.get_database_connection(),
@@ -745,7 +745,7 @@ async fn update_recovery_email_address(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let email_address = recovery_email.to_lowercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	service::update_user_recovery_email(
 		context.get_database_connection(),
@@ -801,7 +801,7 @@ async fn update_recovery_phone_number(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let country_code = recovery_phone_country_code.to_uppercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	service::update_user_recovery_phone_number(
 		context.get_database_connection(),
@@ -854,7 +854,7 @@ async fn delete_personal_email_address(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let email_address = email.to_lowercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	service::delete_personal_email_address(
 		context.get_database_connection(),
@@ -911,7 +911,7 @@ async fn add_phone_number_for_user(
 	// two letter country code instead of the numeric one
 	let country_code = country_code.to_uppercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let otp = service::add_phone_number_to_be_verified_for_user(
 		context.get_database_connection(),
@@ -978,7 +978,7 @@ async fn verify_phone_number(
 	// two letter country code instead of the numeric one
 	let country_code = country_code.to_uppercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	service::verify_phone_number_for_user(
 		context.get_database_connection(),
@@ -1037,7 +1037,7 @@ async fn delete_phone_number(
 	// two letter country code instead of the numeric one
 	let country_code = country_code.to_uppercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	service::delete_phone_number(
 		context.get_database_connection(),
@@ -1094,7 +1094,7 @@ async fn verify_email_address(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let email_address = email.to_lowercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	service::verify_personal_email_address_for_user(
 		context.get_database_connection(),
@@ -1147,7 +1147,7 @@ async fn get_workspaces_for_user(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 	let workspaces = db::get_all_workspaces_for_user(
 		context.get_database_connection(),
 		&user_id,
@@ -1209,7 +1209,7 @@ async fn change_password(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let user = service::change_password_for_user(
 		context.get_database_connection(),
@@ -1232,15 +1232,15 @@ async fn get_all_logins_for_user(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
-	let logins = db::get_all_logins_for_user(
+	let logins = db::get_all_web_logins_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
 	.await?
 	.into_iter()
-	.map(|login| UserLogin {
+	.map(|login| UserWebLogin {
 		login_id: login.login_id,
 		token_expiry: DateTime(login.token_expiry),
 		created: DateTime(login.created),
@@ -1283,9 +1283,9 @@ async fn get_login_info(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let login =
-		db::get_user_login(context.get_database_connection(), &login_id)
+		db::get_user_web_login(context.get_database_connection(), &login_id)
 			.await?
-			.map(|login| UserLogin {
+			.map(|login| UserWebLogin {
 				login_id: login.login_id,
 				token_expiry: DateTime(login.token_expiry),
 				created: DateTime(login.created),
@@ -1328,9 +1328,9 @@ async fn delete_user_login(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
-	db::delete_user_login_by_id(
+	db::delete_user_web_login_by_id(
 		context.get_database_connection(),
 		&login_id,
 		&user_id,
@@ -1391,7 +1391,7 @@ async fn create_api_token(
 		name,
 		resource_permissions,
 		resource_type_permissions,
-		ttl,
+		token_exp,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -1400,7 +1400,7 @@ async fn create_api_token(
 	let workspace_permissions = context
 		.get_token_data()
 		.unwrap()
-		.workspaces
+		.workspace_permissions()
 		.get(&workspace_id);
 	let is_super_admin =
 		if let Some(workspace_permission) = workspace_permissions {
@@ -1409,20 +1409,23 @@ async fn create_api_token(
 			false
 		};
 
-	let api_token = service::create_api_token_for_user(
+	let (token_id, api_token) = service::create_api_token_for_user(
 		context.get_database_connection(),
 		&user_id,
 		&workspace_id,
 		&name,
 		&resource_permissions,
 		&resource_type_permissions,
-		ttl.map(ChronoDateTime::<Utc>::from),
+		token_exp.map(ChronoDateTime::<Utc>::from),
 		is_super_admin,
 		&request_id,
 	)
 	.await?;
 
-	context.success(CreateApiTokenResponse { api_token });
+	context.success(CreateApiTokenResponse {
+		token_id,
+		api_token,
+	});
 	Ok(context)
 }
 
@@ -1431,10 +1434,10 @@ async fn revoke_api_token(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	// TODO - Has to validate if the user has right to revoke the token or not
-	let api_token = Uuid::parse_str(
+	let token_id = Uuid::parse_str(
 		context
 			.get_param(request_keys::API_TOKEN)
 			.status(400)
@@ -1442,26 +1445,23 @@ async fn revoke_api_token(
 	)
 	.unwrap();
 
-	db::get_api_token_by_id(context.get_database_connection(), &api_token)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	db::get_currently_active_api_token_by_id(
+		context.get_database_connection(),
+		&token_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	log::trace!(
 		"request_id: {} with user_id: {} revoking api_token: {}",
 		request_id,
 		user_id,
-		api_token
+		token_id
 	);
 
-	db::revoke_user_api_token(
-		context.get_database_connection(),
-		&api_token,
-		&user_id,
-		true,
-		format!("patr-deleted-{}", api_token),
-	)
-	.await?;
+	db::revoke_user_api_token(context.get_database_connection(), &token_id)
+		.await?;
 
 	context.success(RevokeApiTokenResponse {});
 	Ok(context)
@@ -1485,7 +1485,7 @@ async fn list_api_token_for_user(
 		request_id,
 		user_id
 	);
-	let tokens = db::list_api_tokens_for_user(
+	let tokens = db::list_currently_active_api_tokens_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
@@ -1493,8 +1493,8 @@ async fn list_api_token_for_user(
 	.into_iter()
 	.map(|token| UserApiToken {
 		name: token.name,
-		token: token.token,
-		ttl: token.token_expiry.map(DateTime::<Utc>::from),
+		token_id: token.token_id,
+		token_exp: token.token_exp.map(DateTime::<Utc>::from),
 		user_id: token.user_id,
 		created: DateTime::from(token.created),
 	})
@@ -1514,10 +1514,13 @@ async fn list_permission_for_api_token(
 	let token = Uuid::parse_str(token).unwrap();
 
 	// Check if token exists
-	db::get_api_token_by_id(context.get_database_connection(), &token)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	db::get_currently_active_api_token_by_id(
+		context.get_database_connection(),
+		&token,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	log::trace!(
 		"request_id: {} listing permissions for api_token: {}",
@@ -1525,17 +1528,23 @@ async fn list_permission_for_api_token(
 		token
 	);
 
-	let permissions = db::list_permissions_for_api_token(
+	let permissions = db::get_all_permissions_for_api_token(
 		context.get_database_connection(),
 		&token,
 	)
-	.await
+	.await?
 	.into_iter()
-	.map(|permission| UserApiTokenPermission {
-		resource_permissions: permission.resource_permissions,
-		resource_type_permissions: permission.resource_type_permissions,
+	.map(|(workspace_id, permissions)| {
+		(
+			workspace_id,
+			WorkspacePermissions {
+				is_super_admin: permissions.is_super_admin,
+				resources: permissions.resources,
+				resource_types: permissions.resource_types,
+			},
+		)
 	})
-	.collect::<Vec<_>>();
+	.collect();
 
 	context.success(ListApiTokenPermissionsResponse { permissions });
 	Ok(context)

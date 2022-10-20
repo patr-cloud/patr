@@ -10,7 +10,7 @@ pub static RESOURCE_TYPES: OnceCell<HashMap<String, Uuid>> = OnceCell::new();
 // A mapping of permission names -> permission IDs
 pub static PERMISSIONS: OnceCell<HashMap<String, Uuid>> = OnceCell::new();
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkspacePermissions {
 	pub is_super_admin: bool,

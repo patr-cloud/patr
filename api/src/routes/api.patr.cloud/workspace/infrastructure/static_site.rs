@@ -691,7 +691,7 @@ async fn create_static_site(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let CreateStaticSiteRequest {
 		workspace_id: _,
@@ -988,7 +988,7 @@ async fn upload_static_site(
 	)
 	.unwrap();
 	let request_id = Uuid::new_v4();
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	log::trace!(
 		"Uploading the file for static site with id: {} and request_id: {}",

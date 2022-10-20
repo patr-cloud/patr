@@ -20,7 +20,7 @@ use super::get_ip_address_info;
 /// be supplied to the functions in this file, then the functions might
 /// connect with db and return what was required for the endpoint
 use crate::{
-	db::{self, User, UserLogin, UserToSignUp},
+	db::{self, User, UserToSignUp, UserWebLogin},
 	error,
 	models::{rbac, AccessTokenData, ExposedUserData},
 	service,
@@ -477,7 +477,7 @@ pub async fn create_login_for_user(
 	created_ip: &IpAddr,
 	user_agent: &str,
 	config: &Settings,
-) -> Result<(UserLogin, Uuid), Error> {
+) -> Result<(UserWebLogin, Uuid), Error> {
 	let login_id = db::generate_new_login_id(connection).await?;
 	let (refresh_token, hashed_refresh_token) =
 		service::generate_new_refresh_token_for_user(connection, user_id)
@@ -488,7 +488,7 @@ pub async fn create_login_for_user(
 	let (lat, lng) = ipinfo.loc.split_once(',').status(500)?;
 	let (lat, lng): (f64, f64) = (lat.parse()?, lng.parse()?);
 
-	db::add_user_login(
+	db::add_user_web_login(
 		connection,
 		&login_id,
 		&hashed_refresh_token,
@@ -514,7 +514,7 @@ pub async fn create_login_for_user(
 		user_agent,
 	)
 	.await?;
-	let user_login = UserLogin {
+	let user_login = UserWebLogin {
 		login_id,
 		user_id: user_id.clone(),
 		refresh_token: hashed_refresh_token,
@@ -568,7 +568,7 @@ pub async fn sign_in_user(
 	created_ip: &IpAddr,
 	user_agent: &str,
 	config: &Settings,
-) -> Result<(UserLogin, String, Uuid), Error> {
+) -> Result<(UserWebLogin, String, Uuid), Error> {
 	let (user_login, refresh_token) = create_login_for_user(
 		connection, user_id, created_ip, user_agent, config,
 	)
@@ -596,8 +596,8 @@ pub async fn sign_in_user(
 pub async fn get_user_login_for_login_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &Uuid,
-) -> Result<UserLogin, Error> {
-	let user_login = db::get_user_login(connection, login_id)
+) -> Result<UserWebLogin, Error> {
+	let user_login = db::get_user_web_login(connection, login_id)
 		.await?
 		.status(401)
 		.body(error!(UNAUTHORIZED).to_string())?;
@@ -626,7 +626,7 @@ pub async fn get_user_login_for_login_id(
 /// [`Transaction`]: Transaction
 pub async fn generate_access_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_login: &UserLogin,
+	user_login: &UserWebLogin,
 	config: &Settings,
 ) -> Result<String, Error> {
 	// get roles and permissions of user for rbac here
@@ -650,7 +650,7 @@ pub async fn generate_access_token(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	db::set_login_expiry(
+	db::set_web_login_expiry(
 		connection,
 		&user_login.login_id,
 		&now,
@@ -1146,7 +1146,7 @@ pub async fn join_user(
 
 	db::delete_user_to_be_signed_up(connection, &user_data.username).await?;
 
-	let (UserLogin { login_id, .. }, jwt, refresh_token) =
+	let (UserWebLogin { login_id, .. }, jwt, refresh_token) =
 		sign_in_user(connection, &user_id, created_ip, user_agent, config)
 			.await?;
 	let response = JoinUser {

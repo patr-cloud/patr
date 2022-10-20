@@ -432,11 +432,11 @@ pub async fn create_api_token_for_user(
 	name: &str,
 	resource_permissions: &BTreeMap<Uuid, Vec<Uuid>>,
 	resource_type_permissions: &BTreeMap<Uuid, Vec<Uuid>>,
-	ttl: Option<DateTime<Utc>>,
+	token_exp: Option<DateTime<Utc>>,
 	is_super_admin: bool,
 	request_id: &Uuid,
-) -> Result<Uuid, Error> {
-	let token = Uuid::new_v4();
+) -> Result<(Uuid, String), Error> {
+	let token_id = db::generate_new_login_id(connection).await?;
 
 	// Currently only super admin is allwed to create tokens for users or self
 	// TODO - to be re-iterated when RBAC is implemented properly
@@ -511,13 +511,28 @@ pub async fn create_api_token_for_user(
 		user_id
 	);
 
-	db::create_api_token_for_user(connection, &token, user_id, name, ttl)
-		.await?;
+	let token = Uuid::new_v4().to_string();
 
-	log::trace!("request_id: {} creating resource type permissions for token for user: {} in database", request_id, user_id);
+	// todo: hash the token
+	let token_hash = token.as_str();
+
+	db::create_api_token_for_user(
+		connection,
+		&token_id,
+		name,
+		user_id,
+		token_hash,
+		None,
+		token_exp.as_ref(),
+		None,
+	)
+	.await?;
+
+	log::trace!("request_id: {} creating resource type permissions for token for user: {} in database", 
+	request_id, user_id);
 	db::add_resource_permission_for_api_token(
 		connection,
-		&token,
+		&token_id,
 		workspace_id,
 		resource_permissions,
 	)
@@ -526,7 +541,7 @@ pub async fn create_api_token_for_user(
 	log::trace!("request_id: {} creating resource_permissions for token for user: {} in database", request_id, user_id);
 	db::add_resource_type_permission_for_api_token(
 		connection,
-		&token,
+		&token_id,
 		workspace_id,
 		resource_type_permissions,
 	)
@@ -535,12 +550,12 @@ pub async fn create_api_token_for_user(
 	if let Some(super_admin_id) = is_user_super_admin {
 		db::add_super_admin_info_for_api_token(
 			connection,
-			&token,
+			&token_id,
 			workspace_id,
 			&super_admin_id,
 		)
 		.await?
 	}
 
-	Ok(token)
+	Ok((token_id, token))
 }
