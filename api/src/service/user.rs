@@ -512,16 +512,16 @@ pub async fn create_api_token_for_user(
 	);
 
 	let token = Uuid::new_v4().to_string();
-
-	// todo: hash the token
-	let token_hash = token.as_str();
+	let user_facing_token =
+		format!("patrv1.{}.{}", token.as_str(), token_id.as_str());
+	let token_hash = service::hash(token.as_bytes())?;
 
 	db::create_api_token_for_user(
 		connection,
 		&token_id,
 		name,
 		user_id,
-		token_hash,
+		&token_hash,
 		None,
 		token_exp.as_ref(),
 		None,
@@ -557,5 +557,5 @@ pub async fn create_api_token_for_user(
 		.await?
 	}
 
-	Ok((token_id, token))
+	Ok((token_id, user_facing_token))
 }

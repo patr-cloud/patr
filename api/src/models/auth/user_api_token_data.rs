@@ -9,6 +9,7 @@ use crate::{
 	db,
 	error,
 	models::rbac::WorkspacePermissions,
+	service,
 	utils::Error,
 	Database,
 };
@@ -65,14 +66,7 @@ impl UserApiTokenData {
 				.status(401)
 				.body(error!(UNAUTHORIZED).to_string())?;
 
-		// todo:
-		// hash the raw token and check whether
-		// it is equivalent to original one
-		let hashed_user_provided_token = plain_token;
-
-		// todo: validate whether the ip is in allowed ip address list
-
-		if hashed_user_provided_token != token_details.token_hash {
+		if !service::validate_hash(plain_token, &token_details.token_hash)? {
 			log::info!("Hashed user provided token doesn't match with token_hash in db");
 			return Err(Error::empty()
 				.status(401)
