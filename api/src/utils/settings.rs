@@ -63,7 +63,6 @@ pub struct Settings {
 	pub docker_registry: DockerRegistrySettings,
 	pub digitalocean: Digitalocean,
 	pub kubernetes: KubernetesSettings,
-	pub prometheus: PrometheusSettings,
 	#[serde(alias = "rabbitmq")]
 	pub rabbit_mq: RabbitMqSettings,
 	pub vault: VaultSettings,
@@ -73,7 +72,7 @@ pub struct Settings {
 	pub stripe: StripeSettings,
 	#[serde(alias = "ipinfotoken")]
 	pub ipinfo_token: String,
-	pub mimir: MimirSettings,
+	pub metrics: MetricsSettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -287,7 +286,7 @@ pub struct StripeSettings {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct MimirSettings {
+pub struct MetricsSettings {
 	pub host: String,
 	pub username: String,
 	pub password: String,

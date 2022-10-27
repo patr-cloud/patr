@@ -11,7 +11,7 @@ use crate::{
 	pin_fn,
 	utils::{
 		constants::request_keys,
-		settings::MimirSettings,
+		settings::MetricsSettings,
 		Error,
 		ErrorData,
 		EveContext,
@@ -111,20 +111,16 @@ async fn get_metrics_based_on_tenant(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let MimirSettings {
+	let MetricsSettings {
 		host,
 		username,
 		password,
-	} = &context.get_state().config.mimir;
+	} = &context.get_state().config.metrics;
 
 	let hyper_request = context.get_request().get_hyper_request();
 
-	let url = {
-		let url = hyper_request
-			.uri()
-			.path_and_query()
-			.map(|pq| pq.as_str())
-			.unwrap_or_else(|| hyper_request.uri().path());
+	let path = {
+		let path = hyper_request.uri().path();
 
 		// /workspace/cc36ed2cf780429baeef4b80490d2277/metrics/**
 		// |-------------------------------------------------|
@@ -132,11 +128,26 @@ async fn get_metrics_based_on_tenant(
 		//
 		// its safe to skip 51 chars, as the route will come here only if those
 		// thing were matched
-		let trimmed_url = &url[11..]; // strip `/workspace/`
-		let (_, trimmed_url) = trimmed_url.split_once('/').unwrap(); // strip workspace_id
-		let trimmed_url = &trimmed_url[7..]; // strip `metrics`
+		let trimmed_path = &path[11..]; // strip `/workspace/`
+		let (_, trimmed_path) = trimmed_path.split_once('/').unwrap(); // strip workspace_id
+		let trimmed_path = &trimmed_path[7..]; // strip `metrics`
 
-		format!("https://{host}/prometheus{trimmed_url}")
+		format!("https://{host}{trimmed_path}")
+	};
+
+	let query_params = {
+		let mut query_params = hyper_request
+			.uri()
+			.query()
+			.map(querystring::querify)
+			.unwrap_or_default()
+			.into_iter()
+			.filter(|(key, _)| key.to_lowercase() == "namespace")
+			.collect::<Vec<_>>();
+
+		query_params.push(("namespace", workspace_id.as_str()));
+
+		query_params
 	};
 
 	let basic_headers = hyper_request
@@ -155,10 +166,10 @@ async fn get_metrics_based_on_tenant(
 		.collect();
 
 	let response = reqwest::Client::new()
-		.request(hyper_request.method().clone(), url)
+		.request(hyper_request.method().clone(), path)
+		.query(&query_params)
 		.headers(basic_headers)
 		.basic_auth(username, Some(password))
-		.header("X-Scope-OrgID", workspace_id.as_str())
 		.header(header::USER_AGENT, "Patr")
 		.body(context.get_request().get_body_bytes().to_owned())
 		.send()

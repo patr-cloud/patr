@@ -1951,6 +1951,7 @@ async fn get_deployment_metrics(
 
 	let deployment_metrics = service::get_deployment_metrics(
 		&deployment_id,
+		&deployment.workspace_id,
 		&config,
 		&start_time,
 		&Utc::now(),

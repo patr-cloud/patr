@@ -81,11 +81,6 @@
 		"staticSiteProxyService": "proxy-static-site-service.default.svc.cluster.local",
 		"alertWebhookSecret": "<auth-header>"
 	},
-	"prometheus": {
-		"host": "prometheus.samyakgangwal.com",
-		"username": "admin",
-		"password": "admin"
-	},
 	"rabbitmq": {
 		"host": "localhost",
 		"port": 5672,
@@ -118,7 +113,7 @@
 		"secretKey": "sk_test_123"
 	},
 	"ipinfoToken": "token",
-	"mimir": {
+	"metrics": {
 		"host": "mimir.samyakgangwal.com",
 		"username": "admin",
 		"password": "admin"

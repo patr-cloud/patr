@@ -26,8 +26,7 @@ use api_macros::{migrate_query, query, query_as};
 use api_models::utils::Uuid;
 use app::App;
 use chrono::{Datelike, Utc};
-use futures::future;
-use tokio::runtime::Builder;
+use tokio::{join, runtime::Builder};
 use utils::{logger, Error as EveError};
 
 use crate::models::rabbitmq::WorkspaceRequestData;
@@ -118,7 +117,7 @@ async fn async_main() -> Result<(), EveError> {
 		.await?;
 	}
 
-	future::join(app::start_server(&app), rabbitmq::start_consumer(&app)).await;
+	join!(app::start_server(&app), rabbitmq::start_consumer(&app),);
 
 	Ok(())
 }
