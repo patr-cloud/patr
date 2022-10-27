@@ -805,8 +805,6 @@ pub async fn get_kubernetes_deployment_status(
 			.body(error!(SERVER_ERROR).to_string())?,
 	};
 
-	// TODO: add logic to check the image crash loop or pull backoff
-
 	let event_api = Api::<Pod>::namespaced(kubernetes_client, namespace)
 		.list(
 			&ListParams::default()
@@ -836,7 +834,9 @@ pub async fn get_kubernetes_deployment_status(
 	};
 
 	// Better check handling and covering edge cases
-	if status.contains(&"ErrImagePull".to_string()) {
+	if status.contains(&"ErrImagePull".to_string()) ||
+		status.contains(&"CrashLoopBackOff".to_string())
+	{
 		return Ok(DeploymentStatus::Errored);
 	}
 
