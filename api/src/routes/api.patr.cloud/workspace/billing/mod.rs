@@ -1,3 +1,5 @@
+use std::ops::Sub;
+
 use api_models::{
 	models::workspace::billing::{
 		AddBillingAddressRequest,
@@ -15,6 +17,8 @@ use api_models::{
 		GetBillingAddressResponse,
 		GetCurrentUsageResponse,
 		GetPaymentMethodResponse,
+		GetResourceUsageBreakdownRequest,
+		GetResourceUsageBreakdownResponse,
 		GetTransactionHistoryResponse,
 		PaymentMethod,
 		Transaction,
@@ -23,6 +27,7 @@ use api_models::{
 	},
 	utils::{DateTime, Uuid},
 };
+use chrono::{Datelike, Duration, TimeZone, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
@@ -283,6 +288,37 @@ pub fn create_sub_app(
 		],
 	);
 
+	sub_app.post(
+		"/set-primary-card",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(set_primary_card)),
+		],
+	);
+
 	sub_app.get(
 		"/billing-address",
 		[
@@ -408,6 +444,37 @@ pub fn create_sub_app(
 				}),
 			},
 			EveMiddleware::CustomFunction(pin_fn!(get_current_bill)),
+		],
+	);
+
+	sub_app.get(
+		"/get-resource-usage-charges",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_resource_usage_charges)),
 		],
 	);
 
@@ -769,6 +836,45 @@ async fn confirm_payment_method(
 	Ok(context)
 }
 
+async fn set_primary_card(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+	let ConfirmPaymentMethodRequest {
+		payment_method_id, ..
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	db::get_payment_method_info(
+		context.get_database_connection(),
+		&payment_method_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	// Check if payment method that is requested to be default, exists or not
+	db::add_payment_method_info(
+		context.get_database_connection(),
+		&workspace_id,
+		&payment_method_id,
+	)
+	.await?;
+
+	// Set payment method to default in workspace
+	db::set_default_payment_method_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+		&payment_method_id,
+	)
+	.await?;
+	context.success(ConfirmPaymentMethodResponse {});
+	Ok(context)
+}
+
 async fn get_billing_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -875,7 +981,7 @@ async fn get_current_bill(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let current_bill = db::get_workspace_info(
+	let current_usage = db::get_workspace_info(
 		context.get_database_connection(),
 		&workspace_id,
 	)
@@ -884,20 +990,42 @@ async fn get_current_bill(
 	.body(error!(SERVER_ERROR).to_string())?
 	.amount_due;
 
-	let credits_left = db::get_credits_for_workspace(
+	context.success(GetCurrentUsageResponse { current_usage });
+	Ok(context)
+}
+
+async fn get_resource_usage_charges(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	let GetResourceUsageBreakdownRequest { month, .. } = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let now = Utc::now();
+	let year = now.year();
+	let month_start_date = Utc.ymd(year, month, 1).and_hms(0, 0, 0);
+	let month_end_date = Utc
+		.ymd(year, if month == 12 { 1 } else { month + 1 }, 1)
+		.and_hms(0, 0, 0)
+		.sub(Duration::nanoseconds(1));
+
+	let bill = service::get_total_resource_usage(
 		context.get_database_connection(),
 		&workspace_id,
+		&month_start_date,
+		&month_end_date,
+		year,
+		month,
 	)
-	.await?
-	.into_iter()
-	.map(|transaction| transaction.amount.abs())
-	.sum::<f64>()
-	.max(0f64);
+	.await?;
 
-	context.success(GetCurrentUsageResponse {
-		current_bill,
-		credits_left,
-	});
+	context.success(GetResourceUsageBreakdownResponse { bill });
+
 	Ok(context)
 }
 

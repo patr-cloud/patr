@@ -1,3 +1,5 @@
+use std::fmt;
+
 use api_macros::query;
 use api_models::{
 	models::workspace::billing::{PaymentStatus, TransactionType},
@@ -87,11 +89,30 @@ pub enum StaticSitePlan {
 	Unlimited,
 }
 
+impl fmt::Display for StaticSitePlan {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			StaticSitePlan::Free => write!(f, "free"),
+			StaticSitePlan::Pro => write!(f, "pro"),
+			StaticSitePlan::Unlimited => write!(f, "unlimited"),
+		}
+	}
+}
+
 #[derive(Debug, sqlx::Type, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[sqlx(type_name = "DOMAIN_PLAN", rename_all = "lowercase")]
 pub enum DomainPlan {
 	Free,
 	Unlimited,
+}
+
+impl fmt::Display for DomainPlan {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			DomainPlan::Free => write!(f, "free"),
+			DomainPlan::Unlimited => write!(f, "unlimited"),
+		}
+	}
 }
 
 pub async fn initialize_billing_pre(
@@ -714,6 +735,7 @@ pub async fn get_payment_methods_for_workspace(
 	.await
 }
 
+#[allow(dead_code)]
 pub async fn get_credits_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
