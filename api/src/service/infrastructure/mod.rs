@@ -124,14 +124,9 @@ pub async fn resource_limit_crossed(
 pub async fn delete_all_resources_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	user_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	// Temp solution for getting login_id that is required in the deletion of
-	// the resources Has to be changed later
-	let login_id = Uuid::new_v4();
-
 	log::trace!(
 		"request_id: {} deleting all resources in workspace: {}",
 		request_id,
@@ -197,9 +192,10 @@ pub async fn delete_all_resources_in_workspace(
 			&deployment.workspace_id,
 			&deployment.id,
 			&deployment.region,
-			user_id,
-			&login_id,
+			None,
+			None,
 			"0.0.0.0",
+			true,
 			config,
 			request_id,
 		)

@@ -1272,9 +1272,10 @@ pub async fn delete_deployment(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
 	region_id: &Uuid,
-	user_id: &Uuid,
-	login_id: &Uuid,
+	user_id: Option<&Uuid>,
+	login_id: Option<&Uuid>,
 	ip_address: &str,
+	patr_action: bool,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -1292,8 +1293,8 @@ pub async fn delete_deployment(
 		workspace_id,
 		ip_address,
 		&Utc::now(),
-		Some(user_id),
-		Some(login_id),
+		user_id,
+		login_id,
 		deployment_id,
 		rbac::PERMISSIONS
 			.get()
@@ -1302,7 +1303,7 @@ pub async fn delete_deployment(
 			.unwrap(),
 		request_id,
 		&serde_json::to_value(DeploymentMetadata::Delete {})?,
-		false,
+		patr_action,
 		true,
 	)
 	.await?;

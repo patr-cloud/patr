@@ -359,7 +359,6 @@ pub(super) async fn process_request(
 							service::delete_all_resources_in_workspace(
 								connection,
 								&workspace.id,
-								&workspace.super_admin_id,
 								config,
 								&request_id,
 							)
@@ -441,7 +440,6 @@ pub(super) async fn process_request(
 						service::delete_all_resources_in_workspace(
 							connection,
 							&workspace.id,
-							&workspace.super_admin_id,
 							config,
 							&request_id,
 						)

@@ -1584,9 +1584,10 @@ async fn delete_deployment(
 		&deployment.workspace_id,
 		&deployment_id,
 		&deployment.region,
-		&user_id,
-		&login_id,
+		Some(&user_id),
+		Some(&login_id),
 		&ip_address,
+		false,
 		&config,
 		&request_id,
 	)
