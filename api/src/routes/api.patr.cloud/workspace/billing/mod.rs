@@ -20,6 +20,8 @@ use api_models::{
 		GetResourceUsageBreakdownRequest,
 		GetResourceUsageBreakdownResponse,
 		GetTransactionHistoryResponse,
+		MakePaymentRequest,
+		MakePaymentResponse,
 		PaymentMethod,
 		Transaction,
 		UpdateBillingAddressRequest,
@@ -380,6 +382,37 @@ pub fn create_sub_app(
 				}),
 			},
 			EveMiddleware::CustomFunction(pin_fn!(add_credits)),
+		],
+	);
+
+	sub_app.post(
+		"/make_payment",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(make_payment)),
 		],
 	);
 
@@ -942,6 +975,35 @@ async fn add_credits(
 	Ok(context)
 }
 
+async fn make_payment(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	let MakePaymentRequest { amount, .. } =
+		context
+			.get_body_as()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let config = context.get_state().config.clone();
+	let (payment_intent_id, transaction_id) = service::make_payment(
+		context.get_database_connection(),
+		&workspace_id,
+		amount,
+		&config,
+	)
+	.await?;
+
+	context.success(MakePaymentResponse {
+		payment_intent_id: payment_intent_id.to_string(),
+		transaction_id,
+	});
+	Ok(context)
+}
+
 async fn confirm_payment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -950,7 +1012,9 @@ async fn confirm_payment(
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
 	let ConfirmPaymentRequest {
-		payment_intent_id, ..
+		transaction_id,
+		payment_intent_id,
+		..
 	} = context
 		.get_body_as()
 		.status(400)
@@ -961,6 +1025,7 @@ async fn confirm_payment(
 	let success = service::confirm_payment_method(
 		context.get_database_connection(),
 		&workspace_id,
+		&transaction_id,
 		&payment_intent_id,
 		&config,
 	)

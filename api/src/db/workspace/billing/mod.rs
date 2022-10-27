@@ -687,6 +687,31 @@ pub async fn create_transaction(
 	.map(|_| ())
 }
 
+pub async fn update_transaction(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	transaction_id: &Uuid,
+	transaction_type: &TransactionType,
+	payment_status: &PaymentStatus,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			transaction
+		SET
+			transaction_type = $1,
+			payment_status = $2
+		WHERE
+			id = $3;
+		"#,
+		transaction_type as _,
+		payment_status as _,
+		transaction_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn generate_new_transaction_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {

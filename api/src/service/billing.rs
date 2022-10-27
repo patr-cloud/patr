@@ -35,6 +35,7 @@ use stripe::{
 	OffSessionOther,
 	PaymentIntent,
 	PaymentIntentConfirmationMethod,
+	PaymentIntentId,
 	PaymentIntentOffSession,
 	PaymentIntentStatus,
 	PaymentMethodId,
@@ -161,9 +162,91 @@ pub async fn add_credits_to_workspace(
 	Ok(())
 }
 
+pub async fn make_payment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	amount_to_pay: u32,
+	config: &Settings,
+) -> Result<(PaymentIntentId, Uuid), Error> {
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let default_payment_method_id = workspace
+		.default_payment_method_id
+		.status(402)
+		.body(error!(PAYMENT_METHOD_REQUIRED).to_string())?;
+
+	let address_id = workspace
+		.address_id
+		.status(400)
+		.body(error!(ADDRESS_REQUIRED).to_string())?;
+
+	let (dollars, description) = (amount_to_pay, "Patr charge: Resource Usage");
+
+	let (currency, amount) = if db::get_billing_address(connection, &address_id)
+		.await?
+		.status(500)?
+		.country == *"IN"
+	{
+		(Currency::INR, (dollars * 100 * 80) as i64)
+	} else {
+		(Currency::USD, (dollars * 100) as i64)
+	};
+
+	let client = Client::new(&config.stripe.secret_key);
+
+	let payment_intent = PaymentIntent::create(&client, {
+		let mut intent = CreatePaymentIntent::new(amount, currency);
+
+		intent.confirm = Some(false);
+		intent.description = Some(description);
+		intent.customer =
+			Some(CustomerId::from_str(&workspace.stripe_customer_id)?);
+		intent.payment_method =
+			Some(PaymentMethodId::from_str(&default_payment_method_id)?);
+		intent.payment_method_types = Some(vec!["card".to_string()]);
+
+		intent
+	})
+	.await;
+
+	// handling errors explicitely as `?` doesn't provide enough information
+	let payment_intent = match payment_intent {
+		Ok(payment) => payment,
+		Err(err) => {
+			log::error!("Error from stripe: {}", err);
+			return Error::as_result()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?;
+		}
+	};
+
+	let transaction_id = db::generate_new_transaction_id(connection).await?;
+	let date = Utc::now();
+
+	db::create_transaction(
+		connection,
+		workspace_id,
+		&transaction_id,
+		date.month() as i32,
+		amount_to_pay.into(),
+		Some(&payment_intent.id),
+		&date,
+		&TransactionType::Payment,
+		&PaymentStatus::Pending,
+		Some(description),
+	)
+	.await?;
+
+	Ok((payment_intent.id, transaction_id))
+}
+
 pub async fn confirm_payment_method(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
+	transaction_id: &Uuid,
 	payment_intent_id: &str,
 	config: &Settings,
 ) -> Result<bool, Error> {
@@ -187,9 +270,30 @@ pub async fn confirm_payment_method(
 			.await?;
 
 	if payment_intent.status != PaymentIntentStatus::Succeeded {
+		Refund::create(&client, {
+			let mut refund = CreateRefund::new();
+
+			refund.payment_intent = Some(payment_intent.id);
+
+			refund
+		})
+		.await?;
+		db::update_transaction(
+			connection,
+			transaction_id,
+			&TransactionType::Payment,
+			&PaymentStatus::Failed,
+		)
+		.await?;
 		return Ok(false);
 	}
-
+	db::update_transaction(
+		connection,
+		transaction_id,
+		&TransactionType::Payment,
+		&PaymentStatus::Success,
+	)
+	.await?;
 	Ok(true)
 }
 
