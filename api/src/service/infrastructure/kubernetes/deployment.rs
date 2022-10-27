@@ -815,21 +815,24 @@ pub async fn get_kubernetes_deployment_status(
 		.await;
 
 	let status = match event_api {
-		// Make this code pretty
 		Ok(event) => event
 			.items
 			.into_iter()
-			.filter_map(|pod| pod.status.unwrap_or_default().container_statuses)
+			.filter_map(|pod| pod.status)
+			.filter_map(|status| status.container_statuses)
 			.flat_map(|status| {
 				status
 					.into_iter()
 					.filter_map(|status| status.state)
 					.filter_map(|state| state.waiting)
-					.map(|waiting| waiting.reason.unwrap_or_default())
+					.filter_map(|waiting| waiting.reason)
 					.collect::<Vec<_>>()
 			})
 			.collect::<Vec<_>>(),
-		Err(_) => todo!(), // TODO - handle this case properly
+		Err(err) => {
+			log::trace!("Unable to get pod status, Error: {}", err);
+			return Ok(DeploymentStatus::Deploying);
+		}
 	};
 
 	// Better check handling and covering edge cases
