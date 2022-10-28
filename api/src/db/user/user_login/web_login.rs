@@ -3,15 +3,16 @@ use std::net::IpAddr;
 use api_models::utils::Uuid;
 use chrono::{DateTime, Utc};
 
-use super::UserLoginType;
 use crate::{query, query_as, Database};
 
 pub struct UserWebLogin {
 	pub login_id: Uuid,
+	pub user_id: Uuid,
+
 	/// Hashed refresh token
 	pub refresh_token: String,
 	pub token_expiry: DateTime<Utc>,
-	pub user_id: Uuid,
+
 	pub created: DateTime<Utc>,
 	pub created_ip: IpAddr,
 	pub created_location_latitude: f64,
@@ -20,6 +21,7 @@ pub struct UserWebLogin {
 	pub created_region: String,
 	pub created_city: String,
 	pub created_timezone: String,
+
 	pub last_login: DateTime<Utc>,
 	pub last_activity: DateTime<Utc>,
 	pub last_activity_ip: IpAddr,
@@ -38,10 +40,12 @@ pub async fn initialize_web_login_pre(
 	query!(
 		r#"
 		CREATE TABLE web_login(
-			login_id UUID,
+			login_id UUID NOT NULL,
+			user_id UUID NOT NULL,
+
 			refresh_token TEXT NOT NULL,
 			token_expiry TIMESTAMPTZ NOT NULL,
-			user_id UUID NOT NULL,
+
 			created TIMESTAMPTZ NOT NULL,
 			created_ip INET NOT NULL,
 			created_location GEOMETRY NOT NULL,
@@ -49,6 +53,7 @@ pub async fn initialize_web_login_pre(
 			created_region TEXT NOT NULL,
 			created_city TEXT NOT NULL,
 			created_timezone TEXT NOT NULL,
+
 			last_login TIMESTAMPTZ NOT NULL,
 			last_activity TIMESTAMPTZ NOT NULL,
 			last_activity_ip INET NOT NULL,
@@ -58,11 +63,11 @@ pub async fn initialize_web_login_pre(
 			last_activity_city TEXT NOT NULL,
 			last_activity_timezone TEXT NOT NULL,
 			last_activity_user_agent TEXT NOT NULL,
+
 			login_type USER_LOGIN_TYPE NOT NULL
 				GENERATED ALWAYS AS ('web_login') STORED,
-			CONSTRAINT web_login_fk
-				FOREIGN KEY(login_id, user_id, login_type)
-					REFERENCES user_login(login_id, user_id, login_type)
+			CONSTRAINT web_login_fk FOREIGN KEY(login_id, user_id, login_type)
+				REFERENCES user_login(login_id, user_id, login_type)
 		);
 		"#
 	)
@@ -101,12 +106,14 @@ pub async fn initialize_web_login_post(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn add_user_web_login(
+pub async fn add_new_web_login(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &Uuid,
+	user_id: &Uuid,
+
 	refresh_token: &str,
 	token_expiry: &DateTime<Utc>,
-	user_id: &Uuid,
+
 	created: &DateTime<Utc>,
 	created_ip: &IpAddr,
 	created_location_latitude: f64,
@@ -115,6 +122,7 @@ pub async fn add_user_web_login(
 	created_region: &str,
 	created_city: &str,
 	created_timezone: &str,
+
 	last_login: &DateTime<Utc>,
 	last_activity: &DateTime<Utc>,
 	last_activity_ip: &IpAddr,
@@ -126,22 +134,16 @@ pub async fn add_user_web_login(
 	last_activity_timezone: &str,
 	last_activity_user_agent: &str,
 ) -> Result<(), sqlx::Error> {
-	super::add_new_user_login(
-		connection,
-		login_id,
-		user_id,
-		&UserLoginType::WebLogin,
-	)
-	.await?;
-
 	query!(
 		r#"
 		INSERT INTO
 			web_login(
 				login_id,
+				user_id, 
+
 				refresh_token, 
 				token_expiry, 
-				user_id, 
+
 				created,
 				created_ip,
 				created_location,
@@ -149,6 +151,7 @@ pub async fn add_user_web_login(
 				created_region,
 				created_city,
 				created_timezone,
+
 				last_login, 
 				last_activity,
 				last_activity_ip,
@@ -163,8 +166,10 @@ pub async fn add_user_web_login(
 			(
 				$1,
 				$2,
+
 				$3,
 				$4,
+
 				$5,
 				$6,
 				ST_SetSRID(POINT($7, $8)::GEOMETRY, 4326),
@@ -172,6 +177,7 @@ pub async fn add_user_web_login(
 				$10,
 				$11,
 				$12,
+
 				$13,
 				$14,
 				$15,
@@ -184,9 +190,9 @@ pub async fn add_user_web_login(
 			);
 		"#,
 		login_id as _,
+		user_id as _,
 		refresh_token,
 		token_expiry as _,
-		user_id as _,
 		created as _,
 		created_ip as _,
 		created_location_latitude as _,

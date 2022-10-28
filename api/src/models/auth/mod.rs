@@ -1,37 +1,53 @@
 mod access_token_data;
 mod user_api_token_data;
 
-use std::collections::HashMap;
+use std::{collections::BTreeMap, net::IpAddr};
 
-use api_models::utils::Uuid;
+use api_models::{models::user::WorkspacePermission, utils::Uuid};
 use redis::aio::MultiplexedConnection as RedisConnection;
 
 pub use self::{access_token_data::*, user_api_token_data::*};
-use super::rbac::{self, WorkspacePermissions, GOD_USER_ID};
+use super::rbac::{self, GOD_USER_ID};
 use crate::{utils::Error, Database};
 
 #[derive(Clone, Debug)]
 pub enum UserAuthenticationData {
 	AccessToken(AccessTokenData),
-	ApiToken(UserApiTokenData),
+	ApiToken(ApiTokenData),
 }
 
 impl UserAuthenticationData {
 	pub async fn parse(
 		connection: &mut <Database as sqlx::Database>::Connection,
-		redis_conn: &mut RedisConnection,
+		redis_connection: &mut RedisConnection,
 		jwt_secret_key: &str,
-		token: String,
+		token: &str,
+		accessing_ip: &IpAddr,
 	) -> Result<Self, Error> {
-		if token.starts_with("patr") {
-			let api_token = UserApiTokenData::parse(connection, &token).await?;
+		if token.starts_with("patrv1") {
+			let api_token = ApiTokenData::decode(
+				connection,
+				redis_connection,
+				&token,
+				accessing_ip,
+			)
+			.await?;
+
 			Ok(Self::ApiToken(api_token))
 		} else {
-			let access_token =
-				AccessTokenData::parse(token, jwt_secret_key, redis_conn)
-					.await?;
+			let access_token = AccessTokenData::decode(
+				redis_connection,
+				token,
+				jwt_secret_key,
+			)
+			.await?;
+
 			Ok(Self::AccessToken(access_token))
 		}
+	}
+
+	pub fn is_api_token(&self) -> bool {
+		matches!(self, UserAuthenticationData::ApiToken(_))
 	}
 
 	pub fn login_id(&self) -> &Uuid {
@@ -58,12 +74,10 @@ impl UserAuthenticationData {
 
 	pub fn workspace_permissions(
 		&self,
-	) -> &HashMap<Uuid, WorkspacePermissions> {
+	) -> &BTreeMap<Uuid, WorkspacePermission> {
 		match &self {
-			UserAuthenticationData::AccessToken(access) => {
-				&access.workspace_permissions
-			}
-			UserAuthenticationData::ApiToken(api) => &api.workspace_permissions,
+			UserAuthenticationData::AccessToken(access) => &access.permissions,
+			UserAuthenticationData::ApiToken(api) => &api.permissions,
 		}
 	}
 
@@ -85,8 +99,9 @@ impl UserAuthenticationData {
 
 		let allowed = {
 			// Check if the resource type is allowed
-			if let Some(permissions) =
-				workspace_permission.resource_types.get(resource_type_id)
+			if let Some(permissions) = workspace_permission
+				.resource_type_permissions
+				.get(resource_type_id)
 			{
 				permissions.contains(
 					rbac::PERMISSIONS
@@ -101,7 +116,7 @@ impl UserAuthenticationData {
 		} || {
 			// Check if that specific resource is allowed
 			if let Some(permissions) =
-				workspace_permission.resources.get(resource_id)
+				workspace_permission.resource_permissions.get(resource_id)
 			{
 				permissions.contains(
 					rbac::PERMISSIONS

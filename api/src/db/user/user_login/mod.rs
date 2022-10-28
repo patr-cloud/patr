@@ -3,15 +3,14 @@ mod web_login;
 
 use api_macros::query;
 use api_models::utils::Uuid;
-pub use api_token::*;
-pub use web_login::*;
 
+pub use self::{api_token::*, web_login::*};
 use crate::Database;
 
 #[derive(Debug, Clone, PartialEq, Eq, sqlx::Type)]
 #[sqlx(type_name = "USER_LOGIN_TYPE", rename_all = "snake_case")]
 pub enum UserLoginType {
-	ApiTokenLogin,
+	ApiToken,
 	WebLogin,
 }
 
@@ -21,7 +20,7 @@ pub async fn initialize_user_login_pre(
 	query!(
 		r#"
 		CREATE TYPE USER_LOGIN_TYPE AS ENUM(
-			'api_token_login',
+			'api_token',
 			'web_login'
 		);
 		"#
@@ -32,25 +31,23 @@ pub async fn initialize_user_login_pre(
 	query!(
 		r#"
 		CREATE TABLE user_login(
-			login_id UUID
-                CONSTRAINT user_login_pk PRIMARY KEY,
+			login_id UUID CONSTRAINT user_login_pk PRIMARY KEY,
 			user_id UUID NOT NULL
 				CONSTRAINT user_login_fk_user_id REFERENCES "user"(id),
             login_type USER_LOGIN_TYPE NOT NULL,
-			created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			/* TODO: Qualify do we need it? */
-			CONSTRAINT user_login_uk
-				UNIQUE(login_id, user_id),
-			CONSTRAINT user_login_login_id_user_id_login_type_uk
-				UNIQUE(login_id, user_id, login_type)
+			created TIMESTAMPTZ NOT NULL,
+			CONSTRAINT user_login_uq_login_id_user_id UNIQUE(login_id, user_id),
+			CONSTRAINT user_login_uq_login_id_user_id_login_type UNIQUE(
+				login_id, user_id, login_type
+			)
 		);
 		"#
 	)
 	.execute(&mut *connection)
 	.await?;
 
-	initialize_web_login_pre(&mut *connection).await?;
-	initialize_api_token_pre(&mut *connection).await?;
+	web_login::initialize_web_login_pre(&mut *connection).await?;
+	api_token::initialize_api_token_pre(&mut *connection).await?;
 
 	Ok(())
 }
@@ -58,8 +55,8 @@ pub async fn initialize_user_login_pre(
 pub async fn initialize_user_login_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
-	initialize_api_token_post(&mut *connection).await?;
-	initialize_web_login_post(&mut *connection).await?;
+	web_login::initialize_web_login_post(&mut *connection).await?;
+	api_token::initialize_api_token_post(&mut *connection).await?;
 
 	Ok(())
 }

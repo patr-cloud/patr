@@ -8,23 +8,15 @@ use api_models::{
 			BasicUserInfo,
 			ChangePasswordRequest,
 			ChangePasswordResponse,
-			CreateApiTokenRequest,
-			CreateApiTokenResponse,
 			DeletePersonalEmailRequest,
 			DeletePersonalEmailResponse,
 			DeletePhoneNumberRequest,
 			DeletePhoneNumberResponse,
-			DeleteUserLoginResponse,
 			GetUserInfoByUserIdResponse,
 			GetUserInfoResponse,
-			GetUserLoginInfoResponse,
-			ListApiTokenPermissionsResponse,
-			ListApiTokenResponse,
 			ListPersonalEmailsResponse,
 			ListPhoneNumbersResponse,
-			ListUserLoginsResponse,
 			ListUserWorkspacesResponse,
-			RevokeApiTokenResponse,
 			SearchForUserRequest,
 			SearchForUserResponse,
 			UpdateRecoveryEmailRequest,
@@ -33,19 +25,15 @@ use api_models::{
 			UpdateRecoveryPhoneNumberResponse,
 			UpdateUserInfoRequest,
 			UpdateUserInfoResponse,
-			UserApiToken,
-			UserWebLogin,
 			VerifyPersonalEmailRequest,
 			VerifyPersonalEmailResponse,
 			VerifyPhoneNumberRequest,
 			VerifyPhoneNumberResponse,
-			WorkspacePermissions,
 		},
 		workspace::Workspace,
 	},
-	utils::{DateTime, Location, Uuid},
+	utils::{DateTime, Uuid},
 };
-use chrono::{DateTime as ChronoDateTime, Duration, Utc};
 use eve_rs::{App as EveApp, AsError, NextHandler};
 
 use crate::{
@@ -53,8 +41,7 @@ use crate::{
 	db::{self, User},
 	error,
 	pin_fn,
-	redis,
-	service::{self, get_access_token_expiry},
+	service,
 	utils::{
 		constants::request_keys,
 		Error,
@@ -63,6 +50,9 @@ use crate::{
 		EveMiddleware,
 	},
 };
+
+mod api_token;
+mod login;
 
 /// # Description
 /// This function is used to create a sub app for every endpoint listed. It
@@ -81,44 +71,44 @@ use crate::{
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut app = create_eve_app(app);
+	let mut sub_app = create_eve_app(app);
 
-	app.get(
+	sub_app.get(
 		"/info",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(get_user_info)),
 		],
 	);
-	app.post(
+	sub_app.post(
 		"/info",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(update_user_info)),
 		],
 	);
-	app.post(
+	sub_app.post(
 		"/add-email-address",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(add_email_address)),
 		],
 	);
-	app.get(
+	sub_app.get(
 		"/list-email-address",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(list_email_addresses)),
 		],
 	);
-	app.get(
+	sub_app.get(
 		"/list-phone-numbers",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(list_phone_numbers)),
 		],
 	);
-	app.post(
+	sub_app.post(
 		"/update-recovery-email",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
@@ -127,7 +117,7 @@ pub fn create_sub_app(
 			)),
 		],
 	);
-	app.post(
+	sub_app.post(
 		"/update-recovery-phone",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
@@ -136,21 +126,21 @@ pub fn create_sub_app(
 			)),
 		],
 	);
-	app.post(
+	sub_app.post(
 		"/add-phone-number",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(add_phone_number_for_user)),
 		],
 	);
-	app.post(
+	sub_app.post(
 		"/verify-phone-number",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(verify_phone_number)),
 		],
 	);
-	app.delete(
+	sub_app.delete(
 		"/delete-personal-email",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
@@ -159,28 +149,28 @@ pub fn create_sub_app(
 			)),
 		],
 	);
-	app.delete(
+	sub_app.delete(
 		"/delete-phone-number",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(delete_phone_number)),
 		],
 	);
-	app.post(
+	sub_app.post(
 		"/verify-email-address",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(verify_email_address)),
 		],
 	);
-	app.get(
+	sub_app.get(
 		"/workspaces",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(get_workspaces_for_user)),
 		],
 	);
-	app.post(
+	sub_app.post(
 		"/change-password",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
@@ -188,37 +178,14 @@ pub fn create_sub_app(
 		],
 	);
 
-	app.get(
-		"/logins",
-		[
-			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(get_all_logins_for_user)),
-		],
-	);
-
-	app.get(
-		"/logins/:loginId/info",
-		[
-			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(get_login_info)),
-		],
-	);
-
-	app.delete(
-		"/logins/:loginId",
-		[
-			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(delete_user_login)),
-		],
-	);
-	app.get(
+	sub_app.get(
 		"/:userId/info",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_user_id)),
 		],
 	);
-	app.get(
+	sub_app.get(
 		"/search",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
@@ -226,41 +193,10 @@ pub fn create_sub_app(
 		],
 	);
 
-	app.post(
-		"/api-token",
-		[
-			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(create_api_token)),
-		],
-	);
+	sub_app.use_sub_app("/", login::create_sub_app(app));
+	sub_app.use_sub_app("/", api_token::create_sub_app(app));
 
-	app.put(
-		"/api-token/:apiToken/revoke",
-		[
-			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(revoke_api_token)),
-		],
-	);
-
-	app.get(
-		"/api-token/:userId",
-		[
-			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(list_api_token_for_user)),
-		],
-	);
-
-	app.get(
-		"/api-token/:apiToken/permission",
-		[
-			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(
-				list_permission_for_api_token
-			)),
-		],
-	);
-
-	app
+	sub_app
 }
 
 /// # Description
@@ -1228,128 +1164,6 @@ async fn change_password(
 	Ok(context)
 }
 
-async fn get_all_logins_for_user(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user_id().clone();
-
-	let logins = db::get_all_web_logins_for_user(
-		context.get_database_connection(),
-		&user_id,
-	)
-	.await?
-	.into_iter()
-	.map(|login| UserWebLogin {
-		login_id: login.login_id,
-		token_expiry: DateTime(login.token_expiry),
-		created: DateTime(login.created),
-		created_ip: login.created_ip,
-		created_location: Location {
-			lat: login.created_location_latitude,
-			lng: login.created_location_longitude,
-		},
-		created_country: login.created_country,
-		created_region: login.created_region,
-		created_city: login.created_city,
-		created_timezone: login.created_timezone,
-		last_login: DateTime(login.last_login),
-		last_activity: DateTime(login.last_activity),
-		last_activity_ip: login.last_activity_ip,
-		last_activity_location: Location {
-			lat: login.last_activity_location_latitude,
-			lng: login.last_activity_location_longitude,
-		},
-		last_activity_user_agent: login.last_activity_user_agent,
-		last_activity_country: login.last_activity_country,
-		last_activity_region: login.last_activity_region,
-		last_activity_city: login.last_activity_city,
-		last_activity_timezone: login.last_activity_timezone,
-	})
-	.collect::<Vec<_>>();
-
-	context.success(ListUserLoginsResponse { logins });
-	Ok(context)
-}
-
-async fn get_login_info(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let login_id = context
-		.get_param(request_keys::LOGIN_ID)
-		.and_then(|param| Uuid::parse_str(param).ok())
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let login =
-		db::get_user_web_login(context.get_database_connection(), &login_id)
-			.await?
-			.map(|login| UserWebLogin {
-				login_id: login.login_id,
-				token_expiry: DateTime(login.token_expiry),
-				created: DateTime(login.created),
-				created_ip: login.created_ip,
-				created_location: Location {
-					lat: login.created_location_latitude,
-					lng: login.created_location_longitude,
-				},
-				created_country: login.created_country,
-				created_region: login.created_region,
-				created_city: login.created_city,
-				created_timezone: login.created_timezone,
-				last_login: DateTime(login.last_login),
-				last_activity: DateTime(login.last_activity),
-				last_activity_ip: login.last_activity_ip,
-				last_activity_location: Location {
-					lat: login.last_activity_location_latitude,
-					lng: login.last_activity_location_longitude,
-				},
-				last_activity_user_agent: login.last_activity_user_agent,
-				last_activity_country: login.last_activity_country,
-				last_activity_region: login.last_activity_region,
-				last_activity_city: login.last_activity_city,
-				last_activity_timezone: login.last_activity_timezone,
-			})
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	context.success(GetUserLoginInfoResponse { login });
-	Ok(context)
-}
-
-async fn delete_user_login(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let login_id = context
-		.get_param(request_keys::LOGIN_ID)
-		.and_then(|param| Uuid::parse_str(param).ok())
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let user_id = context.get_token_data().unwrap().user_id().clone();
-
-	db::delete_user_web_login_by_id(
-		context.get_database_connection(),
-		&login_id,
-		&user_id,
-	)
-	.await?;
-
-	let ttl = get_access_token_expiry() + Duration::hours(2); // 2 hrs buffer time
-	redis::revoke_login_tokens_created_before_timestamp(
-		context.get_redis_connection(),
-		&login_id,
-		&Utc::now(),
-		Some(&ttl),
-	)
-	.await?;
-
-	context.success(DeleteUserLoginResponse {});
-	Ok(context)
-}
-
 async fn search_for_user(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -1369,183 +1183,5 @@ async fn search_for_user(
 		db::search_for_users(context.get_database_connection(), &query).await?;
 
 	context.success(SearchForUserResponse { users });
-	Ok(context)
-}
-
-async fn create_api_token(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	// After RBAC is introduced,
-	// This logic has to change to accomodate the user_id
-	// Can be user who is creating token for personal user or the admin who
-	// created token for user Accomodate logic for which user creating for
-	// personal user or admin creating for user As for now user_id will be the
-	// id of user who is making this request
-
-	let request_id = Uuid::new_v4();
-
-	let CreateApiTokenRequest {
-		workspace_id,
-		user_id,
-		name,
-		resource_permissions,
-		resource_type_permissions,
-		token_exp,
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let workspace_permissions = context
-		.get_token_data()
-		.unwrap()
-		.workspace_permissions()
-		.get(&workspace_id);
-	let is_super_admin =
-		if let Some(workspace_permission) = workspace_permissions {
-			workspace_permission.is_super_admin
-		} else {
-			false
-		};
-
-	let (token_id, api_token) = service::create_api_token_for_user(
-		context.get_database_connection(),
-		&user_id,
-		&workspace_id,
-		&name,
-		&resource_permissions,
-		&resource_type_permissions,
-		token_exp.map(ChronoDateTime::<Utc>::from),
-		is_super_admin,
-		&request_id,
-	)
-	.await?;
-
-	context.success(CreateApiTokenResponse {
-		token_id,
-		api_token,
-	});
-	Ok(context)
-}
-
-async fn revoke_api_token(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
-	let user_id = context.get_token_data().unwrap().user_id().clone();
-
-	// TODO - Has to validate if the user has right to revoke the token or not
-	let token_id = Uuid::parse_str(
-		context
-			.get_param(request_keys::API_TOKEN)
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?,
-	)
-	.unwrap();
-
-	db::get_currently_active_api_token_by_id(
-		context.get_database_connection(),
-		&token_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	log::trace!(
-		"request_id: {} with user_id: {} revoking api_token: {}",
-		request_id,
-		user_id,
-		token_id
-	);
-
-	db::revoke_user_api_token(context.get_database_connection(), &token_id)
-		.await?;
-
-	context.success(RevokeApiTokenResponse {});
-	Ok(context)
-}
-
-async fn list_api_token_for_user(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
-	let user_id = context.get_param(request_keys::USER_ID).unwrap();
-	let user_id = Uuid::parse_str(user_id).unwrap();
-
-	db::get_user_by_user_id(context.get_database_connection(), &user_id)
-		.await?
-		.status(404)
-		.body(error!(USER_NOT_FOUND).to_string())?;
-
-	log::trace!(
-		"request_id: {} listing api_tokens for user: {}",
-		request_id,
-		user_id
-	);
-	let tokens = db::list_currently_active_api_tokens_for_user(
-		context.get_database_connection(),
-		&user_id,
-	)
-	.await?
-	.into_iter()
-	.map(|token| UserApiToken {
-		name: token.name,
-		token_id: token.token_id,
-		token_exp: token.token_exp.map(DateTime::<Utc>::from),
-		user_id: token.user_id,
-		created: DateTime::from(token.created),
-	})
-	.collect::<Vec<_>>();
-
-	context.success(ListApiTokenResponse { tokens });
-
-	Ok(context)
-}
-
-async fn list_permission_for_api_token(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
-	let token = context.get_param(request_keys::API_TOKEN).unwrap();
-	let token = Uuid::parse_str(token).unwrap();
-
-	// Check if token exists
-	db::get_currently_active_api_token_by_id(
-		context.get_database_connection(),
-		&token,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	log::trace!(
-		"request_id: {} listing permissions for api_token: {}",
-		request_id,
-		token
-	);
-
-	let permissions = db::get_all_permissions_for_api_token(
-		context.get_database_connection(),
-		&token,
-	)
-	.await?
-	.into_iter()
-	.map(|(workspace_id, permissions)| {
-		(
-			workspace_id,
-			WorkspacePermissions {
-				is_super_admin: permissions.is_super_admin,
-				resources: permissions.resources,
-				resource_types: permissions.resource_types,
-			},
-		)
-	})
-	.collect();
-
-	context.success(ListApiTokenPermissionsResponse { permissions });
 	Ok(context)
 }

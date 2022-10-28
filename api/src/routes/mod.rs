@@ -7,6 +7,8 @@ mod auth_patr_cloud;
 
 use eve_rs::App as EveApp;
 
+pub use api_patr_cloud::get_request_ip_address;
+
 use crate::{
 	app::{create_eve_app, App},
 	utils::{ErrorData, EveContext, EveMiddleware},

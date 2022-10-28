@@ -20,7 +20,7 @@ use super::get_ip_address_info;
 /// be supplied to the functions in this file, then the functions might
 /// connect with db and return what was required for the endpoint
 use crate::{
-	db::{self, User, UserToSignUp, UserWebLogin},
+	db::{self, User, UserLoginType, UserToSignUp, UserWebLogin},
 	error,
 	models::{rbac, AccessTokenData, ExposedUserData},
 	service,
@@ -488,12 +488,20 @@ pub async fn create_login_for_user(
 	let (lat, lng) = ipinfo.loc.split_once(',').status(500)?;
 	let (lat, lng): (f64, f64) = (lat.parse()?, lng.parse()?);
 
-	db::add_user_web_login(
+	db::add_new_user_login(
 		connection,
 		&login_id,
+		user_id,
+		&UserLoginType::WebLogin,
+	)
+	.await?;
+
+	db::add_new_web_login(
+		connection,
+		&login_id,
+		user_id,
 		&hashed_refresh_token,
 		&expiry,
-		user_id,
 		&now,
 		created_ip,
 		lat,
@@ -634,9 +642,11 @@ pub async fn generate_access_token(
 	let now = Utc::now();
 	let exp = now + service::get_access_token_expiry(); // 3 days
 	let refresh_token_expiry = now + service::get_refresh_token_expiry();
-	let workspaces =
-		db::get_all_workspace_roles_for_user(connection, &user_login.user_id)
-			.await?;
+	let workspaces = db::get_all_workspace_role_permissions_for_user(
+		connection,
+		&user_login.user_id,
+	)
+	.await?;
 
 	let User {
 		username,

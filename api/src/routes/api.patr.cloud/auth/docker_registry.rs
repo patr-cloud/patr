@@ -627,7 +627,7 @@ async fn docker_registry_authenticate(
 
 	// get all workspace roles for the user using the id
 	let user_id = &user.id;
-	let user_roles = db::get_all_workspace_roles_for_user(
+	let user_roles = db::get_all_workspace_role_permissions_for_user(
 		context.get_database_connection(),
 		&user.id,
 	)
@@ -641,7 +641,7 @@ async fn docker_registry_authenticate(
 			if let Some(required_role_for_user) = required_role_for_user {
 				let resource_type_allowed = {
 					if let Some(permissions) = required_role_for_user
-						.resource_types
+						.resource_type_permissions
 						.get(&resource.resource_type_id)
 					{
 						permissions.contains(
@@ -656,8 +656,9 @@ async fn docker_registry_authenticate(
 					}
 				};
 				let resource_allowed = {
-					if let Some(permissions) =
-						required_role_for_user.resources.get(&resource.id)
+					if let Some(permissions) = required_role_for_user
+						.resource_permissions
+						.get(&resource.id)
 					{
 						permissions.contains(
 							rbac::PERMISSIONS

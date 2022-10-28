@@ -1,4 +1,8 @@
-use std::{future::Future, pin::Pin};
+use std::{
+	future::Future,
+	net::{IpAddr, Ipv4Addr},
+	pin::Pin,
+};
 
 use async_trait::async_trait;
 use eve_rs::{
@@ -21,6 +25,7 @@ use crate::{
 	db::Resource,
 	error,
 	models::UserAuthenticationData,
+	routes::get_request_ip_address,
 	utils::{Error, ErrorData, EveContext},
 };
 
@@ -95,10 +100,14 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				static_file_server.run_middleware(context, next).await
 			}
 			EveMiddleware::PlainTokenAuthenticator => {
-				let token_str = context
+				let token = context
 					.get_header("Authorization")
 					.status(401)
 					.body(error!(UNAUTHORIZED).to_string())?;
+
+				let ip_addr = get_request_ip_address(&context)
+					.parse()
+					.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
 
 				let jwt_secret = context.get_state().config.jwt_secret.clone();
 				let mut redis_conn = context.get_redis_connection().clone();
@@ -106,7 +115,8 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					context.get_database_connection(),
 					&mut redis_conn,
 					&jwt_secret,
-					token_str,
+					&token,
+					&ip_addr,
 				)
 				.await?;
 
@@ -117,10 +127,14 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				permission_required,
 				resource_in_question,
 			) => {
-				let token_str = context
+				let token = context
 					.get_header("Authorization")
 					.status(401)
 					.body(error!(UNAUTHORIZED).to_string())?;
+
+				let ip_addr = get_request_ip_address(&context)
+					.parse()
+					.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
 
 				let jwt_secret = context.get_state().config.jwt_secret.clone();
 				let mut redis_conn = context.get_redis_connection().clone();
@@ -128,7 +142,8 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					context.get_database_connection(),
 					&mut redis_conn,
 					&jwt_secret,
-					token_str,
+					&token,
+					&ip_addr,
 				)
 				.await?;
 
