@@ -16,7 +16,6 @@ use crate::{
 			SecretsBill,
 			StaticSiteBill,
 		},
-		deployment::KubernetesEventData,
 		ResourceType,
 	},
 	utils::Error,
@@ -81,8 +80,15 @@ pub async fn send_email_verification_otp(
 	new_email: String,
 	otp: &str,
 	username: &str,
+	recovery_email: &str,
 ) -> Result<(), Error> {
-	email::send_email_verification_otp(new_email.parse()?, otp, username).await
+	email::send_email_verification_otp(
+		new_email.parse()?,
+		otp,
+		username,
+		recovery_email,
+	)
+	.await
 }
 
 /// # Description
@@ -372,67 +378,7 @@ async fn get_user_phone_number(
 	Ok(phone_number)
 }
 
-/// # Description
-/// This function is used to send alert to the user
-///
-/// # Arguments
-/// * `connection` - database save point, more details here: [`Transaction`]
-/// * `workspace_name` - a Uuid containing id of the workspace
-/// * `deployment_id` - a Uuid containing id of the deployment
-/// * `deployment_name` - a string containing name of the deployment
-/// * `message` - a string containing message of the alert
-///
-/// # Returns
-/// This function returns `Result<(), Error>` containing an empty response or an
-/// error
-///
-/// [`Transaction`]: Transaction
-pub async fn send_alert_email(
-	workspace_name: &str,
-	deployment_id: &Uuid,
-	deployment_name: &str,
-	message: &str,
-	alert_emails: &[String],
-) -> Result<(), Error> {
-	// send email
-	for email in alert_emails {
-		email::send_alert_email(
-			email.parse()?,
-			workspace_name,
-			deployment_id,
-			deployment_name,
-			message,
-		)
-		.await?;
-	}
-
-	Ok(())
-}
-
-/// # Description
-/// This function is used to send alert to the patr's support email
-///
-/// # Arguments
-/// * `connection` - database save point, more details here: [`Transaction`]
-/// * `workspace_name` - a Uuid containing id of the workspace
-/// * `deployment_id` - a Uuid containing id of the deployment
-/// * `deployment_name` - a string containing name of the deployment
-/// * `event_data` - an object containing all the details of the event
-///
-/// # Returns
-/// This function returns `Result<(), Error>` containing an empty response or an
-/// error
-///
-/// [`Transaction`]: Transaction
-pub async fn send_alert_email_to_patr(
-	event_data: KubernetesEventData,
-) -> Result<(), Error> {
-	// send email
-	email::send_alert_email_to_patr("postmaster@vicara.co".parse()?, event_data)
-		.await
-}
-
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, dead_code)]
 pub async fn send_invoice_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
@@ -667,6 +613,13 @@ pub async fn send_payment_failed_notification(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	super_admin_id: Uuid,
 	workspace_name: String,
+	deployment_usages: &HashMap<Uuid, DeploymentBill>,
+	database_usages: &HashMap<Uuid, DatabaseBill>,
+	static_sites_usages: &HashMap<StaticSitePlan, StaticSiteBill>,
+	managed_url_usages: &HashMap<u64, ManagedUrlBill>,
+	docker_repository_usages: &[DockerRepositoryBill],
+	domains_usages: &HashMap<DomainPlan, DomainBill>,
+	secrets_usages: &HashMap<u64, SecretsBill>,
 	month: String,
 	year: i32,
 	total_bill: f64,
@@ -692,6 +645,63 @@ pub async fn send_payment_failed_notification(
 		user_email.parse()?,
 		user.username,
 		workspace_name,
+		deployment_usages.clone(),
+		database_usages.clone(),
+		static_sites_usages.clone(),
+		managed_url_usages.clone(),
+		docker_repository_usages.to_owned(),
+		domains_usages.clone(),
+		secrets_usages.clone(),
+		month,
+		year,
+		total_bill,
+	)
+	.await
+}
+
+pub async fn send_payment_success_notification(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	super_admin_id: Uuid,
+	workspace_name: String,
+	deployment_usages: HashMap<Uuid, DeploymentBill>,
+	database_usages: HashMap<Uuid, DatabaseBill>,
+	static_sites_usages: HashMap<StaticSitePlan, StaticSiteBill>,
+	managed_url_usages: HashMap<u64, ManagedUrlBill>,
+	docker_repository_usages: Vec<DockerRepositoryBill>,
+	domains_usages: HashMap<DomainPlan, DomainBill>,
+	secrets_usages: HashMap<u64, SecretsBill>,
+	month: String,
+	year: i32,
+	total_bill: f64,
+) -> Result<(), Error> {
+	let user = db::get_user_by_user_id(connection, &super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_payment_success_email(
+		user_email.parse()?,
+		user.username,
+		workspace_name,
+		deployment_usages,
+		database_usages,
+		static_sites_usages,
+		managed_url_usages,
+		docker_repository_usages,
+		domains_usages,
+		secrets_usages,
 		month,
 		year,
 		total_bill,
@@ -771,6 +781,7 @@ pub async fn domain_verification_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain: &str,
 	workspace_id: &Uuid,
+	domain_id: &Uuid,
 	message: Option<String>,
 	is_verified: bool,
 ) -> Result<(), Error> {
@@ -801,6 +812,7 @@ pub async fn domain_verification_email(
 		email::send_domain_verified_email(
 			domain.to_string(),
 			user.first_name,
+			domain_id.to_string(),
 			user_email.parse()?,
 		)
 		.await?;
@@ -809,6 +821,7 @@ pub async fn domain_verification_email(
 			domain.to_string(),
 			user.first_name,
 			message.unwrap_or_default(),
+			domain_id.to_string(),
 			user_email.parse()?,
 		)
 		.await?;

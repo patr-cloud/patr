@@ -16,7 +16,6 @@ use crate::{
 			SecretsBill,
 			StaticSiteBill,
 		},
-		deployment::KubernetesEventData,
 		EmailTemplate,
 	},
 	utils::Error,
@@ -228,9 +227,11 @@ pub async fn send_recovery_registration_mail(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/add-new-email-notification/template.json"]
+#[allow(non_snake_case)]
 struct AddEmailVerificationEmail {
 	otp: String,
 	username: String,
+	recoveryEmail: String,
 }
 
 /// # Description
@@ -251,96 +252,17 @@ pub async fn send_email_verification_otp(
 	email: Mailbox,
 	otp: &str,
 	username: &str,
+	recovery_email: &str,
 ) -> Result<(), Error> {
 	send_email(
 		AddEmailVerificationEmail {
 			username: username.to_string(),
 			otp: otp.to_string(),
+			recoveryEmail: recovery_email.to_string(),
 		},
 		email,
 		None,
 		"Patr email verification OTP",
-	)
-	.await
-}
-
-#[derive(EmailTemplate, Serialize)]
-#[template_path = "assets/emails/send-deployment-alert-notification/template.json"]
-#[allow(non_snake_case)]
-struct DeploymentAlertEmail {
-	workspaceName: String,
-	deploymentId: String,
-	deploymentName: String,
-	message: String,
-}
-
-/// # Description
-/// This function is used to email alert to the user
-///
-/// # Arguments
-/// * `email` - Represents an email address with an optional name for the
-///   sender/recipient.
-/// More info here: [`Mailbox`]
-/// * `message` - The message to be sent to the user
-///
-/// # Returns
-/// This function returns `Result<(), Error>` containing an empty response or an
-/// error
-///
-/// [`Mailbox`]: Mailbox
-pub async fn send_alert_email(
-	email: Mailbox,
-	workspace_name: &str,
-	deployment_id: &Uuid,
-	deployment_name: &str,
-	message: &str,
-) -> Result<(), Error> {
-	send_email(
-		DeploymentAlertEmail {
-			message: message.to_string(),
-			workspaceName: workspace_name.to_string(),
-			deploymentId: deployment_id.to_string(),
-			deploymentName: deployment_name.to_string(),
-		},
-		email,
-		None,
-		"Patr Deployment alert",
-	)
-	.await
-}
-
-#[derive(EmailTemplate, Serialize)]
-#[template_path = "assets/emails/send-kubernetes-patr-alert-notification/template.json"]
-#[allow(non_snake_case)]
-pub struct KubernetesPatrAlertEmail {
-	eventData: String,
-}
-
-/// # Description
-/// This function is used to email alert to patr
-///
-/// # Arguments
-/// * `email` - Represents an email address with an optional name for the
-///   sender/recipient.
-/// More info here: [`Mailbox`]
-/// * `message` - The message to be sent to patr
-///
-/// # Returns
-/// This function returns `Result<(), Error>` containing an empty response or an
-/// error
-///
-/// [`Mailbox`]: Mailbox
-#[allow(non_snake_case)]
-pub async fn send_alert_email_to_patr(
-	email: Mailbox,
-	event_data: KubernetesEventData,
-) -> Result<(), Error> {
-	let eventData = serde_json::to_string(&event_data)?;
-	send_email(
-		KubernetesPatrAlertEmail { eventData },
-		email,
-		None,
-		"Patr Kubernetes alert",
 	)
 	.await
 }
@@ -372,7 +294,7 @@ struct InvoiceEmail {
 }
 
 #[allow(clippy::too_many_arguments)]
-#[allow(non_snake_case)]
+#[allow(non_snake_case, dead_code)]
 pub async fn send_invoice_email(
 	email: Mailbox,
 	workspaceName: String,
@@ -497,11 +419,18 @@ pub async fn send_bill_not_paid_reminder_email(
 }
 
 #[derive(EmailTemplate, Serialize)]
-#[template_path = "assets/emails/payment-failure/template.json"]
+#[template_path = "assets/emails/payment-failure-invoice/template.json"]
 #[allow(non_snake_case)]
 struct PaymentFailedEmail {
 	username: String,
 	workspaceName: String,
+	deploymentUsage: HashMap<Uuid, DeploymentBill>,
+	databaseUsage: HashMap<Uuid, DatabaseBill>,
+	staticSiteUsage: HashMap<StaticSitePlan, StaticSiteBill>,
+	managedUrlUsage: HashMap<u64, ManagedUrlBill>,
+	dockerRepositoryUsage: Vec<DockerRepositoryBill>,
+	domainUsage: HashMap<DomainPlan, DomainBill>,
+	secretUsage: HashMap<u64, SecretsBill>,
 	month: String,
 	year: i32,
 	totalBill: f64,
@@ -512,6 +441,13 @@ pub async fn send_payment_failed_email(
 	email: Mailbox,
 	username: String,
 	workspaceName: String,
+	deploymentUsage: HashMap<Uuid, DeploymentBill>,
+	databaseUsage: HashMap<Uuid, DatabaseBill>,
+	staticSiteUsage: HashMap<StaticSitePlan, StaticSiteBill>,
+	managedUrlUsage: HashMap<u64, ManagedUrlBill>,
+	dockerRepositoryUsage: Vec<DockerRepositoryBill>,
+	domainUsage: HashMap<DomainPlan, DomainBill>,
+	secretUsage: HashMap<u64, SecretsBill>,
 	month: String,
 	year: i32,
 	totalBill: f64,
@@ -520,6 +456,13 @@ pub async fn send_payment_failed_email(
 		PaymentFailedEmail {
 			username,
 			workspaceName,
+			deploymentUsage,
+			databaseUsage,
+			staticSiteUsage,
+			managedUrlUsage,
+			dockerRepositoryUsage,
+			domainUsage,
+			secretUsage,
 			month,
 			year,
 			totalBill,
@@ -527,6 +470,62 @@ pub async fn send_payment_failed_email(
 		email,
 		None,
 		"[Action required] Patr payment failed",
+	)
+	.await
+}
+
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/payment-success-invoice/template.json"]
+#[allow(non_snake_case)]
+struct PaymentSuccessEmail {
+	username: String,
+	workspaceName: String,
+	deploymentUsage: HashMap<Uuid, DeploymentBill>,
+	databaseUsage: HashMap<Uuid, DatabaseBill>,
+	staticSiteUsage: HashMap<StaticSitePlan, StaticSiteBill>,
+	managedUrlUsage: HashMap<u64, ManagedUrlBill>,
+	dockerRepositoryUsage: Vec<DockerRepositoryBill>,
+	domainUsage: HashMap<DomainPlan, DomainBill>,
+	secretUsage: HashMap<u64, SecretsBill>,
+	month: String,
+	year: i32,
+	totalBill: f64,
+}
+
+#[allow(non_snake_case)]
+pub async fn send_payment_success_email(
+	email: Mailbox,
+	username: String,
+	workspaceName: String,
+	deploymentUsage: HashMap<Uuid, DeploymentBill>,
+	databaseUsage: HashMap<Uuid, DatabaseBill>,
+	staticSiteUsage: HashMap<StaticSitePlan, StaticSiteBill>,
+	managedUrlUsage: HashMap<u64, ManagedUrlBill>,
+	dockerRepositoryUsage: Vec<DockerRepositoryBill>,
+	domainUsage: HashMap<DomainPlan, DomainBill>,
+	secretUsage: HashMap<u64, SecretsBill>,
+	month: String,
+	year: i32,
+	totalBill: f64,
+) -> Result<(), Error> {
+	send_email(
+		PaymentSuccessEmail {
+			username,
+			workspaceName,
+			deploymentUsage,
+			databaseUsage,
+			staticSiteUsage,
+			managedUrlUsage,
+			dockerRepositoryUsage,
+			domainUsage,
+			secretUsage,
+			month,
+			year,
+			totalBill,
+		},
+		email,
+		None,
+		"Patr payment successful",
 	)
 	.await
 }
@@ -574,6 +573,7 @@ pub async fn send_resource_deleted_email(
 #[allow(non_snake_case)]
 struct DomainUnverified {
 	domainName: String,
+	domainId: String,
 	username: String,
 	message: String,
 }
@@ -583,6 +583,7 @@ pub async fn send_domain_unverified_email(
 	domainName: String,
 	username: String,
 	message: String,
+	domainId: String,
 	email: Mailbox,
 ) -> Result<(), Error> {
 	send_email(
@@ -590,6 +591,7 @@ pub async fn send_domain_unverified_email(
 			domainName,
 			username,
 			message,
+			domainId,
 		},
 		email,
 		None,
@@ -604,18 +606,21 @@ pub async fn send_domain_unverified_email(
 struct DomainVerified {
 	domainName: String,
 	username: String,
+	domainId: String,
 }
 
 #[allow(non_snake_case)]
 pub async fn send_domain_verified_email(
 	domainName: String,
 	username: String,
+	domainId: String,
 	email: Mailbox,
 ) -> Result<(), Error> {
 	send_email(
 		DomainVerified {
 			domainName,
 			username,
+			domainId,
 		},
 		email,
 		None,
