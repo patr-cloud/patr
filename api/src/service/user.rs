@@ -67,6 +67,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 		email_address.to_string(),
 		&otp,
 		&user.username,
+		email_address,
 	)
 	.await?;
 

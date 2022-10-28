@@ -429,7 +429,7 @@ async fn deployment_alert(
 			let workspace_id =
 				Uuid::parse_str(&kube_events.involved_object.namespace)?;
 
-			let workspace = db::get_workspace_info(
+			let _workspace = db::get_workspace_info(
 				context.get_database_connection(),
 				&workspace_id,
 			)
@@ -447,7 +447,7 @@ async fn deployment_alert(
 
 			let deployment_id = Uuid::parse_str(deployment_id)?;
 
-			let deployment = db::get_deployment_by_id(
+			let _deployment = db::get_deployment_by_id(
 				context.get_database_connection(),
 				&deployment_id,
 			)
@@ -455,14 +455,16 @@ async fn deployment_alert(
 			.status(500)?;
 
 			log::trace!("request_id: {} - Sending the alert to the user's registered email address", request_id);
-			service::send_alert_email(
-				&workspace.name,
-				&deployment_id,
-				&deployment.name,
-				"The deployment encountered some errror please check logs to find out.",
-				&workspace.alert_emails
-			)
-			.await?;
+			// TODO- to be done letter currently removed email templates so
+			// commenting it now but later we'll impose this with better later
+			// service::send_alert_email(
+			// 	&workspace.name,
+			// 	&deployment_id,
+			// 	&deployment.name,
+			// 	"The deployment encountered some errror please check logs to find
+			// out.", 	&workspace.alert_emails
+			// )
+			// .await?;
 		}
 		message
 			if message.contains("Back-off pulling image") ||
@@ -476,7 +478,7 @@ async fn deployment_alert(
 			let workspace_id =
 				Uuid::parse_str(&kube_events.involved_object.namespace)?;
 
-			let workspace = db::get_workspace_info(
+			let _workspace = db::get_workspace_info(
 				context.get_database_connection(),
 				&workspace_id,
 			)
@@ -494,28 +496,30 @@ async fn deployment_alert(
 
 			let deployment_id = Uuid::parse_str(deployment_id)?;
 
-			let deployment = db::get_deployment_by_id(
+			let _deployment = db::get_deployment_by_id(
 				context.get_database_connection(),
 				&deployment_id,
 			)
 			.await?
 			.status(500)?;
 
-			let error_message = r#"
+			let _error_message = r#"
 					There was an issue regading your image. 
 					We are unable to pull your image. 
 					Please re-check your image url, repository and tag in the deployment and push the image again
 				"#;
 
 			log::trace!("request_id: {} - Sending the alert to the user's registered email address", request_id);
-			service::send_alert_email(
-				&workspace.name,
-				&deployment_id,
-				&deployment.name,
-				error_message,
-				&workspace.alert_emails,
-			)
-			.await?;
+			// TODO- to be done letter currently removed email templates so
+			// commenting it now but later we'll impose this with better later
+			// templates. service::send_alert_email(
+			// 	&workspace.name,
+			// 	&deployment_id,
+			// 	&deployment.name,
+			// 	error_message,
+			// 	&workspace.alert_emails,
+			// )
+			// .await?;
 		}
 		message
 			if [
@@ -531,7 +535,9 @@ async fn deployment_alert(
 				"request_id: {} - Sending the alert to the patr alert email",
 				request_id
 			);
-			service::send_alert_email_to_patr(kube_events).await?;
+			// TODO - use this with updated templated for now template is
+			// deleted
+			// service::send_alert_email_to_patr(kube_events).await?;
 		}
 		_ => (),
 	}

@@ -370,6 +370,7 @@ pub async fn is_domain_verified(
 				connection,
 				&domain.name,
 				workspace_id,
+				domain_id,
 				None,
 				true,
 			)
@@ -380,6 +381,7 @@ pub async fn is_domain_verified(
 			connection,
 			&domain.name,
 			workspace_id,
+			domain_id,
 			Some(message::NS_SERVER_NOT_FOUND.to_string()),
 			false,
 		)
@@ -747,6 +749,7 @@ pub async fn verify_external_domain(
 			connection,
 			domain_name,
 			workspace_id,
+			domain_id,
 			None,
 			true,
 		)
@@ -758,6 +761,7 @@ pub async fn verify_external_domain(
 		connection,
 		domain_name,
 		workspace_id,
+		domain_id,
 		Some(message::NO_TXT_RECORD.to_string()),
 		false,
 	)

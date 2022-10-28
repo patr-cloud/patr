@@ -162,36 +162,10 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
-			log::trace!("request_id: {} sending monthly invoice email to workspaceId: {}", request_id, workspace.id);
-			service::send_invoice_email(
-				connection,
-				&workspace.super_admin_id,
-				workspace.address_id.as_ref(),
-				workspace.name.clone(),
-				total_resource_usage_bill.deployment_usages,
-				total_resource_usage_bill.database_usages,
-				total_resource_usage_bill.static_sites_usages,
-				total_resource_usage_bill.managed_url_usages,
-				total_resource_usage_bill.docker_repository_usages,
-				total_resource_usage_bill.domains_usages,
-				total_resource_usage_bill.secrets_usages,
-				total_resource_usage_bill.total_cost,
-				total_resource_usage_bill.deployment_cost,
-				total_resource_usage_bill.database_cost,
-				total_resource_usage_bill.static_site_cost,
-				total_resource_usage_bill.managed_url_cost,
-				total_resource_usage_bill.docker_repo_cost,
-				total_resource_usage_bill.managed_domain_cost,
-				total_resource_usage_bill.managed_secret_cost,
-				month_string.to_string(),
-				year,
-			)
-			.await?;
-
 			service::queue_attempt_to_charge_workspace(
 				&workspace,
 				&Utc::now(),
-				total_resource_usage_bill.total_cost,
+				&total_resource_usage_bill,
 				payable_bill,
 				month,
 				year,
@@ -204,7 +178,7 @@ pub(super) async fn process_request(
 		WorkspaceRequestData::AttemptToChargeWorkspace {
 			workspace,
 			process_after: DateTime(process_after),
-			total_bill,
+			total_resource_usage_bill,
 			amount_due,
 			month,
 			year,
@@ -337,8 +311,22 @@ pub(super) async fn process_request(
 						)
 						.await?;
 
-						// TODO notify the user that their payment has been
-						// successful
+						service::send_payment_success_notification(
+							connection,
+							workspace.super_admin_id.clone(),
+							workspace.name.clone(),
+							total_resource_usage_bill.deployment_usages,
+							total_resource_usage_bill.database_usages,
+							total_resource_usage_bill.static_sites_usages,
+							total_resource_usage_bill.managed_url_usages,
+							total_resource_usage_bill.docker_repository_usages,
+							total_resource_usage_bill.domains_usages,
+							total_resource_usage_bill.secrets_usages,
+							month_string.to_string(),
+							year,
+							amount_due,
+						)
+						.await?;
 
 						Ok(())
 					} else {
@@ -402,6 +390,14 @@ pub(super) async fn process_request(
 								connection,
 								workspace.super_admin_id.clone(),
 								workspace.name.clone(),
+								&total_resource_usage_bill.deployment_usages,
+								&total_resource_usage_bill.database_usages,
+								&total_resource_usage_bill.static_sites_usages,
+								&total_resource_usage_bill.managed_url_usages,
+								&total_resource_usage_bill
+									.docker_repository_usages,
+								&total_resource_usage_bill.domains_usages,
+								&total_resource_usage_bill.secrets_usages,
 								month_string.to_string(),
 								year,
 								amount_due,
@@ -412,7 +408,7 @@ pub(super) async fn process_request(
 							service::queue_attempt_to_charge_workspace(
 								&workspace,
 								&Utc::now().add(Duration::days(1)),
-								total_bill,
+								&total_resource_usage_bill,
 								amount_due,
 								month,
 								year,
@@ -491,7 +487,7 @@ pub(super) async fn process_request(
 						service::queue_attempt_to_charge_workspace(
 							&workspace,
 							&Utc::now().add(Duration::days(1)),
-							total_bill,
+							&total_resource_usage_bill,
 							amount_due,
 							month,
 							year,
@@ -511,7 +507,7 @@ pub(super) async fn process_request(
 					&workspace.id,
 					&transaction_id,
 					month as i32,
-					total_bill,
+					total_resource_usage_bill.total_cost,
 					Some("enterprise-plan-payment"),
 					// 1st of next month,
 					&month_end_date.add(Duration::nanoseconds(1)),

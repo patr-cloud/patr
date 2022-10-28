@@ -10,6 +10,7 @@ use api_models::{
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
+use super::billing::ResourceUsageBill;
 use crate::{
 	db::Workspace,
 	rabbitmq::{BuildId, BuildStep},
@@ -112,7 +113,7 @@ pub enum WorkspaceRequestData {
 	AttemptToChargeWorkspace {
 		workspace: Workspace,
 		process_after: DateTime<Utc>,
-		total_bill: f64,
+		total_resource_usage_bill: ResourceUsageBill,
 		amount_due: f64,
 		month: u32,
 		year: i32,

@@ -162,6 +162,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 						&mut connection,
 						&unverified_domain.name,
 						&workspace_id,
+						&unverified_domain.id,
 						None,
 						true,
 					)
@@ -248,6 +249,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					&mut connection,
 					&unverified_domain.name,
 					&workspace_id,
+					&unverified_domain.id,
 					Some(message::NO_TXT_RECORD.to_string()),
 					false,
 				)
@@ -544,6 +546,7 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 				&mut connection,
 				&verified_domain.name,
 				&workspace_id,
+				&verified_domain.id,
 				Some(message::NS_SERVER_NOT_FOUND.to_string()),
 				false,
 			)

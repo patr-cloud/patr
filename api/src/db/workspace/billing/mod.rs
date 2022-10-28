@@ -81,7 +81,9 @@ pub struct PaymentMethod {
 	pub workspace_id: Uuid,
 }
 
-#[derive(Debug, sqlx::Type, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(
+	Debug, sqlx::Type, Serialize, Deserialize, PartialEq, Eq, Hash, Clone,
+)]
 #[sqlx(type_name = "STATIC_SITE_PLAN", rename_all = "lowercase")]
 pub enum StaticSitePlan {
 	Free,
@@ -99,7 +101,9 @@ impl fmt::Display for StaticSitePlan {
 	}
 }
 
-#[derive(Debug, sqlx::Type, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(
+	Debug, sqlx::Type, Serialize, Deserialize, PartialEq, Eq, Hash, Clone,
+)]
 #[sqlx(type_name = "DOMAIN_PLAN", rename_all = "lowercase")]
 pub enum DomainPlan {
 	Free,
