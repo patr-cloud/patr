@@ -1,0 +1,87 @@
+Hello {{username}}, 
+
+Payment for your billing period {{month}} {{year}} amounting to  {{totalBill}} for the workspace {{workspaceName}} was unsuccessful.
+
+Your invoice for {{month}} {{year}}  is now available for the workspace {{workspaceName}}
+
+Total Bill: {{totalBill}}
+
+Detailed Charges
+
+Deployment Usage:
+{{#each deploymentUsage}}
+  {{this.deploymentName}}:
+  {{#each this.billItems}}
+    Machine Type: RAM:
+    {{this.machineType.ram}}GB CPU:
+    {{this.machineType.cpu}}vCPU Number of Instances:
+    {{this.numInstances}}
+    Hours used:
+    {{this.hours}}
+    Bill Amount:
+    {{this.amount}}
+  {{/each}}
+{{/each}}
+Database Usage:
+{{#each databaseUsage}}
+  Name:
+  {{this.databaseName}}
+  Hours used:
+  {{this.hours}}
+  Bill Amount:
+  {{this.amount}}
+{{/each}}
+Static Site Usage:
+{{#each staticSiteUsage}}
+  Plan:
+  {{@key}}
+  Hours used:
+  {{this.hours}}
+  Bill Amount:
+  {{this.amount}}
+{{/each}}
+Managed URL Usage:
+{{#each managedUrlUsage}}
+  No.of URLs:
+  {{@key}}
+  Hours used:
+  {{this.hours}}
+  Bill Amount:
+  {{this.amount}}
+{{/each}}
+Docker Repository Usage:
+{{#each dockerRepositoryUsage}}
+  Total Storage (GB):
+  {{@key}}
+  Hours used:
+  {{this.hours}}
+  Bill Amount:
+  {{this.amount}}
+{{/each}}
+Domain Usage:
+{{#each domainUsage}}
+  Plan:
+  {{@key}}
+  Hours used:
+  {{this.hours}}
+  Bill Amount:
+  {{this.amount}}
+{{/each}}
+Secret Usage:
+{{#each secretUsage}}
+  No.of Secrets:
+  {{@key}}
+  Hours used:
+  {{this.hours}}
+  Bill Amount:
+  {{this.amount}}
+{{/each}} 
+
+We will automatically attempt to charge your card again within
+24 to 48 hours. 
+
+You can review or update your payment details on the billing section of Patr (https://app.patr.cloud/workspace). 
+
+Please contact us at support@patr.cloud if you're facing any issues. 
+
+Join our Discord community (https://patr.cloud/discord) for the latest updates and chat with us here (https://app.patr.cloud?openDrift=true) for instant technical support.

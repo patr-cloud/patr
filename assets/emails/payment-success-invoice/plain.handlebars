@@ -1,0 +1,115 @@
+
+Hello {{username}}, 
+
+Your invoice for {{month}} {{year}}  is now available for the workspace {{workspaceName}}
+
+Total Bill: {{totalBill}}
+
+Detailed Charges
+
+Deployment Usage:
+{{#each deploymentUsage}}
+  {{this.deploymentName}}:
+  {{#each this.billItems}}
+    Machine Type: RAM:
+    {{this.machineType.ram}}GB CPU:
+    {{this.machineType.cpu}}vCPU Number of Instances:
+    {{this.numInstances}}
+    Hours used:
+    {{this.hours}}
+    Bill Amount:
+    {{this.amount}}
+  {{/each}}
+{{/each}}
+Database Usage:
+{{#each databaseUsage}}
+  Name:
+  {{this.databaseName}}
+  Hours used:
+  {{this.hours}}
+  Bill Amount:
+  {{this.amount}}
+{{/each}}
+Static Site Usage:
+{{#each staticSiteUsage}}
+  Plan:
+  {{@key}}
+  Hours used:
+  {{this.hours}}
+  Bill Amount:
+  {{this.amount}}
+{{/each}}
+Managed URL Usage:
+{{#each managedUrlUsage}}
+  No.of URLs:
+  {{@key}}
+  Hours used:
+  {{this.hours}}
+  Bill Amount:
+  {{this.amount}}
+{{/each}}
+Docker Repository Usage:
+{{#each dockerRepositoryUsage}}
+  Total Storage (GB):
+  {{@key}}
+  Hours used:
+  {{this.hours}}
+  Bill Amount:
+  {{this.amount}}
+{{/each}}
+Domain Usage:
+{{#each domainUsage}}
+  Plan:
+  {{@key}}
+  Hours used:
+  {{this.hours}}
+  Bill Amount:
+  {{this.amount}}
+{{/each}}
+Secret Usage:
+{{#each secretUsage}}
+  No.of Secrets:
+  {{@key}}
+  Hours used:
+  {{this.hours}}
+  Bill Amount:
+  {{this.amount}}
+{{/each}}
+
+{{#if creditsAmount}}
+  {{#if cardAmount}}
+    The amount was automatically deducted using your card and Patr credits, so
+    no further action is required. Total usage charges for
+    {{month}}
+    {{year}}: ${{totalBill}}
+
+    Amount paid using card: ${{cardAmount}}
+    Amount paid using credits: ${{creditsAmount}}
+  {{/if}}
+{{/if}}
+{{#if cardAmount}}
+  {{#unless credits}}
+    The amount was automatically charged to your card, so no action is required
+    from your end. Total usage charges for
+    {{month}}
+    {{year}}: ${{totalBill}}
+
+    Amount paid: ${{amountPaid}}
+  {{/unless}}
+{{/if}}
+
+{{#if credits}}
+  {{#unless cardAmount}}
+    The amount was automatically charged from your Patr credits, so no action is
+    required from your end. Total usage charges for
+    {{month}}
+    {{year}}: ${{totalBill}}
+
+    Credits consumed: ${{amountPaid}}
+    Credits remaining: ${{creditsRemaining}}
+  {{/unless}}
+{{/if}}
+
+If you're unable to find what you're looking for, you can reach us at suppport@patr.cloud 
+
+Join our Discord community (https://patr.cloud/discord) for the latest updates and chat with us here (https://app.patr.cloud?openDrift=true) for instant technical support.

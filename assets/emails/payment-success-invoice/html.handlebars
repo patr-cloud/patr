@@ -10,7 +10,6 @@
       href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-
   </head>
   <body
     style="margin-top: 0; margin-bottom: 0; margin-left: 0; margin-right: 0; padding-top: 0; padding-bottom: 0; padding-left: 0; padding-right: 0; font-family: 'Poppins', 'Gill Sans', 'Trebuchet MS', sans-serif; background-color: #0d0526;"
@@ -76,48 +75,145 @@
                                       <td
                                         class="para txt-light"
                                         style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
-                                      >
-                                        Your invoice for the billing period
-                                        {{month}}/{{year}}
-                                        is now available. The balance was
-                                        automatically charged from your card, so
-                                        you don't need to do anything.
-                                      </td>
-                                    </tr>
-                                    <tr>
-                                      <td
-                                        class="para txt-light"
-                                        style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
-                                      >
-                                        Workspace:
+                                      >Your invoice for
                                         <strong
                                           class="txt-light"
-                                          style="color: #ffffff;"
-                                        >{{workspaceName}}</strong>
+                                          style="color: #ffffff"
+                                        >{{month}} {{year}}</strong> is now available for the workspace <strong
+                                          class="txt-light"
+                                          style="color: #ffffff"
+                                        >{{workspaceName}}</strong>.
                                       </td>
                                     </tr>
                                     <tr>
                                       <td
-                                        class="para txt-light"
-                                        style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+                                        class="pt-md"
+                                        style="padding-top: 1rem;"
+                                      >
+                                        <table
+                                          class="full-width bd-collapse"
+                                          style="width: 100%;  border-collapse: collapse; border-spacing: 0;"
+                                          width="100%"
+                                        >
+                                          <thead>
+                                            <th
+                                              class="txt-primary pr-md txt-left"
+                                              style="padding-right: 1rem; color: #f89b41; text-align: left"
+                                              align="left"
+                                            >
+                                              From
+                                            </th>
+                                            <th
+                                              class="txt-primary pl-md txt-left"
+                                              style=" padding-left: 1rem; color: #f89b41; text-align: left"
+                                              align="left"
+                                            >
+                                              For
+                                            </th>
+                                          </thead>
+                                          <tbody>
+                                            <tr>
+                                              <td
+                                                class="txt-light pr-md py-xs txt-left txt-xs valign-top"
+                                                style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-right: 1rem; text-align: left; color: #ffffff; font-size: .6rem; vertical-align: top"
+                                                align="left"
+                                              >
+                                                <address
+                                                  class="txt-light txt-xs txt-normal"
+                                                  style="color: #ffffff; font-style: normal; font-size: 0.6rem"
+                                                >
+                                                  Araciv Technologies Private
+                                                  Limited
+                                                  <br />
+                                                  First Floor Bommanahalli
+                                                  Industrial Area,<br />
+                                                  No 325/3, Bommanahalli, Hosur
+                                                  Main Road,<br />
+                                                  Bengaluru (bangalore) Urban,
+                                                  Karnataka, 560068
+                                                  <br />
+                                                  <strong
+                                                    class="txt-primary"
+                                                    style="color: #f89b41;"
+                                                  >GSTIN/UIN: </strong><strong
+                                                    class="txt-light"
+                                                    style="color: #ffffff;"
+                                                  >29AAPCA3583N1ZU</strong>
+                                                  <br />
+                                                  <strong
+                                                    class="txt-primary"
+                                                    style="color: #f89b41;"
+                                                  >CIN: </strong><strong
+                                                    class="txt-light"
+                                                    style="color: #ffffff;"
+                                                  >U74999TN2017PTC115643</strong>
+                                                  <br />
+                                                  <strong
+                                                    class="txt-primary"
+                                                    style="color: #f89b41;"
+                                                  >LUT Number: </strong><strong
+                                                    class="txt-light"
+                                                    style="color: #ffffff;"
+                                                  >AD2907220054819</strong>
+                                                </address>
+                                              </td>
+                                              <td
+                                                class="txt-light pl-md py-xs txt-left txt-xs valign-top"
+                                                style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; text-align: left; color: #ffffff; font-size: .6rem; vertical-align: top"
+                                                align="left"
+                                              >
+                                                {{#unless
+                                                  billingAddress.firstName
+                                                }}
+                                                  Billing address not available.
+                                                  <br />
+                                                  Please add your billing
+                                                  address on
+                                                  <a
+                                                    class="plain-link txt-primary"
+                                                    title="Join Patr Discord"
+                                                    href="https://app.patr.cloud/workspace/"
+                                                    style="color: #f89b41; text-decoration: none; font-weight: 500;"
+                                                  >PATR</a>
+                                                {{/unless}}
+                                                {{#if billingAddress.firstName}}
+                                                  <address
+                                                    class="txt-light txt-xs txt-normal"
+                                                    style="color: #ffffff;font-style: normal; font-size: 0.6rem"
+                                                  >
+                                                    {{billingAddress.firstName}}
+                                                    {{billingAddress.lastName}}
+                                                    <br />
+                                                    {{billingAddress.addressLine1}}<br
+                                                    />
+                                                    {{billingAddress.addressLine2}}<br
+                                                    />
+                                                    {{billingAddress.addressLine3}}<br
+                                                    />
+                                                    {{billingAddress.city}},
+                                                    {{billingAddress.state}},
+                                                    {{billingAddress.country}}
+                                                    {{billingAddress.zip}}
+                                                  </address>
+                                                {{/if}}
+                                              </td>
+                                            </tr>
+                                          </tbody>
+                                        </table>
+                                      </td>
+                                    </tr>
+                                    <tr>
+                                      <td
+                                        class="para txt-light txt-medium"
+                                        style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3; font-weight: 500"
                                       >
                                         Total usage charges:
-                                        <strong
-                                          class="txt-light"
-                                          style="color: #ffffff;"
-                                        >${{totalBill}}</strong>
+                                        <a
+                                          href="https://app.patr.cloud/workspace?showDetailedCharges=true"
+                                          class="plain-link txt-primary txt-bold"
+                                          style="color: #f89b41; text-decoration: none; font-weight: 600;"
+                                        >${{totalBill}}</a>
                                       </td>
-                                    </tr>
-                                    <tr>
-                                      <td
-                                        class="para txt-light"
-                                        style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
-                                      >
-                                        Amount paid:
-                                        <strong
-                                          class="txt-light"
-                                          style="color: #ffffff;"
-                                        >${{amountPaid}}</strong>
                                       </td>
                                     </tr>
                                     <tr>
@@ -342,8 +438,9 @@
                                                         >
                                                           <td
                                                             colspan="4"
-                                                            class="txt-light px-md py-xs"
-                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff;"
+                                                            class="txt-light txt-right px-md py-xs"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff; text-align: right"
+                                                            align="right"
                                                           >
                                                             Total Deployment
                                                             Charges
@@ -461,8 +558,9 @@
                                                         >
                                                           <td
                                                             colspan="2"
-                                                            class="txt-light px-md py-xs"
-                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff;"
+                                                            class="txt-light px-md py-xs txt-right"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff; text-align: right"
+                                                            align="right"
                                                           >
                                                             Total Database
                                                             Charges
@@ -577,8 +675,9 @@
                                                         >
                                                           <td
                                                             colspan="2"
-                                                            class="txt-light px-md py-xs"
-                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff;"
+                                                            class="txt-light txt-right px-md py-xs"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff; text-align: right"
+                                                            align="right"
                                                           >
                                                             Total Static Site
                                                             Charges
@@ -691,8 +790,9 @@
                                                         >
                                                           <td
                                                             colspan="2"
-                                                            class="txt-light px-md py-xs"
-                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff;"
+                                                            class="txt-light txt-right px-md py-xs"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff; text-align: right"
+                                                            align="right"
                                                           >
                                                             Total Domain Charges
                                                           </td>
@@ -806,8 +906,9 @@
                                                         >
                                                           <td
                                                             colspan="2"
-                                                            class="txt-light px-md py-xs"
-                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff;"
+                                                            class="txt-light px-md py-xs txt-right"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff; text-align: right"
+                                                            align="right"
                                                           >
                                                             Total Managed URL
                                                             Charges
@@ -920,8 +1021,9 @@
                                                         >
                                                           <td
                                                             colspan="2"
-                                                            class="txt-light px-md py-xs"
-                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff;"
+                                                            class="txt-light txt-right px-md py-xs"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff;text-align: right"
+                                                            align="right"
                                                           >
                                                             Total Secrets
                                                             Charges
@@ -1038,8 +1140,9 @@
                                                         >
                                                           <td
                                                             colspan="2"
-                                                            class="txt-light px-md py-xs"
-                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff;"
+                                                            class="txt-light px-md py-xs txt-right"
+                                                            style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff; text-align: right"
+                                                            align="right"
                                                           >
                                                             Total Docker
                                                             Repository Charges
@@ -1067,24 +1170,137 @@
                                       >
                                         Grand Total:
                                         <strong
-                                          class="txt-primary txt-lg"
-                                          style="color: #f89b41;font-size: 1.2rem"
+                                          class="txt-light"
+                                          style="color: #ffffff"
                                         >${{totalBill}}</strong>
                                       </td>
                                     </tr>
+                                    {{#if creditsAmount}}
+                                      {{#if cardAmount}}
+                                        <tr>
+                                          <td
+                                            class="para txt-light"
+                                            style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+                                          >
+                                            The amount was automatically
+                                            deducted using your card and Patr
+                                            credits, so no further action is
+                                            required.
+                                          </td>
+                                        </tr>
+                                        <tr>
+                                          <td
+                                            class="para txt-light"
+                                            style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+                                          >
+                                            Amount paid using card:
+                                            <strong
+                                              class="txt-light"
+                                              style="color:#ffffff"
+                                            >${{cardAmount}}</strong>
+                                          </td>
+                                        </tr>
+                                        <tr>
+                                          <td
+                                            class="para txt-light"
+                                            style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+                                          >
+                                            Amount paid using credits:
+                                            <strong
+                                              class="txt-light"
+                                              style="color:#ffffff"
+                                            >${{creditsAmount}}</strong>
+                                          </td>
+                                        </tr>
+                                        <tr>
+                                          <td
+                                            class="para txt-light"
+                                            style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+                                          >
+                                            Credits remaining:
+                                            <strong
+                                              class="txt-light"
+                                              style="color:#ffffff"
+                                            >${{creditsRemaining}}</strong>
+                                          </td>
+                                        </tr>
+                                      {{/if}}
+                                      {{#unless cardAmount}}
+                                        <tr>
+                                          <td
+                                            class="para txt-light"
+                                            style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+                                          >
+                                            The amount was automatically charged
+                                            from your Patr credits, so no action
+                                            is required from your end.
+                                          </td>
+                                        </tr>
+                                        <tr>
+                                          <td
+                                            class="para txt-light"
+                                            style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+                                          >
+                                            Credits consumed:
+                                            <strong
+                                              class="txt-light"
+                                              style="color:#ffffff"
+                                            >${{creditsAmount}}</strong>
+                                          </td>
+                                        </tr>
+                                        <tr>
+                                          <td
+                                            class="para txt-light"
+                                            style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+                                          >
+                                            Credits remaining:
+                                            <strong
+                                              class="txt-light"
+                                              style="color:#ffffff"
+                                            >${{creditsRemaining}}</strong>
+                                          </td>
+                                        </tr>
+                                      {{/unless}}
+                                    {{/if}}
+                                    {{#if cardAmount}}
+                                      {{#unless creditsAmount}}
+                                        <tr>
+                                          <td
+                                            class="para txt-light"
+                                            style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+                                          >
+                                            The amount was automatically charged
+                                            to your card, so no action is
+                                            required from your end.
+                                          </td>
+                                        </tr>
+                                        <tr>
+                                          <td
+                                            class="para txt-light"
+                                            style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+                                          >
+                                            Amount paid:
+                                            <strong
+                                              class="txt-light"
+                                              style="color:#ffffff"
+                                            >${{cardAmount}}</strong>
+                                          </td>
+                                        </tr>
+                                      {{/unless}}
+                                    {{/if}}
                                     <tr>
                                       <td
                                         class="para txt-light"
                                         style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
                                       >
-                                        If you are facing any issues, please
-                                        contact support at
+                                        If you're unable to find what you're
+                                        looking for, you can reach us at
                                         <a
                                           href="mailto:suppport@patr.cloud"
                                           class="plain-link txt-primary"
                                           title="Contact Patr support"
                                           style="color: #f89b41; text-decoration: none; font-weight: 500;"
-                                        >suppport@patr.cloud</a>.
+                                        >suppport@patr.cloud</a>
                                       </td>
                                     </tr>
                                     <tr>
@@ -1100,7 +1316,13 @@
                                           style="color: #f89b41; text-decoration: none; font-weight: 500;"
                                         >Discord Community</a>
                                         for the latest updates and chat with us
-                                        here for instant technical support.
+                                        <a
+                                          class="plain-link txt-primary"
+                                          title="Join Patr Discord"
+                                          href="https://app.patr.cloud?openDrfit=true"
+                                          style="color: #f89b41; text-decoration: none; font-weight: 500;"
+                                        > here</a>
+                                        for instant technical support.
                                       </td>
                                     </tr>
                                     <tr>
