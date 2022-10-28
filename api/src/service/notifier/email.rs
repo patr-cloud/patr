@@ -266,10 +266,11 @@ pub async fn send_email_verification_otp(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/send-deployment-alert-notification/template.json"]
+#[allow(non_snake_case)]
 struct DeploymentAlertEmail {
-	workspace_name: String,
-	deployment_id: String,
-	deployment_name: String,
+	workspaceName: String,
+	deploymentId: String,
+	deploymentName: String,
 	message: String,
 }
 
@@ -297,9 +298,9 @@ pub async fn send_alert_email(
 	send_email(
 		DeploymentAlertEmail {
 			message: message.to_string(),
-			workspace_name: workspace_name.to_string(),
-			deployment_id: deployment_id.to_string(),
-			deployment_name: deployment_name.to_string(),
+			workspaceName: workspace_name.to_string(),
+			deploymentId: deployment_id.to_string(),
+			deploymentName: deployment_name.to_string(),
 		},
 		email,
 		None,
@@ -310,8 +311,9 @@ pub async fn send_alert_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/send-kubernetes-patr-alert-notification/template.json"]
+#[allow(non_snake_case)]
 pub struct KubernetesPatrAlertEmail {
-	event_data: String,
+	eventData: String,
 }
 
 /// # Description
@@ -328,13 +330,14 @@ pub struct KubernetesPatrAlertEmail {
 /// error
 ///
 /// [`Mailbox`]: Mailbox
+#[allow(non_snake_case)]
 pub async fn send_alert_email_to_patr(
 	email: Mailbox,
 	event_data: KubernetesEventData,
 ) -> Result<(), Error> {
-	let event_data = serde_json::to_string(&event_data)?;
+	let eventData = serde_json::to_string(&event_data)?;
 	send_email(
-		KubernetesPatrAlertEmail { event_data },
+		KubernetesPatrAlertEmail { eventData },
 		email,
 		None,
 		"Patr Kubernetes alert",
@@ -344,73 +347,75 @@ pub async fn send_alert_email_to_patr(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/invoice-email/template.json"]
+#[allow(non_snake_case)]
 struct InvoiceEmail {
-	workspace_name: String,
+	workspaceName: String,
 	username: String,
-	billing_address: HashMap<String, String>,
-	deployment_usage: HashMap<Uuid, DeploymentBill>,
-	database_usage: HashMap<Uuid, DatabaseBill>,
-	static_site_usage: HashMap<StaticSitePlan, StaticSiteBill>,
-	managed_url_usage: HashMap<u64, ManagedUrlBill>,
-	docker_repository_usage: Vec<DockerRepositoryBill>,
-	domain_usage: HashMap<DomainPlan, DomainBill>,
-	secret_usage: HashMap<u64, SecretsBill>,
-	total_bill: f64,
-	deployment_bill: f64,
-	database_bill: f64,
-	static_site_bill: f64,
-	managed_url_bill: f64,
-	docker_repository_bill: f64,
-	domain_bill: f64,
-	secrets_bill: f64,
+	billingAddress: HashMap<String, String>,
+	deploymentUsage: HashMap<Uuid, DeploymentBill>,
+	databaseUsage: HashMap<Uuid, DatabaseBill>,
+	staticSiteUsage: HashMap<StaticSitePlan, StaticSiteBill>,
+	managedUrlUsage: HashMap<u64, ManagedUrlBill>,
+	dockerRepositoryUsage: Vec<DockerRepositoryBill>,
+	domainUsage: HashMap<DomainPlan, DomainBill>,
+	secretUsage: HashMap<u64, SecretsBill>,
+	totalBill: f64,
+	deploymentBill: f64,
+	databaseBill: f64,
+	staticSiteBill: f64,
+	managedUrlBill: f64,
+	dockerRepositoryBill: f64,
+	domainBill: f64,
+	secretsBill: f64,
 	month: String,
 	year: i32,
 }
 
 #[allow(clippy::too_many_arguments)]
+#[allow(non_snake_case)]
 pub async fn send_invoice_email(
 	email: Mailbox,
-	workspace_name: String,
+	workspaceName: String,
 	username: String,
-	billing_address: HashMap<String, String>,
-	deployment_usage: HashMap<Uuid, DeploymentBill>,
-	database_usage: HashMap<Uuid, DatabaseBill>,
-	static_site_usage: HashMap<StaticSitePlan, StaticSiteBill>,
-	managed_url_usage: HashMap<u64, ManagedUrlBill>,
-	docker_repository_usage: Vec<DockerRepositoryBill>,
-	domain_usage: HashMap<DomainPlan, DomainBill>,
-	secret_usage: HashMap<u64, SecretsBill>,
-	total_bill: f64,
-	deployment_bill: f64,
-	database_bill: f64,
-	static_site_bill: f64,
-	managed_url_bill: f64,
-	docker_repository_bill: f64,
-	domain_bill: f64,
-	secrets_bill: f64,
+	billingAddress: HashMap<String, String>,
+	deploymentUsage: HashMap<Uuid, DeploymentBill>,
+	databaseUsage: HashMap<Uuid, DatabaseBill>,
+	staticSiteUsage: HashMap<StaticSitePlan, StaticSiteBill>,
+	managedUrlUsage: HashMap<u64, ManagedUrlBill>,
+	dockerRepositoryUsage: Vec<DockerRepositoryBill>,
+	domainUsage: HashMap<DomainPlan, DomainBill>,
+	secretUsage: HashMap<u64, SecretsBill>,
+	totalBill: f64,
+	deploymentBill: f64,
+	databaseBill: f64,
+	staticSiteBill: f64,
+	managedUrlBill: f64,
+	dockerRepositoryBill: f64,
+	domainBill: f64,
+	secretsBill: f64,
 	month: String,
 	year: i32,
 ) -> Result<(), Error> {
 	send_email(
 		InvoiceEmail {
-			workspace_name,
+			workspaceName,
 			username,
-			billing_address,
-			deployment_usage,
-			database_usage,
-			static_site_usage,
-			managed_url_usage,
-			docker_repository_usage,
-			domain_usage,
-			secret_usage,
-			total_bill,
-			deployment_bill,
-			database_bill,
-			static_site_bill,
-			managed_url_bill,
-			docker_repository_bill,
-			domain_bill,
-			secrets_bill,
+			billingAddress,
+			deploymentUsage,
+			databaseUsage,
+			staticSiteUsage,
+			managedUrlUsage,
+			dockerRepositoryUsage,
+			domainUsage,
+			secretUsage,
+			totalBill,
+			deploymentBill,
+			databaseBill,
+			staticSiteBill,
+			managedUrlBill,
+			dockerRepositoryBill,
+			domainBill,
+			secretsBill,
 			month,
 			year,
 		},
@@ -423,29 +428,31 @@ pub async fn send_invoice_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/bill-not-paid-delete-resources/template.json"]
+#[allow(non_snake_case)]
 struct UnpaidResourcesDeletedEmail {
 	username: String,
-	workspace_name: String,
+	workspaceName: String,
 	month: String,
 	year: i32,
-	total_bill: f64,
+	totalBill: f64,
 }
 
+#[allow(non_snake_case)]
 pub async fn send_unpaid_resources_deleted_email(
 	email: Mailbox,
 	username: String,
-	workspace_name: String,
+	workspaceName: String,
 	month: String,
 	year: i32,
-	total_bill: f64,
+	totalBill: f64,
 ) -> Result<(), Error> {
 	send_email(
 		UnpaidResourcesDeletedEmail {
 			username,
-			workspace_name,
+			workspaceName,
 			month,
 			year,
-			total_bill,
+			totalBill,
 		},
 		email,
 		None,
@@ -456,29 +463,31 @@ pub async fn send_unpaid_resources_deleted_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/bill-not-paid-reminder/template.json"]
+#[allow(non_snake_case)]
 struct BillNotPaidReminderEmail {
 	username: String,
-	workspace_name: String,
+	workspaceName: String,
 	month: String,
 	year: i32,
-	total_bill: f64,
+	totalBill: f64,
 }
 
+#[allow(non_snake_case)]
 pub async fn send_bill_not_paid_reminder_email(
 	email: Mailbox,
 	username: String,
-	workspace_name: String,
+	workspaceName: String,
 	month: String,
 	year: i32,
-	total_bill: f64,
+	totalBill: f64,
 ) -> Result<(), Error> {
 	send_email(
 		BillNotPaidReminderEmail {
 			username,
-			workspace_name,
+			workspaceName,
 			month,
 			year,
-			total_bill,
+			totalBill,
 		},
 		email,
 		None,
@@ -489,28 +498,31 @@ pub async fn send_bill_not_paid_reminder_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/payment-failure/template.json"]
+#[allow(non_snake_case)]
 struct PaymentFailedEmail {
 	username: String,
-	workspace_name: String,
+	workspaceName: String,
 	month: String,
 	year: i32,
-	total_bill: f64,
+	totalBill: f64,
 }
+
+#[allow(non_snake_case)]
 pub async fn send_payment_failed_email(
 	email: Mailbox,
 	username: String,
-	workspace_name: String,
+	workspaceName: String,
 	month: String,
 	year: i32,
-	total_bill: f64,
+	totalBill: f64,
 ) -> Result<(), Error> {
 	send_email(
 		PaymentFailedEmail {
 			username,
-			workspace_name,
+			workspaceName,
 			month,
 			year,
-			total_bill,
+			totalBill,
 		},
 		email,
 		None,
@@ -521,32 +533,34 @@ pub async fn send_payment_failed_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/delete-resource/template.json"]
+#[allow(non_snake_case)]
 struct ResourceDeletedEmail {
-	workspace_name: String,
-	resource_name: String,
+	workspaceName: String,
+	resourceName: String,
 	username: String,
-	deleted_by: String,
+	deletedBy: String,
 	message: String,
-	resource_type: String,
+	resourceType: String,
 }
 
+#[allow(non_snake_case)]
 pub async fn send_resource_deleted_email(
-	workspace_name: String,
-	resource_name: String,
+	workspaceName: String,
+	resourceName: String,
 	username: String,
-	resource_type: String,
-	deleted_by: String,
+	resourceType: String,
+	deletedBy: String,
 	message: String,
 	email: Mailbox,
 ) -> Result<(), Error> {
 	send_email(
 		ResourceDeletedEmail {
-			workspace_name,
-			resource_name,
+			workspaceName,
+			resourceName,
 			username,
-			deleted_by,
+			deletedBy,
 			message,
-			resource_type,
+			resourceType,
 		},
 		email,
 		None,
@@ -557,21 +571,23 @@ pub async fn send_resource_deleted_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/domain-not-verified/template.json"]
+#[allow(non_snake_case)]
 struct DomainUnverified {
-	domain_name: String,
+	domainName: String,
 	username: String,
 	message: String,
 }
 
+#[allow(non_snake_case)]
 pub async fn send_domain_unverified_email(
-	domain_name: String,
+	domainName: String,
 	username: String,
 	message: String,
 	email: Mailbox,
 ) -> Result<(), Error> {
 	send_email(
 		DomainUnverified {
-			domain_name,
+			domainName,
 			username,
 			message,
 		},
@@ -584,19 +600,21 @@ pub async fn send_domain_unverified_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/domain-verified/template.json"]
+#[allow(non_snake_case)]
 struct DomainVerified {
-	domain_name: String,
+	domainName: String,
 	username: String,
 }
 
+#[allow(non_snake_case)]
 pub async fn send_domain_verified_email(
-	domain_name: String,
+	domainName: String,
 	username: String,
 	email: Mailbox,
 ) -> Result<(), Error> {
 	send_email(
 		DomainVerified {
-			domain_name,
+			domainName,
 			username,
 		},
 		email,
@@ -606,32 +624,6 @@ pub async fn send_domain_verified_email(
 	.await
 }
 
-// pub async fn send_resource_updated_email(
-// 	resource_id: String,
-// 	resource_name: String,
-// 	super_admin_firstname: String,
-// 	ip_address: String,
-// 	city: String,
-// 	region: String,
-// 	country: String,
-// 	email: String,
-// ) -> Result<(), Error> {
-// 	send_email(
-// 		ResourceUpdatedEmail {
-// 			resource_id,
-// 			resource_name,
-// 			super_admin_firstname,
-// 			ip_address,
-// 			city,
-// 			region,
-// 			country,
-// 		},
-// 		email,
-// 		None,
-// 		"Patr resource updated",
-// 	)
-// 	.await
-// }
 /// # Description
 /// This function is used to send the email to a recipient
 ///

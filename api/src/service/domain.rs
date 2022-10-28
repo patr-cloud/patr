@@ -759,7 +759,7 @@ pub async fn verify_external_domain(
 		domain_name,
 		workspace_id,
 		Some(message::NO_TXT_RECORD.to_string()),
-		true,
+		false,
 	)
 	.await?;
 	Ok(false)
