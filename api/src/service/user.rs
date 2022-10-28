@@ -567,9 +567,9 @@ async fn set_permissions_for_user_api_token(
 			}
 			db::add_super_admin_permission_for_api_token(
 				connection,
-				&token_id,
+				token_id,
 				workspace_id,
-				&user_id,
+				user_id,
 			)
 			.await?;
 		} else {
@@ -589,10 +589,10 @@ async fn set_permissions_for_user_api_token(
 							.and_then(|permission| {
 								permission
 									.resource_type_permissions
-									.get(&requested_resource_type_id)
+									.get(requested_resource_type_id)
 							})
 							.map(|permissions| {
-								permissions.contains(&requested_permission_id)
+								permissions.contains(requested_permission_id)
 							})
 							.unwrap_or(false);
 					if !permission_allowed {
@@ -606,10 +606,10 @@ async fn set_permissions_for_user_api_token(
 					// They have the permission. Add it
 					db::add_resource_type_permission_for_api_token(
 						connection,
-						&token_id,
+						token_id,
 						workspace_id,
-						&requested_resource_type_id,
-						&requested_permission_id,
+						requested_resource_type_id,
+						requested_permission_id,
 					)
 					.await?;
 				}
@@ -622,7 +622,7 @@ async fn set_permissions_for_user_api_token(
 				&requested_permissions.resource_permissions
 			{
 				let requested_resource =
-					db::get_resource_by_id(connection, &requested_resource_id)
+					db::get_resource_by_id(connection, requested_resource_id)
 						.await?
 						.status(404)
 						.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
@@ -639,7 +639,7 @@ async fn set_permissions_for_user_api_token(
 									.get(&requested_resource.resource_type_id)
 							})
 							.map(|permissions| {
-								permissions.contains(&requested_permission_id)
+								permissions.contains(requested_permission_id)
 							})
 							.unwrap_or(false) ||
 						user_permissions
@@ -650,7 +650,7 @@ async fn set_permissions_for_user_api_token(
 									.get(&requested_resource.id)
 							})
 							.map(|permissions| {
-								permissions.contains(&requested_permission_id)
+								permissions.contains(requested_permission_id)
 							})
 							.unwrap_or(false);
 
@@ -665,10 +665,10 @@ async fn set_permissions_for_user_api_token(
 					// They have the permission. Add it
 					db::add_resource_permission_for_api_token(
 						connection,
-						&token_id,
+						token_id,
 						workspace_id,
-						&requested_resource_id,
-						&requested_permission_id,
+						requested_resource_id,
+						requested_permission_id,
 					)
 					.await?;
 				}
@@ -686,7 +686,7 @@ pub async fn get_permissions_for_user_api_token(
 	let mut permissions = BTreeMap::<_, WorkspacePermission>::new();
 
 	for workspace_id in db::get_all_super_admin_workspace_ids_for_api_token(
-		connection, &token_id,
+		connection, token_id,
 	)
 	.await?
 	{
@@ -695,7 +695,7 @@ pub async fn get_permissions_for_user_api_token(
 
 	for (workspace_id, resource_type_id, permission_id) in
 		db::get_all_resource_type_permissions_for_api_token(
-			connection, &token_id,
+			connection, token_id,
 		)
 		.await?
 	{
@@ -709,7 +709,7 @@ pub async fn get_permissions_for_user_api_token(
 	}
 
 	for (workspace_id, resource_id, permission_id) in
-		db::get_all_resource_permissions_for_api_token(connection, &token_id)
+		db::get_all_resource_permissions_for_api_token(connection, token_id)
 			.await?
 	{
 		permissions
@@ -804,10 +804,10 @@ pub async fn get_revalidated_permissions_for_user_api_token(
 						.and_then(|permission| {
 							permission
 								.resource_type_permissions
-								.get(&requested_resource_type_id)
+								.get(requested_resource_type_id)
 						})
 						.map(|permissions| {
-							permissions.contains(&requested_permission_id)
+							permissions.contains(requested_permission_id)
 						})
 						.unwrap_or(false);
 					if permission_allowed {
@@ -833,7 +833,7 @@ pub async fn get_revalidated_permissions_for_user_api_token(
 				&permission.resource_permissions
 			{
 				let requested_resource =
-					db::get_resource_by_id(connection, &requested_resource_id)
+					db::get_resource_by_id(connection, requested_resource_id)
 						.await?;
 				let requested_resource =
 					if let Some(resource) = requested_resource {
@@ -855,7 +855,7 @@ pub async fn get_revalidated_permissions_for_user_api_token(
 								.get(&requested_resource.resource_type_id)
 						})
 						.map(|permissions| {
-							permissions.contains(&requested_permission_id)
+							permissions.contains(requested_permission_id)
 						})
 						.unwrap_or(false) ||
 						user_permissions
@@ -866,7 +866,7 @@ pub async fn get_revalidated_permissions_for_user_api_token(
 									.get(&requested_resource.id)
 							})
 							.map(|permissions| {
-								permissions.contains(&requested_permission_id)
+								permissions.contains(requested_permission_id)
 							})
 							.unwrap_or(false);
 

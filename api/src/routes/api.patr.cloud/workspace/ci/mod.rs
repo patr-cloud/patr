@@ -32,7 +32,7 @@ pub fn create_sub_app(
 		"/build-machine-type",
 		[
 			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true
+				is_api_token_allowed: true,
 			},
 			EveMiddleware::CustomFunction(pin_fn!(get_all_build_machine_types)),
 		],

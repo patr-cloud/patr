@@ -146,7 +146,7 @@ impl ApiTokenData {
 		token_id: &Uuid,
 	) -> Result<Self, Error> {
 		let token_details =
-			db::get_active_user_api_token_by_id(connection, &token_id)
+			db::get_active_user_api_token_by_id(connection, token_id)
 				.await?
 				.status(401)
 				.body(error!(UNAUTHORIZED).to_string())?;
@@ -155,7 +155,7 @@ impl ApiTokenData {
 		let mut permissions = BTreeMap::<_, WorkspacePermission>::new();
 
 		for workspace_id in db::get_all_super_admin_workspace_ids_for_api_token(
-			connection, &token_id,
+			connection, token_id,
 		)
 		.await?
 		{
@@ -164,7 +164,7 @@ impl ApiTokenData {
 
 		for (workspace_id, resource_type_id, permission_id) in
 			db::get_all_resource_type_permissions_for_api_token(
-				connection, &token_id,
+				connection, token_id,
 			)
 			.await?
 		{
@@ -179,7 +179,7 @@ impl ApiTokenData {
 
 		for (workspace_id, resource_id, permission_id) in
 			db::get_all_resource_permissions_for_api_token(
-				connection, &token_id,
+				connection, token_id,
 			)
 			.await?
 		{
@@ -265,7 +265,7 @@ impl ApiTokenData {
 		connection: &mut <Database as sqlx::Database>::Connection,
 	) -> Result<Self, Error> {
 		let old_permissions = self.permissions;
-	
+
 		let new_permissions =
 			service::get_revalidated_permissions_for_user_api_token(
 				connection,
@@ -273,7 +273,7 @@ impl ApiTokenData {
 				&self.user_id,
 			)
 			.await?;
-	
+
 		if old_permissions != new_permissions {
 			// Write the new config to the db
 			db::remove_all_super_admin_permissions_for_api_token(
@@ -291,7 +291,7 @@ impl ApiTokenData {
 				&self.token_id,
 			)
 			.await?;
-	
+
 			for (workspace_id, permission) in &new_permissions {
 				if permission.is_super_admin {
 					db::add_super_admin_permission_for_api_token(
@@ -302,7 +302,7 @@ impl ApiTokenData {
 					)
 					.await?;
 				}
-	
+
 				for (resource_type_id, permissions) in
 					&permission.resource_type_permissions
 				{
@@ -317,8 +317,10 @@ impl ApiTokenData {
 						.await?;
 					}
 				}
-	
-				for (resource_id, permissions) in &permission.resource_permissions {
+
+				for (resource_id, permissions) in
+					&permission.resource_permissions
+				{
 					for permission_id in permissions {
 						db::add_resource_permission_for_api_token(
 							connection,

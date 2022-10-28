@@ -54,7 +54,7 @@ pub fn create_sub_app(
 	sub_app.get(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator{
+			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
 				permission: permissions::workspace::rbac::roles::LIST,
 				resource: api_macros::closure_as_pinned_box!(|mut context| {
@@ -86,7 +86,7 @@ pub fn create_sub_app(
 	sub_app.post(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator{
+			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: false,
 				permission: permissions::workspace::rbac::roles::CREATE,
 				resource: api_macros::closure_as_pinned_box!(|mut context| {
@@ -118,7 +118,7 @@ pub fn create_sub_app(
 	sub_app.get(
 		"/:roleId",
 		[
-			EveMiddleware::ResourceTokenAuthenticator{
+			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
 				permission: permissions::workspace::rbac::roles::LIST,
 				resource: api_macros::closure_as_pinned_box!(|mut context| {
@@ -150,7 +150,7 @@ pub fn create_sub_app(
 	sub_app.put(
 		"/:roleId",
 		[
-			EveMiddleware::ResourceTokenAuthenticator{
+			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: false,
 				permission: permissions::workspace::rbac::roles::EDIT,
 				resource: api_macros::closure_as_pinned_box!(|mut context| {
@@ -195,7 +195,7 @@ pub fn create_sub_app(
 	sub_app.delete(
 		"/:roleId",
 		[
-			EveMiddleware::ResourceTokenAuthenticator{
+			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: false,
 				permission: permissions::workspace::rbac::roles::DELETE,
 				resource: api_macros::closure_as_pinned_box!(|mut context| {

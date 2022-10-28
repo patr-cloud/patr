@@ -5,9 +5,8 @@ mod assets_patr_cloud;
 #[path = "auth.patr.cloud/mod.rs"]
 mod auth_patr_cloud;
 
-use eve_rs::App as EveApp;
-
 pub use api_patr_cloud::get_request_ip_address;
+use eve_rs::App as EveApp;
 
 use crate::{
 	app::{create_eve_app, App},

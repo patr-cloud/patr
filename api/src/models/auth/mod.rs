@@ -28,7 +28,7 @@ impl UserAuthenticationData {
 			let api_token = ApiTokenData::decode(
 				connection,
 				redis_connection,
-				&token,
+				token,
 				accessing_ip,
 			)
 			.await?;
