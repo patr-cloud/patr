@@ -51,9 +51,10 @@ pub fn create_sub_app(
 	sub_app.get(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::rbac::user::LIST,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::rbac::user::LIST,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -73,7 +74,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(
 				list_users_with_roles_in_workspace
 			)),
@@ -84,9 +85,10 @@ pub fn create_sub_app(
 	sub_app.post(
 		"/:userId",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::rbac::user::ADD,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::rbac::user::ADD,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -107,7 +109,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(add_user_to_workspace)),
 		],
 	);
@@ -115,9 +117,10 @@ pub fn create_sub_app(
 	sub_app.put(
 		"/:userId",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::rbac::user::UPDATE_ROLES,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::rbac::user::UPDATE_ROLES,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -138,7 +141,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(
 				update_user_roles_for_workspace
 			)),
@@ -148,9 +151,10 @@ pub fn create_sub_app(
 	sub_app.delete(
 		"/:userId",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::rbac::user::REMOVE,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::rbac::user::REMOVE,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -171,7 +175,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(remove_user_from_workspace)),
 		],
 	);

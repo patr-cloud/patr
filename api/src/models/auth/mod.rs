@@ -98,6 +98,12 @@ impl UserAuthenticationData {
 			};
 
 		let allowed = {
+			// Check if super admin or god is permitted
+			workspace_permission.is_super_admin || {
+				let god_user_id = GOD_USER_ID.get().unwrap();
+				god_user_id == self.user_id()
+			}
+		} || {
 			// Check if the resource type is allowed
 			if let Some(permissions) = workspace_permission
 				.resource_type_permissions
@@ -127,12 +133,6 @@ impl UserAuthenticationData {
 				)
 			} else {
 				false
-			}
-		} || {
-			// Check if super admin or god is permitted
-			workspace_permission.is_super_admin || {
-				let god_user_id = GOD_USER_ID.get().unwrap();
-				god_user_id == self.user_id()
 			}
 		};
 

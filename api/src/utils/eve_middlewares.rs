@@ -52,8 +52,14 @@ pub enum EveMiddleware {
 	UrlEncodedParser,
 	CookieParser,
 	StaticHandler(StaticFileServer),
-	PlainTokenAuthenticator,
-	ResourceTokenAuthenticator(&'static str, ResourceRequiredFunction), /* (permission, resource_required) */
+	PlainTokenAuthenticator {
+		is_api_token_allowed: bool,
+	},
+	ResourceTokenAuthenticator {
+		is_api_token_allowed: bool,
+		permission: &'static str,
+		resource: ResourceRequiredFunction,
+	},
 	CustomFunction(MiddlewareHandlerFunction),
 	DomainRouter(
 		String,
@@ -99,7 +105,9 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 			EveMiddleware::StaticHandler(static_file_server) => {
 				static_file_server.run_middleware(context, next).await
 			}
-			EveMiddleware::PlainTokenAuthenticator => {
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed,
+			} => {
 				let token = context
 					.get_header("Authorization")
 					.status(401)
@@ -119,14 +127,21 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					&ip_addr,
 				)
 				.await?;
+
+				if token_data.is_api_token() && !is_api_token_allowed {
+					return Err(Error::empty()
+						.status(401)
+						.body(error!(UNAUTHORIZED).to_string()));
+				}
 
 				context.set_token_data(token_data);
 				next(context).await
 			}
-			EveMiddleware::ResourceTokenAuthenticator(
-				permission_required,
-				resource_in_question,
-			) => {
+			EveMiddleware::ResourceTokenAuthenticator {
+				permission,
+				resource: resource_in_question,
+				is_api_token_allowed,
+			} => {
 				let token = context
 					.get_header("Authorization")
 					.status(401)
@@ -146,6 +161,12 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					&ip_addr,
 				)
 				.await?;
+
+				if token_data.is_api_token() && !is_api_token_allowed {
+					return Err(Error::empty()
+						.status(401)
+						.body(error!(UNAUTHORIZED).to_string()));
+				}
 
 				let (mut context, resource) =
 					resource_in_question(context).await?;
@@ -159,7 +180,7 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					&resource.owner_id,
 					&resource.id,
 					&resource.resource_type_id,
-					permission_required,
+					permission,
 				) {
 					return Err(Error::empty()
 						.status(401)

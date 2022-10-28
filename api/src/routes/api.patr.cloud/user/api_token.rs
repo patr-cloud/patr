@@ -39,21 +39,27 @@ pub fn create_sub_app(
 	app.post(
 		"/api-token",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(create_api_token)),
 		],
 	);
 	app.get(
 		"/api-token",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(list_api_tokens_for_user)),
 		],
 	);
 	app.get(
 		"/api-token/:tokenId/permission",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(
 				list_permissions_for_api_token
 			)),
@@ -62,21 +68,27 @@ pub fn create_sub_app(
 	app.post(
 		"/api-token/:tokenId/regenerate",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(regenerate_api_token)),
 		],
 	);
 	app.post(
 		"/api-token/:tokenId/revoke",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(revoke_api_token)),
 		],
 	);
 	app.patch(
 		"/api-token/:tokenId",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(update_api_token)),
 		],
 	);

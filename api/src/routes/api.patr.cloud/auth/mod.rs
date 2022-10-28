@@ -51,7 +51,9 @@ pub fn create_sub_app(
 	sub_app.post(
 		"/sign-out",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(sign_out)),
 		],
 	);

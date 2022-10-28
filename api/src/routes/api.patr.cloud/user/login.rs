@@ -34,21 +34,27 @@ pub fn create_sub_app(
 	sub_app.get(
 		"/logins",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_all_logins_for_user)),
 		],
 	);
 	sub_app.get(
 		"/logins/:loginId/info",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_login_info)),
 		],
 	);
 	sub_app.delete(
 		"/logins/:loginId",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(delete_user_login)),
 		],
 	);

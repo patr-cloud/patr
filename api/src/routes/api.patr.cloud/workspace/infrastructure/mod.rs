@@ -43,7 +43,9 @@ pub fn create_sub_app(
 	sub_app.get(
 		"/machine-type",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(
 				get_all_deployment_machine_types
 			)),

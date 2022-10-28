@@ -50,14 +50,18 @@ pub fn create_sub_app(
 	sub_app.get(
 		"/permission",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_all_permissions)),
 		],
 	);
 	sub_app.get(
 		"/resource-type",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_all_resource_types)),
 		],
 	);

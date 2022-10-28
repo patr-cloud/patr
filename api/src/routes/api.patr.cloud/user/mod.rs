@@ -76,42 +76,54 @@ pub fn create_sub_app(
 	sub_app.get(
 		"/info",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_user_info)),
 		],
 	);
 	sub_app.post(
 		"/info",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(update_user_info)),
 		],
 	);
 	sub_app.post(
 		"/add-email-address",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(add_email_address)),
 		],
 	);
 	sub_app.get(
 		"/list-email-address",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(list_email_addresses)),
 		],
 	);
 	sub_app.get(
 		"/list-phone-numbers",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(list_phone_numbers)),
 		],
 	);
 	sub_app.post(
 		"/update-recovery-email",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(
 				update_recovery_email_address
 			)),
@@ -120,7 +132,9 @@ pub fn create_sub_app(
 	sub_app.post(
 		"/update-recovery-phone",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(
 				update_recovery_phone_number
 			)),
@@ -129,21 +143,27 @@ pub fn create_sub_app(
 	sub_app.post(
 		"/add-phone-number",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(add_phone_number_for_user)),
 		],
 	);
 	sub_app.post(
 		"/verify-phone-number",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(verify_phone_number)),
 		],
 	);
 	sub_app.delete(
 		"/delete-personal-email",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(
 				delete_personal_email_address
 			)),
@@ -152,28 +172,36 @@ pub fn create_sub_app(
 	sub_app.delete(
 		"/delete-phone-number",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(delete_phone_number)),
 		],
 	);
 	sub_app.post(
 		"/verify-email-address",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(verify_email_address)),
 		],
 	);
 	sub_app.get(
 		"/workspaces",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_workspaces_for_user)),
 		],
 	);
 	sub_app.post(
 		"/change-password",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(change_password)),
 		],
 	);
@@ -181,14 +209,18 @@ pub fn create_sub_app(
 	sub_app.get(
 		"/:userId/info",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_user_id)),
 		],
 	);
 	sub_app.get(
 		"/search",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(search_for_user)),
 		],
 	);
