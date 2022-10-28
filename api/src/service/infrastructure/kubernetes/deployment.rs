@@ -13,7 +13,12 @@ use api_models::{
 use eve_rs::AsError;
 use k8s_openapi::{
 	api::{
-		apps::v1::{Deployment as K8sDeployment, DeploymentSpec},
+		apps::v1::{
+			Deployment as K8sDeployment,
+			DeploymentSpec,
+			DeploymentStrategy,
+			RollingUpdateDeployment,
+		},
 		autoscaling::v1::{
 			CrossVersionObjectReference,
 			HorizontalPodAutoscaler,
@@ -415,6 +420,15 @@ pub async fn update_kubernetes_deployment(
 					..ObjectMeta::default()
 				}),
 			},
+			strategy: Some(DeploymentStrategy {
+				type_: Some("RollingUpdate".to_owned()),
+				rolling_update: Some(RollingUpdateDeployment {
+					max_surge: Some(IntOrString::Int(1)),
+					max_unavailable: Some(IntOrString::String(
+						"25%".to_owned(),
+					)),
+				}),
+			}),
 			..DeploymentSpec::default()
 		}),
 		..K8sDeployment::default()
