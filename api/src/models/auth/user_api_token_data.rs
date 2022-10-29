@@ -178,10 +178,8 @@ impl ApiTokenData {
 		}
 
 		for (workspace_id, resource_id, permission_id) in
-			db::get_all_resource_permissions_for_api_token(
-				connection, token_id,
-			)
-			.await?
+			db::get_all_resource_permissions_for_api_token(connection, token_id)
+				.await?
 		{
 			permissions
 				.entry(workspace_id)

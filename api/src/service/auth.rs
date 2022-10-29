@@ -642,7 +642,7 @@ pub async fn generate_access_token(
 	let now = Utc::now();
 	let exp = now + service::get_access_token_expiry(); // 3 days
 	let refresh_token_expiry = now + service::get_refresh_token_expiry();
-	let workspaces = db::get_all_workspace_role_permissions_for_user(
+	let permissions = db::get_all_workspace_role_permissions_for_user(
 		connection,
 		&user_login.user_id,
 	)
@@ -679,7 +679,7 @@ pub async fn generate_access_token(
 	let token_data = AccessTokenData::new(
 		now,
 		exp,
-		workspaces,
+		permissions,
 		user_login.login_id.clone(),
 		user,
 	);

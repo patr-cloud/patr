@@ -113,19 +113,18 @@ impl AccessTokenData {
 	}
 
 	pub fn to_string(&self, key: &str) -> Result<String, Error> {
-		let result = jsonwebtoken::encode(
+		jsonwebtoken::encode(
 			&Default::default(),
 			&self,
 			&EncodingKey::from_secret(key.as_ref()),
-		)?;
-
-		Ok(result)
+		)
+		.map_err(Error::from)
 	}
 
 	pub fn new(
 		iat: DateTime<Utc>,
 		exp: DateTime<Utc>,
-		workspaces: BTreeMap<Uuid, WorkspacePermission>,
+		permissions: BTreeMap<Uuid, WorkspacePermission>,
 		login_id: Uuid,
 		user: ExposedUserData,
 	) -> Self {
@@ -135,7 +134,7 @@ impl AccessTokenData {
 			iat,
 			typ: String::from("accessToken"),
 			exp,
-			permissions: workspaces,
+			permissions,
 			login_id,
 			user,
 		}
