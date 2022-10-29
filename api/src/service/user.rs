@@ -542,7 +542,7 @@ pub async fn update_user_api_token(
 		.await?;
 	}
 
-	redis::delete_user_api_token_data(redis_connection, &token_id).await?;
+	redis::delete_user_api_token_data(redis_connection, token_id).await?;
 
 	Ok(())
 }
