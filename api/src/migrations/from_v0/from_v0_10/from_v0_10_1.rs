@@ -1146,6 +1146,266 @@ async fn create_user_api_token_tables(
 	query!(
 		r#"
 		ALTER TABLE web_login
+			ADD COLUMN new_refresh_token TEXT,
+			ADD COLUMN new_token_expiry TIMESTAMPTZ,
+			ADD COLUMN new_created TIMESTAMPTZ,
+			ADD COLUMN new_created_ip INET,
+			ADD COLUMN new_created_location GEOMETRY,
+			ADD COLUMN new_created_country TEXT,
+			ADD COLUMN new_created_region TEXT,
+			ADD COLUMN new_created_city TEXT,
+			ADD COLUMN new_created_timezone TEXT,
+			ADD COLUMN new_last_login TIMESTAMPTZ,
+			ADD COLUMN new_last_activity TIMESTAMPTZ,
+			ADD COLUMN new_last_activity_ip INET,
+			ADD COLUMN new_last_activity_location GEOMETRY,
+			ADD COLUMN new_last_activity_country TEXT,
+			ADD COLUMN new_last_activity_region TEXT,
+			ADD COLUMN new_last_activity_city TEXT,
+			ADD COLUMN new_last_activity_timezone TEXT,
+			ADD COLUMN new_last_activity_user_agent TEXT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			web_login
+		SET
+			new_refresh_token = refresh_token,
+			new_token_expiry = token_expiry,
+			new_created = created,
+			new_created_ip = created_ip,
+			new_created_location = created_location,
+			new_created_country = created_country,
+			new_created_region = created_region,
+			new_created_city = created_city,
+			new_created_timezone = created_timezone,
+			new_last_login = last_login,
+			new_last_activity = last_activity,
+			new_last_activity_ip = last_activity_ip,
+			new_last_activity_location = last_activity_location,
+			new_last_activity_country = last_activity_country,
+			new_last_activity_region = last_activity_region,
+			new_last_activity_city = last_activity_city,
+			new_last_activity_timezone = last_activity_timezone,
+			new_last_activity_user_agent = last_activity_user_agent;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+			ALTER COLUMN new_refresh_token SET NOT NULL,
+			DROP COLUMN refresh_token,
+			ALTER COLUMN new_token_expiry SET NOT NULL,
+			DROP COLUMN token_expiry,
+			ALTER COLUMN new_created SET NOT NULL,
+			DROP COLUMN created,
+			ALTER COLUMN new_created_ip SET NOT NULL,
+			DROP COLUMN created_ip,
+			ALTER COLUMN new_created_location SET NOT NULL,
+			DROP COLUMN created_location,
+			ALTER COLUMN new_created_country SET NOT NULL,
+			DROP COLUMN created_country,
+			ALTER COLUMN new_created_region SET NOT NULL,
+			DROP COLUMN created_region,
+			ALTER COLUMN new_created_city SET NOT NULL,
+			DROP COLUMN created_city,
+			ALTER COLUMN new_created_timezone SET NOT NULL,
+			DROP COLUMN created_timezone,
+			ALTER COLUMN new_last_login SET NOT NULL,
+			DROP COLUMN last_login,
+			ALTER COLUMN new_last_activity SET NOT NULL,
+			DROP COLUMN last_activity,
+			ALTER COLUMN new_last_activity_ip SET NOT NULL,
+			DROP COLUMN last_activity_ip,
+			ALTER COLUMN new_last_activity_location SET NOT NULL,
+			DROP COLUMN last_activity_location,
+			ALTER COLUMN new_last_activity_country SET NOT NULL,
+			DROP COLUMN last_activity_country,
+			ALTER COLUMN new_last_activity_region SET NOT NULL,
+			DROP COLUMN last_activity_region,
+			ALTER COLUMN new_last_activity_city SET NOT NULL,
+			DROP COLUMN last_activity_city,
+			ALTER COLUMN new_last_activity_timezone SET NOT NULL,
+			DROP COLUMN last_activity_timezone,
+			ALTER COLUMN new_last_activity_user_agent SET NOT NULL,
+			DROP COLUMN last_activity_user_agent;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_refresh_token TO refresh_token;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_token_expiry TO token_expiry;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_created TO created;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_created_ip TO created_ip;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_created_location TO created_location;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_created_country TO created_country;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_created_region TO created_region;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_created_city TO created_city;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_created_timezone TO created_timezone;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_last_login TO last_login;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_last_activity TO last_activity;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_last_activity_ip TO last_activity_ip;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_last_activity_location TO last_activity_location;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_last_activity_country TO last_activity_country;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_last_activity_region TO last_activity_region;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_last_activity_city TO last_activity_city;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_last_activity_timezone TO last_activity_timezone;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_last_activity_user_agent TO last_activity_user_agent;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
 		ADD COLUMN login_type USER_LOGIN_TYPE NOT NULL
 		GENERATED ALWAYS AS ('web_login') STORED;
 		"#
