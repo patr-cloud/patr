@@ -13330,6 +13330,16 @@
     },
     "query": "CREATE UNIQUE INDEX user_api_token_uq_name_user_id ON user_api_token(name, user_id) WHERE revoked IS NULL;"
   },
+  "e2f6a571d891caa72875902539f461c7c9ebcba77978a1f8207979ff601546f3": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "UPDATE user_api_token SET revoked = token_exp WHERE token_exp > NOW();"
+  },
   "e311b717d9499a73b00b7e568b36e93b9af06b1c42b534d45663262e5be5328b": {
     "describe": {
       "columns": [],
