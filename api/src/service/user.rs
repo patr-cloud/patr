@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use ::redis::aio::MultiplexedConnection as RedisConnection;
 use api_models::{models::user::WorkspacePermission, utils::Uuid};
 use chrono::{DateTime, Utc};
 use eve_rs::AsError;
@@ -8,6 +9,7 @@ use sqlx::types::ipnetwork::IpNetwork;
 use crate::{
 	db::{self, User, UserLoginType},
 	error,
+	redis,
 	service,
 	utils::{validator, Error},
 	Database,
@@ -483,6 +485,7 @@ pub async fn create_api_token_for_user(
 
 pub async fn update_user_api_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	redis_connection: &mut RedisConnection,
 	token_id: &Uuid,
 	user_id: &Uuid,
 	name: Option<&str>,
@@ -538,6 +541,8 @@ pub async fn update_user_api_token(
 		)
 		.await?;
 	}
+
+	redis::delete_user_api_token_data(redis_connection, &token_id).await?;
 
 	Ok(())
 }
@@ -705,7 +710,7 @@ pub async fn get_permissions_for_user_api_token(
 			.resource_type_permissions
 			.entry(resource_type_id)
 			.or_default()
-			.push(permission_id);
+			.insert(permission_id);
 	}
 
 	for (workspace_id, resource_id, permission_id) in
@@ -718,7 +723,7 @@ pub async fn get_permissions_for_user_api_token(
 			.resource_permissions
 			.entry(resource_id)
 			.or_default()
-			.push(permission_id);
+			.insert(permission_id);
 	}
 
 	Ok(permissions)
@@ -766,7 +771,7 @@ pub async fn get_revalidated_permissions_for_user_api_token(
 						.resource_type_permissions
 						.entry(resource_type_id.clone())
 						.or_default()
-						.push(permission_id.clone());
+						.insert(permission_id.clone());
 				}
 			}
 			for (resource_id, permissions) in &permission.resource_permissions {
@@ -777,7 +782,7 @@ pub async fn get_revalidated_permissions_for_user_api_token(
 						.resource_permissions
 						.entry(resource_id.clone())
 						.or_default()
-						.push(permission_id.clone());
+						.insert(permission_id.clone());
 				}
 			}
 		} else {
@@ -818,7 +823,7 @@ pub async fn get_revalidated_permissions_for_user_api_token(
 							.resource_type_permissions
 							.entry(requested_resource_type_id.clone())
 							.or_default()
-							.push(requested_permission_id.clone());
+							.insert(requested_permission_id.clone());
 					}
 
 					// That specific permission is not there for the
@@ -878,7 +883,7 @@ pub async fn get_revalidated_permissions_for_user_api_token(
 							.resource_permissions
 							.entry(requested_resource_id.clone())
 							.or_default()
-							.push(requested_permission_id.clone());
+							.insert(requested_permission_id.clone());
 					}
 
 					// That specific permission is not there for the

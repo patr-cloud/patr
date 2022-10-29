@@ -542,3 +542,21 @@ pub async fn update_user_api_token(
 	.await
 	.map(|_| ())
 }
+
+pub async fn revoke_all_expired_user_tokens(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			user_api_token
+		SET
+			revoked = token_exp
+		WHERE
+			token_exp > NOW();
+		"#
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}

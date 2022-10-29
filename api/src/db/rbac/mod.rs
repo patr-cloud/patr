@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use api_models::{models::user::WorkspacePermission, utils::Uuid};
 use chrono::{DateTime, Utc};
@@ -374,12 +374,13 @@ pub async fn get_all_workspace_role_permissions_for_user(
 					.get_mut(&resource.resource_id)
 				{
 					if !permissions.contains(&permission_id) {
-						permissions.push(permission_id);
+						permissions.insert(permission_id);
 					}
 				} else {
-					permission
-						.resource_permissions
-						.insert(resource.resource_id, vec![permission_id]);
+					permission.resource_permissions.insert(
+						resource.resource_id,
+						HashSet::from([permission_id]),
+					);
 				}
 			}
 			for resource_type in resource_types {
@@ -389,12 +390,12 @@ pub async fn get_all_workspace_role_permissions_for_user(
 					.get_mut(&resource_type.resource_type_id)
 				{
 					if !permissions.contains(&permission_id) {
-						permissions.push(permission_id);
+						permissions.insert(permission_id);
 					}
 				} else {
 					permission.resource_type_permissions.insert(
 						resource_type.resource_type_id,
-						vec![permission_id],
+						HashSet::from([permission_id]),
 					);
 				}
 			}
@@ -411,12 +412,13 @@ pub async fn get_all_workspace_role_permissions_for_user(
 					.get_mut(&resource.resource_id)
 				{
 					if !permissions.contains(&permission_id) {
-						permissions.push(permission_id);
+						permissions.insert(permission_id);
 					}
 				} else {
-					permission
-						.resource_permissions
-						.insert(resource.resource_id, vec![permission_id]);
+					permission.resource_permissions.insert(
+						resource.resource_id,
+						HashSet::from([permission_id]),
+					);
 				}
 			}
 			for resource_type in resource_types {
@@ -426,12 +428,12 @@ pub async fn get_all_workspace_role_permissions_for_user(
 					.get_mut(&resource_type.resource_type_id)
 				{
 					if !permissions.contains(&permission_id) {
-						permissions.push(permission_id);
+						permissions.insert(permission_id);
 					}
 				} else {
 					permission.resource_type_permissions.insert(
 						resource_type.resource_type_id,
-						vec![permission_id],
+						HashSet::from([permission_id]),
 					);
 				}
 			}

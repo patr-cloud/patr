@@ -355,8 +355,11 @@ async fn update_api_token(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let mut redis_connection = context.get_redis_connection().clone();
+
 	service::update_user_api_token(
 		context.get_database_connection(),
+		&mut redis_connection,
 		&token_id,
 		&user_id,
 		name.as_deref(),

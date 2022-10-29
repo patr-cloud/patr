@@ -5,8 +5,7 @@ mod assets_patr_cloud;
 #[path = "auth.patr.cloud/mod.rs"]
 mod auth_patr_cloud;
 
-pub use api_patr_cloud::get_request_ip_address;
-use eve_rs::App as EveApp;
+use eve_rs::{App as EveApp, Context};
 
 use crate::{
 	app::{create_eve_app, App},
@@ -41,4 +40,19 @@ pub fn create_sub_app(
 	}
 
 	sub_app
+}
+
+pub fn get_request_ip_address(context: &EveContext) -> String {
+	let cf_connecting_ip = context.get_header("CF-Connecting-IP");
+	let x_real_ip = context.get_header("X-Real-IP");
+	let x_forwarded_for =
+		context.get_header("X-Forwarded-For").and_then(|value| {
+			value.split(',').next().map(|ip| ip.trim().to_string())
+		});
+	let ip = context.get_ip().to_string();
+
+	cf_connecting_ip
+		.or(x_real_ip)
+		.or(x_forwarded_for)
+		.unwrap_or(ip)
 }

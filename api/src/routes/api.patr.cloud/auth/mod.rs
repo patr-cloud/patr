@@ -10,6 +10,7 @@ use crate::{
 	error,
 	pin_fn,
 	redis,
+	routes,
 	service::{self, get_access_token_expiry},
 	utils::{
 		constants::request_keys,
@@ -153,7 +154,7 @@ async fn sign_in(
 	}
 
 	let config = context.get_state().config.clone();
-	let ip_address = super::get_request_ip_address(&context);
+	let ip_address = routes::get_request_ip_address(&context);
 	let user_agent = context.get_header("user-agent").unwrap_or_default();
 
 	let (UserWebLogin { login_id, .. }, access_token, refresh_token) =
@@ -380,7 +381,7 @@ async fn join(
 
 	let config = context.get_state().config.clone();
 
-	let ip_address = super::get_request_ip_address(&context);
+	let ip_address = routes::get_request_ip_address(&context);
 	let user_agent = context.get_header("user-agent").unwrap_or_default();
 
 	let join_user = service::join_user(
@@ -489,7 +490,7 @@ async fn get_access_token(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let ip_address = super::get_request_ip_address(&context);
+	let ip_address = routes::get_request_ip_address(&context);
 	let user_agent = context.get_header("user-agent").unwrap_or_default();
 
 	let config = context.get_state().config.clone();

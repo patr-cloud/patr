@@ -51,7 +51,7 @@ use crate::{
 		DeploymentMetadata,
 	},
 	pin_fn,
-	routes::api_patr_cloud,
+	routes,
 	service,
 	utils::{
 		constants::request_keys,
@@ -837,7 +837,7 @@ async fn create_deployment(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+	let ip_address = routes::get_request_ip_address(&context);
 
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 	let login_id = context.get_token_data().unwrap().login_id().clone();
@@ -1165,7 +1165,7 @@ async fn start_deployment(
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Start deployment", request_id);
 
-	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+	let ip_address = routes::get_request_ip_address(&context);
 
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 
@@ -1287,7 +1287,7 @@ async fn stop_deployment(
 	)
 	.unwrap();
 
-	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+	let ip_address = routes::get_request_ip_address(&context);
 
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 
@@ -1571,7 +1571,7 @@ async fn delete_deployment(
 	)
 	.unwrap();
 
-	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+	let ip_address = routes::get_request_ip_address(&context);
 
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 
@@ -1692,7 +1692,7 @@ async fn update_deployment(
 
 	let login_id = context.get_token_data().unwrap().login_id().clone();
 
-	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+	let ip_address = routes::get_request_ip_address(&context);
 
 	// Is any one value present?
 	if name.is_none() &&

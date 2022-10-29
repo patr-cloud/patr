@@ -35,7 +35,7 @@ pub(super) async fn migrate(
 ) -> Result<(), Error> {
 	refactor_resource_deletion(&mut *connection, config).await?;
 	add_resource_requests_for_running_deployments(connection, config).await?;
-	create_api_token_x_relations(connection, config).await?;
+	create_user_api_token_tables(connection, config).await?;
 
 	Ok(())
 }
@@ -1063,14 +1063,14 @@ async fn add_resource_requests_for_running_deployments(
 	Ok(())
 }
 
-async fn create_api_token_x_relations(
+async fn create_user_api_token_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE user_login
-			RENAME TO web_login;
+		RENAME TO web_login;
 		"#
 	)
 	.execute(&mut *connection)
@@ -1079,7 +1079,7 @@ async fn create_api_token_x_relations(
 	query!(
 		r#"
 		ALTER INDEX user_login_idx_user_id
-			RENAME TO web_login_idx_user_id;
+		RENAME TO web_login_idx_user_id;
 		"#
 	)
 	.execute(&mut *connection)
@@ -1087,8 +1087,10 @@ async fn create_api_token_x_relations(
 
 	query!(
 		r#"
-		CREATE INDEX web_login_idx_login_id
-			ON web_login(login_id);
+		CREATE INDEX
+			web_login_idx_login_id
+		ON
+			web_login(login_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -1097,7 +1099,7 @@ async fn create_api_token_x_relations(
 	query!(
 		r#"
 		ALTER TABLE workspace_audit_log
-			DROP CONSTRAINT workspace_audit_log_fk_login_id;
+		DROP CONSTRAINT workspace_audit_log_fk_login_id;
 		"#
 	)
 	.execute(&mut *connection)
@@ -1106,7 +1108,7 @@ async fn create_api_token_x_relations(
 	query!(
 		r#"
 		ALTER TABLE web_login
-			DROP CONSTRAINT user_login_pk;
+		DROP CONSTRAINT user_login_pk;
 		"#
 	)
 	.execute(&mut *connection)
@@ -1115,7 +1117,7 @@ async fn create_api_token_x_relations(
 	query!(
 		r#"
 		ALTER TABLE web_login
-			DROP CONSTRAINT user_login_uq_login_id;
+		DROP CONSTRAINT user_login_uq_login_id;
 		"#
 	)
 	.execute(&mut *connection)
@@ -1124,7 +1126,7 @@ async fn create_api_token_x_relations(
 	query!(
 		r#"
 		ALTER TABLE web_login
-			DROP CONSTRAINT user_login_fk_user_id;
+		DROP CONSTRAINT user_login_fk_user_id;
 		"#
 	)
 	.execute(&mut *connection)
@@ -1133,7 +1135,7 @@ async fn create_api_token_x_relations(
 	query!(
 		r#"
 		CREATE TYPE USER_LOGIN_TYPE AS ENUM(
-			'api_token_login',
+			'api_token',
 			'web_login'
 		);
 		"#
@@ -1144,8 +1146,8 @@ async fn create_api_token_x_relations(
 	query!(
 		r#"
 		ALTER TABLE web_login
-			ADD COLUMN login_type USER_LOGIN_TYPE NOT NULL
-				GENERATED ALWAYS AS ('web_login') STORED;
+		ADD COLUMN login_type USER_LOGIN_TYPE NOT NULL
+		GENERATED ALWAYS AS ('web_login') STORED;
 		"#
 	)
 	.execute(&mut *connection)
@@ -1154,16 +1156,15 @@ async fn create_api_token_x_relations(
 	query!(
 		r#"
 		CREATE TABLE user_login(
-			login_id UUID
-				CONSTRAINT user_login_pk PRIMARY KEY,
+			login_id UUID CONSTRAINT user_login_pk PRIMARY KEY,
 			user_id UUID NOT NULL
 				CONSTRAINT user_login_fk_user_id REFERENCES "user"(id),
 			login_type USER_LOGIN_TYPE NOT NULL,
-			created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			CONSTRAINT user_login_uk
-				UNIQUE(login_id, user_id),
-			CONSTRAINT user_login_login_id_user_id_login_type_uk
-				UNIQUE(login_id, user_id, login_type)
+			created TIMESTAMPTZ NOT NULL,
+			CONSTRAINT user_login_uq_login_id_user_id UNIQUE(login_id, user_id),
+			CONSTRAINT user_login_uq_login_id_user_id_login_type UNIQUE(
+				login_id, user_id, login_type
+			)
 		);
 		"#
 	)
@@ -1186,9 +1187,10 @@ async fn create_api_token_x_relations(
 	query!(
 		r#"
 		ALTER TABLE workspace_audit_log
-			ADD CONSTRAINT workspace_audit_log_fk_login_id
-				FOREIGN KEY(user_id, login_id)
-					REFERENCES user_login(user_id, login_id);
+		ADD CONSTRAINT workspace_audit_log_fk_login_id FOREIGN KEY(
+			user_id, login_id
+		)
+		REFERENCES user_login(user_id, login_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -1197,9 +1199,8 @@ async fn create_api_token_x_relations(
 	query!(
 		r#"
 		ALTER TABLE web_login
-			ADD CONSTRAINT web_login_fk
-				FOREIGN KEY(login_id, user_id, login_type)
-					REFERENCES user_login(login_id, user_id, login_type);
+		ADD CONSTRAINT web_login_fk FOREIGN KEY(login_id, user_id, login_type)
+		REFERENCES user_login(login_id, user_id, login_type);
 		"#
 	)
 	.execute(&mut *connection)
@@ -1208,20 +1209,19 @@ async fn create_api_token_x_relations(
 	query!(
 		r#"
 		CREATE TABLE user_api_token(
-			token_id UUID
-				CONSTRAINT user_api_token_pk PRIMARY KEY,
+			token_id UUID CONSTRAINT user_api_token_pk PRIMARY KEY,
 			name TEXT NOT NULL,
 			user_id UUID NOT NULL,
 			token_hash TEXT NOT NULL,
-			token_nbf TIMESTAMPTZ,
-			token_exp TIMESTAMPTZ,
+			token_nbf TIMESTAMPTZ, /* The token is not valid before this date */
+			token_exp TIMESTAMPTZ, /* The token is not valid after this date */
 			allowed_ips INET[],
-			created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			created TIMESTAMPTZ NOT NULL,
 			revoked TIMESTAMPTZ,
-			login_type USER_LOGIN_TYPE NOT NULL
-				GENERATED ALWAYS AS ('api_token_login') STORED,
-			CONSTRAINT user_api_token_token_id_user_id_uk
-				UNIQUE (token_id, user_id),
+			login_type USER_LOGIN_TYPE GENERATED ALWAYS AS ('api_token') STORED,
+			CONSTRAINT user_api_token_token_id_user_id_uk UNIQUE(
+				token_id, user_id
+			),
 			CONSTRAINT user_api_token_token_id_user_id_login_type_fk
 				FOREIGN KEY(token_id, user_id, login_type)
 					REFERENCES user_login(login_id, user_id, login_type)
@@ -1247,8 +1247,8 @@ async fn create_api_token_x_relations(
 	query!(
 		r#"
 		ALTER TABLE workspace
-			ADD CONSTRAINT workspace_uq_id_super_admin_id
-				UNIQUE(id, super_admin_id);
+		ADD CONSTRAINT workspace_uq_id_super_admin_id
+		UNIQUE(id, super_admin_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -1286,7 +1286,7 @@ async fn create_api_token_x_relations(
 			CONSTRAINT user_api_token_resource_permission_workspace_id_resource_id
 				FOREIGN KEY (workspace_id, resource_id)
 					REFERENCES resource(owner_id, id),
-			CONSTRAINT user_api_token_resource_permission_pk
+			CONSTRAINT user_api_token_resource_permission_pk 
 				PRIMARY KEY(token_id, permission_id, resource_id, workspace_id)
 		);
 		"#

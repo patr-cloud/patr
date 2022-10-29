@@ -174,7 +174,7 @@ impl ApiTokenData {
 				.resource_type_permissions
 				.entry(resource_type_id)
 				.or_default()
-				.push(permission_id);
+				.insert(permission_id);
 		}
 
 		for (workspace_id, resource_id, permission_id) in
@@ -187,7 +187,7 @@ impl ApiTokenData {
 				.resource_permissions
 				.entry(resource_id)
 				.or_default()
-				.push(permission_id);
+				.insert(permission_id);
 		}
 
 		Ok(Self {
