@@ -1,11 +1,11 @@
 use super::Job;
 use crate::{db, utils::Error};
 
-// Every day at 6 AM
+// Every hour
 pub(super) fn revoke_expired_tokens_job() -> Job {
 	Job::new(
 		String::from("Revoke all expired user API tokens"),
-		"0 0 6 * * *".parse().unwrap(),
+		"0 0 * * * *".parse().unwrap(),
 		|| Box::pin(revoke_expired_tokens()),
 	)
 }

@@ -286,6 +286,11 @@ async fn regenerate_api_token(
 		&token_hash,
 	)
 	.await?;
+	redis::delete_user_api_token_data(
+		context.get_redis_connection(),
+		&token_id,
+	)
+	.await?;
 
 	context.success(RegenerateApiTokenResponse {
 		token: user_facing_token,
