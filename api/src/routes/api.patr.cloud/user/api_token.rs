@@ -152,7 +152,7 @@ async fn list_api_tokens_for_user(
 	.map(|token| UserApiToken {
 		id: token.token_id,
 		name: token.name,
-		token_nbf: token.token_exp.map(DateTime),
+		token_nbf: token.token_nbf.map(DateTime),
 		token_exp: token.token_exp.map(DateTime),
 		allowed_ips: token.allowed_ips,
 		created: DateTime(token.created),
@@ -342,9 +342,11 @@ async fn update_api_token(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user_id().clone();
+	let token_id =
+		Uuid::parse_str(context.get_param(request_keys::TOKEN_ID).unwrap())?;
 
 	let UpdateApiTokenRequest {
-		token_id,
+		token_id: _,
 		name,
 		permissions,
 		token_nbf,
