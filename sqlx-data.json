@@ -1477,6 +1477,31 @@
     },
     "query": "UPDATE managed_url SET path = $2, url_type = $3, deployment_id = $4, port = $5, static_site_id = $6, url = $7 WHERE id = $1;"
   },
+  "1990483ba5f3420ccdef6d5dccb62ffbd132e10a473c9f99efe25a3f8bc5f1e0": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "api_token",
+                  "web_login"
+                ]
+              },
+              "name": "user_login_type"
+            }
+          },
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "INSERT INTO user_login( login_id, user_id, login_type, created ) VALUES ($1, $2, $3, $4);"
+  },
   "1a37c74f5a0f8098453203ee590650fb0965525c1bb31adc5c2e1da4a02dbd3e": {
     "describe": {
       "columns": [
@@ -6370,30 +6395,6 @@
       }
     },
     "query": "ALTER TABLE docker_repo_payment_history ADD CONSTRAINT docker_repo_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id);"
-  },
-  "77382e6c755cbb70928c0f35e8f34bb6f79a8e7d6570333067e229413dd8ef3a": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "api_token",
-                  "web_login"
-                ]
-              },
-              "name": "user_login_type"
-            }
-          }
-        ]
-      }
-    },
-    "query": "INSERT INTO user_login( login_id, user_id, login_type ) VALUES ($1, $2, $3);"
   },
   "775361d2f342bcaa78e130156b2b158f7970cffced22d8d276b7683b48f72bf1": {
     "describe": {
