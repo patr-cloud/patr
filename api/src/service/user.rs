@@ -456,6 +456,7 @@ pub async fn create_api_token_for_user(
 		&token_id,
 		user_id,
 		&UserLoginType::ApiToken,
+		&now,
 	)
 	.await?;
 

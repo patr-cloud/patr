@@ -3,6 +3,7 @@ mod web_login;
 
 use api_macros::query;
 use api_models::utils::Uuid;
+use chrono::{DateTime, Utc};
 
 pub use self::{api_token::*, web_login::*};
 use crate::Database;
@@ -93,6 +94,7 @@ pub async fn add_new_user_login(
 	login_id: &Uuid,
 	user_id: &Uuid,
 	login_type: &UserLoginType,
+	created: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -100,14 +102,16 @@ pub async fn add_new_user_login(
 			user_login(
 				login_id,
 				user_id,
-				login_type
+				login_type,
+				created
 			)
 		VALUES
-			($1, $2, $3);
+			($1, $2, $3, $4);
 		"#,
 		login_id as _,
 		user_id as _,
-		login_type as _
+		login_type as _,
+		created as _,
 	)
 	.execute(connection)
 	.await

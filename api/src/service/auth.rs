@@ -493,6 +493,7 @@ pub async fn create_login_for_user(
 		&login_id,
 		user_id,
 		&UserLoginType::WebLogin,
+		&now,
 	)
 	.await?;
 
