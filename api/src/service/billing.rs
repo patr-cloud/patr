@@ -22,9 +22,8 @@ use api_models::{
 	},
 	utils::{DateTime, Uuid},
 };
-use chrono::{Datelike, Month, TimeZone, Utc};
+use chrono::{Datelike, TimeZone, Utc};
 use eve_rs::AsError;
-use num_traits::FromPrimitive;
 use stripe::{
 	Client,
 	CreatePaymentIntent,
@@ -966,155 +965,103 @@ pub async fn get_total_resource_usage(
 		month_start_date,
 		till_date,
 	)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|(key, value)| {
+		(
+			key,
+			DeploymentUsage {
+				name: value.deployment_name,
+				bill_items: value
+					.bill_items
+					.into_iter()
+					.map(|bill_item| DeploymentBills {
+						machine_type: HashMap::from([
+							(
+								"cpu".to_string(),
+								bill_item.machine_type.0 as u32,
+							),
+							(
+								"ram".to_string(),
+								bill_item.machine_type.1 as u32,
+							),
+						]),
+						num_instances: bill_item.num_instances,
+						hours: bill_item.hours,
+						amount: bill_item.amount,
+					})
+					.collect::<Vec<_>>(),
+			},
+		)
+	})
+	.collect::<HashMap<_, _>>();
 
-	let database_usages = calculate_database_bill_for_workspace_till(
+	let database_usage = calculate_database_bill_for_workspace_till(
 		connection,
 		workspace_id,
 		month_start_date,
 		till_date,
 	)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|(key, value)| {
+		(
+			key,
+			DatabaseUsage {
+				name: value.database_name,
+				hours: value.hours,
+				amount: value.amount,
+			},
+		)
+	})
+	.collect::<HashMap<_, _>>();
 
-	let static_sites_usages = calculate_static_sites_bill_for_workspace_till(
+	let static_site_usage = calculate_static_sites_bill_for_workspace_till(
 		connection,
 		workspace_id,
 		month_start_date,
 		till_date,
 	)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|(key, value)| {
+		(
+			key.to_string(),
+			StaticSiteUsage {
+				hours: value.hours,
+				amount: value.amount,
+			},
+		)
+	})
+	.collect::<HashMap<_, _>>();
 
-	let managed_url_usages = calculate_managed_urls_bill_for_workspace_till(
+	let managed_url_usage = calculate_managed_urls_bill_for_workspace_till(
 		connection,
 		workspace_id,
 		month_start_date,
 		till_date,
 	)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|(key, value)| {
+		(
+			key as u32,
+			ManagedUrlUsage {
+				hours: value.hours,
+				amount: value.amount,
+			},
+		)
+	})
+	.collect::<HashMap<_, _>>();
 
-	let docker_repository_usages =
+	let docker_repository_usage =
 		calculate_docker_repository_bill_for_workspace_till(
 			connection,
 			workspace_id,
 			month_start_date,
 			till_date,
 		)
-		.await?;
-
-	let domains_usages = calculate_domains_bill_for_workspace_till(
-		connection,
-		workspace_id,
-		month_start_date,
-		till_date,
-	)
-	.await?;
-
-	let secrets_usages = calculate_secrets_bill_for_workspace_till(
-		connection,
-		workspace_id,
-		month_start_date,
-		till_date,
-	)
-	.await?;
-
-	let deployment_usage = deployment_usage
-		.into_iter()
-		.map(|(key, value)| {
-			(
-				key,
-				DeploymentUsage {
-					name: value.deployment_name,
-					bill_items: value
-						.bill_items
-						.into_iter()
-						.map(|bill_item| DeploymentBills {
-							machine_type: HashMap::from([
-								(
-									"cpu".to_string(),
-									bill_item.machine_type.0 as u32,
-								),
-								(
-									"ram".to_string(),
-									bill_item.machine_type.1 as u32,
-								),
-							]),
-							num_instances: bill_item.num_instances,
-							hours: bill_item.hours,
-							amount: bill_item.amount,
-						})
-						.collect::<Vec<_>>(),
-				},
-			)
-		})
-		.collect::<HashMap<_, _>>();
-
-	let database_usage = database_usages
-		.into_iter()
-		.map(|(key, value)| {
-			(
-				key,
-				DatabaseUsage {
-					name: value.database_name,
-					hours: value.hours,
-					amount: value.amount,
-				},
-			)
-		})
-		.collect::<HashMap<_, _>>();
-
-	let static_site_usage = static_sites_usages
-		.into_iter()
-		.map(|(key, value)| {
-			(
-				key.to_string(),
-				StaticSiteUsage {
-					hours: value.hours,
-					amount: value.amount,
-				},
-			)
-		})
-		.collect::<HashMap<_, _>>();
-
-	let domain_usage = domains_usages
-		.into_iter()
-		.map(|(key, value)| {
-			(
-				key.to_string(),
-				DomainUsage {
-					hours: value.hours,
-					amount: value.amount,
-				},
-			)
-		})
-		.collect::<HashMap<_, _>>();
-
-	let managed_url_usage = managed_url_usages
-		.into_iter()
-		.map(|(key, value)| {
-			(
-				key as u32,
-				ManagedUrlUsage {
-					hours: value.hours,
-					amount: value.amount,
-				},
-			)
-		})
-		.collect::<HashMap<_, _>>();
-
-	let secret_usage = secrets_usages
-		.into_iter()
-		.map(|(key, value)| {
-			(
-				key as u32,
-				SecretUsage {
-					hours: value.hours,
-					amount: value.amount,
-				},
-			)
-		})
-		.collect::<HashMap<_, _>>();
-
-	let docker_repository_usage = docker_repository_usages
+		.await?
 		.into_iter()
 		.map(|docker_repo_usage| DockerRepositoryUsage {
 			storage: docker_repo_usage.storage as u32,
@@ -1123,9 +1070,47 @@ pub async fn get_total_resource_usage(
 		})
 		.collect::<Vec<_>>();
 
+	let domain_usage = calculate_domains_bill_for_workspace_till(
+		connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?
+	.into_iter()
+	.map(|(key, value)| {
+		(
+			key.to_string(),
+			DomainUsage {
+				hours: value.hours,
+				amount: value.amount,
+			},
+		)
+	})
+	.collect::<HashMap<_, _>>();
+
+	let secret_usage = calculate_secrets_bill_for_workspace_till(
+		connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?
+	.into_iter()
+	.map(|(key, value)| {
+		(
+			key as u32,
+			SecretUsage {
+				hours: value.hours,
+				amount: value.amount,
+			},
+		)
+	})
+	.collect::<HashMap<_, _>>();
+
 	let bill = Bill {
-		year: year.to_string(),
-		month: Month::from_u32(month).unwrap().name().to_string(),
+		year,
+		month,
 		deployment_usage,
 		database_usage,
 		static_site_usage,

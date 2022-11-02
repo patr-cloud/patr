@@ -29,7 +29,7 @@ use api_models::{
 	},
 	utils::{DateTime, Uuid},
 };
-use chrono::{Datelike, Duration, TimeZone, Utc};
+use chrono::{Duration, TimeZone, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
@@ -1066,16 +1066,18 @@ async fn get_resource_usage_charges(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let GetResourceUsageBreakdownRequest { month, .. } = context
+	let GetResourceUsageBreakdownRequest { month, year, .. } = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let now = Utc::now();
-	let year = now.year();
 	let month_start_date = Utc.ymd(year, month, 1).and_hms(0, 0, 0);
 	let month_end_date = Utc
-		.ymd(year, if month == 12 { 1 } else { month + 1 }, 1)
+		.ymd(
+			if month == 12 { year + 1 } else { year },
+			if month == 12 { 1 } else { month + 1 },
+			1,
+		)
 		.and_hms(0, 0, 0)
 		.sub(Duration::nanoseconds(1));
 
