@@ -106,8 +106,10 @@ async fn refactor_static_site_deletion(
 						stop_time
 					FROM
 						static_sites_payment_history
+					WHERE
+						static_sites_payment_history.workspace_id = static_site.workspace_id
 					ORDER BY
-						stop_time DESC
+						stop_time DESC NULLS LAST
 					LIMIT 1
 				),
 				NOW()
@@ -215,8 +217,10 @@ async fn refactor_secret_deletion(
 						stop_time
 					FROM
 						secrets_payment_history
+					WHERE
+						secrets_payment_history.workspace_id = secret.workspace_id
 					ORDER BY
-						stop_time DESC
+						stop_time DESC NULLS LAST
 					LIMIT 1
 				),
 				NOW()
@@ -324,8 +328,10 @@ async fn refactor_docker_repository_deletion(
 						stop_time
 					FROM
 						docker_repo_payment_history
+					WHERE
+						docker_repo_payment_history.workspace_id = docker_registry_repository.workspace_id
 					ORDER BY
-						stop_time DESC
+						stop_time DESC NULLS LAST
 					LIMIT 1
 				),
 				NOW()
@@ -760,8 +766,14 @@ async fn refactor_domain_deletion(
 						stop_time
 					FROM
 						domain_payment_history
+					INNER JOIN
+						resource
+					ON
+						domain.id = resource.id
+					WHERE
+						domain_payment_history.workspace_id = resource.owner_id
 					ORDER BY
-						stop_time DESC
+						stop_time DESC NULLS LAST
 					LIMIT 1
 				),
 				NOW()
@@ -915,8 +927,10 @@ async fn refactor_managed_url_deletion(
 						stop_time
 					FROM
 						managed_url_payment_history
+					WHERE
+						managed_url_payment_history.workspace_id = managed_url.workspace_id
 					ORDER BY
-						stop_time DESC
+						stop_time DESC NULLS LAST
 					LIMIT 1
 				),
 				NOW()
