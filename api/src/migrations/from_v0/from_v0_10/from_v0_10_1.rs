@@ -101,7 +101,18 @@ async fn refactor_static_site_deletion(
 		UPDATE
 			static_site
 		SET
-			deleted = NOW()
+			deleted = COALESCE(
+				(
+					SELECT
+						stop_time
+					FROM
+						static_sites_payment_history
+					ORDER BY
+						stop_time DESC
+					LIMIT 1
+				),
+				NOW()
+			)
 		WHERE
 			name LIKE CONCAT(
 				'patr-deleted: ',
@@ -199,7 +210,18 @@ async fn refactor_secret_deletion(
 		UPDATE
 			secret
 		SET
-			deleted = NOW()
+			deleted = COALESCE(
+				(
+					SELECT
+						stop_time
+					FROM
+						secrets_payment_history
+					ORDER BY
+						stop_time DESC
+					LIMIT 1
+				),
+				NOW()
+			)
 		WHERE
 			name LIKE CONCAT(
 				'patr-deleted: ',
@@ -297,7 +319,18 @@ async fn refactor_docker_repository_deletion(
 		UPDATE
 			docker_registry_repository
 		SET
-			deleted = NOW()
+			deleted = COALESCE(
+				(
+					SELECT
+						stop_time
+					FROM
+						docker_repo_payment_history
+					ORDER BY
+						stop_time DESC
+					LIMIT 1
+				),
+				NOW()
+			)
 		WHERE
 			name LIKE CONCAT(
 				'patr-deleted: ',
@@ -395,7 +428,18 @@ async fn refactor_database_deletion(
 		UPDATE
 			managed_database
 		SET
-			deleted = NOW()
+			deleted = COALESCE(
+				(
+					SELECT
+						deletion_time
+					FROM
+						managed_database_payment_history
+					WHERE
+						database_id = managed_database.id
+					LIMIT 1
+				),
+				NOW()
+			)
 		WHERE
 			name LIKE CONCAT(
 				'patr-deleted: ',
@@ -493,7 +537,20 @@ async fn refactor_deployment_deletion(
 		UPDATE
 			deployment
 		SET
-			deleted = NOW()
+			deleted = COALESCE(
+				(
+					SELECT
+						stop_time
+					FROM
+						deployment_payment_history
+					WHERE
+						deployment_id = deployment.id
+					ORDER BY
+						stop_time DESC
+					LIMIT 1
+				),
+				NOW()
+			)
 		WHERE
 			name LIKE CONCAT(
 				'patr-deleted: ',
@@ -698,7 +755,18 @@ async fn refactor_domain_deletion(
 		UPDATE
 			domain
 		SET
-			deleted = NOW()
+			deleted = COALESCE(
+				(
+					SELECT
+						stop_time
+					FROM
+						domain_payment_history
+					ORDER BY
+						stop_time DESC
+					LIMIT 1
+				),
+				NOW()
+			)
 		WHERE
 			name LIKE CONCAT(
 				'patr-deleted: ',
@@ -842,7 +910,18 @@ async fn refactor_managed_url_deletion(
 		UPDATE
 			managed_url
 		SET
-			deleted = NOW()
+			deleted = COALESCE(
+				(
+					SELECT
+						stop_time
+					FROM
+						managed_url_payment_history
+					ORDER BY
+						stop_time DESC
+					LIMIT 1
+				),
+				NOW()
+			)
 		WHERE
 			sub_domain LIKE CONCAT(
 				'patr-deleted: ',
