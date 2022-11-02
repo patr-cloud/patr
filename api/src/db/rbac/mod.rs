@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, BTreeSet};
 
 use api_models::{models::user::WorkspacePermission, utils::Uuid};
 use chrono::{DateTime, Utc};
@@ -379,7 +379,7 @@ pub async fn get_all_workspace_role_permissions_for_user(
 				} else {
 					permission.resource_permissions.insert(
 						resource.resource_id,
-						HashSet::from([permission_id]),
+						BTreeSet::from([permission_id]),
 					);
 				}
 			}
@@ -395,7 +395,7 @@ pub async fn get_all_workspace_role_permissions_for_user(
 				} else {
 					permission.resource_type_permissions.insert(
 						resource_type.resource_type_id,
-						HashSet::from([permission_id]),
+						BTreeSet::from([permission_id]),
 					);
 				}
 			}
@@ -417,7 +417,7 @@ pub async fn get_all_workspace_role_permissions_for_user(
 				} else {
 					permission.resource_permissions.insert(
 						resource.resource_id,
-						HashSet::from([permission_id]),
+						BTreeSet::from([permission_id]),
 					);
 				}
 			}
@@ -433,7 +433,7 @@ pub async fn get_all_workspace_role_permissions_for_user(
 				} else {
 					permission.resource_type_permissions.insert(
 						resource_type.resource_type_id,
-						HashSet::from([permission_id]),
+						BTreeSet::from([permission_id]),
 					);
 				}
 			}
