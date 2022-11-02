@@ -490,6 +490,10 @@ struct PaymentSuccessEmail {
 	month: String,
 	year: i32,
 	totalBill: f64,
+	creditsAmount: f64,
+	cardAmount: f64,
+	creditsRemaining: f64,
+	amountPaid: f64,
 }
 
 #[allow(non_snake_case)]
@@ -507,6 +511,10 @@ pub async fn send_payment_success_email(
 	month: String,
 	year: i32,
 	totalBill: f64,
+	creditsAmount: f64,
+	cardAmount: f64,
+	creditsRemaining: f64,
+	amountPaid: f64,
 ) -> Result<(), Error> {
 	send_email(
 		PaymentSuccessEmail {
@@ -522,6 +530,10 @@ pub async fn send_payment_success_email(
 			month,
 			year,
 			totalBill,
+			creditsAmount,
+			cardAmount,
+			creditsRemaining,
+			amountPaid,
 		},
 		email,
 		None,

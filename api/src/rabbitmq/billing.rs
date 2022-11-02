@@ -162,11 +162,22 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
+			let credit_amount =
+				total_resource_usage_bill.total_cost - payable_bill;
+
+			let credit_remaining = if payable_bill > 0.00 {
+				0.00
+			} else {
+				payable_bill * -1.00 // To make it positive
+			};
+
 			service::queue_attempt_to_charge_workspace(
 				&workspace,
 				&Utc::now(),
 				&total_resource_usage_bill,
 				payable_bill,
+				credit_amount,
+				credit_remaining,
 				month,
 				year,
 				config,
@@ -180,17 +191,13 @@ pub(super) async fn process_request(
 			process_after: DateTime(process_after),
 			total_resource_usage_bill,
 			amount_due,
+			credit_amount,
+			credit_remaining,
 			month,
 			year,
 			request_id,
 		} => {
 			log::trace!("request_id: {} attempting to charge user", request_id);
-
-			if amount_due <= 0.0 {
-				// If the bill is zero (or if they have credits), don't bother
-				// charging them
-				return Ok(());
-			}
 
 			if Utc::now() < process_after {
 				// process_after is in the future. Wait for a while and requeue
@@ -225,6 +232,36 @@ pub(super) async fn process_request(
 				12 => "December",
 				_ => "",
 			};
+
+			if amount_due <= 0.0 {
+				service::send_payment_success_notification(
+					connection,
+					workspace.super_admin_id.clone(),
+					workspace.name.clone(),
+					total_resource_usage_bill.deployment_usages.to_owned(),
+					total_resource_usage_bill.database_usages.to_owned(),
+					total_resource_usage_bill.static_sites_usages.to_owned(),
+					total_resource_usage_bill.managed_url_usages.to_owned(),
+					total_resource_usage_bill
+						.docker_repository_usages
+						.to_owned(),
+					total_resource_usage_bill.domains_usages.to_owned(),
+					total_resource_usage_bill.secrets_usages.to_owned(),
+					month_string.to_string(),
+					year,
+					amount_due * -1.0, // To make it positive
+					if credit_amount > 0.00 {
+						credit_amount
+					} else {
+						0.00
+					},
+					0.00,
+					credit_remaining,
+					amount_due * -1.0,
+				)
+				.await?;
+				return Ok(());
+			}
 
 			// Step 2: Create payment intent with the given bill
 			if let PaymentType::Card = workspace.payment_type {
@@ -325,6 +362,14 @@ pub(super) async fn process_request(
 							month_string.to_string(),
 							year,
 							amount_due,
+							if credit_amount > 0.00 {
+								credit_amount
+							} else {
+								0.00
+							},
+							amount_due,
+							credit_remaining,
+							amount_due,
 						)
 						.await?;
 
@@ -410,6 +455,8 @@ pub(super) async fn process_request(
 								&Utc::now().add(Duration::days(1)),
 								&total_resource_usage_bill,
 								amount_due,
+								credit_amount,
+								credit_remaining,
 								month,
 								year,
 								config,
@@ -489,6 +536,8 @@ pub(super) async fn process_request(
 							&Utc::now().add(Duration::days(1)),
 							&total_resource_usage_bill,
 							amount_due,
+							credit_amount,
+							credit_remaining,
 							month,
 							year,
 							config,
