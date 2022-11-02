@@ -60,9 +60,10 @@ pub fn create_sub_app(
 	app.get(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::domain::LIST,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::domain::LIST,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -83,7 +84,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_domains_for_workspace)),
 		],
 	);
@@ -92,9 +93,10 @@ pub fn create_sub_app(
 	app.post(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::domain::ADD,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::domain::ADD,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -114,7 +116,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(add_domain_to_workspace)),
 		],
 	);
@@ -123,9 +125,10 @@ pub fn create_sub_app(
 	app.post(
 		"/:domainId/verify",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::domain::VERIFY,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::domain::VERIFY,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -153,7 +156,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(verify_domain_in_workspace)),
 		],
 	);
@@ -162,9 +165,10 @@ pub fn create_sub_app(
 	app.get(
 		"/:domainId",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::domain::VIEW_DETAILS,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::domain::VIEW_DETAILS,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -191,7 +195,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(
 				get_domain_info_in_workspace
 			)),
@@ -202,9 +206,10 @@ pub fn create_sub_app(
 	app.delete(
 		"/:domainId",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::domain::DELETE,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::domain::DELETE,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -231,7 +236,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(delete_domain_in_workspace)),
 		],
 	);
@@ -240,9 +245,10 @@ pub fn create_sub_app(
 	app.get(
 		"/:domainId/dns-record",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::domain::dns_record::LIST,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::domain::dns_record::LIST,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -269,7 +275,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_domain_dns_record)),
 		],
 	);
@@ -278,9 +284,10 @@ pub fn create_sub_app(
 	app.post(
 		"/:domainId/dns-record",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::domain::dns_record::ADD,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::domain::dns_record::ADD,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -307,7 +314,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(add_dns_record)),
 		],
 	);
@@ -316,9 +323,10 @@ pub fn create_sub_app(
 	app.patch(
 		"/:domainId/dns-record/:recordId",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::domain::dns_record::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::domain::dns_record::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -345,7 +353,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(update_dns_record)),
 		],
 	);
@@ -353,9 +361,10 @@ pub fn create_sub_app(
 	app.delete(
 		"/:domainId/dns-record/:recordId",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::domain::dns_record::DELETE,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::domain::dns_record::DELETE,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -382,7 +391,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(delete_dns_record)),
 		],
 	);

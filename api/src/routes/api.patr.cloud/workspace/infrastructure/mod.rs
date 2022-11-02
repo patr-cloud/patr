@@ -43,7 +43,9 @@ pub fn create_sub_app(
 	sub_app.get(
 		"/machine-type",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(
 				get_all_deployment_machine_types
 			)),
@@ -66,8 +68,10 @@ async fn get_all_deployment_machine_types(
 	let access_token_data = context.get_token_data().unwrap();
 	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
 
-	if !access_token_data.workspaces.contains_key(&workspace_id) &&
-		&access_token_data.user.id != god_user_id
+	if !access_token_data
+		.workspace_permissions()
+		.contains_key(&workspace_id) &&
+		access_token_data.user_id() != god_user_id
 	{
 		Error::as_result()
 			.status(404)

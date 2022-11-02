@@ -127,7 +127,9 @@ pub async fn initialize_workspaces_pre(
 			stripe_customer_id TEXT NOT NULL,
 			address_id UUID,
 			amount_due DOUBLE PRECISION NOT NULL,
-			deleted TIMESTAMPTZ
+			deleted TIMESTAMPTZ,
+			CONSTRAINT workspace_uq_id_super_admin_id
+				UNIQUE(id, super_admin_id)
 		);
 		"#
 	)

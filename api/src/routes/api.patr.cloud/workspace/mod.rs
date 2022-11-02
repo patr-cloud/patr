@@ -72,14 +72,18 @@ pub fn create_sub_app(
 	sub_app.post(
 		"/",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(create_new_workspace)),
 		],
 	);
 	sub_app.get(
 		"/:workspaceId/info",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
 			EveMiddleware::CustomFunction(move |mut context, next| {
 				Box::pin(async move {
 					let workspace_id_str = context
@@ -94,8 +98,10 @@ pub fn create_sub_app(
 					// Using unwarp while getting token_data because
 					// AccessTokenData will never be empty
 					// as PlainTokenAuthenticator above won't allow it
-					let workspaces =
-						&context.get_token_data().unwrap().workspaces;
+					let workspaces = &context
+						.get_token_data()
+						.unwrap()
+						.workspace_permissions();
 
 					if workspaces.get(&workspace_id).is_none() {
 						context.status(401).json(error!(UNAUTHORIZED));
@@ -110,9 +116,10 @@ pub fn create_sub_app(
 	sub_app.post(
 		"/:workspaceId",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: false,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -133,7 +140,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(update_workspace_info)),
 		],
 	);
@@ -155,9 +162,10 @@ pub fn create_sub_app(
 	sub_app.delete(
 		"/:workspaceId",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::DELETE,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: false,
+				permission: permissions::workspace::DELETE,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -178,7 +186,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(delete_workspace)),
 		],
 	);
@@ -186,9 +194,10 @@ pub fn create_sub_app(
 	sub_app.get(
 		"/:workspaceId/audit-log",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -209,7 +218,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_workspace_audit_log)),
 		],
 	);
@@ -217,9 +226,10 @@ pub fn create_sub_app(
 	sub_app.get(
 		"/:workspaceId/audit-log/:resourceId",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -248,7 +258,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_resource_audit_log)),
 		],
 	);
@@ -298,8 +308,10 @@ async fn get_workspace_info(
 	let access_token_data = context.get_token_data().unwrap();
 	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
 
-	if !access_token_data.workspaces.contains_key(&workspace_id) &&
-		&access_token_data.user.id != god_user_id
+	if !access_token_data
+		.workspace_permissions()
+		.contains_key(&workspace_id) &&
+		access_token_data.user_id() != god_user_id
 	{
 		Error::as_result()
 			.status(404)
@@ -417,7 +429,7 @@ async fn create_new_workspace(
 
 	let config = context.get_state().config.clone();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let alert_emails = if let Some(recovery_email) =
 		db::get_recovery_email_for_user(

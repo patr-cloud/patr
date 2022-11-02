@@ -12,13 +12,10 @@ use api_models::{
 			DeletePersonalEmailResponse,
 			DeletePhoneNumberRequest,
 			DeletePhoneNumberResponse,
-			DeleteUserLoginResponse,
 			GetUserInfoByUserIdResponse,
 			GetUserInfoResponse,
-			GetUserLoginInfoResponse,
 			ListPersonalEmailsResponse,
 			ListPhoneNumbersResponse,
-			ListUserLoginsResponse,
 			ListUserWorkspacesResponse,
 			SearchForUserRequest,
 			SearchForUserResponse,
@@ -28,7 +25,6 @@ use api_models::{
 			UpdateRecoveryPhoneNumberResponse,
 			UpdateUserInfoRequest,
 			UpdateUserInfoResponse,
-			UserLogin,
 			VerifyPersonalEmailRequest,
 			VerifyPersonalEmailResponse,
 			VerifyPhoneNumberRequest,
@@ -36,9 +32,8 @@ use api_models::{
 		},
 		workspace::Workspace,
 	},
-	utils::{DateTime, Location, Uuid},
+	utils::{DateTime, Uuid},
 };
-use chrono::{Duration, Utc};
 use eve_rs::{App as EveApp, AsError, NextHandler};
 
 use crate::{
@@ -46,8 +41,7 @@ use crate::{
 	db::{self, User},
 	error,
 	pin_fn,
-	redis,
-	service::{self, get_access_token_expiry},
+	service,
 	utils::{
 		constants::request_keys,
 		Error,
@@ -56,6 +50,9 @@ use crate::{
 		EveMiddleware,
 	},
 };
+
+mod api_token;
+mod login;
 
 /// # Description
 /// This function is used to create a sub app for every endpoint listed. It
@@ -74,152 +71,164 @@ use crate::{
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut app = create_eve_app(app);
+	let mut sub_app = create_eve_app(app);
 
-	app.get(
+	sub_app.get(
 		"/info",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_user_info)),
 		],
 	);
-	app.post(
+	sub_app.post(
 		"/info",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(update_user_info)),
 		],
 	);
-	app.post(
+	sub_app.post(
 		"/add-email-address",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(add_email_address)),
 		],
 	);
-	app.get(
+	sub_app.get(
 		"/list-email-address",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(list_email_addresses)),
 		],
 	);
-	app.get(
+	sub_app.get(
 		"/list-phone-numbers",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(list_phone_numbers)),
 		],
 	);
-	app.post(
+	sub_app.post(
 		"/update-recovery-email",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(
 				update_recovery_email_address
 			)),
 		],
 	);
-	app.post(
+	sub_app.post(
 		"/update-recovery-phone",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(
 				update_recovery_phone_number
 			)),
 		],
 	);
-	app.post(
+	sub_app.post(
 		"/add-phone-number",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(add_phone_number_for_user)),
 		],
 	);
-	app.post(
+	sub_app.post(
 		"/verify-phone-number",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(verify_phone_number)),
 		],
 	);
-	app.delete(
+	sub_app.delete(
 		"/delete-personal-email",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(
 				delete_personal_email_address
 			)),
 		],
 	);
-	app.delete(
+	sub_app.delete(
 		"/delete-phone-number",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(delete_phone_number)),
 		],
 	);
-	app.post(
+	sub_app.post(
 		"/verify-email-address",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(verify_email_address)),
 		],
 	);
-	app.get(
+	sub_app.get(
 		"/workspaces",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_workspaces_for_user)),
 		],
 	);
-	app.post(
+	sub_app.post(
 		"/change-password",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(change_password)),
 		],
 	);
 
-	app.get(
-		"/logins",
-		[
-			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(get_all_logins_for_user)),
-		],
-	);
-
-	app.get(
-		"/logins/:loginId/info",
-		[
-			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(get_login_info)),
-		],
-	);
-
-	app.delete(
-		"/logins/:loginId",
-		[
-			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(delete_user_login)),
-		],
-	);
-	app.get(
+	sub_app.get(
 		"/:userId/info",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_user_id)),
 		],
 	);
-	app.get(
+	sub_app.get(
 		"/search",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(search_for_user)),
 		],
 	);
 
-	app
+	sub_app.use_sub_app("/", login::create_sub_app(app));
+	sub_app.use_sub_app("/", api_token::create_sub_app(app));
+
+	sub_app
 }
 
 /// # Description
@@ -263,7 +272,7 @@ async fn get_user_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 	let User {
 		id,
 		username,
@@ -473,7 +482,7 @@ async fn update_user_info(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	db::update_user_data(
 		context.get_database_connection(),
@@ -530,7 +539,7 @@ async fn add_email_address(
 			.body(error!(WRONG_PARAMETERS).to_string())?;
 	let email_address = email.to_lowercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	service::add_personal_email_to_be_verified_for_user(
 		context.get_database_connection(),
@@ -572,7 +581,7 @@ async fn list_email_addresses(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let recovery_email = db::get_recovery_email_for_user(
 		context.get_database_connection(),
@@ -635,7 +644,7 @@ async fn list_phone_numbers(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let recovery_phone_number = db::get_recovery_phone_number_for_user(
 		context.get_database_connection(),
@@ -704,7 +713,7 @@ async fn update_recovery_email_address(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let email_address = recovery_email.to_lowercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	service::update_user_recovery_email(
 		context.get_database_connection(),
@@ -760,7 +769,7 @@ async fn update_recovery_phone_number(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let country_code = recovery_phone_country_code.to_uppercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	service::update_user_recovery_phone_number(
 		context.get_database_connection(),
@@ -813,7 +822,7 @@ async fn delete_personal_email_address(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let email_address = email.to_lowercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	service::delete_personal_email_address(
 		context.get_database_connection(),
@@ -870,7 +879,7 @@ async fn add_phone_number_for_user(
 	// two letter country code instead of the numeric one
 	let country_code = country_code.to_uppercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let otp = service::add_phone_number_to_be_verified_for_user(
 		context.get_database_connection(),
@@ -937,7 +946,7 @@ async fn verify_phone_number(
 	// two letter country code instead of the numeric one
 	let country_code = country_code.to_uppercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	service::verify_phone_number_for_user(
 		context.get_database_connection(),
@@ -996,7 +1005,7 @@ async fn delete_phone_number(
 	// two letter country code instead of the numeric one
 	let country_code = country_code.to_uppercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	service::delete_phone_number(
 		context.get_database_connection(),
@@ -1053,7 +1062,7 @@ async fn verify_email_address(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let email_address = email.to_lowercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	service::verify_personal_email_address_for_user(
 		context.get_database_connection(),
@@ -1106,7 +1115,7 @@ async fn get_workspaces_for_user(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 	let workspaces = db::get_all_workspaces_for_user(
 		context.get_database_connection(),
 		&user_id,
@@ -1168,7 +1177,7 @@ async fn change_password(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let user = service::change_password_for_user(
 		context.get_database_connection(),
@@ -1184,128 +1193,6 @@ async fn change_password(
 	.await?;
 
 	context.success(ChangePasswordResponse {});
-	Ok(context)
-}
-
-async fn get_all_logins_for_user(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
-
-	let logins = db::get_all_logins_for_user(
-		context.get_database_connection(),
-		&user_id,
-	)
-	.await?
-	.into_iter()
-	.map(|login| UserLogin {
-		login_id: login.login_id,
-		token_expiry: DateTime(login.token_expiry),
-		created: DateTime(login.created),
-		created_ip: login.created_ip,
-		created_location: Location {
-			lat: login.created_location_latitude,
-			lng: login.created_location_longitude,
-		},
-		created_country: login.created_country,
-		created_region: login.created_region,
-		created_city: login.created_city,
-		created_timezone: login.created_timezone,
-		last_login: DateTime(login.last_login),
-		last_activity: DateTime(login.last_activity),
-		last_activity_ip: login.last_activity_ip,
-		last_activity_location: Location {
-			lat: login.last_activity_location_latitude,
-			lng: login.last_activity_location_longitude,
-		},
-		last_activity_user_agent: login.last_activity_user_agent,
-		last_activity_country: login.last_activity_country,
-		last_activity_region: login.last_activity_region,
-		last_activity_city: login.last_activity_city,
-		last_activity_timezone: login.last_activity_timezone,
-	})
-	.collect::<Vec<_>>();
-
-	context.success(ListUserLoginsResponse { logins });
-	Ok(context)
-}
-
-async fn get_login_info(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let login_id = context
-		.get_param(request_keys::LOGIN_ID)
-		.and_then(|param| Uuid::parse_str(param).ok())
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let login =
-		db::get_user_login(context.get_database_connection(), &login_id)
-			.await?
-			.map(|login| UserLogin {
-				login_id: login.login_id,
-				token_expiry: DateTime(login.token_expiry),
-				created: DateTime(login.created),
-				created_ip: login.created_ip,
-				created_location: Location {
-					lat: login.created_location_latitude,
-					lng: login.created_location_longitude,
-				},
-				created_country: login.created_country,
-				created_region: login.created_region,
-				created_city: login.created_city,
-				created_timezone: login.created_timezone,
-				last_login: DateTime(login.last_login),
-				last_activity: DateTime(login.last_activity),
-				last_activity_ip: login.last_activity_ip,
-				last_activity_location: Location {
-					lat: login.last_activity_location_latitude,
-					lng: login.last_activity_location_longitude,
-				},
-				last_activity_user_agent: login.last_activity_user_agent,
-				last_activity_country: login.last_activity_country,
-				last_activity_region: login.last_activity_region,
-				last_activity_city: login.last_activity_city,
-				last_activity_timezone: login.last_activity_timezone,
-			})
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	context.success(GetUserLoginInfoResponse { login });
-	Ok(context)
-}
-
-async fn delete_user_login(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let login_id = context
-		.get_param(request_keys::LOGIN_ID)
-		.and_then(|param| Uuid::parse_str(param).ok())
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let user_id = context.get_token_data().unwrap().user.id.clone();
-
-	db::delete_user_login_by_id(
-		context.get_database_connection(),
-		&login_id,
-		&user_id,
-	)
-	.await?;
-
-	let ttl = get_access_token_expiry() + Duration::hours(2); // 2 hrs buffer time
-	redis::revoke_login_tokens_created_before_timestamp(
-		context.get_redis_connection(),
-		&login_id,
-		&Utc::now(),
-		Some(&ttl),
-	)
-	.await?;
-
-	context.success(DeleteUserLoginResponse {});
 	Ok(context)
 }
 

@@ -6,10 +6,11 @@ use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
-	db::{self, UserLogin},
+	db::{self, UserWebLogin},
 	error,
 	pin_fn,
 	redis,
+	routes,
 	service::{self, get_access_token_expiry},
 	utils::{
 		constants::request_keys,
@@ -51,7 +52,9 @@ pub fn create_sub_app(
 	sub_app.post(
 		"/sign-out",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
 			EveMiddleware::CustomFunction(pin_fn!(sign_out)),
 		],
 	);
@@ -151,10 +154,10 @@ async fn sign_in(
 	}
 
 	let config = context.get_state().config.clone();
-	let ip_address = super::get_request_ip_address(&context);
+	let ip_address = routes::get_request_ip_address(&context);
 	let user_agent = context.get_header("user-agent").unwrap_or_default();
 
-	let (UserLogin { login_id, .. }, access_token, refresh_token) =
+	let (UserWebLogin { login_id, .. }, access_token, refresh_token) =
 		service::sign_in_user(
 			context.get_database_connection(),
 			&user_data.id,
@@ -303,10 +306,10 @@ async fn sign_out(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let login_id = context.get_token_data().unwrap().login_id.clone();
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let login_id = context.get_token_data().unwrap().login_id().clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
-	db::get_user_login_for_user(
+	db::get_user_web_login_for_user(
 		context.get_database_connection(),
 		&login_id,
 		&user_id,
@@ -315,7 +318,7 @@ async fn sign_out(
 	.status(200)
 	.body(error!(TOKEN_NOT_FOUND).to_string())?;
 
-	db::delete_user_login_by_id(
+	db::delete_user_web_login_by_id(
 		context.get_database_connection(),
 		&login_id,
 		&user_id,
@@ -378,7 +381,7 @@ async fn join(
 
 	let config = context.get_state().config.clone();
 
-	let ip_address = super::get_request_ip_address(&context);
+	let ip_address = routes::get_request_ip_address(&context);
 	let user_agent = context.get_header("user-agent").unwrap_or_default();
 
 	let join_user = service::join_user(
@@ -487,7 +490,7 @@ async fn get_access_token(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let ip_address = super::get_request_ip_address(&context);
+	let ip_address = routes::get_request_ip_address(&context);
 	let user_agent = context.get_header("user-agent").unwrap_or_default();
 
 	let config = context.get_state().config.clone();
@@ -508,7 +511,7 @@ async fn get_access_token(
 	let (lat, lng) = ip_info.loc.split_once(',').status(500)?;
 	let (lat, lng): (f64, f64) = (lat.parse()?, lng.parse()?);
 
-	db::update_user_login_last_activity_info(
+	db::update_user_web_login_last_activity_info(
 		context.get_database_connection(),
 		&login_id,
 		&Utc::now(),

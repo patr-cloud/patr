@@ -1,15 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap, HashSet};
 
-use api_models::utils::Uuid;
+use api_models::{models::user::WorkspacePermission, utils::Uuid};
 use chrono::{DateTime, Utc};
 
-use crate::{
-	db::Workspace,
-	models::rbac::{self, WorkspacePermissions},
-	query,
-	query_as,
-	Database,
-};
+use crate::{db::Workspace, models::rbac, query, query_as, Database};
 
 mod role;
 mod user;
@@ -316,11 +310,11 @@ pub async fn initialize_rbac_post(
 	Ok(())
 }
 
-pub async fn get_all_workspace_roles_for_user(
+pub async fn get_all_workspace_role_permissions_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
-) -> Result<HashMap<Uuid, WorkspacePermissions>, sqlx::Error> {
-	let mut workspaces: HashMap<Uuid, WorkspacePermissions> = HashMap::new();
+) -> Result<BTreeMap<Uuid, WorkspacePermission>, sqlx::Error> {
+	let mut workspaces: BTreeMap<Uuid, WorkspacePermission> = BTreeMap::new();
 
 	let workspace_roles = query!(
 		r#"
@@ -375,67 +369,71 @@ pub async fn get_all_workspace_roles_for_user(
 		if let Some(permission) = workspaces.get_mut(&workspace_id) {
 			for resource in resources {
 				let permission_id = resource.permission_id;
-				if let Some(permissions) =
-					permission.resources.get_mut(&resource.resource_id)
+				if let Some(permissions) = permission
+					.resource_permissions
+					.get_mut(&resource.resource_id)
 				{
 					if !permissions.contains(&permission_id) {
-						permissions.push(permission_id);
+						permissions.insert(permission_id);
 					}
 				} else {
-					permission
-						.resources
-						.insert(resource.resource_id, vec![permission_id]);
+					permission.resource_permissions.insert(
+						resource.resource_id,
+						HashSet::from([permission_id]),
+					);
 				}
 			}
 			for resource_type in resource_types {
 				let permission_id = resource_type.permission_id;
 				if let Some(permissions) = permission
-					.resource_types
+					.resource_type_permissions
 					.get_mut(&resource_type.resource_type_id)
 				{
 					if !permissions.contains(&permission_id) {
-						permissions.push(permission_id);
+						permissions.insert(permission_id);
 					}
 				} else {
-					permission.resource_types.insert(
+					permission.resource_type_permissions.insert(
 						resource_type.resource_type_id,
-						vec![permission_id],
+						HashSet::from([permission_id]),
 					);
 				}
 			}
 		} else {
-			let mut permission = WorkspacePermissions {
+			let mut permission = WorkspacePermission {
 				is_super_admin: false,
-				resources: HashMap::new(),
-				resource_types: HashMap::new(),
+				resource_permissions: BTreeMap::new(),
+				resource_type_permissions: BTreeMap::new(),
 			};
 			for resource in resources {
 				let permission_id = resource.permission_id;
-				if let Some(permissions) =
-					permission.resources.get_mut(&resource.resource_id)
+				if let Some(permissions) = permission
+					.resource_permissions
+					.get_mut(&resource.resource_id)
 				{
 					if !permissions.contains(&permission_id) {
-						permissions.push(permission_id);
+						permissions.insert(permission_id);
 					}
 				} else {
-					permission
-						.resources
-						.insert(resource.resource_id, vec![permission_id]);
+					permission.resource_permissions.insert(
+						resource.resource_id,
+						HashSet::from([permission_id]),
+					);
 				}
 			}
 			for resource_type in resource_types {
 				let permission_id = resource_type.permission_id;
 				if let Some(permissions) = permission
-					.resource_types
+					.resource_type_permissions
 					.get_mut(&resource_type.resource_type_id)
 				{
 					if !permissions.contains(&permission_id) {
-						permissions.push(permission_id);
+						permissions.insert(permission_id);
 					}
 				} else {
-					permission.resource_types.insert(
+					permission.resource_type_permissions.insert(
 						resource_type.resource_type_id,
-						vec![permission_id],
+						HashSet::from([permission_id]),
 					);
 				}
 			}
@@ -482,10 +480,10 @@ pub async fn get_all_workspace_roles_for_user(
 		} else {
 			workspaces.insert(
 				workspace_id,
-				WorkspacePermissions {
+				WorkspacePermission {
 					is_super_admin: true,
-					resources: HashMap::new(),
-					resource_types: HashMap::new(),
+					resource_permissions: BTreeMap::new(),
+					resource_type_permissions: BTreeMap::new(),
 				},
 			);
 		}

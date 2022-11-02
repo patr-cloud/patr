@@ -65,9 +65,11 @@ pub fn create_sub_app(
 	app.get(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::static_site::LIST,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::static_site::LIST,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -88,7 +90,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(list_static_sites)),
 		],
 	);
@@ -97,9 +99,11 @@ pub fn create_sub_app(
 	app.get(
 		"/:staticSiteId/upload",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::static_site::LIST,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::static_site::LIST,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -120,7 +124,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(
 				list_static_sites_upload_history
 			)),
@@ -131,9 +135,11 @@ pub fn create_sub_app(
 	app.get(
 		"/:staticSiteId/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::static_site::INFO,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::static_site::INFO,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -162,7 +168,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_static_site_info)),
 		],
 	);
@@ -171,9 +177,11 @@ pub fn create_sub_app(
 	app.post(
 		"/:staticSiteId/start",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::static_site::EDIT,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::static_site::EDIT,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -202,7 +210,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(start_static_site)),
 		],
 	);
@@ -211,9 +219,11 @@ pub fn create_sub_app(
 	app.patch(
 		"/:staticSiteId/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::static_site::EDIT,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::static_site::EDIT,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -242,7 +252,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(update_static_site)),
 		],
 	);
@@ -251,9 +261,11 @@ pub fn create_sub_app(
 	app.post(
 		"/:staticSiteId/upload",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::static_site::EDIT,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::static_site::EDIT,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -282,7 +294,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(upload_static_site)),
 		],
 	);
@@ -291,9 +303,11 @@ pub fn create_sub_app(
 	app.post(
 		"/:staticSiteId/upload/:uploadId/revert",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::static_site::EDIT,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::static_site::EDIT,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -322,7 +336,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(revert_static_site)),
 		],
 	);
@@ -331,9 +345,11 @@ pub fn create_sub_app(
 	app.post(
 		"/:staticSiteId/stop",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::static_site::EDIT,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::static_site::EDIT,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -362,7 +378,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(stop_static_site)),
 		],
 	);
@@ -371,9 +387,11 @@ pub fn create_sub_app(
 	app.post(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::static_site::CREATE,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::static_site::CREATE,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -394,7 +412,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(create_static_site)),
 		],
 	);
@@ -403,9 +421,11 @@ pub fn create_sub_app(
 	app.delete(
 		"/:staticSiteId",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::static_site::DELETE,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::static_site::DELETE,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -434,7 +454,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(delete_static_site)),
 		],
 	);
@@ -443,9 +463,11 @@ pub fn create_sub_app(
 	app.get(
 		"/:staticSiteId/managed-urls",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::static_site::INFO,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::static_site::INFO,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -474,7 +496,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(list_linked_urls)),
 		],
 	);
@@ -691,7 +713,7 @@ async fn create_static_site(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let CreateStaticSiteRequest {
 		workspace_id: _,
@@ -988,7 +1010,7 @@ async fn upload_static_site(
 	)
 	.unwrap();
 	let request_id = Uuid::new_v4();
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	log::trace!(
 		"Uploading the file for static site with id: {} and request_id: {}",

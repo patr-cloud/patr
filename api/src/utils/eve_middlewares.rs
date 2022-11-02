@@ -1,7 +1,10 @@
-use std::{future::Future, pin::Pin};
+use std::{
+	future::Future,
+	net::{IpAddr, Ipv4Addr},
+	pin::Pin,
+};
 
 use async_trait::async_trait;
-use chrono::Utc;
 use eve_rs::{
 	default_middlewares::{
 		compression::CompressionHandler,
@@ -16,17 +19,13 @@ use eve_rs::{
 	Middleware,
 	NextHandler,
 };
-use redis::aio::MultiplexedConnection as RedisConnection;
 
 use crate::{
 	app::App,
 	db::Resource,
 	error,
-	models::{
-		rbac::{self, GOD_USER_ID},
-		AccessTokenData,
-	},
-	redis::is_access_token_revoked,
+	models::UserAuthenticationData,
+	routes::get_request_ip_address,
 	utils::{Error, ErrorData, EveContext},
 };
 
@@ -53,8 +52,14 @@ pub enum EveMiddleware {
 	UrlEncodedParser,
 	CookieParser,
 	StaticHandler(StaticFileServer),
-	PlainTokenAuthenticator,
-	ResourceTokenAuthenticator(&'static str, ResourceRequiredFunction), /* (permission, resource_required) */
+	PlainTokenAuthenticator {
+		is_api_token_allowed: bool,
+	},
+	ResourceTokenAuthenticator {
+		is_api_token_allowed: bool,
+		permission: &'static str,
+		resource: ResourceRequiredFunction,
+	},
 	CustomFunction(MiddlewareHandlerFunction),
 	DomainRouter(
 		String,
@@ -100,39 +105,69 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 			EveMiddleware::StaticHandler(static_file_server) => {
 				static_file_server.run_middleware(context, next).await
 			}
-			EveMiddleware::PlainTokenAuthenticator => {
-				let access_data =
-					if let Some(token) = decode_access_token(&context) {
-						token
-					} else {
-						context.status(401).json(error!(UNAUTHORIZED));
-						return Ok(context);
-					};
-
-				validate_access_token(
-					context.get_redis_connection(),
-					&access_data,
-				)
-				.await?;
-
-				context.set_token_data(access_data);
-				next(context).await
-			}
-			EveMiddleware::ResourceTokenAuthenticator(
-				permission_required,
-				resource_in_question,
-			) => {
-				let access_data = decode_access_token(&context)
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed,
+			} => {
+				let token = context
+					.get_header("Authorization")
 					.status(401)
 					.body(error!(UNAUTHORIZED).to_string())?;
 
-				validate_access_token(
-					context.get_redis_connection(),
-					&access_data,
+				let ip_addr = get_request_ip_address(&context)
+					.parse()
+					.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
+
+				let jwt_secret = context.get_state().config.jwt_secret.clone();
+				let mut redis_conn = context.get_redis_connection().clone();
+				let token_data = UserAuthenticationData::parse(
+					context.get_database_connection(),
+					&mut redis_conn,
+					&jwt_secret,
+					&token,
+					&ip_addr,
 				)
 				.await?;
 
-				// check if the access token has access to the resource
+				if token_data.is_api_token() && !is_api_token_allowed {
+					return Err(Error::empty()
+						.status(401)
+						.body(error!(UNAUTHORIZED).to_string()));
+				}
+
+				context.set_token_data(token_data);
+				next(context).await
+			}
+			EveMiddleware::ResourceTokenAuthenticator {
+				permission,
+				resource: resource_in_question,
+				is_api_token_allowed,
+			} => {
+				let token = context
+					.get_header("Authorization")
+					.status(401)
+					.body(error!(UNAUTHORIZED).to_string())?;
+
+				let ip_addr = get_request_ip_address(&context)
+					.parse()
+					.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
+
+				let jwt_secret = context.get_state().config.jwt_secret.clone();
+				let mut redis_conn = context.get_redis_connection().clone();
+				let token_data = UserAuthenticationData::parse(
+					context.get_database_connection(),
+					&mut redis_conn,
+					&jwt_secret,
+					&token,
+					&ip_addr,
+				)
+				.await?;
+
+				if token_data.is_api_token() && !is_api_token_allowed {
+					return Err(Error::empty()
+						.status(401)
+						.body(error!(UNAUTHORIZED).to_string()));
+				}
+
 				let (mut context, resource) =
 					resource_in_question(context).await?;
 				let resource = if let Some(resource) = resource {
@@ -141,62 +176,19 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					return Ok(context);
 				};
 
-				let workspace_id = resource.owner_id;
-				let workspace_permission = if let Some(permission) =
-					access_data.workspaces.get(&workspace_id)
-				{
-					permission
-				} else {
-					context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
-					return Ok(context);
-				};
-
-				let allowed = {
-					// Check if the resource type is allowed
-					if let Some(permissions) = workspace_permission
-						.resource_types
-						.get(&resource.resource_type_id)
-					{
-						permissions.contains(
-							rbac::PERMISSIONS
-								.get()
-								.unwrap()
-								.get(&(*permission_required).to_string())
-								.unwrap(),
-						)
-					} else {
-						false
-					}
-				} || {
-					// Check if that specific resource is allowed
-					if let Some(permissions) =
-						workspace_permission.resources.get(&resource.id)
-					{
-						permissions.contains(
-							rbac::PERMISSIONS
-								.get()
-								.unwrap()
-								.get(&(*permission_required).to_string())
-								.unwrap(),
-						)
-					} else {
-						false
-					}
-				} || {
-					// Check if super admin or god is permitted
-					workspace_permission.is_super_admin || {
-						let god_user_id = GOD_USER_ID.get().unwrap();
-						god_user_id == &access_data.user.id
-					}
-				};
-
-				if allowed {
-					context.set_token_data(access_data);
-					next(context).await
-				} else {
-					context.status(401).json(error!(UNAUTHORIZED));
-					Ok(context)
+				if !token_data.has_access_for_requested_action(
+					&resource.owner_id,
+					&resource.id,
+					&resource.resource_type_id,
+					permission,
+				) {
+					return Err(Error::empty()
+						.status(401)
+						.body(error!(UNAUTHORIZED).to_string()));
 				}
+
+				context.set_token_data(token_data);
+				next(context).await
 			}
 			EveMiddleware::CustomFunction(function) => {
 				function(context, next).await
@@ -214,44 +206,4 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 			}
 		}
 	}
-}
-
-fn decode_access_token(context: &EveContext) -> Option<AccessTokenData> {
-	let authorization = context.get_header("Authorization")?;
-
-	let result = AccessTokenData::parse(
-		authorization,
-		context.get_state().config.jwt_secret.as_ref(),
-	);
-	if let Err(err) = result {
-		log::warn!("Error occured while parsing JWT: {}", err.to_string());
-		return None;
-	}
-	let access_data = result.unwrap();
-	Some(access_data)
-}
-
-async fn validate_access_token(
-	redis_conn: &mut RedisConnection,
-	access_token: &AccessTokenData,
-) -> Result<(), Error> {
-	// check whether access token has expired
-	if access_token.exp < Utc::now() {
-		return Error::as_result()
-			.status(401)
-			.body(error!(EXPIRED).to_string())?;
-	}
-
-	// check whether access token has revoked
-	match is_access_token_revoked(redis_conn, access_token).await {
-		Ok(false) => (), // access token not revoked hence valid
-		_ => {
-			// either access token revoked or redis connection error
-			return Error::as_result()
-				.status(401)
-				.body(error!(EXPIRED).to_string());
-		}
-	}
-
-	Ok(())
 }

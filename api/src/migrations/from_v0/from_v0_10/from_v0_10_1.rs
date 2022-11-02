@@ -35,6 +35,7 @@ pub(super) async fn migrate(
 ) -> Result<(), Error> {
 	refactor_resource_deletion(&mut *connection, config).await?;
 	add_resource_requests_for_running_deployments(connection, config).await?;
+	create_user_api_token_tables(connection, config).await?;
 
 	Ok(())
 }
@@ -1058,6 +1059,523 @@ async fn add_resource_requests_for_running_deployments(
 			Err(err) => return Err(err)?,
 		}
 	}
+
+	Ok(())
+}
+
+async fn create_user_api_token_tables(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE user_login
+		RENAME TO web_login;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER INDEX user_login_idx_user_id
+		RENAME TO web_login_idx_user_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			web_login_idx_login_id
+		ON
+			web_login(login_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace_audit_log
+		DROP CONSTRAINT workspace_audit_log_fk_login_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		DROP CONSTRAINT user_login_pk;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		DROP CONSTRAINT user_login_uq_login_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		DROP CONSTRAINT user_login_fk_user_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE USER_LOGIN_TYPE AS ENUM(
+			'api_token',
+			'web_login'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+			ADD COLUMN new_refresh_token TEXT,
+			ADD COLUMN new_token_expiry TIMESTAMPTZ,
+			ADD COLUMN new_created TIMESTAMPTZ,
+			ADD COLUMN new_created_ip INET,
+			ADD COLUMN new_created_location GEOMETRY,
+			ADD COLUMN new_created_country TEXT,
+			ADD COLUMN new_created_region TEXT,
+			ADD COLUMN new_created_city TEXT,
+			ADD COLUMN new_created_timezone TEXT,
+			ADD COLUMN new_last_login TIMESTAMPTZ,
+			ADD COLUMN new_last_activity TIMESTAMPTZ,
+			ADD COLUMN new_last_activity_ip INET,
+			ADD COLUMN new_last_activity_location GEOMETRY,
+			ADD COLUMN new_last_activity_country TEXT,
+			ADD COLUMN new_last_activity_region TEXT,
+			ADD COLUMN new_last_activity_city TEXT,
+			ADD COLUMN new_last_activity_timezone TEXT,
+			ADD COLUMN new_last_activity_user_agent TEXT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			web_login
+		SET
+			new_refresh_token = refresh_token,
+			new_token_expiry = token_expiry,
+			new_created = created,
+			new_created_ip = created_ip,
+			new_created_location = created_location,
+			new_created_country = created_country,
+			new_created_region = created_region,
+			new_created_city = created_city,
+			new_created_timezone = created_timezone,
+			new_last_login = last_login,
+			new_last_activity = last_activity,
+			new_last_activity_ip = last_activity_ip,
+			new_last_activity_location = last_activity_location,
+			new_last_activity_country = last_activity_country,
+			new_last_activity_region = last_activity_region,
+			new_last_activity_city = last_activity_city,
+			new_last_activity_timezone = last_activity_timezone,
+			new_last_activity_user_agent = last_activity_user_agent;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+			ALTER COLUMN new_refresh_token SET NOT NULL,
+			DROP COLUMN refresh_token,
+			ALTER COLUMN new_token_expiry SET NOT NULL,
+			DROP COLUMN token_expiry,
+			ALTER COLUMN new_created SET NOT NULL,
+			DROP COLUMN created,
+			ALTER COLUMN new_created_ip SET NOT NULL,
+			DROP COLUMN created_ip,
+			ALTER COLUMN new_created_location SET NOT NULL,
+			DROP COLUMN created_location,
+			ALTER COLUMN new_created_country SET NOT NULL,
+			DROP COLUMN created_country,
+			ALTER COLUMN new_created_region SET NOT NULL,
+			DROP COLUMN created_region,
+			ALTER COLUMN new_created_city SET NOT NULL,
+			DROP COLUMN created_city,
+			ALTER COLUMN new_created_timezone SET NOT NULL,
+			DROP COLUMN created_timezone,
+			ALTER COLUMN new_last_login SET NOT NULL,
+			DROP COLUMN last_login,
+			ALTER COLUMN new_last_activity SET NOT NULL,
+			DROP COLUMN last_activity,
+			ALTER COLUMN new_last_activity_ip SET NOT NULL,
+			DROP COLUMN last_activity_ip,
+			ALTER COLUMN new_last_activity_location SET NOT NULL,
+			DROP COLUMN last_activity_location,
+			ALTER COLUMN new_last_activity_country SET NOT NULL,
+			DROP COLUMN last_activity_country,
+			ALTER COLUMN new_last_activity_region SET NOT NULL,
+			DROP COLUMN last_activity_region,
+			ALTER COLUMN new_last_activity_city SET NOT NULL,
+			DROP COLUMN last_activity_city,
+			ALTER COLUMN new_last_activity_timezone SET NOT NULL,
+			DROP COLUMN last_activity_timezone,
+			ALTER COLUMN new_last_activity_user_agent SET NOT NULL,
+			DROP COLUMN last_activity_user_agent;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_refresh_token TO refresh_token;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_token_expiry TO token_expiry;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_created TO created;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_created_ip TO created_ip;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_created_location TO created_location;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_created_country TO created_country;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_created_region TO created_region;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_created_city TO created_city;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_created_timezone TO created_timezone;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_last_login TO last_login;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_last_activity TO last_activity;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_last_activity_ip TO last_activity_ip;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_last_activity_location TO last_activity_location;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_last_activity_country TO last_activity_country;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_last_activity_region TO last_activity_region;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_last_activity_city TO last_activity_city;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_last_activity_timezone TO last_activity_timezone;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		RENAME COLUMN new_last_activity_user_agent TO last_activity_user_agent;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		ADD COLUMN login_type USER_LOGIN_TYPE NOT NULL
+		GENERATED ALWAYS AS ('web_login') STORED;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_login(
+			login_id UUID CONSTRAINT user_login_pk PRIMARY KEY,
+			user_id UUID NOT NULL
+				CONSTRAINT user_login_fk_user_id REFERENCES "user"(id),
+			login_type USER_LOGIN_TYPE NOT NULL,
+			created TIMESTAMPTZ NOT NULL,
+			CONSTRAINT user_login_uq_login_id_user_id UNIQUE(login_id, user_id),
+			CONSTRAINT user_login_uq_login_id_user_id_login_type UNIQUE(
+				login_id, user_id, login_type
+			)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		INSERT INTO
+			user_login(login_id, user_id, login_type)
+		SELECT
+			login_id, user_id, 'web_login'
+		FROM
+			web_login;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace_audit_log
+		ADD CONSTRAINT workspace_audit_log_fk_login_id FOREIGN KEY(
+			user_id, login_id
+		)
+		REFERENCES user_login(user_id, login_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE web_login
+		ADD CONSTRAINT web_login_fk FOREIGN KEY(login_id, user_id, login_type)
+		REFERENCES user_login(login_id, user_id, login_type);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_api_token(
+			token_id UUID CONSTRAINT user_api_token_pk PRIMARY KEY,
+			name TEXT NOT NULL,
+			user_id UUID NOT NULL,
+			token_hash TEXT NOT NULL,
+			token_nbf TIMESTAMPTZ, /* The token is not valid before this date */
+			token_exp TIMESTAMPTZ, /* The token is not valid after this date */
+			allowed_ips INET[],
+			created TIMESTAMPTZ NOT NULL,
+			revoked TIMESTAMPTZ,
+			login_type USER_LOGIN_TYPE GENERATED ALWAYS AS ('api_token') STORED,
+			CONSTRAINT user_api_token_token_id_user_id_uk UNIQUE(
+				token_id, user_id
+			),
+			CONSTRAINT user_api_token_token_id_user_id_login_type_fk
+				FOREIGN KEY(token_id, user_id, login_type)
+					REFERENCES user_login(login_id, user_id, login_type)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			user_api_token_uq_name_user_id
+		ON
+			user_api_token(name, user_id)
+		WHERE
+			revoked IS NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace
+		ADD CONSTRAINT workspace_uq_id_super_admin_id
+		UNIQUE(id, super_admin_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_api_token_workspace_super_admin(
+			token_id UUID NOT NULL,
+			user_id UUID NOT NULL,
+			workspace_id UUID NOT NULL,
+			CONSTRAINT user_api_token_workspace_super_admin_fk_token
+				FOREIGN KEY(token_id, user_id)
+					REFERENCES user_api_token(token_id, user_id),
+			CONSTRAINT user_api_token_workspace_super_admin_fk_workspace
+				FOREIGN KEY(workspace_id, user_id)
+					REFERENCES workspace(id, super_admin_id)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_api_token_resource_permission(
+			token_id UUID NOT NULL
+				CONSTRAINT user_api_token_resource_permission_fk_token_id
+					REFERENCES user_api_token(token_id),
+			workspace_id UUID NOT NULL,
+			resource_id UUID NOT NULL,
+			permission_id UUID NOT NULL
+				CONSTRAINT user_api_token_resource_permission_fk_permission_id
+					REFERENCES permission(id),
+			CONSTRAINT user_api_token_resource_permission_workspace_id_resource_id
+				FOREIGN KEY (workspace_id, resource_id)
+					REFERENCES resource(owner_id, id),
+			CONSTRAINT user_api_token_resource_permission_pk 
+				PRIMARY KEY(token_id, permission_id, resource_id, workspace_id)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_api_token_resource_type_permission(
+			token_id UUID NOT NULL
+				CONSTRAINT user_api_token_resource_type_permission_fk_token_id
+					REFERENCES user_api_token(token_id),
+			workspace_id UUID NOT NULL
+				CONSTRAINT user_api_token_resource_type_permission_fk_workspace_id
+					REFERENCES workspace(id),
+			resource_type_id UUID NOT NULL
+				CONSTRAINT user_api_token_resource_type_permission_fk_resource_type_id
+					REFERENCES resource_type(id),
+			permission_id UUID NOT NULL
+				CONSTRAINT user_api_token_resource_type_permission_fk_permission_id
+					REFERENCES permission(id),
+			CONSTRAINT user_api_token_resource_type_permission_pk
+				PRIMARY KEY(token_id, permission_id, resource_type_id, workspace_id)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }

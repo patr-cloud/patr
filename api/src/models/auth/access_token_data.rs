@@ -1,9 +1,9 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
-use api_models::utils::Uuid;
+use ::redis::aio::MultiplexedConnection as RedisConnection;
+use api_models::{models::user::WorkspacePermission, utils::Uuid};
 use chrono::{DateTime, Utc};
 use jsonwebtoken::{
-	errors::Error,
 	Algorithm,
 	DecodingKey,
 	EncodingKey,
@@ -12,7 +12,7 @@ use jsonwebtoken::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::models::rbac::WorkspacePermissions;
+use crate::{error, redis, utils::Error};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -24,22 +24,92 @@ pub struct AccessTokenData {
 	pub typ: String,
 	#[serde(with = "datetime_as_seconds")]
 	pub exp: DateTime<Utc>,
-	pub workspaces: HashMap<Uuid, WorkspacePermissions>,
 	pub login_id: Uuid,
 	pub user: ExposedUserData,
+	pub permissions: BTreeMap<Uuid, WorkspacePermission>,
 	// Do we need to add more?
 }
 
 impl AccessTokenData {
-	pub fn parse(token: String, key: &str) -> Result<AccessTokenData, Error> {
+	pub async fn decode(
+		redis_connection: &mut RedisConnection,
+		token: &str,
+		key: &str,
+	) -> Result<AccessTokenData, Error> {
 		let decode_key = DecodingKey::from_secret(key.as_ref());
 		let TokenData { header: _, claims } =
-			jsonwebtoken::decode(&token, &decode_key, &{
+			jsonwebtoken::decode::<Self>(token, &decode_key, &{
 				let mut validation = Validation::new(Algorithm::HS256);
 				validation.validate_exp = false;
 				validation
 			})?;
+
+		if !claims.is_valid(redis_connection).await.unwrap_or(false) {
+			return Err(Error::empty()
+				.status(401)
+				.body(error!(EXPIRED).to_string()));
+		}
+
 		Ok(claims)
+	}
+
+	async fn is_valid(
+		&self,
+		redis_conn: &mut RedisConnection,
+	) -> Result<bool, Error> {
+		// check whether access token has expired
+		if self.exp < Utc::now() {
+			return Ok(false);
+		}
+
+		// check whether access token has been revoked
+		// check user revocation
+		let revoked_timestamp = redis::get_token_revoked_timestamp_for_user(
+			redis_conn,
+			&self.user.id,
+		)
+		.await?;
+		if matches!(revoked_timestamp, Some(revoked_timestamp) if self.iat < revoked_timestamp)
+		{
+			return Ok(false);
+		}
+
+		// check login revocation
+		let revoked_timestamp = redis::get_token_revoked_timestamp_for_login(
+			redis_conn,
+			&self.login_id,
+		)
+		.await?;
+		if matches!(revoked_timestamp, Some(revoked_timestamp) if self.iat < revoked_timestamp)
+		{
+			return Ok(false);
+		}
+
+		// check workspace revocation
+		for workspace_id in self.permissions.keys() {
+			let revoked_timestamp =
+				redis::get_token_revoked_timestamp_for_workspace(
+					redis_conn,
+					workspace_id,
+				)
+				.await?;
+			if matches!(revoked_timestamp, Some(revoked_timestamp) if self.iat < revoked_timestamp)
+			{
+				return Ok(false);
+			}
+		}
+
+		// check global revocation
+		let revoked_timestamp =
+			redis::get_global_token_revoked_timestamp(redis_conn).await?;
+		if matches!(revoked_timestamp, Some(revoked_timestamp) if self.iat < revoked_timestamp)
+		{
+			return Ok(false);
+		}
+
+		// all checks are passed, hence token has not revoked
+
+		Ok(true)
 	}
 
 	pub fn to_string(&self, key: &str) -> Result<String, Error> {
@@ -48,12 +118,13 @@ impl AccessTokenData {
 			&self,
 			&EncodingKey::from_secret(key.as_ref()),
 		)
+		.map_err(Error::from)
 	}
 
 	pub fn new(
 		iat: DateTime<Utc>,
 		exp: DateTime<Utc>,
-		workspaces: HashMap<Uuid, WorkspacePermissions>,
+		permissions: BTreeMap<Uuid, WorkspacePermission>,
 		login_id: Uuid,
 		user: ExposedUserData,
 	) -> Self {
@@ -63,7 +134,7 @@ impl AccessTokenData {
 			iat,
 			typ: String::from("accessToken"),
 			exp,
-			workspaces,
+			permissions,
 			login_id,
 			user,
 		}
