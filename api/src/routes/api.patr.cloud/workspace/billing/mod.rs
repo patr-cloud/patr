@@ -14,11 +14,11 @@ use api_models::{
 		ConfirmPaymentResponse,
 		DeleteBillingAddressResponse,
 		DeletePaymentMethodResponse,
+		GetBillBreakdownRequest,
+		GetBillBreakdownResponse,
 		GetBillingAddressResponse,
 		GetCurrentUsageResponse,
 		GetPaymentMethodResponse,
-		GetResourceUsageBreakdownRequest,
-		GetResourceUsageBreakdownResponse,
 		GetTransactionHistoryResponse,
 		MakePaymentRequest,
 		MakePaymentResponse,
@@ -1058,7 +1058,7 @@ async fn get_resource_usage_charges(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let GetResourceUsageBreakdownRequest { month, year, .. } = context
+	let GetBillBreakdownRequest { month, year, .. } = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -1083,7 +1083,7 @@ async fn get_resource_usage_charges(
 	)
 	.await?;
 
-	context.success(GetResourceUsageBreakdownResponse { bill });
+	context.success(GetBillBreakdownResponse { bill });
 
 	Ok(context)
 }

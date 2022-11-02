@@ -1,4 +1,7 @@
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::infrastructure::list_all_deployment_machine_type::DeploymentMachineType,
+	utils::Uuid,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -12,7 +15,7 @@ pub struct DeploymentBill {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentBillItem {
-	pub machine_type: (u16, u32), // CPU, RAM
+	pub machine_type: DeploymentMachineType, // CPU, RAM
 	pub num_instances: u32,
 	pub hours: u64,
 	pub amount: f64,

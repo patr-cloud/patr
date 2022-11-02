@@ -1,24 +1,29 @@
 use std::{
 	cmp::{max, min},
-	collections::HashMap,
+	collections::{BTreeMap, HashMap},
 	str::FromStr,
 };
 
 use api_models::{
-	models::workspace::billing::{
-		Bill,
-		DatabaseUsage,
-		DeploymentBills,
-		DeploymentUsage,
-		DockerRepositoryUsage,
-		DomainUsage,
-		ManagedUrlUsage,
-		PaymentMethod,
-		PaymentStatus,
-		SecretUsage,
-		StaticSiteUsage,
-		StripePaymentMethodType,
-		TransactionType,
+	models::workspace::{
+		billing::{
+			DatabaseUsage,
+			DeploymentBills,
+			DeploymentUsage,
+			DockerRepositoryUsage,
+			DomainPlan,
+			DomainUsage,
+			ManagedUrlUsage,
+			PaymentMethod,
+			PaymentStatus,
+			SecretUsage,
+			StaticSitePlan,
+			StaticSiteUsage,
+			StripePaymentMethodType,
+			TransactionType,
+			WorkspaceBillBreakdown,
+		},
+		infrastructure::list_all_deployment_machine_type::DeploymentMachineType,
 	},
 	utils::{DateTime, Uuid},
 };
@@ -42,7 +47,12 @@ use stripe::{
 };
 
 use crate::{
-	db::{self, DomainPlan, ManagedDatabasePlan, StaticSitePlan},
+	db::{
+		self,
+		DomainPlan as DbDomainPlan,
+		ManagedDatabasePlan,
+		StaticSitePlan as DbStaticSitePlan,
+	},
 	error,
 	models::{
 		billing::{
@@ -361,7 +371,11 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 			})
 			.bill_items
 			.push(DeploymentBillItem {
-				machine_type: (*cpu_count as u16, *memory_count as u32),
+				machine_type: DeploymentMachineType {
+					id: deployment_usage.machine_type,
+					cpu_count: *cpu_count,
+					memory_count: *memory_count,
+				},
 				num_instances: deployment_usage.num_instance as u32,
 				hours: hours as u64,
 				amount: if (*cpu_count, *memory_count) == (1, 2) &&
@@ -454,7 +468,7 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 	workspace_id: &Uuid,
 	month_start_date: &chrono::DateTime<Utc>,
 	till_date: &chrono::DateTime<Utc>,
-) -> Result<HashMap<StaticSitePlan, StaticSiteBill>, Error> {
+) -> Result<HashMap<DbStaticSitePlan, StaticSiteBill>, Error> {
 	let static_sites_usages = db::get_all_static_site_usages(
 		&mut *connection,
 		workspace_id,
@@ -477,9 +491,9 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 		);
 
 		let monthly_price = match static_sites_usage.static_site_plan {
-			StaticSitePlan::Free => 0f64,
-			StaticSitePlan::Pro => 5f64,
-			StaticSitePlan::Unlimited => 10f64,
+			DbStaticSitePlan::Free => 0f64,
+			DbStaticSitePlan::Pro => 5f64,
+			DbStaticSitePlan::Unlimited => 10f64,
 		};
 		let bill = static_sites_bill
 			.entry(static_sites_usage.static_site_plan)
@@ -616,7 +630,7 @@ pub async fn calculate_domains_bill_for_workspace_till(
 	workspace_id: &Uuid,
 	month_start_date: &chrono::DateTime<Utc>,
 	till_date: &chrono::DateTime<Utc>,
-) -> Result<HashMap<DomainPlan, DomainBill>, Error> {
+) -> Result<HashMap<DbDomainPlan, DomainBill>, Error> {
 	let domains_usages = db::get_all_domains_usages(
 		&mut *connection,
 		workspace_id,
@@ -639,8 +653,8 @@ pub async fn calculate_domains_bill_for_workspace_till(
 		);
 
 		let monthly_price = match domains_usage.domain_plan {
-			DomainPlan::Free => 0f64,
-			DomainPlan::Unlimited => 10f64,
+			DbDomainPlan::Free => 0f64,
+			DbDomainPlan::Unlimited => 10f64,
 		};
 		let bill = domains_bill.entry(domains_usage.domain_plan).or_insert(
 			DomainBill {
@@ -963,7 +977,7 @@ pub async fn get_total_resource_usage(
 	till_date: &chrono::DateTime<Utc>,
 	year: i32,
 	month: u32,
-) -> Result<Bill, Error> {
+) -> Result<WorkspaceBillBreakdown, Error> {
 	let deployment_usage = calculate_deployment_bill_for_workspace_till(
 		connection,
 		workspace_id,
@@ -981,16 +995,11 @@ pub async fn get_total_resource_usage(
 					.bill_items
 					.into_iter()
 					.map(|bill_item| DeploymentBills {
-						machine_type: HashMap::from([
-							(
-								"cpu".to_string(),
-								bill_item.machine_type.0 as u32,
-							),
-							(
-								"ram".to_string(),
-								bill_item.machine_type.1 as u32,
-							),
-						]),
+						machine_type: DeploymentMachineType {
+							id: bill_item.machine_type.id,
+							cpu_count: bill_item.machine_type.cpu_count,
+							memory_count: bill_item.machine_type.memory_count,
+						},
 						num_instances: bill_item.num_instances,
 						hours: bill_item.hours,
 						amount: bill_item.amount,
@@ -999,7 +1008,7 @@ pub async fn get_total_resource_usage(
 			},
 		)
 	})
-	.collect::<HashMap<_, _>>();
+	.collect::<BTreeMap<_, _>>();
 
 	let database_usage = calculate_database_bill_for_workspace_till(
 		connection,
@@ -1019,7 +1028,7 @@ pub async fn get_total_resource_usage(
 			},
 		)
 	})
-	.collect::<HashMap<_, _>>();
+	.collect::<BTreeMap<_, _>>();
 
 	let static_site_usage = calculate_static_sites_bill_for_workspace_till(
 		connection,
@@ -1031,14 +1040,18 @@ pub async fn get_total_resource_usage(
 	.into_iter()
 	.map(|(key, value)| {
 		(
-			key.to_string(),
+			match key {
+				DbStaticSitePlan::Pro => StaticSitePlan::Pro,
+				DbStaticSitePlan::Free => StaticSitePlan::Free,
+				DbStaticSitePlan::Unlimited => StaticSitePlan::Unlimited,
+			},
 			StaticSiteUsage {
 				hours: value.hours,
 				amount: value.amount,
 			},
 		)
 	})
-	.collect::<HashMap<_, _>>();
+	.collect::<BTreeMap<_, _>>();
 
 	let managed_url_usage = calculate_managed_urls_bill_for_workspace_till(
 		connection,
@@ -1057,7 +1070,7 @@ pub async fn get_total_resource_usage(
 			},
 		)
 	})
-	.collect::<HashMap<_, _>>();
+	.collect::<BTreeMap<_, _>>();
 
 	let docker_repository_usage =
 		calculate_docker_repository_bill_for_workspace_till(
@@ -1085,14 +1098,17 @@ pub async fn get_total_resource_usage(
 	.into_iter()
 	.map(|(key, value)| {
 		(
-			key.to_string(),
+			match key {
+				DbDomainPlan::Free => DomainPlan::Free,
+				DbDomainPlan::Unlimited => DomainPlan::Unlimited,
+			},
 			DomainUsage {
 				hours: value.hours,
 				amount: value.amount,
 			},
 		)
 	})
-	.collect::<HashMap<_, _>>();
+	.collect::<BTreeMap<_, _>>();
 
 	let secret_usage = calculate_secrets_bill_for_workspace_till(
 		connection,
@@ -1111,9 +1127,9 @@ pub async fn get_total_resource_usage(
 			},
 		)
 	})
-	.collect::<HashMap<_, _>>();
+	.collect::<BTreeMap<_, _>>();
 
-	let bill = Bill {
+	let bill = WorkspaceBillBreakdown {
 		year,
 		month,
 		deployment_usage,
