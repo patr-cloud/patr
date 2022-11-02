@@ -1149,7 +1149,7 @@ async fn add_resource_requests_for_running_deployments(
 			Err(kube::Error::Api(ErrorResponse { code: 404, .. })) => log::error!(
 				"Deployment `{deployment_name}` not found in namespace `{namespace}`, hence skipped setting resource requests to it"
 			),
-			Err(err) => return Err(err)?,
+			Err(err) => return Err(Error::new(Box::new(err))),
 		}
 	}
 
