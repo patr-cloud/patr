@@ -673,6 +673,10 @@ pub async fn send_payment_success_notification(
 	month: String,
 	year: i32,
 	total_bill: f64,
+	credit_amount: f64,
+	card_amount: f64,
+	credits_remaining: f64,
+	amount_paid: f64,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, &super_admin_id)
 		.await?
@@ -705,6 +709,10 @@ pub async fn send_payment_success_notification(
 		month,
 		year,
 		total_bill,
+		credit_amount,
+		card_amount,
+		credits_remaining,
+		amount_paid,
 	)
 	.await
 }
