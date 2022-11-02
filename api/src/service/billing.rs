@@ -34,7 +34,6 @@ use stripe::{
 	OffSessionOther,
 	PaymentIntent,
 	PaymentIntentConfirmationMethod,
-	PaymentIntentId,
 	PaymentIntentOffSession,
 	PaymentIntentStatus,
 	PaymentMethodId,
@@ -166,7 +165,7 @@ pub async fn make_payment(
 	workspace_id: &Uuid,
 	amount_to_pay: u32,
 	config: &Settings,
-) -> Result<(PaymentIntentId, Uuid), Error> {
+) -> Result<Uuid, Error> {
 	let workspace = db::get_workspace_info(connection, workspace_id)
 		.await?
 		.status(500)
@@ -239,60 +238,66 @@ pub async fn make_payment(
 	)
 	.await?;
 
-	Ok((payment_intent.id, transaction_id))
+	Ok(transaction_id)
 }
 
 pub async fn confirm_payment_method(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	transaction_id: &Uuid,
-	payment_intent_id: &str,
 	config: &Settings,
 ) -> Result<bool, Error> {
-	let transaction = db::get_transaction_by_payment_intent_id_in_workspace(
+	let transaction = db::get_transaction_by_transaction_id(
 		connection,
 		workspace_id,
-		payment_intent_id,
+		transaction_id,
 	)
 	.await?
-	.status(500)?;
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	if Some(payment_intent_id) != transaction.payment_intent_id.as_deref() {
-		return Error::as_result()
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
-	}
-
-	let client = Client::new(&config.stripe.secret_key);
-	let payment_intent =
-		PaymentIntent::confirm(&client, payment_intent_id, Default::default())
-			.await?;
-
-	if payment_intent.status != PaymentIntentStatus::Succeeded {
-		Refund::create(&client, {
-			let mut refund = CreateRefund::new();
-
-			refund.payment_intent = Some(payment_intent.id);
-
-			refund
-		})
+	if let Some(payment_intent_id) = transaction.payment_intent_id {
+		let client = Client::new(&config.stripe.secret_key);
+		let payment_intent = PaymentIntent::confirm(
+			&client,
+			&payment_intent_id,
+			Default::default(),
+		)
 		.await?;
+
+		if payment_intent.status != PaymentIntentStatus::Succeeded {
+			Refund::create(&client, {
+				let mut refund = CreateRefund::new();
+
+				refund.payment_intent = Some(payment_intent.id);
+
+				refund
+			})
+			.await?;
+			db::update_transaction(
+				connection,
+				transaction_id,
+				&TransactionType::Payment,
+				&PaymentStatus::Failed,
+			)
+			.await?;
+			return Ok(false);
+		}
 		db::update_transaction(
 			connection,
 			transaction_id,
 			&TransactionType::Payment,
-			&PaymentStatus::Failed,
+			&PaymentStatus::Success,
 		)
 		.await?;
-		return Ok(false);
+	} else {
+		log::trace!(
+			"payment_intent_id not found for transaction_id: {}, this is a not an expected behaviour", transaction_id);
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
 	}
-	db::update_transaction(
-		connection,
-		transaction_id,
-		&TransactionType::Payment,
-		&PaymentStatus::Success,
-	)
-	.await?;
+
 	Ok(true)
 }
 

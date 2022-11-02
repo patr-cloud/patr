@@ -989,7 +989,7 @@ async fn make_payment(
 			.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
-	let (payment_intent_id, transaction_id) = service::make_payment(
+	let transaction_id = service::make_payment(
 		context.get_database_connection(),
 		&workspace_id,
 		amount,
@@ -997,10 +997,7 @@ async fn make_payment(
 	)
 	.await?;
 
-	context.success(MakePaymentResponse {
-		payment_intent_id: payment_intent_id.to_string(),
-		transaction_id,
-	});
+	context.success(MakePaymentResponse { transaction_id });
 	Ok(context)
 }
 
@@ -1011,11 +1008,7 @@ async fn confirm_payment(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let ConfirmPaymentRequest {
-		transaction_id,
-		payment_intent_id,
-		..
-	} = context
+	let ConfirmPaymentRequest { transaction_id, .. } = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -1026,7 +1019,6 @@ async fn confirm_payment(
 		context.get_database_connection(),
 		&workspace_id,
 		&transaction_id,
-		&payment_intent_id,
 		&config,
 	)
 	.await?;
