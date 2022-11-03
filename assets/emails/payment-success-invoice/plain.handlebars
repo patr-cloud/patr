@@ -1,7 +1,7 @@
 
 Hello {{username}}, 
 
-Your invoice for {{month}} {{year}}  is now available for the workspace {{workspaceName}}
+Your invoice for {{month.name}} {{year}}  is now available for the workspace {{workspaceName}}
 
 Total usage charges: {{totalBill}}
 
@@ -80,7 +80,7 @@ Secret Usage:
   {{#if cardAmount}}
     The amount was automatically deducted using your card and Patr credits, so
     no further action is required. Total usage charges for
-    {{month}}
+    {{month.name}}
     {{year}}: ${{totalBill}}
 
     Amount paid using card: ${{cardAmount}}
@@ -91,7 +91,7 @@ Secret Usage:
   {{#unless credits}}
     The amount was automatically charged to your card, so no action is required
     from your end. Total usage charges for
-    {{month}}
+    {{month.name}}
     {{year}}: ${{totalBill}}
 
     Amount paid: ${{amountPaid}}
@@ -102,7 +102,7 @@ Secret Usage:
   {{#unless cardAmount}}
     The amount was automatically charged from your Patr credits, so no action is
     required from your end. Total usage charges for
-    {{month}}
+    {{month.name}}
     {{year}}: ${{totalBill}}
 
     Credits consumed: ${{amountPaid}}
