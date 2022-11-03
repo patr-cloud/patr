@@ -1041,7 +1041,7 @@ async fn get_current_bill(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let current_usage = db::get_workspace_info(
+	let current_bill = db::get_workspace_info(
 		context.get_database_connection(),
 		&workspace_id,
 	)
@@ -1050,7 +1050,19 @@ async fn get_current_bill(
 	.body(error!(SERVER_ERROR).to_string())?
 	.amount_due;
 
-	context.success(GetCurrentUsageResponse { current_usage });
+	let credits_left = db::get_credits_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.into_iter()
+	.map(|transaction| transaction.amount.abs())
+	.sum::<f64>()
+	.max(0f64);
+
+	context.success(GetCurrentUsageResponse {
+		current_usage: current_bill - credits_left,
+	});
 	Ok(context)
 }
 
@@ -1062,7 +1074,7 @@ async fn get_resource_usage_charges(
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
 	let GetBillBreakdownRequest { month, year, .. } = context
-		.get_body_as()
+		.get_query_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
