@@ -195,8 +195,10 @@ pub async fn send_sign_up_completed_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/recovery-email-notification/template.json"]
+#[allow(non_snake_case)]
 struct RecoveryNotificationEmail {
 	username: String,
+	recoveryEmail: String,
 }
 
 /// # Description
@@ -210,13 +212,16 @@ struct RecoveryNotificationEmail {
 /// # Returns
 /// This function returns `Result<(), Error>` containing an empty response or an
 /// error
+#[allow(non_snake_case)]
 pub async fn send_recovery_registration_mail(
 	email: Mailbox,
 	username: &str,
+	recoveryEmail: &str,
 ) -> Result<(), Error> {
 	send_email(
 		RecoveryNotificationEmail {
 			username: username.to_string(),
+			recoveryEmail: recoveryEmail.to_string(),
 		},
 		email,
 		None,
@@ -263,87 +268,6 @@ pub async fn send_email_verification_otp(
 		email,
 		None,
 		"Patr email verification OTP",
-	)
-	.await
-}
-
-#[derive(EmailTemplate, Serialize)]
-#[template_path = "assets/emails/invoice-email/template.json"]
-#[allow(non_snake_case)]
-struct InvoiceEmail {
-	workspaceName: String,
-	username: String,
-	billingAddress: HashMap<String, String>,
-	deploymentUsage: HashMap<Uuid, DeploymentBill>,
-	databaseUsage: HashMap<Uuid, DatabaseBill>,
-	staticSiteUsage: HashMap<StaticSitePlan, StaticSiteBill>,
-	managedUrlUsage: HashMap<u64, ManagedUrlBill>,
-	dockerRepositoryUsage: Vec<DockerRepositoryBill>,
-	domainUsage: HashMap<DomainPlan, DomainBill>,
-	secretUsage: HashMap<u64, SecretsBill>,
-	totalBill: f64,
-	deploymentBill: f64,
-	databaseBill: f64,
-	staticSiteBill: f64,
-	managedUrlBill: f64,
-	dockerRepositoryBill: f64,
-	domainBill: f64,
-	secretsBill: f64,
-	month: String,
-	year: i32,
-}
-
-#[allow(clippy::too_many_arguments)]
-#[allow(non_snake_case, dead_code)]
-pub async fn send_invoice_email(
-	email: Mailbox,
-	workspaceName: String,
-	username: String,
-	billingAddress: HashMap<String, String>,
-	deploymentUsage: HashMap<Uuid, DeploymentBill>,
-	databaseUsage: HashMap<Uuid, DatabaseBill>,
-	staticSiteUsage: HashMap<StaticSitePlan, StaticSiteBill>,
-	managedUrlUsage: HashMap<u64, ManagedUrlBill>,
-	dockerRepositoryUsage: Vec<DockerRepositoryBill>,
-	domainUsage: HashMap<DomainPlan, DomainBill>,
-	secretUsage: HashMap<u64, SecretsBill>,
-	totalBill: f64,
-	deploymentBill: f64,
-	databaseBill: f64,
-	staticSiteBill: f64,
-	managedUrlBill: f64,
-	dockerRepositoryBill: f64,
-	domainBill: f64,
-	secretsBill: f64,
-	month: String,
-	year: i32,
-) -> Result<(), Error> {
-	send_email(
-		InvoiceEmail {
-			workspaceName,
-			username,
-			billingAddress,
-			deploymentUsage,
-			databaseUsage,
-			staticSiteUsage,
-			managedUrlUsage,
-			dockerRepositoryUsage,
-			domainUsage,
-			secretUsage,
-			totalBill,
-			deploymentBill,
-			databaseBill,
-			staticSiteBill,
-			managedUrlBill,
-			dockerRepositoryBill,
-			domainBill,
-			secretsBill,
-			month,
-			year,
-		},
-		email,
-		None,
-		"Patr invoice",
 	)
 	.await
 }
@@ -487,7 +411,7 @@ struct PaymentSuccessEmail {
 	dockerRepositoryUsage: Vec<DockerRepositoryBill>,
 	domainUsage: HashMap<DomainPlan, DomainBill>,
 	secretUsage: HashMap<u64, SecretsBill>,
-	month: String,
+	month: u32,
 	year: i32,
 	totalBill: f64,
 	creditsAmount: f64,
@@ -508,7 +432,7 @@ pub async fn send_payment_success_email(
 	dockerRepositoryUsage: Vec<DockerRepositoryBill>,
 	domainUsage: HashMap<DomainPlan, DomainBill>,
 	secretUsage: HashMap<u64, SecretsBill>,
-	month: String,
+	month: u32,
 	year: i32,
 	totalBill: f64,
 	creditsAmount: f64,

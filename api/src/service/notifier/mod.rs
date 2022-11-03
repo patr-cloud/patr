@@ -56,6 +56,7 @@ pub async fn send_sign_up_complete_notification(
 		email::send_recovery_registration_mail(
 			recovery_email.parse()?,
 			username,
+			&recovery_email,
 		)
 		.await?;
 	}
@@ -378,114 +379,6 @@ async fn get_user_phone_number(
 	Ok(phone_number)
 }
 
-#[allow(clippy::too_many_arguments, dead_code)]
-pub async fn send_invoice_email(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &Uuid,
-	address_id: Option<&Uuid>,
-	workspace_name: String,
-	deployment_usages: HashMap<Uuid, DeploymentBill>,
-	database_usages: HashMap<Uuid, DatabaseBill>,
-	static_sites_usages: HashMap<StaticSitePlan, StaticSiteBill>,
-	managed_url_usages: HashMap<u64, ManagedUrlBill>,
-	docker_repository_usages: Vec<DockerRepositoryBill>,
-	domains_usages: HashMap<DomainPlan, DomainBill>,
-	secrets_usages: HashMap<u64, SecretsBill>,
-	total_bill: f64,
-	deployment_bill: f64,
-	database_bill: f64,
-	static_site_bill: f64,
-	managed_url_bill: f64,
-	docker_repo_bill: f64,
-	managed_domain_bill: f64,
-	managed_secret_bill: f64,
-	month: String,
-	year: i32,
-) -> Result<(), Error> {
-	let user = db::get_user_by_user_id(connection, user_id)
-		.await?
-		.status(500)?;
-
-	// Getting super admin email
-	let user_email = get_user_email(
-		connection,
-		user.recovery_email_domain_id
-			.as_ref()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?,
-		user.recovery_email_local
-			.as_ref()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?,
-	)
-	.await?;
-
-	// parsing personal-workspace-(uuid)
-	let displayed_workspace_name = if let Some(Ok(user_id)) = workspace_name
-		.strip_prefix("personal-workspace-")
-		.map(Uuid::parse_str)
-	{
-		let user = db::get_user_by_user_id(connection, &user_id).await?;
-		if let Some(user) = user {
-			format!(
-				"{} {}'s Personal Workspace",
-				user.first_name, user.last_name
-			)
-		} else {
-			workspace_name
-		}
-	} else {
-		workspace_name
-	};
-
-	let mut billing_address: HashMap<String, String> = HashMap::new();
-	if let Some(address_id) = address_id {
-		let address = db::get_billing_address(connection, address_id)
-			.await?
-			.status(500)?;
-		billing_address.insert("first_name".to_owned(), address.first_name);
-		billing_address.insert("last_name".to_owned(), address.last_name);
-		billing_address
-			.insert("address_line_1".to_owned(), address.address_line_1);
-		billing_address.insert(
-			"address_line_2".to_owned(),
-			address.address_line_2.unwrap_or_default(),
-		);
-		billing_address.insert(
-			"address_line_3".to_owned(),
-			address.address_line_3.unwrap_or_default(),
-		);
-		billing_address.insert("city".to_owned(), address.city);
-		billing_address.insert("state".to_owned(), address.state);
-		billing_address.insert("zip".to_owned(), address.zip);
-	}
-
-	email::send_invoice_email(
-		user_email.parse()?,
-		displayed_workspace_name,
-		user.first_name,
-		billing_address,
-		deployment_usages,
-		database_usages,
-		static_sites_usages,
-		managed_url_usages,
-		docker_repository_usages,
-		domains_usages,
-		secrets_usages,
-		total_bill,
-		deployment_bill,
-		database_bill,
-		static_site_bill,
-		managed_url_bill,
-		docker_repo_bill,
-		managed_domain_bill,
-		managed_secret_bill,
-		month,
-		year,
-	)
-	.await
-}
-
 /// # Description
 /// This function is used to notify the user that their resources has been
 /// deleted because they haven't paid their bill
@@ -670,7 +563,7 @@ pub async fn send_payment_success_notification(
 	docker_repository_usages: Vec<DockerRepositoryBill>,
 	domains_usages: HashMap<DomainPlan, DomainBill>,
 	secrets_usages: HashMap<u64, SecretsBill>,
-	month: String,
+	month: u32,
 	year: i32,
 	total_bill: f64,
 	credit_amount: f64,
