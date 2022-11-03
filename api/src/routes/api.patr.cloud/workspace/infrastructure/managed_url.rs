@@ -19,7 +19,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
-	models::{rbac::permissions, ResourceType},
+	models::rbac::permissions,
 	pin_fn,
 	service,
 	utils::{
@@ -428,8 +428,6 @@ async fn delete_managed_url(
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
-	let user_id = context.get_token_data().unwrap().user_id().clone();
-
 	let managed_url_id = Uuid::parse_str(
 		context.get_param(request_keys::MANAGED_URL_ID).unwrap(),
 	)
@@ -438,7 +436,7 @@ async fn delete_managed_url(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let managed_url = db::get_managed_url_by_id(
+	db::get_managed_url_by_id(
 		context.get_database_connection(),
 		&managed_url_id,
 	)
@@ -459,19 +457,6 @@ async fn delete_managed_url(
 		&managed_url_id,
 		&config,
 		&request_id,
-	)
-	.await?;
-
-	// Commiting transaction so that even if the mailing function fails the
-	// resource should be deleted
-	context.commit_database_transaction().await?;
-
-	service::resource_delete_action_email(
-		context.get_database_connection(),
-		&managed_url.sub_domain,
-		&managed_url.workspace_id,
-		&ResourceType::ManagedUrl,
-		&user_id,
 	)
 	.await?;
 

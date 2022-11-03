@@ -423,14 +423,14 @@ struct PaymentSuccessEmail {
 	monthString: String,
 	monthNumber: u32,
 	year: i32,
-	totalBill: f64,
-	creditsAmount: f64,
-	cardAmount: f64,
-	creditsRemaining: f64,
-	amountPaid: f64,
+	totalBill: String,
+	creditsAmount: String,
+	cardAmount: String,
+	creditsRemaining: String,
+	amountPaid: String,
 }
 
-#[allow(non_snake_case)]
+#[allow(non_snake_case, clippy::too_many_arguments)]
 pub async fn send_payment_success_email(
 	email: Mailbox,
 	username: String,
@@ -445,11 +445,11 @@ pub async fn send_payment_success_email(
 	monthString: String,
 	monthNumber: u32,
 	year: i32,
-	totalBill: f64,
-	creditsAmount: f64,
-	cardAmount: f64,
-	creditsRemaining: f64,
-	amountPaid: f64,
+	totalBill: String,
+	creditsAmount: String,
+	cardAmount: String,
+	creditsRemaining: String,
+	amountPaid: String,
 ) -> Result<(), Error> {
 	send_email(
 		PaymentSuccessEmail {
@@ -486,7 +486,6 @@ struct ResourceDeletedEmail {
 	resourceName: String,
 	username: String,
 	deletedBy: String,
-	message: String,
 	resourceType: String,
 }
 
@@ -497,7 +496,6 @@ pub async fn send_resource_deleted_email(
 	username: String,
 	resourceType: String,
 	deletedBy: String,
-	message: String,
 	email: Mailbox,
 ) -> Result<(), Error> {
 	send_email(
@@ -506,7 +504,6 @@ pub async fn send_resource_deleted_email(
 			resourceName,
 			username,
 			deletedBy,
-			message,
 			resourceType,
 		},
 		email,

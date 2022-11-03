@@ -944,11 +944,7 @@ async fn delete_dns_record(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
-	let user_id = context.get_token_data().unwrap().user_id().clone();
 
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
 	log::trace!("request_id: {} - Deleting dns record", request_id);
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 	let domain_id = Uuid::parse_str(domain_id)?;
@@ -956,11 +952,10 @@ async fn delete_dns_record(
 	let record_id = context.get_param(request_keys::RECORD_ID).unwrap();
 	let record_id = Uuid::parse_str(record_id)?;
 
-	let dns =
-		db::get_dns_record_by_id(context.get_database_connection(), &record_id)
-			.await?
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	db::get_dns_record_by_id(context.get_database_connection(), &record_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let config = context.get_state().config.clone();
 
@@ -970,19 +965,6 @@ async fn delete_dns_record(
 		&record_id,
 		&config,
 		&request_id,
-	)
-	.await?;
-
-	// Commiting transaction so that even if the mailing function fails the
-	// resource should be deleted
-	context.commit_database_transaction().await?;
-
-	service::resource_delete_action_email(
-		context.get_database_connection(),
-		&dns.name,
-		&workspace_id,
-		&ResourceType::DNSRecord,
-		&user_id,
 	)
 	.await?;
 

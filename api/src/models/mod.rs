@@ -38,6 +38,8 @@ pub enum ResourceType {
 	DockerRepository,
 	Domain,
 	DNSRecord,
+	CiRepo,
+	Region,
 }
 
 impl fmt::Display for ResourceType {
@@ -51,6 +53,8 @@ impl fmt::Display for ResourceType {
 			ResourceType::Secret => write!(f, "Secret"),
 			ResourceType::Domain => write!(f, "Domain"),
 			ResourceType::DNSRecord => write!(f, "DNS record"),
+			ResourceType::CiRepo => write!(f, "Ci repo"),
+			ResourceType::Region => write!(f, "Deployment region"),
 		}
 	}
 }

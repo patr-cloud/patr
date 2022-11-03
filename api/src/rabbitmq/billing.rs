@@ -146,7 +146,7 @@ pub(super) async fn process_request(
 				&workspace.id,
 				&transaction_id,
 				month as i32,
-				total_resource_usage_bill.total_cost,
+				total_resource_usage_bill.total_cost.parse()?,
 				None,
 				// 1st of next month,
 				&next_month_start_date.add(Duration::nanoseconds(1)),
@@ -162,10 +162,13 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
-			let credit_amount =
-				total_resource_usage_bill.total_cost - payable_bill;
+			let credit_amount = total_resource_usage_bill
+				.total_cost
+				.parse::<f64>()
+				.unwrap_or_default() - // Can be handled better instead of unwrap_or_default
+				payable_bill;
 
-			let credit_remaining = if payable_bill > 0.00 {
+			let credit_remaining = if payable_bill >= 0.00 {
 				0.00
 			} else {
 				payable_bill * -1.00 // To make it positive
@@ -250,15 +253,19 @@ pub(super) async fn process_request(
 					month_string.to_string(),
 					month,
 					year,
-					amount_due * -1.0, // To make it positive
-					if credit_amount > 0.00 {
-						credit_amount
-					} else {
-						0.00
-					},
-					0.00,
-					credit_remaining,
-					amount_due * -1.0,
+					format!("{:.2}", amount_due * -1.00), /* To make it
+					                                       * positive */
+					format!(
+						"{:.2}",
+						if credit_amount > 0.00 {
+							credit_amount
+						} else {
+							0.00
+						}
+					),
+					"0.00".to_string(),
+					format!("{:.2}", credit_remaining),
+					format!("{:.2}", amount_due * -1.0),
 				)
 				.await?;
 				return Ok(());
@@ -363,15 +370,18 @@ pub(super) async fn process_request(
 							month_string.to_string(),
 							month,
 							year,
-							amount_due,
-							if credit_amount > 0.00 {
-								credit_amount
-							} else {
-								0.00
-							},
-							amount_due,
-							credit_remaining,
-							amount_due,
+							format!("{:.2}", amount_due),
+							format!(
+								"{:.2}",
+								if credit_amount > 0.00 {
+									credit_amount
+								} else {
+									0.00
+								}
+							),
+							format!("{:.2}", amount_due),
+							format!("{:.2}", credit_remaining),
+							format!("{:.2}", amount_due),
 						)
 						.await?;
 
@@ -562,7 +572,7 @@ pub(super) async fn process_request(
 					&workspace.id,
 					&transaction_id,
 					month as i32,
-					total_resource_usage_bill.total_cost,
+					total_resource_usage_bill.total_cost.parse()?,
 					Some("enterprise-plan-payment"),
 					// 1st of next month,
 					&month_end_date.add(Duration::nanoseconds(1)),
