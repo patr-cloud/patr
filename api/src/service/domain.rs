@@ -371,7 +371,7 @@ pub async fn is_domain_verified(
 				&domain.name,
 				workspace_id,
 				domain_id,
-				None,
+				true,
 				true,
 			)
 			.await?;
@@ -382,7 +382,7 @@ pub async fn is_domain_verified(
 			&domain.name,
 			workspace_id,
 			domain_id,
-			Some(message::NS_SERVER_NOT_FOUND.to_string()),
+			true,
 			false,
 		)
 		.await?;
@@ -750,7 +750,7 @@ pub async fn verify_external_domain(
 			domain_name,
 			workspace_id,
 			domain_id,
-			None,
+			false,
 			true,
 		)
 		.await?;
@@ -762,7 +762,7 @@ pub async fn verify_external_domain(
 		domain_name,
 		workspace_id,
 		domain_id,
-		Some(message::NO_TXT_RECORD.to_string()),
+		false,
 		false,
 	)
 	.await?;

@@ -278,7 +278,8 @@ pub async fn send_email_verification_otp(
 struct UnpaidResourcesDeletedEmail {
 	username: String,
 	workspaceName: String,
-	month: HashMap<String, String>,
+	monthString: String,
+	monthNumber: u32,
 	year: i32,
 	totalBill: f64,
 }
@@ -288,7 +289,8 @@ pub async fn send_unpaid_resources_deleted_email(
 	email: Mailbox,
 	username: String,
 	workspaceName: String,
-	month: HashMap<String, String>,
+	monthString: String,
+	monthNumber: u32,
 	year: i32,
 	totalBill: f64,
 ) -> Result<(), Error> {
@@ -296,7 +298,8 @@ pub async fn send_unpaid_resources_deleted_email(
 		UnpaidResourcesDeletedEmail {
 			username,
 			workspaceName,
-			month,
+			monthString,
+			monthNumber,
 			year,
 			totalBill,
 		},
@@ -313,7 +316,8 @@ pub async fn send_unpaid_resources_deleted_email(
 struct BillNotPaidReminderEmail {
 	username: String,
 	workspaceName: String,
-	month: HashMap<String, String>,
+	monthString: String,
+	monthNumber: u32,
 	year: i32,
 	totalBill: f64,
 }
@@ -323,7 +327,8 @@ pub async fn send_bill_not_paid_reminder_email(
 	email: Mailbox,
 	username: String,
 	workspaceName: String,
-	month: HashMap<String, String>,
+	monthString: String,
+	monthNumber: u32,
 	year: i32,
 	totalBill: f64,
 ) -> Result<(), Error> {
@@ -331,7 +336,8 @@ pub async fn send_bill_not_paid_reminder_email(
 		BillNotPaidReminderEmail {
 			username,
 			workspaceName,
-			month,
+			monthString,
+			monthNumber,
 			year,
 			totalBill,
 		},
@@ -355,7 +361,8 @@ struct PaymentFailedEmail {
 	dockerRepositoryUsage: Vec<DockerRepositoryBill>,
 	domainUsage: HashMap<DomainPlan, DomainBill>,
 	secretUsage: HashMap<u64, SecretsBill>,
-	month: HashMap<String, String>,
+	monthString: String,
+	monthNumber: u32,
 	year: i32,
 	totalBill: f64,
 }
@@ -372,7 +379,8 @@ pub async fn send_payment_failed_email(
 	dockerRepositoryUsage: Vec<DockerRepositoryBill>,
 	domainUsage: HashMap<DomainPlan, DomainBill>,
 	secretUsage: HashMap<u64, SecretsBill>,
-	month: HashMap<String, String>,
+	monthString: String,
+	monthNumber: u32,
 	year: i32,
 	totalBill: f64,
 ) -> Result<(), Error> {
@@ -387,7 +395,8 @@ pub async fn send_payment_failed_email(
 			dockerRepositoryUsage,
 			domainUsage,
 			secretUsage,
-			month,
+			monthString,
+			monthNumber,
 			year,
 			totalBill,
 		},
@@ -411,7 +420,8 @@ struct PaymentSuccessEmail {
 	dockerRepositoryUsage: Vec<DockerRepositoryBill>,
 	domainUsage: HashMap<DomainPlan, DomainBill>,
 	secretUsage: HashMap<u64, SecretsBill>,
-	month: HashMap<String, String>,
+	monthString: String,
+	monthNumber: u32,
 	year: i32,
 	totalBill: f64,
 	creditsAmount: f64,
@@ -432,7 +442,8 @@ pub async fn send_payment_success_email(
 	dockerRepositoryUsage: Vec<DockerRepositoryBill>,
 	domainUsage: HashMap<DomainPlan, DomainBill>,
 	secretUsage: HashMap<u64, SecretsBill>,
-	month: HashMap<String, String>,
+	monthString: String,
+	monthNumber: u32,
 	year: i32,
 	totalBill: f64,
 	creditsAmount: f64,
@@ -451,7 +462,8 @@ pub async fn send_payment_success_email(
 			dockerRepositoryUsage,
 			domainUsage,
 			secretUsage,
-			month,
+			monthString,
+			monthNumber,
 			year,
 			totalBill,
 			creditsAmount,
@@ -511,14 +523,14 @@ struct DomainUnverified {
 	domainName: String,
 	domainId: String,
 	username: String,
-	message: String,
+	isInternal: bool,
 }
 
 #[allow(non_snake_case)]
 pub async fn send_domain_unverified_email(
 	domainName: String,
 	username: String,
-	message: String,
+	isInternal: bool,
 	domainId: String,
 	email: Mailbox,
 ) -> Result<(), Error> {
@@ -526,7 +538,7 @@ pub async fn send_domain_unverified_email(
 		DomainUnverified {
 			domainName,
 			username,
-			message,
+			isInternal,
 			domainId,
 		},
 		email,
