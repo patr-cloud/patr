@@ -363,7 +363,7 @@ async fn delete_managed_database(
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let database_id =
 		Uuid::parse_str(context.get_param(request_keys::DATABASE_ID).unwrap())

@@ -997,7 +997,7 @@ async fn delete_docker_repository(
 	let repository_id = Uuid::parse_str(repo_id_string).unwrap();
 	let config = context.get_state().config.clone();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let running_deployments = db::get_deployments_by_repository_id(
 		context.get_database_connection(),
