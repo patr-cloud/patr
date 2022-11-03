@@ -1,13 +1,15 @@
 
-Hello {{username}}, 
+Hello
+{{username}}, Your invoice for
+{{monthString}}
+{{year}}
+is now available for the workspace
+{{workspaceName}}
 
-Your invoice for {{month.name}} {{year}}  is now available for the workspace {{workspaceName}}
+Total usage charges:
+{{totalBill}}
 
-Total usage charges: {{totalBill}}
-
-Detailed Charges
-
-Deployment Usage:
+Detailed Charges Deployment Usage:
 {{#each deploymentUsage}}
   {{this.deploymentName}}:
   {{#each this.billItems}}
@@ -80,7 +82,7 @@ Secret Usage:
   {{#if cardAmount}}
     The amount was automatically deducted using your card and Patr credits, so
     no further action is required. Total usage charges for
-    {{month.name}}
+    {{monthString}}
     {{year}}: ${{totalBill}}
 
     Amount paid using card: ${{cardAmount}}
@@ -91,7 +93,7 @@ Secret Usage:
   {{#unless credits}}
     The amount was automatically charged to your card, so no action is required
     from your end. Total usage charges for
-    {{month.name}}
+    {{monthString}}
     {{year}}: ${{totalBill}}
 
     Amount paid: ${{amountPaid}}
@@ -102,7 +104,7 @@ Secret Usage:
   {{#unless cardAmount}}
     The amount was automatically charged from your Patr credits, so no action is
     required from your end. Total usage charges for
-    {{month.name}}
+    {{monthString}}
     {{year}}: ${{totalBill}}
 
     Credits consumed: ${{amountPaid}}
@@ -110,6 +112,7 @@ Secret Usage:
   {{/unless}}
 {{/if}}
 
-If you're unable to find what you're looking for, you can reach us at suppport@patr.cloud 
-
-Join our Discord community (https://patr.cloud/discord) for the latest updates and chat with us here (https://app.patr.cloud?openDrift=true) for instant technical support.
+If you're unable to find what you're looking for, you can reach us at
+suppport@patr.cloud Join our Discord community (https://patr.cloud/discord) for
+the latest updates and chat with us here (https://app.patr.cloud?openDrift=true)
+for instant technical support.

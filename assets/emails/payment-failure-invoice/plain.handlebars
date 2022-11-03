@@ -1,10 +1,12 @@
-Hello {{username}}, 
-
-Payment for your billing period {{month.name}} {{year}} amounting to  {{totalBill}} for the workspace {{workspaceName}} was unsuccessful.
-
-Detailed Charges
-
-Deployment Usage:
+Hello
+{{username}}, Payment for your billing period
+{{monthString}}
+{{year}}
+amounting to
+{{totalBill}}
+for the workspace
+{{workspaceName}}
+was unsuccessful. Detailed Charges Deployment Usage:
 {{#each deploymentUsage}}
   {{this.deploymentName}}:
   {{#each this.billItems}}
@@ -71,13 +73,11 @@ Secret Usage:
   {{this.hours}}
   Bill Amount:
   {{this.amount}}
-{{/each}} 
+{{/each}}
 
-We will automatically attempt to charge your card again within
-24 to 48 hours. 
-
-You can review or update your payment details on the billing section of Patr (https://app.patr.cloud/workspace). 
-
-Please contact us at support@patr.cloud if you're facing any issues. 
-
-Join our Discord community (https://patr.cloud/discord) for the latest updates and chat with us here (https://app.patr.cloud?openDrift=true) for instant technical support.
+We will automatically attempt to charge your card again within 24 to 48 hours.
+You can review or update your payment details on the billing section of Patr
+(https://app.patr.cloud/workspace). Please contact us at support@patr.cloud if
+you're facing any issues. Join our Discord community
+(https://patr.cloud/discord) for the latest updates and chat with us here
+(https://app.patr.cloud?openDrift=true) for instant technical support.
