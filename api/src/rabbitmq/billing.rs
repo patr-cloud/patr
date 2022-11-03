@@ -155,17 +155,10 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
-			let payable_bill = db::get_total_amount_to_pay_for_workspace(
-				connection,
-				&workspace.id,
-			)
-			.await?;
-
 			service::queue_attempt_to_charge_workspace(
 				&workspace,
 				&Utc::now(),
 				total_bill,
-				payable_bill,
 				month,
 				year,
 				config,
@@ -198,12 +191,17 @@ pub(super) async fn process_request(
 			workspace,
 			process_after: DateTime(process_after),
 			total_bill,
-			amount_due,
 			month,
 			year,
 			request_id,
 		} => {
 			log::trace!("request_id: {} attempting to charge user", request_id);
+
+			let amount_due = db::get_total_amount_to_pay_for_workspace(
+				connection,
+				&workspace.id,
+			)
+			.await?;
 
 			if amount_due <= 0.0 {
 				// If the bill is zero (or if they have credits), don't bother
@@ -406,7 +404,6 @@ pub(super) async fn process_request(
 								&workspace,
 								&Utc::now().add(Duration::days(1)),
 								total_bill,
-								amount_due,
 								month,
 								year,
 								config,
@@ -485,7 +482,6 @@ pub(super) async fn process_request(
 							&workspace,
 							&Utc::now().add(Duration::days(1)),
 							total_bill,
-							amount_due,
 							month,
 							year,
 							config,

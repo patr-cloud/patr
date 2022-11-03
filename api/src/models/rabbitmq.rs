@@ -113,7 +113,6 @@ pub enum WorkspaceRequestData {
 		workspace: Workspace,
 		process_after: DateTime<Utc>,
 		total_bill: f64,
-		amount_due: f64,
 		month: u32,
 		year: i32,
 		request_id: Uuid,
