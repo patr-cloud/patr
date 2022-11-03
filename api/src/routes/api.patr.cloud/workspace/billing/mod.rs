@@ -387,7 +387,7 @@ pub fn create_sub_app(
 	);
 
 	sub_app.post(
-		"/make_payment",
+		"/make-payment",
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
@@ -483,7 +483,7 @@ pub fn create_sub_app(
 	);
 
 	sub_app.get(
-		"/get-resource-usage-charges",
+		"/bill-breakdown",
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
@@ -510,7 +510,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			},
-			EveMiddleware::CustomFunction(pin_fn!(get_resource_usage_charges)),
+			EveMiddleware::CustomFunction(pin_fn!(get_bill_breakdown)),
 		],
 	);
 
@@ -1066,7 +1066,7 @@ async fn get_current_bill(
 	Ok(context)
 }
 
-async fn get_resource_usage_charges(
+async fn get_bill_breakdown(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {

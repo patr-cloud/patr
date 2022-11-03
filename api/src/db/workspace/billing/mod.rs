@@ -760,7 +760,6 @@ pub async fn get_payment_methods_for_workspace(
 	.await
 }
 
-#[allow(dead_code)]
 pub async fn get_credits_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
@@ -820,38 +819,6 @@ pub async fn get_total_amount_to_pay_for_workspace(
 	.fetch_one(&mut *connection)
 	.await
 	.map(|row| row.total_amount as f64)
-}
-
-#[allow(dead_code)]
-pub async fn get_transaction_by_payment_intent_id_in_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	payment_intent_id: &str,
-) -> Result<Option<Transaction>, sqlx::Error> {
-	query_as!(
-		Transaction,
-		r#"
-		SELECT
-			id as "id: _",
-			month,
-			amount,
-			payment_intent_id,
-			date as "date: _",
-			workspace_id as "workspace_id: _",
-			transaction_type as "transaction_type: _",
-			payment_status as "payment_status: _",
-			description
-		FROM
-			transaction
-		WHERE
-			workspace_id = $1 AND
-			payment_intent_id = $2;
-		"#,
-		workspace_id as _,
-		payment_intent_id,
-	)
-	.fetch_optional(&mut *connection)
-	.await
 }
 
 pub async fn get_transaction_by_transaction_id(
