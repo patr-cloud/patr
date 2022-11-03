@@ -1,4 +1,4 @@
-use std::ops::Sub;
+use std::{cmp::min, ops::Sub};
 
 use api_models::{
 	models::workspace::billing::{
@@ -884,6 +884,8 @@ async fn set_primary_card(
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	// Check if payment method that is requested to be default, exists or not
 	db::get_payment_method_info(
 		context.get_database_connection(),
 		&payment_method_id,
@@ -891,14 +893,6 @@ async fn set_primary_card(
 	.await?
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	// Check if payment method that is requested to be default, exists or not
-	db::add_payment_method_info(
-		context.get_database_connection(),
-		&workspace_id,
-		&payment_method_id,
-	)
-	.await?;
 
 	// Set payment method to default in workspace
 	db::set_default_payment_method_for_workspace(
@@ -1041,7 +1035,7 @@ async fn get_current_bill(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let current_bill = db::get_workspace_info(
+	let current_month_bill_so_far = db::get_workspace_info(
 		context.get_database_connection(),
 		&workspace_id,
 	)
@@ -1050,18 +1044,14 @@ async fn get_current_bill(
 	.body(error!(SERVER_ERROR).to_string())?
 	.amount_due;
 
-	let credits_left = db::get_credits_for_workspace(
+	let leftover_credis_or_due = db::get_total_amount_to_pay_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 	)
-	.await?
-	.into_iter()
-	.map(|transaction| transaction.amount.abs())
-	.sum::<f64>()
-	.max(0f64);
+	.await?;
 
 	context.success(GetCurrentUsageResponse {
-		current_usage: current_bill - credits_left,
+		current_usage: current_month_bill_so_far + leftover_credis_or_due,
 	});
 	Ok(context)
 }
@@ -1087,6 +1077,7 @@ async fn get_bill_breakdown(
 		)
 		.and_hms(0, 0, 0)
 		.sub(Duration::nanoseconds(1));
+	let month_end_date = min(month_end_date, Utc::now());
 
 	let bill = service::get_total_resource_usage(
 		context.get_database_connection(),

@@ -162,7 +162,8 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed"
+                  "failed",
+                  "pending"
                 ]
               },
               "name": "payment_status"
@@ -3647,7 +3648,8 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed"
+                  "failed",
+                  "pending"
                 ]
               },
               "name": "payment_status"
@@ -5321,7 +5323,8 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed"
+                  "failed",
+                  "pending"
                 ]
               },
               "name": "payment_status"
@@ -9344,16 +9347,6 @@
     },
     "query": "INSERT INTO static_site_upload_history( upload_id, static_site_id, message, uploaded_by, created ) VALUES ($1, $2, $3, $4, $5);"
   },
-  "a27da12613b45443cdd53a89b9498c8506a0b28098e54b9a0b3d01c815d415be": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TYPE PAYMENT_STATUS as ENUM( 'success', 'failed' );"
-  },
   "a3383d5df7266cf5c1f2116b8d93df630ec6cfae3059445c0075fe502ff64c0e": {
     "describe": {
       "columns": [],
@@ -10817,7 +10810,8 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed"
+                  "failed",
+                  "pending"
                 ]
               },
               "name": "payment_status"
@@ -12083,95 +12077,6 @@
     },
     "query": "WITH current_domains(tld) AS ( SELECT UNNEST($1::TEXT[]) ), deprecated_domains(tld) AS ( SELECT tld FROM domain_tld EXCEPT SELECT tld FROM current_domains EXCEPT SELECT tld FROM domain EXCEPT SELECT business_domain_tld FROM user_to_sign_up ), inserted_domains(tld, action) AS ( INSERT INTO domain_tld SELECT * FROM current_domains ON CONFLICT DO NOTHING RETURNING tld, 'inserted' ), deleted_domains(tld, action) AS ( DELETE FROM domain_tld WHERE EXISTS ( SELECT tld FROM deprecated_domains WHERE deprecated_domains.tld = domain_tld.tld ) RETURNING tld, 'deleted' ) SELECT tld as \"tld!\", action as \"action!\" FROM inserted_domains UNION SELECT tld as \"tld!\", action as \"action!\" FROM deleted_domains;"
   },
-  "d9194070d90b6b0987a789933c15da1bb19512c19f5a9e5b78d8c17fe5e2b46f": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "month",
-          "ordinal": 1,
-          "type_info": "Int4"
-        },
-        {
-          "name": "amount",
-          "ordinal": 2,
-          "type_info": "Float8"
-        },
-        {
-          "name": "payment_intent_id",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "date: _",
-          "ordinal": 4,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 5,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "transaction_type: _",
-          "ordinal": 6,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "bill",
-                  "credits",
-                  "payment"
-                ]
-              },
-              "name": "transaction_type"
-            }
-          }
-        },
-        {
-          "name": "payment_status: _",
-          "ordinal": 7,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "success",
-                  "failed"
-                ]
-              },
-              "name": "payment_status"
-            }
-          }
-        },
-        {
-          "name": "description",
-          "ordinal": 8,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tmonth,\n\t\t\tamount,\n\t\t\tpayment_intent_id,\n\t\t\tdate as \"date: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\ttransaction_type as \"transaction_type: _\",\n\t\t\tpayment_status as \"payment_status: _\",\n\t\t\tdescription\n\t\tFROM\n\t\t\ttransaction\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\ttransaction_type = 'credits';\n\t\t"
-  },
   "d9c961d04aa3c242cdb6afdd780d5afe9049bf982d274a0fd208c18190bc294b": {
     "describe": {
       "columns": [],
@@ -13197,6 +13102,16 @@
     },
     "query": "INSERT INTO user_controlled_domain( domain_id, nameserver_type ) VALUES ($1, 'external');"
   },
+  "eef30c66b6aa7ba7c27b428d302a21a46cb26224519e035325eb8d448fab0b1b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TYPE PAYMENT_STATUS as ENUM( 'success', 'failed', 'pending' );"
+  },
   "efa0a6ff35f40c8f91021798d83cbff7e35471895783a4ca95ec64d173dbdddf": {
     "describe": {
       "columns": [
@@ -13669,7 +13584,8 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed"
+                  "failed",
+                  "pending"
                 ]
               },
               "name": "payment_status"

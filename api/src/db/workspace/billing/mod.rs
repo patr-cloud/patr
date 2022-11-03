@@ -264,7 +264,8 @@ pub async fn initialize_billing_pre(
 		r#"
 		CREATE TYPE PAYMENT_STATUS as ENUM(
 			'success',
-			'failed'
+			'failed',
+			'pending'
 		);
 		"#
 	)
@@ -753,35 +754,6 @@ pub async fn get_payment_methods_for_workspace(
 			payment_method
 		WHERE
 			workspace_id = $1;
-		"#,
-		workspace_id as _
-	)
-	.fetch_all(&mut *connection)
-	.await
-}
-
-pub async fn get_credits_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-) -> Result<Vec<Transaction>, sqlx::Error> {
-	query_as!(
-		Transaction,
-		r#"
-		SELECT
-			id as "id: _",
-			month,
-			amount,
-			payment_intent_id,
-			date as "date: _",
-			workspace_id as "workspace_id: _",
-			transaction_type as "transaction_type: _",
-			payment_status as "payment_status: _",
-			description
-		FROM
-			transaction
-		WHERE
-			workspace_id = $1 AND
-			transaction_type = 'credits';
 		"#,
 		workspace_id as _
 	)
