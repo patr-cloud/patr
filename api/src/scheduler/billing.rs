@@ -34,7 +34,7 @@ async fn update_bill() -> Result<(), Error> {
 		db::update_amount_due_for_workspace(
 			&mut connection,
 			&workspace.id,
-			total_resource_usage_bill.total_cost,
+			total_resource_usage_bill.total_cost.parse()?,
 		)
 		.await?;
 		connection.commit().await?;

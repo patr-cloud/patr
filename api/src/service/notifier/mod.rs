@@ -558,6 +558,7 @@ pub async fn send_payment_failed_notification(
 	.await
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn send_payment_success_notification(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	super_admin_id: Uuid,
@@ -572,11 +573,11 @@ pub async fn send_payment_success_notification(
 	month_string: String,
 	month_num: u32,
 	year: i32,
-	total_bill: f64,
-	credit_amount: f64,
-	card_amount: f64,
-	credits_remaining: f64,
-	amount_paid: f64,
+	total_bill: String,
+	credit_amount: String,
+	card_amount: String,
+	credits_remaining: String,
+	amount_paid: String,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, &super_admin_id)
 		.await?
@@ -679,7 +680,6 @@ pub async fn resource_delete_action_email(
 		                            * does not support an enum as field in
 		                            * it's struct */
 		deleted_by,
-		"".to_string(),
 		user_email.parse()?,
 	)
 	.await?;
