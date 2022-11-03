@@ -400,7 +400,7 @@ pub async fn send_unpaid_resources_deleted_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	super_admin_id: Uuid,
 	workspace_name: String,
-	month: String,
+	month: HashMap<String, String>,
 	year: i32,
 	total_bill: f64,
 ) -> Result<(), Error> {
@@ -453,7 +453,7 @@ pub async fn send_bill_not_paid_reminder_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	super_admin_id: Uuid,
 	workspace_name: String,
-	month: String,
+	month: HashMap<String, String>,
 	year: i32,
 	total_bill: f64,
 ) -> Result<(), Error> {
@@ -513,7 +513,7 @@ pub async fn send_payment_failed_notification(
 	docker_repository_usages: &[DockerRepositoryBill],
 	domains_usages: &HashMap<DomainPlan, DomainBill>,
 	secrets_usages: &HashMap<u64, SecretsBill>,
-	month: String,
+	month: HashMap<String, String>,
 	year: i32,
 	total_bill: f64,
 ) -> Result<(), Error> {
@@ -563,7 +563,7 @@ pub async fn send_payment_success_notification(
 	docker_repository_usages: Vec<DockerRepositoryBill>,
 	domains_usages: HashMap<DomainPlan, DomainBill>,
 	secrets_usages: HashMap<u64, SecretsBill>,
-	month: u32,
+	month: HashMap<String, String>,
 	year: i32,
 	total_bill: f64,
 	credit_amount: f64,
