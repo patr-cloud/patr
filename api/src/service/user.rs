@@ -446,7 +446,7 @@ pub async fn create_api_token_for_user(
 		user_id
 	);
 
-	let token = Uuid::new_v4();
+	let token = Uuid::new_v4().to_string();
 	let user_facing_token = format!("patrv1.{}.{}", token, token_id);
 	let token_hash = service::hash(token.as_bytes())?;
 	let now = Utc::now();
@@ -652,7 +652,7 @@ async fn set_permissions_for_user_api_token(
 							.get(workspace_id)
 							.and_then(|permission| {
 								permission
-									.resource_type_permissions
+									.resource_permissions
 									.get(&requested_resource.id)
 							})
 							.map(|permissions| {
@@ -868,7 +868,7 @@ pub async fn get_revalidated_permissions_for_user_api_token(
 							.get(workspace_id)
 							.and_then(|permission| {
 								permission
-									.resource_type_permissions
+									.resource_permissions
 									.get(&requested_resource.id)
 							})
 							.map(|permissions| {

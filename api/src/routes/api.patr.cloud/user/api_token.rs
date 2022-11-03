@@ -276,7 +276,7 @@ async fn regenerate_api_token(
 	let token_id =
 		Uuid::parse_str(context.get_param(request_keys::TOKEN_ID).unwrap())?;
 
-	let token = Uuid::new_v4();
+	let token = Uuid::new_v4().to_string();
 	let user_facing_token = format!("patrv1.{}.{}", token, token_id);
 	let token_hash = service::hash(token.as_bytes())?;
 
