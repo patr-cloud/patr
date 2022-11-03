@@ -247,7 +247,8 @@ pub(super) async fn process_request(
 						.to_owned(),
 					total_resource_usage_bill.domains_usages.to_owned(),
 					total_resource_usage_bill.secrets_usages.to_owned(),
-					month_string.to_string(),
+					month,
+					// month_string.to_string(),
 					year,
 					amount_due * -1.0, // To make it positive
 					if credit_amount > 0.00 {
@@ -359,7 +360,7 @@ pub(super) async fn process_request(
 							total_resource_usage_bill.docker_repository_usages,
 							total_resource_usage_bill.domains_usages,
 							total_resource_usage_bill.secrets_usages,
-							month_string.to_string(),
+							month,
 							year,
 							amount_due,
 							if credit_amount > 0.00 {
