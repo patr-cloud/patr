@@ -1,9 +1,17 @@
-Hello {{username}}, 
+Hello
+{{username}}, Your domain
+{{domainName}}
+is no longer connected to Patr.
 
-Your domain {{domainName}} is no longer connected to Patr.
+{{#if isInternal}}
+  Unable to verify your domain. Please transfer your nameserver to patr
+  nameservers
+{{else}}
+  No TXT record found with name patrVerify in your dns records
+{{/if}}
 
-If you wish to verify your domain again, kindly visit (https://app.patr.cloud/domain/{{domainId}}/verify).
-
-In case of any discrepancy reach out to us at support@patr.cloud immediately.
-
-Join our Discord community (https://patr.cloud/discord) for the latest updates and chat with us here (https://app.patr.cloud?openDrift=true) for instant technical support.
+If you wish to verify your domain again, kindly visit
+(https://app.patr.cloud/domain/{{domainId}}/verify). In case of any discrepancy
+reach out to us at support@patr.cloud immediately. Join our Discord community
+(https://patr.cloud/discord) for the latest updates and chat with us here
+(https://app.patr.cloud?openDrift=true) for instant technical support.
