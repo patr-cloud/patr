@@ -12,16 +12,13 @@ use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
 	db::Workspace,
-	models::{
-		billing::ResourceUsageBill,
-		rabbitmq::{
-			BYOCData,
-			CIData,
-			DeploymentRequestData,
-			InfraRequestData,
-			Queue,
-			WorkspaceRequestData,
-		},
+	models::rabbitmq::{
+		BYOCData,
+		CIData,
+		DeploymentRequestData,
+		InfraRequestData,
+		Queue,
+		WorkspaceRequestData,
 	},
 	rabbitmq::{self, BuildId, BuildStep},
 	service,
@@ -106,10 +103,6 @@ pub async fn queue_process_payment(
 pub async fn queue_attempt_to_charge_workspace(
 	workspace: &Workspace,
 	process_after: &DateTime<Utc>,
-	total_resource_usage_bill: &ResourceUsageBill,
-	amount_due: f64,
-	credit_amount: f64,
-	credit_remaining: f64,
 	month: u32,
 	year: i32,
 	config: &Settings,
@@ -119,10 +112,6 @@ pub async fn queue_attempt_to_charge_workspace(
 		&WorkspaceRequestData::AttemptToChargeWorkspace {
 			workspace: workspace.clone(),
 			process_after: (*process_after).into(),
-			total_resource_usage_bill: total_resource_usage_bill.clone(),
-			amount_due,
-			credit_amount,
-			credit_remaining,
 			month,
 			year,
 			request_id: request_id.clone(),

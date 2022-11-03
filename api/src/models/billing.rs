@@ -75,7 +75,7 @@ pub struct SecretsBill {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ResourceUsageBill {
-	pub total_cost: String,
+	pub total_cost: f64,
 	pub deployment_cost: String,
 	pub database_cost: String,
 	pub static_site_cost: String,
