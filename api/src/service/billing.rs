@@ -948,7 +948,7 @@ pub async fn calculate_total_bill_for_workspace_till(
 		managed_secret_cost;
 
 	let total_resource_usage_bill = ResourceUsageBill {
-		total_cost: format!("{:.2}", total_cost),
+		total_cost,
 		deployment_cost: format!("{:.2}", deployment_cost),
 		database_cost: format!("{:.2}", database_cost),
 		static_site_cost: format!("{:.2}", static_site_cost),
