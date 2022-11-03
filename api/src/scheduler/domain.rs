@@ -16,7 +16,6 @@ use sqlx::Connection;
 use crate::{
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
-	models::error::message,
 	scheduler::Job,
 	service,
 	utils::{validator, Error},

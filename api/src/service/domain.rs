@@ -44,10 +44,7 @@ use super::infrastructure;
 use crate::{
 	db::{self, DnsRecordType, DomainPlan},
 	error,
-	models::{
-		error::message,
-		rbac::{self, resource_types},
-	},
+	models::rbac::{self, resource_types},
 	service,
 	utils::{constants, settings::Settings, validator, Error},
 	Database,
