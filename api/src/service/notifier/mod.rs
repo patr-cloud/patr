@@ -400,7 +400,8 @@ pub async fn send_unpaid_resources_deleted_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	super_admin_id: Uuid,
 	workspace_name: String,
-	month: HashMap<String, String>,
+	month_string: String,
+	month_num: u32,
 	year: i32,
 	total_bill: f64,
 ) -> Result<(), Error> {
@@ -425,7 +426,8 @@ pub async fn send_unpaid_resources_deleted_email(
 		user_email.parse()?,
 		user.username,
 		workspace_name,
-		month,
+		month_string,
+		month_num,
 		year,
 		total_bill,
 	)
@@ -453,7 +455,8 @@ pub async fn send_bill_not_paid_reminder_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	super_admin_id: Uuid,
 	workspace_name: String,
-	month: HashMap<String, String>,
+	month_string: String,
+	month_num: u32,
 	year: i32,
 	total_bill: f64,
 ) -> Result<(), Error> {
@@ -478,7 +481,8 @@ pub async fn send_bill_not_paid_reminder_email(
 		user_email.parse()?,
 		user.username,
 		workspace_name,
-		month,
+		month_string,
+		month_num,
 		year,
 		total_bill,
 	)
@@ -513,7 +517,8 @@ pub async fn send_payment_failed_notification(
 	docker_repository_usages: &[DockerRepositoryBill],
 	domains_usages: &HashMap<DomainPlan, DomainBill>,
 	secrets_usages: &HashMap<u64, SecretsBill>,
-	month: HashMap<String, String>,
+	month_string: String,
+	month_num: u32,
 	year: i32,
 	total_bill: f64,
 ) -> Result<(), Error> {
@@ -545,7 +550,8 @@ pub async fn send_payment_failed_notification(
 		docker_repository_usages.to_owned(),
 		domains_usages.clone(),
 		secrets_usages.clone(),
-		month,
+		month_string,
+		month_num,
 		year,
 		total_bill,
 	)
@@ -563,7 +569,8 @@ pub async fn send_payment_success_notification(
 	docker_repository_usages: Vec<DockerRepositoryBill>,
 	domains_usages: HashMap<DomainPlan, DomainBill>,
 	secrets_usages: HashMap<u64, SecretsBill>,
-	month: HashMap<String, String>,
+	month_string: String,
+	month_num: u32,
 	year: i32,
 	total_bill: f64,
 	credit_amount: f64,
@@ -599,7 +606,8 @@ pub async fn send_payment_success_notification(
 		docker_repository_usages,
 		domains_usages,
 		secrets_usages,
-		month,
+		month_string,
+		month_num,
 		year,
 		total_bill,
 		credit_amount,
@@ -683,7 +691,7 @@ pub async fn domain_verification_email(
 	domain: &str,
 	workspace_id: &Uuid,
 	domain_id: &Uuid,
-	message: Option<String>,
+	is_internal: bool,
 	is_verified: bool,
 ) -> Result<(), Error> {
 	let super_admin_id = db::get_workspace_info(connection, workspace_id)
@@ -721,7 +729,7 @@ pub async fn domain_verification_email(
 		email::send_domain_unverified_email(
 			domain.to_string(),
 			user.first_name,
-			message.unwrap_or_default(),
+			is_internal,
 			domain_id.to_string(),
 			user_email.parse()?,
 		)
