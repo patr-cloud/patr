@@ -3,7 +3,7 @@ Hello {{username}},
 
 Your invoice for {{month}} {{year}}  is now available for the workspace {{workspaceName}}
 
-Total Bill: {{totalBill}}
+Total usage charges: {{totalBill}}
 
 Detailed Charges
 
@@ -98,7 +98,7 @@ Secret Usage:
   {{/unless}}
 {{/if}}
 
-{{#if credits}}
+{{#if creditsAmount}}
   {{#unless cardAmount}}
     The amount was automatically charged from your Patr credits, so no action is
     required from your end. Total usage charges for
