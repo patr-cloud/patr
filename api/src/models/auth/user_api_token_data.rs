@@ -341,24 +341,25 @@ impl ApiTokenData {
 	fn is_access_allowed(&self, accessing_ip: &IpAddr) -> bool {
 		let now = Utc::now();
 
-		if self.token_nbf > Some(now) {
+		if self.token_nbf.map_or(false, |nbf| nbf > now) {
 			return false;
 		}
 
-		if Some(now) > self.token_exp {
+		if self.token_exp.map_or(false, |exp| now > exp) {
 			return false;
 		}
 
 		if let Some(allowed_ips) = &self.allowed_ips {
-			if !allowed_ips
-				.iter()
-				.any(|network| network.contains(*accessing_ip))
+			if !allowed_ips.is_empty() &&
+				!allowed_ips
+					.iter()
+					.any(|network| network.contains(*accessing_ip))
 			{
 				return false;
 			}
 		}
 
-		if self.revoked < Some(now) {
+		if self.revoked.map_or(false, |revoked_at| revoked_at < now) {
 			return false;
 		}
 
