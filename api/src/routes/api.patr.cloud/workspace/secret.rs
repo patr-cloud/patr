@@ -292,7 +292,7 @@ async fn delete_secret(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let secret_id =
 		Uuid::parse_str(context.get_param(request_keys::SECRET_ID).unwrap())

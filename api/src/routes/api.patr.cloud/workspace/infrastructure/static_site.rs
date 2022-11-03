@@ -1173,7 +1173,7 @@ async fn delete_static_site(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let request_id = Uuid::new_v4();
 
