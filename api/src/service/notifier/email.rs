@@ -1,19 +1,6 @@
-use std::collections::BTreeMap;
-
 use api_models::{
-	models::workspace::billing::{
-		DatabaseUsage,
-		DeploymentUsage,
-		DockerRepositoryUsage,
-		DomainPlan,
-		DomainUsage,
-		ManagedUrlUsage,
-		SecretUsage,
-		StaticSitePlan,
-		StaticSiteUsage,
-		WorkspaceBillBreakdown, Address,
-	},
-	utils::{PriceAmount, Uuid},
+	models::workspace::billing::{Address, WorkspaceBillBreakdown},
+	utils::PriceAmount,
 };
 use lettre::message::Mailbox;
 use serde::Serialize;
