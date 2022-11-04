@@ -1,7 +1,7 @@
 use api_models::{
 	models::{
 		auth::PreferredRecoveryOption,
-		workspace::billing::{WorkspaceBillBreakdown, Address},
+		workspace::billing::{Address, WorkspaceBillBreakdown},
 	},
 	utils::{PriceAmount, Uuid},
 };

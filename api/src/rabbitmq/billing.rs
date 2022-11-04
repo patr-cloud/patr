@@ -4,7 +4,7 @@ use std::{
 };
 
 use api_models::{
-	models::workspace::billing::{PaymentStatus, TransactionType, Address},
+	models::workspace::billing::{Address, PaymentStatus, TransactionType},
 	utils::{DateTime, PriceAmount, Uuid},
 };
 use chrono::{Duration, TimeZone, Utc};
@@ -265,12 +265,44 @@ pub(super) async fn process_request(
 			};
 
 			if amount_due <= 0f64 {
+				let billing_address = if let Some(address) =
+					workspace.address_id
+				{
+					let address = db::get_billing_address(connection, &address)
+						.await?
+						.status(500)?;
+
+					Address {
+						first_name: address.first_name,
+						last_name: address.last_name,
+						address_line_1: address.address_line_1,
+						address_line_2: address.address_line_2,
+						address_line_3: address.address_line_3,
+						city: address.city,
+						state: address.state,
+						zip: address.zip,
+						country: address.country,
+					}
+				} else {
+					Address {
+						first_name: "".to_string(),
+						last_name: "".to_string(),
+						address_line_1: "".to_string(),
+						address_line_2: None,
+						address_line_3: None,
+						city: "".to_string(),
+						state: "".to_string(),
+						zip: "".to_string(),
+						country: "".to_string(),
+					}
+				};
 				service::send_payment_success_invoice_notification(
 					connection,
 					&workspace.super_admin_id,
 					workspace_name,
 					month_string.to_string(),
 					total_bill,
+					billing_address,
 					PriceAmount(credits_deducted),
 					// If `amount_due` is 0, definitely the card amount is 0
 					PriceAmount(card_amount_to_be_charged),
@@ -286,22 +318,34 @@ pub(super) async fn process_request(
 					&workspace.address_id,
 					&workspace.default_payment_method_id,
 				) {
-					let address = db::get_billing_address(connection, address_id)
-					.await?
-					.status(500)?;
-					let (currency, stripe_amount) =
-						if address.country == *"IN" {
-							(
-								Currency::INR,
-								(card_amount_to_be_charged * 100f64 * 80f64)
-									as i64,
-							)
-						} else {
-							(
-								Currency::USD,
-								(card_amount_to_be_charged * 100f64) as i64,
-							)
-						};
+					let address =
+						db::get_billing_address(connection, address_id)
+							.await?
+							.status(500)?;
+					let billing_address = Address {
+						first_name: address.first_name,
+						last_name: address.last_name,
+						address_line_1: address.address_line_1,
+						address_line_2: address.address_line_2,
+						address_line_3: address.address_line_3,
+						city: address.city,
+						state: address.state,
+						zip: address.zip,
+						country: address.country,
+					};
+					let (currency, stripe_amount) = if billing_address.country ==
+						*"IN"
+					{
+						(
+							Currency::INR,
+							(card_amount_to_be_charged * 100f64 * 80f64) as i64,
+						)
+					} else {
+						(
+							Currency::USD,
+							(card_amount_to_be_charged * 100f64) as i64,
+						)
+					};
 
 					let client = Client::new(&config.stripe.secret_key)
 						.with_strategy(RequestStrategy::Idempotent(format!(
@@ -374,7 +418,7 @@ pub(super) async fn process_request(
 							workspace_name,
 							month_string.to_string(),
 							total_bill,
-							address,
+							billing_address,
 							PriceAmount(credits_deducted),
 							// If `amount_due` is 0, definitely the card amount
 							// is 0
@@ -404,7 +448,7 @@ pub(super) async fn process_request(
 							&workspace.super_admin_id,
 							workspace_name,
 							total_bill,
-							address,
+							billing_address,
 							month_string.to_string(),
 						)
 						.await?;
@@ -491,12 +535,45 @@ pub(super) async fn process_request(
 
 				let total_charge = total_bill.total_charge;
 
+				let billing_address = if let Some(address) =
+					workspace.address_id
+				{
+					let address = db::get_billing_address(connection, &address)
+						.await?
+						.status(500)?;
+
+					Address {
+						first_name: address.first_name,
+						last_name: address.last_name,
+						address_line_1: address.address_line_1,
+						address_line_2: address.address_line_2,
+						address_line_3: address.address_line_3,
+						city: address.city,
+						state: address.state,
+						zip: address.zip,
+						country: address.country,
+					}
+				} else {
+					Address {
+						first_name: "".to_string(),
+						last_name: "".to_string(),
+						address_line_1: "".to_string(),
+						address_line_2: None,
+						address_line_3: None,
+						city: "".to_string(),
+						state: "".to_string(),
+						zip: "".to_string(),
+						country: "".to_string(),
+					}
+				};
+
 				service::send_payment_success_invoice_notification(
 					connection,
 					&workspace.super_admin_id,
 					workspace_name,
 					month_string.to_string(),
 					total_bill,
+					billing_address,
 					total_charge,
 					PriceAmount(0f64),
 					PriceAmount(0f64),
@@ -610,12 +687,44 @@ pub(super) async fn process_request(
 			};
 
 			if amount_due <= 0f64 {
+				let billing_address = if let Some(address) =
+					workspace.address_id
+				{
+					let address = db::get_billing_address(connection, &address)
+						.await?
+						.status(500)?;
+
+					Address {
+						first_name: address.first_name,
+						last_name: address.last_name,
+						address_line_1: address.address_line_1,
+						address_line_2: address.address_line_2,
+						address_line_3: address.address_line_3,
+						city: address.city,
+						state: address.state,
+						zip: address.zip,
+						country: address.country,
+					}
+				} else {
+					Address {
+						first_name: "".to_string(),
+						last_name: "".to_string(),
+						address_line_1: "".to_string(),
+						address_line_2: None,
+						address_line_3: None,
+						city: "".to_string(),
+						state: "".to_string(),
+						zip: "".to_string(),
+						country: "".to_string(),
+					}
+				};
 				service::send_payment_success_invoice_notification(
 					connection,
 					&workspace.super_admin_id,
 					workspace_name,
 					month_string.to_string(),
 					total_bill,
+					billing_address,
 					PriceAmount(credits_deducted),
 					// If `amount_due` is 0, definitely the card amount is 0
 					PriceAmount(card_amount_to_be_charged),
