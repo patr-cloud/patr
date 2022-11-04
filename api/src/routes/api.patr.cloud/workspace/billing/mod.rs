@@ -1068,10 +1068,10 @@ async fn get_bill_breakdown(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let month_start_date = Utc.ymd(year, month, 1).and_hms(0, 0, 0);
+	let month_start_date = Utc.ymd(year as i32, month, 1).and_hms(0, 0, 0);
 	let month_end_date = Utc
 		.ymd(
-			if month == 12 { year + 1 } else { year },
+			(if month == 12 { year + 1 } else { year }) as i32,
 			if month == 12 { 1 } else { month + 1 },
 			1,
 		)
@@ -1090,7 +1090,6 @@ async fn get_bill_breakdown(
 	.await?;
 
 	context.success(GetBillBreakdownResponse { bill });
-
 	Ok(context)
 }
 

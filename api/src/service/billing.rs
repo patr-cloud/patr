@@ -25,7 +25,7 @@ use api_models::{
 		},
 		infrastructure::list_all_deployment_machine_type::DeploymentMachineType,
 	},
-	utils::{DateTime, Uuid},
+	utils::{DateTime, PriceAmount, Uuid},
 };
 use chrono::{Datelike, TimeZone, Utc};
 use eve_rs::AsError;
@@ -973,7 +973,7 @@ pub async fn get_total_resource_usage(
 	workspace_id: &Uuid,
 	month_start_date: &chrono::DateTime<Utc>,
 	till_date: &chrono::DateTime<Utc>,
-	year: i32,
+	year: u32,
 	month: u32,
 ) -> Result<WorkspaceBillBreakdown, Error> {
 	let deployment_usage = calculate_deployment_bill_for_workspace_till(
@@ -1000,13 +1000,21 @@ pub async fn get_total_resource_usage(
 						},
 						num_instances: bill_item.num_instances,
 						hours: bill_item.hours,
-						amount: bill_item.amount,
+						amount: PriceAmount(bill_item.amount),
 					})
 					.collect::<Vec<_>>(),
 			},
 		)
 	})
 	.collect::<BTreeMap<_, _>>();
+	let deployment_charge = PriceAmount(
+		deployment_usage
+			.iter()
+			.map(|(_, usage)| usage.bill_items.iter())
+			.flatten()
+			.map(|item| item.amount.0)
+			.sum(),
+	);
 
 	let database_usage = calculate_database_bill_for_workspace_till(
 		connection,
@@ -1022,11 +1030,14 @@ pub async fn get_total_resource_usage(
 			DatabaseUsage {
 				name: value.database_name,
 				hours: value.hours,
-				amount: value.amount,
+				amount: PriceAmount(value.amount),
 			},
 		)
 	})
 	.collect::<BTreeMap<_, _>>();
+	let database_charge = PriceAmount(
+		database_usage.iter().map(|(_, usage)| usage.amount.0).sum(),
+	);
 
 	let static_site_usage = calculate_static_sites_bill_for_workspace_till(
 		connection,
@@ -1045,11 +1056,17 @@ pub async fn get_total_resource_usage(
 			},
 			StaticSiteUsage {
 				hours: value.hours,
-				amount: value.amount,
+				amount: PriceAmount(value.amount),
 			},
 		)
 	})
 	.collect::<BTreeMap<_, _>>();
+	let static_site_charge = PriceAmount(
+		static_site_usage
+			.iter()
+			.map(|(_, usage)| usage.amount.0)
+			.sum(),
+	);
 
 	let managed_url_usage = calculate_managed_urls_bill_for_workspace_till(
 		connection,
@@ -1064,11 +1081,17 @@ pub async fn get_total_resource_usage(
 			key as u32,
 			ManagedUrlUsage {
 				hours: value.hours,
-				amount: value.amount,
+				amount: PriceAmount(value.amount),
 			},
 		)
 	})
 	.collect::<BTreeMap<_, _>>();
+	let managed_url_charge = PriceAmount(
+		managed_url_usage
+			.iter()
+			.map(|(_, usage)| usage.amount.0)
+			.sum(),
+	);
 
 	let docker_repository_usage =
 		calculate_docker_repository_bill_for_workspace_till(
@@ -1082,9 +1105,15 @@ pub async fn get_total_resource_usage(
 		.map(|docker_repo_usage| DockerRepositoryUsage {
 			storage: docker_repo_usage.storage as u32,
 			hours: docker_repo_usage.hours,
-			amount: docker_repo_usage.amount,
+			amount: PriceAmount(docker_repo_usage.amount),
 		})
 		.collect::<Vec<_>>();
+	let docker_repository_charge = PriceAmount(
+		docker_repository_usage
+			.iter()
+			.map(|usage| usage.amount.0)
+			.sum(),
+	);
 
 	let domain_usage = calculate_domains_bill_for_workspace_till(
 		connection,
@@ -1102,11 +1131,13 @@ pub async fn get_total_resource_usage(
 			},
 			DomainUsage {
 				hours: value.hours,
-				amount: value.amount,
+				amount: PriceAmount(value.amount),
 			},
 		)
 	})
 	.collect::<BTreeMap<_, _>>();
+	let domain_charge =
+		PriceAmount(domain_usage.iter().map(|(_, usage)| usage.amount.0).sum());
 
 	let secret_usage = calculate_secrets_bill_for_workspace_till(
 		connection,
@@ -1121,21 +1152,41 @@ pub async fn get_total_resource_usage(
 			key as u32,
 			SecretUsage {
 				hours: value.hours,
-				amount: value.amount,
+				amount: PriceAmount(value.amount),
 			},
 		)
 	})
 	.collect::<BTreeMap<_, _>>();
+	let secret_charge =
+		PriceAmount(secret_usage.iter().map(|(_, usage)| usage.amount.0).sum());
+
+	let total_charge = PriceAmount(
+		deployment_charge.0 +
+			database_charge.0 +
+			static_site_charge.0 +
+			managed_url_charge.0 +
+			domain_charge.0 +
+			secret_charge.0 +
+			docker_repository_charge.0,
+	);
 
 	let bill = WorkspaceBillBreakdown {
 		year,
 		month,
+		total_charge,
+		deployment_charge,
 		deployment_usage,
+		database_charge,
 		database_usage,
+		static_site_charge,
 		static_site_usage,
+		domain_charge,
 		domain_usage,
+		managed_url_charge,
 		managed_url_usage,
+		secret_charge,
 		secret_usage,
+		docker_repository_charge,
 		docker_repository_usage,
 	};
 	Ok(bill)
