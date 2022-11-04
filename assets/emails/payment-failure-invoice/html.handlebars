@@ -78,13 +78,13 @@
                                       >
                                         Payment for your billing period
                                         {{monthString}}
-                                        {{year}}
+                                        {{billBreakdown.year}}
                                         amounting to
                                         <a
-                                          href="https://app.patr.cloud/workspace?showDetailedCharges=true&month={{monthNumber}}&year={{year}}"
+                                          href="https://app.patr.cloud/workspace?showDetailedCharges=true&month={{billBreakdown.month}}&year={{billBreakdown.year}}"
                                           class="plain-link txt-primary txt-bold"
                                           style="color: #f89b41; text-decoration: none; font-weight: 600;"
-                                        >${{totalBill}}</a>
+                                        >${{billBreakdown.totalCharge}}</a>
                                         for the workspace
                                         <strong
                                           class="txt-light"
@@ -238,7 +238,7 @@
                                                   class="pb-xs"
                                                   style="padding-top: .25rem"
                                                 >
-                                                  {{#unless deploymentUsage}}
+                                                  {{#unless billBreakdown.deploymentUsage}}
                                                     <table>
                                                       <tbody>
                                                         <tr>
@@ -252,7 +252,7 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if deploymentUsage}}
+                                                  {{#if billBreakdown.deploymentUsage}}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -302,7 +302,7 @@
                                                       </thead>
                                                       <tbody>
                                                         {{#each
-                                                          deploymentUsage
+                                                          billBreakdown.deploymentUsage
                                                         }}
                                                           <tr>
                                                             <td
@@ -315,7 +315,7 @@
                                                                 class="plain-link txt-primary"
                                                                 title="Open on Patr"
                                                                 style="color: #f89b41; text-decoration: none; font-weight: 500;"
-                                                              >{{this.deploymentName}}</a>
+                                                              >{{this.name}}</a>
                                                             </td>
                                                             <td
                                                               class="txt-light px-md py-xs txt-center"
@@ -443,7 +443,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{deploymentBill}}</td>
+                                                          >${{billBreakdown.deploymentCharge}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -466,7 +466,9 @@
                                                   class="pb-xs"
                                                   style="padding-top: .25rem"
                                                 >
-                                                  {{#unless databaseUsage}}
+                                                  {{#unless
+                                                    billBreakdown.databaseUsage
+                                                  }}
                                                     <table>
                                                       <tbody>
                                                         <tr>
@@ -480,7 +482,9 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if databaseUsage}}
+                                                  {{#if
+                                                    billBreakdown.databaseUsage
+                                                  }}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -515,7 +519,9 @@
                                                         </th>
                                                       </thead>
                                                       <tbody>
-                                                        {{#each databaseUsage}}
+                                                        {{#each
+                                                          billBreakdown.databaseUsage
+                                                        }}
                                                           <tr>
                                                             <td
                                                               class="txt-light px-md py-xs txt-center"
@@ -527,7 +533,7 @@
                                                                 class="plain-link txt-primary"
                                                                 title="Open on Patr"
                                                                 style="color: #f89b41; text-decoration: none; font-weight: 500;"
-                                                              >{{this.databaseName}}</a>
+                                                              >{{this.name}}</a>
                                                             </td>
                                                             <td
                                                               class="txt-light px-md py-xs txt-center"
@@ -563,7 +569,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{databaseBill}}</td>
+                                                          >${{billBreakdown.databaseCharge}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -586,7 +592,9 @@
                                                   class="pb-xs"
                                                   style="padding-top: .25rem"
                                                 >
-                                                  {{#unless staticSiteUsage}}
+                                                  {{#unless
+                                                    billBreakdown.staticSiteUsage
+                                                  }}
                                                     <table>
                                                       <tbody>
                                                         <tr>
@@ -600,7 +608,9 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if staticSiteUsage}}
+                                                  {{#if
+                                                    billBreakdown.staticSiteUsage
+                                                  }}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -636,7 +646,7 @@
                                                       </thead>
                                                       <tbody>
                                                         {{#each
-                                                          staticSiteUsage
+                                                          billBreakdown.staticSiteUsage
                                                         }}
                                                           <tr>
                                                             <td
@@ -680,7 +690,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{staticSiteBill}}</td>
+                                                          >${{billBreakdown.staticSiteCharge}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -703,7 +713,9 @@
                                                   class="pb-xs"
                                                   style="padding-top: .25rem"
                                                 >
-                                                  {{#unless domainUsage}}
+                                                  {{#unless
+                                                    billBreakdown.domainUsage
+                                                  }}
                                                     <table>
                                                       <tbody>
                                                         <tr>
@@ -717,7 +729,9 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if domainUsage}}
+                                                  {{#if
+                                                    billBreakdown.domainUsage
+                                                  }}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -752,7 +766,9 @@
                                                         </th>
                                                       </thead>
                                                       <tbody>
-                                                        {{#each domainUsage}}
+                                                        {{#each
+                                                          billBreakdown.domainUsage
+                                                        }}
                                                           <tr>
                                                             <td
                                                               class="txt-light px-md py-xs txt-center"
@@ -794,7 +810,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{domainBill}}</td>
+                                                          >${{billBreakdown.domainCharge}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -817,7 +833,7 @@
                                                   class="pb-xs"
                                                   style="padding-top: .25rem"
                                                 >
-                                                  {{#unless managedUrlUsage}}
+                                                  {{#unless billBreakdown.managedUrlUsage}}
                                                     <table>
                                                       <tbody>
                                                         <tr>
@@ -831,7 +847,7 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if managedUrlUsage}}
+                                                  {{#if billBreakdown.managedUrlUsage}}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -867,7 +883,7 @@
                                                       </thead>
                                                       <tbody>
                                                         {{#each
-                                                          managedUrlUsage
+                                                          billBreakdown.managedUrlUsage
                                                         }}
                                                           <tr>
                                                             <td
@@ -911,7 +927,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{managedUrlBill}}</td>
+                                                          >${{billBreakdown.managedUrlCharge}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -934,7 +950,7 @@
                                                   class="pb-xs"
                                                   style="padding-top: .25rem"
                                                 >
-                                                  {{#unless secretUsage}}
+                                                  {{#unless billBreakdown.secretUsage}}
                                                     <table>
                                                       <tbody>
                                                         <tr>
@@ -948,7 +964,7 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if secretUsage}}
+                                                  {{#if billBreakdown.secretUsage}}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -983,7 +999,9 @@
                                                         </th>
                                                       </thead>
                                                       <tbody>
-                                                        {{#each secretUsage}}
+                                                        {{#each
+                                                          billBreakdown.secretUsage
+                                                        }}
                                                           <tr>
                                                             <td
                                                               class="txt-light px-md py-xs txt-center"
@@ -1026,7 +1044,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{secretBill}}</td>
+                                                          >${{billBreakdown.secretCharge}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -1050,7 +1068,7 @@
                                                   style="padding-top: .25rem"
                                                 >
                                                   {{#unless
-                                                    dockerRepositoryUsage
+                                                    billBreakdown.dockerRepositoryUsage
                                                   }}
                                                     <table>
                                                       <tbody>
@@ -1065,7 +1083,7 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if dockerRepositoryUsage}}
+                                                  {{#if billBreakdown.dockerRepositoryUsage}}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -1101,7 +1119,7 @@
                                                       </thead>
                                                       <tbody>
                                                         {{#each
-                                                          dockerRepositoryUsage
+                                                          billBreakdown.dockerRepositoryUsage
                                                         }}
                                                           <tr>
                                                             <td
@@ -1145,7 +1163,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{dockerRepositoryBill}}</td>
+                                                          >${{billBreakdown.dockerRepositoryCharge}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -1166,7 +1184,7 @@
                                         <strong
                                           class="txt-light"
                                           style="color: #ffffff"
-                                        >${{totalBill}}</strong>
+                                        >${{billBreakdown.totalCharge}}</strong>
                                       </td>
                                     </tr>
                                     <tr>

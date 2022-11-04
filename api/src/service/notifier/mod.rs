@@ -1,7 +1,7 @@
 use api_models::{
 	models::{
 		auth::PreferredRecoveryOption,
-		workspace::billing::WorkspaceBillBreakdown,
+		workspace::billing::{WorkspaceBillBreakdown, Address},
 	},
 	utils::{PriceAmount, Uuid},
 };
@@ -582,6 +582,7 @@ pub async fn send_payment_failure_invoice_notification(
 	super_admin_id: &Uuid,
 	workspace_name: String,
 	bill_breakdown: WorkspaceBillBreakdown,
+	billing_address: Address,
 	month_string: String,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, super_admin_id)
@@ -606,6 +607,7 @@ pub async fn send_payment_failure_invoice_notification(
 		user.username,
 		workspace_name,
 		bill_breakdown,
+		billing_address,
 		month_string,
 	)
 	.await
@@ -617,6 +619,7 @@ pub async fn send_payment_success_invoice_notification(
 	workspace_name: String,
 	current_month_string: String,
 	bill_breakdown: WorkspaceBillBreakdown,
+	billing_address: Address,
 	credit_deducted: PriceAmount,
 	card_amount_deducted: PriceAmount,
 	credits_remaining: PriceAmount,
@@ -643,6 +646,7 @@ pub async fn send_payment_success_invoice_notification(
 		user.username,
 		workspace_name,
 		bill_breakdown,
+		billing_address,
 		current_month_string,
 		credit_deducted,
 		card_amount_deducted,

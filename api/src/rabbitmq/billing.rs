@@ -4,7 +4,7 @@ use std::{
 };
 
 use api_models::{
-	models::workspace::billing::{PaymentStatus, TransactionType},
+	models::workspace::billing::{PaymentStatus, TransactionType, Address},
 	utils::{DateTime, PriceAmount, Uuid},
 };
 use chrono::{Duration, TimeZone, Utc};
@@ -286,12 +286,11 @@ pub(super) async fn process_request(
 					&workspace.address_id,
 					&workspace.default_payment_method_id,
 				) {
+					let address = db::get_billing_address(connection, address_id)
+					.await?
+					.status(500)?;
 					let (currency, stripe_amount) =
-						if db::get_billing_address(connection, address_id)
-							.await?
-							.status(500)?
-							.country == *"IN"
-						{
+						if address.country == *"IN" {
 							(
 								Currency::INR,
 								(card_amount_to_be_charged * 100f64 * 80f64)
@@ -375,6 +374,7 @@ pub(super) async fn process_request(
 							workspace_name,
 							month_string.to_string(),
 							total_bill,
+							address,
 							PriceAmount(credits_deducted),
 							// If `amount_due` is 0, definitely the card amount
 							// is 0
@@ -404,6 +404,7 @@ pub(super) async fn process_request(
 							&workspace.super_admin_id,
 							workspace_name,
 							total_bill,
+							address,
 							month_string.to_string(),
 						)
 						.await?;
@@ -439,6 +440,17 @@ pub(super) async fn process_request(
 						&workspace.super_admin_id,
 						workspace_name,
 						total_bill,
+						Address {
+							first_name: "".to_string(),
+							last_name: "".to_string(),
+							address_line_1: "".to_string(),
+							address_line_2: None,
+							address_line_3: None,
+							city: "".to_string(),
+							state: "".to_string(),
+							zip: "".to_string(),
+							country: "".to_string(),
+						},
 						month_string.to_string(),
 					)
 					.await?;

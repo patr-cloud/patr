@@ -1,10 +1,10 @@
 Hello {{username}}, 
 
-Payment for your billing period {{monthString}} {{year}} amounting to {{totalBill}} for the workspace {{workspaceName}} was unsuccessful. 
+Payment for your billing period {{monthString}} {{billBreakdown.year}} amounting to {{billBreakdown.totalCharge}} for the workspace {{workspaceName}} was unsuccessful. 
 
 Detailed Charges Deployment Usage:
-{{#each deploymentUsage}}
-  {{this.deploymentName}}:
+{{#each billBreakdown.deploymentUsage}}
+  {{this.name}}:
   {{#each this.billItems}}
     Machine Type: RAM:
     {{this.machineType.memoryCount}}GB CPU:
@@ -17,16 +17,16 @@ Detailed Charges Deployment Usage:
   {{/each}}
 {{/each}}
 Database Usage:
-{{#each databaseUsage}}
+{{#each billBreakdown.databaseUsage}}
   Name:
-  {{this.databaseName}}
+  {{this.name}}
   Hours used:
   {{this.hours}}
   Bill Amount:
   {{this.amount}}
 {{/each}}
 Static Site Usage:
-{{#each staticSiteUsage}}
+{{#each billBreakdown.staticSiteUsage}}
   Plan:
   {{@key}}
   Hours used:
@@ -35,7 +35,7 @@ Static Site Usage:
   {{this.amount}}
 {{/each}}
 Managed URL Usage:
-{{#each managedUrlUsage}}
+{{#each billBreakdown.managedUrlUsage}}
   No.of URLs:
   {{@key}}
   Hours used:
@@ -44,7 +44,7 @@ Managed URL Usage:
   {{this.amount}}
 {{/each}}
 Docker Repository Usage:
-{{#each dockerRepositoryUsage}}
+{{#each billBreakdown.dockerRepositoryUsage}}
   Total Storage (GB):
   {{@key}}
   Hours used:
@@ -53,7 +53,7 @@ Docker Repository Usage:
   {{this.amount}}
 {{/each}}
 Domain Usage:
-{{#each domainUsage}}
+{{#each billBreakdown.domainUsage}}
   Plan:
   {{@key}}
   Hours used:
@@ -62,7 +62,7 @@ Domain Usage:
   {{this.amount}}
 {{/each}}
 Secret Usage:
-{{#each secretUsage}}
+{{#each billBreakdown.secretUsage}}
   No.of Secrets:
   {{@key}}
   Hours used:
@@ -71,7 +71,9 @@ Secret Usage:
   {{this.amount}}
 {{/each}}
 
-We will automatically attempt to charge your card again within 24 to 48 hours. You can review or update your payment details on the billing section of Patr (https://app.patr.cloud/workspace). 
+We will automatically attempt to charge your card again within 24 to 48 hours.
+
+You can review or update your payment details on the billing section of Patr (https://app.patr.cloud/workspace). 
 
 Please contact us at support@patr.cloud if you're facing any issues. 
 
