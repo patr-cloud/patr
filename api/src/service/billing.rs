@@ -251,7 +251,7 @@ pub async fn make_payment(
 	Ok(transaction_id)
 }
 
-pub async fn confirm_payment_method(
+pub async fn confirm_payment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	transaction_id: &Uuid,
@@ -298,15 +298,14 @@ pub async fn confirm_payment_method(
 			&PaymentStatus::Success,
 		)
 		.await?;
+		Ok(true)
 	} else {
 		log::trace!(
 			"payment_intent_id not found for transaction_id: {}, this is a not an expected behaviour", transaction_id);
-		return Error::as_result()
+		Err(Error::empty()
 			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+			.body(error!(SERVER_ERROR).to_string()))
 	}
-
-	Ok(true)
 }
 
 pub async fn calculate_deployment_bill_for_workspace_till(
@@ -1010,8 +1009,7 @@ pub async fn get_total_resource_usage(
 	let deployment_charge = PriceAmount(
 		deployment_usage
 			.iter()
-			.map(|(_, usage)| usage.bill_items.iter())
-			.flatten()
+			.flat_map(|(_, usage)| usage.bill_items.iter())
 			.map(|item| item.amount.0)
 			.sum(),
 	);

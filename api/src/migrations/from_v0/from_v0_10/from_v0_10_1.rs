@@ -1681,7 +1681,7 @@ async fn update_payment_status_enum(
 	query!(
 		r#"
 		ALTER TYPE PAYMENT_STATUS
-			ADD VALUE 'pending';
+		ADD VALUE 'pending';
 		"#
 	)
 	.execute(&mut *connection)

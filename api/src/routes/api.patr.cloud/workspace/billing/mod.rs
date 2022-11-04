@@ -294,7 +294,7 @@ pub fn create_sub_app(
 		"/set-primary-card",
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
+				is_api_token_allowed: false,
 				permission: permissions::workspace::EDIT,
 				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
@@ -390,7 +390,7 @@ pub fn create_sub_app(
 		"/make-payment",
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
+				is_api_token_allowed: false,
 				permission: permissions::workspace::EDIT,
 				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
@@ -1012,7 +1012,7 @@ async fn confirm_payment(
 
 	let config = context.get_state().config.clone();
 
-	let success = service::confirm_payment_method(
+	let success = service::confirm_payment(
 		context.get_database_connection(),
 		&workspace_id,
 		&transaction_id,
