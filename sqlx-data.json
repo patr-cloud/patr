@@ -3612,7 +3612,8 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed"
+                  "failed",
+                  "pending"
                 ]
               },
               "name": "payment_status"
@@ -5286,7 +5287,8 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed"
+                  "failed",
+                  "pending"
                 ]
               },
               "name": "payment_status"
@@ -7980,7 +7982,8 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed"
+                  "failed",
+                  "pending"
                 ]
               },
               "name": "payment_status"
@@ -10795,7 +10798,8 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed"
+                  "failed",
+                  "pending"
                 ]
               },
               "name": "payment_status"
@@ -13568,7 +13572,8 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed"
+                  "failed",
+                  "pending"
                 ]
               },
               "name": "payment_status"
