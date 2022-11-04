@@ -75,7 +75,11 @@
                                       <td
                                         class="para txt-light"
                                         style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
-                                      >Your invoice for {{monthString}} {{billBreakdown.year}} is now available for the workspace <strong
+                                      >Your invoice for
+                                        {{monthString}}
+                                        {{billBreakdown.year}}
+                                        is now available for the workspace
+                                        <strong
                                           class="txt-light"
                                           style="color: #ffffff"
                                         >{{workspaceName}}</strong>.
@@ -210,7 +214,6 @@
                                           style="color: #f89b41; text-decoration: none; font-weight: 600;"
                                         >${{billBreakdown.totalCharge}}</a>
                                       </td>
-                                      </td>
                                     </tr>
                                     <tr>
                                       <td
@@ -240,7 +243,9 @@
                                                   class="pb-xs"
                                                   style="padding-top: .25rem"
                                                 >
-                                                  {{#unless billBreakdown.deploymentUsage}}
+                                                  {{#unless
+                                                    billBreakdown.deploymentUsage
+                                                  }}
                                                     <table>
                                                       <tbody>
                                                         <tr>
@@ -254,7 +259,9 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if billBreakdown.deploymentUsage}}
+                                                  {{#if
+                                                    billBreakdown.deploymentUsage
+                                                  }}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -445,7 +452,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{billBreakdown.deploymentBill}}</td>
+                                                          >${{billBreakdown.deploymentCharge}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -468,7 +475,9 @@
                                                   class="pb-xs"
                                                   style="padding-top: .25rem"
                                                 >
-                                                  {{#unless billBreakdown.databaseUsage}}
+                                                  {{#unless
+                                                    billBreakdown.databaseUsage
+                                                  }}
                                                     <table>
                                                       <tbody>
                                                         <tr>
@@ -482,7 +491,9 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if billBreakdown.databaseUsage}}
+                                                  {{#if
+                                                    billBreakdown.databaseUsage
+                                                  }}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -517,7 +528,9 @@
                                                         </th>
                                                       </thead>
                                                       <tbody>
-                                                        {{#each billBreakdown.databaseUsage}}
+                                                        {{#each
+                                                          billBreakdown.databaseUsage
+                                                        }}
                                                           <tr>
                                                             <td
                                                               class="txt-light px-md py-xs txt-center"
@@ -588,7 +601,9 @@
                                                   class="pb-xs"
                                                   style="padding-top: .25rem"
                                                 >
-                                                  {{#unless billBreakdown.staticSiteUsage}}
+                                                  {{#unless
+                                                    billBreakdown.staticSiteUsage
+                                                  }}
                                                     <table>
                                                       <tbody>
                                                         <tr>
@@ -602,7 +617,9 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if billBreakdown.staticSiteUsage}}
+                                                  {{#if
+                                                    billBreakdown.staticSiteUsage
+                                                  }}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -637,7 +654,9 @@
                                                         </th>
                                                       </thead>
                                                       <tbody>
-                                                        {{#each billBreakdown.staticSiteUsage}}
+                                                        {{#each
+                                                          billBreakdown.staticSiteUsage
+                                                        }}
                                                           <tr>
                                                             <td
                                                               class="txt-light px-md py-xs txt-center"
@@ -703,7 +722,9 @@
                                                   class="pb-xs"
                                                   style="padding-top: .25rem"
                                                 >
-                                                  {{#unless billBreakdown.domainUsage}}
+                                                  {{#unless
+                                                    billBreakdown.domainUsage
+                                                  }}
                                                     <table>
                                                       <tbody>
                                                         <tr>
@@ -717,7 +738,9 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if billBreakdown.domainUsage}}
+                                                  {{#if
+                                                    billBreakdown.domainUsage
+                                                  }}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -752,7 +775,9 @@
                                                         </th>
                                                       </thead>
                                                       <tbody>
-                                                        {{#each billBreakdown.domainUsage}}
+                                                        {{#each
+                                                          billBreakdown.domainUsage
+                                                        }}
                                                           <tr>
                                                             <td
                                                               class="txt-light px-md py-xs txt-center"
@@ -817,7 +842,9 @@
                                                   class="pb-xs"
                                                   style="padding-top: .25rem"
                                                 >
-                                                  {{#unless billBreakdown.managedUrlUsage}}
+                                                  {{#unless
+                                                    billBreakdown.managedUrlUsage
+                                                  }}
                                                     <table>
                                                       <tbody>
                                                         <tr>
@@ -831,7 +858,9 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if billBreakdown.managedUrlUsage}}
+                                                  {{#if
+                                                    billBreakdown.managedUrlUsage
+                                                  }}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -934,7 +963,9 @@
                                                   class="pb-xs"
                                                   style="padding-top: .25rem"
                                                 >
-                                                  {{#unless billBreakdown.secretUsage}}
+                                                  {{#unless
+                                                    billBreakdown.secretUsage
+                                                  }}
                                                     <table>
                                                       <tbody>
                                                         <tr>
@@ -948,7 +979,9 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if billBreakdown.secretUsage}}
+                                                  {{#if
+                                                    billBreakdown.secretUsage
+                                                  }}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -983,7 +1016,9 @@
                                                         </th>
                                                       </thead>
                                                       <tbody>
-                                                        {{#each billBreakdown.secretUsage}}
+                                                        {{#each
+                                                          billBreakdown.secretUsage
+                                                        }}
                                                           <tr>
                                                             <td
                                                               class="txt-light px-md py-xs txt-center"
@@ -1065,7 +1100,9 @@
                                                       </tbody>
                                                     </table>
                                                   {{/unless}}
-                                                  {{#if billBreakdown.dockerRepositoryUsage}}
+                                                  {{#if
+                                                    billBreakdown.dockerRepositoryUsage
+                                                  }}
                                                     <table
                                                       class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                                                       style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -1312,7 +1349,6 @@
                                         for the latest updates and chat with us
                                         <a
                                           class="plain-link txt-primary"
-                                          
                                           href="https://app.patr.cloud?openDrfit=true"
                                           style="color: #f89b41; text-decoration: none; font-weight: 500;"
                                         > here</a>
