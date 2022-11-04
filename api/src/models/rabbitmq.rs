@@ -109,7 +109,7 @@ pub enum BillingData {
 		workspace: Workspace,
 		request_id: Uuid,
 	},
-	AttemptToChargeWorkspace {
+	SendInvoiceForWorkspace {
 		workspace: Workspace,
 		month: u32,
 		year: i32,

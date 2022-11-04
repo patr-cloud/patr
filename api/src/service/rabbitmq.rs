@@ -108,7 +108,7 @@ pub async fn queue_attempt_to_charge_workspace(
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	send_message_to_billing_queue(
-		&BillingData::AttemptToChargeWorkspace {
+		&BillingData::SendInvoiceForWorkspace {
 			workspace: workspace.clone(),
 			month,
 			year,
