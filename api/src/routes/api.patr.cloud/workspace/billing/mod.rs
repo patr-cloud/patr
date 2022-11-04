@@ -1044,14 +1044,14 @@ async fn get_current_bill(
 	.body(error!(SERVER_ERROR).to_string())?
 	.amount_due;
 
-	let leftover_credis_or_due = db::get_total_amount_to_pay_for_workspace(
+	let leftover_credits_or_due = db::get_total_amount_to_pay_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 	)
 	.await?;
 
 	context.success(GetCurrentUsageResponse {
-		current_usage: current_month_bill_so_far + leftover_credis_or_due,
+		current_usage: current_month_bill_so_far + leftover_credits_or_due,
 	});
 	Ok(context)
 }
