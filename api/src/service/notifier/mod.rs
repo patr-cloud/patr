@@ -459,6 +459,7 @@ pub async fn send_bill_not_paid_reminder_email(
 	month_num: u32,
 	year: i32,
 	total_bill: f64,
+	deadline: String,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, &super_admin_id)
 		.await?
@@ -485,6 +486,7 @@ pub async fn send_bill_not_paid_reminder_email(
 		month_num,
 		year,
 		total_bill,
+		deadline,
 	)
 	.await
 }

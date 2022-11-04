@@ -535,6 +535,36 @@ pub(super) async fn process_request(
 						)
 						.await?;
 					} else {
+						let deadline_day = 15;
+						let next_month =
+							if month == 12 { 1 } else { month + 1 };
+
+						let next_month_name_str = match next_month {
+							1 => "January",
+							2 => "February",
+							3 => "March",
+							4 => "April",
+							5 => "May",
+							6 => "June",
+							7 => "July",
+							8 => "August",
+							9 => "September",
+							10 => "October",
+							11 => "November",
+							12 => "December",
+							_ => "",
+						};
+
+						let deadline = format!(
+							"{deadline_day}{} {next_month_name_str}",
+							match deadline_day {
+								1 => "st",
+								2 => "nd",
+								3 => "rd",
+								_ => "th",
+							}
+						);
+
 						service::send_bill_not_paid_reminder_email(
 							connection,
 							workspace.super_admin_id.clone(),
@@ -543,6 +573,7 @@ pub(super) async fn process_request(
 							month,
 							year,
 							amount_due,
+							deadline,
 						)
 						.await?;
 
