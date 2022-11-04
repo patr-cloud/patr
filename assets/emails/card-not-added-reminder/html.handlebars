@@ -77,33 +77,16 @@
                                         class="para txt-light"
                                         style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
                                       >
-                                        This is a gentle reminder that your bill
-                                        for
+                                        This is a gentle reminder that the
+                                        payment for your billing period
                                         {{monthString}}
                                         {{year}}
-                                        for the workspace
+                                        is incomplete since you haven't added
+                                        any payment method on your workspace
                                         <strong
                                           class="txt-light"
                                           style="color:#ffffff"
-                                        >{{workspaceName}}</strong>
-                                        has not been paid.
-                                      </td>
-                                    </tr>
-                                    <tr>
-                                      <td
-                                        class="para txt-light"
-                                        style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
-                                      >
-                                        Kindly head onto the
-                                        <a
-                                          href="https://app.patr.cloud/workspace"
-                                          class="plain-link txt-primary"
-                                          style="color: #f89b41; text-decoration: none; font-weight: 500;"
-                                        >billing</a>
-                                        section to review your payment details
-                                        and complete the payment at the earliest
-                                        to prevent your resources from getting
-                                        deleted.
+                                        >{{workspaceName}}</strong>.
                                       </td>
                                     </tr>
                                     <tr>
@@ -113,12 +96,40 @@
                                       >
                                         Total usage charges for
                                         {{monthString}}
-                                        {{year}}:
+                                        {{year}}
+                                        are:
                                         <a
                                           href="https://app.patr.cloud/workspace?showDetailedCharges=true&month={{monthNumber}}&year={{year}}"
                                           class="plain-link txt-primary txt-bold"
                                           style="color: #f89b41; text-decoration: none; font-weight: 600;"
                                         >${{totalBill}}</a>
+                                      </td>
+                                    </tr>
+                                    <tr>
+                                      <td
+                                        class="para txt-light"
+                                        style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+                                      >
+                                        Kindly add your card details in the
+                                        <a
+                                          href="https://app.patr.cloud/workspace"
+                                          class="plain-link txt-primary"
+                                          style="color: #f89b41; text-decoration: none; font-weight: 500;"
+                                        >billing</a>
+                                        section of Patr at the earliest.
+                                      </td>
+                                    </tr>
+                                    <tr>
+                                      <td
+                                        class="para txt-light"
+                                        style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+                                      >
+                                        Lack of payment will result in the
+                                        deletion of your resources on
+                                        <strong
+                                          class="txt-light"
+                                          style="color:#ffffff"
+                                        >{{deadline}}</strong>.
                                       </td>
                                     </tr>
                                     <tr>
