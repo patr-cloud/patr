@@ -1171,8 +1171,8 @@
                                         >${{totalBill}}</strong>
                                       </td>
                                     </tr>
-                                    {{#if creditsAmount}}
-                                      {{#if cardAmount}}
+                                    {{#if creditsDeducted}}
+                                      {{#if cardAmountDeducted}}
                                         <tr>
                                           <td
                                             class="para txt-light"
@@ -1193,7 +1193,7 @@
                                             <strong
                                               class="txt-light"
                                               style="color:#ffffff"
-                                            >${{cardAmount}}</strong>
+                                            >${{cardAmountDeducted}}</strong>
                                           </td>
                                         </tr>
                                         <tr>
@@ -1205,7 +1205,7 @@
                                             <strong
                                               class="txt-light"
                                               style="color:#ffffff"
-                                            >${{creditsAmount}}</strong>
+                                            >${{creditsDeducted}}</strong>
                                           </td>
                                         </tr>
                                         <tr>
@@ -1221,7 +1221,7 @@
                                           </td>
                                         </tr>
                                       {{/if}}
-                                      {{#unless cardAmount}}
+                                      {{#unless cardAmountDeducted}}
                                         <tr>
                                           <td
                                             class="para txt-light"
@@ -1241,7 +1241,7 @@
                                             <strong
                                               class="txt-light"
                                               style="color:#ffffff"
-                                            >${{creditsAmount}}</strong>
+                                            >${{creditsDeducted}}</strong>
                                           </td>
                                         </tr>
                                         <tr>
@@ -1258,8 +1258,8 @@
                                         </tr>
                                       {{/unless}}
                                     {{/if}}
-                                    {{#if cardAmount}}
-                                      {{#unless creditsAmount}}
+                                    {{#if cardAmountDeducted}}
+                                      {{#unless creditsDeducted}}
                                         <tr>
                                           <td
                                             class="para txt-light"
@@ -1279,7 +1279,7 @@
                                             <strong
                                               class="txt-light"
                                               style="color:#ffffff"
-                                            >${{cardAmount}}</strong>
+                                            >${{cardAmountDeducted}}</strong>
                                           </td>
                                         </tr>
                                       {{/unless}}
