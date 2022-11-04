@@ -5,7 +5,7 @@ use std::{
 
 use api_models::{
 	models::workspace::billing::{PaymentStatus, TransactionType},
-	utils::{DateTime, PriceAmount},
+	utils::{DateTime, PriceAmount, Uuid},
 };
 use chrono::{Duration, TimeZone, Utc};
 use eve_rs::AsError;
@@ -245,11 +245,30 @@ pub(super) async fn process_request(
 				return Ok(());
 			}
 
+			let workspace_name = if let Some(Ok(user_id)) = workspace
+				.name
+				.strip_prefix("personal-workspace-")
+				.map(Uuid::parse_str)
+			{
+				if let Some(user) =
+					db::get_user_by_user_id(connection, &user_id).await?
+				{
+					format!(
+						"{} {}'s personal workspace",
+						user.first_name, user.last_name
+					)
+				} else {
+					workspace.name.clone()
+				}
+			} else {
+				workspace.name.clone()
+			};
+
 			if amount_due <= 0f64 {
 				service::send_payment_success_invoice_notification(
 					connection,
 					&workspace.super_admin_id,
-					workspace.name.clone(),
+					workspace_name,
 					month_string.to_string(),
 					total_bill,
 					PriceAmount(credits_deducted),
@@ -353,7 +372,7 @@ pub(super) async fn process_request(
 						service::send_payment_success_invoice_notification(
 							connection,
 							&workspace.super_admin_id,
-							workspace.name.clone(),
+							workspace_name,
 							month_string.to_string(),
 							total_bill,
 							PriceAmount(credits_deducted),
@@ -383,7 +402,7 @@ pub(super) async fn process_request(
 						service::send_payment_failure_invoice_notification(
 							connection,
 							&workspace.super_admin_id,
-							workspace.name.clone(),
+							workspace_name,
 							total_bill,
 							month_string.to_string(),
 						)
@@ -418,7 +437,7 @@ pub(super) async fn process_request(
 					service::send_payment_failure_invoice_notification(
 						connection,
 						&workspace.super_admin_id,
-						workspace.name.clone(),
+						workspace_name,
 						total_bill,
 						month_string.to_string(),
 					)
@@ -463,7 +482,7 @@ pub(super) async fn process_request(
 				service::send_payment_success_invoice_notification(
 					connection,
 					&workspace.super_admin_id,
-					workspace.name.clone(),
+					workspace_name,
 					month_string.to_string(),
 					total_bill,
 					total_charge,
@@ -559,11 +578,30 @@ pub(super) async fn process_request(
 				-amount_due
 			};
 
+			let workspace_name = if let Some(Ok(user_id)) = workspace
+				.name
+				.strip_prefix("personal-workspace-")
+				.map(Uuid::parse_str)
+			{
+				if let Some(user) =
+					db::get_user_by_user_id(connection, &user_id).await?
+				{
+					format!(
+						"{} {}'s personal workspace",
+						user.first_name, user.last_name
+					)
+				} else {
+					workspace.name.clone()
+				}
+			} else {
+				workspace.name.clone()
+			};
+
 			if amount_due <= 0f64 {
 				service::send_payment_success_invoice_notification(
 					connection,
 					&workspace.super_admin_id,
-					workspace.name.clone(),
+					workspace_name,
 					month_string.to_string(),
 					total_bill,
 					PriceAmount(credits_deducted),
@@ -662,7 +700,7 @@ pub(super) async fn process_request(
 					service::send_bill_paid_successfully_email(
 						connection,
 						workspace.super_admin_id,
-						workspace.name.clone(),
+						workspace_name,
 						month_string.to_string(),
 						year,
 						PriceAmount(card_amount_to_be_charged),
@@ -739,7 +777,7 @@ pub(super) async fn process_request(
 				service::send_bill_not_paid_delete_resources_email(
 					connection,
 					workspace.super_admin_id.clone(),
-					workspace.name.clone(),
+					workspace_name,
 					month_string.to_string(),
 					month,
 					year,
@@ -782,7 +820,7 @@ pub(super) async fn process_request(
 					service::send_bill_payment_failed_reminder_email(
 						connection,
 						workspace.super_admin_id.clone(),
-						workspace.name.clone(),
+						workspace_name,
 						month_string.to_string(),
 						month,
 						year,
@@ -796,7 +834,7 @@ pub(super) async fn process_request(
 					service::send_card_not_added_reminder_email(
 						connection,
 						workspace.super_admin_id.clone(),
-						workspace.name.clone(),
+						workspace_name,
 						month_string.to_string(),
 						month,
 						year,
