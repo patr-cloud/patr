@@ -74,31 +74,25 @@ Secret Usage:
   {{this.amount}}
 {{/each}}
 
-{{#if creditsAmount}}
-  {{#if cardAmount}}
-The amount was automatically deducted using your card and Patr credits, so no further action is required. 
-    
-Total usage charges for {{monthString}} {{year}}: ${{totalBill}}
+{{#if creditsDeducted}}
+  {{#if cardAmountDeducted}}
+The amount was automatically deducted using your card and Patr credits, so no further action is required.
 
-Amount paid using card: ${{cardAmount}}
-Amount paid using credits: ${{creditsAmount}}
+Amount paid using card: ${{cardAmountDeducted}}
+Amount paid using credits: ${{creditsDeducted}}
   {{/if}}
 {{/if}}
-{{#if cardAmount}}
-  {{#unless creditsAmount}}
+{{#if cardAmountDeducted}}
+  {{#unless creditsDeducted}}
 The amount was automatically charged to your card, so no action is required from your end. 
-    
-Total usage charges for {{monthString}} {{year}}: ${{totalBill}}
 
-Amount paid: ${{amountPaid}}
+Amount paid: ${{cardAmountDeducted}}
   {{/unless}}
 {{/if}}
 
-{{#if creditsAmount}}
-  {{#unless cardAmount}}
-The amount was automatically charged from your Patr credits, so no action is required from your end. 
-    
-Total usage charges for {{monthString}} {{year}}: ${{totalBill}}
+{{#if creditsDeducted}}
+  {{#unless cardAmountDeducted}}
+The amount was automatically charged from your Patr credits, so no action is required from your end.
 
 Credits consumed: ${{amountPaid}}
 Credits remaining: ${{creditsRemaining}}
