@@ -261,8 +261,7 @@ pub(super) async fn process_request(
 					month_string.to_string(),
 					month,
 					year,
-					format!("{:.2}", amount_due * -1.00), /* To make it
-					                                       * positive */
+					format!("{:.2}", total_resource_usage_bill.total_cost),
 					format!(
 						"{:.2}",
 						if credit_amount > 0.00 {
@@ -378,7 +377,7 @@ pub(super) async fn process_request(
 							month_string.to_string(),
 							month,
 							year,
-							format!("{:.2}", amount_due),
+							format!("{:.2}", total_resource_usage_bill.total_cost),
 							format!(
 								"{:.2}",
 								if credit_amount > 0.00 {
