@@ -576,8 +576,8 @@ pub async fn send_payment_success_notification(
 	month_num: u32,
 	year: i32,
 	total_bill: String,
-	credit_amount: String,
-	card_amount: String,
+	credit_deducted: String,
+	card_amount_deducted: String,
 	credits_remaining: String,
 	amount_paid: String,
 ) -> Result<(), Error> {
@@ -613,8 +613,8 @@ pub async fn send_payment_success_notification(
 		month_num,
 		year,
 		total_bill,
-		credit_amount,
-		card_amount,
+		credit_deducted,
+		card_amount_deducted,
 		credits_remaining,
 		amount_paid,
 	)
