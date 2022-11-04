@@ -477,7 +477,7 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-				let total_charge = total_bill.total_charge.clone();
+				let total_charge = total_bill.total_charge;
 
 				service::send_payment_success_invoice_notification(
 					connection,
