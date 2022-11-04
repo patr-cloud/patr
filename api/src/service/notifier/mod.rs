@@ -1,23 +1,16 @@
-use std::collections::HashMap;
-
-use api_models::{models::auth::PreferredRecoveryOption, utils::Uuid};
+use api_models::{
+	models::{
+		auth::PreferredRecoveryOption,
+		workspace::billing::{Address, WorkspaceBillBreakdown},
+	},
+	utils::{PriceAmount, Uuid},
+};
 use eve_rs::AsError;
 
 use crate::{
-	db::{self, DomainPlan, StaticSitePlan, User, UserToSignUp},
+	db::{self, User, UserToSignUp},
 	error,
-	models::{
-		billing::{
-			DatabaseBill,
-			DeploymentBill,
-			DockerRepositoryBill,
-			DomainBill,
-			ManagedUrlBill,
-			SecretsBill,
-			StaticSiteBill,
-		},
-		deployment::KubernetesEventData,
-	},
+	models::ResourceType,
 	utils::Error,
 	Database,
 };
@@ -56,6 +49,7 @@ pub async fn send_sign_up_complete_notification(
 		email::send_recovery_registration_mail(
 			recovery_email.parse()?,
 			username,
+			&recovery_email,
 		)
 		.await?;
 	}
@@ -80,8 +74,15 @@ pub async fn send_email_verification_otp(
 	new_email: String,
 	otp: &str,
 	username: &str,
+	recovery_email: &str,
 ) -> Result<(), Error> {
-	email::send_email_verification_otp(new_email.parse()?, otp, username).await
+	email::send_email_verification_otp(
+		new_email.parse()?,
+		otp,
+		username,
+		recovery_email,
+	)
+	.await
 }
 
 /// # Description
@@ -372,116 +373,6 @@ async fn get_user_phone_number(
 }
 
 /// # Description
-/// This function is used to send alert to the user
-///
-/// # Arguments
-/// * `connection` - database save point, more details here: [`Transaction`]
-/// * `workspace_name` - a Uuid containing id of the workspace
-/// * `deployment_id` - a Uuid containing id of the deployment
-/// * `deployment_name` - a string containing name of the deployment
-/// * `message` - a string containing message of the alert
-///
-/// # Returns
-/// This function returns `Result<(), Error>` containing an empty response or an
-/// error
-///
-/// [`Transaction`]: Transaction
-pub async fn send_alert_email(
-	workspace_name: &str,
-	deployment_id: &Uuid,
-	deployment_name: &str,
-	message: &str,
-	alert_emails: &[String],
-) -> Result<(), Error> {
-	// send email
-	for email in alert_emails {
-		email::send_alert_email(
-			email.parse()?,
-			workspace_name,
-			deployment_id,
-			deployment_name,
-			message,
-		)
-		.await?;
-	}
-
-	Ok(())
-}
-
-/// # Description
-/// This function is used to send alert to the patr's support email
-///
-/// # Arguments
-/// * `connection` - database save point, more details here: [`Transaction`]
-/// * `workspace_name` - a Uuid containing id of the workspace
-/// * `deployment_id` - a Uuid containing id of the deployment
-/// * `deployment_name` - a string containing name of the deployment
-/// * `event_data` - an object containing all the details of the event
-///
-/// # Returns
-/// This function returns `Result<(), Error>` containing an empty response or an
-/// error
-///
-/// [`Transaction`]: Transaction
-pub async fn send_alert_email_to_patr(
-	event_data: KubernetesEventData,
-) -> Result<(), Error> {
-	// send email
-	email::send_alert_email_to_patr("postmaster@vicara.co".parse()?, event_data)
-		.await
-}
-
-#[allow(dead_code)]
-pub async fn send_invoice_email(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &Uuid,
-	workspace_name: String,
-	deployment_usages: HashMap<Uuid, DeploymentBill>,
-	database_usages: HashMap<Uuid, DatabaseBill>,
-	static_sites_usages: HashMap<StaticSitePlan, StaticSiteBill>,
-	managed_url_usages: HashMap<u64, ManagedUrlBill>,
-	docker_repository_usages: Vec<DockerRepositoryBill>,
-	domains_usages: HashMap<DomainPlan, DomainBill>,
-	secrets_usages: HashMap<u64, SecretsBill>,
-	total_bill: f64,
-	month: String,
-	year: i32,
-) -> Result<(), Error> {
-	let user = db::get_user_by_user_id(connection, user_id)
-		.await?
-		.status(500)?;
-
-	let user_email = get_user_email(
-		connection,
-		user.recovery_email_domain_id
-			.as_ref()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?,
-		user.recovery_email_local
-			.as_ref()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?,
-	)
-	.await?;
-
-	email::send_invoice_email(
-		user_email.parse()?,
-		workspace_name,
-		deployment_usages,
-		database_usages,
-		static_sites_usages,
-		managed_url_usages,
-		docker_repository_usages,
-		domains_usages,
-		secrets_usages,
-		total_bill,
-		month,
-		year,
-	)
-	.await
-}
-
-/// # Description
 /// This function is used to notify the user that their resources has been
 /// deleted because they haven't paid their bill
 ///
@@ -498,11 +389,12 @@ pub async fn send_invoice_email(
 /// error
 ///
 /// [`Transaction`]: Transaction
-pub async fn send_unpaid_resources_deleted_email(
+pub async fn send_bill_not_paid_delete_resources_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	super_admin_id: Uuid,
 	workspace_name: String,
-	month: String,
+	month_string: String,
+	month_num: u32,
 	year: i32,
 	total_bill: f64,
 ) -> Result<(), Error> {
@@ -523,11 +415,12 @@ pub async fn send_unpaid_resources_deleted_email(
 	)
 	.await?;
 
-	email::send_unpaid_resources_deleted_email(
+	email::send_bill_not_paid_delete_resources_email(
 		user_email.parse()?,
 		user.username,
 		workspace_name,
-		month,
+		month_string,
+		month_num,
 		year,
 		total_bill,
 	)
@@ -551,13 +444,15 @@ pub async fn send_unpaid_resources_deleted_email(
 /// error
 ///
 /// [`Transaction`]: Transaction
-pub async fn send_bill_not_paid_reminder_email(
+pub async fn send_bill_payment_failed_reminder_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	super_admin_id: Uuid,
 	workspace_name: String,
-	month: String,
+	month_string: String,
+	month_num: u32,
 	year: i32,
-	total_bill: f64,
+	total_bill: PriceAmount,
+	deadline: String,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, &super_admin_id)
 		.await?
@@ -576,13 +471,91 @@ pub async fn send_bill_not_paid_reminder_email(
 	)
 	.await?;
 
-	email::send_bill_not_paid_reminder_email(
+	email::send_bill_payment_failed_reminder_email(
 		user_email.parse()?,
 		user.username,
 		workspace_name,
-		month,
+		month_string,
+		month_num,
 		year,
 		total_bill,
+		deadline,
+	)
+	.await
+}
+
+pub async fn send_card_not_added_reminder_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	super_admin_id: Uuid,
+	workspace_name: String,
+	month_string: String,
+	month_num: u32,
+	year: i32,
+	total_bill: PriceAmount,
+	deadline: String,
+) -> Result<(), Error> {
+	let user = db::get_user_by_user_id(connection, &super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_card_not_added_reminder_email(
+		user_email.parse()?,
+		user.username,
+		workspace_name,
+		month_string,
+		month_num,
+		year,
+		total_bill,
+		deadline,
+	)
+	.await
+}
+
+pub async fn send_bill_paid_successfully_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	super_admin_id: Uuid,
+	workspace_name: String,
+	month_string: String,
+	year: i32,
+	card_amount_deducted: PriceAmount,
+) -> Result<(), Error> {
+	let user = db::get_user_by_user_id(connection, &super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_bill_paid_successfully_email(
+		user_email.parse()?,
+		user.username,
+		workspace_name,
+		month_string,
+		year,
+		card_amount_deducted,
 	)
 	.await
 }
@@ -604,14 +577,165 @@ pub async fn send_bill_not_paid_reminder_email(
 /// error
 ///
 /// [`Transaction`]: Transaction
-pub async fn send_payment_failed_notification(
+pub async fn send_payment_failure_invoice_notification(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	super_admin_id: Uuid,
+	super_admin_id: &Uuid,
 	workspace_name: String,
-	month: String,
-	year: i32,
-	total_bill: f64,
+	bill_breakdown: WorkspaceBillBreakdown,
+	billing_address: Address,
+	month_string: String,
 ) -> Result<(), Error> {
+	let user = db::get_user_by_user_id(connection, super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_payment_failure_invoice_email(
+		user_email.parse()?,
+		user.username,
+		workspace_name,
+		bill_breakdown,
+		billing_address,
+		month_string,
+	)
+	.await
+}
+
+pub async fn send_payment_success_invoice_notification(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	super_admin_id: &Uuid,
+	workspace_name: String,
+	current_month_string: String,
+	bill_breakdown: WorkspaceBillBreakdown,
+	billing_address: Address,
+	credit_deducted: PriceAmount,
+	card_amount_deducted: PriceAmount,
+	credits_remaining: PriceAmount,
+) -> Result<(), Error> {
+	let user = db::get_user_by_user_id(connection, super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_payment_success_invoice_email(
+		user_email.parse()?,
+		user.username,
+		workspace_name,
+		bill_breakdown,
+		billing_address,
+		current_month_string,
+		credit_deducted,
+		card_amount_deducted,
+		credits_remaining,
+	)
+	.await
+}
+
+pub async fn resource_delete_action_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	resource_name: &str,
+	workspace_id: &Uuid,
+	resource_type: &ResourceType,
+	deleted_by_user_id: &Uuid,
+) -> Result<(), Error> {
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
+
+	let deleted_by = db::get_user_by_user_id(connection, deleted_by_user_id)
+		.await?
+		.status(500)?
+		.first_name;
+
+	// TODO -  change this and move to one function. Changes are done in PR #600
+	let user = db::get_user_by_user_id(connection, &workspace.super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	// parsing personal-workspace-(uuid)
+	let displayed_workspace_name = if let Some(Ok(user_id)) = workspace
+		.name
+		.strip_prefix("personal-workspace-")
+		.map(Uuid::parse_str)
+	{
+		let user = db::get_user_by_user_id(connection, &user_id).await?;
+		if let Some(user) = user {
+			format!(
+				"{} {}'s Personal Workspace",
+				user.first_name, user.last_name
+			)
+		} else {
+			workspace.name
+		}
+	} else {
+		workspace.name
+	};
+
+	email::send_resource_deleted_email(
+		displayed_workspace_name,
+		resource_name.to_string(),
+		user.first_name,
+		resource_type.to_string(), /* converting to string as email template
+		                            * does not support an enum as field in
+		                            * it's struct */
+		deleted_by,
+		user_email.parse()?,
+	)
+	.await?;
+	Ok(())
+}
+
+pub async fn domain_verification_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain: &str,
+	workspace_id: &Uuid,
+	domain_id: &Uuid,
+	is_internal: bool,
+	is_verified: bool,
+) -> Result<(), Error> {
+	let super_admin_id = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?
+		.super_admin_id;
+
+	// TODO -  change this and move to one function. Changes are done in PR #600
 	let user = db::get_user_by_user_id(connection, &super_admin_id)
 		.await?
 		.status(500)?;
@@ -629,13 +753,23 @@ pub async fn send_payment_failed_notification(
 	)
 	.await?;
 
-	email::send_payment_failed_email(
-		user_email.parse()?,
-		user.username,
-		workspace_name,
-		month,
-		year,
-		total_bill,
-	)
-	.await
+	if is_verified {
+		email::send_domain_verified_email(
+			domain.to_string(),
+			user.first_name,
+			domain_id.to_string(),
+			user_email.parse()?,
+		)
+		.await?;
+	} else {
+		email::send_domain_unverified_email(
+			domain.to_string(),
+			user.first_name,
+			is_internal,
+			domain_id.to_string(),
+			user_email.parse()?,
+		)
+		.await?;
+	}
+	Ok(())
 }

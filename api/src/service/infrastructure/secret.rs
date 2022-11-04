@@ -48,7 +48,6 @@ pub async fn create_new_secret_in_workspace(
 	db::create_resource(
 		connection,
 		&resource_id,
-		&format!("Secret: {}", name),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
@@ -121,7 +120,6 @@ pub async fn create_new_secret_for_deployment(
 	db::create_resource(
 		connection,
 		&resource_id,
-		&format!("Secret: {}", name),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
@@ -239,12 +237,25 @@ pub async fn delete_secret_in_workspace(
 		secret_id,
 	);
 
-	let secret = db::get_secret_by_id(connection, secret_id)
+	// Make sure that a secret with that ID exists. Users shouldn't be allowed
+	// to delete a secret that doesn't exist
+	db::get_secret_by_id(connection, secret_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	//TODO: check if the secret is connected to a deployment or not
+	// check if the secret is connected to a deployment or not
+	let used_in_deployment =
+		db::get_deployments_with_secret_as_environment_variable(
+			connection, secret_id,
+		)
+		.await?
+		.is_empty();
+	if used_in_deployment {
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(RESOURCE_IN_USE).to_string()));
+	}
 
 	let client = VaultClient::new(
 		VaultClientSettingsBuilder::default()
@@ -295,12 +306,7 @@ pub async fn delete_secret_in_workspace(
 		secret_id,
 	);
 
-	db::update_secret_name(
-		connection,
-		secret_id,
-		&format!("patr-deleted: {}@{}", secret_id, secret.name),
-	)
-	.await?;
+	db::delete_secret(connection, secret_id, &Utc::now()).await?;
 
 	let secret_count =
 		db::get_all_secrets_in_workspace(connection, workspace_id)

@@ -126,7 +126,7 @@ pub async fn generate_new_refresh_token_for_user(
 	loop {
 		let refresh_token = Uuid::new_v4();
 		let hashed = hash(refresh_token.as_str().as_bytes())?;
-		let login = db::get_login_for_user_with_refresh_token(
+		let login = db::get_web_login_for_user_with_refresh_token(
 			connection, user_id, &hashed,
 		)
 		.await?;
@@ -375,9 +375,8 @@ pub async fn get_ip_address_info(
 		pub country: String,
 		pub region: String,
 		pub city: String,
-		pub postal: String,
 		pub loc: String,
-		pub timezone: String,
+		pub timezone: Option<String>,
 	}
 
 	#[derive(Deserialize, Debug)]
@@ -397,7 +396,6 @@ pub async fn get_ip_address_info(
 		country: "ZZ".to_owned(),
 		region: "Unknown".to_owned(),
 		city: "Unknown".to_owned(),
-		postal: "000000".to_owned(),
 		loc: "0,0".to_owned(),
 		timezone: "UTC".to_owned(),
 	};
@@ -423,9 +421,8 @@ pub async fn get_ip_address_info(
 				country: valid.country,
 				region: valid.region,
 				city: valid.city,
-				postal: valid.postal,
 				loc: valid.loc,
-				timezone: valid.timezone,
+				timezone: valid.timezone.unwrap_or_else(|| "UTC".to_owned()),
 			},
 		}
 	};

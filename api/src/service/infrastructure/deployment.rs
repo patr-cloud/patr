@@ -134,7 +134,6 @@ pub async fn create_deployment_in_workspace(
 	db::create_resource(
 		connection,
 		&deployment_id,
-		&format!("Deployment: {}", name),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
@@ -1273,31 +1272,18 @@ pub async fn delete_deployment(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
 	region_id: &Uuid,
-	name: &str,
-	user_id: &Uuid,
-	login_id: &Uuid,
+	user_id: Option<&Uuid>,
+	login_id: Option<&Uuid>,
 	ip_address: &str,
+	patr_action: bool,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
-		"request_id: {} - Updating the deployment name in the database",
+		"request_id: {} - Updating the deployment deletion time in the database",
 		request_id
 	);
-	db::update_deployment_name(
-		connection,
-		deployment_id,
-		&format!("patr-deleted: {}-{}", name, deployment_id),
-	)
-	.await?;
-
-	log::trace!("request_id: {} - Updating deployment status", request_id);
-	db::update_deployment_status(
-		connection,
-		deployment_id,
-		&DeploymentStatus::Deleted,
-	)
-	.await?;
+	db::delete_deployment(connection, deployment_id, &Utc::now()).await?;
 
 	let audit_log_id =
 		db::generate_new_workspace_audit_log_id(connection).await?;
@@ -1307,8 +1293,8 @@ pub async fn delete_deployment(
 		workspace_id,
 		ip_address,
 		&Utc::now(),
-		Some(user_id),
-		Some(login_id),
+		user_id,
+		login_id,
 		deployment_id,
 		rbac::PERMISSIONS
 			.get()
@@ -1317,7 +1303,7 @@ pub async fn delete_deployment(
 			.unwrap(),
 		request_id,
 		&serde_json::to_value(DeploymentMetadata::Delete {})?,
-		false,
+		patr_action,
 		true,
 	)
 	.await?;

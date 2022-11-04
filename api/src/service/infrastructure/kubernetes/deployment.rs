@@ -13,7 +13,12 @@ use api_models::{
 use eve_rs::AsError;
 use k8s_openapi::{
 	api::{
-		apps::v1::{Deployment as K8sDeployment, DeploymentSpec},
+		apps::v1::{
+			Deployment as K8sDeployment,
+			DeploymentSpec,
+			DeploymentStrategy,
+			RollingUpdateDeployment,
+		},
 		autoscaling::v1::{
 			CrossVersionObjectReference,
 			HorizontalPodAutoscaler,
@@ -333,8 +338,28 @@ pub async fn update_kubernetes_deployment(
 								.collect::<Vec<_>>(),
 						),
 						resources: Some(ResourceRequirements {
-							limits: Some(machine_type.clone()),
-							..ResourceRequirements::default()
+							limits: Some(machine_type),
+							// https://blog.kubecost.com/blog/requests-and-limits/#the-tradeoffs
+							// using too low values for resource request will
+							// result in frequent pod restarts if memory usage
+							// increases and may result in starvation
+							//
+							// currently used 5% of the mininum deployment
+							// machine type as a request values
+							requests: Some(
+								[
+									(
+										"memory".to_string(),
+										Quantity("25M".to_owned()),
+									),
+									(
+										"cpu".to_string(),
+										Quantity("50m".to_owned()),
+									),
+								]
+								.into_iter()
+								.collect(),
+							),
 						}),
 						volume_mounts: if !running_details
 							.config_mounts
@@ -395,6 +420,15 @@ pub async fn update_kubernetes_deployment(
 					..ObjectMeta::default()
 				}),
 			},
+			strategy: Some(DeploymentStrategy {
+				type_: Some("RollingUpdate".to_owned()),
+				rolling_update: Some(RollingUpdateDeployment {
+					max_surge: Some(IntOrString::Int(1)),
+					max_unavailable: Some(IntOrString::String(
+						"25%".to_owned(),
+					)),
+				}),
+			}),
 			..DeploymentSpec::default()
 		}),
 		..K8sDeployment::default()
@@ -743,6 +777,7 @@ pub async fn delete_kubernetes_deployment(
 		"request_id: {} - deployment deleted successfully!",
 		request_id
 	);
+
 	Ok(())
 }
 

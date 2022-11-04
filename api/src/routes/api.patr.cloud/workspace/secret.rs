@@ -18,7 +18,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::permissions,
+	models::{rbac::permissions, ResourceType},
 	pin_fn,
 	service,
 	utils::{
@@ -39,9 +39,10 @@ pub fn create_sub_app(
 	app.get(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::secret::LIST,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::secret::LIST,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -62,7 +63,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(list_secrets)),
 		],
 	);
@@ -71,9 +72,10 @@ pub fn create_sub_app(
 	app.post(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::secret::CREATE,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::secret::CREATE,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -94,7 +96,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(create_secret)),
 		],
 	);
@@ -103,9 +105,10 @@ pub fn create_sub_app(
 	app.patch(
 		"/:secretId",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::secret::EDIT,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::secret::EDIT,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -133,7 +136,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(update_secret)),
 		],
 	);
@@ -142,9 +145,10 @@ pub fn create_sub_app(
 	app.delete(
 		"/:secretId",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::secret::DELETE,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::secret::DELETE,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -172,7 +176,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(delete_secret)),
 		],
 	);
@@ -288,6 +292,7 @@ async fn delete_secret(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let secret_id =
 		Uuid::parse_str(context.get_param(request_keys::SECRET_ID).unwrap())
@@ -295,6 +300,12 @@ async fn delete_secret(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
+
+	let secret =
+		db::get_secret_by_id(context.get_database_connection(), &secret_id)
+			.await?
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let config = context.get_state().config.clone();
 
@@ -305,6 +316,19 @@ async fn delete_secret(
 		&secret_id,
 		&config,
 		&request_id,
+	)
+	.await?;
+
+	// Commiting transaction so that even if the mailing function fails the
+	// resource should be deleted
+	context.commit_database_transaction().await?;
+
+	service::resource_delete_action_email(
+		context.get_database_connection(),
+		&secret.name,
+		&secret.workspace_id,
+		&ResourceType::Secret,
+		&user_id,
 	)
 	.await?;
 

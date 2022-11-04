@@ -1,0 +1,16 @@
+Hello {{username}},
+
+Your domain {{domainName}} is no longer connected to Patr.
+
+{{#if isInternal}}
+Your domain's nameserver are no longer pointing to Patr's nameservers.
+{{else}}
+The verification DNS record for your domain no longer exists.
+{{/if}}
+If the domain is not verified in 7 days, it will be automatically removed.
+
+If you wish to verify your domain again, visit (https://app.patr.cloud/domain/{{domainId}}/verify). 
+
+If you are facing any issues, reach out to us at support@patr.cloud.
+
+Join our Discord community (https://patr.cloud/discord) for the latest updates and chat with us here (https://app.patr.cloud?openDrift=true) for instant technical support.

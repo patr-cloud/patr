@@ -22,18 +22,19 @@ async fn update_bill() -> Result<(), Error> {
 	for workspace in workspaces {
 		let mut connection =
 			super::CONFIG.get().unwrap().database.begin().await?;
-		let new_bill = service::calculate_total_bill_for_workspace_till(
-			&mut connection,
-			&workspace.id,
-			&month_start_date,
-			&now,
-		)
-		.await?;
+		let total_resource_usage_bill =
+			service::calculate_total_bill_for_workspace_till(
+				&mut connection,
+				&workspace.id,
+				&month_start_date,
+				&now,
+			)
+			.await?;
 
 		db::update_amount_due_for_workspace(
 			&mut connection,
 			&workspace.id,
-			new_bill,
+			total_resource_usage_bill.total_charge.0,
 		)
 		.await?;
 		connection.commit().await?;

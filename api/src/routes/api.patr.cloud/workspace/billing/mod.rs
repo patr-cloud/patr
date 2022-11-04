@@ -1,3 +1,5 @@
+use std::{cmp::min, ops::Sub};
+
 use api_models::{
 	models::workspace::billing::{
 		AddBillingAddressRequest,
@@ -12,10 +14,14 @@ use api_models::{
 		ConfirmPaymentResponse,
 		DeleteBillingAddressResponse,
 		DeletePaymentMethodResponse,
+		GetBillBreakdownRequest,
+		GetBillBreakdownResponse,
 		GetBillingAddressResponse,
 		GetCurrentUsageResponse,
 		GetPaymentMethodResponse,
 		GetTransactionHistoryResponse,
+		MakePaymentRequest,
+		MakePaymentResponse,
 		PaymentMethod,
 		Transaction,
 		UpdateBillingAddressRequest,
@@ -23,6 +29,7 @@ use api_models::{
 	},
 	utils::{DateTime, Uuid},
 };
+use chrono::{Duration, TimeZone, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
@@ -65,9 +72,10 @@ pub fn create_sub_app(
 	sub_app.post(
 		"/billing-address",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: false,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -85,7 +93,7 @@ pub fn create_sub_app(
 					}
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(add_billing_address)),
 		],
 	);
@@ -93,9 +101,10 @@ pub fn create_sub_app(
 	sub_app.patch(
 		"/billing-address",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: false,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -116,7 +125,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(update_billing_address)),
 		],
 	);
@@ -124,9 +133,10 @@ pub fn create_sub_app(
 	sub_app.delete(
 		"/billing-address",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: false,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -147,7 +157,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(delete_billing_address)),
 		],
 	);
@@ -155,9 +165,10 @@ pub fn create_sub_app(
 	sub_app.post(
 		"/payment-method",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: false,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -178,7 +189,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(add_payment_method)),
 		],
 	);
@@ -186,9 +197,10 @@ pub fn create_sub_app(
 	sub_app.get(
 		"/payment-method",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: false,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -209,7 +221,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_payment_method)),
 		],
 	);
@@ -217,9 +229,10 @@ pub fn create_sub_app(
 	sub_app.delete(
 		"/payment-method/:paymentMethodId",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: false,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -240,7 +253,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(delete_payment_method)),
 		],
 	);
@@ -248,9 +261,10 @@ pub fn create_sub_app(
 	sub_app.post(
 		"/confirm-payment-method",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: false,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -271,17 +285,50 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(confirm_payment_method)),
+		],
+	);
+
+	sub_app.post(
+		"/set-primary-card",
+		[
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: false,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			},
+			EveMiddleware::CustomFunction(pin_fn!(set_primary_card)),
 		],
 	);
 
 	sub_app.get(
 		"/billing-address",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -302,7 +349,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_billing_address)),
 		],
 	);
@@ -310,9 +357,10 @@ pub fn create_sub_app(
 	sub_app.post(
 		"/add-credits",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: false,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -333,17 +381,50 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(add_credits)),
+		],
+	);
+
+	sub_app.post(
+		"/make-payment",
+		[
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: false,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			},
+			EveMiddleware::CustomFunction(pin_fn!(make_payment)),
 		],
 	);
 
 	sub_app.post(
 		"/confirm-payment",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: false,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -364,7 +445,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(confirm_payment)),
 		],
 	);
@@ -372,9 +453,10 @@ pub fn create_sub_app(
 	sub_app.get(
 		"/get-current-usage",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -395,17 +477,50 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_current_bill)),
+		],
+	);
+
+	sub_app.get(
+		"/bill-breakdown",
+		[
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			},
+			EveMiddleware::CustomFunction(pin_fn!(get_bill_breakdown)),
 		],
 	);
 
 	sub_app.get(
 		"/transaction-history",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT,
-				api_macros::closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -426,7 +541,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_transaction_history)),
 		],
 	);
@@ -757,6 +872,39 @@ async fn confirm_payment_method(
 	Ok(context)
 }
 
+async fn set_primary_card(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+	let ConfirmPaymentMethodRequest {
+		payment_method_id, ..
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	// Check if payment method that is requested to be default, exists or not
+	db::get_payment_method_info(
+		context.get_database_connection(),
+		&payment_method_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	// Set payment method to default in workspace
+	db::set_default_payment_method_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+		&payment_method_id,
+	)
+	.await?;
+	context.success(ConfirmPaymentMethodResponse {});
+	Ok(context)
+}
+
 async fn get_billing_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -824,6 +972,32 @@ async fn add_credits(
 	Ok(context)
 }
 
+async fn make_payment(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	let MakePaymentRequest { amount, .. } =
+		context
+			.get_body_as()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let config = context.get_state().config.clone();
+	let transaction_id = service::make_payment(
+		context.get_database_connection(),
+		&workspace_id,
+		amount,
+		&config,
+	)
+	.await?;
+
+	context.success(MakePaymentResponse { transaction_id });
+	Ok(context)
+}
+
 async fn confirm_payment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -831,19 +1005,17 @@ async fn confirm_payment(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let ConfirmPaymentRequest {
-		payment_intent_id, ..
-	} = context
+	let ConfirmPaymentRequest { transaction_id, .. } = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
 
-	let success = service::confirm_payment_method(
+	let success = service::confirm_payment(
 		context.get_database_connection(),
 		&workspace_id,
-		&payment_intent_id,
+		&transaction_id,
 		&config,
 	)
 	.await?;
@@ -863,7 +1035,7 @@ async fn get_current_bill(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let current_bill = db::get_workspace_info(
+	let current_month_bill_so_far = db::get_workspace_info(
 		context.get_database_connection(),
 		&workspace_id,
 	)
@@ -872,20 +1044,52 @@ async fn get_current_bill(
 	.body(error!(SERVER_ERROR).to_string())?
 	.amount_due;
 
-	let credits_left = db::get_credits_for_workspace(
+	let leftover_credits_or_due = db::get_total_amount_to_pay_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 	)
-	.await?
-	.into_iter()
-	.map(|transaction| transaction.amount.abs())
-	.sum::<f64>()
-	.max(0f64);
+	.await?;
 
 	context.success(GetCurrentUsageResponse {
-		current_bill,
-		credits_left,
+		current_usage: current_month_bill_so_far + leftover_credits_or_due,
 	});
+	Ok(context)
+}
+
+async fn get_bill_breakdown(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	let GetBillBreakdownRequest { month, year, .. } = context
+		.get_query_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let month_start_date = Utc.ymd(year as i32, month, 1).and_hms(0, 0, 0);
+	let month_end_date = Utc
+		.ymd(
+			(if month == 12 { year + 1 } else { year }) as i32,
+			if month == 12 { 1 } else { month + 1 },
+			1,
+		)
+		.and_hms(0, 0, 0)
+		.sub(Duration::nanoseconds(1));
+	let month_end_date = min(month_end_date, Utc::now());
+
+	let bill = service::get_total_resource_usage(
+		context.get_database_connection(),
+		&workspace_id,
+		&month_start_date,
+		&month_end_date,
+		year,
+		month,
+	)
+	.await?;
+
+	context.success(GetBillBreakdownResponse { bill });
 	Ok(context)
 }
 

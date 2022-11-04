@@ -81,7 +81,6 @@ pub async fn create_static_site_in_workspace(
 	db::create_resource(
 		connection,
 		&static_site_id,
-		&format!("Static_site: {}", name),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
@@ -224,19 +223,7 @@ pub async fn delete_static_site(
 	)
 	.await?;
 
-	db::update_static_site_name(
-		connection,
-		static_site_id,
-		&format!("patr-deleted: {}-{}", static_site.name, static_site_id),
-	)
-	.await?;
-
-	db::update_static_site_status(
-		connection,
-		static_site_id,
-		&DeploymentStatus::Deleted,
-	)
-	.await?;
+	db::delete_static_site(connection, static_site_id, &Utc::now()).await?;
 
 	let static_site_plan = match db::get_static_sites_for_workspace(
 		connection,
@@ -658,7 +645,6 @@ async fn create_static_site_upload(
 	db::create_resource(
 		connection,
 		&upload_id,
-		&format!("Static site upload: {}", upload_id),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()

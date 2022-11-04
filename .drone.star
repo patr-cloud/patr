@@ -133,6 +133,8 @@ def get_pipeline_steps(ctx):
                 "Check clippy lints",
                 release=True,
             ),
+            # Check whether crate version is updated
+            check_version("Check version"),
 
             # Create sample config
             copy_config("Copy sample config"),
@@ -189,6 +191,8 @@ def get_pipeline_steps(ctx):
                 "Check clippy lints",
                 release=True,
             ),
+            # Check whether crate version is updated
+            check_version("Check version"),
 
             # Create sample config
             copy_config("Copy sample config"),
@@ -408,7 +412,7 @@ def build_code(step_name, release, sqlx_offline):
 
     return {
         "name": step_name,
-        "image": "rust:1.63",
+        "image": "rust:1.64",
         "commands": [
             "curl -L -o sccache.tar.gz https://github.com/mozilla/sccache/releases/download/v0.3.0/sccache-v0.3.0-x86_64-unknown-linux-musl.tar.gz",
             "tar -xf sccache.tar.gz",
@@ -452,6 +456,19 @@ def check_formatting(step_name):
         ]
     }
 
+def check_version(step_name):
+    return {
+        "name": step_name,
+        "image": "rust:1.64",
+        "commands": [
+            "cargo run --example check-api-version"
+        ],
+        "environment": {
+            "GITEA_TOKEN": {
+                "from_secret": "gitea_token"
+            },
+        }
+    }
 
 def check_clippy(step_name, release):
 
@@ -461,7 +478,7 @@ def check_clippy(step_name, release):
 
     return {
         "name": step_name,
-        "image": "rust:1.63",
+        "image": "rust:1.64",
         "commands": [
             "rustup component add clippy",
             "cargo clippy {} -- -D warnings".format(release_flag)
@@ -494,7 +511,7 @@ def check_clippy(step_name, release):
 def copy_config(step_name):
     return {
         "name": step_name,
-        "image": "rust:1.63",
+        "image": "rust:1.64",
         "commands": [
             "cp config/dev.sample.json config/dev.json",
             "cp config/dev.sample.json config/prod.json"
@@ -524,7 +541,7 @@ def init_database(step_name, release, env):
         bin_location = "./target/debug/api"
     return {
         "name": step_name,
-        "image": "rust:1.63",
+        "image": "rust:1.64",
         "commands": [
             "{} --db-only".format(bin_location)
         ],
@@ -535,7 +552,7 @@ def init_database(step_name, release, env):
 def clean_api_build(step_name, release):
     return {
         "name": step_name,
-        "image": "rust:1.63",
+        "image": "rust:1.64",
         "commands": [
             "cargo clean -p api"
         ],
@@ -577,7 +594,7 @@ def check_code(step_name, release, sqlx_offline):
 
     return {
         "name": step_name,
-        "image": "rust:1.63",
+        "image": "rust:1.64",
         "commands": [
             "cargo check {}".format(release_flag)
         ],
@@ -626,7 +643,7 @@ def create_gitea_release(step_name, staging):
         release_flag = ""
     return {
         "name": step_name,
-        "image": "rust:1.63",
+        "image": "rust:1.64",
         "commands": [
             "echo \"$GITEA_IP develop.vicara.co\" >> /etc/hosts",
             "cargo run {} --example create-gitea-release".format(release_flag)
@@ -670,7 +687,7 @@ def build_examples(step_name, release, sqlx_offline):
         release_flag = ""
     return {
         "name": step_name,
-        "image": "rust:1.63",
+        "image": "rust:1.64",
         "commands": [
             "cargo build {}".format(release_flag),
             "cargo build {} --examples".format(release_flag)

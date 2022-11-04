@@ -7,7 +7,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, ManagedDatabasePlan},
 	error,
-	models::rbac::permissions,
+	models::{rbac::permissions, ResourceType},
 	pin_fn,
 	service,
 	utils::{
@@ -26,9 +26,10 @@ pub fn create_sub_app(
 	app.get(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::managed_database::LIST,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::infrastructure::managed_database::LIST,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -49,7 +50,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(list_all_database_clusters)),
 		],
 	);
@@ -57,9 +58,10 @@ pub fn create_sub_app(
 	app.post(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::managed_database::CREATE,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::infrastructure::managed_database::CREATE,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -80,7 +82,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(create_database_cluster)),
 		],
 	);
@@ -88,9 +90,10 @@ pub fn create_sub_app(
 	app.get(
 		"/:databaseId/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::managed_database::INFO,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::infrastructure::managed_database::INFO,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -118,7 +121,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_managed_database_info)),
 		],
 	);
@@ -126,9 +129,10 @@ pub fn create_sub_app(
 	app.delete(
 		"/:databaseId/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::managed_database::DELETE,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::infrastructure::managed_database::DELETE,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -156,7 +160,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(delete_managed_database)),
 		],
 	);
@@ -359,9 +363,20 @@ async fn delete_managed_database(
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
+	let user_id = context.get_token_data().unwrap().user_id().clone();
+
 	let database_id =
 		Uuid::parse_str(context.get_param(request_keys::DATABASE_ID).unwrap())
 			.unwrap();
+
+	let database = db::get_managed_database_by_id(
+		context.get_database_connection(),
+		&database_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
 	let config = context.get_state().config.clone();
 
 	log::trace!("request_id: {} - Deleting database cluster", request_id);
@@ -370,6 +385,19 @@ async fn delete_managed_database(
 		&database_id,
 		&config,
 		&request_id,
+	)
+	.await?;
+
+	// Commiting transaction so that even if the mailing function fails the
+	// resource should be deleted
+	context.commit_database_transaction().await?;
+
+	service::resource_delete_action_email(
+		context.get_database_connection(),
+		&database.name,
+		&database.workspace_id,
+		&ResourceType::ManagedDatabase,
+		&user_id,
 	)
 	.await?;
 

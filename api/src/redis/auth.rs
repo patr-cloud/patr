@@ -6,8 +6,6 @@ use redis::{
 	RedisError,
 };
 
-use crate::models::AccessTokenData;
-
 fn get_key_for_user_revocation(user_id: &Uuid) -> String {
 	format!("token-revoked:user:{}", user_id.as_str())
 }
@@ -19,6 +17,9 @@ fn get_key_for_workspace_revocation(workspace_id: &Uuid) -> String {
 }
 fn get_key_for_global_revocation() -> String {
 	"token-revoked:global".to_string()
+}
+fn get_key_for_user_api_token_data(token_id: &Uuid) -> String {
+	format!("api-token-data:{}", token_id)
 }
 
 /// returns last set revocation timestamp (in millis) for the given user
@@ -147,47 +148,37 @@ pub async fn revoke_global_tokens_created_before_timestamp(
 	}
 }
 
-pub async fn is_access_token_revoked(
+pub async fn get_user_api_token_data(
 	redis_conn: &mut RedisConnection,
-	token: &AccessTokenData,
-) -> Result<bool, RedisError> {
-	// check user revocation
-	let revoked_timestamp =
-		get_token_revoked_timestamp_for_user(redis_conn, &token.user.id)
-			.await?;
-	if matches!(revoked_timestamp, Some(revoked_timestamp) if token.iat < revoked_timestamp)
-	{
-		return Ok(true);
-	}
+	token_id: &Uuid,
+) -> Result<Option<String>, RedisError> {
+	let token_data: Option<String> = redis_conn
+		.get(get_key_for_user_api_token_data(token_id))
+		.await?;
+	Ok(token_data)
+}
 
-	// check login revocation
-	let revoked_timestamp =
-		get_token_revoked_timestamp_for_login(redis_conn, &token.login_id)
-			.await?;
-	if matches!(revoked_timestamp, Some(revoked_timestamp) if token.iat < revoked_timestamp)
-	{
-		return Ok(true);
+pub async fn set_user_api_token_data(
+	redis_conn: &mut RedisConnection,
+	token_id: &Uuid,
+	token_data: &str,
+	ttl: Option<&Duration>,
+) -> Result<(), RedisError> {
+	let key = get_key_for_user_api_token_data(token_id);
+	if let Some(ttl) = ttl {
+		redis_conn
+			.set_ex(key, token_data, ttl.num_seconds() as usize)
+			.await
+	} else {
+		redis_conn.set(key, token_data).await
 	}
+}
 
-	// check workspace revocation
-	for workspace_id in token.workspaces.keys() {
-		let revoked_timestamp =
-			get_token_revoked_timestamp_for_workspace(redis_conn, workspace_id)
-				.await?;
-		if matches!(revoked_timestamp, Some(revoked_timestamp) if token.iat < revoked_timestamp)
-		{
-			return Ok(true);
-		}
-	}
-
-	// check global revocation
-	let revoked_timestamp =
-		get_global_token_revoked_timestamp(redis_conn).await?;
-	if matches!(revoked_timestamp, Some(revoked_timestamp) if token.iat < revoked_timestamp)
-	{
-		return Ok(true);
-	}
-
-	// all checks are passed, hence token has not revoked
-	Ok(false)
+pub async fn delete_user_api_token_data(
+	redis_conn: &mut RedisConnection,
+	token_id: &Uuid,
+) -> Result<(), RedisError> {
+	redis_conn
+		.del(get_key_for_user_api_token_data(token_id))
+		.await
 }

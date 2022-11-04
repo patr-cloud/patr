@@ -49,9 +49,10 @@ use crate::{
 	models::{
 		rbac::{self, permissions},
 		DeploymentMetadata,
+		ResourceType,
 	},
 	pin_fn,
-	routes::api_patr_cloud,
+	routes,
 	service,
 	utils::{
 		constants::request_keys,
@@ -85,9 +86,11 @@ pub fn create_sub_app(
 	app.get(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::deployment::LIST,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::deployment::LIST,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -108,7 +111,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(list_deployments)),
 		],
 	);
@@ -116,9 +119,11 @@ pub fn create_sub_app(
 	app.get(
 		"/:deploymentId/deploy-history",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::deployment::INFO,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::deployment::INFO,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -146,7 +151,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(list_deployment_history)),
 		],
 	);
@@ -155,9 +160,11 @@ pub fn create_sub_app(
 	app.post(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::deployment::CREATE,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::deployment::CREATE,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
@@ -178,7 +185,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(create_deployment)),
 		],
 	);
@@ -187,9 +194,11 @@ pub fn create_sub_app(
 	app.get(
 		"/:deploymentId/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::deployment::INFO,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::deployment::INFO,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -217,7 +226,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_deployment_info)),
 		],
 	);
@@ -226,9 +235,11 @@ pub fn create_sub_app(
 	app.post(
 		"/:deploymentId/start",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::deployment::EDIT,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::deployment::EDIT,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -256,7 +267,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(start_deployment)),
 		],
 	);
@@ -265,9 +276,11 @@ pub fn create_sub_app(
 	app.post(
 		"/:deploymentId/stop",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::deployment::EDIT,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::deployment::EDIT,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -295,7 +308,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(stop_deployment)),
 		],
 	);
@@ -304,9 +317,11 @@ pub fn create_sub_app(
 	app.post(
 		"/:deploymentId/deploy-history/:digest/revert",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::deployment::EDIT,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::deployment::EDIT,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -334,7 +349,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(revert_deployment)),
 		],
 	);
@@ -343,9 +358,11 @@ pub fn create_sub_app(
 	app.get(
 		"/:deploymentId/logs",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::deployment::INFO,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::deployment::INFO,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -373,7 +390,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_logs)),
 		],
 	);
@@ -382,9 +399,11 @@ pub fn create_sub_app(
 	app.delete(
 		"/:deploymentId/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::deployment::DELETE,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::deployment::DELETE,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -412,7 +431,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(delete_deployment)),
 		],
 	);
@@ -421,9 +440,11 @@ pub fn create_sub_app(
 	app.patch(
 		"/:deploymentId/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::deployment::EDIT,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::deployment::EDIT,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -451,7 +472,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(update_deployment)),
 		],
 	);
@@ -460,9 +481,11 @@ pub fn create_sub_app(
 	app.get(
 		"/:deploymentId/managed-urls",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::deployment::INFO,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::deployment::INFO,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -490,7 +513,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(list_linked_urls)),
 		],
 	);
@@ -499,9 +522,11 @@ pub fn create_sub_app(
 	app.get(
 		"/:deploymentId/metrics",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::deployment::INFO,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::deployment::INFO,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -529,7 +554,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_deployment_metrics)),
 		],
 	);
@@ -537,9 +562,11 @@ pub fn create_sub_app(
 	app.get(
 		"/:deploymentId/build-logs",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::deployment::LIST,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::deployment::LIST,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -567,7 +594,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_build_logs)),
 		],
 	);
@@ -575,9 +602,11 @@ pub fn create_sub_app(
 	app.get(
 		"/:deploymentId/events",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::deployment::LIST,
-				closure_as_pinned_box!(|mut context| {
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::deployment::LIST,
+				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
@@ -605,7 +634,7 @@ pub fn create_sub_app(
 
 					Ok((context, resource))
 				}),
-			),
+			},
 			EveMiddleware::CustomFunction(pin_fn!(get_build_events)),
 		],
 	);
@@ -809,10 +838,10 @@ async fn create_deployment(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+	let ip_address = routes::get_request_ip_address(&context);
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
-	let login_id = context.get_token_data().unwrap().login_id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
+	let login_id = context.get_token_data().unwrap().login_id().clone();
 
 	let CreateDeploymentRequest {
 		workspace_id: _,
@@ -1137,11 +1166,11 @@ async fn start_deployment(
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Start deployment", request_id);
 
-	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+	let ip_address = routes::get_request_ip_address(&context);
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
-	let login_id = context.get_token_data().unwrap().login_id.clone();
+	let login_id = context.get_token_data().unwrap().login_id().clone();
 
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
@@ -1259,11 +1288,11 @@ async fn stop_deployment(
 	)
 	.unwrap();
 
-	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+	let ip_address = routes::get_request_ip_address(&context);
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
-	let login_id = context.get_token_data().unwrap().login_id.clone();
+	let login_id = context.get_token_data().unwrap().login_id().clone();
 
 	let config = context.get_state().config.clone();
 	log::trace!("request_id: {} - Getting deployment id from db", request_id);
@@ -1543,11 +1572,11 @@ async fn delete_deployment(
 	)
 	.unwrap();
 
-	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+	let ip_address = routes::get_request_ip_address(&context);
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
-	let login_id = context.get_token_data().unwrap().login_id.clone();
+	let login_id = context.get_token_data().unwrap().login_id().clone();
 
 	log::trace!(
 		"request_id: {} - Deleting the deployment with id: {}",
@@ -1584,10 +1613,10 @@ async fn delete_deployment(
 		&deployment.workspace_id,
 		&deployment_id,
 		&deployment.region,
-		&deployment.name,
-		&user_id,
-		&login_id,
+		Some(&user_id),
+		Some(&login_id),
 		&ip_address,
+		false,
 		&config,
 		&request_id,
 	)
@@ -1598,6 +1627,19 @@ async fn delete_deployment(
 		"A deployment has been deleted",
 	)
 	.await;
+
+	// Commiting transaction so that even if the mailing function fails the
+	// resource should be deleted
+	context.commit_database_transaction().await?;
+
+	service::resource_delete_action_email(
+		context.get_database_connection(),
+		&deployment.name,
+		&deployment.workspace_id,
+		&ResourceType::Deployment,
+		&user_id,
+	)
+	.await?;
 
 	context.success(DeleteDeploymentResponse {});
 	Ok(context)
@@ -1660,11 +1702,11 @@ async fn update_deployment(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let name = name.as_ref().map(|name| name.trim());
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
-	let login_id = context.get_token_data().unwrap().login_id.clone();
+	let login_id = context.get_token_data().unwrap().login_id().clone();
 
-	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+	let ip_address = routes::get_request_ip_address(&context);
 
 	// Is any one value present?
 	if name.is_none() &&

@@ -1,15 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-use api_models::utils::Uuid;
+use api_models::{models::user::WorkspacePermission, utils::Uuid};
 use chrono::{DateTime, Utc};
 
-use crate::{
-	db::Workspace,
-	models::rbac::{self, WorkspacePermissions},
-	query,
-	query_as,
-	Database,
-};
+use crate::{db::Workspace, models::rbac, query, query_as, Database};
 
 mod role;
 mod user;
@@ -24,7 +18,6 @@ pub struct ResourceType {
 
 pub struct Resource {
 	pub id: Uuid,
-	pub name: String,
 	pub resource_type_id: Uuid,
 	pub owner_id: Uuid,
 	pub created: DateTime<Utc>,
@@ -71,7 +64,6 @@ pub async fn initialize_rbac_pre(
 		r#"
 		CREATE TABLE resource(
 			id UUID CONSTRAINT resource_pk PRIMARY KEY,
-			name VARCHAR(100) NOT NULL,
 			resource_type_id UUID NOT NULL
 				CONSTRAINT resource_fk_resource_type_id
 					REFERENCES resource_type(id),
@@ -318,11 +310,11 @@ pub async fn initialize_rbac_post(
 	Ok(())
 }
 
-pub async fn get_all_workspace_roles_for_user(
+pub async fn get_all_workspace_role_permissions_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
-) -> Result<HashMap<Uuid, WorkspacePermissions>, sqlx::Error> {
-	let mut workspaces: HashMap<Uuid, WorkspacePermissions> = HashMap::new();
+) -> Result<BTreeMap<Uuid, WorkspacePermission>, sqlx::Error> {
+	let mut workspaces: BTreeMap<Uuid, WorkspacePermission> = BTreeMap::new();
 
 	let workspace_roles = query!(
 		r#"
@@ -377,67 +369,71 @@ pub async fn get_all_workspace_roles_for_user(
 		if let Some(permission) = workspaces.get_mut(&workspace_id) {
 			for resource in resources {
 				let permission_id = resource.permission_id;
-				if let Some(permissions) =
-					permission.resources.get_mut(&resource.resource_id)
+				if let Some(permissions) = permission
+					.resource_permissions
+					.get_mut(&resource.resource_id)
 				{
 					if !permissions.contains(&permission_id) {
-						permissions.push(permission_id);
+						permissions.insert(permission_id);
 					}
 				} else {
-					permission
-						.resources
-						.insert(resource.resource_id, vec![permission_id]);
+					permission.resource_permissions.insert(
+						resource.resource_id,
+						BTreeSet::from([permission_id]),
+					);
 				}
 			}
 			for resource_type in resource_types {
 				let permission_id = resource_type.permission_id;
 				if let Some(permissions) = permission
-					.resource_types
+					.resource_type_permissions
 					.get_mut(&resource_type.resource_type_id)
 				{
 					if !permissions.contains(&permission_id) {
-						permissions.push(permission_id);
+						permissions.insert(permission_id);
 					}
 				} else {
-					permission.resource_types.insert(
+					permission.resource_type_permissions.insert(
 						resource_type.resource_type_id,
-						vec![permission_id],
+						BTreeSet::from([permission_id]),
 					);
 				}
 			}
 		} else {
-			let mut permission = WorkspacePermissions {
+			let mut permission = WorkspacePermission {
 				is_super_admin: false,
-				resources: HashMap::new(),
-				resource_types: HashMap::new(),
+				resource_permissions: BTreeMap::new(),
+				resource_type_permissions: BTreeMap::new(),
 			};
 			for resource in resources {
 				let permission_id = resource.permission_id;
-				if let Some(permissions) =
-					permission.resources.get_mut(&resource.resource_id)
+				if let Some(permissions) = permission
+					.resource_permissions
+					.get_mut(&resource.resource_id)
 				{
 					if !permissions.contains(&permission_id) {
-						permissions.push(permission_id);
+						permissions.insert(permission_id);
 					}
 				} else {
-					permission
-						.resources
-						.insert(resource.resource_id, vec![permission_id]);
+					permission.resource_permissions.insert(
+						resource.resource_id,
+						BTreeSet::from([permission_id]),
+					);
 				}
 			}
 			for resource_type in resource_types {
 				let permission_id = resource_type.permission_id;
 				if let Some(permissions) = permission
-					.resource_types
+					.resource_type_permissions
 					.get_mut(&resource_type.resource_type_id)
 				{
 					if !permissions.contains(&permission_id) {
-						permissions.push(permission_id);
+						permissions.insert(permission_id);
 					}
 				} else {
-					permission.resource_types.insert(
+					permission.resource_type_permissions.insert(
 						resource_type.resource_type_id,
-						vec![permission_id],
+						BTreeSet::from([permission_id]),
 					);
 				}
 			}
@@ -484,10 +480,10 @@ pub async fn get_all_workspace_roles_for_user(
 		} else {
 			workspaces.insert(
 				workspace_id,
-				WorkspacePermissions {
+				WorkspacePermission {
 					is_super_admin: true,
-					resources: HashMap::new(),
-					resource_types: HashMap::new(),
+					resource_permissions: BTreeMap::new(),
+					resource_type_permissions: BTreeMap::new(),
 				},
 			);
 		}
@@ -589,7 +585,6 @@ pub async fn get_all_permissions(
 pub async fn create_resource(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &Uuid,
-	resource_name: &str,
 	resource_type_id: &Uuid,
 	owner_id: &Uuid,
 	created: &DateTime<Utc>,
@@ -599,16 +594,14 @@ pub async fn create_resource(
 		INSERT INTO
 			resource(
 				id,
-				name,
 				resource_type_id,
 				owner_id,
 				created
 			)
 		VALUES
-			($1, $2, $3, $4, $5);
+			($1, $2, $3, $4);
 		"#,
 		resource_id as _,
-		resource_name,
 		resource_type_id as _,
 		owner_id as _,
 		created
@@ -655,7 +648,6 @@ pub async fn get_resource_by_id(
 		r#"
 		SELECT
 			id as "id: _",
-			name,
 			resource_type_id as "resource_type_id: _",
 			owner_id as "owner_id: _",
 			created 
@@ -668,28 +660,6 @@ pub async fn get_resource_by_id(
 	)
 	.fetch_optional(&mut *connection)
 	.await
-}
-
-pub async fn update_resource_name(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	resource_id: &Uuid,
-	name: &str,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			resource
-		SET
-			name = $2
-		WHERE
-			id = $1;
-		"#,
-		resource_id as _,
-		name
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
 }
 
 #[allow(dead_code)]

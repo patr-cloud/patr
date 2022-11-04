@@ -1,5 +1,5 @@
 use api_models::models::GetVersionResponse;
-use eve_rs::{App as EveApp, Context, NextHandler};
+use eve_rs::{App as EveApp, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
@@ -53,19 +53,4 @@ async fn get_version_number(
 		version: constants::DATABASE_VERSION.to_string(),
 	});
 	Ok(context)
-}
-
-pub fn get_request_ip_address(context: &EveContext) -> String {
-	let cf_connecting_ip = context.get_header("CF-Connecting-IP");
-	let x_real_ip = context.get_header("X-Real-IP");
-	let x_forwarded_for =
-		context.get_header("X-Forwarded-For").and_then(|value| {
-			value.split(',').next().map(|ip| ip.trim().to_string())
-		});
-	let ip = context.get_ip().to_string();
-
-	cf_connecting_ip
-		.or(x_real_ip)
-		.or(x_forwarded_for)
-		.unwrap_or(ip)
 }

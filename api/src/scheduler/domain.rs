@@ -157,12 +157,15 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 						"You might have a dangling resource for the domain"
 					);
 				} else {
-					// TODO change this to notifier
-					// mailer::send_domain_verified_mail(
-					// 	config.config.clone(),
-					// 	notification_email.unwrap(),
-					// 	unverified_domain.name,
-					// );
+					service::domain_verification_email(
+						&mut connection,
+						&unverified_domain.name,
+						&workspace_id,
+						&unverified_domain.id,
+						true,
+						true,
+					)
+					.await?
 				}
 				connection.commit().await?;
 			} else {
@@ -228,6 +231,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 		} else {
 			let response = service::verify_external_domain(
 				&mut connection,
+				&workspace_id,
 				&unverified_domain.name,
 				&unverified_domain.id,
 				&request_id,
@@ -238,6 +242,18 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					"Could not verify domain `{}`",
 					unverified_domain.name
 				);
+
+				// Sending mail
+				service::domain_verification_email(
+					&mut connection,
+					&unverified_domain.name,
+					&workspace_id,
+					&unverified_domain.id,
+					false,
+					false,
+				)
+				.await?;
+
 				let last_unverified = Utc::now()
 					.signed_duration_since(unverified_domain.last_unverified);
 				let last_unverified_days = last_unverified.num_days();
@@ -479,6 +495,14 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 	};
 
 	for (verified_domain, zone_identifier) in verified_domains {
+		// getting workspace_id
+		let workspace_id =
+			db::get_resource_by_id(&mut connection, &verified_domain.id)
+				.await?
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?
+				.owner_id;
+
 		let zone_identifier = if let Some(zone_identifier) = zone_identifier {
 			zone_identifier
 		} else {
@@ -512,12 +536,20 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 			log::error!("Notification email for domain `{}` is None. You might have a dangling resource for the domain", verified_domain.name);
 			continue;
 		} else {
-			// TODO change this to notifier
-			// mailer::send_domain_unverified_mail(
-			// 	config.config.clone(),
-			// 	notification_email.unwrap(),
-			// 	verified_domain.name,
-			// );
+			log::trace!(
+				"domain: {} with id: {} is now unverfied",
+				verified_domain.name,
+				verified_domain.id
+			);
+			service::domain_verification_email(
+				&mut connection,
+				&verified_domain.name,
+				&workspace_id,
+				&verified_domain.id,
+				true,
+				false,
+			)
+			.await?
 		}
 		// TODO delete certificates and managed urls after 3 days
 	}
