@@ -5,21 +5,20 @@ use api_models::{
 		DatabaseUsage,
 		DeploymentUsage,
 		DockerRepositoryUsage,
+		DomainPlan,
 		DomainUsage,
 		ManagedUrlUsage,
 		SecretUsage,
+		StaticSitePlan,
 		StaticSiteUsage,
-		WorkspaceBillBreakdown, StaticSitePlan, DomainPlan,
+		WorkspaceBillBreakdown,
 	},
 	utils::{PriceAmount, Uuid},
 };
 use lettre::message::Mailbox;
 use serde::Serialize;
 
-use crate::{
-	models::EmailTemplate,
-	utils::Error,
-};
+use crate::{models::EmailTemplate, utils::Error};
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/user-sign-up/template.json"]
@@ -629,8 +628,6 @@ pub async fn send_domain_verified_email(
 	)
 	.await
 }
-
-
 
 /// # Description
 /// This function is used to send the email to a recipient

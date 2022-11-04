@@ -920,30 +920,42 @@ pub async fn calculate_total_bill_for_workspace_till(
 			})
 			.sum::<f64>(),
 	);
-	let database_charge = PriceAmount(database_usage
-		.iter()
-		.map(|(_, bill)| bill.amount.0)
-		.sum::<f64>());
-	let static_site_charge = PriceAmount(static_site_usage
-		.iter()
-		.map(|(_, bill)| bill.amount.0)
-		.sum::<f64>());
-	let managed_url_charge = PriceAmount(managed_url_usage
-		.iter()
-		.map(|(_, bill)| bill.amount.0)
-		.sum::<f64>());
-	let docker_repository_charge = PriceAmount(docker_repository_usage
-		.iter()
-		.map(|bill| bill.amount.0)
-		.sum::<f64>());
-	let domain_charge = PriceAmount(domain_usage
-		.iter()
-		.map(|(_, bill)| bill.amount.0)
-		.sum::<f64>());
-	let secret_charge = PriceAmount(secret_usage
-		.iter()
-		.map(|(_, bill)| bill.amount.0)
-		.sum::<f64>());
+	let database_charge = PriceAmount(
+		database_usage
+			.iter()
+			.map(|(_, bill)| bill.amount.0)
+			.sum::<f64>(),
+	);
+	let static_site_charge = PriceAmount(
+		static_site_usage
+			.iter()
+			.map(|(_, bill)| bill.amount.0)
+			.sum::<f64>(),
+	);
+	let managed_url_charge = PriceAmount(
+		managed_url_usage
+			.iter()
+			.map(|(_, bill)| bill.amount.0)
+			.sum::<f64>(),
+	);
+	let docker_repository_charge = PriceAmount(
+		docker_repository_usage
+			.iter()
+			.map(|bill| bill.amount.0)
+			.sum::<f64>(),
+	);
+	let domain_charge = PriceAmount(
+		domain_usage
+			.iter()
+			.map(|(_, bill)| bill.amount.0)
+			.sum::<f64>(),
+	);
+	let secret_charge = PriceAmount(
+		secret_usage
+			.iter()
+			.map(|(_, bill)| bill.amount.0)
+			.sum::<f64>(),
+	);
 
 	let total_charge = PriceAmount(
 		deployment_charge.0 +
