@@ -1,23 +1,16 @@
-use std::collections::HashMap;
-
-use api_models::{models::auth::PreferredRecoveryOption, utils::Uuid};
+use api_models::{
+	models::{
+		auth::PreferredRecoveryOption,
+		workspace::billing::WorkspaceBillBreakdown,
+	},
+	utils::{PriceAmount, Uuid},
+};
 use eve_rs::AsError;
 
 use crate::{
-	db::{self, DomainPlan, StaticSitePlan, User, UserToSignUp},
+	db::{self, User, UserToSignUp},
 	error,
-	models::{
-		billing::{
-			DatabaseBill,
-			DeploymentBill,
-			DockerRepositoryBill,
-			DomainBill,
-			ManagedUrlBill,
-			SecretsBill,
-			StaticSiteBill,
-		},
-		ResourceType,
-	},
+	models::ResourceType,
 	utils::Error,
 	Database,
 };
@@ -396,7 +389,7 @@ async fn get_user_phone_number(
 /// error
 ///
 /// [`Transaction`]: Transaction
-pub async fn send_unpaid_resources_deleted_email(
+pub async fn send_bill_not_paid_delete_resources_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	super_admin_id: Uuid,
 	workspace_name: String,
@@ -422,7 +415,7 @@ pub async fn send_unpaid_resources_deleted_email(
 	)
 	.await?;
 
-	email::send_unpaid_resources_deleted_email(
+	email::send_bill_not_paid_delete_resources_email(
 		user_email.parse()?,
 		user.username,
 		workspace_name,
@@ -451,14 +444,14 @@ pub async fn send_unpaid_resources_deleted_email(
 /// error
 ///
 /// [`Transaction`]: Transaction
-pub async fn send_bill_not_paid_reminder_email(
+pub async fn send_bill_payment_failed_reminder_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	super_admin_id: Uuid,
 	workspace_name: String,
 	month_string: String,
 	month_num: u32,
 	year: i32,
-	total_bill: f64,
+	total_bill: PriceAmount,
 	deadline: String,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, &super_admin_id)
@@ -478,7 +471,7 @@ pub async fn send_bill_not_paid_reminder_email(
 	)
 	.await?;
 
-	email::send_bill_not_paid_reminder_email(
+	email::send_bill_payment_failed_reminder_email(
 		user_email.parse()?,
 		user.username,
 		workspace_name,
@@ -487,6 +480,82 @@ pub async fn send_bill_not_paid_reminder_email(
 		year,
 		total_bill,
 		deadline,
+	)
+	.await
+}
+
+pub async fn send_card_not_added_reminder_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	super_admin_id: Uuid,
+	workspace_name: String,
+	month_string: String,
+	month_num: u32,
+	year: i32,
+	total_bill: PriceAmount,
+	deadline: String,
+) -> Result<(), Error> {
+	let user = db::get_user_by_user_id(connection, &super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_card_not_added_reminder_email(
+		user_email.parse()?,
+		user.username,
+		workspace_name,
+		month_string,
+		month_num,
+		year,
+		total_bill,
+		deadline,
+	)
+	.await
+}
+
+pub async fn send_bill_paid_successfully_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	super_admin_id: Uuid,
+	workspace_name: String,
+	month_string: String,
+	year: i32,
+	card_amount_deducted: PriceAmount,
+) -> Result<(), Error> {
+	let user = db::get_user_by_user_id(connection, &super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_bill_paid_successfully_email(
+		user_email.parse()?,
+		user.username,
+		workspace_name,
+		month_string,
+		year,
+		card_amount_deducted,
 	)
 	.await
 }
@@ -508,23 +577,14 @@ pub async fn send_bill_not_paid_reminder_email(
 /// error
 ///
 /// [`Transaction`]: Transaction
-pub async fn send_payment_failed_notification(
+pub async fn send_payment_failure_invoice_notification(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	super_admin_id: Uuid,
+	super_admin_id: &Uuid,
 	workspace_name: String,
-	deployment_usages: &HashMap<Uuid, DeploymentBill>,
-	database_usages: &HashMap<Uuid, DatabaseBill>,
-	static_sites_usages: &HashMap<StaticSitePlan, StaticSiteBill>,
-	managed_url_usages: &HashMap<u64, ManagedUrlBill>,
-	docker_repository_usages: &[DockerRepositoryBill],
-	domains_usages: &HashMap<DomainPlan, DomainBill>,
-	secrets_usages: &HashMap<u64, SecretsBill>,
+	bill_breakdown: WorkspaceBillBreakdown,
 	month_string: String,
-	month_num: u32,
-	year: i32,
-	total_bill: f64,
 ) -> Result<(), Error> {
-	let user = db::get_user_by_user_id(connection, &super_admin_id)
+	let user = db::get_user_by_user_id(connection, super_admin_id)
 		.await?
 		.status(500)?;
 
@@ -541,47 +601,27 @@ pub async fn send_payment_failed_notification(
 	)
 	.await?;
 
-	email::send_payment_failed_email(
+	email::send_payment_failure_invoice_email(
 		user_email.parse()?,
 		user.username,
 		workspace_name,
-		deployment_usages.clone(),
-		database_usages.clone(),
-		static_sites_usages.clone(),
-		managed_url_usages.clone(),
-		docker_repository_usages.to_owned(),
-		domains_usages.clone(),
-		secrets_usages.clone(),
+		bill_breakdown,
 		month_string,
-		month_num,
-		year,
-		total_bill,
 	)
 	.await
 }
 
-#[allow(clippy::too_many_arguments)]
-pub async fn send_payment_success_notification(
+pub async fn send_payment_success_invoice_notification(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	super_admin_id: Uuid,
+	super_admin_id: &Uuid,
 	workspace_name: String,
-	deployment_usages: HashMap<Uuid, DeploymentBill>,
-	database_usages: HashMap<Uuid, DatabaseBill>,
-	static_sites_usages: HashMap<StaticSitePlan, StaticSiteBill>,
-	managed_url_usages: HashMap<u64, ManagedUrlBill>,
-	docker_repository_usages: Vec<DockerRepositoryBill>,
-	domains_usages: HashMap<DomainPlan, DomainBill>,
-	secrets_usages: HashMap<u64, SecretsBill>,
-	month_string: String,
-	month_num: u32,
-	year: i32,
-	total_bill: String,
-	credit_deducted: String,
-	card_amount_deducted: String,
-	credits_remaining: String,
-	amount_paid: String,
+	current_month_string: String,
+	bill_breakdown: WorkspaceBillBreakdown,
+	credit_deducted: PriceAmount,
+	card_amount_deducted: PriceAmount,
+	credits_remaining: PriceAmount,
 ) -> Result<(), Error> {
-	let user = db::get_user_by_user_id(connection, &super_admin_id)
+	let user = db::get_user_by_user_id(connection, super_admin_id)
 		.await?
 		.status(500)?;
 
@@ -598,25 +638,15 @@ pub async fn send_payment_success_notification(
 	)
 	.await?;
 
-	email::send_payment_success_email(
+	email::send_payment_success_invoice_email(
 		user_email.parse()?,
 		user.username,
 		workspace_name,
-		deployment_usages,
-		database_usages,
-		static_sites_usages,
-		managed_url_usages,
-		docker_repository_usages,
-		domains_usages,
-		secrets_usages,
-		month_string,
-		month_num,
-		year,
-		total_bill,
+		bill_breakdown,
+		current_month_string,
 		credit_deducted,
 		card_amount_deducted,
 		credits_remaining,
-		amount_paid,
 	)
 	.await
 }
