@@ -461,7 +461,7 @@ def check_version(step_name):
         "name": step_name,
         "image": "rust:1.64",
         "commands": [
-            "cargo run --example check-version"
+            "cargo run --example check-api-version"
         ],
         "environment": {
             "GITEA_TOKEN": {
