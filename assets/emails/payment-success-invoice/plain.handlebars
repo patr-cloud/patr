@@ -1,13 +1,13 @@
 
 Hello {{username}}, 
 
-Your invoice for {{monthString}} {{year}} is now available for the workspace {{workspaceName}}
+Your invoice for {{monthString}} {{billBreakdown.year}} is now available for the workspace {{workspaceName}}
 
-Total usage charges: {{totalBill}}
+Total usage charges: {{billBreakdown.totalCharge}}
 
 Detailed Charges Deployment Usage:
-{{#each deploymentUsage}}
-  {{this.deploymentName}}:
+{{#each billBreakdown.deploymentUsage}}
+  {{this.name}}:
   {{#each this.billItems}}
     Machine Type: RAM:
     {{this.machineType.memoryCount}}GB CPU:
@@ -20,16 +20,16 @@ Detailed Charges Deployment Usage:
   {{/each}}
 {{/each}}
 Database Usage:
-{{#each databaseUsage}}
+{{#each billBreakdown.databaseUsage}}
   Name:
-  {{this.databaseName}}
+  {{this.name}}
   Hours used:
   {{this.hours}}
   Bill Amount:
   {{this.amount}}
 {{/each}}
 Static Site Usage:
-{{#each staticSiteUsage}}
+{{#each billBreakdown.staticSiteUsage}}
   Plan:
   {{@key}}
   Hours used:
@@ -38,7 +38,7 @@ Static Site Usage:
   {{this.amount}}
 {{/each}}
 Managed URL Usage:
-{{#each managedUrlUsage}}
+{{#each billBreakdown.managedUrlUsage}}
   No.of URLs:
   {{@key}}
   Hours used:
@@ -47,7 +47,7 @@ Managed URL Usage:
   {{this.amount}}
 {{/each}}
 Docker Repository Usage:
-{{#each dockerRepositoryUsage}}
+{{#each billBreakdown.dockerRepositoryUsage}}
   Total Storage (GB):
   {{@key}}
   Hours used:
@@ -56,7 +56,7 @@ Docker Repository Usage:
   {{this.amount}}
 {{/each}}
 Domain Usage:
-{{#each domainUsage}}
+{{#each billBreakdown.domainUsage}}
   Plan:
   {{@key}}
   Hours used:
@@ -65,7 +65,7 @@ Domain Usage:
   {{this.amount}}
 {{/each}}
 Secret Usage:
-{{#each secretUsage}}
+{{#each billBreakdown.secretUsage}}
   No.of Secrets:
   {{@key}}
   Hours used:
@@ -76,26 +76,23 @@ Secret Usage:
 
 {{#if creditsDeducted}}
   {{#if cardAmountDeducted}}
-The amount was automatically deducted using your card and Patr credits, so no further action is required.
-
-Amount paid using card: ${{cardAmountDeducted}}
-Amount paid using credits: ${{creditsDeducted}}
+    The amount was automatically deducted using your card and Patr credits, so
+    no further action is required. Amount paid using card: ${{cardAmountDeducted}}
+    Amount paid using credits: ${{creditsDeducted}}
   {{/if}}
 {{/if}}
 {{#if cardAmountDeducted}}
   {{#unless creditsDeducted}}
-The amount was automatically charged to your card, so no action is required from your end. 
-
-Amount paid: ${{cardAmountDeducted}}
+    The amount was automatically charged to your card, so no action is required
+    from your end. Amount paid: ${{cardAmountDeducted}}
   {{/unless}}
 {{/if}}
 
 {{#if creditsDeducted}}
   {{#unless cardAmountDeducted}}
-The amount was automatically charged from your Patr credits, so no action is required from your end.
-
-Credits consumed: ${{amountPaid}}
-Credits remaining: ${{creditsRemaining}}
+    The amount was automatically charged from your Patr credits, so no action is
+    required from your end. Credits consumed: ${{creditsDeducted}}
+    Credits remaining: ${{creditsRemaining}}
   {{/unless}}
 {{/if}}
 
