@@ -311,15 +311,16 @@ pub async fn send_unpaid_resources_deleted_email(
 }
 
 #[derive(EmailTemplate, Serialize)]
-#[template_path = "assets/emails/bill-not-paid-reminder/template.json"]
+#[template_path = "assets/emails/bill-payment-failed-reminder/template.json"]
 #[allow(non_snake_case)]
-struct BillNotPaidReminderEmail {
+struct BillPaymentFailedRemainderEmail {
 	username: String,
 	workspaceName: String,
 	monthString: String,
 	monthNumber: u32,
 	year: i32,
 	totalBill: f64,
+	deadline: String,
 }
 
 #[allow(non_snake_case)]
@@ -331,15 +332,17 @@ pub async fn send_bill_not_paid_reminder_email(
 	monthNumber: u32,
 	year: i32,
 	totalBill: f64,
+	deadline: String,
 ) -> Result<(), Error> {
 	send_email(
-		BillNotPaidReminderEmail {
+		BillPaymentFailedRemainderEmail {
 			username,
 			workspaceName,
 			monthString,
 			monthNumber,
 			year,
 			totalBill,
+			deadline,
 		},
 		email,
 		None,
