@@ -162,18 +162,6 @@ pub async fn update_kubernetes_deployment(
 		.unwrap()
 		.get(&deployment.machine_type)
 		.unwrap_or(&(1, 2));
-	let machine_type = [
-		(
-			"memory".to_string(),
-			Quantity(format!("{:.1}G", (*memory_count as f64) / 4f64)),
-		),
-		(
-			"cpu".to_string(),
-			Quantity(format!("{:.1}", *cpu_count as f64)),
-		),
-	]
-	.into_iter()
-	.collect::<BTreeMap<_, _>>();
 
 	log::trace!(
 		"request_id: {} - Deploying deployment: {}",
@@ -338,7 +326,33 @@ pub async fn update_kubernetes_deployment(
 								.collect::<Vec<_>>(),
 						),
 						resources: Some(ResourceRequirements {
-							limits: Some(machine_type),
+							limits: Some(
+								[
+									(
+										"memory".to_string(),
+										Quantity(format!(
+											"{:.1}G",
+											(*memory_count as f64) / 4f64
+										)),
+									),
+									(
+										"cpu".to_string(),
+										Quantity(format!(
+											"{:.1}",
+											*cpu_count as f64
+										)),
+									),
+									(
+										"ephemeral-storage".to_string(),
+										Quantity(format!(
+											"{:.1}Gi",
+											(*memory_count as f64) / 4f64
+										)),
+									),
+								]
+								.into_iter()
+								.collect(),
+							),
 							// https://blog.kubecost.com/blog/requests-and-limits/#the-tradeoffs
 							// using too low values for resource request will
 							// result in frequent pod restarts if memory usage
