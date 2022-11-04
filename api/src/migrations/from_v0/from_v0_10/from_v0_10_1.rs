@@ -836,6 +836,17 @@ async fn refactor_domain_deletion(
 
 	query!(
 		r#"
+		UPDATE
+			domain
+		SET
+			name = REPLACE(name, CONCAT('.', tld), '');
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		ALTER TABLE domain
 		ADD CONSTRAINT domain_chk_name_is_valid CHECK(
 			name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$'
@@ -1528,9 +1539,9 @@ async fn create_user_api_token_tables(
 	query!(
 		r#"
 		INSERT INTO
-			user_login(login_id, user_id, login_type)
+			user_login(login_id, user_id, login_type, created)
 		SELECT
-			login_id, user_id, 'web_login'
+			login_id, user_id, 'web_login', created
 		FROM
 			web_login;
 		"#
