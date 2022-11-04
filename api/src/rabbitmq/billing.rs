@@ -146,7 +146,7 @@ pub(super) async fn process_request(
 				&workspace.id,
 				&transaction_id,
 				month as i32,
-				total_resource_usage_bill.total_cost.parse()?,
+				total_resource_usage_bill.total_cost,
 				None,
 				// 1st of next month,
 				&next_month_start_date.add(Duration::nanoseconds(1)),
@@ -156,31 +156,9 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
-			let payable_bill = db::get_total_amount_to_pay_for_workspace(
-				connection,
-				&workspace.id,
-			)
-			.await?;
-
-			let credit_amount = total_resource_usage_bill
-				.total_cost
-				.parse::<f64>()
-				.unwrap_or_default() - // Can be handled better instead of unwrap_or_default
-				payable_bill;
-
-			let credit_remaining = if payable_bill >= 0.00 {
-				0.00
-			} else {
-				payable_bill * -1.00 // To make it positive
-			};
-
 			service::queue_attempt_to_charge_workspace(
 				&workspace,
 				&Utc::now(),
-				&total_resource_usage_bill,
-				payable_bill,
-				credit_amount,
-				credit_remaining,
 				month,
 				year,
 				config,
@@ -192,10 +170,6 @@ pub(super) async fn process_request(
 		WorkspaceRequestData::AttemptToChargeWorkspace {
 			workspace,
 			process_after: DateTime(process_after),
-			total_resource_usage_bill,
-			amount_due,
-			credit_amount,
-			credit_remaining,
 			month,
 			year,
 			request_id,
@@ -236,6 +210,40 @@ pub(super) async fn process_request(
 				_ => "",
 			};
 
+			let amount_due = db::get_total_amount_to_pay_for_workspace(
+				connection,
+				&workspace.id,
+			)
+			.await?;
+
+			let month_start_date = Utc.ymd(year, month, 1).and_hms(0, 0, 0);
+			let next_month_start_date = Utc
+				.ymd(
+					if month == 12 { year + 1 } else { year },
+					if month == 12 { 1 } else { month + 1 },
+					1,
+				)
+				.and_hms(0, 0, 0)
+				.sub(Duration::nanoseconds(1));
+
+			let total_resource_usage_bill =
+				service::calculate_total_bill_for_workspace_till(
+					connection,
+					&workspace.id,
+					&month_start_date,
+					&next_month_start_date,
+				)
+				.await?;
+
+			let credit_amount =
+				total_resource_usage_bill.total_cost - amount_due;
+
+			let credit_remaining = if amount_due >= 0.00 {
+				0.00
+			} else {
+				amount_due * -1.00 // To make it positive
+			};
+
 			if amount_due <= 0.0 {
 				service::send_payment_success_notification(
 					connection,
@@ -253,8 +261,7 @@ pub(super) async fn process_request(
 					month_string.to_string(),
 					month,
 					year,
-					format!("{:.2}", amount_due * -1.00), /* To make it
-					                                       * positive */
+					format!("{:.2}", total_resource_usage_bill.total_cost),
 					format!(
 						"{:.2}",
 						if credit_amount > 0.00 {
@@ -370,7 +377,10 @@ pub(super) async fn process_request(
 							month_string.to_string(),
 							month,
 							year,
-							format!("{:.2}", amount_due),
+							format!(
+								"{:.2}",
+								total_resource_usage_bill.total_cost
+							),
 							format!(
 								"{:.2}",
 								if credit_amount > 0.00 {
@@ -467,10 +477,6 @@ pub(super) async fn process_request(
 							service::queue_attempt_to_charge_workspace(
 								&workspace,
 								&Utc::now().add(Duration::days(1)),
-								&total_resource_usage_bill,
-								amount_due,
-								credit_amount,
-								credit_remaining,
 								month,
 								year,
 								config,
@@ -581,10 +587,6 @@ pub(super) async fn process_request(
 						service::queue_attempt_to_charge_workspace(
 							&workspace,
 							&Utc::now().add(Duration::days(1)),
-							&total_resource_usage_bill,
-							amount_due,
-							credit_amount,
-							credit_remaining,
 							month,
 							year,
 							config,
@@ -603,7 +605,7 @@ pub(super) async fn process_request(
 					&workspace.id,
 					&transaction_id,
 					month as i32,
-					total_resource_usage_bill.total_cost.parse()?,
+					total_resource_usage_bill.total_cost,
 					Some("enterprise-plan-payment"),
 					// 1st of next month,
 					&month_end_date.add(Duration::nanoseconds(1)),
