@@ -163,7 +163,7 @@ pub(super) async fn process_request(
 
 			Ok(())
 		}
-		BillingData::AttemptToChargeWorkspace {
+		BillingData::SendInvoiceForWorkspace {
 			workspace,
 			month,
 			year,
