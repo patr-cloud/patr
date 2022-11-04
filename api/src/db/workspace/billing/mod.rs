@@ -688,10 +688,9 @@ pub async fn create_transaction(
 	.map(|_| ())
 }
 
-pub async fn update_transaction(
+pub async fn update_transaction_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	transaction_id: &Uuid,
-	transaction_type: &TransactionType,
 	payment_status: &PaymentStatus,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -699,12 +698,10 @@ pub async fn update_transaction(
 		UPDATE
 			transaction
 		SET
-			transaction_type = $1,
-			payment_status = $2
+			payment_status = $1
 		WHERE
-			id = $3;
+			id = $2;
 		"#,
-		transaction_type as _,
 		payment_status as _,
 		transaction_id as _,
 	)

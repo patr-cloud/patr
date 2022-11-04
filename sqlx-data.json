@@ -139,42 +139,6 @@
     },
     "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id LEFT JOIN user_phone_number ON user_phone_number.user_id = \"user\".id LEFT JOIN phone_number_country_code ON phone_number_country_code.country_code = user_phone_number.country_code WHERE \"user\".username = $1 OR CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( business_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( '+', phone_number_country_code.phone_code, user_phone_number.number ) = $1;"
   },
-  "01aeb398e2268501e9621e9485c67762730e4f978c2555f29df4d3202f3d35ed": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "bill",
-                  "credits",
-                  "payment"
-                ]
-              },
-              "name": "transaction_type"
-            }
-          },
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "success",
-                  "failed",
-                  "pending"
-                ]
-              },
-              "name": "payment_status"
-            }
-          },
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE transaction SET transaction_type = $1, payment_status = $2 WHERE id = $3;"
-  },
   "01fe497f00dc8157a50bf14531ea0aa14d14f8e361ceea753137c2ba5a955242": {
     "describe": {
       "columns": [],
@@ -3648,8 +3612,7 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed",
-                  "pending"
+                  "failed"
                 ]
               },
               "name": "payment_status"
@@ -5323,8 +5286,7 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed",
-                  "pending"
+                  "failed"
                 ]
               },
               "name": "payment_status"
@@ -8006,6 +7968,29 @@
       }
     },
     "query": "SELECT ( deployment_limit + database_limit + static_site_limit + managed_url_limit + domain_limit + secret_limit ) as \"limit!: i32\" FROM workspace WHERE workspace.id = $1;"
+  },
+  "8c2b2d025370e2509ce7ceec8020d80b65606ce8096fb54bd26faea123fc18a0": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "success",
+                  "failed"
+                ]
+              },
+              "name": "payment_status"
+            }
+          },
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE transaction SET payment_status = $1 WHERE id = $2;"
   },
   "8c5a0b7ad25f80152e141d2aaf9d374b781b15181b27e7b62866042d2bde7867": {
     "describe": {
@@ -10810,8 +10795,7 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed",
-                  "pending"
+                  "failed"
                 ]
               },
               "name": "payment_status"
@@ -13584,8 +13568,7 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed",
-                  "pending"
+                  "failed"
                 ]
               },
               "name": "payment_status"

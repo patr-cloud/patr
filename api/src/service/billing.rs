@@ -284,19 +284,17 @@ pub async fn confirm_payment_method(
 				refund
 			})
 			.await?;
-			db::update_transaction(
+			db::update_transaction_status(
 				connection,
 				transaction_id,
-				&TransactionType::Payment,
 				&PaymentStatus::Failed,
 			)
 			.await?;
 			return Ok(false);
 		}
-		db::update_transaction(
+		db::update_transaction_status(
 			connection,
 			transaction_id,
-			&TransactionType::Payment,
 			&PaymentStatus::Success,
 		)
 		.await?;
