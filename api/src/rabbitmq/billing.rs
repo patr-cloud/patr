@@ -377,7 +377,10 @@ pub(super) async fn process_request(
 							month_string.to_string(),
 							month,
 							year,
-							format!("{:.2}", total_resource_usage_bill.total_cost),
+							format!(
+								"{:.2}",
+								total_resource_usage_bill.total_cost
+							),
 							format!(
 								"{:.2}",
 								if credit_amount > 0.00 {
