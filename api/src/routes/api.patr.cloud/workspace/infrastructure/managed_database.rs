@@ -7,7 +7,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, ManagedDatabasePlan},
 	error,
-	models::rbac::permissions,
+	models::{rbac::permissions, ResourceType},
 	pin_fn,
 	service,
 	utils::{
@@ -363,9 +363,20 @@ async fn delete_managed_database(
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
+	let user_id = context.get_token_data().unwrap().user_id().clone();
+
 	let database_id =
 		Uuid::parse_str(context.get_param(request_keys::DATABASE_ID).unwrap())
 			.unwrap();
+
+	let database = db::get_managed_database_by_id(
+		context.get_database_connection(),
+		&database_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
 	let config = context.get_state().config.clone();
 
 	log::trace!("request_id: {} - Deleting database cluster", request_id);
@@ -374,6 +385,19 @@ async fn delete_managed_database(
 		&database_id,
 		&config,
 		&request_id,
+	)
+	.await?;
+
+	// Commiting transaction so that even if the mailing function fails the
+	// resource should be deleted
+	context.commit_database_transaction().await?;
+
+	service::resource_delete_action_email(
+		context.get_database_connection(),
+		&database.name,
+		&database.workspace_id,
+		&ResourceType::ManagedDatabase,
+		&user_id,
 	)
 	.await?;
 

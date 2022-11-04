@@ -49,6 +49,7 @@ use crate::{
 	models::{
 		rbac::{self, permissions},
 		DeploymentMetadata,
+		ResourceType,
 	},
 	pin_fn,
 	routes,
@@ -1626,6 +1627,19 @@ async fn delete_deployment(
 		"A deployment has been deleted",
 	)
 	.await;
+
+	// Commiting transaction so that even if the mailing function fails the
+	// resource should be deleted
+	context.commit_database_transaction().await?;
+
+	service::resource_delete_action_email(
+		context.get_database_connection(),
+		&deployment.name,
+		&deployment.workspace_id,
+		&ResourceType::Deployment,
+		&user_id,
+	)
+	.await?;
 
 	context.success(DeleteDeploymentResponse {});
 	Ok(context)

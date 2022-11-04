@@ -24,7 +24,10 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::{self, permissions},
+	models::{
+		rbac::{self, permissions},
+		ResourceType,
+	},
 	pin_fn,
 	service,
 	utils::{
@@ -994,6 +997,8 @@ async fn delete_docker_repository(
 	let repository_id = Uuid::parse_str(repo_id_string).unwrap();
 	let config = context.get_state().config.clone();
 
+	let user_id = context.get_token_data().unwrap().user_id().clone();
+
 	let running_deployments = db::get_deployments_by_repository_id(
 		context.get_database_connection(),
 		&repository_id,
@@ -1005,12 +1010,34 @@ async fn delete_docker_repository(
 			.body(error!(RESOURCE_IN_USE).to_string())?;
 	}
 
+	// This is use after the deletion for sending mails
+	let repository = db::get_docker_repository_by_id(
+		context.get_database_connection(),
+		&repository_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
 	// delete from docker registry using its API
 	service::delete_docker_repository(
 		context.get_database_connection(),
 		&repository_id,
 		&config,
 		&request_id,
+	)
+	.await?;
+
+	// Commiting transaction so that even if the mailing function fails the
+	// resource should be deleted
+	context.commit_database_transaction().await?;
+
+	service::resource_delete_action_email(
+		context.get_database_connection(),
+		&repository.name,
+		&repository.workspace_id,
+		&ResourceType::DockerRepository,
+		&user_id,
 	)
 	.await?;
 

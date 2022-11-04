@@ -30,7 +30,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
-	models::rbac::permissions,
+	models::{rbac::permissions, ResourceType},
 	pin_fn,
 	service,
 	utils::{
@@ -1173,12 +1173,22 @@ async fn delete_static_site(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let user_id = context.get_token_data().unwrap().user_id().clone();
+
 	let request_id = Uuid::new_v4();
 
 	let static_site_id = Uuid::parse_str(
 		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
 	)
 	.unwrap();
+
+	let site = db::get_static_site_by_id(
+		context.get_database_connection(),
+		&static_site_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	log::trace!(
 		"request_id: {} - Deleting the static site with id: {}",
@@ -1202,6 +1212,19 @@ async fn delete_static_site(
 		"A static site has been deleted",
 	)
 	.await;
+
+	// Commiting transaction so that even if the mailing function fails the
+	// resource should be deleted
+	context.commit_database_transaction().await?;
+
+	service::resource_delete_action_email(
+		context.get_database_connection(),
+		&site.name,
+		&site.workspace_id,
+		&ResourceType::StaticSite,
+		&user_id,
+	)
+	.await?;
 
 	context.success(DeleteStaticSiteResponse {});
 	Ok(context)

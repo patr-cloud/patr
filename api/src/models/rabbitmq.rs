@@ -97,7 +97,7 @@ pub enum DeploymentRequestData {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", rename_all = "camelCase")]
 #[allow(clippy::large_enum_variant)]
-pub enum WorkspaceRequestData {
+pub enum BillingData {
 	ProcessWorkspaces {
 		month: u32,
 		year: i32,
@@ -109,11 +109,15 @@ pub enum WorkspaceRequestData {
 		workspace: Workspace,
 		request_id: Uuid,
 	},
-	AttemptToChargeWorkspace {
+	SendInvoiceForWorkspace {
+		workspace: Workspace,
+		month: u32,
+		year: i32,
+		request_id: Uuid,
+	},
+	RetryPaymentForWorkspace {
 		workspace: Workspace,
 		process_after: DateTime<Utc>,
-		total_bill: f64,
-		amount_due: f64,
 		month: u32,
 		year: i32,
 		request_id: Uuid,

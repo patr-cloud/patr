@@ -436,6 +436,14 @@ async fn delete_managed_url(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
+	db::get_managed_url_by_id(
+		context.get_database_connection(),
+		&managed_url_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
 	let config = context.get_state().config.clone();
 
 	log::trace!(

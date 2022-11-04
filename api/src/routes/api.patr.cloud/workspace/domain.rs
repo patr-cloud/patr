@@ -25,7 +25,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, DnsRecordType},
 	error,
-	models::rbac::permissions,
+	models::{rbac::permissions, ResourceType},
 	pin_fn,
 	service,
 	utils::{
@@ -737,12 +737,22 @@ async fn delete_domain_in_workspace(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id)?;
 
+	let user_id = context.get_token_data().unwrap().user_id().clone();
+
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 	// Uuid::parse_str throws an error for a wrong string
 	// This error is handled by the resource authenticator middleware
 	// So it's safe to call unwrap() here without crashing the system
 	// This won't be executed unless Uuid::parse_str(domain_id) returns Ok
 	let domain_id = Uuid::parse_str(domain_id).unwrap();
+
+	let domain = db::get_workspace_domain_by_id(
+		context.get_database_connection(),
+		&domain_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	// TODO make sure all associated resources to this domain are removed first
 
@@ -754,6 +764,19 @@ async fn delete_domain_in_workspace(
 		&domain_id,
 		&config,
 		&request_id,
+	)
+	.await?;
+
+	// Commiting transaction so that even if the mailing function fails the
+	// resource should be deleted
+	context.commit_database_transaction().await?;
+
+	service::resource_delete_action_email(
+		context.get_database_connection(),
+		&domain.name,
+		&workspace_id,
+		&ResourceType::Domain,
+		&user_id,
 	)
 	.await?;
 
@@ -921,12 +944,18 @@ async fn delete_dns_record(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
+
 	log::trace!("request_id: {} - Deleting dns record", request_id);
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 	let domain_id = Uuid::parse_str(domain_id)?;
 
 	let record_id = context.get_param(request_keys::RECORD_ID).unwrap();
 	let record_id = Uuid::parse_str(record_id)?;
+
+	db::get_dns_record_by_id(context.get_database_connection(), &record_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let config = context.get_state().config.clone();
 
