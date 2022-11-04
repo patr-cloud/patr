@@ -36,6 +36,7 @@ pub(super) async fn migrate(
 	refactor_resource_deletion(&mut *connection, config).await?;
 	add_resource_requests_for_running_deployments(connection, config).await?;
 	create_user_api_token_tables(connection, config).await?;
+	update_payment_status_enum(connection, config).await?;
 
 	Ok(())
 }
@@ -1665,6 +1666,22 @@ async fn create_user_api_token_tables(
 			CONSTRAINT user_api_token_resource_type_permission_pk
 				PRIMARY KEY(token_id, permission_id, resource_type_id, workspace_id)
 		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn update_payment_status_enum(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TYPE PAYMENT_STATUS
+		ADD VALUE 'pending';
 		"#
 	)
 	.execute(&mut *connection)

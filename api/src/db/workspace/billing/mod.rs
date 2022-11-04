@@ -1,3 +1,5 @@
+use std::fmt;
+
 use api_macros::query;
 use api_models::{
 	models::workspace::billing::{PaymentStatus, TransactionType},
@@ -87,11 +89,30 @@ pub enum StaticSitePlan {
 	Unlimited,
 }
 
+impl fmt::Display for StaticSitePlan {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			StaticSitePlan::Free => write!(f, "free"),
+			StaticSitePlan::Pro => write!(f, "pro"),
+			StaticSitePlan::Unlimited => write!(f, "unlimited"),
+		}
+	}
+}
+
 #[derive(Debug, sqlx::Type, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[sqlx(type_name = "DOMAIN_PLAN", rename_all = "lowercase")]
 pub enum DomainPlan {
 	Free,
 	Unlimited,
+}
+
+impl fmt::Display for DomainPlan {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			DomainPlan::Free => write!(f, "free"),
+			DomainPlan::Unlimited => write!(f, "unlimited"),
+		}
+	}
 }
 
 pub async fn initialize_billing_pre(
@@ -243,7 +264,8 @@ pub async fn initialize_billing_pre(
 		r#"
 		CREATE TYPE PAYMENT_STATUS as ENUM(
 			'success',
-			'failed'
+			'failed',
+			'pending'
 		);
 		"#
 	)
@@ -666,6 +688,28 @@ pub async fn create_transaction(
 	.map(|_| ())
 }
 
+pub async fn update_transaction_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	transaction_id: &Uuid,
+	payment_status: &PaymentStatus,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			transaction
+		SET
+			payment_status = $1
+		WHERE
+			id = $2;
+		"#,
+		payment_status as _,
+		transaction_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn generate_new_transaction_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
@@ -714,35 +758,6 @@ pub async fn get_payment_methods_for_workspace(
 	.await
 }
 
-pub async fn get_credits_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-) -> Result<Vec<Transaction>, sqlx::Error> {
-	query_as!(
-		Transaction,
-		r#"
-		SELECT
-			id as "id: _",
-			month,
-			amount,
-			payment_intent_id,
-			date as "date: _",
-			workspace_id as "workspace_id: _",
-			transaction_type as "transaction_type: _",
-			payment_status as "payment_status: _",
-			description
-		FROM
-			transaction
-		WHERE
-			workspace_id = $1 AND
-			transaction_type = 'credits';
-		"#,
-		workspace_id as _
-	)
-	.fetch_all(&mut *connection)
-	.await
-}
-
 pub async fn get_total_amount_to_pay_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
@@ -775,10 +790,10 @@ pub async fn get_total_amount_to_pay_for_workspace(
 	.map(|row| row.total_amount as f64)
 }
 
-pub async fn get_transaction_by_payment_intent_id_in_workspace(
+pub async fn get_transaction_by_transaction_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	payment_intent_id: &str,
+	transaction_id: &Uuid,
 ) -> Result<Option<Transaction>, sqlx::Error> {
 	query_as!(
 		Transaction,
@@ -797,10 +812,10 @@ pub async fn get_transaction_by_payment_intent_id_in_workspace(
 			transaction
 		WHERE
 			workspace_id = $1 AND
-			payment_intent_id = $2;
+			id = $2;
 		"#,
 		workspace_id as _,
-		payment_intent_id,
+		transaction_id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await

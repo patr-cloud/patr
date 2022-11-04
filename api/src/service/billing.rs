@@ -1,17 +1,31 @@
 use std::{
 	cmp::{max, min},
-	collections::HashMap,
+	collections::{BTreeMap, HashMap},
 	str::FromStr,
 };
 
 use api_models::{
-	models::workspace::billing::{
-		PaymentMethod,
-		PaymentStatus,
-		StripePaymentMethodType,
-		TransactionType,
+	models::workspace::{
+		billing::{
+			DatabaseUsage,
+			DeploymentBills,
+			DeploymentUsage,
+			DockerRepositoryUsage,
+			DomainPlan,
+			DomainUsage,
+			ManagedUrlUsage,
+			PaymentMethod,
+			PaymentStatus,
+			SecretUsage,
+			StaticSitePlan,
+			StaticSiteUsage,
+			StripePaymentMethodType,
+			TransactionType,
+			WorkspaceBillBreakdown,
+		},
+		infrastructure::list_all_deployment_machine_type::DeploymentMachineType,
 	},
-	utils::{DateTime, Uuid},
+	utils::{DateTime, PriceAmount, Uuid},
 };
 use chrono::{Datelike, TimeZone, Utc};
 use eve_rs::AsError;
@@ -33,7 +47,12 @@ use stripe::{
 };
 
 use crate::{
-	db::{self, DomainPlan, ManagedDatabasePlan, StaticSitePlan},
+	db::{
+		self,
+		DomainPlan as DbDomainPlan,
+		ManagedDatabasePlan,
+		StaticSitePlan as DbStaticSitePlan,
+	},
 	error,
 	models::{
 		billing::{
@@ -151,36 +170,142 @@ pub async fn add_credits_to_workspace(
 	Ok(())
 }
 
-pub async fn confirm_payment_method(
+pub async fn make_payment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	payment_intent_id: &str,
+	amount_to_pay: u32,
 	config: &Settings,
-) -> Result<bool, Error> {
-	let transaction = db::get_transaction_by_payment_intent_id_in_workspace(
-		connection,
-		workspace_id,
-		payment_intent_id,
-	)
-	.await?
-	.status(500)?;
+) -> Result<Uuid, Error> {
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
 
-	if Some(payment_intent_id) != transaction.payment_intent_id.as_deref() {
-		return Error::as_result()
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
-	}
+	let default_payment_method_id = workspace
+		.default_payment_method_id
+		.status(402)
+		.body(error!(PAYMENT_METHOD_REQUIRED).to_string())?;
+
+	let address_id = workspace
+		.address_id
+		.status(400)
+		.body(error!(ADDRESS_REQUIRED).to_string())?;
+
+	let (dollars, description) = (amount_to_pay, "Patr charge: Resource Usage");
+
+	let (currency, amount) = if db::get_billing_address(connection, &address_id)
+		.await?
+		.status(500)?
+		.country == *"IN"
+	{
+		(Currency::INR, (dollars * 100 * 80) as i64)
+	} else {
+		(Currency::USD, (dollars * 100) as i64)
+	};
 
 	let client = Client::new(&config.stripe.secret_key);
-	let payment_intent =
-		PaymentIntent::confirm(&client, payment_intent_id, Default::default())
+
+	let payment_intent = PaymentIntent::create(&client, {
+		let mut intent = CreatePaymentIntent::new(amount, currency);
+
+		intent.confirm = Some(false);
+		intent.description = Some(description);
+		intent.customer =
+			Some(CustomerId::from_str(&workspace.stripe_customer_id)?);
+		intent.payment_method =
+			Some(PaymentMethodId::from_str(&default_payment_method_id)?);
+		intent.payment_method_types = Some(vec!["card".to_string()]);
+
+		intent
+	})
+	.await;
+
+	// handling errors explicitely as `?` doesn't provide enough information
+	let payment_intent = match payment_intent {
+		Ok(payment) => payment,
+		Err(err) => {
+			log::error!("Error from stripe: {}", err);
+			return Error::as_result()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?;
+		}
+	};
+
+	let transaction_id = db::generate_new_transaction_id(connection).await?;
+	let date = Utc::now();
+
+	db::create_transaction(
+		connection,
+		workspace_id,
+		&transaction_id,
+		date.month() as i32,
+		amount_to_pay.into(),
+		Some(&payment_intent.id),
+		&date,
+		&TransactionType::Payment,
+		&PaymentStatus::Pending,
+		Some(description),
+	)
+	.await?;
+
+	Ok(transaction_id)
+}
+
+pub async fn confirm_payment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	transaction_id: &Uuid,
+	config: &Settings,
+) -> Result<bool, Error> {
+	let transaction = db::get_transaction_by_transaction_id(
+		connection,
+		workspace_id,
+		transaction_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	if let Some(payment_intent_id) = transaction.payment_intent_id {
+		let client = Client::new(&config.stripe.secret_key);
+		let payment_intent = PaymentIntent::confirm(
+			&client,
+			&payment_intent_id,
+			Default::default(),
+		)
+		.await?;
+
+		if payment_intent.status != PaymentIntentStatus::Succeeded {
+			Refund::create(&client, {
+				let mut refund = CreateRefund::new();
+
+				refund.payment_intent = Some(payment_intent.id);
+
+				refund
+			})
 			.await?;
-
-	if payment_intent.status != PaymentIntentStatus::Succeeded {
-		return Ok(false);
+			db::update_transaction_status(
+				connection,
+				transaction_id,
+				&PaymentStatus::Failed,
+			)
+			.await?;
+			return Ok(false);
+		}
+		db::update_transaction_status(
+			connection,
+			transaction_id,
+			&PaymentStatus::Success,
+		)
+		.await?;
+		Ok(true)
+	} else {
+		log::trace!(
+			"payment_intent_id not found for transaction_id: {}, this is a not an expected behaviour", transaction_id);
+		Err(Error::empty()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string()))
 	}
-
-	Ok(true)
 }
 
 pub async fn calculate_deployment_bill_for_workspace_till(
@@ -243,7 +368,11 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 			})
 			.bill_items
 			.push(DeploymentBillItem {
-				machine_type: (*cpu_count as u16, *memory_count as u32),
+				machine_type: DeploymentMachineType {
+					id: deployment_usage.machine_type,
+					cpu_count: *cpu_count,
+					memory_count: *memory_count,
+				},
 				num_instances: deployment_usage.num_instance as u32,
 				hours: hours as u64,
 				amount: if (*cpu_count, *memory_count) == (1, 2) &&
@@ -336,7 +465,7 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 	workspace_id: &Uuid,
 	month_start_date: &chrono::DateTime<Utc>,
 	till_date: &chrono::DateTime<Utc>,
-) -> Result<HashMap<StaticSitePlan, StaticSiteBill>, Error> {
+) -> Result<HashMap<DbStaticSitePlan, StaticSiteBill>, Error> {
 	let static_sites_usages = db::get_all_static_site_usages(
 		&mut *connection,
 		workspace_id,
@@ -359,9 +488,9 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 		);
 
 		let monthly_price = match static_sites_usage.static_site_plan {
-			StaticSitePlan::Free => 0f64,
-			StaticSitePlan::Pro => 5f64,
-			StaticSitePlan::Unlimited => 10f64,
+			DbStaticSitePlan::Free => 0f64,
+			DbStaticSitePlan::Pro => 5f64,
+			DbStaticSitePlan::Unlimited => 10f64,
 		};
 		let bill = static_sites_bill
 			.entry(static_sites_usage.static_site_plan)
@@ -498,7 +627,7 @@ pub async fn calculate_domains_bill_for_workspace_till(
 	workspace_id: &Uuid,
 	month_start_date: &chrono::DateTime<Utc>,
 	till_date: &chrono::DateTime<Utc>,
-) -> Result<HashMap<DomainPlan, DomainBill>, Error> {
+) -> Result<HashMap<DbDomainPlan, DomainBill>, Error> {
 	let domains_usages = db::get_all_domains_usages(
 		&mut *connection,
 		workspace_id,
@@ -521,8 +650,8 @@ pub async fn calculate_domains_bill_for_workspace_till(
 		);
 
 		let monthly_price = match domains_usage.domain_plan {
-			DomainPlan::Free => 0f64,
-			DomainPlan::Unlimited => 10f64,
+			DbDomainPlan::Free => 0f64,
+			DbDomainPlan::Unlimited => 10f64,
 		};
 		let bill = domains_bill.entry(domains_usage.domain_plan).or_insert(
 			DomainBill {
@@ -836,4 +965,227 @@ pub async fn calculate_total_bill_for_workspace_till(
 	}
 
 	Ok(total_cost)
+}
+
+pub async fn get_total_resource_usage(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	month_start_date: &chrono::DateTime<Utc>,
+	till_date: &chrono::DateTime<Utc>,
+	year: u32,
+	month: u32,
+) -> Result<WorkspaceBillBreakdown, Error> {
+	let deployment_usage = calculate_deployment_bill_for_workspace_till(
+		connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?
+	.into_iter()
+	.map(|(key, value)| {
+		(
+			key,
+			DeploymentUsage {
+				name: value.deployment_name,
+				bill_items: value
+					.bill_items
+					.into_iter()
+					.map(|bill_item| DeploymentBills {
+						machine_type: DeploymentMachineType {
+							id: bill_item.machine_type.id,
+							cpu_count: bill_item.machine_type.cpu_count,
+							memory_count: bill_item.machine_type.memory_count,
+						},
+						num_instances: bill_item.num_instances,
+						hours: bill_item.hours,
+						amount: PriceAmount(bill_item.amount),
+					})
+					.collect::<Vec<_>>(),
+			},
+		)
+	})
+	.collect::<BTreeMap<_, _>>();
+	let deployment_charge = PriceAmount(
+		deployment_usage
+			.iter()
+			.flat_map(|(_, usage)| usage.bill_items.iter())
+			.map(|item| item.amount.0)
+			.sum(),
+	);
+
+	let database_usage = calculate_database_bill_for_workspace_till(
+		connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?
+	.into_iter()
+	.map(|(key, value)| {
+		(
+			key,
+			DatabaseUsage {
+				name: value.database_name,
+				hours: value.hours,
+				amount: PriceAmount(value.amount),
+			},
+		)
+	})
+	.collect::<BTreeMap<_, _>>();
+	let database_charge = PriceAmount(
+		database_usage.iter().map(|(_, usage)| usage.amount.0).sum(),
+	);
+
+	let static_site_usage = calculate_static_sites_bill_for_workspace_till(
+		connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?
+	.into_iter()
+	.map(|(key, value)| {
+		(
+			match key {
+				DbStaticSitePlan::Pro => StaticSitePlan::Pro,
+				DbStaticSitePlan::Free => StaticSitePlan::Free,
+				DbStaticSitePlan::Unlimited => StaticSitePlan::Unlimited,
+			},
+			StaticSiteUsage {
+				hours: value.hours,
+				amount: PriceAmount(value.amount),
+			},
+		)
+	})
+	.collect::<BTreeMap<_, _>>();
+	let static_site_charge = PriceAmount(
+		static_site_usage
+			.iter()
+			.map(|(_, usage)| usage.amount.0)
+			.sum(),
+	);
+
+	let managed_url_usage = calculate_managed_urls_bill_for_workspace_till(
+		connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?
+	.into_iter()
+	.map(|(key, value)| {
+		(
+			key as u32,
+			ManagedUrlUsage {
+				hours: value.hours,
+				amount: PriceAmount(value.amount),
+			},
+		)
+	})
+	.collect::<BTreeMap<_, _>>();
+	let managed_url_charge = PriceAmount(
+		managed_url_usage
+			.iter()
+			.map(|(_, usage)| usage.amount.0)
+			.sum(),
+	);
+
+	let docker_repository_usage =
+		calculate_docker_repository_bill_for_workspace_till(
+			connection,
+			workspace_id,
+			month_start_date,
+			till_date,
+		)
+		.await?
+		.into_iter()
+		.map(|docker_repo_usage| DockerRepositoryUsage {
+			storage: docker_repo_usage.storage as u32,
+			hours: docker_repo_usage.hours,
+			amount: PriceAmount(docker_repo_usage.amount),
+		})
+		.collect::<Vec<_>>();
+	let docker_repository_charge = PriceAmount(
+		docker_repository_usage
+			.iter()
+			.map(|usage| usage.amount.0)
+			.sum(),
+	);
+
+	let domain_usage = calculate_domains_bill_for_workspace_till(
+		connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?
+	.into_iter()
+	.map(|(key, value)| {
+		(
+			match key {
+				DbDomainPlan::Free => DomainPlan::Free,
+				DbDomainPlan::Unlimited => DomainPlan::Unlimited,
+			},
+			DomainUsage {
+				hours: value.hours,
+				amount: PriceAmount(value.amount),
+			},
+		)
+	})
+	.collect::<BTreeMap<_, _>>();
+	let domain_charge =
+		PriceAmount(domain_usage.iter().map(|(_, usage)| usage.amount.0).sum());
+
+	let secret_usage = calculate_secrets_bill_for_workspace_till(
+		connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?
+	.into_iter()
+	.map(|(key, value)| {
+		(
+			key as u32,
+			SecretUsage {
+				hours: value.hours,
+				amount: PriceAmount(value.amount),
+			},
+		)
+	})
+	.collect::<BTreeMap<_, _>>();
+	let secret_charge =
+		PriceAmount(secret_usage.iter().map(|(_, usage)| usage.amount.0).sum());
+
+	let total_charge = PriceAmount(
+		deployment_charge.0 +
+			database_charge.0 +
+			static_site_charge.0 +
+			managed_url_charge.0 +
+			domain_charge.0 +
+			secret_charge.0 +
+			docker_repository_charge.0,
+	);
+
+	let bill = WorkspaceBillBreakdown {
+		year,
+		month,
+		total_charge,
+		deployment_charge,
+		deployment_usage,
+		database_charge,
+		database_usage,
+		static_site_charge,
+		static_site_usage,
+		domain_charge,
+		domain_usage,
+		managed_url_charge,
+		managed_url_usage,
+		secret_charge,
+		secret_usage,
+		docker_repository_charge,
+		docker_repository_usage,
+	};
+	Ok(bill)
 }
