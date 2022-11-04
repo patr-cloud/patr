@@ -1,23 +1,23 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::billing::{
+		DatabaseUsage,
+		DeploymentUsage,
+		DockerRepositoryUsage,
+		DomainUsage,
+		ManagedUrlUsage,
+		SecretUsage,
+		StaticSiteUsage,
+		WorkspaceBillBreakdown, StaticSitePlan, DomainPlan,
+	},
+	utils::{PriceAmount, Uuid},
+};
 use lettre::message::Mailbox;
 use serde::Serialize;
 
 use crate::{
-	db::{DomainPlan, StaticSitePlan},
-	models::{
-		billing::{
-			DatabaseBill,
-			DeploymentBill,
-			DockerRepositoryBill,
-			DomainBill,
-			ManagedUrlBill,
-			SecretsBill,
-			StaticSiteBill,
-		},
-		EmailTemplate,
-	},
+	models::EmailTemplate,
 	utils::Error,
 };
 
@@ -275,7 +275,7 @@ pub async fn send_email_verification_otp(
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/bill-not-paid-delete-resources/template.json"]
 #[allow(non_snake_case)]
-struct UnpaidResourcesDeletedEmail {
+struct BillNotPaidDeleteResourcesEmail {
 	username: String,
 	workspaceName: String,
 	monthString: String,
@@ -285,7 +285,7 @@ struct UnpaidResourcesDeletedEmail {
 }
 
 #[allow(non_snake_case)]
-pub async fn send_unpaid_resources_deleted_email(
+pub async fn send_bill_not_paid_delete_resources_email(
 	email: Mailbox,
 	username: String,
 	workspaceName: String,
@@ -295,7 +295,7 @@ pub async fn send_unpaid_resources_deleted_email(
 	totalBill: f64,
 ) -> Result<(), Error> {
 	send_email(
-		UnpaidResourcesDeletedEmail {
+		BillNotPaidDeleteResourcesEmail {
 			username,
 			workspaceName,
 			monthString,
@@ -313,29 +313,29 @@ pub async fn send_unpaid_resources_deleted_email(
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/bill-payment-failed-reminder/template.json"]
 #[allow(non_snake_case)]
-struct BillPaymentFailedRemainderEmail {
+struct BillPaymentFailedReminderEmail {
 	username: String,
 	workspaceName: String,
 	monthString: String,
 	monthNumber: u32,
 	year: i32,
-	totalBill: f64,
+	totalBill: PriceAmount,
 	deadline: String,
 }
 
 #[allow(non_snake_case)]
-pub async fn send_bill_not_paid_reminder_email(
+pub async fn send_bill_payment_failed_reminder_email(
 	email: Mailbox,
 	username: String,
 	workspaceName: String,
 	monthString: String,
 	monthNumber: u32,
 	year: i32,
-	totalBill: f64,
+	totalBill: PriceAmount,
 	deadline: String,
 ) -> Result<(), Error> {
 	send_email(
-		BillPaymentFailedRemainderEmail {
+		BillPaymentFailedReminderEmail {
 			username,
 			workspaceName,
 			monthString,
@@ -352,56 +352,122 @@ pub async fn send_bill_not_paid_reminder_email(
 }
 
 #[derive(EmailTemplate, Serialize)]
-#[template_path = "assets/emails/payment-failure-invoice/template.json"]
+#[template_path = "assets/emails/card-not-added-reminder/template.json"]
 #[allow(non_snake_case)]
-struct PaymentFailedEmail {
+struct CardNotAddedReminderEmail {
 	username: String,
 	workspaceName: String,
-	deploymentUsage: HashMap<Uuid, DeploymentBill>,
-	databaseUsage: HashMap<Uuid, DatabaseBill>,
-	staticSiteUsage: HashMap<StaticSitePlan, StaticSiteBill>,
-	managedUrlUsage: HashMap<u64, ManagedUrlBill>,
-	dockerRepositoryUsage: Vec<DockerRepositoryBill>,
-	domainUsage: HashMap<DomainPlan, DomainBill>,
-	secretUsage: HashMap<u64, SecretsBill>,
 	monthString: String,
 	monthNumber: u32,
 	year: i32,
-	totalBill: f64,
+	totalBill: PriceAmount,
+	deadline: String,
 }
 
 #[allow(non_snake_case)]
-pub async fn send_payment_failed_email(
+pub async fn send_card_not_added_reminder_email(
 	email: Mailbox,
 	username: String,
 	workspaceName: String,
-	deploymentUsage: HashMap<Uuid, DeploymentBill>,
-	databaseUsage: HashMap<Uuid, DatabaseBill>,
-	staticSiteUsage: HashMap<StaticSitePlan, StaticSiteBill>,
-	managedUrlUsage: HashMap<u64, ManagedUrlBill>,
-	dockerRepositoryUsage: Vec<DockerRepositoryBill>,
-	domainUsage: HashMap<DomainPlan, DomainBill>,
-	secretUsage: HashMap<u64, SecretsBill>,
 	monthString: String,
 	monthNumber: u32,
 	year: i32,
-	totalBill: f64,
+	totalBill: PriceAmount,
+	deadline: String,
 ) -> Result<(), Error> {
 	send_email(
-		PaymentFailedEmail {
+		CardNotAddedReminderEmail {
 			username,
 			workspaceName,
-			deploymentUsage,
-			databaseUsage,
-			staticSiteUsage,
-			managedUrlUsage,
-			dockerRepositoryUsage,
-			domainUsage,
-			secretUsage,
 			monthString,
 			monthNumber,
 			year,
 			totalBill,
+			deadline,
+		},
+		email,
+		None,
+		"[Action required] Patr bill payment pending",
+	)
+	.await
+}
+
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/bill-paid-successfully/template.json"]
+#[allow(non_snake_case)]
+struct BillPaidSuccessfullyEmail {
+	username: String,
+	workspaceName: String,
+	monthString: String,
+	year: i32,
+	cardAmountDeducted: PriceAmount,
+}
+
+#[allow(non_snake_case)]
+pub async fn send_bill_paid_successfully_email(
+	email: Mailbox,
+	username: String,
+	workspaceName: String,
+	monthString: String,
+	year: i32,
+	cardAmountDeducted: PriceAmount,
+) -> Result<(), Error> {
+	send_email(
+		BillPaidSuccessfullyEmail {
+			username,
+			workspaceName,
+			monthString,
+			year,
+			cardAmountDeducted,
+		},
+		email,
+		None,
+		"Patr payment successful",
+	)
+	.await
+}
+
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/payment-failure-invoice/template.json"]
+#[allow(non_snake_case)]
+struct PaymentFailureInvoiceEmail {
+	username: String,
+	workspaceName: String,
+	deploymentUsage: BTreeMap<Uuid, DeploymentUsage>,
+	databaseUsage: BTreeMap<Uuid, DatabaseUsage>,
+	staticSiteUsage: BTreeMap<StaticSitePlan, StaticSiteUsage>,
+	managedUrlUsage: BTreeMap<u32, ManagedUrlUsage>,
+	dockerRepositoryUsage: Vec<DockerRepositoryUsage>,
+	domainUsage: BTreeMap<DomainPlan, DomainUsage>,
+	secretUsage: BTreeMap<u32, SecretUsage>,
+	monthString: String,
+	monthNumber: u32,
+	year: i32,
+	totalBill: PriceAmount,
+}
+
+pub async fn send_payment_failure_invoice_email(
+	email: Mailbox,
+	username: String,
+	workspace_name: String,
+	bill_breakdown: WorkspaceBillBreakdown,
+	month_string: String,
+) -> Result<(), Error> {
+	send_email(
+		PaymentFailureInvoiceEmail {
+			username,
+			workspaceName: workspace_name,
+			deploymentUsage: bill_breakdown.deployment_usage,
+			databaseUsage: bill_breakdown.database_usage,
+			staticSiteUsage: bill_breakdown.static_site_usage,
+			managedUrlUsage: bill_breakdown.managed_url_usage,
+			dockerRepositoryUsage: bill_breakdown.docker_repository_usage,
+			domainUsage: bill_breakdown.domain_usage,
+			secretUsage: bill_breakdown.secret_usage,
+			monthString: month_string,
+			monthNumber: bill_breakdown.month,
+			year: bill_breakdown.year as i32,
+			totalBill: bill_breakdown.total_charge,
 		},
 		email,
 		None,
@@ -413,66 +479,53 @@ pub async fn send_payment_failed_email(
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/payment-success-invoice/template.json"]
 #[allow(non_snake_case)]
-struct PaymentSuccessEmail {
+struct PaymentSuccessInvoiceEmail {
 	username: String,
 	workspaceName: String,
-	deploymentUsage: HashMap<Uuid, DeploymentBill>,
-	databaseUsage: HashMap<Uuid, DatabaseBill>,
-	staticSiteUsage: HashMap<StaticSitePlan, StaticSiteBill>,
-	managedUrlUsage: HashMap<u64, ManagedUrlBill>,
-	dockerRepositoryUsage: Vec<DockerRepositoryBill>,
-	domainUsage: HashMap<DomainPlan, DomainBill>,
-	secretUsage: HashMap<u64, SecretsBill>,
+	deploymentUsage: BTreeMap<Uuid, DeploymentUsage>,
+	databaseUsage: BTreeMap<Uuid, DatabaseUsage>,
+	staticSiteUsage: BTreeMap<StaticSitePlan, StaticSiteUsage>,
+	managedUrlUsage: BTreeMap<u32, ManagedUrlUsage>,
+	dockerRepositoryUsage: Vec<DockerRepositoryUsage>,
+	domainUsage: BTreeMap<DomainPlan, DomainUsage>,
+	secretUsage: BTreeMap<u32, SecretUsage>,
 	monthString: String,
 	monthNumber: u32,
 	year: i32,
-	totalBill: String,
-	creditsDeducted: String,
-	cardAmountDeducted: String,
-	creditsRemaining: String,
-	amountPaid: String,
+	totalBill: PriceAmount,
+	creditsDeducted: PriceAmount,
+	cardAmountDeducted: PriceAmount,
+	creditsRemaining: PriceAmount,
 }
 
-#[allow(non_snake_case, clippy::too_many_arguments)]
-pub async fn send_payment_success_email(
+pub async fn send_payment_success_invoice_email(
 	email: Mailbox,
 	username: String,
-	workspaceName: String,
-	deploymentUsage: HashMap<Uuid, DeploymentBill>,
-	databaseUsage: HashMap<Uuid, DatabaseBill>,
-	staticSiteUsage: HashMap<StaticSitePlan, StaticSiteBill>,
-	managedUrlUsage: HashMap<u64, ManagedUrlBill>,
-	dockerRepositoryUsage: Vec<DockerRepositoryBill>,
-	domainUsage: HashMap<DomainPlan, DomainBill>,
-	secretUsage: HashMap<u64, SecretsBill>,
-	monthString: String,
-	monthNumber: u32,
-	year: i32,
-	totalBill: String,
-	creditsDeducted: String,
-	cardAmountDeducted: String,
-	creditsRemaining: String,
-	amountPaid: String,
+	workspace_name: String,
+	bill_breakdown: WorkspaceBillBreakdown,
+	month_string: String,
+	credits_deducted: PriceAmount,
+	card_amount_deducted: PriceAmount,
+	credits_remaining: PriceAmount,
 ) -> Result<(), Error> {
 	send_email(
-		PaymentSuccessEmail {
+		PaymentSuccessInvoiceEmail {
 			username,
-			workspaceName,
-			deploymentUsage,
-			databaseUsage,
-			staticSiteUsage,
-			managedUrlUsage,
-			dockerRepositoryUsage,
-			domainUsage,
-			secretUsage,
-			monthString,
-			monthNumber,
-			year,
-			totalBill,
-			creditsDeducted,
-			cardAmountDeducted,
-			creditsRemaining,
-			amountPaid,
+			workspaceName: workspace_name,
+			deploymentUsage: bill_breakdown.deployment_usage,
+			databaseUsage: bill_breakdown.database_usage,
+			staticSiteUsage: bill_breakdown.static_site_usage,
+			managedUrlUsage: bill_breakdown.managed_url_usage,
+			dockerRepositoryUsage: bill_breakdown.docker_repository_usage,
+			domainUsage: bill_breakdown.domain_usage,
+			secretUsage: bill_breakdown.secret_usage,
+			monthString: month_string,
+			monthNumber: bill_breakdown.month,
+			year: bill_breakdown.year as i32,
+			totalBill: bill_breakdown.total_charge,
+			creditsDeducted: credits_deducted,
+			cardAmountDeducted: card_amount_deducted,
+			creditsRemaining: credits_remaining,
 		},
 		email,
 		None,
@@ -576,6 +629,8 @@ pub async fn send_domain_verified_email(
 	)
 	.await
 }
+
+
 
 /// # Description
 /// This function is used to send the email to a recipient

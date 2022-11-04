@@ -1,4 +1,3 @@
-pub mod billing;
 pub mod ci;
 pub mod deployment;
 pub mod error;

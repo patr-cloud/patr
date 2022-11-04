@@ -19,7 +19,7 @@ use tokio::{signal, task};
 
 use crate::{
 	app::App,
-	models::rabbitmq::{CIData, InfraRequestData, Queue, WorkspaceRequestData},
+	models::rabbitmq::{BillingData, CIData, InfraRequestData, Queue},
 	utils::{settings::Settings, Error},
 };
 
@@ -124,9 +124,9 @@ pub async fn start_consumer(app: &App) {
 						process_ci_queue_payload(payload, &app).await
 					}
 					Queue::Billing => {
-						let payload = serde_json::from_slice::<
-							WorkspaceRequestData,
-						>(&delivery.data);
+						let payload = serde_json::from_slice::<BillingData>(
+							&delivery.data,
+						);
 
 						let payload = match payload {
 							Ok(payload) => payload,
@@ -235,7 +235,7 @@ async fn process_ci_queue_payload(
 }
 
 async fn process_billing_queue_payload(
-	data: WorkspaceRequestData,
+	data: BillingData,
 	app: &App,
 ) -> Result<(), Error> {
 	let config = &app.config;

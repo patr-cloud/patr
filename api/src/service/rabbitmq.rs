@@ -14,11 +14,11 @@ use crate::{
 	db::Workspace,
 	models::rabbitmq::{
 		BYOCData,
+		BillingData,
 		CIData,
 		DeploymentRequestData,
 		InfraRequestData,
 		Queue,
-		WorkspaceRequestData,
 	},
 	rabbitmq::{self, BuildId, BuildStep},
 	service,
@@ -89,7 +89,7 @@ pub async fn queue_process_payment(
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	send_message_to_billing_queue(
-		&WorkspaceRequestData::ProcessWorkspaces {
+		&BillingData::ProcessWorkspaces {
 			month,
 			year,
 			request_id: request_id.clone(),
@@ -102,6 +102,26 @@ pub async fn queue_process_payment(
 
 pub async fn queue_attempt_to_charge_workspace(
 	workspace: &Workspace,
+	month: u32,
+	year: i32,
+	config: &Settings,
+) -> Result<(), Error> {
+	let request_id = Uuid::new_v4();
+	send_message_to_billing_queue(
+		&BillingData::AttemptToChargeWorkspace {
+			workspace: workspace.clone(),
+			month,
+			year,
+			request_id: request_id.clone(),
+		},
+		config,
+		&request_id,
+	)
+	.await
+}
+
+pub async fn queue_retry_payment_for_workspace(
+	workspace: &Workspace,
 	process_after: &DateTime<Utc>,
 	month: u32,
 	year: i32,
@@ -109,7 +129,7 @@ pub async fn queue_attempt_to_charge_workspace(
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	send_message_to_billing_queue(
-		&WorkspaceRequestData::AttemptToChargeWorkspace {
+		&BillingData::RetryPaymentForWorkspace {
 			workspace: workspace.clone(),
 			process_after: (*process_after).into(),
 			month,
@@ -131,7 +151,7 @@ pub async fn queue_generate_invoice_for_workspace(
 	let request_id = Uuid::new_v4();
 
 	send_message_to_billing_queue(
-		&WorkspaceRequestData::GenerateInvoice {
+		&BillingData::GenerateInvoice {
 			month,
 			year,
 			workspace,
@@ -224,7 +244,7 @@ pub async fn send_message_to_ci_queue(
 }
 
 pub async fn send_message_to_billing_queue(
-	message: &WorkspaceRequestData,
+	message: &BillingData,
 	_config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
