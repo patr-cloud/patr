@@ -454,7 +454,7 @@ pub(super) async fn process_request(
 						.await?;
 
 						service::queue_retry_payment_for_workspace(
-							&workspace,
+							&workspace.id,
 							&Utc::now().add(Duration::days(1)),
 							month,
 							year,
@@ -500,7 +500,7 @@ pub(super) async fn process_request(
 					.await?;
 
 					service::queue_retry_payment_for_workspace(
-						&workspace,
+						&workspace.id,
 						&Utc::now().add(Duration::days(1)),
 						month,
 						year,
@@ -584,7 +584,7 @@ pub(super) async fn process_request(
 			}
 		}
 		BillingData::RetryPaymentForWorkspace {
-			workspace,
+			workspace_id,
 			process_after: DateTime(process_after),
 			month,
 			year,
@@ -625,6 +625,14 @@ pub(super) async fn process_request(
 				)
 				.and_hms(0, 0, 0)
 				.sub(Duration::nanoseconds(1));
+
+			let workspace = db::get_workspace_info_including_deleted(
+				connection,
+				&workspace_id,
+			)
+			.await?
+			.status(500)
+			.body("workspace_id should be a valid id")?;
 
 			// Total amount due by the user for this workspace, after accounting
 			// for their credits
@@ -968,7 +976,7 @@ pub(super) async fn process_request(
 				}
 
 				service::queue_retry_payment_for_workspace(
-					&workspace,
+					&workspace.id,
 					&Utc::now().add(Duration::days(1)),
 					month,
 					year,
