@@ -14,17 +14,17 @@ use log4rs::{
 	config::{Appender, Config, Logger, Root},
 	encode::pattern::PatternEncoder,
 	filter::threshold::ThresholdFilter,
-	Handle,
 };
+use sentry::integrations::log::{default_filter, SentryLogger};
 
 use crate::utils::{
 	settings::{RunningEnvironment, Settings},
 	Error,
 };
 
-pub async fn initialize(config: &Settings) -> Result<Handle, Error> {
+pub async fn initialize(config: &Settings) -> Result<(), Error> {
 	println!("[TRACE]: Initializing logger...");
-	let config = match config.environment {
+	let log4rs_config = match config.environment {
 		RunningEnvironment::Development => Config::builder()
 			.appender(
 				Appender::builder()
@@ -213,5 +213,16 @@ pub async fn initialize(config: &Settings) -> Result<Handle, Error> {
 			)?,
 	};
 
-	Ok(log4rs::init_config(config)?)
+	let file_logger = log4rs::Logger::new(log4rs_config);
+
+	let mut loggers: Vec<Box<dyn log::Log>> = vec![Box::new(file_logger)];
+	if cfg!(not(debug_assertions)) {
+		// use sentry only in production mode
+		let sentry_logger = SentryLogger::new().filter(default_filter);
+		loggers.push(Box::new(sentry_logger));
+	}
+
+	multi_log::MultiLogger::init(loggers, log::Level::Trace)?;
+
+	Ok(())
 }

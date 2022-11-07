@@ -74,6 +74,7 @@ pub struct Settings {
 	#[serde(alias = "ipinfotoken")]
 	pub ipinfo_token: String,
 	pub mimir: MimirSettings,
+	pub sentry: SentrySettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -291,4 +292,10 @@ pub struct MimirSettings {
 	pub host: String,
 	pub username: String,
 	pub password: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SentrySettings {
+	pub dsn: String,
 }

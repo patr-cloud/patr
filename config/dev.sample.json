@@ -122,5 +122,8 @@
 		"host": "mimir.samyakgangwal.com",
 		"username": "admin",
 		"password": "admin"
+	},
+	"sentry": {
+		"dsn": "http://00000000000000000000000000000000@localhost:9000/1"
 	}
 }

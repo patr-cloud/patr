@@ -56,6 +56,17 @@ async fn async_main() -> Result<(), EveError> {
 	logger::initialize(&config).await?;
 	log::debug!("Logger initialized");
 
+	// init sentry logger only in production mode
+	// needs to be initialized only after sentry_logger is added
+	#[cfg(not(debug_assertions))]
+	let _guard = sentry::init((
+		config.sentry.dsn.as_str(),
+		sentry::ClientOptions {
+			release: sentry::release_name!(),
+			..Default::default()
+		},
+	));
+
 	let database = db::create_database_connection(&config).await?;
 	log::debug!("Database connection pool established");
 
