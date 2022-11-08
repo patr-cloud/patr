@@ -1,6 +1,7 @@
 {
 	"html": {
-		"file": "html.handlebars"
+		"file": "html.handlebars",
+		"inline": {}
 	},
 	"plain": {
 		"file": "plain.handlebars"
