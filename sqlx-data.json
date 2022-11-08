@@ -3114,12 +3114,12 @@
       ],
       "nullable": [
         null,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
       ],
       "parameters": {
         "Left": []
@@ -6170,132 +6170,6 @@
       }
     },
     "query": "SELECT COUNT(*) as \"count!\" FROM managed_url INNER JOIN workspace ON managed_url.workspace_id = workspace.id WHERE url_type = 'proxy_to_static_site' AND workspace.super_admin_id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );"
-  },
-  "75ac248651a4348cf27f68540ae8ee85d8eb1d4b514513d2d5448d828dc2fcd4": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "super_admin_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "active",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "alert_emails: _",
-          "ordinal": 4,
-          "type_info": "VarcharArray"
-        },
-        {
-          "name": "payment_type: _",
-          "ordinal": 5,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "card",
-                  "enterprise"
-                ]
-              },
-              "name": "payment_type"
-            }
-          }
-        },
-        {
-          "name": "default_payment_method_id: _",
-          "ordinal": 6,
-          "type_info": "Text"
-        },
-        {
-          "name": "deployment_limit",
-          "ordinal": 7,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_limit",
-          "ordinal": 8,
-          "type_info": "Int4"
-        },
-        {
-          "name": "database_limit",
-          "ordinal": 9,
-          "type_info": "Int4"
-        },
-        {
-          "name": "managed_url_limit",
-          "ordinal": 10,
-          "type_info": "Int4"
-        },
-        {
-          "name": "secret_limit",
-          "ordinal": 11,
-          "type_info": "Int4"
-        },
-        {
-          "name": "domain_limit",
-          "ordinal": 12,
-          "type_info": "Int4"
-        },
-        {
-          "name": "docker_repository_storage_limit",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "stripe_customer_id",
-          "ordinal": 14,
-          "type_info": "Text"
-        },
-        {
-          "name": "address_id: _",
-          "ordinal": 15,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "amount_due",
-          "ordinal": 16,
-          "type_info": "Float8"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", super_admin_id as \"super_admin_id: _\", active, alert_emails as \"alert_emails: _\", payment_type as \"payment_type: _\", default_payment_method_id as \"default_payment_method_id: _\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, stripe_customer_id, address_id as \"address_id: _\", amount_due FROM workspace WHERE id = $1;"
   },
   "75bdeb64bbd4a28d8d283d6d64fb3174c0b62ac1bfbaf19b324d2071d769ce28": {
     "describe": {

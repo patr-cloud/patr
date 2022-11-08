@@ -626,13 +626,10 @@ pub(super) async fn process_request(
 				.and_hms(0, 0, 0)
 				.sub(Duration::nanoseconds(1));
 
-			let workspace = db::get_workspace_info_including_deleted(
-				connection,
-				&workspace_id,
-			)
-			.await?
-			.status(500)
-			.body("workspace_id should be a valid id")?;
+			let workspace = db::get_workspace_info(connection, &workspace_id)
+				.await?
+				.status(500)
+				.body("workspace_id should be a valid id")?;
 
 			// Total amount due by the user for this workspace, after accounting
 			// for their credits
