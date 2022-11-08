@@ -79,7 +79,8 @@ pub async fn list_all_users_with_roles_in_workspace(
 	let mut users = HashMap::new();
 
 	for workspace_user in rows {
-		let roles = users.entry(workspace_user.user_id).or_insert(vec![]);
+		let roles: &mut Vec<_> =
+			users.entry(workspace_user.user_id).or_default();
 		if !roles.contains(&workspace_user.role_id) {
 			roles.push(workspace_user.role_id);
 		}

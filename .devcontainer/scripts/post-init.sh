@@ -6,6 +6,10 @@ echo "Adding generated certificates to trust chain"
 sudo cp /workspace/.devcontainer/volume/config/nginx-certs/cert.crt /usr/local/share/ca-certificates/patr-cert.crt
 sudo update-ca-certificates
 
+if [ -f /workspace/.devcontainer/volume/config/init-data/.bashrc ]; then
+	cat /workspace/.devcontainer/volume/config/init-data/.bashrc >> ~/.bashrc
+fi
+
 mv -n ~/.cargo/bin ~/.cargo-volume/bin
 mv -n ~/.cargo/env ~/.cargo-volume/env
 rm -rf ~/.cargo/

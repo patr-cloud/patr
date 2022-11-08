@@ -198,7 +198,7 @@ pub fn evaluate_work_steps_for_ci(
 	// do the work in the defined order
 	let is_steps_linear = steps
 		.iter()
-		.all(|step| matches!(step, Step::Work(work) if work.next == None));
+		.all(|step| matches!(step, Step::Work(work) if work.next.is_none()));
 	if is_steps_linear {
 		let works = steps
 			.into_iter()
