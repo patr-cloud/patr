@@ -320,6 +320,8 @@ pub async fn upload_static_site_files_to_s3(
 
 	let mut files_vec = Vec::new();
 
+	let mut file_size = 0;
+
 	for i in 0..archive.len() {
 		let mut file = archive.by_index(i).map_err(|err| {
 			log::error!(
@@ -329,6 +331,15 @@ pub async fn upload_static_site_files_to_s3(
 			);
 			err
 		})?;
+
+		file_size += file.size();
+
+		// For now restricting user to upload file of size 100mb max
+		if file_size > 100000000 {
+			return Error::as_result()
+				.status(400)
+				.body(error!(FILE_SIZE_TOO_LARGE).to_string())?;
+		}
 
 		let file_name = if let Some(path) = file.enclosed_name() {
 			path.to_string_lossy().to_string()
@@ -364,16 +375,6 @@ pub async fn upload_static_site_files_to_s3(
 			file_content,
 			mime_string.to_string(),
 		));
-	}
-
-	let file_size: usize =
-		files_vec.iter().map(|(_, file, _)| file.len()).sum();
-
-	// For now restricting user to upload file of size 100mb max
-	if file_size > 100000000 {
-		return Error::as_result()
-			.status(400)
-			.body(error!(FILE_SIZE_TOO_LARGE).to_string())?;
 	}
 
 	for (file_name, file_content, mime_string) in files_vec {
