@@ -322,13 +322,18 @@ async fn repatch_all_managed_urls() -> Result<(), Error> {
 		db::get_all_unconfigured_managed_urls(&mut connection).await?;
 
 	for managed_url in managed_urls {
-		let is_configured = service::verify_managed_url_configuration(
+		let Ok(is_configured) = service::verify_managed_url_configuration(
 			&mut connection,
 			&managed_url.id,
 			&config.config,
 			&request_id,
 		)
-		.await?;
+		.await.map_err(|err| {
+			log::error!("Error verifying managed URL: {}", err.get_error());
+			err
+		}) else {
+			continue;
+		};
 
 		if !is_configured {
 			continue;
