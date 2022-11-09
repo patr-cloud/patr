@@ -18,7 +18,6 @@ use stripe::{
 	PaymentIntent,
 	PaymentIntentConfirmationMethod,
 	PaymentIntentOffSession,
-	PaymentIntentSetupFutureUsage,
 	PaymentIntentStatus,
 	PaymentMethodId,
 	RequestStrategy,
@@ -347,47 +346,51 @@ pub(super) async fn process_request(
 						)
 					};
 
-					let client = Client::new(&config.stripe.secret_key)
-						.with_strategy(RequestStrategy::Idempotent(format!(
-							"{}-{}-{}",
-							workspace.id, month, year
-						)));
 					let payment_description = Some(format!(
 						"Patr charge: Bill for {} {}",
 						month_string, year
 					));
-					let payment_intent = PaymentIntent::create(&client, {
-						let mut intent =
-							CreatePaymentIntent::new(stripe_amount, currency);
+					let payment_intent = PaymentIntent::create(
+						&Client::new(&config.stripe.secret_key).with_strategy(
+							RequestStrategy::Idempotent(format!(
+								"{}-{}-{}",
+								workspace.id, month, year
+							)),
+						),
+						{
+							let mut intent = CreatePaymentIntent::new(
+								stripe_amount,
+								currency,
+							);
 
-						intent.confirm = Some(true);
-						intent.confirmation_method =
-							Some(PaymentIntentConfirmationMethod::Automatic);
-						intent.off_session =
-							Some(PaymentIntentOffSession::Other(
-								OffSessionOther::OneOff,
-							));
-						intent.description = payment_description.as_deref();
-						intent.customer = Some(CustomerId::from_str(
-							&workspace.stripe_customer_id,
-						)?);
-						intent.payment_method =
-							Some(PaymentMethodId::from_str(payment_method_id)?);
-						intent.payment_method_types =
-							Some(vec!["card".to_string()]);
-						intent.setup_future_usage =
-							Some(PaymentIntentSetupFutureUsage::OffSession);
+							intent.confirm = Some(true);
+							intent.confirmation_method = Some(
+								PaymentIntentConfirmationMethod::Automatic,
+							);
+							intent.off_session =
+								Some(PaymentIntentOffSession::Other(
+									OffSessionOther::OneOff,
+								));
+							intent.description = payment_description.as_deref();
+							intent.customer = Some(CustomerId::from_str(
+								&workspace.stripe_customer_id,
+							)?);
+							intent.payment_method = Some(
+								PaymentMethodId::from_str(payment_method_id)?,
+							);
+							intent.payment_method_types =
+								Some(vec!["card".to_string()]);
 
-						intent
-					})
-					.await?;
-
-					let payment_intent = PaymentIntent::confirm(
-						&client,
-						&payment_intent.id,
-						Default::default(),
+							intent
+						},
 					)
-					.await?;
+					.await
+					.map_err(|err| {
+						log::warn!(
+							"Error while creating payment indent: {err:#?}"
+						);
+						err
+					})?;
 
 					let transaction_id =
 						db::generate_new_transaction_id(connection).await?;
@@ -761,46 +764,45 @@ pub(super) async fn process_request(
 						)
 					};
 
-				let client = Client::new(&config.stripe.secret_key)
-					.with_strategy(RequestStrategy::Idempotent(format!(
-						"{}-{}-{}",
-						workspace.id, month, year
-					)));
 				let payment_description = Some(format!(
 					"Patr charge: Bill for {} {}",
 					month_string, year
 				));
-				let payment_intent = PaymentIntent::create(&client, {
-					let mut intent =
-						CreatePaymentIntent::new(stripe_amount, currency);
+				let payment_intent = PaymentIntent::create(
+					&Client::new(&config.stripe.secret_key).with_strategy(
+						RequestStrategy::Idempotent(format!(
+							"{}-{}-{}",
+							workspace.id, month, year
+						)),
+					),
+					{
+						let mut intent =
+							CreatePaymentIntent::new(stripe_amount, currency);
 
-					intent.confirm = Some(true);
-					intent.confirmation_method =
-						Some(PaymentIntentConfirmationMethod::Automatic);
-					intent.off_session = Some(PaymentIntentOffSession::Other(
-						OffSessionOther::OneOff,
-					));
-					intent.description = payment_description.as_deref();
-					intent.customer = Some(CustomerId::from_str(
-						&workspace.stripe_customer_id,
-					)?);
-					intent.payment_method =
-						Some(PaymentMethodId::from_str(payment_method_id)?);
-					intent.payment_method_types =
-						Some(vec!["card".to_string()]);
-					intent.setup_future_usage =
-						Some(PaymentIntentSetupFutureUsage::OffSession);
+						intent.confirm = Some(true);
+						intent.confirmation_method =
+							Some(PaymentIntentConfirmationMethod::Automatic);
+						intent.off_session =
+							Some(PaymentIntentOffSession::Other(
+								OffSessionOther::OneOff,
+							));
+						intent.description = payment_description.as_deref();
+						intent.customer = Some(CustomerId::from_str(
+							&workspace.stripe_customer_id,
+						)?);
+						intent.payment_method =
+							Some(PaymentMethodId::from_str(payment_method_id)?);
+						intent.payment_method_types =
+							Some(vec!["card".to_string()]);
 
-					intent
-				})
-				.await?;
-
-				let payment_intent = PaymentIntent::confirm(
-					&client,
-					&payment_intent.id,
-					Default::default(),
+						intent
+					},
 				)
-				.await?;
+				.await
+				.map_err(|err| {
+					log::warn!("Error while creating payment indent: {err:#?}");
+					err
+				})?;
 
 				let transaction_id =
 					db::generate_new_transaction_id(connection).await?;
