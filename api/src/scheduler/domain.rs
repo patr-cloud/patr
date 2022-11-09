@@ -8,7 +8,7 @@ use api_models::{
 use chrono::Utc;
 use cloudflare::{
 	endpoints::zone::{self, Status},
-	framework::async_api::ApiClient,
+	framework::{async_api::ApiClient, response::ApiFailure},
 };
 use eve_rs::AsError;
 use sqlx::Connection;
@@ -118,11 +118,33 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 		if let (Some(zone_identifier), true) =
 			(zone_identifier, unverified_domain.is_ns_internal())
 		{
-			let response = client
+			let response = match client
 				.request(&zone::ZoneDetails {
 					identifier: &zone_identifier,
 				})
-				.await?;
+				.await
+			{
+				Ok(response) => response,
+				Err(ApiFailure::Error(status_code, _))
+					if status_code == 404 =>
+				{
+					// The given domain does not exist in cloudflare. Something
+					// is wrong here
+					log::error!(
+						"Domain `{}` does not exist in cloudflare",
+						unverified_domain.name
+					);
+					continue;
+				}
+				Err(err) => {
+					log::error!(
+						"Unable to get domain `{}` from cloudflare: {}",
+						unverified_domain.name,
+						err
+					);
+					continue;
+				}
+			};
 			if let Status::Active = response.result.status {
 				service::create_certificates(
 					&workspace_id,
@@ -484,15 +506,7 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 	let verified_domains =
 		db::get_all_verified_domains(&mut connection).await?;
 
-	let client = service::get_cloudflare_client(&config.config).await;
-
-	let client = match client {
-		Ok(client) => client,
-		Err(err) => {
-			log::error!("Cannot get cloudflare client: {}", err.get_error());
-			return Ok(());
-		}
-	};
+	let client = service::get_cloudflare_client(&config.config).await?;
 
 	for (verified_domain, zone_identifier) in verified_domains {
 		// getting workspace_id
@@ -509,11 +523,31 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 			// TODO delete the domain altogether or add to cloudflare?
 			continue;
 		};
-		let response = client
+		let response = match client
 			.request(&zone::ZoneDetails {
 				identifier: &zone_identifier,
 			})
-			.await?;
+			.await
+		{
+			Ok(response) => response,
+			Err(ApiFailure::Error(status_code, _)) if status_code == 404 => {
+				// The given domain does not exist in cloudflare. Something
+				// is wrong here
+				log::error!(
+					"Domain `{}` does not exist in cloudflare",
+					verified_domain.name
+				);
+				continue;
+			}
+			Err(err) => {
+				log::error!(
+					"Unable to get domain `{}` from cloudflare: {}",
+					verified_domain.name,
+					err
+				);
+				continue;
+			}
+		};
 
 		if let Status::Active = response.result.status {
 			continue;
