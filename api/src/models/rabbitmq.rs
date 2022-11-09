@@ -116,7 +116,7 @@ pub enum BillingData {
 		request_id: Uuid,
 	},
 	RetryPaymentForWorkspace {
-		workspace: Workspace,
+		workspace_id: Uuid,
 		process_after: DateTime<Utc>,
 		month: u32,
 		year: i32,

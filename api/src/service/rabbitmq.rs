@@ -121,7 +121,7 @@ pub async fn queue_attempt_to_charge_workspace(
 }
 
 pub async fn queue_retry_payment_for_workspace(
-	workspace: &Workspace,
+	workspace_id: &Uuid,
 	process_after: &DateTime<Utc>,
 	month: u32,
 	year: i32,
@@ -130,7 +130,7 @@ pub async fn queue_retry_payment_for_workspace(
 	let request_id = Uuid::new_v4();
 	send_message_to_billing_queue(
 		&BillingData::RetryPaymentForWorkspace {
-			workspace: workspace.clone(),
+			workspace_id: workspace_id.clone(),
 			process_after: (*process_after).into(),
 			month,
 			year,
