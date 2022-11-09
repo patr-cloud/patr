@@ -1086,48 +1086,13 @@ async fn get_deployment_info(
 		request_id,
 		deployment_id,
 	);
-	let (mut deployment, workspace_id, _, running_details) =
+	let (deployment, _, _, running_details) =
 		service::get_full_deployment_config(
 			context.get_database_connection(),
 			&deployment_id,
 			&request_id,
 		)
 		.await?;
-
-	log::trace!("request_id: {} - Checking deployment status", request_id);
-	deployment.status = match deployment.status {
-		// If it's deploying or running, check with k8s on the actual status
-		db_status @ (DeploymentStatus::Deploying |
-		DeploymentStatus::Running) => {
-			log::trace!(
-				"request_id: {} - Deployment is deploying or running",
-				request_id
-			);
-			let config = context.get_state().config.clone();
-			let status = service::get_kubernetes_deployment_status(
-				context.get_database_connection(),
-				&deployment_id,
-				workspace_id.as_str(),
-				&config,
-			)
-			.await?;
-
-			if db_status != status {
-				log::trace!(
-					"request_id: {} - Updating deployment status",
-					request_id
-				);
-				db::update_deployment_status(
-					context.get_database_connection(),
-					&deployment_id,
-					&status,
-				)
-				.await?;
-			}
-			status
-		}
-		status => status, // In all other cases, it is what it is
-	};
 
 	context.success(GetDeploymentInfoResponse {
 		deployment,

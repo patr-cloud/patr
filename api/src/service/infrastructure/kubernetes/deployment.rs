@@ -33,6 +33,7 @@ use k8s_openapi::{
 			HTTPGetAction,
 			KeyToPath,
 			LocalObjectReference,
+			Pod,
 			PodSpec,
 			PodTemplateSpec,
 			Probe,
@@ -63,7 +64,7 @@ use k8s_openapi::{
 	ByteString,
 };
 use kube::{
-	api::{DeleteParams, Patch, PatchParams},
+	api::{DeleteParams, ListParams, Patch, PatchParams},
 	core::{ErrorResponse, ObjectMeta},
 	Api,
 	Error as KubeError,
@@ -819,7 +820,40 @@ pub async fn get_kubernetes_deployment_status(
 			.body(error!(SERVER_ERROR).to_string())?,
 	};
 
-	// TODO: add logic to check the image crash loop or pull backoff
+	let event_api = Api::<Pod>::namespaced(kubernetes_client, namespace)
+		.list(
+			&ListParams::default()
+				.labels(&format!("deploymentId={}", deployment_id)),
+		)
+		.await;
+
+	let status = match event_api {
+		Ok(event) => event
+			.items
+			.into_iter()
+			.filter_map(|pod| pod.status)
+			.filter_map(|status| status.container_statuses)
+			.flat_map(|status| {
+				status
+					.into_iter()
+					.filter_map(|status| status.state)
+					.filter_map(|state| state.waiting)
+					.filter_map(|waiting| waiting.reason)
+					.collect::<Vec<_>>()
+			})
+			.collect::<Vec<_>>(),
+		Err(err) => {
+			log::trace!("Unable to get pod status, Error: {}", err);
+			return Ok(DeploymentStatus::Deploying);
+		}
+	};
+
+	// Better check handling and covering edge cases
+	if status.contains(&"ErrImagePull".to_string()) ||
+		status.contains(&"CrashLoopBackOff".to_string())
+	{
+		return Ok(DeploymentStatus::Errored);
+	}
 
 	if deployment_status.available_replicas ==
 		Some(deployment.min_horizontal_scale.into())
