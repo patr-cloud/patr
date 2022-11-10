@@ -20,6 +20,8 @@ use cloudflare::{
 			CreateZone,
 			CreateZoneParams,
 			DeleteZone,
+			ListZones,
+			ListZonesParams,
 			Status,
 			Type,
 			ZoneDetails,
@@ -251,23 +253,49 @@ pub async fn add_domain_to_workspace(
 			request_id,
 			full_domain_name
 		);
-		// create zone
-		let zone_identifier = client
-			.request(&CreateZone {
-				params: CreateZoneParams {
-					name: full_domain_name,
-					jump_start: Some(false),
-					account: AccountId {
-						id: &config.cloudflare.account_id,
-					},
-					// Full because the DNS record
-					zone_type: Some(Type::Full),
+		let zone = client
+			.request(&ListZones {
+				params: ListZonesParams {
+					name: Some(full_domain_name.to_string()),
+					..Default::default()
 				},
 			})
 			.await?
 			.result
-			.id;
-		log::trace!("Zone created for domain: {}", full_domain_name);
+			.into_iter()
+			.next();
+		let zone_exists = zone.is_some();
+		log::trace!(
+			"request_id: {} - Domain exists: {}",
+			request_id,
+			zone_exists
+		);
+		// create zone
+		let zone_identifier = if let Some(zone) = zone {
+			zone
+		} else {
+			client
+				.request(&CreateZone {
+					params: CreateZoneParams {
+						name: full_domain_name,
+						jump_start: Some(false),
+						account: AccountId {
+							id: &config.cloudflare.account_id,
+						},
+						// Full because the DNS record
+						zone_type: Some(Type::Full),
+					},
+				})
+				.await?
+				.result
+		}
+		.id;
+		if zone_exists {
+			log::trace!("Using existing zone for domain: {}", full_domain_name);
+		} else {
+			log::trace!("Zone created for domain: {}", full_domain_name);
+		}
+
 		// create a new function to store zone related data
 		db::add_patr_controlled_domain(
 			connection,
@@ -374,6 +402,10 @@ pub async fn is_domain_verified(
 			.await?;
 			return Ok(true);
 		}
+
+		// It will not be so far in this function unless the domain is verified
+		// If it's not verified, the domain just got unverified. Send an email
+		// letting them know that the domain has been unverified
 		service::domain_verification_email(
 			connection,
 			&domain.name,
