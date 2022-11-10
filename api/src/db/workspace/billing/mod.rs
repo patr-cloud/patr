@@ -780,7 +780,7 @@ pub async fn get_total_amount_to_pay_for_workspace(
 					ELSE
 						0
 				END
-			) as "total_amount!"
+			) as "total_amount"
 		FROM
 			transaction
 		WHERE
@@ -791,7 +791,7 @@ pub async fn get_total_amount_to_pay_for_workspace(
 	)
 	.fetch_one(&mut *connection)
 	.await
-	.map(|row| row.total_amount as f64)
+	.map(|row| row.total_amount.unwrap_or(0f64))
 }
 
 pub async fn get_transaction_by_transaction_id(
