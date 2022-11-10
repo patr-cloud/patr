@@ -1,7 +1,4 @@
-use api_models::{
-	models::workspace::billing::{Address, WorkspaceBillBreakdown},
-	utils::PriceAmount,
-};
+use api_models::models::workspace::billing::{Address, WorkspaceBillBreakdown};
 use lettre::message::Mailbox;
 use serde::Serialize;
 
@@ -267,7 +264,7 @@ struct BillNotPaidDeleteResourcesEmail {
 	monthString: String,
 	monthNumber: u32,
 	year: i32,
-	totalBill: f64,
+	totalBill: u64,
 }
 
 #[allow(non_snake_case)]
@@ -278,7 +275,7 @@ pub async fn send_bill_not_paid_delete_resources_email(
 	monthString: String,
 	monthNumber: u32,
 	year: i32,
-	totalBill: f64,
+	totalBill: u64,
 ) -> Result<(), Error> {
 	send_email(
 		BillNotPaidDeleteResourcesEmail {
@@ -305,7 +302,7 @@ struct BillPaymentFailedReminderEmail {
 	monthString: String,
 	monthNumber: u32,
 	year: i32,
-	totalBill: PriceAmount,
+	totalBill: u64,
 	deadline: String,
 }
 
@@ -317,7 +314,7 @@ pub async fn send_bill_payment_failed_reminder_email(
 	monthString: String,
 	monthNumber: u32,
 	year: i32,
-	totalBill: PriceAmount,
+	totalBill: u64,
 	deadline: String,
 ) -> Result<(), Error> {
 	send_email(
@@ -346,7 +343,7 @@ struct CardNotAddedReminderEmail {
 	monthString: String,
 	monthNumber: u32,
 	year: i32,
-	totalBill: PriceAmount,
+	totalBill: u64,
 	deadline: String,
 }
 
@@ -358,7 +355,7 @@ pub async fn send_card_not_added_reminder_email(
 	monthString: String,
 	monthNumber: u32,
 	year: i32,
-	totalBill: PriceAmount,
+	totalBill: u64,
 	deadline: String,
 ) -> Result<(), Error> {
 	send_email(
@@ -386,7 +383,7 @@ struct BillPaidSuccessfullyEmail {
 	workspaceName: String,
 	monthString: String,
 	year: i32,
-	cardAmountDeducted: PriceAmount,
+	cardAmountDeducted: u64,
 }
 
 #[allow(non_snake_case)]
@@ -396,7 +393,7 @@ pub async fn send_bill_paid_successfully_email(
 	workspaceName: String,
 	monthString: String,
 	year: i32,
-	cardAmountDeducted: PriceAmount,
+	cardAmountDeducted: u64,
 ) -> Result<(), Error> {
 	send_email(
 		BillPaidSuccessfullyEmail {
@@ -456,9 +453,9 @@ struct PaymentSuccessInvoiceEmail {
 	billBreakdown: WorkspaceBillBreakdown,
 	billingAddress: Address,
 	monthString: String,
-	creditsDeducted: PriceAmount,
-	cardAmountDeducted: PriceAmount,
-	creditsRemaining: PriceAmount,
+	creditsDeducted: u64,
+	cardAmountDeducted: u64,
+	creditsRemaining: u64,
 }
 
 pub async fn send_payment_success_invoice_email(
@@ -468,9 +465,9 @@ pub async fn send_payment_success_invoice_email(
 	bill_breakdown: WorkspaceBillBreakdown,
 	billing_address: Address,
 	month_string: String,
-	credits_deducted: PriceAmount,
-	card_amount_deducted: PriceAmount,
-	credits_remaining: PriceAmount,
+	credits_deducted: u64,
+	card_amount_deducted: u64,
+	credits_remaining: u64,
 ) -> Result<(), Error> {
 	send_email(
 		PaymentSuccessInvoiceEmail {

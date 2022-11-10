@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use api_models::{models::workspace::WorkspacePermission, utils::Uuid};
 use chrono::{DateTime, Utc};
 
-use crate::{db::Workspace, models::rbac, query, query_as, Database};
+use crate::{db::InternalWorkspace, models::rbac, query, query_as, Database};
 
 mod role;
 mod user;
@@ -443,7 +443,7 @@ pub async fn get_all_workspace_role_permissions_for_user(
 
 	// add superadmins to the data-structure too
 	let workspaces_details = query_as!(
-		Workspace,
+		InternalWorkspace,
 		r#"
 		SELECT
 			id as "id: _",
@@ -462,7 +462,7 @@ pub async fn get_all_workspace_role_permissions_for_user(
 			docker_repository_storage_limit,
 			stripe_customer_id,
 			address_id as "address_id: _",
-			amount_due
+			amount_due_in_cents
 		FROM
 			workspace
 		WHERE

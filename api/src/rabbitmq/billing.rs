@@ -1,11 +1,17 @@
 use std::{
+	cmp::max,
 	ops::{Add, Sub},
 	str::FromStr,
 };
 
 use api_models::{
-	models::workspace::billing::{Address, PaymentStatus, TransactionType},
-	utils::{DateTime, PriceAmount, Uuid},
+	models::workspace::billing::{
+		Address,
+		PaymentStatus,
+		TotalAmount,
+		TransactionType,
+	},
+	utils::{DateTime, Uuid},
 };
 use chrono::{Duration, TimeZone, Utc};
 use eve_rs::AsError;
@@ -151,7 +157,7 @@ pub(super) async fn process_request(
 				&workspace.id,
 				&transaction_id,
 				month as i32,
-				total_bill_breakdown.total_charge.0,
+				total_bill_breakdown.total_charge,
 				None,
 				// 1st of next month,
 				&next_month_start_date.add(Duration::nanoseconds(1)),
@@ -208,11 +214,12 @@ pub(super) async fn process_request(
 
 			// Total amount due by the user for this workspace, after accounting
 			// for their credits
-			let amount_due = db::get_total_amount_to_pay_for_workspace(
-				connection,
-				&workspace.id,
-			)
-			.await?;
+			let amount_due_in_cents =
+				db::get_total_amount_in_cents_to_pay_for_workspace(
+					connection,
+					&workspace.id,
+				)
+				.await?;
 
 			// The total bill for the previous month, without accounting for
 			// credits
@@ -224,35 +231,20 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
-			let card_amount_to_be_charged =
-				if amount_due <= 0f64 { 0f64 } else { amount_due };
-
-			// How much of the bill was charged from credits
-			let credits_deducted =
-				total_bill.total_charge.0 - card_amount_to_be_charged;
-
-			let credits_deducted = if credits_deducted <= 0f64 {
-				0f64
-			} else {
-				credits_deducted
+			let (
+				card_amount_to_be_charged_in_cents,
+				credits_deducted_in_cents,
+				credits_remaining_in_cents,
+			) = match amount_due_in_cents {
+				TotalAmount::CreditsLeft(credits_left) => {
+					(0, total_bill.total_charge, credits_left)
+				}
+				TotalAmount::NeedToPay(need_to_pay) => (
+					need_to_pay,
+					max(0, total_bill.total_charge - need_to_pay),
+					0,
+				),
 			};
-
-			// How many credits are remaining in your account
-			let credits_remaining = if amount_due >= 0.00 {
-				0.00
-			} else {
-				// If amount due is negative, the negative value implies the
-				// amount of credits remaining in their account. The positive
-				// value of that is the credits remaining in their account
-				-amount_due
-			};
-
-			if amount_due <= 0f64 && total_bill.total_charge.0 < 0.01 {
-				// No paid resources have been used. They have no bill to their
-				// account. No payment needs to be made. Don't bother sending
-				// them an email and annoying them.
-				return Ok(());
-			}
 
 			let workspace_name = if let Some(Ok(user_id)) = workspace
 				.name
@@ -273,7 +265,7 @@ pub(super) async fn process_request(
 				workspace.name.clone()
 			};
 
-			if amount_due <= 0f64 {
+			if card_amount_to_be_charged_in_cents == 0 {
 				let billing_address = if let Some(address) =
 					workspace.address_id
 				{
@@ -312,10 +304,10 @@ pub(super) async fn process_request(
 					month_string.to_string(),
 					total_bill,
 					billing_address,
-					PriceAmount(credits_deducted),
+					credits_deducted_in_cents,
 					// If `amount_due` is 0, definitely the card amount is 0
-					PriceAmount(card_amount_to_be_charged),
-					PriceAmount(credits_remaining),
+					card_amount_to_be_charged_in_cents,
+					credits_remaining_in_cents,
 				)
 				.await?;
 				return Ok(());
@@ -345,15 +337,9 @@ pub(super) async fn process_request(
 					let (currency, stripe_amount) = if billing_address.country ==
 						*"IN"
 					{
-						(
-							Currency::INR,
-							(card_amount_to_be_charged * 100f64 * 80f64) as i64,
-						)
+						(Currency::INR, card_amount_to_be_charged_in_cents * 80)
 					} else {
-						(
-							Currency::USD,
-							(card_amount_to_be_charged * 100f64) as i64,
-						)
+						(Currency::USD, card_amount_to_be_charged_in_cents)
 					};
 
 					let payment_description = Some(format!(
@@ -369,7 +355,7 @@ pub(super) async fn process_request(
 						),
 						{
 							let mut intent = CreatePaymentIntent::new(
-								stripe_amount,
+								stripe_amount as i64,
 								currency,
 							);
 
@@ -416,7 +402,7 @@ pub(super) async fn process_request(
 							&workspace.id,
 							&transaction_id,
 							month as i32,
-							card_amount_to_be_charged,
+							card_amount_to_be_charged_in_cents,
 							Some(&payment_intent.id),
 							&Utc::now(),
 							&TransactionType::Payment,
@@ -432,11 +418,11 @@ pub(super) async fn process_request(
 							month_string.to_string(),
 							total_bill,
 							billing_address,
-							PriceAmount(credits_deducted),
+							credits_deducted_in_cents,
 							// If `amount_due` is 0, definitely the card amount
 							// is 0
-							PriceAmount(card_amount_to_be_charged),
-							PriceAmount(credits_remaining),
+							card_amount_to_be_charged_in_cents,
+							credits_remaining_in_cents,
 						)
 						.await?;
 
@@ -447,7 +433,7 @@ pub(super) async fn process_request(
 							&workspace.id,
 							&transaction_id,
 							month as i32,
-							card_amount_to_be_charged,
+							card_amount_to_be_charged_in_cents,
 							Some(&payment_intent.id),
 							&Utc::now(),
 							&TransactionType::Payment,
@@ -532,7 +518,7 @@ pub(super) async fn process_request(
 					&workspace.id,
 					&transaction_id,
 					month as i32,
-					total_bill.total_charge.0,
+					total_bill.total_charge,
 					Some("enterprise-plan-payment"),
 					// 1st of next month, so that the payment will be recorded
 					// on 1st of october for a bill generated for september
@@ -588,8 +574,8 @@ pub(super) async fn process_request(
 					total_bill,
 					billing_address,
 					total_charge,
-					PriceAmount(0f64),
-					PriceAmount(0f64),
+					0,
+					0,
 				)
 				.await?;
 
@@ -650,11 +636,12 @@ pub(super) async fn process_request(
 
 			// Total amount due by the user for this workspace, after accounting
 			// for their credits
-			let amount_due = db::get_total_amount_to_pay_for_workspace(
-				connection,
-				&workspace.id,
-			)
-			.await?;
+			let amount_due_in_cents =
+				db::get_total_amount_in_cents_to_pay_for_workspace(
+					connection,
+					&workspace.id,
+				)
+				.await?;
 
 			// The total bill for the previous month, without accounting for
 			// credits
@@ -666,27 +653,19 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
-			let card_amount_to_be_charged =
-				if amount_due <= 0f64 { 0f64 } else { amount_due };
-
-			// How much of the bill was charged from credits
-			let credits_deducted =
-				total_bill.total_charge.0 - card_amount_to_be_charged;
-
-			let credits_deducted = if credits_deducted <= 0f64 {
-				0f64
-			} else {
-				credits_deducted
-			};
-
-			// How many credits are remaining in your account
-			let credits_remaining = if amount_due >= 0.00 {
-				0.00
-			} else {
-				// If amount due is negative, the negative value implies the
-				// amount of credits remaining in their account. The positive
-				// value of that is the credits remaining in their account
-				-amount_due
+			let (
+				card_amount_to_be_charged_in_cents,
+				credits_deducted_in_cents,
+				credits_remaining_in_cents,
+			) = match amount_due_in_cents {
+				TotalAmount::CreditsLeft(credits_left) => {
+					(0, total_bill.total_charge, credits_left)
+				}
+				TotalAmount::NeedToPay(need_to_pay) => (
+					need_to_pay,
+					max(0, total_bill.total_charge - need_to_pay),
+					0,
+				),
 			};
 
 			let workspace_name = if let Some(Ok(user_id)) = workspace
@@ -708,7 +687,7 @@ pub(super) async fn process_request(
 				workspace.name.clone()
 			};
 
-			if amount_due <= 0f64 {
+			if card_amount_to_be_charged_in_cents == 0 {
 				let billing_address = if let Some(address) =
 					workspace.address_id
 				{
@@ -747,10 +726,9 @@ pub(super) async fn process_request(
 					month_string.to_string(),
 					total_bill,
 					billing_address,
-					PriceAmount(credits_deducted),
-					// If `amount_due` is 0, definitely the card amount is 0
-					PriceAmount(card_amount_to_be_charged),
-					PriceAmount(credits_remaining),
+					credits_deducted_in_cents,
+					card_amount_to_be_charged_in_cents,
+					credits_remaining_in_cents,
 				)
 				.await?;
 				return Ok(());
@@ -767,15 +745,9 @@ pub(super) async fn process_request(
 						.status(500)?
 						.country == *"IN"
 					{
-						(
-							Currency::INR,
-							(card_amount_to_be_charged * 100f64 * 80f64) as i64,
-						)
+						(Currency::INR, card_amount_to_be_charged_in_cents * 80)
 					} else {
-						(
-							Currency::USD,
-							(card_amount_to_be_charged * 100f64) as i64,
-						)
+						(Currency::USD, card_amount_to_be_charged_in_cents)
 					};
 
 				let payment_description = Some(format!(
@@ -790,8 +762,10 @@ pub(super) async fn process_request(
 						)),
 					),
 					{
-						let mut intent =
-							CreatePaymentIntent::new(stripe_amount, currency);
+						let mut intent = CreatePaymentIntent::new(
+							stripe_amount as i64,
+							currency,
+						);
 
 						intent.confirm = Some(true);
 						intent.confirmation_method =
@@ -830,7 +804,7 @@ pub(super) async fn process_request(
 						&workspace.id,
 						&transaction_id,
 						month as i32,
-						card_amount_to_be_charged,
+						card_amount_to_be_charged_in_cents,
 						Some(&payment_intent.id),
 						&Utc::now(),
 						&TransactionType::Payment,
@@ -845,7 +819,7 @@ pub(super) async fn process_request(
 						workspace_name,
 						month_string.to_string(),
 						year,
-						PriceAmount(card_amount_to_be_charged),
+						card_amount_to_be_charged_in_cents,
 					)
 					.await?;
 
@@ -858,7 +832,7 @@ pub(super) async fn process_request(
 					&workspace.id,
 					&transaction_id,
 					month as i32,
-					card_amount_to_be_charged,
+					card_amount_to_be_charged_in_cents,
 					Some(&payment_intent.id),
 					&Utc::now(),
 					&TransactionType::Payment,
@@ -923,7 +897,7 @@ pub(super) async fn process_request(
 					month_string.to_string(),
 					month,
 					year,
-					card_amount_to_be_charged,
+					card_amount_to_be_charged_in_cents,
 				)
 				.await?;
 

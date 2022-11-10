@@ -3,7 +3,7 @@ use api_models::{
 		auth::PreferredRecoveryOption,
 		workspace::billing::{Address, WorkspaceBillBreakdown},
 	},
-	utils::{PriceAmount, Uuid},
+	utils::Uuid,
 };
 use eve_rs::AsError;
 
@@ -396,7 +396,7 @@ pub async fn send_bill_not_paid_delete_resources_email(
 	month_string: String,
 	month_num: u32,
 	year: i32,
-	total_bill: f64,
+	total_bill: u64,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, &super_admin_id)
 		.await?
@@ -451,7 +451,7 @@ pub async fn send_bill_payment_failed_reminder_email(
 	month_string: String,
 	month_num: u32,
 	year: i32,
-	total_bill: PriceAmount,
+	total_bill: u64,
 	deadline: String,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, &super_admin_id)
@@ -491,7 +491,7 @@ pub async fn send_card_not_added_reminder_email(
 	month_string: String,
 	month_num: u32,
 	year: i32,
-	total_bill: PriceAmount,
+	total_bill: u64,
 	deadline: String,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, &super_admin_id)
@@ -530,7 +530,7 @@ pub async fn send_bill_paid_successfully_email(
 	workspace_name: String,
 	month_string: String,
 	year: i32,
-	card_amount_deducted: PriceAmount,
+	card_amount_deducted: u64,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, &super_admin_id)
 		.await?
@@ -620,9 +620,9 @@ pub async fn send_payment_success_invoice_notification(
 	current_month_string: String,
 	bill_breakdown: WorkspaceBillBreakdown,
 	billing_address: Address,
-	credit_deducted: PriceAmount,
-	card_amount_deducted: PriceAmount,
-	credits_remaining: PriceAmount,
+	credit_deducted: u64,
+	card_amount_deducted: u64,
+	credits_remaining: u64,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, super_admin_id)
 		.await?

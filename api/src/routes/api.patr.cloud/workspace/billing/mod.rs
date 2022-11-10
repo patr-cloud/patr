@@ -23,6 +23,7 @@ use api_models::{
 		MakePaymentRequest,
 		MakePaymentResponse,
 		PaymentMethod,
+		TotalAmount,
 		Transaction,
 		UpdateBillingAddressRequest,
 		UpdateBillingAddressResponse,
@@ -1041,13 +1042,16 @@ async fn get_current_bill(
 	.await?
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?
-	.amount_due;
+	.amount_due_in_cents;
+	let current_month_bill_so_far =
+		TotalAmount::NeedToPay(current_month_bill_so_far);
 
-	let leftover_credits_or_due = db::get_total_amount_to_pay_for_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?;
+	let leftover_credits_or_due =
+		db::get_total_amount_in_cents_to_pay_for_workspace(
+			context.get_database_connection(),
+			&workspace_id,
+		)
+		.await?;
 
 	context.success(GetCurrentUsageResponse {
 		current_usage: current_month_bill_so_far + leftover_credits_or_due,
@@ -1113,7 +1117,7 @@ async fn get_transaction_history(
 	.map(|transaction| Transaction {
 		id: transaction.id,
 		month: transaction.month,
-		amount: transaction.amount,
+		amount: transaction.amount_in_cents as u64,
 		payment_intent_id: transaction.payment_intent_id,
 		date: DateTime(transaction.date),
 		workspace_id: transaction.workspace_id,

@@ -29,7 +29,7 @@ pub struct UserToSignUp {
 
 pub struct CouponCode {
 	pub code: String,
-	pub credits: u32,
+	pub credits_in_cents: u64,
 	pub expiry: Option<DateTime<Utc>>,
 	pub uses_remaining: Option<u32>,
 }
@@ -41,8 +41,9 @@ pub async fn initialize_user_sign_up_pre(
 		r#"
 		CREATE TABLE coupon_code(
 			code TEXT CONSTRAINT coupon_code_pk PRIMARY KEY,
-			credits INTEGER NOT NULL CONSTRAINT coupon_code_chk_credits_positive
-				CHECK(credits >= 0),
+			credits_in_cents BIGINT NOT NULL
+				CONSTRAINT coupon_code_chk_credits_in_cents_positive
+					CHECK (credits_in_cents >= 0),
 			expiry TIMESTAMPTZ,
 			uses_remaining INTEGER CONSTRAINT
 				coupon_code_chk_uses_remaining_positive CHECK(
@@ -690,7 +691,7 @@ pub async fn get_sign_up_coupon_by_code(
 	.await?
 	.map(|row| CouponCode {
 		code: row.code,
-		credits: row.credits as u32,
+		credits_in_cents: row.credits_in_cents as u64,
 		uses_remaining: row.uses_remaining.map(|uses| uses as u32),
 		expiry: row.expiry,
 	});

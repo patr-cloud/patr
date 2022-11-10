@@ -42,7 +42,7 @@ pub struct Workspace {
 	pub secret_limit: i32,
 	pub stripe_customer_id: String,
 	pub address_id: Option<Uuid>,
-	pub amount_due: f64,
+	pub amount_due_in_cents: u64,
 }
 
 pub struct WorkspaceAuditLog {
@@ -88,6 +88,53 @@ pub struct Address {
 	pub country: String,
 }
 
+// Workspace type used to convert db layer to outer layer structs
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InternalWorkspace {
+	pub id: Uuid,
+	pub name: String,
+	pub super_admin_id: Uuid,
+	pub active: bool,
+	pub alert_emails: Vec<String>,
+	pub payment_type: PaymentType,
+	pub default_payment_method_id: Option<String>,
+	pub deployment_limit: i32,
+	pub database_limit: i32,
+	pub static_site_limit: i32,
+	pub managed_url_limit: i32,
+	pub docker_repository_storage_limit: i32,
+	pub domain_limit: i32,
+	pub secret_limit: i32,
+	pub stripe_customer_id: String,
+	pub address_id: Option<Uuid>,
+	pub amount_due_in_cents: i64,
+}
+
+impl From<InternalWorkspace> for Workspace {
+	fn from(val: InternalWorkspace) -> Self {
+		Workspace {
+			id: val.id,
+			name: val.name,
+			super_admin_id: val.super_admin_id,
+			active: val.active,
+			alert_emails: val.alert_emails,
+			payment_type: val.payment_type,
+			default_payment_method_id: val.default_payment_method_id,
+			deployment_limit: val.deployment_limit,
+			database_limit: val.database_limit,
+			static_site_limit: val.static_site_limit,
+			managed_url_limit: val.managed_url_limit,
+			docker_repository_storage_limit: val
+				.docker_repository_storage_limit,
+			domain_limit: val.domain_limit,
+			secret_limit: val.secret_limit,
+			stripe_customer_id: val.stripe_customer_id,
+			address_id: val.address_id,
+			amount_due_in_cents: val.amount_due_in_cents as u64,
+		}
+	}
+}
+
 pub async fn initialize_workspaces_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
@@ -126,7 +173,9 @@ pub async fn initialize_workspaces_pre(
 			secret_limit INTEGER NOT NULL,
 			stripe_customer_id TEXT NOT NULL,
 			address_id UUID,
-			amount_due DOUBLE PRECISION NOT NULL,
+			amount_due_in_cents BIGINT NOT NULL
+				CONSTRAINT workspace_chk_amount_due_in_cents_positive
+					CHECK (amount_due_in_cents >= 0),
 			deleted TIMESTAMPTZ,
 			CONSTRAINT workspace_uq_id_super_admin_id
 				UNIQUE(id, super_admin_id)
@@ -374,7 +423,7 @@ pub async fn create_workspace(
 				secret_limit,
 				stripe_customer_id,
 				address_id,
-				amount_due
+				amount_due_in_cents
 			)
 		VALUES
 			($1, $2, $3, $4, $5, $6, NULL, $7, $8, $9, $10, $11, $12, $13, $14, NULL, $15);
@@ -405,7 +454,7 @@ pub async fn get_workspace_info(
 	workspace_id: &Uuid,
 ) -> Result<Option<Workspace>, sqlx::Error> {
 	query_as!(
-		Workspace,
+		InternalWorkspace,
 		r#"
 		SELECT
 			id as "id: _",
@@ -424,7 +473,7 @@ pub async fn get_workspace_info(
 			docker_repository_storage_limit,
 			stripe_customer_id,
 			address_id as "address_id: _",
-			amount_due
+			amount_due_in_cents
 		FROM
 			workspace
 		WHERE
@@ -435,6 +484,7 @@ pub async fn get_workspace_info(
 	)
 	.fetch_optional(&mut *connection)
 	.await
+	.map(|iw| iw.map(|iw| iw.into()))
 }
 
 pub async fn get_workspace_by_name(
@@ -442,7 +492,7 @@ pub async fn get_workspace_by_name(
 	name: &str,
 ) -> Result<Option<Workspace>, sqlx::Error> {
 	query_as!(
-		Workspace,
+		InternalWorkspace,
 		r#"
 		SELECT
 			id as "id: _",
@@ -461,7 +511,7 @@ pub async fn get_workspace_by_name(
 			docker_repository_storage_limit,
 			stripe_customer_id,
 			address_id as "address_id: _",
-			amount_due
+			amount_due_in_cents
 		FROM
 			workspace
 		WHERE
@@ -471,6 +521,7 @@ pub async fn get_workspace_by_name(
 	)
 	.fetch_optional(&mut *connection)
 	.await
+	.map(|iw| iw.map(|iw| iw.into()))
 }
 
 pub async fn delete_workspace(
@@ -676,8 +727,8 @@ pub async fn get_resource_audit_logs(
 pub async fn get_all_workspaces(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Vec<Workspace>, sqlx::Error> {
-	query_as!(
-		Workspace,
+	let res = query_as!(
+		InternalWorkspace,
 		r#"
 		SELECT DISTINCT
 			id as "id: _",
@@ -696,7 +747,7 @@ pub async fn get_all_workspaces(
 			docker_repository_storage_limit,
 			stripe_customer_id,
 			address_id as "address_id: _",
-			amount_due
+			amount_due_in_cents
 		FROM
 			workspace
 		WHERE
@@ -704,7 +755,12 @@ pub async fn get_all_workspaces(
 		"#,
 	)
 	.fetch_all(&mut *connection)
-	.await
+	.await?
+	.into_iter()
+	.map(|iw| iw.into())
+	.collect();
+
+	Ok(res)
 }
 
 pub async fn get_resource_limit_for_workspace(

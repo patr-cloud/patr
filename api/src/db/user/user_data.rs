@@ -1,7 +1,12 @@
 use api_models::{models::user::BasicUserInfo, utils::Uuid};
 use chrono::{DateTime, Utc};
 
-use crate::{db::Workspace, query, query_as, Database};
+use crate::{
+	db::{InternalWorkspace, Workspace},
+	query,
+	query_as,
+	Database,
+};
 
 pub struct User {
 	pub id: Uuid,
@@ -533,8 +538,8 @@ pub async fn get_all_workspaces_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 ) -> Result<Vec<Workspace>, sqlx::Error> {
-	query_as!(
-		Workspace,
+	let res = query_as!(
+		InternalWorkspace,
 		r#"
 		SELECT DISTINCT
 			workspace.id as "id: _",
@@ -553,7 +558,7 @@ pub async fn get_all_workspaces_for_user(
 			workspace.docker_repository_storage_limit,
 			workspace.stripe_customer_id,
 			workspace.address_id as "address_id: _",
-			workspace.amount_due
+			workspace.amount_due_in_cents
 		FROM
 			workspace
 		LEFT JOIN
@@ -570,15 +575,20 @@ pub async fn get_all_workspaces_for_user(
 		user_id as _,
 	)
 	.fetch_all(&mut *connection)
-	.await
+	.await?
+	.into_iter()
+	.map(|iw| iw.into())
+	.collect();
+
+	Ok(res)
 }
 
 pub async fn get_all_workspaces_owned_by_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 ) -> Result<Vec<Workspace>, sqlx::Error> {
-	query_as!(
-		Workspace,
+	let res = query_as!(
+		InternalWorkspace,
 		r#"
 		SELECT
 			id as "id: _",
@@ -597,7 +607,7 @@ pub async fn get_all_workspaces_owned_by_user(
 			docker_repository_storage_limit,
 			stripe_customer_id,
 			address_id as "address_id: _",
-			amount_due
+			amount_due_in_cents
 		FROM
 			workspace
 		WHERE
@@ -607,7 +617,12 @@ pub async fn get_all_workspaces_owned_by_user(
 		user_id as _,
 	)
 	.fetch_all(&mut *connection)
-	.await
+	.await?
+	.into_iter()
+	.map(|iw| iw.into())
+	.collect();
+
+	Ok(res)
 }
 
 pub async fn search_for_users(

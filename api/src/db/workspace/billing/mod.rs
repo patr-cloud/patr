@@ -2,7 +2,7 @@ use std::fmt;
 
 use api_macros::query;
 use api_models::{
-	models::workspace::billing::{PaymentStatus, TransactionType},
+	models::workspace::billing::{PaymentStatus, TotalAmount, TransactionType},
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
@@ -67,7 +67,7 @@ pub struct DomainPaymentHistory {
 pub struct Transaction {
 	pub id: Uuid,
 	pub month: i32,
-	pub amount: f64,
+	pub amount_in_cents: i64,
 	pub payment_intent_id: Option<String>,
 	pub date: DateTime<Utc>,
 	pub workspace_id: Uuid,
@@ -281,7 +281,9 @@ pub async fn initialize_billing_pre(
 		CREATE TABLE IF NOT EXISTS transaction(
 			id UUID CONSTRAINT transaction_pk PRIMARY KEY,
 			month INTEGER NOT NULL,
-			amount DOUBLE PRECISION NOT NULL,
+			amount_in_cents BIGINT NOT NULL
+				CONSTRAINT transaction_chk_amount_in_cents_positive
+					CHECK (amount_in_cents >= 0),
 			payment_intent_id TEXT,
 			date TIMESTAMPTZ NOT NULL,
 			workspace_id UUID NOT NULL,
@@ -615,7 +617,7 @@ pub async fn create_transaction(
 	workspace_id: &Uuid,
 	id: &Uuid,
 	month: i32,
-	amount: f64,
+	amount_in_cents: u64,
 	payment_intent_id: Option<&str>,
 	date: &DateTime<Utc>,
 	transaction_type: &TransactionType,
@@ -628,7 +630,7 @@ pub async fn create_transaction(
 			transaction(
 				id,
 				month,
-				amount,
+				amount_in_cents,
 				payment_intent_id,
 				date,
 				workspace_id,
@@ -651,7 +653,7 @@ pub async fn create_transaction(
 		"#,
 		id as _,
 		month as _,
-		amount as _,
+		amount_in_cents as i64,
 		payment_intent_id as _,
 		date as _,
 		workspace_id as _,
@@ -734,25 +736,25 @@ pub async fn get_payment_methods_for_workspace(
 	.await
 }
 
-pub async fn get_total_amount_to_pay_for_workspace(
+pub async fn get_total_amount_in_cents_to_pay_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<f64, sqlx::Error> {
+) -> Result<TotalAmount, sqlx::Error> {
 	query!(
 		r#"
 		SELECT
 			SUM(
 				CASE transaction_type
 					WHEN 'bill' THEN
-						amount
+						amount_in_cents
 					WHEN 'credits' THEN
-						-amount
+						-amount_in_cents
 					WHEN 'payment' THEN
-						-amount
+						-amount_in_cents
 					ELSE
 						0
 				END
-			) as "total_amount"
+			)::BIGINT as "total_amount"
 		FROM
 			transaction
 		WHERE
@@ -763,7 +765,8 @@ pub async fn get_total_amount_to_pay_for_workspace(
 	)
 	.fetch_one(&mut *connection)
 	.await
-	.map(|row| row.total_amount.unwrap_or(0f64))
+	.map(|row| row.total_amount.unwrap_or(0i64))
+	.map(|amount| amount.into())
 }
 
 pub async fn get_transaction_by_transaction_id(
@@ -777,7 +780,7 @@ pub async fn get_transaction_by_transaction_id(
 		SELECT
 			id as "id: _",
 			month,
-			amount,
+			amount_in_cents,
 			payment_intent_id,
 			date as "date: _",
 			workspace_id as "workspace_id: _",
@@ -1162,18 +1165,18 @@ pub async fn update_domain_usage_history(
 pub async fn update_amount_due_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	amount_due: f64,
+	amount_due_in_cents: u64,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		UPDATE
 			workspace
 		SET
-			amount_due = $1
+			amount_due_in_cents = $1
 		WHERE
 			id = $2;
 		"#,
-		amount_due as _,
+		amount_due_in_cents as i64,
 		workspace_id as _,
 	)
 	.execute(&mut *connection)
@@ -1285,7 +1288,7 @@ pub async fn get_transactions_in_workspace(
 		SELECT
 			id as "id: _",
 			month,
-			amount,
+			amount_in_cents,
 			payment_intent_id,
 			date as "date: _",
 			workspace_id as "workspace_id: _",
