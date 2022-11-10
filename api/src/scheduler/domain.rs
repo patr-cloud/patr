@@ -328,7 +328,8 @@ async fn repatch_all_managed_urls() -> Result<(), Error> {
 			&config.config,
 			&request_id,
 		)
-		.await.map_err(|err| {
+		.await
+		.map_err(|err| {
 			log::error!("Error verifying managed URL: {}", err.get_error());
 			err
 		}) else {
@@ -572,7 +573,11 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 		)
 		.await?;
 		if notification_email.is_none() {
-			log::error!("Notification email for domain `{}` is None. You might have a dangling resource for the domain", verified_domain.name);
+			log::error!(
+				"Notification email for domain `{}` is None. {}",
+				verified_domain.name,
+				"You might have a dangling resource for the domain"
+			);
 			continue;
 		} else {
 			log::trace!(
