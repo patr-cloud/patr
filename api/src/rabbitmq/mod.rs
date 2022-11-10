@@ -257,10 +257,10 @@ pub(super) async fn create_rabbitmq_pool(
 	let cfg = Config {
 		url: Some(format!(
 			"amqp://{}:{}@{}:{}/%2f",
-			config.rabbit_mq.username,
-			config.rabbit_mq.password,
-			config.rabbit_mq.host,
-			config.rabbit_mq.port
+			config.rabbitmq.username,
+			config.rabbitmq.password,
+			config.rabbitmq.host,
+			config.rabbitmq.port
 		)),
 		..Config::default()
 	};

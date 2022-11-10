@@ -20,14 +20,6 @@
 		"database": "api",
 		"connectionLimit": 10
 	},
-	"mongodb": {
-		"host": "localhost",
-		"port": 27017,
-		"user": "root",
-		"password": "mongodb",
-		"database": "api",
-		"connectionLimit": 10
-	},
 	"redis": {
 		"host": "localhost",
 		"port": 6379,
@@ -65,8 +57,7 @@
 		"authorizationHeader": "auth key"
 	},
 	"digitalocean": {
-		"apiKey": "key",
-		"registry": "test"
+		"apiKey": "key"
 	},
 	"kubernetes": {
 		"certificateAuthorityData": "",
@@ -78,13 +69,7 @@
 		"contextName": "",
 		"certIssuerHttp": "letsencrypt-staging",
 		"certIssuerDns": "letsencrypt-staging-dns",
-		"staticSiteProxyService": "proxy-static-site-service.default.svc.cluster.local",
-		"alertWebhookSecret": "<auth-header>"
-	},
-	"prometheus": {
-		"host": "prometheus.samyakgangwal.com",
-		"username": "admin",
-		"password": "admin"
+		"staticSiteProxyService": "proxy-static-site-service.default.svc.cluster.local"
 	},
 	"rabbitmq": {
 		"host": "localhost",
@@ -105,9 +90,6 @@
 	"mailchimp": {
 		"apiKey": "example-api-key",
 		"listId": "example-list-id"
-	},
-	"drone": {
-		"url": "drone-ip"
 	},
 	"github": {
 		"clientId": "app-client-id",
