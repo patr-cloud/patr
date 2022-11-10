@@ -118,13 +118,15 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 		if let (Some(zone_identifier), true) =
 			(zone_identifier, unverified_domain.is_ns_internal())
 		{
-			let response = match client
+			let zone_active = match client
 				.request(&zone::ZoneDetails {
 					identifier: &zone_identifier,
 				})
 				.await
 			{
-				Ok(response) => response,
+				Ok(response) => {
+					matches!(response.result.status, Status::Active)
+				}
 				Err(ApiFailure::Error(status_code, _))
 					if status_code == 404 =>
 				{
@@ -134,7 +136,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 						"Domain `{}` does not exist in cloudflare",
 						unverified_domain.name
 					);
-					continue;
+					false
 				}
 				Err(err) => {
 					log::error!(
@@ -145,7 +147,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					continue;
 				}
 			};
-			if let Status::Active = response.result.status {
+			if zone_active {
 				service::create_certificates(
 					&workspace_id,
 					&format!("certificate-{}", unverified_domain.id),
