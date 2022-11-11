@@ -49,7 +49,7 @@ Managed URL Usage:
 Docker Repository Usage:
 {{#each billBreakdown.dockerRepositoryUsage}}
   Total Storage (GB):
-  {{@key}}
+  {{this.storage}}
   Hours used:
   {{this.hours}}
   Bill Amount:
@@ -77,22 +77,22 @@ Secret Usage:
 {{#if creditsDeducted}}
   {{#if cardAmountDeducted}}
     The amount was automatically deducted using your card and Patr credits, so
-    no further action is required. Amount paid using card: ${{cardAmountDeducted}}
-    Amount paid using credits: ${{creditsDeducted}}
+    no further action is required. Amount paid using card: ${{cents-to-dollars cardAmountDeducted}}
+    Amount paid using credits: ${{cents-to-dollars creditsDeducted}}
   {{/if}}
 {{/if}}
 {{#if cardAmountDeducted}}
   {{#unless creditsDeducted}}
     The amount was automatically charged to your card, so no action is required
-    from your end. Amount paid: ${{cardAmountDeducted}}
+    from your end. Amount paid: ${{cents-to-dollars cardAmountDeducted}}
   {{/unless}}
 {{/if}}
 
 {{#if creditsDeducted}}
   {{#unless cardAmountDeducted}}
     The amount was automatically charged from your Patr credits, so no action is
-    required from your end. Credits consumed: ${{creditsDeducted}}
-    Credits remaining: ${{creditsRemaining}}
+    required from your end. Credits consumed: ${{cents-to-dollars creditsDeducted}}
+    Credits remaining: ${{cents-to-dollars creditsRemaining}}
   {{/unless}}
 {{/if}}
 

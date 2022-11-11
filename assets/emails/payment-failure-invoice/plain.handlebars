@@ -46,7 +46,7 @@ Managed URL Usage:
 Docker Repository Usage:
 {{#each billBreakdown.dockerRepositoryUsage}}
   Total Storage (GB):
-  {{@key}}
+  {{this.storage}}
   Hours used:
   {{this.hours}}
   Bill Amount:

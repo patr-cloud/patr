@@ -186,10 +186,18 @@
                                                     <br />
                                                     {{billingAddress.addressLine1}}<br
                                                     />
-                                                    {{billingAddress.addressLine2}}<br
-                                                    />
-                                                    {{billingAddress.addressLine3}}<br
-                                                    />
+                                                    {{#if
+                                                      billingAddress.addressLine2
+                                                    }}
+                                                      {{billingAddress.addressLine2}}<br
+                                                      />
+                                                    {{/if}}
+                                                    {{#if
+                                                      billingAddress.addressLine3
+                                                    }}
+                                                      {{billingAddress.addressLine3}}<br
+                                                      />
+                                                    {{/if}}
                                                     {{billingAddress.city}},
                                                     {{billingAddress.state}},
                                                     {{billingAddress.country}}
@@ -578,7 +586,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{databaseCharge}}</td>
+                                                          >${{billBreakdown.databaseCharge}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -699,7 +707,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{staticSiteCharge}}</td>
+                                                          >${{billBreakdown.staticSiteCharge}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -819,7 +827,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{domainCharge}}</td>
+                                                          >${{billBreakdown.domainCharge}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -940,7 +948,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{managedUrlCharge}}</td>
+                                                          >${{billBreakdown.managedUrlCharge}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -1061,7 +1069,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{secretCharge}}</td>
+                                                          >${{billBreakdown.secretCharge}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -1182,7 +1190,7 @@
                                                             class="txt-primary px-md py-xs txt-center"
                                                             style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                                                             align="center"
-                                                          >${{dockerRepositoryCharge}}</td>
+                                                          >${{billBreakdown.dockerRepositoryCharge}}</td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -1228,7 +1236,9 @@
                                             <strong
                                               class="txt-light"
                                               style="color:#ffffff"
-                                            >${{cardAmountDeducted}}</strong>
+                                            >${{cents-to-dollars
+                                                cardAmountDeducted
+                                              }}</strong>
                                           </td>
                                         </tr>
                                         <tr>
@@ -1240,7 +1250,9 @@
                                             <strong
                                               class="txt-light"
                                               style="color:#ffffff"
-                                            >${{creditsDeducted}}</strong>
+                                            >${{cents-to-dollars
+                                                creditsDeducted
+                                              }}</strong>
                                           </td>
                                         </tr>
                                         <tr>
@@ -1252,7 +1264,9 @@
                                             <strong
                                               class="txt-light"
                                               style="color:#ffffff"
-                                            >${{creditsRemaining}}</strong>
+                                            >${{cents-to-dollars
+                                                creditsRemaining
+                                              }}</strong>
                                           </td>
                                         </tr>
                                       {{/if}}
@@ -1276,7 +1290,9 @@
                                             <strong
                                               class="txt-light"
                                               style="color:#ffffff"
-                                            >${{creditsDeducted}}</strong>
+                                            >${{cents-to-dollars
+                                                creditsDeducted
+                                              }}</strong>
                                           </td>
                                         </tr>
                                         <tr>
@@ -1288,7 +1304,9 @@
                                             <strong
                                               class="txt-light"
                                               style="color:#ffffff"
-                                            >${{creditsRemaining}}</strong>
+                                            >${{cents-to-dollars
+                                                creditsRemaining
+                                              }}</strong>
                                           </td>
                                         </tr>
                                       {{/unless}}
@@ -1314,7 +1332,9 @@
                                             <strong
                                               class="txt-light"
                                               style="color:#ffffff"
-                                            >${{cardAmountDeducted}}</strong>
+                                            >${{cents-to-dollars
+                                                cardAmountDeducted
+                                              }}</strong>
                                           </td>
                                         </tr>
                                       {{/unless}}
