@@ -1,6 +1,7 @@
 mod eve_context;
 mod eve_middlewares;
 
+pub mod billing;
 pub mod constants;
 pub mod logger;
 pub mod settings;

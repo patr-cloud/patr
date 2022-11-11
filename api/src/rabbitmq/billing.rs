@@ -34,7 +34,7 @@ use crate::{
 	db::{self, PaymentType},
 	models::rabbitmq::BillingData,
 	service,
-	utils::{settings::Settings, Error},
+	utils::{billing::stringify_month, settings::Settings, Error},
 	Database,
 };
 
@@ -123,22 +123,6 @@ pub(super) async fn process_request(
 				.unwrap()
 				.sub(Duration::nanoseconds(1));
 
-			let month_string = match month {
-				1 => "January",
-				2 => "February",
-				3 => "March",
-				4 => "April",
-				5 => "May",
-				6 => "June",
-				7 => "July",
-				8 => "August",
-				9 => "September",
-				10 => "October",
-				11 => "November",
-				12 => "December",
-				_ => "",
-			};
-
 			// Step 1: Calculate bill for this entire cycle
 			let total_bill_breakdown =
 				service::calculate_total_bill_for_workspace_till(
@@ -163,7 +147,11 @@ pub(super) async fn process_request(
 				&next_month_start_date.add(Duration::nanoseconds(1)),
 				&TransactionType::Bill,
 				&PaymentStatus::Success,
-				Some(&format!("Bill for {} {}", month_string, year)),
+				Some(&format!(
+					"Bill for {} {}",
+					stringify_month(month as u8),
+					year
+				)),
 			)
 			.await?;
 
@@ -181,22 +169,6 @@ pub(super) async fn process_request(
 			request_id,
 		} => {
 			log::trace!("request_id: {} attempting to charge user", request_id);
-
-			let month_string = match month {
-				1 => "January",
-				2 => "February",
-				3 => "March",
-				4 => "April",
-				5 => "May",
-				6 => "June",
-				7 => "July",
-				8 => "August",
-				9 => "September",
-				10 => "October",
-				11 => "November",
-				12 => "December",
-				_ => "",
-			};
 
 			let month_start_date =
 				Utc.with_ymd_and_hms(year, month, 1, 0, 0, 0).unwrap();
@@ -301,7 +273,6 @@ pub(super) async fn process_request(
 					connection,
 					&workspace.super_admin_id,
 					workspace_name,
-					month_string.to_string(),
 					total_bill,
 					billing_address,
 					credits_deducted_in_cents,
@@ -344,7 +315,8 @@ pub(super) async fn process_request(
 
 					let payment_description = Some(format!(
 						"Patr charge: Bill for {} {}",
-						month_string, year
+						stringify_month(month as u8),
+						year
 					));
 					let payment_intent = PaymentIntent::create(
 						&Client::new(&config.stripe.secret_key).with_strategy(
@@ -415,7 +387,6 @@ pub(super) async fn process_request(
 							connection,
 							&workspace.super_admin_id,
 							workspace_name,
-							month_string.to_string(),
 							total_bill,
 							billing_address,
 							credits_deducted_in_cents,
@@ -448,7 +419,6 @@ pub(super) async fn process_request(
 							workspace_name,
 							total_bill,
 							billing_address,
-							month_string.to_string(),
 						)
 						.await?;
 
@@ -494,7 +464,6 @@ pub(super) async fn process_request(
 							zip: "".to_string(),
 							country: "".to_string(),
 						},
-						month_string.to_string(),
 					)
 					.await?;
 
@@ -570,7 +539,6 @@ pub(super) async fn process_request(
 					connection,
 					&workspace.super_admin_id,
 					workspace_name,
-					month_string.to_string(),
 					total_bill,
 					billing_address,
 					total_charge,
@@ -598,25 +566,10 @@ pub(super) async fn process_request(
 				return Err(Error::empty());
 			}
 
-			let month_string = match month {
-				1 => "January",
-				2 => "February",
-				3 => "March",
-				4 => "April",
-				5 => "May",
-				6 => "June",
-				7 => "July",
-				8 => "August",
-				9 => "September",
-				10 => "October",
-				11 => "November",
-				12 => "December",
-				_ => "",
-			};
-
 			let month_start_date = Utc
 				.with_ymd_and_hms(year as i32, month, 1, 0, 0, 0)
 				.unwrap();
+
 			let next_month_start_date = Utc
 				.with_ymd_and_hms(
 					(if month == 12 { year + 1 } else { year }) as i32,
@@ -723,7 +676,6 @@ pub(super) async fn process_request(
 					connection,
 					&workspace.super_admin_id,
 					workspace_name,
-					month_string.to_string(),
 					total_bill,
 					billing_address,
 					credits_deducted_in_cents,
@@ -752,7 +704,8 @@ pub(super) async fn process_request(
 
 				let payment_description = Some(format!(
 					"Patr charge: Bill for {} {}",
-					month_string, year
+					stringify_month(month as u8),
+					year
 				));
 				let payment_intent = PaymentIntent::create(
 					&Client::new(&config.stripe.secret_key).with_strategy(
@@ -817,7 +770,7 @@ pub(super) async fn process_request(
 						connection,
 						workspace.super_admin_id,
 						workspace_name,
-						month_string.to_string(),
+						month,
 						year,
 						card_amount_to_be_charged_in_cents,
 					)
@@ -894,7 +847,6 @@ pub(super) async fn process_request(
 					connection,
 					workspace.super_admin_id.clone(),
 					workspace_name,
-					month_string.to_string(),
 					month,
 					year,
 					card_amount_to_be_charged_in_cents,
@@ -906,21 +858,7 @@ pub(super) async fn process_request(
 				let deadline_day = 15;
 				let next_month = if month == 12 { 1 } else { month + 1 };
 
-				let next_month_name_str = match next_month {
-					1 => "January",
-					2 => "February",
-					3 => "March",
-					4 => "April",
-					5 => "May",
-					6 => "June",
-					7 => "July",
-					8 => "August",
-					9 => "September",
-					10 => "October",
-					11 => "November",
-					12 => "December",
-					_ => "",
-				};
+				let next_month_name_str = stringify_month(next_month as u8);
 
 				let deadline = format!(
 					"{deadline_day}{} {next_month_name_str}",
@@ -937,7 +875,6 @@ pub(super) async fn process_request(
 						connection,
 						workspace.super_admin_id.clone(),
 						workspace_name,
-						month_string.to_string(),
 						month,
 						year,
 						// If `amount_due` is 0, definitely the card amount
@@ -951,7 +888,6 @@ pub(super) async fn process_request(
 						connection,
 						workspace.super_admin_id.clone(),
 						workspace_name,
-						month_string.to_string(),
 						month,
 						year,
 						// If `amount_due` is 0, definitely the card amount

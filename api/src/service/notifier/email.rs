@@ -262,8 +262,7 @@ pub async fn send_email_verification_otp(
 struct BillNotPaidDeleteResourcesEmail {
 	username: String,
 	workspaceName: String,
-	monthString: String,
-	monthNumber: u32,
+	month: u32,
 	year: i32,
 	totalBill: u64,
 }
@@ -273,8 +272,7 @@ pub async fn send_bill_not_paid_delete_resources_email(
 	email: Mailbox,
 	username: String,
 	workspaceName: String,
-	monthString: String,
-	monthNumber: u32,
+	month: u32,
 	year: i32,
 	totalBill: u64,
 ) -> Result<(), Error> {
@@ -282,8 +280,7 @@ pub async fn send_bill_not_paid_delete_resources_email(
 		BillNotPaidDeleteResourcesEmail {
 			username,
 			workspaceName,
-			monthString,
-			monthNumber,
+			month,
 			year,
 			totalBill,
 		},
@@ -300,8 +297,7 @@ pub async fn send_bill_not_paid_delete_resources_email(
 struct BillPaymentFailedReminderEmail {
 	username: String,
 	workspaceName: String,
-	monthString: String,
-	monthNumber: u32,
+	month: u32,
 	year: i32,
 	totalBill: u64,
 	deadline: String,
@@ -312,8 +308,7 @@ pub async fn send_bill_payment_failed_reminder_email(
 	email: Mailbox,
 	username: String,
 	workspaceName: String,
-	monthString: String,
-	monthNumber: u32,
+	month: u32,
 	year: i32,
 	totalBill: u64,
 	deadline: String,
@@ -322,8 +317,7 @@ pub async fn send_bill_payment_failed_reminder_email(
 		BillPaymentFailedReminderEmail {
 			username,
 			workspaceName,
-			monthString,
-			monthNumber,
+			month,
 			year,
 			totalBill,
 			deadline,
@@ -341,8 +335,7 @@ pub async fn send_bill_payment_failed_reminder_email(
 struct CardNotAddedReminderEmail {
 	username: String,
 	workspaceName: String,
-	monthString: String,
-	monthNumber: u32,
+	month: u32,
 	year: i32,
 	totalBill: u64,
 	deadline: String,
@@ -353,8 +346,7 @@ pub async fn send_card_not_added_reminder_email(
 	email: Mailbox,
 	username: String,
 	workspaceName: String,
-	monthString: String,
-	monthNumber: u32,
+	month: u32,
 	year: i32,
 	totalBill: u64,
 	deadline: String,
@@ -363,8 +355,7 @@ pub async fn send_card_not_added_reminder_email(
 		CardNotAddedReminderEmail {
 			username,
 			workspaceName,
-			monthString,
-			monthNumber,
+			month,
 			year,
 			totalBill,
 			deadline,
@@ -382,7 +373,7 @@ pub async fn send_card_not_added_reminder_email(
 struct BillPaidSuccessfullyEmail {
 	username: String,
 	workspaceName: String,
-	monthString: String,
+	month: u32,
 	year: i32,
 	cardAmountDeducted: u64,
 }
@@ -392,7 +383,7 @@ pub async fn send_bill_paid_successfully_email(
 	email: Mailbox,
 	username: String,
 	workspaceName: String,
-	monthString: String,
+	month: u32,
 	year: i32,
 	cardAmountDeducted: u64,
 ) -> Result<(), Error> {
@@ -400,7 +391,7 @@ pub async fn send_bill_paid_successfully_email(
 		BillPaidSuccessfullyEmail {
 			username,
 			workspaceName,
-			monthString,
+			month,
 			year,
 			cardAmountDeducted,
 		},
@@ -419,7 +410,6 @@ struct PaymentFailureInvoiceEmail {
 	workspaceName: String,
 	billBreakdown: WorkspaceBillBreakdown,
 	billingAddress: Address,
-	monthString: String,
 }
 
 pub async fn send_payment_failure_invoice_email(
@@ -428,7 +418,6 @@ pub async fn send_payment_failure_invoice_email(
 	workspace_name: String,
 	bill_breakdown: WorkspaceBillBreakdown,
 	billing_address: Address,
-	month_string: String,
 ) -> Result<(), Error> {
 	send_email(
 		PaymentFailureInvoiceEmail {
@@ -436,7 +425,6 @@ pub async fn send_payment_failure_invoice_email(
 			workspaceName: workspace_name,
 			billBreakdown: bill_breakdown,
 			billingAddress: billing_address,
-			monthString: month_string,
 		},
 		email,
 		None,
@@ -453,7 +441,6 @@ struct PaymentSuccessInvoiceEmail {
 	workspaceName: String,
 	billBreakdown: WorkspaceBillBreakdown,
 	billingAddress: Address,
-	monthString: String,
 	creditsDeducted: u64,
 	cardAmountDeducted: u64,
 	creditsRemaining: u64,
@@ -465,7 +452,6 @@ pub async fn send_payment_success_invoice_email(
 	workspace_name: String,
 	bill_breakdown: WorkspaceBillBreakdown,
 	billing_address: Address,
-	month_string: String,
 	credits_deducted: u64,
 	card_amount_deducted: u64,
 	credits_remaining: u64,
@@ -476,7 +462,6 @@ pub async fn send_payment_success_invoice_email(
 			workspaceName: workspace_name,
 			billBreakdown: bill_breakdown,
 			billingAddress: billing_address,
-			monthString: month_string,
 			creditsDeducted: credits_deducted,
 			cardAmountDeducted: card_amount_deducted,
 			creditsRemaining: credits_remaining,
@@ -585,22 +570,8 @@ pub async fn send_domain_verified_email(
 }
 
 fn get_configured_handlebar<'a>() -> Handlebars<'a> {
-	handlebars_helper!(cents_to_dollars: |cents: u64| format!("{:.2}", cents as f64 * 0.01));
-	handlebars_helper!(stringify_month: |month_in_num: u8| match month_in_num {
-		1 => "January",
-		2 => "February",
-		3 => "March",
-		4 => "April",
-		5 => "May",
-		6 => "June",
-		7 => "July",
-		8 => "August",
-		9 => "September",
-		10 => "October",
-		11 => "November",
-		12 => "December",
-		_ => "Invalid month"
-	});
+	handlebars_helper!(cents_to_dollars: |cents: u64| crate::utils::billing::cents_to_dollars(cents));
+	handlebars_helper!(stringify_month: |month_in_num: u8| crate::utils::billing::stringify_month(month_in_num));
 
 	let mut handlebar = Handlebars::new();
 	handlebar.register_helper("stringify-month", Box::new(stringify_month));
@@ -841,8 +812,7 @@ mod tests {
 		send_email(BillNotPaidDeleteResourcesEmail {
 			username: "username".to_owned(),
 			workspaceName: "workspaceName".to_owned(),
-			monthString: "month".to_owned(),
-			monthNumber: 4,
+			month: 4,
 			year: 2014,
 			totalBill: 567,
 		})
@@ -855,8 +825,7 @@ mod tests {
 		send_email(BillPaymentFailedReminderEmail {
 			username: "username".to_owned(),
 			workspaceName: "workspaceName".to_owned(),
-			monthString: "month".to_owned(),
-			monthNumber: 8,
+			month: 8,
 			year: 2351,
 			totalBill: 1234124,
 			deadline: "deadline".to_owned(),
@@ -869,8 +838,7 @@ mod tests {
 		send_email(CardNotAddedReminderEmail {
 			username: "username".to_owned(),
 			workspaceName: "workspaceName".to_owned(),
-			monthString: "month".to_owned(),
-			monthNumber: 8,
+			month: 8,
 			year: 2351,
 			totalBill: 1234124,
 			deadline: "deadline".to_owned(),
@@ -883,7 +851,7 @@ mod tests {
 		send_email(BillPaidSuccessfullyEmail {
 			username: "username".to_owned(),
 			workspaceName: "workspaceName".to_owned(),
-			monthString: "month".to_owned(),
+			month: 7,
 			year: 2102,
 			cardAmountDeducted: 24356,
 		})
@@ -980,7 +948,6 @@ mod tests {
 				zip: "NW1 6XE".to_string(),
 				country: "UK".to_string(),
 			},
-			monthString: "month".to_owned(),
 		})
 		.await
 	}
@@ -1075,7 +1042,6 @@ mod tests {
 				zip: "NW1 6XE".to_string(),
 				country: "UK".to_string(),
 			},
-			monthString: "month".to_owned(),
 			creditsDeducted: 25443,
 			cardAmountDeducted: 123423,
 			creditsRemaining: 45234,
