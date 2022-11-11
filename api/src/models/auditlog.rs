@@ -5,6 +5,7 @@ use api_models::{
 		Deployment,
 		DeploymentProbe,
 		DeploymentRunningDetails,
+		DeploymentVolume,
 		EnvironmentVariableValue,
 		ExposedPortType,
 	},
@@ -40,6 +41,8 @@ pub enum DeploymentMetadata {
 		startup_probe: Option<DeploymentProbe>,
 		#[serde(skip_serializing_if = "Option::is_none")]
 		liveness_probe: Option<DeploymentProbe>,
+		#[serde(skip_serializing_if = "Option::is_none")]
+		volume: Option<DeploymentVolume>,
 	},
 	Stop {},
 	Delete {},

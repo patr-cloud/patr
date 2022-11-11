@@ -2,6 +2,7 @@ use api_models::{
 	models::workspace::infrastructure::deployment::{
 		DeploymentProbe,
 		DeploymentStatus,
+		DeploymentVolume,
 		ExposedPortType,
 	},
 	utils::Uuid,
@@ -41,6 +42,8 @@ pub struct Deployment {
 	pub liveness_probe_port: Option<i32>,
 	pub liveness_probe_path: Option<String>,
 	pub current_live_digest: Option<String>,
+	pub volume_size: Option<i32>,
+	pub volume_mount_path: Option<String>,
 }
 
 pub struct DeploymentDeployHistory {
@@ -142,6 +145,8 @@ pub async fn initialize_deployment_pre(
 			liveness_probe_port INTEGER,
 			liveness_probe_path VARCHAR(255),
 			liveness_probe_port_type EXPOSED_PORT_TYPE,
+			volume_size INTEGER,
+			volume_mount_path TEXT,
 			current_live_digest TEXT,
 			deleted TIMESTAMPTZ,
 			CONSTRAINT deployment_fk_repository_id_workspace_id
@@ -418,6 +423,7 @@ pub async fn create_deployment_with_internal_registry(
 	max_horizontal_scale: u16,
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
+	volume: Option<&DeploymentVolume>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -441,7 +447,9 @@ pub async fn create_deployment_with_internal_registry(
 				startup_probe_port_type,
 				liveness_probe_port,
 				liveness_probe_path,
-				liveness_probe_port_type
+				liveness_probe_port_type,
+				volume_size,
+				volume_mount_path
 			)
 		VALUES
 			(
@@ -463,7 +471,10 @@ pub async fn create_deployment_with_internal_registry(
 				$13,
 				$14,
 				$15,
-				$16
+				$16,
+				$17,
+				$18
+				
 			);
 		"#,
 		id as _,
@@ -482,6 +493,8 @@ pub async fn create_deployment_with_internal_registry(
 		liveness_probe.map(|probe| probe.port as i32),
 		liveness_probe.map(|probe| probe.path.as_str()),
 		liveness_probe.map(|_| ExposedPortType::Http) as _,
+		volume.map(|volume| volume.size),
+		volume.map(|volume| volume.mount_path.as_str()),
 	)
 	.execute(&mut *connection)
 	.await
@@ -504,6 +517,7 @@ pub async fn create_deployment_with_external_registry(
 	max_horizontal_scale: u16,
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
+	volume: Option<&DeploymentVolume>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -527,7 +541,9 @@ pub async fn create_deployment_with_external_registry(
 				startup_probe_port_type,
 				liveness_probe_port,
 				liveness_probe_path,
-				liveness_probe_port_type
+				liveness_probe_port_type,
+				volume_size,
+				volume_mount_path
 			)
 		VALUES
 			(
@@ -549,7 +565,9 @@ pub async fn create_deployment_with_external_registry(
 				$14,
 				$15,
 				$16,
-				$17
+				$17,
+				$18,
+				$19
 			);
 		"#,
 		id as _,
@@ -569,6 +587,8 @@ pub async fn create_deployment_with_external_registry(
 		liveness_probe.map(|probe| probe.port as i32),
 		liveness_probe.map(|probe| probe.path.as_str()),
 		liveness_probe.map(|_| ExposedPortType::Http) as _,
+		volume.map(|volume| volume.size),
+		volume.map(|volume| volume.mount_path.as_str()),
 	)
 	.execute(&mut *connection)
 	.await
@@ -602,6 +622,8 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 			deployment.startup_probe_path,
 			deployment.liveness_probe_port,
 			deployment.liveness_probe_path,
+			deployment.volume_size,
+			deployment.volume_mount_path,
 			current_live_digest
 		FROM
 			deployment
@@ -657,7 +679,9 @@ pub async fn get_deployments_by_repository_id(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			volume_size,
+			volume_mount_path
 		FROM
 			deployment
 		WHERE
@@ -695,7 +719,9 @@ pub async fn get_deployments_for_workspace(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			volume_size,
+			volume_mount_path
 		FROM
 			deployment
 		WHERE
@@ -733,7 +759,9 @@ pub async fn get_deployment_by_id(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			volume_size,
+			volume_mount_path
 		FROM
 			deployment
 		WHERE
@@ -771,7 +799,9 @@ pub async fn get_deployment_by_id_including_deleted(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			volume_size,
+			volume_mount_path
 		FROM
 			deployment
 		WHERE
@@ -809,7 +839,9 @@ pub async fn get_deployment_by_name_in_workspace(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			volume_size,
+			volume_mount_path
 		FROM
 			deployment
 		WHERE
@@ -1048,6 +1080,7 @@ pub async fn update_deployment_details(
 	max_horizontal_scale: Option<u16>,
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
+	volume: Option<&DeploymentVolume>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1110,9 +1143,18 @@ pub async fn update_deployment_details(
 					ELSE
 						'http'::EXPOSED_PORT_TYPE
 				END
-			)
+			),
+			volume_size = (
+				CASE
+					WHEN $10 = 0 THEN
+						NULL
+					ELSE
+						$10
+				END
+			),
+			volume_mount_path = COALESCE($11, volume_mount_path)
 		WHERE
-			id = $10;
+			id = $12;
 		"#,
 		name as _,
 		machine_type as _,
@@ -1123,6 +1165,8 @@ pub async fn update_deployment_details(
 		startup_probe.as_ref().map(|probe| probe.path.as_str()),
 		liveness_probe.map(|probe| probe.port as i32),
 		liveness_probe.as_ref().map(|probe| probe.path.as_str()),
+		volume.map(|volume| volume.size as i32),
+		volume.map(|volume| volume.mount_path.as_str()),
 		deployment_id as _
 	)
 	.execute(&mut *connection)

@@ -1686,6 +1686,7 @@ async fn update_deployment(
 		startup_probe,
 		liveness_probe,
 		config_mounts,
+		volume,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -1708,7 +1709,8 @@ async fn update_deployment(
 		environment_variables.is_none() &&
 		startup_probe.is_none() &&
 		liveness_probe.is_none() &&
-		config_mounts.is_none()
+		config_mounts.is_none() &&
+		volume.is_none()
 	{
 		return Err(Error::empty()
 			.status(400)
@@ -1727,6 +1729,7 @@ async fn update_deployment(
 		environment_variables: environment_variables.clone(),
 		startup_probe: startup_probe.clone(),
 		liveness_probe: liveness_probe.clone(),
+		volume: volume.clone(),
 	};
 
 	service::update_deployment(
@@ -1750,6 +1753,7 @@ async fn update_deployment(
 		startup_probe.as_ref(),
 		liveness_probe.as_ref(),
 		config_mounts.as_ref(),
+		volume.as_ref(),
 		&request_id,
 	)
 	.await?;

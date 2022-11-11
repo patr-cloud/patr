@@ -33,6 +33,9 @@ use k8s_openapi::{
 			HTTPGetAction,
 			KeyToPath,
 			LocalObjectReference,
+			PersistentVolumeClaim,
+			PersistentVolumeClaimSpec,
+			PersistentVolumeClaimVolumeSource,
 			Pod,
 			PodSpec,
 			PodTemplateSpec,
@@ -157,6 +160,46 @@ pub async fn update_kubernetes_deployment(
 		)
 		.await?;
 
+	if let Some(volume) = &running_details.volume {
+		log::trace!("request_id: {} creating persistance volume claim for deployment: {}", request_id, deployment.id);
+		let kubernetes_deployment_volume = PersistentVolumeClaim {
+			metadata: ObjectMeta {
+				name: Some(format!("pvc-{}", deployment.id)),
+				namespace: Some(namespace.to_string()),
+				..ObjectMeta::default()
+			},
+			spec: Some(PersistentVolumeClaimSpec {
+				access_modes: Some(vec!["ReadWriteOnce".to_string()]),
+				resources: Some(ResourceRequirements {
+					requests: Some(
+						[(
+							"storage".to_string(),
+							Quantity(format!("{}Gi", volume.size)),
+						)]
+						.into_iter()
+						.collect(),
+					),
+					..ResourceRequirements::default()
+				}),
+				// storage_class_name: todo!(), // confirm if this will be
+				// default or some new storage class
+				..PersistentVolumeClaimSpec::default()
+			}),
+			..PersistentVolumeClaim::default()
+		};
+
+		Api::<PersistentVolumeClaim>::namespaced(
+			kubernetes_client.clone(),
+			namespace,
+		)
+		.patch(
+			&format!("pvc-{}", deployment.id),
+			&PatchParams::apply(&format!("config-mount-{}", deployment.id)),
+			&Patch::Apply(kubernetes_deployment_volume),
+		)
+		.await?;
+	}
+
 	// get this from machine type
 	let (cpu_count, memory_count) = deployment::MACHINE_TYPES
 		.get()
@@ -229,6 +272,52 @@ pub async fn update_kubernetes_deployment(
 	]
 	.into_iter()
 	.collect();
+
+	let mut volume_mounts = Vec::new();
+	let mut volumes = Vec::new();
+
+	if !&running_details.config_mounts.is_empty() {
+		volume_mounts.push(Some(VolumeMount {
+			name: "config-mounts".to_string(),
+			mount_path: "/etc/config".to_string(),
+			..VolumeMount::default()
+		}));
+		volumes.push(Some(Volume {
+			name: "config-mounts".to_string(),
+			config_map: Some(ConfigMapVolumeSource {
+				name: Some(format!("config-mount-{}", deployment.id)),
+				items: Some(
+					running_details
+						.config_mounts
+						.iter()
+						.map(|(path, _)| KeyToPath {
+							key: path.clone(),
+							path: path.clone(),
+							..KeyToPath::default()
+						})
+						.collect(),
+				),
+				..ConfigMapVolumeSource::default()
+			}),
+			..Volume::default()
+		}))
+	}
+
+	if let Some(volume) = &running_details.volume {
+		volume_mounts.push(Some(VolumeMount {
+			name: "persistent-volume".to_string(),
+			mount_path: volume.mount_path.clone(),
+			..VolumeMount::default()
+		}));
+		volumes.push(Some(Volume {
+			name: "persistent-volume".to_string(),
+			persistent_volume_claim: Some(PersistentVolumeClaimVolumeSource {
+				claim_name: format!("pvc-{}", deployment.id),
+				..PersistentVolumeClaimVolumeSource::default()
+			}),
+			..Volume::default()
+		}))
+	}
 
 	let kubernetes_deployment = K8sDeployment {
 		metadata: ObjectMeta {
@@ -362,17 +451,11 @@ pub async fn update_kubernetes_deployment(
 								.collect(),
 							),
 						}),
-						volume_mounts: if !running_details
-							.config_mounts
-							.is_empty()
-						{
-							Some(vec![VolumeMount {
-								name: "config-mounts".to_string(),
-								mount_path: "/etc/config".to_string(),
-								..VolumeMount::default()
-							}])
-						} else {
-							None
+						volume_mounts: {
+							volume_mounts
+								.into_iter()
+								.map(|volume| volume)
+								.collect()
 						},
 						..Container::default()
 					}],
@@ -717,6 +800,7 @@ pub async fn delete_kubernetes_deployment(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
 	kubeconfig: KubernetesConfigDetails,
+	status: &DeploymentStatus,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let kubernetes_client =
@@ -745,6 +829,24 @@ pub async fn delete_kubernetes_deployment(
 		&DeleteParams::default(),
 	)
 	.await?;
+
+	match status {
+		DeploymentStatus::Deleted => {
+			log::trace!("request_id: {} - deleting the pvc", request_id);
+			Api::<PersistentVolumeClaim>::namespaced(
+				kubernetes_client.clone(),
+				workspace_id.as_str(),
+			)
+			.delete_opt(
+				&format!("pvc-{}", deployment_id),
+				&DeleteParams::default(),
+			)
+			.await?;
+		}
+		_ => {
+			log::trace!("request_id: {} got deployment stopped request not deleting pvc", request_id);
+		}
+	}
 
 	log::trace!("request_id: {} - deleting the service", request_id);
 	Api::<Service>::namespaced(

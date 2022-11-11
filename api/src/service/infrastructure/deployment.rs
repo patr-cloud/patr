@@ -9,6 +9,7 @@ use api_models::{
 		DeploymentRegistry,
 		DeploymentRunningDetails,
 		DeploymentStatus,
+		DeploymentVolume,
 		EnvironmentVariableValue,
 		ExposedPortType,
 		Metric,
@@ -179,6 +180,7 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.max_horizontal_scale,
 				deployment_running_details.startup_probe.as_ref(),
 				deployment_running_details.liveness_probe.as_ref(),
+				deployment_running_details.volume.as_ref(),
 			)
 			.await?;
 		}
@@ -202,6 +204,7 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.max_horizontal_scale,
 				deployment_running_details.startup_probe.as_ref(),
 				deployment_running_details.liveness_probe.as_ref(),
+				deployment_running_details.volume.as_ref(),
 			)
 			.await?;
 		}
@@ -318,6 +321,7 @@ pub async fn update_deployment(
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
 	config_mounts: Option<&BTreeMap<String, Base64String>>,
+	volume: Option<&DeploymentVolume>,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
@@ -400,6 +404,7 @@ pub async fn update_deployment(
 		max_horizontal_scale,
 		startup_probe,
 		liveness_probe,
+		volume,
 	)
 	.await?;
 
@@ -481,6 +486,8 @@ pub async fn get_full_deployment_config(
 		startup_probe_path,
 		liveness_probe_port,
 		liveness_probe_path,
+		volume_mount_path,
+		volume_size,
 	) = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.and_then(|deployment| {
@@ -514,6 +521,8 @@ pub async fn get_full_deployment_config(
 				deployment.startup_probe_path,
 				deployment.liveness_probe_port,
 				deployment.liveness_probe_path,
+				deployment.volume_mount_path,
+				deployment.volume_size,
 			))
 		})
 		.status(404)
@@ -597,6 +606,13 @@ pub async fn get_full_deployment_config(
 				.zip(liveness_probe_path)
 				.map(|(port, path)| DeploymentProbe { path, port }),
 			config_mounts,
+			volume: volume_size
+				.map(|size| size as i32)
+				.zip(volume_mount_path)
+				.map(|(size, mount_path)| DeploymentVolume {
+					size,
+					mount_path,
+				}),
 		},
 	))
 }

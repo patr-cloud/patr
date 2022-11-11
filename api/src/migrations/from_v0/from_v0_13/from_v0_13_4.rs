@@ -1,5 +1,6 @@
 use std::{fmt::Debug, net::IpAddr};
 
+use api_models::utils::Uuid;
 use either::Either;
 use k8s_openapi::api::{
 	apps::v1::Deployment,
@@ -27,7 +28,7 @@ use kube::{
 };
 use reqwest::Client;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use sqlx::{types::Uuid, Row};
+use sqlx::Row;
 
 use crate::{
 	migrate_query as query,
