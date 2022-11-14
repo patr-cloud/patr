@@ -569,6 +569,17 @@ pub async fn send_domain_verified_email(
 	.await
 }
 
+// helper macro for including partials for email template
+macro_rules! get_partial_template {
+	($path:expr) => {
+		include_str!(concat!(
+			env!("CARGO_MANIFEST_DIR"),
+			"/../assets/emails/",
+			$path
+		))
+	};
+}
+
 fn get_configured_handlebar<'a>() -> Handlebars<'a> {
 	handlebars_helper!(cents_to_dollars: |cents: u64| crate::utils::billing::cents_to_dollars(cents));
 	handlebars_helper!(stringify_month: |month_in_num: u8| crate::utils::billing::stringify_month(month_in_num));
@@ -576,6 +587,13 @@ fn get_configured_handlebar<'a>() -> Handlebars<'a> {
 	let mut handlebar = Handlebars::new();
 	handlebar.register_helper("stringify-month", Box::new(stringify_month));
 	handlebar.register_helper("cents-to-dollars", Box::new(cents_to_dollars));
+
+	handlebar
+		.register_partial(
+			"patr-header",
+			get_partial_template!("patr-header.hbs"),
+		)
+		.expect("Registered hbs template should always be valid");
 
 	handlebar
 }
@@ -711,6 +729,13 @@ mod tests {
 		},
 		utils::Uuid,
 	};
+	use lettre::{
+		transport::smtp::authentication::Credentials,
+		AsyncSmtpTransport,
+		AsyncTransport,
+		Message,
+		Tokio1Executor,
+	};
 
 	use super::{
 		get_configured_handlebar,
@@ -740,7 +765,44 @@ mod tests {
 		let mut handlebar = get_configured_handlebar();
 		handlebar.set_strict_mode(true);
 
-		body.render_body(&handlebar).await?;
+		let send_test_email = std::env::var("send_test_email")
+			.unwrap_or_else(|_| "false".to_string())
+			.parse()
+			.unwrap_or_default();
+
+		if send_test_email {
+			println!("sending real email for testing");
+
+			let username = std::env::var("email_cred_username")?;
+			let password = std::env::var("email_cred_password")?;
+			let from = std::env::var("email_from")?;
+			let to = std::env::var("email_to")?;
+
+			let message = Message::builder()
+				.from(from.parse()?)
+				.to(to.parse()?)
+				.subject("Patr email testing")
+				.multipart(body.render_body(&handlebar).await?)?;
+
+			let credentials = Credentials::new(username, password);
+
+			let response =
+				AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(
+					"smtp.zoho.com",
+				)?
+				.credentials(credentials)
+				.port(587)
+				.build::<Tokio1Executor>()
+				.send(message)
+				.await?;
+
+			if !response.is_positive() {
+				println!("{response:#?}");
+				return Err(Error::empty().body("Negative email response"));
+			}
+		} else {
+			body.render_body(&handlebar).await?;
+		}
 
 		Ok(())
 	}
