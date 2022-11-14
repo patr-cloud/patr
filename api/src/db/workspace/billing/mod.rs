@@ -433,11 +433,7 @@ pub async fn get_all_deployment_usage(
 			deployment_payment_history
 		WHERE
 			workspace_id = $1 AND
-			(
-				stop_time IS NULL OR
-				stop_time > $2
-			) AND
-			start_time < $3;
+			(start_time, stop_time) OVERLAPS ($2, $3);
 		"#,
 		workspace_id as _,
 		month_start_date as _,
@@ -466,11 +462,7 @@ pub async fn get_all_database_usage(
 			managed_database_payment_history
 		WHERE
 			workspace_id = $1 AND
-			(
-				deletion_time IS NULL OR
-				deletion_time > $2
-			) AND
-			start_time < $3;
+			(start_time, deletion_time) OVERLAPS ($2, $3);
 		"#,
 		workspace_id as _,
 		start_date as _,
@@ -498,11 +490,7 @@ pub async fn get_all_static_site_usages(
 			static_sites_payment_history
 		WHERE
 			workspace_id = $1 AND
-			(
-				stop_time IS NULL OR
-				stop_time > $2
-			) AND
-			start_time < $3;		
+			(start_time, stop_time) OVERLAPS ($2, $3);
 		"#,
 		workspace_id as _,
 		start_date as _,
@@ -530,11 +518,7 @@ pub async fn get_all_managed_url_usages(
 			managed_url_payment_history
 		WHERE
 			workspace_id = $1 AND
-			(
-				stop_time IS NULL OR
-				stop_time > $2
-			) AND
-			start_time < $3;
+			(start_time, stop_time) OVERLAPS ($2, $3);
 		"#,
 		workspace_id as _,
 		start_date as _,
@@ -561,11 +545,7 @@ pub async fn get_all_docker_repository_usages(
 			docker_repo_payment_history
 		WHERE
 			workspace_id = $1 AND
-			(
-				stop_time IS NULL OR
-				stop_time > $2
-			) AND
-			start_time < $3;
+			(start_time, stop_time) OVERLAPS ($2, $3);
 		"#,
 		workspace_id as _,
 		start_date as _,
@@ -592,11 +572,7 @@ pub async fn get_all_domains_usages(
 			domain_payment_history
 		WHERE
 			workspace_id = $1 AND
-			(
-				stop_time IS NULL OR
-				stop_time > $2
-			) AND
-			start_time < $3;
+			(start_time, stop_time) OVERLAPS ($2, $3);
 			"#,
 		workspace_id as _,
 		start_date as _,
@@ -624,11 +600,7 @@ pub async fn get_all_secrets_usages(
 			secrets_payment_history
 		WHERE
 			workspace_id = $1 AND
-			(
-				stop_time IS NULL OR
-				stop_time > $2
-			) AND
-			start_time < $3;
+			(start_time, stop_time) OVERLAPS ($2, $3);
 		"#,
 		workspace_id as _,
 		month_start_date as _,
