@@ -19,7 +19,6 @@ use api_models::{
 			SecretUsage,
 			StaticSitePlan,
 			StaticSiteUsage,
-			StripePaymentMethodType,
 			TransactionType,
 			WorkspaceBillBreakdown,
 		},
@@ -781,19 +780,6 @@ pub async fn get_card_details(
 		let card_details = PaymentMethod {
 			id: card_details.id.to_string(),
 			customer: card_details.customer.status(500)?.id().to_string(),
-			r#type: match card_details.type_ {
-				stripe::PaymentMethodType::Card => {
-					StripePaymentMethodType::CardPresent
-				}
-				stripe::PaymentMethodType::CardPresent => {
-					StripePaymentMethodType::CardPresent
-				}
-				_ => {
-					return Error::as_result()
-						.status(500)
-						.body(error!(SERVER_ERROR).to_string())?
-				}
-			},
 			card: serde_json::from_str(&serde_json::to_string(
 				&card_details.card.status(500)?,
 			)?)?,
