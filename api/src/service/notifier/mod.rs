@@ -18,6 +18,8 @@ use crate::{
 mod email;
 mod sms;
 
+pub use email::handlebar;
+
 /// # Description
 /// This function is used to notify the user that their sign up has been
 /// successfully completed. This will ideally introduce them to the platform and

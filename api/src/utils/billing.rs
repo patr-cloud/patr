@@ -2,7 +2,7 @@ pub fn cents_to_dollars(cents: u64) -> String {
 	format!("{:.2}", cents as f64 * 0.01)
 }
 
-pub fn stringify_month(month: u8) -> String {
+pub fn stringify_month(month: u8) -> &'static str {
 	match month {
 		1 => "January",
 		2 => "February",
@@ -18,5 +18,4 @@ pub fn stringify_month(month: u8) -> String {
 		12 => "December",
 		_ => "Invalid month",
 	}
-	.to_owned()
 }
