@@ -28,7 +28,7 @@ use crate::{
 		rbac::{self, permissions},
 		DeploymentMetadata,
 	},
-	service,
+	service::{self, ResourceAction, ResourceType},
 	utils::{settings::Settings, validator, Error},
 	Database,
 };
@@ -1259,7 +1259,27 @@ pub async fn stop_deployment(
 	service::delete_kubernetes_deployment(
 		workspace_id,
 		deployment_id,
+		kubeconfig.clone(),
+		request_id,
+	)
+	.await?;
+
+	let exposted_ports =
+		db::get_exposed_ports_for_deployment(connection, deployment_id)
+			.await?
+			.into_iter()
+			.map(|(port, _)| port)
+			.collect();
+
+	service::redirect_to_resource_down_page(
+		workspace_id,
+		&ResourceType::Deployment {
+			id: deployment_id.to_owned(),
+			ports: exposted_ports,
+		},
+		ResourceAction::Stopped,
 		kubeconfig,
+		&config.kubernetes.cert_issuer_dns,
 		request_id,
 	)
 	.await?;
@@ -1316,7 +1336,27 @@ pub async fn delete_deployment(
 	service::delete_kubernetes_deployment(
 		workspace_id,
 		deployment_id,
+		kubeconfig.clone(),
+		request_id,
+	)
+	.await?;
+
+	let exposted_ports =
+		db::get_exposed_ports_for_deployment(connection, deployment_id)
+			.await?
+			.into_iter()
+			.map(|(port, _)| port)
+			.collect();
+
+	service::redirect_to_resource_down_page(
+		workspace_id,
+		&ResourceType::Deployment {
+			id: deployment_id.to_owned(),
+			ports: exposted_ports,
+		},
+		ResourceAction::Deleted,
 		kubeconfig,
+		&config.kubernetes.cert_issuer_dns,
 		request_id,
 	)
 	.await?;

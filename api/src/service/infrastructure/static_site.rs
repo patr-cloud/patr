@@ -16,7 +16,7 @@ use crate::{
 	db::{self, StaticSitePlan},
 	error,
 	models::rbac,
-	service::{self, infrastructure::kubernetes},
+	service::{self, infrastructure::kubernetes, ResourceAction, ResourceType},
 	utils::{settings::Settings, validator, Error},
 	Database,
 };
@@ -200,6 +200,19 @@ pub async fn stop_static_site(
 	)
 	.await?;
 
+	let kubeconfig = service::get_kubernetes_config_for_default_region(config);
+	service::redirect_to_resource_down_page(
+		workspace_id,
+		&ResourceType::StaticSite {
+			id: static_site_id.to_owned(),
+		},
+		ResourceAction::Stopped,
+		kubeconfig,
+		&config.kubernetes.cert_issuer_dns,
+		request_id,
+	)
+	.await?;
+
 	Ok(())
 }
 
@@ -243,6 +256,19 @@ pub async fn delete_static_site(
 		&static_site.workspace_id,
 		&static_site_plan,
 		&Utc::now(),
+	)
+	.await?;
+
+	let kubeconfig = service::get_kubernetes_config_for_default_region(config);
+	service::redirect_to_resource_down_page(
+		workspace_id,
+		&ResourceType::StaticSite {
+			id: static_site_id.to_owned(),
+		},
+		ResourceAction::Deleted,
+		kubeconfig,
+		&config.kubernetes.cert_issuer_dns,
+		request_id,
 	)
 	.await?;
 

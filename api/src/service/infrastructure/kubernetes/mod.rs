@@ -1,6 +1,7 @@
 mod certificate;
 mod ci;
 mod deployment;
+mod ingress;
 mod managed_url;
 mod static_site;
 mod workspace;
@@ -41,6 +42,7 @@ pub use self::{
 	certificate::*,
 	ci::*,
 	deployment::*,
+	ingress::*,
 	managed_url::*,
 	static_site::*,
 	workspace::*,
