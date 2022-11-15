@@ -77,6 +77,11 @@ def get_pipeline_steps(ctx):
                 "Check clippy lints",
                 release=False,
             ),
+            # run cargo tests
+            run_tests(
+                "Running cargo test",
+                release=False,
+            ),
 
             # Create sample config
             copy_config("Copy sample config"),
@@ -133,6 +138,12 @@ def get_pipeline_steps(ctx):
                 "Check clippy lints",
                 release=True,
             ),
+            # run cargo tests
+            run_tests(
+                "Running cargo test",
+                release=True,
+            ),
+
             # Check whether crate version is updated
             check_version("Check version"),
 
@@ -191,6 +202,12 @@ def get_pipeline_steps(ctx):
                 "Check clippy lints",
                 release=True,
             ),
+            # run cargo tests
+            run_tests(
+                "Running cargo test",
+                release=True,
+            ),
+
             # Check whether crate version is updated
             check_version("Check version"),
 
@@ -726,6 +743,36 @@ def test_migrations(step_name, release, env):
         "environment": env
     }
 
+def run_tests(step_name, release):
+    release_flag = ""
+    if release == True:
+        release_flag = "--release"
+
+    return {
+        "name": step_name,
+        "image": "rust:1.65",
+        "commands": [
+            "cargo test {}".format(releaseFlag)
+        ],
+        "volumes": [
+            {
+                "name": "crates-registry-registry",
+                "path": "/usr/local/cargo/registry"
+            },
+            {
+                "name": "crates-registry-git",
+                "path": "/usr/local/cargo/git"
+            },
+            {
+                "name": "target-folder-{}-deps".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/deps".format("release" if release == True else "debug")
+            },
+            {
+                "name": "target-folder-{}-inc".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/incremental".format("release" if release == True else "debug")
+            }
+        ]
+    }
 
 def database_service(pwd):
     return {
