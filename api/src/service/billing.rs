@@ -797,7 +797,7 @@ pub async fn get_card_details(
 			card: serde_json::from_str(&serde_json::to_string(
 				&card_details.card.status(500)?,
 			)?)?,
-			created: DateTime::from(Utc.timestamp_millis(card_details.created)),
+			created: DateTime::from(Utc.timestamp(card_details.created, 0)),
 		};
 		cards.push(card_details);
 	}
