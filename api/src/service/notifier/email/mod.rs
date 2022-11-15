@@ -621,8 +621,10 @@ where
 			builder = builder.reply_to(reply_to);
 		}
 
-		let message = builder
-			.multipart(body.render_body(&get_configured_handlebar()).await?)?;
+		let message = builder.multipart(
+			body.render_body(handlebar::get_configured_handlebar())
+				.await?,
+		)?;
 
 		let credentials = Credentials::new(
 			settings.email.username.clone(),

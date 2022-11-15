@@ -49,13 +49,21 @@ use super::{
 };
 use crate::{models::EmailTemplate, utils::Error};
 
+// inorder to send real email for testing, run cargo test
+// with the following env variables
+//
+// SEND_TEST_EMAIL=true
+// EMAIL_CRED_USERNAME=<vicara email>
+// EMAIL_CRED_PASSWORD=<vicara password>
+// EMAIL_FROM=<vicara email>
+// EMAIL_TO=<vicara email>
 async fn send_email<TEmail>(body: TEmail) -> Result<(), Error>
 where
 	TEmail: EmailTemplate,
 {
 	let handlebar = get_configured_handlebar();
 
-	let send_test_email = std::env::var("send_test_email")
+	let send_test_email = std::env::var("SEND_TEST_EMAIL")
 		.unwrap_or_else(|_| "false".to_string())
 		.parse()
 		.unwrap_or_default();
@@ -63,10 +71,10 @@ where
 	if send_test_email {
 		println!("sending real email for testing");
 
-		let username = std::env::var("email_cred_username")?;
-		let password = std::env::var("email_cred_password")?;
-		let from = std::env::var("email_from")?;
-		let to = std::env::var("email_to")?;
+		let username = std::env::var("EMAIL_CRED_USERNAME")?;
+		let password = std::env::var("EMAIL_CRED_PASSWORD")?;
+		let from = std::env::var("EMAIL_FROM")?;
+		let to = std::env::var("EMAIL_TO")?;
 
 		let message = Message::builder()
 			.from(from.parse()?)
