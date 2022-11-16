@@ -26,6 +26,12 @@ pub struct DeploymentRegion {
 	pub kubernetes_ingress_ip_addr: Option<IpAddr>,
 }
 
+impl DeploymentRegion {
+	pub fn is_byoc_region(&self) -> bool {
+		self.workspace_id.is_some()
+	}
+}
+
 pub async fn initialize_region_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {

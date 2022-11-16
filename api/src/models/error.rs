@@ -79,6 +79,8 @@ pub mod id {
 
 	// error constants for billing related things
 	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "cardlessFreeLimitExceeded";
+	pub const CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT: &str =
+		"cardlessDeploymentMachineType";
 
 	// error constants for CI
 	pub const INVALID_STATE_VALUE: &str = "invalidStateValue";
@@ -224,6 +226,7 @@ pub mod message {
 
 	// error constants for billing related things
 	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "You have reached the maximun free limit allowed to create resources without adding a payment card, kindly add a card to create more resources";
+	pub const CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT: &str = "Only minimun deployment machine type is allowed under free plan, kindly add a card to create deployment with bigger machine type";
 
 	// error constants for CI
 	pub const INVALID_STATE_VALUE: &str =

@@ -24,7 +24,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		deployment::{Logs, PrometheusResponse},
+		deployment::{Logs, PrometheusResponse, MACHINE_TYPES},
 		rbac::{self, permissions},
 		DeploymentMetadata,
 	},
@@ -112,8 +112,14 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
-	check_deployment_creation_limit(connection, workspace_id, request_id)
-		.await?;
+	check_deployment_creation_limit(
+		connection,
+		workspace_id,
+		region_details.is_byoc_region(),
+		machine_type,
+		request_id,
+	)
+	.await?;
 
 	let created_time = Utc::now();
 
@@ -1017,30 +1023,48 @@ pub async fn get_deployment_build_logs(
 async fn check_deployment_creation_limit(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
+	is_byoc_region: bool,
+	machine_type: &Uuid,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {request_id} - Checking whether new deployment creation is limited");
+
+	if is_byoc_region {
+		// if byoc, then don't need to check free/paid/total limits
+		// as this deloyment is going to be deployed on their cluster
+		return Ok(());
+	}
 
 	let current_deployment_count =
 		db::get_deployments_for_workspace(connection, workspace_id)
 			.await?
 			.len();
 
-	// check whether free limit is exceeded
-	if current_deployment_count >= free_limits::DEPLOYMENT_COUNT as usize &&
-		db::get_default_payment_method_for_workspace(
-			connection,
-			workspace_id,
-		)
-		.await?
-		.is_none()
-	{
-		log::info!(
-			"request_id: {request_id} - Free deployment limit reached and card is not added"
-		);
-		return Error::as_result()
-			.status(400)
-			.body(error!(CARDLESS_FREE_LIMIT_EXCEEDED).to_string())?;
+	let card_added =
+		db::get_default_payment_method_for_workspace(connection, workspace_id)
+			.await?
+			.is_some();
+	if !card_added {
+		// check whether free limit is exceeded
+		if current_deployment_count >= free_limits::DEPLOYMENT_COUNT as usize {
+			log::info!("request_id: {request_id} - Free deployment limit reached and card is not added");
+			return Error::as_result()
+				.status(400)
+				.body(error!(CARDLESS_FREE_LIMIT_EXCEEDED).to_string())?;
+		}
+
+		// only basic machine type is allowed under free plan
+		let machine_type_to_be_deployed = MACHINE_TYPES
+			.get()
+			.and_then(|machines| machines.get(machine_type))
+			.status(500)?;
+
+		if machine_type_to_be_deployed != &(1, 2) {
+			log::info!("request_id: {request_id} - Only basic machine type is allowed under free plan");
+			return Error::as_result().status(400).body(
+				error!(CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT).to_string(),
+			)?;
+		}
 	}
 
 	// check whether max deployment limit is exceeded
