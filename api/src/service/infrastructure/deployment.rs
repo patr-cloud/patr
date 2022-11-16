@@ -180,7 +180,6 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.max_horizontal_scale,
 				deployment_running_details.startup_probe.as_ref(),
 				deployment_running_details.liveness_probe.as_ref(),
-				deployment_running_details.volume.as_ref(),
 			)
 			.await?;
 		}
@@ -204,7 +203,6 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.max_horizontal_scale,
 				deployment_running_details.startup_probe.as_ref(),
 				deployment_running_details.liveness_probe.as_ref(),
-				deployment_running_details.volume.as_ref(),
 			)
 			.await?;
 		}
@@ -268,6 +266,57 @@ pub async fn create_deployment_in_workspace(
 		.await?;
 	}
 
+	for (size, path) in &deployment_running_details.volume {
+		log::trace!("request_id: {} - creating volume resource", request_id);
+		let volume_id = db::generate_new_resource_id(connection).await?;
+
+		db::create_resource(
+			connection,
+			&volume_id,
+			rbac::RESOURCE_TYPES
+				.get()
+				.unwrap()
+				.get(rbac::resource_types::VOLUME)
+				.unwrap(),
+			workspace_id,
+			&created_time,
+		)
+		.await?;
+
+		db::add_volume_for_deployment(
+			connection,
+			&deployment_id,
+			&volume_id,
+			size.value() as u32,
+			path.as_ref(),
+		)
+		.await?;
+	};
+
+	if service::is_deployed_on_patr_cluster(connection, region).await? {
+		db::start_deployment_usage_history(
+			connection,
+			workspace_id,
+			&deployment_id,
+			machine_type,
+			deployment_running_details.min_horizontal_scale as i32,
+			&created_time,
+		)
+		.await?;
+
+		for size in deployment_running_details.volume.keys() {
+			db::start_deployment_volume_usage_history(
+				connection,
+				workspace_id,
+				&deployment_id,
+				&(((size.value() as f64) / (1000f64 * 1000f64 * 1000f64)).ceil()
+					as i64),
+				&created_time,
+			)
+			.await?;
+		}
+	};
+
 	Ok(deployment_id)
 }
 
@@ -321,7 +370,7 @@ pub async fn update_deployment(
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
 	config_mounts: Option<&BTreeMap<String, Base64String>>,
-	volume: Option<&DeploymentVolume>,
+	volumes: Option<&BTreeMap<Uuid, DeploymentVolume>>,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
@@ -404,7 +453,6 @@ pub async fn update_deployment(
 		max_horizontal_scale,
 		startup_probe,
 		liveness_probe,
-		volume,
 	)
 	.await?;
 
@@ -419,6 +467,23 @@ pub async fn update_deployment(
 				deployment_id,
 				path.as_ref(),
 				file,
+			)
+			.await?;
+		}
+	}
+
+	if let Some(volumes) = volumes {
+		for (volume_id, value) in volumes {
+			db::get_deployment_volume_by_id(connection, volume_id)
+				.await?
+				.status(404)
+				.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+			db::update_volume_for_deployment(
+				connection,
+				deployment_id,
+				volume_id,
+				&value.size,
+				&value.path,
 			)
 			.await?;
 		}
@@ -486,8 +551,6 @@ pub async fn get_full_deployment_config(
 		startup_probe_path,
 		liveness_probe_port,
 		liveness_probe_path,
-		volume_mount_path,
-		volume_size,
 	) = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.and_then(|deployment| {
@@ -521,8 +584,6 @@ pub async fn get_full_deployment_config(
 				deployment.startup_probe_path,
 				deployment.liveness_probe_port,
 				deployment.liveness_probe_path,
-				deployment.volume_mount_path,
-				deployment.volume_size,
 			))
 		})
 		.status(404)
@@ -585,6 +646,12 @@ pub async fn get_full_deployment_config(
 			.map(|mount| (mount.path, mount.file.into()))
 			.collect();
 
+	let volume = db::get_all_deployment_volumes(connection, deployment_id)
+		.await?
+		.into_iter()
+		.map(|volume| (StringifiedU16::new(volume.size as u16), volume.path))
+		.collect();
+
 	log::trace!("request_id: {} - Full deployment config for deployment with id: {} successfully retreived", request_id, deployment_id);
 
 	Ok((
@@ -606,13 +673,7 @@ pub async fn get_full_deployment_config(
 				.zip(liveness_probe_path)
 				.map(|(port, path)| DeploymentProbe { path, port }),
 			config_mounts,
-			volume: volume_size
-				.map(|size| size as i32)
-				.zip(volume_mount_path)
-				.map(|(size, mount_path)| DeploymentVolume {
-					size,
-					mount_path,
-				}),
+			volume,
 		},
 	))
 }

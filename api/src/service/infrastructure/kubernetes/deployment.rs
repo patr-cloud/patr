@@ -160,7 +160,7 @@ pub async fn update_kubernetes_deployment(
 		)
 		.await?;
 
-	if let Some(volume) = &running_details.volume {
+	for size in running_details.volume.keys() {
 		log::trace!("request_id: {} creating persistance volume claim for deployment: {}", request_id, deployment.id);
 		let kubernetes_deployment_volume = PersistentVolumeClaim {
 			metadata: ObjectMeta {
@@ -174,14 +174,15 @@ pub async fn update_kubernetes_deployment(
 					requests: Some(
 						[(
 							"storage".to_string(),
-							Quantity(format!("{}Gi", volume.size)),
+							Quantity(format!("{}Gi", size)),
+							// Quantity(format!("{}Gi", size)),
 						)]
 						.into_iter()
 						.collect(),
 					),
 					..ResourceRequirements::default()
 				}),
-				// storage_class_name: todo!(), // confirm if this will be
+				// storage_class_name: None, // confirm if this will be
 				// default or some new storage class
 				..PersistentVolumeClaimSpec::default()
 			}),
@@ -194,7 +195,7 @@ pub async fn update_kubernetes_deployment(
 		)
 		.patch(
 			&format!("pvc-{}", deployment.id),
-			&PatchParams::apply(&format!("config-mount-{}", deployment.id)),
+			&PatchParams::apply(&format!("pvc-{}", deployment.id)),
 			&Patch::Apply(kubernetes_deployment_volume),
 		)
 		.await?;
@@ -277,12 +278,12 @@ pub async fn update_kubernetes_deployment(
 	let mut volumes = Vec::new();
 
 	if !&running_details.config_mounts.is_empty() {
-		volume_mounts.push(Some(VolumeMount {
+		volume_mounts.push(VolumeMount {
 			name: "config-mounts".to_string(),
 			mount_path: "/etc/config".to_string(),
 			..VolumeMount::default()
-		}));
-		volumes.push(Some(Volume {
+		});
+		volumes.push(Volume {
 			name: "config-mounts".to_string(),
 			config_map: Some(ConfigMapVolumeSource {
 				name: Some(format!("config-mount-{}", deployment.id)),
@@ -300,23 +301,26 @@ pub async fn update_kubernetes_deployment(
 				..ConfigMapVolumeSource::default()
 			}),
 			..Volume::default()
-		}))
+		})
 	}
 
-	if let Some(volume) = &running_details.volume {
-		volume_mounts.push(Some(VolumeMount {
+	for path in running_details.volume.values() {
+		volume_mounts.push(VolumeMount {
 			name: "persistent-volume".to_string(),
-			mount_path: volume.mount_path.clone(),
+			mount_path: path.to_string(), /* make sure user does not have the
+			                               * mount_path to the a directory in
+			                               * the fs, by my observation it
+			                               * gives crashLoopBackOff error */
 			..VolumeMount::default()
-		}));
-		volumes.push(Some(Volume {
+		});
+		volumes.push(Volume {
 			name: "persistent-volume".to_string(),
 			persistent_volume_claim: Some(PersistentVolumeClaimVolumeSource {
 				claim_name: format!("pvc-{}", deployment.id),
 				..PersistentVolumeClaimVolumeSource::default()
 			}),
 			..Volume::default()
-		}))
+		})
 	}
 
 	let kubernetes_deployment = K8sDeployment {
@@ -451,12 +455,7 @@ pub async fn update_kubernetes_deployment(
 								.collect(),
 							),
 						}),
-						volume_mounts: {
-							volume_mounts
-								.into_iter()
-								.map(|volume| volume)
-								.collect()
-						},
+						volume_mounts: Some(volume_mounts),
 						..Container::default()
 					}],
 					volumes: if !running_details.config_mounts.is_empty() {

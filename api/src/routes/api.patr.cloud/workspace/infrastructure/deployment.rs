@@ -1277,6 +1277,7 @@ async fn stop_deployment(
 		request_id,
 		deployment_id
 	);
+
 	service::stop_deployment(
 		context.get_database_connection(),
 		&deployment.workspace_id,
@@ -1577,6 +1578,13 @@ async fn delete_deployment(
 			&Utc::now(),
 		)
 		.await?;
+
+		db::stop_deployment_volume_usage_history(
+			context.get_database_connection(),
+			&deployment_id,
+			&Utc::now(),
+		)
+		.await?;
 	}
 
 	log::trace!("request_id: {} - Checking is any managed url is used by the deployment: {}", request_id, deployment_id);
@@ -1686,7 +1694,7 @@ async fn update_deployment(
 		startup_probe,
 		liveness_probe,
 		config_mounts,
-		volume,
+		volumes,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -1710,7 +1718,7 @@ async fn update_deployment(
 		startup_probe.is_none() &&
 		liveness_probe.is_none() &&
 		config_mounts.is_none() &&
-		volume.is_none()
+		volumes.is_none()
 	{
 		return Err(Error::empty()
 			.status(400)
@@ -1729,7 +1737,6 @@ async fn update_deployment(
 		environment_variables: environment_variables.clone(),
 		startup_probe: startup_probe.clone(),
 		liveness_probe: liveness_probe.clone(),
-		volume: volume.clone(),
 	};
 
 	service::update_deployment(
@@ -1753,7 +1760,7 @@ async fn update_deployment(
 		startup_probe.as_ref(),
 		liveness_probe.as_ref(),
 		config_mounts.as_ref(),
-		volume.as_ref(),
+		volumes.as_ref(),
 		&request_id,
 	)
 	.await?;

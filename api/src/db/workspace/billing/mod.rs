@@ -20,6 +20,13 @@ pub struct DeploymentPaymentHistory {
 	pub start_time: DateTime<Utc>,
 	pub stop_time: Option<DateTime<Utc>>,
 }
+pub struct VolumePaymentHistory {
+	pub workspace_id: Uuid,
+	pub deployment_id: Uuid,
+	pub storage: i64,
+	pub start_time: DateTime<Utc>,
+	pub stop_time: Option<DateTime<Utc>>,
+}
 
 pub struct StaticSitesPaymentHistory {
 	pub workspace_id: Uuid,
@@ -243,6 +250,20 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
+		CREATE TABLE IF NOT EXISTS volume_payment_history(
+			workspace_id UUID NOT NULL,
+			deployment_id UUID NOT NULL,
+			storage BIGINT NOT NULL,
+			start_time TIMESTAMPTZ NOT NULL,
+			stop_time TIMESTAMPTZ
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE IF NOT EXISTS payment_method(
 			payment_method_id TEXT CONSTRAINT payment_method_pk PRIMARY KEY,
 			workspace_id UUID NOT NULL
@@ -438,6 +459,39 @@ pub async fn get_all_deployment_usage(
 			(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3)
 		ORDER BY
 			start_time ASC;
+		"#,
+		workspace_id as _,
+		month_start_date as _,
+		till_date as _,
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn get_all_volume_usage(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	month_start_date: &DateTime<Utc>,
+	till_date: &DateTime<Utc>,
+) -> Result<Vec<VolumePaymentHistory>, sqlx::Error> {
+	query_as!(
+		VolumePaymentHistory,
+		r#"
+		SELECT
+			workspace_id as "workspace_id: _",
+			deployment_id as "deployment_id: _",
+			storage,
+			start_time as "start_time: _",
+			stop_time as "stop_time: _"
+		FROM
+			volume_payment_history
+		WHERE
+			workspace_id = $1 AND
+			(
+				stop_time IS NULL OR
+				stop_time > $2
+			) AND
+			start_time < $3;
 		"#,
 		workspace_id as _,
 		month_start_date as _,
@@ -863,6 +917,65 @@ pub async fn stop_deployment_usage_history(
 		r#"
 		UPDATE
 			deployment_payment_history
+		SET
+			stop_time = $1
+		WHERE	
+			deployment_id = $2 AND
+			stop_time IS NULL;
+		"#,
+		stop_time as _,
+		deployment_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn start_deployment_volume_usage_history(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	storage: &i64,
+	start_time: &DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			volume_payment_history(
+				workspace_id,
+				deployment_id,
+				storage,
+				start_time,
+				stop_time
+			)
+		VALUES
+			(
+				$1,
+				$2,
+				$3,
+				$4,
+				NULL
+			);
+		"#,
+		workspace_id as _,
+		deployment_id as _,
+		storage,
+		start_time as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn stop_deployment_volume_usage_history(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	stop_time: &DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			volume_payment_history
 		SET
 			stop_time = $1
 		WHERE	

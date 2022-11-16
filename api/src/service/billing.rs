@@ -20,6 +20,7 @@ use api_models::{
 			StaticSitePlan,
 			StaticSiteUsage,
 			TransactionType,
+			VolumeUsage,
 			WorkspaceBillBreakdown,
 		},
 		infrastructure::{
@@ -410,6 +411,57 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 	}
 
 	Ok(result)
+}
+
+pub async fn calculate_volumes_bill_for_workspace_till(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	month_start_date: &chrono::DateTime<Utc>,
+	till_date: &chrono::DateTime<Utc>,
+) -> Result<BTreeMap<Uuid, VolumeUsage>, Error> {
+	let volume_usages = db::get_all_volume_usage(
+		&mut *connection,
+		workspace_id,
+		&DateTime::from(*month_start_date),
+		till_date,
+	)
+	.await?;
+
+	let mut volume_usage_bill = BTreeMap::new();
+
+	for volume_usages in volume_usages {
+		let stop_time = volume_usages
+			.stop_time
+			.map(chrono::DateTime::from)
+			.unwrap_or_else(|| *till_date);
+		let start_time = max(volume_usages.start_time, *month_start_date);
+		let hours = min(
+			720,
+			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
+				as i64,
+		);
+
+		let storage_in_gb = (volume_usages.storage as f64 /
+			(1024 * 1024 * 1024) as f64)
+			.ceil() as i64;
+		let monthly_price = (storage_in_gb as f64 * 0.1f64).ceil();
+
+		volume_usage_bill
+			.entry(volume_usages.deployment_id)
+			.or_insert(VolumeUsage {
+				storage: volume_usages.storage as u64,
+				hours: hours as u64,
+				amount: PriceAmount(
+					if hours >= 720 {
+						monthly_price
+					} else {
+						(hours as f64 / 720f64) * monthly_price
+					},
+				),
+			});
+	}
+
+	Ok(volume_usage_bill)
 }
 
 pub async fn calculate_database_bill_for_workspace_till(
@@ -1041,6 +1093,14 @@ pub async fn calculate_total_bill_for_workspace_till(
 	)
 	.await?;
 
+	let volume_usage = calculate_volumes_bill_for_workspace_till(
+		&mut *connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
+
 	let database_usage = calculate_database_bill_for_workspace_till(
 		&mut *connection,
 		workspace_id,
@@ -1099,6 +1159,11 @@ pub async fn calculate_total_bill_for_workspace_till(
 				.sum::<u64>()
 		})
 		.sum();
+
+	let volume_charge = volume_usage
+		.iter()
+		.map(|(_, bill)| bill.amount.0)
+		.sum::<u64>();
 	let database_charge = database_usage.iter().map(|bill| bill.amount).sum();
 	let static_site_charge =
 		static_site_usage.iter().map(|bill| bill.amount).sum();
@@ -1126,6 +1191,8 @@ pub async fn calculate_total_bill_for_workspace_till(
 		total_charge,
 		deployment_charge,
 		deployment_usage,
+		volume_charge,
+		volume_usage,
 		database_charge,
 		database_usage,
 		static_site_charge,
@@ -1181,7 +1248,26 @@ pub async fn get_total_resource_usage(
 		})
 		.sum();
 
-	log::trace!("request_id: {} getting bill for all databases", request_id,);
+	log::trace!("request_id: {} getting bill for all volumes", request_id,);
+
+	let volume_usage = calculate_volumes_bill_for_workspace_till(
+		connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
+
+	let volume_charge = volume_usage
+		.iter()
+		.map(|(_, bill)| bill.amount.0)
+		.sum::<u64>();
+
+	log::trace!(
+		"request_id: {} getting bill for all managed_databases",
+		request_id,
+	);
+
 	let database_usage = calculate_database_bill_for_workspace_till(
 		connection,
 		workspace_id,
@@ -1274,6 +1360,8 @@ pub async fn get_total_resource_usage(
 		total_charge,
 		deployment_charge,
 		deployment_usage,
+		volume_charge,
+		volume_usage,
 		database_charge,
 		database_usage,
 		static_site_charge,
