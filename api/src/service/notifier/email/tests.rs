@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Once};
 
 use api_models::{
 	models::workspace::{
@@ -29,7 +29,6 @@ use lettre::{
 };
 
 use super::{
-	handlebar::get_configured_handlebar,
 	AddEmailVerificationEmail,
 	BillNotPaidDeleteResourcesEmail,
 	BillPaidSuccessfullyEmail,
@@ -47,7 +46,18 @@ use super::{
 	SignUpCompletedEmail,
 	UserSignUpVerificationEmail,
 };
-use crate::{models::EmailTemplate, utils::Error};
+use crate::{
+	models::EmailTemplate,
+	utils::{
+		handlebar_registry::{
+			get_handlebar_registry,
+			initialize_handlebar_registry,
+		},
+		Error,
+	},
+};
+
+static INIT: Once = Once::new();
 
 // inorder to send real email for testing, run cargo test
 // with the following env variables
@@ -61,7 +71,8 @@ async fn send_email<TEmail>(body: TEmail) -> Result<(), Error>
 where
 	TEmail: EmailTemplate,
 {
-	let handlebar = get_configured_handlebar();
+	INIT.call_once(|| initialize_handlebar_registry());
+	let handlebar = get_handlebar_registry();
 
 	let send_test_email = std::env::var("SEND_TEST_EMAIL")
 		.unwrap_or_else(|_| "false".to_string())

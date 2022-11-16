@@ -1,5 +1,3 @@
-pub mod handlebar;
-
 #[cfg(test)]
 mod tests;
 
@@ -622,7 +620,7 @@ where
 		}
 
 		let message = builder.multipart(
-			body.render_body(handlebar::get_configured_handlebar())
+			body.render_body(handlebar::get_handlebar_registry())
 				.await?,
 		)?;
 
@@ -669,10 +667,11 @@ async fn send_email<TEmail>(
 where
 	TEmail: EmailTemplate,
 {
+	use crate::utils::handlebar_registry;
+
 	log::trace!("Sending email to {}", to);
 
-	let handlebar = handlebar::get_configured_handlebar();
-
+	let handlebar = handlebar_registry::get_handlebar_registry();
 	body.render_body(handlebar).await.expect(
 		// safe to panic as it is will be used only in debug builds
 		"Handlebar template should be up-to-date with struct changes",

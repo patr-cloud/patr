@@ -5,11 +5,13 @@ use once_cell::sync::OnceCell;
 
 use crate::utils::Error;
 
-// handlebar helpers
+static INSTANCE: OnceCell<Handlebars> = OnceCell::new();
+
+// helpers to use within handlebar templates
 handlebars_helper!(cents_to_dollars: |cents: u64| crate::utils::billing::cents_to_dollars(cents));
 handlebars_helper!(stringify_month: |month_in_num: u8| crate::utils::billing::stringify_month(month_in_num));
 
-fn get_handlebar<'a>() -> Result<Handlebars<'a>, Error> {
+fn initialize_handlebar_registry_helper<'a>() -> Result<Handlebars<'a>, Error> {
 	let mut handlebar = Handlebars::new();
 	handlebar.set_strict_mode(true);
 
@@ -38,9 +40,17 @@ fn get_handlebar<'a>() -> Result<Handlebars<'a>, Error> {
 	Ok(handlebar)
 }
 
-pub fn get_configured_handlebar() -> &'static Handlebars<'static> {
-	static INSTANCE: OnceCell<Handlebars> = OnceCell::new();
-	INSTANCE.get_or_init(|| {
-		get_handlebar().expect("Handler templates should be valid")
-	})
+pub fn initialize_handlebar_registry() {
+	let handlebar = initialize_handlebar_registry_helper()
+		.expect("Handler templates should be valid");
+
+	INSTANCE
+		.set(handlebar)
+		.expect("Handlebar should be initialized only once");
+}
+
+pub fn get_handlebar_registry() -> &'static Handlebars<'static> {
+	INSTANCE
+		.get()
+		.expect("Handlebar should be initialized before getting it")
 }
