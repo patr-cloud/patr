@@ -77,6 +77,9 @@ pub mod id {
 	pub const FILE_SIZE_TOO_LARGE: &str = "fileSizeTooLarge";
 	pub const NOT_A_SUPER_ADMIN: &str = "notASuperAdmin";
 
+	// error constants for billing related things
+	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "cardlessFreeLimitExceeded";
+
 	// error constants for CI
 	pub const INVALID_STATE_VALUE: &str = "invalidStateValue";
 
@@ -218,6 +221,9 @@ pub mod message {
 	pub const TAG_NOT_FOUND: &str = "The tag does not exist";
 	pub const FILE_SIZE_TOO_LARGE: &str = "The file that you uploaded is too large. Maximum size allowed is 100MB";
 	pub const NOT_A_SUPER_ADMIN: &str = "You have to be super admin to perform this action. If you wish to continue please contact your administrator";
+
+	// error constants for billing related things
+	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "You have reached the maximun free limit allowed to create resources without adding a payment card, kindly add a card to create more resources";
 
 	// error constants for CI
 	pub const INVALID_STATE_VALUE: &str =

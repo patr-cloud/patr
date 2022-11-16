@@ -1020,6 +1020,28 @@ pub async fn set_default_payment_method_for_workspace(
 	.map(|_| ())
 }
 
+pub async fn get_default_payment_method_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Option<String>, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			default_payment_method_id
+		FROM
+			workspace
+		WHERE
+			id = $1
+		"#,
+		workspace_id as _,
+	)
+	.fetch_optional(&mut *connection)
+	.await
+	.map(|optional_record| {
+		optional_record.and_then(|record| record.default_payment_method_id)
+	})
+}
+
 pub async fn set_resource_limit_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,

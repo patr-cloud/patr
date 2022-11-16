@@ -72,3 +72,12 @@ pub mod default_limits {
 	pub const DOMAINS: i32 = 5;
 	pub const SECRETS: i32 = 150;
 }
+
+pub mod free_limits {
+	pub const DEPLOYMENT_COUNT: u32 = 1;
+	pub const DATABASE_COUNT: u32 = 0;
+	pub const STATIC_SITE_COUNT: u32 = 3;
+	pub const MANAGED_URL_COUNT: u32 = 10;
+	pub const DOMAIN_COUNT: u32 = 1;
+	pub const SECRET_COUNT: u32 = 3;
+}
