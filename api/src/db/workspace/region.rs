@@ -245,6 +245,40 @@ pub async fn add_deployment_region_to_workspace(
 	.map(|_| ())
 }
 
+pub async fn add_deployment_region_to_workspace_with_config_file(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	region_id: &Uuid,
+	name: &str,
+	cloud_provider: &InfrastructureCloudProvider,
+	workspace_id: &Uuid,
+	config_file: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			deployment_region(
+				id,
+				name,
+				provider,
+				workspace_id,
+				ready,
+				config_file,
+				status
+			)
+		VALUES
+			($1, $2, $3, $4, FALSE, $5, 'created');
+		"#,
+		region_id as _,
+		name,
+		cloud_provider as _,
+		workspace_id as _,
+		config_file as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn mark_deployment_region_as_ready(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
