@@ -187,7 +187,6 @@ pub(super) async fn process_request(
 			.await?
 			.status(500)?;
 
-
 			let dns_record = match ip_addr {
 				std::net::IpAddr::V4(ip_v4) => DnsRecordValue::A { target: ip_v4, proxied: false },
 				std::net::IpAddr::V6(ip_v6) => DnsRecordValue::AAAA { target: ip_v6, proxied: false },
@@ -232,6 +231,142 @@ pub(super) async fn process_request(
 		} => Err(
 			Error::empty().body("Currently creating cluster through digital ocean cluster is not supported")
 		),
+    	BYOCData::DeleteKubernetesCluster {
+			region_id,
+			cluster_url,
+			certificate_authority_data,
+			auth_username,
+			auth_token,
+			request_id,
+		} => {
+			log::trace!("request_id: {} uninitializing region with ID: {}", request_id, region_id);
+			let kubeconfig_content = generate_kubeconfig_from_template(
+				&cluster_url,
+				&auth_username,
+				&auth_token,
+				&certificate_authority_data,
+			);
+
+			let kubeconfig_path = format!("{region_id}.yml");
+
+			fs::write(&kubeconfig_path, &kubeconfig_content).await?;
+
+			let output = Command::new("assets/k8s/fresh/k8s_uninit.sh")
+				.args([
+					&kubeconfig_path,
+				])
+				.output()
+				.await?;
+
+			db::append_messge_log_for_region(
+					connection,
+					&region_id,
+					std::str::from_utf8(&output.stdout)?,
+				)
+				.await?;
+
+
+			if !output.status.success() {
+				log::debug!(
+                    "Error while un-initializing the cluster {}:\nStatus: {}\nStderr: {}\nStdout: {}",
+                    region_id,
+                    output.status,
+                    String::from_utf8_lossy(&output.stderr),
+                    String::from_utf8_lossy(&output.stdout)
+                );
+				db::append_messge_log_for_region(
+					connection,
+					&region_id,
+					std::str::from_utf8(&output.stderr)?,
+				)
+				.await?;
+
+				return Ok(());
+			}
+
+			log::info!("Un-Initialized cluster {region_id} successfully");
+			Ok(())
+		}
+    	BYOCData::InitKubernetesClusterViaKubeConfig {
+			region_id,
+			config_file,
+			request_id
+		} => {
+
+			let region = if let Some(region) =
+				db::get_region_by_id(connection, &region_id).await?
+			{
+				region
+			} else {
+				log::error!(
+					"request_id: {} - Unable to find region with ID `{}`",
+					request_id,
+					&region_id
+				);
+				return Ok(());
+			};
+
+			let kubeconfig_path = format!("{region_id}.yml");
+
+			fs::write(&kubeconfig_path, &config_file).await?;
+
+			let parent_workspace = region
+				.workspace_id
+				.map(|id| id.as_str().to_owned())
+				.status(500)?;
+
+			let output = Command::new("assets/k8s/fresh/k8s_init.sh")
+				.args([
+					region_id.as_str(),
+					&parent_workspace,
+					&kubeconfig_path,
+				])
+				.output()
+				.await?;
+
+			db::append_messge_log_for_region(
+				connection,
+				&region_id,
+				std::str::from_utf8(&output.stdout)?,
+			)
+			.await?;
+
+			if !output.status.success() {
+				log::debug!(
+                    "Error while initializing the cluster {}:\nStatus: {}\nStderr: {}\nStdout: {}",
+                    region_id,
+                    output.status,
+                    String::from_utf8_lossy(&output.stderr),
+                    String::from_utf8_lossy(&output.stdout)
+                );
+				db::append_messge_log_for_region(
+					connection,
+					&region_id,
+					std::str::from_utf8(&output.stderr)?,
+				)
+				.await?;
+				// don't requeue
+				return Ok(());
+			}
+
+			log::info!("Initialized cluster {region_id} successfully");
+
+			service::send_message_to_infra_queue(
+				&InfraRequestData::BYOC(BYOCData::CheckClusterForReadiness {
+					region_id: region_id.clone(),
+					cluster_url: cluster_url.to_owned(),
+					certificate_authority_data: certificate_authority_data
+						.to_string(),
+					auth_username: auth_username.to_string(),
+					auth_token: auth_token.to_string(),
+					request_id: request_id.clone(),
+				}),
+				config,
+				&request_id,
+			)
+			.await?;
+			Ok(())
+		},
 	}
 }
 

@@ -61,6 +61,11 @@ pub enum BYOCData {
 		auth_token: String,
 		request_id: Uuid,
 	},
+	InitKubernetesClusterViaKubeConfig {
+		region_id: Uuid,
+		config_file: String,
+		request_id: Uuid,
+	},
 	CheckClusterForReadiness {
 		region_id: Uuid,
 		cluster_url: String,
@@ -73,6 +78,14 @@ pub enum BYOCData {
 		region_id: Uuid,
 		digitalocean_region: DigitaloceanRegion,
 		access_token: String,
+		request_id: Uuid,
+	},
+	DeleteKubernetesCluster {
+		region_id: Uuid,
+		cluster_url: String,
+		certificate_authority_data: String,
+		auth_username: String,
+		auth_token: String,
 		request_id: Uuid,
 	},
 }

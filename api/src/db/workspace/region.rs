@@ -4,6 +4,7 @@ use api_models::{
 	models::workspace::region::InfrastructureCloudProvider,
 	utils::Uuid,
 };
+use chrono::{DateTime, Utc};
 
 use crate::{
 	models::deployment::{DefaultDeploymentRegion, DEFAULT_DEPLOYMENT_REGIONS},
@@ -48,6 +49,18 @@ pub async fn initialize_region_pre(
 
 	query!(
 		r#"
+		CREATE TYPE REGION_STATUS AS ENUM(
+			'created',
+			'active',
+			'deleted'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE deployment_region(
 			id UUID CONSTRAINT deployment_region_pk PRIMARY KEY,
 			name TEXT NOT NULL,
@@ -55,12 +68,15 @@ pub async fn initialize_region_pre(
 			workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id
 				REFERENCES workspace(id),
 			ready BOOLEAN NOT NULL,
+			config_file BYTEA,
 			kubernetes_cluster_url TEXT,
 			kubernetes_auth_username TEXT,
 			kubernetes_auth_token TEXT,
 			kubernetes_ca_data TEXT,
 			kubernetes_ingress_ip_addr INET,
 			message_log TEXT,
+			deleted TIMESTAMPTZ,
+			status REGION_STATUS NOT NULL DEFAULT 'created',
 			CONSTRAINT deployment_region_chk_ready_or_not CHECK(
 				(
 					workspace_id IS NOT NULL AND (
@@ -239,15 +255,50 @@ pub async fn add_deployment_region_to_workspace(
 				kubernetes_auth_username,
 				kubernetes_auth_token,
 				kubernetes_ca_data,
-				message_log
+				message_log,
+				status
 			)
 		VALUES
-			($1, $2, $3, $4, FALSE, NULL, NULL, NULL, NULL, NULL);
+			($1, $2, $3, $4, FALSE, NULL, NULL, NULL, NULL, NULL, 'created');
 		"#,
 		region_id as _,
 		name,
 		cloud_provider as _,
 		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn add_deployment_region_to_workspace_with_config_file(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	region_id: &Uuid,
+	name: &str,
+	cloud_provider: &InfrastructureCloudProvider,
+	workspace_id: &Uuid,
+	config_file: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			deployment_region(
+				id,
+				name,
+				provider,
+				workspace_id,
+				ready,
+				config_file,
+				status
+			)
+		VALUES
+			($1, $2, $3, $4, FALSE, $5, 'created');
+		"#,
+		region_id as _,
+		name,
+		cloud_provider as _,
+		workspace_id as _,
+		config_file as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -269,6 +320,7 @@ pub async fn mark_deployment_region_as_ready(
 			deployment_region
 		SET
 			ready = TRUE,
+			status = 'active',
 			kubernetes_cluster_url = $2,
 			kubernetes_auth_username = $3,
 			kubernetes_auth_token = $4,
@@ -305,6 +357,29 @@ pub async fn append_messge_log_for_region(
 		"#,
 		region_id as _,
 		message
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn delete_region(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	region_id: &Uuid,
+	deletion_time: &DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment_region
+		SET
+			deleted = $2,
+			status = 'deleted'
+		WHERE
+			id = $1;
+		"#,
+		region_id as _,
+		deletion_time
 	)
 	.execute(&mut *connection)
 	.await
