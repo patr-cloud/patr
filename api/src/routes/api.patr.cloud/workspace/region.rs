@@ -180,6 +180,7 @@ async fn add_region(
 			.unwrap();
 	let AddRegionToWorkspaceRequest {
 		data,
+		config_file,
 		name,
 		workspace_id: _,
 	} = context
@@ -261,6 +262,28 @@ async fn add_region(
 			)
 			.await?;
 		}
+	}
+
+	if let Some(config_file) = config_file {
+		db::add_deployment_region_to_workspace_with_config_file(
+			context.get_database_connection(),
+			&region_id,
+			&name,
+			&InfrastructureCloudProvider::Other,
+			&workspace_id,
+			config_file.as_bytes(),
+		)
+		.await?;
+
+		context.commit_database_transaction().await?;
+
+		service::queue_setup_kubernetes_cluster_via_kube_config(
+			&region_id,
+			&config_file,
+			&request_id,
+			&config,
+		)
+		.await?;
 	}
 
 	log::trace!("request_id: {} - Returning new secret", request_id);
