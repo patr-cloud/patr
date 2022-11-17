@@ -752,7 +752,7 @@ def run_tests(step_name, release):
         "name": step_name,
         "image": "rust:1.65",
         "commands": [
-            "cargo test {}".format(releaseFlag)
+            "cargo test {}".format(release_flag)
         ],
         "volumes": [
             {
