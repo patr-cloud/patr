@@ -1,3 +1,5 @@
+use sqlx::types::Uuid;
+
 use crate::{
 	migrate_query as query,
 	utils::{settings::Settings, Error},
@@ -9,6 +11,51 @@ pub(super) async fn migrate(
 	config: &Settings,
 ) -> Result<(), Error> {
 	migrate_dollars_to_cents(connection, config).await?;
+	delete_region_permission(&mut *connection, config).await?;
+	deleted_region_colume(&mut *connection, config).await?;
+	Ok(())
+}
+
+async fn delete_region_permission(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	let permission = "workspace::region::delete";
+	let uuid = loop {
+		let uuid = Uuid::new_v4();
+
+		let exists = query!(
+			r#"
+				SELECT
+					*
+				FROM
+					permission
+				WHERE
+					id = $1;
+				"#,
+			&uuid
+		)
+		.fetch_optional(&mut *connection)
+		.await?
+		.is_some();
+
+		if !exists {
+			break uuid;
+		}
+	};
+
+	query!(
+		r#"
+			INSERT INTO
+				permission
+			VALUES
+				($1, $2, '');
+			"#,
+		&uuid,
+		permission
+	)
+	.fetch_optional(&mut *connection)
+	.await?;
 
 	Ok(())
 }
@@ -90,5 +137,33 @@ pub(super) async fn migrate_dollars_to_cents(
 	.execute(&mut *connection)
 	.await?;
 
+	Ok(())
+}
+
+async fn deleted_region_colume(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		CREATE TYPE REGION_STATUS AS ENUM(
+			'created',
+			'active',
+			'deleted'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+	query!(
+		r#"
+		ALTER TABLE deployment_region
+		ADD COLUMN config_file BYTEA,
+		ADD COLUMN deleted TIMESTAMPTZ,
+		ADD COLUMN status REGION_STATUS NOT NULL DEFAULT 'created';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 	Ok(())
 }

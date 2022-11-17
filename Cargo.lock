@@ -2612,6 +2612,7 @@ version = "0.1.0"
 dependencies = [
  "askama",
  "handlebars 4.3.5",
+ "heck",
  "lettre",
  "proc-macro2",
  "quote",
