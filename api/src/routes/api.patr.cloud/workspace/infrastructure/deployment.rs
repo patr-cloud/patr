@@ -1532,6 +1532,10 @@ async fn delete_deployment(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
+
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
@@ -1570,6 +1574,24 @@ async fn delete_deployment(
 			&Utc::now(),
 		)
 		.await?;
+	}
+
+	log::trace!("request_id: {} - Checking is any managed url is used by the deployment: {}", request_id, deployment_id);
+	let managed_url = db::get_all_managed_urls_for_deployment(
+		context.get_database_connection(),
+		&deployment_id,
+		&workspace_id,
+	)
+	.await?;
+
+	if !managed_url.is_empty() {
+		log::trace!(
+			"deployment: {} - is using managed_url. Cannot delete it",
+			deployment_id
+		);
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_IN_USE).to_string())?;
 	}
 
 	log::trace!("request_id: {} - Deleting deployment", request_id);

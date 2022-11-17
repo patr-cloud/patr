@@ -1190,6 +1190,23 @@ async fn delete_static_site(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
+	log::trace!("request_id: {} - Checking is any managed url is used by the deployment: {}", request_id, static_site_id);
+	let managed_url = db::get_managed_url_for_static_siite(
+		context.get_database_connection(),
+		&static_site_id,
+	)
+	.await?;
+
+	if !managed_url.is_empty() {
+		log::trace!(
+			"static site: {} - is using managed_url. Cannot delete it",
+			static_site_id
+		);
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_IN_USE).to_string())?;
+	}
+
 	log::trace!(
 		"request_id: {} - Deleting the static site with id: {}",
 		request_id,

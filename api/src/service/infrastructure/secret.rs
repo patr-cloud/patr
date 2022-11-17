@@ -251,7 +251,9 @@ pub async fn delete_secret_in_workspace(
 		)
 		.await?
 		.is_empty();
-	if used_in_deployment {
+
+	// is_empty() will account for no deployment using the secret
+	if !used_in_deployment {
 		return Err(Error::empty()
 			.status(400)
 			.body(error!(RESOURCE_IN_USE).to_string()));
