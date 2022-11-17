@@ -2,7 +2,6 @@
 
 set -uex
 
-CLUSTER_NAME=${1:?"Missing parameter: CLUSTER_NAME"}
 KUBECONFIG_PATH=${2:?"Missing parameter: KUBECONFIG_PATH"}
 
 if [ ! -f $KUBECONFIG_PATH ]; then

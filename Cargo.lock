@@ -2601,6 +2601,8 @@ dependencies = [
  "base64 0.13.1",
  "chrono",
  "ipnetwork",
+ "k8s-openapi",
+ "kube",
  "lazy_static",
  "log",
  "monostate",
