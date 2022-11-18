@@ -934,8 +934,8 @@ async fn get_container_logs(
 			config.loki.host,
 			deployment_id,
 			workspace_id,
-			start_time.timestamp_millis(),
-			end_time.timestamp_millis()
+			start_time.timestamp_nanos(),
+			end_time.timestamp_nanos()
 		))
 		.basic_auth(&config.loki.username, Some(&config.loki.password))
 		.send()
@@ -989,8 +989,8 @@ pub async fn get_deployment_build_logs(
 			),
 			config.loki.host,
 			workspace_id,
-			start_time.timestamp_millis(),
-			end_time.timestamp_millis()
+			start_time.timestamp_nanos(),
+			end_time.timestamp_nanos()
 		))
 		.basic_auth(&config.loki.username, Some(&config.loki.password))
 		.send()
