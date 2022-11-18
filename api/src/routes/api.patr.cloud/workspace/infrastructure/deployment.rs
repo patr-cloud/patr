@@ -1446,7 +1446,9 @@ async fn get_logs(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let GetDeploymentLogsRequest { start_time, .. } = context
+	let GetDeploymentLogsRequest {
+		start_time, limit, ..
+	} = context
 		.get_query_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -1488,6 +1490,8 @@ async fn get_logs(
 			Interval::Year => Duration::days(365),
 		};
 
+	let limit = if let Some(limit) = limit { limit } else { 100 };
+
 	log::trace!("request_id: {} - Getting logs", request_id);
 	// stop the running container, if it exists
 	let logs = service::get_deployment_container_logs(
@@ -1495,6 +1499,7 @@ async fn get_logs(
 		&deployment_id,
 		&start_time,
 		&Utc::now(),
+		limit,
 		&config,
 		&request_id,
 	)

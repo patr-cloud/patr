@@ -272,6 +272,7 @@ pub async fn get_deployment_container_logs(
 	deployment_id: &Uuid,
 	start_time: &DateTime<Utc>,
 	end_time: &DateTime<Utc>,
+	limit: u32,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<String, Error> {
@@ -291,6 +292,7 @@ pub async fn get_deployment_container_logs(
 		deployment_id,
 		start_time,
 		end_time,
+		limit,
 		config,
 		request_id,
 	)
@@ -915,6 +917,7 @@ async fn get_container_logs(
 	deployment_id: &Uuid,
 	start_time: &DateTime<Utc>,
 	end_time: &DateTime<Utc>,
+	limit: u32,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<String, Error> {
@@ -929,13 +932,14 @@ async fn get_container_logs(
 			concat!(
 				"https://{}/loki/api/v1/query_range?direction=BACKWARD&",
 				"query={{container=\"deployment-{}\",namespace=\"{}\"}}",
-				"&start={}&end={}"
+				"&start={}&end={}&limit={}"
 			),
 			config.loki.host,
 			deployment_id,
 			workspace_id,
 			start_time.timestamp_nanos(),
-			end_time.timestamp_nanos()
+			end_time.timestamp_nanos(),
+			limit
 		))
 		.basic_auth(&config.loki.username, Some(&config.loki.password))
 		.send()
