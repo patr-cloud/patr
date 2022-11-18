@@ -827,7 +827,7 @@ async fn revert_static_site(
 
 	context.commit_database_transaction().await?;
 
-	let managed_urls = db::get_managed_url_for_static_siite(
+	let managed_urls = db::get_managed_url_for_static_site(
 		context.get_database_connection(),
 		&static_site_id,
 	)
@@ -1053,7 +1053,7 @@ async fn upload_static_site(
 		static_site_id
 	);
 
-	let managed_urls = db::get_managed_url_for_static_siite(
+	let managed_urls = db::get_managed_url_for_static_site(
 		context.get_database_connection(),
 		&static_site_id,
 	)
@@ -1191,7 +1191,7 @@ async fn delete_static_site(
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	log::trace!("request_id: {} - Checking is any managed url is used by the deployment: {}", request_id, static_site_id);
-	let managed_url = db::get_managed_url_for_static_siite(
+	let managed_url = db::get_managed_url_for_static_site(
 		context.get_database_connection(),
 		&static_site_id,
 	)

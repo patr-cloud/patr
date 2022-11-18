@@ -245,15 +245,13 @@ pub async fn delete_secret_in_workspace(
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	// check if the secret is connected to a deployment or not
-	let used_in_deployment =
+	let deployment_secrets =
 		db::get_deployments_with_secret_as_environment_variable(
 			connection, secret_id,
 		)
-		.await?
-		.is_empty();
+		.await?;
 
-	// is_empty() will account for no deployment using the secret
-	if !used_in_deployment {
+	if !deployment_secrets.is_empty() {
 		return Err(Error::empty()
 			.status(400)
 			.body(error!(RESOURCE_IN_USE).to_string()));
