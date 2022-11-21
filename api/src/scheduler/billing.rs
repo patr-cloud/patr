@@ -1,4 +1,4 @@
-use chrono::{Datelike, Utc};
+use chrono::{Datelike, TimeZone, Utc};
 
 use super::Job;
 use crate::{db, service, utils::Error};
@@ -17,7 +17,9 @@ async fn update_bill() -> Result<(), Error> {
 		super::CONFIG.get().unwrap().database.acquire().await?;
 	let workspaces = db::get_all_workspaces(&mut connection).await?;
 	let now = Utc::now();
-	let month_start_date = now.date().with_day(1).unwrap().and_hms(0, 0, 0);
+	let month_start_date = Utc
+		.with_ymd_and_hms(now.year(), now.month(), 1, 0, 0, 0)
+		.unwrap();
 
 	for workspace in workspaces {
 		let mut connection =

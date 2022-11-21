@@ -42,7 +42,7 @@ async fn does_version_exist(version: &str) -> bool {
 			.json::<Vec<ReleaseVersion>>()
 			.await
 			.expect("unable to parse response as json");
-		if response.len() == 0 {
+		if response.is_empty() {
 			break;
 		}
 		for release in response.iter() {
