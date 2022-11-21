@@ -43,7 +43,9 @@ pub(super) async fn process_request(
 			year,
 			request_id,
 		} => {
-			if Utc::now() < Utc.ymd(year, month, 1).and_hms(0, 0, 0) {
+			if Utc::now() <
+				Utc.with_ymd_and_hms(year, month, 1, 0, 0, 0).unwrap()
+			{
 				// It's not yet time to process the workspace. Wait and try
 				// again later
 				time::sleep(time::Duration::from_millis(
@@ -101,14 +103,18 @@ pub(super) async fn process_request(
 				month,
 				year
 			);
-			let month_start_date = Utc.ymd(year, month, 1).and_hms(0, 0, 0);
+			let month_start_date =
+				Utc.with_ymd_and_hms(year, month, 1, 0, 0, 0).unwrap();
 			let next_month_start_date = Utc
-				.ymd(
+				.with_ymd_and_hms(
 					if month == 12 { year + 1 } else { year },
 					if month == 12 { 1 } else { month + 1 },
 					1,
+					0,
+					0,
+					0,
 				)
-				.and_hms(0, 0, 0)
+				.unwrap()
 				.sub(Duration::nanoseconds(1));
 
 			let month_string = match month {
@@ -186,14 +192,18 @@ pub(super) async fn process_request(
 				_ => "",
 			};
 
-			let month_start_date = Utc.ymd(year, month, 1).and_hms(0, 0, 0);
+			let month_start_date =
+				Utc.with_ymd_and_hms(year, month, 1, 0, 0, 0).unwrap();
 			let next_month_start_date = Utc
-				.ymd(
+				.with_ymd_and_hms(
 					if month == 12 { year + 1 } else { year },
 					if month == 12 { 1 } else { month + 1 },
 					1,
+					0,
+					0,
+					0,
 				)
-				.and_hms(0, 0, 0)
+				.unwrap()
 				.sub(Duration::nanoseconds(1));
 
 			// Total amount due by the user for this workspace, after accounting
@@ -618,15 +628,19 @@ pub(super) async fn process_request(
 				_ => "",
 			};
 
-			let month_start_date =
-				Utc.ymd(year as i32, month, 1).and_hms(0, 0, 0);
+			let month_start_date = Utc
+				.with_ymd_and_hms(year as i32, month, 1, 0, 0, 0)
+				.unwrap();
 			let next_month_start_date = Utc
-				.ymd(
+				.with_ymd_and_hms(
 					(if month == 12 { year + 1 } else { year }) as i32,
 					if month == 12 { 1 } else { month + 1 },
 					1,
+					0,
+					0,
+					0,
 				)
-				.and_hms(0, 0, 0)
+				.unwrap()
 				.sub(Duration::nanoseconds(1));
 
 			let workspace = db::get_workspace_info(connection, &workspace_id)

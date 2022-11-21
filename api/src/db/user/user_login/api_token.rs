@@ -532,7 +532,7 @@ pub async fn update_user_api_token(
 			token_id = $6;
 		"#,
 		name,
-		Utc.timestamp(0, 0),
+		Utc.timestamp_opt(0, 0).unwrap(),
 		token_nbf,
 		token_exp,
 		allowed_ips,

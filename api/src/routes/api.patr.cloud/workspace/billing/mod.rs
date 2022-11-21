@@ -1068,14 +1068,19 @@ async fn get_bill_breakdown(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let month_start_date = Utc.ymd(year as i32, month, 1).and_hms(0, 0, 0);
+	let month_start_date = Utc
+		.with_ymd_and_hms(year as i32, month, 1, 0, 0, 0)
+		.unwrap();
 	let month_end_date = Utc
-		.ymd(
+		.with_ymd_and_hms(
 			(if month == 12 { year + 1 } else { year }) as i32,
 			if month == 12 { 1 } else { month + 1 },
 			1,
+			0,
+			0,
+			0,
 		)
-		.and_hms(0, 0, 0)
+		.unwrap()
 		.sub(Duration::nanoseconds(1));
 	let month_end_date = min(month_end_date, Utc::now());
 

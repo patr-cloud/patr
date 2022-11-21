@@ -251,6 +251,6 @@ mod datetime_as_seconds {
 		D: Deserializer<'de>,
 	{
 		i64::deserialize(deserializer)
-			.map(|timestamp| Utc.timestamp(timestamp, 0))
+			.map(|timestamp| Utc.timestamp_opt(timestamp, 0).unwrap())
 	}
 }
