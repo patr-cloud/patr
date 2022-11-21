@@ -752,7 +752,6 @@ async fn get_payment_method(
 	.map(|payment_source| PaymentMethod {
 		id: payment_source.id,
 		customer: payment_source.customer,
-		r#type: payment_source.r#type,
 		card: payment_source.card,
 		created: payment_source.created,
 	})
