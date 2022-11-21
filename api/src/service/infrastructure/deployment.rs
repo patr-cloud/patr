@@ -270,7 +270,6 @@ pub async fn create_deployment_in_workspace(
 pub async fn get_deployment_container_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
-	start_time: &DateTime<Utc>,
 	end_time: &DateTime<Utc>,
 	limit: u32,
 	config: &Settings,
@@ -290,7 +289,6 @@ pub async fn get_deployment_container_logs(
 	let logs = get_container_logs(
 		&deployment.workspace_id,
 		deployment_id,
-		start_time,
 		end_time,
 		limit,
 		config,
@@ -915,7 +913,6 @@ pub async fn get_deployment_metrics(
 async fn get_container_logs(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-	start_time: &DateTime<Utc>,
 	end_time: &DateTime<Utc>,
 	limit: u32,
 	config: &Settings,
@@ -932,12 +929,11 @@ async fn get_container_logs(
 			concat!(
 				"https://{}/loki/api/v1/query_range?direction=BACKWARD&",
 				"query={{container=\"deployment-{}\",namespace=\"{}\"}}",
-				"&start={}&end={}&limit={}"
+				"&end={}&limit={}"
 			),
 			config.loki.host,
 			deployment_id,
 			workspace_id,
-			start_time.timestamp_nanos(),
 			end_time.timestamp_nanos(),
 			limit
 		))
