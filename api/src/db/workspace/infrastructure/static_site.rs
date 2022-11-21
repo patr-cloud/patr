@@ -251,7 +251,7 @@ pub async fn update_current_live_upload_for_static_site(
 	.map(|_| ())
 }
 
-pub async fn get_managed_url_for_static_siite(
+pub async fn get_managed_urls_for_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &Uuid,
 ) -> Result<Vec<StaticSiteManagedUrl>, sqlx::Error> {
