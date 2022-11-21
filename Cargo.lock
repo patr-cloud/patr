@@ -120,7 +120,6 @@ name = "api"
 version = "0.12.0"
 dependencies = [
  "argon2",
- "askama",
  "async-stripe",
  "async-trait",
  "base32",
@@ -2628,7 +2627,6 @@ version = "0.1.0"
 dependencies = [
  "askama",
  "handlebars 4.3.5",
- "heck",
  "lettre",
  "proc-macro2",
  "quote",
