@@ -270,8 +270,8 @@ pub async fn create_deployment_in_workspace(
 pub async fn get_deployment_container_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
-	start_time: &DateTime<Utc>,
 	end_time: &DateTime<Utc>,
+	limit: u32,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<String, Error> {
@@ -289,8 +289,8 @@ pub async fn get_deployment_container_logs(
 	let logs = get_container_logs(
 		&deployment.workspace_id,
 		deployment_id,
-		start_time,
 		end_time,
+		limit,
 		config,
 		request_id,
 	)
@@ -913,8 +913,8 @@ pub async fn get_deployment_metrics(
 async fn get_container_logs(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-	start_time: &DateTime<Utc>,
 	end_time: &DateTime<Utc>,
+	limit: u32,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<String, Error> {
@@ -929,13 +929,13 @@ async fn get_container_logs(
 			concat!(
 				"https://{}/loki/api/v1/query_range?direction=BACKWARD&",
 				"query={{container=\"deployment-{}\",namespace=\"{}\"}}",
-				"&start={}&end={}"
+				"&end={}&limit={}"
 			),
 			config.loki.host,
 			deployment_id,
 			workspace_id,
-			start_time.timestamp_millis(),
-			end_time.timestamp_millis()
+			end_time.timestamp_nanos(),
+			limit
 		))
 		.basic_auth(&config.loki.username, Some(&config.loki.password))
 		.send()
@@ -989,8 +989,8 @@ pub async fn get_deployment_build_logs(
 			),
 			config.loki.host,
 			workspace_id,
-			start_time.timestamp_millis(),
-			end_time.timestamp_millis()
+			start_time.timestamp_nanos(),
+			end_time.timestamp_nanos()
 		))
 		.basic_auth(&config.loki.username, Some(&config.loki.password))
 		.send()

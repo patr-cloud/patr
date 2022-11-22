@@ -1446,7 +1446,9 @@ async fn get_logs(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let GetDeploymentLogsRequest { start_time, .. } = context
+	let GetDeploymentLogsRequest {
+		limit, end_time, ..
+	} = context
 		.get_query_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -1479,22 +1481,17 @@ async fn get_logs(
 
 	let config = context.get_state().config.clone();
 
-	let start_time = Utc::now() -
-		match start_time.unwrap_or(Interval::Hour) {
-			Interval::Hour => Duration::hours(1),
-			Interval::Day => Duration::days(1),
-			Interval::Week => Duration::weeks(1),
-			Interval::Month => Duration::days(30),
-			Interval::Year => Duration::days(365),
-		};
+	let end_time = end_time
+		.map(|DateTime(end_time)| end_time)
+		.unwrap_or_else(Utc::now);
 
 	log::trace!("request_id: {} - Getting logs", request_id);
 	// stop the running container, if it exists
 	let logs = service::get_deployment_container_logs(
 		context.get_database_connection(),
 		&deployment_id,
-		&start_time,
-		&Utc::now(),
+		&end_time,
+		limit.unwrap_or(100),
 		&config,
 		&request_id,
 	)
