@@ -20,10 +20,7 @@ pub struct DeploymentRegion {
 	pub ready: bool,
 	pub workspace_id: Option<Uuid>,
 	pub message_log: Option<String>,
-	pub kubernetes_cluster_url: Option<String>,
-	pub kubernetes_auth_username: Option<String>,
-	pub kubernetes_auth_token: Option<String>,
-	pub kubernetes_ca_data: Option<String>,
+	pub config_file: Option<String>,
 	pub kubernetes_ingress_ip_addr: Option<IpAddr>,
 }
 
@@ -68,7 +65,7 @@ pub async fn initialize_region_pre(
 			workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id
 				REFERENCES workspace(id),
 			ready BOOLEAN NOT NULL,
-			config_file BYTEA,
+			config_file TEXT,
 			kubernetes_cluster_url TEXT,
 			kubernetes_auth_username TEXT,
 			kubernetes_auth_token TEXT,
@@ -188,10 +185,7 @@ pub async fn get_region_by_id(
 			ready,
 			workspace_id as "workspace_id: _",
 			message_log,
-			kubernetes_cluster_url,
-			kubernetes_auth_username,
-			kubernetes_auth_token,
-			kubernetes_ca_data,
+			config_file as "config_file!: _",
 			kubernetes_ingress_ip_addr as "kubernetes_ingress_ip_addr: _"
 		FROM
 			deployment_region
@@ -218,10 +212,7 @@ pub async fn get_all_deployment_regions_for_workspace(
 			ready,
 			workspace_id as "workspace_id: _",
 			message_log,
-			kubernetes_cluster_url,
-			kubernetes_auth_username,
-			kubernetes_auth_token,
-			kubernetes_ca_data,
+			config_file as "config_file!: _",
 			kubernetes_ingress_ip_addr as "kubernetes_ingress_ip_addr: _"
 		FROM
 			deployment_region
@@ -251,54 +242,16 @@ pub async fn add_deployment_region_to_workspace(
 				provider,
 				workspace_id,
 				ready,
-				kubernetes_cluster_url,
-				kubernetes_auth_username,
-				kubernetes_auth_token,
-				kubernetes_ca_data,
-				message_log,
-				status
-			)
-		VALUES
-			($1, $2, $3, $4, FALSE, NULL, NULL, NULL, NULL, NULL, 'created');
-		"#,
-		region_id as _,
-		name,
-		cloud_provider as _,
-		workspace_id as _,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn add_deployment_region_to_workspace_with_config_file(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	region_id: &Uuid,
-	name: &str,
-	cloud_provider: &InfrastructureCloudProvider,
-	workspace_id: &Uuid,
-	config_file: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			deployment_region(
-				id,
-				name,
-				provider,
-				workspace_id,
-				ready,
 				config_file,
 				status
 			)
 		VALUES
-			($1, $2, $3, $4, FALSE, $5, 'created');
+			($1, $2, $3, $4, FALSE, NULL, 'created');
 		"#,
 		region_id as _,
 		name,
 		cloud_provider as _,
 		workspace_id as _,
-		config_file as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -308,11 +261,7 @@ pub async fn add_deployment_region_to_workspace_with_config_file(
 pub async fn mark_deployment_region_as_ready(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
-	kubernetes_cluster_url: &str,
-	kubernetes_auth_username: &str,
-	kubernetes_auth_token: &str,
-	kubernetes_ca_data: &str,
-	kubernetes_ingress_ip_addr: &IpAddr,
+	kube_config: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -321,20 +270,12 @@ pub async fn mark_deployment_region_as_ready(
 		SET
 			ready = TRUE,
 			status = 'active',
-			kubernetes_cluster_url = $2,
-			kubernetes_auth_username = $3,
-			kubernetes_auth_token = $4,
-			kubernetes_ca_data = $5,
-			kubernetes_ingress_ip_addr = $6
+			config_file = $1
 		WHERE
-			id = $1;
+			id = $2;
 		"#,
+		kube_config as _,
 		region_id as _,
-		kubernetes_cluster_url,
-		kubernetes_auth_username,
-		kubernetes_auth_token,
-		kubernetes_ca_data,
-		kubernetes_ingress_ip_addr as _
 	)
 	.execute(&mut *connection)
 	.await

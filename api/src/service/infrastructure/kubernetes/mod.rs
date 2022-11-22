@@ -10,6 +10,7 @@ pub mod ext_traits;
 use std::{net::IpAddr, str::FromStr};
 
 use api_models::utils::Uuid;
+use eve_rs::AsError;
 use k8s_openapi::api::core::v1::{
 	EndpointAddress,
 	EndpointPort,
@@ -46,54 +47,26 @@ pub use self::{
 	workspace::*,
 };
 use crate::{
-	service::KubernetesAuthDetails,
+	error,
 	utils::{settings::Settings, Error},
 };
 
 async fn get_kubernetes_client(
-	kube_auth_details: KubernetesAuthDetails,
+	kube_config: &str,
 ) -> Result<kube::Client, Error> {
-	let kubeconfig = Config::from_custom_kubeconfig(
-		Kubeconfig {
-			api_version: Some("v1".to_string()),
-			kind: Some("Config".to_string()),
-			clusters: vec![NamedCluster {
-				name: "kubernetesCluster".to_owned(),
-				cluster: Some(Cluster {
-					server: Some(kube_auth_details.cluster_url),
-					certificate_authority_data: Some(
-						kube_auth_details.certificate_authority_data,
-					),
-					insecure_skip_tls_verify: None,
-					certificate_authority: None,
-					proxy_url: None,
-					extensions: None,
-					..Default::default()
-				}),
-			}],
-			auth_infos: vec![NamedAuthInfo {
-				name: kube_auth_details.auth_username.clone(),
-				auth_info: Some(AuthInfo {
-					token: Some(kube_auth_details.auth_token.into()),
-					..Default::default()
-				}),
-			}],
-			contexts: vec![NamedContext {
-				name: "kubernetesContext".to_owned(),
-				context: Some(Context {
-					cluster: "kubernetesCluster".to_owned(),
-					user: kube_auth_details.auth_username,
-					extensions: None,
-					namespace: None,
-				}),
-			}],
-			current_context: Some("kubernetesContext".to_owned()),
-			preferences: None,
-			extensions: None,
-		},
-		&Default::default(),
-	)
-	.await?;
+	let kubeconfig = Kubeconfig::from_yaml(kube_config);
+	let kubeconfig = match kubeconfig {
+		Ok(config) => config,
+		Err(err) => {
+			log::error!("Unable to parse kube config. Error: {}", err);
+			return Error::as_result()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?;
+		}
+	};
+
+	let kubeconfig =
+		Config::from_custom_kubeconfig(kubeconfig, &Default::default()).await?;
 
 	let kube_client = kube::Client::try_from(kubeconfig)?;
 	Ok(kube_client)
@@ -195,9 +168,9 @@ async fn secret_exists(
 pub async fn get_external_ip_addr_for_load_balancer(
 	namespace: &str,
 	service_name: &str,
-	kube_auth_details: KubernetesAuthDetails,
+	kube_config: &str,
 ) -> Result<Option<IpAddr>, Error> {
-	let kube_client = get_kubernetes_client(kube_auth_details).await?;
+	let kube_client = get_kubernetes_client(kube_config).await?;
 
 	let service = Api::<Service>::namespaced(kube_client, namespace)
 		.get_status(service_name)
@@ -220,9 +193,9 @@ pub async fn create_external_service_for_region(
 	parent_namespace: &str,
 	region_id: &Uuid,
 	external_ip_addr: &IpAddr,
-	kube_auth_details: KubernetesAuthDetails,
+	kube_config: &str,
 ) -> Result<(), Error> {
-	let kube_client = get_kubernetes_client(kube_auth_details).await?;
+	let kube_client = get_kubernetes_client(kube_config).await?;
 
 	Api::<Service>::namespaced(kube_client.clone(), parent_namespace)
 		.patch(
