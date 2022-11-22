@@ -53,7 +53,7 @@ pub async fn get_kubernetes_config_for_region(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
 	config: &Settings,
-) -> Result<KubernetesConfigDetails, Error> {
+) -> Result<(ClusterType, String), Error> {
 	let region = db::get_region_by_id(connection, region_id)
 		.await?
 		.status(500)?;
@@ -62,35 +62,28 @@ pub async fn get_kubernetes_config_for_region(
 		// use the patr clusters
 
 		// for now returing the default cluster credentials
-		get_kubernetes_config_for_default_region(config)
+		(
+			ClusterType::PatrOwned,
+			generate_kubeconfig_from_template(
+				&config.kubernetes.cluster_url,
+				&config.kubernetes.auth_username,
+				&config.kubernetes.auth_token,
+				&config.kubernetes.certificate_authority_data,
+			),
+		)
 	} else {
 		match (
 			region.ready,
-			region.kubernetes_cluster_url,
-			region.kubernetes_auth_username,
-			region.kubernetes_auth_token,
-			region.kubernetes_ca_data,
+			region.config_file,
 			region.kubernetes_ingress_ip_addr,
 		) {
-			(
-				true,
-				Some(cluster_url),
-				Some(auth_username),
-				Some(auth_token),
-				Some(certificate_authority_data),
-				Some(ingress_ip_addr),
-			) => KubernetesConfigDetails {
-				cluster_type: ClusterType::UserOwned {
+			(true, Some(config_file), Some(ingress_ip_addr)) => (
+				ClusterType::UserOwned {
 					region_id: region.id,
 					ingress_ip_addr,
 				},
-				auth_details: KubernetesAuthDetails {
-					cluster_url,
-					auth_username,
-					auth_token,
-					certificate_authority_data,
-				},
-			},
+				config_file,
+			),
 			_ => {
 				log::info!("cluster {region_id} is not yet initialized");
 				return Err(Error::empty().body(format!(
@@ -111,4 +104,32 @@ pub async fn is_deployed_on_patr_cluster(
 		.await?
 		.status(500)?;
 	Ok(region.workspace_id.is_none())
+}
+
+pub fn generate_kubeconfig_from_template(
+	cluster_url: &str,
+	auth_username: &str,
+	auth_token: &str,
+	certificate_authority_data: &str,
+) -> String {
+	format!(
+		r#"apiVersion: v1
+kind: Config
+clusters:
+  - name: kubernetesCluster
+    cluster:
+      certificate-authority-data: {certificate_authority_data}
+      server: {cluster_url}
+users:
+  - name: {auth_username}
+    user:
+      token: {auth_token}
+contexts:
+  - name: kubernetesContext
+    context:
+      cluster: kubernetesCluster
+      user: {auth_username}
+current-context: kubernetesContext
+preferences: {{}}"#
+	)
 }

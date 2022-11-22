@@ -1214,7 +1214,7 @@ pub async fn start_deployment(
 	)
 	.await?;
 
-	let kubeconfig = service::get_kubernetes_config_for_region(
+	let (cluster_type, kubeconfig) = service::get_kubernetes_config_for_region(
 		connection,
 		&deployment.region,
 		config,
@@ -1227,7 +1227,8 @@ pub async fn start_deployment(
 		&image_name,
 		digest.as_deref(),
 		deployment_running_details,
-		kubeconfig,
+		&cluster_type,
+		&kubeconfig,
 		config,
 		request_id,
 	)
@@ -1275,7 +1276,7 @@ pub async fn update_deployment_image(
 	)
 	.await?;
 
-	let kubeconfig =
+	let (cluster_type, kubeconfig) =
 		service::get_kubernetes_config_for_region(connection, region, config)
 			.await?;
 
@@ -1294,7 +1295,8 @@ pub async fn update_deployment_image(
 		image_name,
 		Some(digest),
 		deployment_running_details,
-		kubeconfig,
+		&cluster_type,
+		&kubeconfig,
 		config,
 		request_id,
 	)
@@ -1350,7 +1352,7 @@ pub async fn stop_deployment(
 	)
 	.await?;
 
-	let kubeconfig = service::get_kubernetes_config_for_region(
+	let (_, kubeconfig) = service::get_kubernetes_config_for_region(
 		connection, region_id, config,
 	)
 	.await?;
@@ -1358,7 +1360,7 @@ pub async fn stop_deployment(
 	service::delete_kubernetes_deployment(
 		workspace_id,
 		deployment_id,
-		kubeconfig,
+		&kubeconfig,
 		request_id,
 	)
 	.await?;
@@ -1407,7 +1409,7 @@ pub async fn delete_deployment(
 	)
 	.await?;
 
-	let kubeconfig = service::get_kubernetes_config_for_region(
+	let (_, kubeconfig) = service::get_kubernetes_config_for_region(
 		connection, region_id, config,
 	)
 	.await?;
@@ -1415,7 +1417,7 @@ pub async fn delete_deployment(
 	service::delete_kubernetes_deployment(
 		workspace_id,
 		deployment_id,
-		kubeconfig,
+		&kubeconfig,
 		request_id,
 	)
 	.await?;

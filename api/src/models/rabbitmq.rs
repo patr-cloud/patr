@@ -55,23 +55,12 @@ pub enum InfraRequestData {
 pub enum BYOCData {
 	InitKubernetesCluster {
 		region_id: Uuid,
-		cluster_url: String,
-		certificate_authority_data: String,
-		auth_username: String,
-		auth_token: String,
-		request_id: Uuid,
-	},
-	InitKubernetesClusterViaKubeConfig {
-		region_id: Uuid,
-		config_file: String,
+		kube_config: String,
 		request_id: Uuid,
 	},
 	CheckClusterForReadiness {
 		region_id: Uuid,
-		cluster_url: String,
-		certificate_authority_data: String,
-		auth_username: String,
-		auth_token: String,
+		kube_config: String,
 		request_id: Uuid,
 	},
 	CreateDigitaloceanCluster {
@@ -82,10 +71,7 @@ pub enum BYOCData {
 	},
 	DeleteKubernetesCluster {
 		region_id: Uuid,
-		cluster_url: String,
-		certificate_authority_data: String,
-		auth_username: String,
-		auth_token: String,
+		kube_config: String,
 		request_id: Uuid,
 	},
 }

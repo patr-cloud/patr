@@ -179,7 +179,6 @@ async fn add_region(
 			.unwrap();
 	let AddRegionToWorkspaceRequest {
 		data,
-		config_file,
 		name,
 		workspace_id: _,
 	} = context
@@ -221,12 +220,7 @@ async fn add_region(
 				return Err(Error::empty()
 					.body("Currently digital ocean api is not supported"))
 			}
-			AddRegionToWorkspaceData::KubernetesCluster {
-				certificate_authority_data,
-				cluster_url,
-				auth_username,
-				auth_token,
-			} => {
+			AddRegionToWorkspaceData::KubeConfig { config_file } => {
 				db::add_deployment_region_to_workspace(
 					context.get_database_connection(),
 					&region_id,
@@ -240,38 +234,13 @@ async fn add_region(
 
 				service::queue_setup_kubernetes_cluster(
 					&region_id,
-					&cluster_url,
-					&certificate_authority_data,
-					&auth_username,
-					&auth_token,
+					&config_file,
 					&config,
 					&request_id,
 				)
 				.await?;
 			}
 		}
-	}
-
-	if let Some(config_file) = config_file {
-		db::add_deployment_region_to_workspace_with_config_file(
-			context.get_database_connection(),
-			&region_id,
-			&name,
-			&InfrastructureCloudProvider::Other,
-			&workspace_id,
-			config_file.as_bytes(),
-		)
-		.await?;
-
-		context.commit_database_transaction().await?;
-
-		service::queue_setup_kubernetes_cluster_via_kube_config(
-			&region_id,
-			&config_file,
-			&request_id,
-			&config,
-		)
-		.await?;
 	}
 
 	log::trace!("request_id: {} - Returning new secret", request_id);
@@ -309,6 +278,12 @@ async fn delete_region(
 			.status(404)
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
+	if !&region.ready {
+		return Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	}
+
 	let config = context.get_state().config.clone();
 
 	log::trace!(
@@ -342,10 +317,7 @@ async fn delete_region(
 
 	service::queue_delete_kubernetes_cluster(
 		&region_id,
-		region.kubernetes_cluster_url.unwrap_or_default().as_str(),
-		region.kubernetes_ca_data.unwrap_or_default().as_str(),
-		region.kubernetes_auth_username.unwrap_or_default().as_str(),
-		region.kubernetes_auth_token.unwrap_or_default().as_str(),
+		&region.config_file.unwrap_or_default(),
 		&config,
 		&request_id,
 	)

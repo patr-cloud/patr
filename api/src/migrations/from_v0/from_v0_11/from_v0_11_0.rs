@@ -158,7 +158,7 @@ async fn deleted_region_colume(
 	query!(
 		r#"
 		ALTER TABLE deployment_region
-		ADD COLUMN config_file BYTEA,
+		ADD COLUMN config_file TEXT,
 		ADD COLUMN deleted TIMESTAMPTZ,
 		ADD COLUMN status REGION_STATUS NOT NULL DEFAULT 'created';
 		"#
