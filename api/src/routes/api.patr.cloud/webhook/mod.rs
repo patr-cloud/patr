@@ -190,19 +190,46 @@ async fn notification_handler(
 			request_id
 		);
 
+		let image_size_in_bytes = target
+			.references
+			.into_iter()
+			.filter(|reference| {
+				reference.media_type ==
+					"application/vnd.docker.image.rootfs.diff.tar.gzip"
+			})
+			.map(|reference| reference.size)
+			.sum();
+
+		if service::docker_repo_storage_limit_crossed(
+			context.get_database_connection(),
+			&workspace_id,
+			image_size_in_bytes as usize,
+		)
+		.await?
+		{
+			log::trace!("request_id: {request_id} - Docker repo storage limit is crossed");
+
+			// delete the docker image as it has crossed the limits
+			service::queue_delete_docker_registry_image(
+				&workspace_id,
+				&repository_name,
+				&target.digest,
+				&target.tag,
+				&event.request.addr,
+				&config,
+				&request_id,
+			)
+			.await?;
+
+			// now process next event
+			continue;
+		}
+
 		db::create_docker_repository_digest(
 			context.get_database_connection(),
 			&repository.id,
 			&target.digest,
-			target
-				.references
-				.into_iter()
-				.filter(|reference| {
-					reference.media_type ==
-						"application/vnd.docker.image.rootfs.diff.tar.gzip"
-				})
-				.map(|reference| reference.size)
-				.sum(),
+			image_size_in_bytes,
 			&current_time,
 		)
 		.await?;

@@ -1046,7 +1046,7 @@ async fn check_deployment_creation_limit(
 			.is_some();
 	if !card_added {
 		// check whether free limit is exceeded
-		if current_deployment_count >= free_limits::DEPLOYMENT_COUNT as usize {
+		if current_deployment_count >= free_limits::DEPLOYMENT_COUNT {
 			log::info!("request_id: {request_id} - Free deployment limit reached and card is not added");
 			return Error::as_result()
 				.status(400)

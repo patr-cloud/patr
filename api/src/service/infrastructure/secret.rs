@@ -328,7 +328,7 @@ async fn check_secret_creation_limit(
 			.len();
 
 	// check whether free limit is exceeded
-	if current_secret_count >= free_limits::SECRET_COUNT as usize &&
+	if current_secret_count >= free_limits::SECRET_COUNT &&
 		db::get_default_payment_method_for_workspace(
 			connection,
 			workspace_id,

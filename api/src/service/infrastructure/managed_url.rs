@@ -506,7 +506,7 @@ async fn check_managed_url_creation_limit(
 			.len();
 
 	// check whether free limit is exceeded
-	if current_managed_url_count >= free_limits::MANAGED_URL_COUNT as usize &&
+	if current_managed_url_count >= free_limits::MANAGED_URL_COUNT &&
 		db::get_default_payment_method_for_workspace(
 			connection,
 			workspace_id,

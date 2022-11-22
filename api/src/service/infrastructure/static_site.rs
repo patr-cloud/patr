@@ -593,7 +593,7 @@ async fn check_static_site_creation_limit(
 			.len();
 
 	// check whether free limit is exceeded
-	if current_static_site_count >= free_limits::STATIC_SITE_COUNT as usize &&
+	if current_static_site_count >= free_limits::STATIC_SITE_COUNT &&
 		db::get_default_payment_method_for_workspace(
 			connection,
 			workspace_id,

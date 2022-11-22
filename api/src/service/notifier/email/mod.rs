@@ -571,6 +571,42 @@ pub async fn send_domain_verified_email(
 	.await
 }
 
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/repo-storage-limit-exceed/template.json"]
+pub struct RepositoryStorageLimitExceedEmail {
+	username: String,
+	workspace_name: String,
+	repository_name: String,
+	tag: String,
+	digest: String,
+	ip_address: String,
+}
+
+pub async fn send_repository_storage_limit_exceed_email(
+	email: Mailbox,
+	username: &str,
+	workspace_name: &str,
+	repository_name: &str,
+	tag: &str,
+	digest: &str,
+	ip_address: &str,
+) -> Result<(), Error> {
+	send_email(
+		RepositoryStorageLimitExceedEmail {
+			username: username.to_owned(),
+			workspace_name: workspace_name.to_owned(),
+			repository_name: repository_name.to_owned(),
+			tag: tag.to_owned(),
+			digest: digest.to_owned(),
+			ip_address: ip_address.to_owned(),
+		},
+		email,
+		None,
+		"Patr Repository Storage Limit Exceeded",
+	)
+	.await
+}
+
 /// # Description
 /// This function is used to send the email to a recipient
 ///

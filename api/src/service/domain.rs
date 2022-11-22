@@ -927,7 +927,7 @@ async fn check_domain_creation_limit(
 			.len();
 
 	// check whether free limit is exceeded
-	if current_domain_count >= free_limits::DOMAIN_COUNT as usize &&
+	if current_domain_count >= free_limits::DOMAIN_COUNT &&
 		db::get_default_payment_method_for_workspace(
 			connection,
 			workspace_id,

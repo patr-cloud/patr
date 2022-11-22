@@ -205,7 +205,8 @@ async fn check_database_creation_limit(
 			.len();
 
 	// check whether free limit is exceeded
-	if current_database_count >= free_limits::DATABASE_COUNT as usize &&
+	#[allow(clippy::absurd_extreme_comparisons)]
+	if current_database_count >= free_limits::DATABASE_COUNT &&
 		db::get_default_payment_method_for_workspace(
 			connection,
 			workspace_id,
