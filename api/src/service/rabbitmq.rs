@@ -360,39 +360,15 @@ pub async fn queue_clean_ci_build_pipeline(
 
 pub async fn queue_setup_kubernetes_cluster(
 	region_id: &Uuid,
-	cluster_url: &str,
-	certificate_authority_data: &str,
-	auth_username: &str,
-	auth_token: &str,
+	kube_config: &str,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	send_message_to_infra_queue(
 		&InfraRequestData::BYOC(BYOCData::InitKubernetesCluster {
 			region_id: region_id.clone(),
-			cluster_url: cluster_url.to_owned(),
-			certificate_authority_data: certificate_authority_data.to_string(),
-			auth_username: auth_username.to_string(),
-			auth_token: auth_token.to_string(),
+			kube_config: kube_config.to_string(),
 			request_id: request_id.clone(),
-		}),
-		config,
-		request_id,
-	)
-	.await
-}
-
-pub async fn queue_setup_kubernetes_cluster_via_kube_config(
-	region_id: &Uuid,
-	config_file: &str,
-	request_id: &Uuid,
-	config: &Settings,
-) -> Result<(), Error> {
-	send_message_to_infra_queue(
-		&InfraRequestData::BYOC(BYOCData::InitKubernetesClusterViaKubeConfig {
-			region_id: region_id.clone(),
-			config_file: config_file.to_string(),
-			request_id,
 		}),
 		config,
 		request_id,
@@ -402,20 +378,14 @@ pub async fn queue_setup_kubernetes_cluster_via_kube_config(
 
 pub async fn queue_delete_kubernetes_cluster(
 	region_id: &Uuid,
-	cluster_url: &str,
-	certificate_authority_data: &str,
-	auth_username: &str,
-	auth_token: &str,
+	kube_config: &str,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	send_message_to_infra_queue(
 		&InfraRequestData::BYOC(BYOCData::DeleteKubernetesCluster {
 			region_id: region_id.clone(),
-			cluster_url: cluster_url.to_owned(),
-			certificate_authority_data: certificate_authority_data.to_string(),
-			auth_username: auth_username.to_string(),
-			auth_token: auth_token.to_string(),
+			kube_config: kube_config.to_string(),
 			request_id: request_id.clone(),
 		}),
 		config,

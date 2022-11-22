@@ -85,7 +85,7 @@ use crate::{
 		ext_traits::DeleteOpt,
 		get_kubernetes_config_for_default_region,
 		ClusterType,
-		KubernetesConfigDetails,
+		KubernetesAuthDetails,
 	},
 	utils::{constants::request_keys, settings::Settings, Error},
 	Database,
@@ -98,13 +98,12 @@ pub async fn update_kubernetes_deployment(
 	digest: Option<&str>,
 	running_details: &DeploymentRunningDetails,
 	deployment_volumes: &Vec<DeploymentVolume>,
-	kubeconfig: KubernetesConfigDetails,
+	cluster_type: &ClusterType,
+	kubeconfig: &str,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let cluster_type = kubeconfig.cluster_type.clone();
-	let kubernetes_client =
-		super::get_kubernetes_client(kubeconfig.auth_details.clone()).await?;
+	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
 
 	// the namespace is workspace id
 	let namespace = workspace_id.as_str();
@@ -757,10 +756,21 @@ pub async fn update_kubernetes_deployment(
 	} = cluster_type
 	{
 		// create a ingress in patr cluster to point to user's cluster
-		let kubernetes_client = super::get_kubernetes_client(
-			get_kubernetes_config_for_default_region(config).auth_details,
-		)
-		.await?;
+		let KubernetesAuthDetails {
+			cluster_url,
+			auth_username,
+			auth_token,
+			certificate_authority_data,
+		} = get_kubernetes_config_for_default_region(config).auth_details;
+
+		let kubeconfig_yaml = service::generate_kubeconfig_from_template(
+			&cluster_url,
+			&auth_username,
+			&auth_token,
+			&certificate_authority_data,
+		);
+		let kubernetes_client =
+			super::get_kubernetes_client(&kubeconfig_yaml).await?;
 
 		let exposted_ports = running_details
 			.ports
@@ -864,11 +874,10 @@ pub async fn update_kubernetes_deployment(
 pub async fn delete_kubernetes_deployment(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: &str,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client =
-		super::get_kubernetes_client(kubeconfig.auth_details).await?;
+	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
 
 	Api::<K8sDeployment>::namespaced(
 		kubernetes_client.clone(),
@@ -976,14 +985,13 @@ pub async fn get_kubernetes_deployment_status(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let kubeconfig = service::get_kubernetes_config_for_region(
+	let (_, kubeconfig) = service::get_kubernetes_config_for_region(
 		connection,
 		&deployment.region,
 		config,
 	)
 	.await?;
-	let kubernetes_client =
-		super::get_kubernetes_client(kubeconfig.auth_details).await?;
+	let kubernetes_client = super::get_kubernetes_client(&kubeconfig).await?;
 
 	let is_deployment =
 		db::get_all_deployment_volumes(connection, deployment_id)
