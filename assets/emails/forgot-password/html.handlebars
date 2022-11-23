@@ -1,68 +1,64 @@
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
-  {{> head-section}}
-  {{> container-start}}
-    {{> greet-user-html}}
-    <tr>
-      <td
-        class="para txt-light"
-        style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+{{> container-start}}
+  <tr>
+    <td
+      class="para txt-light"
+      style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+    >
+      We received a request to reset the
+      password for your Patr account.
+    </td>
+  </tr>
+  <tr>
+    <td
+      class="para txt-light"
+      style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+    >
+      Please enter the following OTP to reset
+      your password:
+    </td>
+  </tr>
+  <tr>
+    <td
+      class="pt-md txt-center"
+      style="padding-top: 1rem; text-align: center;"
+      align="center"
+    >
+      <strong
+        class="txt-xl txt-light"
+        style="color: #ffffff; font-size: 1.4rem;"
+      >{{otp}}</strong>
+    </td>
+  </tr>
+  <tr>
+    <td
+      class="txt-center pt-md"
+      style="text-align: center; padding-top: 1rem"
+      align="center"
+    >
+      <a
+        class="btn-primary plain-link txt-secondary px-lg"
+        href="https://app.patr.cloud/forgot-password?otp={{otp}}"
+        style="padding-top: 0.5rem; padding-bottom: 0.5rem; text-align: center; vertical-align: middle; padding-left: 3rem; padding-right: 3rem; color: #0d0526; background-color: #f89b41; border-radius: 1.5rem; -webkit-border-radius: 1.5rem; -moz-border-radius: 1.5rem; text-decoration: none; font-weight: 500;"
       >
-        We received a request to reset the
-        password for your Patr account.
-      </td>
-    </tr>
-    <tr>
-      <td
-        class="para txt-light"
-        style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
-      >
-        Please enter the following OTP to reset
-        your password:
-      </td>
-    </tr>
-    <tr>
-      <td
-        class="pt-md txt-center"
-        style="padding-top: 1rem; text-align: center;"
-        align="center"
-      >
-        <strong
-          class="txt-xl txt-light"
-          style="color: #ffffff; font-size: 1.4rem;"
-        >{{otp}}</strong>
-      </td>
-    </tr>
-    <tr>
-      <td
-        class="txt-center pt-md"
-        style="text-align: center; padding-top: 1rem"
-        align="center"
-      >
-        <a
-          class="btn-primary plain-link txt-secondary px-lg"
-          href="https://app.patr.cloud/forgot-password?otp={{otp}}"
-          style="padding-top: 0.5rem; padding-bottom: 0.5rem; text-align: center; vertical-align: middle; padding-left: 3rem; padding-right: 3rem; color: #0d0526; background-color: #f89b41; border-radius: 1.5rem; -webkit-border-radius: 1.5rem; -moz-border-radius: 1.5rem; text-decoration: none; font-weight: 500;"
-        >
-          ENTER THE OTP ON PATR
-        </a>
-      </td>
-    </tr>
-    <tr>
-      <td
-        class="para txt-light"
-        style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
-      >
-        If you did not initiate this process,
-        kindly delete this email and contact
-        support at
-        <a
-          href="mailto:suppport@patr.cloud"
-          class="plain-link txt-primary"
-          title="Contact Patr support"
-          style="color: #f89b41; text-decoration: none; font-weight: 500;"
-        >suppport@patr.cloud</a>
-        immediately.
-      </td>
-    </tr>
-  {{> container-end}}
-</html>
+        ENTER THE OTP ON PATR
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td
+      class="para txt-light"
+      style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+    >
+      If you did not initiate this process,
+      kindly delete this email and contact
+      support at
+      <a
+        href="mailto:suppport@patr.cloud"
+        class="plain-link txt-primary"
+        title="Contact Patr support"
+        style="color: #f89b41; text-decoration: none; font-weight: 500;"
+      >suppport@patr.cloud</a>
+      immediately.
+    </td>
+  </tr>
+{{> container-end}}
