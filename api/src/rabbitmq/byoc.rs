@@ -7,7 +7,7 @@ use tokio::{fs, process::Command};
 use crate::{
 	db,
 	models::rabbitmq::{BYOCData, InfraRequestData},
-	service,
+	service::{self, KubernetesAuthDetails},
 	utils::{settings::Settings, Error},
 	Database,
 };
@@ -137,13 +137,18 @@ pub(super) async fn process_request(
 				.await?
 				.status(500)?;
 
-			let kubernetes_auth_details = service::get_kubernetes_config_for_default_region(config)
-			.auth_details;
+			let KubernetesAuthDetails {
+				cluster_url,
+				auth_username,
+				auth_token,
+				certificate_authority_data
+			} = service::get_kubernetes_config_for_default_region(config).auth_details;
+
 			let kube_config_yaml = service::generate_kubeconfig_from_template(
-				&kubernetes_auth_details.cluster_url, 
-				&kubernetes_auth_details.auth_username,
-				&kubernetes_auth_details.auth_token,
-				&kubernetes_auth_details.certificate_authority_data
+				&cluster_url,
+				&auth_username,
+				&auth_token,
+				&certificate_authority_data
 			);
 
 			service::create_external_service_for_region(
