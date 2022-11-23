@@ -35,6 +35,7 @@ pub mod request_keys {
 	pub const ENGINE: &str = "engine";
 	pub const NUM_NODES: &str = "numNodes";
 	pub const REGION: &str = "region";
+	pub const REGION_ID: &str = "regionId";
 	pub const HOST: &str = "host";
 	pub const DATABASES: &str = "databases";
 	pub const DATABASE_PLAN: &str = "databasePlan";
