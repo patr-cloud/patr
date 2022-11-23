@@ -12563,18 +12563,6 @@
     },
     "query": "SELECT domain_id as \"domain_id: _\", zone_identifier, nameserver_type as \"nameserver_type: _\" FROM patr_controlled_domain WHERE domain_id = $1;"
   },
-  "ddf2963936615eb58225ace43d720c4c708e1abced58c94dc7a8d9b83c0f6321": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "DELETE FROM workspace_user WHERE role_id = $1;"
-  },
   "de12e543a9f993ad9a1447727751b91934fb2ecc191d4c9491205d05c88b1987": {
     "describe": {
       "columns": [],
