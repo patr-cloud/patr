@@ -24,7 +24,7 @@ use api_models::{
 		},
 		infrastructure::list_all_deployment_machine_type::DeploymentMachineType,
 	},
-	utils::{DateTime, PriceAmount, Uuid},
+	utils::{DateTime, Uuid},
 };
 use chrono::{Datelike, TimeZone, Utc};
 use eve_rs::AsError;
@@ -61,7 +61,7 @@ use crate::{
 pub async fn add_credits_to_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	credits: u32,
+	credits: u64,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let workspace = db::get_workspace_info(connection, workspace_id)
@@ -79,22 +79,22 @@ pub async fn add_credits_to_workspace(
 		.status(400)
 		.body(error!(ADDRESS_REQUIRED).to_string())?;
 
-	let (dollars, description) = (credits, "Patr charge: Additional credits");
+	let (cents, description) = (credits, "Patr charge: Additional credits");
 
 	let (currency, amount) = if db::get_billing_address(connection, &address_id)
 		.await?
 		.status(500)?
 		.country == *"IN"
 	{
-		(Currency::INR, (dollars * 100 * 80) as i64)
+		(Currency::INR, cents * 80)
 	} else {
-		(Currency::USD, (dollars * 100) as i64)
+		(Currency::USD, cents)
 	};
 
 	let client = Client::new(&config.stripe.secret_key);
 
 	let payment_intent = PaymentIntent::create(&client, {
-		let mut intent = CreatePaymentIntent::new(amount, currency);
+		let mut intent = CreatePaymentIntent::new(amount as i64, currency);
 
 		intent.confirm = Some(true);
 		intent.confirmation_method =
@@ -145,7 +145,7 @@ pub async fn add_credits_to_workspace(
 		workspace_id,
 		&transaction_id,
 		date.month() as i32,
-		credits.into(),
+		credits,
 		Some(&payment_intent.id),
 		&date,
 		&TransactionType::Credits,
@@ -338,6 +338,23 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 			(4, 32) => 80f64,
 			_ => 0f64,
 		};
+
+		let price_in_dollars = if (*cpu_count, *memory_count) == (1, 2) &&
+			deployment_usage.num_instance == 1
+		{
+			// Free eligible
+			let price = (((hours - remaining_free_hours).max(0) as f64) /
+				720f64) * monthly_price;
+			remaining_free_hours = (remaining_free_hours - hours).max(0);
+			price
+		} else if hours >= 720 {
+			monthly_price
+		} else {
+			((hours as f64) / 720f64) * monthly_price
+		};
+
+		let price_in_cents = (price_in_dollars * 100.0).round() as u64;
+
 		deployment_usage_bill
 			.entry(deployment_usage.deployment_id.clone())
 			.or_insert(DeploymentUsage {
@@ -361,22 +378,7 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 				},
 				num_instances: deployment_usage.num_instance as u32,
 				hours: hours as u64,
-				amount: PriceAmount(
-					if (*cpu_count, *memory_count) == (1, 2) &&
-						deployment_usage.num_instance == 1
-					{
-						// Free eligible
-						let price = (((hours - remaining_free_hours).max(0)
-							as f64) / 720f64) * monthly_price;
-						remaining_free_hours =
-							(remaining_free_hours - hours).max(0);
-						price
-					} else if hours >= 720 {
-						monthly_price
-					} else {
-						((hours as f64) / 720f64) * monthly_price
-					},
-				),
+				amount: price_in_cents,
 			});
 	}
 
@@ -422,6 +424,13 @@ pub async fn calculate_database_bill_for_workspace_till(
 			ManagedDatabasePlan::Mammoth => 960f64,
 		};
 
+		let price_in_dollars = if hours >= 720 {
+			monthly_price
+		} else {
+			(hours as f64 / 720f64) * monthly_price
+		};
+		let price_in_cents = (price_in_dollars * 100.0).round() as u64;
+
 		database_usage_bill
 			.entry(database_usage.database_id.clone())
 			.or_insert(DatabaseUsage {
@@ -435,13 +444,7 @@ pub async fn calculate_database_bill_for_workspace_till(
 				.unwrap_or("unknown")
 				.to_string(),
 				hours: hours as u64,
-				amount: PriceAmount(
-					if hours >= 720 {
-						monthly_price
-					} else {
-						(hours as f64 / 720f64) * monthly_price
-					},
-				),
+				amount: price_in_cents,
 			});
 	}
 
@@ -488,16 +491,18 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 			})
 			.or_insert(StaticSiteUsage {
 				hours: 0,
-				amount: PriceAmount(0f64),
+				amount: 0,
 			});
 		bill.hours += hours as u64;
-		bill.amount = PriceAmount(
-			if bill.hours >= 720 {
-				monthly_price
-			} else {
-				(bill.hours as f64 / 720f64) * monthly_price
-			},
-		);
+
+		let price_in_dollars = if bill.hours >= 720 {
+			monthly_price
+		} else {
+			(bill.hours as f64 / 720f64) * monthly_price
+		};
+		let price_in_cents = (price_in_dollars * 100.0).round() as u64;
+
+		bill.amount = price_in_cents;
 	}
 
 	Ok(static_sites_bill)
@@ -546,17 +551,19 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 			)
 			.or_insert(ManagedUrlUsage {
 				hours: 0,
-				amount: PriceAmount(0f64),
+				amount: 0,
 			});
 
 		bill.hours += hours as u64;
-		bill.amount = PriceAmount(
-			if bill.hours >= 720 {
-				monthly_price
-			} else {
-				(bill.hours as f64 / 720f64) * monthly_price
-			},
-		);
+
+		let price_in_dollars = if bill.hours >= 720 {
+			monthly_price
+		} else {
+			(bill.hours as f64 / 720f64) * monthly_price
+		};
+		let price_in_cents = (price_in_dollars * 100.0).round() as u64;
+
+		bill.amount = price_in_cents;
 	}
 
 	Ok(managed_url_bill)
@@ -602,16 +609,17 @@ pub async fn calculate_docker_repository_bill_for_workspace_till(
 			(storage_in_gb as f64 * 0.1f64).ceil()
 		};
 
+		let price_in_dollars = if hours >= 720 {
+			monthly_price
+		} else {
+			(hours as f64 / 720f64) * monthly_price
+		};
+		let price_in_cents = (price_in_dollars * 100.0).round() as u64;
+
 		docker_repository_bill.push(DockerRepositoryUsage {
 			storage: docker_repository_usage.storage as u64,
 			hours: hours as u64,
-			amount: PriceAmount(
-				if hours >= 720 {
-					monthly_price
-				} else {
-					(hours as f64 / 720f64) * monthly_price
-				},
-			),
+			amount: price_in_cents,
 		});
 	}
 
@@ -656,17 +664,18 @@ pub async fn calculate_domains_bill_for_workspace_till(
 			})
 			.or_insert(DomainUsage {
 				hours: 0,
-				amount: PriceAmount(0f64),
+				amount: 0,
 			});
 
 		bill.hours = hours as u64;
-		bill.amount = PriceAmount(
-			if hours >= 720 {
-				monthly_price
-			} else {
-				hours as f64 * (monthly_price / 720f64)
-			},
-		);
+		let price_in_dollars = if hours >= 720 {
+			monthly_price
+		} else {
+			hours as f64 * (monthly_price / 720f64)
+		};
+		let price_in_cents = (price_in_dollars * 100.0).round() as u64;
+
+		bill.amount = price_in_cents;
 	}
 
 	Ok(domains_bill)
@@ -715,17 +724,18 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 			)
 			.or_insert(SecretUsage {
 				hours: 0,
-				amount: PriceAmount(0f64),
+				amount: 0,
 			});
 
 		bill.hours += hours as u64;
-		bill.amount = PriceAmount(
-			if bill.hours >= 720 {
-				monthly_price
-			} else {
-				(bill.hours as f64 / 720f64) * monthly_price
-			},
-		);
+		let price_in_dollars = if bill.hours >= 720 {
+			monthly_price
+		} else {
+			(bill.hours as f64 / 720f64) * monthly_price
+		};
+		let price_in_cents = (price_in_dollars * 100.0).round() as u64;
+
+		bill.amount = price_in_cents;
 	}
 
 	Ok(secrets_bill)
@@ -897,63 +907,30 @@ pub async fn calculate_total_bill_for_workspace_till(
 	)
 	.await?;
 
-	let deployment_charge = PriceAmount(
-		deployment_usage
-			.iter()
-			.map(|(_, bill)| {
-				bill.bill_items
-					.iter()
-					.map(|item| item.amount.0)
-					.sum::<f64>()
-			})
-			.sum::<f64>(),
-	);
-	let database_charge = PriceAmount(
-		database_usage
-			.iter()
-			.map(|(_, bill)| bill.amount.0)
-			.sum::<f64>(),
-	);
-	let static_site_charge = PriceAmount(
-		static_site_usage
-			.iter()
-			.map(|(_, bill)| bill.amount.0)
-			.sum::<f64>(),
-	);
-	let managed_url_charge = PriceAmount(
-		managed_url_usage
-			.iter()
-			.map(|(_, bill)| bill.amount.0)
-			.sum::<f64>(),
-	);
-	let docker_repository_charge = PriceAmount(
-		docker_repository_usage
-			.iter()
-			.map(|bill| bill.amount.0)
-			.sum::<f64>(),
-	);
-	let domain_charge = PriceAmount(
-		domain_usage
-			.iter()
-			.map(|(_, bill)| bill.amount.0)
-			.sum::<f64>(),
-	);
-	let secret_charge = PriceAmount(
-		secret_usage
-			.iter()
-			.map(|(_, bill)| bill.amount.0)
-			.sum::<f64>(),
-	);
+	let deployment_charge = deployment_usage
+		.iter()
+		.map(|(_, bill)| {
+			bill.bill_items.iter().map(|item| item.amount).sum::<u64>()
+		})
+		.sum();
+	let database_charge =
+		database_usage.iter().map(|(_, bill)| bill.amount).sum();
+	let static_site_charge =
+		static_site_usage.iter().map(|(_, bill)| bill.amount).sum();
+	let managed_url_charge =
+		managed_url_usage.iter().map(|(_, bill)| bill.amount).sum();
+	let docker_repository_charge =
+		docker_repository_usage.iter().map(|bill| bill.amount).sum();
+	let domain_charge = domain_usage.iter().map(|(_, bill)| bill.amount).sum();
+	let secret_charge = secret_usage.iter().map(|(_, bill)| bill.amount).sum();
 
-	let total_charge = PriceAmount(
-		deployment_charge.0 +
-			database_charge.0 +
-			static_site_charge.0 +
-			managed_url_charge.0 +
-			docker_repository_charge.0 +
-			domain_charge.0 +
-			secret_charge.0,
-	);
+	let total_charge = deployment_charge +
+		database_charge +
+		static_site_charge +
+		managed_url_charge +
+		docker_repository_charge +
+		domain_charge +
+		secret_charge;
 
 	let month = month_start_date.month();
 	let year = month_start_date.year() as u32;
@@ -978,7 +955,7 @@ pub async fn calculate_total_bill_for_workspace_till(
 		secret_usage,
 	};
 
-	if total_charge.0 > 0.0 && cfg!(debug_assertions) {
+	if total_charge > 0 && cfg!(debug_assertions) {
 		log::trace!(
 			"Total bill for workspace `{}`: {:?}",
 			workspace_id,
@@ -1004,13 +981,11 @@ pub async fn get_total_resource_usage(
 		till_date,
 	)
 	.await?;
-	let deployment_charge = PriceAmount(
-		deployment_usage
-			.iter()
-			.flat_map(|(_, usage)| usage.bill_items.iter())
-			.map(|item| item.amount.0)
-			.sum(),
-	);
+	let deployment_charge = deployment_usage
+		.iter()
+		.flat_map(|(_, usage)| usage.bill_items.iter())
+		.map(|item| item.amount)
+		.sum();
 
 	let database_usage = calculate_database_bill_for_workspace_till(
 		connection,
@@ -1019,9 +994,8 @@ pub async fn get_total_resource_usage(
 		till_date,
 	)
 	.await?;
-	let database_charge = PriceAmount(
-		database_usage.iter().map(|(_, usage)| usage.amount.0).sum(),
-	);
+	let database_charge =
+		database_usage.iter().map(|(_, usage)| usage.amount).sum();
 
 	let static_site_usage = calculate_static_sites_bill_for_workspace_till(
 		connection,
@@ -1030,12 +1004,10 @@ pub async fn get_total_resource_usage(
 		till_date,
 	)
 	.await?;
-	let static_site_charge = PriceAmount(
-		static_site_usage
-			.iter()
-			.map(|(_, usage)| usage.amount.0)
-			.sum(),
-	);
+	let static_site_charge = static_site_usage
+		.iter()
+		.map(|(_, usage)| usage.amount)
+		.sum();
 
 	let managed_url_usage = calculate_managed_urls_bill_for_workspace_till(
 		connection,
@@ -1044,12 +1016,10 @@ pub async fn get_total_resource_usage(
 		till_date,
 	)
 	.await?;
-	let managed_url_charge = PriceAmount(
-		managed_url_usage
-			.iter()
-			.map(|(_, usage)| usage.amount.0)
-			.sum(),
-	);
+	let managed_url_charge = managed_url_usage
+		.iter()
+		.map(|(_, usage)| usage.amount)
+		.sum();
 
 	let docker_repository_usage =
 		calculate_docker_repository_bill_for_workspace_till(
@@ -1059,12 +1029,10 @@ pub async fn get_total_resource_usage(
 			till_date,
 		)
 		.await?;
-	let docker_repository_charge = PriceAmount(
-		docker_repository_usage
-			.iter()
-			.map(|usage| usage.amount.0)
-			.sum(),
-	);
+	let docker_repository_charge = docker_repository_usage
+		.iter()
+		.map(|usage| usage.amount)
+		.sum();
 
 	let domain_usage = calculate_domains_bill_for_workspace_till(
 		connection,
@@ -1074,7 +1042,7 @@ pub async fn get_total_resource_usage(
 	)
 	.await?;
 	let domain_charge =
-		PriceAmount(domain_usage.iter().map(|(_, usage)| usage.amount.0).sum());
+		domain_usage.iter().map(|(_, usage)| usage.amount).sum();
 
 	let secret_usage = calculate_secrets_bill_for_workspace_till(
 		connection,
@@ -1084,17 +1052,15 @@ pub async fn get_total_resource_usage(
 	)
 	.await?;
 	let secret_charge =
-		PriceAmount(secret_usage.iter().map(|(_, usage)| usage.amount.0).sum());
+		secret_usage.iter().map(|(_, usage)| usage.amount).sum();
 
-	let total_charge = PriceAmount(
-		deployment_charge.0 +
-			database_charge.0 +
-			static_site_charge.0 +
-			managed_url_charge.0 +
-			domain_charge.0 +
-			secret_charge.0 +
-			docker_repository_charge.0,
-	);
+	let total_charge = deployment_charge +
+		database_charge +
+		static_site_charge +
+		managed_url_charge +
+		domain_charge +
+		secret_charge +
+		docker_repository_charge;
 
 	let bill = WorkspaceBillBreakdown {
 		year,

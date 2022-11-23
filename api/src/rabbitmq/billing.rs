@@ -1,11 +1,17 @@
 use std::{
+	cmp::max,
 	ops::{Add, Sub},
 	str::FromStr,
 };
 
 use api_models::{
-	models::workspace::billing::{Address, PaymentStatus, TransactionType},
-	utils::{DateTime, PriceAmount, Uuid},
+	models::workspace::billing::{
+		Address,
+		PaymentStatus,
+		TotalAmount,
+		TransactionType,
+	},
+	utils::{DateTime, Uuid},
 };
 use chrono::{Duration, TimeZone, Utc};
 use eve_rs::AsError;
@@ -28,7 +34,7 @@ use crate::{
 	db::{self, PaymentType},
 	models::rabbitmq::BillingData,
 	service,
-	utils::{settings::Settings, Error},
+	utils::{billing::stringify_month, settings::Settings, Error},
 	Database,
 };
 
@@ -117,22 +123,6 @@ pub(super) async fn process_request(
 				.unwrap()
 				.sub(Duration::nanoseconds(1));
 
-			let month_string = match month {
-				1 => "January",
-				2 => "February",
-				3 => "March",
-				4 => "April",
-				5 => "May",
-				6 => "June",
-				7 => "July",
-				8 => "August",
-				9 => "September",
-				10 => "October",
-				11 => "November",
-				12 => "December",
-				_ => "",
-			};
-
 			// Step 1: Calculate bill for this entire cycle
 			let total_bill_breakdown =
 				service::calculate_total_bill_for_workspace_till(
@@ -151,13 +141,17 @@ pub(super) async fn process_request(
 				&workspace.id,
 				&transaction_id,
 				month as i32,
-				total_bill_breakdown.total_charge.0,
+				total_bill_breakdown.total_charge,
 				None,
 				// 1st of next month,
 				&next_month_start_date.add(Duration::nanoseconds(1)),
 				&TransactionType::Bill,
 				&PaymentStatus::Success,
-				Some(&format!("Bill for {} {}", month_string, year)),
+				Some(&format!(
+					"Bill for {} {}",
+					stringify_month(month as u8),
+					year
+				)),
 			)
 			.await?;
 
@@ -176,22 +170,6 @@ pub(super) async fn process_request(
 		} => {
 			log::trace!("request_id: {} attempting to charge user", request_id);
 
-			let month_string = match month {
-				1 => "January",
-				2 => "February",
-				3 => "March",
-				4 => "April",
-				5 => "May",
-				6 => "June",
-				7 => "July",
-				8 => "August",
-				9 => "September",
-				10 => "October",
-				11 => "November",
-				12 => "December",
-				_ => "",
-			};
-
 			let month_start_date =
 				Utc.with_ymd_and_hms(year, month, 1, 0, 0, 0).unwrap();
 			let next_month_start_date = Utc
@@ -208,11 +186,12 @@ pub(super) async fn process_request(
 
 			// Total amount due by the user for this workspace, after accounting
 			// for their credits
-			let amount_due = db::get_total_amount_to_pay_for_workspace(
-				connection,
-				&workspace.id,
-			)
-			.await?;
+			let amount_due_in_cents =
+				db::get_total_amount_in_cents_to_pay_for_workspace(
+					connection,
+					&workspace.id,
+				)
+				.await?;
 
 			// The total bill for the previous month, without accounting for
 			// credits
@@ -224,35 +203,20 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
-			let card_amount_to_be_charged =
-				if amount_due <= 0f64 { 0f64 } else { amount_due };
-
-			// How much of the bill was charged from credits
-			let credits_deducted =
-				total_bill.total_charge.0 - card_amount_to_be_charged;
-
-			let credits_deducted = if credits_deducted <= 0f64 {
-				0f64
-			} else {
-				credits_deducted
+			let (
+				card_amount_to_be_charged_in_cents,
+				credits_deducted_in_cents,
+				credits_remaining_in_cents,
+			) = match amount_due_in_cents {
+				TotalAmount::CreditsLeft(credits_left) => {
+					(0, total_bill.total_charge, credits_left)
+				}
+				TotalAmount::NeedToPay(need_to_pay) => (
+					need_to_pay,
+					max(0, total_bill.total_charge - need_to_pay),
+					0,
+				),
 			};
-
-			// How many credits are remaining in your account
-			let credits_remaining = if amount_due >= 0.00 {
-				0.00
-			} else {
-				// If amount due is negative, the negative value implies the
-				// amount of credits remaining in their account. The positive
-				// value of that is the credits remaining in their account
-				-amount_due
-			};
-
-			if amount_due <= 0f64 && total_bill.total_charge.0 < 0.01 {
-				// No paid resources have been used. They have no bill to their
-				// account. No payment needs to be made. Don't bother sending
-				// them an email and annoying them.
-				return Ok(());
-			}
 
 			let workspace_name = if let Some(Ok(user_id)) = workspace
 				.name
@@ -273,7 +237,7 @@ pub(super) async fn process_request(
 				workspace.name.clone()
 			};
 
-			if amount_due <= 0f64 {
+			if card_amount_to_be_charged_in_cents == 0 {
 				let billing_address = if let Some(address) =
 					workspace.address_id
 				{
@@ -309,13 +273,12 @@ pub(super) async fn process_request(
 					connection,
 					&workspace.super_admin_id,
 					workspace_name,
-					month_string.to_string(),
 					total_bill,
 					billing_address,
-					PriceAmount(credits_deducted),
+					credits_deducted_in_cents,
 					// If `amount_due` is 0, definitely the card amount is 0
-					PriceAmount(card_amount_to_be_charged),
-					PriceAmount(credits_remaining),
+					card_amount_to_be_charged_in_cents,
+					credits_remaining_in_cents,
 				)
 				.await?;
 				return Ok(());
@@ -345,20 +308,15 @@ pub(super) async fn process_request(
 					let (currency, stripe_amount) = if billing_address.country ==
 						*"IN"
 					{
-						(
-							Currency::INR,
-							(card_amount_to_be_charged * 100f64 * 80f64) as i64,
-						)
+						(Currency::INR, card_amount_to_be_charged_in_cents * 80)
 					} else {
-						(
-							Currency::USD,
-							(card_amount_to_be_charged * 100f64) as i64,
-						)
+						(Currency::USD, card_amount_to_be_charged_in_cents)
 					};
 
 					let payment_description = Some(format!(
 						"Patr charge: Bill for {} {}",
-						month_string, year
+						stringify_month(month as u8),
+						year
 					));
 					let payment_intent = PaymentIntent::create(
 						&Client::new(&config.stripe.secret_key).with_strategy(
@@ -369,7 +327,7 @@ pub(super) async fn process_request(
 						),
 						{
 							let mut intent = CreatePaymentIntent::new(
-								stripe_amount,
+								stripe_amount as i64,
 								currency,
 							);
 
@@ -416,7 +374,7 @@ pub(super) async fn process_request(
 							&workspace.id,
 							&transaction_id,
 							month as i32,
-							card_amount_to_be_charged,
+							card_amount_to_be_charged_in_cents,
 							Some(&payment_intent.id),
 							&Utc::now(),
 							&TransactionType::Payment,
@@ -429,14 +387,13 @@ pub(super) async fn process_request(
 							connection,
 							&workspace.super_admin_id,
 							workspace_name,
-							month_string.to_string(),
 							total_bill,
 							billing_address,
-							PriceAmount(credits_deducted),
+							credits_deducted_in_cents,
 							// If `amount_due` is 0, definitely the card amount
 							// is 0
-							PriceAmount(card_amount_to_be_charged),
-							PriceAmount(credits_remaining),
+							card_amount_to_be_charged_in_cents,
+							credits_remaining_in_cents,
 						)
 						.await?;
 
@@ -447,7 +404,7 @@ pub(super) async fn process_request(
 							&workspace.id,
 							&transaction_id,
 							month as i32,
-							card_amount_to_be_charged,
+							card_amount_to_be_charged_in_cents,
 							Some(&payment_intent.id),
 							&Utc::now(),
 							&TransactionType::Payment,
@@ -462,7 +419,6 @@ pub(super) async fn process_request(
 							workspace_name,
 							total_bill,
 							billing_address,
-							month_string.to_string(),
 						)
 						.await?;
 
@@ -508,7 +464,6 @@ pub(super) async fn process_request(
 							zip: "".to_string(),
 							country: "".to_string(),
 						},
-						month_string.to_string(),
 					)
 					.await?;
 
@@ -532,7 +487,7 @@ pub(super) async fn process_request(
 					&workspace.id,
 					&transaction_id,
 					month as i32,
-					total_bill.total_charge.0,
+					total_bill.total_charge,
 					Some("enterprise-plan-payment"),
 					// 1st of next month, so that the payment will be recorded
 					// on 1st of october for a bill generated for september
@@ -584,12 +539,11 @@ pub(super) async fn process_request(
 					connection,
 					&workspace.super_admin_id,
 					workspace_name,
-					month_string.to_string(),
 					total_bill,
 					billing_address,
 					total_charge,
-					PriceAmount(0f64),
-					PriceAmount(0f64),
+					0,
+					0,
 				)
 				.await?;
 
@@ -612,25 +566,10 @@ pub(super) async fn process_request(
 				return Err(Error::empty());
 			}
 
-			let month_string = match month {
-				1 => "January",
-				2 => "February",
-				3 => "March",
-				4 => "April",
-				5 => "May",
-				6 => "June",
-				7 => "July",
-				8 => "August",
-				9 => "September",
-				10 => "October",
-				11 => "November",
-				12 => "December",
-				_ => "",
-			};
-
 			let month_start_date = Utc
 				.with_ymd_and_hms(year as i32, month, 1, 0, 0, 0)
 				.unwrap();
+
 			let next_month_start_date = Utc
 				.with_ymd_and_hms(
 					(if month == 12 { year + 1 } else { year }) as i32,
@@ -650,11 +589,12 @@ pub(super) async fn process_request(
 
 			// Total amount due by the user for this workspace, after accounting
 			// for their credits
-			let amount_due = db::get_total_amount_to_pay_for_workspace(
-				connection,
-				&workspace.id,
-			)
-			.await?;
+			let amount_due_in_cents =
+				db::get_total_amount_in_cents_to_pay_for_workspace(
+					connection,
+					&workspace.id,
+				)
+				.await?;
 
 			// The total bill for the previous month, without accounting for
 			// credits
@@ -666,27 +606,19 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
-			let card_amount_to_be_charged =
-				if amount_due <= 0f64 { 0f64 } else { amount_due };
-
-			// How much of the bill was charged from credits
-			let credits_deducted =
-				total_bill.total_charge.0 - card_amount_to_be_charged;
-
-			let credits_deducted = if credits_deducted <= 0f64 {
-				0f64
-			} else {
-				credits_deducted
-			};
-
-			// How many credits are remaining in your account
-			let credits_remaining = if amount_due >= 0.00 {
-				0.00
-			} else {
-				// If amount due is negative, the negative value implies the
-				// amount of credits remaining in their account. The positive
-				// value of that is the credits remaining in their account
-				-amount_due
+			let (
+				card_amount_to_be_charged_in_cents,
+				credits_deducted_in_cents,
+				credits_remaining_in_cents,
+			) = match amount_due_in_cents {
+				TotalAmount::CreditsLeft(credits_left) => {
+					(0, total_bill.total_charge, credits_left)
+				}
+				TotalAmount::NeedToPay(need_to_pay) => (
+					need_to_pay,
+					max(0, total_bill.total_charge - need_to_pay),
+					0,
+				),
 			};
 
 			let workspace_name = if let Some(Ok(user_id)) = workspace
@@ -708,7 +640,7 @@ pub(super) async fn process_request(
 				workspace.name.clone()
 			};
 
-			if amount_due <= 0f64 {
+			if card_amount_to_be_charged_in_cents == 0 {
 				let billing_address = if let Some(address) =
 					workspace.address_id
 				{
@@ -744,13 +676,11 @@ pub(super) async fn process_request(
 					connection,
 					&workspace.super_admin_id,
 					workspace_name,
-					month_string.to_string(),
 					total_bill,
 					billing_address,
-					PriceAmount(credits_deducted),
-					// If `amount_due` is 0, definitely the card amount is 0
-					PriceAmount(card_amount_to_be_charged),
-					PriceAmount(credits_remaining),
+					credits_deducted_in_cents,
+					card_amount_to_be_charged_in_cents,
+					credits_remaining_in_cents,
 				)
 				.await?;
 				return Ok(());
@@ -767,20 +697,15 @@ pub(super) async fn process_request(
 						.status(500)?
 						.country == *"IN"
 					{
-						(
-							Currency::INR,
-							(card_amount_to_be_charged * 100f64 * 80f64) as i64,
-						)
+						(Currency::INR, card_amount_to_be_charged_in_cents * 80)
 					} else {
-						(
-							Currency::USD,
-							(card_amount_to_be_charged * 100f64) as i64,
-						)
+						(Currency::USD, card_amount_to_be_charged_in_cents)
 					};
 
 				let payment_description = Some(format!(
 					"Patr charge: Bill for {} {}",
-					month_string, year
+					stringify_month(month as u8),
+					year
 				));
 				let payment_intent = PaymentIntent::create(
 					&Client::new(&config.stripe.secret_key).with_strategy(
@@ -790,8 +715,10 @@ pub(super) async fn process_request(
 						)),
 					),
 					{
-						let mut intent =
-							CreatePaymentIntent::new(stripe_amount, currency);
+						let mut intent = CreatePaymentIntent::new(
+							stripe_amount as i64,
+							currency,
+						);
 
 						intent.confirm = Some(true);
 						intent.confirmation_method =
@@ -830,7 +757,7 @@ pub(super) async fn process_request(
 						&workspace.id,
 						&transaction_id,
 						month as i32,
-						card_amount_to_be_charged,
+						card_amount_to_be_charged_in_cents,
 						Some(&payment_intent.id),
 						&Utc::now(),
 						&TransactionType::Payment,
@@ -843,9 +770,9 @@ pub(super) async fn process_request(
 						connection,
 						workspace.super_admin_id,
 						workspace_name,
-						month_string.to_string(),
+						month,
 						year,
-						PriceAmount(card_amount_to_be_charged),
+						card_amount_to_be_charged_in_cents,
 					)
 					.await?;
 
@@ -858,7 +785,7 @@ pub(super) async fn process_request(
 					&workspace.id,
 					&transaction_id,
 					month as i32,
-					card_amount_to_be_charged,
+					card_amount_to_be_charged_in_cents,
 					Some(&payment_intent.id),
 					&Utc::now(),
 					&TransactionType::Payment,
@@ -920,10 +847,9 @@ pub(super) async fn process_request(
 					connection,
 					workspace.super_admin_id.clone(),
 					workspace_name,
-					month_string.to_string(),
 					month,
 					year,
-					card_amount_to_be_charged,
+					card_amount_to_be_charged_in_cents,
 				)
 				.await?;
 
@@ -932,21 +858,7 @@ pub(super) async fn process_request(
 				let deadline_day = 15;
 				let next_month = if month == 12 { 1 } else { month + 1 };
 
-				let next_month_name_str = match next_month {
-					1 => "January",
-					2 => "February",
-					3 => "March",
-					4 => "April",
-					5 => "May",
-					6 => "June",
-					7 => "July",
-					8 => "August",
-					9 => "September",
-					10 => "October",
-					11 => "November",
-					12 => "December",
-					_ => "",
-				};
+				let next_month_name_str = stringify_month(next_month as u8);
 
 				let deadline = format!(
 					"{deadline_day}{} {next_month_name_str}",
@@ -963,7 +875,6 @@ pub(super) async fn process_request(
 						connection,
 						workspace.super_admin_id.clone(),
 						workspace_name,
-						month_string.to_string(),
 						month,
 						year,
 						// If `amount_due` is 0, definitely the card amount
@@ -977,7 +888,6 @@ pub(super) async fn process_request(
 						connection,
 						workspace.super_admin_id.clone(),
 						workspace_name,
-						month_string.to_string(),
 						month,
 						year,
 						// If `amount_due` is 0, definitely the card amount

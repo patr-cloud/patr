@@ -30,7 +30,7 @@ use futures::future;
 use tokio::runtime::Builder;
 use utils::{logger, Error as EveError};
 
-use crate::models::rabbitmq::BillingData;
+use crate::{models::rabbitmq::BillingData, utils::handlebar_registry};
 
 type Database = sqlx::Postgres;
 
@@ -96,6 +96,9 @@ async fn async_main() -> Result<(), EveError> {
 
 		task::spawn(models::initialize_sample_data(app.clone()));
 	}
+
+	// initialize handlebar for emails
+	handlebar_registry::initialize_handlebar_registry();
 
 	if std::env::args().any(|value| value == "--init-billing-msg") {
 		// Queue the payment for the current month
