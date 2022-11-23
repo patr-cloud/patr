@@ -627,22 +627,14 @@ async fn delete_role(
 	)
 	.await?;
 
-	// Remove all users who belong to this role
-	db::remove_all_users_from_role(context.get_database_connection(), &role_id)
-		.await?;
+	if !associated_users.is_empty() {
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(RESOURCE_IN_USE).to_string()));
+	}
+
 	// Delete role
 	db::delete_role(context.get_database_connection(), &role_id).await?;
-
-	let ttl = get_access_token_expiry() + Duration::hours(2); // 2 hrs buffer time
-	for user in associated_users {
-		revoke_user_tokens_created_before_timestamp(
-			context.get_redis_connection(),
-			&user.id,
-			&Utc::now(),
-			Some(&ttl),
-		)
-		.await?;
-	}
 
 	context.success(DeleteRoleResponse {});
 	Ok(context)
