@@ -79,16 +79,16 @@ pub async fn add_credits_to_workspace(
 		.status(400)
 		.body(error!(ADDRESS_REQUIRED).to_string())?;
 
-	let (dollars, description) = (credits, "Patr charge: Additional credits");
+	let (cents, description) = (credits, "Patr charge: Additional credits");
 
 	let (currency, amount) = if db::get_billing_address(connection, &address_id)
 		.await?
 		.status(500)?
 		.country == *"IN"
 	{
-		(Currency::INR, dollars * 80)
+		(Currency::INR, cents * 80)
 	} else {
-		(Currency::USD, dollars)
+		(Currency::USD, cents)
 	};
 
 	let client = Client::new(&config.stripe.secret_key);

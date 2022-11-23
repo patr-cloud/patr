@@ -2,7 +2,7 @@ use api_models::{models::user::BasicUserInfo, utils::Uuid};
 use chrono::{DateTime, Utc};
 
 use crate::{
-	db::{InternalWorkspace, Workspace},
+	db::{PaymentType, Workspace},
 	query,
 	query_as,
 	Database,
@@ -538,17 +538,16 @@ pub async fn get_all_workspaces_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 ) -> Result<Vec<Workspace>, sqlx::Error> {
-	let res = query_as!(
-		InternalWorkspace,
+	let res = query!(
 		r#"
 		SELECT DISTINCT
-			workspace.id as "id: _",
-			workspace.name::TEXT as "name!: _",
-			workspace.super_admin_id as "super_admin_id: _",
+			workspace.id as "id: Uuid",
+			workspace.name::TEXT as "name!: String",
+			workspace.super_admin_id as "super_admin_id: Uuid",
 			workspace.active,
-			workspace.alert_emails,
-			workspace.payment_type as "payment_type: _",
-			workspace.default_payment_method_id as "default_payment_method_id: _",
+			workspace.alert_emails as "alert_emails: Vec<String>",
+			workspace.payment_type as "payment_type: PaymentType",
+			workspace.default_payment_method_id as "default_payment_method_id: String",
 			workspace.deployment_limit,
 			workspace.static_site_limit,
 			workspace.database_limit,
@@ -557,7 +556,7 @@ pub async fn get_all_workspaces_for_user(
 			workspace.domain_limit,
 			workspace.docker_repository_storage_limit,
 			workspace.stripe_customer_id,
-			workspace.address_id as "address_id: _",
+			workspace.address_id as "address_id: Uuid",
 			workspace.amount_due_in_cents
 		FROM
 			workspace
@@ -577,7 +576,25 @@ pub async fn get_all_workspaces_for_user(
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
-	.map(|iw| iw.into())
+	.map(|row| Workspace {
+		id: row.id,
+		name: row.name,
+		super_admin_id: row.super_admin_id,
+		active: row.active,
+		alert_emails: row.alert_emails,
+		payment_type: row.payment_type,
+		default_payment_method_id: row.default_payment_method_id,
+		deployment_limit: row.deployment_limit,
+		static_site_limit: row.static_site_limit,
+		database_limit: row.database_limit,
+		managed_url_limit: row.managed_url_limit,
+		secret_limit: row.secret_limit,
+		domain_limit: row.domain_limit,
+		docker_repository_storage_limit: row.docker_repository_storage_limit,
+		stripe_customer_id: row.stripe_customer_id,
+		address_id: row.address_id,
+		amount_due_in_cents: row.amount_due_in_cents as u64,
+	})
 	.collect();
 
 	Ok(res)
@@ -587,17 +604,16 @@ pub async fn get_all_workspaces_owned_by_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 ) -> Result<Vec<Workspace>, sqlx::Error> {
-	let res = query_as!(
-		InternalWorkspace,
+	let res = query!(
 		r#"
 		SELECT
-			id as "id: _",
-			name::TEXT as "name!: _",
-			super_admin_id as "super_admin_id: _",
+			id as "id: Uuid",
+			name::TEXT as "name!: String",
+			super_admin_id as "super_admin_id: Uuid",
 			active,
-			alert_emails,
-			payment_type as "payment_type: _",
-			default_payment_method_id as "default_payment_method_id: _",
+			alert_emails as "alert_emails: Vec<String>",
+			payment_type as "payment_type: PaymentType",
+			default_payment_method_id as "default_payment_method_id: String",
 			deployment_limit,
 			static_site_limit,
 			database_limit,
@@ -606,7 +622,7 @@ pub async fn get_all_workspaces_owned_by_user(
 			domain_limit,
 			docker_repository_storage_limit,
 			stripe_customer_id,
-			address_id as "address_id: _",
+			address_id as "address_id: Uuid",
 			amount_due_in_cents
 		FROM
 			workspace
@@ -619,7 +635,25 @@ pub async fn get_all_workspaces_owned_by_user(
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
-	.map(|iw| iw.into())
+	.map(|row| Workspace {
+		id: row.id,
+		name: row.name,
+		super_admin_id: row.super_admin_id,
+		active: row.active,
+		alert_emails: row.alert_emails,
+		payment_type: row.payment_type,
+		default_payment_method_id: row.default_payment_method_id,
+		deployment_limit: row.deployment_limit,
+		static_site_limit: row.static_site_limit,
+		database_limit: row.database_limit,
+		managed_url_limit: row.managed_url_limit,
+		secret_limit: row.secret_limit,
+		domain_limit: row.domain_limit,
+		docker_repository_storage_limit: row.docker_repository_storage_limit,
+		stripe_customer_id: row.stripe_customer_id,
+		address_id: row.address_id,
+		amount_due_in_cents: row.amount_due_in_cents as u64,
+	})
 	.collect();
 
 	Ok(res)
