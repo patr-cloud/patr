@@ -221,6 +221,9 @@ async fn add_region(
 					.body("Currently digital ocean api is not supported"))
 			}
 			AddRegionToWorkspaceData::KubeConfig { config_file } => {
+				let kube_config =
+					std::str::from_utf8(&base64::decode(&config_file)?)?
+						.to_string();
 				db::add_deployment_region_to_workspace(
 					context.get_database_connection(),
 					&region_id,
@@ -234,7 +237,7 @@ async fn add_region(
 
 				service::queue_setup_kubernetes_cluster(
 					&region_id,
-					&config_file,
+					&kube_config,
 					&config,
 					&request_id,
 				)
@@ -262,7 +265,7 @@ async fn delete_region(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 	let region_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+		Uuid::parse_str(context.get_param(request_keys::REGION_ID).unwrap())
 			.unwrap();
 
 	log::trace!(

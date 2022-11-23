@@ -185,7 +185,7 @@ pub async fn get_region_by_id(
 			ready,
 			workspace_id as "workspace_id: _",
 			message_log,
-			config_file as "config_file!: _",
+			config_file as "config_file: _",
 			kubernetes_ingress_ip_addr as "kubernetes_ingress_ip_addr: _"
 		FROM
 			deployment_region
