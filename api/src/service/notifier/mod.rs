@@ -797,7 +797,7 @@ pub async fn send_repository_storage_limit_exceed_email(
 		user_email.parse()?,
 		&user.first_name,
 		&workspace.name,
-		repository_name,
+		&format!("registry.patr.cloud/{}/{}", workspace_id, repository_name),
 		tag,
 		digest,
 		ip_address,
