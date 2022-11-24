@@ -1,1 +1,0 @@
-Folder for putting common email templates

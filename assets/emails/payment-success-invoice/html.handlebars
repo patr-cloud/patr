@@ -1,70 +1,72 @@
-{{> container-start}}
-  <tr>
-    <td
-    class="para txt-light"
-    style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
-    >Your invoice for
-    {{stringify-month billBreakdown.month}}
-    {{billBreakdown.year}}
-    is now available for the workspace
-    <strong
-        class="txt-light"
-        style="color: #ffffff"
-    >{{workspaceName}}</strong>.
-    </td>
-</tr>
-{{> billing-address}}
-<tr>
-    <td
-    class="para txt-light txt-medium"
-    style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3; font-weight: 500"
-    >
-    Total usage charges:
-    <a
-        href="https://app.patr.cloud/workspace?showDetailedCharges=true&month={{billBreakdown.month}}&year={{billBreakdown.year}}"
-        class="plain-link txt-primary txt-bold"
-        style="color: #f89b41; text-decoration: none; font-weight: 600;"
-    >${{billBreakdown.totalCharge}}</a>
-    </td>
-</tr>
-<tr>
-    <td
-    class="para"
-    style="padding-top: 1rem; letter-spacing: 0.3px; line-height: 1.3;"
-    >
-    <strong
-        class="txt-light txt-lg"
-        style="color: #ffffff;; font-size: 1.2rem"
-    >Detailed charges</strong>
-    </td>
-</tr>
-{{> bill-breakdown}}
-<tr>
-    <td
-    class="para txt-light txt-medium px-sm"
-    style="color: #ffffff; letter-spacing: 0.3px; line-height: 1.3; font-weight: 500; text-align: right; padding-left: 0.5rem;padding-right: 0.5rem"
-    >
-    Grand Total:
-    <strong
-        class="txt-light"
-        style="color: #ffffff"
-    >${{billBreakdown.totalCharge}}</strong>
-    </td>
-</tr>
-{{> credits-usage}}
-<tr>
-    <td
-    class="para txt-light"
-    style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
-    >
-    If you're unable to find what you're
-    looking for, you can reach us at
-    <a
-        href="mailto:suppport@patr.cloud"
-        class="plain-link txt-primary"
-        title="Contact Patr support"
-        style="color: #f89b41; text-decoration: none; font-weight: 500;"
-    >suppport@patr.cloud</a>
-    </td>
-</tr>
-{{> container-end}}
+{{#> container}}
+  {{#*inline "email-content"}}
+    <tr>
+        <td
+        class="para txt-light"
+        style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+        >Your invoice for
+        {{stringify-month billBreakdown.month}}
+        {{billBreakdown.year}}
+        is now available for the workspace
+        <strong
+            class="txt-light"
+            style="color: #ffffff"
+        >{{workspaceName}}</strong>.
+        </td>
+    </tr>
+    {{> billing-address}}
+    <tr>
+        <td
+        class="para txt-light txt-medium"
+        style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3; font-weight: 500"
+        >
+        Total usage charges:
+        <a
+            href="https://app.patr.cloud/workspace?showDetailedCharges=true&month={{billBreakdown.month}}&year={{billBreakdown.year}}"
+            class="plain-link txt-primary txt-bold"
+            style="color: #f89b41; text-decoration: none; font-weight: 600;"
+        >${{billBreakdown.totalCharge}}</a>
+        </td>
+    </tr>
+    <tr>
+        <td
+        class="para"
+        style="padding-top: 1rem; letter-spacing: 0.3px; line-height: 1.3;"
+        >
+        <strong
+            class="txt-light txt-lg"
+            style="color: #ffffff;; font-size: 1.2rem"
+        >Detailed charges</strong>
+        </td>
+    </tr>
+    {{> bill-breakdown}}
+    <tr>
+        <td
+        class="para txt-light txt-medium px-sm"
+        style="color: #ffffff; letter-spacing: 0.3px; line-height: 1.3; font-weight: 500; text-align: right; padding-left: 0.5rem;padding-right: 0.5rem"
+        >
+        Grand Total:
+        <strong
+            class="txt-light"
+            style="color: #ffffff"
+        >${{billBreakdown.totalCharge}}</strong>
+        </td>
+    </tr>
+    {{> credits-usage}}
+    <tr>
+        <td
+        class="para txt-light"
+        style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+        >
+        If you're unable to find what you're
+        looking for, you can reach us at
+        <a
+            href="mailto:suppport@patr.cloud"
+            class="plain-link txt-primary"
+            title="Contact Patr support"
+            style="color: #f89b41; text-decoration: none; font-weight: 500;"
+        >suppport@patr.cloud</a>
+        </td>
+    </tr>
+  {{/inline}}
+{{/container}}
