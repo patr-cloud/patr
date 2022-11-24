@@ -1,4 +1,4 @@
-use sqlx::{query, types::Uuid, Row};
+use sqlx::{types::Uuid, Row};
 
 use crate::{
 	migrate_query as query,
@@ -157,6 +157,7 @@ async fn deleted_region_colume(
 	)
 	.execute(&mut *connection)
 	.await?;
+
 	query!(
 		r#"
 		ALTER TABLE deployment_region
@@ -167,6 +168,7 @@ async fn deleted_region_colume(
 	)
 	.execute(&mut *connection)
 	.await?;
+
 	Ok(())
 }
 
@@ -176,19 +178,20 @@ async fn migrate_to_kubeconfig(
 ) -> Result<(), Error> {
 	struct Region {
 		pub id: Uuid,
-		pub ready: bool,
-		pub workspace_id: Uuid,
 		pub kubernetes_cluster_url: String,
 		pub kubernetes_auth_username: String,
 		pub kubernetes_auth_token: String,
 		pub kubernetes_ca_data: String,
 	}
+
 	let regions = query!(
 		r#"
 		SELECT
 			*
 		FROM
-			deployment_region;		
+			deployment_region;
+		WHERE
+			ready = true;
 		"#
 	)
 	.fetch_all(&mut *connection)
@@ -196,8 +199,6 @@ async fn migrate_to_kubeconfig(
 	.into_iter()
 	.map(|row| Region {
 		id: row.get::<Uuid, _>("id"),
-		ready: row.get::<bool, _>("ready"),
-		workspace_id: row.get::<Uuid, _>("workspace_id"),
 		kubernetes_cluster_url: row.get::<String, _>("kubernetes_cluster_url"),
 		kubernetes_auth_username: row
 			.get::<String, _>("kubernetes_auth_username"),
@@ -221,10 +222,9 @@ async fn migrate_to_kubeconfig(
 				config_file = $1
 			WHERE
 				id = $2;
-			
 			"#,
 			kubeconfig,
-			region.id as _
+			region.id
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -247,6 +247,33 @@ async fn migrate_to_kubeconfig(
 		DROP COLUME kubernetes_auth_username,
 		DROP COLUME kubernetes_auth_token,
 		DROP COLUME kubernetes_ca_data;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_region
+		ADD CONSTRAINT deployment_region_chk_ready_or_not CHECK(
+			(
+				workspace_id IS NOT NULL AND (
+					(
+						ready = TRUE AND
+						config_file IS NOT NULL AND
+						kubernetes_ingress_ip_addr IS NOT NULL
+					) OR (
+						ready = FALSE AND
+						config_file IS NULL AND
+						kubernetes_ingress_ip_addr IS NULL
+					)
+				)
+			) OR (
+				workspace_id IS NULL AND
+				config_file IS NULL AND
+				kubernetes_ingress_ip_addr IS NULL
+			)
+		);
 		"#,
 	)
 	.execute(&mut *connection)
