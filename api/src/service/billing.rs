@@ -53,6 +53,7 @@ use crate::{
 		self,
 		DomainPlan as DbDomainPlan,
 		ManagedDatabasePlan,
+		ManagedDatabaseStatus,
 		StaticSitePlan as DbStaticSitePlan,
 	},
 	error,
@@ -452,7 +453,10 @@ pub async fn calculate_database_bill_for_workspace_till(
 				connection,
 				&database_usage.database_id,
 			)
-			.await?;
+			.await?
+			.status(500)?; // If database_id is presnt in usage table the it should be in the
+			   // database table as well, otherwise this is something wrong with our
+			   // logic
 
 		database_usage_bill
 			.entry(database_usage.database_id.clone())
@@ -460,16 +464,13 @@ pub async fn calculate_database_bill_for_workspace_till(
 				start_time: DateTime(database_usage.start_time),
 				deletion_time: database_usage.deletion_time.map(DateTime),
 				database_id: database_usage.database_id.clone(),
-				name: managed_database
-					.as_ref()
-					.map(|database| database.name.as_str())
-					.unwrap_or("unknown")
-					.to_string(),
+				name: managed_database.name,
 				hours: hours as u64,
 				amount: price_in_cents,
-				is_deleted: managed_database
-					.map(|database| database.status.to_string() == "deleted")
-					.unwrap_or(false),
+				is_deleted: matches!(
+					managed_database.status,
+					ManagedDatabaseStatus::Deleted
+				),
 				monthly_charge: monthly_price as u64,
 			});
 	}
@@ -573,11 +574,15 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 		};
 		let price_in_cents = (price_in_dollars * 100.0).round() as u64;
 
+		let urls = managed_url_usage.url_count as f64;
+		let urls = (urls / 100f64).ceil() as u64 * 100;
+		let plan = format!("{}-{} URLs", max(11, urls - 100), urls);
+
 		managed_url_bill.push(ManagedUrlUsage {
 			plan: if managed_url_usage.url_count <= 10 {
-				"1-10 URLs".to_string()
+				"0-10 URLs".to_string()
 			} else {
-				format!("Overage:({})", managed_url_usage.url_count - 10)
+				plan
 			},
 			hours: hours as u64,
 			amount: price_in_cents,
@@ -641,7 +646,7 @@ pub async fn calculate_docker_repository_bill_for_workspace_till(
 			plan: if storage_in_gb <= 10 {
 				"0-10 GB".to_string()
 			} else if storage_in_gb > 10 && storage_in_gb <= 100 {
-				format!("Overage:({})", storage_in_gb - 10)
+				"11-100 GB".to_string()
 			} else {
 				format!("Overage:({})", storage_in_gb - 100)
 			},
@@ -751,11 +756,15 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 		};
 		let price_in_cents = (price_in_dollars * 100.0).round() as u64;
 
+		let secrets = secrets_usage.secret_count as f64;
+		let secrets = (secrets / 100f64).ceil() as u64 * 100;
+		let plan = format!("{}-{} URLs", max(11, secrets - 100), secrets);
+
 		secrets_bill.push(SecretUsage {
 			plan: if secrets_usage.secret_count <= 3 {
 				"0-3 Secrets".to_string()
 			} else {
-				format!("Overage:({})", secrets_usage.secret_count - 3)
+				plan
 			},
 			hours: hours as u64,
 			amount: price_in_cents,
