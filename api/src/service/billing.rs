@@ -347,7 +347,8 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 			connection,
 			&deployment_usage.deployment_id,
 		)
-		.await?;
+		.await?
+		.status(500)?;
 
 		let price_in_dollars = if (*cpu_count, *memory_count) == (1, 2) &&
 			deployment_usage.num_instance == 1
@@ -368,18 +369,12 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 		deployment_usage_bill
 			.entry(deployment_usage.deployment_id.clone())
 			.or_insert(DeploymentUsage {
-				name: deployment
-					.as_ref()
-					.map(|deployment| deployment.name.as_str())
-					.unwrap_or("unknown")
-					.to_string(),
+				name: deployment.name,
 				deployment_id: deployment_usage.deployment_id.clone(),
-				is_deleted: deployment
-					.as_ref()
-					.map(|deployment| {
-						deployment.status == DeploymentStatus::Deleted
-					})
-					.unwrap_or(false),
+				is_deleted: matches!(
+					deployment.status,
+					DeploymentStatus::Deleted
+				),
 				deployment_bill: vec![],
 			})
 			.deployment_bill
@@ -648,7 +643,7 @@ pub async fn calculate_docker_repository_bill_for_workspace_till(
 			} else if storage_in_gb > 10 && storage_in_gb <= 100 {
 				"11-100 GB".to_string()
 			} else {
-				format!("Overage:({})", storage_in_gb - 100)
+				format!("Over 100GB - {}", storage_in_gb - 100)
 			},
 			hours: hours as u64,
 			amount: price_in_cents,
@@ -758,7 +753,7 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 
 		let secrets = secrets_usage.secret_count as f64;
 		let secrets = (secrets / 100f64).ceil() as u64 * 100;
-		let plan = format!("{}-{} URLs", max(11, secrets - 100), secrets);
+		let plan = format!("{}-{} Secrets", max(11, secrets - 100), secrets);
 
 		secrets_bill.push(SecretUsage {
 			plan: if secrets_usage.secret_count <= 3 {
