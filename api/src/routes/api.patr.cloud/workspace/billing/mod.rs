@@ -1118,8 +1118,12 @@ async fn make_payment(
 	let (transaction_id, client_secret) = service::make_payment(
 		context.get_database_connection(),
 		&workspace_id,
+<<<<<<< HEAD
 		amount,
 		&payment_method_id,
+=======
+		amount.into(),
+>>>>>>> 743b6df2 (migrations from indivisual field to kubeconfig)
 		&config,
 	)
 	.await?;
