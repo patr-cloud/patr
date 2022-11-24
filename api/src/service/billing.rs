@@ -160,7 +160,7 @@ pub async fn add_credits_to_workspace(
 pub async fn make_payment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	amount_to_pay: u32,
+	amount_to_pay_in_cents: u64,
 	config: &Settings,
 ) -> Result<Uuid, Error> {
 	let workspace = db::get_workspace_info(connection, workspace_id)
@@ -178,22 +178,23 @@ pub async fn make_payment(
 		.status(400)
 		.body(error!(ADDRESS_REQUIRED).to_string())?;
 
-	let (dollars, description) = (amount_to_pay, "Patr charge: Resource Usage");
+	let (cents, description) =
+		(amount_to_pay_in_cents, "Patr charge: Resource Usage");
 
 	let (currency, amount) = if db::get_billing_address(connection, &address_id)
 		.await?
 		.status(500)?
 		.country == *"IN"
 	{
-		(Currency::INR, (dollars * 100 * 80) as i64)
+		(Currency::INR, cents * 80)
 	} else {
-		(Currency::USD, (dollars * 100) as i64)
+		(Currency::USD, cents)
 	};
 
 	let client = Client::new(&config.stripe.secret_key);
 
 	let payment_intent = PaymentIntent::create(&client, {
-		let mut intent = CreatePaymentIntent::new(amount, currency);
+		let mut intent = CreatePaymentIntent::new(amount as i64, currency);
 
 		intent.confirm = Some(false);
 		intent.description = Some(description);
@@ -226,7 +227,7 @@ pub async fn make_payment(
 		workspace_id,
 		&transaction_id,
 		date.month() as i32,
-		amount_to_pay.into(),
+		amount_to_pay_in_cents,
 		Some(&payment_intent.id),
 		&date,
 		&TransactionType::Payment,
