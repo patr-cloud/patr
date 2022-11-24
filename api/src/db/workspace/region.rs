@@ -66,10 +66,6 @@ pub async fn initialize_region_pre(
 				REFERENCES workspace(id),
 			ready BOOLEAN NOT NULL,
 			config_file TEXT,
-			kubernetes_cluster_url TEXT,
-			kubernetes_auth_username TEXT,
-			kubernetes_auth_token TEXT,
-			kubernetes_ca_data TEXT,
 			kubernetes_ingress_ip_addr INET,
 			message_log TEXT,
 			deleted TIMESTAMPTZ,
@@ -79,26 +75,17 @@ pub async fn initialize_region_pre(
 					workspace_id IS NOT NULL AND (
 						(
 							ready = TRUE AND
-							kubernetes_cluster_url IS NOT NULL AND
-							kubernetes_ca_data IS NOT NULL AND
-							kubernetes_auth_username IS NOT NULL AND
-							kubernetes_auth_token IS NOT NULL AND
+							config_file IS NOT NULL AND
 							kubernetes_ingress_ip_addr IS NOT NULL
 						) OR (
 							ready = FALSE AND
-							kubernetes_cluster_url IS NULL AND
-							kubernetes_ca_data IS NULL AND
-							kubernetes_auth_username IS NULL AND
-							kubernetes_auth_username IS NULL AND
+							config_file IS NULL AND
 							kubernetes_ingress_ip_addr IS NULL
 						)
 					)
 				) OR (
 					workspace_id IS NULL AND
-					kubernetes_cluster_url IS NULL AND
-					kubernetes_ca_data IS NULL AND
-					kubernetes_auth_username IS NULL AND
-					kubernetes_auth_token IS NULL AND
+					config_file IS NULL AND
 					kubernetes_ingress_ip_addr IS NULL
 				)
 			)
