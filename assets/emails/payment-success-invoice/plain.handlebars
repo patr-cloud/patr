@@ -7,71 +7,98 @@ Total usage charges: {{cents-to-dollars billBreakdown.totalCharge}}
 
 Detailed Charges Deployment Usage:
 {{#each billBreakdown.deploymentUsage}}
-  {{this.name}}:
-  {{#each this.billItems}}
-    Machine Type: RAM:
-    {{this.machineType.memoryCount}}GB CPU:
-    {{this.machineType.cpuCount}}vCPU Number of Instances:
-    {{this.numInstances}}
-    Hours used:
-    {{this.hours}}
-    Bill Amount:
-    {{this.amount}}
+  Name: {{this.name}}
+  {{#each this.deploymentBill}}
+    Machine Type: {{this.machineType.cpuCount}}vCPU {{this.machineType.memoryCount}}GB RAM 
+    Number of Instances: {{this.numInstances}}
+    Monthly Charge: {{this.monthlyCharge}}
+    From: {{this.startTime}}
+    {{#if this.stopTime}}
+    Till: {{this.stopTime}}
+    {{else}}
+    Till: Present
+    {{/if}}
+    Hours used: {{this.hours}}
+    Bill Amount: {{this.amount}}
   {{/each}}
 {{/each}}
 Database Usage:
 {{#each billBreakdown.databaseUsage}}
-  Name:
-  {{this.name}}
-  Hours used:
-  {{this.hours}}
-  Bill Amount:
-  {{this.amount}}
+  Name: {{this.name}}
+  Monthly Charge: {{this.monthlyCharge}}
+  From: {{this.startTime}}
+  {{#if this.deletionTime}}
+  Till: {{this.deletionTime}}
+  {{else}}
+  Till: Present
+  {{/if}}
+  Hours used: {{this.hours}}
+  Bill Amount: {{this.amount}}
 {{/each}}
 Static Site Usage:
 {{#each billBreakdown.staticSiteUsage}}
-  Plan:
-  {{@key}}
-  Hours used:
-  {{this.hours}}
-  Bill Amount:
-  {{this.amount}}
+  Plan: {{this.plan}}
+  Monthly Charge: {{this.monthlyCharge}}
+  From: {{this.startTime}}
+  {{#if this.stopTime}}
+  Till: {{this.stopTime}}
+  {{else}}
+  Till: Present
+  {{/if}}
+  Hours used: {{this.hours}}
+  Bill Amount: {{this.amount}}
 {{/each}}
 Managed URL Usage:
 {{#each billBreakdown.managedUrlUsage}}
-  No.of URLs:
-  {{@key}}
-  Hours used:
-  {{this.hours}}
-  Bill Amount:
-  {{this.amount}}
+  Plan: {{this.plan}}
+  Monthly Charge: {{this.monthlyCharge}}
+  From: {{this.startTime}}
+  {{#if this.stopTime}}
+  Till: {{this.stopTime}}
+  {{else}}
+  Till: Present
+  {{/if}}
+  Hours used: {{this.hours}}
+  Bill Amount: {{this.amount}}
 {{/each}}
 Docker Repository Usage:
 {{#each billBreakdown.dockerRepositoryUsage}}
-  Total Storage (GB):
-  {{this.storage}}
-  Hours used:
-  {{this.hours}}
-  Bill Amount:
-  {{this.amount}}
+  Plan: {{this.plan}}
+  Monthly Charge: {{this.monthlyCharge}}
+  From: {{this.startTime}}
+  {{#if this.stopTime}}
+  Till: {{this.stopTime}}
+  {{else}}
+  Till: Present
+  {{/if}}
+  Hours used: {{this.hours}}
+  Bill Amount: {{this.amount}}
 {{/each}}
 Domain Usage:
 {{#each billBreakdown.domainUsage}}
-  Plan:
-  {{@key}}
-  Hours used:
-  {{this.hours}}
-  Bill Amount:
-  {{this.amount}}
+  Plan: {{this.plan}}
+  Monthly Charge: {{this.monthlyCharge}}
+  From: {{this.startTime}}
+  {{#if this.stopTime}}
+  Till: {{this.stopTime}}
+  {{else}}
+  Till: Present
+  {{/if}}
+  Hours used: {{this.hours}}
+  Bill Amount: {{this.amount}}
 {{/each}}
 Secret Usage:
 {{#each billBreakdown.secretUsage}}
-  No.of Secrets:
-  {{@key}}
-  Hours used:
-  {{this.hours}}
-  Bill Amount:
-  {{this.amount}}
+  Plan: {{this.plan}}
+  Monthly Charge: {{this.monthlyCharge}}
+  From: {{this.startTime}}
+  {{#if this.stopTime}}
+  Till: {{this.stopTime}}
+  {{else}}
+  Till: Present
+  {{/if}}
+  Hours used: {{this.hours}}
+  Bill Amount: {{this.amount}}
 {{/each}}
 
 {{#if creditsDeducted}}

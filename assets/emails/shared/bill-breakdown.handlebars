@@ -58,6 +58,13 @@
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
+                      Monthly Charge
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
                       Usage
                     </th>
                     <th
@@ -65,7 +72,7 @@
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Charges
+                      Bill Amount
                     </th>
                   </thead>
                   <tbody>
@@ -76,12 +83,16 @@
                           style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                           align="center"
                         >
+                          {{#if this.isDeleted}}
+                          {{this.name}}
+                          {{else}}
                           <a
-                            href="https://app.patr.cloud/deployment/{{@key}}"
+                            href="https://app.patr.cloud/deployment/{{this.deploymentId}}"
                             class="plain-link txt-primary"
                             title="Open on Patr"
                             style="color: #f89b41; text-decoration: none; font-weight: 500;"
                           >{{this.name}}</a>
+                          {{/if}}
                         </td>
                         <td
                           class="txt-light px-md py-xs txt-center"
@@ -90,7 +101,7 @@
                         >
                           <table class="full-width" style="width: 100%">
                             <tbody>
-                              {{#each this.billItems}}
+                              {{#each this.deploymentBill}}
                                 <tr>
                                   <td
                                     class="txt-light"
@@ -112,7 +123,7 @@
                         >
                           <table class="full-width" style="width: 100%">
                             <tbody>
-                              {{#each this.billItems}}
+                              {{#each this.deploymentBill}}
                                 <tr>
                                   <td
                                     class="txt-light"
@@ -133,7 +144,28 @@
                         >
                           <table class="full-width" style="width: 100%">
                             <tbody>
-                              {{#each this.billItems}}
+                              {{#each this.deploymentBill}}
+                                <tr>
+                                  <td
+                                    class="txt-light"
+                                    style="color: #ffffff;text-align: center"
+                                    align="center"
+                                  >
+                                    {{this.monthlyCharge}}
+                                  </td>
+                                </tr>
+                              {{/each}}
+                            </tbody>
+                          </table>
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          <table class="full-width" style="width: 100%">
+                            <tbody>
+                              {{#each this.deploymentBill}}
                                 <tr>
                                   <td
                                     class="txt-light"
@@ -154,7 +186,7 @@
                         >
                           <table class="full-width" style="width: 100%">
                             <tbody>
-                              {{#each this.billItems}}
+                              {{#each this.deploymentBill}}
                                 <tr>
                                   <td
                                     class="txt-light"
@@ -187,7 +219,7 @@
                         class="txt-primary px-md py-xs txt-center"
                         style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                         align="center"
-                      >${{billBreakdown.deploymentCharge}}</td>
+                      >${{cents-to-dollars billBreakdown.deploymentCharge}}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -246,7 +278,7 @@
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Charges
+                      Bill Amount
                     </th>
                   </thead>
                   <tbody>
@@ -356,7 +388,7 @@
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Charges
+                      Bill Amount
                     </th>
                   </thead>
                   <tbody>
@@ -461,7 +493,7 @@
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Charges
+                      Bill Amount
                     </th>
                   </thead>
                   <tbody>
@@ -566,7 +598,7 @@
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Charges
+                      Bill Amount
                     </th>
                   </thead>
                   <tbody>
@@ -671,7 +703,7 @@
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Charges
+                      Bill Amount
                     </th>
                   </thead>
                   <tbody>
@@ -776,7 +808,7 @@
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Charges
+                      Bill Amount
                     </th>
                   </thead>
                   <tbody>
