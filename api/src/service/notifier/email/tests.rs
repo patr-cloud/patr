@@ -72,7 +72,7 @@ async fn send_email<TEmail>(body: TEmail) -> Result<(), Error>
 where
 	TEmail: EmailTemplate,
 {
-	INIT.call_once(|| initialize_handlebar_registry());
+	INIT.call_once(initialize_handlebar_registry);
 	let handlebar = get_handlebar_registry();
 
 	let send_test_email = std::env::var("SEND_TEST_EMAIL")
@@ -162,7 +162,7 @@ async fn test_sign_up_completed_email() -> Result<(), Error> {
 async fn test_recovery_notification_email() -> Result<(), Error> {
 	send_email(RecoveryNotificationEmail {
 		username: "username".to_owned(),
-		recoveryEmail: "recoveryEmail".to_owned(),
+		recovery_email: "recoveryEmail".to_owned(),
 	})
 	.await
 }
@@ -172,7 +172,7 @@ async fn test_add_email_verification_email() -> Result<(), Error> {
 	send_email(AddEmailVerificationEmail {
 		otp: "otp".to_owned(),
 		username: "username".to_owned(),
-		recoveryEmail: "recoveryEmail".to_owned(),
+		recovery_email: "recoveryEmail".to_owned(),
 	})
 	.await
 }
@@ -181,10 +181,10 @@ async fn test_add_email_verification_email() -> Result<(), Error> {
 async fn test_bill_not_paid_delete_resources_email() -> Result<(), Error> {
 	send_email(BillNotPaidDeleteResourcesEmail {
 		username: "username".to_owned(),
-		workspaceName: "workspaceName".to_owned(),
+		workspace_name: "workspaceName".to_owned(),
 		month: 4,
 		year: 2014,
-		totalBill: 567,
+		total_bill: 567,
 	})
 	.await
 }
@@ -193,10 +193,10 @@ async fn test_bill_not_paid_delete_resources_email() -> Result<(), Error> {
 async fn test_bill_payment_failed_reminder_email() -> Result<(), Error> {
 	send_email(BillPaymentFailedReminderEmail {
 		username: "username".to_owned(),
-		workspaceName: "workspaceName".to_owned(),
+		workspace_name: "workspaceName".to_owned(),
 		month: 8,
 		year: 2351,
-		totalBill: 1234124,
+		total_bill: 1234124,
 		deadline: "deadline".to_owned(),
 	})
 	.await
@@ -206,10 +206,10 @@ async fn test_bill_payment_failed_reminder_email() -> Result<(), Error> {
 async fn test_card_not_added_reminder_email() -> Result<(), Error> {
 	send_email(CardNotAddedReminderEmail {
 		username: "username".to_owned(),
-		workspaceName: "workspaceName".to_owned(),
+		workspace_name: "workspaceName".to_owned(),
 		month: 8,
 		year: 2351,
-		totalBill: 1234124,
+		total_bill: 1234124,
 		deadline: "deadline".to_owned(),
 	})
 	.await
@@ -219,10 +219,10 @@ async fn test_card_not_added_reminder_email() -> Result<(), Error> {
 async fn test_bill_paid_successfully_email() -> Result<(), Error> {
 	send_email(BillPaidSuccessfullyEmail {
 		username: "username".to_owned(),
-		workspaceName: "workspaceName".to_owned(),
+		workspace_name: "workspaceName".to_owned(),
 		month: 7,
 		year: 2102,
-		cardAmountDeducted: 24356,
+		card_amount_deducted: 24356,
 	})
 	.await
 }
@@ -231,8 +231,8 @@ async fn test_bill_paid_successfully_email() -> Result<(), Error> {
 async fn test_payment_failure_invoice_email() -> Result<(), Error> {
 	send_email(PaymentFailureInvoiceEmail {
 		username: "username".to_owned(),
-		workspaceName: "workspaceName".to_owned(),
-		billBreakdown: WorkspaceBillBreakdown {
+		workspace_name: "workspaceName".to_owned(),
+		bill_breakdown: WorkspaceBillBreakdown {
 			year: 2022,
 			month: 5,
 			total_charge: 22400,
@@ -306,7 +306,7 @@ async fn test_payment_failure_invoice_email() -> Result<(), Error> {
 				amount: 3200,
 			}],
 		},
-		billingAddress: Address {
+		billing_address: Address {
 			first_name: String::from("John"),
 			last_name: String::from("Patr"),
 			address_line_1: "221B Baker St, Marylebone".to_string(),
@@ -325,8 +325,8 @@ async fn test_payment_failure_invoice_email() -> Result<(), Error> {
 async fn test_payment_success_invoice_email() -> Result<(), Error> {
 	send_email(PaymentSuccessInvoiceEmail {
 		username: "username".to_owned(),
-		workspaceName: "workspaceName".to_owned(),
-		billBreakdown: WorkspaceBillBreakdown {
+		workspace_name: "workspaceName".to_owned(),
+		bill_breakdown: WorkspaceBillBreakdown {
 			year: 2022,
 			month: 5,
 			total_charge: 22400,
@@ -400,7 +400,7 @@ async fn test_payment_success_invoice_email() -> Result<(), Error> {
 				amount: 3200,
 			}],
 		},
-		billingAddress: Address {
+		billing_address: Address {
 			first_name: String::from("John"),
 			last_name: String::from("Patr"),
 			address_line_1: "221B Baker St, Marylebone".to_string(),
@@ -411,9 +411,9 @@ async fn test_payment_success_invoice_email() -> Result<(), Error> {
 			zip: "NW1 6XE".to_string(),
 			country: "UK".to_string(),
 		},
-		creditsDeducted: 25443,
-		cardAmountDeducted: 123423,
-		creditsRemaining: 45234,
+		credits_deducted: 25443,
+		card_amount_deducted: 123423,
+		credits_remaining: 45234,
 	})
 	.await
 }
@@ -421,11 +421,11 @@ async fn test_payment_success_invoice_email() -> Result<(), Error> {
 #[tokio::test]
 async fn test_resource_deleted_email() -> Result<(), Error> {
 	send_email(ResourceDeletedEmail {
-		workspaceName: "workspaceName".to_owned(),
-		resourceName: "resourceName".to_owned(),
+		workspace_name: "workspaceName".to_owned(),
+		resource_name: "resourceName".to_owned(),
 		username: "username".to_owned(),
-		deletedBy: "deletedBy".to_owned(),
-		resourceType: "resourceType".to_owned(),
+		deleted_by: "deletedBy".to_owned(),
+		resource_type: "resourceType".to_owned(),
 	})
 	.await
 }
@@ -433,10 +433,10 @@ async fn test_resource_deleted_email() -> Result<(), Error> {
 #[tokio::test]
 async fn test_domain_unverified_email() -> Result<(), Error> {
 	send_email(DomainUnverified {
-		domainName: "domainName".to_owned(),
-		domainId: "domainId".to_owned(),
+		domain_name: "domainName".to_owned(),
+		domain_id: "domainId".to_owned(),
 		username: "username".to_owned(),
-		isInternal: false,
+		is_internal: false,
 	})
 	.await
 }
@@ -444,9 +444,9 @@ async fn test_domain_unverified_email() -> Result<(), Error> {
 #[tokio::test]
 async fn test_domain_verified_email() -> Result<(), Error> {
 	send_email(DomainVerified {
-		domainName: "domainName".to_owned(),
+		domain_name: "domainName".to_owned(),
 		username: "username".to_owned(),
-		domainId: "domainId".to_owned(),
+		domain_id: "domainId".to_owned(),
 	})
 	.await
 }
@@ -455,12 +455,12 @@ async fn test_domain_verified_email() -> Result<(), Error> {
 async fn test_repo_storage_limit_exceed_email() -> Result<(), Error> {
 	send_email(RepositoryStorageLimitExceedEmail {
 		username: "username".to_string(),
-		workspaceName: "workspace_name".to_string(),
-		repositoryName: "registry.patr.cloud/workspace_id/repository_name"
+		workspace_name: "workspace_name".to_string(),
+		repository_name: "registry.patr.cloud/workspace_id/repository_name"
 			.to_string(),
 		tag: "tag".to_string(),
 		digest: "digest".to_string(),
-		ipAddress: "ip_address".to_string(),
+		ip_address: "ip_address".to_string(),
 	})
 	.await
 }
