@@ -181,10 +181,10 @@ pub async fn send_sign_up_completed_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/recovery-email-notification/template.json"]
-#[allow(non_snake_case)]
+#[serde(rename_all = "camelCase")]
 struct RecoveryNotificationEmail {
 	username: String,
-	recoveryEmail: String,
+	recovery_email: String,
 }
 
 /// # Description
@@ -198,16 +198,15 @@ struct RecoveryNotificationEmail {
 /// # Returns
 /// This function returns `Result<(), Error>` containing an empty response or an
 /// error
-#[allow(non_snake_case)]
 pub async fn send_recovery_registration_mail(
 	email: Mailbox,
 	username: &str,
-	recoveryEmail: &str,
+	recovery_email: &str,
 ) -> Result<(), Error> {
 	send_email(
 		RecoveryNotificationEmail {
 			username: username.to_string(),
-			recoveryEmail: recoveryEmail.to_string(),
+			recovery_email: recovery_email.to_string(),
 		},
 		email,
 		None,
@@ -218,11 +217,11 @@ pub async fn send_recovery_registration_mail(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/add-new-email-notification/template.json"]
-#[allow(non_snake_case)]
+#[serde(rename_all = "camelCase")]
 struct AddEmailVerificationEmail {
 	otp: String,
 	username: String,
-	recoveryEmail: String,
+	recovery_email: String,
 }
 
 /// # Description
@@ -249,7 +248,7 @@ pub async fn send_email_verification_otp(
 		AddEmailVerificationEmail {
 			username: username.to_string(),
 			otp: otp.to_string(),
-			recoveryEmail: recovery_email.to_string(),
+			recovery_email: recovery_email.to_string(),
 		},
 		email,
 		None,
@@ -260,31 +259,30 @@ pub async fn send_email_verification_otp(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/bill-not-paid-delete-resources/template.json"]
-#[allow(non_snake_case)]
+#[serde(rename_all = "camelCase")]
 struct BillNotPaidDeleteResourcesEmail {
 	username: String,
-	workspaceName: String,
+	workspace_name: String,
 	month: u32,
 	year: i32,
-	totalBill: u64,
+	total_bill: u64,
 }
 
-#[allow(non_snake_case)]
 pub async fn send_bill_not_paid_delete_resources_email(
 	email: Mailbox,
 	username: String,
-	workspaceName: String,
+	workspace_name: String,
 	month: u32,
 	year: i32,
-	totalBill: u64,
+	total_bill: u64,
 ) -> Result<(), Error> {
 	send_email(
 		BillNotPaidDeleteResourcesEmail {
 			username,
-			workspaceName,
+			workspace_name,
 			month,
 			year,
-			totalBill,
+			total_bill,
 		},
 		email,
 		None,
@@ -295,33 +293,32 @@ pub async fn send_bill_not_paid_delete_resources_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/bill-payment-failed-reminder/template.json"]
-#[allow(non_snake_case)]
+#[serde(rename_all = "camelCase")]
 struct BillPaymentFailedReminderEmail {
 	username: String,
-	workspaceName: String,
+	workspace_name: String,
 	month: u32,
 	year: i32,
-	totalBill: u64,
+	total_bill: u64,
 	deadline: String,
 }
 
-#[allow(non_snake_case)]
 pub async fn send_bill_payment_failed_reminder_email(
 	email: Mailbox,
 	username: String,
-	workspaceName: String,
+	workspace_name: String,
 	month: u32,
 	year: i32,
-	totalBill: u64,
+	total_bill: u64,
 	deadline: String,
 ) -> Result<(), Error> {
 	send_email(
 		BillPaymentFailedReminderEmail {
 			username,
-			workspaceName,
+			workspace_name,
 			month,
 			year,
-			totalBill,
+			total_bill,
 			deadline,
 		},
 		email,
@@ -333,33 +330,32 @@ pub async fn send_bill_payment_failed_reminder_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/card-not-added-reminder/template.json"]
-#[allow(non_snake_case)]
+#[serde(rename_all = "camelCase")]
 struct CardNotAddedReminderEmail {
 	username: String,
-	workspaceName: String,
+	workspace_name: String,
 	month: u32,
 	year: i32,
-	totalBill: u64,
+	total_bill: u64,
 	deadline: String,
 }
 
-#[allow(non_snake_case)]
 pub async fn send_card_not_added_reminder_email(
 	email: Mailbox,
 	username: String,
-	workspaceName: String,
+	workspace_name: String,
 	month: u32,
 	year: i32,
-	totalBill: u64,
+	total_bill: u64,
 	deadline: String,
 ) -> Result<(), Error> {
 	send_email(
 		CardNotAddedReminderEmail {
 			username,
-			workspaceName,
+			workspace_name,
 			month,
 			year,
-			totalBill,
+			total_bill,
 			deadline,
 		},
 		email,
@@ -371,31 +367,30 @@ pub async fn send_card_not_added_reminder_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/bill-paid-successfully/template.json"]
-#[allow(non_snake_case)]
+#[serde(rename_all = "camelCase")]
 struct BillPaidSuccessfullyEmail {
 	username: String,
-	workspaceName: String,
+	workspace_name: String,
 	month: u32,
 	year: i32,
-	cardAmountDeducted: u64,
+	card_amount_deducted: u64,
 }
 
-#[allow(non_snake_case)]
 pub async fn send_bill_paid_successfully_email(
 	email: Mailbox,
 	username: String,
-	workspaceName: String,
+	workspace_name: String,
 	month: u32,
 	year: i32,
-	cardAmountDeducted: u64,
+	card_amount_deducted: u64,
 ) -> Result<(), Error> {
 	send_email(
 		BillPaidSuccessfullyEmail {
 			username,
-			workspaceName,
+			workspace_name,
 			month,
 			year,
-			cardAmountDeducted,
+			card_amount_deducted,
 		},
 		email,
 		None,
@@ -406,12 +401,12 @@ pub async fn send_bill_paid_successfully_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/payment-failure-invoice/template.json"]
-#[allow(non_snake_case)]
+#[serde(rename_all = "camelCase")]
 struct PaymentFailureInvoiceEmail {
 	username: String,
-	workspaceName: String,
-	billBreakdown: WorkspaceBillBreakdown,
-	billingAddress: Address,
+	workspace_name: String,
+	bill_breakdown: WorkspaceBillBreakdown,
+	billing_address: Address,
 }
 
 pub async fn send_payment_failure_invoice_email(
@@ -424,9 +419,9 @@ pub async fn send_payment_failure_invoice_email(
 	send_email(
 		PaymentFailureInvoiceEmail {
 			username,
-			workspaceName: workspace_name,
-			billBreakdown: bill_breakdown,
-			billingAddress: billing_address,
+			workspace_name,
+			bill_breakdown,
+			billing_address,
 		},
 		email,
 		None,
@@ -437,15 +432,15 @@ pub async fn send_payment_failure_invoice_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/payment-success-invoice/template.json"]
-#[allow(non_snake_case)]
+#[serde(rename_all = "camelCase")]
 struct PaymentSuccessInvoiceEmail {
 	username: String,
-	workspaceName: String,
-	billBreakdown: WorkspaceBillBreakdown,
-	billingAddress: Address,
-	creditsDeducted: u64,
-	cardAmountDeducted: u64,
-	creditsRemaining: u64,
+	workspace_name: String,
+	bill_breakdown: WorkspaceBillBreakdown,
+	billing_address: Address,
+	credits_deducted: u64,
+	card_amount_deducted: u64,
+	credits_remaining: u64,
 }
 
 pub async fn send_payment_success_invoice_email(
@@ -461,12 +456,12 @@ pub async fn send_payment_success_invoice_email(
 	send_email(
 		PaymentSuccessInvoiceEmail {
 			username,
-			workspaceName: workspace_name,
-			billBreakdown: bill_breakdown,
-			billingAddress: billing_address,
-			creditsDeducted: credits_deducted,
-			cardAmountDeducted: card_amount_deducted,
-			creditsRemaining: credits_remaining,
+			workspace_name,
+			bill_breakdown,
+			billing_address,
+			credits_deducted,
+			card_amount_deducted,
+			credits_remaining,
 		},
 		email,
 		None,
@@ -477,31 +472,30 @@ pub async fn send_payment_success_invoice_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/delete-resource/template.json"]
-#[allow(non_snake_case)]
+#[serde(rename_all = "camelCase")]
 struct ResourceDeletedEmail {
-	workspaceName: String,
-	resourceName: String,
+	workspace_name: String,
+	resource_name: String,
 	username: String,
-	deletedBy: String,
-	resourceType: String,
+	deleted_by: String,
+	resource_type: String,
 }
 
-#[allow(non_snake_case)]
 pub async fn send_resource_deleted_email(
-	workspaceName: String,
-	resourceName: String,
+	workspace_name: String,
+	resource_name: String,
 	username: String,
-	resourceType: String,
-	deletedBy: String,
+	resource_type: String,
+	deleted_by: String,
 	email: Mailbox,
 ) -> Result<(), Error> {
 	send_email(
 		ResourceDeletedEmail {
-			workspaceName,
-			resourceName,
+			workspace_name,
+			resource_name,
 			username,
-			deletedBy,
-			resourceType,
+			deleted_by,
+			resource_type,
 		},
 		email,
 		None,
@@ -512,28 +506,27 @@ pub async fn send_resource_deleted_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/domain-not-verified/template.json"]
-#[allow(non_snake_case)]
+#[serde(rename_all = "camelCase")]
 struct DomainUnverified {
-	domainName: String,
-	domainId: String,
+	domain_name: String,
+	domain_id: String,
 	username: String,
-	isInternal: bool,
+	is_internal: bool,
 }
 
-#[allow(non_snake_case)]
 pub async fn send_domain_unverified_email(
-	domainName: String,
+	domain_name: String,
 	username: String,
-	isInternal: bool,
-	domainId: String,
+	is_internal: bool,
+	domain_id: String,
 	email: Mailbox,
 ) -> Result<(), Error> {
 	send_email(
 		DomainUnverified {
-			domainName,
+			domain_name,
 			username,
-			isInternal,
-			domainId,
+			is_internal,
+			domain_id,
 		},
 		email,
 		None,
@@ -544,25 +537,24 @@ pub async fn send_domain_unverified_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/domain-verified/template.json"]
-#[allow(non_snake_case)]
+#[serde(rename_all = "camelCase")]
 struct DomainVerified {
-	domainName: String,
+	domain_name: String,
 	username: String,
-	domainId: String,
+	domain_id: String,
 }
 
-#[allow(non_snake_case)]
 pub async fn send_domain_verified_email(
-	domainName: String,
+	domain_name: String,
 	username: String,
-	domainId: String,
+	domain_id: String,
 	email: Mailbox,
 ) -> Result<(), Error> {
 	send_email(
 		DomainVerified {
-			domainName,
+			domain_name,
 			username,
-			domainId,
+			domain_id,
 		},
 		email,
 		None,
@@ -573,14 +565,14 @@ pub async fn send_domain_verified_email(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/repo-storage-limit-exceed/template.json"]
-#[allow(non_snake_case)]
-pub struct RepositoryStorageLimitExceedEmail {
+#[serde(rename_all = "camelCase")]
+struct RepositoryStorageLimitExceedEmail {
 	username: String,
-	workspaceName: String,
-	repositoryName: String,
+	workspace_name: String,
+	repository_name: String,
 	tag: String,
 	digest: String,
-	ipAddress: String,
+	ip_address: String,
 }
 
 pub async fn send_repository_storage_limit_exceed_email(
@@ -595,11 +587,11 @@ pub async fn send_repository_storage_limit_exceed_email(
 	send_email(
 		RepositoryStorageLimitExceedEmail {
 			username: username.to_owned(),
-			workspaceName: workspace_name.to_owned(),
-			repositoryName: repository_name.to_owned(),
+			workspace_name: workspace_name.to_owned(),
+			repository_name: repository_name.to_owned(),
 			tag: tag.to_owned(),
 			digest: digest.to_owned(),
-			ipAddress: ip_address.to_owned(),
+			ip_address: ip_address.to_owned(),
 		},
 		email,
 		None,
