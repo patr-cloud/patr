@@ -602,7 +602,7 @@ pub async fn send_repository_storage_limit_exceed_email(
 		},
 		email,
 		None,
-		"Patr Repository Storage Limit Exceeded",
+		"[Action Required] Patr Repository Storage Limit Exceeded",
 	)
 	.await
 }
