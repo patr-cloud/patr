@@ -345,6 +345,26 @@
     },
     "query": "CREATE TABLE IF NOT EXISTS managed_url_payment_history( workspace_id UUID NOT NULL, url_count INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
   },
+  "04d52fa774ea5052231cbeaab746432eb7cb2a03af69b6682cc27fa4c5afe998": {
+    "describe": {
+      "columns": [
+        {
+          "name": "default_payment_method_id",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT default_payment_method_id FROM workspace WHERE id = $1"
+  },
   "06996105bdcc06ade90e67db371aa915dc31e8e8d1a4aa8a778a78909a585f74": {
     "describe": {
       "columns": [],
@@ -6272,7 +6292,8 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed"
+                  "failed",
+                  "pending"
                 ]
               },
               "name": "payment_status"
@@ -7685,7 +7706,8 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed"
+                  "failed",
+                  "pending"
                 ]
               },
               "name": "payment_status"
@@ -8045,7 +8067,8 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed"
+                  "failed",
+                  "pending"
                 ]
               },
               "name": "payment_status"
@@ -11511,7 +11534,8 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed"
+                  "failed",
+                  "pending"
                 ]
               },
               "name": "payment_status"
@@ -13606,7 +13630,8 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed"
+                  "failed",
+                  "pending"
                 ]
               },
               "name": "payment_status"

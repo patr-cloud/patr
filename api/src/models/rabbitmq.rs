@@ -47,6 +47,7 @@ impl fmt::Display for Queue {
 pub enum InfraRequestData {
 	Deployment(DeploymentRequestData),
 	BYOC(BYOCData),
+	DockerRegistry(DockerRegistryData),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -90,6 +91,19 @@ pub enum DeploymentRequestData {
 		image_name: String,
 		digest: String,
 		running_details: DeploymentRunningDetails,
+		request_id: Uuid,
+	},
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "action", rename_all = "camelCase")]
+pub enum DockerRegistryData {
+	DeleteDockerImage {
+		workspace_id: Uuid,
+		repository_name: String,
+		digest: String,
+		tag: String,
+		image_pushed_ip_addr: String,
 		request_id: Uuid,
 	},
 }

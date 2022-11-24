@@ -17,6 +17,7 @@ use crate::{
 		BillingData,
 		CIData,
 		DeploymentRequestData,
+		DockerRegistryData,
 		InfraRequestData,
 		Queue,
 	},
@@ -76,6 +77,32 @@ pub async fn queue_update_deployment_image(
 			running_details: deployment_running_details.clone(),
 			request_id: request_id.clone(),
 		}),
+		config,
+		request_id,
+	)
+	.await
+}
+
+pub async fn queue_delete_docker_registry_image(
+	workspace_id: &Uuid,
+	repository_name: &str,
+	digest: &str,
+	tag: &str,
+	image_pushed_ip_addr: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_infra_queue(
+		&InfraRequestData::DockerRegistry(
+			DockerRegistryData::DeleteDockerImage {
+				request_id: request_id.clone(),
+				workspace_id: workspace_id.clone(),
+				repository_name: repository_name.to_owned(),
+				digest: digest.to_owned(),
+				tag: tag.to_owned(),
+				image_pushed_ip_addr: image_pushed_ip_addr.to_owned(),
+			},
+		),
 		config,
 		request_id,
 	)

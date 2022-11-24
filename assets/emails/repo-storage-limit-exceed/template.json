@@ -1,0 +1,10 @@
+{
+	"html": {
+		"file": "html.handlebars",
+		"inline": {}
+	},
+	"plain": {
+		"file": "plain.handlebars"
+	},
+	"attachments": {}
+}

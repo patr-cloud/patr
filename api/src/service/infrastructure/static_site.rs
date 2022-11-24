@@ -17,7 +17,7 @@ use crate::{
 	error,
 	models::rbac,
 	service::{self, infrastructure::kubernetes},
-	utils::{settings::Settings, validator, Error},
+	utils::{constants::free_limits, settings::Settings, validator, Error},
 	Database,
 };
 
@@ -58,23 +58,8 @@ pub async fn create_static_site_in_workspace(
 
 	let static_site_id = db::generate_new_resource_id(connection).await?;
 
-	// Check if user's all resources limit is exceeded
-	log::trace!("request_id: {} - Checking resource limit", request_id);
-	if super::resource_limit_crossed(connection, workspace_id, request_id)
-		.await?
-	{
-		return Error::as_result()
-			.status(400)
-			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
-	}
-
-	// Check if user's static site limit is exceeded
-	log::trace!("request_id: {} - Checking static site limit", request_id);
-	if static_site_limit_crossed(connection, workspace_id, request_id).await? {
-		return Error::as_result()
-			.status(400)
-			.body(error!(STATIC_SITE_LIMIT_EXCEEDED).to_string())?;
-	}
+	check_static_site_creation_limit(connection, workspace_id, request_id)
+		.await?;
 
 	let creation_time = Utc::now();
 	log::trace!("request_id: {} - creating static site resource", request_id);
@@ -595,35 +580,62 @@ fn get_mime_type_from_file_name(file_extension: &str) -> &str {
 	}
 }
 
-async fn static_site_limit_crossed(
+async fn check_static_site_creation_limit(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	request_id: &Uuid,
-) -> Result<bool, Error> {
-	log::trace!(
-		"request_id: {} - Checking if free limits are crossed",
-		request_id
-	);
+) -> Result<(), Error> {
+	log::trace!("request_id: {request_id} - Checking whether new static site creation is limited");
 
-	let workspace = db::get_workspace_info(connection, workspace_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let current_static_sites =
-		db::get_all_secrets_in_workspace(connection, workspace_id)
+	let current_static_site_count =
+		db::get_static_sites_for_workspace(connection, workspace_id)
 			.await?
 			.len();
 
-	log::trace!(
-		"request_id: {} - Checking if static site limits are crossed",
-		request_id
-	);
-	if current_static_sites + 1 > workspace.static_site_limit as usize {
-		return Ok(true);
+	// check whether free limit is exceeded
+	if current_static_site_count >= free_limits::STATIC_SITE_COUNT &&
+		db::get_default_payment_method_for_workspace(
+			connection,
+			workspace_id,
+		)
+		.await?
+		.is_none()
+	{
+		log::info!(
+			"request_id: {request_id} - Free static site limit reached and card is not added"
+		);
+		return Error::as_result()
+			.status(400)
+			.body(error!(CARDLESS_FREE_LIMIT_EXCEEDED).to_string())?;
 	}
 
-	Ok(false)
+	// check whether max static site limit is exceeded
+	let max_static_site_limit =
+		db::get_workspace_info(connection, workspace_id)
+			.await?
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?
+			.static_site_limit;
+	if current_static_site_count >= max_static_site_limit as usize {
+		log::info!(
+			"request_id: {request_id} - Max static_site limit for workspace reached"
+		);
+		return Error::as_result()
+			.status(400)
+			.body(error!(STATIC_SITE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	// check whether total resource limit is exceeded
+	if super::resource_limit_crossed(connection, workspace_id, request_id)
+		.await?
+	{
+		log::info!("request_id: {request_id} - Total resource limit exceeded");
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	Ok(())
 }
 
 async fn create_static_site_upload(

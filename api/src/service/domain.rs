@@ -48,7 +48,12 @@ use crate::{
 	error,
 	models::rbac::{self, resource_types},
 	service,
-	utils::{constants, settings::Settings, validator, Error},
+	utils::{
+		constants::{self, free_limits},
+		settings::Settings,
+		validator,
+		Error,
+	},
 	Database,
 };
 
@@ -171,21 +176,7 @@ pub async fn add_domain_to_workspace(
 	log::trace!("request_id: {} - Generating new domain id", request_id);
 	let domain_id = db::generate_new_domain_id(connection).await?;
 
-	log::trace!("request_id: {} - Checking resource limit", request_id);
-	if super::resource_limit_crossed(connection, workspace_id, request_id)
-		.await?
-	{
-		return Error::as_result()
-			.status(400)
-			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
-	}
-
-	log::trace!("request_id: {} - Checking static site limit", request_id);
-	if domain_limit_crossed(connection, workspace_id, request_id).await? {
-		return Error::as_result()
-			.status(400)
-			.body(error!(DOMAIN_LIMIT_EXCEEDED).to_string())?;
-	}
+	check_domain_creation_limit(connection, workspace_id, request_id).await?;
 
 	let creation_time = Utc::now();
 	log::trace!("request_id: {} - Generating new resource", request_id);
@@ -923,33 +914,59 @@ pub async fn get_cloudflare_client(
 	Ok(client)
 }
 
-async fn domain_limit_crossed(
+async fn check_domain_creation_limit(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	request_id: &Uuid,
-) -> Result<bool, Error> {
-	log::trace!(
-		"request_id: {} - Checking if free limits are crossed",
-		request_id
-	);
+) -> Result<(), Error> {
+	log::trace!("request_id: {request_id} - Checking whether new domain creation is limited");
 
-	let workspace = db::get_workspace_info(connection, workspace_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let current_domains =
+	let current_domain_count =
 		db::get_domains_for_workspace(connection, workspace_id)
 			.await?
 			.len();
 
-	log::trace!(
-		"request_id: {} - Checking if domains limits are crossed",
-		request_id
-	);
-	if current_domains + 1 > workspace.domain_limit as usize {
-		return Ok(true);
+	// check whether free limit is exceeded
+	if current_domain_count >= free_limits::DOMAIN_COUNT &&
+		db::get_default_payment_method_for_workspace(
+			connection,
+			workspace_id,
+		)
+		.await?
+		.is_none()
+	{
+		log::info!(
+			"request_id: {request_id} - Free domain limit reached and card is not added"
+		);
+		return Error::as_result()
+			.status(400)
+			.body(error!(CARDLESS_FREE_LIMIT_EXCEEDED).to_string())?;
 	}
 
-	Ok(false)
+	// check whether max domain limit is exceeded
+	let max_domain_limit = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+		.domain_limit;
+	if current_domain_count >= max_domain_limit as usize {
+		log::info!(
+			"request_id: {request_id} - Max domain limit for workspace reached"
+		);
+		return Error::as_result()
+			.status(400)
+			.body(error!(DOMAIN_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	// check whether total resource limit is exceeded
+	if super::resource_limit_crossed(connection, workspace_id, request_id)
+		.await?
+	{
+		log::info!("request_id: {request_id} - Total resource limit exceeded");
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	Ok(())
 }

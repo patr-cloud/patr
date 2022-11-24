@@ -42,6 +42,7 @@ use super::{
 	PaymentFailureInvoiceEmail,
 	PaymentSuccessInvoiceEmail,
 	RecoveryNotificationEmail,
+	RepositoryStorageLimitExceedEmail,
 	ResourceDeletedEmail,
 	SignUpCompletedEmail,
 	UserSignUpVerificationEmail,
@@ -116,7 +117,7 @@ where
 }
 
 #[tokio::test]
-async fn test_user_sign_up_verification_email_email() -> Result<(), Error> {
+async fn test_user_sign_up_verification_email() -> Result<(), Error> {
 	send_email(UserSignUpVerificationEmail {
 		username: "username".to_owned(),
 		otp: "otp".to_owned(),
@@ -125,7 +126,7 @@ async fn test_user_sign_up_verification_email_email() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_forgot_password_email_email() -> Result<(), Error> {
+async fn test_forgot_password_email() -> Result<(), Error> {
 	send_email(ForgotPasswordEmail {
 		otp: "otp".to_owned(),
 		username: "username".to_owned(),
@@ -134,7 +135,7 @@ async fn test_forgot_password_email_email() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_password_reset_email_email() -> Result<(), Error> {
+async fn test_password_reset_email() -> Result<(), Error> {
 	send_email(PasswordResetEmail {
 		username: "username".to_owned(),
 	})
@@ -142,7 +143,7 @@ async fn test_password_reset_email_email() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_password_changed_email_email() -> Result<(), Error> {
+async fn test_password_changed_email() -> Result<(), Error> {
 	send_email(PasswordChangedEmail {
 		username: "username".to_owned(),
 	})
@@ -150,7 +151,7 @@ async fn test_password_changed_email_email() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_sign_up_completed_email_email() -> Result<(), Error> {
+async fn test_sign_up_completed_email() -> Result<(), Error> {
 	send_email(SignUpCompletedEmail {
 		username: "username".to_owned(),
 	})
@@ -158,7 +159,7 @@ async fn test_sign_up_completed_email_email() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_recovery_notification_email_email() -> Result<(), Error> {
+async fn test_recovery_notification_email() -> Result<(), Error> {
 	send_email(RecoveryNotificationEmail {
 		username: "username".to_owned(),
 		recoveryEmail: "recoveryEmail".to_owned(),
@@ -167,7 +168,7 @@ async fn test_recovery_notification_email_email() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_add_email_verification_email_email() -> Result<(), Error> {
+async fn test_add_email_verification_email() -> Result<(), Error> {
 	send_email(AddEmailVerificationEmail {
 		otp: "otp".to_owned(),
 		username: "username".to_owned(),
@@ -177,8 +178,7 @@ async fn test_add_email_verification_email_email() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_bill_not_paid_delete_resources_email_email() -> Result<(), Error>
-{
+async fn test_bill_not_paid_delete_resources_email() -> Result<(), Error> {
 	send_email(BillNotPaidDeleteResourcesEmail {
 		username: "username".to_owned(),
 		workspaceName: "workspaceName".to_owned(),
@@ -190,7 +190,7 @@ async fn test_bill_not_paid_delete_resources_email_email() -> Result<(), Error>
 }
 
 #[tokio::test]
-async fn test_bill_payment_failed_reminder_email_email() -> Result<(), Error> {
+async fn test_bill_payment_failed_reminder_email() -> Result<(), Error> {
 	send_email(BillPaymentFailedReminderEmail {
 		username: "username".to_owned(),
 		workspaceName: "workspaceName".to_owned(),
@@ -203,7 +203,7 @@ async fn test_bill_payment_failed_reminder_email_email() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_card_not_added_reminder_email_email() -> Result<(), Error> {
+async fn test_card_not_added_reminder_email() -> Result<(), Error> {
 	send_email(CardNotAddedReminderEmail {
 		username: "username".to_owned(),
 		workspaceName: "workspaceName".to_owned(),
@@ -216,7 +216,7 @@ async fn test_card_not_added_reminder_email_email() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_bill_paid_successfully_email_email() -> Result<(), Error> {
+async fn test_bill_paid_successfully_email() -> Result<(), Error> {
 	send_email(BillPaidSuccessfullyEmail {
 		username: "username".to_owned(),
 		workspaceName: "workspaceName".to_owned(),
@@ -228,7 +228,7 @@ async fn test_bill_paid_successfully_email_email() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_payment_failure_invoice_email_email() -> Result<(), Error> {
+async fn test_payment_failure_invoice_email() -> Result<(), Error> {
 	send_email(PaymentFailureInvoiceEmail {
 		username: "username".to_owned(),
 		workspaceName: "workspaceName".to_owned(),
@@ -322,7 +322,7 @@ async fn test_payment_failure_invoice_email_email() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_payment_success_invoice_email_email() -> Result<(), Error> {
+async fn test_payment_success_invoice_email() -> Result<(), Error> {
 	send_email(PaymentSuccessInvoiceEmail {
 		username: "username".to_owned(),
 		workspaceName: "workspaceName".to_owned(),
@@ -419,7 +419,7 @@ async fn test_payment_success_invoice_email_email() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_resource_deleted_email_email() -> Result<(), Error> {
+async fn test_resource_deleted_email() -> Result<(), Error> {
 	send_email(ResourceDeletedEmail {
 		workspaceName: "workspaceName".to_owned(),
 		resourceName: "resourceName".to_owned(),
@@ -447,6 +447,20 @@ async fn test_domain_verified_email() -> Result<(), Error> {
 		domainName: "domainName".to_owned(),
 		username: "username".to_owned(),
 		domainId: "domainId".to_owned(),
+	})
+	.await
+}
+
+#[tokio::test]
+async fn test_repo_storage_limit_exceed_email() -> Result<(), Error> {
+	send_email(RepositoryStorageLimitExceedEmail {
+		username: "username".to_string(),
+		workspaceName: "workspace_name".to_string(),
+		repositoryName: "registry.patr.cloud/workspace_id/repository_name"
+			.to_string(),
+		tag: "tag".to_string(),
+		digest: "digest".to_string(),
+		ipAddress: "ip_address".to_string(),
 	})
 	.await
 }

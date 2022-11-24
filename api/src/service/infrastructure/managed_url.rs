@@ -17,7 +17,7 @@ use crate::{
 	error,
 	models::rbac,
 	service,
-	utils::{settings::Settings, Error},
+	utils::{constants::free_limits, settings::Settings, Error},
 	Database,
 };
 
@@ -40,21 +40,8 @@ pub async fn create_new_managed_url_in_workspace(
 
 	let managed_url_id = db::generate_new_resource_id(connection).await?;
 
-	log::trace!("request_id: {} - Checking resource limit", request_id);
-	if super::resource_limit_crossed(connection, workspace_id, request_id)
-		.await?
-	{
-		return Error::as_result()
-			.status(400)
-			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
-	}
-
-	log::trace!("request_id: {} - Checking managed_url limit", request_id);
-	if managed_url_limit_crossed(connection, workspace_id, request_id).await? {
-		return Error::as_result()
-			.status(400)
-			.body(error!(MANAGED_URL_LIMIT_EXCEEDED).to_string())?;
-	}
+	check_managed_url_creation_limit(connection, workspace_id, request_id)
+		.await?;
 
 	let creation_time = Utc::now();
 	log::trace!("request_id: {} - Creating resource.", request_id);
@@ -506,33 +493,60 @@ pub async fn verify_managed_url_configuration(
 	Ok(configured)
 }
 
-async fn managed_url_limit_crossed(
+async fn check_managed_url_creation_limit(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	request_id: &Uuid,
-) -> Result<bool, Error> {
-	log::trace!(
-		"request_id: {} - Checking if free limits are crossed",
-		request_id
-	);
+) -> Result<(), Error> {
+	log::trace!("request_id: {request_id} - Checking whether new managed url creation is limited");
 
-	let workspace = db::get_workspace_info(connection, workspace_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let current_managed_urls =
+	let current_managed_url_count =
 		db::get_all_managed_urls_in_workspace(connection, workspace_id)
 			.await?
 			.len();
 
-	log::trace!(
-		"request_id: {} - Checking if managed url limits are crossed",
-		request_id
-	);
-	if current_managed_urls + 1 > workspace.managed_url_limit as usize {
-		return Ok(true);
+	// check whether free limit is exceeded
+	if current_managed_url_count >= free_limits::MANAGED_URL_COUNT &&
+		db::get_default_payment_method_for_workspace(
+			connection,
+			workspace_id,
+		)
+		.await?
+		.is_none()
+	{
+		log::info!(
+			"request_id: {request_id} - Free managed url limit reached and card is not added"
+		);
+		return Error::as_result()
+			.status(400)
+			.body(error!(CARDLESS_FREE_LIMIT_EXCEEDED).to_string())?;
 	}
 
-	Ok(false)
+	// check whether max managed url limit is exceeded
+	let max_managed_url_limit =
+		db::get_workspace_info(connection, workspace_id)
+			.await?
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?
+			.managed_url_limit;
+	if current_managed_url_count >= max_managed_url_limit as usize {
+		log::info!(
+			"request_id: {request_id} - Max managed url limit for workspace reached"
+		);
+		return Error::as_result()
+			.status(400)
+			.body(error!(MANAGED_URL_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	// check whether total resource limit is exceeded
+	if super::resource_limit_crossed(connection, workspace_id, request_id)
+		.await?
+	{
+		log::info!("request_id: {request_id} - Total resource limit exceeded");
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	Ok(())
 }

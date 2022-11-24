@@ -763,3 +763,44 @@ pub async fn domain_verification_email(
 	}
 	Ok(())
 }
+
+pub async fn send_repository_storage_limit_exceed_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	repository_name: &str,
+	tag: &str,
+	digest: &str,
+	ip_address: &str,
+) -> Result<(), Error> {
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
+
+	let user = db::get_user_by_user_id(connection, &workspace.super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_repository_storage_limit_exceed_email(
+		user_email.parse()?,
+		&user.first_name,
+		&workspace.name,
+		&format!("registry.patr.cloud/{}/{}", workspace_id, repository_name),
+		tag,
+		digest,
+		ip_address,
+	)
+	.await
+}

@@ -7,7 +7,7 @@ use crate::{
 	error,
 	models::rbac,
 	service::infrastructure::digitalocean,
-	utils::{settings::Settings, validator, Error},
+	utils::{constants::free_limits, settings::Settings, validator, Error},
 	Database,
 };
 
@@ -66,21 +66,7 @@ pub async fn create_managed_database_in_workspace(
 	};
 	let num_nodes = num_nodes.unwrap_or(1);
 
-	log::trace!("request_id: {} - Checking resource limit", request_id);
-	if super::resource_limit_crossed(connection, workspace_id, request_id)
-		.await?
-	{
-		return Error::as_result()
-			.status(400)
-			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
-	}
-
-	log::trace!("request_id: {} - Checking database limit", request_id);
-	if database_limit_crossed(connection, workspace_id, request_id).await? {
-		return Error::as_result()
-			.status(400)
-			.body(error!(DATABASE_LIMIT_EXCEEDED).to_string())?;
-	}
+	check_database_creation_limit(connection, workspace_id, request_id).await?;
 
 	let creation_time = Utc::now();
 
@@ -206,33 +192,60 @@ pub async fn delete_managed_database(
 	Ok(())
 }
 
-async fn database_limit_crossed(
+async fn check_database_creation_limit(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	request_id: &Uuid,
-) -> Result<bool, Error> {
-	log::trace!(
-		"request_id: {} - Checking if free limits are crossed",
-		request_id
-	);
+) -> Result<(), Error> {
+	log::trace!("request_id: {request_id} - Checking whether new database creation is limited");
 
-	let workspace = db::get_workspace_info(connection, workspace_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let current_databases =
+	let current_database_count =
 		db::get_all_database_clusters_for_workspace(connection, workspace_id)
 			.await?
 			.len();
 
-	log::trace!(
-		"request_id: {} - Checking if database limits are crossed",
-		request_id
-	);
-	if current_databases + 1 > workspace.database_limit as usize {
-		return Ok(true);
+	// check whether free limit is exceeded
+	#[allow(clippy::absurd_extreme_comparisons)]
+	if current_database_count >= free_limits::DATABASE_COUNT &&
+		db::get_default_payment_method_for_workspace(
+			connection,
+			workspace_id,
+		)
+		.await?
+		.is_none()
+	{
+		log::info!(
+			"request_id: {request_id} - Free database limit reached and card is not added"
+		);
+		return Error::as_result()
+			.status(400)
+			.body(error!(CARDLESS_FREE_LIMIT_EXCEEDED).to_string())?;
 	}
 
-	Ok(false)
+	// check whether max database limit is exceeded
+	let max_database_limit = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+		.database_limit;
+	if current_database_count >= max_database_limit as usize {
+		log::info!(
+			"request_id: {request_id} - Max database limit for workspace reached"
+		);
+		return Error::as_result()
+			.status(400)
+			.body(error!(DATABASE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	// check whether total resource limit is exceeded
+	if super::resource_limit_crossed(connection, workspace_id, request_id)
+		.await?
+	{
+		log::info!("request_id: {request_id} - Total resource limit exceeded");
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	Ok(())
 }
