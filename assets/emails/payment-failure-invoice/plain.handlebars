@@ -1,6 +1,6 @@
 Hello {{username}}, 
 
-Payment for your billing period {{stringify-month billBreakdown.month}} {{billBreakdown.year}} amounting to {{cents-to-dollars billBreakdown.totalCharge}} for the workspace {{workspaceName}} was unsuccessful. 
+Payment for your billing period {{stringify-month billBreakdown.month}} {{billBreakdown.year}} amounting to ${{cents-to-dollars billBreakdown.totalCharge}} for the workspace {{workspaceName}} was unsuccessful. 
 
 Detailed Charges Deployment Usage:
 Detailed Charges Deployment Usage:
@@ -9,7 +9,7 @@ Detailed Charges Deployment Usage:
   {{#each this.deploymentBill}}
     Machine Type: {{this.machineType.cpuCount}}vCPU {{this.machineType.memoryCount}}GB RAM 
     Number of Instances: {{this.numInstances}}
-    Monthly Charge: {{this.monthlyCharge}}
+    Monthly Charge: ${{cents-to-dollars this.monthlyCharge}}
     From: {{this.startTime}}
     {{#if this.stopTime}}
     Till: {{this.stopTime}}
@@ -17,13 +17,13 @@ Detailed Charges Deployment Usage:
     Till: Present
     {{/if}}
     Hours used: {{this.hours}}
-    Bill Amount: {{this.amount}}
+    Bill Amount: ${{this.amount}}
   {{/each}}
 {{/each}}
 Database Usage:
 {{#each billBreakdown.databaseUsage}}
   Name: {{this.name}}
-  Monthly Charge: {{this.monthlyCharge}}
+  Monthly Charge: ${{cents-to-dollars this.monthlyCharge}}
   From: {{this.startTime}}
   {{#if this.deletionTime}}
   Till: {{this.deletionTime}}
@@ -31,12 +31,12 @@ Database Usage:
   Till: Present
   {{/if}}
   Hours used: {{this.hours}}
-  Bill Amount: {{this.amount}}
+  Bill Amount: ${{this.amount}}
 {{/each}}
 Static Site Usage:
 {{#each billBreakdown.staticSiteUsage}}
   Plan: {{this.plan}}
-  Monthly Charge: {{this.monthlyCharge}}
+  Monthly Charge: ${{cents-to-dollars this.monthlyCharge}}
   From: {{this.startTime}}
   {{#if this.stopTime}}
   Till: {{this.stopTime}}
@@ -44,12 +44,12 @@ Static Site Usage:
   Till: Present
   {{/if}}
   Hours used: {{this.hours}}
-  Bill Amount: {{this.amount}}
+  Bill Amount: ${{this.amount}}
 {{/each}}
 Managed URL Usage:
 {{#each billBreakdown.managedUrlUsage}}
   Plan: {{this.plan}}
-  Monthly Charge: {{this.monthlyCharge}}
+  Monthly Charge: ${{cents-to-dollars this.monthlyCharge}}
   From: {{this.startTime}}
   {{#if this.stopTime}}
   Till: {{this.stopTime}}
@@ -57,12 +57,12 @@ Managed URL Usage:
   Till: Present
   {{/if}}
   Hours used: {{this.hours}}
-  Bill Amount: {{this.amount}}
+  Bill Amount: ${{this.amount}}
 {{/each}}
 Docker Repository Usage:
 {{#each billBreakdown.dockerRepositoryUsage}}
   Plan: {{this.plan}}
-  Monthly Charge: {{this.monthlyCharge}}
+  Monthly Charge: ${{cents-to-dollars this.monthlyCharge}}
   From: {{this.startTime}}
   {{#if this.stopTime}}
   Till: {{this.stopTime}}
@@ -70,12 +70,12 @@ Docker Repository Usage:
   Till: Present
   {{/if}}
   Hours used: {{this.hours}}
-  Bill Amount: {{this.amount}}
+  Bill Amount: ${{this.amount}}
 {{/each}}
 Domain Usage:
 {{#each billBreakdown.domainUsage}}
   Plan: {{this.plan}}
-  Monthly Charge: {{this.monthlyCharge}}
+  Monthly Charge: ${{cents-to-dollars this.monthlyCharge}}
   From: {{this.startTime}}
   {{#if this.stopTime}}
   Till: {{this.stopTime}}
@@ -83,12 +83,12 @@ Domain Usage:
   Till: Present
   {{/if}}
   Hours used: {{this.hours}}
-  Bill Amount: {{this.amount}}
+  Bill Amount: ${{this.amount}}
 {{/each}}
 Secret Usage:
 {{#each billBreakdown.secretUsage}}
   Plan: {{this.plan}}
-  Monthly Charge: {{this.monthlyCharge}}
+  Monthly Charge: ${{cents-to-dollars this.monthlyCharge}}
   From: {{this.startTime}}
   {{#if this.stopTime}}
   Till: {{this.stopTime}}
@@ -96,7 +96,7 @@ Secret Usage:
   Till: Present
   {{/if}}
   Hours used: {{this.hours}}
-  Bill Amount: {{this.amount}}
+  Bill Amount: ${{this.amount}}
 {{/each}}
 
 We will automatically attempt to charge your card again within 24 to 48 hours.
