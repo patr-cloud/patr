@@ -989,7 +989,7 @@ async fn make_payment(
 	let transaction_id = service::make_payment(
 		context.get_database_connection(),
 		&workspace_id,
-		amount,
+		amount.into(),
 		&config,
 	)
 	.await?;
