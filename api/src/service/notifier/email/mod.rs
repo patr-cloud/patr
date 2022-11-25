@@ -600,6 +600,62 @@ pub async fn send_repository_storage_limit_exceed_email(
 	.await
 }
 
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/purchase-credits-success/template.json"]
+#[serde(rename_all = "camelCase")]
+struct PurchaseCreditsSuccessEmail {
+	username: String,
+	workspace_name: String,
+	credits_in_cents: u64,
+}
+
+pub async fn send_purchase_credits_success_email(
+	email: Mailbox,
+	username: &str,
+	workspace_name: &str,
+	credits_in_cents: u64,
+) -> Result<(), Error> {
+	send_email(
+		PurchaseCreditsSuccessEmail {
+			username: username.to_owned(),
+			workspace_name: workspace_name.to_owned(),
+			credits_in_cents,
+		},
+		email,
+		None,
+		"Patr credits successfully added",
+	)
+	.await
+}
+
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/payment-success/template.json"]
+#[serde(rename_all = "camelCase")]
+struct PaymentSuccessEmail {
+	username: String,
+	workspace_name: String,
+	amount_in_cents: u64,
+}
+
+pub async fn send_payment_success_email(
+	email: Mailbox,
+	username: &str,
+	workspace_name: &str,
+	amount_in_cents: u64,
+) -> Result<(), Error> {
+	send_email(
+		PaymentSuccessEmail {
+			username: username.to_owned(),
+			workspace_name: workspace_name.to_owned(),
+			amount_in_cents,
+		},
+		email,
+		None,
+		"Patr payment successful",
+	)
+	.await
+}
+
 /// # Description
 /// This function is used to send the email to a recipient
 ///

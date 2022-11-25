@@ -608,8 +608,8 @@ pub(super) async fn process_request(
 
 			let (
 				card_amount_to_be_charged_in_cents,
-				credits_deducted_in_cents,
-				credits_remaining_in_cents,
+				_credits_deducted_in_cents,
+				_credits_remaining_in_cents,
 			) = match amount_due_in_cents {
 				TotalAmount::CreditsLeft(credits_left) => {
 					(0, total_bill.total_charge, credits_left)
@@ -641,48 +641,10 @@ pub(super) async fn process_request(
 			};
 
 			if card_amount_to_be_charged_in_cents == 0 {
-				let billing_address = if let Some(address) =
-					workspace.address_id
-				{
-					let address = db::get_billing_address(connection, &address)
-						.await?
-						.status(500)?;
+				// the notification for payment success will be sent whenever
+				// the user has made a payment, so no need to send it again when
+				// confirming it in rabbitmq
 
-					Address {
-						first_name: address.first_name,
-						last_name: address.last_name,
-						address_line_1: address.address_line_1,
-						address_line_2: address.address_line_2,
-						address_line_3: address.address_line_3,
-						city: address.city,
-						state: address.state,
-						zip: address.zip,
-						country: address.country,
-					}
-				} else {
-					Address {
-						first_name: "".to_string(),
-						last_name: "".to_string(),
-						address_line_1: "".to_string(),
-						address_line_2: None,
-						address_line_3: None,
-						city: "".to_string(),
-						state: "".to_string(),
-						zip: "".to_string(),
-						country: "".to_string(),
-					}
-				};
-				service::send_payment_success_invoice_notification(
-					connection,
-					&workspace.super_admin_id,
-					workspace_name,
-					total_bill,
-					billing_address,
-					credits_deducted_in_cents,
-					card_amount_to_be_charged_in_cents,
-					credits_remaining_in_cents,
-				)
-				.await?;
 				return Ok(());
 			}
 

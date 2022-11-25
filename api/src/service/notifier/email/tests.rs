@@ -40,7 +40,9 @@ use super::{
 	PasswordChangedEmail,
 	PasswordResetEmail,
 	PaymentFailureInvoiceEmail,
+	PaymentSuccessEmail,
 	PaymentSuccessInvoiceEmail,
+	PurchaseCreditsSuccessEmail,
 	RecoveryNotificationEmail,
 	RepositoryStorageLimitExceedEmail,
 	ResourceDeletedEmail,
@@ -493,6 +495,26 @@ async fn test_repo_storage_limit_exceed_email() -> Result<(), Error> {
 		tag: "tag".to_string(),
 		digest: "digest".to_string(),
 		ip_address: "ip_address".to_string(),
+	})
+	.await
+}
+
+#[tokio::test]
+async fn test_purchase_credits_success_email() -> Result<(), Error> {
+	send_email(PurchaseCreditsSuccessEmail {
+		username: "username".to_owned(),
+		workspace_name: "workspace_name".to_owned(),
+		credits_in_cents: 23452345,
+	})
+	.await
+}
+
+#[tokio::test]
+async fn test_payment_success_email() -> Result<(), Error> {
+	send_email(PaymentSuccessEmail {
+		username: "username".to_owned(),
+		workspace_name: "workspace_name".to_owned(),
+		amount_in_cents: 23452345,
 	})
 	.await
 }

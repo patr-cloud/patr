@@ -1,10 +1,7 @@
 mod ci;
 
 use api_models::{
-	models::workspace::{
-		billing::PaymentStatus,
-		infrastructure::deployment::DeploymentStatus,
-	},
+	models::workspace::infrastructure::deployment::DeploymentStatus,
 	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
@@ -53,11 +50,6 @@ pub fn create_sub_app(
 	sub_app.post(
 		"/docker-registry/notification",
 		[EveMiddleware::CustomFunction(pin_fn!(notification_handler))],
-	);
-
-	sub_app.post(
-		"/stripe-webhook",
-		[EveMiddleware::CustomFunction(pin_fn!(stripe_webhook))],
 	);
 
 	sub_app.use_sub_app("/ci", ci::create_sub_app(app));
@@ -361,43 +353,6 @@ async fn notification_handler(
 			.await?;
 		}
 	}
-
-	Ok(context)
-}
-
-async fn stripe_webhook(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let payment_intent = context.get_body_object();
-
-	fn get_payment_intent_details_of_event(
-		event: &serde_json::Value,
-	) -> Option<(String, String)> {
-		let intent = event.as_object()?.get("data")?.as_object()?;
-		if intent.get("object")?.as_str()? == "payment_intent" {
-			Some((
-				intent.get("id")?.as_str()?.to_string(),
-				intent.get("status")?.as_str()?.to_string(),
-			))
-		} else {
-			None
-		}
-	}
-
-	let (id, status) =
-		get_payment_intent_details_of_event(payment_intent).status(500)?;
-
-	db::update_transaction_status_for_payment_id(
-		context.get_database_connection(),
-		&id,
-		&if status == "succeeded" {
-			PaymentStatus::Success
-		} else {
-			PaymentStatus::Failed
-		},
-	)
-	.await?;
 
 	Ok(context)
 }
