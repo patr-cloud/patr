@@ -1063,6 +1063,8 @@ async fn get_bill_breakdown(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
@@ -1070,6 +1072,13 @@ async fn get_bill_breakdown(
 		.get_query_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	log::trace!(
+		"request_id: {} getting bill breakdown for month: {} and year: {}",
+		request_id,
+		month,
+		year
+	);
 
 	let month_start_date = Utc
 		.with_ymd_and_hms(year as i32, month, 1, 0, 0, 0)
@@ -1094,6 +1103,7 @@ async fn get_bill_breakdown(
 		&month_end_date,
 		year,
 		month,
+		&request_id,
 	)
 	.await?;
 

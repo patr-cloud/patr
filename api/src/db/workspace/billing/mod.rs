@@ -435,7 +435,8 @@ pub async fn get_all_deployment_usage(
 			deployment_payment_history
 		WHERE
 			workspace_id = $1 AND
-			(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3);
+			(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3)
+			ORDER BY start_time ASC;
 		"#,
 		workspace_id as _,
 		month_start_date as _,
@@ -464,7 +465,8 @@ pub async fn get_all_database_usage(
 			managed_database_payment_history
 		WHERE
 			workspace_id = $1 AND
-			(start_time, COALESCE(deletion_time, NOW())) OVERLAPS ($2, $3);
+			(start_time, COALESCE(deletion_time, NOW())) OVERLAPS ($2, $3)
+			ORDER BY start_time ASC;
 		"#,
 		workspace_id as _,
 		start_date as _,
@@ -492,7 +494,8 @@ pub async fn get_all_static_site_usages(
 			static_sites_payment_history
 		WHERE
 			workspace_id = $1 AND
-			(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3);
+			(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3)
+			ORDER BY start_time ASC;
 		"#,
 		workspace_id as _,
 		start_date as _,
@@ -520,7 +523,8 @@ pub async fn get_all_managed_url_usages(
 			managed_url_payment_history
 		WHERE
 			workspace_id = $1 AND
-			(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3);
+			(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3)
+			ORDER BY start_time ASC;
 		"#,
 		workspace_id as _,
 		start_date as _,
@@ -547,7 +551,8 @@ pub async fn get_all_docker_repository_usages(
 			docker_repo_payment_history
 		WHERE
 			workspace_id = $1 AND
-			(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3);
+			(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3)
+			ORDER BY start_time ASC;
 		"#,
 		workspace_id as _,
 		start_date as _,
@@ -574,7 +579,8 @@ pub async fn get_all_domains_usages(
 			domain_payment_history
 		WHERE
 			workspace_id = $1 AND
-			(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3);
+			(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3)
+			ORDER BY start_time ASC;
 			"#,
 		workspace_id as _,
 		start_date as _,
@@ -602,7 +608,8 @@ pub async fn get_all_secrets_usages(
 			secrets_payment_history
 		WHERE
 			workspace_id = $1 AND
-			(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3);
+			(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3)
+			ORDER BY start_time ASC;
 		"#,
 		workspace_id as _,
 		month_start_date as _,
