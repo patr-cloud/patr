@@ -348,7 +348,9 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 			&deployment_usage.deployment_id,
 		)
 		.await?
-		.status(500)?;
+		.status(500)?; // If deployment_id is presnt in usage table the it should be in the
+			   // deployment table as well, otherwise this is something wrong with our
+			   // logic
 
 		let price_in_dollars = if (*cpu_count, *memory_count) == (1, 2) &&
 			deployment_usage.num_instance == 1
