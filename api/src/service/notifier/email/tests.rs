@@ -274,6 +274,7 @@ async fn test_payment_failure_invoice_email() -> Result<(), Error> {
 				amount: 3200,
 				is_deleted: false,
 				monthly_charge: 3200,
+				plan: "micro".to_string(),
 			}],
 			static_site_charge: 3200,
 			static_site_usage: vec![StaticSiteUsage {
@@ -383,6 +384,7 @@ async fn test_payment_success_invoice_email() -> Result<(), Error> {
 				amount: 3200,
 				is_deleted: false,
 				monthly_charge: 3200,
+				plan: "micro".to_string(),
 			}],
 			static_site_charge: 3200,
 			static_site_usage: vec![StaticSiteUsage {
