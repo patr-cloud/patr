@@ -13,7 +13,7 @@
         href="https://app.patr.cloud/workspace?showDetailedCharges=true&month={{billBreakdown.month}}&year={{billBreakdown.year}}"
         class="plain-link txt-primary txt-bold"
         style="color: #f89b41; text-decoration: none; font-weight: 600;"
-      >${{billBreakdown.totalCharge}}</a>
+      >${{cents-to-dollars billBreakdown.totalCharge}}</a>
       for the workspace
       <strong
         class="txt-light"
@@ -44,7 +44,7 @@
     <strong
         class="txt-light"
         style="color: #ffffff"
-    >${{billBreakdown.totalCharge}}</strong>
+    >${{cents-to-dollars billBreakdown.totalCharge}}</strong>
     </td>
   </tr>
   <tr>

@@ -1,11 +1,11 @@
-use std::{collections::BTreeMap, sync::Once};
+use std::sync::Once;
 
 use api_models::{
 	models::workspace::{
 		billing::{
 			Address,
 			DatabaseUsage,
-			DeploymentBills,
+			DeploymentBill,
 			DeploymentUsage,
 			DockerRepositoryUsage,
 			DomainPlan,
@@ -18,7 +18,7 @@ use api_models::{
 		},
 		infrastructure::list_all_deployment_machine_type::DeploymentMachineType,
 	},
-	utils::Uuid,
+	utils::{DateTime, Uuid},
 };
 use lettre::{
 	transport::smtp::authentication::Credentials,
@@ -237,73 +237,89 @@ async fn test_payment_failure_invoice_email() -> Result<(), Error> {
 			month: 5,
 			total_charge: 22400,
 			deployment_charge: 3200,
-			deployment_usage: BTreeMap::from([(
-				Uuid::parse_str("d5727fb4-9e6b-43df-8a46-0c698340fffb")
-					.unwrap(),
-				DeploymentUsage {
-					name: "test-deplo".to_string(),
-					bill_items: vec![DeploymentBills {
-						machine_type: DeploymentMachineType {
-							id: Uuid::parse_str(
-								"d5727fb4-9e6b-43df-8a46-0c698340fffb",
-							)
-							.unwrap(),
-							cpu_count: 1,
-							memory_count: 2,
-						},
-						num_instances: 2,
-						hours: 720,
-						amount: 3200,
-					}],
-				},
-			)]),
+			deployment_usage: vec![DeploymentUsage {
+				name: "test-deplo".to_string(),
+				deployment_id: Uuid::parse_str(
+					"d5727fb4-9e6b-43df-8a46-0c698340fffb",
+				)
+				.unwrap(),
+				is_deleted: false,
+				deployment_bill: vec![DeploymentBill {
+					start_time: DateTime::default(),
+					stop_time: Some(DateTime::default()),
+					machine_type: DeploymentMachineType {
+						id: Uuid::parse_str(
+							"d5727fb4-9e6b-43df-8a46-0c698340fffb",
+						)
+						.unwrap(),
+						cpu_count: 1,
+						memory_count: 2,
+					},
+					amount: 3200,
+					num_instances: 2,
+					hours: 720,
+					monthly_charge: 3200,
+				}],
+			}],
 			database_charge: 3200,
-			database_usage: BTreeMap::from([(
-				Uuid::parse_str("d5727fb4-9e6b-43df-8a46-0c698340fffb")
-					.unwrap(),
-				DatabaseUsage {
-					name: "mydb".to_string(),
-					hours: 720,
-					amount: 3200,
-				},
-			)]),
-			static_site_charge: 3200,
-			static_site_usage: BTreeMap::from([(
-				StaticSitePlan::Pro,
-				StaticSiteUsage {
-					hours: 720,
-					amount: 3200,
-				},
-			)]),
-			domain_charge: 3200,
-			domain_usage: BTreeMap::from([(
-				DomainPlan::Free,
-				DomainUsage {
-					hours: 720,
-					amount: 3200,
-				},
-			)]),
-			managed_url_charge: 3200,
-			managed_url_usage: BTreeMap::from([(
-				5,
-				ManagedUrlUsage {
-					hours: 720,
-					amount: 3200,
-				},
-			)]),
-			secret_charge: 3200,
-			secret_usage: BTreeMap::from([(
-				5,
-				SecretUsage {
-					hours: 720,
-					amount: 3200,
-				},
-			)]),
-			docker_repository_charge: 3200,
-			docker_repository_usage: vec![DockerRepositoryUsage {
-				storage: 10,
+			database_usage: vec![DatabaseUsage {
+				start_time: DateTime::default(),
+				deletion_time: Some(DateTime::default()),
+				database_id: Uuid::parse_str(
+					"d5727fb4-9e6b-43df-8a46-0c698340fffb",
+				)
+				.unwrap(),
+				name: "mydb".to_string(),
 				hours: 720,
 				amount: 3200,
+				is_deleted: false,
+				monthly_charge: 3200,
+				plan: "micro".to_string(),
+			}],
+			static_site_charge: 3200,
+			static_site_usage: vec![StaticSiteUsage {
+				start_time: DateTime::default(),
+				stop_time: Some(DateTime::default()),
+				plan: StaticSitePlan::Free,
+				hours: 720,
+				amount: 3200,
+				monthly_charge: 3200,
+			}],
+			domain_charge: 3200,
+			domain_usage: vec![DomainUsage {
+				start_time: DateTime::default(),
+				stop_time: Some(DateTime::default()),
+				plan: DomainPlan::Free,
+				hours: 720,
+				amount: 3200,
+				monthly_charge: 3200,
+			}],
+			managed_url_charge: 3200,
+			managed_url_usage: vec![ManagedUrlUsage {
+				start_time: DateTime::default(),
+				stop_time: Some(DateTime::default()),
+				plan: "overused".to_string(),
+				hours: 720,
+				amount: 3200,
+				monthly_charge: 3200,
+			}],
+			secret_charge: 3200,
+			secret_usage: vec![SecretUsage {
+				start_time: DateTime::default(),
+				stop_time: Some(DateTime::default()),
+				plan: "overused".to_string(),
+				hours: 720,
+				amount: 3200,
+				monthly_charge: 3200,
+			}],
+			docker_repository_charge: 3200,
+			docker_repository_usage: vec![DockerRepositoryUsage {
+				start_time: DateTime::default(),
+				stop_time: Some(DateTime::default()),
+				plan: "overused".to_string(),
+				hours: 720,
+				amount: 3200,
+				monthly_charge: 3200,
 			}],
 		},
 		billing_address: Address {
@@ -331,73 +347,89 @@ async fn test_payment_success_invoice_email() -> Result<(), Error> {
 			month: 5,
 			total_charge: 22400,
 			deployment_charge: 3200,
-			deployment_usage: BTreeMap::from([(
-				Uuid::parse_str("d5727fb4-9e6b-43df-8a46-0c698340fffb")
-					.unwrap(),
-				DeploymentUsage {
-					name: "test-deplo".to_string(),
-					bill_items: vec![DeploymentBills {
-						machine_type: DeploymentMachineType {
-							id: Uuid::parse_str(
-								"d5727fb4-9e6b-43df-8a46-0c698340fffb",
-							)
-							.unwrap(),
-							cpu_count: 1,
-							memory_count: 2,
-						},
-						num_instances: 2,
-						hours: 720,
-						amount: 3200,
-					}],
-				},
-			)]),
+			deployment_usage: vec![DeploymentUsage {
+				name: "test-deplo".to_string(),
+				deployment_id: Uuid::parse_str(
+					"d5727fb4-9e6b-43df-8a46-0c698340fffb",
+				)
+				.unwrap(),
+				is_deleted: false,
+				deployment_bill: vec![DeploymentBill {
+					start_time: DateTime::default(),
+					stop_time: Some(DateTime::default()),
+					machine_type: DeploymentMachineType {
+						id: Uuid::parse_str(
+							"d5727fb4-9e6b-43df-8a46-0c698340fffb",
+						)
+						.unwrap(),
+						cpu_count: 1,
+						memory_count: 2,
+					},
+					amount: 3200,
+					num_instances: 2,
+					hours: 720,
+					monthly_charge: 3200,
+				}],
+			}],
 			database_charge: 3200,
-			database_usage: BTreeMap::from([(
-				Uuid::parse_str("d5727fb4-9e6b-43df-8a46-0c698340fffb")
-					.unwrap(),
-				DatabaseUsage {
-					name: "mydb".to_string(),
-					hours: 720,
-					amount: 3200,
-				},
-			)]),
-			static_site_charge: 3200,
-			static_site_usage: BTreeMap::from([(
-				StaticSitePlan::Pro,
-				StaticSiteUsage {
-					hours: 720,
-					amount: 3200,
-				},
-			)]),
-			domain_charge: 3200,
-			domain_usage: BTreeMap::from([(
-				DomainPlan::Free,
-				DomainUsage {
-					hours: 720,
-					amount: 3200,
-				},
-			)]),
-			managed_url_charge: 3200,
-			managed_url_usage: BTreeMap::from([(
-				5,
-				ManagedUrlUsage {
-					hours: 720,
-					amount: 3200,
-				},
-			)]),
-			secret_charge: 3200,
-			secret_usage: BTreeMap::from([(
-				5,
-				SecretUsage {
-					hours: 720,
-					amount: 3200,
-				},
-			)]),
-			docker_repository_charge: 3200,
-			docker_repository_usage: vec![DockerRepositoryUsage {
-				storage: 10,
+			database_usage: vec![DatabaseUsage {
+				start_time: DateTime::default(),
+				deletion_time: Some(DateTime::default()),
+				database_id: Uuid::parse_str(
+					"d5727fb4-9e6b-43df-8a46-0c698340fffb",
+				)
+				.unwrap(),
+				name: "mydb".to_string(),
 				hours: 720,
 				amount: 3200,
+				is_deleted: false,
+				monthly_charge: 3200,
+				plan: "micro".to_string(),
+			}],
+			static_site_charge: 3200,
+			static_site_usage: vec![StaticSiteUsage {
+				start_time: DateTime::default(),
+				stop_time: Some(DateTime::default()),
+				plan: StaticSitePlan::Free,
+				hours: 720,
+				amount: 3200,
+				monthly_charge: 3200,
+			}],
+			domain_charge: 3200,
+			domain_usage: vec![DomainUsage {
+				start_time: DateTime::default(),
+				stop_time: Some(DateTime::default()),
+				plan: DomainPlan::Free,
+				hours: 720,
+				amount: 3200,
+				monthly_charge: 3200,
+			}],
+			managed_url_charge: 3200,
+			managed_url_usage: vec![ManagedUrlUsage {
+				start_time: DateTime::default(),
+				stop_time: Some(DateTime::default()),
+				plan: "overused".to_string(),
+				hours: 720,
+				amount: 3200,
+				monthly_charge: 3200,
+			}],
+			secret_charge: 3200,
+			secret_usage: vec![SecretUsage {
+				start_time: DateTime::default(),
+				stop_time: Some(DateTime::default()),
+				plan: "overused".to_string(),
+				hours: 720,
+				amount: 3200,
+				monthly_charge: 3200,
+			}],
+			docker_repository_charge: 3200,
+			docker_repository_usage: vec![DockerRepositoryUsage {
+				start_time: DateTime::default(),
+				stop_time: Some(DateTime::default()),
+				plan: "overused".to_string(),
+				hours: 720,
+				amount: 3200,
+				monthly_charge: 3200,
 			}],
 		},
 		billing_address: Address {

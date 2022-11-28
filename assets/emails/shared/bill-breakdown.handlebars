@@ -58,14 +58,21 @@
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Usage
+                      Monthly Charge
                     </th>
                     <th
                       class="txt-light px-md py-sm txt-center"
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Charges
+                      Hours Used
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Bill Amount
                     </th>
                   </thead>
                   <tbody>
@@ -76,12 +83,16 @@
                           style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                           align="center"
                         >
-                          <a
-                            href="https://app.patr.cloud/deployment/{{@key}}"
-                            class="plain-link txt-primary"
-                            title="Open on Patr"
-                            style="color: #f89b41; text-decoration: none; font-weight: 500;"
-                          >{{this.name}}</a>
+                          {{#if this.isDeleted}}
+                            {{this.name}}
+                          {{else}}
+                            <a
+                              href="https://app.patr.cloud/deployment/{{this.deploymentId}}"
+                              class="plain-link txt-primary"
+                              title="Open on Patr"
+                              style="color: #f89b41; text-decoration: none; font-weight: 500;"
+                            >{{this.name}}</a>
+                          {{/if}}
                         </td>
                         <td
                           class="txt-light px-md py-xs txt-center"
@@ -90,7 +101,7 @@
                         >
                           <table class="full-width" style="width: 100%">
                             <tbody>
-                              {{#each this.billItems}}
+                              {{#each this.deploymentBill}}
                                 <tr>
                                   <td
                                     class="txt-light"
@@ -112,7 +123,7 @@
                         >
                           <table class="full-width" style="width: 100%">
                             <tbody>
-                              {{#each this.billItems}}
+                              {{#each this.deploymentBill}}
                                 <tr>
                                   <td
                                     class="txt-light"
@@ -133,14 +144,14 @@
                         >
                           <table class="full-width" style="width: 100%">
                             <tbody>
-                              {{#each this.billItems}}
+                              {{#each this.deploymentBill}}
                                 <tr>
                                   <td
                                     class="txt-light"
                                     style="color: #ffffff;text-align: center"
                                     align="center"
                                   >
-                                    {{this.hours}}hr
+                                    ${{cents-to-dollars this.monthlyCharge}}
                                   </td>
                                 </tr>
                               {{/each}}
@@ -154,14 +165,35 @@
                         >
                           <table class="full-width" style="width: 100%">
                             <tbody>
-                              {{#each this.billItems}}
+                              {{#each this.deploymentBill}}
                                 <tr>
                                   <td
                                     class="txt-light"
                                     style="color: #ffffff;text-align: center"
                                     align="center"
                                   >
-                                    ${{this.amount}}
+                                    {{this.hours}}
+                                  </td>
+                                </tr>
+                              {{/each}}
+                            </tbody>
+                          </table>
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          <table class="full-width" style="width: 100%">
+                            <tbody>
+                              {{#each this.deploymentBill}}
+                                <tr>
+                                  <td
+                                    class="txt-light"
+                                    style="color: #ffffff;text-align: center"
+                                    align="center"
+                                  >
+                                    ${{cents-to-dollars this.amount}}
                                   </td>
                                 </tr>
                               {{/each}}
@@ -176,7 +208,7 @@
                       bgcolor="#2e2450"
                     >
                       <td
-                        colspan="4"
+                        colspan="5"
                         class="txt-light txt-right px-md py-xs"
                         style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff; text-align: right"
                         align="right"
@@ -187,7 +219,7 @@
                         class="txt-primary px-md py-xs txt-center"
                         style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                         align="center"
-                      >${{billBreakdown.deploymentCharge}}</td>
+                      >${{cents-to-dollars billBreakdown.deploymentCharge}}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -239,14 +271,21 @@
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Usage
+                      Monthly Charge
                     </th>
                     <th
                       class="txt-light px-md py-sm txt-center"
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Charges
+                      Hours Used
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Bill Amount
                     </th>
                   </thead>
                   <tbody>
@@ -257,12 +296,23 @@
                           style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                           align="center"
                         >
-                          <a
-                            href="https://app.patr.cloud/database/{{@key}}"
-                            class="plain-link txt-primary"
-                            title="Open on Patr"
-                            style="color: #f89b41; text-decoration: none; font-weight: 500;"
-                          >{{this.name}}</a>
+                          {{#if this.isDeleted}}
+                            {{this.name}}
+                          {{else}}
+                            <a
+                              href="https://app.patr.cloud/database/{{this.databaseId}}"
+                              class="plain-link txt-primary"
+                              title="Open on Patr"
+                              style="color: #f89b41; text-decoration: none; font-weight: 500;"
+                            >{{this.name}}</a>
+                          {{/if}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          ${{cents-to-dollars this.monthlyCharge}}
                         </td>
                         <td
                           class="txt-light px-md py-xs txt-center"
@@ -276,7 +326,7 @@
                           style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                           align="center"
                         >
-                          ${{this.amount}}
+                          ${{cents-to-dollars this.amount}}
                         </td>
                       </tr>
                     {{/each}}
@@ -286,7 +336,7 @@
                       bgcolor="#2e2450"
                     >
                       <td
-                        colspan="2"
+                        colspan="3"
                         class="txt-light px-md py-xs txt-right"
                         style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff; text-align: right"
                         align="right"
@@ -297,7 +347,7 @@
                         class="txt-primary px-md py-xs txt-center"
                         style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                         align="center"
-                      >${{billBreakdown.databaseCharge}}</td>
+                      >${{cents-to-dollars billBreakdown.databaseCharge}}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -349,14 +399,35 @@
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Usage
+                      Monthly Charge
                     </th>
                     <th
                       class="txt-light px-md py-sm txt-center"
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Charges
+                      From
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Till
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Hours Used
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Bill Amount
                     </th>
                   </thead>
                   <tbody>
@@ -367,21 +438,46 @@
                           style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                           align="center"
                         >
-                          {{@key}}
+                          {{this.plan}}
                         </td>
                         <td
                           class="txt-light px-md py-xs txt-center"
                           style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                           align="center"
                         >
-                          {{this.hours}}hr
+                          ${{cents-to-dollars this.monthlyCharge}}
                         </td>
                         <td
                           class="txt-light px-md py-xs txt-center"
                           style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                           align="center"
                         >
-                          ${{this.amount}}
+                          {{format-date this.startTime}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          {{#if this.stopTime}}
+                            {{format-date this.stopTime}}
+                          {{else}}
+                            Present
+                          {{/if}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          {{this.hours}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          ${{cents-to-dollars this.amount}}
                         </td>
                       </tr>
                     {{/each}}
@@ -391,7 +487,7 @@
                       bgcolor="#2e2450"
                     >
                       <td
-                        colspan="2"
+                        colspan="5"
                         class="txt-light txt-right px-md py-xs"
                         style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff; text-align: right"
                         align="right"
@@ -402,7 +498,7 @@
                         class="txt-primary px-md py-xs txt-center"
                         style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                         align="center"
-                      >${{billBreakdown.staticSiteCharge}}</td>
+                      >${{cents-to-dollars billBreakdown.staticSiteCharge}}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -454,14 +550,35 @@
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Usage
+                      Monthly Charge
                     </th>
                     <th
                       class="txt-light px-md py-sm txt-center"
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Charges
+                      From
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Till
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Hours Used
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Bill Amount
                     </th>
                   </thead>
                   <tbody>
@@ -472,21 +589,46 @@
                           style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                           align="center"
                         >
-                          {{@key}}
+                          {{this.plan}}
                         </td>
                         <td
                           class="txt-light px-md py-xs txt-center"
                           style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                           align="center"
                         >
-                          {{this.hours}}hr
+                          ${{cents-to-dollars this.monthlyCharge}}
                         </td>
                         <td
                           class="txt-light px-md py-xs txt-center"
                           style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                           align="center"
                         >
-                          ${{this.amount}}
+                          {{format-date this.startTime}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          {{#if this.stopTime}}
+                            {{format-date this.stopTime}}
+                          {{else}}
+                            Present
+                          {{/if}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          {{this.hours}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          ${{cents-to-dollars this.amount}}
                         </td>
                       </tr>
                     {{/each}}
@@ -496,7 +638,7 @@
                       bgcolor="#2e2450"
                     >
                       <td
-                        colspan="2"
+                        colspan="5"
                         class="txt-light txt-right px-md py-xs"
                         style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff; text-align: right"
                         align="right"
@@ -507,7 +649,7 @@
                         class="txt-primary px-md py-xs txt-center"
                         style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                         align="center"
-                      >${{billBreakdown.domainCharge}}</td>
+                      >${{cents-to-dollars billBreakdown.domainCharge}}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -552,21 +694,42 @@
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      No.of URLs
+                      Plan
                     </th>
                     <th
                       class="txt-light px-md py-sm txt-center"
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Usage
+                      Monthly Charge
                     </th>
                     <th
                       class="txt-light px-md py-sm txt-center"
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Charges
+                      From
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Till
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Hours Used
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Bill Amount
                     </th>
                   </thead>
                   <tbody>
@@ -577,21 +740,46 @@
                           style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                           align="center"
                         >
-                          {{@key}}
+                          {{this.plan}}
                         </td>
                         <td
                           class="txt-light px-md py-xs txt-center"
                           style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                           align="center"
                         >
-                          {{this.hours}}hr
+                          ${{cents-to-dollars this.monthlyCharge}}
                         </td>
                         <td
                           class="txt-light px-md py-xs txt-center"
                           style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                           align="center"
                         >
-                          ${{this.amount}}
+                          {{format-date this.startTime}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          {{#if this.stopTime}}
+                            {{format-date this.stopTime}}
+                          {{else}}
+                            Present
+                          {{/if}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          {{this.hours}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          ${{cents-to-dollars this.amount}}
                         </td>
                       </tr>
                     {{/each}}
@@ -601,7 +789,7 @@
                       bgcolor="#2e2450"
                     >
                       <td
-                        colspan="2"
+                        colspan="5"
                         class="txt-light px-md py-xs txt-right"
                         style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff; text-align: right"
                         align="right"
@@ -612,7 +800,7 @@
                         class="txt-primary px-md py-xs txt-center"
                         style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                         align="center"
-                      >${{billBreakdown.managedUrlCharge}}</td>
+                      >${{cents-to-dollars billBreakdown.managedUrlCharge}}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -657,21 +845,42 @@
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      No.of Secrets
+                      Plan
                     </th>
                     <th
                       class="txt-light px-md py-sm txt-center"
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Usage
+                      Monthly Charge
                     </th>
                     <th
                       class="txt-light px-md py-sm txt-center"
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Charges
+                      From
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Till
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Hours Used
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Bill Amount
                     </th>
                   </thead>
                   <tbody>
@@ -682,21 +891,46 @@
                           style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                           align="center"
                         >
-                          {{@key}}
+                          {{this.plan}}
                         </td>
                         <td
                           class="txt-light px-md py-xs txt-center"
                           style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                           align="center"
                         >
-                          {{this.hours}}hr
+                          ${{cents-to-dollars this.monthlyCharge}}
                         </td>
                         <td
                           class="txt-light px-md py-xs txt-center"
                           style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                           align="center"
                         >
-                          ${{this.amount}}
+                          {{format-date this.startTime}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          {{#if this.stopTime}}
+                            {{format-date this.stopTime}}
+                          {{else}}
+                            Present
+                          {{/if}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          {{this.hours}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          ${{cents-to-dollars this.amount}}
                         </td>
                       </tr>
                     {{/each}}
@@ -706,7 +940,7 @@
                       bgcolor="#2e2450"
                     >
                       <td
-                        colspan="2"
+                        colspan="5"
                         class="txt-light txt-right px-md py-xs"
                         style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff;text-align: right"
                         align="right"
@@ -717,7 +951,7 @@
                         class="txt-primary px-md py-xs txt-center"
                         style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                         align="center"
-                      >${{billBreakdown.secretCharge}}</td>
+                      >${{cents-to-dollars billBreakdown.secretCharge}}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -762,21 +996,42 @@
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Storage
+                      Plan
                     </th>
                     <th
                       class="txt-light px-md py-sm txt-center"
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Usage
+                      Monthly Charge
                     </th>
                     <th
                       class="txt-light px-md py-sm txt-center"
                       style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                       align="center"
                     >
-                      Charges
+                      From
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Till
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Hours Used
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Bill Amount
                     </th>
                   </thead>
                   <tbody>
@@ -787,21 +1042,46 @@
                           style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                           align="center"
                         >
-                          {{this.storage}}GB
+                          {{this.plan}}
                         </td>
                         <td
                           class="txt-light px-md py-xs txt-center"
                           style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                           align="center"
                         >
-                          {{this.hours}}hr
+                          ${{cents-to-dollars this.monthlyCharge}}
                         </td>
                         <td
                           class="txt-light px-md py-xs txt-center"
                           style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
                           align="center"
                         >
-                          ${{this.amount}}
+                          {{format-date this.startTime}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          {{#if this.stopTime}}
+                            {{format-date this.stopTime}}
+                          {{else}}
+                            Present
+                          {{/if}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          {{this.hours}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          ${{cents-to-dollars this.amount}}
                         </td>
                       </tr>
                     {{/each}}
@@ -811,7 +1091,7 @@
                       bgcolor="#2e2450"
                     >
                       <td
-                        colspan="2"
+                        colspan="5"
                         class="txt-light px-md py-xs txt-right"
                         style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff; text-align: right"
                         align="right"
@@ -822,7 +1102,9 @@
                         class="txt-primary px-md py-xs txt-center"
                         style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                         align="center"
-                      >${{billBreakdown.dockerRepositoryCharge}}</td>
+                      >${{cents-to-dollars
+                          billBreakdown.dockerRepositoryCharge
+                        }}</td>
                     </tr>
                   </tbody>
                 </table>

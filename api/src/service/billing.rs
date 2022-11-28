@@ -1,6 +1,6 @@
 use std::{
 	cmp::{max, min},
-	collections::BTreeMap,
+	collections::HashMap,
 	str::FromStr,
 };
 
@@ -8,7 +8,7 @@ use api_models::{
 	models::workspace::{
 		billing::{
 			DatabaseUsage,
-			DeploymentBills,
+			DeploymentBill,
 			DeploymentUsage,
 			DockerRepositoryUsage,
 			DomainPlan,
@@ -22,7 +22,10 @@ use api_models::{
 			TransactionType,
 			WorkspaceBillBreakdown,
 		},
-		infrastructure::list_all_deployment_machine_type::DeploymentMachineType,
+		infrastructure::{
+			deployment::DeploymentStatus,
+			list_all_deployment_machine_type::DeploymentMachineType,
+		},
 	},
 	utils::{DateTime, Uuid},
 };
@@ -50,6 +53,7 @@ use crate::{
 		self,
 		DomainPlan as DbDomainPlan,
 		ManagedDatabasePlan,
+		ManagedDatabaseStatus,
 		StaticSitePlan as DbStaticSitePlan,
 	},
 	error,
@@ -301,7 +305,7 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 	workspace_id: &Uuid,
 	month_start_date: &chrono::DateTime<Utc>,
 	till_date: &chrono::DateTime<Utc>,
-) -> Result<BTreeMap<Uuid, DeploymentUsage>, Error> {
+) -> Result<Vec<DeploymentUsage>, Error> {
 	let deployment_usages = db::get_all_deployment_usage(
 		&mut *connection,
 		workspace_id,
@@ -310,7 +314,7 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 	)
 	.await?;
 
-	let mut deployment_usage_bill = BTreeMap::new();
+	let mut deployment_usage_bill = HashMap::<Uuid, Vec<DeploymentBill>>::new();
 	let mut remaining_free_hours = 720;
 
 	for deployment_usage in deployment_usages {
@@ -357,21 +361,11 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 		let price_in_cents = (price_in_dollars * 100.0).round() as u64;
 
 		deployment_usage_bill
-			.entry(deployment_usage.deployment_id.clone())
-			.or_insert(DeploymentUsage {
-				name: db::get_deployment_by_id_including_deleted(
-					connection,
-					&deployment_usage.deployment_id,
-				)
-				.await?
-				.map(|deployment| deployment.name)
-				.as_deref()
-				.unwrap_or("unknown")
-				.to_string(),
-				bill_items: vec![],
-			})
-			.bill_items
-			.push(DeploymentBills {
+			.entry(deployment_usage.deployment_id)
+			.or_default()
+			.push(DeploymentBill {
+				start_time: DateTime(deployment_usage.start_time),
+				stop_time: deployment_usage.stop_time.map(DateTime),
 				machine_type: DeploymentMachineType {
 					id: deployment_usage.machine_type,
 					cpu_count: *cpu_count,
@@ -380,10 +374,30 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 				num_instances: deployment_usage.num_instance as u32,
 				hours: hours as u64,
 				amount: price_in_cents,
+				monthly_charge: monthly_price as u64 * 100,
 			});
 	}
 
-	Ok(deployment_usage_bill)
+	let mut result = vec![];
+	for (deployment_id, deployment_bill) in deployment_usage_bill {
+		// safe to unwrap Option<T> as if deployment_usage is present then that
+		// deployment id should be in db
+		let deployment = db::get_deployment_by_id_including_deleted(
+			connection,
+			&deployment_id,
+		)
+		.await?
+		.status(500)?;
+
+		result.push(DeploymentUsage {
+			name: deployment.name,
+			is_deleted: deployment.status == DeploymentStatus::Deleted,
+			deployment_id,
+			deployment_bill,
+		})
+	}
+
+	Ok(result)
 }
 
 pub async fn calculate_database_bill_for_workspace_till(
@@ -391,7 +405,7 @@ pub async fn calculate_database_bill_for_workspace_till(
 	workspace_id: &Uuid,
 	month_start_date: &chrono::DateTime<Utc>,
 	till_date: &chrono::DateTime<Utc>,
-) -> Result<BTreeMap<Uuid, DatabaseUsage>, Error> {
+) -> Result<Vec<DatabaseUsage>, Error> {
 	let database_usages = db::get_all_database_usage(
 		&mut *connection,
 		workspace_id,
@@ -400,7 +414,7 @@ pub async fn calculate_database_bill_for_workspace_till(
 	)
 	.await?;
 
-	let mut database_usage_bill = BTreeMap::new();
+	let mut database_usage_bill = HashMap::new();
 
 	for database_usage in database_usages {
 		let stop_time = database_usage
@@ -430,26 +444,36 @@ pub async fn calculate_database_bill_for_workspace_till(
 		} else {
 			(hours as f64 / 720f64) * monthly_price
 		};
+
 		let price_in_cents = (price_in_dollars * 100.0).round() as u64;
+
+		let managed_database =
+			db::get_managed_database_by_id_including_deleted(
+				connection,
+				&database_usage.database_id,
+			)
+			.await?
+			.status(500)?; // If database_id is presnt in usage table the it should be in the
+			   // database table as well, otherwise this is something wrong with our
+			   // logic
 
 		database_usage_bill
 			.entry(database_usage.database_id.clone())
 			.or_insert(DatabaseUsage {
-				name: db::get_managed_database_by_id_including_deleted(
-					connection,
-					&database_usage.database_id,
-				)
-				.await?
-				.map(|database| database.name)
-				.as_deref()
-				.unwrap_or("unknown")
-				.to_string(),
+				start_time: DateTime(database_usage.start_time),
+				deletion_time: database_usage.deletion_time.map(DateTime),
+				database_id: database_usage.database_id.clone(),
+				name: managed_database.name,
 				hours: hours as u64,
 				amount: price_in_cents,
+				is_deleted: managed_database.status ==
+					ManagedDatabaseStatus::Deleted,
+				monthly_charge: monthly_price as u64 * 100,
+				plan: database_usage.db_plan.to_string(),
 			});
 	}
 
-	Ok(database_usage_bill)
+	Ok(database_usage_bill.into_iter().map(|(_, v)| v).collect())
 }
 
 pub async fn calculate_static_sites_bill_for_workspace_till(
@@ -457,7 +481,7 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 	workspace_id: &Uuid,
 	month_start_date: &chrono::DateTime<Utc>,
 	till_date: &chrono::DateTime<Utc>,
-) -> Result<BTreeMap<StaticSitePlan, StaticSiteUsage>, Error> {
+) -> Result<Vec<StaticSiteUsage>, Error> {
 	let static_sites_usages = db::get_all_static_site_usages(
 		&mut *connection,
 		workspace_id,
@@ -466,7 +490,7 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 	)
 	.await?;
 
-	let mut static_sites_bill = BTreeMap::new();
+	let mut static_sites_bill: Vec<StaticSiteUsage> = Vec::new();
 	for static_sites_usage in static_sites_usages {
 		let stop_time = static_sites_usage
 			.stop_time
@@ -484,26 +508,50 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 			DbStaticSitePlan::Pro => 5f64,
 			DbStaticSitePlan::Unlimited => 10f64,
 		};
-		let bill = static_sites_bill
-			.entry(match static_sites_usage.static_site_plan {
-				DbStaticSitePlan::Free => StaticSitePlan::Free,
-				DbStaticSitePlan::Pro => StaticSitePlan::Pro,
-				DbStaticSitePlan::Unlimited => StaticSitePlan::Unlimited,
-			})
-			.or_insert(StaticSiteUsage {
-				hours: 0,
-				amount: 0,
-			});
-		bill.hours += hours as u64;
-
-		let price_in_dollars = if bill.hours >= 720 {
+		let price_in_dollars = if hours >= 720 {
 			monthly_price
 		} else {
-			(bill.hours as f64 / 720f64) * monthly_price
+			(hours as f64 / 720f64) * monthly_price
 		};
 		let price_in_cents = (price_in_dollars * 100.0).round() as u64;
 
-		bill.amount = price_in_cents;
+		let plan = match static_sites_usage.static_site_plan {
+			DbStaticSitePlan::Free => StaticSitePlan::Free,
+			DbStaticSitePlan::Pro => StaticSitePlan::Pro,
+			DbStaticSitePlan::Unlimited => StaticSitePlan::Unlimited,
+		};
+
+		match static_sites_bill.last_mut() {
+			Some(last_site_bill) if last_site_bill.plan == plan => {
+				let hours = min(
+					720,
+					((stop_time - last_site_bill.start_time.0).num_seconds()
+						as f64 / 3600f64)
+						.ceil() as u64,
+				);
+				let price_in_dollars = if hours >= 720 {
+					monthly_price
+				} else {
+					(hours as f64 / 720f64) * monthly_price
+				};
+				let price_in_cents = (price_in_dollars * 100.0).round() as u64;
+
+				last_site_bill.stop_time =
+					static_sites_usage.stop_time.map(DateTime);
+				last_site_bill.hours = hours;
+				last_site_bill.amount = price_in_cents;
+			}
+			_ => {
+				static_sites_bill.push(StaticSiteUsage {
+					plan,
+					hours: hours as u64,
+					amount: price_in_cents,
+					start_time: DateTime(static_sites_usage.start_time),
+					stop_time: static_sites_usage.stop_time.map(DateTime),
+					monthly_charge: monthly_price as u64 * 100,
+				});
+			}
+		};
 	}
 
 	Ok(static_sites_bill)
@@ -514,7 +562,7 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 	workspace_id: &Uuid,
 	month_start_date: &chrono::DateTime<Utc>,
 	till_date: &chrono::DateTime<Utc>,
-) -> Result<BTreeMap<u32, ManagedUrlUsage>, Error> {
+) -> Result<Vec<ManagedUrlUsage>, Error> {
 	let managed_url_usages = db::get_all_managed_url_usages(
 		&mut *connection,
 		workspace_id,
@@ -523,7 +571,7 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 	)
 	.await?;
 
-	let mut managed_url_bill = BTreeMap::new();
+	let mut managed_url_bill: Vec<ManagedUrlUsage> = Vec::new();
 	for managed_url_usage in managed_url_usages {
 		let stop_time = managed_url_usage
 			.stop_time
@@ -542,29 +590,53 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 			(managed_url_usage.url_count as f64 / 100f64).ceil() * 10f64
 		};
 
-		let bill = managed_url_bill
-			.entry(
-				if managed_url_usage.url_count <= 10 {
-					0
-				} else {
-					(managed_url_usage.url_count as f64 / 100f64).ceil() as u32
-				},
-			)
-			.or_insert(ManagedUrlUsage {
-				hours: 0,
-				amount: 0,
-			});
-
-		bill.hours += hours as u64;
-
-		let price_in_dollars = if bill.hours >= 720 {
+		let price_in_dollars = if hours >= 720 {
 			monthly_price
 		} else {
-			(bill.hours as f64 / 720f64) * monthly_price
+			(hours as f64 / 720f64) * monthly_price
 		};
 		let price_in_cents = (price_in_dollars * 100.0).round() as u64;
 
-		bill.amount = price_in_cents;
+		let urls = managed_url_usage.url_count as f64;
+		let urls = (urls / 100f64).ceil() as u64 * 100;
+		let plan = if managed_url_usage.url_count <= 10 {
+			"0-10 URLs".to_string()
+		} else {
+			format!("{}-{} URLs", max(11, urls - 100), urls)
+		};
+
+		match managed_url_bill.last_mut() {
+			Some(last_managed_url) if last_managed_url.plan == plan => {
+				let hours = min(
+					720,
+					((stop_time - last_managed_url.start_time.0).num_seconds()
+						as f64 / 3600f64)
+						.ceil() as u64,
+				);
+
+				let price_in_dollars = if hours >= 720 {
+					monthly_price
+				} else {
+					(hours as f64 / 720f64) * monthly_price
+				};
+				let price_in_cents = (price_in_dollars * 100.0).round() as u64;
+
+				last_managed_url.stop_time =
+					managed_url_usage.stop_time.map(DateTime);
+				last_managed_url.hours = hours;
+				last_managed_url.amount = price_in_cents;
+			}
+			_ => {
+				managed_url_bill.push(ManagedUrlUsage {
+					plan,
+					hours: hours as u64,
+					amount: price_in_cents,
+					start_time: DateTime(managed_url_usage.start_time),
+					stop_time: managed_url_usage.stop_time.map(DateTime),
+					monthly_charge: monthly_price as u64 * 100,
+				});
+			}
+		}
 	}
 
 	Ok(managed_url_bill)
@@ -584,7 +656,7 @@ pub async fn calculate_docker_repository_bill_for_workspace_till(
 	)
 	.await?;
 
-	let mut docker_repository_bill = Vec::new();
+	let mut docker_repository_bill: Vec<DockerRepositoryUsage> = Vec::new();
 
 	for docker_repository_usage in docker_repository_usages {
 		let stop_time = docker_repository_usage
@@ -617,11 +689,59 @@ pub async fn calculate_docker_repository_bill_for_workspace_till(
 		};
 		let price_in_cents = (price_in_dollars * 100.0).round() as u64;
 
-		docker_repository_bill.push(DockerRepositoryUsage {
-			storage: docker_repository_usage.storage as u64,
-			hours: hours as u64,
-			amount: price_in_cents,
-		});
+		let plan = if storage_in_gb <= 10 {
+			"0-10 GB".to_string()
+		} else if storage_in_gb > 10 && storage_in_gb <= 100 {
+			"11-100 GB".to_string()
+		} else {
+			format!("100GB + {}GB additional", storage_in_gb - 100)
+		};
+
+		match docker_repository_bill.last_mut() {
+			Some(last_repo_bill) if last_repo_bill.plan == plan => {
+				let hours = min(
+					720,
+					((stop_time - last_repo_bill.start_time.0).num_seconds()
+						as f64 / 3600f64)
+						.ceil() as u64,
+				);
+
+				// since both last and current are under same plan,
+				// its okay to use any one of those storage size
+				let storage_in_gb = (docker_repository_usage.storage as f64 /
+					(1024 * 1024 * 1024) as f64)
+					.ceil() as i64;
+				let monthly_price = if storage_in_gb <= 10 {
+					0f64
+				} else if storage_in_gb > 10 && storage_in_gb <= 100 {
+					10f64
+				} else {
+					(storage_in_gb as f64 * 0.1f64).ceil()
+				};
+
+				let price_in_dollars = if hours >= 720 {
+					monthly_price
+				} else {
+					(hours as f64 / 720f64) * monthly_price
+				};
+				let price_in_cents = (price_in_dollars * 100.0).round() as u64;
+
+				last_repo_bill.stop_time =
+					docker_repository_usage.stop_time.map(DateTime);
+				last_repo_bill.hours = hours;
+				last_repo_bill.amount = price_in_cents;
+			}
+			_ => {
+				docker_repository_bill.push(DockerRepositoryUsage {
+					plan,
+					hours: hours as u64,
+					amount: price_in_cents,
+					start_time: DateTime(docker_repository_usage.start_time),
+					stop_time: docker_repository_usage.stop_time.map(DateTime),
+					monthly_charge: monthly_price as u64 * 100,
+				});
+			}
+		}
 	}
 
 	Ok(docker_repository_bill)
@@ -632,7 +752,7 @@ pub async fn calculate_domains_bill_for_workspace_till(
 	workspace_id: &Uuid,
 	month_start_date: &chrono::DateTime<Utc>,
 	till_date: &chrono::DateTime<Utc>,
-) -> Result<BTreeMap<DomainPlan, DomainUsage>, Error> {
+) -> Result<Vec<DomainUsage>, Error> {
 	let domains_usages = db::get_all_domains_usages(
 		&mut *connection,
 		workspace_id,
@@ -641,7 +761,7 @@ pub async fn calculate_domains_bill_for_workspace_till(
 	)
 	.await?;
 
-	let mut domains_bill = BTreeMap::new();
+	let mut domains_bill: Vec<DomainUsage> = Vec::new();
 	for domains_usage in domains_usages {
 		let stop_time = domains_usage
 			.stop_time
@@ -658,17 +778,7 @@ pub async fn calculate_domains_bill_for_workspace_till(
 			DbDomainPlan::Free => 0f64,
 			DbDomainPlan::Unlimited => 10f64,
 		};
-		let bill = domains_bill
-			.entry(match domains_usage.domain_plan {
-				DbDomainPlan::Free => DomainPlan::Free,
-				DbDomainPlan::Unlimited => DomainPlan::Unlimited,
-			})
-			.or_insert(DomainUsage {
-				hours: 0,
-				amount: 0,
-			});
 
-		bill.hours = hours as u64;
 		let price_in_dollars = if hours >= 720 {
 			monthly_price
 		} else {
@@ -676,7 +786,42 @@ pub async fn calculate_domains_bill_for_workspace_till(
 		};
 		let price_in_cents = (price_in_dollars * 100.0).round() as u64;
 
-		bill.amount = price_in_cents;
+		let plan = match domains_usage.domain_plan {
+			DbDomainPlan::Free => DomainPlan::Free,
+			DbDomainPlan::Unlimited => DomainPlan::Unlimited,
+		};
+
+		match domains_bill.last_mut() {
+			Some(last_domain_bill) if last_domain_bill.plan == plan => {
+				let hours = min(
+					720,
+					((stop_time - last_domain_bill.start_time.0).num_seconds()
+						as f64 / 3600f64)
+						.ceil() as u64,
+				);
+				let price_in_dollars = if hours >= 720 {
+					monthly_price
+				} else {
+					hours as f64 * (monthly_price / 720f64)
+				};
+				let price_in_cents = (price_in_dollars * 100.0).round() as u64;
+
+				last_domain_bill.stop_time =
+					domains_usage.stop_time.map(DateTime);
+				last_domain_bill.hours = hours;
+				last_domain_bill.amount = price_in_cents;
+			}
+			_ => {
+				domains_bill.push(DomainUsage {
+					plan,
+					hours: hours as u64,
+					amount: price_in_cents,
+					start_time: DateTime(domains_usage.start_time),
+					stop_time: domains_usage.stop_time.map(DateTime),
+					monthly_charge: monthly_price as u64 * 100,
+				});
+			}
+		}
 	}
 
 	Ok(domains_bill)
@@ -687,7 +832,7 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 	workspace_id: &Uuid,
 	month_start_date: &chrono::DateTime<Utc>,
 	till_date: &chrono::DateTime<Utc>,
-) -> Result<BTreeMap<u32, SecretUsage>, Error> {
+) -> Result<Vec<SecretUsage>, Error> {
 	let secrets_usages = db::get_all_secrets_usages(
 		&mut *connection,
 		workspace_id,
@@ -696,7 +841,7 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 	)
 	.await?;
 
-	let mut secrets_bill = BTreeMap::new();
+	let mut secrets_bill: Vec<SecretUsage> = Vec::new();
 	for secrets_usage in secrets_usages {
 		let stop_time = secrets_usage
 			.stop_time
@@ -715,28 +860,53 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 			(secrets_usage.secret_count as f64 / 100f64).ceil() * 10f64
 		};
 
-		let bill = secrets_bill
-			.entry(
-				if secrets_usage.secret_count <= 3 {
-					0
-				} else {
-					(secrets_usage.secret_count as f64 / 100f64).ceil() as u32
-				},
-			)
-			.or_insert(SecretUsage {
-				hours: 0,
-				amount: 0,
-			});
-
-		bill.hours += hours as u64;
-		let price_in_dollars = if bill.hours >= 720 {
+		let price_in_dollars = if hours >= 720 {
 			monthly_price
 		} else {
-			(bill.hours as f64 / 720f64) * monthly_price
+			(hours as f64 / 720f64) * monthly_price
 		};
 		let price_in_cents = (price_in_dollars * 100.0).round() as u64;
 
-		bill.amount = price_in_cents;
+		let secrets = secrets_usage.secret_count as f64;
+		let secrets = (secrets / 100f64).ceil() as u64 * 100;
+		let plan = if secrets_usage.secret_count <= 3 {
+			"0-3 Secrets".to_string()
+		} else {
+			format!("{}-{} Secrets", max(11, secrets - 100), secrets)
+		};
+
+		match secrets_bill.last_mut() {
+			Some(last_secret_bill) if last_secret_bill.plan == plan => {
+				let hours = min(
+					720,
+					((stop_time - last_secret_bill.start_time.0).num_seconds()
+						as f64 / 3600f64)
+						.ceil() as u64,
+				);
+
+				let price_in_dollars = if hours >= 720 {
+					monthly_price
+				} else {
+					(hours as f64 / 720f64) * monthly_price
+				};
+				let price_in_cents = (price_in_dollars * 100.0).round() as u64;
+
+				last_secret_bill.stop_time =
+					secrets_usage.stop_time.map(DateTime);
+				last_secret_bill.hours = hours;
+				last_secret_bill.amount = price_in_cents;
+			}
+			_ => {
+				secrets_bill.push(SecretUsage {
+					plan,
+					hours: hours as u64,
+					amount: price_in_cents,
+					start_time: DateTime(secrets_usage.start_time),
+					stop_time: secrets_usage.stop_time.map(DateTime),
+					monthly_charge: monthly_price as u64 * 100,
+				});
+			}
+		}
 	}
 
 	Ok(secrets_bill)
@@ -910,20 +1080,22 @@ pub async fn calculate_total_bill_for_workspace_till(
 
 	let deployment_charge = deployment_usage
 		.iter()
-		.map(|(_, bill)| {
-			bill.bill_items.iter().map(|item| item.amount).sum::<u64>()
+		.map(|bill| {
+			bill.deployment_bill
+				.iter()
+				.map(|item| item.amount)
+				.sum::<u64>()
 		})
 		.sum();
-	let database_charge =
-		database_usage.iter().map(|(_, bill)| bill.amount).sum();
+	let database_charge = database_usage.iter().map(|bill| bill.amount).sum();
 	let static_site_charge =
-		static_site_usage.iter().map(|(_, bill)| bill.amount).sum();
+		static_site_usage.iter().map(|bill| bill.amount).sum();
 	let managed_url_charge =
-		managed_url_usage.iter().map(|(_, bill)| bill.amount).sum();
+		managed_url_usage.iter().map(|bill| bill.amount).sum();
 	let docker_repository_charge =
 		docker_repository_usage.iter().map(|bill| bill.amount).sum();
-	let domain_charge = domain_usage.iter().map(|(_, bill)| bill.amount).sum();
-	let secret_charge = secret_usage.iter().map(|(_, bill)| bill.amount).sum();
+	let domain_charge = domain_usage.iter().map(|bill| bill.amount).sum();
+	let secret_charge = secret_usage.iter().map(|bill| bill.amount).sum();
 
 	let total_charge = deployment_charge +
 		database_charge +
@@ -974,7 +1146,12 @@ pub async fn get_total_resource_usage(
 	till_date: &chrono::DateTime<Utc>,
 	year: u32,
 	month: u32,
+	request_id: &Uuid,
 ) -> Result<WorkspaceBillBreakdown, Error> {
+	log::trace!(
+		"request_id: {} getting bill for all deployments",
+		request_id,
+	);
 	let deployment_usage = calculate_deployment_bill_for_workspace_till(
 		connection,
 		workspace_id,
@@ -984,10 +1161,15 @@ pub async fn get_total_resource_usage(
 	.await?;
 	let deployment_charge = deployment_usage
 		.iter()
-		.flat_map(|(_, usage)| usage.bill_items.iter())
-		.map(|item| item.amount)
+		.map(|bill| {
+			bill.deployment_bill
+				.iter()
+				.map(|item| item.amount)
+				.sum::<u64>()
+		})
 		.sum();
 
+	log::trace!("request_id: {} getting bill for all databases", request_id,);
 	let database_usage = calculate_database_bill_for_workspace_till(
 		connection,
 		workspace_id,
@@ -995,9 +1177,12 @@ pub async fn get_total_resource_usage(
 		till_date,
 	)
 	.await?;
-	let database_charge =
-		database_usage.iter().map(|(_, usage)| usage.amount).sum();
+	let database_charge = database_usage.iter().map(|bill| bill.amount).sum();
 
+	log::trace!(
+		"request_id: {} getting bill for all static_site",
+		request_id,
+	);
 	let static_site_usage = calculate_static_sites_bill_for_workspace_till(
 		connection,
 		workspace_id,
@@ -1005,11 +1190,13 @@ pub async fn get_total_resource_usage(
 		till_date,
 	)
 	.await?;
-	let static_site_charge = static_site_usage
-		.iter()
-		.map(|(_, usage)| usage.amount)
-		.sum();
+	let static_site_charge =
+		static_site_usage.iter().map(|bill| bill.amount).sum();
 
+	log::trace!(
+		"request_id: {} getting bill for all managed_urls",
+		request_id,
+	);
 	let managed_url_usage = calculate_managed_urls_bill_for_workspace_till(
 		connection,
 		workspace_id,
@@ -1017,11 +1204,13 @@ pub async fn get_total_resource_usage(
 		till_date,
 	)
 	.await?;
-	let managed_url_charge = managed_url_usage
-		.iter()
-		.map(|(_, usage)| usage.amount)
-		.sum();
+	let managed_url_charge =
+		managed_url_usage.iter().map(|bill| bill.amount).sum();
 
+	log::trace!(
+		"request_id: {} getting bill for all docker repos",
+		request_id,
+	);
 	let docker_repository_usage =
 		calculate_docker_repository_bill_for_workspace_till(
 			connection,
@@ -1030,11 +1219,10 @@ pub async fn get_total_resource_usage(
 			till_date,
 		)
 		.await?;
-	let docker_repository_charge = docker_repository_usage
-		.iter()
-		.map(|usage| usage.amount)
-		.sum();
+	let docker_repository_charge =
+		docker_repository_usage.iter().map(|bill| bill.amount).sum();
 
+	log::trace!("request_id: {} getting bill for all domains", request_id,);
 	let domain_usage = calculate_domains_bill_for_workspace_till(
 		connection,
 		workspace_id,
@@ -1042,9 +1230,9 @@ pub async fn get_total_resource_usage(
 		till_date,
 	)
 	.await?;
-	let domain_charge =
-		domain_usage.iter().map(|(_, usage)| usage.amount).sum();
+	let domain_charge = domain_usage.iter().map(|bill| bill.amount).sum();
 
+	log::trace!("request_id: {} getting bill for all secrest", request_id,);
 	let secret_usage = calculate_secrets_bill_for_workspace_till(
 		connection,
 		workspace_id,
@@ -1052,8 +1240,7 @@ pub async fn get_total_resource_usage(
 		till_date,
 	)
 	.await?;
-	let secret_charge =
-		secret_usage.iter().map(|(_, usage)| usage.amount).sum();
+	let secret_charge = secret_usage.iter().map(|bill| bill.amount).sum();
 
 	let total_charge = deployment_charge +
 		database_charge +
@@ -1062,6 +1249,12 @@ pub async fn get_total_resource_usage(
 		domain_charge +
 		secret_charge +
 		docker_repository_charge;
+
+	log::trace!(
+		"request_id: {} got total bill of : {}",
+		request_id,
+		total_charge
+	);
 
 	let bill = WorkspaceBillBreakdown {
 		year,

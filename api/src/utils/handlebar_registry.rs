@@ -1,5 +1,7 @@
 use std::fs;
 
+use api_models::utils::DateTime;
+use chrono::Utc;
 use handlebars::{handlebars_helper, Handlebars};
 use once_cell::sync::OnceCell;
 
@@ -14,6 +16,9 @@ handlebars_helper!(cents_to_dollars: |cents: u64| {
 handlebars_helper!(stringify_month: |month_in_num: u8| {
 	crate::utils::billing::stringify_month(month_in_num)
 });
+handlebars_helper!(format_date_for_invoice: |date: DateTime<Utc>| {
+	date.format("%a %b %d %Y %H:%M").to_string()
+});
 
 fn initialize_handlebar_registry_helper<'a>() -> Result<Handlebars<'a>, Error> {
 	let mut handlebar = Handlebars::new();
@@ -21,6 +26,7 @@ fn initialize_handlebar_registry_helper<'a>() -> Result<Handlebars<'a>, Error> {
 
 	handlebar.register_helper("stringify-month", Box::new(stringify_month));
 	handlebar.register_helper("cents-to-dollars", Box::new(cents_to_dollars));
+	handlebar.register_helper("format-date", Box::new(format_date_for_invoice));
 
 	let shared_template_folder =
 		concat!(env!("CARGO_MANIFEST_DIR"), "/../assets/emails/shared");
