@@ -715,7 +715,7 @@ pub async fn send_partial_payment_success_email(
 /// errors
 ///
 /// [`TEmail`]: TEmail
-#[cfg(not(debug_assertions))]
+#[cfg(debug_assertions)]
 async fn send_email<TEmail>(
 	body: TEmail,
 	to: Mailbox,
@@ -734,7 +734,7 @@ where
 	};
 	use tokio::{task, task::JoinHandle};
 
-	use crate::service;
+	use crate::{service, utils::handlebar_registry};
 
 	let subject = subject.to_string();
 	let join_handle: JoinHandle<Result<_, Error>> = task::spawn(async move {
@@ -748,7 +748,7 @@ where
 		}
 
 		let message = builder.multipart(
-			body.render_body(handlebar::get_handlebar_registry())
+			body.render_body(handlebar_registry::get_handlebar_registry())
 				.await?,
 		)?;
 
@@ -785,7 +785,7 @@ where
 	Ok(())
 }
 
-#[cfg(debug_assertions)]
+#[cfg(not(debug_assertions))]
 async fn send_email<TEmail>(
 	body: TEmail,
 	to: Mailbox,
