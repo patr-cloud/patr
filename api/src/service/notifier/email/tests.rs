@@ -506,17 +506,7 @@ async fn test_purchase_credits_success_email() -> Result<(), Error> {
 	send_email(PurchaseCreditsSuccessEmail {
 		username: "username".to_owned(),
 		workspace_name: "workspace_name".to_owned(),
-		credits_in_cents: 23452345,
-	})
-	.await
-}
-
-#[tokio::test]
-async fn test_payment_success_email() -> Result<(), Error> {
-	send_email(PaymentSuccessEmail {
-		username: "username".to_owned(),
-		workspace_name: "workspace_name".to_owned(),
-		amount_in_cents: 23452345,
+		credits_purchased: 23452345,
 	})
 	.await
 }

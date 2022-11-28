@@ -629,34 +629,6 @@ pub async fn send_purchase_credits_success_email(
 }
 
 #[derive(EmailTemplate, Serialize)]
-#[template_path = "assets/emails/payment-success/template.json"]
-#[serde(rename_all = "camelCase")]
-struct PaymentSuccessEmail {
-	username: String,
-	workspace_name: String,
-	amount_in_cents: u64,
-}
-
-pub async fn send_payment_success_email(
-	email: Mailbox,
-	username: &str,
-	workspace_name: &str,
-	amount_in_cents: u64,
-) -> Result<(), Error> {
-	send_email(
-		PaymentSuccessEmail {
-			username: username.to_owned(),
-			workspace_name: workspace_name.to_owned(),
-			amount_in_cents,
-		},
-		email,
-		None,
-		"Patr payment successful",
-	)
-	.await
-}
-
-#[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/bill-paid-using-credits/template.json"]
 #[serde(rename_all = "camelCase")]
 struct BillPaidUsingCreditsEmail {

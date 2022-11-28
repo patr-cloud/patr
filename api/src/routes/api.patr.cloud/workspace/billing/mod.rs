@@ -1066,12 +1066,30 @@ async fn confirm_credits(
 			&transaction_id,
 		)
 		.await?;
-		service::send_bill_paid_using_credits_email(
+
+		let current_amount_due = db::get_workspace_info(
 			context.get_database_connection(),
 			&workspace_id,
-			&transaction_id,
 		)
-		.await?;
+		.await?
+		.status(500)?
+		.amount_due_in_cents;
+		let bill_after_payment = TotalAmount::NeedToPay(current_amount_due) +
+			db::get_total_amount_in_cents_to_pay_for_workspace(
+				context.get_database_connection(),
+				&workspace_id,
+			)
+			.await?;
+
+		if let TotalAmount::NeedToPay(_bill) = bill_after_payment {
+			service::send_bill_paid_using_credits_email(
+				context.get_database_connection(),
+				&workspace_id,
+				&transaction_id,
+			)
+			.await?;
+		}
+
 		context.success(ConfirmCreditsResponse {});
 	} else {
 		context.json(error!(PAYMENT_FAILED));
@@ -1159,12 +1177,6 @@ async fn confirm_payment(
 	.await?;
 
 	if success {
-		service::send_payment_success_email(
-			context.get_database_connection(),
-			&workspace_id,
-			&transaction_id,
-		)
-		.await?;
 		service::send_partial_payment_success_email(
 			context.get_database_connection(),
 			&workspace_id,

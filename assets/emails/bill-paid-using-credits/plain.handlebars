@@ -1,14 +1,14 @@
 
 Hello {{username}}, 
 
-{{#if (less-than-or-equal-to totalBill totalCredits)}}
-${{cents-to-dollars totalBill}} credits has been used to settle up your bill for the workspace {{workspaceName}} amounting to ${{cents-to-dollars totalBill}}.
+{{#if (greater-than  creditsRemaining 0)}}
+Your bill for the workspace {{workspaceName}} amounting to ${{cents-to-dollars totalBill}} has been cleared.
 
 Remaining credits: ${{cents-to-dollars creditsRemaining}} 
 {{/if}}
 
-{{#if (greater-than totalBill totalCredits)}}
-The credits available in your workspace of ${{cents-to-dollars totalCredits}} has been used to reduce your bill for the workspace {{workspaceName}} from ${{cents-to-dollars totalBill}} to ${{cents-to-dollars billRemaining}}.
+{{#if (greater-than billRemaining 0)}}
+The credits available in your workspace has been used to reduce your bill for the workspace {{workspaceName}} from ${{cents-to-dollars totalBill}} to ${{cents-to-dollars billRemaining}}.
 {{/if}}
 
 If you are facing any issues reach out to us at support@patr.cloud

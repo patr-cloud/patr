@@ -848,49 +848,6 @@ pub async fn send_purchase_credits_success_email(
 	.await
 }
 
-pub async fn send_payment_success_email(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	transaction_id: &Uuid,
-) -> Result<(), Error> {
-	let workspace = db::get_workspace_info(connection, workspace_id)
-		.await?
-		.status(500)?;
-
-	let user = db::get_user_by_user_id(connection, &workspace.super_admin_id)
-		.await?
-		.status(500)?;
-
-	let user_email = get_user_email(
-		connection,
-		user.recovery_email_domain_id
-			.as_ref()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?,
-		user.recovery_email_local
-			.as_ref()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?,
-	)
-	.await?;
-
-	let transaction = db::get_transaction_by_transaction_id(
-		connection,
-		workspace_id,
-		transaction_id,
-	)
-	.await?
-	.status(500)?; // okay to use ? as transaction_id provided should be valid
-
-	email::send_payment_success_email(
-		user_email.parse()?,
-		&user.first_name,
-		&workspace.name,
-		transaction.amount_in_cents as u64,
-	)
-	.await
-}
-
 pub async fn send_bill_paid_using_credits_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,

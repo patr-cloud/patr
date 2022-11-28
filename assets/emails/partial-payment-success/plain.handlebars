@@ -1,20 +1,17 @@
 
 Hello {{username}}, 
 
-We have received your payment of ${{cents-to-dollars totalPaymentAmount}}.
+We have received your payment of ${{cents-to-dollars amountPaid}}.
 
-{{#if (greater-than totalBill totalPaymentAmount)}}
+{{#if (greater-than billRemaining 0)}}
 Your bill for the workspace {{workspaceName}} amounting to ${{cents-to-dollars totalBill}} has been reduced to ${{cents-to-dollars billRemaining}}.
 {{/if}}
 
-{{#if (less-than-or-equal-to totalBill totalPaymentAmount)}}
+{{#if (greater-than creditsRemaining 0)}}
 Your bill for the workspace {{workspaceName}} amounting to ${{cents-to-dollars totalBill}} has been cleared.
-{{#if (less-than totalBill totalPaymentAmount)}}
-The remaining amount paid of ${{cents-to-dollars balancePaymentAmount}} has been added to your workspace as credits.
-{{/if}}
-{{/if}}
 
-
+Remaining credits: ${{cents-to-dollars creditsRemaining}}
+{{/if}}
 
 If you did not initiate this payment, please reach out to us at support@patr.cloud immediately. 
 
