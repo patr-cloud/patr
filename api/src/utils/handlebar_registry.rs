@@ -42,10 +42,10 @@ fn initialize_handlebar_registry_helper<'a>() -> Result<Handlebars<'a>, Error> {
 	handlebar.register_helper("stringify-month", Box::new(stringify_month));
 	handlebar.register_helper("cents-to-dollars", Box::new(cents_to_dollars));
 	handlebar.register_helper("greater-than", Box::new(greater_than));
-	handlebar.register_helper("less-than", Box::new(greater_than));
-	handlebar.register_helper("greater-than-or-equal-to", Box::new(greater_than));
-	handlebar.register_helper("less-than-or-equal-to", Box::new(greater_than));
-	handlebar.register_helper("equal-to", Box::new(greater_than));
+	handlebar.register_helper("less-than", Box::new(less_than));
+	handlebar.register_helper("greater-than-or-equal-to", Box::new(greater_than_or_equal_to));
+	handlebar.register_helper("less-than-or-equal-to", Box::new(less_than_or_equal_to));
+	handlebar.register_helper("equal-to", Box::new(equal_to));
 	handlebar.register_helper("format-date", Box::new(format_date_for_invoice));
 
 	let shared_template_folder =

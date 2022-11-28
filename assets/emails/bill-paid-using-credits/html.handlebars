@@ -1,64 +1,45 @@
 {{#> container}}
   {{#*inline "email-content"}}
+  {{#if (less-than-or-equal-to totalBill totalCredits)}}
   <tr>
     <td
       class="para txt-light"
       style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
-    >Thank you for purchasing credits on Patr!
-    </td>
-  </tr>
-  {{#if creditsDeducted}}
-  <tr>
-    <td
-      class="para txt-light"
-      style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
-    ><strong
+    >${{cents-to-dollars creditsDeducted}}</strong> credits has been used to settle up your bill for {{stringify-month month}} {{year}} for the workspace <strong
         class="txt-light"
         style="color: #ffffff"
-      >${{cents-to-dollars creditsDeducted}}</strong> credits has been used to settle up your bill for {{stringify-month month}} {{year}} for the workspace <strong
+      >{{workspaceName}}</strong> amounting to <strong
         class="txt-light"
         style="color: #ffffff"
-      >{{workspaceName}}</strong>.
+      >${{cents-to-dollars totalBill}}</strong> 
     </td>
   </tr>
   <tr>
     <td
       class="para txt-light"
       style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
-    >Total bill for {{stringify-month month}} {{year}}: $<strong
+    >Remaining credits: <strong
         class="txt-light"
         style="color: #ffffff"
-      >{{cents-to-dollars totalBill}}</strong>
+      >${{cents-to-dollars creditsRemaining}}</strong>
     </td>
   </tr>
+  {{/if}}
+  {{#if (greater-than totalBill totalCredits)}}
   <tr>
     <td
       class="para txt-light"
       style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
-    >Remaining bill after deduction: $<strong
+    >The credits available in your workspace of <strong
         class="txt-light"
         style="color: #ffffff"
-      >{{cents-to-dollars billRemaining}}</strong>
-    </td>
-  </tr>
-  <tr>
-    <td
-      class="para txt-light"
-      style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
-    >Total Credits before deduction: $<strong
+      >${{cents-to-dollars totalCredits}}</strong> has been used to reduce your bill for {{stringify-month month}} {{year}} for the workspace {{workspaceName}} from <strong
         class="txt-light"
         style="color: #ffffff"
-      >{{cents-to-dollars totalCredits}}</strong>
-    </td>
-  </tr>
-  <tr>
-    <td
-      class="para txt-light"
-      style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
-    >Total Credits after deduction: $<strong
+      >${{cents-to-dollars totalBill}}</strong> to <strong
         class="txt-light"
         style="color: #ffffff"
-      >{{cents-to-dollars creditsRemaining}}</strong>
+      >${{cents-to-dollars billRemaining}}</strong>.
     </td>
   </tr>
   {{/if}}
