@@ -1,13 +1,17 @@
 
 Hello {{username}}, 
 
-${{cents-to-dollars creditsDeducted}} credits has been used to settle up your bill for {{stringify-month month}} {{year}} for the workspace {{workspaceName}}.
+{{#if (less-than-or-equal-to totalBill totalCredits)}}
+${{cents-to-dollars totalBill}} credits has been used to settle up your bill for {{stringify-month month}} {{year}} for the workspace {{workspaceName}} amounting to ${{cents-to-dollars totalBill}}.
 
-Total bill for {{stringify-month month}} {{year}}: ${{cents-to-dollars totalBill}}
-Remaining bill after deduction: ${{cents-to-dollars billRemaining}}
+Remaining credits: ${{cents-to-dollars creditsRemaining}} 
+{{/if}}
 
-Total Credits before deduction: ${{cents-to-dollars totalCredits}} 
-Total Credits after deduction: ${{cents-to-dollars creditsRemaining}} 
+{{#if (greater-than totalBill totalCredits)}}
+The credits available in your workspace of ${{cents-to-dollars totalCredits}} has been used to reduce your bill for {{stringify-month month}} {{year}} for the workspace {{workspaceName}} from ${{cents-to-dollars totalBill}} to ${{cents-to-dollars billRemaining}}.
+
+Remaining bill for {{stringify-month month}} {{year}}: ${{cents-to-dollars billRemaining}}
+{{/if}}
 
 If you are facing any issues reach out to us at support@patr.cloud
 
