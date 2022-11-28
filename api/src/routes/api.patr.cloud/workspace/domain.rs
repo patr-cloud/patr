@@ -1036,9 +1036,7 @@ async fn is_domain_personal(
 				)
 				.await?
 				.into_iter()
-				.filter(|domain_user| domain_user != &user_id)
-				.next()
-				.is_some(),
+				.any(|domain_user| domain_user != user_id),
 			)
 		} else {
 			(false, false)
