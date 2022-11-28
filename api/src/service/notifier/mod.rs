@@ -980,6 +980,7 @@ pub async fn send_partial_payment_success_email(
 		&user.first_name,
 		&workspace.name,
 		total_bill,
+		transaction.amount_in_cents as u64,
 		bill_remaining,
 		credits_remaining,
 	)

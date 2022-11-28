@@ -42,7 +42,6 @@ use super::{
 	PasswordChangedEmail,
 	PasswordResetEmail,
 	PaymentFailureInvoiceEmail,
-	PaymentSuccessEmail,
 	PaymentSuccessInvoiceEmail,
 	PurchaseCreditsSuccessEmail,
 	RecoveryNotificationEmail,
@@ -529,8 +528,9 @@ async fn test_partial_payment_success_email() -> Result<(), Error> {
 		username: "username".to_owned(),
 		workspace_name: "workspace_name".to_owned(),
 		total_bill: 500,
+		amount_paid: 499,
 		bill_remaining: 450,
-		balance_payment_amount: 0,
+		credits_remaining: 0,
 	})
 	.await
 }

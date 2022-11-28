@@ -606,20 +606,20 @@ pub async fn send_repository_storage_limit_exceed_email(
 struct PurchaseCreditsSuccessEmail {
 	username: String,
 	workspace_name: String,
-	credits_in_cents: u64,
+	credits_purchased: u64,
 }
 
 pub async fn send_purchase_credits_success_email(
 	email: Mailbox,
 	username: &str,
 	workspace_name: &str,
-	credits_in_cents: u64,
+	credits_purchased: u64,
 ) -> Result<(), Error> {
 	send_email(
 		PurchaseCreditsSuccessEmail {
 			username: username.to_owned(),
 			workspace_name: workspace_name.to_owned(),
-			credits_in_cents,
+			credits_purchased,
 		},
 		email,
 		None,
@@ -669,8 +669,9 @@ struct PartialPaymentSuccessEmail {
 	username: String,
 	workspace_name: String,
 	total_bill: u64,
+	amount_paid: u64,
 	bill_remaining: u64,
-	balance_payment_amount: u64,
+	credits_remaining: u64,
 }
 
 pub async fn send_partial_payment_success_email(
@@ -678,16 +679,18 @@ pub async fn send_partial_payment_success_email(
 	username: &str,
 	workspace_name: &str,
 	total_bill: u64,
+	amount_paid: u64,
 	bill_remaining: u64,
-	balance_payment_amount: u64,
+	credits_remaining: u64,
 ) -> Result<(), Error> {
 	send_email(
 		PartialPaymentSuccessEmail {
 			username: username.to_owned(),
 			workspace_name: workspace_name.to_owned(),
 			total_bill,
+			amount_paid,
 			bill_remaining,
-			balance_payment_amount,
+			credits_remaining,
 		},
 		email,
 		None,
