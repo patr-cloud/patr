@@ -600,6 +600,105 @@ pub async fn send_repository_storage_limit_exceed_email(
 	.await
 }
 
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/purchase-credits-success/template.json"]
+#[serde(rename_all = "camelCase")]
+struct PurchaseCreditsSuccessEmail {
+	username: String,
+	workspace_name: String,
+	credits_purchased: u64,
+}
+
+pub async fn send_purchase_credits_success_email(
+	email: Mailbox,
+	username: &str,
+	workspace_name: &str,
+	credits_purchased: u64,
+) -> Result<(), Error> {
+	send_email(
+		PurchaseCreditsSuccessEmail {
+			username: username.to_owned(),
+			workspace_name: workspace_name.to_owned(),
+			credits_purchased,
+		},
+		email,
+		None,
+		"Patr credits successfully added",
+	)
+	.await
+}
+
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/bill-paid-using-credits/template.json"]
+#[serde(rename_all = "camelCase")]
+struct BillPaidUsingCreditsEmail {
+	username: String,
+	workspace_name: String,
+	total_bill: u64,
+	bill_remaining: u64,
+	credits_remaining: u64,
+}
+
+pub async fn send_bill_paid_using_credits_email(
+	email: Mailbox,
+	username: &str,
+	workspace_name: &str,
+	total_bill: u64,
+	bill_remaining: u64,
+	credits_remaining: u64,
+) -> Result<(), Error> {
+	send_email(
+		BillPaidUsingCreditsEmail {
+			username: username.to_owned(),
+			workspace_name: workspace_name.to_owned(),
+			total_bill,
+			bill_remaining,
+			credits_remaining,
+		},
+		email,
+		None,
+		"Patr credits added successfully",
+	)
+	.await
+}
+
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/partial-payment-success/template.json"]
+#[serde(rename_all = "camelCase")]
+struct PartialPaymentSuccessEmail {
+	username: String,
+	workspace_name: String,
+	total_bill: u64,
+	amount_paid: u64,
+	bill_remaining: u64,
+	credits_remaining: u64,
+}
+
+pub async fn send_partial_payment_success_email(
+	email: Mailbox,
+	username: &str,
+	workspace_name: &str,
+	total_bill: u64,
+	amount_paid: u64,
+	bill_remaining: u64,
+	credits_remaining: u64,
+) -> Result<(), Error> {
+	send_email(
+		PartialPaymentSuccessEmail {
+			username: username.to_owned(),
+			workspace_name: workspace_name.to_owned(),
+			total_bill,
+			amount_paid,
+			bill_remaining,
+			credits_remaining,
+		},
+		email,
+		None,
+		"Patr payment successful",
+	)
+	.await
+}
+
 /// # Description
 /// This function is used to send the email to a recipient
 ///
@@ -635,7 +734,7 @@ where
 	};
 	use tokio::{task, task::JoinHandle};
 
-	use crate::service;
+	use crate::{service, utils::handlebar_registry};
 
 	let subject = subject.to_string();
 	let join_handle: JoinHandle<Result<_, Error>> = task::spawn(async move {
@@ -649,7 +748,7 @@ where
 		}
 
 		let message = builder.multipart(
-			body.render_body(handlebar::get_handlebar_registry())
+			body.render_body(handlebar_registry::get_handlebar_registry())
 				.await?,
 		)?;
 

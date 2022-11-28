@@ -34,17 +34,13 @@ use eve_rs::AsError;
 use stripe::{
 	Client,
 	CreatePaymentIntent,
-	CreateRefund,
 	CreateSetupIntent,
 	Currency,
 	CustomerId,
-	OffSessionOther,
 	PaymentIntent,
-	PaymentIntentConfirmationMethod,
-	PaymentIntentOffSession,
+	PaymentIntentId,
 	PaymentIntentStatus,
 	PaymentMethodId,
-	Refund,
 	SetupIntent,
 };
 
@@ -66,17 +62,26 @@ pub async fn add_credits_to_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	credits: u64,
+	payment_method_id: &str,
 	config: &Settings,
-) -> Result<(), Error> {
+) -> Result<(Uuid, String), Error> {
 	let workspace = db::get_workspace_info(connection, workspace_id)
 		.await?
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	let default_payment_method_id = workspace
-		.default_payment_method_id
-		.status(402)
-		.body(error!(PAYMENT_METHOD_REQUIRED).to_string())?;
+	let is_payment_method_valid =
+		db::get_payment_methods_for_workspace(connection, workspace_id)
+			.await?
+			.iter()
+			.any(|payment_method| {
+				payment_method.payment_method_id == payment_method_id
+			});
+	if !is_payment_method_valid {
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(INVALID_PAYMENT_METHOD).to_string()));
+	};
 
 	let address_id = workspace
 		.address_id
@@ -100,16 +105,12 @@ pub async fn add_credits_to_workspace(
 	let payment_intent = PaymentIntent::create(&client, {
 		let mut intent = CreatePaymentIntent::new(amount as i64, currency);
 
-		intent.confirm = Some(true);
-		intent.confirmation_method =
-			Some(PaymentIntentConfirmationMethod::Automatic);
-		intent.off_session =
-			Some(PaymentIntentOffSession::Other(OffSessionOther::OneOff));
+		intent.confirm = Some(false);
 		intent.description = Some(description);
 		intent.customer =
 			Some(CustomerId::from_str(&workspace.stripe_customer_id)?);
 		intent.payment_method =
-			Some(PaymentMethodId::from_str(&default_payment_method_id)?);
+			Some(PaymentMethodId::from_str(payment_method_id)?);
 		intent.payment_method_types = Some(vec!["card".to_string()]);
 
 		intent
@@ -127,20 +128,6 @@ pub async fn add_credits_to_workspace(
 		}
 	};
 
-	if payment_intent.status != PaymentIntentStatus::Succeeded {
-		Refund::create(&client, {
-			let mut refund = CreateRefund::new();
-
-			refund.payment_intent = Some(payment_intent.id);
-
-			refund
-		})
-		.await?;
-		return Err(Error::empty()
-			.status(400)
-			.body(error!(PAYMENT_FAILED).to_string()));
-	}
-
 	let transaction_id = db::generate_new_transaction_id(connection).await?;
 	let date = Utc::now();
 
@@ -153,29 +140,45 @@ pub async fn add_credits_to_workspace(
 		Some(&payment_intent.id),
 		&date,
 		&TransactionType::Credits,
-		&PaymentStatus::Success,
+		&PaymentStatus::Pending,
 		Some(description),
 	)
 	.await?;
 
-	Ok(())
+	let client_secret = payment_intent.client_secret.ok_or_else(|| {
+		log::error!("PaymentIntent does not have a client secret");
+		Error::empty()
+			.status(400)
+			.body(error!(INVALID_PAYMENT_METHOD).to_string())
+	})?;
+
+	Ok((transaction_id, client_secret))
 }
 
 pub async fn make_payment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	amount_to_pay_in_cents: u64,
+	payment_method_id: &str,
 	config: &Settings,
-) -> Result<Uuid, Error> {
+) -> Result<(Uuid, String), Error> {
 	let workspace = db::get_workspace_info(connection, workspace_id)
 		.await?
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	let default_payment_method_id = workspace
-		.default_payment_method_id
-		.status(402)
-		.body(error!(PAYMENT_METHOD_REQUIRED).to_string())?;
+	let is_payment_method_valid =
+		db::get_payment_methods_for_workspace(connection, workspace_id)
+			.await?
+			.iter()
+			.any(|payment_method| {
+				payment_method.payment_method_id == payment_method_id
+			});
+	if !is_payment_method_valid {
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(INVALID_PAYMENT_METHOD).to_string()));
+	};
 
 	let address_id = workspace
 		.address_id
@@ -205,7 +208,7 @@ pub async fn make_payment(
 		intent.customer =
 			Some(CustomerId::from_str(&workspace.stripe_customer_id)?);
 		intent.payment_method =
-			Some(PaymentMethodId::from_str(&default_payment_method_id)?);
+			Some(PaymentMethodId::from_str(payment_method_id)?);
 		intent.payment_method_types = Some(vec!["card".to_string()]);
 
 		intent
@@ -240,7 +243,14 @@ pub async fn make_payment(
 	)
 	.await?;
 
-	Ok(transaction_id)
+	let client_secret = payment_intent.client_secret.ok_or_else(|| {
+		log::error!("PaymentIntent does not have a client secret");
+		Error::empty()
+			.status(400)
+			.body(error!(INVALID_PAYMENT_METHOD).to_string())
+	})?;
+
+	Ok((transaction_id, client_secret))
 }
 
 pub async fn confirm_payment(
@@ -260,37 +270,39 @@ pub async fn confirm_payment(
 
 	if let Some(payment_intent_id) = transaction.payment_intent_id {
 		let client = Client::new(&config.stripe.secret_key);
-		let payment_intent = PaymentIntent::confirm(
+		let payment_intent = PaymentIntent::retrieve(
 			&client,
-			&payment_intent_id,
+			&PaymentIntentId::from_str(&payment_intent_id)?,
 			Default::default(),
 		)
 		.await?;
 
-		if payment_intent.status != PaymentIntentStatus::Succeeded {
-			Refund::create(&client, {
-				let mut refund = CreateRefund::new();
+		match payment_intent.status {
+			PaymentIntentStatus::Succeeded => {
+				db::update_transaction_status(
+					connection,
+					transaction_id,
+					&PaymentStatus::Success,
+				)
+				.await?;
 
-				refund.payment_intent = Some(payment_intent.id);
+				Ok(true)
+			}
+			PaymentIntentStatus::Canceled => {
+				db::update_transaction_status(
+					connection,
+					transaction_id,
+					&PaymentStatus::Failed,
+				)
+				.await?;
 
-				refund
-			})
-			.await?;
-			db::update_transaction_status(
-				connection,
-				transaction_id,
-				&PaymentStatus::Failed,
-			)
-			.await?;
-			return Ok(false);
+				Ok(false)
+			}
+			_ => {
+				log::info!("Payment is still in pending state, make the payment and then confirm again");
+				Ok(false)
+			}
 		}
-		db::update_transaction_status(
-			connection,
-			transaction_id,
-			&PaymentStatus::Success,
-		)
-		.await?;
-		Ok(true)
 	} else {
 		log::trace!(
 			"payment_intent_id not found for transaction_id: {}, this is a not an expected behaviour", transaction_id);

@@ -8,6 +8,8 @@ use api_models::{
 		AddCreditsResponse,
 		AddPaymentMethodResponse,
 		Address,
+		ConfirmCreditsRequest,
+		ConfirmCreditsResponse,
 		ConfirmPaymentMethodRequest,
 		ConfirmPaymentMethodResponse,
 		ConfirmPaymentRequest,
@@ -23,6 +25,7 @@ use api_models::{
 		MakePaymentRequest,
 		MakePaymentResponse,
 		PaymentMethod,
+		PaymentStatus,
 		TotalAmount,
 		Transaction,
 		UpdateBillingAddressRequest,
@@ -384,6 +387,38 @@ pub fn create_sub_app(
 				}),
 			},
 			EveMiddleware::CustomFunction(pin_fn!(add_credits)),
+		],
+	);
+
+	sub_app.post(
+		"/confirm-credits",
+		[
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: false,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			},
+			EveMiddleware::CustomFunction(pin_fn!(confirm_credits)),
 		],
 	);
 
@@ -953,22 +988,113 @@ async fn add_credits(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let AddCreditsRequest { credits, .. } =
-		context
-			.get_body_as()
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
+	let AddCreditsRequest {
+		credits,
+		payment_method_id,
+		..
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
-	service::add_credits_to_workspace(
+	let (transaction_id, client_secret) = service::add_credits_to_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 		credits,
+		&payment_method_id,
 		&config,
 	)
 	.await?;
 
-	context.success(AddCreditsResponse {});
+	context.success(AddCreditsResponse {
+		transaction_id,
+		client_secret,
+	});
+	Ok(context)
+}
+
+async fn confirm_credits(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	let ConfirmCreditsRequest { transaction_id, .. } = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let config = context.get_state().config.clone();
+
+	let transaction = db::get_transaction_by_transaction_id(
+		context.get_database_connection(),
+		&workspace_id,
+		&transaction_id,
+	)
+	.await?
+	.status(400)
+	.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	match transaction.payment_status {
+		PaymentStatus::Success => {
+			context.success(ConfirmCreditsResponse {});
+			return Ok(context);
+		}
+		PaymentStatus::Failed => {
+			context.json(error!(PAYMENT_FAILED));
+			return Ok(context);
+		}
+		PaymentStatus::Pending => {
+			// in pending state so need to confirm it
+		}
+	}
+
+	let success = service::confirm_payment(
+		context.get_database_connection(),
+		&workspace_id,
+		&transaction_id,
+		&config,
+	)
+	.await?;
+
+	if success {
+		service::send_purchase_credits_success_email(
+			context.get_database_connection(),
+			&workspace_id,
+			&transaction_id,
+		)
+		.await?;
+
+		let current_amount_due = db::get_workspace_info(
+			context.get_database_connection(),
+			&workspace_id,
+		)
+		.await?
+		.status(500)?
+		.amount_due_in_cents;
+		let bill_after_payment = TotalAmount::NeedToPay(current_amount_due) +
+			db::get_total_amount_in_cents_to_pay_for_workspace(
+				context.get_database_connection(),
+				&workspace_id,
+			)
+			.await?;
+
+		if let TotalAmount::NeedToPay(_bill) = bill_after_payment {
+			service::send_bill_paid_using_credits_email(
+				context.get_database_connection(),
+				&workspace_id,
+				&transaction_id,
+			)
+			.await?;
+		}
+
+		context.success(ConfirmCreditsResponse {});
+	} else {
+		context.json(error!(PAYMENT_FAILED));
+	}
+
 	Ok(context)
 }
 
@@ -979,22 +1105,29 @@ async fn make_payment(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let MakePaymentRequest { amount, .. } =
-		context
-			.get_body_as()
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
+	let MakePaymentRequest {
+		amount,
+		payment_method_id,
+		..
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
-	let transaction_id = service::make_payment(
+	let (transaction_id, client_secret) = service::make_payment(
 		context.get_database_connection(),
 		&workspace_id,
 		amount,
+		&payment_method_id,
 		&config,
 	)
 	.await?;
 
-	context.success(MakePaymentResponse { transaction_id });
+	context.success(MakePaymentResponse {
+		transaction_id,
+		client_secret,
+	});
 	Ok(context)
 }
 
@@ -1012,6 +1145,29 @@ async fn confirm_payment(
 
 	let config = context.get_state().config.clone();
 
+	let transaction = db::get_transaction_by_transaction_id(
+		context.get_database_connection(),
+		&workspace_id,
+		&transaction_id,
+	)
+	.await?
+	.status(400)
+	.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	match transaction.payment_status {
+		PaymentStatus::Success => {
+			context.success(ConfirmPaymentResponse {});
+			return Ok(context);
+		}
+		PaymentStatus::Failed => {
+			context.json(error!(PAYMENT_FAILED));
+			return Ok(context);
+		}
+		PaymentStatus::Pending => {
+			// in pending state so need to confirm it
+		}
+	}
+
 	let success = service::confirm_payment(
 		context.get_database_connection(),
 		&workspace_id,
@@ -1021,10 +1177,17 @@ async fn confirm_payment(
 	.await?;
 
 	if success {
+		service::send_partial_payment_success_email(
+			context.get_database_connection(),
+			&workspace_id,
+			&transaction_id,
+		)
+		.await?;
 		context.success(ConfirmPaymentResponse {});
 	} else {
 		context.json(error!(PAYMENT_FAILED));
 	}
+
 	Ok(context)
 }
 

@@ -1198,36 +1198,6 @@ pub async fn update_amount_due_for_workspace(
 	.map(|_| ())
 }
 
-pub async fn update_transaction_status_for_payment_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	payment_intent_id: &str,
-	status: &PaymentStatus,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			transaction
-		SET
-			payment_status = $1
-		WHERE
-			payment_intent_id = $2 AND
-			date = (
-				SELECT
-					MAX(date)
-				FROM
-					transaction
-				WHERE
-					payment_intent_id = $2
-			);
-		"#,
-		status as _,
-		payment_intent_id as _,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
 pub async fn get_payment_method_info(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	payment_method_id: &str,

@@ -1,7 +1,7 @@
 use api_models::{
 	models::{
 		auth::PreferredRecoveryOption,
-		workspace::billing::{Address, WorkspaceBillBreakdown},
+		workspace::billing::{Address, TotalAmount, WorkspaceBillBreakdown},
 	},
 	utils::Uuid,
 };
@@ -793,14 +793,274 @@ pub async fn send_repository_storage_limit_exceed_email(
 	)
 	.await?;
 
+	// parsing personal-workspace-(uuid)
+	let displayed_workspace_name = if let Some(Ok(user_id)) = workspace
+		.name
+		.strip_prefix("personal-workspace-")
+		.map(Uuid::parse_str)
+	{
+		let user = db::get_user_by_user_id(connection, &user_id).await?;
+		if let Some(user) = user {
+			format!(
+				"{} {}'s Personal Workspace",
+				user.first_name, user.last_name
+			)
+		} else {
+			workspace.name
+		}
+	} else {
+		workspace.name
+	};
+
 	email::send_repository_storage_limit_exceed_email(
 		user_email.parse()?,
 		&user.first_name,
-		&workspace.name,
+		&displayed_workspace_name,
 		&format!("registry.patr.cloud/{}/{}", workspace_id, repository_name),
 		tag,
 		digest,
 		ip_address,
 	)
 	.await
+}
+
+pub async fn send_purchase_credits_success_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	transaction_id: &Uuid,
+) -> Result<(), Error> {
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
+
+	let user = db::get_user_by_user_id(connection, &workspace.super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	// parsing personal-workspace-(uuid)
+	let displayed_workspace_name = if let Some(Ok(user_id)) = workspace
+		.name
+		.strip_prefix("personal-workspace-")
+		.map(Uuid::parse_str)
+	{
+		let user = db::get_user_by_user_id(connection, &user_id).await?;
+		if let Some(user) = user {
+			format!(
+				"{} {}'s Personal Workspace",
+				user.first_name, user.last_name
+			)
+		} else {
+			workspace.name
+		}
+	} else {
+		workspace.name
+	};
+
+	let transaction = db::get_transaction_by_transaction_id(
+		connection,
+		workspace_id,
+		transaction_id,
+	)
+	.await?
+	.status(500)?; // okay to use ? as transaction_id provided should be valid
+
+	email::send_purchase_credits_success_email(
+		user_email.parse()?,
+		&user.first_name,
+		&displayed_workspace_name,
+		transaction.amount_in_cents as u64,
+	)
+	.await
+}
+
+pub async fn send_bill_paid_using_credits_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	transaction_id: &Uuid,
+) -> Result<(), Error> {
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
+
+	let user = db::get_user_by_user_id(connection, &workspace.super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	// parsing personal-workspace-(uuid)
+	let displayed_workspace_name = if let Some(Ok(user_id)) = workspace
+		.name
+		.strip_prefix("personal-workspace-")
+		.map(Uuid::parse_str)
+	{
+		let user = db::get_user_by_user_id(connection, &user_id).await?;
+		if let Some(user) = user {
+			format!(
+				"{} {}'s Personal Workspace",
+				user.first_name, user.last_name
+			)
+		} else {
+			workspace.name
+		}
+	} else {
+		workspace.name
+	};
+
+	let transaction = db::get_transaction_by_transaction_id(
+		connection,
+		workspace_id,
+		transaction_id,
+	)
+	.await?
+	.status(500)?; // okay to use ? as transaction_id provided should be valid
+
+	let bill_after_payment =
+		db::get_total_amount_in_cents_to_pay_for_workspace(
+			connection,
+			workspace_id,
+		)
+		.await?;
+
+	let (bill_remaining, credits_remaining) = match bill_after_payment.clone() +
+		TotalAmount::NeedToPay(workspace.amount_due_in_cents as u64)
+	{
+		TotalAmount::CreditsLeft(credit) => (0, credit),
+		TotalAmount::NeedToPay(bill) => (bill, 0),
+	};
+
+	let bill_before_payment = bill_after_payment +
+		TotalAmount::NeedToPay(transaction.amount_in_cents as u64);
+
+	let total_bill = workspace.amount_due_in_cents +
+		match bill_before_payment {
+			TotalAmount::CreditsLeft(_credit) => 0,
+			TotalAmount::NeedToPay(bill) => bill,
+		};
+
+	email::send_bill_paid_using_credits_email(
+		user_email.parse()?,
+		&user.first_name,
+		&displayed_workspace_name,
+		total_bill,
+		bill_remaining,
+		credits_remaining,
+	)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn send_partial_payment_success_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	transaction_id: &Uuid,
+) -> Result<(), Error> {
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
+
+	let user = db::get_user_by_user_id(connection, &workspace.super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	// parsing personal-workspace-(uuid)
+	let displayed_workspace_name = if let Some(Ok(user_id)) = workspace
+		.name
+		.strip_prefix("personal-workspace-")
+		.map(Uuid::parse_str)
+	{
+		let user = db::get_user_by_user_id(connection, &user_id).await?;
+		if let Some(user) = user {
+			format!(
+				"{} {}'s Personal Workspace",
+				user.first_name, user.last_name
+			)
+		} else {
+			workspace.name
+		}
+	} else {
+		workspace.name
+	};
+
+	let transaction = db::get_transaction_by_transaction_id(
+		connection,
+		workspace_id,
+		transaction_id,
+	)
+	.await?
+	.status(500)?; // okay to use ? as transaction_id provided should be valid
+
+	let bill_after_payment =
+		db::get_total_amount_in_cents_to_pay_for_workspace(
+			connection,
+			workspace_id,
+		)
+		.await?;
+
+	let (bill_remaining, credits_remaining) = match bill_after_payment.clone() +
+		TotalAmount::NeedToPay(workspace.amount_due_in_cents as u64)
+	{
+		TotalAmount::CreditsLeft(credit) => (0, credit),
+		TotalAmount::NeedToPay(bill) => (bill, 0),
+	};
+
+	let bill_before_payment = bill_after_payment +
+		TotalAmount::NeedToPay(transaction.amount_in_cents as u64);
+
+	let total_bill = workspace.amount_due_in_cents +
+		match bill_before_payment {
+			TotalAmount::CreditsLeft(_credit) => 0,
+			TotalAmount::NeedToPay(bill) => bill,
+		};
+
+	email::send_partial_payment_success_email(
+		user_email.parse()?,
+		&user.first_name,
+		&displayed_workspace_name,
+		total_bill,
+		transaction.amount_in_cents as u64,
+		bill_remaining,
+		credits_remaining,
+	)
+	.await?;
+
+	Ok(())
 }
