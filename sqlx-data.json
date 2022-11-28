@@ -3027,6 +3027,26 @@
     },
     "query": "CREATE TABLE resource_type( id UUID CONSTRAINT resource_type_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE, description VARCHAR(500) NOT NULL );"
   },
+  "395329c4d7ee7f4b8c8617af25cf03c40a815a0b4c97eaef2972bdd27d39a4a6": {
+    "describe": {
+      "columns": [
+        {
+          "name": "user_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT DISTINCT user_id AS \"user_id: Uuid\" FROM personal_email WHERE domain_id = $1;"
+  },
   "3965581880bfbe752b776a4c3b8cd706b08ab342b24781170ad0025fd8133a5f": {
     "describe": {
       "columns": [],
