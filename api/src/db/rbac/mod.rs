@@ -1,14 +1,15 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-use api_models::{models::user::WorkspacePermission, utils::Uuid};
+use api_models::{models::workspace::WorkspacePermission, utils::Uuid};
 use chrono::{DateTime, Utc};
 
-use crate::{db::Workspace, models::rbac, query, query_as, Database};
+use crate::{models::rbac, query, query_as, Database};
 
 mod role;
 mod user;
 
 pub use self::{role::*, user::*};
+use super::{PaymentType, Workspace};
 
 pub struct ResourceType {
 	pub id: Uuid,
@@ -442,17 +443,16 @@ pub async fn get_all_workspace_role_permissions_for_user(
 	}
 
 	// add superadmins to the data-structure too
-	let workspaces_details = query_as!(
-		Workspace,
+	let workspaces_details = query!(
 		r#"
 		SELECT
-			id as "id: _",
-			name::TEXT as "name!: _",
-			super_admin_id as "super_admin_id: _",
+			id as "id: Uuid",
+			name::TEXT as "name!: String",
+			super_admin_id as "super_admin_id: Uuid",
 			active,
-			alert_emails as "alert_emails: _",
-			payment_type as "payment_type: _",
-			default_payment_method_id as "default_payment_method_id: _",
+			alert_emails as "alert_emails: Vec<String>",
+			payment_type as "payment_type: PaymentType",
+			default_payment_method_id as "default_payment_method_id: String",
 			deployment_limit,
 			static_site_limit,
 			database_limit,
@@ -461,8 +461,8 @@ pub async fn get_all_workspace_role_permissions_for_user(
 			domain_limit,
 			docker_repository_storage_limit,
 			stripe_customer_id,
-			address_id as "address_id: _",
-			amount_due
+			address_id as "address_id: Uuid",
+			amount_due_in_cents
 		FROM
 			workspace
 		WHERE
@@ -471,7 +471,28 @@ pub async fn get_all_workspace_role_permissions_for_user(
 		user_id as _
 	)
 	.fetch_all(&mut *connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| Workspace {
+		id: row.id,
+		name: row.name,
+		super_admin_id: row.super_admin_id,
+		active: row.active,
+		alert_emails: row.alert_emails,
+		payment_type: row.payment_type,
+		default_payment_method_id: row.default_payment_method_id,
+		deployment_limit: row.deployment_limit,
+		static_site_limit: row.static_site_limit,
+		database_limit: row.database_limit,
+		managed_url_limit: row.managed_url_limit,
+		secret_limit: row.secret_limit,
+		domain_limit: row.domain_limit,
+		docker_repository_storage_limit: row.docker_repository_storage_limit,
+		stripe_customer_id: row.stripe_customer_id,
+		address_id: row.address_id,
+		amount_due_in_cents: row.amount_due_in_cents as u64,
+	})
+	.collect::<Vec<_>>();
 
 	for workspace_details in workspaces_details {
 		let workspace_id = workspace_details.id;

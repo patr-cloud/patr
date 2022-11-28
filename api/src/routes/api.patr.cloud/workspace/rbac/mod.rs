@@ -2,6 +2,7 @@ use api_models::{
 	models::workspace::rbac::{
 		list_all_permissions::{ListAllPermissionsResponse, Permission},
 		list_all_resource_types::{ListAllResourceTypesResponse, ResourceType},
+		GetCurrentPermissionsResponse,
 	},
 	utils::Uuid,
 };
@@ -63,6 +64,15 @@ pub fn create_sub_app(
 				is_api_token_allowed: true,
 			},
 			EveMiddleware::CustomFunction(pin_fn!(get_all_resource_types)),
+		],
+	);
+	sub_app.get(
+		"/current-permissions",
+		[
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
+			EveMiddleware::CustomFunction(pin_fn!(get_current_permissions)),
 		],
 	);
 
@@ -142,5 +152,27 @@ async fn get_all_resource_types(
 			.collect();
 
 	context.success(ListAllResourceTypesResponse { resource_types });
+	Ok(context)
+}
+
+async fn get_current_permissions(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let permissions = context
+		.get_token_data()
+		.unwrap()
+		.workspace_permissions()
+		.get(&workspace_id)
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?
+		.clone();
+
+	context.success(GetCurrentPermissionsResponse { permissions });
 	Ok(context)
 }

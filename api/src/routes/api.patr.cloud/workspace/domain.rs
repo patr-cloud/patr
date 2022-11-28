@@ -11,6 +11,8 @@ use api_models::{
 		GetDomainDnsRecordsResponse,
 		GetDomainInfoResponse,
 		GetDomainsForWorkspaceResponse,
+		IsDomainPersonalRequest,
+		IsDomainPersonalResponse,
 		PatrDomainDnsRecord,
 		UpdateDomainDnsRecordRequest,
 		UpdateDomainDnsRecordResponse,
@@ -393,6 +395,37 @@ pub fn create_sub_app(
 				}),
 			},
 			EveMiddleware::CustomFunction(pin_fn!(delete_dns_record)),
+		],
+	);
+
+	app.get(
+		"/is-domain-personal",
+		[
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::domain::ADD,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			},
+			EveMiddleware::CustomFunction(pin_fn!(is_domain_personal)),
 		],
 	);
 
@@ -970,5 +1003,57 @@ async fn delete_dns_record(
 
 	log::trace!("request_id: {} - Deleted dns record", request_id);
 	context.success(DeleteDnsRecordResponse {});
+	Ok(context)
+}
+
+async fn is_domain_personal(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
+	log::trace!(
+		"request_id: {} - Checking if a domain is personal",
+		request_id
+	);
+	let IsDomainPersonalRequest { domain, .. } = context
+		.get_query_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let user_id = context.get_token_data().unwrap().user_id().clone();
+
+	let (personal, is_used_by_others) = if let Some(domain) =
+		db::get_domain_by_name(context.get_database_connection(), &domain)
+			.await?
+	{
+		if domain.r#type.is_personal() {
+			(
+				true,
+				db::get_users_with_domain_in_personal_email(
+					context.get_database_connection(),
+					&domain.id,
+				)
+				.await?
+				.into_iter()
+				.any(|domain_user| domain_user != user_id),
+			)
+		} else {
+			(false, false)
+		}
+	} else {
+		(false, false)
+	};
+
+	log::trace!(
+		"request_id: {} - Personal: {}, used by others: {}",
+		request_id,
+		personal,
+		is_used_by_others
+	);
+	context.success(IsDomainPersonalResponse {
+		personal,
+		is_used_by_others,
+	});
 	Ok(context)
 }

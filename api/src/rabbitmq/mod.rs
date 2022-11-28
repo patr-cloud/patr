@@ -28,6 +28,7 @@ mod byoc;
 mod ci;
 mod database;
 mod deployment;
+mod docker_registry;
 
 pub use ci::{BuildId, BuildStep, BuildStepId};
 
@@ -214,6 +215,21 @@ async fn process_infra_queue_payload(
 					error
 				})
 		}
+		InfraRequestData::DockerRegistry(docker_registry_data) => {
+			docker_registry::process_request(
+				&mut connection,
+				docker_registry_data,
+				config,
+			)
+			.await
+			.map_err(|error| {
+				log::error!(
+					"Error processing infra RabbitMQ message: {}",
+					error.get_error()
+				);
+				error
+			})
+		}
 	}
 }
 
@@ -257,10 +273,10 @@ pub(super) async fn create_rabbitmq_pool(
 	let cfg = Config {
 		url: Some(format!(
 			"amqp://{}:{}@{}:{}/%2f",
-			config.rabbit_mq.username,
-			config.rabbit_mq.password,
-			config.rabbit_mq.host,
-			config.rabbit_mq.port
+			config.rabbitmq.username,
+			config.rabbitmq.password,
+			config.rabbitmq.host,
+			config.rabbitmq.port
 		)),
 		..Config::default()
 	};

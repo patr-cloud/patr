@@ -1,9 +1,6 @@
 use std::str::FromStr;
 
-use api_models::{
-	models::workspace::billing::{Address, StripeCustomer},
-	utils::Uuid,
-};
+use api_models::{models::workspace::billing::Address, utils::Uuid};
 use chrono::Utc;
 use eve_rs::AsError;
 use stripe::{Client, CreateCustomer, Customer, CustomerId, UpdateCustomer};
@@ -130,7 +127,8 @@ pub async fn create_workspace(
 	)
 	.await?;
 
-	let stripe_customer = create_stripe_customer(&resource_id, config).await?;
+	let stripe_customer_id =
+		create_stripe_customer(&resource_id, config).await?;
 
 	db::create_workspace(
 		connection,
@@ -145,7 +143,7 @@ pub async fn create_workspace(
 		default_limits::DOCKER_REPOSITORY_STORAGE,
 		default_limits::DOMAINS,
 		default_limits::SECRETS,
-		&stripe_customer.id,
+		&stripe_customer_id,
 		&PaymentType::Card,
 	)
 	.await?;
@@ -289,7 +287,7 @@ pub async fn update_billing_address(
 async fn create_stripe_customer(
 	workspace_id: &Uuid,
 	config: &Settings,
-) -> Result<StripeCustomer, Error> {
+) -> Result<String, Error> {
 	let client = Client::new(&config.stripe.secret_key);
 	let customer = Customer::create(&client, {
 		let mut create_customer = CreateCustomer::new();
@@ -300,8 +298,5 @@ async fn create_stripe_customer(
 	})
 	.await?;
 
-	Ok(StripeCustomer {
-		id: customer.id.to_string(),
-		name: customer.name.status(500)?,
-	})
+	Ok(customer.id.to_string())
 }

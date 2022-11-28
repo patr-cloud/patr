@@ -1,12 +1,7 @@
 {
 	"html": {
 		"file": "html.handlebars",
-		"inline": {
-			"logo": {
-				"mime": "image/png",
-				"file": "../../images/shared/logo.png"
-			}
-		}
+		"inline": {}
 	},
 	"plain": {
 		"file": "plain.handlebars"

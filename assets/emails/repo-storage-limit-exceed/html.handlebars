@@ -1,0 +1,51 @@
+{{#> container}}
+  {{#*inline "email-content"}}
+  <tr>
+    <td
+      class="para txt-light"
+      style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+    >
+      Your recently pushed image for repository 
+      <strong
+        class="txt-light"
+        style="color: #ffffff"
+      >{{repositoryName}}</strong> with digest <strong
+        class="txt-light"
+        style="color: #ffffff"
+      >{{digest}}</strong> in workspace <a
+            href="https://app.patr.cloud/workspace"
+            class="plain-link txt-primary txt-bold"
+            style="color: #f89b41; text-decoration: none; font-weight: 600;"
+        >{{workspaceName}}</a> has exceeded the free tier of 10GB docker repository storage and has been automatically deleted to prevent you from incurring a bill.
+    </td>
+  </tr>
+  <tr>
+    <td
+      class="para txt-light"
+      style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+    >
+      To continue using Patr without limits please add a card in the 
+      <a
+        href="https://app.patr.cloud/workspace"
+        class="plain-link txt-primary"
+        style="color: #f89b41; text-decoration: none; font-weight: 500;"
+      >billing</a> section of Patr.
+    </td>
+  </tr>
+  <tr>
+    <td
+      class="para txt-light"
+      style="padding-top: 1rem; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;"
+    >
+      If you are facing any issues, reach out
+      to us at
+      <a
+        href="mailto:suppport@patr.cloud"
+        class="plain-link txt-primary"
+        title="Contact Patr support"
+        style="color: #f89b41; text-decoration: none; font-weight: 500;"
+      >suppport@patr.cloud</a>
+    </td>
+  </tr>
+  {{/inline}}
+{{/container}}

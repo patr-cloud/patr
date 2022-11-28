@@ -17,6 +17,7 @@ use crate::{
 		BillingData,
 		CIData,
 		DeploymentRequestData,
+		DockerRegistryData,
 		InfraRequestData,
 		Queue,
 	},
@@ -82,6 +83,32 @@ pub async fn queue_update_deployment_image(
 	.await
 }
 
+pub async fn queue_delete_docker_registry_image(
+	workspace_id: &Uuid,
+	repository_name: &str,
+	digest: &str,
+	tag: &str,
+	image_pushed_ip_addr: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_infra_queue(
+		&InfraRequestData::DockerRegistry(
+			DockerRegistryData::DeleteDockerImage {
+				request_id: request_id.clone(),
+				workspace_id: workspace_id.clone(),
+				repository_name: repository_name.to_owned(),
+				digest: digest.to_owned(),
+				tag: tag.to_owned(),
+				image_pushed_ip_addr: image_pushed_ip_addr.to_owned(),
+			},
+		),
+		config,
+		request_id,
+	)
+	.await
+}
+
 pub async fn queue_process_payment(
 	month: u32,
 	year: i32,
@@ -121,7 +148,7 @@ pub async fn queue_attempt_to_charge_workspace(
 }
 
 pub async fn queue_retry_payment_for_workspace(
-	workspace: &Workspace,
+	workspace_id: &Uuid,
 	process_after: &DateTime<Utc>,
 	month: u32,
 	year: i32,
@@ -130,7 +157,7 @@ pub async fn queue_retry_payment_for_workspace(
 	let request_id = Uuid::new_v4();
 	send_message_to_billing_queue(
 		&BillingData::RetryPaymentForWorkspace {
-			workspace: workspace.clone(),
+			workspace_id: workspace_id.clone(),
 			process_after: (*process_after).into(),
 			month,
 			year,

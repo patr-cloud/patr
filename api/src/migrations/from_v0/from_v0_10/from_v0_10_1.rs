@@ -119,8 +119,8 @@ async fn refactor_static_site_deletion(
 		WHERE
 			name LIKE CONCAT(
 				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
+				'%-',
+				REPLACE(id::TEXT, '-', '')
 			);
 		"#
 	)
@@ -156,13 +156,22 @@ async fn refactor_static_site_deletion(
 				static_site
 			SET
 				name = REPLACE(
-					name,
-					CONCAT(
+					REPLACE(
+						name,
 						'patr-deleted: ',
-						REPLACE(id::TEXT, '-', ''),
-						'@'
+						''
+					),
+					CONCAT(
+						'-',
+						REPLACE(id::TEXT, '-', '')
 					),
 					''
+				)
+			WHERE
+				name LIKE CONCAT(
+					'patr-deleted: ',
+					'%-',
+					REPLACE(id::TEXT, '-', '')
 				);
 			"#
 		)
@@ -341,8 +350,8 @@ async fn refactor_docker_repository_deletion(
 		WHERE
 			name LIKE CONCAT(
 				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
+				'%-',
+				REPLACE(id::TEXT, '-', '')
 			);
 		"#
 	)
@@ -359,8 +368,8 @@ async fn refactor_docker_repository_deletion(
 			WHERE
 				name LIKE CONCAT(
 					'patr-deleted: ',
-					REPLACE(id::TEXT, '-', ''),
-					'@%'
+					'%-',
+					REPLACE(id::TEXT, '-', '')
 				);
 			"#
 		)
@@ -378,13 +387,22 @@ async fn refactor_docker_repository_deletion(
 				docker_registry_repository
 			SET
 				name = REPLACE(
-					name,
-					CONCAT(
+					REPLACE(
+						name,
 						'patr-deleted: ',
-						REPLACE(id::TEXT, '-', ''),
-						'@'
+						''
+					),
+					CONCAT(
+						'-',
+						REPLACE(id::TEXT, '-', '')
 					),
 					''
+				)
+			WHERE
+				name LIKE CONCAT(
+					'patr-deleted: ',
+					'%-',
+					REPLACE(id::TEXT, '-', '')
 				);
 			"#
 		)
@@ -450,8 +468,8 @@ async fn refactor_database_deletion(
 		WHERE
 			name LIKE CONCAT(
 				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
-				'@%'
+				'%-',
+				id::TEXT
 			);
 		"#
 	)
@@ -468,8 +486,8 @@ async fn refactor_database_deletion(
 			WHERE
 				name LIKE CONCAT(
 					'patr-deleted: ',
-					REPLACE(id::TEXT, '-', ''),
-					'@%'
+					'%-',
+					id::TEXT
 				);
 			"#
 		)
@@ -487,13 +505,22 @@ async fn refactor_database_deletion(
 				managed_database
 			SET
 				name = REPLACE(
-					name,
-					CONCAT(
+					REPLACE(
+						name,
 						'patr-deleted: ',
-						REPLACE(id::TEXT, '-', ''),
-						'@'
+						''
+					),
+					CONCAT(
+						'-',
+						id::TEXT
 					),
 					''
+				)
+			WHERE
+				name LIKE CONCAT(
+					'patr-deleted: ',
+					'%-',
+					id::TEXT
 				);
 			"#
 		)

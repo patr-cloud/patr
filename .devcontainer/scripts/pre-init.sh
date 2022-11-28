@@ -19,6 +19,7 @@ COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-$USER}
 echo "$USER_ID" > $baseDir/../volume/config/init-data/user
 echo "$GROUP_ID" > $baseDir/../volume/config/init-data/group
 echo "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" > $baseDir/../../.env
+touch $baseDir/../volume/config/init-data/.bashrc
 
 # init docker registry credentials
 

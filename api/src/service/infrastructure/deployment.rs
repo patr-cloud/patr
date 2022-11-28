@@ -24,12 +24,12 @@ use crate::{
 	db,
 	error,
 	models::{
-		deployment::{Logs, PrometheusResponse},
+		deployment::{Logs, PrometheusResponse, MACHINE_TYPES},
 		rbac::{self, permissions},
 		DeploymentMetadata,
 	},
 	service,
-	utils::{settings::Settings, validator, Error},
+	utils::{constants::free_limits, settings::Settings, validator, Error},
 	Database,
 };
 
@@ -112,22 +112,14 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
-	log::trace!("request_id: {} - Checking resource limit", request_id);
-
-	if super::resource_limit_crossed(connection, workspace_id, request_id)
-		.await?
-	{
-		return Error::as_result()
-			.status(400)
-			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
-	}
-
-	log::trace!("request_id: {} - Checking deployment limit", request_id);
-	if deployment_limit_crossed(connection, workspace_id, request_id).await? {
-		return Error::as_result()
-			.status(400)
-			.body(error!(DEPLOYMENT_LIMIT_EXCEEDED).to_string())?;
-	}
+	check_deployment_creation_limit(
+		connection,
+		workspace_id,
+		region_details.is_byoc_region(),
+		machine_type,
+		request_id,
+	)
+	.await?;
 
 	let created_time = Utc::now();
 
@@ -270,8 +262,8 @@ pub async fn create_deployment_in_workspace(
 pub async fn get_deployment_container_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
-	start_time: &DateTime<Utc>,
 	end_time: &DateTime<Utc>,
+	limit: u32,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<String, Error> {
@@ -289,8 +281,8 @@ pub async fn get_deployment_container_logs(
 	let logs = get_container_logs(
 		&deployment.workspace_id,
 		deployment_id,
-		start_time,
 		end_time,
+		limit,
 		config,
 		request_id,
 	)
@@ -913,8 +905,8 @@ pub async fn get_deployment_metrics(
 async fn get_container_logs(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-	start_time: &DateTime<Utc>,
 	end_time: &DateTime<Utc>,
+	limit: u32,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<String, Error> {
@@ -929,13 +921,13 @@ async fn get_container_logs(
 			concat!(
 				"https://{}/loki/api/v1/query_range?direction=BACKWARD&",
 				"query={{container=\"deployment-{}\",namespace=\"{}\"}}",
-				"&start={}&end={}"
+				"&end={}&limit={}"
 			),
 			config.loki.host,
 			deployment_id,
 			workspace_id,
-			start_time.timestamp_millis(),
-			end_time.timestamp_millis()
+			end_time.timestamp_nanos(),
+			limit
 		))
 		.basic_auth(&config.loki.username, Some(&config.loki.password))
 		.send()
@@ -989,8 +981,8 @@ pub async fn get_deployment_build_logs(
 			),
 			config.loki.host,
 			workspace_id,
-			start_time.timestamp_millis(),
-			end_time.timestamp_millis()
+			start_time.timestamp_nanos(),
+			end_time.timestamp_nanos()
 		))
 		.basic_auth(&config.loki.username, Some(&config.loki.password))
 		.send()
@@ -1028,35 +1020,79 @@ pub async fn get_deployment_build_logs(
 	Ok(combined_build_logs)
 }
 
-async fn deployment_limit_crossed(
+async fn check_deployment_creation_limit(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
+	is_byoc_region: bool,
+	machine_type: &Uuid,
 	request_id: &Uuid,
-) -> Result<bool, Error> {
-	log::trace!(
-		"request_id: {} - Checking if free limits are crossed",
-		request_id
-	);
+) -> Result<(), Error> {
+	log::trace!("request_id: {request_id} - Checking whether new deployment creation is limited");
 
-	let workspace = db::get_workspace_info(connection, workspace_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+	if is_byoc_region {
+		// if byoc, then don't need to check free/paid/total limits
+		// as this deloyment is going to be deployed on their cluster
+		return Ok(());
+	}
 
-	let current_deployments =
+	let current_deployment_count =
 		db::get_deployments_for_workspace(connection, workspace_id)
 			.await?
 			.len();
 
-	log::trace!(
-		"request_id: {} - Checking if deployment limits are crossed",
-		request_id
-	);
-	if current_deployments + 1 > workspace.deployment_limit as usize {
-		return Ok(true);
+	let card_added =
+		db::get_default_payment_method_for_workspace(connection, workspace_id)
+			.await?
+			.is_some();
+	if !card_added {
+		// check whether free limit is exceeded
+		if current_deployment_count >= free_limits::DEPLOYMENT_COUNT {
+			log::info!("request_id: {request_id} - Free deployment limit reached and card is not added");
+			return Error::as_result()
+				.status(400)
+				.body(error!(CARDLESS_FREE_LIMIT_EXCEEDED).to_string())?;
+		}
+
+		// only basic machine type is allowed under free plan
+		let machine_type_to_be_deployed = MACHINE_TYPES
+			.get()
+			.and_then(|machines| machines.get(machine_type))
+			.status(500)?;
+
+		if machine_type_to_be_deployed != &(1, 2) {
+			log::info!("request_id: {request_id} - Only basic machine type is allowed under free plan");
+			return Error::as_result().status(400).body(
+				error!(CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT).to_string(),
+			)?;
+		}
 	}
 
-	Ok(false)
+	// check whether max deployment limit is exceeded
+	let max_deployment_limit = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+		.deployment_limit;
+	if current_deployment_count >= max_deployment_limit as usize {
+		log::info!(
+			"request_id: {request_id} - Max deployment limit for workspace reached"
+		);
+		return Error::as_result()
+			.status(400)
+			.body(error!(DEPLOYMENT_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	// check whether total resource limit is exceeded
+	if super::resource_limit_crossed(connection, workspace_id, request_id)
+		.await?
+	{
+		log::info!("request_id: {request_id} - Total resource limit exceeded");
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	Ok(())
 }
 
 pub async fn start_deployment(

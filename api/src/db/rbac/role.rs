@@ -341,24 +341,6 @@ pub async fn get_all_users_with_role(
 	.await
 }
 
-pub async fn remove_all_users_from_role(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		DELETE FROM
-			workspace_user
-		WHERE
-			role_id = $1;
-		"#,
-		role_id as _
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
 pub async fn update_role_name_and_description(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &Uuid,

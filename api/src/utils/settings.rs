@@ -63,9 +63,8 @@ pub struct Settings {
 	pub docker_registry: DockerRegistrySettings,
 	pub digitalocean: Digitalocean,
 	pub kubernetes: KubernetesSettings,
-	pub prometheus: PrometheusSettings,
 	#[serde(alias = "rabbitmq")]
-	pub rabbit_mq: RabbitMqSettings,
+	pub rabbitmq: RabbitMqSettings,
 	pub vault: VaultSettings,
 	pub loki: LokiSettings,
 	pub mailchimp: MailchimpSettings,
@@ -173,7 +172,6 @@ pub struct DockerRegistrySettings {
 pub struct Digitalocean {
 	#[serde(alias = "apikey")]
 	pub api_key: String,
-	pub registry: String,
 }
 
 impl Display for RunningEnvironment {
@@ -212,8 +210,6 @@ pub struct KubernetesSettings {
 	pub cert_issuer_dns: String,
 	#[serde(alias = "staticsiteproxyservice")]
 	pub static_site_proxy_service: String,
-	#[serde(alias = "alertwebhooksecret")]
-	pub alert_webhook_secret: String,
 }
 
 fn base64_to_byte_array<'de, D>(value: D) -> Result<Vec<u8>, D::Error>

@@ -29,7 +29,7 @@ pub async fn get_token_revoked_timestamp_for_user(
 ) -> Result<Option<DateTime<Utc>>, RedisError> {
 	let timestamp: Option<i64> =
 		redis_conn.get(get_key_for_user_revocation(user_id)).await?;
-	Ok(timestamp.map(|timestamp| Utc.timestamp_millis(timestamp)))
+	Ok(timestamp.map(|timestamp| Utc.timestamp_millis_opt(timestamp).unwrap()))
 }
 
 /// returns last set revocation timestamp (in millis) for the given login
@@ -40,7 +40,7 @@ pub async fn get_token_revoked_timestamp_for_login(
 	let timestamp: Option<i64> = redis_conn
 		.get(get_key_for_login_revocation(login_id))
 		.await?;
-	Ok(timestamp.map(|timestamp| Utc.timestamp_millis(timestamp)))
+	Ok(timestamp.map(|timestamp| Utc.timestamp_millis_opt(timestamp).unwrap()))
 }
 
 /// returns last set revocation timestamp (in millis) for the given
@@ -52,7 +52,7 @@ pub async fn get_token_revoked_timestamp_for_workspace(
 	let timestamp: Option<i64> = redis_conn
 		.get(get_key_for_workspace_revocation(workspace_id))
 		.await?;
-	Ok(timestamp.map(|timestamp| Utc.timestamp_millis(timestamp)))
+	Ok(timestamp.map(|timestamp| Utc.timestamp_millis_opt(timestamp).unwrap()))
 }
 
 /// returns last set revocation timestamp (in millis) for global tokens
@@ -61,7 +61,7 @@ pub async fn get_global_token_revoked_timestamp(
 ) -> Result<Option<DateTime<Utc>>, RedisError> {
 	let timestamp: Option<i64> =
 		redis_conn.get(get_key_for_global_revocation()).await?;
-	Ok(timestamp.map(|timestamp| Utc.timestamp_millis(timestamp)))
+	Ok(timestamp.map(|timestamp| Utc.timestamp_millis_opt(timestamp).unwrap()))
 }
 
 /// if ttl_in_secs is None, then key will live forever

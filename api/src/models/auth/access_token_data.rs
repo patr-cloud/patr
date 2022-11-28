@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use ::redis::aio::MultiplexedConnection as RedisConnection;
-use api_models::{models::user::WorkspacePermission, utils::Uuid};
+use api_models::{models::workspace::WorkspacePermission, utils::Uuid};
 use chrono::{DateTime, Utc};
 use jsonwebtoken::{
 	Algorithm,
@@ -173,7 +173,7 @@ mod datetime_as_seconds {
 		D: Deserializer<'de>,
 	{
 		i64::deserialize(deserializer)
-			.map(|timestamp| Utc.timestamp(timestamp, 0))
+			.map(|timestamp| Utc.timestamp_opt(timestamp, 0).unwrap())
 	}
 }
 

@@ -47,6 +47,7 @@ impl fmt::Display for Queue {
 pub enum InfraRequestData {
 	Deployment(DeploymentRequestData),
 	BYOC(BYOCData),
+	DockerRegistry(DockerRegistryData),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -96,6 +97,19 @@ pub enum DeploymentRequestData {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", rename_all = "camelCase")]
+pub enum DockerRegistryData {
+	DeleteDockerImage {
+		workspace_id: Uuid,
+		repository_name: String,
+		digest: String,
+		tag: String,
+		image_pushed_ip_addr: String,
+		request_id: Uuid,
+	},
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "action", rename_all = "camelCase")]
 #[allow(clippy::large_enum_variant)]
 pub enum BillingData {
 	ProcessWorkspaces {
@@ -116,7 +130,7 @@ pub enum BillingData {
 		request_id: Uuid,
 	},
 	RetryPaymentForWorkspace {
-		workspace: Workspace,
+		workspace_id: Uuid,
 		process_after: DateTime<Utc>,
 		month: u32,
 		year: i32,

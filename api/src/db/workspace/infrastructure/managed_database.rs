@@ -7,7 +7,7 @@ use eve_rs::AsError;
 
 use crate::{error, utils::Error, Database};
 
-#[derive(sqlx::Type)]
+#[derive(sqlx::Type, Debug, PartialEq, Eq)]
 #[sqlx(type_name = "MANAGED_DATABASE_STATUS", rename_all = "lowercase")]
 pub enum ManagedDatabaseStatus {
 	Creating,

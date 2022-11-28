@@ -17,7 +17,7 @@ use crate::{
 		RegistryTokenAccess,
 		V1Compatibility,
 	},
-	utils::{settings::Settings, Error},
+	utils::{constants::free_limits, settings::Settings, Error},
 	Database,
 };
 
@@ -78,13 +78,28 @@ pub async fn delete_docker_repository_image(
 	)
 	.await?;
 
+	delete_docker_repository_image_in_registry(
+		connection, &repo_name, digest, config, request_id,
+	)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn delete_docker_repository_image_in_registry(
+	connection: &mut sqlx::PgConnection,
+	repo_name: &str,
+	digest: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), eve_rs::Error<()>> {
 	let god_user =
 		db::get_user_by_user_id(connection, rbac::GOD_USER_ID.get().unwrap())
 			.await?
 			.unwrap();
 
 	log::trace!("request_id: {} - Deleting docker repository image with digest: {} from the registry", request_id, digest);
-	let response_code = reqwest::Client::new()
+	let response = reqwest::Client::new()
 		.delete(format!(
 			"{}://{}/v2/{}/manifests/{}",
 			if config.docker_registry.registry_url.starts_with("localhost") {
@@ -104,7 +119,7 @@ pub async fn delete_docker_repository_image(
 				config,
 				vec![RegistryTokenAccess {
 					r#type: "repository".to_string(),
-					name: repo_name,
+					name: repo_name.to_owned(),
 					actions: vec!["delete".to_string()],
 				}],
 			)
@@ -122,19 +137,28 @@ pub async fn delete_docker_repository_image(
 			),
 		)
 		.send()
-		.await?
-		.status();
+		.await?;
 
-	if response_code == 404 {
-		return Err(Error::empty()
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string()));
-	} else if !response_code.is_success() {
-		return Err(Error::empty());
+	// https://docs.docker.com/registry/spec/api/#delete-manifest
+	// 200 => Accepted (Success)
+	// 400 => Invalid Name or Reference
+	// 404 => No Such Repository Error
+
+	let response_status = response.status();
+	if response_status.is_success() {
+		log::trace!("request_id: {} - Deleting docker repository image with digest: {} from the registry was successful", request_id, digest);
+		Ok(())
+	} else {
+		let response_msg = response.text().await?;
+		log::trace!("request_id: {} - Deleting docker repository image with digest: {} failed with response {}", request_id, digest, response_msg);
+
+		if response_status == 404 || response_status == 400 {
+			log::warn!("request_id: {} - Since image is not there considering it as already deleted", request_id);
+			Ok(())
+		} else {
+			Err(Error::empty())
+		}
 	}
-	log::trace!("request_id: {} - Deleting docker repository image with digest: {} from the registry was successful", request_id, digest);
-
-	Ok(())
 }
 
 pub async fn delete_docker_repository(
@@ -181,64 +205,16 @@ pub async fn delete_docker_repository(
 	db::delete_docker_repository(connection, repository_id, &Utc::now())
 		.await?;
 
-	let client = reqwest::Client::new();
-
-	let god_user =
-		db::get_user_by_user_id(connection, rbac::GOD_USER_ID.get().unwrap())
-			.await?
-			.unwrap();
-
 	log::trace!("request_id: {} - Deleting docker images of the repositories from the registry", request_id);
 	for image in images {
-		let response_code = client
-			.delete(format!(
-				"{}://{}/v2/{}/manifests/{}",
-				if config.docker_registry.registry_url.starts_with("localhost")
-				{
-					"http"
-				} else {
-					"https"
-				},
-				config.docker_registry.registry_url,
-				repo_name,
-				image.digest
-			))
-			.bearer_auth(
-				RegistryToken::new(
-					config.docker_registry.issuer.clone(),
-					Utc::now(),
-					god_user.username.clone(),
-					config,
-					vec![RegistryTokenAccess {
-						r#type: "repository".to_string(),
-						name: repo_name.clone(),
-						actions: vec!["delete".to_string()],
-					}],
-				)
-				.to_string(
-					config.docker_registry.private_key.as_ref(),
-					config.docker_registry.public_key_der.as_ref(),
-				)?,
-			)
-			.header(
-				reqwest::header::ACCEPT,
-				format!(
-					"{}, {}",
-					"application/vnd.docker.distribution.manifest.v2+json",
-					"application/vnd.oci.image.manifest.v1+json"
-				),
-			)
-			.send()
-			.await?
-			.status();
-
-		if response_code == 404 {
-			return Err(Error::empty()
-				.status(404)
-				.body(error!(RESOURCE_DOES_NOT_EXIST).to_string()));
-		} else if !response_code.is_success() {
-			return Err(Error::empty());
-		}
+		delete_docker_repository_image_in_registry(
+			connection,
+			&repo_name,
+			&image.digest,
+			config,
+			request_id,
+		)
+		.await?;
 	}
 
 	log::trace!("request_id: {} - Deleting docker repository from the registry was successful", request_id);
@@ -321,4 +297,29 @@ pub async fn get_exposed_port_for_docker_image(
 		.collect::<BTreeMap<_, _>>();
 
 	Ok(exposed_ports)
+}
+
+pub async fn docker_repo_storage_limit_crossed(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	additional_bytes: usize,
+) -> Result<bool, Error> {
+	let card_added =
+		db::get_default_payment_method_for_workspace(connection, workspace_id)
+			.await?
+			.is_some();
+	if card_added {
+		// card added, so user is charged based on storage
+		return Ok(false);
+	}
+
+	let total_usage_so_far_in_bytes =
+		db::get_total_size_of_docker_repositories_for_workspace(
+			connection,
+			workspace_id,
+		)
+		.await? as usize;
+
+	Ok(total_usage_so_far_in_bytes + additional_bytes >=
+		free_limits::DOCKER_REPOSITORY_STORAGE_IN_BYTES)
 }

@@ -42,7 +42,7 @@ pub struct Workspace {
 	pub secret_limit: i32,
 	pub stripe_customer_id: String,
 	pub address_id: Option<Uuid>,
-	pub amount_due: f64,
+	pub amount_due_in_cents: u64,
 }
 
 pub struct WorkspaceAuditLog {
@@ -126,7 +126,9 @@ pub async fn initialize_workspaces_pre(
 			secret_limit INTEGER NOT NULL,
 			stripe_customer_id TEXT NOT NULL,
 			address_id UUID,
-			amount_due DOUBLE PRECISION NOT NULL,
+			amount_due_in_cents BIGINT NOT NULL
+				CONSTRAINT workspace_chk_amount_due_in_cents_positive
+					CHECK (amount_due_in_cents >= 0),
 			deleted TIMESTAMPTZ,
 			CONSTRAINT workspace_uq_id_super_admin_id
 				UNIQUE(id, super_admin_id)
@@ -374,7 +376,7 @@ pub async fn create_workspace(
 				secret_limit,
 				stripe_customer_id,
 				address_id,
-				amount_due
+				amount_due_in_cents
 			)
 		VALUES
 			($1, $2, $3, $4, $5, $6, NULL, $7, $8, $9, $10, $11, $12, $13, $14, NULL, $15);
@@ -404,17 +406,16 @@ pub async fn get_workspace_info(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 ) -> Result<Option<Workspace>, sqlx::Error> {
-	query_as!(
-		Workspace,
+	query!(
 		r#"
 		SELECT
-			id as "id: _",
-			name::TEXT as "name!: _",
-			super_admin_id as "super_admin_id: _",
+			id as "id: Uuid",
+			name::TEXT as "name!: String",
+			super_admin_id as "super_admin_id: Uuid",
 			active,
-			alert_emails as "alert_emails: _",
-			payment_type as "payment_type: _",
-			default_payment_method_id as "default_payment_method_id: _",
+			alert_emails as "alert_emails: Vec<String>",
+			payment_type as "payment_type: PaymentType",
+			default_payment_method_id as "default_payment_method_id: String",
 			deployment_limit,
 			static_site_limit,
 			database_limit,
@@ -423,8 +424,8 @@ pub async fn get_workspace_info(
 			domain_limit,
 			docker_repository_storage_limit,
 			stripe_customer_id,
-			address_id as "address_id: _",
-			amount_due
+			address_id as "address_id: Uuid",
+			amount_due_in_cents
 		FROM
 			workspace
 		WHERE
@@ -435,23 +436,44 @@ pub async fn get_workspace_info(
 	)
 	.fetch_optional(&mut *connection)
 	.await
+	.map(|row| {
+		row.map(|row| Workspace {
+			id: row.id,
+			name: row.name,
+			super_admin_id: row.super_admin_id,
+			active: row.active,
+			alert_emails: row.alert_emails,
+			payment_type: row.payment_type,
+			default_payment_method_id: row.default_payment_method_id,
+			deployment_limit: row.deployment_limit,
+			static_site_limit: row.static_site_limit,
+			database_limit: row.database_limit,
+			managed_url_limit: row.managed_url_limit,
+			secret_limit: row.secret_limit,
+			domain_limit: row.domain_limit,
+			docker_repository_storage_limit: row
+				.docker_repository_storage_limit,
+			stripe_customer_id: row.stripe_customer_id,
+			address_id: row.address_id,
+			amount_due_in_cents: row.amount_due_in_cents as u64,
+		})
+	})
 }
 
 pub async fn get_workspace_by_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	name: &str,
 ) -> Result<Option<Workspace>, sqlx::Error> {
-	query_as!(
-		Workspace,
+	query!(
 		r#"
 		SELECT
-			id as "id: _",
-			name::TEXT as "name!: _",
-			super_admin_id as "super_admin_id: _",
+			id as "id: Uuid",
+			name::TEXT as "name!: String",
+			super_admin_id as "super_admin_id: Uuid",
 			active,
-			alert_emails as "alert_emails: _",
-			payment_type as "payment_type: _",
-			default_payment_method_id as "default_payment_method_id: _",
+			alert_emails as "alert_emails: Vec<String>",
+			payment_type as "payment_type: PaymentType",
+			default_payment_method_id as "default_payment_method_id: String",
 			deployment_limit,
 			static_site_limit,
 			database_limit,
@@ -460,8 +482,8 @@ pub async fn get_workspace_by_name(
 			domain_limit,
 			docker_repository_storage_limit,
 			stripe_customer_id,
-			address_id as "address_id: _",
-			amount_due
+			address_id as "address_id: Uuid",
+			amount_due_in_cents
 		FROM
 			workspace
 		WHERE
@@ -471,6 +493,28 @@ pub async fn get_workspace_by_name(
 	)
 	.fetch_optional(&mut *connection)
 	.await
+	.map(|row| {
+		row.map(|row| Workspace {
+			id: row.id,
+			name: row.name,
+			super_admin_id: row.super_admin_id,
+			active: row.active,
+			alert_emails: row.alert_emails,
+			payment_type: row.payment_type,
+			default_payment_method_id: row.default_payment_method_id,
+			deployment_limit: row.deployment_limit,
+			static_site_limit: row.static_site_limit,
+			database_limit: row.database_limit,
+			managed_url_limit: row.managed_url_limit,
+			secret_limit: row.secret_limit,
+			domain_limit: row.domain_limit,
+			docker_repository_storage_limit: row
+				.docker_repository_storage_limit,
+			stripe_customer_id: row.stripe_customer_id,
+			address_id: row.address_id,
+			amount_due_in_cents: row.amount_due_in_cents as u64,
+		})
+	})
 }
 
 pub async fn delete_workspace(
@@ -676,17 +720,16 @@ pub async fn get_resource_audit_logs(
 pub async fn get_all_workspaces(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Vec<Workspace>, sqlx::Error> {
-	query_as!(
-		Workspace,
+	let res = query!(
 		r#"
 		SELECT DISTINCT
-			id as "id: _",
-			name::TEXT as "name!: _",
-			super_admin_id as "super_admin_id: _",
+			id as "id: Uuid",
+			name::TEXT as "name!: String",
+			super_admin_id as "super_admin_id: Uuid",
 			active,
-			alert_emails as "alert_emails: _",
-			payment_type as "payment_type: _",
-			default_payment_method_id as "default_payment_method_id: _",
+			alert_emails as "alert_emails: Vec<String>",
+			payment_type as "payment_type: PaymentType",
+			default_payment_method_id as "default_payment_method_id: String",
 			deployment_limit,
 			static_site_limit,
 			database_limit,
@@ -695,8 +738,8 @@ pub async fn get_all_workspaces(
 			domain_limit,
 			docker_repository_storage_limit,
 			stripe_customer_id,
-			address_id as "address_id: _",
-			amount_due
+			address_id as "address_id: Uuid",
+			amount_due_in_cents
 		FROM
 			workspace
 		WHERE
@@ -704,7 +747,30 @@ pub async fn get_all_workspaces(
 		"#,
 	)
 	.fetch_all(&mut *connection)
-	.await
+	.await?
+	.into_iter()
+	.map(|row| Workspace {
+		id: row.id,
+		name: row.name,
+		super_admin_id: row.super_admin_id,
+		active: row.active,
+		alert_emails: row.alert_emails,
+		payment_type: row.payment_type,
+		default_payment_method_id: row.default_payment_method_id,
+		deployment_limit: row.deployment_limit,
+		static_site_limit: row.static_site_limit,
+		database_limit: row.database_limit,
+		managed_url_limit: row.managed_url_limit,
+		secret_limit: row.secret_limit,
+		domain_limit: row.domain_limit,
+		docker_repository_storage_limit: row.docker_repository_storage_limit,
+		stripe_customer_id: row.stripe_customer_id,
+		address_id: row.address_id,
+		amount_due_in_cents: row.amount_due_in_cents as u64,
+	})
+	.collect();
+
+	Ok(res)
 }
 
 pub async fn get_resource_limit_for_workspace(
@@ -952,6 +1018,28 @@ pub async fn set_default_payment_method_for_workspace(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn get_default_payment_method_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Option<String>, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			default_payment_method_id
+		FROM
+			workspace
+		WHERE
+			id = $1
+		"#,
+		workspace_id as _,
+	)
+	.fetch_optional(&mut *connection)
+	.await
+	.map(|optional_record| {
+		optional_record.and_then(|record| record.default_payment_method_id)
+	})
 }
 
 pub async fn set_resource_limit_for_workspace(

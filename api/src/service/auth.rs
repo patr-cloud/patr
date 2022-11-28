@@ -982,7 +982,9 @@ pub async fn join_user(
 					.map(|uses_remaining| uses_remaining > 0)
 					.unwrap_or(true);
 
-				if is_not_expired && has_usage_remaining && coupon.credits > 0 {
+				if is_not_expired &&
+					has_usage_remaining && coupon.credits_in_cents > 0
+				{
 					// It's not expired, it has usage remaining, AND it has a
 					// non zero positive credit value. Give them some fucking
 					// credits
@@ -993,7 +995,7 @@ pub async fn join_user(
 						&workspace_id,
 						&transaction_id,
 						now.month() as i32,
-						coupon.credits as f64,
+						coupon.credits_in_cents,
 						Some("coupon-credits"),
 						&DateTime::from(now),
 						&TransactionType::Credits,
@@ -1123,7 +1125,9 @@ pub async fn join_user(
 					.map(|uses_remaining| uses_remaining > 0)
 					.unwrap_or(true);
 
-				if is_not_expired && has_usage_remaining && coupon.credits > 0 {
+				if is_not_expired &&
+					has_usage_remaining && coupon.credits_in_cents > 0
+				{
 					// It's not expired, it has usage remaining, AND it has a
 					// non zero positive credit value. Give them some fucking
 					// credits
@@ -1134,7 +1138,7 @@ pub async fn join_user(
 						&personal_workspace_id,
 						&transaction_id,
 						now.month() as i32,
-						coupon.credits as f64,
+						coupon.credits_in_cents,
 						Some("coupon-credits"),
 						&DateTime::from(now),
 						&TransactionType::Credits,

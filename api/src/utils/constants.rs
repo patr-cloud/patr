@@ -72,3 +72,14 @@ pub mod default_limits {
 	pub const DOMAINS: i32 = 5;
 	pub const SECRETS: i32 = 150;
 }
+
+pub mod free_limits {
+	pub const DEPLOYMENT_COUNT: usize = 1;
+	pub const DATABASE_COUNT: usize = 0;
+	pub const STATIC_SITE_COUNT: usize = 3;
+	pub const MANAGED_URL_COUNT: usize = 10;
+	pub const DOMAIN_COUNT: usize = 1;
+	pub const SECRET_COUNT: usize = 3;
+	pub const DOCKER_REPOSITORY_STORAGE_IN_BYTES: usize =
+		10 * 1024 * 1024 * 1024; // 10 GB
+}

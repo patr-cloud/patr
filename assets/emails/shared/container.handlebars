@@ -1,0 +1,64 @@
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+  {{> head-section}}
+  <body
+    style="margin-top: 0; margin-bottom: 0; margin-left: 0; margin-right: 0; padding-top: 0; padding-bottom: 0; padding-left: 0; padding-right: 0; font-family: 'Poppins', 'Gill Sans', 'Trebuchet MS', sans-serif; background-color: #0d0526;"
+  >
+    <div
+      class="container"
+      style="width: 100%; table-layout: fixed; margin-left: auto; margin-right: auto; background-color: #0d0526;"
+    >
+      <span
+        class="limit-width txt-light"
+        style="max-width: 600px; color: #ffffff;"
+      >
+        <table
+          class="table-main"
+          style="width: 100%; margin-left: auto; margin-right: auto; max-width: 600px; border-spacing: 0; border-collapse: collapse;"
+          width="100%"
+        >
+          <tbody>
+            <tr>
+              <td class="pt-lg" style="padding-top: 3rem;"></td>
+            </tr>
+            <tr>
+              <td>
+                <table class="br-sm" style="border-radius: 1.5rem;">
+                  <tbody>
+                    <tr>
+                      <td
+                        class="sub-container"
+                        style="padding-top: 0; padding-bottom: 0; padding-left: 0; padding-right: 0; overflow-x: hidden; overflow-y: hidden; background-color: #191131; border-radius: 1.5rem; -webkit-border-radius: 1.5rem; -moz-border-radius: 1.5rem;"
+                        bgcolor="#191131"
+                      >
+                        <table>
+                          <tbody>
+                            {{> header}}
+                            <tr>
+                              <td
+                                class="content-container"
+                                style="padding-top: 1.5rem; padding-bottom: 2rem; padding-left: 2rem; padding-right: 2rem;"
+                              >
+                                <table>
+                                  <tbody>
+                                    {{> greet-user}}
+                                    {{> email-content}}
+                                    {{> join-discord}}
+                                    </tbody>
+                                </table>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+            {{> footer-icons}}
+          </tbody>
+        </table>
+      </span>
+    </div>
+  </body>
+</html>

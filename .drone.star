@@ -77,6 +77,11 @@ def get_pipeline_steps(ctx):
                 "Check clippy lints",
                 release=False,
             ),
+            # run cargo tests
+            run_tests(
+                "Running cargo test",
+                release=False,
+            ),
 
             # Create sample config
             copy_config("Copy sample config"),
@@ -133,6 +138,12 @@ def get_pipeline_steps(ctx):
                 "Check clippy lints",
                 release=True,
             ),
+            # run cargo tests
+            run_tests(
+                "Running cargo test",
+                release=True,
+            ),
+
             # Check whether crate version is updated
             check_version("Check version"),
 
@@ -191,6 +202,12 @@ def get_pipeline_steps(ctx):
                 "Check clippy lints",
                 release=True,
             ),
+            # run cargo tests
+            run_tests(
+                "Running cargo test",
+                release=True,
+            ),
+
             # Check whether crate version is updated
             check_version("Check version"),
 
@@ -412,12 +429,8 @@ def build_code(step_name, release, sqlx_offline):
 
     return {
         "name": step_name,
-        "image": "rust:1.64",
+        "image": "rust:1.65",
         "commands": [
-            "curl -L -o sccache.tar.gz https://github.com/mozilla/sccache/releases/download/v0.3.0/sccache-v0.3.0-x86_64-unknown-linux-musl.tar.gz",
-            "tar -xf sccache.tar.gz",
-            "mv ./sccache-v0.3.0-x86_64-unknown-linux-musl/sccache ./sccache",
-            "chmod +x ./sccache",
             "cargo build {}".format(release_flag)
         ],
         "volumes": [
@@ -440,9 +453,7 @@ def build_code(step_name, release, sqlx_offline):
         ],
         "environment": {
             "SQLX_OFFLINE": "{}".format(offline).lower(),
-            "DATABASE_URL": "postgres://postgres:{}@database:5432/api".format(get_database_password()),
-            "RUSTC_WRAPPER": "/drone/src/sccache",
-            "SCCACHE_REDIS": "redis://10.10.0.37:6379/5"
+            "DATABASE_URL": "postgres://postgres:{}@database:5432/api".format(get_database_password())
         }
     }
 
@@ -459,7 +470,7 @@ def check_formatting(step_name):
 def check_version(step_name):
     return {
         "name": step_name,
-        "image": "rust:1.64",
+        "image": "rust:1.65",
         "commands": [
             "cargo run --example check-api-version"
         ],
@@ -478,7 +489,7 @@ def check_clippy(step_name, release):
 
     return {
         "name": step_name,
-        "image": "rust:1.64",
+        "image": "rust:1.65",
         "commands": [
             "rustup component add clippy",
             "cargo clippy {} -- -D warnings".format(release_flag)
@@ -500,18 +511,14 @@ def check_clippy(step_name, release):
                 "name": "target-folder-{}-inc".format("release" if release == True else "debug"),
                 "path": "/drone/src/target/{}/incremental".format("release" if release == True else "debug")
             }
-        ],
-        "environment": {
-            "RUSTC_WRAPPER": "/drone/src/sccache",
-            "SCCACHE_REDIS": "redis://10.10.0.37:6379/5"
-        }
+        ]
     }
 
 
 def copy_config(step_name):
     return {
         "name": step_name,
-        "image": "rust:1.64",
+        "image": "rust:1.65",
         "commands": [
             "cp config/dev.sample.json config/dev.json",
             "cp config/dev.sample.json config/prod.json"
@@ -541,7 +548,7 @@ def init_database(step_name, release, env):
         bin_location = "./target/debug/api"
     return {
         "name": step_name,
-        "image": "rust:1.64",
+        "image": "rust:1.65",
         "commands": [
             "{} --db-only".format(bin_location)
         ],
@@ -552,7 +559,7 @@ def init_database(step_name, release, env):
 def clean_api_build(step_name, release):
     return {
         "name": step_name,
-        "image": "rust:1.64",
+        "image": "rust:1.65",
         "commands": [
             "cargo clean -p api"
         ],
@@ -573,11 +580,7 @@ def clean_api_build(step_name, release):
                 "name": "target-folder-{}-inc".format("release" if release == True else "debug"),
                 "path": "/drone/src/target/{}/incremental".format("release" if release == True else "debug")
             }
-        ],
-        "environment": {
-            "RUSTC_WRAPPER": "/drone/src/sccache",
-            "SCCACHE_REDIS": "redis://10.10.0.37:6379/5"
-        }
+        ]
     }
 
 
@@ -594,7 +597,7 @@ def check_code(step_name, release, sqlx_offline):
 
     return {
         "name": step_name,
-        "image": "rust:1.64",
+        "image": "rust:1.65",
         "commands": [
             "cargo check {}".format(release_flag)
         ],
@@ -618,9 +621,7 @@ def check_code(step_name, release, sqlx_offline):
         ],
         "environment": {
             "SQLX_OFFLINE": "{}".format(offline).lower(),
-            "DATABASE_URL": "postgres://postgres:{}@database:5432/api".format(get_database_password()),
-            "RUSTC_WRAPPER": "/drone/src/sccache",
-            "SCCACHE_REDIS": "redis://10.10.0.37:6379/5"
+            "DATABASE_URL": "postgres://postgres:{}@database:5432/api".format(get_database_password())
         }
     }
 
@@ -643,7 +644,7 @@ def create_gitea_release(step_name, staging):
         release_flag = ""
     return {
         "name": step_name,
-        "image": "rust:1.64",
+        "image": "rust:1.65",
         "commands": [
             "echo \"$GITEA_IP develop.vicara.co\" >> /etc/hosts",
             "cargo run {} --example create-gitea-release".format(release_flag)
@@ -672,9 +673,7 @@ def create_gitea_release(step_name, staging):
             },
             "GITEA_IP": {
                 "from_secret": "gitea_ip"
-            },
-            "RUSTC_WRAPPER": "/drone/src/sccache",
-            "SCCACHE_REDIS": "redis://10.10.0.37:6379/5"
+            }
         }
     }
 
@@ -687,7 +686,7 @@ def build_examples(step_name, release, sqlx_offline):
         release_flag = ""
     return {
         "name": step_name,
-        "image": "rust:1.64",
+        "image": "rust:1.65",
         "commands": [
             "cargo build {}".format(release_flag),
             "cargo build {} --examples".format(release_flag)
@@ -716,9 +715,7 @@ def build_examples(step_name, release, sqlx_offline):
             },
             "GITEA_IP": {
                 "from_secret": "gitea_ip"
-            },
-            "RUSTC_WRAPPER": "/drone/src/sccache",
-            "SCCACHE_REDIS": "redis://10.10.0.37:6379/5"
+            }
         }
     }
 
@@ -746,6 +743,36 @@ def test_migrations(step_name, release, env):
         "environment": env
     }
 
+def run_tests(step_name, release):
+    release_flag = ""
+    if release == True:
+        release_flag = "--release"
+
+    return {
+        "name": step_name,
+        "image": "rust:1.65",
+        "commands": [
+            "cargo test {}".format(release_flag)
+        ],
+        "volumes": [
+            {
+                "name": "crates-registry-registry",
+                "path": "/usr/local/cargo/registry"
+            },
+            {
+                "name": "crates-registry-git",
+                "path": "/usr/local/cargo/git"
+            },
+            {
+                "name": "target-folder-{}-deps".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/deps".format("release" if release == True else "debug")
+            },
+            {
+                "name": "target-folder-{}-inc".format("release" if release == True else "debug"),
+                "path": "/drone/src/target/{}/incremental".format("release" if release == True else "debug")
+            }
+        ]
+    }
 
 def database_service(pwd):
     return {

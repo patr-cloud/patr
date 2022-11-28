@@ -55,7 +55,7 @@ pub(super) async fn migrate(
 	.map(|row| (row.get::<Uuid, _>("id"), row.get::<i64, _>("created")));
 
 	for (workspace_id, created) in workspaces {
-		let created = Utc.timestamp_millis(created);
+		let created = Utc.timestamp_millis_opt(created).unwrap();
 		let transaction_id = loop {
 			let uuid = Uuid::new_v4();
 

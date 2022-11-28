@@ -72,10 +72,16 @@ pub mod id {
 		"changePrimaryPaymentMethod";
 	pub const CANNOT_DELETE_PAYMENT_METHOD: &str = "cannotDeletePaymentMethod";
 	pub const PAYMENT_METHOD_REQUIRED: &str = "paymentMethodRequired";
+	pub const INVALID_PAYMENT_METHOD: &str = "invalidPaymentMethod";
 	pub const ADDRESS_REQUIRED: &str = "addressRequired";
 	pub const TAG_NOT_FOUND: &str = "TagNotFound";
 	pub const FILE_SIZE_TOO_LARGE: &str = "fileSizeTooLarge";
 	pub const NOT_A_SUPER_ADMIN: &str = "notASuperAdmin";
+
+	// error constants for billing related things
+	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "cardlessFreeLimitExceeded";
+	pub const CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT: &str =
+		"cardlessDeploymentMachineType";
 
 	// error constants for CI
 	pub const INVALID_STATE_VALUE: &str = "invalidStateValue";
@@ -214,10 +220,15 @@ pub mod message {
 	pub const CHANGE_PRIMARY_PAYMENT_METHOD: &str = "The current payment method cannot be deleted since it is your primary payment method";
 	pub const CANNOT_DELETE_PAYMENT_METHOD: &str = "The payment method cannot be deleted since it is in use, please delete all the resources and try again in the next billing cycle";
 	pub const PAYMENT_METHOD_REQUIRED: &str = "It seems that you have not added any payment method. Please add a payment method to continue";
+	pub const INVALID_PAYMENT_METHOD: &str = "Invalid payment method id provided, make sure you have added that payment method to your workspace";
 	pub const ADDRESS_REQUIRED: &str = "You need to add your billing address inorder to proceed with the transaction";
 	pub const TAG_NOT_FOUND: &str = "The tag does not exist";
 	pub const FILE_SIZE_TOO_LARGE: &str = "The file that you uploaded is too large. Maximum size allowed is 100MB";
 	pub const NOT_A_SUPER_ADMIN: &str = "You have to be super admin to perform this action. If you wish to continue please contact your administrator";
+
+	// error constants for billing related things
+	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "You have reached the maximun free limit allowed to create resources without adding a payment card, kindly add a card to create more resources";
+	pub const CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT: &str = "Only base deployment machine type is allowed under free plan, kindly add a card to create deployment with bigger machine type";
 
 	// error constants for CI
 	pub const INVALID_STATE_VALUE: &str =

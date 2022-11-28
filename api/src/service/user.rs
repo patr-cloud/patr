@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use ::redis::aio::MultiplexedConnection as RedisConnection;
-use api_models::{models::user::WorkspacePermission, utils::Uuid};
+use api_models::{models::workspace::WorkspacePermission, utils::Uuid};
 use chrono::{DateTime, Utc};
 use eve_rs::AsError;
 use sqlx::types::ipnetwork::IpNetwork;

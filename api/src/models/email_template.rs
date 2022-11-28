@@ -5,5 +5,8 @@ use crate::utils::Error;
 
 #[async_trait::async_trait]
 pub trait EmailTemplate {
-	async fn render_body(&self) -> Result<MultiPart, Error>;
+	async fn render_body(
+		&self,
+		handlebar: &handlebars::Handlebars,
+	) -> Result<MultiPart, Error>;
 }

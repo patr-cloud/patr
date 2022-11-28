@@ -1,9 +1,9 @@
 use api_models::{
 	models::{
 		auth::PreferredRecoveryOption,
-		workspace::billing::{Address, WorkspaceBillBreakdown},
+		workspace::billing::{Address, TotalAmount, WorkspaceBillBreakdown},
 	},
-	utils::{PriceAmount, Uuid},
+	utils::Uuid,
 };
 use eve_rs::AsError;
 
@@ -393,10 +393,9 @@ pub async fn send_bill_not_paid_delete_resources_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	super_admin_id: Uuid,
 	workspace_name: String,
-	month_string: String,
-	month_num: u32,
+	month: u32,
 	year: i32,
-	total_bill: f64,
+	total_bill: u64,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, &super_admin_id)
 		.await?
@@ -419,8 +418,7 @@ pub async fn send_bill_not_paid_delete_resources_email(
 		user_email.parse()?,
 		user.username,
 		workspace_name,
-		month_string,
-		month_num,
+		month,
 		year,
 		total_bill,
 	)
@@ -448,10 +446,9 @@ pub async fn send_bill_payment_failed_reminder_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	super_admin_id: Uuid,
 	workspace_name: String,
-	month_string: String,
-	month_num: u32,
+	month: u32,
 	year: i32,
-	total_bill: PriceAmount,
+	total_bill: u64,
 	deadline: String,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, &super_admin_id)
@@ -475,8 +472,7 @@ pub async fn send_bill_payment_failed_reminder_email(
 		user_email.parse()?,
 		user.username,
 		workspace_name,
-		month_string,
-		month_num,
+		month,
 		year,
 		total_bill,
 		deadline,
@@ -488,10 +484,9 @@ pub async fn send_card_not_added_reminder_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	super_admin_id: Uuid,
 	workspace_name: String,
-	month_string: String,
-	month_num: u32,
+	month: u32,
 	year: i32,
-	total_bill: PriceAmount,
+	total_bill: u64,
 	deadline: String,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, &super_admin_id)
@@ -515,8 +510,7 @@ pub async fn send_card_not_added_reminder_email(
 		user_email.parse()?,
 		user.username,
 		workspace_name,
-		month_string,
-		month_num,
+		month,
 		year,
 		total_bill,
 		deadline,
@@ -528,9 +522,9 @@ pub async fn send_bill_paid_successfully_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	super_admin_id: Uuid,
 	workspace_name: String,
-	month_string: String,
+	month: u32,
 	year: i32,
-	card_amount_deducted: PriceAmount,
+	card_amount_deducted: u64,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, &super_admin_id)
 		.await?
@@ -553,7 +547,7 @@ pub async fn send_bill_paid_successfully_email(
 		user_email.parse()?,
 		user.username,
 		workspace_name,
-		month_string,
+		month,
 		year,
 		card_amount_deducted,
 	)
@@ -583,7 +577,6 @@ pub async fn send_payment_failure_invoice_notification(
 	workspace_name: String,
 	bill_breakdown: WorkspaceBillBreakdown,
 	billing_address: Address,
-	month_string: String,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, super_admin_id)
 		.await?
@@ -608,7 +601,6 @@ pub async fn send_payment_failure_invoice_notification(
 		workspace_name,
 		bill_breakdown,
 		billing_address,
-		month_string,
 	)
 	.await
 }
@@ -617,12 +609,11 @@ pub async fn send_payment_success_invoice_notification(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	super_admin_id: &Uuid,
 	workspace_name: String,
-	current_month_string: String,
 	bill_breakdown: WorkspaceBillBreakdown,
 	billing_address: Address,
-	credit_deducted: PriceAmount,
-	card_amount_deducted: PriceAmount,
-	credits_remaining: PriceAmount,
+	credit_deducted: u64,
+	card_amount_deducted: u64,
+	credits_remaining: u64,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, super_admin_id)
 		.await?
@@ -647,7 +638,6 @@ pub async fn send_payment_success_invoice_notification(
 		workspace_name,
 		bill_breakdown,
 		billing_address,
-		current_month_string,
 		credit_deducted,
 		card_amount_deducted,
 		credits_remaining,
@@ -771,5 +761,306 @@ pub async fn domain_verification_email(
 		)
 		.await?;
 	}
+	Ok(())
+}
+
+pub async fn send_repository_storage_limit_exceed_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	repository_name: &str,
+	tag: &str,
+	digest: &str,
+	ip_address: &str,
+) -> Result<(), Error> {
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
+
+	let user = db::get_user_by_user_id(connection, &workspace.super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	// parsing personal-workspace-(uuid)
+	let displayed_workspace_name = if let Some(Ok(user_id)) = workspace
+		.name
+		.strip_prefix("personal-workspace-")
+		.map(Uuid::parse_str)
+	{
+		let user = db::get_user_by_user_id(connection, &user_id).await?;
+		if let Some(user) = user {
+			format!(
+				"{} {}'s Personal Workspace",
+				user.first_name, user.last_name
+			)
+		} else {
+			workspace.name
+		}
+	} else {
+		workspace.name
+	};
+
+	email::send_repository_storage_limit_exceed_email(
+		user_email.parse()?,
+		&user.first_name,
+		&displayed_workspace_name,
+		&format!("registry.patr.cloud/{}/{}", workspace_id, repository_name),
+		tag,
+		digest,
+		ip_address,
+	)
+	.await
+}
+
+pub async fn send_purchase_credits_success_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	transaction_id: &Uuid,
+) -> Result<(), Error> {
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
+
+	let user = db::get_user_by_user_id(connection, &workspace.super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	// parsing personal-workspace-(uuid)
+	let displayed_workspace_name = if let Some(Ok(user_id)) = workspace
+		.name
+		.strip_prefix("personal-workspace-")
+		.map(Uuid::parse_str)
+	{
+		let user = db::get_user_by_user_id(connection, &user_id).await?;
+		if let Some(user) = user {
+			format!(
+				"{} {}'s Personal Workspace",
+				user.first_name, user.last_name
+			)
+		} else {
+			workspace.name
+		}
+	} else {
+		workspace.name
+	};
+
+	let transaction = db::get_transaction_by_transaction_id(
+		connection,
+		workspace_id,
+		transaction_id,
+	)
+	.await?
+	.status(500)?; // okay to use ? as transaction_id provided should be valid
+
+	email::send_purchase_credits_success_email(
+		user_email.parse()?,
+		&user.first_name,
+		&displayed_workspace_name,
+		transaction.amount_in_cents as u64,
+	)
+	.await
+}
+
+pub async fn send_bill_paid_using_credits_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	transaction_id: &Uuid,
+) -> Result<(), Error> {
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
+
+	let user = db::get_user_by_user_id(connection, &workspace.super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	// parsing personal-workspace-(uuid)
+	let displayed_workspace_name = if let Some(Ok(user_id)) = workspace
+		.name
+		.strip_prefix("personal-workspace-")
+		.map(Uuid::parse_str)
+	{
+		let user = db::get_user_by_user_id(connection, &user_id).await?;
+		if let Some(user) = user {
+			format!(
+				"{} {}'s Personal Workspace",
+				user.first_name, user.last_name
+			)
+		} else {
+			workspace.name
+		}
+	} else {
+		workspace.name
+	};
+
+	let transaction = db::get_transaction_by_transaction_id(
+		connection,
+		workspace_id,
+		transaction_id,
+	)
+	.await?
+	.status(500)?; // okay to use ? as transaction_id provided should be valid
+
+	let bill_after_payment =
+		db::get_total_amount_in_cents_to_pay_for_workspace(
+			connection,
+			workspace_id,
+		)
+		.await?;
+
+	let (bill_remaining, credits_remaining) = match bill_after_payment.clone() +
+		TotalAmount::NeedToPay(workspace.amount_due_in_cents as u64)
+	{
+		TotalAmount::CreditsLeft(credit) => (0, credit),
+		TotalAmount::NeedToPay(bill) => (bill, 0),
+	};
+
+	let bill_before_payment = bill_after_payment +
+		TotalAmount::NeedToPay(transaction.amount_in_cents as u64);
+
+	let total_bill = workspace.amount_due_in_cents +
+		match bill_before_payment {
+			TotalAmount::CreditsLeft(_credit) => 0,
+			TotalAmount::NeedToPay(bill) => bill,
+		};
+
+	email::send_bill_paid_using_credits_email(
+		user_email.parse()?,
+		&user.first_name,
+		&displayed_workspace_name,
+		total_bill,
+		bill_remaining,
+		credits_remaining,
+	)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn send_partial_payment_success_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	transaction_id: &Uuid,
+) -> Result<(), Error> {
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
+
+	let user = db::get_user_by_user_id(connection, &workspace.super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	// parsing personal-workspace-(uuid)
+	let displayed_workspace_name = if let Some(Ok(user_id)) = workspace
+		.name
+		.strip_prefix("personal-workspace-")
+		.map(Uuid::parse_str)
+	{
+		let user = db::get_user_by_user_id(connection, &user_id).await?;
+		if let Some(user) = user {
+			format!(
+				"{} {}'s Personal Workspace",
+				user.first_name, user.last_name
+			)
+		} else {
+			workspace.name
+		}
+	} else {
+		workspace.name
+	};
+
+	let transaction = db::get_transaction_by_transaction_id(
+		connection,
+		workspace_id,
+		transaction_id,
+	)
+	.await?
+	.status(500)?; // okay to use ? as transaction_id provided should be valid
+
+	let bill_after_payment =
+		db::get_total_amount_in_cents_to_pay_for_workspace(
+			connection,
+			workspace_id,
+		)
+		.await?;
+
+	let (bill_remaining, credits_remaining) = match bill_after_payment.clone() +
+		TotalAmount::NeedToPay(workspace.amount_due_in_cents as u64)
+	{
+		TotalAmount::CreditsLeft(credit) => (0, credit),
+		TotalAmount::NeedToPay(bill) => (bill, 0),
+	};
+
+	let bill_before_payment = bill_after_payment +
+		TotalAmount::NeedToPay(transaction.amount_in_cents as u64);
+
+	let total_bill = workspace.amount_due_in_cents +
+		match bill_before_payment {
+			TotalAmount::CreditsLeft(_credit) => 0,
+			TotalAmount::NeedToPay(bill) => bill,
+		};
+
+	email::send_partial_payment_success_email(
+		user_email.parse()?,
+		&user.first_name,
+		&displayed_workspace_name,
+		total_bill,
+		transaction.amount_in_cents as u64,
+		bill_remaining,
+		credits_remaining,
+	)
+	.await?;
+
 	Ok(())
 }

@@ -8,6 +8,8 @@ use api_models::{
 		AddCreditsResponse,
 		AddPaymentMethodResponse,
 		Address,
+		ConfirmCreditsRequest,
+		ConfirmCreditsResponse,
 		ConfirmPaymentMethodRequest,
 		ConfirmPaymentMethodResponse,
 		ConfirmPaymentRequest,
@@ -23,6 +25,8 @@ use api_models::{
 		MakePaymentRequest,
 		MakePaymentResponse,
 		PaymentMethod,
+		PaymentStatus,
+		TotalAmount,
 		Transaction,
 		UpdateBillingAddressRequest,
 		UpdateBillingAddressResponse,
@@ -383,6 +387,38 @@ pub fn create_sub_app(
 				}),
 			},
 			EveMiddleware::CustomFunction(pin_fn!(add_credits)),
+		],
+	);
+
+	sub_app.post(
+		"/confirm-credits",
+		[
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: false,
+				permission: permissions::workspace::EDIT,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			},
+			EveMiddleware::CustomFunction(pin_fn!(confirm_credits)),
 		],
 	);
 
@@ -752,7 +788,6 @@ async fn get_payment_method(
 	.map(|payment_source| PaymentMethod {
 		id: payment_source.id,
 		customer: payment_source.customer,
-		r#type: payment_source.r#type,
 		card: payment_source.card,
 		created: payment_source.created,
 	})
@@ -953,22 +988,113 @@ async fn add_credits(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let AddCreditsRequest { credits, .. } =
-		context
-			.get_body_as()
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
+	let AddCreditsRequest {
+		credits,
+		payment_method_id,
+		..
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
-	service::add_credits_to_workspace(
+	let (transaction_id, client_secret) = service::add_credits_to_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 		credits,
+		&payment_method_id,
 		&config,
 	)
 	.await?;
 
-	context.success(AddCreditsResponse {});
+	context.success(AddCreditsResponse {
+		transaction_id,
+		client_secret,
+	});
+	Ok(context)
+}
+
+async fn confirm_credits(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	let ConfirmCreditsRequest { transaction_id, .. } = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let config = context.get_state().config.clone();
+
+	let transaction = db::get_transaction_by_transaction_id(
+		context.get_database_connection(),
+		&workspace_id,
+		&transaction_id,
+	)
+	.await?
+	.status(400)
+	.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	match transaction.payment_status {
+		PaymentStatus::Success => {
+			context.success(ConfirmCreditsResponse {});
+			return Ok(context);
+		}
+		PaymentStatus::Failed => {
+			context.json(error!(PAYMENT_FAILED));
+			return Ok(context);
+		}
+		PaymentStatus::Pending => {
+			// in pending state so need to confirm it
+		}
+	}
+
+	let success = service::confirm_payment(
+		context.get_database_connection(),
+		&workspace_id,
+		&transaction_id,
+		&config,
+	)
+	.await?;
+
+	if success {
+		service::send_purchase_credits_success_email(
+			context.get_database_connection(),
+			&workspace_id,
+			&transaction_id,
+		)
+		.await?;
+
+		let current_amount_due = db::get_workspace_info(
+			context.get_database_connection(),
+			&workspace_id,
+		)
+		.await?
+		.status(500)?
+		.amount_due_in_cents;
+		let bill_after_payment = TotalAmount::NeedToPay(current_amount_due) +
+			db::get_total_amount_in_cents_to_pay_for_workspace(
+				context.get_database_connection(),
+				&workspace_id,
+			)
+			.await?;
+
+		if let TotalAmount::NeedToPay(_bill) = bill_after_payment {
+			service::send_bill_paid_using_credits_email(
+				context.get_database_connection(),
+				&workspace_id,
+				&transaction_id,
+			)
+			.await?;
+		}
+
+		context.success(ConfirmCreditsResponse {});
+	} else {
+		context.json(error!(PAYMENT_FAILED));
+	}
+
 	Ok(context)
 }
 
@@ -979,22 +1105,29 @@ async fn make_payment(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let MakePaymentRequest { amount, .. } =
-		context
-			.get_body_as()
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
+	let MakePaymentRequest {
+		amount,
+		payment_method_id,
+		..
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
-	let transaction_id = service::make_payment(
+	let (transaction_id, client_secret) = service::make_payment(
 		context.get_database_connection(),
 		&workspace_id,
 		amount,
+		&payment_method_id,
 		&config,
 	)
 	.await?;
 
-	context.success(MakePaymentResponse { transaction_id });
+	context.success(MakePaymentResponse {
+		transaction_id,
+		client_secret,
+	});
 	Ok(context)
 }
 
@@ -1012,6 +1145,29 @@ async fn confirm_payment(
 
 	let config = context.get_state().config.clone();
 
+	let transaction = db::get_transaction_by_transaction_id(
+		context.get_database_connection(),
+		&workspace_id,
+		&transaction_id,
+	)
+	.await?
+	.status(400)
+	.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	match transaction.payment_status {
+		PaymentStatus::Success => {
+			context.success(ConfirmPaymentResponse {});
+			return Ok(context);
+		}
+		PaymentStatus::Failed => {
+			context.json(error!(PAYMENT_FAILED));
+			return Ok(context);
+		}
+		PaymentStatus::Pending => {
+			// in pending state so need to confirm it
+		}
+	}
+
 	let success = service::confirm_payment(
 		context.get_database_connection(),
 		&workspace_id,
@@ -1021,10 +1177,17 @@ async fn confirm_payment(
 	.await?;
 
 	if success {
+		service::send_partial_payment_success_email(
+			context.get_database_connection(),
+			&workspace_id,
+			&transaction_id,
+		)
+		.await?;
 		context.success(ConfirmPaymentResponse {});
 	} else {
 		context.json(error!(PAYMENT_FAILED));
 	}
+
 	Ok(context)
 }
 
@@ -1042,13 +1205,16 @@ async fn get_current_bill(
 	.await?
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?
-	.amount_due;
+	.amount_due_in_cents;
+	let current_month_bill_so_far =
+		TotalAmount::NeedToPay(current_month_bill_so_far);
 
-	let leftover_credits_or_due = db::get_total_amount_to_pay_for_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?;
+	let leftover_credits_or_due =
+		db::get_total_amount_in_cents_to_pay_for_workspace(
+			context.get_database_connection(),
+			&workspace_id,
+		)
+		.await?;
 
 	context.success(GetCurrentUsageResponse {
 		current_usage: current_month_bill_so_far + leftover_credits_or_due,
@@ -1060,6 +1226,8 @@ async fn get_bill_breakdown(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
@@ -1068,14 +1236,26 @@ async fn get_bill_breakdown(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let month_start_date = Utc.ymd(year as i32, month, 1).and_hms(0, 0, 0);
+	log::trace!(
+		"request_id: {} getting bill breakdown for month: {} and year: {}",
+		request_id,
+		month,
+		year
+	);
+
+	let month_start_date = Utc
+		.with_ymd_and_hms(year as i32, month, 1, 0, 0, 0)
+		.unwrap();
 	let month_end_date = Utc
-		.ymd(
+		.with_ymd_and_hms(
 			(if month == 12 { year + 1 } else { year }) as i32,
 			if month == 12 { 1 } else { month + 1 },
 			1,
+			0,
+			0,
+			0,
 		)
-		.and_hms(0, 0, 0)
+		.unwrap()
 		.sub(Duration::nanoseconds(1));
 	let month_end_date = min(month_end_date, Utc::now());
 
@@ -1086,6 +1266,7 @@ async fn get_bill_breakdown(
 		&month_end_date,
 		year,
 		month,
+		&request_id,
 	)
 	.await?;
 
@@ -1109,7 +1290,7 @@ async fn get_transaction_history(
 	.map(|transaction| Transaction {
 		id: transaction.id,
 		month: transaction.month,
-		amount: transaction.amount,
+		amount: transaction.amount_in_cents as u64,
 		payment_intent_id: transaction.payment_intent_id,
 		date: DateTime(transaction.date),
 		workspace_id: transaction.workspace_id,

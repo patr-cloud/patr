@@ -1086,48 +1086,13 @@ async fn get_deployment_info(
 		request_id,
 		deployment_id,
 	);
-	let (mut deployment, workspace_id, _, running_details) =
+	let (deployment, _, _, running_details) =
 		service::get_full_deployment_config(
 			context.get_database_connection(),
 			&deployment_id,
 			&request_id,
 		)
 		.await?;
-
-	log::trace!("request_id: {} - Checking deployment status", request_id);
-	deployment.status = match deployment.status {
-		// If it's deploying or running, check with k8s on the actual status
-		db_status @ (DeploymentStatus::Deploying |
-		DeploymentStatus::Running) => {
-			log::trace!(
-				"request_id: {} - Deployment is deploying or running",
-				request_id
-			);
-			let config = context.get_state().config.clone();
-			let status = service::get_kubernetes_deployment_status(
-				context.get_database_connection(),
-				&deployment_id,
-				workspace_id.as_str(),
-				&config,
-			)
-			.await?;
-
-			if db_status != status {
-				log::trace!(
-					"request_id: {} - Updating deployment status",
-					request_id
-				);
-				db::update_deployment_status(
-					context.get_database_connection(),
-					&deployment_id,
-					&status,
-				)
-				.await?;
-			}
-			status
-		}
-		status => status, // In all other cases, it is what it is
-	};
 
 	context.success(GetDeploymentInfoResponse {
 		deployment,
@@ -1481,7 +1446,9 @@ async fn get_logs(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let GetDeploymentLogsRequest { start_time, .. } = context
+	let GetDeploymentLogsRequest {
+		limit, end_time, ..
+	} = context
 		.get_query_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -1514,22 +1481,17 @@ async fn get_logs(
 
 	let config = context.get_state().config.clone();
 
-	let start_time = Utc::now() -
-		match start_time.unwrap_or(Interval::Hour) {
-			Interval::Hour => Duration::hours(1),
-			Interval::Day => Duration::days(1),
-			Interval::Week => Duration::weeks(1),
-			Interval::Month => Duration::days(30),
-			Interval::Year => Duration::days(365),
-		};
+	let end_time = end_time
+		.map(|DateTime(end_time)| end_time)
+		.unwrap_or_else(Utc::now);
 
 	log::trace!("request_id: {} - Getting logs", request_id);
 	// stop the running container, if it exists
 	let logs = service::get_deployment_container_logs(
 		context.get_database_connection(),
 		&deployment_id,
-		&start_time,
-		&Utc::now(),
+		&end_time,
+		limit.unwrap_or(100),
 		&config,
 		&request_id,
 	)
@@ -1567,6 +1529,10 @@ async fn delete_deployment(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
+
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
@@ -1605,6 +1571,24 @@ async fn delete_deployment(
 			&Utc::now(),
 		)
 		.await?;
+	}
+
+	log::trace!("request_id: {} - Checking is any managed url is used by the deployment: {}", request_id, deployment_id);
+	let managed_url = db::get_all_managed_urls_for_deployment(
+		context.get_database_connection(),
+		&deployment_id,
+		&workspace_id,
+	)
+	.await?;
+
+	if !managed_url.is_empty() {
+		log::trace!(
+			"deployment: {} - is using managed_url. Cannot delete it",
+			deployment_id
+		);
+		return Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_IN_USE).to_string())?;
 	}
 
 	log::trace!("request_id: {} - Deleting deployment", request_id);

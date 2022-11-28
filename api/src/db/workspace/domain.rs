@@ -1132,3 +1132,27 @@ pub async fn update_dns_record_identifier(
 	.await
 	.map(|_| ())
 }
+
+pub async fn get_users_with_domain_in_personal_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+) -> Result<Vec<Uuid>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT DISTINCT
+			user_id AS "user_id: Uuid"
+		FROM
+			personal_email
+		WHERE
+			domain_id = $1;
+		"#,
+		domain_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| row.user_id)
+	.collect();
+
+	Ok(rows)
+}
