@@ -656,6 +656,74 @@ pub async fn send_payment_success_email(
 	.await
 }
 
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/bill-paid-using-credits/template.json"]
+#[serde(rename_all = "camelCase")]
+struct BillPaidUsingCreditsEmail {
+	username: String,
+	workspace_name: String,
+	total_bill: u64,
+	bill_remaining: u64,
+	credits_remaining: u64,
+}
+
+pub async fn send_bill_paid_using_credits_email(
+	email: Mailbox,
+	username: &str,
+	workspace_name: &str,
+	total_bill: u64,
+	bill_remaining: u64,
+	credits_remaining: u64,
+) -> Result<(), Error> {
+	send_email(
+		BillPaidUsingCreditsEmail {
+			username: username.to_owned(),
+			workspace_name: workspace_name.to_owned(),
+			total_bill,
+			bill_remaining,
+			credits_remaining,
+		},
+		email,
+		None,
+		"Patr credits added successfully",
+	)
+	.await
+}
+
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/partial-payment-success/template.json"]
+#[serde(rename_all = "camelCase")]
+struct PartialPaymentSuccessEmail {
+	username: String,
+	workspace_name: String,
+	total_bill: u64,
+	bill_remaining: u64,
+	balance_payment_amount: u64,
+}
+
+pub async fn send_partial_payment_success_email(
+	email: Mailbox,
+	username: &str,
+	workspace_name: &str,
+	total_bill: u64,
+	bill_remaining: u64,
+	balance_payment_amount: u64,
+) -> Result<(), Error> {
+	send_email(
+		PartialPaymentSuccessEmail {
+			username: username.to_owned(),
+			workspace_name: workspace_name.to_owned(),
+			total_bill,
+			bill_remaining,
+			balance_payment_amount,
+		},
+		email,
+		None,
+		"Patr payment successful",
+	)
+	.await
+}
+
 /// # Description
 /// This function is used to send the email to a recipient
 ///

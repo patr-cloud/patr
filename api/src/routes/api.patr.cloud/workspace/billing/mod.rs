@@ -1066,6 +1066,12 @@ async fn confirm_credits(
 			&transaction_id,
 		)
 		.await?;
+		service::send_bill_paid_using_credits_email(
+			context.get_database_connection(),
+			&workspace_id,
+			&transaction_id,
+		)
+		.await?;
 		context.success(ConfirmCreditsResponse {});
 	} else {
 		context.json(error!(PAYMENT_FAILED));
@@ -1154,6 +1160,12 @@ async fn confirm_payment(
 
 	if success {
 		service::send_payment_success_email(
+			context.get_database_connection(),
+			&workspace_id,
+			&transaction_id,
+		)
+		.await?;
+		service::send_partial_payment_success_email(
 			context.get_database_connection(),
 			&workspace_id,
 			&transaction_id,

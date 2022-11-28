@@ -4,11 +4,11 @@ Hello {{username}},
 We have received your payment of ${{cents-to-dollars totalPaymentAmount}}.
 
 {{#if (greater-than totalBill totalPaymentAmount)}}
-Your bill for {{stringify-month month}} {{year}} for the workspace {{workspaceName}} amounting to ${{cents-to-dollars totalBill}} has been reduced to ${{cents-to-dollars billRemaining}}.
+Your bill for the workspace {{workspaceName}} amounting to ${{cents-to-dollars totalBill}} has been reduced to ${{cents-to-dollars billRemaining}}.
 {{/if}}
 
 {{#if (less-than-or-equal-to totalBill totalPaymentAmount)}}
-Your bill for {{stringify-month month}} {{year}} for the workspace {{workspaceName}} amounting to ${{cents-to-dollars totalBill}} has been cleared.
+Your bill for the workspace {{workspaceName}} amounting to ${{cents-to-dollars totalBill}} has been cleared.
 {{#if (less-than totalBill totalPaymentAmount)}}
 The remaining amount paid of ${{cents-to-dollars balancePaymentAmount}} has been added to your workspace as credits.
 {{/if}}

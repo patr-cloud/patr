@@ -32,11 +32,13 @@ use super::{
 	AddEmailVerificationEmail,
 	BillNotPaidDeleteResourcesEmail,
 	BillPaidSuccessfullyEmail,
+	BillPaidUsingCreditsEmail,
 	BillPaymentFailedReminderEmail,
 	CardNotAddedReminderEmail,
 	DomainUnverified,
 	DomainVerified,
 	ForgotPasswordEmail,
+	PartialPaymentSuccessEmail,
 	PasswordChangedEmail,
 	PasswordResetEmail,
 	PaymentFailureInvoiceEmail,
@@ -515,6 +517,30 @@ async fn test_payment_success_email() -> Result<(), Error> {
 		username: "username".to_owned(),
 		workspace_name: "workspace_name".to_owned(),
 		amount_in_cents: 23452345,
+	})
+	.await
+}
+
+#[tokio::test]
+async fn test_bill_payed_using_credits_email() -> Result<(), Error> {
+	send_email(BillPaidUsingCreditsEmail {
+		username: "username".to_owned(),
+		workspace_name: "workspace_name".to_owned(),
+		total_bill: 500,
+		bill_remaining: 450,
+		credits_remaining: 0,
+	})
+	.await
+}
+
+#[tokio::test]
+async fn test_partial_payment_success_email() -> Result<(), Error> {
+	send_email(PartialPaymentSuccessEmail {
+		username: "username".to_owned(),
+		workspace_name: "workspace_name".to_owned(),
+		total_bill: 500,
+		bill_remaining: 450,
+		balance_payment_amount: 0,
 	})
 	.await
 }
