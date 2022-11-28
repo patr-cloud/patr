@@ -1,0 +1,18 @@
+
+Hello {{username}}, 
+
+Thank you for purchasing credits on Patr!
+
+{{#if creditsDeducted}}
+${{cents-to-dollars creditsDeducted}} credits has been used to settle up your bill for {{stringify-month month}} {{year}} for the workspace {{workspaceName}}.
+
+Total bill for {{stringify-month month}} {{year}}: ${{cents-to-dollars totalBill}}
+Remaining bill after deduction: ${{cents-to-dollars billRemaining}}
+
+Total Credits before deduction: ${{cents-to-dollars totalCredits}} 
+Total Credits after deduction: ${{cents-to-dollars creditsRemaining}} 
+{{/if}}
+
+If you are facing any issues reach out to us at support@patr.cloud
+
+Join our Discord community (https://patr.cloud/discord) for the latest updates and chat with us here (https://app.patr.cloud?openDrift=true) for instant technical support.
