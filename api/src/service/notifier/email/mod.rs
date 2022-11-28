@@ -715,7 +715,7 @@ pub async fn send_partial_payment_success_email(
 /// errors
 ///
 /// [`TEmail`]: TEmail
-#[cfg(debug_assertions)]
+#[cfg(not(debug_assertions))]
 async fn send_email<TEmail>(
 	body: TEmail,
 	to: Mailbox,
@@ -785,7 +785,7 @@ where
 	Ok(())
 }
 
-#[cfg(not(debug_assertions))]
+#[cfg(debug_assertions)]
 async fn send_email<TEmail>(
 	body: TEmail,
 	to: Mailbox,

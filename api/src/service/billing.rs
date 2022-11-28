@@ -140,7 +140,7 @@ pub async fn add_credits_to_workspace(
 		Some(&payment_intent.id),
 		&date,
 		&TransactionType::Credits,
-		&PaymentStatus::Success,
+		&PaymentStatus::Pending,
 		Some(description),
 	)
 	.await?;

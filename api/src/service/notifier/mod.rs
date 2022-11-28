@@ -793,10 +793,29 @@ pub async fn send_repository_storage_limit_exceed_email(
 	)
 	.await?;
 
+	// parsing personal-workspace-(uuid)
+	let displayed_workspace_name = if let Some(Ok(user_id)) = workspace
+		.name
+		.strip_prefix("personal-workspace-")
+		.map(Uuid::parse_str)
+	{
+		let user = db::get_user_by_user_id(connection, &user_id).await?;
+		if let Some(user) = user {
+			format!(
+				"{} {}'s Personal Workspace",
+				user.first_name, user.last_name
+			)
+		} else {
+			workspace.name
+		}
+	} else {
+		workspace.name
+	};
+
 	email::send_repository_storage_limit_exceed_email(
 		user_email.parse()?,
 		&user.first_name,
-		&workspace.name,
+		&displayed_workspace_name,
 		&format!("registry.patr.cloud/{}/{}", workspace_id, repository_name),
 		tag,
 		digest,
@@ -831,6 +850,25 @@ pub async fn send_purchase_credits_success_email(
 	)
 	.await?;
 
+	// parsing personal-workspace-(uuid)
+	let displayed_workspace_name = if let Some(Ok(user_id)) = workspace
+		.name
+		.strip_prefix("personal-workspace-")
+		.map(Uuid::parse_str)
+	{
+		let user = db::get_user_by_user_id(connection, &user_id).await?;
+		if let Some(user) = user {
+			format!(
+				"{} {}'s Personal Workspace",
+				user.first_name, user.last_name
+			)
+		} else {
+			workspace.name
+		}
+	} else {
+		workspace.name
+	};
+
 	let transaction = db::get_transaction_by_transaction_id(
 		connection,
 		workspace_id,
@@ -842,7 +880,7 @@ pub async fn send_purchase_credits_success_email(
 	email::send_purchase_credits_success_email(
 		user_email.parse()?,
 		&user.first_name,
-		&workspace.name,
+		&displayed_workspace_name,
 		transaction.amount_in_cents as u64,
 	)
 	.await
@@ -873,6 +911,25 @@ pub async fn send_bill_paid_using_credits_email(
 			.body(error!(SERVER_ERROR).to_string())?,
 	)
 	.await?;
+
+	// parsing personal-workspace-(uuid)
+	let displayed_workspace_name = if let Some(Ok(user_id)) = workspace
+		.name
+		.strip_prefix("personal-workspace-")
+		.map(Uuid::parse_str)
+	{
+		let user = db::get_user_by_user_id(connection, &user_id).await?;
+		if let Some(user) = user {
+			format!(
+				"{} {}'s Personal Workspace",
+				user.first_name, user.last_name
+			)
+		} else {
+			workspace.name
+		}
+	} else {
+		workspace.name
+	};
 
 	let transaction = db::get_transaction_by_transaction_id(
 		connection,
@@ -908,7 +965,7 @@ pub async fn send_bill_paid_using_credits_email(
 	email::send_bill_paid_using_credits_email(
 		user_email.parse()?,
 		&user.first_name,
-		&workspace.name,
+		&displayed_workspace_name,
 		total_bill,
 		bill_remaining,
 		credits_remaining,
@@ -944,6 +1001,25 @@ pub async fn send_partial_payment_success_email(
 	)
 	.await?;
 
+	// parsing personal-workspace-(uuid)
+	let displayed_workspace_name = if let Some(Ok(user_id)) = workspace
+		.name
+		.strip_prefix("personal-workspace-")
+		.map(Uuid::parse_str)
+	{
+		let user = db::get_user_by_user_id(connection, &user_id).await?;
+		if let Some(user) = user {
+			format!(
+				"{} {}'s Personal Workspace",
+				user.first_name, user.last_name
+			)
+		} else {
+			workspace.name
+		}
+	} else {
+		workspace.name
+	};
+
 	let transaction = db::get_transaction_by_transaction_id(
 		connection,
 		workspace_id,
@@ -978,7 +1054,7 @@ pub async fn send_partial_payment_success_email(
 	email::send_partial_payment_success_email(
 		user_email.parse()?,
 		&user.first_name,
-		&workspace.name,
+		&displayed_workspace_name,
 		total_bill,
 		transaction.amount_in_cents as u64,
 		bill_remaining,
