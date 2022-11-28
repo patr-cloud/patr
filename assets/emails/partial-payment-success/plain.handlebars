@@ -1,0 +1,19 @@
+
+Hello {{username}}, 
+
+We have received your payment of ${{cents-to-dollars paymentAmount}}.
+
+{{#if totalBill}}
+Your bill for {{stringify-month month}} {{year}} for the workspace {{workspaceName}} has been reduced to ${{cents-to-dollars billRemaining}}.
+
+Total bill for {{stringify-month month}} {{year}}: ${{cents-to-dollars totalBill}}
+
+Remaining bill after payment: ${{cents-to-dollars billRemaining}}
+{{/if}}
+
+Total Credits before payment: ${{cents-to-dollars totalCredits}} 
+Total Credits after payment: ${{cents-to-dollars creditsRemaining}} 
+
+If you did not initiate this payment, please reach out to us at support@patr.cloud immediately. 
+
+Join our Discord community (https://patr.cloud/discord) for the latest updates and chat with us here (https://app.patr.cloud?openDrift=true) for instant technical support.
