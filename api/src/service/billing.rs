@@ -376,8 +376,8 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 			.entry(deployment_usage.deployment_id)
 			.or_default()
 			.push(DeploymentBill {
-				start_time: DateTime(deployment_usage.start_time),
-				stop_time: deployment_usage.stop_time.map(DateTime),
+				start_time: DateTime(start_time),
+				stop_time: Some(DateTime(stop_time)),
 				machine_type: DeploymentMachineType {
 					id: deployment_usage.machine_type,
 					cpu_count: *cpu_count,
@@ -409,6 +409,7 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 		})
 	}
 
+	result.sort_unstable_by(|a, b| a.name.cmp(&b.name));
 	Ok(result)
 }
 
@@ -472,8 +473,8 @@ pub async fn calculate_database_bill_for_workspace_till(
 		database_usage_bill
 			.entry(database_usage.database_id.clone())
 			.or_insert(DatabaseUsage {
-				start_time: DateTime(database_usage.start_time),
-				deletion_time: database_usage.deletion_time.map(DateTime),
+				start_time: DateTime(start_time),
+				deletion_time: Some(DateTime(stop_time)),
 				database_id: database_usage.database_id.clone(),
 				name: managed_database.name,
 				hours: hours as u64,
@@ -548,8 +549,7 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 				};
 				let price_in_cents = (price_in_dollars * 100.0).round() as u64;
 
-				last_site_bill.stop_time =
-					static_sites_usage.stop_time.map(DateTime);
+				last_site_bill.stop_time = Some(DateTime(stop_time));
 				last_site_bill.hours = hours;
 				last_site_bill.amount = price_in_cents;
 			}
@@ -558,8 +558,8 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 					plan,
 					hours: hours as u64,
 					amount: price_in_cents,
-					start_time: DateTime(static_sites_usage.start_time),
-					stop_time: static_sites_usage.stop_time.map(DateTime),
+					start_time: DateTime(start_time),
+					stop_time: Some(DateTime(stop_time)),
 					monthly_charge: monthly_price as u64 * 100,
 				});
 			}
@@ -633,8 +633,7 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 				};
 				let price_in_cents = (price_in_dollars * 100.0).round() as u64;
 
-				last_managed_url.stop_time =
-					managed_url_usage.stop_time.map(DateTime);
+				last_managed_url.stop_time = Some(DateTime(stop_time));
 				last_managed_url.hours = hours;
 				last_managed_url.amount = price_in_cents;
 			}
@@ -643,8 +642,8 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 					plan,
 					hours: hours as u64,
 					amount: price_in_cents,
-					start_time: DateTime(managed_url_usage.start_time),
-					stop_time: managed_url_usage.stop_time.map(DateTime),
+					start_time: DateTime(start_time),
+					stop_time: Some(DateTime(stop_time)),
 					monthly_charge: monthly_price as u64 * 100,
 				});
 			}
@@ -738,8 +737,7 @@ pub async fn calculate_docker_repository_bill_for_workspace_till(
 				};
 				let price_in_cents = (price_in_dollars * 100.0).round() as u64;
 
-				last_repo_bill.stop_time =
-					docker_repository_usage.stop_time.map(DateTime);
+				last_repo_bill.stop_time = Some(DateTime(stop_time));
 				last_repo_bill.hours = hours;
 				last_repo_bill.amount = price_in_cents;
 			}
@@ -748,8 +746,8 @@ pub async fn calculate_docker_repository_bill_for_workspace_till(
 					plan,
 					hours: hours as u64,
 					amount: price_in_cents,
-					start_time: DateTime(docker_repository_usage.start_time),
-					stop_time: docker_repository_usage.stop_time.map(DateTime),
+					start_time: DateTime(start_time),
+					stop_time: Some(DateTime(stop_time)),
 					monthly_charge: monthly_price as u64 * 100,
 				});
 			}
@@ -818,8 +816,7 @@ pub async fn calculate_domains_bill_for_workspace_till(
 				};
 				let price_in_cents = (price_in_dollars * 100.0).round() as u64;
 
-				last_domain_bill.stop_time =
-					domains_usage.stop_time.map(DateTime);
+				last_domain_bill.stop_time = Some(DateTime(stop_time));
 				last_domain_bill.hours = hours;
 				last_domain_bill.amount = price_in_cents;
 			}
@@ -828,8 +825,8 @@ pub async fn calculate_domains_bill_for_workspace_till(
 					plan,
 					hours: hours as u64,
 					amount: price_in_cents,
-					start_time: DateTime(domains_usage.start_time),
-					stop_time: domains_usage.stop_time.map(DateTime),
+					start_time: DateTime(start_time),
+					stop_time: Some(DateTime(stop_time)),
 					monthly_charge: monthly_price as u64 * 100,
 				});
 			}
@@ -903,8 +900,7 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 				};
 				let price_in_cents = (price_in_dollars * 100.0).round() as u64;
 
-				last_secret_bill.stop_time =
-					secrets_usage.stop_time.map(DateTime);
+				last_secret_bill.stop_time = Some(DateTime(stop_time));
 				last_secret_bill.hours = hours;
 				last_secret_bill.amount = price_in_cents;
 			}
@@ -913,8 +909,8 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 					plan,
 					hours: hours as u64,
 					amount: price_in_cents,
-					start_time: DateTime(secrets_usage.start_time),
-					stop_time: secrets_usage.stop_time.map(DateTime),
+					start_time: DateTime(start_time),
+					stop_time: Some(DateTime(stop_time)),
 					monthly_charge: monthly_price as u64 * 100,
 				});
 			}
