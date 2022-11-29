@@ -128,7 +128,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					matches!(response.result.status, Status::Active)
 				}
 				Err(ApiFailure::Error(status_code, _))
-					if status_code == 404 =>
+					if status_code == 400 =>
 				{
 					// The given domain does not exist in cloudflare. Something
 					// is wrong here
@@ -253,30 +253,36 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 				}
 			}
 		} else {
-			let response = service::verify_external_domain(
-				&mut connection,
-				&workspace_id,
+			let verified = service::verify_external_domain(
 				&unverified_domain.name,
 				&unverified_domain.id,
 				&request_id,
 			)
 			.await?;
-			if !response {
-				log::error!(
-					"Could not verify domain `{}`",
-					unverified_domain.name
-				);
-
-				// Sending mail
+			if verified {
+				// domain in initially unverified
+				// now it got verified
+				db::update_workspace_domain_status(
+					&mut connection,
+					&unverified_domain.id,
+					true,
+					&Utc::now(),
+				)
+				.await?;
 				service::domain_verification_email(
 					&mut connection,
 					&unverified_domain.name,
 					&workspace_id,
 					&unverified_domain.id,
 					false,
-					false,
+					true,
 				)
 				.await?;
+			} else {
+				log::error!(
+					"Could not verify domain `{}`",
+					unverified_domain.name
+				);
 
 				let last_unverified = Utc::now()
 					.signed_duration_since(unverified_domain.last_unverified);
@@ -307,9 +313,20 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 						&request_id,
 					)
 					.await?;
+				} else {
+					// Sending mail to notify user
+					service::domain_verification_email(
+						&mut connection,
+						&unverified_domain.name,
+						&workspace_id,
+						&unverified_domain.id,
+						false,
+						false,
+					)
+					.await?;
 				}
-				connection.commit().await?;
 			}
+			connection.commit().await?;
 		}
 	}
 	Ok(())
@@ -509,95 +526,86 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Re-verifying verified domains", request_id);
 	let config = super::CONFIG.get().unwrap();
-	let mut connection = config.database.begin().await?;
-
+	let mut connection = config.database.acquire().await?;
 	let verified_domains =
 		db::get_all_verified_domains(&mut connection).await?;
 
 	let client = service::get_cloudflare_client(&config.config).await?;
 
 	for (verified_domain, zone_identifier) in verified_domains {
-		// getting workspace_id
-		let workspace_id =
-			db::get_resource_by_id(&mut connection, &verified_domain.id)
-				.await?
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string())?
-				.owner_id;
+		let mut connection = config.database.begin().await?;
 
-		let zone_identifier = if let Some(zone_identifier) = zone_identifier {
-			zone_identifier
-		} else {
-			// TODO delete the domain altogether or add to cloudflare?
-			continue;
-		};
-		let response = match client
-			.request(&zone::ZoneDetails {
-				identifier: &zone_identifier,
-			})
-			.await
+		if let (Some(zone_identifier), true) =
+			(zone_identifier, verified_domain.is_ns_internal())
 		{
-			Ok(response) => response,
-			Err(ApiFailure::Error(status_code, _)) if status_code == 404 => {
-				// The given domain does not exist in cloudflare. Something
-				// is wrong here
+			// internal domain, so use cloudflare to verify it
+			let response = match client
+				.request(&zone::ZoneDetails {
+					identifier: &zone_identifier,
+				})
+				.await
+			{
+				Ok(response) => response,
+				Err(ApiFailure::Error(status_code, _))
+					if status_code == 404 =>
+				{
+					// The given domain does not exist in cloudflare. Something
+					// is wrong here
+					log::error!(
+						"Domain `{}` does not exist in cloudflare",
+						verified_domain.name
+					);
+					continue;
+				}
+				Err(err) => {
+					log::error!(
+						"Unable to get domain `{}` from cloudflare: {}",
+						verified_domain.name,
+						err
+					);
+					continue;
+				}
+			};
+
+			if let Status::Active = response.result.status {
+				continue;
+			}
+			// Domain is now unverified
+			db::update_workspace_domain_status(
+				&mut connection,
+				&verified_domain.id,
+				false,
+				&Utc::now(),
+			)
+			.await?;
+		} else {
+			// external domain, so check txt records
+			let verified = service::verify_external_domain(
+				&verified_domain.name,
+				&verified_domain.id,
+				&request_id,
+			)
+			.await?;
+			if !verified {
 				log::error!(
-					"Domain `{}` does not exist in cloudflare",
+					"Could not verify domain `{}`",
 					verified_domain.name
 				);
-				continue;
-			}
-			Err(err) => {
-				log::error!(
-					"Unable to get domain `{}` from cloudflare: {}",
-					verified_domain.name,
-					err
-				);
-				continue;
-			}
-		};
 
-		if let Status::Active = response.result.status {
-			continue;
+				db::update_workspace_domain_status(
+					&mut connection,
+					&verified_domain.id,
+					false,
+					&Utc::now(),
+				)
+				.await?;
+			}
 		}
-		// Domain is now unverified
-		db::update_workspace_domain_status(
-			&mut connection,
-			&verified_domain.id,
-			false,
-			&Utc::now(),
-		)
-		.await?;
+		// since `verify_unverified_domains_job` runs every 2 hrs,
+		// email handling will be done there
 
-		let notification_email = db::get_notification_email_for_domain(
-			&mut connection,
-			&verified_domain.id,
-		)
-		.await?;
-		if notification_email.is_none() {
-			log::error!(
-				"Notification email for domain `{}` is None. {}",
-				verified_domain.name,
-				"You might have a dangling resource for the domain"
-			);
-			continue;
-		} else {
-			log::trace!(
-				"domain: {} with id: {} is now unverfied",
-				verified_domain.name,
-				verified_domain.id
-			);
-			service::domain_verification_email(
-				&mut connection,
-				&verified_domain.name,
-				&workspace_id,
-				&verified_domain.id,
-				true,
-				false,
-			)
-			.await?
-		}
-		// TODO delete certificates and managed urls after 3 days
+		// commit the changes made inside this transaction
+		connection.commit().await?;
 	}
 
 	Ok(())
