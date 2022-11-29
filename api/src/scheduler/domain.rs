@@ -247,6 +247,8 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 						&request_id,
 					)
 					.await?;
+
+					// todo: need to send an email when deleting domain resource
 					connection.commit().await?;
 				} else {
 					continue;
@@ -313,17 +315,8 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 						&request_id,
 					)
 					.await?;
-				} else {
-					// Sending mail to notify user
-					service::domain_verification_email(
-						&mut connection,
-						&unverified_domain.name,
-						&workspace_id,
-						&unverified_domain.id,
-						false,
-						false,
-					)
-					.await?;
+
+					// todo: need to send an email when deleting domain resource
 				}
 			}
 			connection.commit().await?;
@@ -534,6 +527,12 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 
 	for (verified_domain, zone_identifier) in verified_domains {
 		let mut connection = config.database.begin().await?;
+		let workspace_id =
+			db::get_resource_by_id(&mut connection, &verified_domain.id)
+				.await?
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?
+				.owner_id;
 
 		if let (Some(zone_identifier), true) =
 			(zone_identifier, verified_domain.is_ns_internal())
@@ -547,7 +546,7 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 			{
 				Ok(response) => response,
 				Err(ApiFailure::Error(status_code, _))
-					if status_code == 404 =>
+					if status_code == 400 =>
 				{
 					// The given domain does not exist in cloudflare. Something
 					// is wrong here
@@ -578,6 +577,15 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 				&Utc::now(),
 			)
 			.await?;
+			service::domain_verification_email(
+				&mut connection,
+				&verified_domain.name,
+				&workspace_id,
+				&verified_domain.id,
+				true,
+				false,
+			)
+			.await?
 		} else {
 			// external domain, so check txt records
 			let verified = service::verify_external_domain(
@@ -599,10 +607,18 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 					&Utc::now(),
 				)
 				.await?;
+
+				service::domain_verification_email(
+					&mut connection,
+					&verified_domain.name,
+					&workspace_id,
+					&verified_domain.id,
+					false,
+					false,
+				)
+				.await?
 			}
 		}
-		// since `verify_unverified_domains_job` runs every 2 hrs,
-		// email handling will be done there
 
 		// commit the changes made inside this transaction
 		connection.commit().await?;
