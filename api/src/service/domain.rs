@@ -410,14 +410,52 @@ pub async fn is_domain_verified(
 	} else {
 		log::trace!("request_id: {} - Domain is not internal", request_id);
 		log::trace!("request_id: {} - Verifying external domain", request_id);
-		verify_external_domain(
-			connection,
-			workspace_id,
-			&domain.name,
-			&domain.id,
-			request_id,
-		)
-		.await
+		let verified =
+			verify_external_domain(&domain.name, &domain.id, request_id)
+				.await?;
+		if verified {
+			db::update_workspace_domain_status(
+				connection,
+				domain_id,
+				true,
+				&Utc::now(),
+			)
+			.await?;
+			service::domain_verification_email(
+				connection,
+				&domain.name,
+				workspace_id,
+				domain_id,
+				false,
+				true,
+			)
+			.await?;
+
+			Ok(true)
+		} else {
+			// updated db last_unverified iff not already marked as unverified
+			// so that we can delete after 7 days in scheduler
+			if domain.is_verified {
+				db::update_workspace_domain_status(
+					connection,
+					domain_id,
+					false,
+					&Utc::now(),
+				)
+				.await?;
+			}
+			service::domain_verification_email(
+				connection,
+				&domain.name,
+				workspace_id,
+				domain_id,
+				false,
+				false,
+			)
+			.await?;
+
+			Ok(false)
+		}
 	}
 }
 
@@ -722,8 +760,6 @@ pub async fn delete_patr_domain_dns_record(
 }
 
 pub async fn verify_external_domain(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
 	domain_name: &str,
 	domain_id: &Uuid,
 	request_id: &Uuid,
@@ -756,37 +792,14 @@ pub async fn verify_external_domain(
 
 	if response.is_some() {
 		log::trace!("request_id: {} - The TXT record exists", request_id);
-		log::trace!("request_id: {} - Verified the domain and updating workspace domain status", request_id);
-		db::update_workspace_domain_status(
-			connection,
-			domain_id,
-			true,
-			&Utc::now(),
-		)
-		.await?;
-
-		service::domain_verification_email(
-			connection,
-			domain_name,
-			workspace_id,
-			domain_id,
-			false,
-			true,
-		)
-		.await?;
-
-		return Ok(true);
+		Ok(true)
+	} else {
+		log::trace!(
+			"request_id: {} - The TXT record does not exists",
+			request_id
+		);
+		Ok(false)
 	}
-	service::domain_verification_email(
-		connection,
-		domain_name,
-		workspace_id,
-		domain_id,
-		false,
-		false,
-	)
-	.await?;
-	Ok(false)
 }
 
 pub async fn delete_domain_in_workspace(
