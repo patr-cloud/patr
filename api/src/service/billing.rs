@@ -376,7 +376,7 @@ pub async fn calculate_deployment_bill_for_workspace_till(
 			.entry(deployment_usage.deployment_id)
 			.or_default()
 			.push(DeploymentBill {
-				start_time: DateTime(deployment_usage.start_time),
+				start_time: DateTime(start_time),
 				stop_time: deployment_usage.stop_time.map(DateTime),
 				machine_type: DeploymentMachineType {
 					id: deployment_usage.machine_type,
@@ -472,7 +472,7 @@ pub async fn calculate_database_bill_for_workspace_till(
 		database_usage_bill
 			.entry(database_usage.database_id.clone())
 			.or_insert(DatabaseUsage {
-				start_time: DateTime(database_usage.start_time),
+				start_time: DateTime(start_time),
 				deletion_time: database_usage.deletion_time.map(DateTime),
 				database_id: database_usage.database_id.clone(),
 				name: managed_database.name,
@@ -558,7 +558,7 @@ pub async fn calculate_static_sites_bill_for_workspace_till(
 					plan,
 					hours: hours as u64,
 					amount: price_in_cents,
-					start_time: DateTime(static_sites_usage.start_time),
+					start_time: DateTime(start_time),
 					stop_time: static_sites_usage.stop_time.map(DateTime),
 					monthly_charge: monthly_price as u64 * 100,
 				});
@@ -643,7 +643,7 @@ pub async fn calculate_managed_urls_bill_for_workspace_till(
 					plan,
 					hours: hours as u64,
 					amount: price_in_cents,
-					start_time: DateTime(managed_url_usage.start_time),
+					start_time: DateTime(start_time),
 					stop_time: managed_url_usage.stop_time.map(DateTime),
 					monthly_charge: monthly_price as u64 * 100,
 				});
@@ -748,7 +748,7 @@ pub async fn calculate_docker_repository_bill_for_workspace_till(
 					plan,
 					hours: hours as u64,
 					amount: price_in_cents,
-					start_time: DateTime(docker_repository_usage.start_time),
+					start_time: DateTime(start_time),
 					stop_time: docker_repository_usage.stop_time.map(DateTime),
 					monthly_charge: monthly_price as u64 * 100,
 				});
@@ -828,7 +828,7 @@ pub async fn calculate_domains_bill_for_workspace_till(
 					plan,
 					hours: hours as u64,
 					amount: price_in_cents,
-					start_time: DateTime(domains_usage.start_time),
+					start_time: DateTime(start_time),
 					stop_time: domains_usage.stop_time.map(DateTime),
 					monthly_charge: monthly_price as u64 * 100,
 				});
@@ -913,7 +913,7 @@ pub async fn calculate_secrets_bill_for_workspace_till(
 					plan,
 					hours: hours as u64,
 					amount: price_in_cents,
-					start_time: DateTime(secrets_usage.start_time),
+					start_time: DateTime(start_time),
 					stop_time: secrets_usage.stop_time.map(DateTime),
 					monthly_charge: monthly_price as u64 * 100,
 				});
