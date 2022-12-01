@@ -237,7 +237,13 @@ pub(super) async fn process_request(
 				workspace.name.clone()
 			};
 
-			if card_amount_to_be_charged_in_cents == 0 {
+			if card_amount_to_be_charged_in_cents == 0 &&
+				total_bill.total_charge == 0
+			{
+				// do nothing, no email has to be sent for any payment action
+			} else if card_amount_to_be_charged_in_cents == 0 &&
+				total_bill.total_charge > 0
+			{
 				let billing_address = if let Some(address) =
 					workspace.address_id
 				{
@@ -269,6 +275,8 @@ pub(super) async fn process_request(
 						country: "".to_string(),
 					}
 				};
+
+				// Only if amount due is zero or total resource usage is zero
 				service::send_payment_success_invoice_notification(
 					connection,
 					&workspace.super_admin_id,
