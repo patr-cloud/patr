@@ -1,9 +1,9 @@
 use std::{fmt, slice::Iter};
 
 use api_models::{
-	models::workspace::{
-		infrastructure::deployment::{Deployment, DeploymentRunningDetails},
-		region::DigitaloceanRegion,
+	models::workspace::infrastructure::deployment::{
+		Deployment,
+		DeploymentRunningDetails,
 	},
 	utils::{DateTime, Uuid},
 };
@@ -69,10 +69,10 @@ pub enum BYOCData {
 		kube_config: String,
 		request_id: Uuid,
 	},
-	CreateDigitaloceanCluster {
+	GetDigitalOceanKubeconfig {
+		api_token: String,
+		cluster_id: Uuid,
 		region_id: Uuid,
-		digitalocean_region: DigitaloceanRegion,
-		access_token: String,
 		request_id: Uuid,
 	},
 	DeleteKubernetesCluster {

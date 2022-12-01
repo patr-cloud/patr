@@ -453,6 +453,26 @@ pub async fn send_message_to_docker_webhook_queue(
 	Ok(())
 }
 
+pub async fn queue_get_kube_config_for_do_cluster(
+	api_token: &str,
+	cluster_id: &Uuid,
+	region_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_infra_queue(
+		&InfraRequestData::BYOC(BYOCData::GetDigitalOceanKubeconfig {
+			api_token: api_token.to_string(),
+			cluster_id: cluster_id.clone(),
+			region_id: region_id.clone(),
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await
+}
+
 pub async fn queue_delete_kubernetes_cluster(
 	region_id: &Uuid,
 	kube_config: &str,
