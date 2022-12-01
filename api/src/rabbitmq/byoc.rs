@@ -3,6 +3,7 @@ use std::time::Duration;
 use api_models::models::workspace::domain::DnsRecordValue;
 use eve_rs::AsError;
 use kube::config::Kubeconfig;
+use reqwest::Client;
 use tokio::{fs, process::Command};
 
 use crate::{
@@ -48,13 +49,10 @@ pub(super) async fn process_request(
 				.map(|id| id.as_str().to_owned())
 				.status(500)?;
 
-			// todo: get both stdout and stderr in same stream -> use subprocess crate in future
+			// todo: get both stdout and stderr in same stream -> use subprocess
+			// crate in future
 			let output = Command::new("assets/k8s/fresh/k8s_init.sh")
-				.args([
-					region_id.as_str(),
-					&parent_workspace,
-					&kubeconfig_path,
-				])
+				.args([region_id.as_str(), &parent_workspace, &kubeconfig_path])
 				.output()
 				.await?;
 
@@ -108,7 +106,7 @@ pub(super) async fn process_request(
 			let ip_addr = service::get_external_ip_addr_for_load_balancer(
 				"ingress-nginx",
 				"ingress-nginx-controller",
-				&kube_config
+				&kube_config,
 			)
 			.await?;
 
@@ -142,41 +140,42 @@ pub(super) async fn process_request(
 				cluster_url,
 				auth_username,
 				auth_token,
-				certificate_authority_data
-			} = service::get_kubernetes_config_for_default_region(config).auth_details;
+				certificate_authority_data,
+			} = service::get_kubernetes_config_for_default_region(config)
+				.auth_details;
 
 			let kube_config_yaml = service::generate_kubeconfig_from_template(
 				&cluster_url,
 				&auth_username,
 				&auth_token,
-				&certificate_authority_data
+				&certificate_authority_data,
 			);
 
 			service::create_external_service_for_region(
 				region.workspace_id.as_ref().status(500)?.as_str(),
 				&region_id,
 				&ip_addr,
-				&kube_config_yaml
+				&kube_config_yaml,
 			)
 			.await?;
 
-			let patr_domain = db::get_domain_by_name(
-				connection,
-				"patr.cloud",
-			)
-			.await?
-			.status(500)?;
+			let patr_domain = db::get_domain_by_name(connection, "patr.cloud")
+				.await?
+				.status(500)?;
 
-			let resource = db::get_resource_by_id(
-				connection,
-				&patr_domain.id,
-			)
-			.await?
-			.status(500)?;
+			let resource = db::get_resource_by_id(connection, &patr_domain.id)
+				.await?
+				.status(500)?;
 
 			let dns_record = match ip_addr {
-				std::net::IpAddr::V4(ip_v4) => DnsRecordValue::A { target: ip_v4, proxied: false },
-				std::net::IpAddr::V6(ip_v6) => DnsRecordValue::AAAA { target: ip_v6, proxied: false },
+				std::net::IpAddr::V4(ip_v4) => DnsRecordValue::A {
+					target: ip_v4,
+					proxied: false,
+				},
+				std::net::IpAddr::V6(ip_v6) => DnsRecordValue::AAAA {
+					target: ip_v6,
+					proxied: false,
+				},
 			};
 
 			service::create_patr_domain_dns_record(
@@ -208,39 +207,70 @@ pub(super) async fn process_request(
 
 			Ok(())
 		}
-		BYOCData::CreateDigitaloceanCluster {
-			region_id: _,
-			digitalocean_region: _,
-			access_token: _,
-			request_id: _,
-		} => Err(
-			Error::empty().body("Currently creating cluster through digital ocean cluster is not supported")
-		),
-    	BYOCData::DeleteKubernetesCluster {
+		BYOCData::GetDigitalOceanKubeconfig {
+			api_token,
+			cluster_id,
+			region_id,
+			request_id,
+		} => {
+			let client = Client::new();
+			// Handle the case while initiallization of the cluster and requeue
+			// the job for every 5 minutes to get the update
+			log::trace!(
+				"request_id: {} checking for readiness and getting kubeconfig",
+				request_id
+			);
+			let kube_config = client
+				.get(format!("https://api.digitalocean.com/v2/kubernetes/clusters/{}/kubeconfig", cluster_id))
+				.bearer_auth(api_token)
+				.send()
+				.await?
+				.text()
+				.await?;
+
+			println!("kubec_config: {:?}", kube_config);
+
+			// // TODO - to be only called once we get the kube_config
+			// // initialize the cluster with patr script
+			// service::send_message_to_infra_queue(
+			// 	&InfraRequestData::BYOC(BYOCData::InitKubernetesCluster {
+			// 		region_id,
+			// 		kube_config,
+			// 		request_id: request_id.clone(),
+			// 	}),
+			// 	config,
+			// 	&request_id,
+			// )
+			// .await?;
+
+			Ok(())
+		}
+		BYOCData::DeleteKubernetesCluster {
 			region_id,
 			kube_config,
 			request_id,
 		} => {
-			log::trace!("request_id: {} uninitializing region with ID: {}", request_id, region_id);
+			log::trace!(
+				"request_id: {} uninitializing region with ID: {}",
+				request_id,
+				region_id
+			);
 
 			let kubeconfig_path = format!("{region_id}.yml");
 
 			fs::write(&kubeconfig_path, &kube_config).await?;
 
 			let output = Command::new("assets/k8s/fresh/k8s_uninit.sh")
-				.args([
-					&kubeconfig_path,
-				])
+				.args([&kubeconfig_path])
 				.output()
 				.await?;
 
 			db::append_messge_log_for_region(
-					connection,
-					&region_id,
-					std::str::from_utf8(&output.stdout)?,
-				)
-				.await?;
-
+				connection,
+				&region_id,
+				std::str::from_utf8(&output.stdout)?,
+			)
+			.await?;
 
 			if !output.status.success() {
 				log::debug!(

@@ -66,6 +66,12 @@ pub async fn initialize_region_pre(
 				REFERENCES workspace(id),
 			ready BOOLEAN NOT NULL,
 			config_file JSON,
+			api_token TEXT,
+			cluster_name TEXT,
+			num_node INTEGER,
+			node_name TEXT,
+			node_size TEXT,
+			do_cluster_id UUID,
 			kubernetes_ingress_ip_addr INET,
 			message_log TEXT,
 			deleted TIMESTAMPTZ,
@@ -245,13 +251,17 @@ pub async fn add_deployment_region_to_workspace(
 	.map(|_| ())
 }
 
-pub async fn add_deployment_region_to_workspace_with_config_file(
+pub async fn add_do_deployment_region_to_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
 	name: &str,
 	cloud_provider: &InfrastructureCloudProvider,
+	api_token: &str,
+	cluster_name: &str,
+	num_node: &u16,
+	node_name: &str,
+	node_size: &str,
 	workspace_id: &Uuid,
-	config_file: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -263,16 +273,47 @@ pub async fn add_deployment_region_to_workspace_with_config_file(
 				workspace_id,
 				ready,
 				config_file,
+				api_token,
+				cluster_name,
+				num_node,
+				node_name,
+				node_size,
 				status
 			)
 		VALUES
-			($1, $2, $3, $4, FALSE, $5, 'created');
+			($1, $2, $3, $4, FALSE, NULL, $5, $6, $7, $8, $9, 'created');
 		"#,
 		region_id as _,
 		name,
 		cloud_provider as _,
 		workspace_id as _,
-		config_file as _
+		api_token,
+		cluster_name,
+		*num_node as i16,
+		node_name,
+		node_size,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_do_cluster_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	region_id: &Uuid,
+	cluster_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment_region
+		SET
+			do_cluster_id = $1
+		WHERE
+			id = $2;
+		"#,
+		cluster_id as _,
+		region_id as _,
 	)
 	.execute(&mut *connection)
 	.await

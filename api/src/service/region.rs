@@ -2,9 +2,11 @@ use std::net::IpAddr;
 
 use api_models::utils::Uuid;
 use eve_rs::AsError;
+use reqwest::Client;
 
 use crate::{
 	db,
+	models::{K8NodePool, K8sClusterCreateInfo, K8sConfig, K8sCreateCluster},
 	utils::{settings::Settings, Error},
 	Database,
 };
@@ -94,6 +96,48 @@ pub async fn get_kubernetes_config_for_region(
 	};
 
 	Ok(kubeconfig)
+}
+
+pub async fn create_do_k8s_cluster(
+	workspace_id: &Uuid,
+	region: &str,
+	api_token: &str,
+	cluster_name: Option<&str>,
+	num_node: &u16,
+	node_name: Option<&str>,
+	request_id: &Uuid,
+) -> Result<Uuid, Error> {
+	log::trace!(
+		"request_id: {} creating digital ocean k8s cluster using api call",
+		request_id
+	);
+	let client = Client::new();
+
+	let k8s_cluster_id = client
+		.post("https://api.digitalocean.com/v2/kubernetes/clusters")
+		.bearer_auth(api_token)
+		.json(&K8sConfig {
+			region: region.to_string(),
+			version: "1.24.4-do.0".to_string(),
+			name: cluster_name
+				.map(|cluster| cluster.to_string())
+				.unwrap_or(format!("{}-patr-cluster", workspace_id)),
+			node_pools: vec![K8NodePool {
+				count: num_node.to_owned(),
+				name: node_name
+					.map(|node_name| node_name.to_string())
+					.unwrap_or(format!("{}-patr-node", workspace_id)),
+				size: "s-1vcpu-2gb".to_string(),
+			}],
+		})
+		.send()
+		.await?
+		.json::<K8sCreateCluster>()
+		.await?
+		.kubernetes_cluster
+		.id;
+
+	Ok(k8s_cluster_id)
 }
 
 pub async fn is_deployed_on_patr_cluster(
