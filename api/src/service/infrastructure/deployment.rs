@@ -994,8 +994,8 @@ async fn get_container_logs(
 
 	let mut logs = String::new();
 
-	for log in combined_build_logs {
-		logs.push_str(format!("{}\n", log.1).as_str());
+	for (timestamp, log) in combined_build_logs {
+		logs.push_str(format!("{}-{}\n", timestamp, log).as_str());
 	}
 
 	Ok(logs)
