@@ -617,3 +617,37 @@ pub async fn get_active_managed_url_count_for_domain(
 	.await
 	.map(|row| row.count.unwrap_or(0))
 }
+
+pub async fn get_all_managed_urls_for_host(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	sub_domain: &str,
+	domain_id: &Uuid,
+) -> Result<Vec<ManagedUrl>, sqlx::Error> {
+	query_as!(
+		ManagedUrl,
+		r#"
+		SELECT
+			id as "id: _",
+			sub_domain,
+			domain_id as "domain_id: _",
+			path,
+			url_type as "url_type: _",
+			deployment_id as "deployment_id: _",
+			port,
+			static_site_id as "static_site_id: _",
+			url,
+			workspace_id as "workspace_id: _",
+			is_configured
+		FROM
+			managed_url
+		WHERE
+			deleted IS NULL AND
+			sub_domain = $1 AND
+			domain_id = $2;
+		"#,
+		sub_domain,
+		domain_id as _
+	)
+	.fetch_all(connection)
+	.await
+}
