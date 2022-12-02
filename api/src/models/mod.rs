@@ -1,4 +1,5 @@
 pub mod ci;
+pub mod cloudflare;
 pub mod deployment;
 pub mod error;
 pub mod rabbitmq;

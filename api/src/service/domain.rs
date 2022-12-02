@@ -27,12 +27,7 @@ use cloudflare::{
 			ZoneDetails,
 		},
 	},
-	framework::{
-		async_api::{ApiClient, Client as CloudflareClient},
-		auth::Credentials,
-		Environment,
-		HttpApiClientConfig,
-	},
+	framework::async_api::ApiClient,
 };
 use eve_rs::AsError;
 use tokio::{net::UdpSocket, task};
@@ -233,7 +228,7 @@ pub async fn add_domain_to_workspace(
 				.body(error!(INVALID_DOMAIN_NAME).to_string()));
 		}
 		// create zone
-		let client = get_cloudflare_client(config).await?;
+		let client = service::get_cloudflare_client(config).await?;
 		log::trace!(
 			"request_id: {} - Creating zone for domain: {}",
 			request_id,
@@ -334,7 +329,7 @@ pub async fn is_domain_verified(
 
 	if domain.is_ns_internal() {
 		log::trace!("request_id: {} - Domain is internal", request_id);
-		let client = get_cloudflare_client(config).await?;
+		let client = service::get_cloudflare_client(config).await?;
 
 		let zone_identifier =
 			db::get_patr_controlled_domain_by_id(connection, domain_id)
@@ -541,7 +536,7 @@ pub async fn create_patr_domain_dns_record(
 		.body(error!(DOMAIN_NOT_PATR_CONTROLLED).to_string())?;
 
 	// login to cloudflare to create new DNS record cloudflare
-	let client = get_cloudflare_client(config).await?;
+	let client = service::get_cloudflare_client(config).await?;
 
 	log::trace!("request_id: {} - Creating domain id", request_id);
 	let record_id = db::generate_new_resource_id(connection).await?;
@@ -681,7 +676,7 @@ pub async fn update_patr_domain_dns_record(
 	}
 
 	// login to cloudflare to create new DNS record cloudflare
-	let client = get_cloudflare_client(config).await?;
+	let client = service::get_cloudflare_client(config).await?;
 
 	log::trace!("request_id: {} - Updating DNS record in the db", request_id);
 	db::update_patr_domain_dns_record(
@@ -767,7 +762,7 @@ pub async fn delete_patr_domain_dns_record(
 	log::trace!("request_id: {} - Deleting DNS record in the db", request_id);
 	db::delete_patr_controlled_dns_record(connection, record_id).await?;
 
-	let client = get_cloudflare_client(config).await?;
+	let client = service::get_cloudflare_client(config).await?;
 
 	log::trace!("request_id: {} - Sending request to Cloudflare for deleting DNS record", request_id);
 	client
@@ -918,7 +913,7 @@ pub async fn delete_domain_in_workspace(
 			"request_id: {} - Deleting the cloudflare zone",
 			request_id
 		);
-		let client = get_cloudflare_client(config).await?;
+		let client = service::get_cloudflare_client(config).await?;
 		client
 			.request(&DeleteZone {
 				identifier: &domain.zone_identifier,
@@ -927,26 +922,6 @@ pub async fn delete_domain_in_workspace(
 	}
 	log::trace!("request_id: {} - Domain deleted successfully", request_id);
 	Ok(())
-}
-
-pub async fn get_cloudflare_client(
-	config: &Settings,
-) -> Result<CloudflareClient, Error> {
-	// login to cloudflare and create zone in cloudflare
-	let credentials = Credentials::UserAuthToken {
-		token: config.cloudflare.api_token.clone(),
-	};
-
-	let client = if let Ok(client) = CloudflareClient::new(
-		credentials,
-		HttpApiClientConfig::default(),
-		Environment::Production,
-	) {
-		client
-	} else {
-		return Err(Error::empty());
-	};
-	Ok(client)
 }
 
 async fn check_domain_creation_limit(

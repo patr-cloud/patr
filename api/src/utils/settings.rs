@@ -142,6 +142,8 @@ pub struct CloudflareSettings {
 	pub account_email: String,
 	#[serde(alias = "apitoken")]
 	pub api_token: String,
+	#[serde(alias = "kvroutingns")]
+	pub kv_routing_ns: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
