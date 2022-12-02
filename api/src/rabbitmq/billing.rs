@@ -859,7 +859,7 @@ pub(super) async fn process_request(
 						deadline,
 					)
 					.await?;
-				} else {
+				} else if total_bill.total_charge != 0 {
 					service::send_card_not_added_reminder_email(
 						connection,
 						workspace.super_admin_id.clone(),
