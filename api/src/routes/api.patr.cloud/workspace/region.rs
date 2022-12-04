@@ -230,11 +230,11 @@ async fn add_region(
 					&region.to_string(),
 					&InfrastructureCloudProvider::Digitalocean,
 					&api_token,
-					&cluster_name
+					cluster_name
 						.as_deref()
 						.unwrap_or(&format!("{}-patr-cluster", workspace_id)),
 					&num_node,
-					&node_name
+					node_name
 						.as_deref()
 						.unwrap_or(&format!("{}-patr-node", workspace_id)),
 					"s-1vcpu-2gb",

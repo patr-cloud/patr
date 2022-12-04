@@ -6,7 +6,7 @@ use reqwest::Client;
 
 use crate::{
 	db,
-	models::{K8NodePool, K8sClusterCreateInfo, K8sConfig, K8sCreateCluster},
+	models::{K8NodePool, K8sConfig, K8sCreateCluster},
 	utils::{settings::Settings, Error},
 	Database,
 };
