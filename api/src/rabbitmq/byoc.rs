@@ -220,28 +220,53 @@ pub(super) async fn process_request(
 				"request_id: {} checking for readiness and getting kubeconfig",
 				request_id
 			);
+
 			let kube_config = client
 				.get(format!("https://api.digitalocean.com/v2/kubernetes/clusters/{}/kubeconfig", cluster_id))
-				.bearer_auth(api_token)
+				.bearer_auth(api_token.clone())
 				.send()
 				.await?
 				.text()
-				.await?;
+				.await;
 
-			println!("kubec_config: {:?}", kube_config);
+			let kube_config = match kube_config {
+				Ok(config) => config,
+				Err(err) => {
+					log::error!(
+						"request_id: {} Found error in getting kubeconfig: {}",
+						request_id,
+						err
+					);
+					tokio::time::sleep(Duration::from_secs(2 * 60)).await;
+					service::send_message_to_infra_queue(
+						&InfraRequestData::BYOC(
+							BYOCData::GetDigitalOceanKubeconfig {
+								api_token,
+								cluster_id,
+								region_id,
+								request_id: request_id.clone(),
+							},
+						),
+						config,
+						&request_id,
+					)
+					.await?;
+					return Ok(());
+				}
+			};
 
-			// // TODO - to be only called once we get the kube_config
-			// // initialize the cluster with patr script
-			// service::send_message_to_infra_queue(
-			// 	&InfraRequestData::BYOC(BYOCData::InitKubernetesCluster {
-			// 		region_id,
-			// 		kube_config,
-			// 		request_id: request_id.clone(),
-			// 	}),
-			// 	config,
-			// 	&request_id,
-			// )
-			// .await?;
+			// TODO - to be only called once we get the kube_config
+			// initialize the cluster with patr script
+			service::send_message_to_infra_queue(
+				&InfraRequestData::BYOC(BYOCData::InitKubernetesCluster {
+					region_id,
+					kube_config,
+					request_id: request_id.clone(),
+				}),
+				config,
+				&request_id,
+			)
+			.await?;
 
 			Ok(())
 		}
