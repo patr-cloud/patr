@@ -287,6 +287,7 @@ async fn add_region(
 					&name,
 					&InfrastructureCloudProvider::Other,
 					&workspace_id,
+					&kube_config,
 				)
 				.await?;
 

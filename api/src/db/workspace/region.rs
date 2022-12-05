@@ -225,6 +225,7 @@ pub async fn add_deployment_region_to_workspace(
 	name: &str,
 	cloud_provider: &InfrastructureCloudProvider,
 	workspace_id: &Uuid,
+	kube_config: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -239,12 +240,13 @@ pub async fn add_deployment_region_to_workspace(
 				status
 			)
 		VALUES
-			($1, $2, $3, $4, FALSE, NULL, 'created');
+			($1, $2, $3, $4, FALSE, $5, 'created');
 		"#,
 		region_id as _,
 		name,
 		cloud_provider as _,
 		workspace_id as _,
+		kube_config,
 	)
 	.execute(&mut *connection)
 	.await
@@ -360,6 +362,28 @@ pub async fn append_messge_log_for_region(
 		"#,
 		region_id as _,
 		message
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_kube_config_for_do_region(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	region_id: &Uuid,
+	kube_config: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment_region
+		SET
+			config_file = $2
+		WHERE
+			id = $1;
+		"#,
+		region_id as _,
+		kube_config
 	)
 	.execute(&mut *connection)
 	.await
