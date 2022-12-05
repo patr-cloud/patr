@@ -1481,6 +1481,14 @@ async fn get_logs(
 
 	let config = context.get_state().config.clone();
 
+	let start_time = db::get_resource_by_id(
+		context.get_database_connection(),
+		&deployment_id,
+	)
+	.await?
+	.status(500)?
+	.created; // Start time is the time since the deployment is created
+
 	let end_time = end_time
 		.map(|DateTime(end_time)| end_time)
 		.unwrap_or_else(Utc::now);
@@ -1490,6 +1498,7 @@ async fn get_logs(
 	let logs = service::get_deployment_container_logs(
 		context.get_database_connection(),
 		&deployment_id,
+		&start_time,
 		&end_time,
 		limit.unwrap_or(100),
 		&config,
