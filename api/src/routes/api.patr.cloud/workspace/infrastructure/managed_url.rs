@@ -277,16 +277,17 @@ async fn list_all_managed_urls(
 						static_site_id: url.static_site_id?,
 					}
 				}
-				DbManagedUrlType::ProxyUrl => {
-					ManagedUrlType::ProxyUrl { url: url.url? }
-				}
-				DbManagedUrlType::Redirect => {
-					ManagedUrlType::Redirect { url: url.url? }
-				}
+				DbManagedUrlType::ProxyUrl => ManagedUrlType::ProxyUrl {
+					url: url.url?,
+					http_only: url.http_only,
+				},
+				DbManagedUrlType::Redirect => ManagedUrlType::Redirect {
+					url: url.url?,
+					permanent_redirect: url.permanent_redirect,
+					http_only: url.http_only,
+				},
 			},
 			is_configured: url.is_configured,
-			permanent_redirect: url.permanent_redirect,
-			ssl_redirect: url.ssl_redirect,
 		})
 	})
 	.collect();
@@ -304,14 +305,13 @@ async fn create_managed_url(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
+
 	let CreateNewManagedUrlRequest {
 		workspace_id: _,
 		sub_domain,
 		domain_id,
 		path,
 		url_type,
-		permanent_redirect,
-		ssl_redirect,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -331,8 +331,6 @@ async fn create_managed_url(
 		&domain_id,
 		&path,
 		&url_type,
-		permanent_redirect,
-		ssl_redirect,
 		&config,
 		&request_id,
 	)
@@ -363,8 +361,6 @@ async fn update_managed_url(
 		workspace_id: _,
 		path,
 		url_type,
-		permanent_redirect,
-		ssl_redirect,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -377,8 +373,6 @@ async fn update_managed_url(
 		&managed_url_id,
 		&path,
 		&url_type,
-		permanent_redirect,
-		ssl_redirect,
 		&config,
 		&request_id,
 	)

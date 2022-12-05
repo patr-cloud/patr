@@ -436,17 +436,19 @@ async fn repatch_all_managed_urls() -> Result<(), Error> {
 							DbManagedUrlType::ProxyUrl => {
 								ManagedUrlType::ProxyUrl {
 									url: managed_url.url.status(500)?,
+									http_only: managed_url.http_only,
 								}
 							}
 							DbManagedUrlType::Redirect => {
 								ManagedUrlType::Redirect {
 									url: managed_url.url.status(500)?,
+									permanent_redirect: managed_url
+										.permanent_redirect,
+									http_only: managed_url.http_only,
 								}
 							}
 						},
 						is_configured: true,
-						permanent_redirect: managed_url.permanent_redirect,
-						ssl_redirect: managed_url.ssl_redirect,
 					},
 					&config.config,
 					&request_id,
@@ -496,17 +498,19 @@ async fn repatch_all_managed_urls() -> Result<(), Error> {
 							DbManagedUrlType::ProxyUrl => {
 								ManagedUrlType::ProxyUrl {
 									url: managed_url.url.status(500)?,
+									http_only: managed_url.http_only,
 								}
 							}
 							DbManagedUrlType::Redirect => {
 								ManagedUrlType::Redirect {
 									url: managed_url.url.status(500)?,
+									permanent_redirect: managed_url
+										.permanent_redirect,
+									http_only: managed_url.http_only,
 								}
 							}
 						},
 						is_configured: true,
-						permanent_redirect: managed_url.permanent_redirect,
-						ssl_redirect: managed_url.ssl_redirect,
 					},
 					&config.config,
 					&request_id,

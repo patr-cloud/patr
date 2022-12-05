@@ -113,30 +113,6 @@ pub async fn update_kubernetes_managed_url(
 					"nginx.ingress.kubernetes.io/upstream-vhost".to_string(),
 					host.clone(),
 				),
-				if managed_url.permanent_redirect {
-					(
-						"nginx.ingress.kubernetes.io/permanent-redirect"
-							.to_string(),
-						format!("https://{}", host),
-					)
-				} else {
-					(
-						"nginx.ingress.kubernetes.io/temporal-redirect"
-							.to_string(),
-						format!("https://{}", host),
-					)
-				},
-				if managed_url.ssl_redirect {
-					(
-						"ingress.kubernetes.io/force-ssl-redirect".to_string(),
-						"true".to_string(),
-					)
-				} else {
-					(
-						"ingress.kubernetes.io/ssl-redirect".to_string(),
-						"false".to_string(),
-					)
-				},
 				(
 					"cert-manager.io/cluster-issuer".to_string(),
 					if domain.is_ns_internal() {
@@ -194,31 +170,6 @@ pub async fn update_kubernetes_managed_url(
 							format!("{}.patr.cloud", static_site_id)
 						},
 					),
-					if managed_url.permanent_redirect {
-						(
-							"nginx.ingress.kubernetes.io/permanent-redirect"
-								.to_string(),
-							format!("https://{}", host),
-						)
-					} else {
-						(
-							"nginx.ingress.kubernetes.io/temporal-redirect"
-								.to_string(),
-							format!("https://{}", host),
-						)
-					},
-					if managed_url.ssl_redirect {
-						(
-							"ingress.kubernetes.io/force-ssl-redirect"
-								.to_string(),
-							"true".to_string(),
-						)
-					} else {
-						(
-							"ingress.kubernetes.io/ssl-redirect".to_string(),
-							"false".to_string(),
-						)
-					},
 					(
 						"cert-manager.io/cluster-issuer".to_string(),
 						if domain.is_ns_internal() {
@@ -232,7 +183,7 @@ pub async fn update_kubernetes_managed_url(
 				.collect(),
 			)
 		}
-		ManagedUrlType::ProxyUrl { url } => {
+		ManagedUrlType::ProxyUrl { url, http_only } => {
 			let kubernetes_service = Service {
 				metadata: ObjectMeta {
 					name: Some(format!("service-{}", managed_url.id)),
@@ -301,12 +252,33 @@ pub async fn update_kubernetes_managed_url(
 						),
 						url.clone(),
 					),
-					(
-						String::from(
-							"nginx.ingress.kubernetes.io/backend-protocol",
-						),
-						"HTTPS".to_string(),
-					),
+					if *http_only {
+						(
+							"ingress.kubernetes.io/force-ssl-redirect"
+								.to_string(),
+							"true".to_string(),
+						)
+					} else {
+						(
+							"ingress.kubernetes.io/ssl-redirect".to_string(),
+							"false".to_string(),
+						)
+					},
+					if *http_only {
+						(
+							String::from(
+								"nginx.ingress.kubernetes.io/backend-protocol",
+							),
+							"HTTPS".to_string(),
+						)
+					} else {
+						(
+							String::from(
+								"nginx.ingress.kubernetes.io/backend-protocol",
+							),
+							"HTTP".to_string(),
+						)
+					},
 					(
 						"cert-manager.io/cluster-issuer".to_string(),
 						if domain.is_ns_internal() {
@@ -320,7 +292,11 @@ pub async fn update_kubernetes_managed_url(
 				.collect(),
 			)
 		}
-		ManagedUrlType::Redirect { url } => {
+		ManagedUrlType::Redirect {
+			url,
+			permanent_redirect,
+			http_only,
+		} => {
 			let kubernetes_service = Service {
 				metadata: ObjectMeta {
 					name: Some(format!("service-{}", managed_url.id)),
@@ -384,7 +360,7 @@ pub async fn update_kubernetes_managed_url(
 						"kubernetes.io/ingress.class".to_string(),
 						"nginx".to_string(),
 					),
-					if managed_url.permanent_redirect {
+					if *permanent_redirect {
 						(
 							"nginx.ingress.kubernetes.io/permanent-redirect"
 								.to_string(),
@@ -397,7 +373,7 @@ pub async fn update_kubernetes_managed_url(
 							format!("https://{}", url),
 						)
 					},
-					if managed_url.ssl_redirect {
+					if *http_only {
 						(
 							"ingress.kubernetes.io/force-ssl-redirect"
 								.to_string(),

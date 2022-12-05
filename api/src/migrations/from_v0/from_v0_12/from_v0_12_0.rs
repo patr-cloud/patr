@@ -20,7 +20,7 @@ pub(super) async fn managed_url_redirects(
 		r#"
 		ALTER TABLE managed_url
 		ADD COLUMN permanent_redirect BOOLEAN NOT NULL,
-		ADD COLUMN ssl_redirect BOOLEAN NOT NULL;
+		ADD COLUMN http_only BOOLEAN NOT NULL;
 		"#
 	)
 	.execute(&mut *connection)
