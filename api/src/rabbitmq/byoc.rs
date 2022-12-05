@@ -255,6 +255,13 @@ pub(super) async fn process_request(
 				}
 			};
 
+			db::update_kube_config_for_do_region(
+				connection,
+				&region_id,
+				&kube_config,
+			)
+			.await?;
+
 			// TODO - to be only called once we get the kube_config
 			// initialize the cluster with patr script
 			service::send_message_to_infra_queue(
