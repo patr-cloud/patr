@@ -1595,6 +1595,18 @@ pub async fn start_deployment(
 	)
 	.await?;
 
+	service::update_cloudflare_kv_for_deployment(
+		deployment_id,
+		&deployment.region,
+		&deployment_running_details
+			.ports
+			.iter()
+			.map(|(port, _type)| port.value())
+			.collect::<Vec<_>>()[..],
+		config,
+	)
+	.await?;
+
 	Ok(())
 }
 
@@ -1755,6 +1767,8 @@ pub async fn stop_deployment(
 	)
 	.await?;
 
+	service::delete_cloudflare_kv_for_deployment(deployment_id, config).await?;
+
 	Ok(())
 }
 
@@ -1845,6 +1859,8 @@ pub async fn delete_deployment(
 			}
 		}
 	}
+
+	service::delete_cloudflare_kv_for_deployment(deployment_id, config).await?;
 
 	Ok(())
 }

@@ -173,6 +173,9 @@ pub async fn stop_static_site(
 	)
 	.await?;
 
+	service::delete_cloudflare_kv_for_static_site(static_site_id, config)
+		.await?;
+
 	log::trace!(
 		"request_id: {} - static site stopped successfully",
 		request_id
@@ -207,6 +210,9 @@ pub async fn delete_static_site(
 		request_id,
 	)
 	.await?;
+
+	service::delete_cloudflare_kv_for_static_site(static_site_id, config)
+		.await?;
 
 	db::delete_static_site(connection, static_site_id, &Utc::now()).await?;
 
@@ -417,6 +423,13 @@ pub async fn update_static_site_and_db_status(
 		request_id,
 	)
 	.await;
+
+	service::update_cloudflare_kv_for_static_site(
+		static_site_id,
+		upload_id,
+		config,
+	)
+	.await?;
 
 	if let Err(err) = result {
 		log::error!(

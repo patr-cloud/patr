@@ -144,6 +144,10 @@ pub struct CloudflareSettings {
 	pub api_token: String,
 	#[serde(alias = "kvroutingns")]
 	pub kv_routing_ns: String,
+	#[serde(alias = "kvdeploymentns")]
+	pub kv_deployment_ns: String,
+	#[serde(alias = "kvstaticsitens")]
+	pub kv_static_site_ns: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
