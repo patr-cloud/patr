@@ -1891,6 +1891,8 @@ async fn list_linked_urls(
 				}
 			},
 			is_configured: url.is_configured,
+			permanent_redirect: url.permanent_redirect,
+			ssl_redirect: url.ssl_redirect,
 		})
 	})
 	.collect();

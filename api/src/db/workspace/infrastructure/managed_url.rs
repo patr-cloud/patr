@@ -24,6 +24,8 @@ pub struct ManagedUrl {
 	pub url: Option<String>,
 	pub workspace_id: Uuid,
 	pub is_configured: bool,
+	pub permanent_redirect: bool,
+	pub ssl_redirect: bool,
 }
 
 pub async fn initialize_managed_url_pre(
@@ -54,6 +56,8 @@ pub async fn initialize_managed_url_pre(
 				),
 			domain_id UUID NOT NULL,
 			path TEXT NOT NULL,
+			permanent_redirect BOOLEAN NOT NULL,
+			ssl_redirect BOOLEAN NOT NULL,
 			url_type MANAGED_URL_TYPE NOT NULL,
 			deployment_id UUID,
 			port INTEGER CONSTRAINT managed_url_chk_port_u16 CHECK(
@@ -169,7 +173,9 @@ pub async fn get_all_managed_urls_in_workspace(
 			static_site_id as "static_site_id: _",
 			url,
 			workspace_id as "workspace_id: _",
-			is_configured
+			is_configured,
+			permanent_redirect,
+			ssl_redirect
 		FROM
 			managed_url
 		WHERE
@@ -200,7 +206,9 @@ pub async fn get_all_managed_urls_for_domain(
 			static_site_id as "static_site_id: _",
 			url,
 			workspace_id as "workspace_id: _",
-			is_configured
+			is_configured,
+			permanent_redirect,
+			ssl_redirect
 		FROM
 			managed_url
 		WHERE
@@ -230,7 +238,9 @@ pub async fn get_all_unconfigured_managed_urls(
 			static_site_id as "static_site_id: _",
 			url,
 			workspace_id as "workspace_id: _",
-			is_configured
+			is_configured,
+			permanent_redirect,
+			ssl_redirect
 		FROM
 			managed_url
 		WHERE
@@ -255,6 +265,8 @@ pub async fn create_new_managed_url_in_workspace(
 	url: Option<&str>,
 	workspace_id: &Uuid,
 	is_configured: bool,
+	permanent_redirect: bool,
+	ssl_redirect: bool,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -270,7 +282,9 @@ pub async fn create_new_managed_url_in_workspace(
 				static_site_id,
 				url,
 				workspace_id,
-				is_configured
+				is_configured,
+				permanent_redirect,
+				ssl_redirect
 			)
 		VALUES
 			(
@@ -284,7 +298,9 @@ pub async fn create_new_managed_url_in_workspace(
 				$8,
 				$9,
 				$10,
-				$11
+				$11,
+				$12,
+				$13
 			);
 		"#,
 		managed_url_id as _,
@@ -297,7 +313,9 @@ pub async fn create_new_managed_url_in_workspace(
 		static_site_id as _,
 		url,
 		workspace_id as _,
-		is_configured
+		is_configured,
+		permanent_redirect,
+		ssl_redirect
 	)
 	.execute(&mut *connection)
 	.await
@@ -322,7 +340,9 @@ pub async fn get_managed_url_by_id(
 			static_site_id as "static_site_id: _",
 			url,
 			workspace_id as "workspace_id: _",
-			is_configured
+			is_configured,
+			permanent_redirect,
+			ssl_redirect
 		FROM
 			managed_url
 		WHERE
@@ -344,6 +364,8 @@ pub async fn update_managed_url(
 	port: Option<u16>,
 	static_site_id: Option<&Uuid>,
 	url: Option<&str>,
+	permanent_redirect: bool,
+	ssl_redirect: bool,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -355,7 +377,9 @@ pub async fn update_managed_url(
 			deployment_id = $4,
 			port = $5,
 			static_site_id = $6,
-			url = $7
+			url = $7,
+			permanent_redirect = $8,
+			ssl_redirect = $9
 		WHERE
 			id = $1;
 		"#,
@@ -365,7 +389,9 @@ pub async fn update_managed_url(
 		deployment_id as _,
 		port.map(|port| port as i32),
 		static_site_id as _,
-		url
+		url,
+		permanent_redirect,
+		ssl_redirect,
 	)
 	.execute(&mut *connection)
 	.await
@@ -475,7 +501,9 @@ pub async fn get_all_managed_urls_for_deployment(
 			static_site_id as "static_site_id: _",
 			url,
 			workspace_id as "workspace_id!: _",
-			is_configured as "is_configured!: _"
+			is_configured as "is_configured!: _",
+			permanent_redirect as "permanent_redirect!: _",
+			ssl_redirect as "ssl_redirect!: _"
 		FROM
 			managed_url_list
 		WHERE
@@ -548,7 +576,9 @@ pub async fn get_all_managed_urls_for_static_site(
 			static_site_id as "static_site_id: _",
 			url,
 			workspace_id as "workspace_id!: _",
-			is_configured as "is_configured!: _"
+			is_configured as "is_configured!: _",
+			permanent_redirect as "permanent_redirect!: _",
+			ssl_redirect as "ssl_redirect!: _"
 		FROM
 			managed_url_list
 		WHERE

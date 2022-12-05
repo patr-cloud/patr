@@ -28,6 +28,8 @@ pub async fn create_new_managed_url_in_workspace(
 	domain_id: &Uuid,
 	path: &str,
 	url_type: &ManagedUrlType,
+	permanent_redirect: bool,
+	ssl_redirect: bool,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
@@ -81,6 +83,8 @@ pub async fn create_new_managed_url_in_workspace(
 				None,
 				workspace_id,
 				false,
+				permanent_redirect,
+				ssl_redirect,
 			)
 			.await?;
 		}
@@ -102,6 +106,8 @@ pub async fn create_new_managed_url_in_workspace(
 				None,
 				workspace_id,
 				false,
+				permanent_redirect,
+				ssl_redirect,
 			)
 			.await?;
 		}
@@ -122,6 +128,8 @@ pub async fn create_new_managed_url_in_workspace(
 				None,
 				Some(url),
 				workspace_id,
+				false,
+				false,
 				false,
 			)
 			.await?;
@@ -144,6 +152,8 @@ pub async fn create_new_managed_url_in_workspace(
 				Some(url),
 				workspace_id,
 				false,
+				permanent_redirect,
+				ssl_redirect,
 			)
 			.await?;
 		}
@@ -185,6 +195,8 @@ pub async fn create_new_managed_url_in_workspace(
 			path: path.to_string(),
 			url_type: url_type.clone(),
 			is_configured,
+			permanent_redirect,
+			ssl_redirect,
 		},
 		config,
 		request_id,
@@ -200,6 +212,8 @@ pub async fn update_managed_url(
 	managed_url_id: &Uuid,
 	path: &str,
 	url_type: &ManagedUrlType,
+	permanent_redirect: bool,
+	ssl_redirect: bool,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -232,6 +246,8 @@ pub async fn update_managed_url(
 				Some(*port),
 				None,
 				None,
+				permanent_redirect,
+				ssl_redirect,
 			)
 			.await?;
 		}
@@ -249,6 +265,8 @@ pub async fn update_managed_url(
 				None,
 				Some(static_site_id),
 				None,
+				permanent_redirect,
+				ssl_redirect,
 			)
 			.await?;
 		}
@@ -266,6 +284,8 @@ pub async fn update_managed_url(
 				None,
 				None,
 				Some(url),
+				false,
+				false,
 			)
 			.await?;
 		}
@@ -283,6 +303,8 @@ pub async fn update_managed_url(
 				None,
 				None,
 				Some(url),
+				permanent_redirect,
+				ssl_redirect,
 			)
 			.await?;
 		}
@@ -297,6 +319,8 @@ pub async fn update_managed_url(
 			path: path.to_string(),
 			url_type: url_type.clone(),
 			is_configured: managed_url.is_configured,
+			permanent_redirect,
+			ssl_redirect,
 		},
 		config,
 		request_id,

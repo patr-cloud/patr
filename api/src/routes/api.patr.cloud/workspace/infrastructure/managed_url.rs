@@ -285,6 +285,8 @@ async fn list_all_managed_urls(
 				}
 			},
 			is_configured: url.is_configured,
+			permanent_redirect: url.permanent_redirect,
+			ssl_redirect: url.ssl_redirect,
 		})
 	})
 	.collect();
@@ -308,6 +310,8 @@ async fn create_managed_url(
 		domain_id,
 		path,
 		url_type,
+		permanent_redirect,
+		ssl_redirect,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -327,6 +331,8 @@ async fn create_managed_url(
 		&domain_id,
 		&path,
 		&url_type,
+		permanent_redirect,
+		ssl_redirect,
 		&config,
 		&request_id,
 	)
@@ -357,6 +363,8 @@ async fn update_managed_url(
 		workspace_id: _,
 		path,
 		url_type,
+		permanent_redirect,
+		ssl_redirect,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -369,6 +377,8 @@ async fn update_managed_url(
 		&managed_url_id,
 		&path,
 		&url_type,
+		permanent_redirect,
+		ssl_redirect,
 		&config,
 		&request_id,
 	)

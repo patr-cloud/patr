@@ -845,6 +845,8 @@ async fn revert_static_site(
 					static_site_id: static_site_id.to_owned(),
 				},
 				is_configured: managed_url.is_configured,
+				permanent_redirect: managed_url.permanent_redirect,
+				ssl_redirect: managed_url.ssl_redirect,
 			},
 			&config,
 			&request_id,
@@ -1071,6 +1073,8 @@ async fn upload_static_site(
 					static_site_id: static_site_id.to_owned(),
 				},
 				is_configured: managed_url.is_configured,
+				permanent_redirect: managed_url.permanent_redirect,
+				ssl_redirect: managed_url.ssl_redirect,
 			},
 			&config,
 			&request_id,
@@ -1299,6 +1303,8 @@ async fn list_linked_urls(
 				}
 			},
 			is_configured: url.is_configured,
+			permanent_redirect: url.permanent_redirect,
+			ssl_redirect: url.ssl_redirect,
 		})
 	})
 	.collect();

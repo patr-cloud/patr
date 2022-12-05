@@ -27,6 +27,8 @@ pub struct StaticSiteManagedUrl {
 	pub domain_id: Uuid,
 	pub path: String,
 	pub is_configured: bool,
+	pub permanent_redirect: bool,
+	pub ssl_redirect: bool,
 }
 
 pub async fn initialize_static_site_pre(
@@ -263,7 +265,9 @@ pub async fn get_managed_urls_for_static_site(
 			sub_domain,
 			domain_id as "domain_id: _",
 			path,
-			is_configured
+			is_configured,
+			permanent_redirect,
+			ssl_redirect
 		FROM
 			managed_url
 		WHERE

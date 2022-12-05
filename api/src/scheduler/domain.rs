@@ -445,6 +445,8 @@ async fn repatch_all_managed_urls() -> Result<(), Error> {
 							}
 						},
 						is_configured: true,
+						permanent_redirect: managed_url.permanent_redirect,
+						ssl_redirect: managed_url.ssl_redirect,
 					},
 					&config.config,
 					&request_id,
@@ -503,6 +505,8 @@ async fn repatch_all_managed_urls() -> Result<(), Error> {
 							}
 						},
 						is_configured: true,
+						permanent_redirect: managed_url.permanent_redirect,
+						ssl_redirect: managed_url.ssl_redirect,
 					},
 					&config.config,
 					&request_id,
