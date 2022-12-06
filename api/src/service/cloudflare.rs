@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use api_models::utils::Uuid;
 use cloudflare::{
-	endpoints::workerskv,
+	endpoints::{
+		workers::{self, CreateRouteParams},
+		workerskv,
+	},
 	framework::{
 		async_api::Client as CloudflareClient,
 		auth::Credentials,
@@ -239,6 +242,7 @@ pub async fn update_cloudflare_kv_for_deployment(
 ) -> Result<(), Error> {
 	let key = deployment::Key(deployment_id.to_owned());
 	// todo: Is it okay to update routing every time?
+	// todo: for stop/delete page use ttl of 7-15 days from here itself
 	update_cloudflare_kv_for_patr_url(
 		deployment_id,
 		routing::UrlType::ProxyDeployment {
@@ -259,6 +263,7 @@ pub async fn update_cloudflare_kv_for_static_site(
 ) -> Result<(), Error> {
 	let key = static_site::Key(static_site_id.to_owned());
 	// todo: Is it okay to update routing every time?
+	// todo: for stop/delete page use ttl of 7-15 days from here itself
 	update_cloudflare_kv_for_patr_url(
 		static_site_id,
 		routing::UrlType::ProxyStaticSite {
@@ -268,6 +273,41 @@ pub async fn update_cloudflare_kv_for_static_site(
 	)
 	.await?;
 	update_kv_for_static_site(key, value, config).await?;
+
+	Ok(())
+}
+
+pub async fn add_domain_to_cloudflare_worker_routes(
+	host: &str,
+	config: &Settings,
+) -> Result<String, Error> {
+	let cf_client = get_cloudflare_client(config).await?;
+
+	let response = cf_client
+		.request_handle(&workers::CreateRoute {
+			zone_identifier: &config.cloudflare.patr_zone_identifier,
+			params: CreateRouteParams {
+				pattern: format!("*{}/*", host),
+				script: Some("patr-ingress".to_owned()),
+			},
+		})
+		.await?;
+
+	Ok(response.result.id)
+}
+
+pub async fn delete_domain_from_cloudflare_worker_routes(
+	route_id: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let cf_client = get_cloudflare_client(config).await?;
+
+	cf_client
+		.request_handle(&workers::DeleteRoute {
+			zone_identifier: &config.cloudflare.patr_zone_identifier,
+			identifier: route_id,
+		})
+		.await?;
 
 	Ok(())
 }

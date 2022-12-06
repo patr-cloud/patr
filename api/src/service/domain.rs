@@ -196,9 +196,20 @@ pub async fn add_domain_to_workspace(
 	)
 	.await?;
 
+	let cf_route_id = service::add_domain_to_cloudflare_worker_routes(
+		full_domain_name,
+		config,
+	)
+	.await?;
+
 	log::trace!("request_id: {} - Adding domain to workspace", request_id);
-	db::add_to_workspace_domain(connection, &domain_id, nameserver_type)
-		.await?;
+	db::add_to_workspace_domain(
+		connection,
+		&domain_id,
+		nameserver_type,
+		&cf_route_id,
+	)
+	.await?;
 
 	let domain_plan =
 		match db::get_domains_for_workspace(connection, workspace_id)
@@ -920,6 +931,13 @@ pub async fn delete_domain_in_workspace(
 			})
 			.await?;
 	}
+
+	service::delete_domain_from_cloudflare_worker_routes(
+		&domain.cf_route_id,
+		config,
+	)
+	.await?;
+
 	log::trace!("request_id: {} - Domain deleted successfully", request_id);
 	Ok(())
 }
@@ -930,6 +948,10 @@ async fn check_domain_creation_limit(
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {request_id} - Checking whether new domain creation is limited");
+
+	if cfg!(debug_assertions) {
+		return Ok(());
+	}
 
 	let current_domain_count =
 		db::get_domains_for_workspace(connection, workspace_id)
