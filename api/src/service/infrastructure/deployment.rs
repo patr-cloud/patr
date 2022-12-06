@@ -31,6 +31,7 @@ use crate::{
 	db,
 	error,
 	models::{
+		cloudflare,
 		deployment::{Logs, PrometheusResponse, MACHINE_TYPES},
 		rbac::{self, permissions},
 		DeploymentMetadata,
@@ -1260,12 +1261,14 @@ pub async fn start_deployment(
 
 	service::update_cloudflare_kv_for_deployment(
 		deployment_id,
-		&deployment.region,
-		&deployment_running_details
-			.ports
-			.iter()
-			.map(|(port, _type)| port.value())
-			.collect::<Vec<_>>()[..],
+		cloudflare::deployment::Value::Running {
+			region_id: deployment.region.clone(),
+			ports: deployment_running_details
+				.ports
+				.iter()
+				.map(|(port, _type)| port.value())
+				.collect(),
+		},
 		config,
 	)
 	.await?;
@@ -1419,7 +1422,12 @@ pub async fn stop_deployment(
 	)
 	.await?;
 
-	service::delete_cloudflare_kv_for_deployment(deployment_id, config).await?;
+	service::update_cloudflare_kv_for_deployment(
+		deployment_id,
+		cloudflare::deployment::Value::Stopped,
+		config,
+	)
+	.await?;
 
 	Ok(())
 }
@@ -1484,7 +1492,12 @@ pub async fn delete_deployment(
 		.await?;
 	}
 
-	service::delete_cloudflare_kv_for_deployment(deployment_id, config).await?;
+	service::update_cloudflare_kv_for_deployment(
+		deployment_id,
+		cloudflare::deployment::Value::Deleted,
+		config,
+	)
+	.await?;
 
 	Ok(())
 }
