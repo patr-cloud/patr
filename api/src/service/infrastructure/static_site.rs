@@ -15,7 +15,7 @@ use zip::ZipArchive;
 use crate::{
 	db::{self, StaticSitePlan},
 	error,
-	models::rbac,
+	models::{self, rbac},
 	service::{self, infrastructure::kubernetes},
 	utils::{constants::free_limits, settings::Settings, validator, Error},
 	Database,
@@ -104,6 +104,13 @@ pub async fn create_static_site_in_workspace(
 		request_id
 	);
 
+	service::update_cloudflare_kv_for_static_site(
+		&static_site_id,
+		models::cloudflare::static_site::Value::Created,
+		config,
+	)
+	.await?;
+
 	if let Some(file) = file {
 		create_static_site_upload(
 			connection,
@@ -173,8 +180,12 @@ pub async fn stop_static_site(
 	)
 	.await?;
 
-	service::delete_cloudflare_kv_for_static_site(static_site_id, config)
-		.await?;
+	service::update_cloudflare_kv_for_static_site(
+		static_site_id,
+		models::cloudflare::static_site::Value::Stopped,
+		config,
+	)
+	.await?;
 
 	log::trace!(
 		"request_id: {} - static site stopped successfully",
@@ -211,8 +222,12 @@ pub async fn delete_static_site(
 	)
 	.await?;
 
-	service::delete_cloudflare_kv_for_static_site(static_site_id, config)
-		.await?;
+	service::update_cloudflare_kv_for_static_site(
+		static_site_id,
+		models::cloudflare::static_site::Value::Deleted,
+		config,
+	)
+	.await?;
 
 	db::delete_static_site(connection, static_site_id, &Utc::now()).await?;
 
@@ -426,7 +441,9 @@ pub async fn update_static_site_and_db_status(
 
 	service::update_cloudflare_kv_for_static_site(
 		static_site_id,
-		upload_id,
+		models::cloudflare::static_site::Value::Running {
+			upload_id: upload_id.clone(),
+		},
 		config,
 	)
 	.await?;

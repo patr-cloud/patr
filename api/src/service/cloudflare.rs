@@ -16,7 +16,7 @@ use crate::{
 	db,
 	models::cloudflare::{
 		deployment,
-		routing::{self, ManagedUrlType},
+		routing::{self, UrlType},
 		static_site,
 	},
 	utils::{settings::Settings, Error},
@@ -42,6 +42,125 @@ pub async fn get_cloudflare_client(
 	Ok(client)
 }
 
+async fn update_kv_for_routing(
+	key: routing::Key,
+	value: routing::Value,
+	config: &Settings,
+) -> Result<(), Error> {
+	let cf_client = get_cloudflare_client(config).await?;
+	cf_client
+		.request_handle(&workerskv::write_bulk::WriteBulk {
+			account_identifier: &config.cloudflare.account_id,
+			namespace_identifier: &config.cloudflare.kv_routing_ns,
+			bulk_key_value_pairs: vec![workerskv::write_bulk::KeyValuePair {
+				key: key.to_string(),
+				value: serde_json::to_string(&value)?,
+				expiration: None,
+				expiration_ttl: None,
+				base64: None,
+			}],
+		})
+		.await?;
+
+	Ok(())
+}
+
+async fn delete_kv_for_routing(
+	key: routing::Key,
+	config: &Settings,
+) -> Result<(), Error> {
+	let cf_client = get_cloudflare_client(config).await?;
+	cf_client
+		.request_handle(&workerskv::delete_key::DeleteKey {
+			account_identifier: &config.cloudflare.account_id,
+			namespace_identifier: &config.cloudflare.kv_routing_ns,
+			key: &key.to_string(),
+		})
+		.await?;
+
+	Ok(())
+}
+
+async fn update_kv_for_deployment(
+	key: deployment::Key,
+	value: deployment::Value,
+	config: &Settings,
+) -> Result<(), Error> {
+	let cf_client = get_cloudflare_client(config).await?;
+	cf_client
+		.request_handle(&workerskv::write_bulk::WriteBulk {
+			account_identifier: &config.cloudflare.account_id,
+			namespace_identifier: &config.cloudflare.kv_deployment_ns,
+			bulk_key_value_pairs: vec![workerskv::write_bulk::KeyValuePair {
+				key: key.to_string(),
+				value: serde_json::to_string(&value)?,
+				expiration: None,
+				expiration_ttl: None,
+				base64: None,
+			}],
+		})
+		.await?;
+
+	Ok(())
+}
+
+#[allow(dead_code)]
+async fn delete_kv_for_deployment(
+	key: deployment::Key,
+	config: &Settings,
+) -> Result<(), Error> {
+	let cf_client = get_cloudflare_client(config).await?;
+	cf_client
+		.request_handle(&workerskv::delete_key::DeleteKey {
+			account_identifier: &config.cloudflare.account_id,
+			namespace_identifier: &config.cloudflare.kv_deployment_ns,
+			key: &key.to_string(),
+		})
+		.await?;
+
+	Ok(())
+}
+
+async fn update_kv_for_static_site(
+	key: static_site::Key,
+	value: static_site::Value,
+	config: &Settings,
+) -> Result<(), Error> {
+	let cf_client = get_cloudflare_client(config).await?;
+	cf_client
+		.request_handle(&workerskv::write_bulk::WriteBulk {
+			account_identifier: &config.cloudflare.account_id,
+			namespace_identifier: &config.cloudflare.kv_static_site_ns,
+			bulk_key_value_pairs: vec![workerskv::write_bulk::KeyValuePair {
+				key: key.to_string(),
+				value: serde_json::to_string(&value)?,
+				expiration: None,
+				expiration_ttl: None,
+				base64: None,
+			}],
+		})
+		.await?;
+
+	Ok(())
+}
+
+#[allow(dead_code)]
+async fn delete_kv_for_static_site(
+	key: static_site::Key,
+	config: &Settings,
+) -> Result<(), Error> {
+	let cf_client = get_cloudflare_client(config).await?;
+	cf_client
+		.request_handle(&workerskv::delete_key::DeleteKey {
+			account_identifier: &config.cloudflare.account_id,
+			namespace_identifier: &config.cloudflare.kv_static_site_ns,
+			key: &key.to_string(),
+		})
+		.await?;
+
+	Ok(())
+}
+
 pub async fn update_cloudflare_kv_for_managed_url(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	sub_domain: &str,
@@ -60,19 +179,19 @@ pub async fn update_cloudflare_kv_for_managed_url(
 				let key = managed_url.path;
 				let value = match managed_url.url_type {
 					db::ManagedUrlType::ProxyToDeployment => {
-						ManagedUrlType::ProxyDeployment {
+						UrlType::ProxyDeployment {
 							deployment_id: managed_url.deployment_id?,
 						}
 					}
 					db::ManagedUrlType::ProxyToStaticSite => {
-						ManagedUrlType::ProxyStaticSite {
+						UrlType::ProxyStaticSite {
 							static_site_id: managed_url.static_site_id?,
 						}
 					}
-					db::ManagedUrlType::ProxyUrl => ManagedUrlType::ProxyUrl {
+					db::ManagedUrlType::ProxyUrl => UrlType::ProxyUrl {
 						url: managed_url.url?,
 					},
-					db::ManagedUrlType::Redirect => ManagedUrlType::Redirect {
+					db::ManagedUrlType::Redirect => UrlType::Redirect {
 						url: managed_url.url?,
 					},
 				};
@@ -81,7 +200,6 @@ pub async fn update_cloudflare_kv_for_managed_url(
 			})
 			.collect::<HashMap<_, _>>();
 
-	let cf_client = get_cloudflare_client(config).await?;
 	let key = routing::Key {
 		sub_domain: sub_domain.to_owned(),
 		domain: domain.name,
@@ -89,127 +207,67 @@ pub async fn update_cloudflare_kv_for_managed_url(
 
 	// if no managed url is present, then delete the already existing key
 	if all_managed_urls_for_host.is_empty() {
-		cf_client
-			.request_handle(&workerskv::delete_key::DeleteKey {
-				account_identifier: &config.cloudflare.account_id,
-				namespace_identifier: &config.cloudflare.kv_routing_ns,
-				key: &key.to_string(),
-			})
-			.await?;
+		delete_kv_for_routing(key, config).await?;
 	} else {
 		let value = routing::Value(all_managed_urls_for_host);
-
-		cf_client
-			.request_handle(&workerskv::write_bulk::WriteBulk {
-				account_identifier: &config.cloudflare.account_id,
-				namespace_identifier: &config.cloudflare.kv_routing_ns,
-				bulk_key_value_pairs: vec![
-					workerskv::write_bulk::KeyValuePair {
-						key: key.to_string(),
-						value: serde_json::to_string(&value)?,
-						expiration: None,
-						expiration_ttl: None,
-						base64: None,
-					},
-				],
-			})
-			.await?;
+		update_kv_for_routing(key, value, config).await?;
 	}
+
+	Ok(())
+}
+
+async fn update_cloudflare_kv_for_patr_url(
+	resource_id: &Uuid,
+	value: routing::UrlType,
+	config: &Settings,
+) -> Result<(), Error> {
+	let key = routing::Key {
+		sub_domain: resource_id.to_string(),
+		domain: "patr.cloud".to_string(),
+	};
+	let value = routing::Value(HashMap::from([("/".to_owned(), value)]));
+
+	update_kv_for_routing(key, value, config).await?;
 
 	Ok(())
 }
 
 pub async fn update_cloudflare_kv_for_deployment(
 	deployment_id: &Uuid,
-	region_id: &Uuid,
-	exposted_ports: &[u16],
+	value: deployment::Value,
 	config: &Settings,
 ) -> Result<(), Error> {
-	let cf_client = get_cloudflare_client(config).await?;
 	let key = deployment::Key(deployment_id.to_owned());
-
-	let value = deployment::Value {
-		region_id: region_id.to_owned(),
-		ports: exposted_ports.to_vec(),
-	};
-
-	cf_client
-		.request_handle(&workerskv::write_bulk::WriteBulk {
-			account_identifier: &config.cloudflare.account_id,
-			namespace_identifier: &config.cloudflare.kv_deployment_ns,
-			bulk_key_value_pairs: vec![workerskv::write_bulk::KeyValuePair {
-				key: key.to_string(),
-				value: serde_json::to_string(&value)?,
-				expiration: None,
-				expiration_ttl: None,
-				base64: None,
-			}],
-		})
-		.await?;
-
-	Ok(())
-}
-
-pub async fn delete_cloudflare_kv_for_deployment(
-	deployment_id: &Uuid,
-	config: &Settings,
-) -> Result<(), Error> {
-	let cf_client = get_cloudflare_client(config).await?;
-	let key = deployment::Key(deployment_id.to_owned());
-
-	cf_client
-		.request_handle(&workerskv::delete_key::DeleteKey {
-			account_identifier: &config.cloudflare.account_id,
-			namespace_identifier: &config.cloudflare.kv_deployment_ns,
-			key: &key.to_string(),
-		})
-		.await?;
+	// todo: Is it okay to update routing every time?
+	update_cloudflare_kv_for_patr_url(
+		deployment_id,
+		routing::UrlType::ProxyDeployment {
+			deployment_id: deployment_id.clone(),
+		},
+		config,
+	)
+	.await?;
+	update_kv_for_deployment(key, value, config).await?;
 
 	Ok(())
 }
 
 pub async fn update_cloudflare_kv_for_static_site(
 	static_site_id: &Uuid,
-	upload_id: &Uuid,
+	value: static_site::Value,
 	config: &Settings,
 ) -> Result<(), Error> {
-	let cf_client = get_cloudflare_client(config).await?;
 	let key = static_site::Key(static_site_id.to_owned());
-	let value = static_site::Value {
-		upload_id: upload_id.to_owned(),
-	};
-
-	cf_client
-		.request_handle(&workerskv::write_bulk::WriteBulk {
-			account_identifier: &config.cloudflare.account_id,
-			namespace_identifier: &config.cloudflare.kv_static_site_ns,
-			bulk_key_value_pairs: vec![workerskv::write_bulk::KeyValuePair {
-				key: key.to_string(),
-				value: serde_json::to_string(&value)?,
-				expiration: None,
-				expiration_ttl: None,
-				base64: None,
-			}],
-		})
-		.await?;
-
-	Ok(())
-}
-
-pub async fn delete_cloudflare_kv_for_static_site(
-	static_site_id: &Uuid,
-	config: &Settings,
-) -> Result<(), Error> {
-	let cf_client = get_cloudflare_client(config).await?;
-	let key = static_site::Key(static_site_id.to_owned());
-
-	cf_client
-		.request_handle(&workerskv::delete_key::DeleteKey {
-			account_identifier: &config.cloudflare.account_id,
-			namespace_identifier: &config.cloudflare.kv_static_site_ns,
-			key: &key.to_string(),
-		})
-		.await?;
+	// todo: Is it okay to update routing every time?
+	update_cloudflare_kv_for_patr_url(
+		static_site_id,
+		routing::UrlType::ProxyStaticSite {
+			static_site_id: static_site_id.clone(),
+		},
+		config,
+	)
+	.await?;
+	update_kv_for_static_site(key, value, config).await?;
 
 	Ok(())
 }
