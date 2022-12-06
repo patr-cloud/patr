@@ -288,7 +288,7 @@ pub async fn split_domain_and_tld(
 				item
 			}
 		})?;
-	let domain = domain_name.replace(&format!(".{}", tld), "");
+	let domain = domain_name.strip_suffix(tld)?.strip_suffix('.')?;
 	// domain cannot begin or end with a -, and must be at least 1 character
 	if domain.contains('.') ||
 		domain.is_empty() ||
@@ -301,7 +301,7 @@ pub async fn split_domain_and_tld(
 		return None;
 	}
 
-	Some((domain, tld.clone()))
+	Some((domain.to_string(), tld.clone()))
 }
 
 pub async fn get_image_name_and_digest_for_deployment_image(
