@@ -254,31 +254,21 @@ pub async fn update_kubernetes_managed_url(
 					),
 					if *http_only {
 						(
-							"ingress.kubernetes.io/force-ssl-redirect"
-								.to_string(),
-							"true".to_string(),
+							"ingress.kubernetes.io/ssl-redirect".to_string(),
+							"false".to_string(),
 						)
 					} else {
 						(
 							"ingress.kubernetes.io/ssl-redirect".to_string(),
-							"false".to_string(),
+							"true".to_string(),
 						)
 					},
-					if *http_only {
-						(
-							String::from(
-								"nginx.ingress.kubernetes.io/backend-protocol",
-							),
-							"HTTPS".to_string(),
-						)
-					} else {
-						(
-							String::from(
-								"nginx.ingress.kubernetes.io/backend-protocol",
-							),
-							"HTTP".to_string(),
-						)
-					},
+					(
+						String::from(
+							"nginx.ingress.kubernetes.io/backend-protocol",
+						),
+						"HTTPS".to_string(),
+					),
 					(
 						"cert-manager.io/cluster-issuer".to_string(),
 						if domain.is_ns_internal() {
@@ -375,14 +365,13 @@ pub async fn update_kubernetes_managed_url(
 					},
 					if *http_only {
 						(
-							"ingress.kubernetes.io/force-ssl-redirect"
-								.to_string(),
-							"true".to_string(),
+							"ingress.kubernetes.io/ssl-redirect".to_string(),
+							"false".to_string(),
 						)
 					} else {
 						(
 							"ingress.kubernetes.io/ssl-redirect".to_string(),
-							"false".to_string(),
+							"true".to_string(),
 						)
 					},
 					(
