@@ -26,6 +26,7 @@ pub struct ManagedUrl {
 	pub is_configured: bool,
 	pub permanent_redirect: Option<bool>,
 	pub http_only: Option<bool>,
+	pub cf_custom_hostname_id: Option<String>,
 }
 
 pub async fn initialize_managed_url_pre(
@@ -45,6 +46,9 @@ pub async fn initialize_managed_url_pre(
 	.execute(&mut *connection)
 	.await?;
 
+	// todo: add better constraint where
+	// (sub_domain, domain_id, cf_custom_hostname_id)
+	// should be same across all tables
 	query!(
 		r#"
 		CREATE TABLE managed_url(
@@ -68,6 +72,7 @@ pub async fn initialize_managed_url_pre(
 			deleted TIMESTAMPTZ,
 			permanent_redirect BOOLEAN,
 			http_only BOOLEAN,
+			cf_custom_hostname_id TEXT,
 			CONSTRAINT managed_url_chk_values_null_or_not_null CHECK(
 				(
 					url_type = 'proxy_to_deployment' AND
@@ -180,7 +185,8 @@ pub async fn get_all_managed_urls_in_workspace(
 			workspace_id as "workspace_id: _",
 			is_configured,
 			permanent_redirect as "permanent_redirect: _",
-			http_only as "http_only: _"
+			http_only as "http_only: _",
+			cf_custom_hostname_id
 		FROM
 			managed_url
 		WHERE
@@ -213,7 +219,8 @@ pub async fn get_all_managed_urls_for_domain(
 			workspace_id as "workspace_id: _",
 			is_configured,
 			permanent_redirect as "permanent_redirect: _",
-			http_only as "http_only: _"
+			http_only as "http_only: _",
+			cf_custom_hostname_id
 		FROM
 			managed_url
 		WHERE
@@ -245,7 +252,8 @@ pub async fn get_all_unconfigured_managed_urls(
 			workspace_id as "workspace_id: _",
 			is_configured,
 			permanent_redirect as "permanent_redirect: _",
-			http_only as "http_only: _"
+			http_only as "http_only: _",
+			cf_custom_hostname_id
 		FROM
 			managed_url
 		WHERE
@@ -272,6 +280,7 @@ pub async fn create_new_managed_url_in_workspace(
 	is_configured: bool,
 	permanent_redirect: Option<bool>,
 	http_only: Option<bool>,
+	cf_custom_hostname_id: Option<String>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -289,7 +298,8 @@ pub async fn create_new_managed_url_in_workspace(
 				workspace_id,
 				is_configured,
 				permanent_redirect,
-				http_only
+				http_only,
+				cf_custom_hostname_id
 			)
 		VALUES
 			(
@@ -305,7 +315,8 @@ pub async fn create_new_managed_url_in_workspace(
 				$10,
 				$11,
 				$12,
-				$13
+				$13,
+				$14
 			);
 		"#,
 		managed_url_id as _,
@@ -320,7 +331,8 @@ pub async fn create_new_managed_url_in_workspace(
 		workspace_id as _,
 		is_configured,
 		permanent_redirect,
-		http_only
+		http_only,
+		cf_custom_hostname_id
 	)
 	.execute(&mut *connection)
 	.await
@@ -347,7 +359,8 @@ pub async fn get_managed_url_by_id(
 			workspace_id as "workspace_id: _",
 			is_configured,
 			permanent_redirect as "permanent_redirect: _",
-			http_only as "http_only: _"
+			http_only as "http_only: _",
+			cf_custom_hostname_id
 		FROM
 			managed_url
 		WHERE
@@ -508,7 +521,8 @@ pub async fn get_all_managed_urls_for_deployment(
 			workspace_id as "workspace_id!: _",
 			is_configured as "is_configured!: _",
 			permanent_redirect as "permanent_redirect!: _",
-			http_only as "http_only!: _"
+			http_only as "http_only!: _",
+			cf_custom_hostname_id
 		FROM
 			managed_url_list
 		WHERE
@@ -583,7 +597,8 @@ pub async fn get_all_managed_urls_for_static_site(
 			workspace_id as "workspace_id!: _",
 			is_configured as "is_configured!: _",
 			permanent_redirect as "permanent_redirect!: _",
-			http_only as "http_only!: _"
+			http_only as "http_only!: _",
+			cf_custom_hostname_id
 		FROM
 			managed_url_list
 		WHERE
@@ -637,7 +652,8 @@ pub async fn get_all_managed_urls_for_host(
 			static_site_id as "static_site_id: _",
 			url,
 			workspace_id as "workspace_id: _",
-			is_configured
+			is_configured,
+			cf_custom_hostname_id
 		FROM
 			managed_url
 		WHERE
