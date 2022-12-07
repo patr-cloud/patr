@@ -456,39 +456,33 @@ pub(super) async fn process_request(
 						workspace.id
 					);
 
-					// TODO - Verify if this check if needed after the if else
-					// check of line 240
-					if card_amount_to_be_charged_in_cents != 0 ||
-						total_bill.total_charge != 0
-					{
-						service::send_payment_failure_invoice_notification(
-							connection,
-							&workspace.super_admin_id,
-							workspace_name,
-							total_bill,
-							Address {
-								first_name: "".to_string(),
-								last_name: "".to_string(),
-								address_line_1: "".to_string(),
-								address_line_2: None,
-								address_line_3: None,
-								city: "".to_string(),
-								state: "".to_string(),
-								zip: "".to_string(),
-								country: "".to_string(),
-							},
-						)
-						.await?;
+					service::send_payment_failure_invoice_notification(
+						connection,
+						&workspace.super_admin_id,
+						workspace_name,
+						total_bill,
+						Address {
+							first_name: "".to_string(),
+							last_name: "".to_string(),
+							address_line_1: "".to_string(),
+							address_line_2: None,
+							address_line_3: None,
+							city: "".to_string(),
+							state: "".to_string(),
+							zip: "".to_string(),
+							country: "".to_string(),
+						},
+					)
+					.await?;
 
-						service::queue_retry_payment_for_workspace(
-							&workspace.id,
-							&Utc::now().add(Duration::days(1)),
-							month,
-							year,
-							config,
-						)
-						.await?;
-					}
+					service::queue_retry_payment_for_workspace(
+						&workspace.id,
+						&Utc::now().add(Duration::days(1)),
+						month,
+						year,
+						config,
+					)
+					.await?;
 
 					Ok(())
 				}
