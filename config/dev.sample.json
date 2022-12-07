@@ -48,7 +48,8 @@
 		"apiToken": "<example-api-token>",
 		"kvRoutingNs": "kvRoutingNs",
 		"kvDeploymentNs": "kvDeploymentNs",
-		"kvStaticSiteNs": "kvStaticSiteNs"
+		"kvStaticSiteNs": "kvStaticSiteNs",
+		"patrZoneIdentifier": "patrZoneIdentifier"
 	},
 	"dockerRegistry": {
 		"serviceName": "Deployer Registry Service",

@@ -5,6 +5,15 @@ use cloudflare::{
 	endpoints::{
 		workers::{self, CreateRouteParams},
 		workerskv,
+		zone::custom_hostname::{
+			CreateCustomHostname,
+			CreateCustomHostnameParams,
+			DeleteCustomHostname,
+			EditCustomHostname,
+			EditCustomHostnameParams,
+			SslParams,
+			SslSettingsParams,
+		},
 	},
 	framework::{
 		async_api::Client as CloudflareClient,
@@ -310,4 +319,74 @@ pub async fn delete_domain_from_cloudflare_worker_routes(
 		.await?;
 
 	Ok(())
+}
+
+pub async fn add_custom_hostname_to_cloudflare(
+	host: &str,
+	config: &Settings,
+) -> Result<(String, String), Error> {
+	let cf_client = get_cloudflare_client(config).await?;
+
+	let response = cf_client
+		.request_handle(&CreateCustomHostname {
+			zone_identifier: &config.cloudflare.patr_zone_identifier,
+			params: CreateCustomHostnameParams {
+				hostname: host.to_owned(),
+				ssl: SslParams {
+					method: "http".to_owned(),
+					type_: "dv".to_owned(),
+					settings: SslSettingsParams {
+						min_tls_version: "1.0".to_owned(),
+						..Default::default()
+					},
+					..Default::default()
+				},
+			},
+		})
+		.await?;
+
+	Ok((response.result.id, response.result.status))
+}
+
+pub async fn delete_custom_hostname_from_cloudflare(
+	custom_hostname_id: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let cf_client = get_cloudflare_client(config).await?;
+
+	cf_client
+		.request_handle(&DeleteCustomHostname {
+			zone_identifier: &config.cloudflare.patr_zone_identifier,
+			identifier: custom_hostname_id,
+		})
+		.await?;
+
+	Ok(())
+}
+
+pub async fn refresh_custom_hostname_in_cloudflare(
+	custom_hostname_id: &str,
+	config: &Settings,
+) -> Result<String, Error> {
+	let cf_client = get_cloudflare_client(config).await?;
+
+	let response = cf_client
+		.request_handle(&EditCustomHostname {
+			zone_identifier: &config.cloudflare.patr_zone_identifier,
+			identifier: custom_hostname_id,
+			params: EditCustomHostnameParams {
+				ssl: SslParams {
+					method: "http".to_owned(),
+					type_: "dv".to_owned(),
+					settings: SslSettingsParams {
+						min_tls_version: "1.0".to_owned(),
+						..Default::default()
+					},
+					..Default::default()
+				},
+			},
+		})
+		.await?;
+
+	Ok(response.result.status)
 }

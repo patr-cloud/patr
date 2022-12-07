@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use api_models::{
 	models::workspace::infrastructure::managed_urls::{
 		ManagedUrl,
@@ -9,7 +7,6 @@ use api_models::{
 };
 use chrono::Utc;
 use eve_rs::AsError;
-use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
 use super::kubernetes;
 use crate::{
@@ -58,6 +55,32 @@ pub async fn create_new_managed_url_in_workspace(
 	)
 	.await?;
 
+	let domain = db::get_workspace_domain_by_id(connection, domain_id)
+		.await?
+		.status(500)?;
+	let cf_custom_hostname_id = if domain.is_ns_internal() {
+		None
+	} else {
+		let existing_hostname = db::get_all_managed_urls_for_host(
+			connection, sub_domain, domain_id,
+		)
+		.await?
+		.into_iter()
+		.next();
+		match existing_hostname {
+			Some(managed_url) => managed_url.cf_custom_hostname_id,
+			None => {
+				let (id, _status) = service::add_custom_hostname_to_cloudflare(
+					&format!("{}.{}", sub_domain, domain.name),
+					config,
+				)
+				.await?;
+
+				Some(id)
+			}
+		}
+	};
+
 	log::trace!("request_id: {} - Creating managed url.", request_id);
 	match url_type {
 		ManagedUrlType::ProxyDeployment {
@@ -83,6 +106,7 @@ pub async fn create_new_managed_url_in_workspace(
 				false,
 				None,
 				None,
+				cf_custom_hostname_id,
 			)
 			.await?;
 		}
@@ -106,6 +130,7 @@ pub async fn create_new_managed_url_in_workspace(
 				false,
 				None,
 				None,
+				cf_custom_hostname_id,
 			)
 			.await?;
 		}
@@ -129,6 +154,7 @@ pub async fn create_new_managed_url_in_workspace(
 				false,
 				None,
 				Some(*http_only),
+				cf_custom_hostname_id,
 			)
 			.await?;
 		}
@@ -156,6 +182,7 @@ pub async fn create_new_managed_url_in_workspace(
 				false,
 				Some(*permanent_redirect),
 				Some(*http_only),
+				cf_custom_hostname_id,
 			)
 			.await?;
 		}
@@ -416,6 +443,35 @@ pub async fn delete_managed_url(
 			request_id,
 		)
 		.await?;
+
+		let Some(cf_custom_hostname_id) = managed_url.cf_custom_hostname_id else {
+			log::warn!(
+				"request_id: {} - For external domain's managed_url {}, cf_custom_hostname_id is missing", 
+				request_id,
+				managed_url_id
+			);
+			return Err(
+				Error::empty()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())
+			);
+		};
+
+		let host_deletable = db::get_all_managed_urls_for_host(
+			connection,
+			&managed_url.sub_domain,
+			&managed_url.domain_id,
+		)
+		.await?
+		.is_empty();
+
+		if host_deletable {
+			service::delete_custom_hostname_from_cloudflare(
+				&cf_custom_hostname_id,
+				config,
+			)
+			.await?;
+		}
 	}
 	log::trace!("request_id: {} - ManagedUrl Deleted.", request_id);
 
@@ -465,76 +521,35 @@ pub async fn verify_managed_url_configuration(
 					record.value == "ingress.patr.cloud"
 			})
 	} else {
-		let verification_token = {
-			let mut rng = thread_rng();
-			(0..32)
-				.map(|_| rng.sample(Alphanumeric) as char)
-				.collect::<String>()
-		};
-		service::create_managed_url_verification_ingress(
-			&managed_url.workspace_id,
-			&managed_url.id,
-			&managed_url.sub_domain,
-			&domain.name,
-			&verification_token,
-			config,
-			request_id,
-		)
-		.await?;
-		let time = Instant::now();
-
-		let mut response = String::with_capacity(32);
-		let mut index = 0;
-
-		while response != verification_token {
-			log::trace!("Verification token not found. Retrying...");
-			tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-			index += 1;
-
-			response.clear();
-			response.push_str(
-				&reqwest::Client::builder()
-					.build()?
-					.get(
-						if managed_url.sub_domain == "@" {
-							format!(
-								"http://{}/.well-known/patr-verification",
-								domain.name
-							)
-						} else {
-							format!(
-								"http://{}.{}/.well-known/patr-verification",
-								managed_url.sub_domain, domain.name
-							)
-						},
-					)
-					.body(verification_token.as_bytes().to_vec())
-					.send()
-					.await?
-					.text()
-					.await?,
+		// external domain
+		let Some(cf_custom_hostname_id) = managed_url.cf_custom_hostname_id else {
+			log::warn!(
+				"request_id: {} - For external domain's managed_url {}, cf_custom_hostname_id is missing", 
+				request_id,
+				managed_url_id
 			);
+			return Err(
+				Error::empty()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())
+			);
+		};
 
-			if index > 10 {
-				break;
-			}
-		}
-		log::trace!(
-			"Verification token found after {} ms",
-			time.elapsed().as_millis()
-		);
-
-		log::trace!("Deleting managed urls verification ingress");
-
-		service::delete_kubernetes_managed_url_verification(
-			&managed_url.workspace_id,
-			&managed_url.id,
+		let status = service::refresh_custom_hostname_in_cloudflare(
+			&cf_custom_hostname_id,
 			config,
-			request_id,
 		)
 		.await?;
 
-		response == verification_token
+		if status != "active" {
+			log::info!(
+				"request_id: {} - Custom host name is not pointed to patr fallback origin",
+				request_id
+			);
+			false
+		} else {
+			true
+		}
 	};
 
 	Ok(configured)
