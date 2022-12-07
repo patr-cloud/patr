@@ -3,6 +3,7 @@ use std::{collections::BTreeMap, str};
 use api_models::{
 	models::workspace::infrastructure::deployment::{
 		Deployment,
+		DeploymentLogs,
 		DeploymentMetrics,
 		DeploymentProbe,
 		DeploymentRegistry,
@@ -13,9 +14,15 @@ use api_models::{
 		Metric,
 		PatrRegistry,
 	},
-	utils::{constants, Base64String, StringifiedU16, Uuid},
+	utils::{
+		constants,
+		Base64String,
+		DateTime as TzDateTime,
+		StringifiedU16,
+		Uuid,
+	},
 };
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use eve_rs::AsError;
 use k8s_openapi::api::core::v1::Event;
 use reqwest::Client;
@@ -269,7 +276,7 @@ pub async fn get_deployment_container_logs(
 	limit: u32,
 	config: &Settings,
 	request_id: &Uuid,
-) -> Result<String, Error> {
+) -> Result<Vec<DeploymentLogs>, Error> {
 	log::trace!(
 		"Getting deployment logs for deployment_id: {} with request_id: {}",
 		deployment_id,
@@ -955,7 +962,7 @@ async fn get_container_logs(
 	limit: u32,
 	config: &Settings,
 	request_id: &Uuid,
-) -> Result<String, Error> {
+) -> Result<Vec<DeploymentLogs>, Error> {
 	log::trace!(
 		"request_id: {} - Getting container logs for deployment with id: {}",
 		request_id,
@@ -1002,10 +1009,13 @@ async fn get_container_logs(
 
 	combined_build_logs.sort_by(|a, b| a.0.cmp(&b.0));
 
-	let mut logs = String::new();
+	let mut logs = Vec::new();
 
 	for (timestamp, log) in combined_build_logs {
-		logs.push_str(format!("{}-{}\n", timestamp, log).as_str());
+		logs.push(DeploymentLogs {
+			timestamp: TzDateTime(Utc.timestamp_nanos(timestamp as i64)),
+			logs: log,
+		});
 	}
 
 	Ok(logs)
