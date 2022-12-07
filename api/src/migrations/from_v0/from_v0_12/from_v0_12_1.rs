@@ -9,6 +9,8 @@ pub(super) async fn migrate(
 	config: &Settings,
 ) -> Result<(), Error> {
 	managed_url_redirects(&mut *connection, config).await?;
+	domain_last_unverified_nullable(connection, config).await?;
+	migrate_non_unverified_domains(connection, config).await?;
 	Ok(())
 }
 
@@ -105,5 +107,44 @@ pub(super) async fn managed_url_redirects(
 	.execute(&mut *connection)
 	.await?;
 
+	Ok(())
+}
+
+pub async fn domain_last_unverified_nullable(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE workspace_domain
+		ALTER COLUMN last_unverified
+		DROP NOT NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+	Ok(())
+}
+
+pub async fn migrate_non_unverified_domains(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace_domain
+		SET
+			last_unverified = NULL
+		FROM 
+			resource
+		WHERE
+			resource.id = workspace_domain.id
+		AND
+			workspace_domain.last_unverified = resource.created;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 	Ok(())
 }
