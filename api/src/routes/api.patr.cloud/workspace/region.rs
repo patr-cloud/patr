@@ -211,85 +211,84 @@ async fn add_region(
 	)
 	.await?;
 
-	if let Some(data) = data {
-		match data {
-			AddRegionToWorkspaceData::Digitalocean {
-				region,
-				api_token,
-				cluster_name,
-				num_node,
-				node_name,
-			} => {
-				log::trace!(
-					"request_id: {} creating digital ocean k8s cluster in db",
-					request_id
-				);
-				db::add_do_deployment_region_to_workspace(
-					context.get_database_connection(),
-					&region_id,
-					&region.to_string(),
-					&InfrastructureCloudProvider::Digitalocean,
-					&api_token,
-					cluster_name
-						.as_deref()
-						.unwrap_or(&format!("{}-patr-cluster", workspace_id)),
-					&num_node,
-					node_name
-						.as_deref()
-						.unwrap_or(&format!("{}-patr-node", workspace_id)),
-					"s-1vcpu-2gb",
-					&workspace_id,
-				)
-				.await?;
+	match data {
+		AddRegionToWorkspaceData::Digitalocean {
+			region,
+			api_token,
+			cluster_name,
+			num_node,
+			node_name,
+		} => {
+			log::trace!(
+				"request_id: {} creating digital ocean k8s cluster in db",
+				request_id
+			);
+			db::add_do_deployment_region_to_workspace(
+				context.get_database_connection(),
+				&region_id,
+				&region.to_string(),
+				&InfrastructureCloudProvider::Digitalocean,
+				&api_token,
+				cluster_name
+					.as_deref()
+					.unwrap_or(&format!("{}-patr-cluster", workspace_id)),
+				&num_node,
+				node_name
+					.as_deref()
+					.unwrap_or(&format!("{}-patr-node", workspace_id)),
+				"s-1vcpu-2gb",
+				&workspace_id,
+			)
+			.await?;
 
-				context.commit_database_transaction().await?;
+			context.commit_database_transaction().await?;
 
-				let cluster_id = service::create_do_k8s_cluster(
-					&workspace_id,
-					&region.to_string(),
-					&api_token,
-					cluster_name.as_deref(),
-					&num_node,
-					node_name.as_deref(),
-					&request_id,
-				)
-				.await?;
+			let cluster_id = service::create_do_k8s_cluster(
+				&workspace_id,
+				&region.to_string(),
+				&api_token,
+				cluster_name.as_deref(),
+				&num_node,
+				node_name.as_deref(),
+				&request_id,
+			)
+			.await?;
 
-				log::trace!(
-					"reqeust_id: {} successfully got k8s ID: {}",
-					request_id,
-					cluster_id
-				);
+			log::trace!(
+				"reqeust_id: {} successfully got k8s ID: {}",
+				request_id,
+				cluster_id
+			);
 
-				db::update_do_cluster_id(
-					context.get_database_connection(),
-					&region_id,
-					&cluster_id,
-				)
-				.await?;
+			db::update_do_cluster_id(
+				context.get_database_connection(),
+				&region_id,
+				&cluster_id,
+			)
+			.await?;
 
-				service::queue_get_kube_config_for_do_cluster(
-					&api_token,
-					&cluster_id,
-					&region_id,
-					&config,
-					&request_id,
-				)
-				.await?;
-			}
-			AddRegionToWorkspaceData::KubeConfig { config_file } => {
-				let kube_config =
-					std::str::from_utf8(&base64::decode(&config_file)?)?
-						.to_string();
-				db::add_deployment_region_to_workspace(
-					context.get_database_connection(),
-					&region_id,
-					&name,
-					&InfrastructureCloudProvider::Other,
-					&workspace_id,
-					&kube_config,
-				)
-				.await?;
+			service::queue_get_kube_config_for_do_cluster(
+				&api_token,
+				&cluster_id,
+				&region_id,
+				&config,
+				&request_id,
+			)
+			.await?;
+		}
+		AddRegionToWorkspaceData::KubeConfig { config_file } => {
+			let kube_config =
+				std::str::from_utf8(&base64::decode(&config_file)?)?
+					.to_string();
+			db::add_deployment_region_to_workspace(
+				context.get_database_connection(),
+				&region_id,
+				&name,
+				&InfrastructureCloudProvider::Other,
+				&workspace_id,
+				&kube_config,
+			)
+			.await?;
 
 			match Kubeconfig::from_yaml(&kube_config) {
 				Ok(_) => {

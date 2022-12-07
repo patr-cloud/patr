@@ -14,6 +14,7 @@ pub(super) async fn migrate(
 	delete_region_permission(&mut *connection, config).await?;
 	deleted_region_column(&mut *connection, config).await?;
 	migrate_to_kubeconfig(&mut *connection, config).await?;
+	byoc_for_digital_ocean(&mut *connection, config).await?;
 	Ok(())
 }
 
@@ -198,5 +199,25 @@ async fn migrate_to_kubeconfig(
 	.execute(&mut *connection)
 	.await?;
 
+	Ok(())
+}
+
+async fn byoc_for_digital_ocean(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE deployment_region
+		ADD COLUMN api_token TEXT,
+		ADD COLUMN cluster_name TEXT,
+		ADD COLUMN num_node INTEGER,
+		ADD COLUMN node_name TEXT,
+		ADD COLUMN node_size TEXT,
+		ADD COLUMN do_cluster_id UUID;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 	Ok(())
 }
