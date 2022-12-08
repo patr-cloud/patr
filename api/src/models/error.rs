@@ -82,6 +82,7 @@ pub mod id {
 	pub const FILE_SIZE_TOO_LARGE: &str = "fileSizeTooLarge";
 	pub const NOT_A_SUPER_ADMIN: &str = "notASuperAdmin";
 	pub const TEMPORARY_EMAIL: &str = "temporaryEmail";
+	pub const INVALID_KUBE_CONFIG: &str = "invalidKubeConfig";
 	pub const UNVERIFIED_WORKSPACE: &str = "unverifiedWorkspace";
 	pub const REDUCED_VOLUME_SIZE: &str = "reducedVolumeSize";
 
@@ -240,6 +241,7 @@ pub mod message {
 	pub const FILE_SIZE_TOO_LARGE: &str = "The file that you uploaded is too large. Maximum size allowed is 100MB";
 	pub const NOT_A_SUPER_ADMIN: &str = "You have to be super admin to perform this action. If you wish to continue please contact your administrator";
 	pub const TEMPORARY_EMAIL: &str = "We have detected your email to be temporary email. Please enter a valid email or contact support for help";
+	pub const INVALID_KUBE_CONFIG: &str = "The kubeconfig that you entered is not invalid. Please make sure you entered the valid kubeconfig";
 	pub const UNVERIFIED_WORKSPACE: &str = "Your workspace has been blocked for suspicious activity. Please open a support ticket to unblock your workspace";
 	pub const REDUCED_VOLUME_SIZE: &str =
 		"Cannot update volume size to be less than the actual size given at the time of creating deployment";

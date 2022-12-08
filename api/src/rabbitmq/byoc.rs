@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use api_models::models::workspace::domain::DnsRecordValue;
 use eve_rs::AsError;
+use kube::config::Kubeconfig;
 use tokio::{fs, process::Command};
 
 use crate::{
@@ -193,7 +194,9 @@ pub(super) async fn process_request(
 			db::mark_deployment_region_as_ready(
 				connection,
 				&region_id,
-				kube_config.as_bytes()
+				&serde_json::to_value(
+					&serde_yaml::from_str::<Kubeconfig>(&kube_config)?
+				)?
 			)
 			.await?;
 
