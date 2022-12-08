@@ -10,3 +10,6 @@ codegen-units = 1
 lto = true
 opt-level = 3
 panic = "abort"
+
+[patch."https://github.com/vicara-hq/cloudflare-rs"]
+cloudflare = { git = "https://github.com/kavin-kr/cloudflare-rs", branch = "feature/custom_hostname" }
