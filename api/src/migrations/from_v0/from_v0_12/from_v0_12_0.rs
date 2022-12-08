@@ -80,7 +80,7 @@ async fn deleted_region_column(
 	query!(
 		r#"
 		ALTER TABLE deployment_region
-		ADD COLUMN config_file TEXT,
+		ADD COLUMN config_file JSON,
 		ADD COLUMN deleted TIMESTAMPTZ,
 		ADD COLUMN status REGION_STATUS NOT NULL DEFAULT 'created';
 		"#
