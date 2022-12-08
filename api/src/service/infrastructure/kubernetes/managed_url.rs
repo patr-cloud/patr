@@ -252,17 +252,6 @@ pub async fn update_kubernetes_managed_url(
 						),
 						url.clone(),
 					),
-					if *http_only {
-						(
-							"ingress.kubernetes.io/ssl-redirect".to_string(),
-							"false".to_string(),
-						)
-					} else {
-						(
-							"ingress.kubernetes.io/ssl-redirect".to_string(),
-							"true".to_string(),
-						)
-					},
 					(
 						String::from(
 							"nginx.ingress.kubernetes.io/backend-protocol",
@@ -354,13 +343,13 @@ pub async fn update_kubernetes_managed_url(
 						(
 							"nginx.ingress.kubernetes.io/permanent-redirect"
 								.to_string(),
-							format!("https://{}", url),
+							url.to_string(),
 						)
 					} else {
 						(
 							"nginx.ingress.kubernetes.io/temporal-redirect"
 								.to_string(),
-							format!("https://{}", url),
+							url.to_string(),
 						)
 					},
 					if *http_only {
