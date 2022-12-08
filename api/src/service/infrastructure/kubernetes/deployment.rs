@@ -259,7 +259,7 @@ pub async fn update_kubernetes_deployment(
 								})
 								.collect::<Vec<_>>(),
 						),
-						readiness_probe: running_details
+						startup_probe: running_details
 							.startup_probe
 							.as_ref()
 							.map(|probe| Probe {
