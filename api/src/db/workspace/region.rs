@@ -65,7 +65,7 @@ pub async fn initialize_region_pre(
 			workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id
 				REFERENCES workspace(id),
 			ready BOOLEAN NOT NULL,
-			config_file TEXT,
+			config_file JSON,
 			kubernetes_ingress_ip_addr INET,
 			message_log TEXT,
 			deleted TIMESTAMPTZ,
@@ -248,7 +248,7 @@ pub async fn add_deployment_region_to_workspace(
 pub async fn mark_deployment_region_as_ready(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
-	kube_config: &[u8],
+	kube_config: &serde_json::Value,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"

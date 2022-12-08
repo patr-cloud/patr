@@ -13,6 +13,7 @@ use api_models::{
 };
 use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use kube::config::Kubeconfig;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -210,39 +211,55 @@ async fn add_region(
 	)
 	.await?;
 
-	if let Some(data) = data {
-		match data {
-			AddRegionToWorkspaceData::Digitalocean {
-				cloud_provider: _,
-				region: _,
-				api_token: _,
-			} => {
-				return Err(Error::empty()
-					.body("Currently digital ocean api is not supported"))
-			}
-			AddRegionToWorkspaceData::KubeConfig { config_file } => {
-				let kube_config =
-					std::str::from_utf8(&base64::decode(&config_file)?)?
-						.to_string();
-				db::add_deployment_region_to_workspace(
-					context.get_database_connection(),
-					&region_id,
-					&name,
-					&InfrastructureCloudProvider::Other,
-					&workspace_id,
-				)
-				.await?;
+	match data {
+		AddRegionToWorkspaceData::Digitalocean {
+			region: _,
+			api_token: _,
+			cluster_name: _,
+			num_node: _,
+			node_name: _,
+		} => {
+			return Err(Error::empty()
+				.body("Currently digital ocean api is not supported"))
+		}
+		AddRegionToWorkspaceData::KubeConfig { config_file } => {
+			let kube_config =
+				std::str::from_utf8(&base64::decode(&config_file)?)?
+					.to_string();
 
-				context.commit_database_transaction().await?;
+			match Kubeconfig::from_yaml(&kube_config) {
+				Ok(_) => {
+					log::trace!(
+						"request_id: {} succussfully parsed kubeconfig file",
+						request_id
+					);
+				}
+				Err(err) => {
+					log::error!("request_id: {} unable to parse the kube_config file. Error: {}", request_id, err);
+					return Error::as_result()
+						.status(500)
+						.body(error!(INVALID_KUBE_CONFIG).to_string())?;
+				}
+			};
 
-				service::queue_setup_kubernetes_cluster(
-					&region_id,
-					&kube_config,
-					&config,
-					&request_id,
-				)
-				.await?;
-			}
+			db::add_deployment_region_to_workspace(
+				context.get_database_connection(),
+				&region_id,
+				&name,
+				&InfrastructureCloudProvider::Other,
+				&workspace_id,
+			)
+			.await?;
+
+			context.commit_database_transaction().await?;
+
+			service::queue_setup_kubernetes_cluster(
+				&region_id,
+				&kube_config,
+				&config,
+				&request_id,
+			)
+			.await?;
 		}
 	}
 
