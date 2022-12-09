@@ -210,7 +210,7 @@ pub async fn send_recovery_registration_mail(
 		},
 		email,
 		None,
-		"Welcome to Patr",
+		"Recovery email added successfully",
 	)
 	.await
 }
@@ -323,7 +323,7 @@ pub async fn send_bill_payment_failed_reminder_email(
 		},
 		email,
 		None,
-		"[Action required] Patr bill payment pending",
+		"[Action required] Patr bill payment failed",
 	)
 	.await
 }
@@ -360,7 +360,7 @@ pub async fn send_card_not_added_reminder_email(
 		},
 		email,
 		None,
-		"[Action required] Patr bill payment pending",
+		"[Action required] Add payment method",
 	)
 	.await
 }
@@ -452,6 +452,7 @@ pub async fn send_payment_success_invoice_email(
 	credits_deducted: u64,
 	card_amount_deducted: u64,
 	credits_remaining: u64,
+	is_charged: bool,
 ) -> Result<(), Error> {
 	send_email(
 		PaymentSuccessInvoiceEmail {
@@ -465,7 +466,11 @@ pub async fn send_payment_success_invoice_email(
 		},
 		email,
 		None,
-		"Patr payment successful",
+		if is_charged {
+			"Patr payment successful"
+		} else {
+			"Patr invoice"
+		},
 	)
 	.await
 }
@@ -499,7 +504,7 @@ pub async fn send_resource_deleted_email(
 		},
 		email,
 		None,
-		"Patr resource deleted",
+		"[Action Required] Patr resource deleted",
 	)
 	.await
 }
@@ -530,7 +535,7 @@ pub async fn send_domain_unverified_email(
 		},
 		email,
 		None,
-		"Domain not Verified",
+		"[Action Required] Domain not Verified",
 	)
 	.await
 }
