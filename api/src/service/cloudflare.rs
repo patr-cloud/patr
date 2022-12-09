@@ -297,7 +297,7 @@ pub async fn add_domain_to_cloudflare_worker_routes(
 			zone_identifier: &config.cloudflare.patr_zone_identifier,
 			params: CreateRouteParams {
 				pattern: format!("*{}/*", host),
-				script: Some("patr-ingress".to_owned()),
+				script: Some(config.cloudflare.worker_script.to_owned()),
 			},
 		})
 		.await?;
