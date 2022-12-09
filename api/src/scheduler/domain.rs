@@ -230,6 +230,9 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 							&request_id,
 						)
 						.await?
+					} else if domain_creation_days > 12 && domain_creation_days <=15 {
+						// todo send a reminder that you domain will be deleted in 
+						service::domain_verification_reminder().await?;
 					} else {
 						continue;
 					}

@@ -542,6 +542,49 @@ pub async fn send_domain_unverified_email(
 }
 
 #[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/domain-not-verified-reminder/template.json"]
+#[serde(rename_all = "camelCase")]
+struct DomainVerificationReminder {
+	domain_name: String,
+	domain_id: String,
+	username: String,
+	is_internal: bool,
+	patr_nameservers1: String,
+	patr_nameservers2: String,
+	patr_verify_sub_domain: String,
+	deadline_limit: u64,
+}
+
+pub async fn send_domain_verify_reminder_email(
+	domain_name: String,
+	username: String,
+	is_internal: bool,
+	domain_id: String,
+	patr_nameservers1: String,
+	patr_nameservers2: String,
+	patr_verify_sub_domain: String,
+	deadline_limit: u64,
+	email: Mailbox,
+) -> Result<(), Error> {
+	send_email(
+		DomainVerificationReminder {
+			domain_name,
+			username,
+			is_internal,
+			domain_id,
+			patr_nameservers1,
+			patr_nameservers2,
+			patr_verify_sub_domain,
+			deadline_limit,
+		},
+		email,
+		None,
+		"Domain not Verified",
+	)
+	.await
+}
+
+#[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/domain-verified/template.json"]
 #[serde(rename_all = "camelCase")]
 struct DomainVerified {
