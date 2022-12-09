@@ -150,6 +150,8 @@ pub struct CloudflareSettings {
 	pub kv_static_site_ns: String,
 	#[serde(alias = "patrzoneidentifier")]
 	pub patr_zone_identifier: String,
+	#[serde(alias = "workerscript")]
+	pub worker_script: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
