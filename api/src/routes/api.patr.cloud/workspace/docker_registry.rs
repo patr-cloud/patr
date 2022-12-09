@@ -335,7 +335,7 @@ pub fn create_sub_app(
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
-				permission: permissions::workspace::docker_registry::INFO,
+				permission: permissions::workspace::docker_registry::DELETE,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();

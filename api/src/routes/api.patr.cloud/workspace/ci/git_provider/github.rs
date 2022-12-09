@@ -295,7 +295,7 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
 				permission:
-					permissions::workspace::ci::git_provider::repo::build::VIEW,
+					permissions::workspace::ci::git_provider::repo::build::LIST,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id = Uuid::parse_str(
 						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
@@ -342,7 +342,7 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
 				permission:
-					permissions::workspace::ci::git_provider::repo::build::VIEW,
+					permissions::workspace::ci::git_provider::repo::build::INFO,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id = Uuid::parse_str(
 						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
@@ -389,7 +389,7 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
 				permission:
-					permissions::workspace::ci::git_provider::repo::build::VIEW,
+					permissions::workspace::ci::git_provider::repo::build::INFO,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id = Uuid::parse_str(
 						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
@@ -436,7 +436,7 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
 				permission:
-					permissions::workspace::ci::git_provider::repo::build::VIEW,
+					permissions::workspace::ci::git_provider::repo::build::CANCEL,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id = Uuid::parse_str(
 						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
@@ -528,7 +528,7 @@ pub fn create_sub_app(
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
-				permission: permissions::workspace::ci::git_provider::repo::build::RESTART,
+				permission: permissions::workspace::ci::git_provider::repo::branch::START,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id = Uuid::parse_str(
 						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
@@ -575,7 +575,7 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
 				permission:
-					permissions::workspace::ci::git_provider::repo::LIST,
+					permissions::workspace::ci::git_provider::repo::INFO,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id = Uuid::parse_str(
 						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
