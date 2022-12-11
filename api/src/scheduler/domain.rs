@@ -194,6 +194,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 						&unverified_domain.id,
 						true,
 						true,
+						&0, // no deadline limit when domain is verified
 					)
 					.await?
 				}
@@ -219,8 +220,8 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 				} else {
 					let domain_created =
 						Utc::now().signed_duration_since(domain_created_time);
-					let domain_creation_days = domain_created.num_days();
-					if domain_creation_days > 15 {
+					let domain_created_days = domain_created.num_days() as u64;
+					if domain_created_days > 15 {
 						delete_unverified_domains(
 							&mut connection,
 							&workspace_id,
@@ -230,9 +231,18 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 							&request_id,
 						)
 						.await?
-					} else if domain_creation_days > 12 && domain_creation_days <=15 {
-						// todo send a reminder that you domain will be deleted in 
-						service::domain_verification_reminder().await?;
+					} else if domain_created_days > 12 &&
+						domain_created_days <= 15
+					{
+						service::send_domain_verify_reminder_email(
+							&mut connection,
+							&workspace_id,
+							&unverified_domain.name,
+							true,
+							&unverified_domain.id,
+							15 - domain_created_days,
+						)
+						.await?
 					} else {
 						continue;
 					}
@@ -263,6 +273,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					&unverified_domain.id,
 					false,
 					true,
+					&0, // no deadline limit when domain is verified
 				)
 				.await?;
 				connection.commit().await?;
@@ -293,7 +304,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 				} else {
 					let domain_created =
 						Utc::now().signed_duration_since(domain_created_time);
-					let domain_created_days = domain_created.num_days();
+					let domain_created_days = domain_created.num_days() as u64;
 					if domain_created_days > 15 {
 						delete_unverified_domains(
 							&mut connection,
@@ -304,7 +315,20 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 							&request_id,
 						)
 						.await?;
-					} else {
+					} else if domain_created_days > 12 &&
+						domain_created_days <= 15
+					{
+						service::send_domain_verify_reminder_email(
+							&mut connection,
+							&workspace_id,
+							&unverified_domain.name,
+							true,
+							&unverified_domain.id,
+							15 - domain_created_days,
+						)
+						.await?
+					}
+					{
 						continue;
 					}
 				}
@@ -593,6 +617,7 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 				&verified_domain.id,
 				true,
 				false,
+				&5, //deadline limit
 			)
 			.await?
 		} else {
@@ -624,6 +649,7 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 					&verified_domain.id,
 					false,
 					false,
+					&5, //deadline limit
 				)
 				.await?
 			}

@@ -518,6 +518,7 @@ struct DomainUnverified {
 	domain_id: String,
 	username: String,
 	is_internal: bool,
+	deadline_limit: u64,
 }
 
 pub async fn send_domain_unverified_email(
@@ -525,6 +526,7 @@ pub async fn send_domain_unverified_email(
 	username: String,
 	is_internal: bool,
 	domain_id: String,
+	deadline_limit: u64,
 	email: Mailbox,
 ) -> Result<(), Error> {
 	send_email(
@@ -533,6 +535,7 @@ pub async fn send_domain_unverified_email(
 			username,
 			is_internal,
 			domain_id,
+			deadline_limit,
 		},
 		email,
 		None,
@@ -579,7 +582,7 @@ pub async fn send_domain_verify_reminder_email(
 		},
 		email,
 		None,
-		"Domain not Verified",
+		"[Action required] Domain not verified",
 	)
 	.await
 }
