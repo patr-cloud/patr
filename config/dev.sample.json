@@ -105,7 +105,7 @@
 		"username": "admin",
 		"password": "admin"
 	},
-	"ip_quality": {
+	"ipQuality": {
 		"host": "<ip-quality-score-host>",
 		"token": "<api-token>"
 	}
