@@ -12,6 +12,7 @@ use api_models::{
 };
 use chrono::{Datelike, Duration, Utc};
 use eve_rs::AsError;
+use reqwest::Client;
 
 use super::get_ip_address_info;
 /// This module validates user info and performs tasks related to user
@@ -22,7 +23,7 @@ use super::get_ip_address_info;
 use crate::{
 	db::{self, User, UserLoginType, UserToSignUp, UserWebLogin},
 	error,
-	models::{rbac, AccessTokenData, ExposedUserData},
+	models::{rbac, AccessTokenData, ExposedUserData, IpQualityScore},
 	service,
 	utils::{settings::Settings, validator, Error},
 	Database,
@@ -236,6 +237,7 @@ pub async fn create_user_join_request(
 	account_type: &SignUpAccountType,
 	recovery_method: &RecoveryMethod,
 	coupon_code: Option<&str>,
+	config: &Settings,
 ) -> Result<(UserToSignUp, String), Error> {
 	// Check if the username is allowed
 	if !is_username_allowed(connection, username).await? {
@@ -280,6 +282,25 @@ pub async fn create_user_join_request(
 		}
 		// If recovery_email is only provided
 		RecoveryMethod::Email { recovery_email } => {
+			let client = Client::new();
+			let disposable = client
+				.get(format!(
+					"{}/{}/{}",
+					config.ip_quality.host,
+					config.ip_quality.token,
+					recovery_email
+				))
+				.send()
+				.await?
+				.json::<IpQualityScore>()
+				.await?
+				.disposable;
+
+			if disposable {
+				return Error::as_result()
+					.status(400)
+					.body(error!(TEMPORARY_EMAIL).to_string())?;
+			}
 			// Check if recovery_email is allowed and valid
 			if !is_email_allowed(connection, recovery_email).await? {
 				Error::as_result()

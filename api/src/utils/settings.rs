@@ -73,6 +73,8 @@ pub struct Settings {
 	#[serde(alias = "ipinfotoken")]
 	pub ipinfo_token: String,
 	pub mimir: MimirSettings,
+	#[serde(alias = "ipquality")]
+	pub ip_quality: IpQualityScoreSettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -287,4 +289,11 @@ pub struct MimirSettings {
 	pub host: String,
 	pub username: String,
 	pub password: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IpQualityScoreSettings {
+	pub host: String,
+	pub token: String,
 }
