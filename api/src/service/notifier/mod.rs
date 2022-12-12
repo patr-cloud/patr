@@ -614,7 +614,6 @@ pub async fn send_payment_success_invoice_notification(
 	credit_deducted: u64,
 	card_amount_deducted: u64,
 	credits_remaining: u64,
-	is_charged: bool,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, super_admin_id)
 		.await?
@@ -642,7 +641,6 @@ pub async fn send_payment_success_invoice_notification(
 		credit_deducted,
 		card_amount_deducted,
 		credits_remaining,
-		is_charged,
 	)
 	.await
 }
