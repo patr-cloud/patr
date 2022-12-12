@@ -28,6 +28,7 @@ use crate::{
 	db,
 	models::cloudflare::{
 		deployment,
+		region,
 		routing::{self, UrlType},
 		static_site,
 	},
@@ -173,6 +174,45 @@ async fn delete_kv_for_static_site(
 	Ok(())
 }
 
+async fn update_kv_for_region(
+	key: region::Key,
+	value: region::Value,
+	config: &Settings,
+) -> Result<(), Error> {
+	let cf_client = get_cloudflare_client(config).await?;
+	cf_client
+		.request_handle(&workerskv::write_bulk::WriteBulk {
+			account_identifier: &config.cloudflare.account_id,
+			namespace_identifier: &config.cloudflare.kv_region_ns,
+			bulk_key_value_pairs: vec![workerskv::write_bulk::KeyValuePair {
+				key: key.to_string(),
+				value: serde_json::to_string(&value)?,
+				expiration: None,
+				expiration_ttl: None,
+				base64: None,
+			}],
+		})
+		.await?;
+
+	Ok(())
+}
+
+async fn delete_kv_for_region(
+	key: region::Key,
+	config: &Settings,
+) -> Result<(), Error> {
+	let cf_client = get_cloudflare_client(config).await?;
+	cf_client
+		.request_handle(&workerskv::delete_key::DeleteKey {
+			account_identifier: &config.cloudflare.account_id,
+			namespace_identifier: &config.cloudflare.kv_region_ns,
+			key: &key.to_string(),
+		})
+		.await?;
+
+	Ok(())
+}
+
 pub async fn update_cloudflare_kv_for_managed_url(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	sub_domain: &str,
@@ -282,6 +322,31 @@ pub async fn update_cloudflare_kv_for_static_site(
 	)
 	.await?;
 	update_kv_for_static_site(key, value, config).await?;
+
+	Ok(())
+}
+
+pub async fn update_cloudflare_kv_for_region(
+	region_id: &Uuid,
+	host: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let key = region::Key(region_id.to_owned());
+	let value = region::Value {
+		host: host.to_owned(),
+	};
+	update_kv_for_region(key, value, config).await?;
+
+	Ok(())
+}
+
+#[allow(dead_code)]
+pub async fn delete_cloudflare_kv_for_region(
+	region_id: &Uuid,
+	config: &Settings,
+) -> Result<(), Error> {
+	let key = region::Key(region_id.to_owned());
+	delete_kv_for_region(key, config).await?;
 
 	Ok(())
 }

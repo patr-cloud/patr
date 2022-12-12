@@ -222,6 +222,8 @@ pub(super) async fn process_request(
 				"Successfully assigned IP Addr for load balancer.\nRegion is now ready for deployments"
 			).await?;
 
+			service::update_cloudflare_kv_for_region(&region_id, &ip_addr.to_string(), config).await?;
+
 			Ok(())
 		}
 		BYOCData::CreateDigitaloceanCluster {

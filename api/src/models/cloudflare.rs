@@ -48,11 +48,16 @@ pub mod deployment {
 	}
 
 	#[derive(Debug, Serialize, Deserialize)]
+	#[serde(rename_all = "camelCase")]
 	pub enum Value {
 		Created,
 		Stopped,
 		Deleted,
-		Running { region_id: Uuid, ports: Vec<u16> },
+		#[serde(rename_all = "camelCase")]
+		Running {
+			region_id: Uuid,
+			ports: Vec<u16>,
+		},
 	}
 }
 
@@ -71,10 +76,35 @@ pub mod static_site {
 	}
 
 	#[derive(Debug, Serialize, Deserialize)]
+	#[serde(rename_all = "camelCase")]
 	pub enum Value {
 		Created,
 		Stopped,
 		Deleted,
-		Running { upload_id: Uuid },
+		#[serde(rename_all = "camelCase")]
+		Running {
+			upload_id: Uuid,
+		},
+	}
+}
+
+pub mod region {
+	use std::fmt::Display;
+
+	use api_models::utils::Uuid;
+	use serde::{Deserialize, Serialize};
+
+	pub struct Key(pub Uuid);
+
+	impl Display for Key {
+		fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+			write!(f, "{}", self.0)
+		}
+	}
+
+	#[derive(Debug, Serialize, Deserialize)]
+	#[serde(rename_all = "camelCase")]
+	pub struct Value {
+		pub host: String,
 	}
 }
