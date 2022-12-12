@@ -193,9 +193,9 @@ pub(super) async fn process_request(
 			db::mark_deployment_region_as_ready(
 				connection,
 				&region_id,
-				&serde_json::to_value(
-					&serde_yaml::from_str::<Kubeconfig>(&kube_config)?
-				)?
+				&serde_json::to_value(&serde_yaml::from_str::<Kubeconfig>(
+					&kube_config,
+				)?)?,
 			)
 			.await?;
 
@@ -254,13 +254,6 @@ pub(super) async fn process_request(
 					return Ok(());
 				}
 			};
-
-			db::update_kube_config_for_do_region(
-				connection,
-				&region_id,
-				&kube_config,
-			)
-			.await?;
 
 			// TODO - to be only called once we get the kube_config
 			// initialize the cluster with patr script
