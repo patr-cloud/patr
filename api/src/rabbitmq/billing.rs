@@ -288,7 +288,6 @@ pub(super) async fn process_request(
 					// If `amount_due` is 0, definitely the card amount is 0
 					card_amount_to_be_charged_in_cents,
 					credits_remaining_in_cents,
-					false,
 				)
 				.await?;
 				return Ok(());
@@ -417,7 +416,6 @@ pub(super) async fn process_request(
 							// is 0
 							card_amount_to_be_charged_in_cents,
 							credits_remaining_in_cents,
-							true,
 						)
 						.await?;
 
@@ -579,7 +577,6 @@ pub(super) async fn process_request(
 					total_charge,
 					0,
 					0,
-					false,
 				)
 				.await?;
 

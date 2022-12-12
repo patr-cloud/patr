@@ -452,13 +452,12 @@ pub async fn send_payment_success_invoice_email(
 	credits_deducted: u64,
 	card_amount_deducted: u64,
 	credits_remaining: u64,
-	is_charged: bool,
 ) -> Result<(), Error> {
 	send_email(
 		PaymentSuccessInvoiceEmail {
 			username,
 			workspace_name,
-			bill_breakdown,
+			bill_breakdown: bill_breakdown.clone(),
 			billing_address,
 			credits_deducted,
 			card_amount_deducted,
@@ -466,7 +465,7 @@ pub async fn send_payment_success_invoice_email(
 		},
 		email,
 		None,
-		if is_charged {
+		if bill_breakdown.total_charge > 0 {
 			"Patr payment successful"
 		} else {
 			"Patr invoice"
