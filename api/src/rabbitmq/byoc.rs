@@ -347,6 +347,8 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
+			service::update_cloudflare_kv_for_region(&region_id, &ip_addr.to_string(), config).await?;
+
 				return Ok(());
 			}
 
