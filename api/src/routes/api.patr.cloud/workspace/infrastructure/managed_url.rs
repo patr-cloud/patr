@@ -279,12 +279,14 @@ async fn list_all_managed_urls(
 				}
 				DbManagedUrlType::ProxyUrl => ManagedUrlType::ProxyUrl {
 					url: url.url?,
-					http_only: url.http_only,
+					http_only: url.http_only.unwrap_or_default(),
 				},
 				DbManagedUrlType::Redirect => ManagedUrlType::Redirect {
 					url: url.url?,
-					permanent_redirect: url.permanent_redirect,
-					http_only: url.http_only,
+					permanent_redirect: url
+						.permanent_redirect
+						.unwrap_or_default(),
+					http_only: url.http_only.unwrap_or_default(),
 				},
 			},
 			is_configured: url.is_configured,

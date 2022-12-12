@@ -24,8 +24,8 @@ pub struct ManagedUrl {
 	pub url: Option<String>,
 	pub workspace_id: Uuid,
 	pub is_configured: bool,
-	pub permanent_redirect: bool,
-	pub http_only: bool,
+	pub permanent_redirect: Option<bool>,
+	pub http_only: Option<bool>,
 }
 
 pub async fn initialize_managed_url_pre(
@@ -56,8 +56,8 @@ pub async fn initialize_managed_url_pre(
 				),
 			domain_id UUID NOT NULL,
 			path TEXT NOT NULL,
-			permanent_redirect BOOLEAN NOT NULL,
-			http_only BOOLEAN NOT NULL,
+			permanent_redirect BOOLEAN,
+			http_only BOOLEAN,
 			url_type MANAGED_URL_TYPE NOT NULL,
 			deployment_id UUID,
 			port INTEGER CONSTRAINT managed_url_chk_port_u16 CHECK(
@@ -174,8 +174,8 @@ pub async fn get_all_managed_urls_in_workspace(
 			url,
 			workspace_id as "workspace_id: _",
 			is_configured,
-			permanent_redirect,
-			http_only
+			permanent_redirect as "permanent_redirect: _",
+			http_only as "http_only: _"
 		FROM
 			managed_url
 		WHERE
@@ -207,8 +207,8 @@ pub async fn get_all_managed_urls_for_domain(
 			url,
 			workspace_id as "workspace_id: _",
 			is_configured,
-			permanent_redirect,
-			http_only
+			permanent_redirect as "permanent_redirect: _",
+			http_only as "http_only: _"
 		FROM
 			managed_url
 		WHERE
@@ -239,8 +239,8 @@ pub async fn get_all_unconfigured_managed_urls(
 			url,
 			workspace_id as "workspace_id: _",
 			is_configured,
-			permanent_redirect,
-			http_only
+			permanent_redirect as "permanent_redirect: _",
+			http_only as "http_only: _"
 		FROM
 			managed_url
 		WHERE
@@ -265,8 +265,8 @@ pub async fn create_new_managed_url_in_workspace(
 	url: Option<&str>,
 	workspace_id: &Uuid,
 	is_configured: bool,
-	permanent_redirect: bool,
-	http_only: bool,
+	permanent_redirect: Option<bool>,
+	http_only: Option<bool>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -341,8 +341,8 @@ pub async fn get_managed_url_by_id(
 			url,
 			workspace_id as "workspace_id: _",
 			is_configured,
-			permanent_redirect,
-			http_only
+			permanent_redirect as "permanent_redirect: _",
+			http_only as "http_only: _"
 		FROM
 			managed_url
 		WHERE

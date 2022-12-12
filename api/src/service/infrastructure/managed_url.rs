@@ -81,8 +81,8 @@ pub async fn create_new_managed_url_in_workspace(
 				None,
 				workspace_id,
 				false,
-				false,
-				false,
+				None,
+				None,
 			)
 			.await?;
 		}
@@ -104,8 +104,8 @@ pub async fn create_new_managed_url_in_workspace(
 				None,
 				workspace_id,
 				false,
-				false,
-				false,
+				None,
+				None,
 			)
 			.await?;
 		}
@@ -127,8 +127,8 @@ pub async fn create_new_managed_url_in_workspace(
 				Some(url),
 				workspace_id,
 				false,
-				false,
-				*http_only,
+				None,
+				Some(*http_only),
 			)
 			.await?;
 		}
@@ -154,8 +154,8 @@ pub async fn create_new_managed_url_in_workspace(
 				Some(url),
 				workspace_id,
 				false,
-				*permanent_redirect,
-				*http_only,
+				Some(*permanent_redirect),
+				Some(*http_only),
 			)
 			.await?;
 		}

@@ -19,8 +19,8 @@ pub(super) async fn managed_url_redirects(
 	query!(
 		r#"
 		ALTER TABLE managed_url
-		ADD COLUMN permanent_redirect BOOLEAN NOT NULL,
-		ADD COLUMN http_only BOOLEAN NOT NULL;
+		ADD COLUMN permanent_redirect BOOLEAN,
+		ADD COLUMN http_only BOOLEAN;
 		"#
 	)
 	.execute(&mut *connection)
