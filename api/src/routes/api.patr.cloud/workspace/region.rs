@@ -275,6 +275,9 @@ async fn add_region(
 				&request_id,
 			)
 			.await?;
+
+			// TODO - send the appropriate email for success/failure of the
+			// region
 		}
 		AddRegionToWorkspaceData::KubeConfig { config_file } => {
 			let kube_config =
@@ -286,7 +289,6 @@ async fn add_region(
 				&name,
 				&InfrastructureCloudProvider::Other,
 				&workspace_id,
-				&kube_config,
 			)
 			.await?;
 
