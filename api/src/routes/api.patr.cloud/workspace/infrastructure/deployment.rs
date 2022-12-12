@@ -1668,7 +1668,7 @@ async fn update_deployment(
 		deployment_id
 	);
 	let UpdateDeploymentRequest {
-		workspace_id: _,
+		workspace_id,
 		deployment_id: _,
 		name,
 		machine_type,
@@ -1725,6 +1725,7 @@ async fn update_deployment(
 
 	service::update_deployment(
 		context.get_database_connection(),
+		&workspace_id,
 		&deployment_id,
 		name,
 		machine_type.as_ref(),
