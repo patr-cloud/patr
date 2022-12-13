@@ -661,7 +661,7 @@ pub async fn send_bill_paid_using_credits_email(
 		},
 		email,
 		None,
-		"Patr credits added successfully",
+		"Patr payment successful",
 	)
 	.await
 }
