@@ -45,11 +45,11 @@ pub fn create_sub_app(
 		"/sign-in",
 		[EveMiddleware::CustomFunction(pin_fn!(sign_in))],
 	);
-	app.post(
+	sub_app.post(
 		"/verify-recaptcha",
 		[EveMiddleware::CustomFunction(pin_fn!(verify_recaptcha))],
 	);
-	app.post(
+	sub_app.post(
 		"/sign-up",
 		[EveMiddleware::CustomFunction(pin_fn!(sign_up))],
 	);
