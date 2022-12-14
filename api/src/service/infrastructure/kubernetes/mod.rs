@@ -1,4 +1,3 @@
-mod certificate;
 mod ci;
 mod deployment;
 mod managed_url;
@@ -18,7 +17,7 @@ use kube::{
 		NamedCluster,
 		NamedContext,
 	},
-	core::{ApiResource, DynamicObject, ErrorResponse},
+	core::{ErrorResponse},
 	Api,
 	Config,
 	Error as KubeError,
@@ -26,7 +25,6 @@ use kube::{
 use url::Host;
 
 pub use self::{
-	certificate::*,
 	ci::*,
 	deployment::*,
 	managed_url::*,
@@ -95,33 +93,6 @@ async fn get_kubernetes_config(
 	let client = kube::Client::try_from(config)?;
 
 	Ok(client)
-}
-
-async fn certificate_exists(
-	certificate_name: &str,
-	kubernetes_client: kube::Client,
-	namespace: &str,
-) -> Result<bool, KubeError> {
-	let certificate_resource = ApiResource {
-		group: "cert-manager.io".to_string(),
-		version: "v1".to_string(),
-		api_version: "cert-manager.io/v1".to_string(),
-		kind: "certificate".to_string(),
-		plural: "certificates".to_string(),
-	};
-
-	let certificate = Api::<DynamicObject>::namespaced_with(
-		kubernetes_client,
-		namespace,
-		&certificate_resource,
-	)
-	.get(certificate_name)
-	.await;
-	match certificate {
-		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),
-		Err(err) => Err(err),
-		Ok(_) => Ok(true),
-	}
 }
 
 async fn secret_exists(

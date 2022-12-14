@@ -35,7 +35,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		cloudflare,
+		cloudflare::{self, deployment::Status},
 		deployment::{Logs, PrometheusResponse, MACHINE_TYPES},
 		rbac::{self, permissions},
 		DeploymentMetadata,
@@ -1598,13 +1598,15 @@ pub async fn start_deployment(
 
 	service::update_cloudflare_kv_for_deployment(
 		deployment_id,
-		cloudflare::deployment::Value::Running {
+		cloudflare::deployment::Value {
 			region_id: deployment.region.clone(),
-			ports: deployment_running_details
-				.ports
-				.iter()
-				.map(|(port, _type)| port.value())
-				.collect(),
+			status: cloudflare::deployment::Status::Running {
+				ports: deployment_running_details
+					.ports
+					.iter()
+					.map(|(port, _type)| port.value())
+					.collect(),
+			},
 		},
 		config,
 	)
@@ -1762,7 +1764,7 @@ pub async fn stop_deployment(
 	)
 	.await?;
 
-	service::delete_kubernetes_deployment(
+	service::stop_kubernetes_deployment(
 		workspace_id,
 		deployment_id,
 		kube_config_details.kube_config,
@@ -1772,7 +1774,10 @@ pub async fn stop_deployment(
 
 	service::update_cloudflare_kv_for_deployment(
 		deployment_id,
-		cloudflare::deployment::Value::Stopped,
+		cloudflare::deployment::Value {
+			region_id: region_id.to_owned(),
+			status: Status::Stopped,
+		},
 		config,
 	)
 	.await?;
@@ -1870,7 +1875,10 @@ pub async fn delete_deployment(
 
 	service::update_cloudflare_kv_for_deployment(
 		deployment_id,
-		cloudflare::deployment::Value::Deleted,
+		cloudflare::deployment::Value {
+			region_id: region_id.to_owned(),
+			status: Status::Deleted,
+		},
 		config,
 	)
 	.await?;

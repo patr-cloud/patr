@@ -1,10 +1,4 @@
-use api_models::{
-	models::workspace::infrastructure::managed_urls::{
-		ManagedUrl,
-		ManagedUrlType,
-	},
-	utils::Uuid,
-};
+use api_models::{self, utils::Uuid};
 use chrono::Utc;
 use cloudflare::{
 	endpoints::zone::{self, Status},
@@ -14,7 +8,7 @@ use eve_rs::AsError;
 use sqlx::Connection;
 
 use crate::{
-	db::{self, ManagedUrlType as DbManagedUrlType},
+	db,
 	error,
 	scheduler::Job,
 	service,
@@ -28,15 +22,6 @@ pub(super) fn verify_unverified_domains_job() -> Job {
 		String::from("Verify unverified domains"),
 		"0 0 1/2 * * *".parse().unwrap(),
 		|| Box::pin(verify_unverified_domains()),
-	)
-}
-
-// Every 15 mins
-pub(super) fn repatch_all_managed_urls_job() -> Job {
-	Job::new(
-		String::from("Repatch all managed URLs"),
-		"0 0/15 * * * *".parse().unwrap(),
-		|| Box::pin(repatch_all_managed_urls()),
 	)
 }
 
@@ -154,19 +139,6 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 				}
 			};
 			if zone_active {
-				service::create_certificates(
-					&workspace_id,
-					&format!("certificate-{}", unverified_domain.id),
-					&format!("tls-{}", unverified_domain.id),
-					vec![
-						format!("*.{}", unverified_domain.name),
-						unverified_domain.name.clone(),
-					],
-					true,
-					&settings,
-					&request_id,
-				)
-				.await?;
 				// Domain is now verified
 				db::update_workspace_domain_status(
 					&mut connection,
@@ -254,7 +226,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 			)
 			.await?;
 			if verified {
-				// domain in initially unverified
+				// domain is initially unverified
 				// now it got verified
 				db::update_workspace_domain_status(
 					&mut connection,
@@ -295,36 +267,17 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					} else {
 						continue;
 					}
-				} else {
-					let domain_created =
-						Utc::now().signed_duration_since(domain_created_time);
-					let domain_created_days = domain_created.num_days() as u64;
-					if domain_created_days > 15 {
-						delete_unverified_domain(
-							&mut connection,
-							&workspace_id,
-							&unverified_domain.id,
-							false,
-							&settings,
-							&request_id,
-						)
-						.await?;
-					} else if domain_created_days > 12 &&
-						domain_created_days <= 15
-					{
-						service::send_domain_verify_reminder_email(
-							&mut connection,
-							&workspace_id,
-							&unverified_domain.name,
-							true,
-							&unverified_domain.id,
-							15 - domain_created_days,
-						)
-						.await?
-					}
-					{
-						continue;
-					}
+					// Delete the domain
+					service::delete_domain_in_workspace(
+						&mut connection,
+						&workspace_id,
+						&unverified_domain.id,
+						&settings,
+						&request_id,
+					)
+					.await?;
+
+					// todo: need to send an email when deleting domain resource
 				}
 				// todo: need to send an email when deleting domain resource
 				connection.commit().await?;

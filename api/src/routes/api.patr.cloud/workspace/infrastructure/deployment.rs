@@ -47,7 +47,7 @@ use crate::{
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
 	models::{
-		cloudflare::deployment,
+		cloudflare::deployment::{self, Status},
 		rbac::{self, permissions},
 		DeploymentMetadata,
 		ResourceType,
@@ -926,7 +926,10 @@ async fn create_deployment(
 
 	service::update_cloudflare_kv_for_deployment(
 		&id,
-		deployment::Value::Created,
+		deployment::Value {
+			region_id: region.to_owned(),
+			status: Status::Created,
+		},
 		&config,
 	)
 	.await?;

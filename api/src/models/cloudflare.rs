@@ -49,15 +49,21 @@ pub mod deployment {
 
 	#[derive(Debug, Serialize, Deserialize)]
 	#[serde(rename_all = "camelCase")]
-	pub enum Value {
+	pub enum Status {
 		Created,
 		Stopped,
 		Deleted,
 		#[serde(rename_all = "camelCase")]
 		Running {
-			region_id: Uuid,
 			ports: Vec<u16>,
 		},
+	}
+
+	#[derive(Debug, Serialize, Deserialize)]
+	#[serde(rename_all = "camelCase")]
+	pub struct Value {
+		pub region_id: Uuid,
+		pub status: Status,
 	}
 }
 

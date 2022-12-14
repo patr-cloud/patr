@@ -84,7 +84,6 @@ use crate::{
 	service::{
 		self,
 		ext_traits::DeleteOpt,
-		get_kubernetes_config_for_default_region,
 		ClusterType,
 		KubernetesConfigDetails,
 	},
@@ -617,95 +616,28 @@ pub async fn update_kubernetes_deployment(
 			namespace,
 		);
 
-		hpa_api
-			.patch(
-				&format!("hpa-{}", deployment.id),
-				&PatchParams::apply(&format!("hpa-{}", deployment.id)),
-				&Patch::Apply(kubernetes_hpa),
-			)
-			.await?;
-	} else {
-		let kubernetes_sts = StatefulSet {
-			metadata,
-			spec: Some(StatefulSetSpec {
-				replicas,
-				selector,
-				service_name: format!("service-{}", deployment.id),
-				template,
-				update_strategy: Some(StatefulSetUpdateStrategy {
-					type_: Some("RollingUpdate".to_owned()),
-					..StatefulSetUpdateStrategy::default()
-				}),
-				volume_claim_templates: Some(pvc),
-				..StatefulSetSpec::default()
-			}),
-			..StatefulSet::default()
-		};
-
-		// Create the statefulset defined above
-		log::trace!("request_id: {} - creating statefulset", request_id);
-		let sts_api = Api::<StatefulSet>::namespaced(
-			kubernetes_client.clone(),
-			namespace,
-		);
-
-		sts_api
-			.patch(
-				&format!("sts-{}", deployment.id),
-				&PatchParams::apply(&format!("sts-{}", deployment.id)),
-				&Patch::Apply(kubernetes_sts),
-			)
-			.await?;
-
-		// This is because if a user wanted to add the volume to there
-		// deployment then a deployment will be converted to sts
-		log::trace!(
-			"request_id: {} - deleting the deployment set if there are any",
-			request_id
-		);
-
-		Api::<K8sDeployment>::namespaced(
-			kubernetes_client.clone(),
-			workspace_id.as_str(),
-		)
-		.delete_opt(
-			&format!("deployment-{}", deployment.id),
-			&DeleteParams::default(),
+	hpa_api
+		.patch(
+			&format!("hpa-{}", deployment.id),
+			&PatchParams::apply(&format!("hpa-{}", deployment.id)),
+			&Patch::Apply(kubernetes_hpa),
 		)
 		.await?;
 
-		// Delete the HPA, if any
-		log::trace!(
-			"request_id: {} - deleting horizontal pod autoscalar",
-			request_id
-		);
-		let hpa_api = Api::<HorizontalPodAutoscaler>::namespaced(
-			kubernetes_client.clone(),
-			namespace,
-		);
-
-		hpa_api
-			.delete_opt(
-				&format!("hpa-{}", deployment.id),
-				&DeleteParams::default(),
-			)
-			.await?;
-	}
-
-	let annotations = [
-		(
+	let annotations = std::iter::once((
 			"kubernetes.io/ingress.class".to_string(),
 			"nginx".to_string(),
-		),
-		(
-			"cert-manager.io/cluster-issuer".to_string(),
-			config.kubernetes.cert_issuer_dns.clone(),
-		),
-	]
-	.into_iter()
-	.collect::<BTreeMap<_, _>>();
+		))
+		.chain(match &kubeconfig.cluster_type {
+			ClusterType::PatrOwned => None,
+			ClusterType::UserOwned { .. } => Some((
+				"cert-manager.io/cluster-issuer".to_string(),
+				config.kubernetes.cert_issuer_http.clone(),
+			)),
+		})
+	.collect();
 
-	let (default_ingress_rules, default_tls_rules) = running_details
+	let (ingress_rules, tls_rules) = running_details
 		.ports
 		.iter()
 		.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
@@ -733,12 +665,24 @@ pub async fn update_kubernetes_deployment(
 						}],
 					}),
 				},
-				IngressTLS {
-					hosts: Some(vec![
-						"*.patr.cloud".to_string(),
-						"patr.cloud".to_string(),
-					]),
-					secret_name: None,
+				match &kubeconfig.cluster_type {
+					ClusterType::PatrOwned => IngressTLS {
+						hosts: Some(vec![
+							"*.patr.cloud".to_string(),
+							"patr.cloud".to_string(),
+						]),
+						secret_name: None,
+					},
+					ClusterType::UserOwned { .. } => IngressTLS {
+						hosts: Some(vec![format!(
+							"{}-{}.patr.cloud",
+							port, deployment.id
+						)]),
+						secret_name: Some(format!(
+							"cert-{}-{}",
+							port, deployment.id
+						)),
+					},
 				},
 			)
 		})
@@ -747,12 +691,12 @@ pub async fn update_kubernetes_deployment(
 	let kubernetes_ingress = Ingress {
 		metadata: ObjectMeta {
 			name: Some(format!("ingress-{}", deployment.id)),
-			annotations: Some(annotations.clone()),
+			annotations: Some(annotations),
 			..ObjectMeta::default()
 		},
 		spec: Some(IngressSpec {
-			rules: Some(default_ingress_rules),
-			tls: Some(default_tls_rules.clone()),
+			rules: Some(ingress_rules),
+			tls: Some(tls_rules),
 			..IngressSpec::default()
 		}),
 		..Ingress::default()
@@ -770,100 +714,6 @@ pub async fn update_kubernetes_deployment(
 			&Patch::Apply(kubernetes_ingress),
 		)
 		.await?;
-
-	if let ClusterType::UserOwned {
-		region_id,
-		ingress_hostname: _,
-	} = cluster_type
-	{
-		// create a ingress in patr cluster to point to user's cluster
-		let default_region_kubeconfig =
-			get_kubernetes_config_for_default_region(config);
-		let kubernetes_client =
-			super::get_kubernetes_client(default_region_kubeconfig.kube_config)
-				.await?;
-
-		let exposted_ports = running_details
-			.ports
-			.iter()
-			.filter(|(_, port_type)| *port_type == &ExposedPortType::Http);
-
-		for (port, _) in exposted_ports {
-			let ingress_rule = IngressRule {
-				host: Some(format!("{}-{}.patr.cloud", port, deployment.id)),
-				http: Some(HTTPIngressRuleValue {
-					paths: vec![HTTPIngressPath {
-						backend: IngressBackend {
-							service: Some(IngressServiceBackend {
-								name: format!("service-{}", region_id.as_str()),
-								port: Some(ServiceBackendPort {
-									number: Some(80),
-									..ServiceBackendPort::default()
-								}),
-							}),
-							..Default::default()
-						},
-						path: Some("/".to_string()),
-						path_type: "Prefix".to_string(),
-					}],
-				}),
-			};
-
-			let annotations = [
-				(
-					"kubernetes.io/ingress.class".to_string(),
-					"nginx".to_string(),
-				),
-				(
-					String::from("nginx.ingress.kubernetes.io/upstream-vhost"),
-					format!("{}-{}.patr.cloud", port, deployment.id),
-				),
-				(
-					String::from(
-						"nginx.ingress.kubernetes.io/backend-protocol",
-					),
-					"HTTP".to_string(),
-				),
-				// TODO: add cert manager annotations,
-				// once ssl certificate is used in customers cluster
-			]
-			.into_iter()
-			.collect();
-
-			let kubernetes_ingress = Ingress {
-				metadata: ObjectMeta {
-					name: Some(format!("ingress-{}", deployment.id)),
-					annotations: Some(annotations),
-					..ObjectMeta::default()
-				},
-				spec: Some(IngressSpec {
-					rules: Some(vec![ingress_rule]),
-					tls: Some(vec![IngressTLS {
-						hosts: Some(vec![
-							"*.patr.cloud".to_string(),
-							"patr.cloud".to_string(),
-						]),
-						secret_name: None,
-					}]),
-					..IngressSpec::default()
-				}),
-				..Ingress::default()
-			};
-
-			let ingress_api = Api::<Ingress>::namespaced(
-				kubernetes_client.clone(),
-				namespace,
-			);
-
-			ingress_api
-				.patch(
-					&format!("ingress-{}", deployment.id),
-					&PatchParams::apply(&format!("ingress-{}", deployment.id)),
-					&Patch::Apply(kubernetes_ingress),
-				)
-				.await?;
-		}
-	}
 
 	log::trace!("request_id: {} - deployment created", request_id);
 
@@ -922,6 +772,7 @@ pub async fn delete_kubernetes_deployment(
 	.await?;
 
 	log::trace!("request_id: {} - deleting the service", request_id);
+
 	Api::<Service>::namespaced(
 		kubernetes_client.clone(),
 		workspace_id.as_str(),
@@ -954,6 +805,103 @@ pub async fn delete_kubernetes_deployment(
 		request_id
 	);
 
+	Ok(kubernetes_client)
+}
+
+// If deployment is stopped, ingress cert will not be deleted as it may take
+// time to regenerate
+pub async fn stop_kubernetes_deployment(
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	kubeconfig: KubernetesConfigDetails,
+	request_id: &Uuid,
+) -> Result<kube::Client, Error> {
+	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
+
+	Api::<K8sDeployment>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.delete_opt(
+		&format!("deployment-{}", deployment_id),
+		&DeleteParams::default(),
+	)
+	.await?;
+
+	log::trace!("request_id: {} - deleting the stateful set", request_id);
+
+	Api::<StatefulSet>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.delete_opt(&format!("sts-{}", deployment_id), &DeleteParams::default())
+	.await?;
+
+	log::trace!("request_id: {} - deleting the config map", request_id);
+
+	Api::<ConfigMap>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.delete_opt(
+		&format!("config-mount-{}", deployment_id),
+		&DeleteParams::default(),
+	)
+	.await?;
+
+	log::trace!("request_id: {} - deleting the service", request_id);
+
+	Api::<Service>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.delete_opt(
+		&format!("service-{}", deployment_id),
+		&DeleteParams::default(),
+	)
+	.await?;
+
+	log::trace!("request_id: {} - deleting the hpa", request_id);
+
+	Api::<HorizontalPodAutoscaler>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.delete_opt(&format!("hpa-{}", deployment_id), &DeleteParams::default())
+	.await?;
+
+	log::info!(
+		"request_id: {} - successfully stopped deployment",
+		request_id
+	);
+
+	Ok(kubernetes_client)
+}
+
+pub async fn delete_kubernetes_volume(
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	volume: &DeploymentVolume,
+	replica_index: u16,
+	kubeconfig: KubernetesConfigDetails,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let kubernetes_client =
+		super::get_kubernetes_client(kubeconfig.kube_config).await?;
+
+	log::trace!("request_id: {} - deleting the pvc", request_id);
+	Api::<PersistentVolumeClaim>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.delete_opt(
+		&format!(
+			"pvc-{}-sts-{}-{}",
+			volume.volume_id, deployment_id, replica_index
+		),
+		&DeleteParams::default(),
+	)
+	.await?;
 	Ok(())
 }
 

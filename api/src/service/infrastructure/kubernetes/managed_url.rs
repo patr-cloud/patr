@@ -1,29 +1,15 @@
-use std::ops::DerefMut;
-
-use api_models::{
-	models::workspace::infrastructure::managed_urls::{
-		ManagedUrl,
-		ManagedUrlType,
-	},
-	utils::Uuid,
-};
+use api_models::utils::Uuid;
 use eve_rs::AsError;
-use k8s_openapi::{
-	api::{
-		core::v1::{Service, ServicePort, ServiceSpec},
-		networking::v1::{
-			HTTPIngressPath,
-			HTTPIngressRuleValue,
-			Ingress,
-			IngressBackend,
-			IngressRule,
-			IngressServiceBackend,
-			IngressSpec,
-			IngressTLS,
-			ServiceBackendPort,
-		},
-	},
-	apimachinery::pkg::util::intstr::IntOrString,
+use k8s_openapi::api::networking::v1::{
+	HTTPIngressPath,
+	HTTPIngressRuleValue,
+	Ingress,
+	IngressBackend,
+	IngressRule,
+	IngressServiceBackend,
+	IngressSpec,
+	IngressTLS,
+	ServiceBackendPort,
 };
 use kube::{
 	self,
@@ -34,404 +20,120 @@ use kube::{
 use kubernetes::ext_traits::DeleteOpt;
 
 use crate::{
-	db,
 	error,
-	service::{self, infrastructure::kubernetes},
+	service::{infrastructure::kubernetes, KubernetesConfigDetails},
 	utils::{settings::Settings, Error},
 };
 
 pub async fn update_kubernetes_managed_url(
 	workspace_id: &Uuid,
-	managed_url: &ManagedUrl,
+	domain_id: &Uuid,
+	sub_domain: &str,
+	domain_name: &str,
+	urls: Vec<(String, Uuid, i32)>,
+	kubeconfig: KubernetesConfigDetails,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let kubernetes_client =
+		super::get_kubernetes_client(kubeconfig.auth_details).await?;
 
 	let namespace = workspace_id.as_str();
+	let (cert_name, cert_host, ingress_name) = if sub_domain == "@" {
+		(
+			format!("cert-{}", domain_id),
+			domain_name.to_owned(),
+			format!("ingress-{}", domain_id),
+		)
+	} else {
+		(
+			format!("cert-{}-{}", sub_domain, domain_id),
+			format!("{}.{}", sub_domain, domain_name),
+			format!("ingress-{}-{}", sub_domain, domain_id),
+		)
+	};
+
+	if urls.is_empty() {
+		// no ingress rule is present for this host,
+		// so delete the ingress itself
+		log::trace!(
+			"request_id: {} - no ingress rules present, so deleting {}",
+			request_id,
+			ingress_name
+		);
+
+		Api::<Ingress>::namespaced(kubernetes_client, namespace)
+			.delete_opt(&ingress_name, &DeleteParams::default())
+			.await?;
+
+		return Ok(());
+	}
+
 	log::trace!(
 		"request_id: {} - generating managed url configuration",
 		request_id
 	);
 
-	let domain = db::get_workspace_domain_by_id(
-		service::get_app().database.acquire().await?.deref_mut(),
-		&managed_url.domain_id,
-	)
-	.await?
-	.status(500)?;
-
-	let secret_name = if domain.is_ns_internal() {
-		format!("tls-{}", domain.id)
-	} else {
-		format!("tls-{}-{}", managed_url.sub_domain, managed_url.id)
-	};
-
-	let secret_exists = kubernetes::secret_exists(
-		&secret_name,
-		kubernetes_client.clone(),
-		namespace,
-	)
-	.await?;
-
-	let host = if managed_url.sub_domain == "@" {
-		domain.name.clone()
-	} else {
-		format!("{}.{}", managed_url.sub_domain, domain.name)
-	};
-
-	let (ingress, annotations) = match &managed_url.url_type {
-		ManagedUrlType::ProxyDeployment {
-			deployment_id,
-			port,
-		} => (
-			IngressRule {
-				host: Some(host.clone()),
-				http: Some(HTTPIngressRuleValue {
-					paths: vec![HTTPIngressPath {
-						backend: IngressBackend {
-							service: Some(IngressServiceBackend {
-								name: format!("service-{}", deployment_id),
-								port: Some(ServiceBackendPort {
-									number: Some(*port as i32),
-									..ServiceBackendPort::default()
-								}),
-							}),
-							..Default::default()
-						},
-						path: Some(managed_url.path.to_string()),
-						path_type: "Prefix".to_string(),
-					}],
-				}),
-			},
-			[
-				(
-					"kubernetes.io/ingress.class".to_string(),
-					"nginx".to_string(),
-				),
-				(
-					"nginx.ingress.kubernetes.io/upstream-vhost".to_string(),
-					host.clone(),
-				),
-				(
-					"cert-manager.io/cluster-issuer".to_string(),
-					if domain.is_ns_internal() {
-						config.kubernetes.cert_issuer_dns.clone()
-					} else {
-						config.kubernetes.cert_issuer_http.clone()
-					},
-				),
-			]
-			.into_iter()
-			.collect(),
+	let annotations = [
+		(
+			"kubernetes.io/ingress.class".to_string(),
+			"nginx".to_string(),
 		),
-		ManagedUrlType::ProxyStaticSite { static_site_id } => {
-			let static_site = db::get_static_site_by_id(
-				service::get_app().database.acquire().await?.deref_mut(),
-				static_site_id,
-			)
-			.await?
-			.status(500)?;
-			(
-				IngressRule {
-					host: Some(host.clone()),
-					http: Some(HTTPIngressRuleValue {
-						paths: vec![HTTPIngressPath {
-							backend: IngressBackend {
-								service: Some(IngressServiceBackend {
-									name: format!("service-{}", static_site_id),
-									port: Some(ServiceBackendPort {
-										number: Some(80),
-										..ServiceBackendPort::default()
-									}),
-								}),
-								..Default::default()
-							},
-							path: Some(managed_url.path.to_string()),
-							path_type: "Prefix".to_string(),
-						}],
-					}),
-				},
-				[
-					(
-						"kubernetes.io/ingress.class".to_string(),
-						"nginx".to_string(),
-					),
-					(
-						"nginx.ingress.kubernetes.io/upstream-vhost"
-							.to_string(),
-						if let Some(upload_id) = static_site.current_live_upload
-						{
-							format!(
-								"{}-{}.patr.cloud",
-								upload_id, static_site_id
-							)
-						} else {
-							format!("{}.patr.cloud", static_site_id)
-						},
-					),
-					(
-						"cert-manager.io/cluster-issuer".to_string(),
-						if domain.is_ns_internal() {
-							config.kubernetes.cert_issuer_dns.clone()
-						} else {
-							config.kubernetes.cert_issuer_http.clone()
-						},
-					),
-				]
-				.into_iter()
-				.collect(),
-			)
-		}
-		ManagedUrlType::ProxyUrl { url, http_only } => {
-			let kubernetes_service = Service {
-				metadata: ObjectMeta {
-					name: Some(format!("service-{}", managed_url.id)),
-					..ObjectMeta::default()
-				},
-				spec: Some(ServiceSpec {
-					type_: Some("ExternalName".to_string()),
-					external_name: Some(url.clone()),
-					ports: Some(vec![ServicePort {
-						name: Some(
-							if *http_only {
-								"http".to_string()
-							} else {
-								"https".to_string()
-							},
-						),
-						port: if *http_only { 80 } else { 443 },
-						protocol: Some("TCP".to_string()),
-						target_port: Some(IntOrString::Int(
-							if *http_only { 80 } else { 443 },
-						)),
-						..ServicePort::default()
-					}]),
-					..ServiceSpec::default()
-				}),
-				..Service::default()
-			};
-			// Create the service defined above
-			log::trace!(
-				"request_id: {} - creating ExternalName service",
-				request_id
-			);
-			let service_api: Api<Service> =
-				Api::namespaced(kubernetes_client.clone(), namespace);
-			service_api
-				.patch(
-					&format!("service-{}", managed_url.id),
-					&PatchParams::apply(&format!("service-{}", managed_url.id)),
-					&Patch::Apply(kubernetes_service),
-				)
-				.await?
-				.status
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string())?;
+		(
+			"cert-manager.io/cluster-issuer".to_string(),
+			config.kubernetes.cert_issuer_http.clone(),
+		),
+	]
+	.into_iter()
+	.collect();
 
-			(
-				IngressRule {
-					host: Some(host.clone()),
-					http: Some(HTTPIngressRuleValue {
-						paths: vec![HTTPIngressPath {
-							backend: IngressBackend {
-								service: Some(IngressServiceBackend {
-									name: format!("service-{}", managed_url.id),
-									port: Some(ServiceBackendPort {
-										number: Some(
-											if *http_only { 80 } else { 443 },
-										),
-										..ServiceBackendPort::default()
-									}),
-								}),
-								..Default::default()
-							},
-							path: Some(managed_url.path.to_string()),
-							path_type: "Prefix".to_string(),
-						}],
-					}),
-				},
-				[
-					(
-						"kubernetes.io/ingress.class".to_string(),
-						"nginx".to_string(),
-					),
-					(
-						String::from(
-							"nginx.ingress.kubernetes.io/upstream-vhost",
-						),
-						url.clone(),
-					),
-					(
-						String::from(
-							"nginx.ingress.kubernetes.io/backend-protocol",
-						),
-						if *http_only {
-							"HTTP".to_string()
-						} else {
-							"HTTPS".to_string()
-						},
-					),
-					(
-						"cert-manager.io/cluster-issuer".to_string(),
-						if domain.is_ns_internal() {
-							config.kubernetes.cert_issuer_dns.clone()
-						} else {
-							config.kubernetes.cert_issuer_http.clone()
-						},
-					),
-				]
-				.into_iter()
-				.collect(),
-			)
-		}
-		ManagedUrlType::Redirect {
-			url,
-			permanent_redirect,
-			http_only,
-		} => {
-			let kubernetes_service = Service {
-				metadata: ObjectMeta {
-					name: Some(format!("service-{}", managed_url.id)),
-					..ObjectMeta::default()
-				},
-				spec: Some(ServiceSpec {
-					type_: Some("ExternalName".to_string()),
-					external_name: Some(url.clone()),
-					ports: Some(vec![ServicePort {
-						name: Some(
-							if *http_only {
-								"http".to_string()
-							} else {
-								"https".to_string()
-							},
-						),
-						port: if *http_only { 80 } else { 443 },
-						protocol: Some("TCP".to_string()),
-						target_port: Some(IntOrString::Int(
-							if *http_only { 80 } else { 443 },
-						)),
-						..ServicePort::default()
-					}]),
-					..ServiceSpec::default()
-				}),
-				..Service::default()
-			};
-			// Create the service defined above
-			log::trace!(
-				"request_id: {} - creating ExternalName service",
-				request_id
-			);
-			let service_api = Api::<Service>::namespaced(
-				kubernetes_client.clone(),
-				namespace,
-			);
-			service_api
-				.patch(
-					&format!("service-{}", managed_url.id),
-					&PatchParams::apply(&format!("service-{}", managed_url.id)),
-					&Patch::Apply(kubernetes_service),
-				)
-				.await?
-				.status
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string())?;
-			(
-				IngressRule {
-					host: Some(host.clone()),
-					http: Some(HTTPIngressRuleValue {
-						paths: vec![HTTPIngressPath {
-							backend: IngressBackend {
-								service: Some(IngressServiceBackend {
-									name: format!("service-{}", managed_url.id),
-									port: Some(ServiceBackendPort {
-										number: Some(
-											if *http_only { 80 } else { 443 },
-										),
-										..ServiceBackendPort::default()
-									}),
-								}),
-								..Default::default()
-							},
-							path: Some(managed_url.path.to_string()),
-							path_type: "Prefix".to_string(),
-						}],
-					}),
-				},
-				[
-					(
-						"kubernetes.io/ingress.class".to_string(),
-						"nginx".to_string(),
-					),
-					if *permanent_redirect {
-						(
-							"nginx.ingress.kubernetes.io/permanent-redirect"
-								.to_string(),
-							if *http_only {
-								format!("http://{}", url)
-							} else {
-								format!("https://{}", url)
-							},
-						)
-					} else {
-						(
-							"nginx.ingress.kubernetes.io/temporal-redirect"
-								.to_string(),
-							if *http_only {
-								format!("http://{}", url)
-							} else {
-								format!("https://{}", url)
-							},
-						)
+	let ingress_rules = urls
+		.into_iter()
+		.map(|(path, deployment_id, port)| IngressRule {
+			host: Some(cert_host.clone()),
+			http: Some(HTTPIngressRuleValue {
+				paths: vec![HTTPIngressPath {
+					backend: IngressBackend {
+						service: Some(IngressServiceBackend {
+							name: format!("service-{}", deployment_id),
+							port: Some(ServiceBackendPort {
+								number: Some(port),
+								..ServiceBackendPort::default()
+							}),
+						}),
+						..Default::default()
 					},
-					(
-						"cert-manager.io/cluster-issuer".to_string(),
-						if domain.is_ns_internal() {
-							config.kubernetes.cert_issuer_dns.clone()
-						} else {
-							config.kubernetes.cert_issuer_http.clone()
-						},
-					),
-				]
-				.into_iter()
-				.collect(),
-			)
-		}
-	};
+					path: Some(path),
+					path_type: Some("Prefix".to_string()),
+				}],
+			}),
+		})
+		.collect();
 
 	let kubernetes_ingress = Ingress {
 		metadata: ObjectMeta {
-			name: Some(format!("ingress-{}", managed_url.id)),
+			name: Some(ingress_name.clone()),
 			annotations: Some(annotations),
 			..ObjectMeta::default()
 		},
 		spec: Some(IngressSpec {
-			rules: Some(vec![ingress]),
-			tls: if secret_exists {
-				Some(vec![IngressTLS {
-					hosts: if domain.is_ns_internal() {
-						Some(vec![
-							format!("*.{}", domain.name),
-							domain.name.clone(),
-						])
-					} else {
-						Some(vec![host.clone()])
-					},
-					secret_name: Some(secret_name),
-				}])
-			} else {
-				None
-			},
+			rules: Some(ingress_rules),
+			tls: Some(vec![IngressTLS {
+				hosts: Some(vec![cert_host]),
+				secret_name: Some(cert_name),
+			}]),
 			..IngressSpec::default()
 		}),
 		..Ingress::default()
 	};
+
 	// Create the ingress defined above
 	log::trace!("request_id: {} - creating ingress", request_id);
+
 	Api::<Ingress>::namespaced(kubernetes_client, namespace)
 		.patch(
-			&format!("ingress-{}", managed_url.id),
-			&PatchParams::apply(&format!("ingress-{}", managed_url.id)),
+			&ingress_name,
+			&PatchParams::apply(&ingress_name),
 			&Patch::Apply(kubernetes_ingress),
 		)
 		.await?
@@ -439,47 +141,8 @@ pub async fn update_kubernetes_managed_url(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	log::trace!("request_id: {} - managed URL created", request_id);
-	Ok(())
-}
-
-pub async fn delete_kubernetes_managed_url(
-	workspace_id: &Uuid,
-	managed_url_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
-
-	let namespace = workspace_id.as_str();
 	log::trace!(
-		"request_id: {} - deleting service: service-{}",
-		request_id,
-		managed_url_id
-	);
-
-	Api::<Service>::namespaced(kubernetes_client.clone(), namespace)
-		.delete_opt(
-			&format!("service-{}", managed_url_id),
-			&DeleteParams::default(),
-		)
-		.await?;
-
-	log::trace!(
-		"request_id: {} - deleting ingress {}",
-		request_id,
-		managed_url_id
-	);
-
-	Api::<Ingress>::namespaced(kubernetes_client, namespace)
-		.delete_opt(
-			&format!("ingress-{}", managed_url_id),
-			&DeleteParams::default(),
-		)
-		.await?;
-
-	log::trace!(
-		"request_id: {} - managed URL deleted successfully!",
+		"request_id: {} - kubernetes managed URL updated",
 		request_id
 	);
 	Ok(())

@@ -148,14 +148,6 @@ pub fn create_sub_app(
 		],
 	);
 
-	// Verify configuration of a managed URL
-	app.get(
-		"/:managedUrlId/verification/:token",
-		[EveMiddleware::CustomFunction(pin_fn!(
-			get_managed_url_authorization_header
-		))],
-	);
-
 	// Update a managed URL
 	app.post(
 		"/:managedUrlId",
@@ -402,26 +394,14 @@ async fn verify_managed_url_configuration(
 	)
 	.await?;
 
-	if configured {
-		db::update_managed_url_configuration_status(
-			context.get_database_connection(),
-			&managed_url_id,
-			true,
-		)
-		.await?;
-	}
+	db::update_managed_url_configuration_status(
+		context.get_database_connection(),
+		&managed_url_id,
+		configured,
+	)
+	.await?;
 
 	context.success(VerifyManagedUrlConfigurationResponse { configured });
-	Ok(context)
-}
-
-async fn get_managed_url_authorization_header(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let verification_token =
-		context.get_param(request_keys::TOKEN).unwrap().clone();
-	context.body(&verification_token);
 	Ok(context)
 }
 
