@@ -78,7 +78,6 @@ use crate::{
 	service::{
 		self,
 		ext_traits::DeleteOpt,
-		get_kubernetes_config_for_default_region,
 		ClusterType,
 		KubernetesConfigDetails,
 	},
@@ -96,7 +95,6 @@ pub async fn update_kubernetes_deployment(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let cluster_type = kubeconfig.cluster_type;
 	let kubernetes_client =
 		super::get_kubernetes_client(kubeconfig.auth_details).await?;
 
@@ -525,20 +523,20 @@ pub async fn update_kubernetes_deployment(
 		)
 		.await?;
 
-	let annotations = [
-		(
-			"kubernetes.io/ingress.class".to_string(),
-			"nginx".to_string(),
-		),
-		(
+	let annotations = std::iter::once((
+		"kubernetes.io/ingress.class".to_string(),
+		"nginx".to_string(),
+	))
+	.chain(match &kubeconfig.cluster_type {
+		ClusterType::PatrOwned => None,
+		ClusterType::UserOwned { .. } => Some((
 			"cert-manager.io/cluster-issuer".to_string(),
-			config.kubernetes.cert_issuer_dns.clone(),
-		),
-	]
-	.into_iter()
-	.collect::<BTreeMap<_, _>>();
+			config.kubernetes.cert_issuer_http.clone(),
+		)),
+	})
+	.collect();
 
-	let (default_ingress_rules, default_tls_rules) = running_details
+	let (ingress_rules, tls_rules) = running_details
 		.ports
 		.iter()
 		.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
@@ -566,12 +564,24 @@ pub async fn update_kubernetes_deployment(
 						}],
 					}),
 				},
-				IngressTLS {
-					hosts: Some(vec![
-						"*.patr.cloud".to_string(),
-						"patr.cloud".to_string(),
-					]),
-					secret_name: None,
+				match &kubeconfig.cluster_type {
+					ClusterType::PatrOwned => IngressTLS {
+						hosts: Some(vec![
+							"*.patr.cloud".to_string(),
+							"patr.cloud".to_string(),
+						]),
+						secret_name: None,
+					},
+					ClusterType::UserOwned { .. } => IngressTLS {
+						hosts: Some(vec![format!(
+							"{}-{}.patr.cloud",
+							port, deployment.id
+						)]),
+						secret_name: Some(format!(
+							"cert-{}-{}",
+							port, deployment.id
+						)),
+					},
 				},
 			)
 		})
@@ -580,12 +590,12 @@ pub async fn update_kubernetes_deployment(
 	let kubernetes_ingress = Ingress {
 		metadata: ObjectMeta {
 			name: Some(format!("ingress-{}", deployment.id)),
-			annotations: Some(annotations.clone()),
+			annotations: Some(annotations),
 			..ObjectMeta::default()
 		},
 		spec: Some(IngressSpec {
-			rules: Some(default_ingress_rules),
-			tls: Some(default_tls_rules.clone()),
+			rules: Some(ingress_rules),
+			tls: Some(tls_rules),
 			..IngressSpec::default()
 		}),
 		..Ingress::default()
@@ -602,99 +612,6 @@ pub async fn update_kubernetes_deployment(
 			&Patch::Apply(kubernetes_ingress),
 		)
 		.await?;
-
-	if let ClusterType::UserOwned {
-		region_id,
-		ingress_ip_addr: _,
-	} = cluster_type
-	{
-		// create a ingress in patr cluster to point to user's cluster
-		let kubernetes_client = super::get_kubernetes_client(
-			get_kubernetes_config_for_default_region(config).auth_details,
-		)
-		.await?;
-
-		let exposted_ports = running_details
-			.ports
-			.iter()
-			.filter(|(_, port_type)| *port_type == &ExposedPortType::Http);
-
-		for (port, _) in exposted_ports {
-			let ingress_rule = IngressRule {
-				host: Some(format!("{}-{}.patr.cloud", port, deployment.id)),
-				http: Some(HTTPIngressRuleValue {
-					paths: vec![HTTPIngressPath {
-						backend: IngressBackend {
-							service: Some(IngressServiceBackend {
-								name: format!("service-{}", region_id.as_str()),
-								port: Some(ServiceBackendPort {
-									number: Some(80),
-									..ServiceBackendPort::default()
-								}),
-							}),
-							..Default::default()
-						},
-						path: Some("/".to_string()),
-						path_type: Some("Prefix".to_string()),
-					}],
-				}),
-			};
-
-			let annotations = [
-				(
-					"kubernetes.io/ingress.class".to_string(),
-					"nginx".to_string(),
-				),
-				(
-					String::from("nginx.ingress.kubernetes.io/upstream-vhost"),
-					format!("{}-{}.patr.cloud", port, deployment.id),
-				),
-				(
-					String::from(
-						"nginx.ingress.kubernetes.io/backend-protocol",
-					),
-					"HTTP".to_string(),
-				),
-				// TODO: add cert manager annotations,
-				// once ssl certificate is used in customers cluster
-			]
-			.into_iter()
-			.collect();
-
-			let kubernetes_ingress = Ingress {
-				metadata: ObjectMeta {
-					name: Some(format!("ingress-{}", deployment.id)),
-					annotations: Some(annotations),
-					..ObjectMeta::default()
-				},
-				spec: Some(IngressSpec {
-					rules: Some(vec![ingress_rule]),
-					tls: Some(vec![IngressTLS {
-						hosts: Some(vec![
-							"*.patr.cloud".to_string(),
-							"patr.cloud".to_string(),
-						]),
-						secret_name: None,
-					}]),
-					..IngressSpec::default()
-				}),
-				..Ingress::default()
-			};
-
-			let ingress_api = Api::<Ingress>::namespaced(
-				kubernetes_client.clone(),
-				namespace,
-			);
-
-			ingress_api
-				.patch(
-					&format!("ingress-{}", deployment.id),
-					&PatchParams::apply(&format!("ingress-{}", deployment.id)),
-					&Patch::Apply(kubernetes_ingress),
-				)
-				.await?;
-		}
-	}
 
 	log::trace!("request_id: {} - deployment created", request_id);
 
@@ -719,6 +636,38 @@ pub async fn delete_kubernetes_deployment(
 	kubeconfig: KubernetesConfigDetails,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
+	let kubernetes_client = stop_kubernetes_deployment(
+		workspace_id,
+		deployment_id,
+		kubeconfig,
+		request_id,
+	)
+	.await?;
+
+	log::trace!("request_id: {} - deleting the ingress", request_id);
+	Api::<Ingress>::namespaced(kubernetes_client, workspace_id.as_str())
+		.delete_opt(
+			&format!("ingress-{}", deployment_id),
+			&DeleteParams::default(),
+		)
+		.await?;
+
+	log::trace!(
+		"request_id: {} - deployment deleted successfully!",
+		request_id
+	);
+
+	Ok(())
+}
+
+// If deployment is stopped, ingress cert will not be deleted as it may take
+// time to regenerate
+pub async fn stop_kubernetes_deployment(
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	kubeconfig: KubernetesConfigDetails,
+	request_id: &Uuid,
+) -> Result<kube::Client, Error> {
 	let kubernetes_client =
 		super::get_kubernetes_client(kubeconfig.auth_details).await?;
 
@@ -747,6 +696,7 @@ pub async fn delete_kubernetes_deployment(
 	.await?;
 
 	log::trace!("request_id: {} - deleting the service", request_id);
+
 	Api::<Service>::namespaced(
 		kubernetes_client.clone(),
 		workspace_id.as_str(),
@@ -766,20 +716,12 @@ pub async fn delete_kubernetes_deployment(
 	.delete_opt(&format!("hpa-{}", deployment_id), &DeleteParams::default())
 	.await?;
 
-	log::trace!("request_id: {} - deleting the ingress", request_id);
-	Api::<Ingress>::namespaced(kubernetes_client, workspace_id.as_str())
-		.delete_opt(
-			&format!("ingress-{}", deployment_id),
-			&DeleteParams::default(),
-		)
-		.await?;
-
-	log::trace!(
-		"request_id: {} - deployment deleted successfully!",
+	log::info!(
+		"request_id: {} - successfully stopped deployment",
 		request_id
 	);
 
-	Ok(())
+	Ok(kubernetes_client)
 }
 
 // TODO: add the logic of errored deployment

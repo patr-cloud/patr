@@ -49,6 +49,7 @@
 		"kvRoutingNs": "kvRoutingNs",
 		"kvDeploymentNs": "kvDeploymentNs",
 		"kvStaticSiteNs": "kvStaticSiteNs",
+		"kvRegionNs": "kvRegionNs",
 		"patrZoneIdentifier": "patrZoneIdentifier",
 		"workerScript": "workerScript"
 	},

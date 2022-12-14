@@ -155,6 +155,102 @@
     },
     "query": "INSERT INTO user_unverified_personal_email( local, domain_id, user_id, verification_token_hash, verification_token_expiry ) VALUES ($1, $2, $3, $4, $5) ON CONFLICT(local, domain_id) DO UPDATE SET user_id = EXCLUDED.user_id, verification_token_hash = EXCLUDED.verification_token_hash, verification_token_expiry = EXCLUDED.verification_token_expiry;"
   },
+  "0222aacc400e94a097f4fdbf6b600437d2fb8b066a67feb85545d7df0ea88e1f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "sub_domain",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "domain_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "path",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "url_type: _",
+          "ordinal": 4,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "proxy_to_deployment",
+                  "proxy_to_static_site",
+                  "proxy_url",
+                  "redirect"
+                ]
+              },
+              "name": "managed_url_type"
+            }
+          }
+        },
+        {
+          "name": "deployment_id: _",
+          "ordinal": 5,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "port",
+          "ordinal": 6,
+          "type_info": "Int4"
+        },
+        {
+          "name": "static_site_id: _",
+          "ordinal": 7,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "url",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 9,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "is_configured",
+          "ordinal": 10,
+          "type_info": "Bool"
+        },
+        {
+          "name": "cf_custom_hostname_id",
+          "ordinal": 11,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, cf_custom_hostname_id FROM managed_url WHERE is_configured = TRUE AND deleted IS NULL;"
+  },
   "0259f4685c805d8bc3fd0126efa6b589cb908777764a50cc449180dd0f4ad98e": {
     "describe": {
       "columns": [
@@ -8381,6 +8477,41 @@
       }
     },
     "query": "INSERT INTO user_to_sign_up( username, account_type, password, first_name, last_name, recovery_email_local, recovery_email_domain_id, recovery_phone_country_code, recovery_phone_number, business_email_local, business_domain_name, business_domain_tld, business_name, otp_hash, otp_expiry, coupon_code ) VALUES ( $1, 'business', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15 ) ON CONFLICT(username) DO UPDATE SET account_type = 'business', password = EXCLUDED.password, first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, recovery_email_local = EXCLUDED.recovery_email_local, recovery_email_domain_id = EXCLUDED.recovery_email_domain_id, recovery_phone_country_code = EXCLUDED.recovery_phone_country_code, recovery_phone_number = EXCLUDED.recovery_phone_number, business_email_local = EXCLUDED.business_email_local, business_domain_name = EXCLUDED.business_domain_name, business_domain_tld = EXCLUDED.business_domain_tld, business_name = EXCLUDED.business_name, otp_hash = EXCLUDED.otp_hash, otp_expiry = EXCLUDED.otp_expiry, coupon_code = EXCLUDED.coupon_code;"
+  },
+  "8914a4bdd272116d0a258d04cad329045bfdb47503710d95514e8bb938910914": {
+    "describe": {
+      "columns": [
+        {
+          "name": "path",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "deployment_id!: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "port!",
+          "ordinal": 2,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Uuid",
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT path, deployment_id as \"deployment_id!: Uuid\", port as \"port!\" FROM managed_url JOIN deployment ON deployment.id = managed_url.deployment_id WHERE managed_url.deleted IS NULL AND deployment_id IS NOT NULL AND port IS NOT NULL AND sub_domain = $1 AND domain_id = $2 AND deployment.region = $3 AND managed_url.workspace_id = $4;"
   },
   "892f1e3fa1ee2946653f6550806072b81cf7bcb947c9c5fe0759e227f8a22aa6": {
     "describe": {

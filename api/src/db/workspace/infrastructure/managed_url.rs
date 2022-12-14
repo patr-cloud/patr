@@ -1,5 +1,6 @@
 use api_models::utils::Uuid;
 use chrono::{DateTime, Utc};
+use futures::TryStreamExt;
 
 use crate::{query, query_as, Database};
 
@@ -258,6 +259,36 @@ pub async fn get_all_unconfigured_managed_urls(
 			managed_url
 		WHERE
 			is_configured = FALSE AND
+			deleted IS NULL;
+		"#
+	)
+	.fetch_all(connection)
+	.await
+}
+
+pub async fn get_all_configured_managed_urls(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<ManagedUrl>, sqlx::Error> {
+	query_as!(
+		ManagedUrl,
+		r#"
+		SELECT
+			id as "id: _",
+			sub_domain,
+			domain_id as "domain_id: _",
+			path,
+			url_type as "url_type: _",
+			deployment_id as "deployment_id: _",
+			port,
+			static_site_id as "static_site_id: _",
+			url,
+			workspace_id as "workspace_id: _",
+			is_configured,
+			cf_custom_hostname_id
+		FROM
+			managed_url
+		WHERE
+			is_configured = TRUE AND
 			deleted IS NULL;
 		"#
 	)
@@ -665,5 +696,42 @@ pub async fn get_all_managed_urls_for_host(
 		domain_id as _
 	)
 	.fetch_all(connection)
+	.await
+}
+
+pub async fn get_all_deployment_managed_urls_for_host_in_region(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	sub_domain: &str,
+	domain_id: &Uuid,
+	workspace_id: &Uuid,
+	region_id: &Uuid,
+) -> Result<Vec<(String, Uuid, i32)>, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			path,
+			deployment_id as "deployment_id!: Uuid",
+			port as "port!"
+		FROM
+			managed_url
+		JOIN
+			deployment ON deployment.id = managed_url.deployment_id
+		WHERE
+			managed_url.deleted IS NULL AND
+			deployment_id IS NOT NULL AND
+			port IS NOT NULL AND
+			sub_domain = $1 AND
+			domain_id = $2 AND
+			deployment.region = $3 AND
+			managed_url.workspace_id = $4;
+		"#,
+		sub_domain,
+		domain_id as _,
+		region_id as _,
+		workspace_id as _,
+	)
+	.fetch(connection)
+	.map_ok(|record| (record.path, record.deployment_id, record.port))
+	.try_collect()
 	.await
 }

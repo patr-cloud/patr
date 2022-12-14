@@ -37,7 +37,6 @@ use trust_dns_client::{
 	udp::UdpClientStream,
 };
 
-use super::infrastructure;
 use crate::{
 	db::{self, DnsRecordType, DomainPlan},
 	error,
@@ -233,11 +232,6 @@ pub async fn add_domain_to_workspace(
 			"request_id: {} - Adding domain to internal nameserver",
 			request_id
 		);
-		if ["cf", "ga", "gq", "ml", "tk"].contains(&tld) {
-			return Err(Error::empty()
-				.status(400)
-				.body(error!(INVALID_DOMAIN_NAME).to_string()));
-		}
 		// create zone
 		let client = service::get_cloudflare_client(config).await?;
 		log::trace!(
@@ -369,19 +363,6 @@ pub async fn is_domain_verified(
 				&Utc::now(),
 			)
 			.await?;
-
-			log::trace!("request_id: {} - Creating wild card certiifcate for internal domain", request_id);
-			infrastructure::create_certificates(
-				workspace_id,
-				&format!("certificate-{}", domain_id),
-				&format!("tls-{}", domain_id),
-				vec![format!("*.{}", domain.name), domain.name.clone()],
-				true,
-				config,
-				request_id,
-			)
-			.await?;
-			log::trace!("request_id: {} - Domain verified", request_id);
 
 			service::domain_verification_email(
 				connection,
@@ -903,21 +884,6 @@ pub async fn delete_domain_in_workspace(
 				.status(400)
 				.body(error!(RESOURCE_IN_USE).to_string()));
 		}
-
-		let secret_name = format!("tls-{}", domain.domain_id);
-		let certificate_name = format!("certificate-{}", domain.domain_id);
-		log::trace!(
-			"request_id: {} - Deleting the certificate from db",
-			request_id
-		);
-		infrastructure::delete_certificates_for_domain(
-			workspace_id,
-			&certificate_name,
-			&secret_name,
-			config,
-			request_id,
-		)
-		.await?;
 
 		// delete cloudflare zone
 		log::trace!(

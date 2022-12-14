@@ -1,14 +1,10 @@
 use api_models::{
-	models::workspace::infrastructure::managed_urls::{
-		ManagedUrl,
-		ManagedUrlType,
-	},
+	models::workspace::infrastructure::managed_urls::ManagedUrlType,
 	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
 use eve_rs::AsError;
 
-use super::kubernetes;
 use crate::{
 	db::{self, DnsRecordType, ManagedUrlType as DbManagedUrlType},
 	error,
@@ -67,6 +63,7 @@ pub async fn create_new_managed_url_in_workspace(
 		.await?
 		.into_iter()
 		.next();
+
 		match existing_hostname {
 			Some(managed_url) => managed_url.cf_custom_hostname_id,
 			None => {
@@ -215,20 +212,45 @@ pub async fn create_new_managed_url_in_workspace(
 	)
 	.await?;
 
-	service::update_kubernetes_managed_url(
-		workspace_id,
-		&ManagedUrl {
-			id: managed_url_id.clone(),
-			sub_domain: sub_domain.to_string(),
-			domain_id: domain_id.clone(),
-			path: path.to_string(),
-			url_type: url_type.clone(),
-			is_configured,
-		},
-		config,
-		request_id,
-	)
-	.await?;
+	if let ManagedUrlType::ProxyDeployment {
+		deployment_id,
+		port: _,
+	} = url_type
+	{
+		let deployment = db::get_deployment_by_id(connection, deployment_id)
+			.await?
+			.status(500)?;
+
+		// should call this method after updating mananged url in db
+		let deployment_mananged_url =
+			db::get_all_deployment_managed_urls_for_host_in_region(
+				connection,
+				sub_domain,
+				domain_id,
+				workspace_id,
+				&deployment.region,
+			)
+			.await?;
+
+		let kubeconfig = service::get_kubernetes_config_for_region(
+			connection,
+			&deployment.region,
+			config,
+		)
+		.await?;
+
+		service::update_kubernetes_managed_url(
+			workspace_id,
+			&domain.id,
+			sub_domain,
+			&domain.name,
+			deployment_mananged_url,
+			kubeconfig,
+			config,
+			request_id,
+		)
+		.await?;
+	}
 
 	service::update_cloudflare_kv_for_managed_url(
 		connection, sub_domain, domain_id, config,
@@ -344,20 +366,51 @@ pub async fn update_managed_url(
 		}
 	}
 
-	service::update_kubernetes_managed_url(
-		&managed_url.workspace_id,
-		&ManagedUrl {
-			id: managed_url.id,
-			sub_domain: managed_url.sub_domain.clone(),
-			domain_id: managed_url.domain_id.clone(),
-			path: path.to_string(),
-			url_type: url_type.clone(),
-			is_configured: managed_url.is_configured,
-		},
-		config,
-		request_id,
-	)
-	.await?;
+	if let ManagedUrlType::ProxyDeployment {
+		deployment_id,
+		port: _,
+	} = url_type
+	{
+		let deployment = db::get_deployment_by_id(connection, deployment_id)
+			.await?
+			.status(500)?;
+
+		// update the k8s managed url cert for deployment alone
+		let domain =
+			db::get_workspace_domain_by_id(connection, &managed_url.domain_id)
+				.await?
+				.status(500)?;
+
+		// should call this method after updating mananged url in db
+		let deployment_mananged_url =
+			db::get_all_deployment_managed_urls_for_host_in_region(
+				connection,
+				&managed_url.sub_domain,
+				&managed_url.domain_id,
+				&managed_url.workspace_id,
+				&deployment.region,
+			)
+			.await?;
+
+		let kubeconfig = service::get_kubernetes_config_for_region(
+			connection,
+			&deployment.region,
+			config,
+		)
+		.await?;
+
+		service::update_kubernetes_managed_url(
+			&managed_url.workspace_id,
+			&domain.id,
+			&managed_url.sub_domain,
+			&domain.name,
+			deployment_mananged_url,
+			kubeconfig,
+			config,
+			request_id,
+		)
+		.await?;
+	}
 
 	// as of now subdomain update for managed url is not supported,
 	// so we don't need to care about deleting previous host
@@ -415,35 +468,66 @@ pub async fn delete_managed_url(
 		"request_id: {} - Deleting managed url on Kubernetes.",
 		request_id
 	);
-	kubernetes::delete_kubernetes_managed_url(
-		workspace_id,
-		managed_url_id,
-		config,
-		&Uuid::new_v4(),
-	)
-	.await?;
 
-	if domain.is_ns_external() {
-		log::trace!(
-			"request_id: {} - Deleting certificates for external managed url",
-			request_id
-		);
-		let secret_name = format!("tls-{}", managed_url.id);
-		let certificate_name = format!("certificate-{}", managed_url.id);
+	if let (
+		DbManagedUrlType::ProxyToDeployment,
+		Some(deployment_id),
+		Some(_port),
+	) = (
+		managed_url.url_type,
+		managed_url.deployment_id,
+		managed_url.port,
+	) {
+		let deployment = db::get_deployment_by_id(connection, &deployment_id)
+			.await?
+			.status(500)?;
 
-		log::trace!(
-			"request_id: {} - Deleting certificate for external managed url",
-			request_id
-		);
-		service::delete_certificates_for_domain(
-			workspace_id,
-			&certificate_name,
-			&secret_name,
+		// update the k8s managed url cert for deployment alone
+		let domain =
+			db::get_workspace_domain_by_id(connection, &managed_url.domain_id)
+				.await?
+				.status(500)?;
+
+		// should call this method after updating mananged url in db
+		let deployment_mananged_url =
+			db::get_all_deployment_managed_urls_for_host_in_region(
+				connection,
+				&managed_url.sub_domain,
+				&managed_url.domain_id,
+				&managed_url.workspace_id,
+				&deployment.region,
+			)
+			.await?;
+
+		let kubeconfig = service::get_kubernetes_config_for_region(
+			connection,
+			&deployment.region,
+			config,
+		)
+		.await?;
+
+		service::update_kubernetes_managed_url(
+			&managed_url.workspace_id,
+			&domain.id,
+			&managed_url.sub_domain,
+			&domain.name,
+			deployment_mananged_url,
+			kubeconfig,
 			config,
 			request_id,
 		)
 		.await?;
+	}
 
+	let host_deletable = db::get_all_managed_urls_for_host(
+		connection,
+		&managed_url.sub_domain,
+		&managed_url.domain_id,
+	)
+	.await?
+	.is_empty();
+
+	if domain.is_ns_external() && host_deletable {
 		let Some(cf_custom_hostname_id) = managed_url.cf_custom_hostname_id else {
 			log::warn!(
 				"request_id: {} - For external domain's managed_url {}, cf_custom_hostname_id is missing", 
@@ -457,21 +541,11 @@ pub async fn delete_managed_url(
 			);
 		};
 
-		let host_deletable = db::get_all_managed_urls_for_host(
-			connection,
-			&managed_url.sub_domain,
-			&managed_url.domain_id,
+		service::delete_custom_hostname_from_cloudflare(
+			&cf_custom_hostname_id,
+			config,
 		)
-		.await?
-		.is_empty();
-
-		if host_deletable {
-			service::delete_custom_hostname_from_cloudflare(
-				&cf_custom_hostname_id,
-				config,
-			)
-			.await?;
-		}
+		.await?;
 	}
 	log::trace!("request_id: {} - ManagedUrl Deleted.", request_id);
 
