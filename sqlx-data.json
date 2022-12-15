@@ -2430,6 +2430,44 @@
     },
     "query": "SELECT * FROM phone_number_country_code WHERE country_code = $1;"
   },
+  "250b60ab4f5d689b1e677e767b7bab10b5ae0fccba3f77130ed2b889886e15fc": {
+    "describe": {
+      "columns": [
+        {
+          "name": "volume_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "deployment_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "size: _",
+          "ordinal": 2,
+          "type_info": "Int4"
+        },
+        {
+          "name": "path: _",
+          "ordinal": 3,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"volume_id: _\", deployment_id as \"deployment_id: _\", volume_size as \"size: _\", volume_mount_path as \"path: _\" FROM deployment_volume WHERE id = $1;"
+  },
   "265d098fb12a72689196f941ca78205cdf6d8d45bfcbacbd2cc1f637da0baa4e": {
     "describe": {
       "columns": [
@@ -3274,6 +3312,21 @@
       }
     },
     "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdatabase_id as \"database_id: _\",\n\t\t\tdb_plan as \"db_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tdeletion_time as \"deletion_time: _\"\n\t\tFROM\n\t\t\tmanaged_database_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(start_time, COALESCE(deletion_time, NOW())) OVERLAPS ($2, $3)\n\t\tORDER BY\n\t\t\tstart_time ASC;\n\t\t"
+  },
+  "35df4007e520b60a6412a37b406cb20b0e3a99a59d4e72441b8a1efad645b795": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Int8",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "INSERT INTO volume_payment_history( workspace_id, deployment_id, storage, start_time, stop_time ) VALUES ( $1, $2, $3, $4, NULL );"
   },
   "36a07994042c7ad6bc93e25b0d951c244168fb2df7c6ce76101d979d956f1641": {
     "describe": {
@@ -4288,6 +4341,21 @@
     },
     "query": "INSERT INTO ci_steps ( repo_id, build_num, step_id, step_name, base_image, commands, status ) VALUES ($1, $2, $3, $4, $5, $6, $7);"
   },
+  "4ca8b952735328fefcaa0aa3842ec9f827d701f8118e72e6cdd5704fd68f6ae4": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Int4",
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO deployment_volume( id, volume_size, volume_mount_path, deployment_id ) VALUES ($1, $2, $3, $4);"
+  },
   "4d4d3f0596fa4cb76250545fe274ac8edb6d56fd4a60d7f5b3085280ea880105": {
     "describe": {
       "columns": [],
@@ -5150,6 +5218,44 @@
     },
     "query": "SELECT manifest_digest, size, created FROM docker_registry_repository_manifest WHERE repository_id = $1;"
   },
+  "5b14b1f1bba35929da262597e7b7c63bf97c06391b01e2057c22e0c97aab9ee3": {
+    "describe": {
+      "columns": [
+        {
+          "name": "volume_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "deployment_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "size: _",
+          "ordinal": 2,
+          "type_info": "Int4"
+        },
+        {
+          "name": "path: _",
+          "ordinal": 3,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"volume_id: _\", deployment_id as \"deployment_id: _\", volume_size as \"size: _\", volume_mount_path as \"path: _\" FROM deployment_volume WHERE deployment_id = $1;"
+  },
   "5bda0e52a15bdaf032ab3d119e3322ef902b74b2eb9910441af0af7590bbfb09": {
     "describe": {
       "columns": [],
@@ -5989,6 +6095,16 @@
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE workspace_id = $1 AND status != 'deleted';"
   },
+  "69075756ac1b3d5799c46d47c958eea81c61475f960f21ccbf73dbaef288072d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE IF NOT EXISTS volume_payment_history( workspace_id UUID NOT NULL, deployment_id UUID NOT NULL, storage BIGINT NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
+  },
   "696749fb5dd8e4bb7c3d80c5619417e05c78691505add6a7af389858cb3bf0d4": {
     "describe": {
       "columns": [],
@@ -6285,6 +6401,19 @@
       }
     },
     "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE workspace_id = $1;"
+  },
+  "6f55df4c38626f6cef68ed29df689afb73722d3af6b901c923f0c165dbc2f787": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Timestamptz",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE volume_payment_history SET stop_time = $1 WHERE deployment_id = $2 AND stop_time IS NULL;"
   },
   "71851c0dceb357cee7d00bff65ca31965f2aef6778a2f86283fa626ec6359412": {
     "describe": {
@@ -7108,6 +7237,16 @@
       }
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", workspace_id as \"workspace_id: _\", deployment_id as \"deployment_id: _\" FROM secret WHERE id = $1;"
+  },
+  "81ec93e367d0f6a930b10ac57702e58dbcf23f1338dcbc4af1f681be0752230f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_volume( id UUID CONSTRAINT deployment_volume_pk PRIMARY KEY, deployment_id UUID NOT NULL CONSTRAINT deployment_volume_fk_deployment_id REFERENCES deployment(id), volume_size INTEGER NOT NULL, volume_mount_path TEXT NOT NULL );"
   },
   "826e599fedc33685020d1747bd3893a23f22c5de69b36cd64fb0e2efceab782d": {
     "describe": {
@@ -11514,6 +11653,21 @@
       }
     },
     "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tmonth,\n\t\t\tamount_in_cents,\n\t\t\tpayment_intent_id,\n\t\t\tdate as \"date: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\ttransaction_type as \"transaction_type!: _\",\n\t\t\tpayment_status as \"payment_status!: _\",\n\t\t\tdescription\n\t\tFROM\n\t\t\ttransaction\n\t\tWHERE\n\t\t\tworkspace_id = $1;\n\t\t"
+  },
+  "cfe42c66223ad8c5e8f849bfdc5169f531faff9e918992f50effac6b5aeaf2a9": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Text",
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE deployment_volume SET volume_size = $1, volume_mount_path = $2 WHERE id = $3 AND deployment_id = $4"
   },
   "cfe90f397141fe6f605a54f2036a466cb0b5bc000b7ad716e6d271980d91dfe8": {
     "describe": {

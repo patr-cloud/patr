@@ -418,7 +418,7 @@ pub async fn calculate_volumes_bill_for_workspace_till(
 	workspace_id: &Uuid,
 	month_start_date: &chrono::DateTime<Utc>,
 	till_date: &chrono::DateTime<Utc>,
-) -> Result<BTreeMap<Uuid, VolumeUsage>, Error> {
+) -> Result<Vec<VolumeUsage>, Error> {
 	let volume_usages = db::get_all_volume_usage(
 		&mut *connection,
 		workspace_id,
@@ -427,7 +427,7 @@ pub async fn calculate_volumes_bill_for_workspace_till(
 	)
 	.await?;
 
-	let mut volume_usage_bill = BTreeMap::new();
+	let mut volume_usage_bill = Vec::new();
 
 	for volume_usages in volume_usages {
 		let stop_time = volume_usages
@@ -446,19 +446,22 @@ pub async fn calculate_volumes_bill_for_workspace_till(
 			.ceil() as i64;
 		let monthly_price = (storage_in_gb as f64 * 0.1f64).ceil();
 
-		volume_usage_bill
-			.entry(volume_usages.deployment_id)
-			.or_insert(VolumeUsage {
-				storage: volume_usages.storage as u64,
-				hours: hours as u64,
-				amount: PriceAmount(
-					if hours >= 720 {
-						monthly_price
-					} else {
-						(hours as f64 / 720f64) * monthly_price
-					},
-				),
-			});
+		let price_in_dollars = if hours > 720 {
+			monthly_price
+		} else {
+			(hours as f64 / 720f64) * monthly_price
+		};
+
+		let price_in_cents = (price_in_dollars * 100.0).round() as u64;
+
+		volume_usage_bill.push(VolumeUsage {
+			start_time: DateTime(start_time),
+			stop_time: volume_usages.stop_time.map(DateTime),
+			storage: volume_usages.storage as u64,
+			hours: hours as u64,
+			amount: price_in_cents,
+			monthly_charge: monthly_price as u64 * 100,
+		})
 	}
 
 	Ok(volume_usage_bill)
@@ -1160,10 +1163,8 @@ pub async fn calculate_total_bill_for_workspace_till(
 		})
 		.sum();
 
-	let volume_charge = volume_usage
-		.iter()
-		.map(|(_, bill)| bill.amount.0)
-		.sum::<u64>();
+	let volume_charge =
+		volume_usage.iter().map(|bill| bill.amount).sum::<u64>();
 	let database_charge = database_usage.iter().map(|bill| bill.amount).sum();
 	let static_site_charge =
 		static_site_usage.iter().map(|bill| bill.amount).sum();
@@ -1258,10 +1259,8 @@ pub async fn get_total_resource_usage(
 	)
 	.await?;
 
-	let volume_charge = volume_usage
-		.iter()
-		.map(|(_, bill)| bill.amount.0)
-		.sum::<u64>();
+	let volume_charge =
+		volume_usage.iter().map(|bill| bill.amount).sum::<u64>();
 
 	log::trace!(
 		"request_id: {} getting bill for all managed_databases",
