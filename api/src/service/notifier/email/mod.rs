@@ -745,6 +745,8 @@ where
 			.subject(subject);
 		if let Some(reply_to) = reply_to {
 			builder = builder.reply_to(reply_to);
+		} else {
+			builder = builder.reply_to("support@patr.cloud".parse()?);
 		}
 
 		let message = builder.multipart(
