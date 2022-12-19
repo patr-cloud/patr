@@ -126,6 +126,7 @@ pub mod permissions {
 
 		pub mod region {
 			pub const LIST: &str = "workspace::region::list";
+			pub const INFO: &str = "workspace::region::info";
 			pub const ADD: &str = "workspace::region::add";
 			pub const DELETE: &str = "workspace::region::delete";
 		}
