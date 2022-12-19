@@ -103,6 +103,7 @@ pub mod id {
 	pub const REGION_NOT_READY_YET: &str = "regionNotReadyYet";
 	pub const FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER: &str =
 		"featureNotSupportedForCustomCluster";
+	pub const REGION_NOT_CONNECTED: &str = "regionNotConnected";
 }
 
 #[allow(dead_code)]
@@ -264,4 +265,5 @@ pub mod message {
 	pub const REGION_NOT_READY_YET: &str = "The cluster is not initialized yet, wait for some time and then try again";
 	pub const FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER: &str =
 		"For custom cluster this feature is not supported";
+	pub const REGION_NOT_CONNECTED: &str = "We're unable to connect to your custom cluster. Kindly make sure your cluster is up and running. If you face any difficulty please contact support";
 }

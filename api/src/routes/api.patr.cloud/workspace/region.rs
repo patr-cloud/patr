@@ -5,6 +5,7 @@ use api_models::{
 		AddRegionToWorkspaceRequest,
 		AddRegionToWorkspaceResponse,
 		DeleteRegionFromWorkspaceResponse,
+		GetRegionResponse,
 		InfrastructureCloudProvider,
 		ListRegionsForWorkspaceResponse,
 		Region,
@@ -70,6 +71,39 @@ pub fn create_sub_app(
 		],
 	);
 
+	// Get region
+	app.get(
+		"/:regionId",
+		[
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::region::INFO,
+				resource: closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			},
+			EveMiddleware::CustomFunction(pin_fn!(get_region)),
+		],
+	);
+
 	// Add a new region
 	app.post(
 		"/",
@@ -103,7 +137,7 @@ pub fn create_sub_app(
 		],
 	);
 
-	// Add a new region
+	// Delete a new region
 	app.delete(
 		"/:regionId",
 		[
@@ -162,11 +196,55 @@ async fn list_regions(
 		ready: region.ready,
 		default: region.workspace_id.is_none(),
 		message_log: region.message_log,
+		is_disconnected: region.is_disconnected,
 	})
 	.collect();
 
 	log::trace!("request_id: {} - Returning regions", request_id);
 	context.success(ListRegionsForWorkspaceResponse { regions });
+	Ok(context)
+}
+
+async fn get_region(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
+	log::trace!("request_id: {} - Listing all regions", request_id);
+
+	let region_id =
+		Uuid::parse_str(context.get_param(request_keys::REGION_ID).unwrap())
+			.unwrap();
+
+	let region =
+		db::get_region_by_id(context.get_database_connection(), &region_id)
+			.await?
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	if region.workspace_id.is_some() {
+		if let Some(disconnected) = region.is_disconnected {
+			if disconnected {
+				return Error::as_result()
+					.status(500)
+					.body(error!(REGION_NOT_CONNECTED).to_string())?;
+			}
+		}
+	}
+
+	let region = Region {
+		id: region.id,
+		name: region.name,
+		cloud_provider: region.cloud_provider,
+		ready: region.ready,
+		default: region.workspace_id.is_none(),
+		message_log: region.message_log,
+		is_disconnected: region.is_disconnected,
+	};
+
+	log::trace!("request_id: {} - Returning region", request_id);
+	context.success(GetRegionResponse { region });
 	Ok(context)
 }
 

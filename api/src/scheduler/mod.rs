@@ -10,6 +10,7 @@ use crate::{app::App, utils::Error};
 static CONFIG: OnceCell<App> = OnceCell::new();
 
 pub mod billing;
+pub mod byoc;
 pub mod ci;
 pub mod domain;
 pub mod user;
@@ -62,6 +63,7 @@ fn get_scheduled_jobs() -> Vec<Job> {
 		ci::sync_repo_job(),
 		// User jobs
 		user::revoke_expired_tokens_job(),
+		byoc::recheck_connection_to_cluster_job(),
 	]
 }
 
