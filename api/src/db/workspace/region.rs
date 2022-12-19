@@ -325,6 +325,7 @@ pub async fn add_deployment_region_to_workspace(
 
 pub async fn add_do_deployment_region_to_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
 	region_id: &Uuid,
 	name: &str,
 	cloud_provider: &InfrastructureCloudProvider,
@@ -333,7 +334,6 @@ pub async fn add_do_deployment_region_to_workspace(
 	num_node: &u16,
 	node_name: &str,
 	node_size: &str,
-	workspace_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"

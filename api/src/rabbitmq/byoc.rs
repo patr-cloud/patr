@@ -221,39 +221,35 @@ pub(super) async fn process_request(
 				request_id
 			);
 
-			let kube_config = client
+			let response = client
 				.get(format!("https://api.digitalocean.com/v2/kubernetes/clusters/{}/kubeconfig", cluster_id))
 				.bearer_auth(api_token.clone())
 				.send()
-				.await?
-				.text()
-				.await;
+				.await?;
 
-			let kube_config = match kube_config {
-				Ok(config) => config,
-				Err(err) => {
-					log::error!(
-						"request_id: {} Found error in getting kubeconfig: {}",
-						request_id,
-						err
-					);
-					tokio::time::sleep(Duration::from_secs(2 * 60)).await;
-					service::send_message_to_infra_queue(
-						&InfraRequestData::BYOC(
-							BYOCData::GetDigitalOceanKubeconfig {
-								api_token,
-								cluster_id,
-								region_id,
-								request_id: request_id.clone(),
-							},
-						),
-						config,
-						&request_id,
-					)
-					.await?;
-					return Ok(());
-				}
-			};
+			if response.status() != 200 {
+				log::error!(
+					"request_id: {} Unable to get kubeconfig. Trying again after 2mins...",
+					request_id,
+				);
+				tokio::time::sleep(Duration::from_secs(2 * 60)).await;
+				service::send_message_to_infra_queue(
+					&InfraRequestData::BYOC(
+						BYOCData::GetDigitalOceanKubeconfig {
+							api_token,
+							cluster_id,
+							region_id,
+							request_id: request_id.clone(),
+						},
+					),
+					config,
+					&request_id,
+				)
+				.await?;
+				return Ok(());
+			}
+
+			let kube_config = response.text().await?;
 
 			// TODO - to be only called once we get the kube_config
 			// initialize the cluster with patr script
