@@ -99,12 +99,12 @@ pub async fn get_kubernetes_config_for_region(
 }
 
 pub async fn create_do_k8s_cluster(
-	workspace_id: &Uuid,
 	region: &str,
 	api_token: &str,
-	cluster_name: Option<&str>,
+	cluster_name: &str,
 	num_node: &u16,
-	node_name: Option<&str>,
+	node_name: &str,
+	node_size_slug: &str,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	log::trace!(
@@ -118,16 +118,12 @@ pub async fn create_do_k8s_cluster(
 		.bearer_auth(api_token)
 		.json(&K8sConfig {
 			region: region.to_string(),
-			version: "1.24.4-do.0".to_string(),
-			name: cluster_name
-				.map(|cluster| cluster.to_string())
-				.unwrap_or(format!("{}-patr-cluster", workspace_id)),
+			version: "1.24".to_string(),
+			name: cluster_name.to_string(),
 			node_pools: vec![K8NodePool {
 				count: num_node.to_owned(),
-				name: node_name
-					.map(|node_name| node_name.to_string())
-					.unwrap_or(format!("{}-patr-node", workspace_id)),
-				size: "s-1vcpu-2gb".to_string(),
+				name: node_name.to_string(),
+				size: node_size_slug.to_string(),
 			}],
 		})
 		.send()

@@ -1943,12 +1943,19 @@ async fn get_deployment_metrics(
 	.status(500)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	if !service::is_deployed_on_patr_cluster(
+	let region = db::get_region_by_id(
 		context.get_database_connection(),
 		&deployment.region,
 	)
 	.await?
-	{
+	.status(500)?;
+
+	if region.workspace_id.is_some() {
+		if region.last_disconnected.is_some() {
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(REGION_NOT_CONNECTED).to_string()));
+		}
 		return Err(Error::empty().status(500).body(
 			error!(FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER).to_string(),
 		));
