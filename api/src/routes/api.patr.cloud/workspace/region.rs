@@ -296,6 +296,7 @@ async fn add_region(
 			cluster_name,
 			num_node,
 			node_name,
+			node_size_slug,
 		} => {
 			log::trace!(
 				"request_id: {} creating digital ocean k8s cluster in db",
@@ -303,31 +304,27 @@ async fn add_region(
 			);
 			db::add_do_deployment_region_to_workspace(
 				context.get_database_connection(),
+				&workspace_id,
 				&region_id,
 				&region.to_string(),
 				&InfrastructureCloudProvider::Digitalocean,
 				&api_token,
-				cluster_name
-					.as_deref()
-					.unwrap_or(&format!("{}-patr-cluster", workspace_id)),
+				&cluster_name,
 				&num_node,
-				node_name
-					.as_deref()
-					.unwrap_or(&format!("{}-patr-node", workspace_id)),
-				"s-1vcpu-2gb",
-				&workspace_id,
+				&node_name,
+				&node_size_slug,
 			)
 			.await?;
 
 			context.commit_database_transaction().await?;
 
 			let cluster_id = service::create_do_k8s_cluster(
-				&workspace_id,
 				&region.to_string(),
 				&api_token,
-				cluster_name.as_deref(),
+				&cluster_name,
 				&num_node,
-				node_name.as_deref(),
+				&node_name,
+				&node_size_slug,
 				&request_id,
 			)
 			.await?;
