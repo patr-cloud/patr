@@ -22,7 +22,6 @@ pub struct DeploymentRegion {
 	pub message_log: Option<String>,
 	pub config_file: Option<String>,
 	pub kubernetes_ingress_ip_addr: Option<IpAddr>,
-	pub is_disconnected: Option<bool>,
 	pub last_disconnected: Option<DateTime<Utc>>,
 }
 
@@ -33,7 +32,6 @@ pub struct BYOCRegion {
 	pub ready: bool,
 	pub workspace_id: Uuid,
 	pub config_file: String,
-	pub is_disconnected: Option<bool>,
 	pub last_disconnected: Option<DateTime<Utc>>,
 }
 
@@ -89,7 +87,6 @@ pub async fn initialize_region_pre(
 			message_log TEXT,
 			deleted TIMESTAMPTZ,
 			status REGION_STATUS NOT NULL DEFAULT 'created',
-			is_disconnected BOOLEAN,
 			last_disconnected TIMESTAMPTZ,
 			CONSTRAINT deployment_region_chk_ready_or_not CHECK(
 				(
@@ -195,7 +192,6 @@ pub async fn get_region_by_id(
 			message_log,
 			config_file as "config_file: _",
 			kubernetes_ingress_ip_addr as "kubernetes_ingress_ip_addr: _",
-			is_disconnected as "is_disconnected: _",
 			last_disconnected as "last_disconnected: _"
 		FROM
 			deployment_region
@@ -224,7 +220,6 @@ pub async fn get_all_deployment_regions_for_workspace(
 			message_log,
 			config_file as "config_file!: _",
 			kubernetes_ingress_ip_addr as "kubernetes_ingress_ip_addr: _",
-			is_disconnected as "is_disconnected: _",
 			last_disconnected as "last_disconnected: _"
 		FROM
 			deployment_region
@@ -251,7 +246,6 @@ pub async fn get_all_ready_byoc_region(
 			ready,
 			workspace_id as "workspace_id!: _",
 			config_file as "config_file!: _",
-			is_disconnected as "is_disconnected: _",
 			last_disconnected as "last_disconnected: _"
 		FROM
 			deployment_region
@@ -269,7 +263,6 @@ pub async fn get_all_ready_byoc_region(
 pub async fn update_byoc_region_connected(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
-	is_disconnected: bool,
 	last_disconnected: Option<&DateTime<Utc>>,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -277,12 +270,10 @@ pub async fn update_byoc_region_connected(
 		UPDATE
 			deployment_region
 		SET
-			is_disconnected = $1,
-			last_disconnected = $2 
+			last_disconnected = $1 
 		WHERE
-			id = $3;
+			id = $2;
 		"#,
-		is_disconnected,
 		last_disconnected as _,
 		region_id as _
 	)

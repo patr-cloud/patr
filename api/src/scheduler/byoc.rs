@@ -33,7 +33,6 @@ async fn recheck_connection_to_cluster() -> Result<(), Error> {
 					db::update_byoc_region_connected(
 						&mut connection,
 						&region.id,
-						false,
 						None,
 					)
 					.await?;
@@ -75,7 +74,6 @@ async fn recheck_connection_to_cluster() -> Result<(), Error> {
 			db::update_byoc_region_connected(
 				&mut connection,
 				&region.id,
-				true,
 				Some(&Utc::now()),
 			)
 			.await?;

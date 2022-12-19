@@ -196,7 +196,6 @@ async fn list_regions(
 		ready: region.ready,
 		default: region.workspace_id.is_none(),
 		message_log: region.message_log,
-		is_disconnected: region.is_disconnected,
 	})
 	.collect();
 
@@ -223,14 +222,10 @@ async fn get_region(
 			.status(404)
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	if region.workspace_id.is_some() {
-		if let Some(disconnected) = region.is_disconnected {
-			if disconnected {
-				return Error::as_result()
-					.status(500)
-					.body(error!(REGION_NOT_CONNECTED).to_string())?;
-			}
-		}
+	if region.workspace_id.is_some() && region.last_disconnected.is_none() {
+		return Error::as_result()
+			.status(500)
+			.body(error!(REGION_NOT_CONNECTED).to_string())?;
 	}
 
 	let region = Region {
@@ -240,7 +235,6 @@ async fn get_region(
 		ready: region.ready,
 		default: region.workspace_id.is_none(),
 		message_log: region.message_log,
-		is_disconnected: region.is_disconnected,
 	};
 
 	log::trace!("request_id: {} - Returning region", request_id);
