@@ -22,6 +22,19 @@ pub struct DeploymentRegion {
 	pub message_log: Option<String>,
 	pub config_file: Option<String>,
 	pub kubernetes_ingress_ip_addr: Option<IpAddr>,
+	pub is_disconnected: Option<bool>,
+	pub last_disconnected: Option<DateTime<Utc>>,
+}
+
+pub struct BYOCRegion {
+	pub id: Uuid,
+	pub name: String,
+	pub cloud_provider: InfrastructureCloudProvider,
+	pub ready: bool,
+	pub workspace_id: Uuid,
+	pub config_file: String,
+	pub is_disconnected: Option<bool>,
+	pub last_disconnected: Option<DateTime<Utc>>,
 }
 
 impl DeploymentRegion {
@@ -76,6 +89,8 @@ pub async fn initialize_region_pre(
 			message_log TEXT,
 			deleted TIMESTAMPTZ,
 			status REGION_STATUS NOT NULL DEFAULT 'created',
+			is_disconnected BOOLEAN,
+			last_disconnected TIMESTAMPTZ,
 			CONSTRAINT deployment_region_chk_ready_or_not CHECK(
 				(
 					workspace_id IS NOT NULL AND (
@@ -179,7 +194,9 @@ pub async fn get_region_by_id(
 			workspace_id as "workspace_id: _",
 			message_log,
 			config_file as "config_file: _",
-			kubernetes_ingress_ip_addr as "kubernetes_ingress_ip_addr: _"
+			kubernetes_ingress_ip_addr as "kubernetes_ingress_ip_addr: _",
+			is_disconnected as "is_disconnected: _",
+			last_disconnected as "last_disconnected: _"
 		FROM
 			deployment_region
 		WHERE
@@ -206,7 +223,9 @@ pub async fn get_all_deployment_regions_for_workspace(
 			workspace_id as "workspace_id: _",
 			message_log,
 			config_file as "config_file!: _",
-			kubernetes_ingress_ip_addr as "kubernetes_ingress_ip_addr: _"
+			kubernetes_ingress_ip_addr as "kubernetes_ingress_ip_addr: _",
+			is_disconnected as "is_disconnected: _",
+			last_disconnected as "last_disconnected: _"
 		FROM
 			deployment_region
 		WHERE
@@ -217,6 +236,59 @@ pub async fn get_all_deployment_regions_for_workspace(
 	)
 	.fetch_all(&mut *connection)
 	.await
+}
+
+pub async fn get_all_ready_byoc_region(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<BYOCRegion>, sqlx::Error> {
+	query_as!(
+		BYOCRegion,
+		r#"
+		SELECT
+			id as "id: _",
+			name,
+			provider as "cloud_provider: _",
+			ready,
+			workspace_id as "workspace_id!: _",
+			config_file as "config_file!: _",
+			is_disconnected as "is_disconnected: _",
+			last_disconnected as "last_disconnected: _"
+		FROM
+			deployment_region
+		WHERE
+			workspace_id IS NOT NULL AND
+			ready = TRUE AND
+			deleted IS NULL AND
+			status != 'deleted';
+		"#,
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn update_byoc_region_connected(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	region_id: &Uuid,
+	is_disconnected: bool,
+	last_disconnected: Option<&DateTime<Utc>>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment_region
+		SET
+			is_disconnected = $1,
+			last_disconnected = $2 
+		WHERE
+			id = $3;
+		"#,
+		is_disconnected,
+		last_disconnected as _,
+		region_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 pub async fn add_deployment_region_to_workspace(
@@ -377,7 +449,8 @@ pub async fn delete_region(
 			deployment_region
 		SET
 			deleted = $2,
-			status = 'deleted'
+			status = 'deleted',
+			ready = FALSE
 		WHERE
 			id = $1;
 		"#,
