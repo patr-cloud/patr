@@ -1579,12 +1579,20 @@ async fn delete_deployment(
 		)
 		.await?;
 
-		db::stop_deployment_volume_usage_history(
+		let volumes = db::get_all_deployment_volumes(
 			context.get_database_connection(),
-			&deployment_id,
-			&Utc::now(),
+			&deployment.id,
 		)
 		.await?;
+
+		for volume in volumes {
+			db::stop_volume_usage_history(
+				context.get_database_connection(),
+				&volume.volume_id,
+				&Utc::now(),
+			)
+			.await?;
+		}
 	}
 
 	log::trace!("request_id: {} - Checking is any managed url is used by the deployment: {}", request_id, deployment_id);
@@ -1795,6 +1803,42 @@ async fn update_deployment(
 					&current_time,
 				)
 				.await?;
+<<<<<<< HEAD
+=======
+				db::start_deployment_usage_history(
+					context.get_database_connection(),
+					&workspace_id,
+					&deployment_id,
+					&deployment.machine_type,
+					deployment_running_details.min_horizontal_scale as i32,
+					&current_time,
+				)
+				.await?;
+
+				let volumes = db::get_all_deployment_volumes(
+					context.get_database_connection(),
+					&deployment_id,
+				)
+				.await?;
+
+				for volume in volumes {
+					db::stop_volume_usage_history(
+						context.get_database_connection(),
+						&volume.volume_id,
+						&Utc::now(),
+					)
+					.await?;
+
+					db::start_volume_usage_history(
+						context.get_database_connection(),
+						&workspace_id,
+						&volume.volume_id,
+						volume.size as u64,
+						&Utc::now(),
+					)
+					.await?;
+				}
+>>>>>>> 08742265 (moved: volumes from deployment to statefule sets, updated api, service and db layer also updated migrations and rebased with upstream develop)
 			}
 
 			service::start_deployment(

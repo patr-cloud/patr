@@ -22,7 +22,7 @@ pub struct DeploymentPaymentHistory {
 }
 pub struct VolumePaymentHistory {
 	pub workspace_id: Uuid,
-	pub deployment_id: Uuid,
+	pub volume_id: Uuid,
 	pub storage: i64,
 	pub start_time: DateTime<Utc>,
 	pub stop_time: Option<DateTime<Utc>>,
@@ -252,7 +252,7 @@ pub async fn initialize_billing_pre(
 		r#"
 		CREATE TABLE IF NOT EXISTS volume_payment_history(
 			workspace_id UUID NOT NULL,
-			deployment_id UUID NOT NULL,
+			volume_id UUID NOT NULL,
 			storage BIGINT NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
 			stop_time TIMESTAMPTZ
@@ -479,7 +479,7 @@ pub async fn get_all_volume_usage(
 		r#"
 		SELECT
 			workspace_id as "workspace_id: _",
-			deployment_id as "deployment_id: _",
+			volume_id as "volume_id: _",
 			storage,
 			start_time as "start_time: _",
 			stop_time as "stop_time: _"
@@ -931,10 +931,10 @@ pub async fn stop_deployment_usage_history(
 	.map(|_| ())
 }
 
-pub async fn start_deployment_volume_usage_history(
+pub async fn start_volume_usage_history(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	deployment_id: &Uuid,
+	volume_id: &Uuid,
 	storage: u64,
 	start_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
@@ -943,7 +943,7 @@ pub async fn start_deployment_volume_usage_history(
 		INSERT INTO
 			volume_payment_history(
 				workspace_id,
-				deployment_id,
+				volume_id,
 				storage,
 				start_time,
 				stop_time
@@ -958,7 +958,7 @@ pub async fn start_deployment_volume_usage_history(
 			);
 		"#,
 		workspace_id as _,
-		deployment_id as _,
+		volume_id as _,
 		storage as i64,
 		start_time as _,
 	)
@@ -967,7 +967,7 @@ pub async fn start_deployment_volume_usage_history(
 	.map(|_| ())
 }
 
-pub async fn stop_deployment_volume_usage_history(
+pub async fn stop_volume_usage_history(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	stop_time: &DateTime<Utc>,
@@ -979,7 +979,7 @@ pub async fn stop_deployment_volume_usage_history(
 		SET
 			stop_time = $1
 		WHERE	
-			deployment_id = $2 AND
+			volume_id = $2 AND
 			stop_time IS NULL;
 		"#,
 		stop_time as _,

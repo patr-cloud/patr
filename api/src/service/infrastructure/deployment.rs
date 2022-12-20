@@ -291,7 +291,18 @@ pub async fn create_deployment_in_workspace(
 			path.as_ref(),
 		)
 		.await?;
-	};
+	}
+
+	if service::is_deployed_on_patr_cluster(connection, region).await? {
+		db::start_volume_usage_history(
+			connection,
+			workspace_id,
+			&volume_id,
+			size.value() as u64 * 1000u64 * 1000u64 * 1000u64,
+			&created_time,
+		)
+		.await?;
+	}
 
 	if service::is_deployed_on_patr_cluster(connection, region).await? {
 		db::start_deployment_usage_history(
@@ -303,17 +314,6 @@ pub async fn create_deployment_in_workspace(
 			&created_time,
 		)
 		.await?;
-
-		for size in deployment_running_details.volume.keys() {
-			db::start_deployment_volume_usage_history(
-				connection,
-				workspace_id,
-				&deployment_id,
-				size.value() as u64 * 1000u64 * 1000u64 * 1000u64,
-				&created_time,
-			)
-			.await?;
-		}
 	};
 
 	Ok(deployment_id)
@@ -473,7 +473,7 @@ pub async fn update_deployment(
 
 	if let Some(volumes) = volumes {
 		for (volume_id, value) in volumes {
-			db::get_deployment_volume_by_id(connection, volume_id)
+			db::get_volume_by_id(connection, volume_id)
 				.await?
 				.status(404)
 				.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;

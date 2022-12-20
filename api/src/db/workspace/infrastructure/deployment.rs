@@ -355,7 +355,8 @@ pub async fn initialize_deployment_pre(
 				CONSTRAINT
 					deployment_volume_chk_size_unsigned
 						CHECK(volume_size > 0),
-			volume_mount_path TEXT NOT NULL
+			volume_mount_path TEXT NOT NULL,
+			deleted TIMESTAMPTZ
 		);
 		"#
 	)
@@ -1238,7 +1239,7 @@ pub async fn update_volume_for_deployment(
 	.map(|_| ())
 }
 
-pub async fn get_deployment_volume_by_id(
+pub async fn get_volume_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	volume_id: &Uuid,
 ) -> Result<Option<DeploymentVolume>, sqlx::Error> {
@@ -1253,7 +1254,7 @@ pub async fn get_deployment_volume_by_id(
 		FROM
 			deployment_volume
 		WHERE
-			deployment_id = $1;
+			id = $1;
 		"#,
 		volume_id as _
 	)

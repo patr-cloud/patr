@@ -759,6 +759,7 @@ pub async fn update_kubernetes_deployment(
 }
 
 pub async fn delete_kubernetes_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
 	kubeconfig: KubernetesConfigDetails,
@@ -768,17 +769,31 @@ pub async fn delete_kubernetes_deployment(
 	let kubernetes_client =
 		super::get_kubernetes_client(kubeconfig.auth_details).await?;
 
-	log::trace!("request_id: {} - deleting the deployment", request_id);
+	let volumes =
+		db::get_all_deployment_volumes(connection, deployment_id).await?;
 
-	Api::<K8sDeployment>::namespaced(
-		kubernetes_client.clone(),
-		workspace_id.as_str(),
-	)
-	.delete_opt(
-		&format!("deployment-{}", deployment_id),
-		&DeleteParams::default(),
-	)
-	.await?;
+	if volumes.is_empty() {
+		log::trace!("request_id: {} - deleting the deployment", request_id);
+
+		Api::<K8sDeployment>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
+		.delete_opt(
+			&format!("deployment-{}", deployment_id),
+			&DeleteParams::default(),
+		)
+		.await?;
+	} else {
+		log::trace!("request_id: {} - deleting the stateful set", request_id);
+
+		Api::<K8sDeployment>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
+		.delete_opt(&format!("sts-{}", deployment_id), &DeleteParams::default())
+		.await?;
+	}
 
 	log::trace!("request_id: {} - deleting the config map", request_id);
 
@@ -795,15 +810,17 @@ pub async fn delete_kubernetes_deployment(
 	match status {
 		DeploymentStatus::Deleted => {
 			log::trace!("request_id: {} - deleting the pvc", request_id);
-			Api::<PersistentVolumeClaim>::namespaced(
-				kubernetes_client.clone(),
-				workspace_id.as_str(),
-			)
-			.delete_opt(
-				&format!("pvc-{}", deployment_id),
-				&DeleteParams::default(),
-			)
-			.await?;
+			for (idx, _) in volumes.iter().enumerate() {
+				Api::<PersistentVolumeClaim>::namespaced(
+					kubernetes_client.clone(),
+					workspace_id.as_str(),
+				)
+				.delete_opt(
+					&format!("pv-{}-{}", deployment_id, idx),
+					&DeleteParams::default(),
+				)
+				.await?;
+			}
 		}
 		_ => {
 			log::trace!("request_id: {} got deployment stopped request not deleting pvc", request_id);
@@ -977,7 +994,7 @@ pub async fn update_kubernetes_statefulset(
 
 	for (idx, (size, path)) in running_details.volume.iter().enumerate() {
 		volume_mounts.push(VolumeMount {
-			name: format!("persistent-volume-{}", idx),
+			name: format!("pv-{}-{}", deployment.id, idx),
 			mount_path: path.to_string(), /* make sure user does not have
 			                               * the
 			                               * mount_path in the
@@ -988,7 +1005,7 @@ pub async fn update_kubernetes_statefulset(
 		});
 		pvc.push(PersistentVolumeClaim {
 			metadata: ObjectMeta {
-				name: Some(format!("persistence-volume-{}", idx)),
+				name: Some(format!("pv-{}-{}", deployment.id, idx)),
 				namespace: Some(workspace_id.to_string()),
 				..ObjectMeta::default()
 			},
