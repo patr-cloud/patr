@@ -77,7 +77,7 @@ pub mod id {
 	pub const TAG_NOT_FOUND: &str = "TagNotFound";
 	pub const FILE_SIZE_TOO_LARGE: &str = "fileSizeTooLarge";
 	pub const NOT_A_SUPER_ADMIN: &str = "notASuperAdmin";
-	pub const TEMPORARY_EMAIL: &str = "temporaryEMAIL";
+	pub const TEMPORARY_EMAIL: &str = "temporaryEmail";
 
 	// error constants for billing related things
 	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "cardlessFreeLimitExceeded";
