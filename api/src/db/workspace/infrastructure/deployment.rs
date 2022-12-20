@@ -26,6 +26,7 @@ pub struct Deployment {
 	pub id: Uuid,
 	pub name: String,
 	pub registry: String,
+	pub use_private_regcred: bool,
 	pub repository_id: Option<Uuid>,
 	pub image_name: Option<String>,
 	pub image_tag: String,
@@ -152,6 +153,7 @@ pub async fn initialize_deployment_pre(
 			liveness_probe_port_type EXPOSED_PORT_TYPE,
 			current_live_digest TEXT,
 			deleted TIMESTAMPTZ,
+			use_private_regcred BOOL NOT NULL DEFAULT false,
 			CONSTRAINT deployment_fk_repository_id_workspace_id
 				FOREIGN KEY(repository_id, workspace_id)
 					REFERENCES docker_registry_repository(id, workspace_id),
@@ -160,6 +162,7 @@ pub async fn initialize_deployment_pre(
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
 					registry = 'registry.patr.cloud' AND
+					use_private_regcred = false AND
 					image_name IS NULL AND
 					repository_id IS NOT NULL
 				) OR (
@@ -471,7 +474,8 @@ pub async fn create_deployment_with_internal_registry(
 				startup_probe_port_type,
 				liveness_probe_port,
 				liveness_probe_path,
-				liveness_probe_port_type
+				liveness_probe_port_type,
+				use_private_regcred
 			)
 		VALUES
 			(
@@ -493,7 +497,8 @@ pub async fn create_deployment_with_internal_registry(
 				$13,
 				$14,
 				$15,
-				$16
+				$16,
+				false
 			);
 		"#,
 		id as _,
@@ -534,6 +539,7 @@ pub async fn create_deployment_with_external_registry(
 	max_horizontal_scale: u16,
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
+	use_private_regcred: bool,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -557,7 +563,8 @@ pub async fn create_deployment_with_external_registry(
 				startup_probe_port_type,
 				liveness_probe_port,
 				liveness_probe_path,
-				liveness_probe_port_type
+				liveness_probe_port_type,
+				use_private_regcred
 			)
 		VALUES
 			(
@@ -579,7 +586,8 @@ pub async fn create_deployment_with_external_registry(
 				$14,
 				$15,
 				$16,
-				$17
+				$17,
+				$18
 			);
 		"#,
 		id as _,
@@ -599,6 +607,7 @@ pub async fn create_deployment_with_external_registry(
 		liveness_probe.map(|probe| probe.port as i32),
 		liveness_probe.map(|probe| probe.path.as_str()),
 		liveness_probe.map(|_| ExposedPortType::Http) as _,
+		use_private_regcred
 	)
 	.execute(&mut *connection)
 	.await
@@ -618,6 +627,7 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 			deployment.id as "id: _",
 			deployment.name::TEXT as "name!: _",
 			deployment.registry,
+			deployment.use_private_regcred,
 			deployment.repository_id as "repository_id: _",
 			deployment.image_name,
 			deployment.image_tag,
@@ -687,7 +697,8 @@ pub async fn get_deployments_by_repository_id(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			use_private_regcred
 		FROM
 			deployment
 		WHERE
@@ -725,7 +736,8 @@ pub async fn get_deployments_for_workspace(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			use_private_regcred
 		FROM
 			deployment
 		WHERE
@@ -763,7 +775,8 @@ pub async fn get_deployment_by_id(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			use_private_regcred
 		FROM
 			deployment
 		WHERE
@@ -801,7 +814,8 @@ pub async fn get_deployment_by_id_including_deleted(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			use_private_regcred
 		FROM
 			deployment
 		WHERE
@@ -839,7 +853,8 @@ pub async fn get_deployment_by_name_in_workspace(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			use_private_regcred
 		FROM
 			deployment
 		WHERE
@@ -1078,6 +1093,7 @@ pub async fn update_deployment_details(
 	max_horizontal_scale: Option<u16>,
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
+	use_private_regcred: Option<bool>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1140,7 +1156,8 @@ pub async fn update_deployment_details(
 					ELSE
 						'http'::EXPOSED_PORT_TYPE
 				END
-			)
+			),
+			use_private_regcred = COALESCE($11, use_private_regcred)
 		WHERE
 			id = $10;
 		"#,
@@ -1153,7 +1170,8 @@ pub async fn update_deployment_details(
 		startup_probe.as_ref().map(|probe| probe.path.as_str()),
 		liveness_probe.map(|probe| probe.port as i32),
 		liveness_probe.as_ref().map(|probe| probe.path.as_str()),
-		deployment_id as _
+		deployment_id as _,
+		use_private_regcred
 	)
 	.execute(&mut *connection)
 	.await

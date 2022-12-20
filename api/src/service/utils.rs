@@ -361,6 +361,7 @@ pub async fn get_image_name_and_digest_for_deployment_image(
 		DeploymentRegistry::ExternalRegistry {
 			registry,
 			image_name,
+			private_regcred_used: _,
 		} => match registry.as_str() {
 			"registry.hub.docker.com" |
 			"hub.docker.com" |

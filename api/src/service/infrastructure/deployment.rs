@@ -8,6 +8,7 @@ use api_models::{
 			DeploymentMetrics,
 			DeploymentProbe,
 			DeploymentRegistry,
+		DeploymentRegistryInput,
 			DeploymentRunningDetails,
 			DeploymentStatus,
 			DeploymentVolume,
@@ -69,7 +70,7 @@ pub async fn create_deployment_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	name: &str,
-	registry: &DeploymentRegistry,
+	registry: &DeploymentRegistryInput,
 	image_tag: &str,
 	region: &Uuid,
 	machine_type: &Uuid,
@@ -172,7 +173,7 @@ pub async fn create_deployment_in_workspace(
 
 	db::begin_deferred_constraints(connection).await?;
 	match registry {
-		DeploymentRegistry::PatrRegistry {
+		DeploymentRegistryInput::PatrRegistry {
 			registry: _,
 			repository_id,
 		} => {
@@ -194,9 +195,10 @@ pub async fn create_deployment_in_workspace(
 			)
 			.await?;
 		}
-		DeploymentRegistry::ExternalRegistry {
+		DeploymentRegistryInput::ExternalRegistry {
 			registry,
 			image_name,
+			private_regcred,
 		} => {
 			log::trace!("request_id: {} - Creating database record with external registry", request_id);
 			db::create_deployment_with_external_registry(
@@ -214,6 +216,7 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.max_horizontal_scale,
 				deployment_running_details.startup_probe.as_ref(),
 				deployment_running_details.liveness_probe.as_ref(),
+				private_regcred.is_some(),
 			)
 			.await?;
 		}
@@ -360,6 +363,7 @@ pub async fn update_deployment(
 	liveness_probe: Option<&DeploymentProbe>,
 	config_mounts: Option<&BTreeMap<String, Base64String>>,
 	volumes: Option<&BTreeMap<String, DeploymentVolume>>,
+	use_private_regcred: Option<Option<RegistryCredentials>>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -417,8 +421,10 @@ pub async fn update_deployment(
 				.status(500)?;
 
 			if machine_type_to_be_deployed != &(1, 2) {
-				log::info!("request_id: {request_id} - Only basic machine type is allowed
-	under free plan");
+				log::info!(
+					"request_id: {} - Only basic machine type is allowed under free plan",
+					request_id
+				);
 				return Error::as_result().status(400).body(
 					error!(CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT).to_string(),
 				)?;
@@ -427,8 +433,9 @@ pub async fn update_deployment(
 		if let Some(max_horizontal_scale) = max_horizontal_scale {
 			if max_horizontal_scale > 1 {
 				log::info!(
-					"request_id: {request_id} - Only one replica allowed under free plan
-	without card" 			);
+					"request_id: {} - Only one replica allowed under free plan without card",
+					request_id
+				);
 				return Error::as_result()
 					.status(400)
 					.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
@@ -438,8 +445,9 @@ pub async fn update_deployment(
 		if let Some(min_horizontal_scale) = min_horizontal_scale {
 			if min_horizontal_scale > 1 {
 				log::info!(
-					"request_id: {request_id} - Only one replica allowed under free plan
-	without card" 			);
+					"request_id: {} - Only one replica allowed under free plan without card",
+					request_id
+				);
 				return Error::as_result()
 					.status(400)
 					.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
@@ -507,6 +515,7 @@ pub async fn update_deployment(
 		max_horizontal_scale,
 		startup_probe,
 		liveness_probe,
+		use_private_regcred,
 	)
 	.await?;
 
@@ -673,6 +682,40 @@ pub async fn update_deployment(
 		}
 	}
 
+	if let DeploymentRegistry::ExternalRegistry { registry, .. } =
+		&deployment.registry
+	{
+		// if external registry is used, then
+		// check if private regcred needs to be updated/deleted
+		match private_regcred {
+			None => {
+				// no update/delete needed for registry credentials
+			}
+			Some(None) => {
+				// delete the existing registry credentials if any
+				service::delete_private_docker_registry_credentials(
+					&workspace_id,
+					&deployment_id,
+					kubeconfig,
+					&request_id,
+				)
+				.await?
+			}
+			Some(Some(regcred)) => {
+				// update registry credentials
+				service::update_private_docker_registry_credentials(
+					&workspace_id,
+					&deployment_id,
+					registry,
+					&regcred,
+					kubeconfig,
+					&request_id,
+				)
+				.await?;
+			}
+		}
+	}
+
 	match &deployment.status {
 		DeploymentStatus::Stopped |
 		DeploymentStatus::Deleted |
@@ -793,6 +836,8 @@ pub async fn get_full_deployment_config(
 						DeploymentRegistry::ExternalRegistry {
 							registry: deployment.registry,
 							image_name: deployment.image_name?,
+							private_regcred_used: deployment
+								.use_private_regcred,
 						}
 					},
 					image_tag: deployment.image_tag,
@@ -835,6 +880,7 @@ pub async fn get_full_deployment_config(
 		DeploymentRegistry::ExternalRegistry {
 			registry,
 			image_name,
+			private_regcred_used: _,
 		} => {
 			format!("{}/{}", registry, image_name)
 		}

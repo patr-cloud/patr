@@ -13,6 +13,7 @@ use api_models::{
 				Deployment,
 				DeploymentDeployHistory,
 				DeploymentRegistry,
+				DeploymentRegistryInput,
 				DeploymentStatus,
 				GetDeploymentBuildLogsRequest,
 				GetDeploymentBuildLogsResponse,
@@ -702,6 +703,7 @@ async fn list_deployments(
 				DeploymentRegistry::ExternalRegistry {
 					registry: deployment.registry,
 					image_name: deployment.image_name?,
+					private_regcred_used: deployment.use_private_regcred,
 				}
 			},
 			image_tag: deployment.image_tag,
@@ -848,7 +850,7 @@ async fn create_deployment(
 	let CreateDeploymentRequest {
 		workspace_id: _,
 		name,
-		registry,
+		mut registry,
 		image_tag,
 		region,
 		machine_type,
@@ -860,6 +862,23 @@ async fn create_deployment(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let name = name.trim();
 	let image_tag = image_tag.trim();
+
+	let registry = {
+		// strip https protocol prefix from registry url
+		if let DeploymentRegistryInput::ExternalRegistry { registry, .. } =
+			&mut registry
+		{
+			if let Some(trimmed_registry) = registry.strip_prefix("https://") {
+				*registry = trimmed_registry.to_owned();
+			} else if let Some(trimmed_registry) =
+				registry.strip_prefix("http://")
+			{
+				*registry = trimmed_registry.to_owned();
+			}
+		}
+
+		registry
+	};
 
 	let config = context.get_state().config.clone();
 
@@ -892,7 +911,7 @@ async fn create_deployment(
 		deployment: Deployment {
 			id: id.clone(),
 			name: name.to_string(),
-			registry: registry.clone(),
+			registry: registry.clone().into(),
 			image_tag: image_tag.to_string(),
 			status: DeploymentStatus::Created,
 			region: region.clone(),
@@ -930,11 +949,35 @@ async fn create_deployment(
 	)
 	.await?;
 
+	if let DeploymentRegistryInput::ExternalRegistry {
+		registry,
+		image_name: _,
+		private_regcred: Some(regcred),
+	} = &registry
+	{
+		let kubeconfig = service::get_kubernetes_config_for_region(
+			context.get_database_connection(),
+			&region,
+			&config,
+		)
+		.await?;
+
+		service::update_private_docker_registry_credentials(
+			&workspace_id,
+			&id,
+			registry,
+			regcred,
+			kubeconfig,
+			&request_id,
+		)
+		.await?;
+	}
+
 	context.commit_database_transaction().await?;
 
 	if deploy_on_create {
 		let mut is_deployed = false;
-		if let DeploymentRegistry::PatrRegistry { repository_id, .. } =
+		if let DeploymentRegistryInput::PatrRegistry { repository_id, .. } =
 			&registry
 		{
 			let digest = db::get_latest_digest_for_docker_repository(
@@ -975,7 +1018,7 @@ async fn create_deployment(
 						&Deployment {
 							id: id.clone(),
 							name: name.to_string(),
-							registry: registry.clone(),
+							registry: registry.clone().into(),
 							image_tag: image_tag.to_string(),
 							status: DeploymentStatus::Pushed,
 							region: region.clone(),
@@ -1004,7 +1047,7 @@ async fn create_deployment(
 				&Deployment {
 					id: id.clone(),
 					name: name.to_string(),
-					registry: registry.clone(),
+					registry: registry.clone().into(),
 					image_tag: image_tag.to_string(),
 					status: DeploymentStatus::Pushed,
 					region: region.clone(),
@@ -1741,6 +1784,7 @@ async fn update_deployment(
 		liveness_probe,
 		config_mounts,
 		volumes,
+		private_regcred,
 		..
 	} = context
 		.get_body_as()
@@ -1759,7 +1803,8 @@ async fn update_deployment(
 		startup_probe.is_none() &&
 		liveness_probe.is_none() &&
 		config_mounts.is_none() &&
-		volumes.is_none()
+		volumes.is_none() &&
+		private_regcred.is_none()
 	{
 		return Err(Error::empty()
 			.status(400)
@@ -1790,6 +1835,7 @@ async fn update_deployment(
 		liveness_probe.as_ref(),
 		config_mounts.as_ref(),
 		volumes.as_ref(),
+		private_regcred.map(|cred| cred.as_ref),
 		&config,
 		&request_id,
 	)

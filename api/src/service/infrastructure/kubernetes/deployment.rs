@@ -3,10 +3,12 @@ use std::collections::BTreeMap;
 use api_models::{
 	models::workspace::infrastructure::deployment::{
 		Deployment,
+		DeploymentRegistry,
 		DeploymentRunningDetails,
 		DeploymentStatus,
 		EnvironmentVariableValue,
 		ExposedPortType,
+		RegistryCredentials,
 	},
 	utils::Uuid,
 };
@@ -43,6 +45,7 @@ use k8s_openapi::{
 			PodTemplateSpec,
 			Probe,
 			ResourceRequirements,
+			Secret,
 			Service,
 			ServicePort,
 			ServiceSpec,
@@ -74,6 +77,7 @@ use kube::{
 	Api,
 	Error as KubeError,
 };
+use serde_json::json;
 use sha2::{Digest, Sha512};
 
 use crate::{
@@ -84,6 +88,80 @@ use crate::{
 	utils::{constants::request_keys, settings::Settings, Error},
 	Database,
 };
+
+pub async fn update_private_docker_registry_credentials(
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	registry_url: &str,
+	registry_credentials: &RegistryCredentials,
+	kubeconfig: KubernetesConfigDetails,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let kubernetes_client =
+		super::get_kubernetes_client(kubeconfig.auth_details).await?;
+
+	let namespace = workspace_id.as_str();
+	let regcred_name = format!("regcred-{}", deployment_id);
+
+	let docker_config_json = json!({
+		"auths": {
+		  format!("https://{}", registry_url): {
+			"auth": base64::encode(format!(
+				"{}:{}",
+				registry_credentials.username, registry_credentials.password
+			))
+		  }
+		}
+	});
+
+	let secret_spec = Secret {
+		metadata: ObjectMeta {
+			name: Some(regcred_name.to_owned()),
+			namespace: Some(namespace.to_owned()),
+			..Default::default()
+		},
+		type_: Some("kubernetes.io/dockerconfigjson".to_owned()),
+		string_data: Some(BTreeMap::from([(
+			".dockerconfigjson".to_owned(),
+			docker_config_json.to_string(),
+		)])),
+		..Default::default()
+	};
+
+	log::trace!("request_id: {} - updating registry credentials", request_id);
+	Api::<Secret>::namespaced(kubernetes_client, namespace)
+		.patch(
+			&regcred_name,
+			&PatchParams::apply(&regcred_name),
+			&Patch::Apply(secret_spec),
+		)
+		.await?;
+
+	Ok(())
+}
+
+pub async fn delete_private_docker_registry_credentials(
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	kubeconfig: KubernetesConfigDetails,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let kubernetes_client =
+		super::get_kubernetes_client(kubeconfig.auth_details).await?;
+
+	log::trace!(
+		"request_id: {} - deleting external registry credential if present",
+		request_id
+	);
+	Api::<Secret>::namespaced(kubernetes_client, workspace_id.as_str())
+		.delete_opt(
+			&format!("regcred-{}", deployment_id),
+			&DeleteParams::default(),
+		)
+		.await?;
+
+	Ok(())
+}
 
 pub async fn update_kubernetes_deployment(
 	workspace_id: &Uuid,
@@ -228,6 +306,26 @@ pub async fn update_kubernetes_deployment(
 	]
 	.into_iter()
 	.collect();
+
+	let image_pull_secrets = match &deployment.registry {
+		DeploymentRegistry::PatrRegistry { .. } => {
+			Some(vec![LocalObjectReference {
+				name: Some("patr-regcred".to_string()),
+			}])
+		}
+		DeploymentRegistry::ExternalRegistry {
+			private_regcred_used,
+			..
+		} => {
+			if *private_regcred_used {
+				Some(vec![LocalObjectReference {
+					name: Some(format!("regcred-{}", deployment.id)),
+				}])
+			} else {
+				None
+			}
+		}
+	};
 
 	if !deployment_volumes.is_empty() {
 		// Deleting STS using orphan flag to update the volumes
@@ -511,16 +609,7 @@ pub async fn update_kubernetes_deployment(
 			} else {
 				None
 			},
-			image_pull_secrets: deployment.registry.is_patr_registry().then(
-				|| {
-					// TODO: for now patr registry is not supported
-					// for user clusters, need to create a separate
-					// secret for each private repo in future
-					vec![LocalObjectReference {
-						name: Some("patr-regcred".to_string()),
-					}]
-				},
-			),
+			image_pull_secrets,
 			..PodSpec::default()
 		}),
 		metadata: Some(ObjectMeta {
@@ -783,6 +872,14 @@ pub async fn delete_kubernetes_deployment(
 	.delete_opt(
 		&format!("deployment-{}", deployment_id),
 		&DeleteParams::default(),
+	)
+	.await?;
+
+	delete_private_docker_registry_credentials(
+		workspace_id,
+		deployment_id,
+		kubeconfig,
+		request_id,
 	)
 	.await?;
 
