@@ -117,6 +117,8 @@ pub async fn create_deployment_in_workspace(
 		workspace_id,
 		region_details.is_byoc_region(),
 		machine_type,
+		&deployment_running_details.min_horizontal_scale,
+		&deployment_running_details.max_horizontal_scale,
 		request_id,
 	)
 	.await?;
@@ -295,6 +297,7 @@ pub async fn get_deployment_container_logs(
 
 pub async fn update_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
 	deployment_id: &Uuid,
 	name: Option<&str>,
 	machine_type: Option<&Uuid>,
@@ -313,6 +316,46 @@ pub async fn update_deployment(
 		request_id,
 		deployment_id
 	);
+
+	// Check if card is added
+
+	let card_added =
+		db::get_default_payment_method_for_workspace(connection, workspace_id)
+			.await?
+			.is_some();
+	if !card_added {
+		if let Some(machine_type) = machine_type {
+			// only basic machine type is allowed under free plan
+			let machine_type_to_be_deployed = MACHINE_TYPES
+				.get()
+				.and_then(|machines| machines.get(machine_type))
+				.status(500)?;
+
+			if machine_type_to_be_deployed != &(1, 2) {
+				log::info!("request_id: {request_id} - Only basic machine type is allowed under free plan");
+				return Error::as_result().status(400).body(
+					error!(CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT).to_string(),
+				)?;
+			}
+		}
+		if let Some(max_horizontal_scale) = max_horizontal_scale {
+			if max_horizontal_scale > 1 {
+				log::info!("request_id: {request_id} - Only one replica allowed under free plan without card");
+				return Error::as_result()
+					.status(400)
+					.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
+			}
+		}
+
+		if let Some(min_horizontal_scale) = min_horizontal_scale {
+			if min_horizontal_scale > 1 {
+				log::info!("request_id: {request_id} - Only one replica allowed under free plan without card");
+				return Error::as_result()
+					.status(400)
+					.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
+			}
+		}
+	}
 
 	db::begin_deferred_constraints(connection).await?;
 	if let Some(ports) = ports {
@@ -1025,6 +1068,8 @@ async fn check_deployment_creation_limit(
 	workspace_id: &Uuid,
 	is_byoc_region: bool,
 	machine_type: &Uuid,
+	min_horizontal_scale: &u16,
+	max_horizontal_scale: &u16,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {request_id} - Checking whether new deployment creation is limited");
@@ -1064,6 +1109,13 @@ async fn check_deployment_creation_limit(
 			return Error::as_result().status(400).body(
 				error!(CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT).to_string(),
 			)?;
+		}
+
+		if *max_horizontal_scale > 1 || *min_horizontal_scale > 1 {
+			log::info!("request_id: {request_id} - Only one replica allowed under free plan without card");
+			return Error::as_result()
+				.status(400)
+				.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
 		}
 	}
 
