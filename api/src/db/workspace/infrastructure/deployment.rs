@@ -946,8 +946,14 @@ pub async fn get_deployments_with_secret_as_environment_variable(
 			deployment_id as "deployment_id: Uuid"
 		FROM
 			deployment_environment_variable
+		LEFT JOIN
+			deployment
+		ON
+			deployment.id = deployment_id
 		WHERE
-			secret_id = $1;
+			secret_id = $1 AND
+			deployment.deleted IS NULL AND
+			deployment.status != 'deleted';
 		"#,
 		secret_id as _,
 	)
