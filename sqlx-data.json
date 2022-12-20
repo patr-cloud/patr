@@ -7238,16 +7238,6 @@
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", workspace_id as \"workspace_id: _\", deployment_id as \"deployment_id: _\" FROM secret WHERE id = $1;"
   },
-  "81ec93e367d0f6a930b10ac57702e58dbcf23f1338dcbc4af1f681be0752230f": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment_volume( id UUID CONSTRAINT deployment_volume_pk PRIMARY KEY, deployment_id UUID NOT NULL CONSTRAINT deployment_volume_fk_deployment_id REFERENCES deployment(id), volume_size INTEGER NOT NULL, volume_mount_path TEXT NOT NULL );"
-  },
   "826e599fedc33685020d1747bd3893a23f22c5de69b36cd64fb0e2efceab782d": {
     "describe": {
       "columns": [],
@@ -13096,6 +13086,16 @@
       }
     },
     "query": "INSERT INTO personal_domain( id, domain_type ) VALUES ($1, 'personal');"
+  },
+  "e7b169feb943a5fd826b457fae33ef0fc632ad1a234c5c4352e7ccf58573b148": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_volume( id UUID CONSTRAINT deployment_volume_pk PRIMARY KEY, deployment_id UUID NOT NULL CONSTRAINT deployment_volume_fk_deployment_id REFERENCES deployment(id), volume_size BIGINT NOT NULL CONSTRAINT deployment_volume_chk_size_unsigned CHECK(volume_size > 0), volume_mount_path TEXT NOT NULL );"
   },
   "e838972a49d95650b469757b993bedfd88a875d6ea455abb1d3e97ded2bb492c": {
     "describe": {

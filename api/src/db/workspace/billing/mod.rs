@@ -935,7 +935,7 @@ pub async fn start_deployment_volume_usage_history(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-	storage: &i64,
+	storage: u64,
 	start_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -959,7 +959,7 @@ pub async fn start_deployment_volume_usage_history(
 		"#,
 		workspace_id as _,
 		deployment_id as _,
-		storage,
+		storage as i64,
 		start_time as _,
 	)
 	.execute(&mut *connection)

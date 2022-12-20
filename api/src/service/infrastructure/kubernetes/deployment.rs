@@ -18,6 +18,9 @@ use k8s_openapi::{
 			DeploymentSpec,
 			DeploymentStrategy,
 			RollingUpdateDeployment,
+			StatefulSet,
+			StatefulSetSpec,
+			StatefulSetUpdateStrategy,
 		},
 		autoscaling::v1::{
 			CrossVersionObjectReference,
@@ -35,7 +38,6 @@ use k8s_openapi::{
 			LocalObjectReference,
 			PersistentVolumeClaim,
 			PersistentVolumeClaimSpec,
-			PersistentVolumeClaimVolumeSource,
 			Pod,
 			PodSpec,
 			PodTemplateSpec,
@@ -70,6 +72,7 @@ use kube::{
 	api::{DeleteParams, ListParams, Patch, PatchParams},
 	core::{ErrorResponse, ObjectMeta},
 	Api,
+	Client,
 	Error as KubeError,
 };
 use sha2::{Digest, Sha512};
@@ -160,47 +163,6 @@ pub async fn update_kubernetes_deployment(
 		)
 		.await?;
 
-	for size in running_details.volume.keys() {
-		log::trace!("request_id: {} creating persistance volume claim for deployment: {}", request_id, deployment.id);
-		let kubernetes_deployment_volume = PersistentVolumeClaim {
-			metadata: ObjectMeta {
-				name: Some(format!("pvc-{}", deployment.id)),
-				namespace: Some(namespace.to_string()),
-				..ObjectMeta::default()
-			},
-			spec: Some(PersistentVolumeClaimSpec {
-				access_modes: Some(vec!["ReadWriteOnce".to_string()]),
-				resources: Some(ResourceRequirements {
-					requests: Some(
-						[(
-							"storage".to_string(),
-							Quantity(format!("{}Gi", size)),
-							// Quantity(format!("{}Gi", size)),
-						)]
-						.into_iter()
-						.collect(),
-					),
-					..ResourceRequirements::default()
-				}),
-				// storage_class_name: None, // confirm if this will be
-				// default or some new storage class
-				..PersistentVolumeClaimSpec::default()
-			}),
-			..PersistentVolumeClaim::default()
-		};
-
-		Api::<PersistentVolumeClaim>::namespaced(
-			kubernetes_client.clone(),
-			namespace,
-		)
-		.patch(
-			&format!("pvc-{}", deployment.id),
-			&PatchParams::apply(&format!("pvc-{}", deployment.id)),
-			&Patch::Apply(kubernetes_deployment_volume),
-		)
-		.await?;
-	}
-
 	// get this from machine type
 	let (cpu_count, memory_count) = deployment::MACHINE_TYPES
 		.get()
@@ -274,262 +236,8 @@ pub async fn update_kubernetes_deployment(
 	.into_iter()
 	.collect();
 
-	let mut volume_mounts = Vec::new();
-	let mut volumes = Vec::new();
-
-	if !&running_details.config_mounts.is_empty() {
-		volume_mounts.push(VolumeMount {
-			name: "config-mounts".to_string(),
-			mount_path: "/etc/config".to_string(),
-			..VolumeMount::default()
-		});
-		volumes.push(Volume {
-			name: "config-mounts".to_string(),
-			config_map: Some(ConfigMapVolumeSource {
-				name: Some(format!("config-mount-{}", deployment.id)),
-				items: Some(
-					running_details
-						.config_mounts
-						.iter()
-						.map(|(path, _)| KeyToPath {
-							key: path.clone(),
-							path: path.clone(),
-							..KeyToPath::default()
-						})
-						.collect(),
-				),
-				..ConfigMapVolumeSource::default()
-			}),
-			..Volume::default()
-		})
-	}
-
-	for path in running_details.volume.values() {
-		volume_mounts.push(VolumeMount {
-			name: "persistent-volume".to_string(),
-			mount_path: path.to_string(), /* make sure user does not have the
-			                               * mount_path to the a directory in
-			                               * the fs, by my observation it
-			                               * gives crashLoopBackOff error */
-			..VolumeMount::default()
-		});
-		volumes.push(Volume {
-			name: "persistent-volume".to_string(),
-			persistent_volume_claim: Some(PersistentVolumeClaimVolumeSource {
-				claim_name: format!("pvc-{}", deployment.id),
-				..PersistentVolumeClaimVolumeSource::default()
-			}),
-			..Volume::default()
-		})
-	}
-
-	let kubernetes_deployment = K8sDeployment {
-		metadata: ObjectMeta {
-			name: Some(format!("deployment-{}", deployment.id)),
-			namespace: Some(namespace.to_string()),
-			labels: Some(labels.clone()),
-			..ObjectMeta::default()
-		},
-		spec: Some(DeploymentSpec {
-			replicas: Some(running_details.min_horizontal_scale as i32),
-			selector: LabelSelector {
-				match_expressions: None,
-				match_labels: Some(labels.clone()),
-			},
-			template: PodTemplateSpec {
-				spec: Some(PodSpec {
-					containers: vec![Container {
-						name: format!("deployment-{}", deployment.id),
-						image: Some(image_name),
-						image_pull_policy: Some("Always".to_string()),
-						ports: Some(
-							running_details
-								.ports
-								.keys()
-								.map(|port| ContainerPort {
-									container_port: port.value() as i32,
-									..ContainerPort::default()
-								})
-								.collect::<Vec<_>>(),
-						),
-						startup_probe: running_details
-							.startup_probe
-							.as_ref()
-							.map(|probe| Probe {
-								http_get: Some(HTTPGetAction {
-									path: Some(probe.path.clone()),
-									port: IntOrString::Int(probe.port as i32),
-									scheme: Some("HTTP".to_string()),
-									..HTTPGetAction::default()
-								}),
-								failure_threshold: Some(15),
-								period_seconds: Some(10),
-								timeout_seconds: Some(3),
-								..Probe::default()
-							}),
-						liveness_probe: running_details
-							.liveness_probe
-							.as_ref()
-							.map(|probe| Probe {
-								http_get: Some(HTTPGetAction {
-									path: Some(probe.path.clone()),
-									port: IntOrString::Int(probe.port as i32),
-									scheme: Some("HTTP".to_string()),
-									..HTTPGetAction::default()
-								}),
-								failure_threshold: Some(15),
-								period_seconds: Some(10),
-								timeout_seconds: Some(3),
-								..Probe::default()
-							}),
-						env: Some(
-							running_details
-								.environment_variables
-								.iter()
-								.map(|(name, value)| {
-									use EnvironmentVariableValue::*;
-									EnvVar {
-										name: name.clone(),
-										value: Some(match value {
-											String(value) => value.clone(),
-											Secret { from_secret } => {
-												format!(
-													"vault:secret/data/{}/{}#data",
-													workspace_id, from_secret
-												)
-											}
-										}),
-										..EnvVar::default()
-									}
-								})
-								.chain([
-									EnvVar {
-										name: "PATR".to_string(),
-										value: Some("true".to_string()),
-										..EnvVar::default()
-									},
-									EnvVar {
-										name: "WORKSPACE_ID".to_string(),
-										value: Some(workspace_id.to_string()),
-										..EnvVar::default()
-									},
-									EnvVar {
-										name: "DEPLOYMENT_ID".to_string(),
-										value: Some(deployment.id.to_string()),
-										..EnvVar::default()
-									},
-									EnvVar {
-										name: "DEPLOYMENT_NAME".to_string(),
-										value: Some(deployment.name.clone()),
-										..EnvVar::default()
-									},
-									EnvVar {
-										name: "CONFIG_MAP_HASH".to_string(),
-										value: Some(config_map_hash),
-										..EnvVar::default()
-									},
-								])
-								.collect::<Vec<_>>(),
-						),
-						resources: Some(ResourceRequirements {
-							limits: Some(machine_type),
-							// https://blog.kubecost.com/blog/requests-and-limits/#the-tradeoffs
-							// using too low values for resource request will
-							// result in frequent pod restarts if memory usage
-							// increases and may result in starvation
-							//
-							// currently used 5% of the mininum deployment
-							// machine type as a request values
-							requests: Some(
-								[
-									(
-										"memory".to_string(),
-										Quantity("25M".to_owned()),
-									),
-									(
-										"cpu".to_string(),
-										Quantity("50m".to_owned()),
-									),
-								]
-								.into_iter()
-								.collect(),
-							),
-						}),
-						volume_mounts: Some(volume_mounts),
-						..Container::default()
-					}],
-					volumes: if !running_details.config_mounts.is_empty() {
-						Some(vec![Volume {
-							name: "config-mounts".to_string(),
-							config_map: Some(ConfigMapVolumeSource {
-								name: Some(format!(
-									"config-mount-{}",
-									deployment.id
-								)),
-								items: Some(
-									running_details
-										.config_mounts
-										.keys()
-										.map(|path| KeyToPath {
-											key: path.clone(),
-											path: path.clone(),
-											..KeyToPath::default()
-										})
-										.collect(),
-								),
-								..ConfigMapVolumeSource::default()
-							}),
-							..Volume::default()
-						}])
-					} else {
-						None
-					},
-					image_pull_secrets: deployment
-						.registry
-						.is_patr_registry()
-						.then(|| {
-							// TODO: for now patr registry is not supported for
-							// user clusters, need to create a separate secret
-							// for each private repo in future
-							vec![LocalObjectReference {
-								name: Some("patr-regcred".to_string()),
-							}]
-						}),
-					..PodSpec::default()
-				}),
-				metadata: Some(ObjectMeta {
-					labels: Some(labels.clone()),
-					annotations: Some(annotations),
-					..ObjectMeta::default()
-				}),
-			},
-			strategy: Some(DeploymentStrategy {
-				type_: Some("RollingUpdate".to_owned()),
-				rolling_update: Some(RollingUpdateDeployment {
-					max_surge: Some(IntOrString::Int(1)),
-					max_unavailable: Some(IntOrString::String(
-						"25%".to_owned(),
-					)),
-				}),
-			}),
-			..DeploymentSpec::default()
-		}),
-		..K8sDeployment::default()
-	};
-
-	// Create the deployment defined above
-	log::trace!("request_id: {} - creating deployment", request_id);
-	let deployment_api =
-		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace);
-
-	deployment_api
-		.patch(
-			&format!("deployment-{}", deployment.id),
-			&PatchParams::apply(&format!("deployment-{}", deployment.id)),
-			&Patch::Apply(kubernetes_deployment),
-		)
-		.await?;
-
+	// Creating service before deployment and sts as sts need service to be
+	// present before sts is created
 	let kubernetes_service = Service {
 		metadata: ObjectMeta {
 			name: Some(format!("service-{}", deployment.id)),
@@ -550,7 +258,7 @@ pub async fn update_kubernetes_deployment(
 					})
 					.collect::<Vec<_>>(),
 			),
-			selector: Some(labels),
+			selector: Some(labels.clone()),
 			..ServiceSpec::default()
 		}),
 		..Service::default()
@@ -569,6 +277,253 @@ pub async fn update_kubernetes_deployment(
 		)
 		.await?;
 
+	if running_details.volume.keys().len() > 0 {
+		update_kubernetes_statefulset(
+			&kubernetes_client,
+			deployment,
+			workspace_id.as_str(),
+			&image_name,
+			&labels,
+			&annotations,
+			running_details,
+			&machine_type,
+			&config_map_hash,
+			request_id,
+		)
+		.await?
+	} else {
+		let kubernetes_deployment = K8sDeployment {
+			metadata: ObjectMeta {
+				name: Some(format!("deployment-{}", deployment.id)),
+				namespace: Some(namespace.to_string()),
+				labels: Some(labels.clone()),
+				..ObjectMeta::default()
+			},
+			spec: Some(DeploymentSpec {
+				replicas: Some(running_details.min_horizontal_scale as i32),
+				selector: LabelSelector {
+					match_expressions: None,
+					match_labels: Some(labels.clone()),
+				},
+				template: PodTemplateSpec {
+					spec: Some(PodSpec {
+						containers: vec![Container {
+							name: format!("deployment-{}", deployment.id),
+							image: Some(image_name),
+							image_pull_policy: Some("Always".to_string()),
+							ports: Some(
+								running_details
+									.ports
+									.iter()
+									.map(|(port, _)| ContainerPort {
+										container_port: port.value() as i32,
+										..ContainerPort::default()
+									})
+									.collect::<Vec<_>>(),
+							),
+							startup_probe: running_details
+								.startup_probe
+								.as_ref()
+								.map(|probe| Probe {
+									http_get: Some(HTTPGetAction {
+										path: Some(probe.path.clone()),
+										port: IntOrString::Int(
+											probe.port as i32,
+										),
+										scheme: Some("HTTP".to_string()),
+										..HTTPGetAction::default()
+									}),
+									failure_threshold: Some(15),
+									period_seconds: Some(10),
+									timeout_seconds: Some(3),
+									..Probe::default()
+								}),
+							liveness_probe: running_details
+								.startup_probe
+								.as_ref()
+								.map(|probe| Probe {
+									http_get: Some(HTTPGetAction {
+										path: Some(probe.path.clone()),
+										port: IntOrString::Int(
+											probe.port as i32,
+										),
+										scheme: Some("HTTP".to_string()),
+										..HTTPGetAction::default()
+									}),
+									failure_threshold: Some(15),
+									period_seconds: Some(10),
+									timeout_seconds: Some(3),
+									..Probe::default()
+								}),
+							env: Some(
+								running_details
+									.environment_variables
+									.iter()
+									.map(|(name, value)| {
+										use EnvironmentVariableValue::*;
+										EnvVar {
+											name: name.clone(),
+											value: Some(match value {
+												String(value) => value.clone(),
+												Secret { from_secret } => {
+													format!(
+													"vault:secret/data/{}/{}#data",
+													workspace_id, from_secret
+												)
+												}
+											}),
+											..EnvVar::default()
+										}
+									})
+									.chain([
+										EnvVar {
+											name: "PATR".to_string(),
+											value: Some("true".to_string()),
+											..EnvVar::default()
+										},
+										EnvVar {
+											name: "WORKSPACE_ID".to_string(),
+											value: Some(
+												workspace_id.to_string(),
+											),
+											..EnvVar::default()
+										},
+										EnvVar {
+											name: "DEPLOYMENT_ID".to_string(),
+											value: Some(
+												deployment.id.to_string(),
+											),
+											..EnvVar::default()
+										},
+										EnvVar {
+											name: "DEPLOYMENT_NAME".to_string(),
+											value: Some(
+												deployment.name.clone(),
+											),
+											..EnvVar::default()
+										},
+										EnvVar {
+											name: "CONFIG_MAP_HASH".to_string(),
+											value: Some(config_map_hash),
+											..EnvVar::default()
+										},
+									])
+									.collect::<Vec<_>>(),
+							),
+							resources: Some(ResourceRequirements {
+								limits: Some(machine_type),
+								// https://blog.kubecost.com/blog/requests-and-limits/#the-tradeoffs
+								// using too low values for resource request
+								// will result in frequent pod restarts if
+								// memory usage increases and may result in
+								// starvation
+								//
+								// currently used 5% of the mininum deployment
+								// machine type as a request values
+								requests: Some(
+									[
+										(
+											"memory".to_string(),
+											Quantity("25M".to_owned()),
+										),
+										(
+											"cpu".to_string(),
+											Quantity("50m".to_owned()),
+										),
+									]
+									.into_iter()
+									.collect(),
+								),
+							}),
+							volume_mounts: if !running_details
+								.config_mounts
+								.is_empty()
+							{
+								Some(vec![VolumeMount {
+									name: "config-mounts".to_string(),
+									mount_path: "/etc/config".to_string(),
+									..VolumeMount::default()
+								}])
+							} else {
+								None
+							},
+							..Container::default()
+						}],
+						volumes: if !running_details.config_mounts.is_empty() {
+							Some(vec![Volume {
+								name: "config-mounts".to_string(),
+								config_map: Some(ConfigMapVolumeSource {
+									name: Some(format!(
+										"config-mount-{}",
+										deployment.id
+									)),
+									items: Some(
+										running_details
+											.config_mounts
+											.iter()
+											.map(|(path, _)| KeyToPath {
+												key: path.clone(),
+												path: path.clone(),
+												..KeyToPath::default()
+											})
+											.collect(),
+									),
+									..ConfigMapVolumeSource::default()
+								}),
+								..Volume::default()
+							}])
+						} else {
+							None
+						},
+						image_pull_secrets: deployment
+							.registry
+							.is_patr_registry()
+							.then(|| {
+								// TODO: for now patr registry is not supported
+								// for user clusters, need to create a separate
+								// secret for each private repo in future
+								vec![LocalObjectReference {
+									name: Some("patr-regcred".to_string()),
+								}]
+							}),
+						..PodSpec::default()
+					}),
+					metadata: Some(ObjectMeta {
+						labels: Some(labels.clone()),
+						annotations: Some(annotations),
+						..ObjectMeta::default()
+					}),
+				},
+				strategy: Some(DeploymentStrategy {
+					type_: Some("RollingUpdate".to_owned()),
+					rolling_update: Some(RollingUpdateDeployment {
+						max_surge: Some(IntOrString::Int(1)),
+						max_unavailable: Some(IntOrString::String(
+							"25%".to_owned(),
+						)),
+					}),
+				}),
+				..DeploymentSpec::default()
+			}),
+			..K8sDeployment::default()
+		};
+
+		// Create the deployment defined above
+		log::trace!("request_id: {} - creating deployment", request_id);
+		let deployment_api = Api::<K8sDeployment>::namespaced(
+			kubernetes_client.clone(),
+			namespace,
+		);
+
+		deployment_api
+			.patch(
+				&format!("deployment-{}", deployment.id),
+				&PatchParams::apply(&format!("deployment-{}", deployment.id)),
+				&Patch::Apply(kubernetes_deployment),
+			)
+			.await?;
+	}
+
 	// HPA - horizontal pod autoscaler
 	let kubernetes_hpa = HorizontalPodAutoscaler {
 		metadata: ObjectMeta {
@@ -579,8 +534,16 @@ pub async fn update_kubernetes_deployment(
 		spec: Some(HorizontalPodAutoscalerSpec {
 			scale_target_ref: CrossVersionObjectReference {
 				api_version: Some("apps/v1".to_string()),
-				kind: "Deployment".to_string(),
-				name: format!("deployment-{}", deployment.id),
+				kind: if running_details.volume.keys().len() > 0 {
+					"StatefulSet".to_string()
+				} else {
+					"Deployment".to_string()
+				},
+				name: if running_details.volume.keys().len() > 0 {
+					format!("sts-{}", deployment.id)
+				} else {
+					format!("deployment-{}", deployment.id)
+				},
 			},
 			min_replicas: Some(running_details.min_horizontal_scale.into()),
 			max_replicas: running_details.max_horizontal_scale.into(),
@@ -967,4 +930,268 @@ pub async fn get_kubernetes_deployment_status(
 	} else {
 		Ok(DeploymentStatus::Errored)
 	}
+}
+
+pub async fn update_kubernetes_statefulset(
+	kubernetes_client: &Client,
+	deployment: &Deployment,
+	workspace_id: &str,
+	image_name: &str,
+	labels: &BTreeMap<String, String>,
+	annotations: &BTreeMap<String, String>,
+	running_details: &DeploymentRunningDetails,
+	machine_type: &BTreeMap<String, Quantity>,
+	config_map_hash: &str,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let mut volume_mounts = Vec::new();
+	let mut volumes = Vec::new();
+	let mut pvc = Vec::new();
+
+	if !&running_details.config_mounts.is_empty() {
+		volume_mounts.push(VolumeMount {
+			name: "config-mounts".to_string(),
+			mount_path: "/etc/config".to_string(),
+			..VolumeMount::default()
+		});
+		volumes.push(Volume {
+			name: "config-mounts".to_string(),
+			config_map: Some(ConfigMapVolumeSource {
+				name: Some(format!("config-mount-{}", deployment.id)),
+				items: Some(
+					running_details
+						.config_mounts
+						.iter()
+						.map(|(path, _)| KeyToPath {
+							key: path.clone(),
+							path: path.clone(),
+							..KeyToPath::default()
+						})
+						.collect(),
+				),
+				..ConfigMapVolumeSource::default()
+			}),
+			..Volume::default()
+		})
+	}
+
+	for (idx, (size, path)) in running_details.volume.iter().enumerate() {
+		volume_mounts.push(VolumeMount {
+			name: format!("persistent-volume-{}", idx),
+			mount_path: path.to_string(), /* make sure user does not have
+			                               * the
+			                               * mount_path in the
+			                               * directory in
+			                               * the fs, by my observation it
+			                               * gives crashLoopBackOff error */
+			..VolumeMount::default()
+		});
+		pvc.push(PersistentVolumeClaim {
+			metadata: ObjectMeta {
+				name: Some(format!("persistence-volume-{}", idx)),
+				namespace: Some(workspace_id.to_string()),
+				..ObjectMeta::default()
+			},
+			spec: Some(PersistentVolumeClaimSpec {
+				access_modes: Some(vec!["ReadWriteOnce".to_string()]),
+				resources: Some(ResourceRequirements {
+					limits: Some(
+						[(
+							"storage".to_string(),
+							Quantity(format!("{}Gi", size)),
+						)]
+						.into_iter()
+						.collect(),
+					),
+					..ResourceRequirements::default()
+				}),
+				..PersistentVolumeClaimSpec::default()
+			}),
+			..PersistentVolumeClaim::default()
+		})
+	}
+	let kubernetes_sts = StatefulSet {
+		metadata: ObjectMeta {
+			name: Some(format!("sts-{}", deployment.id)),
+			namespace: Some(workspace_id.to_string()),
+			labels: Some(labels.clone()),
+			..ObjectMeta::default()
+		},
+		spec: Some(StatefulSetSpec {
+			replicas: Some(running_details.min_horizontal_scale as i32),
+			selector: LabelSelector {
+				match_expressions: None,
+				match_labels: Some(labels.clone()),
+			},
+			service_name: format!("service-{}", deployment.id),
+			template: PodTemplateSpec {
+				spec: Some(PodSpec {
+					containers: vec![Container {
+						name: format!("sts-{}", deployment.id),
+						image: Some(image_name.to_string()),
+						image_pull_policy: Some("Always".to_string()),
+						ports: Some(
+							running_details
+								.ports
+								.iter()
+								.map(|(port, _)| ContainerPort {
+									container_port: port.value() as i32,
+									..ContainerPort::default()
+								})
+								.collect::<Vec<_>>(),
+						),
+						startup_probe: running_details
+							.startup_probe
+							.as_ref()
+							.map(|probe| Probe {
+								http_get: Some(HTTPGetAction {
+									path: Some(probe.path.clone()),
+									port: IntOrString::Int(probe.port as i32),
+									scheme: Some("HTTP".to_string()),
+									..HTTPGetAction::default()
+								}),
+								failure_threshold: Some(15),
+								period_seconds: Some(10),
+								timeout_seconds: Some(3),
+								..Probe::default()
+							}),
+						liveness_probe: running_details
+							.startup_probe
+							.as_ref()
+							.map(|probe| Probe {
+								http_get: Some(HTTPGetAction {
+									path: Some(probe.path.clone()),
+									port: IntOrString::Int(probe.port as i32),
+									scheme: Some("HTTP".to_string()),
+									..HTTPGetAction::default()
+								}),
+								failure_threshold: Some(15),
+								period_seconds: Some(10),
+								timeout_seconds: Some(3),
+								..Probe::default()
+							}),
+						env: Some(
+							running_details
+								.environment_variables
+								.iter()
+								.map(|(name, value)| {
+									use EnvironmentVariableValue::*;
+									EnvVar {
+										name: name.clone(),
+										value: Some(match value {
+											String(value) => value.clone(),
+											Secret { from_secret } => {
+												format!(
+													"vault:secret/data/{}/{}#data",
+													workspace_id, from_secret
+												)
+											}
+										}),
+										..EnvVar::default()
+									}
+								})
+								.chain([
+									EnvVar {
+										name: "PATR".to_string(),
+										value: Some("true".to_string()),
+										..EnvVar::default()
+									},
+									EnvVar {
+										name: "WORKSPACE_ID".to_string(),
+										value: Some(workspace_id.to_string()),
+										..EnvVar::default()
+									},
+									EnvVar {
+										name: "DEPLOYMENT_ID".to_string(),
+										value: Some(deployment.id.to_string()),
+										..EnvVar::default()
+									},
+									EnvVar {
+										name: "DEPLOYMENT_NAME".to_string(),
+										value: Some(deployment.name.clone()),
+										..EnvVar::default()
+									},
+									EnvVar {
+										name: "CONFIG_MAP_HASH".to_string(),
+										value: Some(
+											config_map_hash.to_string(),
+										),
+										..EnvVar::default()
+									},
+								])
+								.collect::<Vec<_>>(),
+						),
+						resources: Some(ResourceRequirements {
+							limits: Some(machine_type.clone()),
+							// https://blog.kubecost.com/blog/requests-and-limits/#the-tradeoffs
+							// using too low values for resource request will
+							// result in frequent pod restarts if memory usage
+							// increases and may result in starvation
+							//
+							// currently used 5% of the mininum deployment
+							// machine type as a request values
+							requests: Some(
+								[
+									(
+										"memory".to_string(),
+										Quantity("25M".to_owned()),
+									),
+									(
+										"cpu".to_string(),
+										Quantity("50m".to_owned()),
+									),
+								]
+								.into_iter()
+								.collect(),
+							),
+						}),
+						volume_mounts: Some(volume_mounts.to_vec()),
+						..Container::default()
+					}],
+					volumes: Some(volumes),
+
+					image_pull_secrets: deployment
+						.registry
+						.is_patr_registry()
+						.then(|| {
+							// TODO: for now patr registry is not supported for
+							// user clusters, need to create a separate secret
+							// for each private repo in future
+							vec![LocalObjectReference {
+								name: Some("patr-regcred".to_string()),
+							}]
+						}),
+					..PodSpec::default()
+				}),
+				metadata: Some(ObjectMeta {
+					labels: Some(labels.clone()),
+					annotations: Some(annotations.clone()),
+					..ObjectMeta::default()
+				}),
+			},
+			update_strategy: Some(StatefulSetUpdateStrategy {
+				type_: Some("RollingUpdate".to_owned()),
+				..StatefulSetUpdateStrategy::default()
+			}),
+			volume_claim_templates: Some(pvc),
+			..StatefulSetSpec::default()
+		}),
+		..StatefulSet::default()
+	};
+
+	// Create the statefulset defined above
+	log::trace!("request_id: {} - creating deployment", request_id);
+	let sts_api = Api::<K8sDeployment>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id,
+	);
+
+	sts_api
+		.patch(
+			&format!("sts-{}", deployment.id),
+			&PatchParams::apply(&format!("sts-{}", deployment.id)),
+			&Patch::Apply(kubernetes_sts),
+		)
+		.await?;
+	Ok(())
 }

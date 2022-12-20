@@ -287,7 +287,7 @@ pub async fn create_deployment_in_workspace(
 			connection,
 			&deployment_id,
 			&volume_id,
-			size.value() as u32,
+			size.value() as u64,
 			path.as_ref(),
 		)
 		.await?;
@@ -309,8 +309,7 @@ pub async fn create_deployment_in_workspace(
 				connection,
 				workspace_id,
 				&deployment_id,
-				&(((size.value() as f64) / (1000f64 * 1000f64 * 1000f64)).ceil()
-					as i64),
+				size.value() as u64 * 1000u64 * 1000u64 * 1000u64,
 				&created_time,
 			)
 			.await?;

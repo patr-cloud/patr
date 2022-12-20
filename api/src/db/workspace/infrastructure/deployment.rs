@@ -351,7 +351,10 @@ pub async fn initialize_deployment_pre(
 			deployment_id UUID NOT NULL
 				CONSTRAINT deployment_volume_fk_deployment_id
 					REFERENCES deployment(id),
-			volume_size INTEGER NOT NULL,
+			volume_size BIGINT NOT NULL
+				CONSTRAINT
+					deployment_volume_chk_size_unsigned
+						CHECK(volume_size > 0),
 			volume_mount_path TEXT NOT NULL
 		);
 		"#
@@ -1182,7 +1185,7 @@ pub async fn add_volume_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	volume_id: &Uuid,
-	size: u32,
+	size: u64,
 	path: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -1198,7 +1201,7 @@ pub async fn add_volume_for_deployment(
 			($1, $2, $3, $4);
 		"#,
 		volume_id as _,
-		size as i32,
+		size as i64,
 		path,
 		deployment_id as _,
 	)
