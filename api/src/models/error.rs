@@ -77,6 +77,7 @@ pub mod id {
 	pub const TAG_NOT_FOUND: &str = "TagNotFound";
 	pub const FILE_SIZE_TOO_LARGE: &str = "fileSizeTooLarge";
 	pub const NOT_A_SUPER_ADMIN: &str = "notASuperAdmin";
+	pub const TEMPORARY_EMAIL: &str = "temporaryEmail";
 
 	// error constants for billing related things
 	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "cardlessFreeLimitExceeded";
@@ -226,6 +227,7 @@ pub mod message {
 	pub const TAG_NOT_FOUND: &str = "The tag does not exist";
 	pub const FILE_SIZE_TOO_LARGE: &str = "The file that you uploaded is too large. Maximum size allowed is 100MB";
 	pub const NOT_A_SUPER_ADMIN: &str = "You have to be super admin to perform this action. If you wish to continue please contact your administrator";
+	pub const TEMPORARY_EMAIL: &str = "We have detected your email to be temporary email. Please enter a valid email or contact support for help";
 
 	// error constants for billing related things
 	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "You have reached the maximun free limit allowed to create resources without adding a payment card, kindly add a card to create more resources";

@@ -1,4 +1,5 @@
 mod access_token_data;
+mod email_validate;
 mod user_api_token_data;
 
 use std::{collections::BTreeMap, net::IpAddr};
@@ -6,7 +7,11 @@ use std::{collections::BTreeMap, net::IpAddr};
 use api_models::{models::workspace::WorkspacePermission, utils::Uuid};
 use redis::aio::MultiplexedConnection as RedisConnection;
 
-pub use self::{access_token_data::*, user_api_token_data::*};
+pub use self::{
+	access_token_data::*,
+	email_validate::*,
+	user_api_token_data::*,
+};
 use super::rbac::{self, GOD_USER_ID};
 use crate::{utils::Error, Database};
 
