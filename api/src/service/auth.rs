@@ -283,6 +283,8 @@ pub async fn create_user_join_request(
 		// If recovery_email is only provided
 		RecoveryMethod::Email { recovery_email } => {
 			let client = Client::new();
+			// Reference for APIs docs of ipqualityscore can be found in this
+			// url https://www.ipqualityscore.com/documentation/email-validation/overview
 			let disposable = client
 				.get(format!(
 					"{}/{}/{}",
