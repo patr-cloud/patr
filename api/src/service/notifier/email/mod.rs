@@ -453,11 +453,13 @@ pub async fn send_payment_success_invoice_email(
 	card_amount_deducted: u64,
 	credits_remaining: u64,
 ) -> Result<(), Error> {
+	let has_bill = bill_breakdown.total_charge > 0;
+	let is_charged = card_amount_deducted > 0;
 	send_email(
 		PaymentSuccessInvoiceEmail {
 			username,
 			workspace_name,
-			bill_breakdown: bill_breakdown.clone(),
+			bill_breakdown,
 			billing_address,
 			credits_deducted,
 			card_amount_deducted,
@@ -465,10 +467,10 @@ pub async fn send_payment_success_invoice_email(
 		},
 		email,
 		None,
-		if bill_breakdown.total_charge > 0 {
-			"Patr payment successful"
-		} else {
-			"Patr invoice"
+		match (has_bill, is_charged) {
+			(true, true) => "Patr payment successful via card",
+			(true, false) => "Patr payment successful via credits",
+			(false, _) => "Patr invoice",
 		},
 	)
 	.await
@@ -503,7 +505,7 @@ pub async fn send_resource_deleted_email(
 		},
 		email,
 		None,
-		"[Action Required] Patr resource deleted",
+		"Patr resource deleted",
 	)
 	.await
 }
