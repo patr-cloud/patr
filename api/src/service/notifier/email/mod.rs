@@ -112,7 +112,7 @@ pub async fn send_user_reset_password_notification(
 		},
 		email,
 		None,
-		"Patr successful password change",
+		"Patr password changed successfully",
 	)
 	.await
 }
@@ -143,7 +143,7 @@ pub async fn send_password_changed_notification(
 		},
 		email,
 		None,
-		"Patr password change",
+		"Patr password changed successfully",
 	)
 	.await
 }
@@ -174,7 +174,7 @@ pub async fn send_sign_up_completed_email(
 		},
 		email,
 		None,
-		"Welcome to Patr",
+		"Welcome to Patr!",
 	)
 	.await
 }
@@ -210,7 +210,7 @@ pub async fn send_recovery_registration_mail(
 		},
 		email,
 		None,
-		"Welcome to Patr",
+		"Recovery email added successfully",
 	)
 	.await
 }
@@ -323,7 +323,7 @@ pub async fn send_bill_payment_failed_reminder_email(
 		},
 		email,
 		None,
-		"[Action required] Patr bill payment pending",
+		"[Action required] Patr bill payment failed",
 	)
 	.await
 }
@@ -360,7 +360,7 @@ pub async fn send_card_not_added_reminder_email(
 		},
 		email,
 		None,
-		"[Action required] Patr bill payment pending",
+		"[Action required] Add payment method on Patr",
 	)
 	.await
 }
@@ -453,6 +453,8 @@ pub async fn send_payment_success_invoice_email(
 	card_amount_deducted: u64,
 	credits_remaining: u64,
 ) -> Result<(), Error> {
+	let has_bill = bill_breakdown.total_charge > 0;
+	let is_charged = card_amount_deducted > 0;
 	send_email(
 		PaymentSuccessInvoiceEmail {
 			username,
@@ -465,7 +467,11 @@ pub async fn send_payment_success_invoice_email(
 		},
 		email,
 		None,
-		"Patr payment successful",
+		match (has_bill, is_charged) {
+			(true, true) => "Patr payment successful via card",
+			(true, false) => "Patr payment successful via credits",
+			(false, _) => "Patr invoice",
+		},
 	)
 	.await
 }
@@ -530,7 +536,7 @@ pub async fn send_domain_unverified_email(
 		},
 		email,
 		None,
-		"Domain not Verified",
+		"[Action Required] Domain not Verified",
 	)
 	.await
 }
@@ -558,7 +564,7 @@ pub async fn send_domain_verified_email(
 		},
 		email,
 		None,
-		"Domain Verified",
+		"Domain Verified on Patr",
 	)
 	.await
 }
@@ -623,7 +629,7 @@ pub async fn send_purchase_credits_success_email(
 		},
 		email,
 		None,
-		"Patr credits successfully added",
+		"Patr credits purchase successful",
 	)
 	.await
 }
@@ -657,7 +663,7 @@ pub async fn send_bill_paid_using_credits_email(
 		},
 		email,
 		None,
-		"Patr credits added successfully",
+		"Patr payment successful",
 	)
 	.await
 }
