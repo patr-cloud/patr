@@ -997,26 +997,21 @@ async fn get_container_logs(
 		deployment_id
 	);
 
-	let mut combined_build_logs = Vec::new();
-
-	for result in logs {
-		for value in result.values {
-			let (time_stamp, log) =
-				(value[0].parse::<u64>()?, value[1].clone());
-			combined_build_logs.push((time_stamp, log));
-		}
-	}
+	let mut combined_build_logs = logs
+		.into_iter()
+		.flat_map(|loki_logs| loki_logs.values)
+		.filter_map(|log| Some((log[0].parse::<u64>().ok()?, log[1].clone())))
+		.collect::<Vec<(_, _)>>();
 
 	combined_build_logs.sort_by(|a, b| a.0.cmp(&b.0));
 
-	let mut logs = Vec::new();
-
-	for (timestamp, log) in combined_build_logs {
-		logs.push(DeploymentLogs {
+	let logs = combined_build_logs
+		.into_iter()
+		.map(|(timestamp, log)| DeploymentLogs {
 			timestamp: TzDateTime(Utc.timestamp_nanos(timestamp as i64)),
 			logs: log,
-		});
-	}
+		})
+		.collect();
 
 	Ok(logs)
 }
