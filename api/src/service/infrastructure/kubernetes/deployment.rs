@@ -857,7 +857,7 @@ pub async fn update_kubernetes_deployment(
 	Ok(())
 }
 
-pub async fn delete_kubernetes_deployment(
+pub async fn stop_kubernetes_deployment(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
 	kubeconfig: Kubeconfig,
@@ -865,6 +865,7 @@ pub async fn delete_kubernetes_deployment(
 ) -> Result<(), Error> {
 	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
 
+	log::trace!("request_id: {} - deleting the deployment", request_id);
 	Api::<K8sDeployment>::namespaced(
 		kubernetes_client.clone(),
 		workspace_id.as_str(),
@@ -875,13 +876,6 @@ pub async fn delete_kubernetes_deployment(
 	)
 	.await?;
 
-	delete_private_docker_registry_credentials(
-		workspace_id,
-		deployment_id,
-		kubeconfig,
-		request_id,
-	)
-	.await?;
 
 	log::trace!("request_id: {} - deleting the stateful set", request_id);
 
@@ -893,7 +887,6 @@ pub async fn delete_kubernetes_deployment(
 	.await?;
 
 	log::trace!("request_id: {} - deleting the config map", request_id);
-
 	Api::<ConfigMap>::namespaced(
 		kubernetes_client.clone(),
 		workspace_id.as_str(),
@@ -916,7 +909,6 @@ pub async fn delete_kubernetes_deployment(
 	.await?;
 
 	log::trace!("request_id: {} - deleting the hpa", request_id);
-
 	Api::<HorizontalPodAutoscaler>::namespaced(
 		kubernetes_client.clone(),
 		workspace_id.as_str(),
@@ -931,6 +923,37 @@ pub async fn delete_kubernetes_deployment(
 			&DeleteParams::default(),
 		)
 		.await?;
+
+	log::trace!(
+		"request_id: {} - deployment stopped successfully!",
+		request_id
+	);
+
+	Ok(())
+}
+
+pub async fn delete_kubernetes_deployment(
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	kubeconfig: KubernetesConfigDetails,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	stop_kubernetes_deployment(
+		workspace_id,
+		deployment_id,
+		kubeconfig.clone(),
+		request_id,
+	)
+	.await?;
+
+	// delete private regcred only when deployment is manually deleted
+	delete_private_docker_registry_credentials(
+		workspace_id,
+		deployment_id,
+		kubeconfig,
+		request_id,
+	)
+	.await?;
 
 	log::trace!(
 		"request_id: {} - deployment deleted successfully!",

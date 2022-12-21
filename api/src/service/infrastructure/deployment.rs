@@ -1836,7 +1836,7 @@ pub async fn stop_deployment(
 		service::get_kubernetes_config_for_region(connection, region_id)
 			.await?;
 
-	service::delete_kubernetes_deployment(
+	service::stop_kubernetes_deployment(
 		workspace_id,
 		deployment_id,
 		kubeconfig,
