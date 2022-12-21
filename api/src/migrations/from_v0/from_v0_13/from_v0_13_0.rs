@@ -13,7 +13,6 @@ pub(super) async fn migrate(
 	Ok(())
 }
 
-
 async fn allow_private_docker_registry(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
@@ -41,15 +40,15 @@ async fn allow_private_docker_registry(
 		ALTER TABLE deployment
 			ADD CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
-					registry = 'registry.patr.cloud'
-					AND use_private_regcred = false
-					AND image_name IS NULL
-					AND repository_id IS NOT NULL
+					registry = 'registry.patr.cloud' AND
+					use_private_regcred = false AND
+					image_name IS NULL AND
+					repository_id IS NOT NULL
 				)
 				OR (
-					registry != 'registry.patr.cloud'
-					AND image_name IS NOT NULL
-					AND repository_id IS NULL
+					registry != 'registry.patr.cloud' AND
+					image_name IS NOT NULL AND
+					repository_id IS NULL
 				)
 			);
 		"#
