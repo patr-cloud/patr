@@ -997,21 +997,17 @@ async fn get_container_logs(
 		deployment_id
 	);
 
-	let mut combined_build_logs = logs
+	let mut logs = logs
 		.into_iter()
 		.flat_map(|loki_logs| loki_logs.values)
 		.filter_map(|log| Some((log[0].parse::<u64>().ok()?, log[1].clone())))
-		.collect::<Vec<(_, _)>>();
-
-	combined_build_logs.sort_by(|a, b| a.0.cmp(&b.0));
-
-	let logs = combined_build_logs
-		.into_iter()
 		.map(|(timestamp, log)| DeploymentLogs {
 			timestamp: TzDateTime(Utc.timestamp_nanos(timestamp as i64)),
 			logs: log,
 		})
-		.collect();
+		.collect::<Vec<_>>();
+
+	logs.sort_by(|a, b| a.timestamp.0.cmp(&b.timestamp.0));
 
 	Ok(logs)
 }
