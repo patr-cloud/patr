@@ -1485,11 +1485,14 @@ async fn get_logs(
 		.map(|DateTime(end_time)| end_time)
 		.unwrap_or_else(Utc::now);
 
+	// Loki query limit to 721h in time range
+	let start_time = end_time - Duration::days(30);
+
 	log::trace!("request_id: {} - Getting logs", request_id);
-	// stop the running container, if it exists
 	let logs = service::get_deployment_container_logs(
 		context.get_database_connection(),
 		&deployment_id,
+		&start_time,
 		&end_time,
 		limit.unwrap_or(100),
 		&config,
