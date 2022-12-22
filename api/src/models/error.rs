@@ -68,6 +68,7 @@ pub mod id {
 	pub const SECRET_LIMIT_EXCEEDED: &str = "secretLimitExceeded";
 	pub const REPOSITORY_SIZE_LIMIT_EXCEEDED: &str =
 		"repositorySizeLimitExceeded";
+	pub const VOLUME_LIMIT_EXCEEDED: &str = "volumeLimitExceeded";
 	pub const ADDRESS_ALREADY_EXISTS: &str = "addressAlreadyExists";
 	pub const ADDRESS_NOT_FOUND: &str = "addressNotFound";
 	pub const DOMAIN_LIMIT_EXCEEDED: &str = "domainLimitExceeded";
@@ -88,6 +89,8 @@ pub mod id {
 	pub const CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT: &str =
 		"cardlessDeploymentMachineType";
 	pub const REPLICA_LIMIT_EXCEEDED: &str = "replicaLimitExceeded";
+	pub const CARDLESS_VOLUME_LIMIT_EXCEEDED: &str =
+		"cardlessVolumeLimitExceeded";
 
 	// error constants for CI
 	pub const INVALID_STATE_VALUE: &str = "invalidStateValue";
@@ -221,6 +224,7 @@ pub mod message {
 	pub const MANAGED_URL_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number managed URLs allowed for your workspace, contact support to increase the limit";
 	pub const SECRET_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number secrets allowed for your workspace, contact support to increase the limit";
 	pub const REPOSITORY_SIZE_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum size of repositories allowed for your workspace, contact support to increase the limit";
+	pub const VOLUME_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum size of the volumes allowed for your workspace, contact support to increase the limit";
 	pub const ADDRESS_ALREADY_EXISTS: &str =
 		"The address already exists, please use a different address";
 	pub const ADDRESS_NOT_FOUND: &str =
@@ -241,6 +245,7 @@ pub mod message {
 	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "You have reached the maximun free limit allowed to create resources without adding a payment card, kindly add a card to create more resources";
 	pub const CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT: &str = "Only base deployment machine type is allowed under free plan, kindly add a card to create deployment with bigger machine type";
 	pub const REPLICA_LIMIT_EXCEEDED: &str = "Only one minimum and maximum replicas allowed under the free plan,  kindly add a card to create deployment with multiple replicas";
+	pub const CARDLESS_VOLUME_LIMIT_EXCEEDED: &str = "Only 10GB volume storage allowed under the free plan,  kindly add a card to create volume with more storage";
 
 	// error constants for CI
 	pub const INVALID_STATE_VALUE: &str =

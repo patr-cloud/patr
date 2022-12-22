@@ -259,7 +259,7 @@ pub async fn update_kubernetes_deployment(
 					.collect::<Vec<_>>(),
 			),
 			selector: Some(labels.clone()),
-			cluster_ip: if running_details.volume.keys().len() > 0 {
+			cluster_ip: if !running_details.volume.is_empty() {
 				Some("None".to_string())
 			} else {
 				None
@@ -282,7 +282,7 @@ pub async fn update_kubernetes_deployment(
 		)
 		.await?;
 
-	if running_details.volume.keys().len() > 0 {
+	if !running_details.volume.is_empty() {
 		update_kubernetes_statefulset(
 			&kubernetes_client,
 			deployment,
@@ -539,12 +539,12 @@ pub async fn update_kubernetes_deployment(
 		spec: Some(HorizontalPodAutoscalerSpec {
 			scale_target_ref: CrossVersionObjectReference {
 				api_version: Some("apps/v1".to_string()),
-				kind: if running_details.volume.keys().len() > 0 {
+				kind: if !running_details.volume.is_empty() {
 					"StatefulSet".to_string()
 				} else {
 					"Deployment".to_string()
 				},
-				name: if running_details.volume.keys().len() > 0 {
+				name: if !running_details.volume.is_empty() {
 					format!("sts-{}", deployment.id)
 				} else {
 					format!("deployment-{}", deployment.id)
@@ -643,7 +643,8 @@ pub async fn update_kubernetes_deployment(
 
 	// Create the ingress defined above
 	log::trace!("request_id: {} - creating ingress", request_id);
-	let ingress_api = Api::<Ingress>::namespaced(kubernetes_client, namespace);
+	let ingress_api =
+		Api::<Ingress>::namespaced(kubernetes_client.clone(), namespace);
 
 	ingress_api
 		.patch(
@@ -759,6 +760,37 @@ pub async fn update_kubernetes_deployment(
 			.collect::<Vec<_>>()
 			.join(",")
 	);
+
+	if !running_details.volume.is_empty() {
+		log::trace!(
+			"request_id: {} - found update from deployment to stateful set",
+			request_id
+		);
+		log::trace!("request_id: {} - deleting the deployment", request_id);
+
+		Api::<K8sDeployment>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
+		.delete_opt(
+			&format!("deployment-{}", deployment.id),
+			&DeleteParams::default(),
+		)
+		.await?;
+	} else {
+		log::trace!(
+			"request_id: {} - found update from stateful to deployment set",
+			request_id
+		);
+		log::trace!("request_id: {} - deleting the stateful set", request_id);
+
+		Api::<StatefulSet>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
+		.delete_opt(&format!("sts-{}", deployment.id), &DeleteParams::default())
+		.await?;
+	}
 
 	Ok(())
 }
