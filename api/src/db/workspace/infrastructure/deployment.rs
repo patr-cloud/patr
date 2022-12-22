@@ -1277,7 +1277,7 @@ pub async fn get_all_deployment_volumes(
 		FROM
 			deployment_volume
 		WHERE
-			id = $1;
+			deployment_id = $1;
 		"#,
 		deployment_id as _,
 	)
