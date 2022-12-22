@@ -244,8 +244,8 @@ pub async fn update_managed_url(
 				Some(*port),
 				None,
 				None,
-				false,
-				false,
+				None,
+				None,
 			)
 			.await?;
 		}
@@ -263,8 +263,8 @@ pub async fn update_managed_url(
 				None,
 				Some(static_site_id),
 				None,
-				false,
-				false,
+				None,
+				None,
 			)
 			.await?;
 		}
@@ -282,8 +282,8 @@ pub async fn update_managed_url(
 				None,
 				None,
 				Some(url),
-				false,
-				*http_only,
+				None,
+				Some(*http_only),
 			)
 			.await?;
 		}
@@ -305,8 +305,8 @@ pub async fn update_managed_url(
 				None,
 				None,
 				Some(url),
-				*permanent_redirect,
-				*http_only,
+				Some(*permanent_redirect),
+				Some(*http_only),
 			)
 			.await?;
 		}

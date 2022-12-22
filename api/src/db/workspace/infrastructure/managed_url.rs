@@ -74,28 +74,36 @@ pub async fn initialize_managed_url_pre(
 					deployment_id IS NOT NULL AND
 					port IS NOT NULL AND
 					static_site_id IS NULL AND
-					url IS NULL
+					url IS NULL AND
+					permanent_redirect IS NULL AND
+					http_only IS NULL
 				) OR
 				(
 					url_type = 'proxy_to_static_site' AND
 					deployment_id IS NULL AND
 					port IS NULL AND
 					static_site_id IS NOT NULL AND
-					url IS NULL
+					url IS NULL AND
+					permanent_redirect IS NULL AND
+					http_only IS NULL
 				) OR
 				(
 					url_type = 'proxy_url' AND
 					deployment_id IS NULL AND
 					port IS NULL AND
 					static_site_id IS NULL AND
-					url IS NOT NULL
+					url IS NOT NULL AND
+					permanent_redirect IS NOT NULL AND
+					http_only IS NOT NULL
 				) OR
 				(
 					url_type = 'redirect' AND
 					deployment_id IS NULL AND
 					port IS NULL AND
 					static_site_id IS NULL AND
-					url IS NOT NULL
+					url IS NOT NULL AND
+					permanent_redirect IS NOT NULL AND
+					http_only IS NOT NULL
 				)
 			)
 		);
@@ -364,8 +372,8 @@ pub async fn update_managed_url(
 	port: Option<u16>,
 	static_site_id: Option<&Uuid>,
 	url: Option<&str>,
-	permanent_redirect: bool,
-	http_only: bool,
+	permanent_redirect: Option<bool>,
+	http_only: Option<bool>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
