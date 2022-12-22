@@ -8,7 +8,7 @@ pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), Error> {
-	managed_url_redirects(connection, config).await?;
+	managed_url_redirects(&mut *connection, config).await?;
 	Ok(())
 }
 
