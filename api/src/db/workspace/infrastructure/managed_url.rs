@@ -56,8 +56,6 @@ pub async fn initialize_managed_url_pre(
 				),
 			domain_id UUID NOT NULL,
 			path TEXT NOT NULL,
-			permanent_redirect BOOLEAN,
-			http_only BOOLEAN,
 			url_type MANAGED_URL_TYPE NOT NULL,
 			deployment_id UUID,
 			port INTEGER CONSTRAINT managed_url_chk_port_u16 CHECK(
@@ -68,6 +66,8 @@ pub async fn initialize_managed_url_pre(
 			workspace_id UUID NOT NULL,
 			is_configured BOOLEAN NOT NULL,
 			deleted TIMESTAMPTZ,
+			permanent_redirect BOOLEAN,
+			http_only BOOLEAN,
 			CONSTRAINT managed_url_chk_values_null_or_not_null CHECK(
 				(
 					url_type = 'proxy_to_deployment' AND
