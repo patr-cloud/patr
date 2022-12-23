@@ -48,6 +48,14 @@ impl Region {
 	pub fn is_ready(&self) -> bool {
 		self.ready || self.is_patr_region()
 	}
+
+	pub fn is_patr_region(&self) -> bool {
+		self.workspace_id.is_none()
+	}
+
+	pub fn is_ready(&self) -> bool {
+		self.ready || self.is_patr_region()
+	}
 }
 
 pub async fn initialize_region_pre(
