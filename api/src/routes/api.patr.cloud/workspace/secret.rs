@@ -4,7 +4,9 @@ use api_models::{
 		CreateSecretInWorkspaceRequest,
 		CreateSecretInWorkspaceResponse,
 		DeleteSecretResponse,
+		GetResourcesForSecretResponse,
 		ListSecretsResponse,
+		ResourcesForSecret,
 		Secret,
 		UpdateWorkspaceSecretRequest,
 		UpdateWorkspaceSecretResponse,
@@ -65,6 +67,41 @@ pub fn create_sub_app(
 				}),
 			},
 			EveMiddleware::CustomFunction(pin_fn!(list_secrets)),
+		],
+	);
+
+	// Get all resources for the secret
+	app.get(
+		"/:secretId/resources",
+		[
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::secret::LIST,
+				resource: closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			},
+			EveMiddleware::CustomFunction(pin_fn!(
+				get_all_resources_for_secrets
+			)),
 		],
 	);
 
@@ -209,6 +246,50 @@ async fn list_secrets(
 
 	log::trace!("request_id: {} - Returning secrets", request_id);
 	context.success(ListSecretsResponse { secrets });
+	Ok(context)
+}
+
+async fn get_all_resources_for_secrets(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
+	log::trace!(
+		"request_id: {} - Listing all resources for secret",
+		request_id
+	);
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+
+	let secret_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+
+	db::get_secret_by_id(context.get_database_connection(), &secret_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let resources = db::get_all_resources_for_secret(
+		context.get_database_connection(),
+		&workspace_id,
+		&secret_id,
+	)
+	.await?
+	.into_iter()
+	.map(|resource| ResourcesForSecret {
+		resource_id: resource.resource_id,
+		resource_name: resource.resource_name,
+	})
+	.collect();
+
+	log::trace!(
+		"request_id: {} - Returning list of resources for secret",
+		request_id
+	);
+	context.success(GetResourcesForSecretResponse { resources });
 	Ok(context)
 }
 

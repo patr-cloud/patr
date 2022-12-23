@@ -11744,6 +11744,38 @@
     },
     "query": "INSERT INTO domain( id, name, type, tld ) VALUES ($1, $2, $3, $4);"
   },
+  "d2758754335945ca217bd5f6881d4ea18bc0b3fa7c0d9b2621a1c811f8017fd3": {
+    "describe": {
+      "columns": [
+        {
+          "name": "resource_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "resource_name: _",
+          "ordinal": 1,
+          "type_info": {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          }
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT deployment.id as \"resource_id: _\", deployment.name as \"resource_name: _\" FROM secret LEFT JOIN deployment_environment_variable ON deployment_environment_variable.secret_id = secret.id LEFT JOIN deployment ON deployment_environment_variable.deployment_id = deployment.id WHERE secret.id = $1 AND secret.workspace_id = $2 AND deployment.deleted IS NULL AND deployment.status != 'deleted';"
+  },
   "d2ca892138dda0bf1f349785a946da0be3f47a06a3f22ffdd6c7607299ee9fb0": {
     "describe": {
       "columns": [

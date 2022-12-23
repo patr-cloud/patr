@@ -10,6 +10,11 @@ pub struct Secret {
 	pub deployment_id: Option<Uuid>,
 }
 
+pub struct ResourcesSecret {
+	pub resource_id: Uuid,
+	pub resource_name: String,
+}
+
 pub async fn initialize_secret_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
@@ -110,6 +115,40 @@ pub async fn get_all_secrets_in_workspace(
 			deleted IS NULL;
 		"#,
 		workspace_id as _,
+	)
+	.fetch_all(connection)
+	.await
+}
+
+pub async fn get_all_resources_for_secret(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	secret_id: &Uuid,
+) -> Result<Vec<ResourcesSecret>, sqlx::Error> {
+	query_as!(
+		ResourcesSecret,
+		r#"
+		SELECT
+			deployment.id as "resource_id: _",
+			deployment.name as "resource_name: _"
+		FROM
+			secret
+		LEFT JOIN
+			deployment_environment_variable
+		ON
+			deployment_environment_variable.secret_id = secret.id
+		LEFT JOIN
+			deployment
+		ON
+			deployment_environment_variable.deployment_id = deployment.id
+		WHERE
+			secret.id = $1 AND
+			secret.workspace_id = $2 AND
+			deployment.deleted IS NULL AND
+			deployment.status != 'deleted';
+		"#,
+		workspace_id as _,
+		secret_id as _,
 	)
 	.fetch_all(connection)
 	.await
