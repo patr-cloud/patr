@@ -14,6 +14,7 @@ use api_models::{
 			DomainPlan,
 			DomainUsage,
 			ManagedUrlUsage,
+			PatrDatabaseUsage,
 			PaymentMethod,
 			PaymentStatus,
 			SecretUsage,
@@ -24,6 +25,7 @@ use api_models::{
 			WorkspaceBillBreakdown,
 		},
 		infrastructure::{
+			database::{PatrDatabasePlan, PatrDatabaseStatus},
 			deployment::DeploymentStatus,
 			list_all_deployment_machine_type::DeploymentMachineType,
 		},
@@ -535,6 +537,76 @@ pub async fn calculate_volumes_bill_for_workspace_till(
 	}
 
 	Ok(volume_usage_bill)
+}
+
+pub async fn calculate_patr_database_bill_for_workspace_till(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	month_start_date: &chrono::DateTime<Utc>,
+	till_date: &chrono::DateTime<Utc>,
+) -> Result<Vec<PatrDatabaseUsage>, Error> {
+	let database_usages = db::get_all_patr_database_usage(
+		&mut *connection,
+		workspace_id,
+		&DateTime::from(*month_start_date),
+		till_date,
+	)
+	.await?;
+
+	let mut database_usage_bill = HashMap::new();
+
+	for database_usage in database_usages {
+		let stop_time = database_usage
+			.deletion_time
+			.map(chrono::DateTime::from)
+			.unwrap_or_else(|| *till_date);
+		let start_time = max(database_usage.start_time, *month_start_date);
+		let hours = min(
+			720,
+			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
+				as i64,
+		);
+
+		// todo: revisit patr db pricing
+		let monthly_price = match database_usage.db_plan {
+			PatrDatabasePlan::db_1r_1c_10v => 5f64,
+			PatrDatabasePlan::db_2r_2c_25v => 10f64,
+		};
+
+		let price_in_dollars = if hours >= 720 {
+			monthly_price
+		} else {
+			(hours as f64 / 720f64) * monthly_price
+		};
+
+		let price_in_cents = (price_in_dollars * 100.0).round() as u64;
+
+		let managed_database = db::get_patr_database_by_id_including_deleted(
+			connection,
+			&database_usage.database_id,
+		)
+		.await?
+		.status(500)?; // If database_id is presnt in usage table the it should be in the
+			   // database table as well, otherwise this is something wrong with our
+			   // logic
+
+		database_usage_bill
+			.entry(database_usage.database_id.clone())
+			.or_insert(PatrDatabaseUsage {
+				start_time: DateTime(start_time),
+				deletion_time: database_usage.deletion_time.map(DateTime),
+				database_id: database_usage.database_id.clone(),
+				name: managed_database.name,
+				hours: hours as u64,
+				amount: price_in_cents,
+				is_deleted: managed_database.status ==
+					PatrDatabaseStatus::Deleted,
+				monthly_charge: monthly_price as u64 * 100,
+				plan: database_usage.db_plan.to_string(),
+			});
+	}
+
+	Ok(database_usage_bill.into_iter().map(|(_, v)| v).collect())
 }
 
 pub async fn calculate_database_bill_for_workspace_till(
@@ -1260,6 +1332,14 @@ pub async fn calculate_total_bill_for_workspace_till(
 	)
 	.await?;
 
+	let patr_database_usage = calculate_patr_database_bill_for_workspace_till(
+		connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
+
 	let static_site_usage = calculate_static_sites_bill_for_workspace_till(
 		&mut *connection,
 		workspace_id,
@@ -1313,6 +1393,8 @@ pub async fn calculate_total_bill_for_workspace_till(
 
 	let volume_charge = volume_usage.iter().map(|bill| bill.amount).sum();
 	let database_charge = database_usage.iter().map(|bill| bill.amount).sum();
+	let patr_database_charge =
+		patr_database_usage.iter().map(|bill| bill.amount).sum();
 	let static_site_charge =
 		static_site_usage.iter().map(|bill| bill.amount).sum();
 	let managed_url_charge =
@@ -1353,6 +1435,8 @@ pub async fn calculate_total_bill_for_workspace_till(
 		domain_usage,
 		secret_charge,
 		secret_usage,
+		patr_database_charge,
+		patr_database_usage,
 	};
 
 	if total_charge > 0 && cfg!(debug_assertions) {
@@ -1377,7 +1461,7 @@ pub async fn get_total_resource_usage(
 ) -> Result<WorkspaceBillBreakdown, Error> {
 	log::trace!(
 		"request_id: {} getting bill for all deployments",
-		request_id,
+		request_id
 	);
 	let deployment_usage = calculate_deployment_bill_for_workspace_till(
 		connection,
@@ -1411,7 +1495,7 @@ pub async fn get_total_resource_usage(
 
 	log::trace!(
 		"request_id: {} getting bill for all managed_databases",
-		request_id,
+		request_id
 	);
 
 	let database_usage = calculate_database_bill_for_workspace_till(
@@ -1424,8 +1508,22 @@ pub async fn get_total_resource_usage(
 	let database_charge = database_usage.iter().map(|bill| bill.amount).sum();
 
 	log::trace!(
+		"request_id: {} getting bill for all patr databases",
+		request_id
+	);
+	let patr_database_usage = calculate_patr_database_bill_for_workspace_till(
+		connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
+	let patr_database_charge =
+		patr_database_usage.iter().map(|bill| bill.amount).sum();
+
+	log::trace!(
 		"request_id: {} getting bill for all static_site",
-		request_id,
+		request_id
 	);
 	let static_site_usage = calculate_static_sites_bill_for_workspace_till(
 		connection,
@@ -1439,7 +1537,7 @@ pub async fn get_total_resource_usage(
 
 	log::trace!(
 		"request_id: {} getting bill for all managed_urls",
-		request_id,
+		request_id
 	);
 	let managed_url_usage = calculate_managed_urls_bill_for_workspace_till(
 		connection,
@@ -1453,7 +1551,7 @@ pub async fn get_total_resource_usage(
 
 	log::trace!(
 		"request_id: {} getting bill for all docker repos",
-		request_id,
+		request_id
 	);
 	let docker_repository_usage =
 		calculate_docker_repository_bill_for_workspace_till(
@@ -1466,7 +1564,7 @@ pub async fn get_total_resource_usage(
 	let docker_repository_charge =
 		docker_repository_usage.iter().map(|bill| bill.amount).sum();
 
-	log::trace!("request_id: {} getting bill for all domains", request_id,);
+	log::trace!("request_id: {} getting bill for all domains", request_id);
 	let domain_usage = calculate_domains_bill_for_workspace_till(
 		connection,
 		workspace_id,
@@ -1476,7 +1574,7 @@ pub async fn get_total_resource_usage(
 	.await?;
 	let domain_charge = domain_usage.iter().map(|bill| bill.amount).sum();
 
-	log::trace!("request_id: {} getting bill for all secrest", request_id,);
+	log::trace!("request_id: {} getting bill for all secrest", request_id);
 	let secret_usage = calculate_secrets_bill_for_workspace_till(
 		connection,
 		workspace_id,
@@ -1520,6 +1618,8 @@ pub async fn get_total_resource_usage(
 		secret_usage,
 		docker_repository_charge,
 		docker_repository_usage,
+		patr_database_charge,
+		patr_database_usage,
 	};
 	Ok(bill)
 }

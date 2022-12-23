@@ -3,6 +3,7 @@ mod digitalocean;
 mod kubernetes;
 mod managed_database;
 mod managed_url;
+mod patr_database;
 mod secret;
 mod static_site;
 
@@ -17,6 +18,7 @@ pub use self::{
 	kubernetes::*,
 	managed_database::*,
 	managed_url::*,
+	patr_database::*,
 	secret::*,
 	static_site::*,
 };
@@ -91,6 +93,15 @@ pub async fn resource_limit_crossed(
 	log::trace!("request_id: {} - retreiving current databases", request_id);
 	let current_resource = current_resource +
 		db::get_all_database_clusters_for_workspace(connection, workspace_id)
+			.await?
+			.len();
+
+	log::trace!(
+		"request_id: {} - retreiving current patr databases",
+		request_id
+	);
+	let current_resource = current_resource +
+		db::get_all_patr_database_for_workspace(connection, workspace_id)
 			.await?
 			.len();
 
@@ -175,6 +186,21 @@ pub async fn delete_all_resources_in_workspace(
 	// workspace
 	for database in managed_database {
 		service::delete_managed_database(
+			connection,
+			&database.id,
+			config,
+			request_id,
+		)
+		.await?;
+	}
+
+	log::trace!("deleting all databases for workspace: {}", workspace_id);
+	let patr_databases =
+		db::get_all_patr_database_for_workspace(connection, workspace_id)
+			.await?;
+
+	for database in patr_databases {
+		service::delete_patr_database(
 			connection,
 			&database.id,
 			config,
