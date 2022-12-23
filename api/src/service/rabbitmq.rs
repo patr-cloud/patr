@@ -16,19 +16,15 @@ use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
 	db::Workspace,
-	models::{
-		ci::EventType,
-		rabbitmq::{
-			BYOCData,
-			BillingData,
-			CIData,
-			DeploymentRequestData,
-			DockerRegistryData,
-			DockerWebhookData,
-			InfraRequestData,
-			Queue,
-			StaticSiteData,
-		},
+	models::rabbitmq::{
+		BYOCData,
+		BillingData,
+		CIData,
+		DatabaseRequestData,
+		DeploymentRequestData,
+		DockerRegistryData,
+		InfraRequestData,
+		Queue,
 	},
 	rabbitmq::{self, BuildId, BuildStep},
 	service,
@@ -86,6 +82,26 @@ pub async fn queue_update_deployment_image(
 			running_details: deployment_running_details.clone(),
 			request_id: request_id.clone(),
 		}),
+		config,
+		request_id,
+	)
+	.await
+}
+
+pub async fn queue_check_and_update_database_status(
+	workspace_id: &Uuid,
+	database_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_infra_queue(
+		&InfraRequestData::Database(
+			DatabaseRequestData::CheckAndUpdateStatus {
+				workspace_id: workspace_id.clone(),
+				database_id: database_id.clone(),
+				request_id: request_id.clone(),
+			},
+		),
 		config,
 		request_id,
 	)
