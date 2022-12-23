@@ -81,6 +81,8 @@ pub async fn create_new_managed_url_in_workspace(
 				None,
 				workspace_id,
 				false,
+				None,
+				None,
 			)
 			.await?;
 		}
@@ -102,10 +104,12 @@ pub async fn create_new_managed_url_in_workspace(
 				None,
 				workspace_id,
 				false,
+				None,
+				None,
 			)
 			.await?;
 		}
-		ManagedUrlType::ProxyUrl { url } => {
+		ManagedUrlType::ProxyUrl { url, http_only } => {
 			log::trace!(
 				"request_id: {} - Creating managed url for proxyUrl.",
 				request_id
@@ -123,10 +127,16 @@ pub async fn create_new_managed_url_in_workspace(
 				Some(url),
 				workspace_id,
 				false,
+				None,
+				Some(*http_only),
 			)
 			.await?;
 		}
-		ManagedUrlType::Redirect { url } => {
+		ManagedUrlType::Redirect {
+			url,
+			permanent_redirect,
+			http_only,
+		} => {
 			log::trace!(
 				"request_id: {} - Creating managed url for redirect.",
 				request_id
@@ -144,6 +154,8 @@ pub async fn create_new_managed_url_in_workspace(
 				Some(url),
 				workspace_id,
 				false,
+				Some(*permanent_redirect),
+				Some(*http_only),
 			)
 			.await?;
 		}
@@ -232,6 +244,8 @@ pub async fn update_managed_url(
 				Some(*port),
 				None,
 				None,
+				None,
+				None,
 			)
 			.await?;
 		}
@@ -249,10 +263,12 @@ pub async fn update_managed_url(
 				None,
 				Some(static_site_id),
 				None,
+				None,
+				None,
 			)
 			.await?;
 		}
-		ManagedUrlType::ProxyUrl { url } => {
+		ManagedUrlType::ProxyUrl { url, http_only } => {
 			log::trace!(
 				"request_id: {} - Updating managed url for proxyUrl.",
 				request_id
@@ -266,10 +282,16 @@ pub async fn update_managed_url(
 				None,
 				None,
 				Some(url),
+				None,
+				Some(*http_only),
 			)
 			.await?;
 		}
-		ManagedUrlType::Redirect { url } => {
+		ManagedUrlType::Redirect {
+			url,
+			permanent_redirect,
+			http_only,
+		} => {
 			log::trace!(
 				"request_id: {} - Updating managed url for redirect.",
 				request_id
@@ -283,6 +305,8 @@ pub async fn update_managed_url(
 				None,
 				None,
 				Some(url),
+				Some(*permanent_redirect),
+				Some(*http_only),
 			)
 			.await?;
 		}

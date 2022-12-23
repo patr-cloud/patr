@@ -183,7 +183,7 @@ pub async fn update_kubernetes_managed_url(
 				.collect(),
 			)
 		}
-		ManagedUrlType::ProxyUrl { url } => {
+		ManagedUrlType::ProxyUrl { url, http_only } => {
 			let kubernetes_service = Service {
 				metadata: ObjectMeta {
 					name: Some(format!("service-{}", managed_url.id)),
@@ -193,10 +193,18 @@ pub async fn update_kubernetes_managed_url(
 					type_: Some("ExternalName".to_string()),
 					external_name: Some(url.clone()),
 					ports: Some(vec![ServicePort {
-						name: Some("https".to_string()),
-						port: 443,
+						name: Some(
+							if *http_only {
+								"http".to_string()
+							} else {
+								"https".to_string()
+							},
+						),
+						port: if *http_only { 80 } else { 443 },
 						protocol: Some("TCP".to_string()),
-						target_port: Some(IntOrString::Int(443)),
+						target_port: Some(IntOrString::Int(
+							if *http_only { 80 } else { 443 },
+						)),
 						..ServicePort::default()
 					}]),
 					..ServiceSpec::default()
@@ -230,7 +238,9 @@ pub async fn update_kubernetes_managed_url(
 								service: Some(IngressServiceBackend {
 									name: format!("service-{}", managed_url.id),
 									port: Some(ServiceBackendPort {
-										number: Some(443),
+										number: Some(
+											if *http_only { 80 } else { 443 },
+										),
 										..ServiceBackendPort::default()
 									}),
 								}),
@@ -256,7 +266,11 @@ pub async fn update_kubernetes_managed_url(
 						String::from(
 							"nginx.ingress.kubernetes.io/backend-protocol",
 						),
-						"HTTPS".to_string(),
+						if *http_only {
+							"HTTP".to_string()
+						} else {
+							"HTTPS".to_string()
+						},
 					),
 					(
 						"cert-manager.io/cluster-issuer".to_string(),
@@ -271,7 +285,11 @@ pub async fn update_kubernetes_managed_url(
 				.collect(),
 			)
 		}
-		ManagedUrlType::Redirect { url } => {
+		ManagedUrlType::Redirect {
+			url,
+			permanent_redirect,
+			http_only,
+		} => {
 			let kubernetes_service = Service {
 				metadata: ObjectMeta {
 					name: Some(format!("service-{}", managed_url.id)),
@@ -281,10 +299,18 @@ pub async fn update_kubernetes_managed_url(
 					type_: Some("ExternalName".to_string()),
 					external_name: Some(url.clone()),
 					ports: Some(vec![ServicePort {
-						name: Some("https".to_string()),
-						port: 443,
+						name: Some(
+							if *http_only {
+								"http".to_string()
+							} else {
+								"https".to_string()
+							},
+						),
+						port: if *http_only { 80 } else { 443 },
 						protocol: Some("TCP".to_string()),
-						target_port: Some(IntOrString::Int(443)),
+						target_port: Some(IntOrString::Int(
+							if *http_only { 80 } else { 443 },
+						)),
 						..ServicePort::default()
 					}]),
 					..ServiceSpec::default()
@@ -319,7 +345,9 @@ pub async fn update_kubernetes_managed_url(
 								service: Some(IngressServiceBackend {
 									name: format!("service-{}", managed_url.id),
 									port: Some(ServiceBackendPort {
-										number: Some(443),
+										number: Some(
+											if *http_only { 80 } else { 443 },
+										),
 										..ServiceBackendPort::default()
 									}),
 								}),
@@ -335,11 +363,27 @@ pub async fn update_kubernetes_managed_url(
 						"kubernetes.io/ingress.class".to_string(),
 						"nginx".to_string(),
 					),
-					(
-						"nginx.ingress.kubernetes.io/temporal-redirect"
-							.to_string(),
-						format!("https://{}", url),
-					),
+					if *permanent_redirect {
+						(
+							"nginx.ingress.kubernetes.io/permanent-redirect"
+								.to_string(),
+							if *http_only {
+								format!("http://{}", url)
+							} else {
+								format!("https://{}", url)
+							},
+						)
+					} else {
+						(
+							"nginx.ingress.kubernetes.io/temporal-redirect"
+								.to_string(),
+							if *http_only {
+								format!("http://{}", url)
+							} else {
+								format!("https://{}", url)
+							},
+						)
+					},
 					(
 						"cert-manager.io/cluster-issuer".to_string(),
 						if domain.is_ns_internal() {
