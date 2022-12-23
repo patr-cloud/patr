@@ -2,7 +2,10 @@ use std::fmt;
 
 use api_macros::query;
 use api_models::{
-	models::workspace::billing::{PaymentStatus, TotalAmount, TransactionType},
+	models::workspace::{
+		billing::{PaymentStatus, TotalAmount, TransactionType},
+		infrastructure::database::PatrDatabasePlan,
+	},
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
@@ -32,6 +35,14 @@ pub struct ManagedDatabasePaymentHistory {
 	pub workspace_id: Uuid,
 	pub database_id: Uuid,
 	pub db_plan: ManagedDatabasePlan,
+	pub start_time: DateTime<Utc>,
+	pub deletion_time: Option<DateTime<Utc>>,
+}
+
+pub struct PatrDatabasePaymentHistory {
+	pub workspace_id: Uuid,
+	pub database_id: Uuid,
+	pub db_plan: PatrDatabasePlan,
 	pub start_time: DateTime<Utc>,
 	pub deletion_time: Option<DateTime<Utc>>,
 }
@@ -181,6 +192,20 @@ pub async fn initialize_billing_pre(
 			workspace_id UUID NOT NULL,
 			database_id UUID NOT NULL,
 			db_plan MANAGED_DATABASE_PLAN NOT NULL,
+			start_time TIMESTAMPTZ NOT NULL,
+			deletion_time TIMESTAMPTZ
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS patr_database_payment_history(
+			workspace_id UUID NOT NULL,
+			database_id UUID NOT NULL,
+			db_plan PATR_DATABASE_PLAN NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
 			deletion_time TIMESTAMPTZ
 		);
@@ -353,6 +378,16 @@ pub async fn initialize_billing_post(
 
 	query!(
 		r#"
+		ALTER TABLE patr_database_payment_history
+		ADD CONSTRAINT patr_database_payment_history_workspace_id_fk
+		FOREIGN KEY (workspace_id) REFERENCES workspace(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		ALTER TABLE managed_url_payment_history
 		ADD CONSTRAINT managed_url_payment_history_workspace_id_fk
 		FOREIGN KEY (workspace_id) REFERENCES workspace(id);
@@ -464,6 +499,37 @@ pub async fn get_all_database_usage(
 			deletion_time as "deletion_time: _"
 		FROM
 			managed_database_payment_history
+		WHERE
+			workspace_id = $1 AND
+			(start_time, COALESCE(deletion_time, NOW())) OVERLAPS ($2, $3)
+		ORDER BY
+			start_time ASC;
+		"#,
+		workspace_id as _,
+		start_date as _,
+		till_date as _,
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn get_all_patr_database_usage(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	start_date: &DateTime<Utc>,
+	till_date: &DateTime<Utc>,
+) -> Result<Vec<PatrDatabasePaymentHistory>, sqlx::Error> {
+	query_as!(
+		PatrDatabasePaymentHistory,
+		r#"
+		SELECT
+			workspace_id as "workspace_id: _",
+			database_id as "database_id: _",
+			db_plan as "db_plan: _",
+			start_time as "start_time: _",
+			deletion_time as "deletion_time: _"
+		FROM
+			patr_database_payment_history
 		WHERE
 			workspace_id = $1 AND
 			(start_time, COALESCE(deletion_time, NOW())) OVERLAPS ($2, $3)
@@ -922,6 +988,65 @@ pub async fn stop_database_usage_history(
 		r#"
 		UPDATE 
 			managed_database_payment_history
+		SET
+			deletion_time = $2
+		WHERE
+			database_id = $1 AND
+			deletion_time IS NULL;
+		"#,
+		database_id as _,
+		deletion_time as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn start_patr_database_usage_history(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	database_id: &Uuid,
+	db_plan: &PatrDatabasePlan,
+	start_time: &DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			patr_database_payment_history(
+				workspace_id,
+				database_id,
+				db_plan,
+				start_time,
+				deletion_time
+			)
+		VALUES
+			(
+				$1,
+				$2,
+				$3,
+				$4,
+				NULL
+			);
+		"#,
+		workspace_id as _,
+		database_id as _,
+		db_plan as _,
+		start_time as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn stop_patr_database_usage_history(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	database_id: &Uuid,
+	deletion_time: &DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE 
+			patr_database_payment_history
 		SET
 			deletion_time = $2
 		WHERE

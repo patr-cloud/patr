@@ -583,6 +583,12 @@ async fn delete_workspace(
 	)
 	.await?;
 
+	let patr_databases = db::get_all_patr_database_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?;
+
 	let deployments = db::get_deployments_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
@@ -620,7 +626,8 @@ async fn delete_workspace(
 		!deployments.is_empty() ||
 		!static_site.is_empty() ||
 		!managed_url.is_empty() ||
-		!connected_git_providers.is_empty()
+		!connected_git_providers.is_empty() ||
+		!patr_databases.is_empty()
 	{
 		return Err(Error::empty()
 			.status(424)
