@@ -19,8 +19,8 @@ pub(super) async fn managed_url_redirects(
 	query!(
 		r#"
 		ALTER TABLE managed_url
-		ADD COLUMN permanent_redirect BOOLEAN,
-		ADD COLUMN http_only BOOLEAN;
+			ADD COLUMN permanent_redirect BOOLEAN,
+			ADD COLUMN http_only BOOLEAN;
 		"#
 	)
 	.execute(&mut *connection)
@@ -74,8 +74,7 @@ pub(super) async fn managed_url_redirects(
 				url IS NULL AND
 				permanent_redirect IS NULL AND
 				http_only IS NULL
-			) OR
-			(
+			) OR (
 				url_type = 'proxy_to_static_site' AND
 				deployment_id IS NULL AND
 				port IS NULL AND
@@ -83,17 +82,15 @@ pub(super) async fn managed_url_redirects(
 				url IS NULL AND
 				permanent_redirect IS NULL AND
 				http_only IS NULL
-			) OR
-			(
+			) OR (
 				url_type = 'proxy_url' AND
 				deployment_id IS NULL AND
 				port IS NULL AND
 				static_site_id IS NULL AND
 				url IS NOT NULL AND
-				permanent_redirect IS NOT NULL AND
+				permanent_redirect IS NULL AND
 				http_only IS NOT NULL
-			) OR
-			(
+			) OR (
 				url_type = 'redirect' AND
 				deployment_id IS NULL AND
 				port IS NULL AND
