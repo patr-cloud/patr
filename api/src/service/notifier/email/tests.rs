@@ -11,6 +11,7 @@ use api_models::{
 			DomainPlan,
 			DomainUsage,
 			ManagedUrlUsage,
+			PatrDatabaseUsage,
 			SecretUsage,
 			StaticSitePlan,
 			StaticSiteUsage,
@@ -295,6 +296,21 @@ async fn test_payment_failure_invoice_email() -> Result<(), Error> {
 				monthly_charge: 3200,
 				plan: "micro".to_string(),
 			}],
+			patr_database_charge: 3200,
+			patr_database_usage: vec![PatrDatabaseUsage {
+				start_time: DateTime::default(),
+				deletion_time: Some(DateTime::default()),
+				database_id: Uuid::parse_str(
+					"d5727fb4-9e6b-43df-8a46-0c698340fffb",
+				)
+				.unwrap(),
+				name: "mydb".to_string(),
+				hours: 720,
+				amount: 3200,
+				is_deleted: false,
+				monthly_charge: 3200,
+				plan: "micro".to_string(),
+			}],
 			static_site_charge: 3200,
 			static_site_usage: vec![StaticSiteUsage {
 				start_time: DateTime::default(),
@@ -402,6 +418,21 @@ async fn test_payment_success_invoice_email() -> Result<(), Error> {
 			}],
 			database_charge: 3200,
 			database_usage: vec![DatabaseUsage {
+				start_time: DateTime::default(),
+				deletion_time: Some(DateTime::default()),
+				database_id: Uuid::parse_str(
+					"d5727fb4-9e6b-43df-8a46-0c698340fffb",
+				)
+				.unwrap(),
+				name: "mydb".to_string(),
+				hours: 720,
+				amount: 3200,
+				is_deleted: false,
+				monthly_charge: 3200,
+				plan: "micro".to_string(),
+			}],
+			patr_database_charge: 3200,
+			patr_database_usage: vec![PatrDatabaseUsage {
 				start_time: DateTime::default(),
 				deletion_time: Some(DateTime::default()),
 				database_id: Uuid::parse_str(
