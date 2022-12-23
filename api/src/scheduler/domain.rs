@@ -505,7 +505,7 @@ async fn repatch_all_managed_urls() -> Result<(), Error> {
 									url: managed_url.url.status(500)?,
 									http_only: managed_url
 										.http_only
-										.unwrap_or_default(),
+										.status(500)?,
 								}
 							}
 							DbManagedUrlType::Redirect => {
@@ -513,10 +513,10 @@ async fn repatch_all_managed_urls() -> Result<(), Error> {
 									url: managed_url.url.status(500)?,
 									permanent_redirect: managed_url
 										.permanent_redirect
-										.unwrap_or_default(),
+										.status(500)?,
 									http_only: managed_url
 										.http_only
-										.unwrap_or_default(),
+										.status(500)?,
 								}
 							}
 						},
