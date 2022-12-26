@@ -13,6 +13,7 @@ use api_models::{
 				DeploymentDeployHistory,
 				DeploymentRegistry,
 				DeploymentStatus,
+				EnvironmentVariableValue,
 				GetDeploymentBuildLogsRequest,
 				GetDeploymentBuildLogsResponse,
 				GetDeploymentEventsResponse,
@@ -838,6 +839,8 @@ async fn create_deployment(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
+	let user_data = context.get_token_data().unwrap().clone();
+
 	let ip_address = routes::get_request_ip_address(&context);
 
 	let user_id = context.get_token_data().unwrap().user_id().clone();
@@ -858,6 +861,47 @@ async fn create_deployment(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let name = name.trim();
 	let image_tag = image_tag.trim();
+
+	if let DeploymentRegistry::PatrRegistry { repository_id, .. } = &registry {
+		if !user_data.has_access_for_requested_action(
+			&workspace_id,
+			repository_id,
+			rbac::RESOURCE_TYPES
+				.get()
+				.unwrap()
+				.get(rbac::resource_types::DOCKER_REPOSITORY)
+				.unwrap(),
+			permissions::workspace::docker_registry::LIST,
+		) {
+			return Error::as_result()
+				.status(401)
+				.body(error!(MISSING_PERMISSION).to_string())?;
+		}
+	}
+
+	for value in deployment_running_details.environment_variables.values() {
+		match value {
+			EnvironmentVariableValue::Secret {
+				from_secret: secret_id,
+			} => {
+				if !user_data.has_access_for_requested_action(
+					&workspace_id,
+					secret_id,
+					rbac::RESOURCE_TYPES
+						.get()
+						.unwrap()
+						.get(rbac::resource_types::SECRET)
+						.unwrap(),
+					permissions::workspace::secret::LIST,
+				) {
+					return Error::as_result()
+						.status(401)
+						.body(error!(MISSING_PERMISSION).to_string())?;
+				}
+			}
+			_ => continue,
+		}
+	}
 
 	let config = context.get_state().config.clone();
 

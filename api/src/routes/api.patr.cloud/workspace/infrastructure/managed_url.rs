@@ -19,7 +19,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
-	models::rbac::permissions,
+	models::rbac::{self, permissions},
 	pin_fn,
 	service,
 	utils::{
@@ -305,6 +305,9 @@ async fn create_managed_url(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
+
+	let user_data = context.get_token_data().unwrap().clone();
+
 	let CreateNewManagedUrlRequest {
 		workspace_id: _,
 		sub_domain,
@@ -315,6 +318,21 @@ async fn create_managed_url(
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	if !user_data.has_access_for_requested_action(
+		&workspace_id,
+		&domain_id,
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::DOMAIN)
+			.unwrap(),
+		permissions::workspace::domain::LIST,
+	) {
+		return Error::as_result()
+			.status(401)
+			.body(error!(MISSING_PERMISSION).to_string())?;
+	}
 
 	let config = context.get_state().config.clone();
 
