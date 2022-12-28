@@ -863,6 +863,11 @@ async fn create_deployment(
 	let image_tag = image_tag.trim();
 
 	if let DeploymentRegistry::PatrRegistry { repository_id, .. } = &registry {
+		log::trace!(
+			"request_id: {} checking for docker repo permission",
+			request_id
+		);
+
 		if !user_data.has_access_for_requested_action(
 			&workspace_id,
 			repository_id,
@@ -880,6 +885,10 @@ async fn create_deployment(
 	}
 
 	for value in deployment_running_details.environment_variables.values() {
+		log::trace!(
+			"request_id: {} checking for secrets permission permission",
+			request_id
+		);
 		match value {
 			EnvironmentVariableValue::Secret {
 				from_secret: secret_id,
