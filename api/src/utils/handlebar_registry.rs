@@ -54,8 +54,14 @@ fn initialize_handlebar_registry_helper<'a>() -> Result<Handlebars<'a>, Error> {
 	handlebar.register_helper("equal-to", Box::new(equal_to));
 	handlebar.register_helper("format-date", Box::new(format_date_for_invoice));
 
-	let shared_template_folder =
-		concat!(env!("CARGO_MANIFEST_DIR"), "/../assets/emails/shared");
+	// `cargo run` and `cargo test` uses different working dir,
+	// so use different path for test and normal run
+	// see: https://github.com/rust-lang/cargo/issues/8340
+	let shared_template_folder = if cfg!(test) {
+		"../assets/emails/shared"
+	} else {
+		"./assets/emails/shared"
+	};
 
 	for entry in fs::read_dir(shared_template_folder)? {
 		let file_path = entry?.path();
