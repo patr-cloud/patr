@@ -192,9 +192,6 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 						&unverified_domain.name,
 						&workspace_id,
 						&unverified_domain.id,
-						true,
-						true,
-						&0, // no deadline limit when domain is verified
 					)
 					.await?
 				}
@@ -205,7 +202,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 						Utc::now().signed_duration_since(last_verified);
 					let last_unverified_days = last_unverified.num_days();
 					if last_unverified_days > 5 {
-						delete_unverified_domains(
+						delete_unverified_domain(
 							&mut connection,
 							&workspace_id,
 							&unverified_domain.id,
@@ -222,7 +219,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 						Utc::now().signed_duration_since(domain_created_time);
 					let domain_created_days = domain_created.num_days() as u64;
 					if domain_created_days > 15 {
-						delete_unverified_domains(
+						delete_unverified_domain(
 							&mut connection,
 							&workspace_id,
 							&unverified_domain.id,
@@ -271,9 +268,6 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					&unverified_domain.name,
 					&workspace_id,
 					&unverified_domain.id,
-					false,
-					true,
-					&0, // no deadline limit when domain is verified
 				)
 				.await?;
 				connection.commit().await?;
@@ -289,7 +283,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 						Utc::now().signed_duration_since(last_unverified);
 					let last_unverified_days = last_unverified.num_days();
 					if last_unverified_days > 5 {
-						delete_unverified_domains(
+						delete_unverified_domain(
 							&mut connection,
 							&workspace_id,
 							&unverified_domain.id,
@@ -306,7 +300,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 						Utc::now().signed_duration_since(domain_created_time);
 					let domain_created_days = domain_created.num_days() as u64;
 					if domain_created_days > 15 {
-						delete_unverified_domains(
+						delete_unverified_domain(
 							&mut connection,
 							&workspace_id,
 							&unverified_domain.id,
@@ -610,13 +604,12 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 				&Utc::now(),
 			)
 			.await?;
-			service::domain_verification_email(
+			service::domain_unverified_email(
 				&mut connection,
 				&verified_domain.name,
 				&workspace_id,
 				&verified_domain.id,
 				true,
-				false,
 				&5, //deadline limit
 			)
 			.await?
@@ -642,12 +635,11 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 				)
 				.await?;
 
-				service::domain_verification_email(
+				service::domain_unverified_email(
 					&mut connection,
 					&verified_domain.name,
 					&workspace_id,
 					&verified_domain.id,
-					false,
 					false,
 					&5, //deadline limit
 				)
@@ -662,7 +654,7 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 	Ok(())
 }
 
-async fn delete_unverified_domains(
+async fn delete_unverified_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	domain_id: &Uuid,

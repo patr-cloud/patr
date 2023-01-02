@@ -382,9 +382,6 @@ pub async fn is_domain_verified(
 				&domain.name,
 				workspace_id,
 				domain_id,
-				true,
-				true,
-				&0,
 			)
 			.await?;
 			return Ok(true);
@@ -393,13 +390,12 @@ pub async fn is_domain_verified(
 		// It will not be so far in this function unless the domain is verified
 		// If it's not verified, the domain just got unverified. Send an email
 		// letting them know that the domain has been unverified
-		service::domain_verification_email(
+		service::domain_unverified_email(
 			connection,
 			&domain.name,
 			workspace_id,
 			domain_id,
 			true,
-			false,
 			&15,
 		)
 		.await?;
@@ -423,9 +419,6 @@ pub async fn is_domain_verified(
 				&domain.name,
 				workspace_id,
 				domain_id,
-				false,
-				true,
-				&0,
 			)
 			.await?;
 
@@ -447,18 +440,14 @@ pub async fn is_domain_verified(
 					&domain.name,
 					workspace_id,
 					domain_id,
-					false,
-					false,
-					&0,
 				)
 				.await?;
 			} else if domain.last_unverified.is_none() {
-				service::domain_verification_email(
+				service::domain_unverified_email(
 					connection,
 					&domain.name,
 					workspace_id,
 					domain_id,
-					false,
 					false,
 					&15,
 				)
