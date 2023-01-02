@@ -4,6 +4,7 @@ use api_models::models::workspace::domain::DnsRecordValue;
 use eve_rs::AsError;
 use tokio::{fs, process::Command};
 
+use super::MsgAck;
 use crate::{
 	db,
 	models::rabbitmq::{BYOCData, InfraRequestData},
@@ -16,7 +17,7 @@ pub(super) async fn process_request(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	request_data: BYOCData,
 	config: &Settings,
-) -> Result<(), Error> {
+) -> Result<MsgAck, Error> {
 	match request_data {
 		BYOCData::InitKubernetesCluster {
 			region_id,
@@ -36,7 +37,7 @@ pub(super) async fn process_request(
 					request_id,
 					&region_id
 				);
-				return Ok(());
+				return Ok(MsgAck::Success);
 			};
 
 			let kubeconfig_content = generate_kubeconfig_from_template(
@@ -89,7 +90,7 @@ pub(super) async fn process_request(
 				)
 				.await?;
 				// don't requeue
-				return Ok(());
+				return Ok(MsgAck::Success);
 			}
 
 			log::info!("Initialized cluster {region_id} successfully");
@@ -109,7 +110,7 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
-			Ok(())
+			Ok(MsgAck::Success)
 		}
 		BYOCData::CheckClusterForReadiness {
 			region_id,
@@ -139,24 +140,7 @@ pub(super) async fn process_request(
 				None => {
 					// if ip is not ready yet, then wait for two mins and then
 					// check again
-					tokio::time::sleep(Duration::from_secs(2 * 60)).await;
-					service::send_message_to_infra_queue(
-						&InfraRequestData::BYOC(
-							BYOCData::CheckClusterForReadiness {
-								region_id: region_id.clone(),
-								cluster_url: cluster_url.to_owned(),
-								certificate_authority_data:
-									certificate_authority_data.to_string(),
-								auth_username: auth_username.to_string(),
-								auth_token: auth_token.to_string(),
-								request_id: request_id.clone(),
-							},
-						),
-						config,
-						&request_id,
-					)
-					.await?;
-					return Ok(());
+					return Ok(MsgAck::RetryAfter(Duration::from_secs(2 * 60)));
 				}
 			};
 
@@ -222,7 +206,7 @@ pub(super) async fn process_request(
 				"Successfully assigned IP Addr for load balancer.\nRegion is now ready for deployments"
 			).await?;
 
-			Ok(())
+			Ok(MsgAck::Success)
 		}
 		BYOCData::CreateDigitaloceanCluster {
 			region_id: _,

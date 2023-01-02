@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use deadpool::managed::Object;
 use deadpool_lapin::{Config, Manager, Pool, Runtime};
 use futures::{
@@ -31,6 +33,16 @@ mod deployment;
 mod docker_registry;
 
 pub use ci::{BuildId, BuildStep, BuildStepId};
+
+pub enum MsgAck {
+	Success,
+	// todo: qualify whether it will block the msg consumer thread
+	// todo: neg ack will the place the msg nearer to the head
+	// 		 see: https://www.rabbitmq.com/nack.html#usage
+	// todo: how to deal with timeout for a msg acknowledgement
+	// 		 (default timeout is 30 mins)
+	RetryAfter(Duration),
+}
 
 pub async fn start_consumer(app: &App) {
 	future::join_all(Queue::iterator().map(|queue| {
@@ -144,19 +156,40 @@ pub async fn start_consumer(app: &App) {
 						process_billing_queue_payload(payload, &app).await
 					}
 				};
-				let ack_result = if let Err(error) = result {
-					log::error!(
-						"Error processing payload: {}",
-						error.get_error()
-					);
-					delivery
-						.nack(BasicNackOptions {
-							multiple: false,
-							requeue: true,
-						})
-						.await
-				} else {
-					delivery.ack(BasicAckOptions::default()).await
+
+				let ack_result = match result {
+					Ok(msg_ack) => match msg_ack {
+						MsgAck::Success => {
+							// msg has been processed successfully
+							delivery.ack(BasicAckOptions::default()).await
+						}
+						MsgAck::RetryAfter(duration) => {
+							// msg has not be processed due to known reasons,
+							// so requeue it after some delay
+							tokio::time::sleep(duration).await;
+							delivery
+								.nack(BasicNackOptions {
+									multiple: false,
+									requeue: true,
+								})
+								.await
+						}
+					},
+					Err(err) => {
+						// msg has not been processed due to unknown reasons,
+						// so log the error and then requeue it
+						log::error!(
+							"Error processing `{}` payload: {}",
+							queue,
+							err.get_error()
+						);
+						delivery
+							.nack(BasicNackOptions {
+								multiple: false,
+								requeue: true,
+							})
+							.await
+					}
 				};
 
 				if let Err(error) = ack_result {
@@ -184,7 +217,7 @@ pub async fn start_consumer(app: &App) {
 async fn process_infra_queue_payload(
 	data: InfraRequestData,
 	app: &App,
-) -> Result<(), Error> {
+) -> Result<MsgAck, Error> {
 	let config = &app.config;
 	let mut connection = app.database.acquire().await?;
 
@@ -196,24 +229,9 @@ async fn process_infra_queue_payload(
 				config,
 			)
 			.await
-			.map_err(|error| {
-				log::error!(
-					"Error processing infra RabbitMQ message: {}",
-					error.get_error()
-				);
-				error
-			})
 		}
 		InfraRequestData::BYOC(byoc_data) => {
-			byoc::process_request(&mut connection, byoc_data, config)
-				.await
-				.map_err(|error| {
-					log::error!(
-						"Error processing infra RabbitMQ message: {}",
-						error.get_error()
-					);
-					error
-				})
+			byoc::process_request(&mut connection, byoc_data, config).await
 		}
 		InfraRequestData::DockerRegistry(docker_registry_data) => {
 			docker_registry::process_request(
@@ -222,13 +240,6 @@ async fn process_infra_queue_payload(
 				config,
 			)
 			.await
-			.map_err(|error| {
-				log::error!(
-					"Error processing infra RabbitMQ message: {}",
-					error.get_error()
-				);
-				error
-			})
 		}
 	}
 }
@@ -236,35 +247,19 @@ async fn process_infra_queue_payload(
 async fn process_ci_queue_payload(
 	data: CIData,
 	app: &App,
-) -> Result<(), Error> {
+) -> Result<MsgAck, Error> {
 	let config = &app.config;
 	let mut connection = app.database.acquire().await?;
-	ci::process_request(&mut connection, data, config)
-		.await
-		.map_err(|error| {
-			log::error!(
-				"Error processing CI RabbitMQ message: {}",
-				error.get_error()
-			);
-			error
-		})
+	ci::process_request(&mut connection, data, config).await
 }
 
 async fn process_billing_queue_payload(
 	data: BillingData,
 	app: &App,
-) -> Result<(), Error> {
+) -> Result<MsgAck, Error> {
 	let config = &app.config;
 	let mut connection = app.database.acquire().await?;
-	billing::process_request(&mut connection, data, config)
-		.await
-		.map_err(|error| {
-			log::error!(
-				"Error processing bills RabbitMQ message: {}",
-				error.get_error()
-			);
-			error
-		})
+	billing::process_request(&mut connection, data, config).await
 }
 
 pub(super) async fn create_rabbitmq_pool(

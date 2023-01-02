@@ -4,6 +4,7 @@ use api_models::models::workspace::infrastructure::deployment::DeploymentStatus;
 use chrono::Utc;
 use tokio::time;
 
+use super::MsgAck;
 use crate::{
 	db,
 	models::rabbitmq::DeploymentRequestData,
@@ -16,7 +17,7 @@ pub(super) async fn process_request(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	request_data: DeploymentRequestData,
 	config: &Settings,
-) -> Result<(), Error> {
+) -> Result<MsgAck, Error> {
 	match request_data {
 		DeploymentRequestData::CheckAndUpdateStatus {
 			workspace_id,
@@ -32,13 +33,13 @@ pub(super) async fn process_request(
 				Some(deployment) => deployment,
 				None => {
 					log::info!("expected deployment id {deployment_id} not present in db");
-					return Ok(());
+					return Ok(MsgAck::Success);
 				}
 			};
 
 			if deployment.status != DeploymentStatus::Deploying {
 				log::info!("Deployment {deployment_id} is not in deploying state. Hence stopping status check message");
-				return Ok(());
+				return Ok(MsgAck::Success);
 			}
 
 			let start_time = Utc::now();
@@ -60,7 +61,7 @@ pub(super) async fn process_request(
 						&status,
 					)
 					.await?;
-					return Ok(());
+					return Ok(MsgAck::Success);
 				}
 				time::sleep(Duration::from_millis(500)).await;
 
@@ -69,10 +70,7 @@ pub(super) async fn process_request(
 				}
 			}
 
-			time::sleep(Duration::from_secs(2)).await;
-
-			// requeue it again
-			Err(Error::empty())
+			Ok(MsgAck::RetryAfter(Duration::from_secs(2)))
 		}
 		DeploymentRequestData::UpdateImage {
 			workspace_id,
@@ -122,7 +120,7 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-				return Ok(());
+				return Ok(MsgAck::Success);
 			}
 
 			service::queue_check_and_update_deployment_status(
@@ -133,7 +131,7 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
-			Ok(())
+			Ok(MsgAck::Success)
 		}
 	}
 }

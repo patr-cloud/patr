@@ -28,8 +28,8 @@ use stripe::{
 	PaymentMethodId,
 	RequestStrategy,
 };
-use tokio::time;
 
+use super::MsgAck;
 use crate::{
 	db::{self, PaymentType},
 	models::rabbitmq::BillingData,
@@ -42,7 +42,7 @@ pub(super) async fn process_request(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	request_data: BillingData,
 	config: &Settings,
-) -> Result<(), Error> {
+) -> Result<MsgAck, Error> {
 	match request_data {
 		BillingData::ProcessWorkspaces {
 			month,
@@ -54,11 +54,10 @@ pub(super) async fn process_request(
 			{
 				// It's not yet time to process the workspace. Wait and try
 				// again later
-				time::sleep(time::Duration::from_millis(
-					if cfg!(debug_assertions) { 1000 } else { 60_000 },
-				))
-				.await;
-				return Err(Error::empty());
+				let duration = std::time::Duration::from_secs(
+					if cfg!(debug_assertions) { 1 } else { 60 },
+				);
+				return Ok(MsgAck::RetryAfter(duration));
 			}
 			let workspaces = db::get_all_workspaces(connection).await?;
 			log::trace!(
@@ -94,7 +93,7 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
-			Ok(())
+			Ok(MsgAck::Success)
 		}
 		BillingData::GenerateInvoice {
 			month,
@@ -160,7 +159,7 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
-			Ok(())
+			Ok(MsgAck::Success)
 		}
 		BillingData::SendInvoiceForWorkspace {
 			workspace,
@@ -290,7 +289,7 @@ pub(super) async fn process_request(
 					credits_remaining_in_cents,
 				)
 				.await?;
-				return Ok(());
+				return Ok(MsgAck::Success);
 			}
 
 			// Step 2: Create payment intent with the given bill
@@ -419,7 +418,7 @@ pub(super) async fn process_request(
 						)
 						.await?;
 
-						Ok(())
+						Ok(MsgAck::Success)
 					} else {
 						log::trace!(
 							"request_id: {} payment failed",
@@ -457,7 +456,7 @@ pub(super) async fn process_request(
 						)
 						.await?;
 
-						Ok(())
+						Ok(MsgAck::Success)
 					}
 				} else {
 					// notify about the missing address and/or payment method
@@ -508,7 +507,7 @@ pub(super) async fn process_request(
 					)
 					.await?;
 
-					Ok(())
+					Ok(MsgAck::Success)
 				}
 			} else {
 				// Enterprise plan. Just assume a payment is made
@@ -580,7 +579,7 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-				Ok(())
+				Ok(MsgAck::Success)
 			}
 		}
 		BillingData::RetryPaymentForWorkspace {
@@ -592,11 +591,10 @@ pub(super) async fn process_request(
 		} => {
 			if Utc::now() < process_after {
 				// process_after is in the future. Wait for a while and requeue
-				time::sleep(time::Duration::from_millis(
-					if cfg!(debug_assertions) { 1000 } else { 60_000 },
-				))
-				.await;
-				return Err(Error::empty());
+				let duration = std::time::Duration::from_secs(
+					if cfg!(debug_assertions) { 1 } else { 60 },
+				);
+				return Ok(MsgAck::RetryAfter(duration));
 			}
 
 			let month_start_date = Utc
@@ -678,7 +676,7 @@ pub(super) async fn process_request(
 				// the user has made a payment, so no need to send it again when
 				// confirming it in rabbitmq
 
-				return Ok(());
+				return Ok(MsgAck::Success);
 			}
 
 			let card_added;
@@ -772,7 +770,7 @@ pub(super) async fn process_request(
 					)
 					.await?;
 
-					return Ok(());
+					return Ok(MsgAck::Success);
 				}
 
 				// If not successfully charged, then this
@@ -849,7 +847,7 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-				Ok(())
+				Ok(MsgAck::Success)
 			} else {
 				let deadline_day = 15;
 				let next_month = if month == 12 { 1 } else { month + 1 };
@@ -903,7 +901,7 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-				Ok(())
+				Ok(MsgAck::Success)
 			}
 		}
 	}

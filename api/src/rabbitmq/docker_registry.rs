@@ -1,3 +1,4 @@
+use super::MsgAck;
 use crate::{
 	models::rabbitmq::DockerRegistryData,
 	service,
@@ -9,7 +10,7 @@ pub(super) async fn process_request(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	request_data: DockerRegistryData,
 	config: &Settings,
-) -> Result<(), Error> {
+) -> Result<MsgAck, Error> {
 	match request_data {
 		DockerRegistryData::DeleteDockerImage {
 			workspace_id,
@@ -39,7 +40,7 @@ pub(super) async fn process_request(
 				&image_pushed_ip_addr,
 			)
 			.await?;
-			Ok(())
+			Ok(MsgAck::Success)
 		}
 	}
 }

@@ -11,6 +11,7 @@ use chrono::Utc;
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
 
+use super::MsgAck;
 use crate::{
 	db,
 	models::rabbitmq::CIData,
@@ -69,7 +70,7 @@ pub async fn process_request(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	request_data: CIData,
 	config: &Settings,
-) -> Result<(), Error> {
+) -> Result<MsgAck, Error> {
 	match request_data {
 		CIData::BuildStep {
 			build_step,
@@ -125,7 +126,7 @@ pub async fn process_request(
 					)
 					.await?;
 
-					return Ok(());
+					return Ok(MsgAck::Success);
 				}
 
 				match status {
@@ -183,13 +184,7 @@ pub async fn process_request(
 					}
 					JobStatus::Running => {
 						log::debug!("request_id: {request_id} - Waiting to update status of `{build_step_job_name}`");
-						tokio::time::sleep(Duration::from_millis(1000)).await; // 1 secs
-						service::queue_create_ci_build_step(
-							build_step,
-							config,
-							&request_id,
-						)
-						.await?;
+						return Ok(MsgAck::RetryAfter(Duration::from_secs(1)));
 					}
 				}
 			} else {
@@ -349,13 +344,7 @@ pub async fn process_request(
 					BuildStepStatus::Running |
 					BuildStepStatus::WaitingToStart => {
 						log::debug!("request_id: {request_id} - Waiting to create `{build_step_job_name}`");
-						tokio::time::sleep(Duration::from_millis(1000)).await; // 1 secs
-						service::queue_create_ci_build_step(
-							build_step,
-							config,
-							&request_id,
-						)
-						.await?;
+						return Ok(MsgAck::RetryAfter(Duration::from_secs(1)));
 					}
 				}
 			}
@@ -449,14 +438,8 @@ pub async fn process_request(
 					.await?;
 				}
 				BuildStepStatus::Running | BuildStepStatus::WaitingToStart => {
-					log::debug!("request_id: {request_id} - Waiting to clean `{build_id}`");
-					tokio::time::sleep(Duration::from_millis(1500)).await; // 1 secs
-					service::queue_clean_ci_build_pipeline(
-						build_id,
-						config,
-						&request_id,
-					)
-					.await?;
+					// retry after some time
+					return Ok(MsgAck::RetryAfter(Duration::from_millis(1500)));
 				}
 				BuildStepStatus::Cancelled => {
 					log::debug!("request_id: {request_id} - Cleaning stopped build `{build_id}`");
@@ -472,5 +455,5 @@ pub async fn process_request(
 			}
 		}
 	}
-	Ok(())
+	Ok(MsgAck::Success)
 }
