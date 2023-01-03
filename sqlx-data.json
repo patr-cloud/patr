@@ -155,102 +155,6 @@
     },
     "query": "INSERT INTO user_unverified_personal_email( local, domain_id, user_id, verification_token_hash, verification_token_expiry ) VALUES ($1, $2, $3, $4, $5) ON CONFLICT(local, domain_id) DO UPDATE SET user_id = EXCLUDED.user_id, verification_token_hash = EXCLUDED.verification_token_hash, verification_token_expiry = EXCLUDED.verification_token_expiry;"
   },
-  "0222aacc400e94a097f4fdbf6b600437d2fb8b066a67feb85545d7df0ea88e1f": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "sub_domain",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "domain_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "path",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "url_type: _",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "proxy_to_deployment",
-                  "proxy_to_static_site",
-                  "proxy_url",
-                  "redirect"
-                ]
-              },
-              "name": "managed_url_type"
-            }
-          }
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 5,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "port",
-          "ordinal": 6,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "url",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 9,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "is_configured",
-          "ordinal": 10,
-          "type_info": "Bool"
-        },
-        {
-          "name": "cf_custom_hostname_id",
-          "ordinal": 11,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, cf_custom_hostname_id FROM managed_url WHERE is_configured = TRUE AND deleted IS NULL;"
-  },
   "0259f4685c805d8bc3fd0126efa6b589cb908777764a50cc449180dd0f4ad98e": {
     "describe": {
       "columns": [
@@ -304,108 +208,6 @@
       }
     },
     "query": "CREATE TABLE IF NOT EXISTS managed_database_payment_history( workspace_id UUID NOT NULL, database_id UUID NOT NULL, db_plan MANAGED_DATABASE_PLAN NOT NULL, start_time TIMESTAMPTZ NOT NULL, deletion_time TIMESTAMPTZ );"
-  },
-  "0427ef20c52c6a82de8ad4520df4dbcc819631952fb95c56d6b9104b3ec1be64": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "sub_domain",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "domain_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "path",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "url_type: _",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "proxy_to_deployment",
-                  "proxy_to_static_site",
-                  "proxy_url",
-                  "redirect"
-                ]
-              },
-              "name": "managed_url_type"
-            }
-          }
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 5,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "port",
-          "ordinal": 6,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "url",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 9,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "is_configured",
-          "ordinal": 10,
-          "type_info": "Bool"
-        },
-        {
-          "name": "permanent_redirect: _",
-          "ordinal": 11,
-          "type_info": "Bool"
-        },
-        {
-          "name": "http_only: _",
-          "ordinal": 12,
-          "type_info": "Bool"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, permanent_redirect as \"permanent_redirect: _\", http_only as \"http_only: _\" FROM managed_url WHERE is_configured = FALSE AND deleted IS NULL;"
   },
   "0482c58c13e7b70e0a028857b17ad7278aa8071b07896785e0d2e20aafe20b58": {
     "describe": {
@@ -1885,16 +1687,6 @@
         "Left": []
       }
     },
-    "query": "CREATE INDEX user_phone_number_idx_user_id ON user_phone_number (user_id);"
-  },
-  "18bf16c20a46b8c79cf1a7fc3f2e9a31049f040bb553b1d9707beb671a4df2e1": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
     "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, alert_emails VARCHAR(320) [] NOT NULL, payment_type PAYMENT_TYPE NOT NULL, default_payment_method_id TEXT, deployment_limit INTEGER NOT NULL, database_limit INTEGER NOT NULL, static_site_limit INTEGER NOT NULL, managed_url_limit INTEGER NOT NULL, docker_repository_storage_limit INTEGER NOT NULL, domain_limit INTEGER NOT NULL, secret_limit INTEGER NOT NULL, stripe_customer_id TEXT NOT NULL, address_id UUID, amount_due_in_cents BIGINT NOT NULL CONSTRAINT workspace_chk_amount_due_in_cents_positive CHECK (amount_due_in_cents >= 0), deleted TIMESTAMPTZ, is_spam BOOLEAN NOT NULL, volume_storage_limit INTEGER NOT NULL, CONSTRAINT workspace_uq_id_super_admin_id UNIQUE(id, super_admin_id) );"
   },
   "1990483ba5f3420ccdef6d5dccb62ffbd132e10a473c9f99efe25a3f8bc5f1e0": {
@@ -2316,6 +2108,117 @@
     },
     "query": "ALTER TABLE \"user\" ADD CONSTRAINT user_fk_sign_up_coupon FOREIGN KEY(sign_up_coupon) REFERENCES coupon_code(code);"
   },
+  "1e8ff2b218d89dc4a0510c00f187790706ddf81f55b69d2ca1c2c73790758a3e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "sub_domain",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "domain_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "path",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "url_type: _",
+          "ordinal": 4,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "proxy_to_deployment",
+                  "proxy_to_static_site",
+                  "proxy_url",
+                  "redirect"
+                ]
+              },
+              "name": "managed_url_type"
+            }
+          }
+        },
+        {
+          "name": "deployment_id: _",
+          "ordinal": 5,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "port",
+          "ordinal": 6,
+          "type_info": "Int4"
+        },
+        {
+          "name": "static_site_id: _",
+          "ordinal": 7,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "url",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 9,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "is_configured",
+          "ordinal": 10,
+          "type_info": "Bool"
+        },
+        {
+          "name": "permanent_redirect",
+          "ordinal": 11,
+          "type_info": "Bool"
+        },
+        {
+          "name": "http_only",
+          "ordinal": 12,
+          "type_info": "Bool"
+        },
+        {
+          "name": "cf_custom_hostname_id",
+          "ordinal": 13,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, permanent_redirect, http_only, cf_custom_hostname_id FROM managed_url WHERE deleted IS NULL AND sub_domain = $1 AND domain_id = $2;"
+  },
   "1e9f9c42861e8bc6a5c383d96212e6d271a9a46447b30e1a3fdec17afda99352": {
     "describe": {
       "columns": [],
@@ -2513,6 +2416,31 @@
     },
     "query": "CREATE TABLE user_to_sign_up( username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY CONSTRAINT user_to_sign_up_chk_username_is_valid CHECK( /* Username is a-z, 0-9, _, cannot begin or end with a . or - */ username ~ '^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$' AND username NOT LIKE '%..%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%' ), account_type RESOURCE_OWNER_TYPE NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, /* Personal email address OR recovery email */ recovery_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_recovery_email_is_lower_case CHECK( recovery_email_local = LOWER(recovery_email_local) ), recovery_email_domain_id UUID CONSTRAINT user_to_sign_up_fk_recovery_email_domain_id REFERENCES personal_domain(id), recovery_phone_country_code CHAR(2) CONSTRAINT user_to_sign_up_fk_recovery_phone_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_to_sign_up_chk_recovery_phone_country_code_upper_case CHECK( recovery_phone_country_code = UPPER(recovery_phone_country_code) ), recovery_phone_number VARCHAR(15) CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK( LENGTH(recovery_phone_number) >= 7 AND LENGTH(recovery_phone_number) <= 15 AND CAST(recovery_phone_number AS BIGINT) > 0 ), /* Workspace email address */ business_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_business_email_local_is_lower_case CHECK( business_email_local = LOWER(business_email_local) ), business_domain_name TEXT CONSTRAINT user_to_sign_up_chk_business_domain_name_is_valid CHECK( business_domain_name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' ), business_domain_tld TEXT CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_length_valid CHECK( LENGTH(business_domain_tld) >= 2 AND LENGTH(business_domain_tld) <= 6 ) CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_valid CHECK( business_domain_tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) CONSTRAINT user_to_sign_up_fk_business_domain_tld REFERENCES domain_tld(tld), business_name VARCHAR(100) CONSTRAINT user_to_sign_up_chk_business_name_is_lower_case CHECK(business_name = LOWER(business_name)), otp_hash TEXT NOT NULL, otp_expiry TIMESTAMPTZ NOT NULL, coupon_code TEXT CONSTRAINT user_to_sign_up_fk_coupon_code REFERENCES coupon_code(code), CONSTRAINT user_to_sign_up_chk_max_domain_name_length CHECK( (LENGTH(business_domain_name) + LENGTH(business_domain_tld)) < 255 ), CONSTRAINT user_to_sign_up_chk_business_details_valid CHECK( ( account_type = 'personal' AND ( business_email_local IS NULL AND business_domain_name IS NULL AND business_domain_tld IS NULL AND business_name IS NULL ) ) OR ( account_type = 'business' AND ( business_email_local IS NOT NULL AND business_domain_name IS NOT NULL AND business_domain_tld IS NOT NULL AND business_name IS NOT NULL ) ) ), CONSTRAINT user_to_sign_up_chk_recovery_details CHECK( ( recovery_email_local IS NOT NULL AND recovery_email_domain_id IS NOT NULL AND recovery_phone_country_code IS NULL AND recovery_phone_number IS NULL ) OR ( recovery_email_local IS NULL AND recovery_email_domain_id IS NULL AND recovery_phone_country_code IS NOT NULL AND recovery_phone_number IS NOT NULL ) ) );"
   },
+  "2134f786f67ba7fdde8f767870835f644fa54d88aa4bc58c8a18263e55f16a69": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "digitalocean",
+                  "other"
+                ]
+              },
+              "name": "infrastructure_cloud_provider"
+            }
+          },
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO deployment_region( id, name, provider, workspace_id, ready, kubernetes_cluster_url, kubernetes_auth_username, kubernetes_auth_token, kubernetes_ca_data, message_log ) VALUES ($1, $2, $3, $4, FALSE, NULL, NULL, NULL, NULL, NULL);"
+  },
   "21a98357a9d8edad40ee49a009a38e9682f88583162327b7cbc45b110f28ff05": {
     "describe": {
       "columns": [
@@ -2544,6 +2472,114 @@
       }
     },
     "query": "SELECT user_id as \"user_id: _\", token, token_expiry FROM password_reset_request WHERE user_id = $1;"
+  },
+  "226a7049ea4626009c77dd7bbdbc41ce1aa59db8173c79c26ebe082493095cdb": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "sub_domain",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "domain_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "path",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "url_type: _",
+          "ordinal": 4,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "proxy_to_deployment",
+                  "proxy_to_static_site",
+                  "proxy_url",
+                  "redirect"
+                ]
+              },
+              "name": "managed_url_type"
+            }
+          }
+        },
+        {
+          "name": "deployment_id: _",
+          "ordinal": 5,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "port",
+          "ordinal": 6,
+          "type_info": "Int4"
+        },
+        {
+          "name": "static_site_id: _",
+          "ordinal": 7,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "url",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 9,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "is_configured",
+          "ordinal": 10,
+          "type_info": "Bool"
+        },
+        {
+          "name": "permanent_redirect",
+          "ordinal": 11,
+          "type_info": "Bool"
+        },
+        {
+          "name": "http_only",
+          "ordinal": 12,
+          "type_info": "Bool"
+        },
+        {
+          "name": "cf_custom_hostname_id",
+          "ordinal": 13,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, permanent_redirect, http_only, cf_custom_hostname_id FROM managed_url WHERE is_configured = TRUE AND deleted IS NULL;"
   },
   "228e6bc3a8eb9c3113acda6e4fa32f347b99cf44fb9935e39461eaa8e8cef7e7": {
     "describe": {
@@ -4017,6 +4053,116 @@
     },
     "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, is_configured, permanent_redirect as \"permanent_redirect: _\", http_only as \"http_only: _\" FROM managed_url WHERE static_site_id = $1 AND deleted IS NULL;"
   },
+  "3bb5bb0ebf317c56aab3d220263c2a5d35e47d0017777da9c300dde019bafe9c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "sub_domain",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "domain_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "path",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "url_type: _",
+          "ordinal": 4,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "proxy_to_deployment",
+                  "proxy_to_static_site",
+                  "proxy_url",
+                  "redirect"
+                ]
+              },
+              "name": "managed_url_type"
+            }
+          }
+        },
+        {
+          "name": "deployment_id: _",
+          "ordinal": 5,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "port",
+          "ordinal": 6,
+          "type_info": "Int4"
+        },
+        {
+          "name": "static_site_id: _",
+          "ordinal": 7,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "url",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 9,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "is_configured",
+          "ordinal": 10,
+          "type_info": "Bool"
+        },
+        {
+          "name": "permanent_redirect: _",
+          "ordinal": 11,
+          "type_info": "Bool"
+        },
+        {
+          "name": "http_only: _",
+          "ordinal": 12,
+          "type_info": "Bool"
+        },
+        {
+          "name": "cf_custom_hostname_id",
+          "ordinal": 13,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, permanent_redirect as \"permanent_redirect: _\", http_only as \"http_only: _\", cf_custom_hostname_id FROM managed_url WHERE domain_id = $1 AND deleted IS NULL;"
+  },
   "3c88f9a6f62c223f1faa143eb4ec4ad07a8f538268ad5941c1895d2124108b4b": {
     "describe": {
       "columns": [
@@ -4175,104 +4321,6 @@
       }
     },
     "query": "ALTER TABLE deployment ADD CONSTRAINT deployment_fk_deployment_id_startup_port_startup_port_type FOREIGN KEY (id, startup_probe_port, startup_probe_port_type) REFERENCES deployment_exposed_port(deployment_id, port, port_type) DEFERRABLE INITIALLY IMMEDIATE, ADD CONSTRAINT deployment_fk_deployment_id_liveness_port_liveness_port_type FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type) REFERENCES deployment_exposed_port(deployment_id, port, port_type) DEFERRABLE INITIALLY IMMEDIATE;"
-  },
-  "43dfec0164630f183405dbbbeaa08b2586c223a755596ee931893e7254aac6ea": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "sub_domain",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "domain_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "path",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "url_type: _",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "proxy_to_deployment",
-                  "proxy_to_static_site",
-                  "proxy_url",
-                  "redirect"
-                ]
-              },
-              "name": "managed_url_type"
-            }
-          }
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 5,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "port",
-          "ordinal": 6,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "url",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 9,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "is_configured",
-          "ordinal": 10,
-          "type_info": "Bool"
-        },
-        {
-          "name": "cf_custom_hostname_id",
-          "ordinal": 11,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, cf_custom_hostname_id FROM managed_url WHERE id = $1 AND deleted IS NULL;"
   },
   "44256ed9be05f5e325efc64118bbafc12259b12070e257ee27f86581e4650f0a": {
     "describe": {
@@ -6898,7 +6946,7 @@
     "describe": {
       "columns": [
         {
-          "name": "size!",
+          "name": "id!: _",
           "ordinal": 0,
           "type_info": "Int8"
         }
@@ -6981,6 +7029,132 @@
       }
     },
     "query": "ALTER TABLE static_site_upload_history ADD CONSTRAINT static_site_upload_history_fk_upload_id_resource_id FOREIGN KEY(upload_id) REFERENCES resource(id);"
+  },
+  "73ec35ed138280d623e0a8e6f16b1d7ddab190a34c4296aae1ca0d4273dcec8e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: String",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "super_admin_id: Uuid",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "active",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "alert_emails: Vec<String>",
+          "ordinal": 4,
+          "type_info": "VarcharArray"
+        },
+        {
+          "name": "payment_type: PaymentType",
+          "ordinal": 5,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "card",
+                  "enterprise"
+                ]
+              },
+              "name": "payment_type"
+            }
+          }
+        },
+        {
+          "name": "default_payment_method_id: String",
+          "ordinal": 6,
+          "type_info": "Text"
+        },
+        {
+          "name": "deployment_limit",
+          "ordinal": 7,
+          "type_info": "Int4"
+        },
+        {
+          "name": "static_site_limit",
+          "ordinal": 8,
+          "type_info": "Int4"
+        },
+        {
+          "name": "database_limit",
+          "ordinal": 9,
+          "type_info": "Int4"
+        },
+        {
+          "name": "managed_url_limit",
+          "ordinal": 10,
+          "type_info": "Int4"
+        },
+        {
+          "name": "secret_limit",
+          "ordinal": 11,
+          "type_info": "Int4"
+        },
+        {
+          "name": "domain_limit",
+          "ordinal": 12,
+          "type_info": "Int4"
+        },
+        {
+          "name": "docker_repository_storage_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "stripe_customer_id",
+          "ordinal": 14,
+          "type_info": "Text"
+        },
+        {
+          "name": "address_id: Uuid",
+          "ordinal": 15,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "amount_due_in_cents",
+          "ordinal": 16,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: Uuid\", name::TEXT as \"name!: String\", super_admin_id as \"super_admin_id: Uuid\", active, alert_emails as \"alert_emails: Vec<String>\", payment_type as \"payment_type: PaymentType\", default_payment_method_id as \"default_payment_method_id: String\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, stripe_customer_id, address_id as \"address_id: Uuid\", amount_due_in_cents FROM workspace WHERE super_admin_id = $1 AND deleted IS NULL;"
   },
   "750e6d8fd5d59fef2dcdd28aa933c18d55de4b070389c777772b919e78a004a5": {
     "describe": {
@@ -7098,6 +7272,43 @@
       }
     },
     "query": "ALTER TABLE docker_repo_payment_history ADD CONSTRAINT docker_repo_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id);"
+  },
+  "76be562e12b9475321110dc5d562e12f31a04a4da1ef9ce97146eb7af9252f37": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Uuid",
+          "Text",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "proxy_to_deployment",
+                  "proxy_to_static_site",
+                  "proxy_url",
+                  "redirect"
+                ]
+              },
+              "name": "managed_url_type"
+            }
+          },
+          "Uuid",
+          "Int4",
+          "Uuid",
+          "Text",
+          "Uuid",
+          "Bool",
+          "Bool",
+          "Bool",
+          "Text"
+        ]
+      }
+    },
+    "query": "INSERT INTO managed_url( id, sub_domain, domain_id, path, url_type, deployment_id, port, static_site_id, url, workspace_id, is_configured, permanent_redirect, http_only, cf_custom_hostname_id ) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14 );"
   },
   "775361d2f342bcaa78e130156b2b158f7970cffced22d8d276b7683b48f72bf1": {
     "describe": {
@@ -7525,20 +7736,6 @@
       }
     },
     "query": "CREATE INDEX role_permissions_resource_type_idx_role_id_resource_type_id ON role_permissions_resource_type (role_id, resource_type_id);"
-  },
-  "7ec5e027f15dbd4d44097a25c736603c6e28c11a3b127ce5501c4595d6cb58aa": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Json",
-          "Text"
-        ]
-      }
-    },
-    "query": "UPDATE deployment_region SET status = 'active', config_file = $2, ingress_hostname = $3 WHERE id = $1;"
   },
   "7f66a51f2f44f191c1ef037052befcf915b6708fec9af7ae677d827a0524a983": {
     "describe": {
@@ -8566,102 +8763,6 @@
     },
     "query": "CREATE INDEX role_permissions_resource_idx_role_id_resource_id ON role_permissions_resource (role_id, resource_id);"
   },
-  "865bb00e54a51012fadbe5515dc52b0da7f1197387f7440e1cdac11f7ddac8dc": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "sub_domain",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "domain_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "path",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "url_type: _",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "proxy_to_deployment",
-                  "proxy_to_static_site",
-                  "proxy_url",
-                  "redirect"
-                ]
-              },
-              "name": "managed_url_type"
-            }
-          }
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 5,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "port",
-          "ordinal": 6,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "url",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 9,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "is_configured",
-          "ordinal": 10,
-          "type_info": "Bool"
-        },
-        {
-          "name": "cf_custom_hostname_id",
-          "ordinal": 11,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, cf_custom_hostname_id FROM managed_url WHERE is_configured = FALSE AND deleted IS NULL;"
-  },
   "86da166d78d720baa27481d402b8f31a8e589c8da416d4cf8f17ef67a4e6f899": {
     "describe": {
       "columns": [],
@@ -9006,115 +9107,6 @@
     },
     "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" INNER JOIN workspace_user ON \"user\".id = workspace_user.user_id WHERE workspace_user.role_id = $1;"
   },
-  "8acf5f15e166adc4cbabc03e57115827cb8af7f02795a6af760e13fbed7973e5": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          "Uuid",
-          "Text",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "proxy_to_deployment",
-                  "proxy_to_static_site",
-                  "proxy_url",
-                  "redirect"
-                ]
-              },
-              "name": "managed_url_type"
-            }
-          },
-          "Uuid",
-          "Int4",
-          "Uuid",
-          "Text",
-          "Uuid",
-          "Bool",
-          "Text"
-        ]
-      }
-    },
-    "query": "INSERT INTO managed_url( id, sub_domain, domain_id, path, url_type, deployment_id, port, static_site_id, url, workspace_id, is_configured, cf_custom_hostname_id ) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12 );"
-  },
-  "8ab27a1d303ec4f3ba3abbccba6f43758944b92f8ae9f73bed55fb04f9617ac1": {
-    "describe": {
-      "columns": [
-        {
-          "name": "name!",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "id!: Uuid",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "domain_type!: ResourceType",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              },
-              "name": "resource_owner_type"
-            }
-          }
-        },
-        {
-          "name": "is_verified!",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "nameserver_type!: DomainNameserverType",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "internal",
-                  "external"
-                ]
-              },
-              "name": "domain_nameserver_type"
-            }
-          }
-        },
-        {
-          "name": "last_unverified",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "zone_identifier?",
-          "ordinal": 6,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        null,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id!: Uuid\", workspace_domain.domain_type as \"domain_type!: ResourceType\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: DomainNameserverType\", workspace_domain.last_unverified as \"last_unverified\", patr_controlled_domain.zone_identifier as \"zone_identifier?\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id LEFT JOIN patr_controlled_domain ON patr_controlled_domain.domain_id = workspace_domain.id WHERE is_verified = TRUE AND domain.deleted IS NULL;"
-  },
   "8b9bbaaf87f495640225a74d1c606a51276db98897f34ceaad38d06aad9a4f69": {
     "describe": {
       "columns": [
@@ -9380,105 +9372,6 @@
       }
     },
     "query": "INSERT INTO deployment_config_mounts( path, file, deployment_id ) VALUES ($1, $2, $3);"
-  },
-  "8f5d0783029cf4618bb52cf042551071b81d0329173299c49f13796a0cc80a25": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id!: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "sub_domain!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "domain_id!: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "path!: _",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "url_type!: _",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "proxy_to_deployment",
-                  "proxy_to_static_site",
-                  "proxy_url",
-                  "redirect"
-                ]
-              },
-              "name": "managed_url_type"
-            }
-          }
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 5,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "port",
-          "ordinal": 6,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "url",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id!: _",
-          "ordinal": 9,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "is_configured!: _",
-          "ordinal": 10,
-          "type_info": "Bool"
-        },
-        {
-          "name": "cf_custom_hostname_id",
-          "ordinal": 11,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "WITH RECURSIVE managed_url_list AS ( SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id WHERE managed_url.static_site_id = $1 AND managed_url.url_type = 'proxy_to_static_site' UNION ALL SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id JOIN managed_url_list ON managed_url.url LIKE CONCAT( managed_url.sub_domain, '.', domain.name, '.', domain.tld, CASE managed_url.path WHEN '/' THEN '%' ELSE CONCAT(managed_url.path, '%') END ) WHERE managed_url.url_type = 'redirect' OR managed_url.url_type = 'proxy_url' ) SELECT id as \"id!: _\", sub_domain as \"sub_domain!: _\", domain_id as \"domain_id!: _\", path as \"path!: _\", url_type as \"url_type!: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id!: _\", is_configured as \"is_configured!: _\", cf_custom_hostname_id FROM managed_url_list WHERE managed_url_list.workspace_id = $2 AND managed_url_list.deleted IS NULL;"
   },
   "8fcaaeb5f8892ce51db86ef392027a062a4a4cdf519cb8a326f47d2757ce7644": {
     "describe": {
@@ -10007,42 +9900,6 @@
     },
     "query": "CREATE INDEX role_permissions_resource_type_idx_role_id ON role_permissions_resource_type (role_id);"
   },
-  "9c5bdcc66a0253af2310f790571cf17ee1ed862a6324d569d34c3c63eef47f23": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          "Uuid",
-          "Text",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "proxy_to_deployment",
-                  "proxy_to_static_site",
-                  "proxy_url",
-                  "redirect"
-                ]
-              },
-              "name": "managed_url_type"
-            }
-          },
-          "Uuid",
-          "Int4",
-          "Uuid",
-          "Text",
-          "Uuid",
-          "Bool",
-          "Bool",
-          "Bool"
-        ]
-      }
-    },
-    "query": "INSERT INTO managed_url( id, sub_domain, domain_id, path, url_type, deployment_id, port, static_site_id, url, workspace_id, is_configured, permanent_redirect, http_only ) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 );"
-  },
   "9cf0a9094118925bd1079644c538862c90d31b9ec0ad9c0dc8c5711c58c27b3a": {
     "describe": {
       "columns": [],
@@ -10084,6 +9941,132 @@
     },
     "query": "CREATE TABLE permission( id UUID CONSTRAINT permission_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT permission_uq_name UNIQUE, description VARCHAR(500) NOT NULL );"
   },
+  "9d834ba6a63fc5954afb2421cd1b7fb711be04e80755e5187334bc9339248e71": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: String",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "super_admin_id: Uuid",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "active",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "alert_emails: Vec<String>",
+          "ordinal": 4,
+          "type_info": "VarcharArray"
+        },
+        {
+          "name": "payment_type: PaymentType",
+          "ordinal": 5,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "card",
+                  "enterprise"
+                ]
+              },
+              "name": "payment_type"
+            }
+          }
+        },
+        {
+          "name": "default_payment_method_id: String",
+          "ordinal": 6,
+          "type_info": "Text"
+        },
+        {
+          "name": "deployment_limit",
+          "ordinal": 7,
+          "type_info": "Int4"
+        },
+        {
+          "name": "static_site_limit",
+          "ordinal": 8,
+          "type_info": "Int4"
+        },
+        {
+          "name": "database_limit",
+          "ordinal": 9,
+          "type_info": "Int4"
+        },
+        {
+          "name": "managed_url_limit",
+          "ordinal": 10,
+          "type_info": "Int4"
+        },
+        {
+          "name": "secret_limit",
+          "ordinal": 11,
+          "type_info": "Int4"
+        },
+        {
+          "name": "domain_limit",
+          "ordinal": 12,
+          "type_info": "Int4"
+        },
+        {
+          "name": "docker_repository_storage_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "stripe_customer_id",
+          "ordinal": 14,
+          "type_info": "Text"
+        },
+        {
+          "name": "address_id: Uuid",
+          "ordinal": 15,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "amount_due_in_cents",
+          "ordinal": 16,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: Uuid\", name::TEXT as \"name!: String\", super_admin_id as \"super_admin_id: Uuid\", active, alert_emails as \"alert_emails: Vec<String>\", payment_type as \"payment_type: PaymentType\", default_payment_method_id as \"default_payment_method_id: String\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, stripe_customer_id, address_id as \"address_id: Uuid\", amount_due_in_cents FROM workspace WHERE id = $1 AND deleted IS NULL;"
+  },
   "9ddeb0123ed4831115b4b3a3b0e6ad7b009d7acbe286a5ec1452d268c6574b75": {
     "describe": {
       "columns": [
@@ -10093,7 +10076,7 @@
           "type_info": "Uuid"
         },
         {
-          "name": "record_identifier",
+          "name": "sub_domain",
           "ordinal": 1,
           "type_info": "Text"
         },
@@ -10103,47 +10086,71 @@
           "type_info": "Uuid"
         },
         {
-          "name": "name",
+          "name": "path",
           "ordinal": 3,
           "type_info": "Text"
         },
         {
-          "name": "type: _",
+          "name": "url_type: _",
           "ordinal": 4,
           "type_info": {
             "Custom": {
               "kind": {
                 "Enum": [
-                  "A",
-                  "MX",
-                  "TXT",
-                  "AAAA",
-                  "CNAME"
+                  "proxy_to_deployment",
+                  "proxy_to_static_site",
+                  "proxy_url",
+                  "redirect"
                 ]
               },
-              "name": "dns_record_type"
+              "name": "managed_url_type"
             }
           }
         },
         {
-          "name": "value",
+          "name": "deployment_id: _",
           "ordinal": 5,
-          "type_info": "Text"
+          "type_info": "Uuid"
         },
         {
-          "name": "priority",
+          "name": "port",
           "ordinal": 6,
           "type_info": "Int4"
         },
         {
-          "name": "ttl",
+          "name": "static_site_id: _",
           "ordinal": 7,
-          "type_info": "Int8"
+          "type_info": "Uuid"
         },
         {
-          "name": "proxied",
+          "name": "url",
           "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 9,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "is_configured",
+          "ordinal": 10,
           "type_info": "Bool"
+        },
+        {
+          "name": "permanent_redirect: _",
+          "ordinal": 11,
+          "type_info": "Bool"
+        },
+        {
+          "name": "http_only: _",
+          "ordinal": 12,
+          "type_info": "Bool"
+        },
+        {
+          "name": "cf_custom_hostname_id",
+          "ordinal": 13,
+          "type_info": "Text"
         }
       ],
       "nullable": [
@@ -10152,9 +10159,14 @@
         false,
         false,
         false,
-        false,
+        true,
+        true,
+        true,
         true,
         false,
+        false,
+        true,
+        true,
         true
       ],
       "parameters": {
@@ -10163,7 +10175,7 @@
         ]
       }
     },
-    "query": "SELECT patr_domain_dns_record.id as \"id: _\", patr_domain_dns_record.record_identifier, patr_domain_dns_record.domain_id as \"domain_id: _\", patr_domain_dns_record.name, patr_domain_dns_record.type as \"type: _\", patr_domain_dns_record.value, patr_domain_dns_record.priority, patr_domain_dns_record.ttl, patr_domain_dns_record.proxied FROM patr_domain_dns_record INNER JOIN domain ON patr_domain_dns_record.domain_id = domain.id WHERE patr_domain_dns_record.domain_id = $1 AND domain.deleted IS NULL;"
+    "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, permanent_redirect as \"permanent_redirect: _\", http_only as \"http_only: _\", cf_custom_hostname_id FROM managed_url WHERE workspace_id = $1 AND deleted IS NULL;"
   },
   "9dfc85038ab19267c738b10d9198d527a7440b4759c65b23504499f25b50b885": {
     "describe": {
@@ -10742,16 +10754,6 @@
       }
     },
     "query": "DELETE FROM user_api_token_resource_permission WHERE token_id = $1;"
-  },
-  "a36782964d86e1e179a525e226fe2940be49a11f330e7e97c0f939bce3f380f2": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE managed_url( id UUID CONSTRAINT managed_url_pk PRIMARY KEY, sub_domain TEXT NOT NULL CONSTRAINT managed_url_chk_sub_domain_valid CHECK( sub_domain ~ '^(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])$' OR sub_domain = '@' ), domain_id UUID NOT NULL, path TEXT NOT NULL, url_type MANAGED_URL_TYPE NOT NULL, deployment_id UUID, port INTEGER CONSTRAINT managed_url_chk_port_u16 CHECK( port > 0 AND port <= 65535 ), static_site_id UUID, url TEXT, workspace_id UUID NOT NULL, is_configured BOOLEAN NOT NULL, deleted TIMESTAMPTZ, cf_custom_hostname_id TEXT, CONSTRAINT managed_url_chk_values_null_or_not_null CHECK( ( url_type = 'proxy_to_deployment' AND deployment_id IS NOT NULL AND port IS NOT NULL AND static_site_id IS NULL AND url IS NULL ) OR ( url_type = 'proxy_to_static_site' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NOT NULL AND url IS NULL ) OR ( url_type = 'proxy_url' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NULL AND url IS NOT NULL ) OR ( url_type = 'redirect' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NULL AND url IS NOT NULL ) ) );"
   },
   "a3d44c2d7c66de013a3510d3f42bf75f60a71f34682522a2882471f9a1f4414e": {
     "describe": {
@@ -11877,105 +11879,6 @@
     },
     "query": "CREATE TABLE personal_domain( id UUID CONSTRAINT personal_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT personal_domain_chk_domain_type CHECK( domain_type = 'personal' ), deleted TIMESTAMPTZ CONSTRAINT personal_domain_chk_deletion CHECK( deleted IS NULL ), CONSTRAINT personal_domain_fk_id_domain_type_deleted FOREIGN KEY(id, domain_type, deleted) REFERENCES domain(id, type, deleted) );"
   },
-  "b928846271ca9a6304a0e4e2390e094b23a0e43a8de65e9dcb698372e33653b7": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id!: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "sub_domain!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "domain_id!: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "path!: _",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "url_type!: _",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "proxy_to_deployment",
-                  "proxy_to_static_site",
-                  "proxy_url",
-                  "redirect"
-                ]
-              },
-              "name": "managed_url_type"
-            }
-          }
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 5,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "port",
-          "ordinal": 6,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "url",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id!: _",
-          "ordinal": 9,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "is_configured!: _",
-          "ordinal": 10,
-          "type_info": "Bool"
-        },
-        {
-          "name": "cf_custom_hostname_id",
-          "ordinal": 11,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "WITH RECURSIVE managed_url_list AS ( SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id WHERE managed_url.deployment_id = $1 AND managed_url.url_type = 'proxy_to_deployment' UNION ALL SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id JOIN managed_url_list ON managed_url.url LIKE CONCAT( managed_url.sub_domain, '.', domain.name, '.', domain.tld, CASE managed_url.path WHEN '/' THEN '%' ELSE CONCAT(managed_url.path, '%') END ) WHERE managed_url.url_type = 'redirect' OR managed_url.url_type = 'proxy_url' ) SELECT id as \"id!: _\", sub_domain as \"sub_domain!: _\", domain_id as \"domain_id!: _\", path as \"path!: _\", url_type as \"url_type!: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id!: _\", is_configured as \"is_configured!: _\", cf_custom_hostname_id FROM managed_url_list WHERE managed_url_list.workspace_id = $2 AND managed_url_list.deleted IS NULL;"
-  },
   "b9357a0670c6269e397b5c88dad2278ee579b678ff57c99f049d17026d2660a5": {
     "describe": {
       "columns": [],
@@ -12203,104 +12106,6 @@
     },
     "query": "SELECT patr_domain_dns_record.id as \"id: _\", patr_domain_dns_record.record_identifier, patr_domain_dns_record.domain_id as \"domain_id: _\", patr_domain_dns_record.name, patr_domain_dns_record.type as \"type: _\", patr_domain_dns_record.value, patr_domain_dns_record.priority, patr_domain_dns_record.ttl, patr_domain_dns_record.proxied FROM patr_domain_dns_record INNER JOIN domain ON patr_domain_dns_record.domain_id = domain.id WHERE patr_domain_dns_record.id = $1 AND domain.deleted IS NULL;"
   },
-  "bf0d5d04c45721091e5f2b61fbf8498aea9db61a5a17c71889dae215b06d863c": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "sub_domain",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "domain_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "path",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "url_type: _",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "proxy_to_deployment",
-                  "proxy_to_static_site",
-                  "proxy_url",
-                  "redirect"
-                ]
-              },
-              "name": "managed_url_type"
-            }
-          }
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 5,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "port",
-          "ordinal": 6,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "url",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 9,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "is_configured",
-          "ordinal": 10,
-          "type_info": "Bool"
-        },
-        {
-          "name": "cf_custom_hostname_id",
-          "ordinal": 11,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, cf_custom_hostname_id FROM managed_url WHERE domain_id = $1 AND deleted IS NULL;"
-  },
   "bf803cd3b21d499ff2a1f2b17bb535b595f0fa26282b6d85980f387b5879d72a": {
     "describe": {
       "columns": [],
@@ -12350,111 +12155,6 @@
       }
     },
     "query": "INSERT INTO secrets_payment_history( workspace_id, secret_count, start_time, stop_time ) VALUES ( $1, $2, $3, NULL );"
-  },
-  "c13a62cdb1129ce1e3ab5232922006e0de3dd3e273a477a31dc767113ffb332d": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id!: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "sub_domain!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "domain_id!: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "path!: _",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "url_type!: _",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "proxy_to_deployment",
-                  "proxy_to_static_site",
-                  "proxy_url",
-                  "redirect"
-                ]
-              },
-              "name": "managed_url_type"
-            }
-          }
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 5,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "port",
-          "ordinal": 6,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "url",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id!: _",
-          "ordinal": 9,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "is_configured!: _",
-          "ordinal": 10,
-          "type_info": "Bool"
-        },
-        {
-          "name": "permanent_redirect!: _",
-          "ordinal": 11,
-          "type_info": "Bool"
-        },
-        {
-          "name": "http_only!: _",
-          "ordinal": 12,
-          "type_info": "Bool"
-        }
-      ],
-      "nullable": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "WITH RECURSIVE managed_url_list AS ( SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id WHERE managed_url.static_site_id = $1 AND managed_url.url_type = 'proxy_to_static_site' UNION ALL SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id JOIN managed_url_list ON managed_url.url LIKE CONCAT( managed_url.sub_domain, '.', domain.name, '.', domain.tld, CASE managed_url.path WHEN '/' THEN '%' ELSE CONCAT(managed_url.path, '%') END ) WHERE managed_url.url_type = 'redirect' OR managed_url.url_type = 'proxy_url' ) SELECT id as \"id!: _\", sub_domain as \"sub_domain!: _\", domain_id as \"domain_id!: _\", path as \"path!: _\", url_type as \"url_type!: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id!: _\", is_configured as \"is_configured!: _\", permanent_redirect as \"permanent_redirect!: _\", http_only as \"http_only!: _\" FROM managed_url_list WHERE managed_url_list.workspace_id = $2 AND managed_url_list.deleted IS NULL;"
   },
   "c15c9714352f98ccb6ae73eb80f523db23e3f5381f3cb368ddac0743bfae3dcf": {
     "describe": {
@@ -13834,7 +13534,7 @@
     },
     "query": "CREATE TABLE deployment_region( id UUID CONSTRAINT deployment_region_pk PRIMARY KEY, name TEXT NOT NULL, provider INFRASTRUCTURE_CLOUD_PROVIDER NOT NULL, workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id REFERENCES workspace(id), ingress_hostname TEXT, message_log TEXT, config_file JSON, deleted TIMESTAMPTZ, status REGION_STATUS NOT NULL, disconnected_at TIMESTAMPTZ );"
   },
-  "da3901cb1079f58c9b722ee678e97e05baa99e5ee5747e51b084a3c1a60063d7": {
+  "da2177277c97c867d0393f3bd37798b1e7d69ffd22ac274ac7ab2ffb622b2264": {
     "describe": {
       "columns": [],
       "nullable": [],
@@ -13842,7 +13542,223 @@
         "Left": []
       }
     },
-    "query": "ALTER TABLE \"user\" ADD CONSTRAINT user_fk_id_recovery_phone_country_code_recovery_phone_number FOREIGN KEY( id, recovery_phone_country_code, recovery_phone_number ) REFERENCES user_phone_number( user_id, country_code, number ) DEFERRABLE INITIALLY IMMEDIATE;"
+    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, alert_emails VARCHAR(320) [] NOT NULL, payment_type PAYMENT_TYPE NOT NULL, default_payment_method_id TEXT, deployment_limit INTEGER NOT NULL, database_limit INTEGER NOT NULL, static_site_limit INTEGER NOT NULL, managed_url_limit INTEGER NOT NULL, docker_repository_storage_limit INTEGER NOT NULL, domain_limit INTEGER NOT NULL, secret_limit INTEGER NOT NULL, stripe_customer_id TEXT NOT NULL, address_id UUID, amount_due_in_cents BIGINT NOT NULL CONSTRAINT workspace_chk_amount_due_in_cents_positive CHECK (amount_due_in_cents >= 0), deleted TIMESTAMPTZ, CONSTRAINT workspace_uq_id_super_admin_id UNIQUE(id, super_admin_id) );"
+  },
+  "da3901cb1079f58c9b722ee678e97e05baa99e5ee5747e51b084a3c1a60063d7": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "sub_domain",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "domain_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "path",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "url_type: _",
+          "ordinal": 4,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "proxy_to_deployment",
+                  "proxy_to_static_site",
+                  "proxy_url",
+                  "redirect"
+                ]
+              },
+              "name": "managed_url_type"
+            }
+          }
+        },
+        {
+          "name": "deployment_id: _",
+          "ordinal": 5,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "port",
+          "ordinal": 6,
+          "type_info": "Int4"
+        },
+        {
+          "name": "static_site_id: _",
+          "ordinal": 7,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "url",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 9,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "is_configured",
+          "ordinal": 10,
+          "type_info": "Bool"
+        },
+        {
+          "name": "permanent_redirect: _",
+          "ordinal": 11,
+          "type_info": "Bool"
+        },
+        {
+          "name": "http_only: _",
+          "ordinal": 12,
+          "type_info": "Bool"
+        },
+        {
+          "name": "cf_custom_hostname_id",
+          "ordinal": 13,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, permanent_redirect as \"permanent_redirect: _\", http_only as \"http_only: _\", cf_custom_hostname_id FROM managed_url WHERE is_configured = FALSE AND deleted IS NULL;"
+  "dad0be9d64f35cdc7d015997be6d357d0aa53724a1fa60062ef479c758d2825c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "sub_domain",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "domain_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "path",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "url_type: _",
+          "ordinal": 4,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "proxy_to_deployment",
+                  "proxy_to_static_site",
+                  "proxy_url",
+                  "redirect"
+                ]
+              },
+              "name": "managed_url_type"
+            }
+          }
+        },
+        {
+          "name": "deployment_id: _",
+          "ordinal": 5,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "port",
+          "ordinal": 6,
+          "type_info": "Int4"
+        },
+        {
+          "name": "static_site_id: _",
+          "ordinal": 7,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "url",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 9,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "is_configured",
+          "ordinal": 10,
+          "type_info": "Bool"
+        },
+        {
+          "name": "permanent_redirect: _",
+          "ordinal": 11,
+          "type_info": "Bool"
+        },
+        {
+          "name": "http_only: _",
+          "ordinal": 12,
+          "type_info": "Bool"
+        },
+        {
+          "name": "cf_custom_hostname_id",
+          "ordinal": 13,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, permanent_redirect as \"permanent_redirect: _\", http_only as \"http_only: _\", cf_custom_hostname_id FROM managed_url WHERE is_configured = FALSE AND deleted IS NULL;"
+  },
   },
   "daf8c5cc27ae0095c77760d86448ba3374082cc0cf5df1c59313342b992b59a8": {
     "describe": {
@@ -14856,105 +14772,6 @@
     },
     "query": "INSERT INTO deployment( id, name, registry, repository_id, image_name, image_tag, status, workspace_id, region, min_horizontal_scale, max_horizontal_scale, machine_type, deploy_on_push, startup_probe_port, startup_probe_path, startup_probe_port_type, liveness_probe_port, liveness_probe_path, liveness_probe_port_type ) VALUES ( $1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16 );"
   },
-  "ea4cd911ce7d1ac13c05504701786ff0ebe161cc1495699dd3650a9d8f2c0280": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "sub_domain",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "domain_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "path",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "url_type: _",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "proxy_to_deployment",
-                  "proxy_to_static_site",
-                  "proxy_url",
-                  "redirect"
-                ]
-              },
-              "name": "managed_url_type"
-            }
-          }
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 5,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "port",
-          "ordinal": 6,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "url",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 9,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "is_configured",
-          "ordinal": 10,
-          "type_info": "Bool"
-        },
-        {
-          "name": "cf_custom_hostname_id",
-          "ordinal": 11,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, cf_custom_hostname_id FROM managed_url WHERE deleted IS NULL AND sub_domain = $1 AND domain_id = $2;"
-  },
   "ebb50db24a70648653710428f4bc4db0b5a33f683894476370d206816a85a557": {
     "describe": {
       "columns": [],
@@ -15094,110 +14911,6 @@
       }
     },
     "query": "CREATE TYPE PAYMENT_STATUS as ENUM( 'success', 'failed', 'pending' );"
-  },
-  "ef3bfdd12c221157d31f2719342cb784d1239eadfad01bf2bcb4a652dc773887": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "sub_domain",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "domain_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "path",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "url_type: _",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "proxy_to_deployment",
-                  "proxy_to_static_site",
-                  "proxy_url",
-                  "redirect"
-                ]
-              },
-              "name": "managed_url_type"
-            }
-          }
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 5,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "port",
-          "ordinal": 6,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "url",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 9,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "is_configured",
-          "ordinal": 10,
-          "type_info": "Bool"
-        },
-        {
-          "name": "permanent_redirect: _",
-          "ordinal": 11,
-          "type_info": "Bool"
-        },
-        {
-          "name": "http_only: _",
-          "ordinal": 12,
-          "type_info": "Bool"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, permanent_redirect as \"permanent_redirect: _\", http_only as \"http_only: _\" FROM managed_url WHERE workspace_id = $1 AND deleted IS NULL;"
   },
   "efa0a6ff35f40c8f91021798d83cbff7e35471895783a4ca95ec64d173dbdddf": {
     "describe": {
@@ -15713,110 +15426,6 @@
       }
     },
     "query": "SELECT permission_id as \"permission_id: Uuid\", resource_type_id as \"resource_type_id: Uuid\", name, description FROM role_permissions_resource_type INNER JOIN permission ON role_permissions_resource_type.permission_id = permission.id WHERE role_permissions_resource_type.role_id = $1;"
-  },
-  "f99ec484b723a9f06b944fec825632ada3e403ff74a9e7a333afc2f5757b571f": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "sub_domain",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "domain_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "path",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "url_type: _",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "proxy_to_deployment",
-                  "proxy_to_static_site",
-                  "proxy_url",
-                  "redirect"
-                ]
-              },
-              "name": "managed_url_type"
-            }
-          }
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 5,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "port",
-          "ordinal": 6,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "url",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 9,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "is_configured",
-          "ordinal": 10,
-          "type_info": "Bool"
-        },
-        {
-          "name": "permanent_redirect: _",
-          "ordinal": 11,
-          "type_info": "Bool"
-        },
-        {
-          "name": "http_only: _",
-          "ordinal": 12,
-          "type_info": "Bool"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, permanent_redirect as \"permanent_redirect: _\", http_only as \"http_only: _\" FROM managed_url WHERE id = $1 AND deleted IS NULL;"
   },
   "fa89602b65bbd65d99ce5991ee341ca2e81bdc359f53597641ef76d35f5cc7dc": {
     "describe": {
