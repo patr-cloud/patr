@@ -284,6 +284,8 @@ pub async fn get_all_configured_managed_urls(
 			url,
 			workspace_id as "workspace_id: _",
 			is_configured,
+			permanent_redirect,
+			http_only,
 			cf_custom_hostname_id
 		FROM
 			managed_url
@@ -684,6 +686,8 @@ pub async fn get_all_managed_urls_for_host(
 			url,
 			workspace_id as "workspace_id: _",
 			is_configured,
+			permanent_redirect,
+			http_only,
 			cf_custom_hostname_id
 		FROM
 			managed_url
