@@ -4,8 +4,10 @@ use api_models::utils::Uuid;
 use eve_rs::AsError;
 use reqwest::Client;
 
+use super::queue_reconfigure_byoc_cluster;
 use crate::{
 	db,
+	error,
 	models::{K8NodePool, K8sConfig, K8sCreateCluster},
 	utils::{settings::Settings, Error},
 	Database,
@@ -144,6 +146,51 @@ pub async fn is_deployed_on_patr_cluster(
 		.await?
 		.status(500)?;
 	Ok(region.workspace_id.is_none())
+}
+
+pub async fn reconfigure_region(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	region_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let region = db::get_region_by_id(connection, region_id)
+		.await?
+		.status(500)?;
+
+	/*
+	   [x] Check if region is a BYOC region or not
+	   [x] Check if region is active or not
+	   [ ] Once done with check Get the kubeconfig file
+	   [ ] Run the init script for the cluster
+	   [ ] Verify init scripts idempotency
+	   [ ] Update the DB accordingly with appropriate status and log messages
+	*/
+
+	if region.workspace_id.is_none() || !region.ready {
+		log::error!(
+			"request_id: {} region not default or region is not ready",
+			request_id
+		);
+		return Error::as_result()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+	}
+
+	let kube_config = if let Some(kube_config) = region.config_file {
+		kube_config
+	} else {
+		log::error!("request_id: {} unable to find kube config", request_id);
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+	};
+
+	log::trace!("request_id: {} queuing reconfigure k8s cluster", request_id);
+	queue_reconfigure_byoc_cluster(region_id, &kube_config, config, request_id)
+		.await?;
+
+	Ok(())
 }
 
 pub fn generate_kubeconfig_from_template(

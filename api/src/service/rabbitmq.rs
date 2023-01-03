@@ -413,3 +413,21 @@ pub async fn queue_delete_kubernetes_cluster(
 	)
 	.await
 }
+
+pub async fn queue_reconfigure_byoc_cluster(
+	region_id: &Uuid,
+	kube_config: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_infra_queue(
+		&InfraRequestData::BYOC(BYOCData::ReconfigureKubernetesCluster {
+			region_id: region_id.clone(),
+			kube_config: kube_config.to_string(),
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await
+}

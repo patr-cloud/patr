@@ -4,6 +4,7 @@ use api_models::{
 		AddRegionToWorkspaceData,
 		AddRegionToWorkspaceRequest,
 		AddRegionToWorkspaceResponse,
+		AutoReconfigureRegionResponse,
 		DeleteRegionFromWorkspaceResponse,
 		GetRegionResponse,
 		InfrastructureCloudProvider,
@@ -134,6 +135,43 @@ pub fn create_sub_app(
 				}),
 			},
 			EveMiddleware::CustomFunction(pin_fn!(add_region)),
+		],
+	);
+
+	// Reconfigure region
+	app.patch(
+		"/:regionId/reconfigure",
+		[
+			EveMiddleware::ResourceTokenAuthenticator {
+				// Setting api_token for this route to false as there might not
+				// use cases for calling this route from CI or other api call
+				is_api_token_allowed: false,
+				// User should have ADD permission as this route will be
+				// directly manipulating the configuration of the cluster
+				permission: permissions::workspace::region::ADD,
+				resource: closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			},
+			EveMiddleware::CustomFunction(pin_fn!(reconfigure_region)),
 		],
 	);
 
@@ -399,6 +437,41 @@ async fn add_region(
 
 	log::trace!("request_id: {} - Returning new secret", request_id);
 	context.success(AddRegionToWorkspaceResponse { region_id });
+	Ok(context)
+}
+
+async fn reconfigure_region(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	let config = context.get_state().config.clone();
+
+	log::trace!("request_id: {} - auto reconfiguring region", request_id);
+
+	let region_id =
+		Uuid::parse_str(context.get_param(request_keys::REGION_ID).unwrap())
+			.unwrap();
+
+	db::get_region_by_id(context.get_database_connection(), &region_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	service::reconfigure_region(
+		context.get_database_connection(),
+		&region_id,
+		&config,
+		&request_id,
+	)
+	.await?;
+
+	log::trace!(
+		"request_id: {} - Successfully queued reconfiguring region: {}",
+		request_id,
+		region_id
+	);
+	context.success(AutoReconfigureRegionResponse {});
 	Ok(context)
 }
 

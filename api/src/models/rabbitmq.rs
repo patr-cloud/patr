@@ -69,6 +69,11 @@ pub enum BYOCData {
 		region_id: Uuid,
 		request_id: Uuid,
 	},
+	ReconfigureKubernetesCluster {
+		region_id: Uuid,
+		kube_config: String,
+		request_id: Uuid,
+	},
 	DeleteKubernetesCluster {
 		region_id: Uuid,
 		kube_config: String,
