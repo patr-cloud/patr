@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use api_models::utils::Uuid;
 use chrono::{DateTime, Utc};
 
@@ -8,11 +10,6 @@ pub struct Secret {
 	pub name: String,
 	pub workspace_id: Uuid,
 	pub deployment_id: Option<Uuid>,
-}
-
-pub struct ResourcesSecret {
-	pub resource_id: Uuid,
-	pub resource_name: String,
 }
 
 pub async fn initialize_secret_pre(
@@ -124,13 +121,12 @@ pub async fn get_all_resources_for_secret(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	secret_id: &Uuid,
-) -> Result<Vec<ResourcesSecret>, sqlx::Error> {
-	query_as!(
-		ResourcesSecret,
+) -> Result<HashMap<Uuid, Vec<Uuid>>, sqlx::Error> {
+	let resources = query!(
 		r#"
 		SELECT
-			deployment.id as "resource_id: _",
-			deployment.name as "resource_name: _"
+			resource.resource_type_id as "resource_type_id: Uuid",
+			deployment.id as "resource_id: Uuid"
 		FROM
 			secret
 		LEFT JOIN
@@ -141,17 +137,29 @@ pub async fn get_all_resources_for_secret(
 			deployment
 		ON
 			deployment_environment_variable.deployment_id = deployment.id
+		LEFT JOIN
+			resource
+		ON
+			deployment.id = resource.id
 		WHERE
 			secret.id = $1 AND
 			secret.workspace_id = $2 AND
 			deployment.deleted IS NULL AND
 			deployment.status != 'deleted';
 		"#,
-		workspace_id as _,
 		secret_id as _,
+		workspace_id as _,
 	)
 	.fetch_all(connection)
-	.await
+	.await?
+	.into_iter()
+	.fold(HashMap::<Uuid, Vec<Uuid>>::new(), |mut acc, record| {
+		acc.entry(record.resource_type_id)
+			.or_default()
+			.push(record.resource_id);
+		acc
+	});
+	Ok(resources)
 }
 
 pub async fn create_new_secret_in_workspace(

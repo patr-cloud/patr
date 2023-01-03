@@ -6,7 +6,6 @@ use api_models::{
 		DeleteSecretResponse,
 		GetResourcesForSecretResponse,
 		ListSecretsResponse,
-		ResourcesForSecret,
 		Secret,
 		UpdateWorkspaceSecretRequest,
 		UpdateWorkspaceSecretResponse,
@@ -264,7 +263,7 @@ async fn get_all_resources_for_secrets(
 			.unwrap();
 
 	let secret_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+		Uuid::parse_str(context.get_param(request_keys::SECRET_ID).unwrap())
 			.unwrap();
 
 	db::get_secret_by_id(context.get_database_connection(), &secret_id)
@@ -277,13 +276,7 @@ async fn get_all_resources_for_secrets(
 		&workspace_id,
 		&secret_id,
 	)
-	.await?
-	.into_iter()
-	.map(|resource| ResourcesForSecret {
-		resource_id: resource.resource_id,
-		resource_name: resource.resource_name,
-	})
-	.collect();
+	.await?;
 
 	log::trace!(
 		"request_id: {} - Returning list of resources for secret",
