@@ -14,6 +14,7 @@ pub(super) async fn migrate(
 	add_volume_resource_type(&mut *connection, config).await?;
 	add_volume_payment_history(&mut *connection, config).await?;
 	add_deployment_volume_info(&mut *connection, config).await?;
+	add_volume_storage_limit_to_workspace(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -139,6 +140,22 @@ async fn add_deployment_volume_info(
 			volume_mount_path TEXT NOT NULL,
 			deleted TIMESTAMPTZ
 		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn add_volume_storage_limit_to_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE workspace
+		ADD COLUMN volume_storage_limit INTEGER NOT NULL DEFAULT 100;
 		"#
 	)
 	.execute(&mut *connection)
