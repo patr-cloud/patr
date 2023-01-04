@@ -40,8 +40,9 @@ use crate::{
 };
 
 mod github;
+mod runner;
 
-pub use self::github::*;
+pub use self::{github::*, runner::*};
 
 pub struct Netrc {
 	pub machine: String,

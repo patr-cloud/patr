@@ -160,6 +160,14 @@ pub mod permissions {
 					}
 				}
 			}
+
+			pub mod runner {
+				pub const LIST: &str = "workspace::ci::runner::list";
+				pub const CREATE: &str = "workspace::ci::runner::create";
+				pub const INFO: &str = "workspace::ci::runner::info";
+				pub const UPDATE: &str = "workspace::ci::runner::update";
+				pub const DELETE: &str = "workspace::ci::runner::delete";
+			}
 		}
 
 		pub mod billing {
@@ -208,5 +216,6 @@ pub mod resource_types {
 	pub const SECRET: &str = "secret";
 	pub const STATIC_SITE_UPLOAD: &str = "staticSiteUpload";
 	pub const CI_REPO: &str = "ciRepo";
+	pub const CI_RUNNER: &str = "ciRunner";
 	pub const DEPLOYMENT_REGION: &str = "deploymentRegion";
 }

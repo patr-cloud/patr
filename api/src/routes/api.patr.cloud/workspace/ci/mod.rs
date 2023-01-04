@@ -1,3 +1,6 @@
+mod git_provider;
+mod runner;
+
 use api_models::{
 	models::workspace::ci::list_all_build_machine_type::ListAllBuildMachineTypesResponse,
 	utils::Uuid,
@@ -19,14 +22,13 @@ use crate::{
 	},
 };
 
-mod git_provider;
-
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.use_sub_app("/git-provider", git_provider::create_sub_app(app));
+	sub_app.use_sub_app("/runner", runner::create_sub_app(app));
 
 	sub_app.get(
 		"/build-machine-type",
