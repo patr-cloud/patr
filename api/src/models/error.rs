@@ -97,6 +97,7 @@ pub mod id {
 
 	// error constants for CI
 	pub const INVALID_STATE_VALUE: &str = "invalidStateValue";
+	pub const INVALID_RUNNER_NAME: &str = "invalidRunnerName";
 
 	// error constants for region
 	pub const REGION_NOT_READY_YET: &str = "regionNotReadyYet";
@@ -258,6 +259,7 @@ pub mod message {
 	// error constants for CI
 	pub const INVALID_STATE_VALUE: &str =
 		"Invalid/Expired value for parameter: `state`";
+	pub const INVALID_RUNNER_NAME: &str = "Runner name can only consist of alphanumeric characters, spaces, dots, dashes and underscores, and cannot begin or end with a space";
 
 	// error constants for region
 	pub const REGION_NOT_READY_YET: &str = "The cluster is not initialized yet, wait for some time and then try again";
