@@ -1,3 +1,5 @@
+mod runner;
+
 use api_macros::query;
 use api_models::{
 	models::workspace::ci::{
@@ -16,6 +18,7 @@ use api_models::{
 use chrono::{DateTime, Utc};
 use sqlx::query_as;
 
+pub use self::runner::*;
 use crate::{db, Database};
 
 pub struct GitProvider {
@@ -262,6 +265,8 @@ pub async fn initialize_ci_pre(
 	.execute(&mut *connection)
 	.await?;
 
+	runner::initialize_ci_runner_pre(connection).await?;
+
 	Ok(())
 }
 
@@ -302,6 +307,8 @@ pub async fn initialize_ci_post(
 		.execute(&mut *connection)
 		.await?;
 	}
+
+	runner::initialize_ci_runner_post(connection).await?;
 
 	Ok(())
 }

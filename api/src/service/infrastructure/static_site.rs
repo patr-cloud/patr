@@ -31,7 +31,7 @@ pub async fn create_static_site_in_workspace(
 	log::trace!("request_id: {} - validating static site name", request_id);
 	if !validator::is_static_site_name_valid(name) {
 		Error::as_result()
-			.status(200)
+			.status(400)
 			.body(error!(INVALID_STATIC_SITE_NAME).to_string())?;
 	}
 

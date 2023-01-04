@@ -6350,6 +6350,16 @@
     },
     "query": "UPDATE patr_domain_dns_record SET record_identifier = $1 WHERE id = $2;"
   },
+  "607ec3f3fca7e7f801d080c35ff9b0ee4126cbe530603f8b95c08effdd2f17e4": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TRIGGER ci_runner_trg_chk_region_id_workspace_id BEFORE INSERT OR UPDATE ON ci_runner FOR EACH ROW EXECUTE FUNCTION ci_runner_chk_region_id_workspace_id();"
+  },
   "608f24df85727cf7e46222aece1fb883e77f85671c096f065c1ba9bdad37a90a": {
     "describe": {
       "columns": [],
@@ -7604,6 +7614,24 @@
       }
     },
     "query": "INSERT INTO meta_data( id, value ) VALUES ('version_major', $1), ('version_minor', $2), ('version_patch', $3) ON CONFLICT(id) DO UPDATE SET value = EXCLUDED.value;"
+  },
+  "7c2469931fcbc1718e13896811df4c181eb08cc084e59d9d1c11497ca9f9d188": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          }
+        ]
+      }
+    },
+    "query": "UPDATE ci_runner SET name = $2 WHERE id = $1 AND deleted IS NULL;"
   },
   "7c676358d859e908bf0fea814a67f2c7ff8fc2a8241f0593c66a9aa5dc35d89c": {
     "describe": {
@@ -9351,6 +9379,67 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tcpu,\n\t\t\tram,\n\t\t\tvolume\n\t\tFROM\n\t\t\tci_build_machine_type\n\t\t"
   },
+  "94b23034d2ca8c322757b9990d794d18b63e460171d268e13fbf5952483a3cac": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name: _",
+          "ordinal": 1,
+          "type_info": {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "region_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "cpu",
+          "ordinal": 4,
+          "type_info": "Int4"
+        },
+        {
+          "name": "ram",
+          "ordinal": 5,
+          "type_info": "Int4"
+        },
+        {
+          "name": "volume",
+          "ordinal": 6,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name as \"name: _\", workspace_id as \"workspace_id: _\", region_id as \"region_id: _\", cpu, ram, volume FROM ci_runner WHERE id = $1 AND deleted IS NULL;"
+  },
   "9355e0b45b560107da57232604d8c7b48a98c8b2e032bef7fe19bd6496e82d95": {
     "describe": {
       "columns": [],
@@ -9713,7 +9802,43 @@
         "Left": []
       }
     },
-    "query": "CREATE INDEX role_permissions_resource_type_idx_role_id ON role_permissions_resource_type (role_id);"
+    "query": "CREATE TABLE ci_runner ( id UUID NOT NULL, name CITEXT NOT NULL, workspace_id UUID NOT NULL, region_id UUID NOT NULL, cpu INTEGER NOT NULL, /* Multiples of ¼th vCPU */ ram INTEGER NOT NULL, /* Multiples of ¼th GB RAM */ volume INTEGER NOT NULL, /* Multiples of ¼th GB storage */ deleted TIMESTAMPTZ, CONSTRAINT ci_runner_pk PRIMARY KEY (id), CONSTRAINT ci_runner_fk_workspace_id FOREIGN KEY (workspace_id) REFERENCES workspace(id), CONSTRAINT ci_runner_fk_region_id FOREIGN KEY (region_id) REFERENCES deployment_region(id), CONSTRAINT ci_runner_chk_name CHECK(name = TRIM(name)), CONSTRAINT ci_runner_chk_cpu CHECK (cpu > 0), CONSTRAINT ci_runner_chk_ram CHECK (ram > 0), CONSTRAINT ci_runner_chk_volume CHECK (volume > 0) );"
+  },
+  "9c5bdcc66a0253af2310f790571cf17ee1ed862a6324d569d34c3c63eef47f23": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Uuid",
+          "Text",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "proxy_to_deployment",
+                  "proxy_to_static_site",
+                  "proxy_url",
+                  "redirect"
+                ]
+              },
+              "name": "managed_url_type"
+            }
+          },
+          "Uuid",
+          "Int4",
+          "Uuid",
+          "Text",
+          "Uuid",
+          "Bool",
+          "Bool",
+          "Bool"
+        ]
+      }
+    },
+    "query": "INSERT INTO managed_url( id, sub_domain, domain_id, path, url_type, deployment_id, port, static_site_id, url, workspace_id, is_configured, permanent_redirect, http_only ) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 );"
   },
   "9cf0a9094118925bd1079644c538862c90d31b9ec0ad9c0dc8c5711c58c27b3a": {
     "describe": {
@@ -10232,17 +10357,66 @@
     },
     "query": "INSERT INTO deployment_deploy_history( deployment_id, image_digest, repository_id, created ) VALUES ($1, $2, $3, $4) ON CONFLICT (deployment_id, image_digest) DO NOTHING;"
   },
+  "a26aaae9c578adae831230251acca207c63e94e7962a88ed7aa95c55a0769adc": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Text",
+          "Uuid",
+          "Timestamptz"
+      }
+    },
+    "query": "INSERT INTO static_site_upload_history( upload_id, static_site_id, message, uploaded_by, created ) VALUES ($1, $2, $3, $4, $5);"
+  },
   "a3383d5df7266cf5c1f2116b8d93df630ec6cfae3059445c0075fe502ff64c0e": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
         "Left": [
-          "Uuid"
+          "Uuid",
+          {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          },
+          "Uuid",
+          "Uuid",
+          "Int4",
+          "Int4",
+          "Int4"
         ]
       }
     },
-    "query": "DELETE FROM user_api_token_resource_permission WHERE token_id = $1;"
+    "query": "INSERT INTO ci_runner ( id, name, workspace_id, region_id, cpu, ram, volume ) VALUES ($1, $2, $3, $4, $5, $6, $7);"
+  },
+  "a3936c8856d6e0274bf0f9f21b1a308bc402d96da47389d8dbdca0f954996fed": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          },
+          "Uuid",
+          "Uuid",
+          "Int4",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "INSERT INTO ci_runner ( id, name, workspace_id, region_id, cpu, ram, volume ) VALUES ($1, $2, $3, $4, $5, $6, $7);"
   },
   "a3d44c2d7c66de013a3510d3f42bf75f60a71f34682522a2882471f9a1f4414e": {
     "describe": {
@@ -11364,6 +11538,67 @@
     },
     "query": "INSERT INTO deployment_environment_variable( deployment_id, name, value, secret_id ) VALUES ($1, $2, $3, $4);"
   },
+  "b2f162c277d396416750f27b2750c941da2de7f2f4675c73d396482ab4ff2c7d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name: _",
+          "ordinal": 1,
+          "type_info": {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "region_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "cpu",
+          "ordinal": 4,
+          "type_info": "Int4"
+        },
+        {
+          "name": "ram",
+          "ordinal": 5,
+          "type_info": "Int4"
+        },
+        {
+          "name": "volume",
+          "ordinal": 6,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name as \"name: _\", workspace_id as \"workspace_id: _\", region_id as \"region_id: _\", cpu, ram, volume FROM ci_runner WHERE workspace_id = $1 AND deleted IS NULL;"
+  },
   "b3c09ebf9a7b7d029af30e8fa44e3512b3046ccf4904bb4622f61769d13ca744": {
     "describe": {
       "columns": [],
@@ -11477,6 +11712,16 @@
       }
     },
     "query": "CREATE TABLE personal_domain( id UUID CONSTRAINT personal_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT personal_domain_chk_domain_type CHECK( domain_type = 'personal' ), deleted TIMESTAMPTZ CONSTRAINT personal_domain_chk_deletion CHECK( deleted IS NULL ), CONSTRAINT personal_domain_fk_id_domain_type_deleted FOREIGN KEY(id, domain_type, deleted) REFERENCES domain(id, type, deleted) );"
+  },
+  "b8d83fd353c32504d22c7ce94354c96e6e1980bc75c690ad9d42644e1cb2436f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "ALTER TABLE ci_runner ADD CONSTRAINT ci_runner_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);"
   },
   "b9357a0670c6269e397b5c88dad2278ee579b678ff57c99f049d17026d2660a5": {
     "describe": {
@@ -11853,6 +12098,18 @@
       }
     },
     "query": "UPDATE static_site SET status = $1 WHERE id = $2;"
+  },
+  "c4017d787dfd7e6b03aeae310d782ecf94c855d3ebf8933b395dbefc9db3bc16": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE ci_runner SET deleted = NOW() WHERE id = $1 AND deleted IS NULL;"
   },
   "c4926f8d59dc7bc4e9ee1f2472a6362d47d65337c1644b6a0487cd9318d28d11": {
     "describe": {
@@ -13657,6 +13914,16 @@
     },
     "query": "INSERT INTO patr_domain_dns_record( id, record_identifier, domain_id, name, type, value, priority, ttl, proxied ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);"
   },
+  "de2d9ed5f28849d15953091de08a5fbb8c37ecb5a1e311a4e2397fdd15556a0e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE UNIQUE INDEX ci_runner_uq_workspace_id_name ON ci_runner (workspace_id, name) WHERE deleted IS NULL;"
+  },
   "de74ae7f29c027a8f87b7ddea32144fd590d3e4591e17fdc8f5fc80afcf1f299": {
     "describe": {
       "columns": [],
@@ -14036,6 +14303,16 @@
       }
     },
     "query": "UPDATE managed_database_payment_history SET deletion_time = $2 WHERE database_id = $1 AND deletion_time IS NULL;"
+  },
+  "e56614da3e461db24d8a1ec5ab82d7ba4973b4ae240de8b51c111c28840d0c53": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE OR REPLACE FUNCTION ci_runner_chk_region_id_workspace_id () RETURNS TRIGGER LANGUAGE PLPGSQL STABLE AS $$ DECLARE is_valid BOOLEAN := FALSE; BEGIN SELECT TRUE INTO is_valid FROM deployment_region WHERE deployment_region.id = NEW.region_id AND ( deployment_region.workspace_id IS NULL OR deployment_region.workspace_id = NEW.workspace_id ); IF is_valid THEN RETURN NEW; ELSE RAISE EXCEPTION 'workspace does not have given region'; END IF; END $$;"
   },
   "e5c1647593a56d9b5d6777510cdc6e69212fd2a504f49a6345d7b63c26d1806e": {
     "describe": {
@@ -15013,6 +15290,7 @@
         false,
         false,
         false
+      ],
       ],
       "parameters": {
         "Left": [
