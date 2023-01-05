@@ -396,7 +396,11 @@ pub async fn is_domain_verified(
 			workspace_id,
 			domain_id,
 			true,
-			&15,
+			if domain.last_unverified.is_none() {
+				&15
+			} else {
+				&5
+			},
 		)
 		.await?;
 		Ok(false)
@@ -443,6 +447,14 @@ pub async fn is_domain_verified(
 				)
 				.await?;
 			} else if domain.last_unverified.is_none() {
+				db::update_workspace_domain_status(
+					connection,
+					domain_id,
+					false,
+					&Utc::now(),
+				)
+				.await?;
+
 				service::domain_unverified_email(
 					connection,
 					&domain.name,
@@ -450,6 +462,16 @@ pub async fn is_domain_verified(
 					domain_id,
 					false,
 					&15,
+				)
+				.await?;
+			} else if domain.last_unverified.is_some() {
+				service::domain_unverified_email(
+					connection,
+					&domain.name,
+					workspace_id,
+					domain_id,
+					false,
+					&5,
 				)
 				.await?;
 			}
