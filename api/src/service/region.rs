@@ -4,11 +4,11 @@ use api_models::utils::Uuid;
 use eve_rs::AsError;
 use reqwest::Client;
 
-use super::queue_reconfigure_byoc_cluster;
 use crate::{
 	db,
 	error,
 	models::{K8NodePool, K8sConfig, K8sCreateCluster},
+	service,
 	utils::{settings::Settings, Error},
 	Database,
 };
@@ -158,15 +158,6 @@ pub async fn reconfigure_region(
 		.await?
 		.status(500)?;
 
-	/*
-	   [x] Check if region is a BYOC region or not
-	   [x] Check if region is active or not
-	   [ ] Once done with check Get the kubeconfig file
-	   [ ] Run the init script for the cluster
-	   [ ] Verify init scripts idempotency
-	   [ ] Update the DB accordingly with appropriate status and log messages
-	*/
-
 	if region.workspace_id.is_none() || !region.ready {
 		log::error!(
 			"request_id: {} region not default or region is not ready",
@@ -187,8 +178,13 @@ pub async fn reconfigure_region(
 	};
 
 	log::trace!("request_id: {} queuing reconfigure k8s cluster", request_id);
-	queue_reconfigure_byoc_cluster(region_id, &kube_config, config, request_id)
-		.await?;
+	service::queue_setup_kubernetes_cluster(
+		region_id,
+		&kube_config,
+		config,
+		request_id,
+	)
+	.await?;
 
 	Ok(())
 }

@@ -20,7 +20,7 @@ pub(super) async fn process_request(
 	config: &Settings,
 ) -> Result<(), Error> {
 	match request_data {
-		BYOCData::InitKubernetesCluster {
+		BYOCData::PatchKubernetesCluster {
 			region_id,
 			kube_config,
 			request_id,
@@ -254,7 +254,7 @@ pub(super) async fn process_request(
 			// TODO - to be only called once we get the kube_config
 			// initialize the cluster with patr script
 			service::send_message_to_infra_queue(
-				&InfraRequestData::BYOC(BYOCData::InitKubernetesCluster {
+				&InfraRequestData::BYOC(BYOCData::PatchKubernetesCluster {
 					region_id,
 					kube_config,
 					request_id: request_id.clone(),
@@ -312,71 +312,6 @@ pub(super) async fn process_request(
 			}
 
 			log::info!("Un-Initialized cluster {region_id} successfully");
-			Ok(())
-		}
-		BYOCData::ReconfigureKubernetesCluster {
-			region_id,
-			kube_config,
-			request_id,
-		} => {
-			let region = if let Some(region) =
-				db::get_region_by_id(connection, &region_id).await?
-			{
-				region
-			} else {
-				log::error!(
-					"request_id: {} - Unable to find region with ID `{}`",
-					request_id,
-					&region_id
-				);
-				return Ok(());
-			};
-
-			let kubeconfig_path = format!("{region_id}.yml");
-
-			fs::write(&kubeconfig_path, &kube_config).await?;
-
-			// safe to return as only customer cluster is initalized here,
-			// so workspace_id will be present
-			let parent_workspace = region
-				.workspace_id
-				.map(|id| id.as_str().to_owned())
-				.status(500)?;
-
-			// todo: get both stdout and stderr in same stream -> use subprocess
-			// crate in future
-			let output = Command::new("assets/k8s/fresh/k8s_init.sh")
-				.args([region_id.as_str(), &parent_workspace, &kubeconfig_path])
-				.output()
-				.await?;
-
-			db::append_messge_log_for_region(
-				connection,
-				&region_id,
-				std::str::from_utf8(&output.stdout)?,
-			)
-			.await?;
-
-			if !output.status.success() {
-				log::debug!(
-                    "Error while initializing the cluster {}:\nStatus: {}\nStderr: {}\nStdout: {}",
-                    region_id,
-                    output.status,
-                    String::from_utf8_lossy(&output.stderr),
-                    String::from_utf8_lossy(&output.stdout)
-                );
-				db::append_messge_log_for_region(
-					connection,
-					&region_id,
-					std::str::from_utf8(&output.stderr)?,
-				)
-				.await?;
-				// don't requeue
-				return Ok(());
-			}
-
-			log::info!("Reconfigured cluster {region_id} successfully");
-
 			Ok(())
 		}
 	}

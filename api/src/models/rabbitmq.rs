@@ -53,7 +53,7 @@ pub enum InfraRequestData {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", rename_all = "camelCase")]
 pub enum BYOCData {
-	InitKubernetesCluster {
+	PatchKubernetesCluster {
 		region_id: Uuid,
 		kube_config: String,
 		request_id: Uuid,
@@ -67,11 +67,6 @@ pub enum BYOCData {
 		api_token: String,
 		cluster_id: Uuid,
 		region_id: Uuid,
-		request_id: Uuid,
-	},
-	ReconfigureKubernetesCluster {
-		region_id: Uuid,
-		kube_config: String,
 		request_id: Uuid,
 	},
 	DeleteKubernetesCluster {
