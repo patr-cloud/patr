@@ -1,0 +1,38 @@
+Hello {{username}}, 
+
+Your domain {{domainName}} has been added to your workspace {{workspaceName}} successfully!
+
+Verify the domain to start pointing your Static Sites and Deployments to this domain using Managed URLs and receive the full benefits of Patr with secure and automatic firewalls and SSL certificates.
+
+Steps to verify:
+
+{{#if isInternal}}
+- Login to your domain registrar (this is where you bought your domain from)
+- Go to the DNS settings
+- Find the Nameserver settings
+- Select the option to set custom name servers
+- Add the following nameservers:
+  Domain	  Nameserver
+  {{domainName}}	  {{patrNameserver1}}
+  {{domainName}}	  {{patrNameserver2}}
+- Wait for the DNS records to propogate (shouldn't take more than an hour or two)
+- Go to verify domain section on Patr (https://app.patr.cloud/domain/{{domainId}}/verify)
+- Click on the Verify button
+{{else}}
+- Login to where your domain nameservers are hosted (usually, this is where you bought your domain from)
+- Go to the DNS settings
+- Add a new DNS Record with the following values:
+  Record Type	 TXT
+  Record Name	 {{patrVerifySubDomain}}.{{domainName}}
+  Record Value	 {{domainId}}
+  Record TTL	 Auto (leave at default)
+- Wait for the DNS records to propogate (shouldn't take more than an hour or two)
+- Go to verify domain section on Patr (https://app.patr.cloud/domain/{{domainId}}/verify)
+- Click on the Verify button below
+{{/if}}
+
+If the domain is not verified in {{deadlineLimit}} days, it will be automatically removed.
+
+If you are facing any issues, reach out to us at support@patr.cloud
+
+Join our Discord community (https://patr.cloud/discord) for the latest updates and chat with us here (https://app.patr.cloud?openDrift=true) for instant technical support.
