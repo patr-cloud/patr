@@ -104,5 +104,9 @@
 		"host": "mimir.samyakgangwal.com",
 		"username": "admin",
 		"password": "admin"
+	},
+	"ipQuality": {
+		"host": "<ip-quality-score-host>",
+		"token": "<api-token>"
 	}
 }

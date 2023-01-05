@@ -1485,11 +1485,14 @@ async fn get_logs(
 		.map(|DateTime(end_time)| end_time)
 		.unwrap_or_else(Utc::now);
 
+	// Loki query limit to 721h in time range
+	let start_time = end_time - Duration::days(30);
+
 	log::trace!("request_id: {} - Getting logs", request_id);
-	// stop the running container, if it exists
 	let logs = service::get_deployment_container_logs(
 		context.get_database_connection(),
 		&deployment_id,
+		&start_time,
 		&end_time,
 		limit.unwrap_or(100),
 		&config,
@@ -1668,7 +1671,7 @@ async fn update_deployment(
 		deployment_id
 	);
 	let UpdateDeploymentRequest {
-		workspace_id: _,
+		workspace_id,
 		deployment_id: _,
 		name,
 		machine_type,
@@ -1725,6 +1728,7 @@ async fn update_deployment(
 
 	service::update_deployment(
 		context.get_database_connection(),
+		&workspace_id,
 		&deployment_id,
 		name,
 		machine_type.as_ref(),
@@ -1879,12 +1883,15 @@ async fn list_linked_urls(
 						static_site_id: url.static_site_id?,
 					}
 				}
-				DbManagedUrlType::ProxyUrl => {
-					ManagedUrlType::ProxyUrl { url: url.url? }
-				}
-				DbManagedUrlType::Redirect => {
-					ManagedUrlType::Redirect { url: url.url? }
-				}
+				DbManagedUrlType::ProxyUrl => ManagedUrlType::ProxyUrl {
+					url: url.url?,
+					http_only: url.http_only?,
+				},
+				DbManagedUrlType::Redirect => ManagedUrlType::Redirect {
+					url: url.url?,
+					permanent_redirect: url.permanent_redirect?,
+					http_only: url.http_only?,
+				},
 			},
 			is_configured: url.is_configured,
 		})

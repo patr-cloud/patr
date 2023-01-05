@@ -661,7 +661,6 @@ pub async fn resource_delete_action_email(
 		.status(500)?
 		.first_name;
 
-	// TODO -  change this and move to one function. Changes are done in PR #600
 	let user = db::get_user_by_user_id(connection, &workspace.super_admin_id)
 		.await?
 		.status(500)?;
@@ -717,15 +716,12 @@ pub async fn domain_verification_email(
 	domain: &str,
 	workspace_id: &Uuid,
 	domain_id: &Uuid,
-	is_internal: bool,
-	is_verified: bool,
 ) -> Result<(), Error> {
 	let super_admin_id = db::get_workspace_info(connection, workspace_id)
 		.await?
 		.status(500)?
 		.super_admin_id;
 
-	// TODO -  change this and move to one function. Changes are done in PR #600
 	let user = db::get_user_by_user_id(connection, &super_admin_id)
 		.await?
 		.status(500)?;
@@ -743,24 +739,103 @@ pub async fn domain_verification_email(
 	)
 	.await?;
 
-	if is_verified {
-		email::send_domain_verified_email(
-			domain.to_string(),
-			user.first_name,
-			domain_id.to_string(),
-			user_email.parse()?,
-		)
-		.await?;
-	} else {
-		email::send_domain_unverified_email(
-			domain.to_string(),
-			user.first_name,
-			is_internal,
-			domain_id.to_string(),
-			user_email.parse()?,
-		)
-		.await?;
-	}
+	email::send_domain_verified_email(
+		domain.to_string(),
+		user.first_name,
+		domain_id.to_string(),
+		user_email.parse()?,
+	)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn domain_unverified_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain: &str,
+	workspace_id: &Uuid,
+	domain_id: &Uuid,
+	is_internal: bool,
+	deadline_limit: &u64,
+) -> Result<(), Error> {
+	let super_admin_id = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?
+		.super_admin_id;
+
+	let user = db::get_user_by_user_id(connection, &super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_domain_unverified_email(
+		domain.to_string(),
+		user.first_name,
+		is_internal,
+		domain_id.to_string(),
+		*deadline_limit,
+		user_email.parse()?,
+	)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn send_domain_verify_reminder_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	domain_name: &str,
+	is_internal: bool,
+	domain_id: &Uuid,
+	deadline_limit: u64,
+) -> Result<(), Error> {
+	let super_admin_id = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?
+		.super_admin_id;
+
+	let user = db::get_user_by_user_id(connection, &super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_domain_verify_reminder_email(
+		domain_name.to_string(),
+		user.username,
+		is_internal,
+		domain_id.to_string(),
+		"ns1.patr.cloud".to_string(),
+		"ns2.patr.cloud".to_string(),
+		"patrverify".to_string(),
+		deadline_limit,
+		user_email.parse()?,
+	)
+	.await?;
+
 	Ok(())
 }
 

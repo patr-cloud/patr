@@ -27,7 +27,7 @@ pub struct WorkspaceDomain {
 	pub domain_type: ResourceType,
 	pub is_verified: bool,
 	pub nameserver_type: DomainNameserverType,
-	pub last_unverified: DateTime<Utc>,
+	pub last_unverified: Option<DateTime<Utc>>,
 }
 
 impl WorkspaceDomain {
@@ -185,7 +185,7 @@ pub async fn initialize_domain_pre(
 				),
 			is_verified BOOLEAN NOT NULL,
 			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL,
-			last_unverified TIMESTAMPTZ NOT NULL,
+			last_unverified TIMESTAMPTZ,
 			CONSTRAINT workspace_domain_uq_id_nameserver_type
 				UNIQUE(id, nameserver_type),
 			CONSTRAINT workspace_domain_fk_id_domain_type
@@ -428,7 +428,6 @@ pub async fn add_to_workspace_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	nameserver_type: &DomainNameserverType,
-	last_unverified: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -441,11 +440,10 @@ pub async fn add_to_workspace_domain(
 				last_unverified
 			)
 		VALUES
-			($1, 'business', FALSE, $2, $3);
+			($1, 'business', FALSE, $2, NULL);
 		"#,
 		domain_id as _,
 		nameserver_type as _,
-		last_unverified as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -531,7 +529,7 @@ pub async fn get_domains_for_workspace(
 			workspace_domain.domain_type as "domain_type: _",
 			workspace_domain.is_verified,
 			workspace_domain.nameserver_type as "nameserver_type: _",
-			workspace_domain.last_unverified as "last_unverified!"
+			workspace_domain.last_unverified as "last_unverified"
 		FROM
 			domain
 		INNER JOIN
@@ -563,7 +561,7 @@ pub async fn get_all_unverified_domains(
 			workspace_domain.domain_type as "domain_type!: ResourceType",
 			workspace_domain.is_verified as "is_verified!",
 			workspace_domain.nameserver_type as "nameserver_type!: DomainNameserverType",
-			workspace_domain.last_unverified as "last_unverified!",
+			workspace_domain.last_unverified as "last_unverified",
 			patr_controlled_domain.zone_identifier as "zone_identifier?"
 		FROM
 			workspace_domain
@@ -612,7 +610,7 @@ pub async fn get_all_verified_domains(
 			workspace_domain.domain_type as "domain_type!: ResourceType",
 			workspace_domain.is_verified as "is_verified!",
 			workspace_domain.nameserver_type as "nameserver_type!: DomainNameserverType",
-			workspace_domain.last_unverified as "last_unverified!",
+			workspace_domain.last_unverified as "last_unverified",
 			patr_controlled_domain.zone_identifier as "zone_identifier?"
 		FROM
 			workspace_domain

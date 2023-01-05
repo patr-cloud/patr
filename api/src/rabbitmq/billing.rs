@@ -213,7 +213,8 @@ pub(super) async fn process_request(
 				}
 				TotalAmount::NeedToPay(need_to_pay) => (
 					need_to_pay,
-					max(0, total_bill.total_charge - need_to_pay),
+					total_bill.total_charge.saturating_sub(need_to_pay), /* if total charge is 0 we cannot
+					                                                      * subtract u64 from 0 */
 					0,
 				),
 			};
@@ -237,7 +238,13 @@ pub(super) async fn process_request(
 				workspace.name.clone()
 			};
 
-			if card_amount_to_be_charged_in_cents == 0 {
+			if card_amount_to_be_charged_in_cents == 0 &&
+				total_bill.total_charge == 0
+			{
+				// do nothing, no email has to be sent for any payment action
+			} else if card_amount_to_be_charged_in_cents == 0 &&
+				total_bill.total_charge > 0
+			{
 				let billing_address = if let Some(address) =
 					workspace.address_id
 				{
@@ -269,6 +276,8 @@ pub(super) async fn process_request(
 						country: "".to_string(),
 					}
 				};
+
+				// Only if amount due is zero or total resource usage is zero
 				service::send_payment_success_invoice_notification(
 					connection,
 					&workspace.super_admin_id,
@@ -290,6 +299,7 @@ pub(super) async fn process_request(
 					&workspace.address_id,
 					&workspace.default_payment_method_id,
 				) {
+					log::trace!("request_id: {} found address and card for workspace_name: {}", request_id, workspace.id);
 					let address =
 						db::get_billing_address(connection, address_id)
 							.await?
@@ -318,6 +328,12 @@ pub(super) async fn process_request(
 						stringify_month(month as u8),
 						year
 					));
+
+					log::trace!(
+						"request_id: {} attempting stripe call",
+						request_id
+					);
+
 					let payment_intent = PaymentIntent::create(
 						&Client::new(&config.stripe.secret_key).with_strategy(
 							RequestStrategy::Idempotent(format!(
@@ -369,6 +385,12 @@ pub(super) async fn process_request(
 					if let PaymentIntentStatus::Succeeded =
 						payment_intent.status
 					{
+						log::trace!(
+							"request_id: {} made success payment with
+					payment intent id {}",
+							request_id,
+							payment_intent.id
+						);
 						db::create_transaction(
 							connection,
 							&workspace.id,
@@ -399,6 +421,10 @@ pub(super) async fn process_request(
 
 						Ok(())
 					} else {
+						log::trace!(
+							"request_id: {} payment failed",
+							request_id
+						);
 						db::create_transaction(
 							connection,
 							&workspace.id,
@@ -467,6 +493,12 @@ pub(super) async fn process_request(
 					)
 					.await?;
 
+					log::trace!(
+						"request_id: {} retrying payment for workspace {}",
+						request_id,
+						workspace.id
+					);
+
 					service::queue_retry_payment_for_workspace(
 						&workspace.id,
 						&Utc::now().add(Duration::days(1)),
@@ -480,6 +512,7 @@ pub(super) async fn process_request(
 				}
 			} else {
 				// Enterprise plan. Just assume a payment is made
+				log::trace!("Enterprise plan, assume the payment is made");
 				let transaction_id =
 					db::generate_new_transaction_id(connection).await?;
 				db::create_transaction(
@@ -653,6 +686,7 @@ pub(super) async fn process_request(
 			if let (Some(address_id), Some(payment_method_id)) =
 				(&workspace.address_id, &workspace.default_payment_method_id)
 			{
+				log::trace!("request_id: {} found card, retrying payment for workspace: {}", request_id, workspace_id);
 				let (currency, stripe_amount) =
 					if db::get_billing_address(connection, address_id)
 						.await?

@@ -472,6 +472,7 @@ async fn test_domain_unverified_email() -> Result<(), Error> {
 		domain_id: "domainId".to_owned(),
 		username: "username".to_owned(),
 		is_internal: false,
+		deadline_limit: 15,
 	})
 	.await
 }

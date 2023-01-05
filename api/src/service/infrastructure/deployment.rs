@@ -3,6 +3,7 @@ use std::{collections::BTreeMap, str};
 use api_models::{
 	models::workspace::infrastructure::deployment::{
 		Deployment,
+		DeploymentLogs,
 		DeploymentMetrics,
 		DeploymentProbe,
 		DeploymentRegistry,
@@ -13,9 +14,15 @@ use api_models::{
 		Metric,
 		PatrRegistry,
 	},
-	utils::{constants, Base64String, StringifiedU16, Uuid},
+	utils::{
+		constants,
+		Base64String,
+		DateTime as TzDateTime,
+		StringifiedU16,
+		Uuid,
+	},
 };
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use eve_rs::AsError;
 use k8s_openapi::api::core::v1::Event;
 use reqwest::Client;
@@ -117,6 +124,8 @@ pub async fn create_deployment_in_workspace(
 		workspace_id,
 		region_details.is_byoc_region(),
 		machine_type,
+		&deployment_running_details.min_horizontal_scale,
+		&deployment_running_details.max_horizontal_scale,
 		request_id,
 	)
 	.await?;
@@ -262,11 +271,12 @@ pub async fn create_deployment_in_workspace(
 pub async fn get_deployment_container_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
+	start_time: &DateTime<Utc>,
 	end_time: &DateTime<Utc>,
 	limit: u32,
 	config: &Settings,
 	request_id: &Uuid,
-) -> Result<String, Error> {
+) -> Result<Vec<DeploymentLogs>, Error> {
 	log::trace!(
 		"Getting deployment logs for deployment_id: {} with request_id: {}",
 		deployment_id,
@@ -281,6 +291,7 @@ pub async fn get_deployment_container_logs(
 	let logs = get_container_logs(
 		&deployment.workspace_id,
 		deployment_id,
+		start_time,
 		end_time,
 		limit,
 		config,
@@ -295,6 +306,7 @@ pub async fn get_deployment_container_logs(
 
 pub async fn update_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
 	deployment_id: &Uuid,
 	name: Option<&str>,
 	machine_type: Option<&Uuid>,
@@ -313,6 +325,46 @@ pub async fn update_deployment(
 		request_id,
 		deployment_id
 	);
+
+	// Check if card is added
+
+	let card_added =
+		db::get_default_payment_method_for_workspace(connection, workspace_id)
+			.await?
+			.is_some();
+	if !card_added {
+		if let Some(machine_type) = machine_type {
+			// only basic machine type is allowed under free plan
+			let machine_type_to_be_deployed = MACHINE_TYPES
+				.get()
+				.and_then(|machines| machines.get(machine_type))
+				.status(500)?;
+
+			if machine_type_to_be_deployed != &(1, 2) {
+				log::info!("request_id: {request_id} - Only basic machine type is allowed under free plan");
+				return Error::as_result().status(400).body(
+					error!(CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT).to_string(),
+				)?;
+			}
+		}
+		if let Some(max_horizontal_scale) = max_horizontal_scale {
+			if max_horizontal_scale > 1 {
+				log::info!("request_id: {request_id} - Only one replica allowed under free plan without card");
+				return Error::as_result()
+					.status(400)
+					.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
+			}
+		}
+
+		if let Some(min_horizontal_scale) = min_horizontal_scale {
+			if min_horizontal_scale > 1 {
+				log::info!("request_id: {request_id} - Only one replica allowed under free plan without card");
+				return Error::as_result()
+					.status(400)
+					.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
+			}
+		}
+	}
 
 	db::begin_deferred_constraints(connection).await?;
 	if let Some(ports) = ports {
@@ -905,11 +957,12 @@ pub async fn get_deployment_metrics(
 async fn get_container_logs(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
+	start_time: &DateTime<Utc>,
 	end_time: &DateTime<Utc>,
 	limit: u32,
 	config: &Settings,
 	request_id: &Uuid,
-) -> Result<String, Error> {
+) -> Result<Vec<DeploymentLogs>, Error> {
 	log::trace!(
 		"request_id: {} - Getting container logs for deployment with id: {}",
 		request_id,
@@ -921,11 +974,12 @@ async fn get_container_logs(
 			concat!(
 				"https://{}/loki/api/v1/query_range?direction=BACKWARD&",
 				"query={{container=\"deployment-{}\",namespace=\"{}\"}}",
-				"&end={}&limit={}"
+				"&start={}&end={}&limit={}"
 			),
 			config.loki.host,
 			deployment_id,
 			workspace_id,
+			start_time.timestamp_nanos(),
 			end_time.timestamp_nanos(),
 			limit
 		))
@@ -937,23 +991,23 @@ async fn get_container_logs(
 		.data
 		.result;
 
-	let mut combined_build_logs = Vec::new();
+	log::trace!(
+		"request_id: {} - successful retrieved container logs for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
 
-	for result in logs {
-		for value in result.values {
-			let (time_stamp, log) =
-				(value[0].parse::<u64>()?, value[1].clone());
-			combined_build_logs.push((time_stamp, log));
-		}
-	}
+	let mut logs = logs
+		.into_iter()
+		.flat_map(|loki_logs| loki_logs.values)
+		.filter_map(|log| Some((log[0].parse::<u64>().ok()?, log[1].clone())))
+		.map(|(timestamp, log)| DeploymentLogs {
+			timestamp: TzDateTime(Utc.timestamp_nanos(timestamp as i64)),
+			logs: log,
+		})
+		.collect::<Vec<_>>();
 
-	combined_build_logs.sort_by(|a, b| a.0.cmp(&b.0));
-
-	let mut logs = String::new();
-
-	for log in combined_build_logs {
-		logs.push_str(format!("{}\n", log.1).as_str());
-	}
+	logs.sort_by(|a, b| a.timestamp.0.cmp(&b.timestamp.0));
 
 	Ok(logs)
 }
@@ -1025,6 +1079,8 @@ async fn check_deployment_creation_limit(
 	workspace_id: &Uuid,
 	is_byoc_region: bool,
 	machine_type: &Uuid,
+	min_horizontal_scale: &u16,
+	max_horizontal_scale: &u16,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {request_id} - Checking whether new deployment creation is limited");
@@ -1064,6 +1120,13 @@ async fn check_deployment_creation_limit(
 			return Error::as_result().status(400).body(
 				error!(CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT).to_string(),
 			)?;
+		}
+
+		if *max_horizontal_scale > 1 || *min_horizontal_scale > 1 {
+			log::info!("request_id: {request_id} - Only one replica allowed under free plan without card");
+			return Error::as_result()
+				.status(400)
+				.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
 		}
 	}
 

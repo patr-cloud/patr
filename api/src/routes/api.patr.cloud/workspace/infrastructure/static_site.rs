@@ -1291,12 +1291,15 @@ async fn list_linked_urls(
 						static_site_id: url.static_site_id?,
 					}
 				}
-				DbManagedUrlType::ProxyUrl => {
-					ManagedUrlType::ProxyUrl { url: url.url? }
-				}
-				DbManagedUrlType::Redirect => {
-					ManagedUrlType::Redirect { url: url.url? }
-				}
+				DbManagedUrlType::ProxyUrl => ManagedUrlType::ProxyUrl {
+					url: url.url?,
+					http_only: url.http_only?,
+				},
+				DbManagedUrlType::Redirect => ManagedUrlType::Redirect {
+					url: url.url?,
+					permanent_redirect: url.permanent_redirect?,
+					http_only: url.http_only?,
+				},
 			},
 			is_configured: url.is_configured,
 		})

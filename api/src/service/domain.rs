@@ -202,13 +202,8 @@ pub async fn add_domain_to_workspace(
 	.await?;
 
 	log::trace!("request_id: {} - Adding domain to workspace", request_id);
-	db::add_to_workspace_domain(
-		connection,
-		&domain_id,
-		nameserver_type,
-		&Utc::now(),
-	)
-	.await?;
+	db::add_to_workspace_domain(connection, &domain_id, nameserver_type)
+		.await?;
 
 	let domain_plan =
 		match db::get_domains_for_workspace(connection, workspace_id)
@@ -387,8 +382,6 @@ pub async fn is_domain_verified(
 				&domain.name,
 				workspace_id,
 				domain_id,
-				true,
-				true,
 			)
 			.await?;
 			return Ok(true);
@@ -397,13 +390,17 @@ pub async fn is_domain_verified(
 		// It will not be so far in this function unless the domain is verified
 		// If it's not verified, the domain just got unverified. Send an email
 		// letting them know that the domain has been unverified
-		service::domain_verification_email(
+		service::domain_unverified_email(
 			connection,
 			&domain.name,
 			workspace_id,
 			domain_id,
 			true,
-			false,
+			if domain.last_unverified.is_none() {
+				&15
+			} else {
+				&5
+			},
 		)
 		.await?;
 		Ok(false)
@@ -426,8 +423,6 @@ pub async fn is_domain_verified(
 				&domain.name,
 				workspace_id,
 				domain_id,
-				false,
-				true,
 			)
 			.await?;
 
@@ -443,16 +438,43 @@ pub async fn is_domain_verified(
 					&Utc::now(),
 				)
 				.await?;
+
+				service::domain_verification_email(
+					connection,
+					&domain.name,
+					workspace_id,
+					domain_id,
+				)
+				.await?;
+			} else if domain.last_unverified.is_none() {
+				db::update_workspace_domain_status(
+					connection,
+					domain_id,
+					false,
+					&Utc::now(),
+				)
+				.await?;
+
+				service::domain_unverified_email(
+					connection,
+					&domain.name,
+					workspace_id,
+					domain_id,
+					false,
+					&15,
+				)
+				.await?;
+			} else if domain.last_unverified.is_some() {
+				service::domain_unverified_email(
+					connection,
+					&domain.name,
+					workspace_id,
+					domain_id,
+					false,
+					&5,
+				)
+				.await?;
 			}
-			service::domain_verification_email(
-				connection,
-				&domain.name,
-				workspace_id,
-				domain_id,
-				false,
-				false,
-			)
-			.await?;
 
 			Ok(false)
 		}

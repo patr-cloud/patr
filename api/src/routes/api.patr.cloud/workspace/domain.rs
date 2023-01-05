@@ -19,7 +19,7 @@ use api_models::{
 		VerifyDomainResponse,
 		WorkspaceDomain,
 	},
-	utils::Uuid,
+	utils::{DateTime, Uuid},
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
@@ -488,6 +488,7 @@ async fn get_domains_for_workspace(
 		domain: Domain {
 			id: domain.id,
 			name: domain.name,
+			last_unverified: domain.last_unverified.map(DateTime),
 		},
 		is_verified: domain.is_verified,
 		nameserver_type: domain.nameserver_type,
@@ -721,6 +722,7 @@ async fn get_domain_info_in_workspace(
 			domain: Domain {
 				id: domain.id,
 				name: domain.name,
+				last_unverified: domain.last_unverified.map(DateTime),
 			},
 			is_verified: domain.is_verified,
 			nameserver_type: domain.nameserver_type,

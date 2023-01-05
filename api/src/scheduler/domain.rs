@@ -18,7 +18,8 @@ use crate::{
 	error,
 	scheduler::Job,
 	service,
-	utils::{validator, Error},
+	utils::{settings::Settings, validator, Error},
+	Database,
 };
 
 // Every two hours
@@ -108,6 +109,11 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 		db::get_all_unverified_domains(&mut connection).await?;
 	let client = service::get_cloudflare_client(&config.config).await?;
 	for (unverified_domain, zone_identifier) in unverified_domains {
+		let domain_created_time =
+			db::get_resource_by_id(&mut connection, &unverified_domain.id)
+				.await?
+				.status(500)? // resource will be there for a domain
+				.created;
 		let mut connection = connection.begin().await?;
 		let workspace_id =
 			db::get_resource_by_id(&mut connection, &unverified_domain.id)
@@ -186,73 +192,59 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 						&unverified_domain.name,
 						&workspace_id,
 						&unverified_domain.id,
-						true,
-						true,
 					)
 					.await?
 				}
 				connection.commit().await?;
 			} else {
-				let last_unverified = Utc::now()
-					.signed_duration_since(unverified_domain.last_unverified);
-				let last_unverified_days = last_unverified.num_days();
-				if last_unverified_days > 7 {
-					// Delete all managed url before deleting the domain
-					let managed_urls = db::get_all_managed_urls_for_domain(
-						&mut connection,
-						&unverified_domain.id,
-					)
-					.await?;
-					for managed_url in managed_urls {
-						service::delete_managed_url(
+				if let Some(last_verified) = unverified_domain.last_unverified {
+					let last_unverified =
+						Utc::now().signed_duration_since(last_verified);
+					let last_unverified_days = last_unverified.num_days();
+					if last_unverified_days > 5 {
+						delete_unverified_domain(
 							&mut connection,
 							&workspace_id,
-							&managed_url.id,
-							&settings,
-							&request_id,
-						)
-						.await?;
-					}
-					// Delete all the dns record before deleting the domain
-					let dns_records = db::get_dns_records_by_domain_id(
-						&mut connection,
-						&unverified_domain.id,
-					)
-					.await?;
-					for dns_record in dns_records {
-						service::delete_patr_domain_dns_record(
-							&mut connection,
 							&unverified_domain.id,
-							&dns_record.id,
+							true,
 							&settings,
 							&request_id,
 						)
-						.await?;
+						.await?
+					} else {
+						continue;
 					}
-					// Delete the domain
-					service::delete_domain_in_workspace(
-						&mut connection,
-						&workspace_id,
-						&unverified_domain.id,
-						&settings,
-						&request_id,
-					)
-					.await?;
-					// Delete the certificate for the domain
-					service::delete_certificates_for_domain(
-						&workspace_id,
-						&format!("certificate-{}", unverified_domain.id),
-						&format!("tls-{}", unverified_domain.id),
-						&settings,
-						&request_id,
-					)
-					.await?;
-
-					// todo: need to send an email when deleting domain resource
-					connection.commit().await?;
 				} else {
-					continue;
-				}
+					let domain_created =
+						Utc::now().signed_duration_since(domain_created_time);
+					let domain_created_days = domain_created.num_days() as u64;
+					if domain_created_days > 15 {
+						delete_unverified_domain(
+							&mut connection,
+							&workspace_id,
+							&unverified_domain.id,
+							true,
+							&settings,
+							&request_id,
+						)
+						.await?
+					} else if domain_created_days > 12 &&
+						domain_created_days <= 15
+					{
+						service::send_domain_verify_reminder_email(
+							&mut connection,
+							&workspace_id,
+							&unverified_domain.name,
+							true,
+							&unverified_domain.id,
+							15 - domain_created_days,
+						)
+						.await?
+					} else {
+						continue;
+					}
+				};
+				connection.commit().await?;
 			}
 		} else {
 			let verified = service::verify_external_domain(
@@ -276,50 +268,67 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					&unverified_domain.name,
 					&workspace_id,
 					&unverified_domain.id,
-					false,
-					true,
 				)
 				.await?;
+				connection.commit().await?;
 			} else {
 				log::error!(
 					"Could not verify domain `{}`",
 					unverified_domain.name
 				);
 
-				let last_unverified = Utc::now()
-					.signed_duration_since(unverified_domain.last_unverified);
-				let last_unverified_days = last_unverified.num_days();
-				if last_unverified_days > 7 {
-					// Delete all managed url before deleting the domain
-					let managed_urls = db::get_all_managed_urls_for_domain(
-						&mut connection,
-						&unverified_domain.id,
-					)
-					.await?;
-					for managed_url in managed_urls {
-						service::delete_managed_url(
+				if let Some(last_unverified) = unverified_domain.last_unverified
+				{
+					let last_unverified =
+						Utc::now().signed_duration_since(last_unverified);
+					let last_unverified_days = last_unverified.num_days();
+					if last_unverified_days > 5 {
+						delete_unverified_domain(
 							&mut connection,
 							&workspace_id,
-							&managed_url.id,
+							&unverified_domain.id,
+							false,
 							&settings,
 							&request_id,
 						)
 						.await?;
+					} else {
+						continue;
 					}
-					// Delete the domain
-					service::delete_domain_in_workspace(
-						&mut connection,
-						&workspace_id,
-						&unverified_domain.id,
-						&settings,
-						&request_id,
-					)
-					.await?;
-
-					// todo: need to send an email when deleting domain resource
+				} else {
+					let domain_created =
+						Utc::now().signed_duration_since(domain_created_time);
+					let domain_created_days = domain_created.num_days() as u64;
+					if domain_created_days > 15 {
+						delete_unverified_domain(
+							&mut connection,
+							&workspace_id,
+							&unverified_domain.id,
+							false,
+							&settings,
+							&request_id,
+						)
+						.await?;
+					} else if domain_created_days > 12 &&
+						domain_created_days <= 15
+					{
+						service::send_domain_verify_reminder_email(
+							&mut connection,
+							&workspace_id,
+							&unverified_domain.name,
+							true,
+							&unverified_domain.id,
+							15 - domain_created_days,
+						)
+						.await?
+					}
+					{
+						continue;
+					}
 				}
+				// todo: need to send an email when deleting domain resource
+				connection.commit().await?;
 			}
-			connection.commit().await?;
 		}
 	}
 	Ok(())
@@ -436,11 +445,20 @@ async fn repatch_all_managed_urls() -> Result<(), Error> {
 							DbManagedUrlType::ProxyUrl => {
 								ManagedUrlType::ProxyUrl {
 									url: managed_url.url.status(500)?,
+									http_only: managed_url
+										.http_only
+										.status(500)?,
 								}
 							}
 							DbManagedUrlType::Redirect => {
 								ManagedUrlType::Redirect {
 									url: managed_url.url.status(500)?,
+									permanent_redirect: managed_url
+										.permanent_redirect
+										.status(500)?,
+									http_only: managed_url
+										.http_only
+										.status(500)?,
 								}
 							}
 						},
@@ -494,11 +512,20 @@ async fn repatch_all_managed_urls() -> Result<(), Error> {
 							DbManagedUrlType::ProxyUrl => {
 								ManagedUrlType::ProxyUrl {
 									url: managed_url.url.status(500)?,
+									http_only: managed_url
+										.http_only
+										.status(500)?,
 								}
 							}
 							DbManagedUrlType::Redirect => {
 								ManagedUrlType::Redirect {
 									url: managed_url.url.status(500)?,
+									permanent_redirect: managed_url
+										.permanent_redirect
+										.status(500)?,
+									http_only: managed_url
+										.http_only
+										.status(500)?,
 								}
 							}
 						},
@@ -577,13 +604,13 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 				&Utc::now(),
 			)
 			.await?;
-			service::domain_verification_email(
+			service::domain_unverified_email(
 				&mut connection,
 				&verified_domain.name,
 				&workspace_id,
 				&verified_domain.id,
 				true,
-				false,
+				&5, //deadline limit
 			)
 			.await?
 		} else {
@@ -608,13 +635,13 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 				)
 				.await?;
 
-				service::domain_verification_email(
+				service::domain_unverified_email(
 					&mut connection,
 					&verified_domain.name,
 					&workspace_id,
 					&verified_domain.id,
 					false,
-					false,
+					&5, //deadline limit
 				)
 				.await?
 			}
@@ -622,6 +649,68 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 
 		// commit the changes made inside this transaction
 		connection.commit().await?;
+	}
+
+	Ok(())
+}
+
+async fn delete_unverified_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	domain_id: &Uuid,
+	is_internal: bool,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	// Delete all managed url before deleting the domain
+	let managed_urls =
+		db::get_all_managed_urls_for_domain(connection, domain_id).await?;
+	for managed_url in managed_urls {
+		service::delete_managed_url(
+			connection,
+			workspace_id,
+			&managed_url.id,
+			config,
+			request_id,
+		)
+		.await?;
+	}
+
+	if is_internal {
+		// Delete all the dns record before deleting the domain
+		let dns_records =
+			db::get_dns_records_by_domain_id(connection, domain_id).await?;
+		for dns_record in dns_records {
+			service::delete_patr_domain_dns_record(
+				connection,
+				domain_id,
+				&dns_record.id,
+				config,
+				request_id,
+			)
+			.await?;
+		}
+	}
+	// Delete the domain
+	service::delete_domain_in_workspace(
+		connection,
+		workspace_id,
+		domain_id,
+		config,
+		request_id,
+	)
+	.await?;
+
+	if is_internal {
+		// Delete the certificate for the domain
+		service::delete_certificates_for_domain(
+			workspace_id,
+			&format!("certificate-{}", domain_id),
+			&format!("tls-{}", domain_id),
+			config,
+			request_id,
+		)
+		.await?;
 	}
 
 	Ok(())

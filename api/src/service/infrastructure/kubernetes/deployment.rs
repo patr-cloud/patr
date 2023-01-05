@@ -275,7 +275,7 @@ pub async fn update_kubernetes_deployment(
 								..Probe::default()
 							}),
 						liveness_probe: running_details
-							.startup_probe
+							.liveness_probe
 							.as_ref()
 							.map(|probe| Probe {
 								http_get: Some(HTTPGetAction {
