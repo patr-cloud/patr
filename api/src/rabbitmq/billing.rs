@@ -242,6 +242,12 @@ pub(super) async fn process_request(
 				total_bill.total_charge == 0
 			{
 				// do nothing, no email has to be sent for any payment action
+				log::trace!(
+					"request_id: {} Nothing charged for workspace: {}",
+					request_id,
+					workspace.id
+				);
+				return Ok(());
 			} else if card_amount_to_be_charged_in_cents == 0 &&
 				total_bill.total_charge > 0
 			{
