@@ -8,6 +8,7 @@ use crate::{
 mod from_v0_10;
 mod from_v0_11;
 mod from_v0_12;
+mod from_v0_13;
 mod from_v0_3;
 mod from_v0_4;
 mod from_v0_5;
@@ -66,6 +67,9 @@ pub async fn migrate(
 		(0, 12, _) => {
 			from_v0_12::migrate(&mut *connection, version, config).await
 		}
+		(0, 13, _) => {
+			from_v0_13::migrate(&mut *connection, version, config).await
+		}
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
@@ -91,6 +95,7 @@ pub fn get_migrations() -> Vec<&'static str> {
 		from_v0_10::get_migrations(),
 		from_v0_11::get_migrations(),
 		from_v0_12::get_migrations(),
+		from_v0_13::get_migrations(),
 	]
 	.into_iter()
 	.flatten()
