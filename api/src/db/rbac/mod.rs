@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use api_models::{models::workspace::WorkspacePermission, utils::Uuid};
 use chrono::{DateTime, Utc};
 
-use crate::{models::rbac, query, query_as, Database};
+use crate::{db::PaymentType, models::rbac, query, query_as, Database};
 
 mod role;
 mod user;
