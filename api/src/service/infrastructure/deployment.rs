@@ -1369,17 +1369,31 @@ pub async fn start_deployment(
 	)
 	.await?;
 
-	service::update_kubernetes_deployment(
-		workspace_id,
-		deployment,
-		&image_name,
-		digest.as_deref(),
-		deployment_running_details,
-		kubeconfig,
-		config,
-		request_id,
-	)
-	.await?;
+	if deployment_running_details.volume.is_empty() {
+		service::update_kubernetes_deployment(
+			workspace_id,
+			deployment,
+			&image_name,
+			digest.as_deref(),
+			deployment_running_details,
+			kubeconfig,
+			config,
+			request_id,
+		)
+		.await?
+	} else {
+		service::update_kubernetes_statefulset(
+			workspace_id,
+			deployment,
+			&image_name,
+			digest.as_deref(),
+			deployment_running_details,
+			kubeconfig,
+			config,
+			request_id,
+		)
+		.await?
+	}
 
 	Ok(())
 }

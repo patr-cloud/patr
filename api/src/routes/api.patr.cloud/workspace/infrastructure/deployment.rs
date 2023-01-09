@@ -959,6 +959,34 @@ async fn create_deployment(
 				.await?
 				.is_some()
 				{
+					let volumes = db::get_all_deployment_volumes(
+						context.get_database_connection(),
+						&id,
+					)
+					.await?;
+
+					for volume in volumes {
+						log::trace!(
+							"request_id: {} starting volume usage history",
+							request_id
+						);
+						if service::is_deployed_on_patr_cluster(
+							context.get_database_connection(),
+							repository_id,
+						)
+						.await?
+						{
+							db::start_volume_usage_history(
+								context.get_database_connection(),
+								&workspace_id,
+								&volume.volume_id,
+								volume.size as u64 *
+									1000u64 * 1000u64 * 1000u64,
+								&Utc::now(),
+							)
+							.await?;
+						}
+					}
 					service::start_deployment(
 						context.get_database_connection(),
 						&workspace_id,
@@ -1186,6 +1214,39 @@ async fn start_deployment(
 					repository_id,
 					&digest,
 					&now,
+				)
+				.await?;
+			}
+		}
+		if service::is_deployed_on_patr_cluster(
+			context.get_database_connection(),
+			repository_id,
+		)
+		.await?
+		{
+			for volume in db::get_all_deployment_volumes(
+				context.get_database_connection(),
+				&deployment_id,
+			)
+			.await?
+			{
+				// TODO -  handle this case when deploy_on_create is false and
+				// user is starting the deployment for the first time. Then stop
+				// time doesn't make sense as the db entry will be first stopped
+				// then started
+				db::stop_volume_usage_history(
+					context.get_database_connection(),
+					&deployment_id,
+					&Utc::now(),
+				)
+				.await?;
+
+				db::start_volume_usage_history(
+					context.get_database_connection(),
+					&workspace_id,
+					&volume.volume_id,
+					volume.size as u64 * 1000u64 * 1000u64 * 1000u64,
+					&Utc::now(),
 				)
 				.await?;
 			}
