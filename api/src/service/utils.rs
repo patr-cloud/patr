@@ -280,7 +280,12 @@ pub async fn split_domain_and_tld(
 	let tld_list = validator::DOMAIN_TLD_LIST.read().await;
 	let tld = tld_list
 		.iter()
-		.filter(|tld| domain_name.ends_with(*tld))
+		.filter(|tld| {
+			domain_name
+				.strip_suffix(*tld)
+				.and_then(|domain_name| domain_name.strip_suffix('.'))
+				.is_some()
+		})
 		.reduce(|accumulator, item| {
 			if accumulator.len() > item.len() {
 				accumulator
@@ -301,7 +306,7 @@ pub async fn split_domain_and_tld(
 		return None;
 	}
 
-	Some((domain.to_string(), tld.clone()))
+	Some((domain.to_string(), tld.to_string()))
 }
 
 pub async fn get_image_name_and_digest_for_deployment_image(

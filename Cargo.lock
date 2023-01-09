@@ -117,7 +117,7 @@ checksum = "216261ddc8289130e551ddcd5ce8a064710c0d064a4d2895c67151c92b5443f6"
 
 [[package]]
 name = "api"
-version = "0.13.0"
+version = "0.13.1"
 dependencies = [
  "argon2",
  "async-stripe",
@@ -664,8 +664,8 @@ dependencies = [
 
 [[package]]
 name = "cloudflare"
-version = "0.9.1"
-source = "git+https://github.com/vicara-hq/cloudflare-rs#bd65cec907e57db88cb8df9c05f26ea1ebed2a46"
+version = "0.10.1"
+source = "git+https://github.com/vicara-hq/cloudflare-rs#76d2c4fbe6d520b92a2f801b844c5d1898f10ab7"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1715,7 +1715,7 @@ version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5617e92fc2f2501c3e2bc6ce547cad841adba2bae5b921c7e52510beca6d084c"
 dependencies = [
- "base64 0.13.1",
+ "base64 0.12.3",
  "bytes",
  "http",
  "httpdate",
