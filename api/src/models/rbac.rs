@@ -189,10 +189,6 @@ pub mod permissions {
 				pub const EDIT: &str =
 					"workspace::billing::billing_address::edit";
 			}
-
-			pub mod transaction {
-				pub const LIST: &str = "workspace::billing::transaction::list";
-			}
 		}
 
 		pub const EDIT: &str = "workspace::edit";
