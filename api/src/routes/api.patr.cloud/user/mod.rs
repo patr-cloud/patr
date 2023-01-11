@@ -539,12 +539,15 @@ async fn add_email_address(
 			.body(error!(WRONG_PARAMETERS).to_string())?;
 	let email_address = email.to_lowercase();
 
+	let config = context.get_state().config.clone();
+
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	service::add_personal_email_to_be_verified_for_user(
 		context.get_database_connection(),
 		&email_address,
 		&user_id,
+		&config,
 	)
 	.await?;
 

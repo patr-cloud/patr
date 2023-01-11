@@ -310,6 +310,17 @@ pub async fn create_user_join_request(
 					.body(error!(EMAIL_TAKEN).to_string())?;
 			}
 
+			if recovery_email.contains('+') {
+				log::trace!(
+				"Invalid email address: {}, '+' not allowed in email address",
+				recovery_email
+			);
+
+				return Error::as_result()
+					.status(400)
+					.body(error!(INVALID_EMAIL).to_string())?;
+			}
+
 			// extract the email_local and domain name from it
 			// split email into 2 parts and get domain_id
 			let (email_local, domain_id) =
