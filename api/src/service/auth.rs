@@ -310,11 +310,7 @@ pub async fn create_user_join_request(
 					.body(error!(EMAIL_TAKEN).to_string())?;
 			}
 
-			if recovery_email
-				.split_once('@')
-				.map(|(email, _)| email.contains('+'))
-				.unwrap_or_default()
-			{
+			if recovery_email.contains('+') {
 				log::trace!(
 				"Invalid email address: {}, '+' not allowed in email address",
 				recovery_email

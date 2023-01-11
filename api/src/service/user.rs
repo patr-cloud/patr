@@ -43,11 +43,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 			.body(error!(INVALID_EMAIL).to_string())?;
 	}
 
-	if email_address
-		.split_once('@')
-		.map(|(email, _)| email.contains('+'))
-		.unwrap_or_default()
-	{
+	if email_address.contains('+') {
 		log::trace!(
 			"Invalid email address: {}, '+' not allowed in email address",
 			email_address
