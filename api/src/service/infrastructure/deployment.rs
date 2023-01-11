@@ -253,18 +253,6 @@ pub async fn create_deployment_in_workspace(
 		.await?;
 	}
 
-	if service::is_deployed_on_patr_cluster(connection, region).await? {
-		db::start_deployment_usage_history(
-			connection,
-			workspace_id,
-			&deployment_id,
-			machine_type,
-			deployment_running_details.min_horizontal_scale as i32,
-			&created_time,
-		)
-		.await?;
-	};
-
 	Ok(deployment_id)
 }
 
@@ -1168,6 +1156,7 @@ pub async fn start_deployment(
 	login_id: &Uuid,
 	ip_address: &str,
 	metadata: &DeploymentMetadata,
+	current_time: &DateTime<Utc>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -1189,6 +1178,20 @@ pub async fn start_deployment(
 		&DeploymentStatus::Deploying,
 	)
 	.await?;
+
+	if service::is_deployed_on_patr_cluster(connection, &deployment.region)
+		.await?
+	{
+		db::start_deployment_usage_history(
+			connection,
+			workspace_id,
+			deployment_id,
+			&deployment.machine_type,
+			deployment_running_details.min_horizontal_scale as i32,
+			current_time,
+		)
+		.await?;
+	}
 
 	let audit_log_id =
 		db::generate_new_workspace_audit_log_id(connection).await?;
@@ -1325,6 +1328,15 @@ pub async fn stop_deployment(
 		&DeploymentStatus::Stopped,
 	)
 	.await?;
+
+	if service::is_deployed_on_patr_cluster(connection, region_id).await? {
+		db::stop_deployment_usage_history(
+			connection,
+			deployment_id,
+			&Utc::now(),
+		)
+		.await?;
+	}
 
 	let audit_log_id =
 		db::generate_new_workspace_audit_log_id(connection).await?;
