@@ -49,7 +49,7 @@ use crate::{
 	},
 	pin_fn,
 	rabbitmq::{BuildId, BuildStepId},
-	service::{self, Netrc, ParseStatus},
+	service::{self, CommitStatus, Netrc, ParseStatus},
 	utils::{
 		constants::request_keys,
 		Error,
@@ -1340,17 +1340,19 @@ async fn restart_build(
 			.status(500)?;
 
 		EventType::PullRequest(PullRequest {
-			head_repo_owner: pr_details
+			pr_repo_owner: pr_details
 				.head
 				.repo
 				.as_ref()
 				.map(|repo| repo.owner.login.clone())
-				.unwrap_or(repo.repo_owner),
-			head_repo_name: pr_details
+				.unwrap_or_else(|| repo.repo_owner.clone()),
+			pr_repo_name: pr_details
 				.head
 				.repo
 				.map(|repo| repo.name)
 				.unwrap_or_else(|| repo.repo_name.clone()),
+			repo_owner: repo.repo_owner,
+			repo_name: repo.repo_name.clone(),
 			commit_sha: previous_build.git_commit,
 			pr_number: pull_number.to_string(),
 			author: previous_build.author,
@@ -1361,12 +1363,13 @@ async fn restart_build(
 		return Error::as_result().status(500)?;
 	};
 
-	let ci_file_content =
-		service::fetch_ci_file_content_from_github_repo_based_on_event(
-			&event_type,
-			&access_token,
-		)
-		.await?;
+	let ci_file_content = service::fetch_ci_file_content_from_github_repo(
+		event_type.repo_owner(),
+		event_type.repo_name(),
+		event_type.commit_sha(),
+		&access_token,
+	)
+	.await?;
 
 	let build_num = service::create_build_for_repo(
 		context.get_database_connection(),
@@ -1472,6 +1475,14 @@ async fn restart_build(
 	.await?;
 
 	context.commit_database_transaction().await?;
+
+	service::update_github_commit_status_for_build(
+		context.get_database_connection(),
+		&repo.id,
+		build_num,
+		CommitStatus::Running,
+	)
+	.await?;
 
 	let config = context.get_state().config.clone();
 	service::add_build_steps_in_k8s(
@@ -1560,9 +1571,9 @@ async fn start_build_for_branch(
 
 	let config = context.get_state().config.clone();
 	let event_type = EventType::Commit(Commit {
-		repo_owner: repo.repo_owner,
+		repo_owner: repo.repo_owner.clone(),
 		repo_name: repo.repo_name.clone(),
-		commit_sha: github_branch.commit.sha,
+		commit_sha: github_branch.commit.sha.clone(),
 		committed_branch_name: branch_name,
 		author: github_branch
 			.commit
@@ -1572,12 +1583,13 @@ async fn start_build_for_branch(
 		commit_message: Some(github_branch.commit.commit.message),
 	});
 
-	let ci_file_content =
-		service::fetch_ci_file_content_from_github_repo_based_on_event(
-			&event_type,
-			&access_token,
-		)
-		.await?;
+	let ci_file_content = service::fetch_ci_file_content_from_github_repo(
+		event_type.repo_owner(),
+		event_type.repo_name(),
+		event_type.commit_sha(),
+		&access_token,
+	)
+	.await?;
 
 	let build_num = service::create_build_for_repo(
 		context.get_database_connection(),
@@ -1684,6 +1696,14 @@ async fn start_build_for_branch(
 
 	context.commit_database_transaction().await?;
 
+	service::update_github_commit_status_for_build(
+		context.get_database_connection(),
+		&repo.id,
+		build_num,
+		CommitStatus::Running,
+	)
+	.await?;
+
 	service::add_build_steps_in_k8s(
 		context.get_database_connection(),
 		&config,
@@ -1748,8 +1768,8 @@ async fn get_patr_ci_file(
 	let ci_file_content = service::fetch_ci_file_content_from_github_repo(
 		&repo.repo_owner,
 		&repo.repo_name,
-		&access_token,
 		&git_ref,
+		&access_token,
 	)
 	.await?;
 

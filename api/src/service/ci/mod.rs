@@ -663,8 +663,10 @@ fn get_clone_command_based_on_event_type(
 			format!("git checkout -qf FETCH_HEAD"),
 		],
 		EventType::PullRequest(PullRequest {
-			head_repo_owner: _,
-			head_repo_name: _,
+			pr_repo_owner: _,
+			pr_repo_name: _,
+			repo_owner: _,
+			repo_name: _,
 			author: _,
 			pr_title: _,
 			commit_sha,
