@@ -17,7 +17,8 @@ lazy_static! {
 	static ref PERSONAL_WORKSPACE_NAME_REGEX: Regex = Regex::new("^personal-workspace-[a-z0-9]{32}$").unwrap();
 	// Can only contain lowercase letters, numbers, hyphens and underscores
 	static ref DOCKER_REPO_NAME_REGEX: Regex = Regex::new("^[a-z0-9_-]{2,255}$").unwrap();
-	static ref DOCKER_IMAGE_NAME_REGEX: Regex = Regex::new("^[^:]*$").unwrap();
+	// Docker image name convention - https://docs.docker.com/engine/reference/commandline/tag/#extended-description
+	static ref DOCKER_IMAGE_NAME_REGEX: Regex = Regex::new("^(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?)(((/)(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?))*)?$").unwrap();
 	// Validate the name of database
 	static ref DATABASE_NAME_REGEX: Regex = Regex::new("^[a-zA-Z][a-zA-Z0-9_]{2,59}$").unwrap();
 	// 2-64 characters long ([a-zA-Z0-9_- .]), cannot begin with a _, -, . or a space, cannot end with a space

@@ -116,7 +116,7 @@ pub async fn initialize_deployment_pre(
 			repository_id UUID,
 			image_name VARCHAR(512) CONSTRAINT deployment_chk_image_name_is_valid
 				CHECK(
-					image_name ~* '(^[^:]*$)'
+					image_name::TEXT ~* '^(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?)(((\/)(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?))*)?$'
 				),
 			image_tag VARCHAR(255) NOT NULL,
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',

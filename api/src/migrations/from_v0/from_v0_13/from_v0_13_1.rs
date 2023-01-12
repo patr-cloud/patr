@@ -20,7 +20,9 @@ pub(super) async fn validate_image_name_for_deployment(
 		r#"
 		ALTER TABLE deployment
 		ADD CONSTRAINT deployment_chk_image_name_is_valid
-		CHECK (image_name::TEXT ~* '(^[^:]*$)');
+		CHECK (
+			image_name::TEXT ~* '^(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?)(((\/)(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?))*)?$'
+		);
 	"#
 	)
 	.execute(&mut *connection)
