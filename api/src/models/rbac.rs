@@ -146,11 +146,6 @@ pub mod permissions {
 					pub const INFO: &str =
 						"workspace::ci::git_provider::repo::info";
 
-					pub mod branch {
-						pub const START: &str =
-							"workspace::ci::git_provider::repo::branch::start";
-					}
-
 					pub mod build {
 						pub const LIST: &str =
 							"workspace::ci::git_provider::repo::build::list";
@@ -158,6 +153,8 @@ pub mod permissions {
 							"workspace::ci::git_provider::repo::build::cancel";
 						pub const INFO: &str =
 							"workspace::ci::git_provider::repo::build::info";
+						pub const START: &str =
+							"workspace::ci::git_provider::repo::build::start";
 						pub const RESTART: &str =
 							"workspace::ci::git_provider::repo::build::restart";
 					}
@@ -167,7 +164,7 @@ pub mod permissions {
 
 		pub mod billing {
 			pub const INFO: &str = "workspace::billing::info";
-			pub const PAYMENT: &str = "workspace::billing::payment";
+			pub const MAKE_PAYMENT: &str = "workspace::billing::make_payment";
 
 			pub mod payment_method {
 				pub const ADD: &str = "workspace::billing::payment_method::add";

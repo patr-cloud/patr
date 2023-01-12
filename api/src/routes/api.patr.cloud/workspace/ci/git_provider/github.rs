@@ -528,7 +528,8 @@ pub fn create_sub_app(
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
-				permission: permissions::workspace::ci::git_provider::repo::branch::START,
+				permission:
+					permissions::workspace::ci::git_provider::repo::build::START,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id = Uuid::parse_str(
 						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
