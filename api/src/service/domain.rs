@@ -710,7 +710,7 @@ pub async fn update_patr_domain_dns_record(
 		DnsRecordType::MX => DnsContent::MX {
 			priority: priority
 				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())? as u16,
+				.body(error!(WRONG_PARAMETERS).to_string())?,
 			content: record.to_string(),
 		},
 		DnsRecordType::CNAME => DnsContent::CNAME {

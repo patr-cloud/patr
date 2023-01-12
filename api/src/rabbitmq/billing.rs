@@ -606,12 +606,12 @@ pub(super) async fn process_request(
 			}
 
 			let month_start_date = Utc
-				.with_ymd_and_hms(year as i32, month, 1, 0, 0, 0)
+				.with_ymd_and_hms(year, month, 1, 0, 0, 0)
 				.unwrap();
 
 			let next_month_start_date = Utc
 				.with_ymd_and_hms(
-					(if month == 12 { year + 1 } else { year }) as i32,
+					if month == 12 { year + 1 } else { year },
 					if month == 12 { 1 } else { month + 1 },
 					1,
 					0,

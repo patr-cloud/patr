@@ -485,7 +485,7 @@ pub async fn calculate_database_bill_for_workspace_till(
 			});
 	}
 
-	Ok(database_usage_bill.into_iter().map(|(_, v)| v).collect())
+	Ok(database_usage_bill.into_values().collect())
 }
 
 pub async fn calculate_static_sites_bill_for_workspace_till(
