@@ -4,4 +4,5 @@ use serde::{Deserialize, Serialize};
 pub struct IpQualityScore {
 	pub valid: bool,
 	pub disposable: bool,
+	pub fraud_score: usize,
 }
