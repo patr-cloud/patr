@@ -13004,6 +13004,19 @@
     },
     "query": "INSERT INTO deployment_machine_type( id, cpu_count, memory_count ) VALUES ($1, $2, $3);"
   },
+  "ec8c007dbdac0e4d8e56727bc62b68146194f4b7ac70a63e750d184d405a1795": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE deployment SET image_name = $1 WHERE id = $2;"
+  },
   "ec98bd64b322bca84d91ae223c1b6171b30b049d75c8a96f5b54b08bf95bfa59": {
     "describe": {
       "columns": [],

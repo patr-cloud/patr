@@ -846,6 +846,28 @@ pub async fn update_deployment_status(
 	.map(|_| ())
 }
 
+pub async fn update_deployment_image_name(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	image_name: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			image_name = $1
+		WHERE
+			id = $2;
+		"#,
+		image_name as _,
+		deployment_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn delete_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
