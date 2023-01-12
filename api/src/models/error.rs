@@ -39,6 +39,7 @@ pub mod id {
 	pub const REPOSITORY_NOT_FOUND: &str = "repositoryNotFound";
 	pub const INVALID_REQUEST: &str = "invalidRequest";
 	pub const INVALID_REPOSITORY_NAME: &str = "invalidRepositoryName";
+	pub const INVALID_IMAGE_NAME: &str = "InvalidImageName";
 	pub const DOMAIN_IS_PERSONAL: &str = "domainIsPersonal";
 	pub const DOMAIN_BELONGS_TO_WORKSPACE: &str = "domainBelongsToWorkspace";
 	pub const NO_RECOVERY_OPTIONS: &str = "noRecoveryOptions";
@@ -165,6 +166,7 @@ pub mod message {
 	pub const NO_WORKSPACE_OR_REPOSITORY: &str =
 		"Invalid Workspace or Repository name";
 	pub const INVALID_REPOSITORY_NAME: &str = "Invalid repository name";
+	pub const INVALID_IMAGE_NAME: &str = "Invalid image name";
 	pub const USER_ROLE_NOT_FOUND: &str =
 		"No valid role for the user was found";
 	pub const OFFLINE_TOKEN_NOT_FOUND: &str =

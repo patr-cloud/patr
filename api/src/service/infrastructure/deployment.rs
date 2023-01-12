@@ -78,14 +78,14 @@ pub async fn create_deployment_in_workspace(
 	}
 
 	if let DeploymentRegistry::ExternalRegistry { image_name, .. } = registry {
-		if image_name.contains(':') {
+		if !validator::is_docker_image_name_valid(image_name) {
 			log::trace!(
 				"request_id: {} invalid image_name cannot contain colon(:)",
 				request_id
 			);
 			return Err(Error::empty()
 				.status(400)
-				.body(error!(INVALID_REPOSITORY_NAME).to_string()));
+				.body(error!(INVALID_IMAGE_NAME).to_string()));
 		}
 	};
 
