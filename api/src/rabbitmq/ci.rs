@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
 	db,
 	models::rabbitmq::CIData,
-	service::{self, JobStatus},
+	service::{self, CommitStatus, JobStatus},
 	utils::{settings::Settings, Error},
 	Database,
 };
@@ -379,6 +379,13 @@ pub async fn process_request(
 				&Utc::now(),
 			)
 			.await?;
+			service::update_github_commit_status_for_build(
+				connection,
+				&build_id.repo_id,
+				build_id.build_num,
+				CommitStatus::Errored,
+			)
+			.await?;
 		}
 		CIData::CleanBuild {
 			build_id,
@@ -420,6 +427,13 @@ pub async fn process_request(
 						&Utc::now(),
 					)
 					.await?;
+					service::update_github_commit_status_for_build(
+						connection,
+						&build_id.repo_id,
+						build_id.build_num,
+						CommitStatus::Failed,
+					)
+					.await?;
 				}
 				BuildStepStatus::Succeeded => {
 					log::info!(
@@ -445,6 +459,13 @@ pub async fn process_request(
 						&build_id.repo_id,
 						build_id.build_num,
 						&Utc::now(),
+					)
+					.await?;
+					service::update_github_commit_status_for_build(
+						connection,
+						&build_id.repo_id,
+						build_id.build_num,
+						CommitStatus::Success,
 					)
 					.await?;
 				}

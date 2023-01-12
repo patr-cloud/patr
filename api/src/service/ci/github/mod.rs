@@ -9,7 +9,13 @@ use eve_rs::AsError;
 use hmac::{Hmac, Mac};
 use octorust::{
 	auth::Credentials,
-	types::{Order, ReposListOrgSort, ReposListVisibility},
+	types::{
+		Order,
+		ReposCreateCommitStatusRequest,
+		ReposCreateCommitStatusRequestState,
+		ReposListOrgSort,
+		ReposListVisibility,
+	},
 };
 use sha2::Sha256;
 
@@ -95,39 +101,11 @@ pub async fn create_build_for_repo(
 	Ok(build_num)
 }
 
-pub async fn fetch_ci_file_content_from_github_repo_based_on_event(
-	event_type: &EventType,
-	access_token: &str,
-) -> Result<Vec<u8>, Error> {
-	// fetch ci file from remote repo for forked pull requests
-	let (owner_name, repo_name, commit_sha) = match event_type {
-		EventType::Commit(commit) => {
-			(&commit.repo_owner, &commit.repo_name, &commit.commit_sha)
-		}
-		EventType::Tag(tag) => {
-			(&tag.repo_owner, &tag.repo_name, &tag.commit_sha)
-		}
-		EventType::PullRequest(pull_request) => (
-			&pull_request.head_repo_owner,
-			&pull_request.head_repo_name,
-			&pull_request.commit_sha,
-		),
-	};
-
-	fetch_ci_file_content_from_github_repo(
-		owner_name,
-		repo_name,
-		access_token,
-		commit_sha,
-	)
-	.await
-}
-
 pub async fn fetch_ci_file_content_from_github_repo(
 	owner_name: &str,
 	repo_name: &str,
-	access_token: &str,
 	git_ref: &str, // name of the commit/branch/tag
+	access_token: &str,
 ) -> Result<Vec<u8>, Error> {
 	let github_client = octorust::Client::new(
 		"patr",
@@ -239,6 +217,106 @@ pub async fn sync_github_repos(
 		request_id,
 	)
 	.await?;
+
+	Ok(())
+}
+
+pub enum CommitStatus {
+	// build is started and running
+	Running,
+	// build finished and success
+	Success,
+	// build finished and failure
+	Failed,
+	// build has been errored ie cancelled / internal error
+	Errored,
+}
+
+impl CommitStatus {
+	pub fn commit_state(&self) -> ReposCreateCommitStatusRequestState {
+		match self {
+			Self::Running => ReposCreateCommitStatusRequestState::Pending,
+			Self::Success => ReposCreateCommitStatusRequestState::Success,
+			Self::Failed => ReposCreateCommitStatusRequestState::Failure,
+			Self::Errored => ReposCreateCommitStatusRequestState::Error,
+		}
+	}
+
+	pub fn description(&self) -> &str {
+		match self {
+			Self::Running => "Build is running",
+			Self::Success => "Build succeeded",
+			Self::Failed => "Build failed",
+			Self::Errored => "Error occurred",
+		}
+	}
+}
+
+pub async fn update_github_commit_status_for_build(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
+	build_num: i64,
+	status: CommitStatus,
+) -> Result<(), Error> {
+	let repo = db::get_repo_using_patr_repo_id(connection, repo_id)
+		.await?
+		.status(500)?;
+
+	let (_login_name, access_token) =
+		db::get_git_provider_details_by_id(connection, &repo.git_provider_id)
+			.await?
+			.and_then(|git_provider| {
+				git_provider.login_name.zip(git_provider.password)
+			})
+			.status(500)?;
+
+	let commit_sha =
+		db::get_build_details_for_build(connection, repo_id, build_num)
+			.await?
+			.status(500)?
+			.git_commit;
+
+	log::debug!(
+		"Updating commit status in github for {}/{}@{}",
+		repo.repo_owner,
+		repo.repo_name,
+		commit_sha
+	);
+
+	let github_client =
+		octorust::Client::new("patr", Credentials::Token(access_token.clone()))
+			.map_err(|err| {
+				log::info!("error while octorust init: {err:#}");
+				err
+			})
+			.ok()
+			.status(500)?;
+
+	// update status of build to that commit in git_provider
+	github_client
+		.repos()
+		.create_commit_status(
+			&repo.repo_owner,
+			&repo.repo_name,
+			&commit_sha,
+			&ReposCreateCommitStatusRequest {
+				context: "patr-ci".to_owned(),
+				state: status.commit_state(),
+				description: status.description().to_owned(),
+				// todo: how it works across different workspace
+				target_url: format!(
+					"https://app.patr.cloud/ci/github/{}/{}/build/{}",
+					&repo.repo_owner, &repo.repo_name, build_num
+				),
+			},
+		)
+		.await
+		.map_err(|err| {
+			log::info!("error while updating ci repo commit status: {err:#}");
+			err
+		})
+		.ok()
+		.status(500)?;
 
 	Ok(())
 }
