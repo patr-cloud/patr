@@ -43,6 +43,7 @@ pub struct Workspace {
 	pub stripe_customer_id: String,
 	pub address_id: Option<Uuid>,
 	pub amount_due_in_cents: u64,
+	pub is_spam: bool,
 }
 
 pub struct WorkspaceAuditLog {
@@ -130,6 +131,7 @@ pub async fn initialize_workspaces_pre(
 				CONSTRAINT workspace_chk_amount_due_in_cents_positive
 					CHECK (amount_due_in_cents >= 0),
 			deleted TIMESTAMPTZ,
+			is_spam BOOLEAN NOT NULL,
 			CONSTRAINT workspace_uq_id_super_admin_id
 				UNIQUE(id, super_admin_id)
 		);
@@ -425,7 +427,8 @@ pub async fn get_workspace_info(
 			docker_repository_storage_limit,
 			stripe_customer_id,
 			address_id as "address_id: Uuid",
-			amount_due_in_cents
+			amount_due_in_cents,
+			is_spam
 		FROM
 			workspace
 		WHERE
@@ -456,6 +459,7 @@ pub async fn get_workspace_info(
 			stripe_customer_id: row.stripe_customer_id,
 			address_id: row.address_id,
 			amount_due_in_cents: row.amount_due_in_cents as u64,
+			is_spam: row.is_spam,
 		})
 	})
 }
@@ -483,7 +487,8 @@ pub async fn get_workspace_by_name(
 			docker_repository_storage_limit,
 			stripe_customer_id,
 			address_id as "address_id: Uuid",
-			amount_due_in_cents
+			amount_due_in_cents,
+			is_spam
 		FROM
 			workspace
 		WHERE
@@ -513,6 +518,7 @@ pub async fn get_workspace_by_name(
 			stripe_customer_id: row.stripe_customer_id,
 			address_id: row.address_id,
 			amount_due_in_cents: row.amount_due_in_cents as u64,
+			is_spam: row.is_spam,
 		})
 	})
 }
@@ -739,7 +745,8 @@ pub async fn get_all_workspaces(
 			docker_repository_storage_limit,
 			stripe_customer_id,
 			address_id as "address_id: Uuid",
-			amount_due_in_cents
+			amount_due_in_cents,
+			is_spam
 		FROM
 			workspace
 		WHERE
@@ -767,6 +774,7 @@ pub async fn get_all_workspaces(
 		stripe_customer_id: row.stripe_customer_id,
 		address_id: row.address_id,
 		amount_due_in_cents: row.amount_due_in_cents as u64,
+		is_spam: row.is_spam,
 	})
 	.collect();
 
@@ -1075,6 +1083,26 @@ pub async fn set_resource_limit_for_workspace(
 		docker_repository_storage_limit,
 		domain_limit,
 		secret_limit,
+		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn mark_workspace_as_spam(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace
+		SET
+			is_spam = TRUE
+		WHERE
+			id = $1;
+		"#,
 		workspace_id as _,
 	)
 	.execute(&mut *connection)

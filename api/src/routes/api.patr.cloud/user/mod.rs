@@ -543,6 +543,8 @@ async fn add_email_address(
 
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 
+	let config = context.get_state().config.clone();
+
 	service::add_personal_email_to_be_verified_for_user(
 		context.get_database_connection(),
 		&email_address,
