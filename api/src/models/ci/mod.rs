@@ -6,9 +6,35 @@ pub enum EventType {
 	PullRequest(PullRequest),
 }
 
+impl EventType {
+	pub fn repo_owner(&self) -> &str {
+		match self {
+			EventType::Commit(commit) => &commit.repo_owner,
+			EventType::Tag(tag) => &tag.repo_owner,
+			EventType::PullRequest(pr) => &pr.repo_owner,
+		}
+	}
+	pub fn repo_name(&self) -> &str {
+		match self {
+			EventType::Commit(commit) => &commit.repo_name,
+			EventType::Tag(tag) => &tag.repo_name,
+			EventType::PullRequest(pr) => &pr.repo_name,
+		}
+	}
+	pub fn commit_sha(&self) -> &str {
+		match self {
+			EventType::Commit(commit) => &commit.commit_sha,
+			EventType::Tag(tag) => &tag.commit_sha,
+			EventType::PullRequest(pr) => &pr.commit_sha,
+		}
+	}
+}
+
 pub struct PullRequest {
-	pub head_repo_owner: String,
-	pub head_repo_name: String,
+	pub pr_repo_owner: String,
+	pub pr_repo_name: String,
+	pub repo_owner: String,
+	pub repo_name: String,
 	pub commit_sha: String,
 	pub pr_number: String,
 	pub pr_title: String,
