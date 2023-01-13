@@ -77,6 +77,18 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
+	if let DeploymentRegistry::ExternalRegistry { image_name, .. } = registry {
+		if !validator::is_docker_image_name_valid(image_name) {
+			log::trace!(
+				"request_id: {} invalid image_name cannot contain colon(:)",
+				request_id
+			);
+			return Err(Error::empty()
+				.status(400)
+				.body(error!(INVALID_IMAGE_NAME).to_string()));
+		}
+	};
+
 	// validate deployment name
 	log::trace!("request_id: {} - Validating deployment name", request_id);
 	if !validator::is_deployment_name_valid(name) {
