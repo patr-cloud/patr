@@ -1190,7 +1190,11 @@ pub async fn join_user(
 		let workspaces =
 			db::get_all_workspaces_for_user(connection, &user_id).await?;
 
-		if disposable {
+		if spam_account {
+			for workspace in &workspaces {
+				db::mark_workspace_as_spam(connection, &workspace.id).await?;
+			}
+		} else if disposable {
 			for workspace in &workspaces {
 				db::set_resource_limit_for_workspace(
 					connection,
@@ -1204,12 +1208,6 @@ pub async fn join_user(
 					0,
 				)
 				.await?;
-			}
-		}
-
-		if spam_account {
-			for workspace in &workspaces {
-				db::mark_workspace_as_spam(connection, &workspace.id).await?;
 			}
 		}
 	}
