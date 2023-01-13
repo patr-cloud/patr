@@ -1,7 +1,8 @@
-use std::net::IpAddr;
+use std::{fmt::Debug, net::IpAddr};
 
 use api_models::utils::Uuid;
 use chrono::{DateTime, Utc};
+use either::Either;
 use k8s_openapi::api::{
 	apps::v1::Deployment,
 	autoscaling::v1::HorizontalPodAutoscaler,
@@ -10,6 +11,7 @@ use k8s_openapi::api::{
 };
 use kube::{
 	api::DeleteParams,
+	client::Status,
 	config::{
 		AuthInfo,
 		Cluster,
@@ -19,17 +21,55 @@ use kube::{
 		NamedCluster,
 		NamedContext,
 	},
+	error::ErrorResponse,
 	Api,
 	Config,
+	Error as KubeError,
+	Result,
 };
+use reqwest::Client;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sqlx::Row;
 
 use crate::{
 	migrate_query as query,
-	service::ext_traits::DeleteOpt,
 	utils::{settings::Settings, Error},
 	Database,
 };
+
+#[derive(Serialize, Deserialize)]
+pub struct IpQualityScore {
+	pub valid: bool,
+	pub disposable: bool,
+	pub fraud_score: usize,
+}
+
+#[async_trait::async_trait]
+pub trait DeleteOpt<T> {
+	async fn delete_opt(
+		&self,
+		name: &str,
+		dp: &DeleteParams,
+	) -> Result<Option<Either<T, Status>>>;
+}
+
+#[async_trait::async_trait]
+impl<T> DeleteOpt<T> for Api<T>
+where
+	T: Clone + DeserializeOwned + Debug,
+{
+	async fn delete_opt(
+		&self,
+		name: &str,
+		dp: &DeleteParams,
+	) -> Result<Option<Either<T, Status>>> {
+		match self.delete(name, dp).await {
+			Ok(obj) => Ok(Some(obj)),
+			Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(None),
+			Err(err) => Err(err),
+		}
+	}
+}
 
 pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -39,6 +79,9 @@ pub(super) async fn migrate(
 	validate_image_name_for_deployment(connection, config).await?;
 	permission_change_for_rbac_v1(connection, config).await?;
 	reset_permission_order(connection, config).await?;
+	add_spam_table_columns(connection, config).await?;
+	block_and_delete_all_spam_users(connection, config).await?;
+
 	Ok(())
 }
 
@@ -68,7 +111,16 @@ pub(super) async fn delete_deployment_with_invalid_image_name(
 	))
 	.collect::<Vec<_>>();
 
-	for (deployment_id, workspace_id, region_id, deleted) in deployments {
+	let deployments_to_be_deleted = deployments.len();
+
+	for (index, (deployment_id, workspace_id, region_id, deleted)) in
+		deployments.into_iter().enumerate()
+	{
+		log::info!(
+			"Deleting deployments with invalid image name {}/{}",
+			index,
+			deployments_to_be_deleted
+		);
 		query!(
 			r#"
 			UPDATE
@@ -95,6 +147,8 @@ pub(super) async fn delete_deployment_with_invalid_image_name(
 		)
 		.await?
 	}
+
+	log::info!("All invalid deployments deleted");
 
 	Ok(())
 }
@@ -190,7 +244,38 @@ async fn delete_deployment(
 	.execute(&mut *connection)
 	.await?;
 
-	let kube_config = if workspace_id.is_none() {
+	delete_deployment_from_kubernetes(
+		deployment_id,
+		deployment_workspace_id,
+		workspace_id.as_ref(),
+		region_id,
+		ready,
+		kubernetes_cluster_url.as_deref(),
+		kubernetes_auth_username.as_deref(),
+		kubernetes_auth_token.as_deref(),
+		kubernetes_ca_data.as_deref(),
+		kubernetes_ingress_ip_addr.as_ref(),
+		config,
+	)
+	.await?;
+
+	Ok(())
+}
+
+async fn delete_deployment_from_kubernetes(
+	deployment_id: &Uuid,
+	workspace_id: &Uuid,
+	region_workspace_id: Option<&Uuid>,
+	region_id: &Uuid,
+	cluster_ready: bool,
+	kubernetes_cluster_url: Option<&str>,
+	kubernetes_auth_username: Option<&str>,
+	kubernetes_auth_token: Option<&str>,
+	kubernetes_ca_data: Option<&str>,
+	kubernetes_ingress_ip_addr: Option<&IpAddr>,
+	config: &Settings,
+) -> Result<(), Error> {
+	let kube_config = if region_workspace_id.is_none() {
 		get_kube_config(
 			&config.kubernetes.cluster_url,
 			&config.kubernetes.certificate_authority_data,
@@ -200,7 +285,7 @@ async fn delete_deployment(
 		.await?
 	} else {
 		match (
-			ready,
+			cluster_ready,
 			kubernetes_cluster_url,
 			kubernetes_auth_username,
 			kubernetes_auth_token,
@@ -216,10 +301,10 @@ async fn delete_deployment(
 				Some(_),
 			) => {
 				get_kube_config(
-					&cluster_url,
-					&certificate_authority_data,
-					&auth_username,
-					&auth_token,
+					cluster_url,
+					certificate_authority_data,
+					auth_username,
+					auth_token,
 				)
 				.await?
 			}
@@ -233,7 +318,7 @@ async fn delete_deployment(
 
 	Api::<Deployment>::namespaced(
 		kubernetes_client.clone(),
-		deployment_workspace_id.as_str(),
+		workspace_id.as_str(),
 	)
 	.delete_opt(
 		&format!("deployment-{}", deployment_id),
@@ -243,7 +328,7 @@ async fn delete_deployment(
 
 	Api::<ConfigMap>::namespaced(
 		kubernetes_client.clone(),
-		deployment_workspace_id.as_str(),
+		workspace_id.as_str(),
 	)
 	.delete_opt(
 		&format!("config-mount-{}", deployment_id),
@@ -253,7 +338,7 @@ async fn delete_deployment(
 
 	Api::<Service>::namespaced(
 		kubernetes_client.clone(),
-		deployment_workspace_id.as_str(),
+		workspace_id.as_str(),
 	)
 	.delete_opt(
 		&format!("service-{}", deployment_id),
@@ -263,20 +348,17 @@ async fn delete_deployment(
 
 	Api::<HorizontalPodAutoscaler>::namespaced(
 		kubernetes_client.clone(),
-		deployment_workspace_id.as_str(),
+		workspace_id.as_str(),
 	)
 	.delete_opt(&format!("hpa-{}", deployment_id), &DeleteParams::default())
 	.await?;
 
-	Api::<Ingress>::namespaced(
-		kubernetes_client,
-		deployment_workspace_id.as_str(),
-	)
-	.delete_opt(
-		&format!("ingress-{}", deployment_id),
-		&DeleteParams::default(),
-	)
-	.await?;
+	Api::<Ingress>::namespaced(kubernetes_client, workspace_id.as_str())
+		.delete_opt(
+			&format!("ingress-{}", deployment_id),
+			&DeleteParams::default(),
+		)
+		.await?;
 
 	Ok(())
 }
@@ -573,6 +655,276 @@ async fn reset_permission_order(
 		.execute(&mut *connection)
 		.await?;
 	}
+
+	Ok(())
+}
+
+async fn add_spam_table_columns(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE workspace
+		ADD COLUMN is_spam BOOLEAN NOT NULL DEFAULT FALSE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace
+		ALTER COLUMN is_spam DROP DEFAULT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn block_and_delete_all_spam_users(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+) -> Result<(), Error> {
+	let workspaces = query!(
+		r#"
+		SELECT
+			workspace_id,
+			super_admin_id
+		FROM
+			workspace;
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| {
+		(
+			row.get::<Uuid, _>("workspace_id"),
+			row.get::<Uuid, _>("super_admin_id"),
+		)
+	})
+	.collect::<Vec<_>>();
+
+	let workspaces_size = workspaces.len();
+
+	for (index, (workspace_id, super_admin_id)) in
+		workspaces.into_iter().enumerate()
+	{
+		log::info!(
+			"Checking for spam rating of workspace {}/{}",
+			index,
+			workspaces_size
+		);
+
+		// Get all emails for user
+		let emails = query!(
+			r#"
+			SELECT
+				CONCAT(
+					personal_email.local,
+					'@',
+					domain.name,
+					'.',
+					domain.tld
+				) AS "email"
+			FROM
+				personal_email
+			INNER JOIN
+				domain
+			ON
+				personal_email.domain_id = domain.id
+			WHERE
+				user_id = $1;
+			"#,
+			super_admin_id
+		)
+		.fetch_all(&mut *connection)
+		.await?
+		.into_iter()
+		.map(|row| row.get::<String, _>("email"));
+
+		let mut is_user_spam = false;
+		let mut is_email_disposable = false;
+
+		for email in emails {
+			// Check if any one of their emails are spam or disposable
+			let spam_score = Client::new()
+				.get(format!(
+					"{}/{}/{}",
+					config.ip_quality.host, config.ip_quality.token, email
+				))
+				.send()
+				.await?
+				.json::<IpQualityScore>()
+				.await?;
+
+			if spam_score.disposable || spam_score.fraud_score > 75 {
+				is_user_spam = spam_score.fraud_score > 75;
+				is_email_disposable = spam_score.disposable;
+				break;
+			}
+		}
+
+		if !is_user_spam && !is_email_disposable {
+			log::info!(
+				"Workspace {} is neither spam nor disposable. Ignoring...",
+				workspace_id
+			);
+			continue;
+		}
+
+		let deployments = query!(
+			r#"
+			SELECT
+				deployment.id AS "deployment_id",
+				deployment_region.workspace_id AS "region_workspace_id",
+				deployment.region_id AS "region_id",
+				deployment_region.ready AS "cluster_ready",
+				deployment_region.kubernetes_cluster_url AS "kubernetes_cluster_url",
+				deployment_region.kubernetes_auth_username AS "kubernetes_auth_username",
+				deployment_region.kubernetes_auth_token AS "kubernetes_auth_token",
+				deployment_region.kubernetes_ca_data AS "kubernetes_ca_data",
+				deployment_region.kubernetes_ingress_ip_addr AS "kubernetes_ingress_ip_addr"
+			FROM
+				deployment
+			INNER JOIN
+				deployment_region
+			ON
+				deployment.region_id = deployment_region.id
+			WHERE
+				deployment.workspace_id = $1;
+			"#,
+			&workspace_id
+		)
+		.fetch_all(&mut *connection)
+		.await?
+		.into_iter()
+		.map(|row| {
+			(
+				row.get::<Uuid, _>("deployment_id"),
+				row.get::<Option<Uuid>, _>("region_workspace_id"),
+				row.get::<Uuid, _>("region_id"),
+				row.get::<bool, _>("cluster_ready"),
+				row.get::<Option<String>, _>("kubernetes_cluster_url"),
+				row.get::<Option<String>, _>("kubernetes_auth_username"),
+				row.get::<Option<String>, _>("kubernetes_auth_token"),
+				row.get::<Option<String>, _>("kubernetes_ca_data"),
+				row.get::<Option<IpAddr>, _>("kubernetes_ingress_ip_addr"),
+			)
+		})
+		.collect::<Vec<_>>();
+
+		if is_email_disposable {
+			log::info!(
+				"Workspace {} has a disposable email. Marking limits to 0",
+				workspace_id
+			);
+			// Set their workspace limits to 0
+			query!(
+				r#"
+				UPDATE
+					workspace
+				SET
+					deployment_limit = 0,
+					database_limit = 0,
+					static_site_limit = 0,
+					managed_url_limit = 0,
+					docker_repository_storage_limit = 0,
+					domain_limit = 0,
+					secret_limit = 0
+				WHERE
+					id = $1;
+				"#,
+				&workspace_id
+			)
+			.execute(&mut *connection)
+			.await?;
+		}
+
+		if is_user_spam {
+			log::info!(
+				"Workspace {} has a high spam rating email. Marking as spam",
+				workspace_id
+			);
+			// Mark their workspace as spam
+			query!(
+				r#"
+				UPDATE
+					workspace
+				SET
+					is_spam = TRUE
+				WHERE
+					id = $1;
+				"#,
+				&workspace_id
+			)
+			.execute(&mut *connection)
+			.await?;
+		}
+
+		// Delete all the deployments for that workspace
+		// In case it's a disposable email, delete from DB as well as k8s.
+		// For spam accounts, only delete from k8s.
+
+		let deployments_num = deployments.len();
+		log::info!(
+			"Found {} deployments for workspace {}. Deleting...",
+			deployments_num,
+			workspace_id
+		);
+		for (
+			index,
+			(
+				deployment_id,
+				region_workspace_id,
+				region_id,
+				cluster_ready,
+				kubernetes_cluster_url,
+				kubernetes_auth_username,
+				kubernetes_auth_token,
+				kubernetes_ca_data,
+				kubernetes_ingress_ip_addr,
+			),
+		) in deployments.into_iter().enumerate()
+		{
+			log::info!(
+				"Deleting deployment {}/{} for workspace {}",
+				index,
+				deployments_num,
+				workspace_id
+			);
+			if is_user_spam {
+				delete_deployment_from_kubernetes(
+					&deployment_id,
+					&workspace_id,
+					region_workspace_id.as_ref(),
+					&region_id,
+					cluster_ready,
+					kubernetes_cluster_url.as_deref(),
+					kubernetes_auth_username.as_deref(),
+					kubernetes_auth_token.as_deref(),
+					kubernetes_ca_data.as_deref(),
+					kubernetes_ingress_ip_addr.as_ref(),
+					config,
+				)
+				.await?;
+			} else {
+				delete_deployment(
+					connection,
+					&deployment_id,
+					&workspace_id,
+					&region_id,
+					config,
+				)
+				.await?;
+			}
+		}
+	}
+
+	log::info!("All workspaces filtered for spam");
 
 	Ok(())
 }
