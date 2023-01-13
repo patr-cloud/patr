@@ -605,9 +605,8 @@ pub(super) async fn process_request(
 				return Err(Error::empty());
 			}
 
-			let month_start_date = Utc
-				.with_ymd_and_hms(year, month, 1, 0, 0, 0)
-				.unwrap();
+			let month_start_date =
+				Utc.with_ymd_and_hms(year, month, 1, 0, 0, 0).unwrap();
 
 			let next_month_start_date = Utc
 				.with_ymd_and_hms(
