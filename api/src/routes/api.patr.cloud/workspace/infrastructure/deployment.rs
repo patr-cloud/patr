@@ -484,7 +484,7 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
 				permission:
-					permissions::workspace::infrastructure::deployment::INFO,
+					permissions::workspace::infrastructure::managed_url::LIST,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -605,7 +605,7 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
 				permission:
-					permissions::workspace::infrastructure::deployment::LIST,
+					permissions::workspace::infrastructure::deployment::INFO,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
