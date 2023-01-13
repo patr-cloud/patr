@@ -15,6 +15,7 @@ use crate::Database;
 pub struct DeploymentPaymentHistory {
 	pub workspace_id: Uuid,
 	pub deployment_id: Uuid,
+	// pub pricing_id: Uuid,
 	pub machine_type: Uuid,
 	pub num_instance: i32,
 	pub start_time: DateTime<Utc>,
@@ -32,6 +33,7 @@ pub struct VolumePaymentHistory {
 pub struct StaticSitesPaymentHistory {
 	pub workspace_id: Uuid,
 	pub static_site_plan: StaticSitePlan,
+	// pub pricing_id: Uuid,
 	pub start_time: DateTime<Utc>,
 	pub stop_time: Option<DateTime<Utc>>,
 }
@@ -40,6 +42,7 @@ pub struct ManagedDatabasePaymentHistory {
 	pub workspace_id: Uuid,
 	pub database_id: Uuid,
 	pub db_plan: ManagedDatabasePlan,
+	// pub pricing_id: Uuid,
 	pub start_time: DateTime<Utc>,
 	pub deletion_time: Option<DateTime<Utc>>,
 }
@@ -47,6 +50,7 @@ pub struct ManagedDatabasePaymentHistory {
 pub struct ManagedUrlPaymentHistory {
 	pub workspace_id: Uuid,
 	pub url_count: i32,
+	// pub pricing_id: Uuid,
 	pub start_time: DateTime<Utc>,
 	pub stop_time: Option<DateTime<Utc>>,
 }
@@ -54,6 +58,7 @@ pub struct ManagedUrlPaymentHistory {
 pub struct SecretPaymentHistory {
 	pub workspace_id: Uuid,
 	pub secret_count: i32,
+	// pub pricing_id: Uuid,
 	pub start_time: DateTime<Utc>,
 	pub stop_time: Option<DateTime<Utc>>,
 }
@@ -61,6 +66,7 @@ pub struct SecretPaymentHistory {
 pub struct DockerRepoPaymentHistory {
 	pub workspace_id: Uuid,
 	pub storage: i64,
+	// pub pricing_id: Uuid,
 	pub start_time: DateTime<Utc>,
 	pub stop_time: Option<DateTime<Utc>>,
 }
@@ -68,6 +74,7 @@ pub struct DockerRepoPaymentHistory {
 pub struct DomainPaymentHistory {
 	pub workspace_id: Uuid,
 	pub domain_plan: DomainPlan,
+	// pub pricing_id: Uuid,
 	pub start_time: DateTime<Utc>,
 	pub stop_time: Option<DateTime<Utc>>,
 }
@@ -160,6 +167,7 @@ pub async fn initialize_billing_pre(
 		CREATE TABLE IF NOT EXISTS deployment_payment_history(
 			workspace_id UUID NOT NULL,
 			deployment_id UUID NOT NULL,
+			pricing_id UUID NOT NULL,
 			machine_type UUID NOT NULL,
 			num_instance INTEGER NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
@@ -175,6 +183,7 @@ pub async fn initialize_billing_pre(
 		CREATE TABLE IF NOT EXISTS static_sites_payment_history(
 			workspace_id UUID NOT NULL,
 			static_site_plan STATIC_SITE_PLAN NOT NULL,
+			pricing_id UUID NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
 			stop_time TIMESTAMPTZ
 		);
@@ -189,6 +198,7 @@ pub async fn initialize_billing_pre(
 			workspace_id UUID NOT NULL,
 			database_id UUID NOT NULL,
 			db_plan MANAGED_DATABASE_PLAN NOT NULL,
+			pricing_id UUID NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
 			deletion_time TIMESTAMPTZ
 		);
@@ -202,6 +212,7 @@ pub async fn initialize_billing_pre(
 		CREATE TABLE IF NOT EXISTS managed_url_payment_history(
 			workspace_id UUID NOT NULL,
 			url_count INTEGER NOT NULL,
+			pricing_id UUID NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
 			stop_time TIMESTAMPTZ
 		);
@@ -215,6 +226,7 @@ pub async fn initialize_billing_pre(
 		CREATE TABLE IF NOT EXISTS secrets_payment_history(
 			workspace_id UUID NOT NULL,
 			secret_count INTEGER NOT NULL,
+			pricing_id UUID NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
 			stop_time TIMESTAMPTZ
 		);
@@ -228,6 +240,7 @@ pub async fn initialize_billing_pre(
 		CREATE TABLE IF NOT EXISTS docker_repo_payment_history(
 			workspace_id UUID NOT NULL,
 			storage BIGINT NOT NULL,
+			pricing_id UUID NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
 			stop_time TIMESTAMPTZ
 		);
@@ -241,6 +254,7 @@ pub async fn initialize_billing_pre(
 		CREATE TABLE IF NOT EXISTS domain_payment_history(
 			workspace_id UUID NOT NULL,
 			domain_plan DOMAIN_PLAN NOT NULL,
+			pricing_id UUID NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
 			stop_time TIMESTAMPTZ
 		);

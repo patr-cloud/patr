@@ -120,12 +120,33 @@ pub async fn initialize_workspaces_pre(
 			payment_type PAYMENT_TYPE NOT NULL,
 			default_payment_method_id TEXT,
 			deployment_limit INTEGER NOT NULL,
+			deployment_pricing UUID[] NOT NULL
+				CONSTRAINT workspace_fk_deployment_pricing
+					REFERENCES deployment_pricing(id),
 			database_limit INTEGER NOT NULL,
+			database_pricing UUID[] NOT NULL
+			CONSTRAINT workspace_fk_dmanaged_database_pricing
+				REFERENCES dmanaged_database_pricing(id),
 			static_site_limit INTEGER NOT NULL,
+			static_site_pricing UUID[] NOT NULL
+			CONSTRAINT workspace_fk_static_site_pricing
+				REFERENCES static_site_pricing(id),
 			managed_url_limit INTEGER NOT NULL,
+			managed_url_pricing UUID[] NOT NULL
+			CONSTRAINT workspace_fk_managed_url_pricing
+				REFERENCES managed_url_pricing(id),
 			docker_repository_storage_limit INTEGER NOT NULL,
+			docker_repository_pricing UUID[] NOT NULL
+			CONSTRAINT workspace_fk_docker_repository_pricing
+				REFERENCES docker_repository_pricing(id),
 			domain_limit INTEGER NOT NULL,
+			domain_pricing UUID[] NOT NULL
+			CONSTRAINT workspace_fk_domain_pricing
+				REFERENCES domain_pricing(id),
 			secret_limit INTEGER NOT NULL,
+			secret_pricing UUID[] NOT NULL
+			CONSTRAINT workspace_fk_secret_pricing
+				REFERENCES secret_pricing(id),
 			stripe_customer_id TEXT NOT NULL,
 			address_id UUID,
 			amount_due_in_cents BIGINT NOT NULL
