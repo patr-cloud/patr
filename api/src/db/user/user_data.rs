@@ -626,7 +626,7 @@ pub async fn get_all_workspaces_owned_by_user(
 			stripe_customer_id,
 			address_id as "address_id: Uuid",
 			amount_due_in_cents,
-			workspace.is_spam
+			is_spam
 		FROM
 			workspace
 		WHERE

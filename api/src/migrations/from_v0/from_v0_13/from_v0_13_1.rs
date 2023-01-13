@@ -117,7 +117,7 @@ pub(super) async fn delete_deployment_with_invalid_image_name(
 		deployments.into_iter().enumerate()
 	{
 		log::info!(
-			"Deleting deployments with invalid image name {}/{}",
+			"Deleting deployment {}/{} with invalid image name",
 			index,
 			deployments_to_be_deleted
 		);
@@ -714,7 +714,7 @@ async fn block_and_delete_all_spam_users(
 		workspaces.into_iter().enumerate()
 	{
 		log::info!(
-			"Checking for spam rating of workspace {}/{}",
+			"Checking workspace {}/{} for spam rating",
 			index,
 			workspaces_size
 		);
