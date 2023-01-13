@@ -37,6 +37,8 @@ pub(super) async fn migrate(
 ) -> Result<(), Error> {
 	delete_deployment_with_invalid_image_name(connection, config).await?;
 	validate_image_name_for_deployment(connection, config).await?;
+	permission_change_for_rbac_v1(connection, config).await?;
+	reset_permission_order(connection, config).await?;
 	Ok(())
 }
 
@@ -101,7 +103,6 @@ pub(super) async fn validate_image_name_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
-<<<<<<< HEAD
 	query!(
 		r#"
 		ALTER TABLE deployment
@@ -221,7 +222,119 @@ async fn delete_deployment(
 					&auth_token,
 				)
 				.await?
-=======
+			}
+			_ => {
+				log::info!("cluster {region_id} is not yet initialized");
+				return Ok(());
+			}
+		}
+	};
+	let kubernetes_client = kube::Client::try_from(kube_config)?;
+
+	Api::<Deployment>::namespaced(
+		kubernetes_client.clone(),
+		deployment_workspace_id.as_str(),
+	)
+	.delete_opt(
+		&format!("deployment-{}", deployment_id),
+		&DeleteParams::default(),
+	)
+	.await?;
+
+	Api::<ConfigMap>::namespaced(
+		kubernetes_client.clone(),
+		deployment_workspace_id.as_str(),
+	)
+	.delete_opt(
+		&format!("config-mount-{}", deployment_id),
+		&DeleteParams::default(),
+	)
+	.await?;
+
+	Api::<Service>::namespaced(
+		kubernetes_client.clone(),
+		deployment_workspace_id.as_str(),
+	)
+	.delete_opt(
+		&format!("service-{}", deployment_id),
+		&DeleteParams::default(),
+	)
+	.await?;
+
+	Api::<HorizontalPodAutoscaler>::namespaced(
+		kubernetes_client.clone(),
+		deployment_workspace_id.as_str(),
+	)
+	.delete_opt(&format!("hpa-{}", deployment_id), &DeleteParams::default())
+	.await?;
+
+	Api::<Ingress>::namespaced(
+		kubernetes_client,
+		deployment_workspace_id.as_str(),
+	)
+	.delete_opt(
+		&format!("ingress-{}", deployment_id),
+		&DeleteParams::default(),
+	)
+	.await?;
+
+	Ok(())
+}
+
+async fn get_kube_config(
+	cluster_url: &str,
+	certificate_authority_data: &str,
+	auth_username: &str,
+	auth_token: &str,
+) -> Result<Config, Error> {
+	let kube_config = Config::from_custom_kubeconfig(
+		Kubeconfig {
+			api_version: Some("v1".to_string()),
+			kind: Some("Config".to_string()),
+			clusters: vec![NamedCluster {
+				name: "kubernetesCluster".to_owned(),
+				cluster: Cluster {
+					server: cluster_url.to_string(),
+					certificate_authority_data: Some(
+						certificate_authority_data.to_string(),
+					),
+					insecure_skip_tls_verify: None,
+					certificate_authority: None,
+					proxy_url: None,
+					extensions: None,
+				},
+			}],
+			auth_infos: vec![NamedAuthInfo {
+				name: auth_username.to_string(),
+				auth_info: AuthInfo {
+					token: Some(auth_token.to_string().into()),
+					..Default::default()
+				},
+			}],
+			contexts: vec![NamedContext {
+				name: "kubernetesContext".to_owned(),
+				context: Context {
+					cluster: "kubernetesCluster".to_owned(),
+					user: auth_username.to_string(),
+					extensions: None,
+					namespace: None,
+				},
+			}],
+			current_context: Some("kubernetesContext".to_owned()),
+			preferences: None,
+			extensions: None,
+		},
+		&Default::default(),
+	)
+	.await?;
+
+	Ok(kube_config)
+}
+
+pub async fn permission_change_for_rbac_v1(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
 	// add permissions for CI
 	for &permission in [
 		"workspace::ci::git_provider::repo::info",
@@ -316,114 +429,26 @@ async fn delete_deployment(
 
 			if !exists {
 				break uuid;
->>>>>>> 7df2c7b8 (fix: updated migration for backward compatibility)
 			}
-			_ => {
-				log::info!("cluster {region_id} is not yet initialized");
-				return Ok(());
-			}
-		}
-	};
-	let kubernetes_client = kube::Client::try_from(kube_config)?;
+		};
 
-	Api::<Deployment>::namespaced(
-		kubernetes_client.clone(),
-		deployment_workspace_id.as_str(),
-	)
-	.delete_opt(
-		&format!("deployment-{}", deployment_id),
-		&DeleteParams::default(),
-	)
-	.await?;
-
-	Api::<ConfigMap>::namespaced(
-		kubernetes_client.clone(),
-		deployment_workspace_id.as_str(),
-	)
-	.delete_opt(
-		&format!("config-mount-{}", deployment_id),
-		&DeleteParams::default(),
-	)
-	.await?;
-
-	Api::<Service>::namespaced(
-		kubernetes_client.clone(),
-		deployment_workspace_id.as_str(),
-	)
-	.delete_opt(
-		&format!("service-{}", deployment_id),
-		&DeleteParams::default(),
-	)
-	.await?;
-
-	Api::<HorizontalPodAutoscaler>::namespaced(
-		kubernetes_client.clone(),
-		deployment_workspace_id.as_str(),
-	)
-	.delete_opt(&format!("hpa-{}", deployment_id), &DeleteParams::default())
-	.await?;
-
-	Api::<Ingress>::namespaced(
-		kubernetes_client,
-		deployment_workspace_id.as_str(),
-	)
-	.delete_opt(
-		&format!("ingress-{}", deployment_id),
-		&DeleteParams::default(),
-	)
-	.await?;
+		query!(
+			r#"
+			INSERT INTO
+				permission
+			VALUES
+				($1, $2, '');
+			"#,
+			&uuid,
+			permission
+		)
+		.fetch_optional(&mut *connection)
+		.await?;
+	}
 
 	Ok(())
 }
 
-<<<<<<< HEAD
-async fn get_kube_config(
-	cluster_url: &str,
-	certificate_authority_data: &str,
-	auth_username: &str,
-	auth_token: &str,
-) -> Result<Config, Error> {
-	let kube_config = Config::from_custom_kubeconfig(
-		Kubeconfig {
-			api_version: Some("v1".to_string()),
-			kind: Some("Config".to_string()),
-			clusters: vec![NamedCluster {
-				name: "kubernetesCluster".to_owned(),
-				cluster: Cluster {
-					server: cluster_url.to_string(),
-					certificate_authority_data: Some(
-						certificate_authority_data.to_string(),
-					),
-					insecure_skip_tls_verify: None,
-					certificate_authority: None,
-					proxy_url: None,
-					extensions: None,
-				},
-			}],
-			auth_infos: vec![NamedAuthInfo {
-				name: auth_username.to_string(),
-				auth_info: AuthInfo {
-					token: Some(auth_token.to_string().into()),
-					..Default::default()
-				},
-			}],
-			contexts: vec![NamedContext {
-				name: "kubernetesContext".to_owned(),
-				context: Context {
-					cluster: "kubernetesCluster".to_owned(),
-					user: auth_username.to_string(),
-					extensions: None,
-					namespace: None,
-				},
-			}],
-			current_context: Some("kubernetesContext".to_owned()),
-			preferences: None,
-			extensions: None,
-		},
-		&Default::default(),
-	)
-	.await?;
-=======
 async fn reset_permission_order(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
@@ -533,7 +558,21 @@ async fn reset_permission_order(
 		)
 		.execute(&mut *connection)
 		.await?;
->>>>>>> 7df2c7b8 (fix: updated migration for backward compatibility)
 
-	Ok(kube_config)
+		query!(
+			r#"
+			UPDATE
+				permission
+			SET
+				name = $1
+			WHERE
+				name = CONCAT('test::', $1);
+			"#,
+			&permission,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	Ok(())
 }
