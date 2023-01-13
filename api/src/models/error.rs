@@ -39,7 +39,7 @@ pub mod id {
 	pub const REPOSITORY_NOT_FOUND: &str = "repositoryNotFound";
 	pub const INVALID_REQUEST: &str = "invalidRequest";
 	pub const INVALID_REPOSITORY_NAME: &str = "invalidRepositoryName";
-	pub const INVALID_IMAGE_NAME: &str = "InvalidImageName";
+	pub const INVALID_IMAGE_NAME: &str = "invalidImageName";
 	pub const DOMAIN_IS_PERSONAL: &str = "domainIsPersonal";
 	pub const DOMAIN_BELONGS_TO_WORKSPACE: &str = "domainBelongsToWorkspace";
 	pub const NO_RECOVERY_OPTIONS: &str = "noRecoveryOptions";

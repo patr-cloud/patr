@@ -1,6 +1,7 @@
 use std::net::IpAddr;
 
 use api_models::utils::Uuid;
+use chrono::{DateTime, Utc};
 use k8s_openapi::api::{
 	apps::v1::Deployment,
 	autoscaling::v1::HorizontalPodAutoscaler,
@@ -61,10 +62,31 @@ pub(super) async fn delete_deployment_with_invalid_image_name(
 		row.get::<Uuid, _>("id"),
 		row.get::<Uuid, _>("workspace_id"),
 		row.get::<Uuid, _>("region"),
+		row.get::<String, _>("status"),
+		row.get::<Option<DateTime<Utc>>, _>("deleted"),
 	))
 	.collect::<Vec<_>>();
 
-	for (deployment_id, workspace_id, region_id) in deployments {
+	for (deployment_id, workspace_id, region_id, status, deleted) in deployments
+	{
+		if status == "deleted" && deleted.is_some() {
+			// No need to delete the deployment
+			query!(
+				r#"
+				UPDATE
+					deployment
+				SET
+					image_name = 'undefined'
+				WHERE
+					id = $1;
+				"#,
+				deployment_id
+			)
+			.execute(&mut *connection)
+			.await?;
+
+			continue;
+		}
 		delete_deployment(
 			connection,
 			&deployment_id,
@@ -87,7 +109,7 @@ pub(super) async fn validate_image_name_for_deployment(
 		ALTER TABLE deployment
 		ADD CONSTRAINT deployment_chk_image_name_is_valid
 		CHECK (
-			image_name::TEXT ~ '^(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?)(((\/)(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?))*)?$'
+			image_name ~ '^(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?)(((\/)(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?))*)?$'
 		);
 	"#
 	)
@@ -140,14 +162,14 @@ async fn delete_deployment(
 	if workspace_id.is_none() {
 		query!(
 			r#"
-				UPDATE
-					deployment_payment_history
-				SET
-					stop_time = now()
-				WHERE
-					deployment_id = $1 AND
-					stop_time IS NULL;
-				"#,
+			UPDATE
+				deployment_payment_history
+			SET
+				stop_time = NOW()
+			WHERE
+				deployment_id = $1 AND
+				stop_time IS NULL;
+			"#,
 			deployment_id
 		)
 		.execute(&mut *connection)
@@ -156,12 +178,12 @@ async fn delete_deployment(
 
 	query!(
 		r#"
-			UPDATE
-				deployment
-			SET
-				image_name = 'undefined'
-			WHERE
-				id = $1;
+		UPDATE
+			deployment
+		SET
+			image_name = 'undefined'
+		WHERE
+			id = $1;
 		"#,
 		deployment_id
 	)
@@ -170,13 +192,13 @@ async fn delete_deployment(
 
 	query!(
 		r#"
-			UPDATE
-				deployment
-			SET
-				status = 'deleted',
-				deleted = now()
-			WHERE
-				deployment_id = $1;
+		UPDATE
+			deployment
+		SET
+			status = 'deleted',
+			deleted = NOW()
+		WHERE
+			deployment_id = $1;
 		"#,
 		deployment_id
 	)
@@ -323,19 +345,3 @@ async fn get_kube_config(
 
 	Ok(kube_config)
 }
-
-/*
-		let kube_config = service::get_kubernetes_config_for_region(
-			connection, &region_id, config,
-		)
-		.await?;
-
-		service::delete_kubernetes_deployment(
-			&workspace_id,
-			&deployment_id,
-			kube_config,
-			&request_id,
-		)
-		.await?
-	}
-*/
