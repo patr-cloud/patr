@@ -116,7 +116,7 @@ pub async fn initialize_deployment_pre(
 			repository_id UUID,
 			image_name VARCHAR(512) CONSTRAINT deployment_chk_image_name_is_valid
 				CHECK(
-					image_name::TEXT ~ '^(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?)(((\/)(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?))*)?$'
+					image_name ~ '^(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?)(((\/)(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?))*)?$'
 				),
 			image_tag VARCHAR(255) NOT NULL,
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
@@ -839,28 +839,6 @@ pub async fn update_deployment_status(
 			id = $2;
 		"#,
 		status as _,
-		deployment_id as _
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn update_deployment_image_name(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	image_name: &str,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			deployment
-		SET
-			image_name = $1
-		WHERE
-			id = $2;
-		"#,
-		image_name as _,
 		deployment_id as _
 	)
 	.execute(&mut *connection)
