@@ -691,7 +691,7 @@ async fn block_and_delete_all_spam_users(
 	let workspaces = query!(
 		r#"
 		SELECT
-			workspace_id,
+			id,
 			super_admin_id
 		FROM
 			workspace;
@@ -702,7 +702,7 @@ async fn block_and_delete_all_spam_users(
 	.into_iter()
 	.map(|row| {
 		(
-			row.get::<Uuid, _>("workspace_id"),
+			row.get::<Uuid, _>("id"),
 			row.get::<Uuid, _>("super_admin_id"),
 		)
 	})
