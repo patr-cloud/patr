@@ -273,7 +273,7 @@ async fn delete_deployment(
 		UPDATE
 			permission
 		SET
-			name = 'workspace::ci::git_provider::repo::build::info';
+			name = 'workspace::ci::git_provider::repo::build::info'
 		WHERE
 			permission_id = 'workspace::ci::git_provider::repo::build::view';
 		"#,
