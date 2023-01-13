@@ -62,29 +62,26 @@ pub(super) async fn delete_deployment_with_invalid_image_name(
 		row.get::<Uuid, _>("id"),
 		row.get::<Uuid, _>("workspace_id"),
 		row.get::<Uuid, _>("region"),
-		row.get::<String, _>("status"),
 		row.get::<Option<DateTime<Utc>>, _>("deleted"),
 	))
 	.collect::<Vec<_>>();
 
-	for (deployment_id, workspace_id, region_id, status, deleted) in deployments
-	{
-		if status == "deleted" && deleted.is_some() {
+	for (deployment_id, workspace_id, region_id, deleted) in deployments {
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				image_name = 'undefined'
+			WHERE
+				id = $1;
+			"#,
+			&deployment_id
+		)
+		.execute(&mut *connection)
+		.await?;
+		if deleted.is_some() {
 			// No need to delete the deployment
-			query!(
-				r#"
-				UPDATE
-					deployment
-				SET
-					image_name = 'undefined'
-				WHERE
-					id = $1;
-				"#,
-				deployment_id
-			)
-			.execute(&mut *connection)
-			.await?;
-
 			continue;
 		}
 		delete_deployment(
@@ -175,20 +172,6 @@ async fn delete_deployment(
 		.execute(&mut *connection)
 		.await?;
 	}
-
-	query!(
-		r#"
-		UPDATE
-			deployment
-		SET
-			image_name = 'undefined'
-		WHERE
-			id = $1;
-		"#,
-		deployment_id
-	)
-	.execute(&mut *connection)
-	.await?;
 
 	query!(
 		r#"
