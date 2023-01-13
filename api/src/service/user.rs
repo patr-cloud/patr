@@ -54,26 +54,6 @@ pub async fn add_personal_email_to_be_verified_for_user(
 			.body(error!(INVALID_EMAIL).to_string())?;
 	}
 
-	// Reference for APIs docs of ipqualityscore can be found in this
-	// url https://www.ipqualityscore.com/documentation/email-validation/overview
-	let client = Client::new();
-	let disposable = client
-		.get(format!(
-			"{}/{}/{}",
-			config.ip_quality.host, config.ip_quality.token, email_address
-		))
-		.send()
-		.await?
-		.json::<IpQualityScore>()
-		.await?
-		.disposable;
-
-	if disposable {
-		return Error::as_result()
-			.status(400)
-			.body(error!(TEMPORARY_EMAIL).to_string())?;
-	}
-
 	if db::get_user_by_email(connection, email_address)
 		.await?
 		.is_some()
