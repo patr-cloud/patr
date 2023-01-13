@@ -18,11 +18,14 @@ use api_models::{
 			GithubAuthCallbackResponse,
 			GithubAuthResponse,
 			GithubSignOutResponse,
+			ListGitRefForRepoResponse,
 			ListReposResponse,
 			RepoStatus,
 			RepositoryDetails,
 			RestartBuildResponse,
 			SyncReposResponse,
+			WritePatrCiFileRequest,
+			WritePatrCiFileResponse,
 		},
 	},
 	utils::{Base64String, Uuid},
@@ -571,6 +574,53 @@ pub fn create_sub_app(
 	);
 
 	app.get(
+		"/repo/:repoId/ref",
+		[
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::ci::git_provider::repo::LIST,
+				resource: closure_as_pinned_box!(|mut context| {
+					let workspace_id = Uuid::parse_str(
+						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
+					)
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?;
+					let repo_id = context
+						.get_param(request_keys::REPO_ID)
+						.unwrap()
+						.clone();
+					let repo =
+						db::get_repo_details_using_github_uid_for_workspace(
+							context.get_database_connection(),
+							&workspace_id,
+							&repo_id,
+						)
+						.await?;
+					let resource = if let Some(repo) = repo {
+						db::get_resource_by_id(
+							context.get_database_connection(),
+							&repo.id,
+						)
+						.await?
+					} else {
+						None
+					};
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			},
+			EveMiddleware::CustomFunction(pin_fn!(list_git_ref_for_repo)),
+		],
+	);
+
+	app.get(
 		"/repo/:repoId/patr-ci-file/:gitRef",
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
@@ -614,6 +664,53 @@ pub fn create_sub_app(
 				}),
 			},
 			EveMiddleware::CustomFunction(pin_fn!(get_patr_ci_file)),
+		],
+	);
+
+	app.post(
+		"/repo/:repoId/patr-ci-file",
+		[
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::ci::git_provider::repo::WRITE,
+				resource: closure_as_pinned_box!(|mut context| {
+					let workspace_id = Uuid::parse_str(
+						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
+					)
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?;
+					let repo_id = context
+						.get_param(request_keys::REPO_ID)
+						.unwrap()
+						.clone();
+					let repo =
+						db::get_repo_details_using_github_uid_for_workspace(
+							context.get_database_connection(),
+							&workspace_id,
+							&repo_id,
+						)
+						.await?;
+					let resource = if let Some(repo) = repo {
+						db::get_resource_by_id(
+							context.get_database_connection(),
+							&repo.id,
+						)
+						.await?
+					} else {
+						None
+					};
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			},
+			EveMiddleware::CustomFunction(pin_fn!(write_patr_ci_file)),
 		],
 	);
 
@@ -1733,6 +1830,50 @@ async fn start_build_for_branch(
 	Ok(context)
 }
 
+async fn list_git_ref_for_repo(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
+
+	log::trace!(
+		"request_id: {request_id} - Fetching all git ref for {repo_id}"
+	);
+
+	let repo = db::get_repo_details_using_github_uid_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+		&repo_id,
+	)
+	.await?
+	.status(500)?;
+
+	let git_provider = db::get_git_provider_details_by_id(
+		context.get_database_connection(),
+		&repo.git_provider_id,
+	)
+	.await?
+	.status(500)?;
+	let (_login_name, access_token) = git_provider
+		.login_name
+		.zip(git_provider.password)
+		.status(500)?;
+
+	let refs = service::list_git_ref_for_repo(
+		&repo.repo_owner,
+		&repo.repo_name,
+		&access_token,
+	)
+	.await?;
+
+	context.success(ListGitRefForRepoResponse { refs });
+	Ok(context)
+}
+
 async fn get_patr_ci_file(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -1776,6 +1917,66 @@ async fn get_patr_ci_file(
 	context.success(GetPatrCiFileResponse {
 		file_content: Base64String::from(ci_file_content),
 	});
+	Ok(context)
+}
+
+async fn write_patr_ci_file(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
+
+	log::trace!(
+		"request_id: {request_id} - Writing patr ci fiile to repo {repo_id}"
+	);
+
+	let WritePatrCiFileRequest {
+		commit_message,
+		parent_commit_sha,
+		branch_name,
+		ci_file_content,
+		..
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let repo = db::get_repo_details_using_github_uid_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+		&repo_id,
+	)
+	.await?
+	.status(500)?;
+
+	let git_provider = db::get_git_provider_details_by_id(
+		context.get_database_connection(),
+		&repo.git_provider_id,
+	)
+	.await?
+	.status(500)?;
+
+	let (_login_name, access_token) = git_provider
+		.login_name
+		.zip(git_provider.password)
+		.status(500)?;
+
+	service::write_ci_file_content_to_github_repo(
+		&repo.repo_owner,
+		&repo.repo_name,
+		commit_message,
+		parent_commit_sha,
+		branch_name,
+		ci_file_content,
+		&access_token,
+	)
+	.await?;
+
+	context.success(WritePatrCiFileResponse {});
 	Ok(context)
 }
 
