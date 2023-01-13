@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use api_models::{
-	models::workspace::ci::git_provider::BuildStatus,
+	models::workspace::ci::git_provider::{BuildStatus, Ref, RefType},
 	utils::Uuid,
 };
 use chrono::Utc;
@@ -10,6 +10,14 @@ use hmac::{Hmac, Mac};
 use octorust::{
 	auth::Credentials,
 	types::{
+		GitCreateCommitRequest,
+		GitCreateCommitRequestCommitter,
+		GitCreateRefRequest,
+		GitCreateTagRequestType,
+		GitCreateTreeRequest,
+		GitCreateTreeRequestData,
+		GitCreateTreeRequestMode,
+		GitUpdateRefRequest,
 		Order,
 		ReposCreateCommitStatusRequest,
 		ReposCreateCommitStatusRequestState,
@@ -101,6 +109,53 @@ pub async fn create_build_for_repo(
 	Ok(build_num)
 }
 
+pub async fn list_git_ref_for_repo(
+	owner_name: &str,
+	repo_name: &str,
+	access_token: &str,
+) -> Result<Vec<Ref>, Error> {
+	let github_client = octorust::Client::new(
+		"patr",
+		Credentials::Token(access_token.to_owned()),
+	)
+	.map_err(|err| {
+		log::info!("Error while initializing git client: {err:#}");
+		Error::empty().status(500)
+	})?;
+
+	let branches = github_client
+		.repos()
+		.list_all_branches(owner_name, repo_name, false)
+		.await
+		.map_err(|err| {
+			log::info!("Error while fetching git branches: {err:#}");
+			Error::empty().status(500)
+		})?
+		.into_iter()
+		.map(|branch| Ref {
+			type_: RefType::Branch,
+			name: branch.name,
+			latest_commit_sha: branch.commit.sha,
+		});
+
+	let tags = github_client
+		.repos()
+		.list_all_tags(owner_name, repo_name)
+		.await
+		.map_err(|err| {
+			log::info!("Error while fetching git tags: {err:#}");
+			Error::empty().status(500)
+		})?
+		.into_iter()
+		.map(|tag| Ref {
+			type_: RefType::Tag,
+			name: tag.name,
+			latest_commit_sha: tag.commit.sha,
+		});
+
+	Ok(branches.chain(tags).collect())
+}
+
 pub async fn fetch_ci_file_content_from_github_repo(
 	owner_name: &str,
 	repo_name: &str,
@@ -137,6 +192,142 @@ pub async fn fetch_ci_file_content_from_github_repo(
 		.to_vec();
 
 	Ok(ci_file)
+}
+
+pub async fn write_ci_file_content_to_github_repo(
+	owner_name: &str,
+	repo_name: &str,
+	commit_message: String,
+	parent_commit_sha: String,
+	branch_name: String,
+	ci_file_content: String,
+	access_token: &str,
+) -> Result<(), Error> {
+	let github_client = octorust::Client::new(
+		"patr",
+		Credentials::Token(access_token.to_owned()),
+	)
+	.map_err(|err| {
+		log::info!("Error while initializing git client: {err:#}");
+		Error::empty().status(500)
+	})?;
+
+	// get base tree for parent commit
+	let parent_tree_sha = github_client
+		.repos()
+		.get_commit(owner_name, repo_name, 1, 30, &parent_commit_sha)
+		.await
+		.map_err(|err| {
+			log::info!(
+				"Error while getting base tree for parent commit: {err:#}"
+			);
+			Error::empty().status(500)
+		})?
+		.commit
+		.tree
+		.sha;
+
+	// create new tree from base tree
+	let new_tree_sha = github_client
+		.git()
+		.create_tree(
+			owner_name,
+			repo_name,
+			&GitCreateTreeRequestData {
+				base_tree: parent_tree_sha,
+				tree: vec![GitCreateTreeRequest {
+					path: "patr.yml".into(),
+					mode: Some(GitCreateTreeRequestMode::FileBlob),
+					type_: Some(GitCreateTagRequestType::Blob),
+					sha: "".into(),
+					content: ci_file_content,
+				}],
+			},
+		)
+		.await
+		.map_err(|err| {
+			log::info!("Error while creating new tree from base tree: {err:#}");
+			Error::empty().status(500)
+		})?
+		.sha;
+
+	// create new commit
+	let new_commit_sha = github_client
+		.git()
+		.create_commit(
+			owner_name,
+			repo_name,
+			&GitCreateCommitRequest {
+				committer: Some(GitCreateCommitRequestCommitter {
+					date: None,
+					email: "patr-ci@patr.cloud".into(),
+					name: "patr-ci".into(),
+				}),
+				author: None,
+				message: commit_message,
+				parents: vec![parent_commit_sha],
+				signature: "".into(),
+				tree: new_tree_sha,
+			},
+		)
+		.await
+		.map_err(|err| {
+			log::info!("Error while creating new commit for new tree: {err:#}");
+			Error::empty().status(500)
+		})?
+		.sha;
+
+	// point this commit to the given branch name
+	let branch_name = format!("heads/{}", branch_name);
+	let branch_exists = github_client
+		.git()
+		.get_ref(owner_name, repo_name, &branch_name)
+		.await
+		.is_ok();
+
+	if branch_exists {
+		// update branch reference
+		github_client
+			.git()
+			.update_ref(
+				owner_name,
+				repo_name,
+				&branch_name,
+				&GitUpdateRefRequest {
+					force: None, // only fast forward is supported
+					sha: new_commit_sha,
+				},
+			)
+			.await
+			.map_err(|err| {
+				log::info!(
+					"Error while pointing existing branch head to new commit: {err:#}"
+				);
+				Error::empty().status(500)
+			})?;
+	} else {
+		// create branch reference
+		github_client
+			.git()
+			.create_ref(
+				owner_name,
+				repo_name,
+				&GitCreateRefRequest {
+					key: "".into(),
+					ref_: format!("refs/{}", branch_name),
+					sha: new_commit_sha,
+				},
+			)
+			.await
+			.map_err(|err| {
+				log::info!(
+					"Error while pointing branch head to new commit: {err:#}"
+				);
+				Error::empty().status(500)
+			})?;
+	}
+
+	Ok(())
 }
 
 pub async fn sync_github_repos(
