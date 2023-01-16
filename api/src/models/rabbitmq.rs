@@ -21,12 +21,17 @@ pub enum Queue {
 	Infrastructure,
 	Ci,
 	Billing,
+	MigrationChange,
 }
 
 impl Queue {
 	pub fn iterator() -> Iter<'static, Queue> {
-		static QUEUE: [Queue; 3] =
-			[Queue::Infrastructure, Queue::Ci, Queue::Billing];
+		static QUEUE: [Queue; 4] = [
+			Queue::Infrastructure,
+			Queue::Ci,
+			Queue::Billing,
+			Queue::MigrationChange,
+		];
 		QUEUE.iter()
 	}
 }
@@ -37,6 +42,7 @@ impl fmt::Display for Queue {
 			Queue::Infrastructure => write!(f, "infrastructure"),
 			Queue::Ci => write!(f, "ci"),
 			Queue::Billing => write!(f, "billing"),
+			Queue::MigrationChange => write!(f, "migrationChange"),
 		}
 	}
 }
@@ -154,4 +160,15 @@ pub enum CIData {
 		build_id: BuildId,
 		request_id: Uuid,
 	},
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "action", rename_all = "camelCase")]
+#[allow(clippy::large_enum_variant)]
+pub enum MigrationChangeData {
+	CheckUserAccountForSpam {
+		user_id: Uuid,
+		process_after: DateTime<Utc>,
+		request_id: Uuid,
+	}
 }
