@@ -149,9 +149,9 @@ pub(super) async fn process_request(
 				}
 				if is_email_disposable {
 					log::info!(
-                        "Workspace {} has a disposable email. Marking limits to 0",
-                        workspace.id
-                    );
+						"Workspace {} has a disposable email. Marking limits to 0",
+						workspace.id
+					);
 					// Set their workspace limits to 0
 					db::set_resource_limit_for_workspace(
 						connection,
@@ -169,9 +169,9 @@ pub(super) async fn process_request(
 
 				if is_user_spam {
 					log::info!(
-                        "Workspace {} has a high spam rating email. Marking as spam",
-                        workspace.id
-                    );
+						"Workspace {} has a high spam rating email. Marking as spam",
+						workspace.id
+					);
 					// Mark their workspace as spam
 					db::mark_workspace_as_spam(connection, &workspace.id)
 						.await?;
