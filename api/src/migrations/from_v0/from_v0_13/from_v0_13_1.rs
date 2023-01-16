@@ -1,7 +1,9 @@
 use std::{fmt::Debug, net::IpAddr};
 
 use api_models::utils::Uuid;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
+use deadpool::Runtime;
+use deadpool_lapin::Config as RabbitMQConfig;
 use either::Either;
 use k8s_openapi::api::{
 	apps::v1::Deployment,
@@ -27,9 +29,13 @@ use kube::{
 	Error as KubeError,
 	Result,
 };
-use reqwest::Client;
+use lapin::{
+	options::{BasicPublishOptions, ConfirmSelectOptions},
+	BasicProperties,
+};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sqlx::Row;
+use tokio::time;
 
 use crate::{
 	migrate_query as query,
@@ -42,6 +48,16 @@ pub struct IpQualityScore {
 	pub valid: bool,
 	pub disposable: bool,
 	pub fraud_score: usize,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "action", rename_all = "camelCase")]
+pub enum MigrationChangeData {
+	CheckUserAccountForSpam {
+		user_id: Uuid,
+		process_after: DateTime<Utc>,
+		request_id: Uuid,
+	},
 }
 
 #[async_trait::async_trait]
@@ -688,243 +704,96 @@ async fn block_and_delete_all_spam_users(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), Error> {
-	let workspaces = query!(
+	let cfg = RabbitMQConfig {
+		url: Some(format!(
+			"amqp://{}:{}@{}:{}/%2f",
+			config.rabbitmq.username,
+			config.rabbitmq.password,
+			config.rabbitmq.host,
+			config.rabbitmq.port
+		)),
+		..RabbitMQConfig::default()
+	};
+	let pool = cfg.create_pool(Some(Runtime::Tokio1))?;
+
+	let rabbitmq_connection = pool.get().await?;
+	let channel = rabbitmq_connection.create_channel().await?;
+
+	channel
+		.confirm_select(ConfirmSelectOptions::default())
+		.await?;
+
+	let users = query!(
 		r#"
 		SELECT
-			id,
-			super_admin_id
+			id
 		FROM
-			workspace;
+			"user";
 		"#
 	)
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
-	.map(|row| {
-		(
-			row.get::<Uuid, _>("id"),
-			row.get::<Uuid, _>("super_admin_id"),
-		)
-	})
+	.map(|row| row.get::<Uuid, _>("id"))
 	.collect::<Vec<_>>();
 
-	let workspaces_size = workspaces.len();
+	let users_size = users.len();
 
-	for (index, (workspace_id, super_admin_id)) in
-		workspaces.into_iter().enumerate()
-	{
+	let migration_start_time = Utc::now();
+
+	for (index, user_id) in users.into_iter().enumerate() {
 		log::info!(
-			"Checking workspace {}/{} for spam rating",
-			index,
-			workspaces_size
+			"Marking user {}/{} for checking for spam rating",
+			index + 1,
+			users_size
 		);
 
-		// Get all emails for user
-		let emails = query!(
-			r#"
-			SELECT
-				CONCAT(
-					personal_email.local,
-					'@',
-					domain.name,
-					'.',
-					domain.tld
-				) AS "email"
-			FROM
-				personal_email
-			INNER JOIN
-				domain
-			ON
-				personal_email.domain_id = domain.id
-			WHERE
-				user_id = $1;
-			"#,
-			super_admin_id
-		)
-		.fetch_all(&mut *connection)
-		.await?
-		.into_iter()
-		.map(|row| row.get::<String, _>("email"));
+		// Max 100 checks Per day. So each message must be spaced apart by
+		// 24 * 3600 / 100 = 864 seconds apart (roughly 15 mins)
+		let message = MigrationChangeData::CheckUserAccountForSpam {
+			user_id,
+			process_after: migration_start_time +
+				Duration::seconds(864i64 * (index as i64)),
+			request_id: Uuid::new_v4(),
+		};
 
-		let mut is_user_spam = false;
-		let mut is_email_disposable = false;
-
-		for email in emails {
-			// Check if any one of their emails are spam or disposable
-			let spam_score = Client::new()
-				.get(format!(
-					"{}/{}/{}",
-					config.ip_quality.host, config.ip_quality.token, email
-				))
-				.send()
+		let mut attempt = 0;
+		loop {
+			attempt += 1;
+			log::info!("Publishing message to queue. Attempt {}...", attempt);
+			let confirmation = channel
+				.basic_publish(
+					"",
+					"migrationChange",
+					BasicPublishOptions::default(),
+					serde_json::to_string(&message)?.as_bytes(),
+					BasicProperties::default(),
+				)
 				.await?
-				.json::<IpQualityScore>()
 				.await?;
 
-			if spam_score.disposable || spam_score.fraud_score > 75 {
-				is_user_spam = spam_score.fraud_score > 75;
-				is_email_disposable = spam_score.disposable;
+			if confirmation.is_ack() {
 				break;
 			}
+			log::info!("Publishing failed. Trying again");
+			time::sleep(time::Duration::from_millis(500)).await;
 		}
 
-		if !is_user_spam && !is_email_disposable {
-			log::info!(
-				"Workspace {} is neither spam nor disposable. Ignoring...",
-				workspace_id
-			);
-			continue;
-		}
-
-		let deployments = query!(
-			r#"
-			SELECT
-				deployment.id AS "deployment_id",
-				deployment_region.workspace_id AS "region_workspace_id",
-				deployment.region_id AS "region_id",
-				deployment_region.ready AS "cluster_ready",
-				deployment_region.kubernetes_cluster_url AS "kubernetes_cluster_url",
-				deployment_region.kubernetes_auth_username AS "kubernetes_auth_username",
-				deployment_region.kubernetes_auth_token AS "kubernetes_auth_token",
-				deployment_region.kubernetes_ca_data AS "kubernetes_ca_data",
-				deployment_region.kubernetes_ingress_ip_addr AS "kubernetes_ingress_ip_addr"
-			FROM
-				deployment
-			INNER JOIN
-				deployment_region
-			ON
-				deployment.region_id = deployment_region.id
-			WHERE
-				deployment.workspace_id = $1;
-			"#,
-			&workspace_id
-		)
-		.fetch_all(&mut *connection)
-		.await?
-		.into_iter()
-		.map(|row| {
-			(
-				row.get::<Uuid, _>("deployment_id"),
-				row.get::<Option<Uuid>, _>("region_workspace_id"),
-				row.get::<Uuid, _>("region_id"),
-				row.get::<bool, _>("cluster_ready"),
-				row.get::<Option<String>, _>("kubernetes_cluster_url"),
-				row.get::<Option<String>, _>("kubernetes_auth_username"),
-				row.get::<Option<String>, _>("kubernetes_auth_token"),
-				row.get::<Option<String>, _>("kubernetes_ca_data"),
-				row.get::<Option<IpAddr>, _>("kubernetes_ingress_ip_addr"),
-			)
-		})
-		.collect::<Vec<_>>();
-
-		if is_email_disposable {
-			log::info!(
-				"Workspace {} has a disposable email. Marking limits to 0",
-				workspace_id
-			);
-			// Set their workspace limits to 0
-			query!(
-				r#"
-				UPDATE
-					workspace
-				SET
-					deployment_limit = 0,
-					database_limit = 0,
-					static_site_limit = 0,
-					managed_url_limit = 0,
-					docker_repository_storage_limit = 0,
-					domain_limit = 0,
-					secret_limit = 0
-				WHERE
-					id = $1;
-				"#,
-				&workspace_id
-			)
-			.execute(&mut *connection)
-			.await?;
-		}
-
-		if is_user_spam {
-			log::info!(
-				"Workspace {} has a high spam rating email. Marking as spam",
-				workspace_id
-			);
-			// Mark their workspace as spam
-			query!(
-				r#"
-				UPDATE
-					workspace
-				SET
-					is_spam = TRUE
-				WHERE
-					id = $1;
-				"#,
-				&workspace_id
-			)
-			.execute(&mut *connection)
-			.await?;
-		}
-
-		// Delete all the deployments for that workspace
-		// In case it's a disposable email, delete from DB as well as k8s.
-		// For spam accounts, only delete from k8s.
-
-		let deployments_num = deployments.len();
-		log::info!(
-			"Found {} deployments for workspace {}. Deleting...",
-			deployments_num,
-			workspace_id
-		);
-		for (
-			index,
-			(
-				deployment_id,
-				region_workspace_id,
-				region_id,
-				cluster_ready,
-				kubernetes_cluster_url,
-				kubernetes_auth_username,
-				kubernetes_auth_token,
-				kubernetes_ca_data,
-				kubernetes_ingress_ip_addr,
-			),
-		) in deployments.into_iter().enumerate()
-		{
-			log::info!(
-				"Deleting deployment {}/{} for workspace {}",
-				index,
-				deployments_num,
-				workspace_id
-			);
-			if is_user_spam {
-				delete_deployment_from_kubernetes(
-					&deployment_id,
-					&workspace_id,
-					region_workspace_id.as_ref(),
-					&region_id,
-					cluster_ready,
-					kubernetes_cluster_url.as_deref(),
-					kubernetes_auth_username.as_deref(),
-					kubernetes_auth_token.as_deref(),
-					kubernetes_ca_data.as_deref(),
-					kubernetes_ingress_ip_addr.as_ref(),
-					config,
-				)
-				.await?;
-			} else {
-				delete_deployment(
-					connection,
-					&deployment_id,
-					&workspace_id,
-					&region_id,
-					config,
-				)
-				.await?;
-			}
-		}
+		log::info!("User marked for spam check");
 	}
 
-	log::info!("All workspaces filtered for spam");
+	channel.close(200, "Normal shutdown").await.map_err(|e| {
+		log::error!("Error closing rabbitmq channel: {}", e);
+		Error::from(e)
+	})?;
+
+	rabbitmq_connection
+		.close(200, "Normal shutdown")
+		.await
+		.map_err(|e| {
+			log::error!("Error closing rabbitmq connection: {}", e);
+			Error::from(e)
+		})?;
 
 	Ok(())
 }
