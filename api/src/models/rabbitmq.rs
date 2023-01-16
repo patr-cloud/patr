@@ -170,5 +170,5 @@ pub enum MigrationChangeData {
 		user_id: Uuid,
 		process_after: DateTime<Utc>,
 		request_id: Uuid,
-	}
+	},
 }
