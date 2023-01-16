@@ -22,6 +22,12 @@ pub(super) async fn process_request(
 			process_after: DateTime(process_after),
 			request_id,
 		} => {
+			log::trace!(
+				"request_id: {} got migration request for user: {}",
+				request_id,
+				user_id
+			);
+
 			if Utc::now() < process_after {
 				// process_after is in the future. Wait for a while and requeue
 				time::sleep(time::Duration::from_millis(
@@ -52,6 +58,16 @@ pub(super) async fn process_request(
 					.await?;
 
 				if spam_score.disposable || spam_score.fraud_score > 75 {
+					log::info!(
+						"User ID {} with email: {} is a {} email",
+						user_id,
+						email,
+						if spam_score.disposable {
+							"disposable"
+						} else {
+							"spam"
+						}
+					);
 					is_user_spam = spam_score.fraud_score > 75;
 					is_email_disposable = spam_score.disposable;
 					break;
