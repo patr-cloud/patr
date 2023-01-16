@@ -164,7 +164,6 @@ pub enum CIData {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", rename_all = "camelCase")]
-#[allow(clippy::large_enum_variant)]
 pub enum MigrationChangeData {
 	CheckUserAccountForSpam {
 		user_id: Uuid,
