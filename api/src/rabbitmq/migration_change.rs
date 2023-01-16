@@ -45,7 +45,7 @@ pub(super) async fn process_request(
 			let mut is_user_spam = false;
 			let mut is_email_disposable = false;
 
-			for email in &emails {
+			for email in emails {
 				// Check if any one of their emails are spam or disposable
 				let spam_score = Client::new()
 					.get(format!(
