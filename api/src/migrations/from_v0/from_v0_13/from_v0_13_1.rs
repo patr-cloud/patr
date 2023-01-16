@@ -251,7 +251,10 @@ async fn delete_deployment(
 			deployment
 		SET
 			status = 'deleted',
-			deleted = NOW()
+			deleted = COALESCE(
+				deleted,
+				NOW()
+			)
 		WHERE
 			id = $1;
 		"#,
@@ -753,10 +756,7 @@ async fn block_and_delete_all_spam_users(
 		let message = MigrationChangeData::CheckUserAccountForSpam {
 			user_id: user_id.clone(),
 			process_after: DateTime(
-				migration_start_time +
-					Duration::milliseconds(8641000i64 * (index as i64)), /* 864
-				                                                       * second
-				                                                       * to milliseconds */
+				migration_start_time + Duration::seconds(864 * (index as i64)),
 			),
 			request_id: Uuid::new_v4(),
 		};
