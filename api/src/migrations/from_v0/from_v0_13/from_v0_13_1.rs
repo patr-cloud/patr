@@ -1,7 +1,7 @@
 use std::{fmt::Debug, net::IpAddr};
 
-use api_models::utils::Uuid;
-use chrono::{DateTime, Duration, Utc};
+use api_models::utils::{DateTime, Uuid};
+use chrono::{DateTime as ChronoDateTime, Duration, Utc};
 use deadpool::Runtime;
 use deadpool_lapin::Config as RabbitMQConfig;
 use either::Either;
@@ -123,7 +123,7 @@ pub(super) async fn delete_deployment_with_invalid_image_name(
 		row.get::<Uuid, _>("id"),
 		row.get::<Uuid, _>("workspace_id"),
 		row.get::<Uuid, _>("region"),
-		row.get::<Option<DateTime<Utc>>, _>("deleted"),
+		row.get::<Option<ChronoDateTime<Utc>>, _>("deleted"),
 	))
 	.collect::<Vec<_>>();
 
@@ -253,7 +253,7 @@ async fn delete_deployment(
 			status = 'deleted',
 			deleted = NOW()
 		WHERE
-			deployment_id = $1;
+			id = $1;
 		"#,
 		deployment_id
 	)
@@ -751,9 +751,13 @@ async fn block_and_delete_all_spam_users(
 		// Max 100 checks Per day. So each message must be spaced apart by
 		// 24 * 3600 / 100 = 864 seconds apart (roughly 15 mins)
 		let message = MigrationChangeData::CheckUserAccountForSpam {
-			user_id,
-			process_after: migration_start_time +
-				Duration::seconds(864i64 * (index as i64)),
+			user_id: user_id.clone(),
+			process_after: DateTime(
+				migration_start_time +
+					Duration::milliseconds(8641000i64 * (index as i64)), /* 864
+				                                                       * second
+				                                                       * to milliseconds */
+			),
 			request_id: Uuid::new_v4(),
 		};
 
