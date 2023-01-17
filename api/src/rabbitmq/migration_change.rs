@@ -57,7 +57,7 @@ pub(super) async fn process_request(
 					.json::<IpQualityScore>()
 					.await?;
 
-				if spam_score.disposable || spam_score.fraud_score > 75 {
+				if spam_score.disposable || spam_score.fraud_score > 85 {
 					log::info!(
 						"User ID {} with email: {} is a {} email",
 						user_id,
@@ -68,7 +68,7 @@ pub(super) async fn process_request(
 							"spam"
 						}
 					);
-					is_user_spam = spam_score.fraud_score > 75;
+					is_user_spam = spam_score.fraud_score > 85;
 					is_email_disposable = spam_score.disposable;
 					break;
 				}

@@ -75,7 +75,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 		.json::<IpQualityScore>()
 		.await?;
 
-	let is_spam = spam_score.disposable || spam_score.fraud_score > 75;
+	let is_spam = spam_score.disposable || spam_score.fraud_score > 85;
 
 	if is_spam {
 		log::warn!(

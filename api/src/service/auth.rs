@@ -1184,7 +1184,7 @@ pub async fn join_user(
 			.json::<IpQualityScore>()
 			.await?;
 
-		let spam_account = email_spam_result.fraud_score > 75;
+		let spam_account = email_spam_result.fraud_score > 85;
 		let disposable = email_spam_result.disposable;
 
 		let workspaces =
