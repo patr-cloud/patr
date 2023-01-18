@@ -1864,8 +1864,6 @@ async fn update_deployment(
 					&current_time,
 				)
 				.await?;
-<<<<<<< HEAD
-=======
 				db::start_deployment_usage_history(
 					context.get_database_connection(),
 					&workspace_id,
@@ -1899,7 +1897,6 @@ async fn update_deployment(
 					)
 					.await?;
 				}
->>>>>>> 08742265 (moved: volumes from deployment to statefule sets, updated api, service and db layer also updated migrations and rebased with upstream develop)
 			}
 
 			service::start_deployment(
