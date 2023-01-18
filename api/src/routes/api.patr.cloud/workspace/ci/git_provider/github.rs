@@ -1091,7 +1091,7 @@ async fn get_build_info(
 	let build_info = db::get_build_details_for_build(
 		context.get_database_connection(),
 		&repo.id,
-		build_num as i64,
+		build_num,
 	)
 	.await?
 	.status(400)
@@ -1132,7 +1132,7 @@ async fn get_build_logs(
 	let build_created_time = db::get_build_created_time(
 		context.get_database_connection(),
 		&repo.id,
-		build_num as i64,
+		build_num,
 	)
 	.await?
 	.status(500)
@@ -1275,7 +1275,7 @@ async fn restart_build(
 	let previous_build = db::get_build_details_for_build(
 		context.get_database_connection(),
 		&repo.id,
-		build_num as i64,
+		build_num,
 	)
 	.await?
 	.status(500)?;

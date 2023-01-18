@@ -1,7 +1,8 @@
-use std::net::IpAddr;
+use std::{fmt::Debug, net::IpAddr};
 
-use api_models::utils::Uuid;
-use chrono::{DateTime, Utc};
+use api_models::utils::{DateTime, Uuid};
+use chrono::{DateTime as ChronoDateTime, Utc};
+use either::Either;
 use k8s_openapi::api::{
 	apps::v1::Deployment,
 	autoscaling::v1::HorizontalPodAutoscaler,
@@ -10,6 +11,7 @@ use k8s_openapi::api::{
 };
 use kube::{
 	api::DeleteParams,
+	client::Status,
 	config::{
 		AuthInfo,
 		Cluster,
@@ -19,17 +21,57 @@ use kube::{
 		NamedCluster,
 		NamedContext,
 	},
+	error::ErrorResponse,
 	Api,
 	Config,
+	Error as KubeError,
+	Result,
 };
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sqlx::Row;
 
 use crate::{
 	migrate_query as query,
-	service::ext_traits::DeleteOpt,
 	utils::{settings::Settings, Error},
 	Database,
 };
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "action", rename_all = "camelCase")]
+pub enum MigrationChangeData {
+	CheckUserAccountForSpam {
+		user_id: Uuid,
+		process_after: DateTime<Utc>,
+		request_id: Uuid,
+	},
+}
+
+#[async_trait::async_trait]
+pub trait DeleteOpt<T> {
+	async fn delete_opt(
+		&self,
+		name: &str,
+		dp: &DeleteParams,
+	) -> Result<Option<Either<T, Status>>>;
+}
+
+#[async_trait::async_trait]
+impl<T> DeleteOpt<T> for Api<T>
+where
+	T: Clone + DeserializeOwned + Debug,
+{
+	async fn delete_opt(
+		&self,
+		name: &str,
+		dp: &DeleteParams,
+	) -> Result<Option<Either<T, Status>>> {
+		match self.delete(name, dp).await {
+			Ok(obj) => Ok(Some(obj)),
+			Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(None),
+			Err(err) => Err(err),
+		}
+	}
+}
 
 pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -39,6 +81,9 @@ pub(super) async fn migrate(
 	validate_image_name_for_deployment(connection, config).await?;
 	permission_change_for_rbac_v1(connection, config).await?;
 	reset_permission_order(connection, config).await?;
+	add_spam_table_columns(connection, config).await?;
+	// block_and_delete_all_spam_users(connection, config).await?;
+
 	Ok(())
 }
 
@@ -64,11 +109,20 @@ pub(super) async fn delete_deployment_with_invalid_image_name(
 		row.get::<Uuid, _>("id"),
 		row.get::<Uuid, _>("workspace_id"),
 		row.get::<Uuid, _>("region"),
-		row.get::<Option<DateTime<Utc>>, _>("deleted"),
+		row.get::<Option<ChronoDateTime<Utc>>, _>("deleted"),
 	))
 	.collect::<Vec<_>>();
 
-	for (deployment_id, workspace_id, region_id, deleted) in deployments {
+	let deployments_to_be_deleted = deployments.len();
+
+	for (index, (deployment_id, workspace_id, region_id, deleted)) in
+		deployments.into_iter().enumerate()
+	{
+		log::info!(
+			"Deleting deployment {}/{} with invalid image name",
+			index,
+			deployments_to_be_deleted
+		);
 		query!(
 			r#"
 			UPDATE
@@ -95,6 +149,8 @@ pub(super) async fn delete_deployment_with_invalid_image_name(
 		)
 		.await?
 	}
+
+	log::info!("All invalid deployments deleted");
 
 	Ok(())
 }
@@ -181,16 +237,50 @@ async fn delete_deployment(
 			deployment
 		SET
 			status = 'deleted',
-			deleted = NOW()
+			deleted = COALESCE(
+				deleted,
+				NOW()
+			)
 		WHERE
-			deployment_id = $1;
+			id = $1;
 		"#,
 		deployment_id
 	)
 	.execute(&mut *connection)
 	.await?;
 
-	let kube_config = if workspace_id.is_none() {
+	delete_deployment_from_kubernetes(
+		deployment_id,
+		deployment_workspace_id,
+		workspace_id.as_ref(),
+		region_id,
+		ready,
+		kubernetes_cluster_url.as_deref(),
+		kubernetes_auth_username.as_deref(),
+		kubernetes_auth_token.as_deref(),
+		kubernetes_ca_data.as_deref(),
+		kubernetes_ingress_ip_addr.as_ref(),
+		config,
+	)
+	.await?;
+
+	Ok(())
+}
+
+async fn delete_deployment_from_kubernetes(
+	deployment_id: &Uuid,
+	workspace_id: &Uuid,
+	region_workspace_id: Option<&Uuid>,
+	region_id: &Uuid,
+	cluster_ready: bool,
+	kubernetes_cluster_url: Option<&str>,
+	kubernetes_auth_username: Option<&str>,
+	kubernetes_auth_token: Option<&str>,
+	kubernetes_ca_data: Option<&str>,
+	kubernetes_ingress_ip_addr: Option<&IpAddr>,
+	config: &Settings,
+) -> Result<(), Error> {
+	let kube_config = if region_workspace_id.is_none() {
 		get_kube_config(
 			&config.kubernetes.cluster_url,
 			&config.kubernetes.certificate_authority_data,
@@ -200,7 +290,7 @@ async fn delete_deployment(
 		.await?
 	} else {
 		match (
-			ready,
+			cluster_ready,
 			kubernetes_cluster_url,
 			kubernetes_auth_username,
 			kubernetes_auth_token,
@@ -216,10 +306,10 @@ async fn delete_deployment(
 				Some(_),
 			) => {
 				get_kube_config(
-					&cluster_url,
-					&certificate_authority_data,
-					&auth_username,
-					&auth_token,
+					cluster_url,
+					certificate_authority_data,
+					auth_username,
+					auth_token,
 				)
 				.await?
 			}
@@ -233,7 +323,7 @@ async fn delete_deployment(
 
 	Api::<Deployment>::namespaced(
 		kubernetes_client.clone(),
-		deployment_workspace_id.as_str(),
+		workspace_id.as_str(),
 	)
 	.delete_opt(
 		&format!("deployment-{}", deployment_id),
@@ -243,7 +333,7 @@ async fn delete_deployment(
 
 	Api::<ConfigMap>::namespaced(
 		kubernetes_client.clone(),
-		deployment_workspace_id.as_str(),
+		workspace_id.as_str(),
 	)
 	.delete_opt(
 		&format!("config-mount-{}", deployment_id),
@@ -253,7 +343,7 @@ async fn delete_deployment(
 
 	Api::<Service>::namespaced(
 		kubernetes_client.clone(),
-		deployment_workspace_id.as_str(),
+		workspace_id.as_str(),
 	)
 	.delete_opt(
 		&format!("service-{}", deployment_id),
@@ -263,20 +353,17 @@ async fn delete_deployment(
 
 	Api::<HorizontalPodAutoscaler>::namespaced(
 		kubernetes_client.clone(),
-		deployment_workspace_id.as_str(),
+		workspace_id.as_str(),
 	)
 	.delete_opt(&format!("hpa-{}", deployment_id), &DeleteParams::default())
 	.await?;
 
-	Api::<Ingress>::namespaced(
-		kubernetes_client,
-		deployment_workspace_id.as_str(),
-	)
-	.delete_opt(
-		&format!("ingress-{}", deployment_id),
-		&DeleteParams::default(),
-	)
-	.await?;
+	Api::<Ingress>::namespaced(kubernetes_client, workspace_id.as_str())
+		.delete_opt(
+			&format!("ingress-{}", deployment_id),
+			&DeleteParams::default(),
+		)
+		.await?;
 
 	Ok(())
 }
@@ -576,3 +663,127 @@ async fn reset_permission_order(
 
 	Ok(())
 }
+
+async fn add_spam_table_columns(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE workspace
+		ADD COLUMN is_spam BOOLEAN NOT NULL DEFAULT FALSE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace
+		ALTER COLUMN is_spam DROP DEFAULT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+// async fn block_and_delete_all_spam_users(
+// 	connection: &mut <Database as sqlx::Database>::Connection,
+// 	config: &Settings,
+// ) -> Result<(), Error> {
+// 	let cfg = RabbitMQConfig {
+// 		url: Some(format!(
+// 			"amqp://{}:{}@{}:{}/%2f",
+// 			config.rabbitmq.username,
+// 			config.rabbitmq.password,
+// 			config.rabbitmq.host,
+// 			config.rabbitmq.port
+// 		)),
+// 		..RabbitMQConfig::default()
+// 	};
+// 	let pool = cfg.create_pool(Some(Runtime::Tokio1))?;
+
+// 	let rabbitmq_connection = pool.get().await?;
+// 	let channel = rabbitmq_connection.create_channel().await?;
+
+// 	channel
+// 		.confirm_select(ConfirmSelectOptions::default())
+// 		.await?;
+
+// 	let users = query!(
+// 		r#"
+// 		SELECT
+// 			id
+// 		FROM
+// 			"user";
+// 		"#
+// 	)
+// 	.fetch_all(&mut *connection)
+// 	.await?
+// 	.into_iter()
+// 	.map(|row| row.get::<Uuid, _>("id"))
+// 	.collect::<Vec<_>>();
+
+// 	let users_size = users.len();
+
+// 	let migration_start_time = Utc::now();
+
+// 	for (index, user_id) in users.into_iter().enumerate() {
+// 		log::info!(
+// 			"Marking user {}/{} for checking for spam rating",
+// 			index + 1,
+// 			users_size
+// 		);
+
+// 		// Max 100 checks Per day. So each message must be spaced apart by
+// 		// 24 * 3600 / 100 = 864 seconds apart (roughly 15 mins)
+// 		let message = MigrationChangeData::CheckUserAccountForSpam {
+// 			user_id: user_id.clone(),
+// 			process_after: DateTime(
+// 				migration_start_time + Duration::seconds(864 * (index as i64)),
+// 			),
+// 			request_id: Uuid::new_v4(),
+// 		};
+
+// 		let mut attempt = 0;
+// 		loop {
+// 			attempt += 1;
+// 			log::info!("Publishing message to queue. Attempt {}...", attempt);
+// 			let confirmation = channel
+// 				.basic_publish(
+// 					"",
+// 					"migrationChange",
+// 					BasicPublishOptions::default(),
+// 					serde_json::to_string(&message)?.as_bytes(),
+// 					BasicProperties::default(),
+// 				)
+// 				.await?
+// 				.await?;
+
+// 			if confirmation.is_ack() {
+// 				break;
+// 			}
+// 			log::info!("Publishing failed. Trying again");
+// 			time::sleep(time::Duration::from_millis(500)).await;
+// 		}
+
+// 		log::info!("User marked for spam check");
+// 	}
+
+// 	channel.close(200, "Normal shutdown").await.map_err(|e| {
+// 		log::error!("Error closing rabbitmq channel: {}", e);
+// 		Error::from(e)
+// 	})?;
+
+// 	rabbitmq_connection
+// 		.close(200, "Normal shutdown")
+// 		.await
+// 		.map_err(|e| {
+// 			log::error!("Error closing rabbitmq connection: {}", e);
+// 			Error::from(e)
+// 		})?;
+
+// 	Ok(())
+// }

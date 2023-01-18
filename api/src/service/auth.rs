@@ -237,7 +237,6 @@ pub async fn create_user_join_request(
 	account_type: &SignUpAccountType,
 	recovery_method: &RecoveryMethod,
 	coupon_code: Option<&str>,
-	config: &Settings,
 ) -> Result<(UserToSignUp, String), Error> {
 	// Check if the username is allowed
 	if !is_username_allowed(connection, username).await? {
@@ -282,27 +281,6 @@ pub async fn create_user_join_request(
 		}
 		// If recovery_email is only provided
 		RecoveryMethod::Email { recovery_email } => {
-			let client = Client::new();
-			// Reference for APIs docs of ipqualityscore can be found in this
-			// url https://www.ipqualityscore.com/documentation/email-validation/overview
-			let disposable = client
-				.get(format!(
-					"{}/{}/{}",
-					config.ip_quality.host,
-					config.ip_quality.token,
-					recovery_email
-				))
-				.send()
-				.await?
-				.json::<IpQualityScore>()
-				.await?
-				.disposable;
-
-			if disposable {
-				return Error::as_result()
-					.status(400)
-					.body(error!(TEMPORARY_EMAIL).to_string())?;
-			}
 			// Check if recovery_email is allowed and valid
 			if !is_email_allowed(connection, recovery_email).await? {
 				Error::as_result()
@@ -1189,6 +1167,42 @@ pub async fn join_user(
 						.await?;
 					}
 				}
+			}
+		}
+	}
+
+	if let Some(ref recovery_email) = recovery_email_to {
+		// Reference for APIs docs of ipqualityscore can be found in this
+		// url https://www.ipqualityscore.com/documentation/email-validation/overview
+		let email_spam_result = Client::new()
+			.get(format!(
+				"{}/{}/{}",
+				config.ip_quality.host, config.ip_quality.token, recovery_email
+			))
+			.send()
+			.await?
+			.json::<IpQualityScore>()
+			.await?;
+
+		let disposable = email_spam_result.disposable;
+
+		let workspaces =
+			db::get_all_workspaces_for_user(connection, &user_id).await?;
+
+		if disposable {
+			for workspace in &workspaces {
+				db::set_resource_limit_for_workspace(
+					connection,
+					&workspace.id,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+				)
+				.await?;
 			}
 		}
 	}

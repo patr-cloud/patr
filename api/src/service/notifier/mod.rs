@@ -1022,7 +1022,7 @@ pub async fn send_bill_paid_using_credits_email(
 		.await?;
 
 	let (bill_remaining, credits_remaining) = match bill_after_payment.clone() +
-		TotalAmount::NeedToPay(workspace.amount_due_in_cents as u64)
+		TotalAmount::NeedToPay(workspace.amount_due_in_cents)
 	{
 		TotalAmount::CreditsLeft(credit) => (0, credit),
 		TotalAmount::NeedToPay(bill) => (bill, 0),
@@ -1111,7 +1111,7 @@ pub async fn send_partial_payment_success_email(
 		.await?;
 
 	let (bill_remaining, credits_remaining) = match bill_after_payment.clone() +
-		TotalAmount::NeedToPay(workspace.amount_due_in_cents as u64)
+		TotalAmount::NeedToPay(workspace.amount_due_in_cents)
 	{
 		TotalAmount::CreditsLeft(credit) => (0, credit),
 		TotalAmount::NeedToPay(bill) => (bill, 0),
