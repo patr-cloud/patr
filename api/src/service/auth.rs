@@ -1184,17 +1184,12 @@ pub async fn join_user(
 			.json::<IpQualityScore>()
 			.await?;
 
-		let spam_account = email_spam_result.fraud_score > 85;
 		let disposable = email_spam_result.disposable;
 
 		let workspaces =
 			db::get_all_workspaces_for_user(connection, &user_id).await?;
 
-		if spam_account {
-			for workspace in &workspaces {
-				db::mark_workspace_as_spam(connection, &workspace.id).await?;
-			}
-		} else if disposable {
+		if disposable {
 			for workspace in &workspaces {
 				db::set_resource_limit_for_workspace(
 					connection,
