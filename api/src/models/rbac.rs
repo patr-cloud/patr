@@ -147,7 +147,6 @@ pub mod permissions {
 						"workspace::ci::git_provider::repo::list";
 					pub const INFO: &str =
 						"workspace::ci::git_provider::repo::info";
-					// TODO: write migrations
 					pub const WRITE: &str =
 						"workspace::ci::git_provider::repo::write";
 
