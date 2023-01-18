@@ -11,6 +11,8 @@ pub(super) async fn migrate(
 	config: &Settings,
 ) -> Result<(), Error> {
 	reset_invalid_birthday(&mut *connection, config).await?;
+
+	// Volumes migration
 	add_volume_resource_type(&mut *connection, config).await?;
 	add_volume_payment_history(&mut *connection, config).await?;
 	add_deployment_volume_info(&mut *connection, config).await?;
