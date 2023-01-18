@@ -294,29 +294,6 @@ pub async fn create_deployment_in_workspace(
 		.await?;
 	}
 
-	// if service::is_deployed_on_patr_cluster(connection, region).await? {
-	// 	db::start_volume_usage_history(
-	// 		connection,
-	// 		workspace_id,
-	// 		&volume_id,
-	// 		size.value() as u64 * 1000u64 * 1000u64 * 1000u64,
-	// 		&created_time,
-	// 	)
-	// 	.await?;
-	// }
-
-	if service::is_deployed_on_patr_cluster(connection, region).await? {
-		db::start_deployment_usage_history(
-			connection,
-			workspace_id,
-			&deployment_id,
-			machine_type,
-			deployment_running_details.min_horizontal_scale as i32,
-			&created_time,
-		)
-		.await?;
-	};
-
 	Ok(deployment_id)
 }
 
