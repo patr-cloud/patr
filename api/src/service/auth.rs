@@ -12,7 +12,6 @@ use api_models::{
 };
 use chrono::{Datelike, Duration, Utc};
 use eve_rs::AsError;
-use reqwest::Client;
 
 use super::get_ip_address_info;
 /// This module validates user info and performs tasks related to user
@@ -23,7 +22,7 @@ use super::get_ip_address_info;
 use crate::{
 	db::{self, User, UserLoginType, UserToSignUp, UserWebLogin},
 	error,
-	models::{rbac, AccessTokenData, ExposedUserData, IpQualityScore},
+	models::{rbac, AccessTokenData, ExposedUserData},
 	service,
 	utils::{settings::Settings, validator, Error},
 	Database,
@@ -1171,41 +1170,41 @@ pub async fn join_user(
 		}
 	}
 
-	if let Some(ref recovery_email) = recovery_email_to {
-		// Reference for APIs docs of ipqualityscore can be found in this
-		// url https://www.ipqualityscore.com/documentation/email-validation/overview
-		let email_spam_result = Client::new()
-			.get(format!(
-				"{}/{}/{}",
-				config.ip_quality.host, config.ip_quality.token, recovery_email
-			))
-			.send()
-			.await?
-			.json::<IpQualityScore>()
-			.await?;
+	// if let Some(ref recovery_email) = recovery_email_to {
+	// 	// Reference for APIs docs of ipqualityscore can be found in this
+	// 	// url https://www.ipqualityscore.com/documentation/email-validation/overview
+	// 	let email_spam_result = Client::new()
+	// 		.get(format!(
+	// 			"{}/{}/{}",
+	// 			config.ip_quality.host, config.ip_quality.token, recovery_email
+	// 		))
+	// 		.send()
+	// 		.await?
+	// 		.json::<IpQualityScore>()
+	// 		.await?;
 
-		let disposable = email_spam_result.disposable;
+	// 	let disposable = email_spam_result.disposable;
 
-		let workspaces =
-			db::get_all_workspaces_for_user(connection, &user_id).await?;
+	// 	let workspaces =
+	// 		db::get_all_workspaces_for_user(connection, &user_id).await?;
 
-		if disposable {
-			for workspace in &workspaces {
-				db::set_resource_limit_for_workspace(
-					connection,
-					&workspace.id,
-					0,
-					0,
-					0,
-					0,
-					0,
-					0,
-					0,
-				)
-				.await?;
-			}
-		}
-	}
+	// 	if disposable {
+	// 		for workspace in &workspaces {
+	// 			db::set_resource_limit_for_workspace(
+	// 				connection,
+	// 				&workspace.id,
+	// 				0,
+	// 				0,
+	// 				0,
+	// 				0,
+	// 				0,
+	// 				0,
+	// 				0,
+	// 			)
+	// 			.await?;
+	// 		}
+	// 	}
+	// }
 
 	db::delete_user_to_be_signed_up(connection, &user_data.username).await?;
 
