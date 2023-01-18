@@ -143,14 +143,48 @@ pub mod permissions {
 						"workspace::ci::git_provider::repo::deactivate";
 					pub const LIST: &str =
 						"workspace::ci::git_provider::repo::list";
+					pub const INFO: &str =
+						"workspace::ci::git_provider::repo::info";
 
 					pub mod build {
-						pub const VIEW: &str =
-							"workspace::ci::git_provider::repo::build::view";
+						pub const LIST: &str =
+							"workspace::ci::git_provider::repo::build::list";
+						pub const CANCEL: &str =
+							"workspace::ci::git_provider::repo::build::cancel";
+						pub const INFO: &str =
+							"workspace::ci::git_provider::repo::build::info";
+						pub const START: &str =
+							"workspace::ci::git_provider::repo::build::start";
 						pub const RESTART: &str =
 							"workspace::ci::git_provider::repo::build::restart";
 					}
 				}
+			}
+		}
+
+		pub mod billing {
+			pub const INFO: &str = "workspace::billing::info";
+			pub const MAKE_PAYMENT: &str = "workspace::billing::make_payment";
+
+			pub mod payment_method {
+				pub const ADD: &str = "workspace::billing::payment_method::add";
+				pub const DELETE: &str =
+					"workspace::billing::payment_method::delete";
+				pub const LIST: &str =
+					"workspace::billing::payment_method::list";
+				pub const EDIT: &str =
+					"workspace::billing::payment_method::edit";
+			}
+
+			pub mod billing_address {
+				pub const ADD: &str =
+					"workspace::billing::billing_address::add";
+				pub const DELETE: &str =
+					"workspace::billing::billing_address::delete";
+				pub const INFO: &str =
+					"workspace::billing::billing_address::info ";
+				pub const EDIT: &str =
+					"workspace::billing::billing_address::edit";
 			}
 		}
 

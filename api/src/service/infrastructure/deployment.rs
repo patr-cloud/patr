@@ -77,6 +77,18 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
+	if let DeploymentRegistry::ExternalRegistry { image_name, .. } = registry {
+		if !validator::is_docker_image_name_valid(image_name) {
+			log::trace!(
+				"request_id: {} invalid image_name cannot contain colon(:)",
+				request_id
+			);
+			return Err(Error::empty()
+				.status(400)
+				.body(error!(INVALID_IMAGE_NAME).to_string()));
+		}
+	};
+
 	// validate deployment name
 	log::trace!("request_id: {} - Validating deployment name", request_id);
 	if !validator::is_deployment_name_valid(name) {
@@ -252,18 +264,6 @@ pub async fn create_deployment_in_workspace(
 		)
 		.await?;
 	}
-
-	if service::is_deployed_on_patr_cluster(connection, region).await? {
-		db::start_deployment_usage_history(
-			connection,
-			workspace_id,
-			&deployment_id,
-			machine_type,
-			deployment_running_details.min_horizontal_scale as i32,
-			&created_time,
-		)
-		.await?;
-	};
 
 	Ok(deployment_id)
 }
@@ -1168,6 +1168,7 @@ pub async fn start_deployment(
 	login_id: &Uuid,
 	ip_address: &str,
 	metadata: &DeploymentMetadata,
+	current_time: &DateTime<Utc>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -1189,6 +1190,20 @@ pub async fn start_deployment(
 		&DeploymentStatus::Deploying,
 	)
 	.await?;
+
+	if service::is_deployed_on_patr_cluster(connection, &deployment.region)
+		.await?
+	{
+		db::start_deployment_usage_history(
+			connection,
+			workspace_id,
+			deployment_id,
+			&deployment.machine_type,
+			deployment_running_details.min_horizontal_scale as i32,
+			current_time,
+		)
+		.await?;
+	}
 
 	let audit_log_id =
 		db::generate_new_workspace_audit_log_id(connection).await?;
@@ -1214,24 +1229,37 @@ pub async fn start_deployment(
 	)
 	.await?;
 
-	let kubeconfig = service::get_kubernetes_config_for_region(
-		connection,
-		&deployment.region,
-		config,
-	)
-	.await?;
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
 
-	service::update_kubernetes_deployment(
-		workspace_id,
-		deployment,
-		&image_name,
-		digest.as_deref(),
-		deployment_running_details,
-		kubeconfig,
-		config,
-		request_id,
-	)
-	.await?;
+	if workspace.is_spam {
+		db::update_deployment_status(
+			connection,
+			deployment_id,
+			&DeploymentStatus::Running,
+		)
+		.await?;
+	} else {
+		let kubeconfig = service::get_kubernetes_config_for_region(
+			connection,
+			&deployment.region,
+			config,
+		)
+		.await?;
+
+		service::update_kubernetes_deployment(
+			workspace_id,
+			deployment,
+			&image_name,
+			digest.as_deref(),
+			deployment_running_details,
+			kubeconfig,
+			config,
+			request_id,
+		)
+		.await?;
+	}
 
 	Ok(())
 }
@@ -1275,30 +1303,44 @@ pub async fn update_deployment_image(
 	)
 	.await?;
 
-	let kubeconfig =
-		service::get_kubernetes_config_for_region(connection, region, config)
-			.await?;
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
 
-	service::update_kubernetes_deployment(
-		workspace_id,
-		&Deployment {
-			id: deployment_id.clone(),
-			name: name.to_string(),
-			registry: registry.clone(),
-			image_tag: image_tag.to_string(),
-			status: DeploymentStatus::Pushed,
-			region: region.clone(),
-			machine_type: machine_type.clone(),
-			current_live_digest: Some(digest.to_string()),
-		},
-		image_name,
-		Some(digest),
-		deployment_running_details,
-		kubeconfig,
-		config,
-		request_id,
-	)
-	.await?;
+	if workspace.is_spam {
+		db::update_deployment_status(
+			connection,
+			deployment_id,
+			&DeploymentStatus::Running,
+		)
+		.await?;
+	} else {
+		let kubeconfig = service::get_kubernetes_config_for_region(
+			connection, region, config,
+		)
+		.await?;
+
+		service::update_kubernetes_deployment(
+			workspace_id,
+			&Deployment {
+				id: deployment_id.clone(),
+				name: name.to_string(),
+				registry: registry.clone(),
+				image_tag: image_tag.to_string(),
+				status: DeploymentStatus::Pushed,
+				region: region.clone(),
+				machine_type: machine_type.clone(),
+				current_live_digest: Some(digest.to_string()),
+			},
+			image_name,
+			Some(digest),
+			deployment_running_details,
+			kubeconfig,
+			config,
+			request_id,
+		)
+		.await?;
+	}
 
 	Ok(())
 }
@@ -1326,6 +1368,15 @@ pub async fn stop_deployment(
 	)
 	.await?;
 
+	if service::is_deployed_on_patr_cluster(connection, region_id).await? {
+		db::stop_deployment_usage_history(
+			connection,
+			deployment_id,
+			&Utc::now(),
+		)
+		.await?;
+	}
+
 	let audit_log_id =
 		db::generate_new_workspace_audit_log_id(connection).await?;
 
@@ -1350,18 +1401,24 @@ pub async fn stop_deployment(
 	)
 	.await?;
 
-	let kubeconfig = service::get_kubernetes_config_for_region(
-		connection, region_id, config,
-	)
-	.await?;
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
 
-	service::delete_kubernetes_deployment(
-		workspace_id,
-		deployment_id,
-		kubeconfig,
-		request_id,
-	)
-	.await?;
+	if !workspace.is_spam {
+		let kubeconfig = service::get_kubernetes_config_for_region(
+			connection, region_id, config,
+		)
+		.await?;
+
+		service::delete_kubernetes_deployment(
+			workspace_id,
+			deployment_id,
+			kubeconfig,
+			request_id,
+		)
+		.await?;
+	}
 
 	Ok(())
 }
@@ -1407,18 +1464,24 @@ pub async fn delete_deployment(
 	)
 	.await?;
 
-	let kubeconfig = service::get_kubernetes_config_for_region(
-		connection, region_id, config,
-	)
-	.await?;
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
 
-	service::delete_kubernetes_deployment(
-		workspace_id,
-		deployment_id,
-		kubeconfig,
-		request_id,
-	)
-	.await?;
+	if !workspace.is_spam {
+		let kubeconfig = service::get_kubernetes_config_for_region(
+			connection, region_id, config,
+		)
+		.await?;
+
+		service::delete_kubernetes_deployment(
+			workspace_id,
+			deployment_id,
+			kubeconfig,
+			request_id,
+		)
+		.await?;
+	}
 
 	Ok(())
 }

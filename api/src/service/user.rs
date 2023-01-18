@@ -4,14 +4,16 @@ use ::redis::aio::MultiplexedConnection as RedisConnection;
 use api_models::{models::workspace::WorkspacePermission, utils::Uuid};
 use chrono::{DateTime, Utc};
 use eve_rs::AsError;
+use reqwest::Client;
 use sqlx::types::ipnetwork::IpNetwork;
 
 use crate::{
 	db::{self, User, UserLoginType},
 	error,
+	models::IpQualityScore,
 	redis,
 	service,
-	utils::{validator, Error},
+	utils::{settings::Settings, validator, Error},
 	Database,
 };
 
@@ -33,9 +35,21 @@ pub async fn add_personal_email_to_be_verified_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email_address: &str,
 	user_id: &Uuid,
+	config: &Settings,
 ) -> Result<(), Error> {
 	if !validator::is_email_valid(email_address) {
 		Error::as_result()
+			.status(400)
+			.body(error!(INVALID_EMAIL).to_string())?;
+	}
+
+	if email_address.contains('+') {
+		log::trace!(
+			"Invalid email address: {}, '+' not allowed in email address",
+			email_address
+		);
+
+		return Error::as_result()
 			.status(400)
 			.body(error!(INVALID_EMAIL).to_string())?;
 	}
@@ -47,6 +61,30 @@ pub async fn add_personal_email_to_be_verified_for_user(
 		Error::as_result()
 			.status(400)
 			.body(error!(EMAIL_TAKEN).to_string())?;
+	}
+
+	// Reference for APIs docs of ipqualityscore can be found in this
+	// url https://www.ipqualityscore.com/documentation/email-validation/overview
+	let spam_score = Client::new()
+		.get(format!(
+			"{}/{}/{}",
+			config.ip_quality.host, config.ip_quality.token, email_address
+		))
+		.send()
+		.await?
+		.json::<IpQualityScore>()
+		.await?;
+
+	let is_spam = spam_score.disposable || spam_score.fraud_score > 85;
+
+	if is_spam {
+		log::warn!(
+			"Disallowing adding email {} because it is found to be spam",
+			email_address
+		);
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
 	}
 
 	let user = match db::get_user_by_user_id(connection, user_id).await? {

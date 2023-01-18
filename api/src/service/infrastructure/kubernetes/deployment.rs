@@ -252,8 +252,8 @@ pub async fn update_kubernetes_deployment(
 						ports: Some(
 							running_details
 								.ports
-								.iter()
-								.map(|(port, _)| ContainerPort {
+								.keys()
+								.map(|port| ContainerPort {
 									container_port: port.value() as i32,
 									..ContainerPort::default()
 								})
@@ -387,8 +387,8 @@ pub async fn update_kubernetes_deployment(
 								items: Some(
 									running_details
 										.config_mounts
-										.iter()
-										.map(|(path, _)| KeyToPath {
+										.keys()
+										.map(|path| KeyToPath {
 											key: path.clone(),
 											path: path.clone(),
 											..KeyToPath::default()
@@ -457,8 +457,8 @@ pub async fn update_kubernetes_deployment(
 			ports: Some(
 				running_details
 					.ports
-					.iter()
-					.map(|(port, _)| ServicePort {
+					.keys()
+					.map(|port| ServicePort {
 						port: port.value() as i32,
 						target_port: Some(
 							IntOrString::Int(port.value() as i32),

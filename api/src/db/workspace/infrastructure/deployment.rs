@@ -114,7 +114,10 @@ pub async fn initialize_deployment_pre(
 				),
 			registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud',
 			repository_id UUID,
-			image_name VARCHAR(512),
+			image_name VARCHAR(512) CONSTRAINT deployment_chk_image_name_is_valid
+				CHECK(
+					image_name ~ '^(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?)(((\/)(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?))*)?$'
+				),
 			image_tag VARCHAR(255) NOT NULL,
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
 			workspace_id UUID NOT NULL,

@@ -557,7 +557,8 @@ pub async fn get_all_workspaces_for_user(
 			workspace.docker_repository_storage_limit,
 			workspace.stripe_customer_id,
 			workspace.address_id as "address_id: Uuid",
-			workspace.amount_due_in_cents
+			workspace.amount_due_in_cents,
+			workspace.is_spam
 		FROM
 			workspace
 		LEFT JOIN
@@ -594,6 +595,7 @@ pub async fn get_all_workspaces_for_user(
 		stripe_customer_id: row.stripe_customer_id,
 		address_id: row.address_id,
 		amount_due_in_cents: row.amount_due_in_cents as u64,
+		is_spam: row.is_spam,
 	})
 	.collect();
 
@@ -623,7 +625,8 @@ pub async fn get_all_workspaces_owned_by_user(
 			docker_repository_storage_limit,
 			stripe_customer_id,
 			address_id as "address_id: Uuid",
-			amount_due_in_cents
+			amount_due_in_cents,
+			is_spam
 		FROM
 			workspace
 		WHERE
@@ -653,6 +656,7 @@ pub async fn get_all_workspaces_owned_by_user(
 		stripe_customer_id: row.stripe_customer_id,
 		address_id: row.address_id,
 		amount_due_in_cents: row.amount_due_in_cents as u64,
+		is_spam: row.is_spam,
 	})
 	.collect();
 
