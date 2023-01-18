@@ -1,9 +1,7 @@
 use std::{fmt::Debug, net::IpAddr};
 
 use api_models::utils::{DateTime, Uuid};
-use chrono::{DateTime as ChronoDateTime, Duration, Utc};
-use deadpool::Runtime;
-use deadpool_lapin::Config as RabbitMQConfig;
+use chrono::{DateTime as ChronoDateTime, Utc};
 use either::Either;
 use k8s_openapi::api::{
 	apps::v1::Deployment,
@@ -29,26 +27,14 @@ use kube::{
 	Error as KubeError,
 	Result,
 };
-use lapin::{
-	options::{BasicPublishOptions, ConfirmSelectOptions},
-	BasicProperties,
-};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sqlx::Row;
-use tokio::time;
 
 use crate::{
 	migrate_query as query,
 	utils::{settings::Settings, Error},
 	Database,
 };
-
-#[derive(Serialize, Deserialize)]
-pub struct IpQualityScore {
-	pub valid: bool,
-	pub disposable: bool,
-	pub fraud_score: usize,
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", rename_all = "camelCase")]
@@ -96,7 +82,7 @@ pub(super) async fn migrate(
 	permission_change_for_rbac_v1(connection, config).await?;
 	reset_permission_order(connection, config).await?;
 	add_spam_table_columns(connection, config).await?;
-	block_and_delete_all_spam_users(connection, config).await?;
+	// block_and_delete_all_spam_users(connection, config).await?;
 
 	Ok(())
 }
@@ -703,101 +689,101 @@ async fn add_spam_table_columns(
 	Ok(())
 }
 
-async fn block_and_delete_all_spam_users(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	config: &Settings,
-) -> Result<(), Error> {
-	let cfg = RabbitMQConfig {
-		url: Some(format!(
-			"amqp://{}:{}@{}:{}/%2f",
-			config.rabbitmq.username,
-			config.rabbitmq.password,
-			config.rabbitmq.host,
-			config.rabbitmq.port
-		)),
-		..RabbitMQConfig::default()
-	};
-	let pool = cfg.create_pool(Some(Runtime::Tokio1))?;
+// async fn block_and_delete_all_spam_users(
+// 	connection: &mut <Database as sqlx::Database>::Connection,
+// 	config: &Settings,
+// ) -> Result<(), Error> {
+// 	let cfg = RabbitMQConfig {
+// 		url: Some(format!(
+// 			"amqp://{}:{}@{}:{}/%2f",
+// 			config.rabbitmq.username,
+// 			config.rabbitmq.password,
+// 			config.rabbitmq.host,
+// 			config.rabbitmq.port
+// 		)),
+// 		..RabbitMQConfig::default()
+// 	};
+// 	let pool = cfg.create_pool(Some(Runtime::Tokio1))?;
 
-	let rabbitmq_connection = pool.get().await?;
-	let channel = rabbitmq_connection.create_channel().await?;
+// 	let rabbitmq_connection = pool.get().await?;
+// 	let channel = rabbitmq_connection.create_channel().await?;
 
-	channel
-		.confirm_select(ConfirmSelectOptions::default())
-		.await?;
+// 	channel
+// 		.confirm_select(ConfirmSelectOptions::default())
+// 		.await?;
 
-	let users = query!(
-		r#"
-		SELECT
-			id
-		FROM
-			"user";
-		"#
-	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| row.get::<Uuid, _>("id"))
-	.collect::<Vec<_>>();
+// 	let users = query!(
+// 		r#"
+// 		SELECT
+// 			id
+// 		FROM
+// 			"user";
+// 		"#
+// 	)
+// 	.fetch_all(&mut *connection)
+// 	.await?
+// 	.into_iter()
+// 	.map(|row| row.get::<Uuid, _>("id"))
+// 	.collect::<Vec<_>>();
 
-	let users_size = users.len();
+// 	let users_size = users.len();
 
-	let migration_start_time = Utc::now();
+// 	let migration_start_time = Utc::now();
 
-	for (index, user_id) in users.into_iter().enumerate() {
-		log::info!(
-			"Marking user {}/{} for checking for spam rating",
-			index + 1,
-			users_size
-		);
+// 	for (index, user_id) in users.into_iter().enumerate() {
+// 		log::info!(
+// 			"Marking user {}/{} for checking for spam rating",
+// 			index + 1,
+// 			users_size
+// 		);
 
-		// Max 100 checks Per day. So each message must be spaced apart by
-		// 24 * 3600 / 100 = 864 seconds apart (roughly 15 mins)
-		let message = MigrationChangeData::CheckUserAccountForSpam {
-			user_id: user_id.clone(),
-			process_after: DateTime(
-				migration_start_time + Duration::seconds(864 * (index as i64)),
-			),
-			request_id: Uuid::new_v4(),
-		};
+// 		// Max 100 checks Per day. So each message must be spaced apart by
+// 		// 24 * 3600 / 100 = 864 seconds apart (roughly 15 mins)
+// 		let message = MigrationChangeData::CheckUserAccountForSpam {
+// 			user_id: user_id.clone(),
+// 			process_after: DateTime(
+// 				migration_start_time + Duration::seconds(864 * (index as i64)),
+// 			),
+// 			request_id: Uuid::new_v4(),
+// 		};
 
-		let mut attempt = 0;
-		loop {
-			attempt += 1;
-			log::info!("Publishing message to queue. Attempt {}...", attempt);
-			let confirmation = channel
-				.basic_publish(
-					"",
-					"migrationChange",
-					BasicPublishOptions::default(),
-					serde_json::to_string(&message)?.as_bytes(),
-					BasicProperties::default(),
-				)
-				.await?
-				.await?;
+// 		let mut attempt = 0;
+// 		loop {
+// 			attempt += 1;
+// 			log::info!("Publishing message to queue. Attempt {}...", attempt);
+// 			let confirmation = channel
+// 				.basic_publish(
+// 					"",
+// 					"migrationChange",
+// 					BasicPublishOptions::default(),
+// 					serde_json::to_string(&message)?.as_bytes(),
+// 					BasicProperties::default(),
+// 				)
+// 				.await?
+// 				.await?;
 
-			if confirmation.is_ack() {
-				break;
-			}
-			log::info!("Publishing failed. Trying again");
-			time::sleep(time::Duration::from_millis(500)).await;
-		}
+// 			if confirmation.is_ack() {
+// 				break;
+// 			}
+// 			log::info!("Publishing failed. Trying again");
+// 			time::sleep(time::Duration::from_millis(500)).await;
+// 		}
 
-		log::info!("User marked for spam check");
-	}
+// 		log::info!("User marked for spam check");
+// 	}
 
-	channel.close(200, "Normal shutdown").await.map_err(|e| {
-		log::error!("Error closing rabbitmq channel: {}", e);
-		Error::from(e)
-	})?;
+// 	channel.close(200, "Normal shutdown").await.map_err(|e| {
+// 		log::error!("Error closing rabbitmq channel: {}", e);
+// 		Error::from(e)
+// 	})?;
 
-	rabbitmq_connection
-		.close(200, "Normal shutdown")
-		.await
-		.map_err(|e| {
-			log::error!("Error closing rabbitmq connection: {}", e);
-			Error::from(e)
-		})?;
+// 	rabbitmq_connection
+// 		.close(200, "Normal shutdown")
+// 		.await
+// 		.map_err(|e| {
+// 			log::error!("Error closing rabbitmq connection: {}", e);
+// 			Error::from(e)
+// 		})?;
 
-	Ok(())
-}
+// 	Ok(())
+// }
