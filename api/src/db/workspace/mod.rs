@@ -378,10 +378,30 @@ pub async fn create_workspace(
 				secret_limit,
 				stripe_customer_id,
 				address_id,
-				amount_due_in_cents
+				amount_due_in_cents,
+				is_spam
 			)
 		VALUES
-			($1, $2, $3, $4, $5, $6, NULL, $7, $8, $9, $10, $11, $12, $13, $14, NULL, $15);
+			(
+				$1,
+				$2,
+				$3,
+				$4,
+				$5,
+				$6,
+				NULL,
+				$7,
+				$8,
+				$9,
+				$10,
+				$11,
+				$12,
+				$13,
+				$14,
+				NULL,
+				$15,
+				FALSE
+			);
 		"#,
 		workspace_id as _,
 		name as _,
