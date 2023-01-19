@@ -16,6 +16,7 @@ use api_models::{
 	utils::{self, Uuid},
 };
 use chrono::{DateTime, Utc};
+use futures::TryStreamExt;
 use sqlx::query_as;
 
 pub use self::runner::*;
@@ -880,7 +881,7 @@ pub async fn list_build_steps_for_build(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
 	build_num: i64,
-) -> Result<Vec<StepRecord>, sqlx::Error> {
+) -> Result<Vec<Step>, sqlx::Error> {
 	query_as!(
 		StepRecord,
 		r#"
@@ -903,7 +904,17 @@ pub async fn list_build_steps_for_build(
 		repo_id as _,
 		build_num
 	)
-	.fetch_all(connection)
+	.fetch(connection)
+	.map_ok(|step_record| Step {
+		step_id: step_record.step_id as u32,
+		step_name: step_record.step_name,
+		base_image: step_record.base_image,
+		commands: step_record.commands,
+		status: step_record.status,
+		started: step_record.started.map(utils::DateTime),
+		finished: step_record.finished.map(utils::DateTime),
+	})
+	.try_collect()
 	.await
 }
 
@@ -911,7 +922,7 @@ pub async fn list_build_details_for_repo(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
 ) -> Result<Vec<BuildDetails>, sqlx::Error> {
-	let builds = query_as!(
+	query_as!(
 		BuildRecord,
 		r#"
 		SELECT
@@ -933,8 +944,22 @@ pub async fn list_build_details_for_repo(
 		"#,
 		repo_id as _,
 	)
-	.fetch_all(&mut *connection)
-	.await?;
+	.fetch(&mut *connection)
+	.map_ok(|build| BuildDetails {
+		build_num: build.build_num as u64,
+		git_ref: build.git_ref,
+		git_commit: build.git_commit,
+		status: build.status,
+		created: utils::DateTime(build.created),
+		finished: build.finished.map(utils::DateTime),
+		message: build.message,
+		author: build.author,
+		git_pr_title: build.git_pr_title,
+		git_commit_message: build.git_commit_message,
+	})
+	.try_collect()
+	.await
+}
 
 	let mut result = vec![];
 	for build in builds {
@@ -978,7 +1003,7 @@ pub async fn get_build_details_for_build(
 	repo_id: &Uuid,
 	build_num: i64,
 ) -> Result<Option<BuildDetails>, sqlx::Error> {
-	let build = query_as!(
+	query_as!(
 		BuildRecord,
 		r#"
 		SELECT
@@ -1004,10 +1029,9 @@ pub async fn get_build_details_for_build(
 		build_num
 	)
 	.fetch_optional(&mut *connection)
-	.await?;
-
-	let result = match build {
-		Some(build) => Some(BuildDetails {
+	.await
+	.map(|optional_build| {
+		optional_build.map(|build| BuildDetails {
 			build_num: build.build_num as u64,
 			git_ref: build.git_ref,
 			git_commit: build.git_commit,
@@ -1018,28 +1042,8 @@ pub async fn get_build_details_for_build(
 			author: build.author,
 			git_pr_title: build.git_pr_title,
 			git_commit_message: build.git_commit_message,
-			steps: list_build_steps_for_build(
-				&mut *connection,
-				repo_id,
-				build.build_num,
-			)
-			.await?
-			.into_iter()
-			.map(|step_record| Step {
-				step_id: step_record.step_id as u32,
-				step_name: step_record.step_name,
-				base_image: step_record.base_image,
-				commands: step_record.commands,
-				status: step_record.status,
-				started: step_record.started.map(utils::DateTime),
-				finished: step_record.finished.map(utils::DateTime),
-			})
-			.collect(),
-		}),
-		None => None,
-	};
-
-	Ok(result)
+		})
+	})
 }
 
 pub async fn add_ci_step_for_build(
