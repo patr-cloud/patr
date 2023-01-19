@@ -351,10 +351,9 @@ pub async fn initialize_deployment_pre(
 			deployment_id UUID NOT NULL
 				CONSTRAINT deployment_volume_fk_deployment_id
 					REFERENCES deployment(id),
-			volume_size BIGINT NOT NULL
-				CONSTRAINT
-					deployment_volume_chk_size_unsigned
-						CHECK(volume_size > 0),
+			volume_size BIGINT NOT NULL CONSTRAINT
+				deployment_volume_chk_size_unsigned
+					CHECK(volume_size > 0),
 			volume_mount_path TEXT NOT NULL,
 			deleted TIMESTAMPTZ
 		);
@@ -488,8 +487,7 @@ pub async fn create_deployment_with_internal_registry(
 				$13,
 				$14,
 				$15,
-				$16
-				
+				$16	
 			);
 		"#,
 		id as _,

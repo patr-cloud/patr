@@ -267,7 +267,7 @@ pub async fn create_deployment_in_workspace(
 		.await?;
 	}
 
-	for (size, path) in &deployment_running_details.volume {
+	for (path, size) in &deployment_running_details.volume {
 		log::trace!("request_id: {} - creating volume resource", request_id);
 		let volume_id = db::generate_new_resource_id(connection).await?;
 
@@ -288,8 +288,8 @@ pub async fn create_deployment_in_workspace(
 			connection,
 			&deployment_id,
 			&volume_id,
-			size.value() as u64,
-			path.as_ref(),
+			*size as u64,
+			path.as_str(),
 		)
 		.await?;
 	}
@@ -653,7 +653,7 @@ pub async fn get_full_deployment_config(
 	let volume = db::get_all_deployment_volumes(connection, deployment_id)
 		.await?
 		.into_iter()
-		.map(|volume| (StringifiedU16::new(volume.size as u16), volume.path))
+		.map(|volume| (volume.path, volume.size as u32))
 		.collect();
 
 	log::trace!("request_id: {} - Full deployment config for deployment with id: {} successfully retreived", request_id, deployment_id);
@@ -1162,7 +1162,7 @@ async fn check_deployment_creation_limit(
 	machine_type: &Uuid,
 	min_horizontal_scale: &u16,
 	max_horizontal_scale: &u16,
-	volumes: &BTreeMap<StringifiedU16, String>,
+	volumes: &BTreeMap<String, u32>,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {request_id} - Checking whether new deployment creation is limited");
@@ -1178,10 +1178,7 @@ async fn check_deployment_creation_limit(
 			.await?
 			.len();
 
-	let mut volume_size = 0;
-	for size in volumes.keys() {
-		volume_size += size.value() as usize;
-	}
+	let volume_size = volumes.values().copied().sum::<u32>();
 
 	let card_added =
 		db::get_default_payment_method_for_workspace(connection, workspace_id)
@@ -1217,7 +1214,7 @@ async fn check_deployment_creation_limit(
 		}
 
 		let volume_size_in_byte = volume_size * 1024 * 1024 * 1024;
-		if volume_size_in_byte > free_limits::VOLUME_STORAGE_IN_BYTE {
+		if volume_size_in_byte > free_limits::VOLUME_STORAGE_IN_BYTE as u32 {
 			return Error::as_result()
 				.status(400)
 				.body(error!(CARDLESS_VOLUME_LIMIT_EXCEEDED).to_string())?;
@@ -1239,7 +1236,7 @@ async fn check_deployment_creation_limit(
 			.body(error!(DEPLOYMENT_LIMIT_EXCEEDED).to_string())?;
 	}
 
-	if volume_size > workspace.volume_storage_limit as usize {
+	if volume_size > workspace.volume_storage_limit as u32 {
 		return Error::as_result()
 			.status(400)
 			.body(error!(VOLUME_LIMIT_EXCEEDED).to_string())?;
@@ -1291,9 +1288,27 @@ pub async fn start_deployment(
 	)
 	.await?;
 
+	let volumes =
+		db::get_all_deployment_volumes(connection, deployment_id).await?;
+
 	if service::is_deployed_on_patr_cluster(connection, &deployment.region)
 		.await?
 	{
+		for volume in &volumes {
+			log::trace!(
+				"request_id: {} starting volume usage history",
+				request_id
+			);
+
+			db::start_volume_usage_history(
+				connection,
+				workspace_id,
+				&volume.volume_id,
+				volume.size as u64 * 1000u64 * 1000u64 * 1000u64,
+				&Utc::now(),
+			)
+			.await?;
+		}
 		db::start_deployment_usage_history(
 			connection,
 			workspace_id,
@@ -1365,6 +1380,7 @@ pub async fn start_deployment(
 			&image_name,
 			digest.as_deref(),
 			deployment_running_details,
+			&volumes,
 			kubeconfig,
 			config,
 			request_id,
@@ -1576,6 +1592,15 @@ pub async fn delete_deployment(
 		.await?;
 
 		service::delete_kubernetes_deployment(
+			workspace_id,
+			deployment_id,
+			kubeconfig.clone(),
+			request_id,
+		)
+		.await?;
+
+		service::delete_deployment_volume(
+			connection,
 			workspace_id,
 			deployment_id,
 			kubeconfig,

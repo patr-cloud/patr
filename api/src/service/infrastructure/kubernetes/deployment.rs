@@ -77,7 +77,7 @@ use kube::{
 use sha2::{Digest, Sha512};
 
 use crate::{
-	db,
+	db::{self, DeploymentVolume},
 	error,
 	models::deployment,
 	service::{
@@ -733,59 +733,36 @@ pub async fn update_kubernetes_deployment(
 	.delete_opt(&format!("sts-{}", deployment.id), &DeleteParams::default())
 	.await?;
 
-	if !running_details.volume.is_empty() {
-		log::trace!("request_id: {} - deleting the pvc", request_id);
-		for (idx, _) in running_details.volume.iter().enumerate() {
-			Api::<PersistentVolumeClaim>::namespaced(
-				kubernetes_client.clone(),
-				workspace_id.as_str(),
-			)
-			.delete_opt(
-				&format!("pv-{}-{}", deployment.id, idx),
-				&DeleteParams::default(),
-			)
-			.await?;
-		}
-	}
 	Ok(())
 }
 
 pub async fn delete_kubernetes_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
 	kubeconfig: KubernetesConfigDetails,
-	status: &DeploymentStatus,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let kubernetes_client =
 		super::get_kubernetes_client(kubeconfig.auth_details).await?;
 
-	let volumes =
-		db::get_all_deployment_volumes(connection, deployment_id).await?;
+	Api::<K8sDeployment>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.delete_opt(
+		&format!("deployment-{}", deployment_id),
+		&DeleteParams::default(),
+	)
+	.await?;
 
-	if volumes.is_empty() {
-		log::trace!("request_id: {} - deleting the deployment", request_id);
+	log::trace!("request_id: {} - deleting the stateful set", request_id);
 
-		Api::<K8sDeployment>::namespaced(
-			kubernetes_client.clone(),
-			workspace_id.as_str(),
-		)
-		.delete_opt(
-			&format!("deployment-{}", deployment_id),
-			&DeleteParams::default(),
-		)
-		.await?;
-	} else {
-		log::trace!("request_id: {} - deleting the stateful set", request_id);
-
-		Api::<StatefulSet>::namespaced(
-			kubernetes_client.clone(),
-			workspace_id.as_str(),
-		)
-		.delete_opt(&format!("sts-{}", deployment_id), &DeleteParams::default())
-		.await?;
-	}
+	Api::<StatefulSet>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.delete_opt(&format!("sts-{}", deployment_id), &DeleteParams::default())
+	.await?;
 
 	log::trace!("request_id: {} - deleting the config map", request_id);
 
@@ -798,26 +775,6 @@ pub async fn delete_kubernetes_deployment(
 		&DeleteParams::default(),
 	)
 	.await?;
-
-	match status {
-		DeploymentStatus::Deleted => {
-			log::trace!("request_id: {} - deleting the pvc", request_id);
-			for (idx, _) in volumes.iter().enumerate() {
-				Api::<PersistentVolumeClaim>::namespaced(
-					kubernetes_client.clone(),
-					workspace_id.as_str(),
-				)
-				.delete_opt(
-					&format!("pv-{}-{}", deployment_id, idx),
-					&DeleteParams::default(),
-				)
-				.await?;
-			}
-		}
-		_ => {
-			log::trace!("request_id: {} got deployment stopped request not deleting pvc", request_id);
-		}
-	}
 
 	log::trace!("request_id: {} - deleting the service", request_id);
 	Api::<Service>::namespaced(
@@ -855,6 +812,34 @@ pub async fn delete_kubernetes_deployment(
 	Ok(())
 }
 
+pub async fn delete_deployment_volume(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	kubeconfig: KubernetesConfigDetails,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let kubernetes_client =
+		super::get_kubernetes_client(kubeconfig.auth_details).await?;
+
+	let volumes =
+		db::get_all_deployment_volumes(connection, deployment_id).await?;
+
+	log::trace!("request_id: {} - deleting the pvc", request_id);
+	for volume in volumes {
+		Api::<PersistentVolumeClaim>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
+		.delete_opt(
+			&format!("pv-{}", volume.volume_id),
+			&DeleteParams::default(),
+		)
+		.await?;
+	}
+	Ok(())
+}
+
 // TODO: add the logic of errored deployment
 pub async fn get_kubernetes_deployment_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -881,69 +866,40 @@ pub async fn get_kubernetes_deployment_status(
 			.await?
 			.is_empty();
 
-	let deployment_status = if !is_deployment {
-		let sts_result = Api::<StatefulSet>::namespaced(
-			kubernetes_client.clone(),
-			namespace,
-		)
-		.get(&format!("sts-{}", deployment.id))
-		.await;
-		let sts_status = match sts_result {
-			Err(KubeError::Api(ErrorResponse { code: 404, .. })) => {
-				// TODO: This is a temporary fix to solve issue #361.
-				// Need to find a better solution to do this
-				return Ok(DeploymentStatus::Deploying);
-			}
-			Err(err) => return Err(err.into()),
-			Ok(sts) => sts
-				.status
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string())?,
-		};
-
-		if sts_status.current_replicas ==
-			Some(deployment.min_horizontal_scale.into())
-		{
-			DeploymentStatus::Running
-		} else if sts_status.current_replicas <=
-			Some(deployment.min_horizontal_scale.into())
-		{
-			DeploymentStatus::Deploying
-		} else {
-			DeploymentStatus::Errored
-		}
+	let container_status = if !is_deployment {
+		Api::<StatefulSet>::namespaced(kubernetes_client.clone(), namespace)
+			.get(&format!("sts-{}", deployment.id))
+			.await
+			.map(|status| {
+				status.status.and_then(|value| value.current_replicas)
+			})
 	} else {
-		let deployment_result = Api::<K8sDeployment>::namespaced(
-			kubernetes_client.clone(),
-			namespace,
-		)
-		.get(&format!("deployment-{}", deployment.id))
-		.await;
-		let deployment_status = match deployment_result {
-			Err(KubeError::Api(ErrorResponse { code: 404, .. })) => {
-				// TODO: This is a temporary fix to solve issue #361.
-				// Need to find a better solution to do this
-				return Ok(DeploymentStatus::Deploying);
-			}
-			Err(err) => return Err(err.into()),
-			Ok(deployment) => deployment
-				.status
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string())?,
-		};
+		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace)
+			.get(&format!("deployment-{}", deployment.id))
+			.await
+			.map(|status| {
+				status.status.and_then(|value| value.available_replicas)
+			})
+	};
 
-		if deployment_status.available_replicas ==
-			Some(deployment.min_horizontal_scale.into())
-		{
+	let replicas = match container_status {
+		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => {
+			// TODO: This is a temporary fix to solve issue #361.
+			// Need to find a better solution to do this
+			return Ok(DeploymentStatus::Deploying);
+		}
+		Err(err) => return Err(err.into()),
+		Ok(sts) => sts.status(500).body(error!(SERVER_ERROR).to_string())?,
+	};
+
+	let deployment_status =
+		if replicas == deployment.min_horizontal_scale as i32 {
 			DeploymentStatus::Running
-		} else if deployment_status.available_replicas <=
-			Some(deployment.min_horizontal_scale.into())
-		{
+		} else if replicas <= deployment.min_horizontal_scale as i32 {
 			DeploymentStatus::Deploying
 		} else {
 			DeploymentStatus::Errored
-		}
-	};
+		};
 
 	let event_api = Api::<Pod>::namespaced(kubernetes_client, namespace)
 		.list(
@@ -988,6 +944,7 @@ pub async fn update_kubernetes_statefulset(
 	full_image: &str,
 	digest: Option<&str>,
 	running_details: &DeploymentRunningDetails,
+	deployment_volumes: &Vec<DeploymentVolume>,
 	kubeconfig: KubernetesConfigDetails,
 	config: &Settings,
 	request_id: &Uuid,
@@ -1198,27 +1155,25 @@ pub async fn update_kubernetes_statefulset(
 		})
 	}
 
-	for (idx, (size, path)) in running_details.volume.iter().enumerate() {
+	for volume in deployment_volumes {
 		volume_mounts.push(VolumeMount {
-			name: format!("pv-{}-{}", deployment.id, idx),
-			mount_path: path.to_string(), /* make sure user does not have
-			                               * the
-			                               * mount_path in the
-			                               * directory in
-			                               * the fs, by my observation it
-			                               * gives crashLoopBackOff error */
+			name: format!("pv-{}", volume.volume_id,),
+			// make sure user does not have the mount_path in the directory in
+			// the fs, by my observation it gives crashLoopBackOff error
+			mount_path: volume.path.to_string(),
 			..VolumeMount::default()
 		});
+
 		let storage_limit = [(
 			"storage".to_string(),
-			Quantity(format!("{}Gi", size.value())),
+			Quantity(format!("{}Gi", volume.size)),
 		)]
 		.into_iter()
 		.collect::<BTreeMap<_, _>>();
 
 		pvc.push(PersistentVolumeClaim {
 			metadata: ObjectMeta {
-				name: Some(format!("pv-{}-{}", deployment.id, idx)),
+				name: Some(format!("pv-{}", volume.volume_id)),
 				namespace: Some(workspace_id.to_string()),
 				..ObjectMeta::default()
 			},
