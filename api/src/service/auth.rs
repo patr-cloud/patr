@@ -780,6 +780,12 @@ pub async fn reset_password(
 			.status(400)
 			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
 
+	let user = 
+		db::get_user_by_user_id(connection, user_id)
+			.await?
+			.status(500)
+			.body(error!(USER_NOT_FOUND).to_string())?;
+
 	// check password strength
 	if !validator::is_password_valid(new_password) {
 		Error::as_result()
@@ -793,6 +799,14 @@ pub async fn reset_password(
 		Error::as_result()
 			.status(400)
 			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
+	}
+
+	let is_password_same = service::validate_hash(new_password, &user.password)?;
+
+	if is_password_same {
+		Error::as_result()
+			.status(400)
+			.body(error!(PASSWORD_MATCH_OLD).to_string())?;
 	}
 
 	let new_password = service::hash(new_password.as_bytes())?;
