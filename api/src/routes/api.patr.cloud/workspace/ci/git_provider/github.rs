@@ -1204,7 +1204,14 @@ async fn get_build_info(
 	.status(400)
 	.body("build not found")?;
 
-	context.success(GetBuildInfoResponse { build_info });
+	let steps = db::list_build_steps_for_build(
+		context.get_database_connection(),
+		&repo.id,
+		build_num as i64,
+	)
+	.await?;
+
+	context.success(GetBuildInfoResponse { build_info, steps });
 	Ok(context)
 }
 
