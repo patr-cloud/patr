@@ -109,7 +109,7 @@ async fn add_volume_payment_history(
 	// transaction table migrations
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS volume_payment_history(
+		CREATE TABLE volume_payment_history(
 			workspace_id UUID NOT NULL,
 			volume_id UUID NOT NULL,
 			storage BIGINT NOT NULL,
@@ -130,7 +130,7 @@ async fn add_deployment_volume_info(
 ) -> Result<(), Error> {
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS deployment_volume(
+		CREATE TABLE deployment_volume(
 			id UUID CONSTRAINT deployment_volume_pk PRIMARY KEY,
 			deployment_id UUID NOT NULL
 				CONSTRAINT deployment_volume_fk_deployment_id
