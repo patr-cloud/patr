@@ -486,7 +486,7 @@ pub async fn create_deployment_with_internal_registry(
 				$13,
 				$14,
 				$15,
-				$16	
+				$16
 			);
 		"#,
 		id as _,

@@ -357,12 +357,14 @@ pub async fn update_deployment(
 	);
 
 	// Get volume size for checking the limit
-	let mut volume_size = 0;
-	if let Some(volumes) = volumes {
-		for volume in volumes.values() {
-			volume_size += volume.size as usize
-		}
-	}
+	// let mut volume_size: usize = 0;
+	let volume_size = if let Some(volumes) = volumes {
+		let volume_size =
+			volumes.values().fold(0, |acc, volume| acc + volume.size);
+		volume_size
+	} else {
+		0
+	};
 
 	// Check if card is added
 
@@ -403,7 +405,7 @@ pub async fn update_deployment(
 			}
 		}
 
-		let volume_size_in_bytes = volume_size * 1024 * 1024 * 1024;
+		let volume_size_in_bytes = (volume_size * 1024 * 1024 * 1024) as usize;
 		if volume_size_in_bytes > free_limits::VOLUME_STORAGE_IN_BYTE {
 			return Error::as_result()
 				.status(400)
@@ -417,7 +419,7 @@ pub async fn update_deployment(
 			.status(500)?
 			.volume_storage_limit;
 
-	if volume_size > workspace_volume_limit as usize {
+	if volume_size > workspace_volume_limit as u32 {
 		return Error::as_result()
 			.status(400)
 			.body(error!(VOLUME_LIMIT_EXCEEDED).to_string())?;
@@ -1213,8 +1215,8 @@ async fn check_deployment_creation_limit(
 				.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
 		}
 
-		let volume_size_in_byte = volume_size * 1024 * 1024 * 1024;
-		if volume_size_in_byte > free_limits::VOLUME_STORAGE_IN_BYTE as u32 {
+		let volume_size_in_byte = (volume_size * 1024 * 1024 * 1024) as usize;
+		if volume_size_in_byte > free_limits::VOLUME_STORAGE_IN_BYTE {
 			return Error::as_result()
 				.status(400)
 				.body(error!(CARDLESS_VOLUME_LIMIT_EXCEEDED).to_string())?;
