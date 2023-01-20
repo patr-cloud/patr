@@ -15,9 +15,7 @@ pub async fn create_runner_for_workspace(
 	workspace_id: &Uuid,
 	name: &str,
 	region_id: &Uuid,
-	cpu: i32,
-	ram: i32,
-	volume: i32,
+	build_machine_type_id: &Uuid,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	// validate inputs
@@ -26,11 +24,6 @@ pub async fn create_runner_for_workspace(
 		return Err(Error::empty()
 			.status(400)
 			.body(error!(INVALID_RUNNER_NAME).to_string()));
-	}
-
-	if cpu <= 0 || ram <= 0 || volume <= 0 {
-		log::info!("request_id {} - Invalid resource values", request_id);
-		return Err(Error::empty().status(400));
 	}
 
 	let is_region_valid =
@@ -43,6 +36,8 @@ pub async fn create_runner_for_workspace(
 		log::info!("request_id {} - Invalid region id", request_id);
 		return Err(Error::empty().status(400));
 	}
+
+	// todo: check whether region is ready
 
 	// validation success, now create resource
 	log::info!("request_id {} - Creating resource for runner", request_id);
@@ -67,9 +62,7 @@ pub async fn create_runner_for_workspace(
 		name,
 		workspace_id,
 		region_id,
-		cpu,
-		ram,
-		volume,
+		build_machine_type_id,
 	)
 	.await?;
 
