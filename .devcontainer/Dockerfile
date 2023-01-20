@@ -2,9 +2,9 @@
 FROM ubuntu:22.04
 
 SHELL ["/bin/bash", "-c"]
-RUN apt update
+
 # Install all deps
-RUN apt install -y build-essential git pkg-config libssl-dev docker.io postgresql-client sudo sed curl inetutils-ping telnet bash-completion nano dumb-init libnss3-tools ca-certificates jq apt-transport-https software-properties-common
+RUN apt update && apt install -y build-essential git pkg-config libssl-dev docker.io postgresql-client sudo sed curl inetutils-ping telnet bash-completion nano dumb-init libnss3-tools ca-certificates jq apt-transport-https software-properties-common
 
 # Setup user accounts
 WORKDIR /etc/container-init-data
