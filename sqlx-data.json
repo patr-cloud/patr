@@ -751,6 +751,105 @@
     },
     "query": "CREATE INDEX user_to_sign_up_idx_otp_expiry ON user_to_sign_up (otp_expiry);"
   },
+  "0d5cf0f2d50a8a41636d7b225521ded816b21933f9aabb3ef76147f2a5e2a383": {
+    "describe": {
+      "columns": [
+        {
+          "name": "github_repo_id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_num",
+          "ordinal": 1,
+          "type_info": "Int8"
+        },
+        {
+          "name": "git_ref",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_commit",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "status: BuildStatus",
+          "ordinal": 4,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "waiting_to_start",
+                  "running",
+                  "succeeded",
+                  "cancelled",
+                  "errored"
+                ]
+              },
+              "name": "ci_build_status"
+            }
+          }
+        },
+        {
+          "name": "created",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "started",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "finished",
+          "ordinal": 7,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "message",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "author",
+          "ordinal": 9,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_pr_title",
+          "ordinal": 10,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_commit_message",
+          "ordinal": 11,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT ci_repos.git_provider_repo_uid as \"github_repo_id\", ci_builds.build_num, ci_builds.git_ref, ci_builds.git_commit, ci_builds.status as \"status: BuildStatus\", ci_builds.created, ci_builds.started, ci_builds.finished, ci_builds.message, ci_builds.author, ci_builds.git_pr_title, ci_builds.git_commit_message FROM ci_builds JOIN ci_repos ON ci_repos.id = ci_builds.repo_id WHERE ci_builds.runner_id = $1 AND ( ci_builds.status = 'waiting_to_start' OR ci_builds.status = 'running' ) ORDER BY ci_builds.created ASC;"
+  },
   "0d819c000a296c17387919adf035d46c4a8993c437324fecb8aad4c52bfa6fad": {
     "describe": {
       "columns": [],
@@ -3671,6 +3770,106 @@
       }
     },
     "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, is_configured, permanent_redirect as \"permanent_redirect: _\", http_only as \"http_only: _\" FROM managed_url WHERE static_site_id = $1 AND deleted IS NULL;"
+  },
+  "3c01bcdceffa4a758931333145b366e96395a1e96e7fe147ceb12cb700978f01": {
+    "describe": {
+      "columns": [
+        {
+          "name": "build_num",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "git_ref",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_commit",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 3,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "waiting_to_start",
+                  "running",
+                  "succeeded",
+                  "cancelled",
+                  "errored"
+                ]
+              },
+              "name": "ci_build_status"
+            }
+          }
+        },
+        {
+          "name": "created: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "started: _",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "finished: _",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "message",
+          "ordinal": 7,
+          "type_info": "Text"
+        },
+        {
+          "name": "author",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_pr_title",
+          "ordinal": 9,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_commit_message",
+          "ordinal": 10,
+          "type_info": "Text"
+        },
+        {
+          "name": "runner_id: _",
+          "ordinal": 11,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Int8"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tbuild_num,\n\t\t\tgit_ref,\n\t\t\tgit_commit,\n\t\t\tstatus as \"status: _\",\n\t\t\tcreated as \"created: _\",\n\t\t\tstarted as \"started: _\",\n\t\t\tfinished as \"finished: _\",\n\t\t\tmessage,\n\t\t\tauthor,\n\t\t\tgit_pr_title,\n\t\t\tgit_commit_message,\n\t\t\trunner_id as \"runner_id: _\"\n\t\tFROM\n\t\t\tci_builds\n\t\tWHERE\n\t\t\t(repo_id = $1 AND build_num = $2)\n\t\tFOR UPDATE;\n\t\t"
   },
   "3c88f9a6f62c223f1faa143eb4ec4ad07a8f538268ad5941c1895d2124108b4b": {
     "describe": {
@@ -9525,6 +9724,85 @@
       }
     },
     "query": "UPDATE web_login SET token_expiry = TO_TIMESTAMP(0) WHERE login_id = $1 AND user_id = $2;"
+  },
+  "96840a4f1a359e45250800a6adab9a8c436b07b2270aed6d11d57cf6e1247287": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "repo_owner",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "repo_name",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "clone_url",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "webhook_secret",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 5,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "active",
+                  "inactive",
+                  "deleted"
+                ]
+              },
+              "name": "ci_repo_status"
+            }
+          }
+        },
+        {
+          "name": "git_provider_id: _",
+          "ordinal": 6,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "git_provider_repo_uid",
+          "ordinal": 7,
+          "type_info": "Text"
+        },
+        {
+          "name": "runner_id: _",
+          "ordinal": 8,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", repo_owner, repo_name, clone_url, webhook_secret, status as \"status: _\", git_provider_id as \"git_provider_id: _\", git_provider_repo_uid, runner_id as \"runner_id: _\" FROM ci_repos WHERE runner_id = $1 AND status = 'active';"
   },
   "9686b1e80681fe0d1573016b1689ac9aee11045ead93c2de9dafb97715303b7f": {
     "describe": {
