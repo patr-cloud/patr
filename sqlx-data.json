@@ -751,117 +751,6 @@
     },
     "query": "CREATE INDEX user_to_sign_up_idx_otp_expiry ON user_to_sign_up (otp_expiry);"
   },
-  "0d6aa40debabce4946f3b085c72f4bfdda6b4750cd3d2dcfffcf586d6810c3ff": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id!: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "sub_domain!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "domain_id!: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "path!: _",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "url_type!: _",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "proxy_to_deployment",
-                  "proxy_to_static_site",
-                  "proxy_url",
-                  "redirect"
-                ]
-              },
-              "name": "managed_url_type"
-            }
-          }
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 5,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "port",
-          "ordinal": 6,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "url",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id!: _",
-          "ordinal": 9,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "is_configured!: _",
-          "ordinal": 10,
-          "type_info": "Bool"
-        },
-        {
-          "name": "permanent_redirect!: _",
-          "ordinal": 11,
-          "type_info": "Bool"
-        },
-        {
-          "name": "http_only!: _",
-          "ordinal": 12,
-          "type_info": "Bool"
-        },
-        {
-          "name": "cloudflare_custom_hostname_id!: _",
-          "ordinal": 13,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "WITH RECURSIVE managed_url_list AS ( SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id WHERE managed_url.deployment_id = $1 AND managed_url.url_type = 'proxy_to_deployment' UNION ALL SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id JOIN managed_url_list ON managed_url.url LIKE CONCAT( managed_url.sub_domain, '.', domain.name, '.', domain.tld, CASE managed_url.path WHEN '/' THEN '%' ELSE CONCAT(managed_url.path, '%') END ) WHERE managed_url.url_type = 'redirect' OR managed_url.url_type = 'proxy_url' ) SELECT id as \"id!: _\", sub_domain as \"sub_domain!: _\", domain_id as \"domain_id!: _\", path as \"path!: _\", url_type as \"url_type!: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id!: _\", is_configured as \"is_configured!: _\", permanent_redirect as \"permanent_redirect!: _\", http_only as \"http_only!: _\", cloudflare_custom_hostname_id as \"cloudflare_custom_hostname_id!: _\" FROM managed_url_list WHERE managed_url_list.workspace_id = $2 AND managed_url_list.deleted IS NULL;"
-  },
   "0d819c000a296c17387919adf035d46c4a8993c437324fecb8aad4c52bfa6fad": {
     "describe": {
       "columns": [],
@@ -875,16 +764,6 @@
       }
     },
     "query": "INSERT INTO password_reset_request( user_id, token, token_expiry ) VALUES ($1, $2, $3) ON CONFLICT(user_id) DO UPDATE SET token = EXCLUDED.token, token_expiry = EXCLUDED.token_expiry;"
-  },
-  "0d8eba5026a0a4a20c55ab36a06e67cb389a09234d9eb453883e33c74832a0e9": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512) CONSTRAINT deployment_chk_image_name_is_valid CHECK( image_name ~ '^(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?)(((\\/)(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?))*)?$' ), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, startup_probe_port INTEGER, startup_probe_path VARCHAR(255), startup_probe_port_type EXPOSED_PORT_TYPE, liveness_probe_port INTEGER, liveness_probe_path VARCHAR(255), liveness_probe_port_type EXPOSED_PORT_TYPE, current_live_digest TEXT, deleted TIMESTAMPTZ, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ), CONSTRAINT deployment_chk_image_tag_is_valid CHECK( image_tag != '' ), CONSTRAINT deployment_chk_startup_probe_is_valid CHECK( ( startup_probe_port IS NULL AND startup_probe_path IS NULL AND startup_probe_port_type IS NULL ) OR ( startup_probe_port IS NOT NULL AND startup_probe_path IS NOT NULL AND startup_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_liveness_probe_is_valid CHECK( ( liveness_probe_port IS NULL AND liveness_probe_path IS NULL AND liveness_probe_port_type IS NULL ) OR ( liveness_probe_port IS NOT NULL AND liveness_probe_path IS NOT NULL AND liveness_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_startup_probe_port_type_is_http CHECK( startup_probe_port_type = 'http' ), CONSTRAINT deployment_chk_liveness_probe_port_type_is_http CHECK( liveness_probe_port_type = 'http' ) );"
   },
   "0da430e7bc5b6777be3936dd832e5c0119e21fd0508f47ac291c4f2f51cc10f2": {
     "describe": {
@@ -1045,6 +924,16 @@
       }
     },
     "query": "SELECT workspace_id as \"workspace_id: Uuid\", resource_id as \"resource_id: Uuid\", permission_id as \"permission_id: Uuid\" FROM user_api_token_resource_permission WHERE token_id = $1;"
+  },
+  "10e024d43fb45ae741ca4fe345bb837ea69dc4be723a57bd294af9ef2a6ef15d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE ci_repos ( id UUID CONSTRAINT ci_repos_pk PRIMARY KEY, repo_owner TEXT NOT NULL, repo_name TEXT NOT NULL, clone_url TEXT NOT NULL, webhook_secret TEXT CONSTRAINT ci_repos_uq_secret UNIQUE, status CI_REPO_STATUS NOT NULL, git_provider_id UUID NOT NULL CONSTRAINT ci_repos_fk_git_provider_id REFERENCES ci_git_provider(id), git_provider_repo_uid TEXT NOT NULL, runner_id UUID CONSTRAINT ci_repos_fk_runner_id REFERENCES ci_runner(id), CONSTRAINT ci_repos_uq_git_provider_id_repo_uid UNIQUE(git_provider_id, git_provider_repo_uid), CONSTRAINT ci_repos_chk_status_runner_id_webhook_secret CHECK( ( status = 'active' AND runner_id IS NOT NULL AND webhook_secret IS NOT NULL ) OR status != 'active' ) );"
   },
   "10d6af47121b65f003d6986eba47253453fff2560401e8c77acbcc6ba02c799c": {
     "describe": {
@@ -1254,16 +1143,6 @@
       }
     },
     "query": "SELECT id as \"id: Uuid\", name::TEXT as \"name!: String\", super_admin_id as \"super_admin_id: Uuid\", active, alert_emails as \"alert_emails: Vec<String>\", payment_type as \"payment_type: PaymentType\", default_payment_method_id as \"default_payment_method_id: String\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, volume_storage_limit, stripe_customer_id, address_id as \"address_id: Uuid\", amount_due_in_cents, is_spam FROM workspace WHERE id = $1 AND deleted IS NULL;"
-  },
-  "12052215860013600805e2c9935efaf8ac383cf889dbd65fe42205a927024455": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TYPE CI_BUILD_STATUS AS ENUM ( 'running', 'succeeded', 'cancelled', 'errored' );"
   },
   "1265665905d91dec27027076dcd7d43d0aef3d265811a44294baaf007284a49d": {
     "describe": {
@@ -1823,16 +1702,6 @@
       }
     },
     "query": "DELETE FROM role_permissions_resource_type WHERE role_id = $1;"
-  },
-  "1a9e7df86de0f362774513c9bd4512338e0b8671d0c048bdb79b81ac2e51277f": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE ci_build_machine_type ( id UUID CONSTRAINT ci_machint_type_pk PRIMARY KEY, cpu INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_cpu_positive CHECK (cpu > 0), /* Multiples of 1 vCPU */ ram INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_ram_positive CHECK (ram > 0), /* Multiples of 0.25 GB RAM */ volume INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_volume_positive CHECK (volume > 0) /* Multiples of 1 GB storage space */ );"
   },
   "1b15d94cb3db84e91a75b6263ce3946a283cd7cad7c28624d2e9b9d5913aad1f": {
     "describe": {
@@ -2396,6 +2265,7 @@
             "Custom": {
               "kind": {
                 "Enum": [
+                  "waiting_to_start",
                   "running",
                   "succeeded",
                   "cancelled",
@@ -2955,6 +2825,16 @@
       }
     },
     "query": "SELECT DISTINCT id as \"id: Uuid\", name::TEXT as \"name!: String\", super_admin_id as \"super_admin_id: Uuid\", active, alert_emails as \"alert_emails: Vec<String>\", payment_type as \"payment_type: PaymentType\", default_payment_method_id as \"default_payment_method_id: String\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, volume_storage_limit, stripe_customer_id, address_id as \"address_id: Uuid\", amount_due_in_cents, is_spam FROM workspace WHERE deleted IS NULL;"
+  },
+  "31753dd66f600c122e3a6dcc1729e182259ae6e8881504fb26e57e131513b07b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TYPE CI_BUILD_STATUS AS ENUM ( 'waiting_to_start', 'running', 'succeeded', 'cancelled', 'errored' );"
   },
   "31fa3365a18b7cdbb3532ea5559f8a6fafda313ec59e82c3d790c31ac45fb452": {
     "describe": {
@@ -3881,6 +3761,106 @@
     },
     "query": "CREATE TABLE deployment_exposed_port( deployment_id UUID NOT NULL CONSTRAINT deployment_exposed_port_fk_deployment_id REFERENCES deployment(id), port INTEGER NOT NULL CONSTRAINT deployment_exposed_port_chk_port_u16 CHECK( port > 0 AND port <= 65535 ), port_type EXPOSED_PORT_TYPE NOT NULL, CONSTRAINT deployment_exposed_port_pk PRIMARY KEY(deployment_id, port), CONSTRAINT deployment_exposed_port_uq_deployment_id_port_port_type UNIQUE(deployment_id, port, port_type) );"
   },
+  "3fad77e79bf3c0b2dac78dde36765f88c2420a9948cc3a0f5340bf18a9d76795": {
+    "describe": {
+      "columns": [
+        {
+          "name": "build_num",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "git_ref",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_commit",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 3,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "waiting_to_start",
+                  "running",
+                  "succeeded",
+                  "cancelled",
+                  "errored"
+                ]
+              },
+              "name": "ci_build_status"
+            }
+          }
+        },
+        {
+          "name": "created: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "started: _",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "finished: _",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "message",
+          "ordinal": 7,
+          "type_info": "Text"
+        },
+        {
+          "name": "author",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_pr_title",
+          "ordinal": 9,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_commit_message",
+          "ordinal": 10,
+          "type_info": "Text"
+        },
+        {
+          "name": "runner_id: _",
+          "ordinal": 11,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Int8"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tbuild_num,\n\t\t\tgit_ref,\n\t\t\tgit_commit,\n\t\t\tstatus as \"status: _\",\n\t\t\tcreated as \"created: _\",\n\t\t\tstarted as \"started: _\",\n\t\t\tfinished as \"finished: _\",\n\t\t\tmessage,\n\t\t\tauthor,\n\t\t\tgit_pr_title,\n\t\t\tgit_commit_message,\n\t\t\trunner_id as \"runner_id: _\"\n\t\tFROM\n\t\t\tci_builds\n\t\tWHERE\n\t\t\t(repo_id = $1 AND build_num = $2);\n\t\t"
+  },
   "40e213237274b508f85079ac87d33957d3e73d15109e31d13c379a5eb7dc0f3b": {
     "describe": {
       "columns": [],
@@ -4130,171 +4110,6 @@
       }
     },
     "query": "CREATE TABLE user_phone_number( user_id UUID NOT NULL CONSTRAINT user_phone_number_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, country_code CHAR(2) NOT NULL CONSTRAINT user_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_phone_number_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), number VARCHAR(15) NOT NULL CONSTRAINT user_phone_number_chk_number_valid CHECK( LENGTH(number) >= 7 AND LENGTH(number) <= 15 AND CAST(number AS BIGINT) > 0 ), CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number), CONSTRAINT user_phone_number_uq_user_id_country_code_number UNIQUE(user_id, country_code, number) );"
-  },
-  "4519f22e2c320ef6608c5f63ef50c5d2811ead7cda93692aa874bd1203988353": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "repo_owner",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "repo_name",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "clone_url",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "webhook_secret",
-          "ordinal": 4,
-          "type_info": "Text"
-        },
-        {
-          "name": "build_machine_type_id: _",
-          "ordinal": 5,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 6,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "active",
-                  "inactive",
-                  "deleted"
-                ]
-              },
-              "name": "ci_repo_status"
-            }
-          }
-        },
-        {
-          "name": "git_provider_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "git_provider_repo_uid",
-          "ordinal": 8,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\trepo_owner,\n\t\t\trepo_name,\n\t\t\tclone_url,\n\t\t\twebhook_secret,\n\t\t\tbuild_machine_type_id as \"build_machine_type_id: _\",\n\t\t\tstatus as \"status: _\",\n\t\t\tgit_provider_id as \"git_provider_id: _\",\n\t\t\tgit_provider_repo_uid\n\t\tFROM\n\t\t\tci_repos\n\t\tWHERE \n\t\t\tid = $1;\n\t\t"
-  },
-  "452c88d9bf883330d3bdd5bbc28e23e2498f117130c41917c5b0f92ba7d64e72": {
-    "describe": {
-      "columns": [
-        {
-          "name": "build_num",
-          "ordinal": 0,
-          "type_info": "Int8"
-        },
-        {
-          "name": "git_ref",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "git_commit",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 3,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "running",
-                  "succeeded",
-                  "cancelled",
-                  "errored"
-                ]
-              },
-              "name": "ci_build_status"
-            }
-          }
-        },
-        {
-          "name": "created: _",
-          "ordinal": 4,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "finished: _",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "message",
-          "ordinal": 6,
-          "type_info": "Text"
-        },
-        {
-          "name": "author",
-          "ordinal": 7,
-          "type_info": "Text"
-        },
-        {
-          "name": "git_pr_title",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "git_commit_message",
-          "ordinal": 9,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        false,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tbuild_num,\n\t\t\tgit_ref,\n\t\t\tgit_commit,\n\t\t\tstatus as \"status: _\",\n\t\t\tcreated as \"created: _\",\n\t\t\tfinished as \"finished: _\",\n\t\t\tmessage,\n\t\t\tauthor,\n\t\t\tgit_pr_title,\n\t\t\tgit_commit_message\n\t\tFROM\n\t\t\tci_builds\n\t\tWHERE\n\t\t\trepo_id = $1\n\t\tORDER BY build_num DESC;\n\t\t"
   },
   "465499cd312427f9daac7b5b6a05aa0c4e266f2e44e2a880626698aee28a2577": {
     "describe": {
@@ -4629,6 +4444,37 @@
       }
     },
     "query": "INSERT INTO ci_steps ( repo_id, build_num, step_id, step_name, base_image, commands, status ) VALUES ($1, $2, $3, $4, $5, $6, $7);"
+  },
+  "4c8c70052b9252379fb10b48fbf51842cc221c6723071b8cfafd379558cd2383": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Text",
+          "Text",
+          "Text",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "active",
+                  "inactive",
+                  "deleted"
+                ]
+              },
+              "name": "ci_repo_status"
+            }
+          },
+          "Uuid",
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO ci_repos ( id, repo_owner, repo_name, clone_url, webhook_secret, status, git_provider_id, git_provider_repo_uid, runner_id ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
   },
   "4ca30fb689e897172bbb6cd31e9057d118abd91b5a7c51e22a058470106b1220": {
     "describe": {
@@ -4995,6 +4841,85 @@
       }
     },
     "query": "SELECT id as \"id: _\", name, description FROM resource_type;"
+  },
+  "520910f1c1c0dbcce0442cccc3d3af69e6fd23f4a95a492e3e0d4201b8c8d741": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "repo_owner",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "repo_name",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "clone_url",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "webhook_secret",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 5,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "active",
+                  "inactive",
+                  "deleted"
+                ]
+              },
+              "name": "ci_repo_status"
+            }
+          }
+        },
+        {
+          "name": "git_provider_id: _",
+          "ordinal": 6,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "git_provider_repo_uid",
+          "ordinal": 7,
+          "type_info": "Text"
+        },
+        {
+          "name": "runner_id: _",
+          "ordinal": 8,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\trepo_owner,\n\t\t\trepo_name,\n\t\t\tclone_url,\n\t\t\twebhook_secret,\n\t\t\tstatus as \"status: _\",\n\t\t\tgit_provider_id as \"git_provider_id: _\",\n\t\t\tgit_provider_repo_uid,\n\t\t\trunner_id as \"runner_id: _\"\n\t\tFROM\n\t\t\tci_repos\n\t\tWHERE\n\t\t\tgit_provider_id = $1;\n\t\t"
   },
   "523a50a5e2630a62b80a7d82c44b851c93d77c2e502dde3a5117dcdc55e0228e": {
     "describe": {
@@ -5873,7 +5798,7 @@
     },
     "query": "UPDATE address SET first_name = $2, last_name = $3, address_line_1 = $4, address_line_2 = $5, address_line_3 = $6, city = $7, state = $8, zip = $9, country = $10 WHERE id = $1;"
   },
-  "5dc79c54f863d3da0fcf0dd730fad1cbfa9df08e77b72a3a4ebc360e50618511": {
+  "5f1d0325462a97c5165fdae1c672a40d3589e067a8785b7b2da2e1256010aae9": {
     "describe": {
       "columns": [
         {
@@ -5888,112 +5813,6 @@
         },
         {
           "name": "cloud_provider: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "digitalocean",
-                  "other"
-                ]
-              },
-              "name": "infrastructure_cloud_provider"
-            }
-          }
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "ingress_hostname: _",
-          "ordinal": 4,
-          "type_info": "Text"
-        },
-        {
-          "name": "message_log",
-          "ordinal": 5,
-          "type_info": "Text"
-        },
-        {
-          "name": "cloudflare_certificate_id",
-          "ordinal": 6,
-          "type_info": "Text"
-        },
-        {
-          "name": "config_file: _",
-          "ordinal": 7,
-          "type_info": "Json"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 8,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "creating",
-                  "active",
-                  "errored",
-                  "deleted",
-                  "disconnected",
-                  "coming_soon"
-                ]
-              },
-              "name": "region_status"
-            }
-          }
-        },
-        {
-          "name": "disconnected_at: _",
-          "ordinal": 9,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", workspace_id as \"workspace_id: _\", ingress_hostname as \"ingress_hostname: _\", message_log, cloudflare_certificate_id, config_file as \"config_file: _\", status as \"status: _\", disconnected_at as \"disconnected_at: _\" FROM region WHERE workspace_id IS NOT NULL AND status = 'active';"
-  },
-  "5f1d0325462a97c5165fdae1c672a40d3589e067a8785b7b2da2e1256010aae9": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "ALTER TABLE workspace_audit_log ADD CONSTRAINT workspace_audit_log_fk_login_id FOREIGN KEY(user_id, login_id) REFERENCES user_login(user_id, login_id);"
-  },
-  "5f4da81e11690f78c860744212e2d92c210d50982c52e97afe27b96c070caa27": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "resource_type_id",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "owner_id",
           "ordinal": 2,
           "type_info": "Uuid"
         },
@@ -6081,8 +5900,8 @@
         false,
         false,
         false,
-        false,
         true,
+        false,
         true,
         false,
         false,
@@ -6359,16 +6178,6 @@
       }
     },
     "query": "CREATE TRIGGER ci_runner_trg_chk_region_id_workspace_id BEFORE INSERT OR UPDATE ON ci_runner FOR EACH ROW EXECUTE FUNCTION ci_runner_chk_region_id_workspace_id();"
-  },
-  "608f24df85727cf7e46222aece1fb883e77f85671c096f065c1ba9bdad37a90a": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE ci_builds ( repo_id UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id), build_num BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK (build_num > 0), git_ref TEXT NOT NULL, git_commit TEXT NOT NULL, status CI_BUILD_STATUS NOT NULL, created TIMESTAMPTZ NOT NULL, finished TIMESTAMPTZ, message TEXT, author TEXT NOT NULL, git_commit_message TEXT, git_pr_title TEXT, CONSTRAINT ci_builds_pk_repo_id_build_num PRIMARY KEY (repo_id, build_num) );"
   },
   "60a973c0325d830a4327ef4406a8e8f4e878d1d0c69a5b98ec7dcad2c252e264": {
     "describe": {
@@ -7247,20 +7056,6 @@
     },
     "query": "INSERT INTO region( id, name, provider, workspace_id, cloudflare_certificate_id, status ) VALUES ($1, $2, $3, $4, $5, 'creating');"
   },
-  "730e9f142cd4f0cb849096125987af0f9279a9d31e8eac0086715c53f2c75bc5": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          "Text"
-        ]
-      }
-    },
-    "query": "UPDATE ci_repos SET build_machine_type_id = $2, webhook_secret = $3, status = 'active' WHERE id = $1;"
-  },
   "732e2589870afa5056b66d963994b606517cbe372282aaa8292080d861ba6a3a": {
     "describe": {
       "columns": [],
@@ -7399,44 +7194,6 @@
       }
     },
     "query": "UPDATE deployment SET deleted = $2, status = 'deleted' WHERE id = $1;"
-  },
-  "7885b932c3917472e81037e333d5c751c905897033559c9c41e3eab48a707973": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "cpu",
-          "ordinal": 1,
-          "type_info": "Int4"
-        },
-        {
-          "name": "ram",
-          "ordinal": 2,
-          "type_info": "Int4"
-        },
-        {
-          "name": "volume",
-          "ordinal": 3,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tci_build_machine_type.id as \"id: _\",\n\t\t\tcpu,\n\t\t\tram,\n\t\t\tvolume\n\t\tFROM\n\t\t\tci_build_machine_type\n\t\tJOIN ci_repos\n\t\t\tON ci_repos.build_machine_type_id = ci_build_machine_type.id\n\t\tWHERE\n\t\t\tci_repos.id = $1;\n\t\t"
   },
   "788ce1b7e4c4beca4179e66d90f54a5c434d77fa493b0491d5b95d238163be58": {
     "describe": {
@@ -9155,37 +8912,6 @@
     },
     "query": "UPDATE transaction SET payment_status = $1 WHERE id = $2;"
   },
-  "8c5a0b7ad25f80152e141d2aaf9d374b781b15181b27e7b62866042d2bde7867": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          "Text",
-          "Text",
-          "Text",
-          "Uuid",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "active",
-                  "inactive",
-                  "deleted"
-                ]
-              },
-              "name": "ci_repo_status"
-            }
-          },
-          "Uuid",
-          "Text"
-        ]
-      }
-    },
-    "query": "INSERT INTO ci_repos ( id, repo_owner, repo_name, clone_url, webhook_secret, build_machine_type_id, status, git_provider_id, git_provider_repo_uid ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
-  },
   "8c78e77fdf66b84bbca2469cdaabaf6b973fc3096863f867c410efdafcfe216e": {
     "describe": {
       "columns": [],
@@ -9296,6 +9022,105 @@
     },
     "query": "CREATE TYPE CI_BUILD_STEP_STATUS AS ENUM ( 'waiting_to_start', 'running', 'succeeded', 'cancelled', 'errored', 'skipped_dep_error' );"
   },
+  "90a7da61a393c2fd13082da4058eea3681c9e2a5be86f127953b6c1ecaf8d8c5": {
+    "describe": {
+      "columns": [
+        {
+          "name": "build_num",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "git_ref",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_commit",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 3,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "waiting_to_start",
+                  "running",
+                  "succeeded",
+                  "cancelled",
+                  "errored"
+                ]
+              },
+              "name": "ci_build_status"
+            }
+          }
+        },
+        {
+          "name": "created: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "started: _",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "finished: _",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "message",
+          "ordinal": 7,
+          "type_info": "Text"
+        },
+        {
+          "name": "author",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_pr_title",
+          "ordinal": 9,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_commit_message",
+          "ordinal": 10,
+          "type_info": "Text"
+        },
+        {
+          "name": "runner_id: _",
+          "ordinal": 11,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tbuild_num,\n\t\t\tgit_ref,\n\t\t\tgit_commit,\n\t\t\tstatus as \"status: _\",\n\t\t\tcreated as \"created: _\",\n\t\t\tstarted as \"started: _\",\n\t\t\tfinished as \"finished: _\",\n\t\t\tmessage,\n\t\t\tauthor,\n\t\t\tgit_pr_title,\n\t\t\tgit_commit_message,\n\t\t\trunner_id as \"runner_id: _\"\n\t\tFROM\n\t\t\tci_builds\n\t\tWHERE\n\t\t\trepo_id = $1\n\t\tORDER BY build_num DESC;\n\t\t"
+  },
   "90a85aa3f065ca154f70896f37e8a316e7e3297e935d99c0ee6eb60cd9a016a0": {
     "describe": {
       "columns": [],
@@ -9323,16 +9148,6 @@
     },
     "query": "CREATE TABLE user_api_token( token_id UUID CONSTRAINT user_api_token_pk PRIMARY KEY, name TEXT NOT NULL, user_id UUID NOT NULL, token_hash TEXT NOT NULL, token_nbf TIMESTAMPTZ, /* The token is not valid before this date */ token_exp TIMESTAMPTZ, /* The token is not valid after this date */ allowed_ips INET[], created TIMESTAMPTZ NOT NULL, revoked TIMESTAMPTZ, login_type USER_LOGIN_TYPE GENERATED ALWAYS AS ('api_token') STORED, CONSTRAINT user_api_token_token_id_user_id_uk UNIQUE( token_id, user_id ), CONSTRAINT user_api_token_token_id_user_id_login_type_fk FOREIGN KEY(token_id, user_id, login_type) REFERENCES user_login(login_id, user_id, login_type) );"
   },
-  "9178e640dc834c13105aac5ba1922970043a4a00e3fce220f6908b7c7b857a78": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE workspace_domain( id UUID CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_domain_type CHECK( domain_type = 'business' ), is_verified BOOLEAN NOT NULL, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL, last_unverified TIMESTAMPTZ, cloudflare_worker_route_id TEXT NOT NULL, CONSTRAINT workspace_domain_uq_id_nameserver_type UNIQUE(id, nameserver_type), CONSTRAINT workspace_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );"
-  },
   "91795e8394845cda4acc7e9d4e13034e0cad9a5728ecd068d3574d26456e2e2e": {
     "describe": {
       "columns": [],
@@ -9341,7 +9156,7 @@
         "Left": []
       }
     },
-    "query": "CREATE TYPE USER_LOGIN_TYPE AS ENUM( 'api_token', 'web_login' );"
+    "query": "CREATE TABLE workspace_domain( id UUID CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_domain_type CHECK( domain_type = 'business' ), is_verified BOOLEAN NOT NULL, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL, last_unverified TIMESTAMPTZ, cloudflare_worker_route_id TEXT NOT NULL, CONSTRAINT workspace_domain_uq_id_nameserver_type UNIQUE(id, nameserver_type), CONSTRAINT workspace_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );"
   },
   "91a09ed13535fd405c7e284efafe3fbe87d94e5a5d70492f9ed2a69a4fe8f357": {
     "describe": {
@@ -9852,6 +9667,16 @@
       }
     },
     "query": "UPDATE docker_repo_payment_history SET stop_time = $1 WHERE workspace_id = $2 AND stop_time IS NULL;"
+  },
+  "9d03a082634b81dc0b7322f1db4eacb246e99c225e8bff27d2d54e4a2f648b25": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE ci_builds ( repo_id UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id), build_num BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK (build_num > 0), git_ref TEXT NOT NULL, git_commit TEXT NOT NULL, status CI_BUILD_STATUS NOT NULL, created TIMESTAMPTZ NOT NULL DEFAULT NOW(), started TIMESTAMPTZ, finished TIMESTAMPTZ, message TEXT, author TEXT NOT NULL, git_commit_message TEXT, git_pr_title TEXT, runner_id UUID NOT NULL CONSTRAINT ci_builds_fk_runner_id REFERENCES ci_runner(id), CONSTRAINT ci_builds_pk_repo_id_build_num PRIMARY KEY (repo_id, build_num) );"
   },
   "9d12957af2506956a6c245b5822233f06bb1b51740cc77867c9269d16d53c635": {
     "describe": {
@@ -10372,24 +10197,112 @@
     },
     "query": "INSERT INTO static_site_upload_history( upload_id, static_site_id, message, uploaded_by, created ) VALUES ($1, $2, $3, $4, $5);"
   },
+  "a3011066fa1c25c3f3b4170b3b8cf2c95d57ca1fc4ca00bc22df2182fd16abf2": {
+    "describe": {
+      "columns": [
+        {
+          "name": "github_repo_id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_num",
+          "ordinal": 1,
+          "type_info": "Int8"
+        },
+        {
+          "name": "git_ref",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_commit",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "status: BuildStatus",
+          "ordinal": 4,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "waiting_to_start",
+                  "running",
+                  "succeeded",
+                  "cancelled",
+                  "errored"
+                ]
+              },
+              "name": "ci_build_status"
+            }
+          }
+        },
+        {
+          "name": "created",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "started",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "finished",
+          "ordinal": 7,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "message",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "author",
+          "ordinal": 9,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_pr_title",
+          "ordinal": 10,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_commit_message",
+          "ordinal": 11,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT ci_repos.git_provider_repo_uid as \"github_repo_id\", ci_builds.build_num, ci_builds.git_ref, ci_builds.git_commit, ci_builds.status as \"status: BuildStatus\", ci_builds.created, ci_builds.started, ci_builds.finished, ci_builds.message, ci_builds.author, ci_builds.git_pr_title, ci_builds.git_commit_message FROM ci_builds JOIN ci_repos ON ci_repos.id = ci_builds.repo_id WHERE ci_builds.runner_id = $1 ORDER BY ci_builds.created DESC;"
+  },
   "a3383d5df7266cf5c1f2116b8d93df630ec6cfae3059445c0075fe502ff64c0e": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
         "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Uuid",
-          "Uuid",
-          "Int4",
-          "Int4",
-          "Int4"
+          "Uuid"
         ]
       }
     },
@@ -10499,45 +10412,6 @@
       }
     },
     "query": "INSERT INTO role_permissions_resource( role_id, permission_id, resource_id ) VALUES ($1, $2, $3);"
-  },
-  "a5a131faab72da215feffc0d0ef5cdf5c367ad0c49e5b0f9ca6fbf22500a8b73": {
-    "describe": {
-      "columns": [
-        {
-          "name": "build_num",
-          "ordinal": 0,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          "Text",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "running",
-                  "succeeded",
-                  "cancelled",
-                  "errored"
-                ]
-              },
-              "name": "ci_build_status"
-            }
-          },
-          "Timestamptz",
-          "Text",
-          "Text",
-          "Text"
-        ]
-      }
-    },
-    "query": "INSERT INTO ci_builds( repo_id, build_num, git_ref, git_commit, status, created, author, git_commit_message, git_pr_title ) VALUES ( $1, 1 + (SELECT COUNT(*) FROM ci_builds WHERE repo_id = $1), $2, $3, $4, $5, $6, $7, $8 ) RETURNING build_num;"
   },
   "a5b1ccf80da6fe1bf60853ecc0c58b5d5c48aea97a57c45b599d6f7eb5ce2b8a": {
     "describe": {
@@ -10911,6 +10785,20 @@
       }
     },
     "query": "\n\t\tSELECT\n\t\t\tstep_id,\n\t\t\tstep_name,\n\t\t\tbase_image,\n\t\t\tcommands,\n\t\t\tstatus as \"status: _\",\n\t\t\tstarted as \"started: _\",\n\t\t\tfinished as \"finished: _\"\n\t\tFROM\n\t\t\tci_steps\n\t\tWHERE (\n\t\t\trepo_id = $1\n\t\t\tAND build_num = $2\n\t\t)\n\t\tORDER BY step_id ASC;\n\t\t"
+  },
+  "aca374aefc532544e1b4d6992e877057b20fdc12a253879090b441fc129a189f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Int8",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "UPDATE ci_builds SET started = $3 WHERE ( repo_id = $1 AND build_num = $2 );"
   },
   "accf6879a9e73cbb3aeca3c002e9addd544180cae109a8ed690886420fae7f64": {
     "describe": {
@@ -11801,6 +11689,27 @@
     },
     "query": "ALTER TABLE region ADD CONSTRAINT region_fk_id_workspace_id FOREIGN KEY (id, workspace_id) REFERENCES resource(id, owner_id);"
   },
+  "bc5711f63271cba67f3e02fe5e8c9791b2b73d1c63828d356581e222db9b0e15": {
+    "describe": {
+      "columns": [
+        {
+          "name": "available",
+          "ordinal": 0,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Int8"
+        ]
+      }
+    },
+    "query": "SELECT (repo_id = $1 AND build_num = $2) AS \"available\" FROM ci_builds WHERE ( runner_id = ( SELECT runner_id FROM ci_builds WHERE ( repo_id = $1 AND build_num = $2 ) ) AND ( status = 'waiting_to_start' OR status = 'running' ) ) ORDER BY created ASC LIMIT 1;"
+  },
   "bc99fb8fb755978abf04e2db1da08b6236b07afd722505bd031cbc1e6a1f281e": {
     "describe": {
       "columns": [],
@@ -12008,6 +11917,86 @@
       }
     },
     "query": "UPDATE region SET status = 'errored' WHERE id = $1;"
+  },
+  "c0e9e45983926983e51df10bbd237e78533a5abd0acaf1c3903fabe791881879": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "repo_owner",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "repo_name",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "clone_url",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "webhook_secret",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 5,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "active",
+                  "inactive",
+                  "deleted"
+                ]
+              },
+              "name": "ci_repo_status"
+            }
+          }
+        },
+        {
+          "name": "git_provider_id: _",
+          "ordinal": 6,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "git_provider_repo_uid",
+          "ordinal": 7,
+          "type_info": "Text"
+        },
+        {
+          "name": "runner_id: _",
+          "ordinal": 8,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tci_repos.id as \"id: _\",\n\t\t\trepo_owner,\n\t\t\trepo_name,\n\t\t\tclone_url,\n\t\t\twebhook_secret,\n\t\t\tstatus as \"status: _\",\n\t\t\tgit_provider_id as \"git_provider_id: _\",\n\t\t\tgit_provider_repo_uid,\n\t\t\trunner_id as \"runner_id: _\"\n\t\tFROM\n\t\t\tci_repos\n\t\tINNER JOIN\n\t\t\tci_git_provider\n\t\t\tON\n\t\t\t\tci_git_provider.id = ci_repos.git_provider_id\n\t\tWHERE (\n\t\t\tci_git_provider.workspace_id = $1\n\t\t\tAND ci_repos.git_provider_repo_uid = $2\n\t\t\tAND ci_git_provider.domain_name = 'github.com'\n\t\t\tAND ci_git_provider.is_deleted = FALSE\n\t\t);\n\t\t"
   },
   "c15c9714352f98ccb6ae73eb80f523db23e3f5381f3cb368ddac0743bfae3dcf": {
     "describe": {
@@ -12526,86 +12515,6 @@
       }
     },
     "query": "SELECT id as \"id: _\", name, description, owner_id as \"owner_id: _\" FROM role WHERE id = $1;"
-  },
-  "c7570aad636a1f68745a7988f76711eda08b357ae84c0cd693e35231f14a11cf": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "repo_owner",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "repo_name",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "clone_url",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "webhook_secret",
-          "ordinal": 4,
-          "type_info": "Text"
-        },
-        {
-          "name": "build_machine_type_id: _",
-          "ordinal": 5,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 6,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "active",
-                  "inactive",
-                  "deleted"
-                ]
-              },
-              "name": "ci_repo_status"
-            }
-          }
-        },
-        {
-          "name": "git_provider_id: _",
-          "ordinal": 7,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "git_provider_repo_uid",
-          "ordinal": 8,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tci_repos.id as \"id: _\",\n\t\t\trepo_owner,\n\t\t\trepo_name,\n\t\t\tclone_url,\n\t\t\twebhook_secret,\n\t\t\tbuild_machine_type_id as \"build_machine_type_id: _\",\n\t\t\tstatus as \"status: _\",\n\t\t\tgit_provider_id as \"git_provider_id: _\",\n\t\t\tgit_provider_repo_uid\n\t\tFROM\n\t\t\tci_repos\n\t\tINNER JOIN\n\t\t\tci_git_provider\n\t\t\tON\n\t\t\t\tci_git_provider.id = ci_repos.git_provider_id\n\t\tWHERE (\n\t\t\tci_git_provider.workspace_id = $1\n\t\t\tAND ci_repos.git_provider_repo_uid = $2\n\t\t\tAND ci_git_provider.domain_name = 'github.com'\n\t\t\tAND ci_git_provider.is_deleted = FALSE\n\t\t);\n\t\t"
   },
   "c75ad18a3c0cafe8f5c950ebd90c760645d0eb5ba8a7dbcac73b43b2175bf2c7": {
     "describe": {
@@ -13345,20 +13254,304 @@
     },
     "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" INNER JOIN user_phone_number ON \"user\".id = user_phone_number.user_id WHERE user_phone_number.country_code = $1 AND user_phone_number.number = $2;"
   },
-  "d554e0cdaefed7bec784a16adfa3a7e2e844251ddab8d60a00e481b7adc938d9": {
+  "d5244a5633b4ad41c1ccbf69122b6800a97876579b85eb06aaf0cf3b024e6d6d": {
     "describe": {
-      "columns": [],
-      "nullable": [],
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "cloud_provider: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "digitalocean",
+                  "other"
+                ]
+              },
+              "name": "infrastructure_cloud_provider"
+            }
+          }
+        },
+        {
+          "name": "ready",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 4,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "message_log",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "kubernetes_cluster_url",
+          "ordinal": 6,
+          "type_info": "Text"
+        },
+        {
+          "name": "kubernetes_auth_username",
+          "ordinal": 7,
+          "type_info": "Text"
+        },
+        {
+          "name": "kubernetes_auth_token",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "kubernetes_ca_data",
+          "ordinal": 9,
+          "type_info": "Text"
+        },
+        {
+          "name": "kubernetes_ingress_ip_addr: _",
+          "ordinal": 10,
+          "type_info": "Inet"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
       "parameters": {
         "Left": [
-          "Uuid",
-          "Int4",
-          "Int4",
-          "Int4"
+          "Uuid"
         ]
       }
     },
-    "query": "INSERT INTO ci_build_machine_type( id, cpu, ram, volume ) VALUES ($1, $2, $3, $4);"
+    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", ready, workspace_id as \"workspace_id: _\", message_log, kubernetes_cluster_url, kubernetes_auth_username, kubernetes_auth_token, kubernetes_ca_data, kubernetes_ingress_ip_addr as \"kubernetes_ingress_ip_addr: _\" FROM deployment_region WHERE id = $1;"
+  },
+  "d554e0cdaefed7bec784a16adfa3a7e2e844251ddab8d60a00e481b7adc938d9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "repo_owner",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "repo_name",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "clone_url",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "webhook_secret",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 5,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "active",
+                  "inactive",
+                  "deleted"
+                ]
+              },
+              "name": "ci_repo_status"
+            }
+          }
+        },
+        {
+          "name": "git_provider_id: _",
+          "ordinal": 6,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "git_provider_repo_uid",
+          "ordinal": 7,
+          "type_info": "Text"
+        },
+        {
+          "name": "runner_id: _",
+          "ordinal": 8,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\trepo_owner,\n\t\t\trepo_name,\n\t\t\tclone_url,\n\t\t\twebhook_secret,\n\t\t\tstatus as \"status: _\",\n\t\t\tgit_provider_id as \"git_provider_id: _\",\n\t\t\tgit_provider_repo_uid,\n\t\t\trunner_id as \"runner_id: _\"\n\t\tFROM\n\t\t\tci_repos\n\t\tWHERE \n\t\t\tid = $1;\n\t\t"
+  },
+  "d7d741929d208783d19d6806a7290d6a72c5af01febf4a91bdcc0df2bcf6e765": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: String",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "super_admin_id: Uuid",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "active",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "alert_emails: Vec<String>",
+          "ordinal": 4,
+          "type_info": "VarcharArray"
+        },
+        {
+          "name": "payment_type: PaymentType",
+          "ordinal": 5,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "card",
+                  "enterprise"
+                ]
+              },
+              "name": "payment_type"
+            }
+          }
+        },
+        {
+          "name": "default_payment_method_id: String",
+          "ordinal": 6,
+          "type_info": "Text"
+        },
+        {
+          "name": "deployment_limit",
+          "ordinal": 7,
+          "type_info": "Int4"
+        },
+        {
+          "name": "static_site_limit",
+          "ordinal": 8,
+          "type_info": "Int4"
+        },
+        {
+          "name": "database_limit",
+          "ordinal": 9,
+          "type_info": "Int4"
+        },
+        {
+          "name": "managed_url_limit",
+          "ordinal": 10,
+          "type_info": "Int4"
+        },
+        {
+          "name": "secret_limit",
+          "ordinal": 11,
+          "type_info": "Int4"
+        },
+        {
+          "name": "domain_limit",
+          "ordinal": 12,
+          "type_info": "Int4"
+        },
+        {
+          "name": "docker_repository_storage_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "stripe_customer_id",
+          "ordinal": 14,
+          "type_info": "Text"
+        },
+        {
+          "name": "address_id: Uuid",
+          "ordinal": 15,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "amount_due_in_cents",
+          "ordinal": 16,
+          "type_info": "Int8"
+        },
+        {
+          "name": "is_spam",
+          "ordinal": 17,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT DISTINCT id as \"id: Uuid\", name::TEXT as \"name!: String\", super_admin_id as \"super_admin_id: Uuid\", active, alert_emails as \"alert_emails: Vec<String>\", payment_type as \"payment_type: PaymentType\", default_payment_method_id as \"default_payment_method_id: String\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, stripe_customer_id, address_id as \"address_id: Uuid\", amount_due_in_cents, is_spam FROM workspace WHERE deleted IS NULL;"
   },
   "d7e60cbbd6b83c7176f0e04faf6540b7bc9952273aa83cf7783626886748671c": {
     "describe": {
@@ -13924,6 +14117,20 @@
     },
     "query": "CREATE UNIQUE INDEX ci_runner_uq_workspace_id_name ON ci_runner (workspace_id, name) WHERE deleted IS NULL;"
   },
+  "de6fb017822253924727b17e21c4d18169e9b6e2cb68e0f08fb7032fb478be9b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Text"
+        ]
+      }
+    },
+    "query": "UPDATE ci_repos SET runner_id = $2, webhook_secret = $3, status = 'active' WHERE id = $1;"
+  },
   "de74ae7f29c027a8f87b7ddea32144fd590d3e4591e17fdc8f5fc80afcf1f299": {
     "describe": {
       "columns": [],
@@ -14174,41 +14381,28 @@
     },
     "query": "SELECT DISTINCT workspace.id as \"id: Uuid\", workspace.name::TEXT as \"name!: String\", workspace.super_admin_id as \"super_admin_id: Uuid\", workspace.active, workspace.alert_emails as \"alert_emails: Vec<String>\", workspace.payment_type as \"payment_type: PaymentType\", workspace.default_payment_method_id as \"default_payment_method_id: String\", workspace.deployment_limit, workspace.static_site_limit, workspace.database_limit, workspace.managed_url_limit, workspace.secret_limit, workspace.domain_limit, workspace.docker_repository_storage_limit, workspace.volume_storage_limit, workspace.stripe_customer_id, workspace.address_id as \"address_id: Uuid\", workspace.amount_due_in_cents, workspace.is_spam FROM workspace LEFT JOIN workspace_user ON workspace.id = workspace_user.workspace_id WHERE ( workspace.super_admin_id = $1 OR workspace_user.user_id = $1 ) AND workspace.deleted IS NULL;"
   },
-  "e2f6a571d891caa72875902539f461c7c9ebcba77978a1f8207979ff601546f3": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "UPDATE user_api_token SET revoked = token_exp WHERE token_exp > NOW();"
-  },
-  "e3de49a9aa8858cbfd5d37f89a87b03c086db40efc6d5942c4e8981829c8adfd": {
+  "e0d5e550f53660280dc4e797066d02f52d08df8defcc0a976a72534b9eed38f4": {
     "describe": {
       "columns": [
         {
           "name": "build_num",
           "ordinal": 0,
           "type_info": "Int8"
-        },
-        {
-          "name": "git_ref",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "git_commit",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 3,
-          "type_info": {
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Text",
+          {
             "Custom": {
               "kind": {
                 "Enum": [
+                  "waiting_to_start",
                   "running",
                   "succeeded",
                   "cancelled",
@@ -14263,10 +14457,7 @@
         true
       ],
       "parameters": {
-        "Left": [
-          "Uuid",
-          "Int8"
-        ]
+        "Left": []
       }
     },
     "query": "\n\t\tSELECT\n\t\t\tbuild_num,\n\t\t\tgit_ref,\n\t\t\tgit_commit,\n\t\t\tstatus as \"status: _\",\n\t\t\tcreated as \"created: _\",\n\t\t\tfinished as \"finished: _\",\n\t\t\tmessage,\n\t\t\tauthor,\n\t\t\tgit_pr_title,\n\t\t\tgit_commit_message\n\t\tFROM\n\t\t\tci_builds\n\t\tWHERE\n\t\t\t(repo_id = $1 AND build_num = $2);\n\t\t"
@@ -15701,7 +15892,7 @@
     },
     "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, permanent_redirect as \"permanent_redirect: _\", http_only as \"http_only: _\", cloudflare_custom_hostname_id FROM managed_url WHERE domain_id = $1 AND deleted IS NULL;"
   },
-  "fc40e34f7486b2f0520af6f74fc1036c2c257586512e91b9eb77df49e1468461": {
+  "fcda3a3e1abdd1cb97ed8554b73b6896b41ecc9bb81964ef2f663ed869131151": {
     "describe": {
       "columns": [],
       "nullable": [],
@@ -15709,14 +15900,104 @@
         "Left": []
       }
     },
-    "query": "CREATE TABLE ci_repos ( id UUID CONSTRAINT ci_repos_pk PRIMARY KEY, repo_owner TEXT NOT NULL, repo_name TEXT NOT NULL, clone_url TEXT NOT NULL, webhook_secret TEXT CONSTRAINT ci_repos_uq_secret UNIQUE, build_machine_type_id UUID CONSTRAINT ci_repos_fk_build_machine_type_id REFERENCES ci_build_machine_type(id), status CI_REPO_STATUS NOT NULL, git_provider_id UUID NOT NULL CONSTRAINT ci_repos_fk_git_provider_id REFERENCES ci_git_provider(id), git_provider_repo_uid TEXT NOT NULL, CONSTRAINT ci_repos_uq_git_provider_id_repo_uid UNIQUE(git_provider_id, git_provider_repo_uid), CONSTRAINT ci_repos_chk_status_machine_type_id_webhook_secret CHECK( ( status = 'active' AND build_machine_type_id IS NOT NULL AND webhook_secret IS NOT NULL ) OR status != 'active' ) );"
+    "query": "INSERT INTO phone_number_country_code( country_code, phone_code, country_name ) VALUES ($$AF$$, $$93$$, $$Afghanistan$$), ($$AX$$, $$358$$, $$Aland Islands$$), ($$AL$$, $$355$$, $$Albania$$), ($$DZ$$, $$213$$, $$Algeria$$), ($$AS$$, $$1684$$, $$American Samoa$$), ($$AD$$, $$376$$, $$Andorra$$), ($$AO$$, $$244$$, $$Angola$$), ($$AI$$, $$1264$$, $$Anguilla$$), ($$AQ$$, $$672$$, $$Antarctica$$), ($$AG$$, $$1268$$, $$Antigua and Barbuda$$), ($$AR$$, $$54$$, $$Argentina$$), ($$AM$$, $$374$$, $$Armenia$$), ($$AW$$, $$297$$, $$Aruba$$), ($$AU$$, $$61$$, $$Australia$$), ($$AT$$, $$43$$, $$Austria$$), ($$AZ$$, $$994$$, $$Azerbaijan$$), ($$BS$$, $$1242$$, $$Bahamas$$), ($$BH$$, $$973$$, $$Bahrain$$), ($$BD$$, $$880$$, $$Bangladesh$$), ($$BB$$, $$1246$$, $$Barbados$$), ($$BY$$, $$375$$, $$Belarus$$), ($$BE$$, $$32$$, $$Belgium$$), ($$BZ$$, $$501$$, $$Belize$$), ($$BJ$$, $$229$$, $$Benin$$), ($$BM$$, $$1441$$, $$Bermuda$$), ($$BT$$, $$975$$, $$Bhutan$$), ($$BO$$, $$591$$, $$Bolivia$$), ($$BQ$$, $$599$$, $$Bonaire, Sint Eustatius and Saba$$), ($$BA$$, $$387$$, $$Bosnia and Herzegovina$$), ($$BW$$, $$267$$, $$Botswana$$), ($$BV$$, $$55$$, $$Bouvet Island$$), ($$BR$$, $$55$$, $$Brazil$$), ($$IO$$, $$246$$, $$British Indian Ocean Territory$$), ($$BN$$, $$673$$, $$Brunei Darussalam$$), ($$BG$$, $$359$$, $$Bulgaria$$), ($$BF$$, $$226$$, $$Burkina Faso$$), ($$BI$$, $$257$$, $$Burundi$$), ($$KH$$, $$855$$, $$Cambodia$$), ($$CM$$, $$237$$, $$Cameroon$$), ($$CA$$, $$1$$, $$Canada$$), ($$CV$$, $$238$$, $$Cape Verde$$), ($$KY$$, $$1345$$, $$Cayman Islands$$), ($$CF$$, $$236$$, $$Central African Republic$$), ($$TD$$, $$235$$, $$Chad$$), ($$CL$$, $$56$$, $$Chile$$), ($$CN$$, $$86$$, $$China$$), ($$CX$$, $$61$$, $$Christmas Island$$), ($$CC$$, $$672$$, $$Cocos (Keeling) Islands$$), ($$CO$$, $$57$$, $$Colombia$$), ($$KM$$, $$269$$, $$Comoros$$), ($$CG$$, $$242$$, $$Congo$$), ($$CD$$, $$242$$, $$Congo, Democratic Republic of the Congo$$), ($$CK$$, $$682$$, $$Cook Islands$$), ($$CR$$, $$506$$, $$Costa Rica$$), ($$CI$$, $$225$$, $$Cote D'Ivoire$$), ($$HR$$, $$385$$, $$Croatia$$), ($$CU$$, $$53$$, $$Cuba$$), ($$CW$$, $$599$$, $$Curacao$$), ($$CY$$, $$357$$, $$Cyprus$$), ($$CZ$$, $$420$$, $$Czech Republic$$), ($$DK$$, $$45$$, $$Denmark$$), ($$DJ$$, $$253$$, $$Djibouti$$), ($$DM$$, $$1767$$, $$Dominica$$), ($$DO$$, $$1809$$, $$Dominican Republic$$), ($$EC$$, $$593$$, $$Ecuador$$), ($$EG$$, $$20$$, $$Egypt$$), ($$SV$$, $$503$$, $$El Salvador$$), ($$GQ$$, $$240$$, $$Equatorial Guinea$$), ($$ER$$, $$291$$, $$Eritrea$$), ($$EE$$, $$372$$, $$Estonia$$), ($$ET$$, $$251$$, $$Ethiopia$$), ($$FK$$, $$500$$, $$Falkland Islands (Malvinas)$$), ($$FO$$, $$298$$, $$Faroe Islands$$), ($$FJ$$, $$679$$, $$Fiji$$), ($$FI$$, $$358$$, $$Finland$$), ($$FR$$, $$33$$, $$France$$), ($$GF$$, $$594$$, $$French Guiana$$), ($$PF$$, $$689$$, $$French Polynesia$$), ($$TF$$, $$262$$, $$French Southern Territories$$), ($$GA$$, $$241$$, $$Gabon$$), ($$GM$$, $$220$$, $$Gambia$$), ($$GE$$, $$995$$, $$Georgia$$), ($$DE$$, $$49$$, $$Germany$$), ($$GH$$, $$233$$, $$Ghana$$), ($$GI$$, $$350$$, $$Gibraltar$$), ($$GR$$, $$30$$, $$Greece$$), ($$GL$$, $$299$$, $$Greenland$$), ($$GD$$, $$1473$$, $$Grenada$$), ($$GP$$, $$590$$, $$Guadeloupe$$), ($$GU$$, $$1671$$, $$Guam$$), ($$GT$$, $$502$$, $$Guatemala$$), ($$GG$$, $$44$$, $$Guernsey$$), ($$GN$$, $$224$$, $$Guinea$$), ($$GW$$, $$245$$, $$Guinea-Bissau$$), ($$GY$$, $$592$$, $$Guyana$$), ($$HT$$, $$509$$, $$Haiti$$), ($$HM$$, $$0$$, $$Heard Island and Mcdonald Islands$$), ($$VA$$, $$39$$, $$Holy See (Vatican City State)$$), ($$HN$$, $$504$$, $$Honduras$$), ($$HK$$, $$852$$, $$Hong Kong$$), ($$HU$$, $$36$$, $$Hungary$$), ($$IS$$, $$354$$, $$Iceland$$), ($$IN$$, $$91$$, $$India$$), ($$ID$$, $$62$$, $$Indonesia$$), ($$IR$$, $$98$$, $$Iran, Islamic Republic of$$), ($$IQ$$, $$964$$, $$Iraq$$), ($$IE$$, $$353$$, $$Ireland$$), ($$IM$$, $$44$$, $$Isle of Man$$), ($$IL$$, $$972$$, $$Israel$$), ($$IT$$, $$39$$, $$Italy$$), ($$JM$$, $$1876$$, $$Jamaica$$), ($$JP$$, $$81$$, $$Japan$$), ($$JE$$, $$44$$, $$Jersey$$), ($$JO$$, $$962$$, $$Jordan$$), ($$KZ$$, $$7$$, $$Kazakhstan$$), ($$KE$$, $$254$$, $$Kenya$$), ($$KI$$, $$686$$, $$Kiribati$$), ($$KP$$, $$850$$, $$Korea, Democratic People's Republic of$$), ($$KR$$, $$82$$, $$Korea, Republic of$$), ($$XK$$, $$381$$, $$Kosovo$$), ($$KW$$, $$965$$, $$Kuwait$$), ($$KG$$, $$996$$, $$Kyrgyzstan$$), ($$LA$$, $$856$$, $$Lao People's Democratic Republic$$), ($$LV$$, $$371$$, $$Latvia$$), ($$LB$$, $$961$$, $$Lebanon$$), ($$LS$$, $$266$$, $$Lesotho$$), ($$LR$$, $$231$$, $$Liberia$$), ($$LY$$, $$218$$, $$Libyan Arab Jamahiriya$$), ($$LI$$, $$423$$, $$Liechtenstein$$), ($$LT$$, $$370$$, $$Lithuania$$), ($$LU$$, $$352$$, $$Luxembourg$$), ($$MO$$, $$853$$, $$Macao$$), ($$MK$$, $$389$$, $$Macedonia, the Former Yugoslav Republic of$$), ($$MG$$, $$261$$, $$Madagascar$$), ($$MW$$, $$265$$, $$Malawi$$), ($$MY$$, $$60$$, $$Malaysia$$), ($$MV$$, $$960$$, $$Maldives$$), ($$ML$$, $$223$$, $$Mali$$), ($$MT$$, $$356$$, $$Malta$$), ($$MH$$, $$692$$, $$Marshall Islands$$), ($$MQ$$, $$596$$, $$Martinique$$), ($$MR$$, $$222$$, $$Mauritania$$), ($$MU$$, $$230$$, $$Mauritius$$), ($$YT$$, $$269$$, $$Mayotte$$), ($$MX$$, $$52$$, $$Mexico$$), ($$FM$$, $$691$$, $$Micronesia, Federated States of$$), ($$MD$$, $$373$$, $$Moldova, Republic of$$), ($$MC$$, $$377$$, $$Monaco$$), ($$MN$$, $$976$$, $$Mongolia$$), ($$ME$$, $$382$$, $$Montenegro$$), ($$MS$$, $$1664$$, $$Montserrat$$), ($$MA$$, $$212$$, $$Morocco$$), ($$MZ$$, $$258$$, $$Mozambique$$), ($$MM$$, $$95$$, $$Myanmar$$), ($$NA$$, $$264$$, $$Namibia$$), ($$NR$$, $$674$$, $$Nauru$$), ($$NP$$, $$977$$, $$Nepal$$), ($$NL$$, $$31$$, $$Netherlands$$), ($$AN$$, $$599$$, $$Netherlands Antilles$$), ($$NC$$, $$687$$, $$New Caledonia$$), ($$NZ$$, $$64$$, $$New Zealand$$), ($$NI$$, $$505$$, $$Nicaragua$$), ($$NE$$, $$227$$, $$Niger$$), ($$NG$$, $$234$$, $$Nigeria$$), ($$NU$$, $$683$$, $$Niue$$), ($$NF$$, $$672$$, $$Norfolk Island$$), ($$MP$$, $$1670$$, $$Northern Mariana Islands$$), ($$NO$$, $$47$$, $$Norway$$), ($$OM$$, $$968$$, $$Oman$$), ($$PK$$, $$92$$, $$Pakistan$$), ($$PW$$, $$680$$, $$Palau$$), ($$PS$$, $$970$$, $$Palestinian Territory, Occupied$$), ($$PA$$, $$507$$, $$Panama$$), ($$PG$$, $$675$$, $$Papua New Guinea$$), ($$PY$$, $$595$$, $$Paraguay$$), ($$PE$$, $$51$$, $$Peru$$), ($$PH$$, $$63$$, $$Philippines$$), ($$PN$$, $$64$$, $$Pitcairn$$), ($$PL$$, $$48$$, $$Poland$$), ($$PT$$, $$351$$, $$Portugal$$), ($$PR$$, $$1787$$, $$Puerto Rico$$), ($$QA$$, $$974$$, $$Qatar$$), ($$RE$$, $$262$$, $$Reunion$$), ($$RO$$, $$40$$, $$Romania$$), ($$RU$$, $$70$$, $$Russian Federation$$), ($$RW$$, $$250$$, $$Rwanda$$), ($$BL$$, $$590$$, $$Saint Barthelemy$$), ($$SH$$, $$290$$, $$Saint Helena$$), ($$KN$$, $$1869$$, $$Saint Kitts and Nevis$$), ($$LC$$, $$1758$$, $$Saint Lucia$$), ($$MF$$, $$590$$, $$Saint Martin$$), ($$PM$$, $$508$$, $$Saint Pierre and Miquelon$$), ($$VC$$, $$1784$$, $$Saint Vincent and the Grenadines$$), ($$WS$$, $$684$$, $$Samoa$$), ($$SM$$, $$378$$, $$San Marino$$), ($$ST$$, $$239$$, $$Sao Tome and Principe$$), ($$SA$$, $$966$$, $$Saudi Arabia$$), ($$SN$$, $$221$$, $$Senegal$$), ($$RS$$, $$381$$, $$Serbia$$), ($$CS$$, $$381$$, $$Serbia and Montenegro$$), ($$SC$$, $$248$$, $$Seychelles$$), ($$SL$$, $$232$$, $$Sierra Leone$$), ($$SG$$, $$65$$, $$Singapore$$), ($$SX$$, $$1$$, $$Sint Maarten$$), ($$SK$$, $$421$$, $$Slovakia$$), ($$SI$$, $$386$$, $$Slovenia$$), ($$SB$$, $$677$$, $$Solomon Islands$$), ($$SO$$, $$252$$, $$Somalia$$), ($$ZA$$, $$27$$, $$South Africa$$), ($$GS$$, $$500$$, $$South Georgia and the South Sandwich Islands$$), ($$SS$$, $$211$$, $$South Sudan$$), ($$ES$$, $$34$$, $$Spain$$), ($$LK$$, $$94$$, $$Sri Lanka$$), ($$SD$$, $$249$$, $$Sudan$$), ($$SR$$, $$597$$, $$Suriname$$), ($$SJ$$, $$47$$, $$Svalbard and Jan Mayen$$), ($$SZ$$, $$268$$, $$Swaziland$$), ($$SE$$, $$46$$, $$Sweden$$), ($$CH$$, $$41$$, $$Switzerland$$), ($$SY$$, $$963$$, $$Syrian Arab Republic$$), ($$TW$$, $$886$$, $$Taiwan, Province of China$$), ($$TJ$$, $$992$$, $$Tajikistan$$), ($$TZ$$, $$255$$, $$Tanzania, United Republic of$$), ($$TH$$, $$66$$, $$Thailand$$), ($$TL$$, $$670$$, $$Timor-Leste$$), ($$TG$$, $$228$$, $$Togo$$), ($$TK$$, $$690$$, $$Tokelau$$), ($$TO$$, $$676$$, $$Tonga$$), ($$TT$$, $$1868$$, $$Trinidad and Tobago$$), ($$TN$$, $$216$$, $$Tunisia$$), ($$TR$$, $$90$$, $$Turkey$$), ($$TM$$, $$7370$$, $$Turkmenistan$$), ($$TC$$, $$1649$$, $$Turks and Caicos Islands$$), ($$TV$$, $$688$$, $$Tuvalu$$), ($$UG$$, $$256$$, $$Uganda$$), ($$UA$$, $$380$$, $$Ukraine$$), ($$AE$$, $$971$$, $$United Arab Emirates$$), ($$GB$$, $$44$$, $$United Kingdom$$), ($$US$$, $$1$$, $$United States$$), ($$UM$$, $$1$$, $$United States Minor Outlying Islands$$), ($$UY$$, $$598$$, $$Uruguay$$), ($$UZ$$, $$998$$, $$Uzbekistan$$), ($$VU$$, $$678$$, $$Vanuatu$$), ($$VE$$, $$58$$, $$Venezuela$$), ($$VN$$, $$84$$, $$Viet Nam$$), ($$VG$$, $$1284$$, $$Virgin Islands, British$$), ($$VI$$, $$1340$$, $$Virgin Islands, U.s.$$), ($$WF$$, $$681$$, $$Wallis and Futuna$$), ($$EH$$, $$212$$, $$Western Sahara$$), ($$YE$$, $$967$$, $$Yemen$$), ($$ZM$$, $$260$$, $$Zambia$$), ($$ZW$$, $$263$$, $$Zimbabwe$$);"
   },
-  "fcda3a3e1abdd1cb97ed8554b73b6896b41ecc9bb81964ef2f663ed869131151": {
+  "fd6690dc9c46b7065c609f909e8c53a3c4a9f83dc61587775a018c474bc36816": {
     "describe": {
-      "columns": [],
-      "nullable": [],
+      "columns": [
+        {
+          "name": "build_num",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "git_ref",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_commit",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 3,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "waiting_to_start",
+                  "running",
+                  "succeeded",
+                  "cancelled",
+                  "errored"
+                ]
+              },
+              "name": "ci_build_status"
+            }
+          }
+        },
+        {
+          "name": "created: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "started: _",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "finished: _",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "message",
+          "ordinal": 7,
+          "type_info": "Text"
+        },
+        {
+          "name": "author",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_pr_title",
+          "ordinal": 9,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_commit_message",
+          "ordinal": 10,
+          "type_info": "Text"
+        },
+        {
+          "name": "runner_id: _",
+          "ordinal": 11,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        false
+      ],
       "parameters": {
-        "Left": []
+        "Left": [
+          "Uuid",
+          "Int8"
+        ]
       }
     },
     "query": "INSERT INTO phone_number_country_code( country_code, phone_code, country_name ) VALUES ($$AF$$, $$93$$, $$Afghanistan$$), ($$AX$$, $$358$$, $$Aland Islands$$), ($$AL$$, $$355$$, $$Albania$$), ($$DZ$$, $$213$$, $$Algeria$$), ($$AS$$, $$1684$$, $$American Samoa$$), ($$AD$$, $$376$$, $$Andorra$$), ($$AO$$, $$244$$, $$Angola$$), ($$AI$$, $$1264$$, $$Anguilla$$), ($$AQ$$, $$672$$, $$Antarctica$$), ($$AG$$, $$1268$$, $$Antigua and Barbuda$$), ($$AR$$, $$54$$, $$Argentina$$), ($$AM$$, $$374$$, $$Armenia$$), ($$AW$$, $$297$$, $$Aruba$$), ($$AU$$, $$61$$, $$Australia$$), ($$AT$$, $$43$$, $$Austria$$), ($$AZ$$, $$994$$, $$Azerbaijan$$), ($$BS$$, $$1242$$, $$Bahamas$$), ($$BH$$, $$973$$, $$Bahrain$$), ($$BD$$, $$880$$, $$Bangladesh$$), ($$BB$$, $$1246$$, $$Barbados$$), ($$BY$$, $$375$$, $$Belarus$$), ($$BE$$, $$32$$, $$Belgium$$), ($$BZ$$, $$501$$, $$Belize$$), ($$BJ$$, $$229$$, $$Benin$$), ($$BM$$, $$1441$$, $$Bermuda$$), ($$BT$$, $$975$$, $$Bhutan$$), ($$BO$$, $$591$$, $$Bolivia$$), ($$BQ$$, $$599$$, $$Bonaire, Sint Eustatius and Saba$$), ($$BA$$, $$387$$, $$Bosnia and Herzegovina$$), ($$BW$$, $$267$$, $$Botswana$$), ($$BV$$, $$55$$, $$Bouvet Island$$), ($$BR$$, $$55$$, $$Brazil$$), ($$IO$$, $$246$$, $$British Indian Ocean Territory$$), ($$BN$$, $$673$$, $$Brunei Darussalam$$), ($$BG$$, $$359$$, $$Bulgaria$$), ($$BF$$, $$226$$, $$Burkina Faso$$), ($$BI$$, $$257$$, $$Burundi$$), ($$KH$$, $$855$$, $$Cambodia$$), ($$CM$$, $$237$$, $$Cameroon$$), ($$CA$$, $$1$$, $$Canada$$), ($$CV$$, $$238$$, $$Cape Verde$$), ($$KY$$, $$1345$$, $$Cayman Islands$$), ($$CF$$, $$236$$, $$Central African Republic$$), ($$TD$$, $$235$$, $$Chad$$), ($$CL$$, $$56$$, $$Chile$$), ($$CN$$, $$86$$, $$China$$), ($$CX$$, $$61$$, $$Christmas Island$$), ($$CC$$, $$672$$, $$Cocos (Keeling) Islands$$), ($$CO$$, $$57$$, $$Colombia$$), ($$KM$$, $$269$$, $$Comoros$$), ($$CG$$, $$242$$, $$Congo$$), ($$CD$$, $$242$$, $$Congo, Democratic Republic of the Congo$$), ($$CK$$, $$682$$, $$Cook Islands$$), ($$CR$$, $$506$$, $$Costa Rica$$), ($$CI$$, $$225$$, $$Cote D'Ivoire$$), ($$HR$$, $$385$$, $$Croatia$$), ($$CU$$, $$53$$, $$Cuba$$), ($$CW$$, $$599$$, $$Curacao$$), ($$CY$$, $$357$$, $$Cyprus$$), ($$CZ$$, $$420$$, $$Czech Republic$$), ($$DK$$, $$45$$, $$Denmark$$), ($$DJ$$, $$253$$, $$Djibouti$$), ($$DM$$, $$1767$$, $$Dominica$$), ($$DO$$, $$1809$$, $$Dominican Republic$$), ($$EC$$, $$593$$, $$Ecuador$$), ($$EG$$, $$20$$, $$Egypt$$), ($$SV$$, $$503$$, $$El Salvador$$), ($$GQ$$, $$240$$, $$Equatorial Guinea$$), ($$ER$$, $$291$$, $$Eritrea$$), ($$EE$$, $$372$$, $$Estonia$$), ($$ET$$, $$251$$, $$Ethiopia$$), ($$FK$$, $$500$$, $$Falkland Islands (Malvinas)$$), ($$FO$$, $$298$$, $$Faroe Islands$$), ($$FJ$$, $$679$$, $$Fiji$$), ($$FI$$, $$358$$, $$Finland$$), ($$FR$$, $$33$$, $$France$$), ($$GF$$, $$594$$, $$French Guiana$$), ($$PF$$, $$689$$, $$French Polynesia$$), ($$TF$$, $$262$$, $$French Southern Territories$$), ($$GA$$, $$241$$, $$Gabon$$), ($$GM$$, $$220$$, $$Gambia$$), ($$GE$$, $$995$$, $$Georgia$$), ($$DE$$, $$49$$, $$Germany$$), ($$GH$$, $$233$$, $$Ghana$$), ($$GI$$, $$350$$, $$Gibraltar$$), ($$GR$$, $$30$$, $$Greece$$), ($$GL$$, $$299$$, $$Greenland$$), ($$GD$$, $$1473$$, $$Grenada$$), ($$GP$$, $$590$$, $$Guadeloupe$$), ($$GU$$, $$1671$$, $$Guam$$), ($$GT$$, $$502$$, $$Guatemala$$), ($$GG$$, $$44$$, $$Guernsey$$), ($$GN$$, $$224$$, $$Guinea$$), ($$GW$$, $$245$$, $$Guinea-Bissau$$), ($$GY$$, $$592$$, $$Guyana$$), ($$HT$$, $$509$$, $$Haiti$$), ($$HM$$, $$0$$, $$Heard Island and Mcdonald Islands$$), ($$VA$$, $$39$$, $$Holy See (Vatican City State)$$), ($$HN$$, $$504$$, $$Honduras$$), ($$HK$$, $$852$$, $$Hong Kong$$), ($$HU$$, $$36$$, $$Hungary$$), ($$IS$$, $$354$$, $$Iceland$$), ($$IN$$, $$91$$, $$India$$), ($$ID$$, $$62$$, $$Indonesia$$), ($$IR$$, $$98$$, $$Iran, Islamic Republic of$$), ($$IQ$$, $$964$$, $$Iraq$$), ($$IE$$, $$353$$, $$Ireland$$), ($$IM$$, $$44$$, $$Isle of Man$$), ($$IL$$, $$972$$, $$Israel$$), ($$IT$$, $$39$$, $$Italy$$), ($$JM$$, $$1876$$, $$Jamaica$$), ($$JP$$, $$81$$, $$Japan$$), ($$JE$$, $$44$$, $$Jersey$$), ($$JO$$, $$962$$, $$Jordan$$), ($$KZ$$, $$7$$, $$Kazakhstan$$), ($$KE$$, $$254$$, $$Kenya$$), ($$KI$$, $$686$$, $$Kiribati$$), ($$KP$$, $$850$$, $$Korea, Democratic People's Republic of$$), ($$KR$$, $$82$$, $$Korea, Republic of$$), ($$XK$$, $$381$$, $$Kosovo$$), ($$KW$$, $$965$$, $$Kuwait$$), ($$KG$$, $$996$$, $$Kyrgyzstan$$), ($$LA$$, $$856$$, $$Lao People's Democratic Republic$$), ($$LV$$, $$371$$, $$Latvia$$), ($$LB$$, $$961$$, $$Lebanon$$), ($$LS$$, $$266$$, $$Lesotho$$), ($$LR$$, $$231$$, $$Liberia$$), ($$LY$$, $$218$$, $$Libyan Arab Jamahiriya$$), ($$LI$$, $$423$$, $$Liechtenstein$$), ($$LT$$, $$370$$, $$Lithuania$$), ($$LU$$, $$352$$, $$Luxembourg$$), ($$MO$$, $$853$$, $$Macao$$), ($$MK$$, $$389$$, $$Macedonia, the Former Yugoslav Republic of$$), ($$MG$$, $$261$$, $$Madagascar$$), ($$MW$$, $$265$$, $$Malawi$$), ($$MY$$, $$60$$, $$Malaysia$$), ($$MV$$, $$960$$, $$Maldives$$), ($$ML$$, $$223$$, $$Mali$$), ($$MT$$, $$356$$, $$Malta$$), ($$MH$$, $$692$$, $$Marshall Islands$$), ($$MQ$$, $$596$$, $$Martinique$$), ($$MR$$, $$222$$, $$Mauritania$$), ($$MU$$, $$230$$, $$Mauritius$$), ($$YT$$, $$269$$, $$Mayotte$$), ($$MX$$, $$52$$, $$Mexico$$), ($$FM$$, $$691$$, $$Micronesia, Federated States of$$), ($$MD$$, $$373$$, $$Moldova, Republic of$$), ($$MC$$, $$377$$, $$Monaco$$), ($$MN$$, $$976$$, $$Mongolia$$), ($$ME$$, $$382$$, $$Montenegro$$), ($$MS$$, $$1664$$, $$Montserrat$$), ($$MA$$, $$212$$, $$Morocco$$), ($$MZ$$, $$258$$, $$Mozambique$$), ($$MM$$, $$95$$, $$Myanmar$$), ($$NA$$, $$264$$, $$Namibia$$), ($$NR$$, $$674$$, $$Nauru$$), ($$NP$$, $$977$$, $$Nepal$$), ($$NL$$, $$31$$, $$Netherlands$$), ($$AN$$, $$599$$, $$Netherlands Antilles$$), ($$NC$$, $$687$$, $$New Caledonia$$), ($$NZ$$, $$64$$, $$New Zealand$$), ($$NI$$, $$505$$, $$Nicaragua$$), ($$NE$$, $$227$$, $$Niger$$), ($$NG$$, $$234$$, $$Nigeria$$), ($$NU$$, $$683$$, $$Niue$$), ($$NF$$, $$672$$, $$Norfolk Island$$), ($$MP$$, $$1670$$, $$Northern Mariana Islands$$), ($$NO$$, $$47$$, $$Norway$$), ($$OM$$, $$968$$, $$Oman$$), ($$PK$$, $$92$$, $$Pakistan$$), ($$PW$$, $$680$$, $$Palau$$), ($$PS$$, $$970$$, $$Palestinian Territory, Occupied$$), ($$PA$$, $$507$$, $$Panama$$), ($$PG$$, $$675$$, $$Papua New Guinea$$), ($$PY$$, $$595$$, $$Paraguay$$), ($$PE$$, $$51$$, $$Peru$$), ($$PH$$, $$63$$, $$Philippines$$), ($$PN$$, $$64$$, $$Pitcairn$$), ($$PL$$, $$48$$, $$Poland$$), ($$PT$$, $$351$$, $$Portugal$$), ($$PR$$, $$1787$$, $$Puerto Rico$$), ($$QA$$, $$974$$, $$Qatar$$), ($$RE$$, $$262$$, $$Reunion$$), ($$RO$$, $$40$$, $$Romania$$), ($$RU$$, $$70$$, $$Russian Federation$$), ($$RW$$, $$250$$, $$Rwanda$$), ($$BL$$, $$590$$, $$Saint Barthelemy$$), ($$SH$$, $$290$$, $$Saint Helena$$), ($$KN$$, $$1869$$, $$Saint Kitts and Nevis$$), ($$LC$$, $$1758$$, $$Saint Lucia$$), ($$MF$$, $$590$$, $$Saint Martin$$), ($$PM$$, $$508$$, $$Saint Pierre and Miquelon$$), ($$VC$$, $$1784$$, $$Saint Vincent and the Grenadines$$), ($$WS$$, $$684$$, $$Samoa$$), ($$SM$$, $$378$$, $$San Marino$$), ($$ST$$, $$239$$, $$Sao Tome and Principe$$), ($$SA$$, $$966$$, $$Saudi Arabia$$), ($$SN$$, $$221$$, $$Senegal$$), ($$RS$$, $$381$$, $$Serbia$$), ($$CS$$, $$381$$, $$Serbia and Montenegro$$), ($$SC$$, $$248$$, $$Seychelles$$), ($$SL$$, $$232$$, $$Sierra Leone$$), ($$SG$$, $$65$$, $$Singapore$$), ($$SX$$, $$1$$, $$Sint Maarten$$), ($$SK$$, $$421$$, $$Slovakia$$), ($$SI$$, $$386$$, $$Slovenia$$), ($$SB$$, $$677$$, $$Solomon Islands$$), ($$SO$$, $$252$$, $$Somalia$$), ($$ZA$$, $$27$$, $$South Africa$$), ($$GS$$, $$500$$, $$South Georgia and the South Sandwich Islands$$), ($$SS$$, $$211$$, $$South Sudan$$), ($$ES$$, $$34$$, $$Spain$$), ($$LK$$, $$94$$, $$Sri Lanka$$), ($$SD$$, $$249$$, $$Sudan$$), ($$SR$$, $$597$$, $$Suriname$$), ($$SJ$$, $$47$$, $$Svalbard and Jan Mayen$$), ($$SZ$$, $$268$$, $$Swaziland$$), ($$SE$$, $$46$$, $$Sweden$$), ($$CH$$, $$41$$, $$Switzerland$$), ($$SY$$, $$963$$, $$Syrian Arab Republic$$), ($$TW$$, $$886$$, $$Taiwan, Province of China$$), ($$TJ$$, $$992$$, $$Tajikistan$$), ($$TZ$$, $$255$$, $$Tanzania, United Republic of$$), ($$TH$$, $$66$$, $$Thailand$$), ($$TL$$, $$670$$, $$Timor-Leste$$), ($$TG$$, $$228$$, $$Togo$$), ($$TK$$, $$690$$, $$Tokelau$$), ($$TO$$, $$676$$, $$Tonga$$), ($$TT$$, $$1868$$, $$Trinidad and Tobago$$), ($$TN$$, $$216$$, $$Tunisia$$), ($$TR$$, $$90$$, $$Turkey$$), ($$TM$$, $$7370$$, $$Turkmenistan$$), ($$TC$$, $$1649$$, $$Turks and Caicos Islands$$), ($$TV$$, $$688$$, $$Tuvalu$$), ($$UG$$, $$256$$, $$Uganda$$), ($$UA$$, $$380$$, $$Ukraine$$), ($$AE$$, $$971$$, $$United Arab Emirates$$), ($$GB$$, $$44$$, $$United Kingdom$$), ($$US$$, $$1$$, $$United States$$), ($$UM$$, $$1$$, $$United States Minor Outlying Islands$$), ($$UY$$, $$598$$, $$Uruguay$$), ($$UZ$$, $$998$$, $$Uzbekistan$$), ($$VU$$, $$678$$, $$Vanuatu$$), ($$VE$$, $$58$$, $$Venezuela$$), ($$VN$$, $$84$$, $$Viet Nam$$), ($$VG$$, $$1284$$, $$Virgin Islands, British$$), ($$VI$$, $$1340$$, $$Virgin Islands, U.s.$$), ($$WF$$, $$681$$, $$Wallis and Futuna$$), ($$EH$$, $$212$$, $$Western Sahara$$), ($$YE$$, $$967$$, $$Yemen$$), ($$ZM$$, $$260$$, $$Zambia$$), ($$ZW$$, $$263$$, $$Zimbabwe$$);"

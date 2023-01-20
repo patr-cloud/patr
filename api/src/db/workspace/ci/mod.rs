@@ -2,16 +2,13 @@ mod runner;
 
 use api_macros::query;
 use api_models::{
-	models::workspace::ci::{
-		git_provider::{
-			BuildDetails,
-			BuildStatus,
-			BuildStepStatus,
-			GitProviderType,
-			RepoStatus,
-			Step,
-		},
-		BuildMachineType,
+	models::workspace::ci::git_provider::{
+		BuildDetails,
+		BuildStatus,
+		BuildStepStatus,
+		GitProviderType,
+		RepoStatus,
+		Step,
 	},
 	utils::{self, Uuid},
 };
@@ -20,7 +17,7 @@ use futures::TryStreamExt;
 use sqlx::query_as;
 
 pub use self::runner::*;
-use crate::{db, Database};
+use crate::Database;
 
 pub struct GitProvider {
 	pub id: Uuid,
@@ -41,10 +38,10 @@ pub struct Repository {
 	pub repo_name: String,
 	pub clone_url: String,
 	pub webhook_secret: Option<String>,
-	pub build_machine_type_id: Option<Uuid>,
 	pub status: RepoStatus,
 	pub git_provider_id: Uuid,
 	pub git_provider_repo_uid: String,
+	pub runner_id: Option<Uuid>,
 }
 
 pub struct BuildRecord {
@@ -54,10 +51,12 @@ pub struct BuildRecord {
 	pub author: String,
 	pub status: BuildStatus,
 	pub created: DateTime<Utc>,
+	pub started: Option<DateTime<Utc>>,
 	pub finished: Option<DateTime<Utc>>,
 	pub message: Option<String>,
 	pub git_commit_message: Option<String>,
 	pub git_pr_title: Option<String>,
+	pub runner_id: Uuid,
 }
 
 pub struct StepRecord {
@@ -75,18 +74,7 @@ pub async fn initialize_ci_pre(
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing ci tables");
 
-	query!(
-		r#"
-		CREATE TABLE ci_build_machine_type (
-			id 		UUID CONSTRAINT ci_machint_type_pk PRIMARY KEY,
-			cpu 	INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_cpu_positive CHECK (cpu > 0),   		/* Multiples of 1 vCPU */
-			ram 	INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_ram_positive CHECK (ram > 0),			/* Multiples of 0.25 GB RAM */
-			volume 	INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_volume_positive CHECK (volume > 0)	/* Multiples of 1 GB storage space */
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
+	runner::initialize_ci_runner_pre(connection).await?;
 
 	query!(
 		r#"
@@ -170,18 +158,18 @@ pub async fn initialize_ci_pre(
 			repo_name 				TEXT NOT NULL,
 			clone_url 				TEXT NOT NULL,
 			webhook_secret 			TEXT CONSTRAINT ci_repos_uq_secret UNIQUE,
-			build_machine_type_id 	UUID CONSTRAINT ci_repos_fk_build_machine_type_id REFERENCES ci_build_machine_type(id),
 			status 					CI_REPO_STATUS NOT NULL,
 			git_provider_id 		UUID NOT NULL CONSTRAINT ci_repos_fk_git_provider_id REFERENCES ci_git_provider(id),
 			git_provider_repo_uid 	TEXT NOT NULL,
+			runner_id 				UUID CONSTRAINT ci_repos_fk_runner_id REFERENCES ci_runner(id),
 
 			CONSTRAINT ci_repos_uq_git_provider_id_repo_uid
 				UNIQUE(git_provider_id, git_provider_repo_uid),
-			CONSTRAINT ci_repos_chk_status_machine_type_id_webhook_secret
+			CONSTRAINT ci_repos_chk_status_runner_id_webhook_secret
 				CHECK(
 					(
 						status = 'active'
-						AND build_machine_type_id IS NOT NULL
+						AND runner_id IS NOT NULL
 						AND webhook_secret IS NOT NULL
 					) OR
 					status != 'active'
@@ -195,6 +183,7 @@ pub async fn initialize_ci_pre(
 	query!(
 		r#"
 		CREATE TYPE CI_BUILD_STATUS AS ENUM (
+			'waiting_to_start',
 			'running',
 			'succeeded',
 			'cancelled',
@@ -213,12 +202,14 @@ pub async fn initialize_ci_pre(
 			git_ref 			TEXT NOT NULL,
 			git_commit 			TEXT NOT NULL,
 			status 				CI_BUILD_STATUS NOT NULL,
-			created 			TIMESTAMPTZ NOT NULL,
+			created 			TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			started 			TIMESTAMPTZ,
 			finished 			TIMESTAMPTZ,
 			message				TEXT,
 			author				TEXT NOT NULL,
 			git_commit_message	TEXT,
 			git_pr_title		TEXT,
+			runner_id 			UUID NOT NULL CONSTRAINT ci_builds_fk_runner_id REFERENCES ci_runner(id),
 
 			CONSTRAINT ci_builds_pk_repo_id_build_num
 				PRIMARY KEY (repo_id, build_num)
@@ -266,8 +257,6 @@ pub async fn initialize_ci_pre(
 	.execute(&mut *connection)
 	.await?;
 
-	runner::initialize_ci_runner_pre(connection).await?;
-
 	Ok(())
 }
 
@@ -276,61 +265,9 @@ pub async fn initialize_ci_post(
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up ci tables initialization");
 
-	// machine types for ci builds
-	const CI_BUILD_MACHINE_TYPES: [(i32, i32, i32); 5] = [
-		(1, 2, 1),  // 1 vCPU, 0.5 GB RAM, 1GB storage
-		(1, 4, 1),  // 1 vCPU,   1 GB RAM, 1GB storage
-		(1, 6, 2),  // 1 vCPU,   2 GB RAM, 2GB storage
-		(2, 8, 4),  // 2 vCPU,   4 GB RAM, 4GB storage
-		(4, 32, 8), // 4 vCPU,   8 GB RAM, 8GB storage
-	];
-
-	for (cpu, ram, volume) in CI_BUILD_MACHINE_TYPES {
-		let machine_type_id =
-			db::generate_new_resource_id(&mut *connection).await?;
-		query!(
-			r#"
-			INSERT INTO
-				ci_build_machine_type(
-					id,
-					cpu,
-					ram,
-					volume
-				)
-			VALUES
-				($1, $2, $3, $4);
-			"#,
-			machine_type_id as _,
-			cpu,
-			ram,
-			volume
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
 	runner::initialize_ci_runner_post(connection).await?;
 
 	Ok(())
-}
-
-pub async fn get_all_build_machine_types(
-	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<BuildMachineType>, sqlx::Error> {
-	query_as!(
-		BuildMachineType,
-		r#"
-		SELECT
-			id as "id: _",
-			cpu,
-			ram,
-			volume
-		FROM
-			ci_build_machine_type
-		"#,
-	)
-	.fetch_all(connection)
-	.await
 }
 
 pub async fn add_git_provider_to_workspace(
@@ -495,10 +432,10 @@ pub async fn add_repo_for_git_provider(
 			repo_name,
 			clone_url,
 			webhook_secret,
-			build_machine_type_id,
 			status,
 			git_provider_id,
-			git_provider_repo_uid
+			git_provider_repo_uid,
+			runner_id
 		)
 		VALUES
 			($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -508,10 +445,10 @@ pub async fn add_repo_for_git_provider(
 		repo_name,
 		clone_url,
 		Option::<&str>::None,
-		Option::<&Uuid>::None as _,
 		RepoStatus::Inactive as _,
 		git_provider_id as _,
-		git_provider_repo_uid
+		git_provider_repo_uid,
+		Option::<&Uuid>::None as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -563,10 +500,10 @@ pub async fn list_repos_for_git_provider(
 			repo_name,
 			clone_url,
 			webhook_secret,
-			build_machine_type_id as "build_machine_type_id: _",
 			status as "status: _",
 			git_provider_id as "git_provider_id: _",
-			git_provider_repo_uid
+			git_provider_repo_uid,
+			runner_id as "runner_id: _"
 		FROM
 			ci_repos
 		WHERE
@@ -595,10 +532,10 @@ pub async fn get_repo_details_using_github_uid_for_workspace(
 			repo_name,
 			clone_url,
 			webhook_secret,
-			build_machine_type_id as "build_machine_type_id: _",
 			status as "status: _",
 			git_provider_id as "git_provider_id: _",
-			git_provider_repo_uid
+			git_provider_repo_uid,
+			runner_id as "runner_id: _"
 		FROM
 			ci_repos
 		INNER JOIN
@@ -648,7 +585,7 @@ pub async fn update_repo_status(
 pub async fn activate_ci_for_repo(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
-	build_machine_type_id: &Uuid,
+	runner_id: &Uuid,
 ) -> Result<String, sqlx::Error> {
 	let secret = Uuid::new_v4().to_string();
 
@@ -657,44 +594,19 @@ pub async fn activate_ci_for_repo(
 		UPDATE
 			ci_repos
 		SET
-			build_machine_type_id = $2,
+			runner_id = $2,
 			webhook_secret = $3,
 			status = 'active'
 		WHERE
 			id = $1;
 		"#,
 		repo_id as _,
-		build_machine_type_id as _,
+		runner_id as _,
 		secret
 	)
 	.execute(&mut *connection)
 	.await
 	.map(|_| secret)
-}
-
-pub async fn get_build_machine_type_for_repo(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	repo_id: &Uuid,
-) -> Result<Option<BuildMachineType>, sqlx::Error> {
-	query_as!(
-		BuildMachineType,
-		r#"
-		SELECT
-			ci_build_machine_type.id as "id: _",
-			cpu,
-			ram,
-			volume
-		FROM
-			ci_build_machine_type
-		JOIN ci_repos
-			ON ci_repos.build_machine_type_id = ci_build_machine_type.id
-		WHERE
-			ci_repos.id = $1;
-		"#,
-		repo_id as _,
-	)
-	.fetch_optional(connection)
-	.await
 }
 
 pub async fn get_repo_using_patr_repo_id(
@@ -710,10 +622,10 @@ pub async fn get_repo_using_patr_repo_id(
 			repo_name,
 			clone_url,
 			webhook_secret,
-			build_machine_type_id as "build_machine_type_id: _",
 			status as "status: _",
 			git_provider_id as "git_provider_id: _",
-			git_provider_repo_uid
+			git_provider_repo_uid,
+			runner_id as "runner_id: _"
 		FROM
 			ci_repos
 		WHERE 
@@ -730,8 +642,6 @@ pub async fn generate_new_build_for_repo(
 	repo_id: &Uuid,
 	git_ref: &str,
 	git_commit: &str,
-	status: BuildStatus,
-	created: &DateTime<Utc>,
 	author: &str,
 	git_commit_message: Option<&str>,
 	git_pr_title: Option<&str>,
@@ -745,7 +655,6 @@ pub async fn generate_new_build_for_repo(
 				git_ref,
 				git_commit,
 				status,
-				created,
 				author,
 				git_commit_message,
 				git_pr_title
@@ -758,16 +667,14 @@ pub async fn generate_new_build_for_repo(
 			$4,
 			$5,
 			$6,
-			$7,
-			$8
+			$7
 		)
 		RETURNING build_num;
 		"#,
 		repo_id as _,
 		git_ref as _,
 		git_commit as _,
-		status as _,
-		created as _,
+		BuildStatus::WaitingToStart as _,
 		author as _,
 		git_commit_message as _,
 		git_pr_title as _,
@@ -815,11 +722,13 @@ pub async fn get_build_status(
 			git_commit,
 			status as "status: _",
 			created as "created: _",
+			started as "started: _",
 			finished as "finished: _",
 			message,
 			author,
 			git_pr_title,
-			git_commit_message
+			git_commit_message,
+			runner_id as "runner_id: _"
 		FROM
 			ci_builds
 		WHERE
@@ -833,6 +742,32 @@ pub async fn get_build_status(
 	.map(|row| row.status);
 
 	Ok(result)
+}
+
+pub async fn update_build_started_time(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
+	build_num: i64,
+	started: &DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			ci_builds
+		SET
+			started = $3
+		WHERE (
+			repo_id = $1
+			AND build_num = $2
+		);
+		"#,
+		repo_id as _,
+		build_num,
+		started as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 pub async fn update_build_finished_time(
@@ -941,11 +876,13 @@ pub async fn list_build_details_for_repo(
 			git_commit,
 			status as "status: _",
 			created as "created: _",
+			started as "started: _",
 			finished as "finished: _",
 			message,
 			author,
 			git_pr_title,
-			git_commit_message
+			git_commit_message,
+			runner_id as "runner_id: _"
 		FROM
 			ci_builds
 		WHERE
@@ -961,51 +898,16 @@ pub async fn list_build_details_for_repo(
 		git_commit: build.git_commit,
 		status: build.status,
 		created: utils::DateTime(build.created),
+		started: build.started.map(utils::DateTime),
 		finished: build.finished.map(utils::DateTime),
 		message: build.message,
 		author: build.author,
 		git_pr_title: build.git_pr_title,
 		git_commit_message: build.git_commit_message,
+		runner_id: build.runner_id,
 	})
 	.try_collect()
 	.await
-}
-
-	let mut result = vec![];
-	for build in builds {
-		let steps = list_build_steps_for_build(
-			&mut *connection,
-			repo_id,
-			build.build_num,
-		)
-		.await?
-		.into_iter()
-		.map(|step_record| Step {
-			step_id: step_record.step_id as u32,
-			step_name: step_record.step_name,
-			base_image: step_record.base_image,
-			commands: step_record.commands,
-			status: step_record.status,
-			started: step_record.started.map(utils::DateTime),
-			finished: step_record.finished.map(utils::DateTime),
-		})
-		.collect();
-		result.push(BuildDetails {
-			build_num: build.build_num as u64,
-			git_ref: build.git_ref,
-			git_commit: build.git_commit,
-			status: build.status,
-			created: utils::DateTime(build.created),
-			finished: build.finished.map(utils::DateTime),
-			message: build.message,
-			steps,
-			author: build.author,
-			git_pr_title: build.git_pr_title,
-			git_commit_message: build.git_commit_message,
-		})
-	}
-
-	Ok(result)
 }
 
 pub async fn get_build_details_for_build(
@@ -1022,11 +924,13 @@ pub async fn get_build_details_for_build(
 			git_commit,
 			status as "status: _",
 			created as "created: _",
+			started as "started: _",
 			finished as "finished: _",
 			message,
 			author,
 			git_pr_title,
-			git_commit_message
+			git_commit_message,
+			runner_id as "runner_id: _"
 		FROM
 			ci_builds
 		WHERE (
@@ -1047,11 +951,13 @@ pub async fn get_build_details_for_build(
 			git_commit: build.git_commit,
 			status: build.status,
 			created: utils::DateTime(build.created),
+			started: build.started.map(utils::DateTime),
 			finished: build.finished.map(utils::DateTime),
 			message: build.message,
 			author: build.author,
 			git_pr_title: build.git_pr_title,
 			git_commit_message: build.git_commit_message,
+			runner_id: build.runner_id,
 		})
 	})
 }
