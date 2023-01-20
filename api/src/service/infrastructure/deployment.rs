@@ -288,7 +288,7 @@ pub async fn create_deployment_in_workspace(
 			connection,
 			&deployment_id,
 			&volume_id,
-			*size as u64,
+			*size as i32,
 			path.as_str(),
 		)
 		.await?;
@@ -1361,32 +1361,18 @@ pub async fn start_deployment(
 	)
 	.await?;
 
-	if deployment_running_details.volume.is_empty() {
-		service::update_kubernetes_deployment(
-			workspace_id,
-			deployment,
-			&image_name,
-			digest.as_deref(),
-			deployment_running_details,
-			kubeconfig,
-			config,
-			request_id,
-		)
-		.await?
-	} else {
-		service::update_kubernetes_statefulset(
-			workspace_id,
-			deployment,
-			&image_name,
-			digest.as_deref(),
-			deployment_running_details,
-			&volumes,
-			kubeconfig,
-			config,
-			request_id,
-		)
-		.await?
-	}
+	service::update_kubernetes_deployment(
+		workspace_id,
+		deployment,
+		&image_name,
+		digest.as_deref(),
+		deployment_running_details,
+		&volumes,
+		kubeconfig,
+		config,
+		request_id,
+	)
+	.await?;
 
 	Ok(())
 }
@@ -1434,6 +1420,9 @@ pub async fn update_deployment_image(
 		.await?
 		.status(500)?;
 
+	let volumes =
+		db::get_all_deployment_volumes(connection, deployment_id).await?;
+
 	if workspace.is_spam {
 		return Err(Error::empty()
 			.status(401)
@@ -1459,6 +1448,7 @@ pub async fn update_deployment_image(
 		image_name,
 		Some(digest),
 		deployment_running_details,
+		&volumes,
 		kubeconfig,
 		config,
 		request_id,

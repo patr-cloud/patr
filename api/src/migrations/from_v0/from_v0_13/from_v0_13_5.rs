@@ -135,7 +135,7 @@ async fn add_deployment_volume_info(
 			deployment_id UUID NOT NULL
 				CONSTRAINT deployment_volume_fk_deployment_id
 					REFERENCES deployment(id),
-			volume_size BIGINT NOT NULL CONSTRAINT
+			volume_size INT NOT NULL CONSTRAINT
 				deployment_volume_chk_size_unsigned
 					CHECK(volume_size > 0),
 			volume_mount_path TEXT NOT NULL
