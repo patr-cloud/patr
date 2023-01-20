@@ -161,5 +161,14 @@ async fn add_volume_storage_limit_to_workspace(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE workspace
+		ALTER COLUMN volume_storage_limit DROP DEFAULT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
