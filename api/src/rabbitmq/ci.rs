@@ -13,6 +13,7 @@ use api_models::{
 use chrono::Utc;
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
+use sqlx::Acquire;
 use sqlx::types::Json;
 
 use crate::{
@@ -75,6 +76,87 @@ pub async fn process_request(
 	config: &Settings,
 ) -> Result<(), Error> {
 	match request_data {
+		CIData::CheckAndStartBuild {
+			build_id,
+			services,
+			work_steps,
+			event_type,
+			request_id,
+		} => {
+			let mut connection = connection.begin().await?;
+
+			let repo_id = build_id.repo_id.clone();
+			let build_num = build_id.build_num;
+
+			let build = db::get_build_details_for_build(
+				&mut connection,
+				&repo_id,
+				build_num,
+			)
+			.await?
+			.status(500)?;
+
+			if build.status == BuildStatus::Cancelled {
+				// build has been cancelled,
+				// so update the build steps and
+				// then discard this msg
+				log::debug!("request_id: {request_id} - Updating cancelled build steps `{build_id}`");
+				for step_id in 0..=work_steps.len() {
+					db::update_build_step_status(
+						&mut connection,
+						&repo_id,
+						build_num,
+						step_id as i32,
+						BuildStepStatus::Cancelled,
+					)
+					.await?;
+					db::update_build_step_finished_time(
+						&mut connection,
+						&repo_id,
+						build_num,
+						step_id as i32,
+						&Utc::now(),
+					)
+					.await?;
+				}
+			} else {
+				let runner_available = db::is_runner_available_to_start_build(
+					&mut connection,
+					&repo_id,
+					build_num,
+				)
+				.await?;
+
+				if runner_available {
+					// runner is available spawn the build step
+					log::debug!("request_id: {request_id} - Runner is available to start build `{build_id}`");
+					service::add_build_steps_in_k8s(
+						&mut connection,
+						config,
+						&build_id,
+						services,
+						work_steps,
+						event_type,
+						&request_id,
+					)
+					.await?;
+				} else {
+					log::debug!("request_id: {request_id} - Waiting for runner to start build `{build_id}`");
+					tokio::time::sleep(Duration::from_secs(1)).await;
+					service::queue_check_and_start_ci_build(
+						build_id,
+						services,
+						work_steps,
+						event_type,
+						config,
+						&request_id,
+					)
+					.await?;
+				}
+			}
+
+			connection.commit().await?;
+		}
 		CIData::BuildStep {
 			build_step,
 			request_id,
@@ -82,10 +164,17 @@ pub async fn process_request(
 			let build_namespace = build_step.id.build_id.get_build_namespace();
 			let build_step_job_name = build_step.id.get_job_name();
 
+			let kubeconfig = service::get_kubeconfig_for_ci_build(
+				connection,
+				&build_step.id.build_id,
+				config,
+			)
+			.await?;
+
 			let step_status = service::get_ci_job_status_in_kubernetes(
 				&build_namespace,
 				&build_step_job_name,
-				config,
+				kubeconfig.clone(),
 				&request_id,
 			)
 			.await?;
@@ -108,7 +197,7 @@ pub async fn process_request(
 					service::delete_kubernetes_job(
 						&build_namespace,
 						&build_step_job_name,
-						config,
+						kubeconfig.clone(),
 						&request_id,
 					)
 					.await?;
@@ -138,7 +227,7 @@ pub async fn process_request(
 						service::delete_kubernetes_job(
 							&build_namespace,
 							&build_step_job_name,
-							config,
+							kubeconfig,
 							&request_id,
 						)
 						.await?;
@@ -164,7 +253,7 @@ pub async fn process_request(
 						service::delete_kubernetes_job(
 							&build_namespace,
 							&build_step_job_name,
-							config,
+							kubeconfig,
 							&request_id,
 						)
 						.await?;
@@ -216,7 +305,7 @@ pub async fn process_request(
 					service::delete_kubernetes_job(
 						&build_namespace,
 						&build_step_job_name,
-						config,
+						kubeconfig.clone(),
 						&request_id,
 					)
 					.await?;
@@ -310,19 +399,25 @@ pub async fn process_request(
 					}
 					BuildStepStatus::Succeeded => {
 						log::info!("request_id: {request_id} - Starting build step `{build_step_job_name}`");
-						let build_machine_type =
-							db::get_build_machine_type_for_repo(
-								connection,
-								&build_step.id.build_id.repo_id,
-							)
-							.await?
-							.status(500)?;
+						let build = db::get_build_details_for_build(
+							connection,
+							&build_step.id.build_id.repo_id,
+							build_step.id.build_id.build_num,
+						)
+						.await?
+						.status(500)?;
+
+						let runner =
+							db::get_runner_by_id(connection, &build.runner_id)
+								.await?
+								.status(500)?;
 
 						service::create_ci_job_in_kubernetes(
 							&build_namespace,
 							&build_step,
-							build_machine_type.ram as u32,
-							build_machine_type.cpu as u32,
+							runner.ram_in_mb(),
+							runner.cpu_in_milli(),
+							kubeconfig,
 							config,
 							&request_id,
 						)
@@ -403,6 +498,11 @@ pub async fn process_request(
 			.await?;
 			// for now sequential, so checking last status is enough
 			let status = steps.last().map(|step| step.status.clone());
+
+			let kubeconfig = service::get_kubeconfig_for_ci_build(
+				connection, &build_id, config,
+			)
+			.await?;
 
 			match status.unwrap_or(BuildStepStatus::Succeeded) {
 				BuildStepStatus::Errored | BuildStepStatus::SkippedDepError => {

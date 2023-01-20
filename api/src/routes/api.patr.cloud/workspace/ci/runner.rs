@@ -5,6 +5,7 @@ use api_models::{
 		CreateRunnerResponse,
 		DeleteRunnerResponse,
 		GetRunnerInfoResponse,
+		ListCiRunnerBuildHistoryResponse,
 		ListCiRunnerResponse,
 		UpdateRunnerRequest,
 		UpdateRunnerResponse,
@@ -137,6 +138,47 @@ pub fn create_sub_app(
 		],
 	);
 
+	sub_app.get(
+		"/:runner_id/history",
+		[
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: false,
+				permission: permissions::workspace::ci::runner::INFO,
+				resource: closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let runner_id =
+						context.get_param(request_keys::RUNNER_ID).unwrap();
+					let runner_id = Uuid::parse_str(runner_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&runner_id,
+					)
+					.await?
+					.filter(|resource| resource.owner_id == workspace_id);
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			},
+			EveMiddleware::CustomFunction(pin_fn!(
+				list_build_details_for_runner
+			)),
+		],
+	);
+
 	sub_app.patch(
 		"/:runner_id",
 		[
@@ -237,7 +279,10 @@ async fn list_runner(
 		context.get_database_connection(),
 		&workspace_id,
 	)
-	.await?;
+	.await?
+	.into_iter()
+	.map(Into::into)
+	.collect();
 
 	log::trace!(
 		"request_id: {} - Returning list of ci runner for workspace {}",
@@ -319,6 +364,7 @@ async fn get_runner_info(
 	let runner =
 		db::get_runner_by_id(context.get_database_connection(), &runner_id)
 			.await?
+			.map(Into::into)
 			.status(404)
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
@@ -329,6 +375,40 @@ async fn get_runner_info(
 	);
 
 	context.success(GetRunnerInfoResponse(runner));
+	Ok(context)
+}
+
+async fn list_build_details_for_runner(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+	let runner_id =
+		Uuid::parse_str(context.get_param(request_keys::RUNNER_ID).unwrap())
+			.unwrap();
+
+	log::trace!(
+		"request_id: {} - Getting history of ci runner for workspace {}",
+		request_id,
+		workspace_id
+	);
+
+	let builds = db::list_build_details_for_runner(
+		context.get_database_connection(),
+		&runner_id,
+	)
+	.await?;
+
+	log::trace!(
+		"request_id: {} - Returning history of ci runner for workspace {}",
+		request_id,
+		workspace_id
+	);
+
+	context.success(ListCiRunnerBuildHistoryResponse { builds });
 	Ok(context)
 }
 
