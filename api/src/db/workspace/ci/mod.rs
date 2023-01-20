@@ -744,6 +744,43 @@ pub async fn get_build_status(
 	Ok(result)
 }
 
+pub async fn get_build_status_for_update(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
+	build_num: i64,
+) -> Result<Option<BuildStatus>, sqlx::Error> {
+	let result = query_as!(
+		BuildRecord,
+		r#"
+		SELECT
+			build_num,
+			git_ref,
+			git_commit,
+			status as "status: _",
+			created as "created: _",
+			started as "started: _",
+			finished as "finished: _",
+			message,
+			author,
+			git_pr_title,
+			git_commit_message,
+			runner_id as "runner_id: _"
+		FROM
+			ci_builds
+		WHERE
+			(repo_id = $1 AND build_num = $2)
+		FOR UPDATE;
+		"#,
+		repo_id as _,
+		build_num,
+	)
+	.fetch_optional(connection)
+	.await?
+	.map(|row| row.status);
+
+	Ok(result)
+}
+
 pub async fn update_build_started_time(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,

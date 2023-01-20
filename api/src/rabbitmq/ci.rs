@@ -88,7 +88,7 @@ pub async fn process_request(
 			let repo_id = build_id.repo_id.clone();
 			let build_num = build_id.build_num;
 
-			let build = db::get_build_details_for_build(
+			let build_status = db::get_build_status_for_update(
 				&mut connection,
 				&repo_id,
 				build_num,
@@ -96,7 +96,7 @@ pub async fn process_request(
 			.await?
 			.status(500)?;
 
-			if build.status == BuildStatus::Cancelled {
+			if build_status == BuildStatus::Cancelled {
 				// build has been cancelled,
 				// so update the build steps and
 				// then discard this msg
