@@ -307,9 +307,7 @@ async fn create_runner(
 		workspace_id: _,
 		name,
 		region_id,
-		cpu,
-		ram,
-		volume,
+		build_machine_type_id,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -326,9 +324,7 @@ async fn create_runner(
 		&workspace_id,
 		&name,
 		&region_id,
-		cpu,
-		ram,
-		volume,
+		&build_machine_type_id,
 		&request_id,
 	)
 	.await?;

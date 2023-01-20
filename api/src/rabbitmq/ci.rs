@@ -399,24 +399,20 @@ pub async fn process_request(
 					}
 					BuildStepStatus::Succeeded => {
 						log::info!("request_id: {request_id} - Starting build step `{build_step_job_name}`");
-						let build = db::get_build_details_for_build(
-							connection,
-							&build_step.id.build_id.repo_id,
-							build_step.id.build_id.build_num,
-						)
-						.await?
-						.status(500)?;
-
-						let runner =
-							db::get_runner_by_id(connection, &build.runner_id)
-								.await?
-								.status(500)?;
+						let runner_resource =
+							db::get_runner_resource_for_build(
+								connection,
+								&build_step.id.build_id.repo_id,
+								build_step.id.build_id.build_num,
+							)
+							.await?
+							.status(500)?;
 
 						service::create_ci_job_in_kubernetes(
 							&build_namespace,
 							&build_step,
-							runner.ram_in_mb(),
-							runner.cpu_in_milli(),
+							runner_resource.ram_in_mb(),
+							runner_resource.cpu_in_milli(),
 							kubeconfig,
 							config,
 							&request_id,
