@@ -3,27 +3,22 @@ use api_models::{
 	models::workspace::ci::{
 		git_provider::BuildStatus,
 		runner::{Runner, RunnerBuildDetails},
+		BuildMachineType,
 	},
 	utils::{self, Uuid},
 };
 use futures::TryStreamExt;
-use serde::{Deserialize, Serialize};
 
-use crate::Database;
+use crate::{db, Database};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct RunnerRecord {
-	pub id: Uuid,
-	pub name: String,
-	pub workspace_id: Uuid,
-	pub region_id: Uuid,
-	cpu: i32,
-	ram: i32,
-	volume: i32,
+pub struct RunnerResource {
+	cpu: u32,
+	ram: u32,
+	volume: u32,
 }
 
 // todo: validate conversion
-impl RunnerRecord {
+impl RunnerResource {
 	pub fn cpu_in_milli(&self) -> u32 {
 		self.cpu as u32 * 250
 	}
@@ -37,20 +32,6 @@ impl RunnerRecord {
 	}
 }
 
-impl From<RunnerRecord> for Runner {
-	fn from(runner_record: RunnerRecord) -> Self {
-		Runner {
-			id: runner_record.id,
-			name: runner_record.name,
-			workspace_id: runner_record.workspace_id,
-			region_id: runner_record.region_id,
-			cpu: runner_record.cpu,
-			ram: runner_record.ram,
-			volume: runner_record.volume,
-		}
-	}
-}
-
 pub async fn initialize_ci_runner_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
@@ -58,27 +39,44 @@ pub async fn initialize_ci_runner_pre(
 
 	query!(
 		r#"
+		CREATE TABLE ci_build_machine_type (
+			id 		UUID 		NOT NULL,
+			cpu 	INTEGER 	NOT NULL, /* Multiples of ¼th vCPU */
+			ram 	INTEGER 	NOT NULL, /* Multiples of ¼th GB RAM */
+			volume 	INTEGER 	NOT NULL, /* Multiples of ¼th GB storage */
+
+			CONSTRAINT ci_machint_type_pk PRIMARY KEY (id),
+
+			CONSTRAINT ci_build_machine_type_chk_cpu_positive
+				CHECK (cpu > 0),
+			CONSTRAINT ci_build_machine_type_chk_ram_positive
+				CHECK (ram > 0),
+			CONSTRAINT ci_build_machine_type_chk_volume_positive
+				CHECK (volume > 0)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE ci_runner (
-			id              UUID        	NOT NULL,
-            name            CITEXT      	NOT NULL,
-            workspace_id    UUID        	NOT NULL,
-            region_id       UUID        	NOT NULL,
-            cpu             INTEGER     	NOT NULL, /* Multiples of ¼th vCPU */
-            ram             INTEGER     	NOT NULL, /* Multiples of ¼th GB RAM */
-            volume          INTEGER     	NOT NULL, /* Multiples of ¼th GB storage */
-			deleted			TIMESTAMPTZ,
+			id              		UUID			NOT NULL,
+			name            		CITEXT			NOT NULL,
+			workspace_id    		UUID    		NOT NULL,
+			region_id       		UUID    		NOT NULL,
+			build_machine_type_id	UUID			NOT NULL,
+			deleted					TIMESTAMPTZ,
 
-            CONSTRAINT ci_runner_pk PRIMARY KEY (id),
+			CONSTRAINT ci_runner_pk PRIMARY KEY (id),
 
-            CONSTRAINT ci_runner_fk_workspace_id
-                FOREIGN KEY (workspace_id) REFERENCES workspace(id),
-            CONSTRAINT ci_runner_fk_region_id
-                FOREIGN KEY (region_id) REFERENCES deployment_region(id),
-
-            CONSTRAINT ci_runner_chk_name CHECK(name = TRIM(name)),
-            CONSTRAINT ci_runner_chk_cpu CHECK (cpu > 0),
-            CONSTRAINT ci_runner_chk_ram CHECK (ram > 0),
-            CONSTRAINT ci_runner_chk_volume CHECK (volume > 0)
+			CONSTRAINT ci_runner_fk_workspace_id
+				FOREIGN KEY (workspace_id) REFERENCES workspace(id),
+			CONSTRAINT ci_runner_fk_region_id
+				FOREIGN KEY (region_id) REFERENCES deployment_region(id),
+			CONSTRAINT ci_runner_fk_build_machine_type_id
+				FOREIGN KEY (build_machine_type_id) REFERENCES ci_build_machine_type(id)
 		);
 		"#
 	)
@@ -88,47 +86,8 @@ pub async fn initialize_ci_runner_pre(
 	query!(
 		r#"
 		CREATE UNIQUE INDEX ci_runner_uq_workspace_id_name
-            ON ci_runner (workspace_id, name)
-                WHERE deleted IS NULL;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE OR REPLACE FUNCTION ci_runner_chk_region_id_workspace_id ()
-		RETURNS TRIGGER LANGUAGE PLPGSQL STABLE
-		AS $$
-		DECLARE
-			is_valid BOOLEAN := FALSE;
-		BEGIN
-			SELECT TRUE INTO is_valid
-			FROM deployment_region
-			WHERE
-				deployment_region.id = NEW.region_id
-				AND (
-					deployment_region.workspace_id IS NULL
-					OR deployment_region.workspace_id = NEW.workspace_id
-				);
-		
-			IF is_valid THEN
-				RETURN NEW;
-			ELSE
-				RAISE EXCEPTION 'workspace does not have given region';
-			END IF;
-		END
-		$$;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TRIGGER ci_runner_trg_chk_region_id_workspace_id
-			BEFORE INSERT OR UPDATE ON ci_runner
-			FOR EACH ROW EXECUTE FUNCTION ci_runner_chk_region_id_workspace_id();
+			ON ci_runner (workspace_id, name)
+				WHERE deleted IS NULL;
 		"#
 	)
 	.execute(&mut *connection)
@@ -145,31 +104,82 @@ pub async fn initialize_ci_runner_post(
 	query!(
 		r#"
 		ALTER TABLE ci_runner
-        ADD CONSTRAINT ci_runner_fk_id_workspace_id
-        FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
+		ADD CONSTRAINT ci_runner_fk_id_workspace_id
+		FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
 		"#
 	)
 	.execute(&mut *connection)
 	.await?;
 
+	// machine types for ci builds
+	const CI_BUILD_MACHINE_TYPES: [(i32, i32, i32); 5] = [
+		(4, 2, 4),    // 1 vCPU, 0.5 GB RAM, 1GB storage
+		(4, 4, 4),    // 1 vCPU,   1 GB RAM, 1GB storage
+		(4, 8, 8),    // 1 vCPU,   2 GB RAM, 2GB storage
+		(8, 16, 16),  // 2 vCPU,   4 GB RAM, 4GB storage
+		(16, 32, 32), // 4 vCPU,   8 GB RAM, 8GB storage
+	];
+
+	for (cpu, ram, volume) in CI_BUILD_MACHINE_TYPES {
+		let machine_type_id =
+			db::generate_new_resource_id(&mut *connection).await?;
+
+		query!(
+			r#"
+			INSERT INTO
+				ci_build_machine_type(
+					id,
+					cpu,
+					ram,
+					volume
+				)
+			VALUES
+				($1, $2, $3, $4);
+			"#,
+			machine_type_id as _,
+			cpu,
+			ram,
+			volume
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
 	Ok(())
+}
+
+pub async fn get_all_build_machine_types(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<BuildMachineType>, sqlx::Error> {
+	query_as!(
+		BuildMachineType,
+		r#"
+		SELECT
+			id as "id: _",
+			cpu,
+			ram,
+			volume
+		FROM
+			ci_build_machine_type
+		"#,
+	)
+	.fetch_all(connection)
+	.await
 }
 
 pub async fn get_runners_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<Vec<RunnerRecord>, sqlx::Error> {
+) -> Result<Vec<Runner>, sqlx::Error> {
 	query_as!(
-		RunnerRecord,
+		Runner,
 		r#"
 		SELECT
 			id as "id: _",
 			name as "name: _",
 			workspace_id as "workspace_id: _",
 			region_id as "region_id: _",
-			cpu,
-			ram,
-			volume
+			build_machine_type_id as "build_machine_type_id: _"
 		FROM ci_runner
 		WHERE
 			workspace_id = $1 AND
@@ -187,9 +197,7 @@ pub async fn create_runner_for_workspace(
 	name: &str,
 	workspace_id: &Uuid,
 	region_id: &Uuid,
-	cpu: i32,
-	ram: i32,
-	volume: i32,
+	build_machine_type_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -198,19 +206,15 @@ pub async fn create_runner_for_workspace(
 			name,
 			workspace_id,
 			region_id,
-			cpu,
-			ram,
-			volume
+			build_machine_type_id
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7);
+		VALUES ($1, $2, $3, $4, $5);
 		"#,
 		runner_id as _,
 		name as _,
 		workspace_id as _,
 		region_id as _,
-		cpu,
-		ram,
-		volume,
+		build_machine_type_id as _,
 	)
 	.execute(connection)
 	.await
@@ -220,18 +224,16 @@ pub async fn create_runner_for_workspace(
 pub async fn get_runner_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	runner_id: &Uuid,
-) -> Result<Option<RunnerRecord>, sqlx::Error> {
+) -> Result<Option<Runner>, sqlx::Error> {
 	query_as!(
-		RunnerRecord,
+		Runner,
 		r#"
 		SELECT
 			id as "id: _",
 			name as "name: _",
 			workspace_id as "workspace_id: _",
 			region_id as "region_id: _",
-			cpu,
-			ram,
-			volume
+			build_machine_type_id as "build_machine_type_id: _"
 		FROM ci_runner
 		WHERE
 			id = $1 AND
@@ -331,6 +333,42 @@ pub async fn list_build_details_for_runner(
 	})
 	.try_collect()
 	.await
+}
+
+pub async fn get_runner_resource_for_build(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
+	build_num: i64,
+) -> Result<Option<RunnerResource>, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			cpu,
+			ram,
+			volume
+		FROM
+			ci_build_machine_type
+		JOIN ci_runner
+			ON ci_runner.build_machine_type_id = ci_build_machine_type.id
+		JOIN ci_builds
+			ON ci_builds.runner_id = ci_runner.id
+		WHERE (
+			ci_builds.repo_id = $1 AND
+			ci_builds.build_num = $2
+		);
+		"#,
+		repo_id as _,
+		build_num,
+	)
+	.fetch_optional(connection)
+	.await
+	.map(|op| {
+		op.map(|record| RunnerResource {
+			cpu: record.cpu as u32,
+			ram: record.ram as u32,
+			volume: record.volume as u32,
+		})
+	})
 }
 
 pub async fn is_runner_available_to_start_build(

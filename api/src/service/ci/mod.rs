@@ -400,18 +400,6 @@ pub async fn add_build_steps_in_k8s(
 		.await?
 		.status(500)?;
 
-	let build = db::get_build_details_for_build(
-		connection,
-		&build_id.repo_id,
-		build_id.build_num,
-	)
-	.await?
-	.status(500)?;
-
-	let runner = db::get_runner_by_id(connection, &build.runner_id)
-		.await?
-		.status(500)?;
-
 	let kubeconfig =
 		service::get_kubeconfig_for_ci_build(connection, build_id, config)
 			.await?;
@@ -423,10 +411,18 @@ pub async fn add_build_steps_in_k8s(
 	)
 	.await?;
 
+	let runner_resource = db::get_runner_resource_for_build(
+		connection,
+		&build_id.repo_id,
+		build_id.build_num,
+	)
+	.await?
+	.status(500)?;
+
 	service::infrastructure::create_pvc_for_workspace(
 		&build_id.get_build_namespace(),
 		&build_id.get_pvc_name(),
-		runner.volume_in_mb(),
+		runner_resource.volume_in_mb(),
 		kubeconfig.clone(),
 		request_id,
 	)
