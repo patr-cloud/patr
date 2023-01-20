@@ -138,8 +138,7 @@ async fn add_deployment_volume_info(
 			volume_size BIGINT NOT NULL CONSTRAINT
 				deployment_volume_chk_size_unsigned
 					CHECK(volume_size > 0),
-			volume_mount_path TEXT NOT NULL,
-			deleted TIMESTAMPTZ
+			volume_mount_path TEXT NOT NULL
 		);
 		"#
 	)
