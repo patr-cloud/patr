@@ -1,10 +1,6 @@
 use std::collections::HashMap;
 
-use api_models::{
-	models::workspace::ci::git_provider::BuildStatus,
-	utils::Uuid,
-};
-use chrono::Utc;
+use api_models::utils::Uuid;
 use eve_rs::AsError;
 use hmac::{Hmac, Mac};
 use octorust::{
@@ -54,8 +50,6 @@ pub async fn create_build_for_repo(
 				repo_id,
 				&format!("refs/heads/{}", commit.committed_branch_name),
 				&commit.commit_sha,
-				BuildStatus::Running,
-				&Utc::now(),
 				&commit.author,
 				commit.commit_message.as_deref(),
 				None,
@@ -68,8 +62,6 @@ pub async fn create_build_for_repo(
 				repo_id,
 				&format!("refs/tags/{}", tag.tag_name),
 				&tag.commit_sha,
-				BuildStatus::Running,
-				&Utc::now(),
 				&tag.author,
 				tag.commit_message.as_deref(),
 				None,
@@ -82,8 +74,6 @@ pub async fn create_build_for_repo(
 				repo_id,
 				&format!("refs/pull/{}", pull_request.pr_number),
 				&pull_request.commit_sha,
-				BuildStatus::Running,
-				&Utc::now(),
 				&pull_request.author,
 				None,
 				Some(&pull_request.pr_title),

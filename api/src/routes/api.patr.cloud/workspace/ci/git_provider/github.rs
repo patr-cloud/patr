@@ -49,7 +49,7 @@ use crate::{
 	},
 	pin_fn,
 	rabbitmq::{BuildId, BuildStepId},
-	service::{self, Netrc, ParseStatus},
+	service::{self, ParseStatus},
 	utils::{
 		constants::request_keys,
 		Error,
@@ -849,7 +849,7 @@ async fn list_repositories(
 		repo_owner: repo.repo_owner,
 		clone_url: repo.clone_url,
 		status: repo.status,
-		build_machine_type_id: repo.build_machine_type_id,
+		runner_id: repo.runner_id,
 	})
 	.collect();
 
@@ -891,11 +891,13 @@ async fn activate_repo(
 	let ActivateRepoRequest {
 		workspace_id: _,
 		repo_id: _,
-		build_machine_type_id,
+		runner_id,
 	} = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	// todo: check runner is valid and belongs to this workspace
 
 	let github_client =
 		octorust::Client::new("patr", Credentials::Token(access_token))
@@ -909,7 +911,7 @@ async fn activate_repo(
 	let webhook_secret = db::activate_ci_for_repo(
 		context.get_database_connection(),
 		&repo.id,
-		&build_machine_type_id,
+		&runner_id,
 	)
 	.await?;
 
@@ -1228,14 +1230,18 @@ async fn cancel_build(
 	.body("Build does not exists")?;
 
 	if build.status == BuildStatus::Running {
-		service::queue_cancel_ci_build_pipeline(
-			BuildId {
-				repo_workspace_id: workspace_id,
-				repo_id: repo.id,
-				build_num,
-			},
-			&context.get_state().config,
-			&request_id,
+		db::update_build_status(
+			context.get_database_connection(),
+			&repo.id,
+			build_num,
+			BuildStatus::Cancelled,
+		)
+		.await?;
+		db::update_build_finished_time(
+			context.get_database_connection(),
+			&repo.id,
+			build_num,
+			&Utc::now(),
 		)
 		.await?;
 	}
@@ -1274,10 +1280,7 @@ async fn restart_build(
 	)
 	.await?
 	.status(500)?;
-	let (login_name, access_token) = git_provider
-		.login_name
-		.zip(git_provider.password)
-		.status(500)?;
+	let access_token = git_provider.password.status(500)?;
 
 	let previous_build = db::get_build_details_for_build(
 		context.get_database_connection(),
@@ -1470,26 +1473,16 @@ async fn restart_build(
 
 	context.commit_database_transaction().await?;
 
-	let config = context.get_state().config.clone();
-	service::add_build_steps_in_k8s(
-		context.get_database_connection(),
-		&config,
-		&repo.id,
-		&repo.repo_name,
-		&BuildId {
+	service::queue_check_and_start_ci_build(
+		BuildId {
 			repo_workspace_id: git_provider.workspace_id,
 			repo_id: repo.id.clone(),
 			build_num,
 		},
 		pipeline.services,
 		works,
-		Some(Netrc {
-			machine: "github.com".to_owned(),
-			login: login_name,
-			password: access_token,
-		}),
 		event_type,
-		&repo.clone_url,
+		&context.get_state().config,
 		&request_id,
 	)
 	.await?;
@@ -1530,10 +1523,8 @@ async fn start_build_for_branch(
 	)
 	.await?
 	.status(500)?;
-	let (login_name, access_token) = git_provider
-		.login_name
-		.zip(git_provider.password)
-		.status(500)?;
+
+	let access_token = git_provider.password.status(500)?;
 
 	let github_client =
 		octorust::Client::new("patr", Credentials::Token(access_token.clone()))
@@ -1555,7 +1546,6 @@ async fn start_build_for_branch(
 		.ok()
 		.status(500)?;
 
-	let config = context.get_state().config.clone();
 	let event_type = EventType::Commit(Commit {
 		repo_owner: repo.repo_owner,
 		repo_name: repo.repo_name.clone(),
@@ -1681,25 +1671,16 @@ async fn start_build_for_branch(
 
 	context.commit_database_transaction().await?;
 
-	service::add_build_steps_in_k8s(
-		context.get_database_connection(),
-		&config,
-		&repo.id,
-		&repo.repo_name,
-		&BuildId {
+	service::queue_check_and_start_ci_build(
+		BuildId {
 			repo_workspace_id: git_provider.workspace_id,
 			repo_id: repo.id.clone(),
 			build_num,
 		},
 		pipeline.services,
 		works,
-		Some(Netrc {
-			machine: "github.com".to_owned(),
-			login: login_name,
-			password: access_token,
-		}),
 		event_type,
-		&repo.clone_url,
+		&context.get_state().config,
 		&request_id,
 	)
 	.await?;

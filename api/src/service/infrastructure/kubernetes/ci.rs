@@ -35,19 +35,20 @@ use kube::{
 
 use crate::{
 	rabbitmq::BuildStep,
-	service::ext_traits::DeleteOpt,
+	service::{ext_traits::DeleteOpt, KubernetesConfigDetails},
 	utils::{settings::Settings, Error},
 };
 
 pub async fn create_ci_job_in_kubernetes(
 	namespace_name: &str,
 	build_step: &BuildStep,
-	ram: u32,
-	cpu: u32,
+	ram_in_mb: u32,
+	cpu_in_milli: u32,
+	kubeconfig: KubernetesConfigDetails,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_config(config).await?;
+	let client = super::get_kubernetes_client(kubeconfig.auth_details).await?;
 	log::trace!(
 		"request_id: {} - creating ci job {} in namespace {}",
 		request_id,
@@ -99,11 +100,8 @@ pub async fn create_ci_job_in_kubernetes(
 	.collect();
 
 	let build_machine_type = [
-		(
-			"memory".to_string(),
-			Quantity(format!("{:.1}G", (ram as f64) / 4f64)),
-		),
-		("cpu".to_string(), Quantity(format!("{:.1}", cpu as f64))),
+		("memory".to_string(), Quantity(format!("{}M", ram_in_mb))),
+		("cpu".to_string(), Quantity(format!("{}m", cpu_in_milli))),
 	]
 	.into_iter()
 	.collect::<BTreeMap<_, _>>();
@@ -181,10 +179,10 @@ pub enum JobStatus {
 pub async fn get_ci_job_status_in_kubernetes(
 	namespace_name: &str,
 	job_name: &str,
-	config: &Settings,
+	kubeconfig: KubernetesConfigDetails,
 	request_id: &Uuid,
 ) -> Result<Option<JobStatus>, Error> {
-	let client = super::get_kubernetes_config(config).await?;
+	let client = super::get_kubernetes_client(kubeconfig.auth_details).await?;
 
 	let status = Api::<Job>::namespaced(client, namespace_name)
 		.get_opt(job_name)
@@ -219,16 +217,16 @@ pub async fn get_ci_job_status_in_kubernetes(
 pub async fn create_pvc_for_workspace(
 	namespace_name: &str,
 	pvc_name: &str,
-	volume_size: u32,
-	config: &Settings,
+	volume_in_mb: u32,
+	kubeconfig: KubernetesConfigDetails,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_config(config).await?;
+	let client = super::get_kubernetes_client(kubeconfig.auth_details).await?;
 
 	log::trace!(
 		"request_id: {} - creating pvc {} of size {} in namespace {}",
 		request_id,
-		volume_size,
+		volume_in_mb,
 		pvc_name,
 		namespace_name,
 	);
@@ -240,7 +238,7 @@ pub async fn create_pvc_for_workspace(
 			requests: Some(
 				[(
 					"storage".to_string(),
-					Quantity(format!("{}Gi", volume_size)),
+					Quantity(format!("{}M", volume_in_mb)),
 				)]
 				.into(),
 			),
@@ -272,10 +270,10 @@ pub async fn create_pvc_for_workspace(
 pub async fn delete_kubernetes_job(
 	namespace_name: &str,
 	job_name: &str,
-	config: &Settings,
+	kubeconfig: KubernetesConfigDetails,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_config(config).await?;
+	let client = super::get_kubernetes_client(kubeconfig.auth_details).await?;
 	log::trace!(
 		"request_id: {} - deleting job {} in namespace {}",
 		request_id,
@@ -302,10 +300,11 @@ pub async fn create_background_service_for_ci_in_kubernetes(
 	namespace_name: &str,
 	repo_workspace_name: &str,
 	service: api_models::models::ci::file_format::Service,
+	kubeconfig: KubernetesConfigDetails,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_config(config).await?;
+	let client = super::get_kubernetes_client(kubeconfig.auth_details).await?;
 	log::trace!(
 		"request_id: {} - creating background ci service {} in namespace {}",
 		request_id,

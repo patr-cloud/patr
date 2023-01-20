@@ -1,11 +1,15 @@
+use serde::{Deserialize, Serialize};
+
 pub mod webhook_payload;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EventType {
 	Commit(Commit),
 	Tag(Tag),
 	PullRequest(PullRequest),
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PullRequest {
 	pub head_repo_owner: String,
 	pub head_repo_name: String,
@@ -16,6 +20,7 @@ pub struct PullRequest {
 	pub to_be_committed_branch_name: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Tag {
 	pub repo_owner: String,
 	pub repo_name: String,
@@ -25,6 +30,7 @@ pub struct Tag {
 	pub commit_message: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Commit {
 	pub repo_owner: String,
 	pub repo_name: String,

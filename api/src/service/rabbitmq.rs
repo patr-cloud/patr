@@ -1,9 +1,12 @@
 use api_models::{
-	models::workspace::infrastructure::deployment::{
-		Deployment,
-		DeploymentRegistry,
-		DeploymentRunningDetails,
-		DeploymentStatus,
+	models::{
+		ci::file_format::{Service, Work},
+		workspace::infrastructure::deployment::{
+			Deployment,
+			DeploymentRegistry,
+			DeploymentRunningDetails,
+			DeploymentStatus,
+		},
 	},
 	utils::Uuid,
 };
@@ -12,14 +15,17 @@ use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
 	db::Workspace,
-	models::rabbitmq::{
-		BYOCData,
-		BillingData,
-		CIData,
-		DeploymentRequestData,
-		DockerRegistryData,
-		InfraRequestData,
-		Queue,
+	models::{
+		ci::EventType,
+		rabbitmq::{
+			BYOCData,
+			BillingData,
+			CIData,
+			DeploymentRequestData,
+			DockerRegistryData,
+			InfraRequestData,
+			Queue,
+		},
 	},
 	rabbitmq::{self, BuildId, BuildStep},
 	service,
@@ -310,14 +316,20 @@ pub async fn send_message_to_billing_queue(
 	Ok(())
 }
 
-pub async fn queue_create_ci_build_step(
-	build_step: BuildStep,
+pub async fn queue_check_and_start_ci_build(
+	build_id: BuildId,
+	services: Vec<Service>,
+	work_steps: Vec<Work>,
+	event_type: EventType,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	send_message_to_ci_queue(
-		&CIData::BuildStep {
-			build_step,
+		&CIData::CheckAndStartBuild {
+			build_id,
+			services,
+			work_steps,
+			event_type,
 			request_id: request_id.clone(),
 		},
 		config,
@@ -326,14 +338,14 @@ pub async fn queue_create_ci_build_step(
 	.await
 }
 
-pub async fn queue_cancel_ci_build_pipeline(
-	build_id: BuildId,
+pub async fn queue_create_ci_build_step(
+	build_step: BuildStep,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	send_message_to_ci_queue(
-		&CIData::CancelBuild {
-			build_id,
+		&CIData::BuildStep {
+			build_step,
 			request_id: request_id.clone(),
 		},
 		config,
