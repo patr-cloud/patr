@@ -897,7 +897,19 @@ async fn activate_repo(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	// todo: check runner is valid and belongs to this workspace
+	let is_valid_runner = db::get_runners_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.into_iter()
+	.any(|runner| runner.id == runner_id);
+
+	if !is_valid_runner {
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string()));
+	}
 
 	let github_client =
 		octorust::Client::new("patr", Credentials::Token(access_token))

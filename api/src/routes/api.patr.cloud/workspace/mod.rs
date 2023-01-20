@@ -614,7 +614,11 @@ async fn delete_workspace(
 		)
 		.await?;
 
-	// todo: add ci_runner
+	let ci_runners = db::get_runners_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?;
 
 	if !domains.is_empty() ||
 		!docker_repositories.is_empty() ||
@@ -622,7 +626,8 @@ async fn delete_workspace(
 		!deployments.is_empty() ||
 		!static_site.is_empty() ||
 		!managed_url.is_empty() ||
-		!connected_git_providers.is_empty()
+		!connected_git_providers.is_empty() ||
+		!ci_runners.is_empty()
 	{
 		return Err(Error::empty()
 			.status(424)

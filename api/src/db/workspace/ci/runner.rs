@@ -9,6 +9,7 @@ use api_models::{
 };
 use futures::TryStreamExt;
 
+use super::Repository;
 use crate::{db, Database};
 
 pub struct RunnerResource {
@@ -17,7 +18,6 @@ pub struct RunnerResource {
 	volume: u32,
 }
 
-// todo: validate conversion
 impl RunnerResource {
 	pub fn cpu_in_milli(&self) -> u32 {
 		self.cpu as u32 * 250
@@ -267,6 +267,35 @@ pub async fn update_runner(
 	.map(|_| ())
 }
 
+pub async fn list_active_repos_for_runner(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	runner_id: &Uuid,
+) -> Result<Vec<Repository>, sqlx::Error> {
+	query_as!(
+		Repository,
+		r#"
+		SELECT
+			id as "id: _",
+			repo_owner,
+			repo_name,
+			clone_url,
+			webhook_secret,
+			status as "status: _",
+			git_provider_id as "git_provider_id: _",
+			git_provider_repo_uid,
+			runner_id as "runner_id: _"
+		FROM
+			ci_repos
+		WHERE
+			runner_id = $1 AND
+			status = 'active';
+		"#,
+		runner_id as _,
+	)
+	.fetch_all(connection)
+	.await
+}
+
 pub async fn mark_runner_as_deleted(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	runner_id: &Uuid,
@@ -335,6 +364,58 @@ pub async fn list_build_details_for_runner(
 	.await
 }
 
+pub async fn list_queued_builds_for_runner(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	runner_id: &Uuid,
+) -> Result<Vec<RunnerBuildDetails>, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			ci_repos.git_provider_repo_uid as "github_repo_id",
+			ci_builds.build_num,
+			ci_builds.git_ref,
+			ci_builds.git_commit,
+			ci_builds.status as "status: BuildStatus",
+			ci_builds.created,
+			ci_builds.started,
+			ci_builds.finished,
+			ci_builds.message,
+			ci_builds.author,
+			ci_builds.git_pr_title,
+			ci_builds.git_commit_message
+		FROM
+			ci_builds
+		JOIN ci_repos
+			ON ci_repos.id = ci_builds.repo_id
+		WHERE
+			ci_builds.runner_id = $1 AND
+			(
+				ci_builds.status = 'waiting_to_start' OR
+				ci_builds.status = 'running'
+			)
+		ORDER BY ci_builds.created ASC;
+		"#,
+		runner_id as _,
+	)
+	.fetch(&mut *connection)
+	.map_ok(|build| RunnerBuildDetails {
+		github_repo_id: build.github_repo_id,
+		build_num: build.build_num as u64,
+		git_ref: build.git_ref,
+		git_commit: build.git_commit,
+		status: build.status,
+		created: utils::DateTime(build.created),
+		started: build.started.map(utils::DateTime),
+		finished: build.finished.map(utils::DateTime),
+		message: build.message,
+		author: build.author,
+		git_pr_title: build.git_pr_title,
+		git_commit_message: build.git_commit_message,
+	})
+	.try_collect()
+	.await
+}
+
 pub async fn get_runner_resource_for_build(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
@@ -376,7 +457,6 @@ pub async fn is_runner_available_to_start_build(
 	repo_id: &Uuid,
 	build_num: i64,
 ) -> Result<bool, sqlx::Error> {
-	// todo: verify query
 	query!(
 		r#"
 		SELECT
