@@ -11,6 +11,7 @@ pub mod id {
 	pub const INVALID_PHONE_NUMBER: &str = "invalidPhoneNumber";
 	pub const INVALID_COUNTRY_CODE: &str = "invalidCountryCode";
 	pub const INVALID_WORKSPACE_NAME: &str = "invalidWorkspaceName";
+	pub const INVALID_BIRTHDAY: &str = "invalidBirthday";
 	pub const WORKSPACE_EXISTS: &str = "workspaceExists";
 	pub const PASSWORD_TOO_WEAK: &str = "passwordTooWeak";
 	pub const PASSWORD_UNCHANGED: &str = "passwordUnchanged";
@@ -111,6 +112,7 @@ pub mod message {
 	pub const INVALID_COUNTRY_CODE: &str =
 		"Your country code seems to be incorrect";
 	pub const INVALID_WORKSPACE_NAME: &str = "That workspace name is not valid";
+	pub const INVALID_BIRTHDAY: &str = "The entered date is invalid";
 	pub const WORKSPACE_EXISTS: &str = "That workspace name is already taken";
 	pub const PASSWORD_TOO_WEAK: &str =
 		"Your password is too weak. Please choose a stronger password";
