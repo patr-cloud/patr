@@ -1302,14 +1302,24 @@ pub async fn start_deployment(
 				request_id
 			);
 
-			db::start_volume_usage_history(
+			// TODO - Figure out a better solution to this. If possible try
+			// doing it on db layer
+			if db::get_volume_payment_history_by_volume_id(
 				connection,
-				workspace_id,
 				&volume.volume_id,
-				volume.size as u64 * 1000u64 * 1000u64 * 1000u64,
-				&Utc::now(),
 			)
-			.await?;
+			.await?
+			.is_none()
+			{
+				db::start_volume_usage_history(
+					connection,
+					workspace_id,
+					&volume.volume_id,
+					volume.size as u64 * 1000u64 * 1000u64 * 1000u64,
+					&Utc::now(),
+				)
+				.await?;
+			}
 		}
 		db::start_deployment_usage_history(
 			connection,

@@ -60,6 +60,7 @@ pub struct DeploymentConfigMount {
 	pub file: Vec<u8>,
 	pub deployment_id: Uuid,
 }
+
 pub struct DeploymentVolume {
 	pub volume_id: Uuid,
 	pub deployment_id: Uuid,
@@ -1191,17 +1192,17 @@ pub async fn add_volume_for_deployment(
 		INSERT INTO 
 			deployment_volume(
 				id,
+				deployment_id,
 				volume_size,
-				volume_mount_path,
-				deployment_id
+				volume_mount_path
 			)
 		VALUES
 			($1, $2, $3, $4);
 		"#,
 		volume_id as _,
+		deployment_id as _,
 		size as _,
 		path,
-		deployment_id as _,
 	)
 	.execute(&mut *connection)
 	.await

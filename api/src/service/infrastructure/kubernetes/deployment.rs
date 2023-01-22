@@ -38,6 +38,7 @@ use k8s_openapi::{
 			LocalObjectReference,
 			PersistentVolumeClaim,
 			PersistentVolumeClaimSpec,
+			PersistentVolumeClaimVolumeSource,
 			Pod,
 			PodSpec,
 			PodTemplateSpec,
@@ -238,7 +239,6 @@ pub async fn update_kubernetes_deployment(
 
 	let mut volume_mounts = Vec::new();
 	let mut volumes = Vec::new();
-	let mut pvc = Vec::new();
 
 	if !&running_details.config_mounts.is_empty() {
 		volume_mounts.push(VolumeMount {
@@ -269,7 +269,7 @@ pub async fn update_kubernetes_deployment(
 
 	for volume in deployment_volumes {
 		volume_mounts.push(VolumeMount {
-			name: format!("pv-{}", volume.volume_id,),
+			name: format!("pvc-{}", volume.volume_id,),
 			// make sure user does not have the mount_path in the directory in
 			// the fs, by my observation it gives crashLoopBackOff error
 			mount_path: volume.path.to_string(),
@@ -283,9 +283,9 @@ pub async fn update_kubernetes_deployment(
 		.into_iter()
 		.collect::<BTreeMap<_, _>>();
 
-		pvc.push(PersistentVolumeClaim {
+		let pvc_claim = PersistentVolumeClaim {
 			metadata: ObjectMeta {
-				name: Some(format!("pv-{}", volume.volume_id)),
+				name: Some(format!("pvc-{}", volume.volume_id)),
 				namespace: Some(workspace_id.to_string()),
 				..ObjectMeta::default()
 			},
@@ -298,6 +298,28 @@ pub async fn update_kubernetes_deployment(
 				..PersistentVolumeClaimSpec::default()
 			}),
 			..PersistentVolumeClaim::default()
+		};
+
+		let pvc_api = Api::<PersistentVolumeClaim>::namespaced(
+			kubernetes_client.clone(),
+			namespace,
+		);
+
+		pvc_api
+			.patch(
+				&format!("pvc-{}", volume.volume_id),
+				&PatchParams::apply(&format!("pvc-{}", volume.volume_id)),
+				&Patch::Apply(pvc_claim),
+			)
+			.await?;
+
+		volumes.push(Volume {
+			name: format!("pvc-{}", volume.volume_id),
+			persistent_volume_claim: Some(PersistentVolumeClaimVolumeSource {
+				claim_name: format!("pvc-{}", volume.volume_id),
+				..PersistentVolumeClaimVolumeSource::default()
+			}),
+			..Volume::default()
 		})
 	}
 
@@ -767,7 +789,6 @@ pub async fn update_kubernetes_deployment(
 					type_: Some("RollingUpdate".to_owned()),
 					..StatefulSetUpdateStrategy::default()
 				}),
-				volume_claim_templates: Some(pvc),
 				..StatefulSetSpec::default()
 			}),
 			..StatefulSet::default()
@@ -1129,7 +1150,7 @@ pub async fn delete_deployment_volume(
 			workspace_id.as_str(),
 		)
 		.delete_opt(
-			&format!("pv-{}", volume.volume_id),
+			&format!("pvc-{}", volume.volume_id),
 			&DeleteParams::default(),
 		)
 		.await?;

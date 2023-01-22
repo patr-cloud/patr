@@ -990,6 +990,30 @@ pub async fn stop_volume_usage_history(
 	.map(|_| ())
 }
 
+pub async fn get_volume_payment_history_by_volume_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	volume_id: &Uuid,
+) -> Result<Option<VolumePaymentHistory>, sqlx::Error> {
+	query_as!(
+		VolumePaymentHistory,
+		r#"
+		SELECT
+			workspace_id as "workspace_id: _",
+			volume_id as "volume_id: _",
+			storage,
+			start_time as "start_time: _",
+			stop_time as "stop_time: _"
+		FROM
+			volume_payment_history
+		WHERE
+			volume_id = $1;
+		"#,
+		volume_id as _,
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
 pub async fn start_database_usage_history(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
