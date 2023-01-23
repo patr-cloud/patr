@@ -69,6 +69,8 @@ pub async fn initialize_user_data_pre(
 			workspace_limit INTEGER NOT NULL,
 			sign_up_coupon TEXT,
 
+			CONSTRAINT user_chk_dob_is_13_plus CHECK(dob IS NULL OR dob < (now() - interval '13 years')),
+
 			CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id
 				UNIQUE(recovery_email_local, recovery_email_domain_id),
 
