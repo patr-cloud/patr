@@ -484,8 +484,8 @@ async fn update_user_info(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let user_id = context.get_token_data().unwrap().user_id().clone();
-
-	if (Utc::now().year() - birthday.as_ref().unwrap().year()) < 13 {
+	
+	if (birthday.is_some()) && ((Utc::now().year() - birthday.as_ref().unwrap().year()) < 13) {
 		Error::as_result()
 			.status(400)
 			.body(error!(INVALID_BIRTHDAY).to_string())?;
