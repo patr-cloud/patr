@@ -806,7 +806,7 @@ pub async fn reset_password(
 	if is_password_same {
 		Error::as_result()
 			.status(400)
-			.body(error!(PASSWORD_IS_SIMILAR).to_string())?;
+			.body(error!(PASSWORD_UNCHANGED).to_string())?;
 	}
 
 	let new_password = service::hash(new_password.as_bytes())?;
