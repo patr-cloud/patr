@@ -226,14 +226,13 @@ pub async fn create_pvc_for_workspace(
 	log::trace!(
 		"request_id: {} - creating pvc {} of size {} in namespace {}",
 		request_id,
-		volume_in_mb,
 		pvc_name,
+		volume_in_mb,
 		namespace_name,
 	);
 
 	let pvc_spec = PersistentVolumeClaimSpec {
 		access_modes: Some(vec!["ReadWriteOnce".to_string()]),
-		storage_class_name: Some("do-block-storage".to_string()),
 		resources: Some(ResourceRequirements {
 			requests: Some(
 				[(

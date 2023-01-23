@@ -6454,55 +6454,6 @@
     },
     "query": "CREATE TABLE user_api_token_resource_permission( token_id UUID NOT NULL CONSTRAINT user_api_token_resource_permission_fk_token_id REFERENCES user_api_token(token_id), workspace_id UUID NOT NULL, resource_id UUID NOT NULL, permission_id UUID NOT NULL CONSTRAINT user_api_token_resource_permission_fk_permission_id REFERENCES permission(id), CONSTRAINT user_api_token_resource_permission_workspace_id_resource_id FOREIGN KEY (workspace_id, resource_id) REFERENCES resource(owner_id, id), CONSTRAINT user_api_token_resource_permission_pk PRIMARY KEY(token_id, permission_id, resource_id, workspace_id) );"
   },
-  "623b17c9c1720877190dcf5dd59b9da76453ac57102922454d93e0b0d3096539": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name: _",
-          "ordinal": 1,
-          "type_info": {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          }
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "region_id: _",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "build_machine_type_id: _",
-          "ordinal": 4,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name as \"name: _\", workspace_id as \"workspace_id: _\", region_id as \"region_id: _\", build_machine_type_id as \"build_machine_type_id: _\" FROM ci_runner WHERE workspace_id = $1 AND deleted IS NULL;"
-  },
   "62691e4324a2453a38d669d60484578454393cd3266f102f5088a9f5f682ac9f": {
     "describe": {
       "columns": [],
@@ -8228,17 +8179,174 @@
     },
     "query": "UPDATE secret SET name = $1 WHERE id = $2;"
   },
-  "82b24edd9f2340f5b6d247980a1a2245a317be52245d3791f5b0835a10397128": {
+  "829f41f92a8fd4465f8ae007346ff710aff3ee0c8c83399e5c6a74a22ac0af86": {
     "describe": {
-      "columns": [],
-      "nullable": [],
+      "columns": [
+        {
+          "name": "id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: String",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "super_admin_id: Uuid",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "active",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "alert_emails: Vec<String>",
+          "ordinal": 4,
+          "type_info": "VarcharArray"
+        },
+        {
+          "name": "payment_type: PaymentType",
+          "ordinal": 5,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "card",
+                  "enterprise"
+                ]
+              },
+              "name": "payment_type"
+            }
+          }
+        },
+        {
+          "name": "default_payment_method_id: String",
+          "ordinal": 6,
+          "type_info": "Text"
+        },
+        {
+          "name": "deployment_limit",
+          "ordinal": 7,
+          "type_info": "Int4"
+        },
+        {
+          "name": "static_site_limit",
+          "ordinal": 8,
+          "type_info": "Int4"
+        },
+        {
+          "name": "database_limit",
+          "ordinal": 9,
+          "type_info": "Int4"
+        },
+        {
+          "name": "managed_url_limit",
+          "ordinal": 10,
+          "type_info": "Int4"
+        },
+        {
+          "name": "secret_limit",
+          "ordinal": 11,
+          "type_info": "Int4"
+        },
+        {
+          "name": "domain_limit",
+          "ordinal": 12,
+          "type_info": "Int4"
+        },
+        {
+          "name": "docker_repository_storage_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "stripe_customer_id",
+          "ordinal": 14,
+          "type_info": "Text"
+        },
+        {
+          "name": "address_id: Uuid",
+          "ordinal": 15,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "amount_due_in_cents",
+          "ordinal": 16,
+          "type_info": "Int8"
+        },
+        {
+          "name": "is_spam",
+          "ordinal": 17,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false
+      ],
       "parameters": {
         "Left": [
           "Uuid"
         ]
       }
     },
-    "query": "DELETE FROM user_api_token_resource_type_permission WHERE token_id = $1;"
+    "query": "SELECT id as \"id: Uuid\", name::TEXT as \"name!: String\", super_admin_id as \"super_admin_id: Uuid\", active, alert_emails as \"alert_emails: Vec<String>\", payment_type as \"payment_type: PaymentType\", default_payment_method_id as \"default_payment_method_id: String\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, stripe_customer_id, address_id as \"address_id: Uuid\", amount_due_in_cents, is_spam FROM workspace WHERE super_admin_id = $1 AND deleted IS NULL;"
+  },
+  "82da24f490bda354fedf27b0cfefedc99dcc610c4d4d99265899f3c7dd815616": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Uuid",
+          "Text",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "proxy_to_deployment",
+                  "proxy_to_static_site",
+                  "proxy_url",
+                  "redirect"
+                ]
+              },
+              "name": "managed_url_type"
+            }
+          },
+          "Uuid",
+          "Int4",
+          "Uuid",
+          "Text",
+          "Uuid",
+          "Bool",
+          "Bool",
+          "Bool",
+          "Text"
+        ]
+      }
+    },
+    "query": "INSERT INTO managed_url( id, sub_domain, domain_id, path, url_type, deployment_id, port, static_site_id, url, workspace_id, is_configured, permanent_redirect, http_only, cloudflare_custom_hostname_id ) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14 );"
   },
   "82da24f490bda354fedf27b0cfefedc99dcc610c4d4d99265899f3c7dd815616": {
     "describe": {
@@ -8375,6 +8483,46 @@
       }
     },
     "query": "SELECT * FROM workspace_audit_log WHERE id = $1;"
+  },
+  "83537f630e85154d64831cd397a4959a702401ae54036c7cb8b95b97b95bf577": {
+    "describe": {
+      "columns": [
+        {
+          "name": "build_num",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Text",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "waiting_to_start",
+                  "running",
+                  "succeeded",
+                  "cancelled",
+                  "errored"
+                ]
+              },
+              "name": "ci_build_status"
+            }
+          },
+          "Text",
+          "Text",
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO ci_builds( repo_id, build_num, git_ref, git_commit, status, author, git_commit_message, git_pr_title, runner_id ) VALUES ( $1, 1 + (SELECT COUNT(*) FROM ci_builds WHERE repo_id = $1), $2, $3, $4, $5, $6, $7, $8 ) RETURNING build_num;"
   },
   "83912ed29e82fb53ea784afaefd393bd6362298a50c7688e3db952ed59ae81dc": {
     "describe": {
@@ -10927,6 +11075,44 @@
       }
     },
     "query": "UPDATE secret SET deleted = $2 WHERE id = $1;"
+  },
+  "a88f789c93258a026c5ba2b8b23a0b566f2abefdd2d2d40005e16850212126fd": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "region_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "build_machine_type_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", region_id as \"region_id: _\", build_machine_type_id as \"build_machine_type_id: _\" FROM ci_runner WHERE workspace_id = $1 AND deleted IS NULL;"
   },
   "a9a634c3397b4ce26869b2d7eb6b61d5707ed4440dd3f9973fa2f5b8806fdb7b": {
     "describe": {
