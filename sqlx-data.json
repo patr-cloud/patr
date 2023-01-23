@@ -5747,55 +5747,6 @@
     },
     "query": "CREATE TABLE user_api_token_resource_permission( token_id UUID NOT NULL CONSTRAINT user_api_token_resource_permission_fk_token_id REFERENCES user_api_token(token_id), workspace_id UUID NOT NULL, resource_id UUID NOT NULL, permission_id UUID NOT NULL CONSTRAINT user_api_token_resource_permission_fk_permission_id REFERENCES permission(id), CONSTRAINT user_api_token_resource_permission_workspace_id_resource_id FOREIGN KEY (workspace_id, resource_id) REFERENCES resource(owner_id, id), CONSTRAINT user_api_token_resource_permission_pk PRIMARY KEY(token_id, permission_id, resource_id, workspace_id) );"
   },
-  "623b17c9c1720877190dcf5dd59b9da76453ac57102922454d93e0b0d3096539": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name: _",
-          "ordinal": 1,
-          "type_info": {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          }
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "region_id: _",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "build_machine_type_id: _",
-          "ordinal": 4,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name as \"name: _\", workspace_id as \"workspace_id: _\", region_id as \"region_id: _\", build_machine_type_id as \"build_machine_type_id: _\" FROM ci_runner WHERE workspace_id = $1 AND deleted IS NULL;"
-  },
   "629c00298724c7b118fa471652c112c774ebc0c0d08a288c41c1cf7b9a27b5f9": {
     "describe": {
       "columns": [
@@ -7313,6 +7264,44 @@
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", workspace_id as \"workspace_id: _\", deployment_id as \"deployment_id: _\" FROM secret WHERE id = $1;"
   },
+  "81e8018fea4592654aaae9a7c0e1fcefdd2c9dc81bf3a44756485c94d70b3a8f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "region_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "build_machine_type_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", region_id as \"region_id: _\", build_machine_type_id as \"build_machine_type_id: _\" FROM ci_runner WHERE id = $1 AND deleted IS NULL;"
+  },
   "826e599fedc33685020d1747bd3893a23f22c5de69b36cd64fb0e2efceab782d": {
     "describe": {
       "columns": [],
@@ -7573,6 +7562,46 @@
       }
     },
     "query": "SELECT * FROM workspace_audit_log WHERE id = $1;"
+  },
+  "83537f630e85154d64831cd397a4959a702401ae54036c7cb8b95b97b95bf577": {
+    "describe": {
+      "columns": [
+        {
+          "name": "build_num",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Text",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "waiting_to_start",
+                  "running",
+                  "succeeded",
+                  "cancelled",
+                  "errored"
+                ]
+              },
+              "name": "ci_build_status"
+            }
+          },
+          "Text",
+          "Text",
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO ci_builds( repo_id, build_num, git_ref, git_commit, status, author, git_commit_message, git_pr_title, runner_id ) VALUES ( $1, 1 + (SELECT COUNT(*) FROM ci_builds WHERE repo_id = $1), $2, $3, $4, $5, $6, $7, $8 ) RETURNING build_num;"
   },
   "83912ed29e82fb53ea784afaefd393bd6362298a50c7688e3db952ed59ae81dc": {
     "describe": {
@@ -9013,55 +9042,6 @@
     },
     "query": "UPDATE web_login SET token_expiry = TO_TIMESTAMP(0) WHERE login_id = $1 AND user_id = $2;"
   },
-  "9671930cbdd1d3cbe20bd8a1bba01cfcd203ef1a67568963e050edd7d1212e43": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name: _",
-          "ordinal": 1,
-          "type_info": {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          }
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "region_id: _",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "build_machine_type_id: _",
-          "ordinal": 4,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name as \"name: _\", workspace_id as \"workspace_id: _\", region_id as \"region_id: _\", build_machine_type_id as \"build_machine_type_id: _\" FROM ci_runner WHERE id = $1 AND deleted IS NULL;"
-  },
   "96840a4f1a359e45250800a6adab9a8c436b07b2270aed6d11d57cf6e1247287": {
     "describe": {
       "columns": [
@@ -10255,6 +10235,44 @@
       }
     },
     "query": "UPDATE secret SET deleted = $2 WHERE id = $1;"
+  },
+  "a88f789c93258a026c5ba2b8b23a0b566f2abefdd2d2d40005e16850212126fd": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "region_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "build_machine_type_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", region_id as \"region_id: _\", build_machine_type_id as \"build_machine_type_id: _\" FROM ci_runner WHERE workspace_id = $1 AND deleted IS NULL;"
   },
   "a9a634c3397b4ce26869b2d7eb6b61d5707ed4440dd3f9973fa2f5b8806fdb7b": {
     "describe": {
@@ -13317,45 +13335,6 @@
       }
     },
     "query": "CREATE UNIQUE INDEX user_api_token_uq_name_user_id ON user_api_token(name, user_id) WHERE revoked IS NULL;"
-  },
-  "e0d5e550f53660280dc4e797066d02f52d08df8defcc0a976a72534b9eed38f4": {
-    "describe": {
-      "columns": [
-        {
-          "name": "build_num",
-          "ordinal": 0,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          "Text",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "waiting_to_start",
-                  "running",
-                  "succeeded",
-                  "cancelled",
-                  "errored"
-                ]
-              },
-              "name": "ci_build_status"
-            }
-          },
-          "Text",
-          "Text",
-          "Text"
-        ]
-      }
-    },
-    "query": "INSERT INTO ci_builds( repo_id, build_num, git_ref, git_commit, status, author, git_commit_message, git_pr_title ) VALUES ( $1, 1 + (SELECT COUNT(*) FROM ci_builds WHERE repo_id = $1), $2, $3, $4, $5, $6, $7 ) RETURNING build_num;"
   },
   "e2f6a571d891caa72875902539f461c7c9ebcba77978a1f8207979ff601546f3": {
     "describe": {

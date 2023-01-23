@@ -635,6 +635,7 @@ pub async fn generate_new_build_for_repo(
 	author: &str,
 	git_commit_message: Option<&str>,
 	git_pr_title: Option<&str>,
+	runner_id: &Uuid,
 ) -> Result<i64, sqlx::Error> {
 	query!(
 		r#"
@@ -647,7 +648,8 @@ pub async fn generate_new_build_for_repo(
 				status,
 				author,
 				git_commit_message,
-				git_pr_title
+				git_pr_title,
+				runner_id
 			)
 		VALUES (
 			$1,
@@ -657,7 +659,8 @@ pub async fn generate_new_build_for_repo(
 			$4,
 			$5,
 			$6,
-			$7
+			$7,
+			$8
 		)
 		RETURNING build_num;
 		"#,
@@ -668,6 +671,7 @@ pub async fn generate_new_build_for_repo(
 		author as _,
 		git_commit_message as _,
 		git_pr_title as _,
+		runner_id as _,
 	)
 	.fetch_one(connection)
 	.await
