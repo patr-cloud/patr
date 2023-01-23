@@ -1263,6 +1263,7 @@ pub async fn start_deployment(
 	deployment_id: &Uuid,
 	deployment: &Deployment,
 	deployment_running_details: &DeploymentRunningDetails,
+	updated_min_replicas: u16,
 	user_id: &Uuid,
 	login_id: &Uuid,
 	ip_address: &str,
@@ -1303,7 +1304,13 @@ pub async fn start_deployment(
 			);
 
 			// TODO - Figure out a better solution to this. If possible try
-			// doing it on db layer
+			// doing it on db layer.The aim is to handle the case when user has
+			// created the deployment but deploy_on_create is false.
+			// start_deployment is called from create, update and start
+			// deployment routes in which case we have to handle the case when
+			// user is starting is starting the deployment for the first time
+			// where volume_usage table is empty also considering that volume
+			// usage only stops when deployment is permanently deleted
 			if db::get_volume_payment_history_by_volume_id(
 				connection,
 				&volume.volume_id,
@@ -1311,12 +1318,24 @@ pub async fn start_deployment(
 			.await?
 			.is_none()
 			{
+				if updated_min_replicas !=
+					deployment_running_details.min_horizontal_scale
+				{
+					db::stop_volume_usage_history(
+						connection,
+						&volume.volume_id,
+						current_time,
+					)
+					.await?;
+				}
+
 				db::start_volume_usage_history(
 					connection,
 					workspace_id,
 					&volume.volume_id,
 					volume.size as u64 * 1000u64 * 1000u64 * 1000u64,
-					&Utc::now(),
+					updated_min_replicas,
+					current_time,
 				)
 				.await?;
 			}
@@ -1379,6 +1398,7 @@ pub async fn start_deployment(
 		&image_name,
 		digest.as_deref(),
 		deployment_running_details,
+		updated_min_replicas,
 		&volumes,
 		kubeconfig,
 		config,
@@ -1460,6 +1480,7 @@ pub async fn update_deployment_image(
 		image_name,
 		Some(digest),
 		deployment_running_details,
+		deployment_running_details.min_horizontal_scale,
 		&volumes,
 		kubeconfig,
 		config,
@@ -1558,6 +1579,12 @@ pub async fn delete_deployment(
 		"request_id: {} - Updating the deployment deletion time in the database",
 		request_id
 	);
+
+	let min_replicas = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(500)?
+		.min_horizontal_scale;
+
 	db::delete_deployment(connection, deployment_id, &Utc::now()).await?;
 
 	let audit_log_id =
@@ -1601,10 +1628,13 @@ pub async fn delete_deployment(
 		)
 		.await?;
 
+		let volumes =
+			db::get_all_deployment_volumes(connection, deployment_id).await?;
+
 		service::delete_deployment_volume(
-			connection,
 			workspace_id,
-			deployment_id,
+			&volumes,
+			(0, min_replicas as u16),
 			kubeconfig,
 			request_id,
 		)

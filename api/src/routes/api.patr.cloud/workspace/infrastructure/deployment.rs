@@ -974,6 +974,7 @@ async fn create_deployment(
 							current_live_digest: Some(digest),
 						},
 						&deployment_running_details,
+						deployment_running_details.min_horizontal_scale,
 						&user_id,
 						&login_id,
 						&ip_address,
@@ -1003,6 +1004,7 @@ async fn create_deployment(
 					current_live_digest: None,
 				},
 				&deployment_running_details,
+				deployment_running_details.min_horizontal_scale,
 				&user_id,
 				&login_id,
 				&ip_address,
@@ -1199,6 +1201,7 @@ async fn start_deployment(
 		&deployment_id,
 		&deployment,
 		&deployment_running_details,
+		deployment_running_details.min_horizontal_scale,
 		&user_id,
 		&login_id,
 		&ip_address,
@@ -1775,6 +1778,8 @@ async fn update_deployment(
 
 	context.commit_database_transaction().await?;
 
+	let updated_min_replica = min_horizontal_scale.unwrap_or(0);
+
 	let (deployment, workspace_id, _, deployment_running_details) =
 		service::get_full_deployment_config(
 			context.get_database_connection(),
@@ -1798,6 +1803,7 @@ async fn update_deployment(
 				&deployment_id,
 				&deployment,
 				&deployment_running_details,
+				updated_min_replica,
 				&user_id,
 				&login_id,
 				&ip_address,

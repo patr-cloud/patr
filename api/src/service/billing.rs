@@ -452,12 +452,14 @@ pub async fn calculate_volumes_bill_for_workspace_till(
 			(hours as f64 / 720f64) * monthly_price
 		};
 
-		let price_in_cents = (price_in_dollars * 100.0).round() as u64;
+		let price_in_cents = (price_in_dollars * 100.0).round() as u64 *
+			volume_usages.number_of_volumes as u64;
 
 		volume_usage_bill.push(VolumeUsage {
 			start_time: DateTime(start_time),
 			stop_time: volume_usages.stop_time.map(DateTime),
 			storage: volume_usages.storage as u64,
+			number_of_volume: volume_usages.number_of_volumes as u32,
 			hours: hours as u64,
 			amount: price_in_cents,
 			monthly_charge: monthly_price as u64 * 100,

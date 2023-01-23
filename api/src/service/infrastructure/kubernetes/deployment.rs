@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{cmp::Ordering, collections::BTreeMap};
 
 use api_models::{
 	models::workspace::infrastructure::deployment::{
@@ -73,6 +73,7 @@ use kube::{
 	api::{DeleteParams, ListParams, Patch, PatchParams},
 	core::{ErrorResponse, ObjectMeta},
 	Api,
+	Client,
 	Error as KubeError,
 };
 use sha2::{Digest, Sha512};
@@ -98,14 +99,15 @@ pub async fn update_kubernetes_deployment(
 	full_image: &str,
 	digest: Option<&str>,
 	running_details: &DeploymentRunningDetails,
+	updated_min_replicas: u16,
 	deployment_volumes: &Vec<DeploymentVolume>,
 	kubeconfig: KubernetesConfigDetails,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let cluster_type = kubeconfig.cluster_type;
+	let cluster_type = kubeconfig.cluster_type.clone();
 	let kubernetes_client =
-		super::get_kubernetes_client(kubeconfig.auth_details).await?;
+		super::get_kubernetes_client(kubeconfig.auth_details.clone()).await?;
 
 	// the namespace is workspace id
 	let namespace = workspace_id.as_str();
@@ -237,8 +239,8 @@ pub async fn update_kubernetes_deployment(
 	.into_iter()
 	.collect();
 
-	let mut volume_mounts = Vec::new();
-	let mut volumes = Vec::new();
+	let mut volume_mounts: Vec<VolumeMount> = Vec::new();
+	let mut volumes: Vec<Volume> = Vec::new();
 
 	if !&running_details.config_mounts.is_empty() {
 		volume_mounts.push(VolumeMount {
@@ -267,60 +269,57 @@ pub async fn update_kubernetes_deployment(
 		})
 	}
 
+	let min_replica = running_details.min_horizontal_scale;
 	for volume in deployment_volumes {
-		volume_mounts.push(VolumeMount {
-			name: format!("pvc-{}", volume.volume_id,),
-			// make sure user does not have the mount_path in the directory in
-			// the fs, by my observation it gives crashLoopBackOff error
-			mount_path: volume.path.to_string(),
-			..VolumeMount::default()
-		});
+		match min_replica.cmp(&updated_min_replicas) {
+			Ordering::Equal => {
+				update_kubernetes_volume(
+					namespace,
+					volume,
+					(0, min_replica),
+					&mut volume_mounts,
+					&mut volumes,
+					&kubernetes_client,
+				)
+				.await?
+			}
+			Ordering::Greater => {
+				update_kubernetes_volume(
+					namespace,
+					volume,
+					(updated_min_replicas, min_replica),
+					&mut volume_mounts,
+					&mut volumes,
+					&kubernetes_client,
+				)
+				.await?
+			}
+			Ordering::Less => {
+				update_kubernetes_volume(
+					namespace,
+					volume,
+					(min_replica, updated_min_replicas),
+					&mut volume_mounts,
+					&mut volumes,
+					&kubernetes_client,
+				)
+				.await?
+			}
+		}
+	}
 
-		let storage_limit = [(
-			"storage".to_string(),
-			Quantity(format!("{}Gi", volume.size)),
-		)]
-		.into_iter()
-		.collect::<BTreeMap<_, _>>();
-
-		let pvc_claim = PersistentVolumeClaim {
-			metadata: ObjectMeta {
-				name: Some(format!("pvc-{}", volume.volume_id)),
-				namespace: Some(workspace_id.to_string()),
-				..ObjectMeta::default()
-			},
-			spec: Some(PersistentVolumeClaimSpec {
-				access_modes: Some(vec!["ReadWriteOnce".to_string()]),
-				resources: Some(ResourceRequirements {
-					requests: Some(storage_limit),
-					..ResourceRequirements::default()
-				}),
-				..PersistentVolumeClaimSpec::default()
-			}),
-			..PersistentVolumeClaim::default()
-		};
-
-		let pvc_api = Api::<PersistentVolumeClaim>::namespaced(
-			kubernetes_client.clone(),
-			namespace,
-		);
-
-		pvc_api
-			.patch(
-				&format!("pvc-{}", volume.volume_id),
-				&PatchParams::apply(&format!("pvc-{}", volume.volume_id)),
-				&Patch::Apply(pvc_claim),
-			)
-			.await?;
-
-		volumes.push(Volume {
-			name: format!("pvc-{}", volume.volume_id),
-			persistent_volume_claim: Some(PersistentVolumeClaimVolumeSource {
-				claim_name: format!("pvc-{}", volume.volume_id),
-				..PersistentVolumeClaimVolumeSource::default()
-			}),
-			..Volume::default()
-		})
+	if min_replica > updated_min_replicas {
+		// e.g - if current min_replicas=5 and user wanted to reduce the replica
+		// to 2 in that case updated updated_min_replica become 2 which means we
+		// have to get rid of extra 3 volumes. Hence delete extra volumes
+		delete_deployment_volume(
+			workspace_id,
+			deployment_volumes,
+			(updated_min_replicas, min_replica),
+			kubeconfig,
+			request_id,
+		)
+		.await?
 	}
 
 	// Creating service before deployment and sts as sts need service to be
@@ -1130,30 +1129,104 @@ pub async fn delete_kubernetes_deployment(
 	Ok(())
 }
 
+pub async fn update_kubernetes_volume(
+	namespace: &str,
+	deployment_volume: &DeploymentVolume,
+	replica_range: (u16, u16),
+	volume_mounts: &mut Vec<VolumeMount>,
+	volumes: &mut Vec<Volume>,
+	kubernetes_client: &Client,
+) -> Result<(), Error> {
+	for idx in replica_range.0..replica_range.1 {
+		volume_mounts.push(VolumeMount {
+			name: format!("pvc-{}-{}", deployment_volume.volume_id, idx),
+			// make sure user does not have the mount_path in the directory
+			// in the fs, by my observation it gives crashLoopBackOff error
+			mount_path: deployment_volume.path.to_string(),
+			..VolumeMount::default()
+		});
+
+		let storage_limit = [(
+			"storage".to_string(),
+			Quantity(format!("{}Gi", deployment_volume.size)),
+		)]
+		.into_iter()
+		.collect::<BTreeMap<_, _>>();
+
+		let pvc_claim = PersistentVolumeClaim {
+			metadata: ObjectMeta {
+				name: Some(format!(
+					"pvc-{}-{}",
+					deployment_volume.volume_id, idx
+				)),
+				namespace: Some(namespace.to_string()),
+				..ObjectMeta::default()
+			},
+			spec: Some(PersistentVolumeClaimSpec {
+				access_modes: Some(vec!["ReadWriteOnce".to_string()]),
+				resources: Some(ResourceRequirements {
+					requests: Some(storage_limit.clone()),
+					..ResourceRequirements::default()
+				}),
+				..PersistentVolumeClaimSpec::default()
+			}),
+			..PersistentVolumeClaim::default()
+		};
+
+		let pvc_api = Api::<PersistentVolumeClaim>::namespaced(
+			kubernetes_client.clone(),
+			namespace,
+		);
+
+		pvc_api
+			.patch(
+				&format!("pvc-{}-{}", deployment_volume.volume_id, idx),
+				&PatchParams::apply(&format!(
+					"pvc-{}-{}",
+					deployment_volume.volume_id, idx
+				)),
+				&Patch::Apply(pvc_claim),
+			)
+			.await?;
+
+		volumes.push(Volume {
+			name: format!("pvc-{}-{}", deployment_volume.volume_id, idx),
+			persistent_volume_claim: Some(PersistentVolumeClaimVolumeSource {
+				claim_name: format!(
+					"pvc-{}-{}",
+					deployment_volume.volume_id, idx
+				),
+				..PersistentVolumeClaimVolumeSource::default()
+			}),
+			..Volume::default()
+		})
+	}
+	Ok(())
+}
+
 pub async fn delete_deployment_volume(
-	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	deployment_id: &Uuid,
+	volumes: &Vec<DeploymentVolume>,
+	replica_range: (u16, u16),
 	kubeconfig: KubernetesConfigDetails,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let kubernetes_client =
 		super::get_kubernetes_client(kubeconfig.auth_details).await?;
 
-	let volumes =
-		db::get_all_deployment_volumes(connection, deployment_id).await?;
-
 	log::trace!("request_id: {} - deleting the pvc", request_id);
 	for volume in volumes {
-		Api::<PersistentVolumeClaim>::namespaced(
-			kubernetes_client.clone(),
-			workspace_id.as_str(),
-		)
-		.delete_opt(
-			&format!("pvc-{}", volume.volume_id),
-			&DeleteParams::default(),
-		)
-		.await?;
+		for idx in replica_range.0..replica_range.1 {
+			Api::<PersistentVolumeClaim>::namespaced(
+				kubernetes_client.clone(),
+				workspace_id.as_str(),
+			)
+			.delete_opt(
+				&format!("pvc-{}-{}", volume.volume_id, idx),
+				&DeleteParams::default(),
+			)
+			.await?;
+		}
 	}
 	Ok(())
 }

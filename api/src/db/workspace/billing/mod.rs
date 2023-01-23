@@ -24,6 +24,7 @@ pub struct VolumePaymentHistory {
 	pub workspace_id: Uuid,
 	pub volume_id: Uuid,
 	pub storage: i64,
+	pub number_of_volumes: i32,
 	pub start_time: DateTime<Utc>,
 	pub stop_time: Option<DateTime<Utc>>,
 }
@@ -254,6 +255,7 @@ pub async fn initialize_billing_pre(
 			workspace_id UUID NOT NULL,
 			volume_id UUID NOT NULL,
 			storage BIGINT NOT NULL,
+			number_of_volumes INTEGER NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
 			stop_time TIMESTAMPTZ
 		);
@@ -481,6 +483,7 @@ pub async fn get_all_volume_usage(
 			workspace_id as "workspace_id: _",
 			volume_id as "volume_id: _",
 			storage,
+			number_of_volumes,
 			start_time as "start_time: _",
 			stop_time as "stop_time: _"
 		FROM
@@ -936,6 +939,7 @@ pub async fn start_volume_usage_history(
 	workspace_id: &Uuid,
 	volume_id: &Uuid,
 	storage: u64,
+	number_of_volume: u16,
 	start_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -945,6 +949,7 @@ pub async fn start_volume_usage_history(
 				workspace_id,
 				volume_id,
 				storage,
+				number_of_volumes,
 				start_time,
 				stop_time
 			)
@@ -954,12 +959,14 @@ pub async fn start_volume_usage_history(
 				$2,
 				$3,
 				$4,
+				$5,
 				NULL
 			);
 		"#,
 		workspace_id as _,
 		volume_id as _,
 		storage as i64,
+		number_of_volume as i32,
 		start_time as _,
 	)
 	.execute(&mut *connection)
@@ -969,7 +976,7 @@ pub async fn start_volume_usage_history(
 
 pub async fn stop_volume_usage_history(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
+	volume_id: &Uuid,
 	stop_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -983,7 +990,7 @@ pub async fn stop_volume_usage_history(
 			stop_time IS NULL;
 		"#,
 		stop_time as _,
-		deployment_id as _,
+		volume_id as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -1001,6 +1008,7 @@ pub async fn get_volume_payment_history_by_volume_id(
 			workspace_id as "workspace_id: _",
 			volume_id as "volume_id: _",
 			storage,
+			number_of_volumes,
 			start_time as "start_time: _",
 			stop_time as "stop_time: _"
 		FROM

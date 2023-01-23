@@ -113,6 +113,7 @@ async fn add_volume_payment_history(
 			workspace_id UUID NOT NULL,
 			volume_id UUID NOT NULL,
 			storage BIGINT NOT NULL,
+			number_of_volumes INTEGER NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
 			stop_time TIMESTAMPTZ
 		);
