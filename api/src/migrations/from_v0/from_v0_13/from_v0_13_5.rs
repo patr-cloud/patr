@@ -1,4 +1,4 @@
-use api_models::utils:: Uuid;
+use api_models::utils::Uuid;
 use sqlx::Row;
 
 use crate::{
@@ -16,11 +16,11 @@ pub(super) async fn migrate(
 }
 
 pub(super) async fn reset_invalid_birthday(
-    connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
-    let users = query!(
-        r#"
+	let users = query!(
+		r#"
 		SELECT
 			*
 		FROM
@@ -29,21 +29,23 @@ pub(super) async fn reset_invalid_birthday(
 			dob IS NOT NULL AND
 			dob > (now() - interval '13 years');
 		"#
-    )
-    .fetch_all(&mut *connection)
-    .await?
-    .into_iter()
-    .map(|row| 
-        row.get::<Uuid,_>("id"),
-    )
-    .collect::<Vec<_>>();
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| row.get::<Uuid, _>("id"))
+	.collect::<Vec<_>>();
 
-    let dob_to_be_updated = users.len();
+	let dob_to_be_updated = users.len();
 
-    for(index, user_id) in users.into_iter().enumerate(){
-        log::info!("Setting user dob {}/{} to null", index+1, dob_to_be_updated);
-        query!(
-            r#"
+	for (index, user_id) in users.into_iter().enumerate() {
+		log::info!(
+			"Setting user dob {}/{} to null",
+			index + 1,
+			dob_to_be_updated
+		);
+		query!(
+			r#"
 			UPDATE
 				"user"
 			SET
@@ -52,10 +54,10 @@ pub(super) async fn reset_invalid_birthday(
 				id = $1;
 			"#,
 			user_id
-        )
-        .execute(&mut *connection)
-        .await?;
-    }
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
 	log::info!("All invalid dobs updated");
 
 	query!(
@@ -64,7 +66,8 @@ pub(super) async fn reset_invalid_birthday(
 		ADD CONSTRAINT user_chk_dob_is_13_plus 
 			CHECK (dob IS NULL OR dob < (now() - interval '13 years'));
 		"#
-	).execute(&mut *connection)
+	)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
