@@ -11,11 +11,14 @@ pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), Error> {
-	// feature specific migrations
+	// fixes
+	fix_permission_whitespaces(connection, config).await?;
 	reset_invalid_birthday(&mut *connection, config).await?;
+
+	// feature specific migrations
 	add_ci_runner(connection, config).await?;
 
-	// common migrations
+	// common migration clean-ups
 	reset_permission_order(connection, config).await?;
 	reset_resource_type_order(connection, config).await?;
 
@@ -57,6 +60,25 @@ pub(super) async fn reset_invalid_birthday(
 	Ok(())
 }
 
+async fn fix_permission_whitespaces(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		UPDATE
+			permission
+		SET
+			name = 'workspace::billing::billing_address::info'
+		WHERE
+			name = 'workspace::billing::billing_address::info ';
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
 
 // migration note:
 // 	before migration make sure no ci jobs are present in mq
@@ -427,7 +449,7 @@ async fn reset_permission_order(
 		"workspace::billing::payment_method::edit",
 		"workspace::billing::billing_address::add",
 		"workspace::billing::billing_address::delete",
-		"workspace::billing::billing_address::info ",
+		"workspace::billing::billing_address::info",
 		"workspace::billing::billing_address::edit",
 		"workspace::edit",
 		"workspace::delete",
