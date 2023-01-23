@@ -13,6 +13,7 @@ pub mod id {
 	pub const INVALID_WORKSPACE_NAME: &str = "invalidWorkspaceName";
 	pub const WORKSPACE_EXISTS: &str = "workspaceExists";
 	pub const PASSWORD_TOO_WEAK: &str = "passwordTooWeak";
+	pub const PASSWORD_UNCHANGED: &str = "passwordUnchanged";
 	pub const WRONG_PARAMETERS: &str = "wrongParameters";
 	pub const UNAUTHORIZED: &str = "unauthorized";
 	pub const EXPIRED: &str = "expired";
@@ -113,6 +114,7 @@ pub mod message {
 	pub const WORKSPACE_EXISTS: &str = "That workspace name is already taken";
 	pub const PASSWORD_TOO_WEAK: &str =
 		"Your password is too weak. Please choose a stronger password";
+	pub const PASSWORD_UNCHANGED: &str = "Your new password matches your old password. Please choose a different password";
 	pub const WRONG_PARAMETERS: &str =
 		"An internal error occured. This incident has been reported";
 	pub const UNAUTHORIZED: &str =
