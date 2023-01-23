@@ -176,8 +176,7 @@ pub async fn get_runners_for_workspace(
 		r#"
 		SELECT
 			id as "id: _",
-			name as "name: _",
-			workspace_id as "workspace_id: _",
+			name::TEXT as "name!: _",
 			region_id as "region_id: _",
 			build_machine_type_id as "build_machine_type_id: _"
 		FROM ci_runner
@@ -230,8 +229,7 @@ pub async fn get_runner_by_id(
 		r#"
 		SELECT
 			id as "id: _",
-			name as "name: _",
-			workspace_id as "workspace_id: _",
+			name::TEXT as "name!: _",
 			region_id as "region_id: _",
 			build_machine_type_id as "build_machine_type_id: _"
 		FROM ci_runner
@@ -250,8 +248,7 @@ pub async fn update_runner(
 	runner_id: &Uuid,
 	name: &str,
 ) -> Result<(), sqlx::Error> {
-	query_as!(
-		Runner,
+	query!(
 		r#"
 		UPDATE ci_runner
 		SET name = $2

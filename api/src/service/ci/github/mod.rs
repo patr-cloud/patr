@@ -61,6 +61,11 @@ pub async fn create_build_for_repo(
 	repo_id: &Uuid,
 	event_type: &EventType,
 ) -> Result<i64, Error> {
+	let runner_id = db::get_repo_using_patr_repo_id(connection, repo_id)
+		.await?
+		.and_then(|repo| repo.runner_id)
+		.status(500)?;
+
 	let build_num = match &event_type {
 		EventType::Commit(commit) => {
 			db::generate_new_build_for_repo(
@@ -71,6 +76,7 @@ pub async fn create_build_for_repo(
 				&commit.author,
 				commit.commit_message.as_deref(),
 				None,
+				&runner_id,
 			)
 			.await?
 		}
@@ -83,6 +89,7 @@ pub async fn create_build_for_repo(
 				&tag.author,
 				tag.commit_message.as_deref(),
 				None,
+				&runner_id,
 			)
 			.await?
 		}
@@ -95,6 +102,7 @@ pub async fn create_build_for_repo(
 				&pull_request.author,
 				None,
 				Some(&pull_request.pr_title),
+				&runner_id,
 			)
 			.await?
 		}

@@ -100,7 +100,7 @@ pub fn create_sub_app(
 	);
 
 	sub_app.get(
-		"/:runner_id",
+		"/:runnerId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: false,
@@ -139,7 +139,7 @@ pub fn create_sub_app(
 	);
 
 	sub_app.get(
-		"/:runner_id/history",
+		"/:runnerId/history",
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: false,
@@ -180,7 +180,7 @@ pub fn create_sub_app(
 	);
 
 	sub_app.patch(
-		"/:runner_id",
+		"/:runnerId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: false,
@@ -219,7 +219,7 @@ pub fn create_sub_app(
 	);
 
 	sub_app.delete(
-		"/:runner_id",
+		"/:runnerId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: false,
