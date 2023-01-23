@@ -51,7 +51,10 @@ pub async fn initialize_user_data_pre(
 			password TEXT NOT NULL,
 			first_name VARCHAR(100) NOT NULL,
 			last_name VARCHAR(100) NOT NULL,
-			dob TIMESTAMPTZ DEFAULT NULL,
+			dob TIMESTAMPTZ DEFAULT NULL 
+				CONSTRAINT user_chk_dob_is_13_plus CHECK(
+					dob IS NULL OR dob < (now() - interval '13 years')
+				),
 			bio VARCHAR(128) DEFAULT NULL,
 			location VARCHAR(128) DEFAULT NULL,
 			created TIMESTAMPTZ NOT NULL,
@@ -68,8 +71,6 @@ pub async fn initialize_user_data_pre(
 			recovery_phone_number VARCHAR(15),
 			workspace_limit INTEGER NOT NULL,
 			sign_up_coupon TEXT,
-
-			CONSTRAINT user_chk_dob_is_13_plus CHECK(dob IS NULL OR dob < (now() - interval '13 years')),
 
 			CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id
 				UNIQUE(recovery_email_local, recovery_email_domain_id),
