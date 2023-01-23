@@ -707,6 +707,16 @@
     },
     "query": "CREATE INDEX user_to_sign_up_idx_otp_expiry ON user_to_sign_up (otp_expiry);"
   },
+  "0d490c10abcc90b688de03b4f62aeae7e2c11c2adc3d059ee36872ff742de652": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE ci_builds ( repo_id UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id), build_num BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK (build_num > 0), git_ref TEXT NOT NULL, git_commit TEXT NOT NULL, status CI_BUILD_STATUS NOT NULL, created TIMESTAMPTZ NOT NULL DEFAULT NOW(), finished TIMESTAMPTZ, message TEXT, author TEXT NOT NULL, git_commit_message TEXT, git_pr_title TEXT, started TIMESTAMPTZ, runner_id UUID NOT NULL CONSTRAINT ci_builds_fk_runner_id REFERENCES ci_runner(id), CONSTRAINT ci_builds_pk_repo_id_build_num PRIMARY KEY (repo_id, build_num) );"
+  },
   "0d5cf0f2d50a8a41636d7b225521ded816b21933f9aabb3ef76147f2a5e2a383": {
     "describe": {
       "columns": [
@@ -9454,16 +9464,6 @@
       }
     },
     "query": "UPDATE docker_repo_payment_history SET stop_time = $1 WHERE workspace_id = $2 AND stop_time IS NULL;"
-  },
-  "9d03a082634b81dc0b7322f1db4eacb246e99c225e8bff27d2d54e4a2f648b25": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE ci_builds ( repo_id UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id), build_num BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK (build_num > 0), git_ref TEXT NOT NULL, git_commit TEXT NOT NULL, status CI_BUILD_STATUS NOT NULL, created TIMESTAMPTZ NOT NULL DEFAULT NOW(), started TIMESTAMPTZ, finished TIMESTAMPTZ, message TEXT, author TEXT NOT NULL, git_commit_message TEXT, git_pr_title TEXT, runner_id UUID NOT NULL CONSTRAINT ci_builds_fk_runner_id REFERENCES ci_runner(id), CONSTRAINT ci_builds_pk_repo_id_build_num PRIMARY KEY (repo_id, build_num) );"
   },
   "9d12957af2506956a6c245b5822233f06bb1b51740cc77867c9269d16d53c635": {
     "describe": {

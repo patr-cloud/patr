@@ -1232,7 +1232,7 @@ async fn cancel_build(
 	.await?
 	.status(500)?;
 
-	let build = db::get_build_details_for_build(
+	let build_status = db::get_build_status_for_update(
 		context.get_database_connection(),
 		&repo.id,
 		build_num,
@@ -1241,7 +1241,9 @@ async fn cancel_build(
 	.status(400)
 	.body("Build does not exists")?;
 
-	if build.status == BuildStatus::Running {
+	if build_status == BuildStatus::Running ||
+		build_status == BuildStatus::WaitingToStart
+	{
 		db::update_build_status(
 			context.get_database_connection(),
 			&repo.id,

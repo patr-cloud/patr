@@ -199,12 +199,12 @@ pub async fn initialize_ci_pre(
 			git_commit 			TEXT NOT NULL,
 			status 				CI_BUILD_STATUS NOT NULL,
 			created 			TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			started 			TIMESTAMPTZ,
 			finished 			TIMESTAMPTZ,
 			message				TEXT,
 			author				TEXT NOT NULL,
 			git_commit_message	TEXT,
 			git_pr_title		TEXT,
+			started 			TIMESTAMPTZ,
 			runner_id 			UUID NOT NULL CONSTRAINT ci_builds_fk_runner_id REFERENCES ci_runner(id),
 
 			CONSTRAINT ci_builds_pk_repo_id_build_num
