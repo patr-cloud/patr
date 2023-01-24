@@ -139,7 +139,7 @@ pub async fn create_deployment_in_workspace(
 		machine_type,
 		&deployment_running_details.min_horizontal_scale,
 		&deployment_running_details.max_horizontal_scale,
-		&deployment_running_details.volume,
+		&deployment_running_details.volumes,
 		request_id,
 	)
 	.await?;
@@ -267,7 +267,7 @@ pub async fn create_deployment_in_workspace(
 		.await?;
 	}
 
-	for (path, size) in &deployment_running_details.volume {
+	for (path, size) in &deployment_running_details.volumes {
 		log::trace!("request_id: {} - creating volume resource", request_id);
 		let volume_id = db::generate_new_resource_id(connection).await?;
 
@@ -661,7 +661,7 @@ pub async fn get_full_deployment_config(
 			.map(|mount| (mount.path, mount.file.into()))
 			.collect();
 
-	let volume = db::get_all_deployment_volumes(connection, deployment_id)
+	let volumes = db::get_all_deployment_volumes(connection, deployment_id)
 		.await?
 		.into_iter()
 		.map(|volume| (volume.path, volume.size as u32))
@@ -688,7 +688,7 @@ pub async fn get_full_deployment_config(
 				.zip(liveness_probe_path)
 				.map(|(port, path)| DeploymentProbe { path, port }),
 			config_mounts,
-			volume,
+			volumes,
 		},
 	))
 }
@@ -1189,7 +1189,7 @@ async fn check_deployment_creation_limit(
 			.await?
 			.len();
 
-	let volume_size = volumes.values().copied().sum::<u32>();
+	let volume_size = volumes.values().sum::<u32>();
 
 	let card_added =
 		db::get_default_payment_method_for_workspace(connection, workspace_id)
@@ -1638,7 +1638,7 @@ pub async fn delete_deployment(
 		let volumes =
 			db::get_all_deployment_volumes(connection, deployment_id).await?;
 
-		service::delete_deployment_volume(
+		service::delete_kubernetes_volumes(
 			workspace_id,
 			deployment_id,
 			&volumes,

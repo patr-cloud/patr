@@ -404,7 +404,7 @@ pub async fn create_workspace(
 				$14,
 				$15,
 				NULL,
-				$16, 
+				$16,
 				FALSE
 			);
 		"#,

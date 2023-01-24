@@ -1841,7 +1841,7 @@ async fn update_deployment(
 				// replica to 2 in that case updated updated_min_replica become
 				// 2 which means we have to get rid of extra 3 volumes. Hence
 				// delete extra volumes
-				service::delete_deployment_volume(
+				service::delete_kubernetes_volumes(
 					&workspace_id,
 					&deployment_id,
 					&volumes,
