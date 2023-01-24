@@ -485,12 +485,12 @@ async fn update_user_info(
 
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 
-	if (birthday.is_some()) &&
-		((Utc::now().year() - birthday.as_ref().unwrap().year()) < 13)
-	{
-		Error::as_result()
-			.status(400)
-			.body(error!(INVALID_BIRTHDAY).to_string())?;
+	if let Some(dob) = birthday.as_ref() {
+		if (Utc::now().year() - dob.year()) < 13 {
+			Error::as_result()
+				.status(400)
+				.body(error!(INVALID_BIRTHDAY).to_string())?;
+		}
 	}
 
 	db::update_user_data(
