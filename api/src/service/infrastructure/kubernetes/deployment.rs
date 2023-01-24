@@ -97,7 +97,6 @@ pub async fn update_kubernetes_deployment(
 	full_image: &str,
 	digest: Option<&str>,
 	running_details: &DeploymentRunningDetails,
-	updated_min_replicas: u16,
 	deployment_volumes: &Vec<DeploymentVolume>,
 	kubeconfig: KubernetesConfigDetails,
 	config: &Settings,
@@ -268,20 +267,14 @@ pub async fn update_kubernetes_deployment(
 		})
 	}
 
-	let min_replica = running_details.min_horizontal_scale;
 	for volume in deployment_volumes {
-		for idx in 0..min_replica {
-			volume_mounts.push(VolumeMount {
-				name: format!(
-					"pvc-{}-sts-{}-{}",
-					volume.volume_id, deployment.id, idx
-				),
-				// make sure user does not have the mount_path in the directory
-				// in the fs, by my observation it gives crashLoopBackOff error
-				mount_path: volume.path.to_string(),
-				..VolumeMount::default()
-			});
-		}
+		volume_mounts.push(VolumeMount {
+			name: format!("pvc-{}", volume.volume_id),
+			// make sure user does not have the mount_path in the directory
+			// in the fs, by my observation it gives crashLoopBackOff error
+			mount_path: volume.path.to_string(),
+			..VolumeMount::default()
+		});
 
 		let storage_limit = [(
 			"storage".to_string(),
@@ -1053,21 +1046,6 @@ pub async fn update_kubernetes_deployment(
 			.collect::<Vec<_>>()
 			.join(",")
 	);
-
-	if min_replica > updated_min_replicas {
-		// e.g - if current min_replicas=5 and user wanted to reduce the replica
-		// to 2 in that case updated updated_min_replica become 2 which means we
-		// have to get rid of extra 3 volumes. Hence delete extra volumes
-		delete_deployment_volume(
-			workspace_id,
-			&deployment.id,
-			deployment_volumes,
-			(updated_min_replicas, min_replica),
-			kubeconfig,
-			request_id,
-		)
-		.await?
-	}
 
 	Ok(())
 }
