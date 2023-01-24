@@ -10,7 +10,6 @@ mod from_v0_13_1;
 mod from_v0_13_2;
 mod from_v0_13_3;
 mod from_v0_13_4;
-mod from_v0_13_5;
 
 /// # Description
 /// The function is used to migrate the database from one version to another
@@ -37,7 +36,6 @@ pub async fn migrate(
 		(0, 13, 2) => from_v0_13_2::migrate(&mut *connection, config).await,
 		(0, 13, 3) => from_v0_13_3::migrate(&mut *connection, config).await,
 		(0, 13, 4) => from_v0_13_4::migrate(&mut *connection, config).await,
-		(0, 13, 5) => from_v0_13_5::migrate(&mut *connection, config).await,
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}

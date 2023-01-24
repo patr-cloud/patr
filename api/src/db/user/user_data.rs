@@ -53,7 +53,7 @@ pub async fn initialize_user_data_pre(
 			last_name VARCHAR(100) NOT NULL,
 			dob TIMESTAMPTZ DEFAULT NULL 
 				CONSTRAINT user_chk_dob_is_13_plus CHECK(
-					dob IS NULL OR dob < (now() - interval '13 years')
+					dob IS NULL OR dob < (NOW() - INTERVAL '13 YEARS')
 				),
 			bio VARCHAR(128) DEFAULT NULL,
 			location VARCHAR(128) DEFAULT NULL,
