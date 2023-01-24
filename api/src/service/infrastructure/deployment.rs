@@ -132,17 +132,17 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
-	check_deployment_creation_limit(
-		connection,
-		workspace_id,
-		region_details.is_byoc_region(),
-		machine_type,
-		&deployment_running_details.min_horizontal_scale,
-		&deployment_running_details.max_horizontal_scale,
-		&deployment_running_details.volume,
-		request_id,
-	)
-	.await?;
+	// check_deployment_creation_limit(
+	// 	connection,
+	// 	workspace_id,
+	// 	region_details.is_byoc_region(),
+	// 	machine_type,
+	// 	&deployment_running_details.min_horizontal_scale,
+	// 	&deployment_running_details.max_horizontal_scale,
+	// 	&deployment_running_details.volume,
+	// 	request_id,
+	// )
+	// .await?;
 
 	let created_time = Utc::now();
 
@@ -368,50 +368,50 @@ pub async fn update_deployment(
 
 	// Check if card is added
 
-	let card_added =
-		db::get_default_payment_method_for_workspace(connection, workspace_id)
-			.await?
-			.is_some();
-	if !card_added {
-		if let Some(machine_type) = machine_type {
-			// only basic machine type is allowed under free plan
-			let machine_type_to_be_deployed = MACHINE_TYPES
-				.get()
-				.and_then(|machines| machines.get(machine_type))
-				.status(500)?;
+	// let card_added =
+	// 	db::get_default_payment_method_for_workspace(connection, workspace_id)
+	// 		.await?
+	// 		.is_some();
+	// if !card_added {
+	// 	if let Some(machine_type) = machine_type {
+	// 		// only basic machine type is allowed under free plan
+	// 		let machine_type_to_be_deployed = MACHINE_TYPES
+	// 			.get()
+	// 			.and_then(|machines| machines.get(machine_type))
+	// 			.status(500)?;
 
-			if machine_type_to_be_deployed != &(1, 2) {
-				log::info!("request_id: {request_id} - Only basic machine type is allowed under free plan");
-				return Error::as_result().status(400).body(
-					error!(CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT).to_string(),
-				)?;
-			}
-		}
-		if let Some(max_horizontal_scale) = max_horizontal_scale {
-			if max_horizontal_scale > 1 {
-				log::info!("request_id: {request_id} - Only one replica allowed under free plan without card");
-				return Error::as_result()
-					.status(400)
-					.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
-			}
-		}
+	// 		if machine_type_to_be_deployed != &(1, 2) {
+	// 			log::info!("request_id: {request_id} - Only basic machine type is allowed
+	// under free plan"); 			return Error::as_result().status(400).body(
+	// 				error!(CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT).to_string(),
+	// 			)?;
+	// 		}
+	// 	}
+	// 	if let Some(max_horizontal_scale) = max_horizontal_scale {
+	// 		if max_horizontal_scale > 1 {
+	// 			log::info!("request_id: {request_id} - Only one replica allowed under
+	// free plan without card"); 			return Error::as_result()
+	// 				.status(400)
+	// 				.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
+	// 		}
+	// 	}
 
-		if let Some(min_horizontal_scale) = min_horizontal_scale {
-			if min_horizontal_scale > 1 {
-				log::info!("request_id: {request_id} - Only one replica allowed under free plan without card");
-				return Error::as_result()
-					.status(400)
-					.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
-			}
-		}
+	// 	if let Some(min_horizontal_scale) = min_horizontal_scale {
+	// 		if min_horizontal_scale > 1 {
+	// 			log::info!("request_id: {request_id} - Only one replica allowed under
+	// free plan without card"); 			return Error::as_result()
+	// 				.status(400)
+	// 				.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
+	// 		}
+	// 	}
 
-		let volume_size_in_bytes = (volume_size * 1024 * 1024 * 1024) as usize;
-		if volume_size_in_bytes > free_limits::VOLUME_STORAGE_IN_BYTE {
-			return Error::as_result()
-				.status(400)
-				.body(error!(CARDLESS_VOLUME_LIMIT_EXCEEDED).to_string())?;
-		}
-	}
+	// 	let volume_size_in_bytes = (volume_size * 1024 * 1024 * 1024) as usize;
+	// 	if volume_size_in_bytes > free_limits::VOLUME_STORAGE_IN_BYTE {
+	// 		return Error::as_result()
+	// 			.status(400)
+	// 			.body(error!(CARDLESS_VOLUME_LIMIT_EXCEEDED).to_string())?;
+	// 	}
+	// }
 
 	let workspace_volume_limit =
 		db::get_workspace_info(connection, workspace_id)
@@ -1633,6 +1633,7 @@ pub async fn delete_deployment(
 
 		service::delete_deployment_volume(
 			workspace_id,
+			deployment_id,
 			&volumes,
 			(0, min_replicas as u16),
 			kubeconfig,
