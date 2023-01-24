@@ -50,5 +50,5 @@ pub async fn migrate(
 /// This function returns [&'static str; _] containing a list of all migration
 /// versions
 pub fn get_migrations() -> Vec<&'static str> {
-	vec!["0.13.0", "0.13.1", "0.13.2", "0.13.3", "0.13.4", "0.13.5"]
+	vec!["0.13.0", "0.13.1", "0.13.2", "0.13.3", "0.13.4"]
 }
