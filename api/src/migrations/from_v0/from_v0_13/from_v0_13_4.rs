@@ -36,7 +36,9 @@ pub(super) async fn reset_invalid_birthday(
 
 	query!(
 		r#"
-		ALTER TABLE "user" ADD CONSTRAINT user_chk_dob_is_13_plus CHECK (dob IS NULL OR dob < (NOW() - INTERVAL '13 YEARS'));
+		ALTER TABLE "user" 
+		ADD CONSTRAINT user_chk_dob_is_13_plus 
+		CHECK (dob IS NULL OR dob < (NOW() - INTERVAL '13 YEARS'));             
 		"#
 	)
 	.execute(&mut *connection)
