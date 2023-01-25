@@ -1211,7 +1211,6 @@ pub async fn add_volume_for_deployment(
 pub async fn update_volume_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
-	volume_id: &Uuid,
 	size: &u32,
 	path: &str,
 ) -> Result<(), sqlx::Error> {
@@ -1223,40 +1222,16 @@ pub async fn update_volume_for_deployment(
 			volume_size = $1,
 			volume_mount_path = $2
 		WHERE
-			id = $3 AND
-			deployment_id = $4
+			volume_mount_path = $2 AND
+			deployment_id = $3;
 		"#,
 		*size as i32,
 		path,
-		volume_id as _,
 		deployment_id as _,
 	)
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
-}
-
-pub async fn get_volume_by_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	volume_id: &Uuid,
-) -> Result<Option<DeploymentVolume>, sqlx::Error> {
-	query_as!(
-		DeploymentVolume,
-		r#"
-		SELECT 
-			id as "volume_id: _",
-			deployment_id as "deployment_id: _",
-			volume_size as "size: _",
-			volume_mount_path as "path: _"
-		FROM
-			deployment_volume
-		WHERE
-			id = $1;
-		"#,
-		volume_id as _
-	)
-	.fetch_optional(&mut *connection)
-	.await
 }
 
 pub async fn get_all_deployment_volumes(

@@ -9,7 +9,6 @@ use api_models::{
 		DeploymentRegistry,
 		DeploymentRunningDetails,
 		DeploymentStatus,
-		DeploymentVolume,
 		EnvironmentVariableValue,
 		ExposedPortType,
 		Metric,
@@ -347,7 +346,7 @@ pub async fn update_deployment(
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
 	config_mounts: Option<&BTreeMap<String, Base64String>>,
-	volumes: Option<&BTreeMap<Uuid, DeploymentVolume>>,
+	volumes: Option<&BTreeMap<String, u32>>,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
@@ -359,8 +358,7 @@ pub async fn update_deployment(
 	// Get volume size for checking the limit
 	// let mut volume_size: usize = 0;
 	let volume_size = if let Some(volumes) = volumes {
-		let volume_size =
-			volumes.values().fold(0, |acc, volume| acc + volume.size);
+		let volume_size = volumes.values().fold(0, |acc, size| acc + *size);
 		volume_size
 	} else {
 		0
@@ -488,17 +486,12 @@ pub async fn update_deployment(
 	}
 
 	if let Some(volumes) = volumes {
-		for (volume_id, value) in volumes {
-			db::get_volume_by_id(connection, volume_id)
-				.await?
-				.status(404)
-				.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+		for (path, size) in volumes {
 			db::update_volume_for_deployment(
 				connection,
 				deployment_id,
-				volume_id,
-				&value.size,
-				&value.path,
+				size,
+				path.as_str(),
 			)
 			.await?;
 		}
