@@ -1232,6 +1232,8 @@ async fn cancel_build(
 	.await?
 	.status(500)?;
 
+	// get the build status with lock, so that it won't be updated in rabbitmq
+	// until this route ends.
 	let build_status = db::get_build_status_for_update(
 		context.get_database_connection(),
 		&repo.id,

@@ -84,6 +84,8 @@ pub async fn process_request(
 			let repo_id = build_id.repo_id.clone();
 			let build_num = build_id.build_num;
 
+			// get the build status with lock, so that it won't be updated in
+			// routes until this rabbitmq msg is processed.
 			let build_status = db::get_build_status_for_update(
 				&mut connection,
 				&repo_id,

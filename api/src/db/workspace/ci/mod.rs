@@ -738,6 +738,8 @@ pub async fn get_build_status(
 	Ok(result)
 }
 
+// https://shiroyasha.io/selecting-for-share-and-update-in-postgresql.html
+// the selected row is locked until the transaction ends
 pub async fn get_build_status_for_update(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
