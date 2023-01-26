@@ -173,6 +173,26 @@ pub async fn create_new_managed_url_in_workspace(
 	)
 	.await?;
 
+	let domain = db::get_workspace_domain_by_id(connection, domain_id)
+		.await?
+		.status(500)?;
+
+	if domain.is_ns_external() {
+		service::create_certificates(
+			workspace_id,
+			&format!("certificate-{}", managed_url_id),
+			&format!("tls-{}-{}", sub_domain, managed_url_id),
+			vec![
+				format!("{}.{}", sub_domain, domain.name),
+				domain.name.clone(),
+			],
+			false,
+			config,
+			request_id,
+		)
+		.await?;
+	}
+
 	let is_configured = service::verify_managed_url_configuration(
 		connection,
 		&managed_url_id,
