@@ -392,7 +392,26 @@ async fn verify_managed_url_configuration(
 	)
 	.unwrap();
 
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+
 	let config = context.get_state().config.clone();
+
+	let managed_url = db::get_managed_url_by_id(
+		context.get_database_connection(),
+		&managed_url_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let domain = db::get_workspace_domain_by_id(
+		context.get_database_connection(),
+		&managed_url.domain_id,
+	)
+	.await?
+	.status(500)?;
 
 	let configured = service::verify_managed_url_configuration(
 		context.get_database_connection(),
@@ -409,6 +428,22 @@ async fn verify_managed_url_configuration(
 			true,
 		)
 		.await?;
+
+		if domain.is_verified && domain.is_ns_external() {
+			service::create_certificates(
+				&workspace_id,
+				&format!("certificate-{}", managed_url_id),
+				&format!("tls-{}-{}", managed_url.sub_domain, managed_url_id),
+				vec![
+					format!("{}.{}", managed_url.sub_domain, domain.name),
+					domain.name.clone(),
+				],
+				false,
+				&config,
+				&request_id,
+			)
+			.await?;
+		}
 	}
 
 	context.success(VerifyManagedUrlConfigurationResponse { configured });

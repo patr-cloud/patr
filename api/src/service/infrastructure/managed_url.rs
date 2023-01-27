@@ -177,7 +177,15 @@ pub async fn create_new_managed_url_in_workspace(
 		.await?
 		.status(500)?;
 
-	if domain.is_ns_external() {
+	let is_configured = service::verify_managed_url_configuration(
+		connection,
+		&managed_url_id,
+		config,
+		request_id,
+	)
+	.await?;
+
+	if domain.is_ns_external() && is_configured {
 		service::create_certificates(
 			workspace_id,
 			&format!("certificate-{}", managed_url_id),
@@ -193,13 +201,11 @@ pub async fn create_new_managed_url_in_workspace(
 		.await?;
 	}
 
-	let is_configured = service::verify_managed_url_configuration(
-		connection,
-		&managed_url_id,
-		config,
+	log::trace!(
+		"request_id: {} managed_url: {} not configured",
 		request_id,
-	)
-	.await?;
+		managed_url_id
+	);
 
 	db::update_managed_url_configuration_status(
 		connection,

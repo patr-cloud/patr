@@ -439,18 +439,6 @@ pub async fn is_domain_verified(
 				)
 				.await?;
 
-				log::trace!("request_id: {} - Creating wild card certiifcate for internal domain", request_id);
-				infrastructure::create_certificates(
-					workspace_id,
-					&format!("certificate-{}", domain_id),
-					&format!("tls-{}", domain_id),
-					vec![format!("*.{}", domain.name), domain.name.clone()],
-					false,
-					config,
-					request_id,
-				)
-				.await?;
-
 				service::domain_verification_email(
 					connection,
 					&domain.name,
