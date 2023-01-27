@@ -1584,17 +1584,21 @@ pub async fn start_deployment(
 		.status(500)?;
 
 	if workspace.is_spam {
-		return Err(Error::empty()
-			.status(401)
-			.body(error!(UNVERIFIED_WORKSPACE).to_string()));
+		db::update_deployment_status(
+			connection,
+			deployment_id,
+			&DeploymentStatus::Running,
+		)
+		.await?;
 	}
 
-	let (cluster_type, kubeconfig) = service::get_kubernetes_config_for_region(
-		connection,
-		&deployment.region,
-		config,
-	)
-	.await?;
+	let (cluster_type, kubeconfig) =
+			service::get_kubernetes_config_for_region(
+			connection,
+			&deployment.region,
+			config,
+		)
+		.await?;
 
 	service::update_kubernetes_deployment(
 		workspace_id,
@@ -1604,7 +1608,7 @@ pub async fn start_deployment(
 		deployment_running_details,
 		&volumes,
 		&cluster_type,
-		&kubeconfig,
+			&kubeconfig,
 		config,
 		request_id,
 	)
@@ -1652,7 +1656,7 @@ pub async fn update_deployment_image(
 	)
 	.await?;
 
-	let (cluster_type, workspace = db::get_workspace_info(connection, workspace_id)
+	let workspace = db::get_workspace_info(connection, workspace_id)
 		.await?
 		.status(500)?;
 
@@ -1660,13 +1664,17 @@ pub async fn update_deployment_image(
 		db::get_all_deployment_volumes(connection, deployment_id).await?;
 
 	if workspace.is_spam {
-		return Err(Error::empty()
-			.status(401)
-			.body(error!(UNVERIFIED_WORKSPACE).to_string()));
-	}
-
-	let kubeconfig =
-		service::get_kubernetes_config_for_region(connection, region, config)
+		db::update_deployment_status(
+			connection,
+			deployment_id,
+			&DeploymentStatus::Running,
+		)
+		.await?;
+	} else {
+		let (cluster_type, kubeconfig) =
+			service::get_kubernetes_config_for_region(
+				connection, region, config,
+			)
 			.await?;
 
 	service::update_kubernetes_deployment(
@@ -1686,7 +1694,7 @@ pub async fn update_deployment_image(
 		deployment_running_details,
 		&volumes,
 		&cluster_type,
-		&kubeconfig,
+			&kubeconfig,
 		config,
 		request_id,
 	)
