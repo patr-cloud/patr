@@ -487,13 +487,32 @@ pub async fn update_deployment(
 
 	if let Some(volumes) = volumes {
 		for (path, size) in volumes {
-			db::update_volume_for_deployment(
+			let volume = db::get_volume_by_path_and_deployment_id(
 				connection,
 				deployment_id,
-				size,
 				path.as_str(),
 			)
 			.await?;
+
+			if let Some(volume) = volume {
+				if *size < volume.size as u32 {
+					return Error::as_result()
+						.status(400)
+						.body(error!(REDUCED_VOLUME_SIZE).to_string())?;
+				}
+
+				db::update_volume_for_deployment(
+					connection,
+					deployment_id,
+					size,
+					path.as_str(),
+				)
+				.await?;
+			} else {
+				return Error::as_result()
+					.status(400)
+					.body(error!(REDUCED_VOLUME_SIZE).to_string())?;
+			}
 		}
 	}
 

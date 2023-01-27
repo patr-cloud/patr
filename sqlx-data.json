@@ -881,20 +881,6 @@
     },
     "query": "SELECT workspace_id as \"workspace_id: Uuid\", resource_id as \"resource_id: Uuid\", permission_id as \"permission_id: Uuid\" FROM user_api_token_resource_permission WHERE token_id = $1;"
   },
-  "0fed541b32a5452267d277ea1c591ea3c8bce0db87e1097b74903cc32507e94b": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int4",
-          "Text",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment_volume SET volume_size = $1, volume_mount_path = $2 WHERE volume_mount_path = $2 AND deployment_id = $3;"
-  },
   "117cf2f33ceb30129812a98389512975c4e4be5a736a0b28e7ee38c77330eae1": {
     "describe": {
       "columns": [
@@ -2628,6 +2614,45 @@
       }
     },
     "query": "CREATE TABLE ci_git_provider ( id UUID CONSTRAINT ci_git_provider_pk PRIMARY KEY, workspace_id UUID NOT NULL CONSTRAINT ci_git_provider_fk_workspace_id REFERENCES workspace(id), domain_name TEXT NOT NULL, git_provider_type CI_GIT_PROVIDER_TYPE NOT NULL, login_name TEXT, password TEXT, is_deleted BOOL NOT NULL DEFAULT FALSE, CONSTRAINT ci_git_provider_ch_login_name_password_is_deleted CHECK ( (is_deleted = TRUE AND password IS NULL) OR ( is_deleted = FALSE AND ( (password IS NOT NULL AND login_name IS NOT NULL) OR (password IS NULL) )) ) );"
+  },
+  "2ec379fdd3424babae9717aa323f7ce04f9a94b599ae9408d4337ae513070d0d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "volume_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "deployment_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "size: _",
+          "ordinal": 2,
+          "type_info": "Int4"
+        },
+        {
+          "name": "path: _",
+          "ordinal": 3,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT id as \"volume_id: _\", deployment_id as \"deployment_id: _\", volume_size as \"size: _\", volume_mount_path as \"path: _\" FROM deployment_volume WHERE deployment_id = $1 AND volume_mount_path = $2;"
   },
   "2ee43784256fab1f48a059f39e58aab7623b3afd59d0ffa15fab0e5899589d04": {
     "describe": {
@@ -13981,6 +14006,20 @@
       }
     },
     "query": "CREATE TABLE domain_tld( tld TEXT CONSTRAINT domain_tld_pk PRIMARY KEY CONSTRAINT domain_tld_chk_is_length_valid CHECK( LENGTH(tld) >= 2 AND LENGTH(tld) <= 63 ) CONSTRAINT domain_tld_chk_is_tld_valid CHECK( tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) );"
+  },
+  "f8fe2a75cce2cf18bcbd8b1598d0034dc4480d593ab17f091327e17f12296891": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE deployment_volume SET volume_size = $1 WHERE volume_mount_path = $2 AND deployment_id = $3;"
   },
   "f97a6aa74e29fce79cf925131c1d9600abb217529d44954f2044e5b11d43ef17": {
     "describe": {

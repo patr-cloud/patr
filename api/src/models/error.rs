@@ -83,6 +83,8 @@ pub mod id {
 	pub const NOT_A_SUPER_ADMIN: &str = "notASuperAdmin";
 	pub const TEMPORARY_EMAIL: &str = "temporaryEmail";
 	pub const UNVERIFIED_WORKSPACE: &str = "unverifiedWorkspace";
+	pub const REDUCED_VOLUME_SIZE: &str = "reducedVolumeSize";
+	pub const VOLUME_PATH_NOT_FOUND: &str = "volumePathNotFound";
 
 	// error constants for billing related things
 	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "cardlessFreeLimitExceeded";
@@ -240,6 +242,10 @@ pub mod message {
 	pub const NOT_A_SUPER_ADMIN: &str = "You have to be super admin to perform this action. If you wish to continue please contact your administrator";
 	pub const TEMPORARY_EMAIL: &str = "We have detected your email to be temporary email. Please enter a valid email or contact support for help";
 	pub const UNVERIFIED_WORKSPACE: &str = "Your workspace has been blocked for suspicious activity. Please open a support ticket to unblock your workspace";
+	pub const REDUCED_VOLUME_SIZE: &str =
+		"Cannot update volume size to be less than the actual size given at the time of creating deployment";
+	pub const VOLUME_PATH_NOT_FOUND: &str =
+		"Unable to find mount path for the volume in the deployment";
 
 	// error constants for billing related things
 	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "You have reached the maximun free limit allowed to create resources without adding a payment card, kindly add a card to create more resources";
