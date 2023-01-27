@@ -9,6 +9,7 @@ pub(super) async fn migrate(
 	config: &Settings,
 ) -> Result<(), Error> {
 	migrate_dollars_to_cents(connection, config).await?;
+
 	Ok(())
 }
 
