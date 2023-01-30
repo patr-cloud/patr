@@ -682,8 +682,9 @@ pub(super) async fn deleted_region_column(
 	query!(
 		r#"
 		CREATE TYPE REGION_STATUS AS ENUM(
-			'created',
+			'creating',
 			'active',
+			'errored',
 			'deleted'
 		);
 		"#
@@ -694,10 +695,10 @@ pub(super) async fn deleted_region_column(
 	query!(
 		r#"
 		ALTER TABLE deployment_region
-		ADD COLUMN config_file TEXT,
-		ADD COLUMN deleted TIMESTAMPTZ,
-		ADD COLUMN status REGION_STATUS NOT NULL DEFAULT 'created',
-		ADD COLUMN last_disconnected TIMESTAMPTZ;
+			ADD COLUMN config_file TEXT,
+			ADD COLUMN deleted TIMESTAMPTZ,
+			ADD COLUMN status REGION_STATUS NOT NULL DEFAULT 'creating',
+			ADD COLUMN last_disconnected TIMESTAMPTZ;
 		"#
 	)
 	.execute(&mut *connection)
@@ -723,7 +724,7 @@ pub(super) async fn migrate_to_kubeconfig(
 		SELECT
 			*
 		FROM
-			deployment_region;
+			deployment_region
 		WHERE
 			ready = true;
 		"#
@@ -776,10 +777,10 @@ pub(super) async fn migrate_to_kubeconfig(
 	query!(
 		r#"
 		ALTER TABLE deployment_region
-		DROP COLUMN kubernetes_cluster_url,
-		DROP COLUMN kubernetes_auth_username,
-		DROP COLUMN kubernetes_auth_token,
-		DROP COLUMN kubernetes_ca_data;
+			DROP COLUMN kubernetes_cluster_url,
+			DROP COLUMN kubernetes_auth_username,
+			DROP COLUMN kubernetes_auth_token,
+			DROP COLUMN kubernetes_ca_data;
 		"#,
 	)
 	.execute(&mut *connection)
