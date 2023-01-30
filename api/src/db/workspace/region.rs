@@ -58,8 +58,9 @@ pub async fn initialize_region_pre(
 	query!(
 		r#"
 		CREATE TYPE REGION_STATUS AS ENUM(
-			'created',
+			'creating',
 			'active',
+			'errored',
 			'deleted'
 		);
 		"#
@@ -80,7 +81,7 @@ pub async fn initialize_region_pre(
 			message_log TEXT,
 			config_file TEXT,
 			deleted TIMESTAMPTZ,
-			status REGION_STATUS NOT NULL DEFAULT 'created',
+			status REGION_STATUS NOT NULL DEFAULT 'creating',
 			last_disconnected TIMESTAMPTZ,
 			CONSTRAINT deployment_region_chk_ready_or_not CHECK(
 				(
@@ -296,7 +297,7 @@ pub async fn add_deployment_region_to_workspace(
 				status
 			)
 		VALUES
-			($1, $2, $3, $4, FALSE, NULL, 'created');
+			($1, $2, $3, $4, FALSE, NULL, 'creating');
 		"#,
 		region_id as _,
 		name,
@@ -329,6 +330,26 @@ pub async fn mark_deployment_region_as_ready(
 		region_id as _,
 		kube_config as _,
 		kubernetes_ingress_ip_addr as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn mark_deployment_region_as_errored(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	region_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment_region
+		SET
+			status = 'errored'
+		WHERE
+			id = $1;
+		"#,
+		region_id as _,
 	)
 	.execute(&mut *connection)
 	.await
