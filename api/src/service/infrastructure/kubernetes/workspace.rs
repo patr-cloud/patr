@@ -8,34 +8,17 @@ use kube::{
 };
 
 use crate::{
-	service::{
-		self,
-		ext_traits::DeleteOpt,
-		KubernetesAuthDetails,
-		KubernetesConfigDetails,
-	},
+	service::{ext_traits::DeleteOpt, KubernetesConfigDetails},
 	utils::Error,
 };
 
 pub async fn create_kubernetes_namespace(
 	namespace_name: &str,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig_details: KubernetesConfigDetails,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let KubernetesAuthDetails {
-		cluster_url,
-		auth_username,
-		auth_token,
-		certificate_authority_data,
-	} = kubeconfig.auth_details;
-
-	let kubeconfig = service::generate_kubeconfig_from_template(
-		&cluster_url,
-		&auth_username,
-		&auth_token,
-		&certificate_authority_data,
-	);
-	let client = super::get_kubernetes_client(&kubeconfig).await?;
+	let client =
+		super::get_kubernetes_client(&kubeconfig_details.kube_config).await?;
 
 	log::trace!("request_id: {} - creating namespace", request_id);
 	let kubernetes_namespace = Namespace {
@@ -56,23 +39,11 @@ pub async fn create_kubernetes_namespace(
 
 pub async fn delete_kubernetes_namespace(
 	namespace_name: &str,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig_details: KubernetesConfigDetails,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let KubernetesAuthDetails {
-		cluster_url,
-		auth_username,
-		auth_token,
-		certificate_authority_data,
-	} = kubeconfig.auth_details;
-
-	let kubeconfig = service::generate_kubeconfig_from_template(
-		&cluster_url,
-		&auth_username,
-		&auth_token,
-		&certificate_authority_data,
-	);
-	let client = super::get_kubernetes_client(&kubeconfig).await?;
+	let client =
+		super::get_kubernetes_client(&kubeconfig_details.kube_config).await?;
 
 	log::trace!("request_id: {} - deleting namespace", request_id);
 

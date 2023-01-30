@@ -33,7 +33,10 @@ kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.
 echo "Ingress controller is ready"
 
 echo "Creating parent workspace in new cluster"
-kubectl create namespace "$PARENT_WORKSPACE_ID"
+echo "apiVersion: v1
+kind: Namespace
+metadata:
+  name: $PARENT_WORKSPACE_ID" | kubectl apply -f -
 
 echo "Turn off SSL redirects"
 kubectl patch configmap ingress-nginx-controller --namespace ingress-nginx --type strategic --patch '{ "data": { "ssl-redirect": "false" }}'

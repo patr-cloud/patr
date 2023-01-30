@@ -196,6 +196,7 @@ pub async fn delete_all_resources_in_workspace(
 			None,
 			"0.0.0.0",
 			true,
+			true,
 			config,
 			request_id,
 		)

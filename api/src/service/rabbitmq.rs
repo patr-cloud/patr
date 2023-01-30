@@ -398,6 +398,7 @@ pub async fn queue_get_kube_config_for_do_cluster(
 
 pub async fn queue_delete_kubernetes_cluster(
 	region_id: &Uuid,
+	workspace_id: &Uuid,
 	kube_config: &str,
 	config: &Settings,
 	request_id: &Uuid,
@@ -405,6 +406,7 @@ pub async fn queue_delete_kubernetes_cluster(
 	send_message_to_infra_queue(
 		&InfraRequestData::BYOC(BYOCData::DeleteKubernetesCluster {
 			region_id: region_id.clone(),
+			workspace_id: workspace_id.clone(),
 			kube_config: kube_config.to_string(),
 			request_id: request_id.clone(),
 		}),

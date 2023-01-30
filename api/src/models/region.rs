@@ -13,9 +13,11 @@ pub struct K8sConfig {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct K8NodePool {
-	pub count: u16,
 	pub name: String,
 	pub size: String,
+	pub auto_scale: bool,
+	pub min_nodes: u16,
+	pub max_nodes: u16,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

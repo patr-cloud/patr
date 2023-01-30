@@ -117,7 +117,7 @@ pub(super) async fn process_request(
 						workspace.id
 					);
 					if is_user_spam {
-						let (_cluster_type, kubeconfig) =
+						let kube_config =
 							service::get_kubernetes_config_for_region(
 								connection,
 								&deployment.region,
@@ -127,7 +127,7 @@ pub(super) async fn process_request(
 						service::delete_kubernetes_deployment(
 							&workspace.id,
 							&deployment.id,
-							&kubeconfig,
+							&kube_config.kube_config,
 							&request_id,
 						)
 						.await?;
@@ -140,6 +140,7 @@ pub(super) async fn process_request(
 							None,
 							None,
 							"0.0.0.0",
+							true,
 							true,
 							config,
 							&request_id,

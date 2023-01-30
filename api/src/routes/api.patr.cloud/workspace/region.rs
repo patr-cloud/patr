@@ -4,6 +4,7 @@ use api_models::{
 		AddRegionToWorkspaceData,
 		AddRegionToWorkspaceRequest,
 		AddRegionToWorkspaceResponse,
+		DeleteRegionFromWorkspaceRequest,
 		DeleteRegionFromWorkspaceResponse,
 		GetRegionResponse,
 		InfrastructureCloudProvider,
@@ -288,7 +289,8 @@ async fn add_region(
 			region,
 			api_token,
 			cluster_name,
-			num_node,
+			min_nodes,
+			max_nodes,
 			node_name,
 			node_size_slug,
 		} => {
@@ -296,17 +298,12 @@ async fn add_region(
 				"request_id: {} creating digital ocean k8s cluster in db",
 				request_id
 			);
-			db::add_do_deployment_region_to_workspace(
+			db::add_deployment_region_to_workspace(
 				context.get_database_connection(),
-				&workspace_id,
 				&region_id,
-				&region.to_string(),
+				&name,
 				&InfrastructureCloudProvider::Digitalocean,
-				&api_token,
-				&cluster_name,
-				&num_node,
-				&node_name,
-				&node_size_slug,
+				&workspace_id,
 			)
 			.await?;
 
@@ -316,7 +313,8 @@ async fn add_region(
 				&region.to_string(),
 				&api_token,
 				&cluster_name,
-				&num_node,
+				min_nodes,
+				max_nodes,
 				&node_name,
 				&node_size_slug,
 				&request_id,
@@ -328,13 +326,6 @@ async fn add_region(
 				request_id,
 				cluster_id
 			);
-
-			db::update_do_cluster_id(
-				context.get_database_connection(),
-				&region_id,
-				&cluster_id,
-			)
-			.await?;
 
 			service::queue_get_kube_config_for_do_cluster(
 				&api_token,
@@ -352,14 +343,6 @@ async fn add_region(
 			let kube_config =
 				std::str::from_utf8(&base64::decode(&config_file)?)?
 					.to_string();
-			db::add_deployment_region_to_workspace(
-				context.get_database_connection(),
-				&region_id,
-				&name,
-				&InfrastructureCloudProvider::Other,
-				&workspace_id,
-			)
-			.await?;
 
 			match Kubeconfig::from_yaml(&kube_config) {
 				Ok(_) => {
@@ -397,7 +380,10 @@ async fn add_region(
 		}
 	}
 
-	log::trace!("request_id: {} - Returning new secret", request_id);
+	log::trace!(
+		"request_id: {} - Successfully added region to workspace",
+		request_id
+	);
 	context.success(AddRegionToWorkspaceResponse { region_id });
 	Ok(context)
 }
@@ -418,6 +404,15 @@ async fn delete_region(
 	let region_id =
 		Uuid::parse_str(context.get_param(request_keys::REGION_ID).unwrap())
 			.unwrap();
+
+	let DeleteRegionFromWorkspaceRequest {
+		workspace_id: _,
+		region_id: _,
+		hard_delete,
+	} = context
+		.get_query_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	log::trace!(
 		"{} - requested to delete region: {} from workspace {}",
@@ -463,19 +458,23 @@ async fn delete_region(
 			Some(&login_id),
 			&ip_address,
 			false,
+			hard_delete,
 			&config,
 			&request_id,
 		)
 		.await?
 	}
 
-	service::queue_delete_kubernetes_cluster(
-		&region_id,
-		&region.config_file.unwrap_or_default(),
-		&config,
-		&request_id,
-	)
-	.await?;
+	if hard_delete {
+		service::queue_delete_kubernetes_cluster(
+			&region_id,
+			&workspace_id,
+			&region.config_file.unwrap_or_default(),
+			&config,
+			&request_id,
+		)
+		.await?;
+	}
 
 	db::delete_region(
 		context.get_database_connection(),

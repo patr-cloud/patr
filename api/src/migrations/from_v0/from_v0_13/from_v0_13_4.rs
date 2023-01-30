@@ -32,7 +32,6 @@ use sqlx::Row;
 
 use crate::{
 	migrate_query as query,
-	service,
 	utils::{settings::Settings, Error},
 	Database,
 };
@@ -628,7 +627,6 @@ pub(super) async fn byoc_v2_migrations(
 	add_delete_region_permission(&mut *connection, config).await?;
 	deleted_region_column(&mut *connection, config).await?;
 	migrate_to_kubeconfig(&mut *connection, config).await?;
-	byoc_for_digital_ocean(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -698,33 +696,13 @@ pub(super) async fn deleted_region_column(
 		ALTER TABLE deployment_region
 		ADD COLUMN config_file TEXT,
 		ADD COLUMN deleted TIMESTAMPTZ,
-		ADD COLUMN status REGION_STATUS NOT NULL DEFAULT 'created';
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
-}
-
-pub(super) async fn byoc_for_digital_ocean(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
-) -> Result<(), Error> {
-	query!(
-		r#"
-		ALTER TABLE deployment_region
-		ADD COLUMN api_token TEXT,
-		ADD COLUMN cluster_name TEXT,
-		ADD COLUMN num_node INTEGER,
-		ADD COLUMN node_name TEXT,
-		ADD COLUMN node_size TEXT,
-		ADD COLUMN do_cluster_id UUID,
+		ADD COLUMN status REGION_STATUS NOT NULL DEFAULT 'created',
 		ADD COLUMN last_disconnected TIMESTAMPTZ;
 		"#
 	)
 	.execute(&mut *connection)
 	.await?;
+
 	Ok(())
 }
 
@@ -763,7 +741,7 @@ pub(super) async fn migrate_to_kubeconfig(
 	});
 
 	for region in regions {
-		let kubeconfig = service::generate_kubeconfig_from_template(
+		let kubeconfig = generate_kubeconfig_from_template(
 			&region.kubernetes_cluster_url,
 			&region.kubernetes_auth_username,
 			&region.kubernetes_auth_token,
@@ -835,4 +813,32 @@ pub(super) async fn migrate_to_kubeconfig(
 	.await?;
 
 	Ok(())
+}
+
+fn generate_kubeconfig_from_template(
+	cluster_url: &str,
+	auth_username: &str,
+	auth_token: &str,
+	certificate_authority_data: &str,
+) -> String {
+	format!(
+		r#"apiVersion: v1
+kind: Config
+clusters:
+  - name: kubernetesCluster
+    cluster:
+      certificate-authority-data: {certificate_authority_data}
+      server: {cluster_url}
+users:
+  - name: {auth_username}
+    user:
+      token: {auth_token}
+contexts:
+  - name: kubernetesContext
+    context:
+      cluster: kubernetesCluster
+      user: {auth_username}
+current-context: kubernetesContext
+preferences: {{}}"#
+	)
 }
