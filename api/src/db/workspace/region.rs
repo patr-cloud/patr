@@ -76,15 +76,9 @@ pub async fn initialize_region_pre(
 			workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id
 				REFERENCES workspace(id),
 			ready BOOLEAN NOT NULL,
-			config_file JSON,
-			api_token TEXT,
-			cluster_name TEXT,
-			num_node INTEGER,
-			node_name TEXT,
-			node_size TEXT,
-			do_cluster_id UUID,
 			kubernetes_ingress_ip_addr INET,
 			message_log TEXT,
+			config_file TEXT,
 			deleted TIMESTAMPTZ,
 			status REGION_STATUS NOT NULL DEFAULT 'created',
 			last_disconnected TIMESTAMPTZ,
@@ -190,7 +184,7 @@ pub async fn get_region_by_id(
 			ready,
 			workspace_id as "workspace_id: _",
 			message_log,
-			config_file as "config_file: _",
+			config_file,
 			kubernetes_ingress_ip_addr as "kubernetes_ingress_ip_addr: _",
 			last_disconnected as "last_disconnected: _"
 		FROM
@@ -218,7 +212,7 @@ pub async fn get_all_deployment_regions_for_workspace(
 			ready,
 			workspace_id as "workspace_id: _",
 			message_log,
-			config_file as "config_file!: _",
+			config_file,
 			kubernetes_ingress_ip_addr as "kubernetes_ingress_ip_addr: _",
 			last_disconnected as "last_disconnected: _"
 		FROM
@@ -314,79 +308,11 @@ pub async fn add_deployment_region_to_workspace(
 	.map(|_| ())
 }
 
-pub async fn add_do_deployment_region_to_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	region_id: &Uuid,
-	name: &str,
-	cloud_provider: &InfrastructureCloudProvider,
-	api_token: &str,
-	cluster_name: &str,
-	num_node: &u16,
-	node_name: &str,
-	node_size: &str,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			deployment_region(
-				id,
-				name,
-				provider,
-				workspace_id,
-				ready,
-				config_file,
-				api_token,
-				cluster_name,
-				num_node,
-				node_name,
-				node_size,
-				status
-			)
-		VALUES
-			($1, $2, $3, $4, FALSE, NULL, $5, $6, $7, $8, $9, 'created');
-		"#,
-		region_id as _,
-		name,
-		cloud_provider as _,
-		workspace_id as _,
-		api_token,
-		cluster_name,
-		*num_node as i16,
-		node_name,
-		node_size,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn update_do_cluster_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	region_id: &Uuid,
-	cluster_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			deployment_region
-		SET
-			do_cluster_id = $1
-		WHERE
-			id = $2;
-		"#,
-		cluster_id as _,
-		region_id as _,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
 pub async fn mark_deployment_region_as_ready(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
 	kube_config: &serde_json::Value,
+	kubernetes_ingress_ip_addr: &IpAddr,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -395,12 +321,14 @@ pub async fn mark_deployment_region_as_ready(
 		SET
 			ready = TRUE,
 			status = 'active',
-			config_file = $1
+			config_file = $2,
+			kubernetes_ingress_ip_addr = $3
 		WHERE
-			id = $2;
+			id = $1;
 		"#,
-		kube_config as _,
 		region_id as _,
+		kube_config as _,
+		kubernetes_ingress_ip_addr as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -441,7 +369,9 @@ pub async fn delete_region(
 		SET
 			deleted = $2,
 			status = 'deleted',
-			ready = FALSE
+			ready = FALSE,
+			config_file = NULL,
+			kubernetes_ingress_ip_addr = NULL
 		WHERE
 			id = $1;
 		"#,

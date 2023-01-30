@@ -341,19 +341,6 @@
     },
     "query": "SELECT default_payment_method_id FROM workspace WHERE id = $1"
   },
-  "06832f975b048ab46ac7c348fc46bb0f913076d7ec37bf1820f680b06f5cd9ac": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "UPDATE deployment_region SET deleted = $2, status = 'deleted', ready = FALSE WHERE id = $1;"
-  },
   "06996105bdcc06ade90e67db371aa915dc31e8e8d1a4aa8a778a78909a585f74": {
     "describe": {
       "columns": [],
@@ -4839,19 +4826,6 @@
     },
     "query": "CREATE UNIQUE INDEX docker_registry_repository_uq_workspace_id_name ON docker_registry_repository(workspace_id, name) WHERE deleted IS NULL;"
   },
-  "53a3b7d2225c1cf54480840dd4b74902d01b8a80dcf583871fc64b07d1180cc9": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment_region SET ready = TRUE, status = 'active', config_file = $1 WHERE id = $2;"
-  },
   "5443d8492257b3f1a81aea2c8b8995bc0b754d4df43d87fb305e442e914f2cc5": {
     "describe": {
       "columns": [
@@ -6361,83 +6335,18 @@
     },
     "query": "\n\t\tUPDATE\n\t\t\tci_git_provider\n\t\tSET\n\t\t\tis_deleted = TRUE,\n\t\t\tpassword = NULL\n\t\tWHERE\n\t\t\tid = $1;\n\t\t"
   },
-  "6c6e45d499cf4bdc80544720405ebbdf80d8e0fb149fcc942fb10769caac64b4": {
+  "6c60aef7135bebd4602b9c973b0b520e407f382d066a7badbeb01f32e24f6cdf": {
     "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "cloud_provider: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "digitalocean",
-                  "other"
-                ]
-              },
-              "name": "infrastructure_cloud_provider"
-            }
-          }
-        },
-        {
-          "name": "ready",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 4,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "message_log",
-          "ordinal": 5,
-          "type_info": "Text"
-        },
-        {
-          "name": "config_file!: _",
-          "ordinal": 6,
-          "type_info": "Text"
-        },
-        {
-          "name": "kubernetes_ingress_ip_addr: _",
-          "ordinal": 7,
-          "type_info": "Inet"
-        },
-        {
-          "name": "last_disconnected: _",
-          "ordinal": 8,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        true
-      ],
+      "columns": [],
+      "nullable": [],
       "parameters": {
         "Left": [
-          "Uuid"
+          "Uuid",
+          "Timestamptz"
         ]
       }
     },
-    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", ready, workspace_id as \"workspace_id: _\", message_log, config_file as \"config_file!: _\", kubernetes_ingress_ip_addr as \"kubernetes_ingress_ip_addr: _\", last_disconnected as \"last_disconnected: _\" FROM deployment_region WHERE workspace_id IS NULL OR workspace_id = $1;"
+    "query": "UPDATE deployment_region SET deleted = $2, status = 'deleted', ready = FALSE, config_file = NULL, kubernetes_ingress_ip_addr = NULL WHERE id = $1;"
   },
   "6d05ec700171bd657820ee746c78041cb00108a2cd8a54fe655f1bd5e20d99ff": {
     "describe": {
@@ -7430,16 +7339,6 @@
     },
     "query": "CREATE TABLE deployment_environment_variable( deployment_id UUID CONSTRAINT deployment_environment_variable_fk_deployment_id REFERENCES deployment(id), name VARCHAR(256) NOT NULL, value TEXT, secret_id UUID, CONSTRAINT deployment_environment_variable_pk PRIMARY KEY(deployment_id, name), CONSTRAINT deployment_environment_variable_fk_secret_id FOREIGN KEY(secret_id) REFERENCES secret(id), CONSTRAINT deployment_env_var_chk_value_secret_id_either_not_null CHECK( ( value IS NOT NULL AND secret_id IS NULL ) OR ( value IS NULL AND secret_id IS NOT NULL ) ) );"
   },
-  "81839120dd2eb5ad9057995853469ce2bb468dc1c66e677dcda1f05a1e442ec3": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment_region( id UUID CONSTRAINT deployment_region_pk PRIMARY KEY, name TEXT NOT NULL, provider INFRASTRUCTURE_CLOUD_PROVIDER NOT NULL, workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id REFERENCES workspace(id), ready BOOLEAN NOT NULL, config_file JSON, api_token TEXT, cluster_name TEXT, num_node INTEGER, node_name TEXT, node_size TEXT, do_cluster_id UUID, kubernetes_ingress_ip_addr INET, message_log TEXT, deleted TIMESTAMPTZ, status REGION_STATUS NOT NULL DEFAULT 'created', last_disconnected TIMESTAMPTZ, CONSTRAINT deployment_region_chk_ready_or_not CHECK( ( workspace_id IS NOT NULL AND ( ( ready = TRUE AND config_file IS NOT NULL AND kubernetes_ingress_ip_addr IS NOT NULL ) OR ( ready = FALSE AND config_file IS NULL AND kubernetes_ingress_ip_addr IS NULL ) ) ) OR ( workspace_id IS NULL AND config_file IS NULL AND kubernetes_ingress_ip_addr IS NULL ) ) );"
-  },
   "819e618434cdff425c67c3f046f6b17017f502cf2e5d54e82b57a6dc619fb851": {
     "describe": {
       "columns": [
@@ -7495,6 +7394,138 @@
       }
     },
     "query": "UPDATE secret SET name = $1 WHERE id = $2;"
+  },
+  "829f41f92a8fd4465f8ae007346ff710aff3ee0c8c83399e5c6a74a22ac0af86": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: String",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "super_admin_id: Uuid",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "active",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "alert_emails: Vec<String>",
+          "ordinal": 4,
+          "type_info": "VarcharArray"
+        },
+        {
+          "name": "payment_type: PaymentType",
+          "ordinal": 5,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "card",
+                  "enterprise"
+                ]
+              },
+              "name": "payment_type"
+            }
+          }
+        },
+        {
+          "name": "default_payment_method_id: String",
+          "ordinal": 6,
+          "type_info": "Text"
+        },
+        {
+          "name": "deployment_limit",
+          "ordinal": 7,
+          "type_info": "Int4"
+        },
+        {
+          "name": "static_site_limit",
+          "ordinal": 8,
+          "type_info": "Int4"
+        },
+        {
+          "name": "database_limit",
+          "ordinal": 9,
+          "type_info": "Int4"
+        },
+        {
+          "name": "managed_url_limit",
+          "ordinal": 10,
+          "type_info": "Int4"
+        },
+        {
+          "name": "secret_limit",
+          "ordinal": 11,
+          "type_info": "Int4"
+        },
+        {
+          "name": "domain_limit",
+          "ordinal": 12,
+          "type_info": "Int4"
+        },
+        {
+          "name": "docker_repository_storage_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "stripe_customer_id",
+          "ordinal": 14,
+          "type_info": "Text"
+        },
+        {
+          "name": "address_id: Uuid",
+          "ordinal": 15,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "amount_due_in_cents",
+          "ordinal": 16,
+          "type_info": "Int8"
+        },
+        {
+          "name": "is_spam",
+          "ordinal": 17,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: Uuid\", name::TEXT as \"name!: String\", super_admin_id as \"super_admin_id: Uuid\", active, alert_emails as \"alert_emails: Vec<String>\", payment_type as \"payment_type: PaymentType\", default_payment_method_id as \"default_payment_method_id: String\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, stripe_customer_id, address_id as \"address_id: Uuid\", amount_due_in_cents, is_spam FROM workspace WHERE super_admin_id = $1 AND deleted IS NULL;"
   },
   "82b24edd9f2340f5b6d247980a1a2245a317be52245d3791f5b0835a10397128": {
     "describe": {
@@ -9827,6 +9858,20 @@
     },
     "query": "CREATE TYPE TRANSACTION_TYPE as ENUM( 'bill', 'credits', 'payment' );"
   },
+  "a73a64226c73e75b3edad17a703be600285dfc03471bcf353eda7d3b559a7588": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Inet"
+        ]
+      }
+    },
+    "query": "UPDATE deployment_region SET ready = TRUE, status = 'active', config_file = $2, kubernetes_ingress_ip_addr = $3 WHERE id = $1;"
+  },
   "a780a4512b2ca58787f293e3033771d289cd7b0308573b4271865e3d63121215": {
     "describe": {
       "columns": [],
@@ -10739,36 +10784,6 @@
       }
     },
     "query": "SET CONSTRAINTS ALL IMMEDIATE;"
-  },
-  "bac775e53d376040231c9b8991d3872d4a467fbac2d2d8a5026e974f88ab6b62": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "digitalocean",
-                  "other"
-                ]
-              },
-              "name": "infrastructure_cloud_provider"
-            }
-          },
-          "Uuid",
-          "Text",
-          "Text",
-          "Int4",
-          "Text",
-          "Text"
-        ]
-      }
-    },
-    "query": "INSERT INTO deployment_region( id, name, provider, workspace_id, ready, config_file, api_token, cluster_name, num_node, node_name, node_size, status ) VALUES ($1, $2, $3, $4, FALSE, NULL, $5, $6, $7, $8, $9, 'created');"
   },
   "bb0543aece40abc7fdfc84b49c1789793a1156aae26e0478328e2734a63c66e8": {
     "describe": {
@@ -12025,19 +12040,6 @@
     },
     "query": "CREATE TABLE docker_registry_repository( id UUID CONSTRAINT docker_registry_repository_pk PRIMARY KEY, workspace_id UUID NOT NULL CONSTRAINT docker_registry_repository_fk_workspace_id REFERENCES workspace(id), name CITEXT NOT NULL, deleted TIMESTAMPTZ, CONSTRAINT docker_registry_repository_uq_id_workspace_id UNIQUE( id, workspace_id ) );"
   },
-  "d08a0869b0c27de91e3a69b9acadeae0da3fc1917d3e2092916207b46d03238b": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment_region SET do_cluster_id = $1 WHERE id = $2;"
-  },
   "d09ad91d4dddfd2c60d821588041b59feb517af01266fe52980e0b4aca9b87ef": {
     "describe": {
       "columns": [
@@ -12185,72 +12187,6 @@
       }
     },
     "query": "INSERT INTO domain( id, name, type, tld ) VALUES ($1, $2, $3, $4);"
-  },
-  "d2ca892138dda0bf1f349785a946da0be3f47a06a3f22ffdd6c7607299ee9fb0": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "cloud_provider: _",
-          "ordinal": 2,
-        {
-          "name": "ready",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 4,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "message_log",
-          "ordinal": 5,
-          "type_info": "Text"
-        },
-        {
-          "name": "config_file: _",
-          "ordinal": 6,
-          "type_info": "Text"
-        },
-        {
-          "name": "kubernetes_ingress_ip_addr: _",
-          "ordinal": 7,
-          "type_info": "Inet"
-        },
-        {
-          "name": "last_disconnected: _",
-          "ordinal": 8,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", ready, workspace_id as \"workspace_id: _\", message_log, config_file as \"config_file: _\", kubernetes_ingress_ip_addr as \"kubernetes_ingress_ip_addr: _\", last_disconnected as \"last_disconnected: _\" FROM deployment_region WHERE id = $1;"
   },
   "d2ca892138dda0bf1f349785a946da0be3f47a06a3f22ffdd6c7607299ee9fb0": {
     "describe": {
@@ -13613,6 +13549,84 @@
     },
     "query": "INSERT INTO deployment_region( id, name, provider, ready ) VALUES ($1, $2, $3, $4);"
   },
+  "eab0f148cb2819db031fa8aa3b9add8d6b71c1d75c1e8fffe1a62bd4c9226cb2": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "cloud_provider: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "digitalocean",
+                  "other"
+                ]
+              },
+              "name": "infrastructure_cloud_provider"
+            }
+          }
+        },
+        {
+          "name": "ready",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 4,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "message_log",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "config_file",
+          "ordinal": 6,
+          "type_info": "Text"
+        },
+        {
+          "name": "kubernetes_ingress_ip_addr: _",
+          "ordinal": 7,
+          "type_info": "Inet"
+        },
+        {
+          "name": "last_disconnected: _",
+          "ordinal": 8,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", ready, workspace_id as \"workspace_id: _\", message_log, config_file, kubernetes_ingress_ip_addr as \"kubernetes_ingress_ip_addr: _\", last_disconnected as \"last_disconnected: _\" FROM deployment_region WHERE workspace_id IS NULL OR workspace_id = $1;"
+  },
   "ebb50db24a70648653710428f4bc4db0b5a33f683894476370d206816a85a557": {
     "describe": {
       "columns": [],
@@ -13707,6 +13721,16 @@
       }
     },
     "query": "CREATE TABLE domain( id UUID CONSTRAINT domain_pk PRIMARY KEY, name TEXT NOT NULL CONSTRAINT domain_chk_name_is_valid CHECK( name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' ), type RESOURCE_OWNER_TYPE NOT NULL, tld TEXT NOT NULL CONSTRAINT domain_fk_tld REFERENCES domain_tld(tld), deleted TIMESTAMPTZ, CONSTRAINT domain_chk_max_domain_name_length CHECK( (LENGTH(name) + LENGTH(tld)) < 255 ), CONSTRAINT domain_uq_name_type UNIQUE(id, type), CONSTRAINT domain_uq_id_type_deleted UNIQUE(id, type, deleted) );"
+  },
+  "ee1105d3a371d2509133c42667e066928fff5c7160b31148650ddb58c7f12c27": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_region( id UUID CONSTRAINT deployment_region_pk PRIMARY KEY, name TEXT NOT NULL, provider INFRASTRUCTURE_CLOUD_PROVIDER NOT NULL, workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id REFERENCES workspace(id), ready BOOLEAN NOT NULL, kubernetes_ingress_ip_addr INET, message_log TEXT, config_file TEXT, deleted TIMESTAMPTZ, status REGION_STATUS NOT NULL DEFAULT 'created', last_disconnected TIMESTAMPTZ, CONSTRAINT deployment_region_chk_ready_or_not CHECK( ( workspace_id IS NOT NULL AND ( ( ready = TRUE AND config_file IS NOT NULL AND kubernetes_ingress_ip_addr IS NOT NULL ) OR ( ready = FALSE AND config_file IS NULL AND kubernetes_ingress_ip_addr IS NULL ) ) ) OR ( workspace_id IS NULL AND config_file IS NULL AND kubernetes_ingress_ip_addr IS NULL ) ) );"
   },
   "ee4ea18cebcb0c118054ebe00ae27cb609df953c788737ad02d1044c901d21a9": {
     "describe": {

@@ -85,7 +85,6 @@ use crate::{
 		ext_traits::DeleteOpt,
 		get_kubernetes_config_for_default_region,
 		ClusterType,
-		KubernetesAuthDetails,
 	},
 	utils::{constants::request_keys, settings::Settings, Error},
 	Database,
@@ -776,21 +775,12 @@ pub async fn update_kubernetes_deployment(
 	} = cluster_type
 	{
 		// create a ingress in patr cluster to point to user's cluster
-		let KubernetesAuthDetails {
-			cluster_url,
-			auth_username,
-			auth_token,
-			certificate_authority_data,
-		} = get_kubernetes_config_for_default_region(config).auth_details;
-
-		let kubeconfig_yaml = service::generate_kubeconfig_from_template(
-			&cluster_url,
-			&auth_username,
-			&auth_token,
-			&certificate_authority_data,
-		);
-		let kubernetes_client =
-			super::get_kubernetes_client(&kubeconfig_yaml).await?;
+		let default_region_kubeconfig =
+			get_kubernetes_config_for_default_region(config);
+		let kubernetes_client = super::get_kubernetes_client(
+			&default_region_kubeconfig.kube_config,
+		)
+		.await?;
 
 		let exposted_ports = running_details
 			.ports
@@ -1062,13 +1052,14 @@ pub async fn get_kubernetes_deployment_status(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let (_, kubeconfig) = service::get_kubernetes_config_for_region(
+	let kube_config_details = service::get_kubernetes_config_for_region(
 		connection,
 		&deployment.region,
 		config,
 	)
 	.await?;
-	let kubernetes_client = super::get_kubernetes_client(&kubeconfig).await?;
+	let kubernetes_client =
+		super::get_kubernetes_client(&kube_config_details.kube_config).await?;
 
 	let is_deployment =
 		db::get_all_deployment_volumes(connection, deployment_id)

@@ -1565,10 +1565,8 @@ pub async fn start_deployment(
 			&DeploymentStatus::Running,
 		)
 		.await?;
-	}
-
-	let (cluster_type, kubeconfig) =
-			service::get_kubernetes_config_for_region(
+	} else {
+		let kube_config_details = service::get_kubernetes_config_for_region(
 			connection,
 			&deployment.region,
 			config,
@@ -1582,8 +1580,8 @@ pub async fn start_deployment(
 		digest.as_deref(),
 		deployment_running_details,
 		&volumes,
-		&cluster_type,
-			&kubeconfig,
+		&kube_config_details.cluster_type,
+			&kube_config_details.kube_config,
 		config,
 		request_id,
 	)
@@ -1646,11 +1644,10 @@ pub async fn update_deployment_image(
 		)
 		.await?;
 	} else {
-		let (cluster_type, kubeconfig) =
-			service::get_kubernetes_config_for_region(
-				connection, region, config,
-			)
-			.await?;
+		let kube_config_details = service::get_kubernetes_config_for_region(
+			connection, region, config,
+		)
+		.await?;
 
 	service::update_kubernetes_deployment(
 		workspace_id,
@@ -1668,8 +1665,8 @@ pub async fn update_deployment_image(
 		Some(digest),
 		deployment_running_details,
 		&volumes,
-		&cluster_type,
-			&kubeconfig,
+		&kube_config_details.cluster_type,
+			&kube_config_details.kube_config,
 		config,
 		request_id,
 	)
@@ -1734,7 +1731,7 @@ pub async fn stop_deployment(
 	)
 	.await?;
 
-	let (_, kubeconfig) = service::get_kubernetes_config_for_region(
+	let kube_config_details = service::get_kubernetes_config_for_region(
 		connection, region_id, config,
 	)
 	.await?;
@@ -1742,7 +1739,7 @@ pub async fn stop_deployment(
 	service::delete_kubernetes_deployment(
 		workspace_id,
 		deployment_id,
-		&kubeconfig,
+		&kube_config_details.kube_config,
 		request_id,
 	)
 	.await?;
@@ -1759,6 +1756,7 @@ pub async fn delete_deployment(
 	login_id: Option<&Uuid>,
 	ip_address: &str,
 	patr_action: bool,
+	delete_k8s_resource: bool,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -1799,10 +1797,15 @@ pub async fn delete_deployment(
 	)
 	.await?;
 
-	let (_, kubeconfig) = service::get_kubernetes_config_for_region(
-		connection, region_id, config,
-	)
-	.await?;
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
+
+	if delete_k8s_resource && !workspace.is_spam {
+		let kube_config_details = service::get_kubernetes_config_for_region(
+			connection, region_id, config,
+		)
+		.await?;
 
 	service::delete_kubernetes_deployment(
 		workspace_id,
@@ -1824,7 +1827,7 @@ pub async fn delete_deployment(
 				deployment_id,
 				&volume,
 				replica_index,
-				&kubeconfig.clone(),
+				&kube_config_details.kube_config.clone(),
 				request_id,
 			)
 			.await?;

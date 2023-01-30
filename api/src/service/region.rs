@@ -31,7 +31,7 @@ pub struct KubernetesAuthDetails {
 #[derive(Debug, Clone)]
 pub struct KubernetesConfigDetails {
 	pub cluster_type: ClusterType,
-	pub auth_details: KubernetesAuthDetails,
+	pub kube_config: String,
 }
 
 pub fn get_kubernetes_config_for_default_region(
@@ -39,15 +39,12 @@ pub fn get_kubernetes_config_for_default_region(
 ) -> KubernetesConfigDetails {
 	KubernetesConfigDetails {
 		cluster_type: ClusterType::PatrOwned,
-		auth_details: KubernetesAuthDetails {
-			cluster_url: config.kubernetes.cluster_url.to_owned(),
-			auth_username: config.kubernetes.auth_username.to_owned(),
-			auth_token: config.kubernetes.auth_token.to_owned(),
-			certificate_authority_data: config
-				.kubernetes
-				.certificate_authority_data
-				.to_owned(),
-		},
+		kube_config: generate_kubeconfig_from_template(
+			&config.kubernetes.cluster_url,
+			&config.kubernetes.auth_username,
+			&config.kubernetes.auth_token,
+			&config.kubernetes.certificate_authority_data,
+		),
 	}
 }
 
@@ -55,7 +52,7 @@ pub async fn get_kubernetes_config_for_region(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
 	config: &Settings,
-) -> Result<(ClusterType, String), Error> {
+) -> Result<KubernetesConfigDetails, Error> {
 	let region = db::get_region_by_id(connection, region_id)
 		.await?
 		.status(500)?;
@@ -64,28 +61,30 @@ pub async fn get_kubernetes_config_for_region(
 		// use the patr clusters
 
 		// for now returing the default cluster credentials
-		(
-			ClusterType::PatrOwned,
-			generate_kubeconfig_from_template(
+		KubernetesConfigDetails {
+			cluster_type: ClusterType::PatrOwned,
+			kube_config: generate_kubeconfig_from_template(
 				&config.kubernetes.cluster_url,
 				&config.kubernetes.auth_username,
 				&config.kubernetes.auth_token,
 				&config.kubernetes.certificate_authority_data,
 			),
-		)
+		}
 	} else {
 		match (
 			region.ready,
 			region.config_file,
 			region.kubernetes_ingress_ip_addr,
 		) {
-			(true, Some(config_file), Some(ingress_ip_addr)) => (
-				ClusterType::UserOwned {
-					region_id: region.id,
-					ingress_ip_addr,
-				},
-				config_file,
-			),
+			(true, Some(config_file), Some(ingress_ip_addr)) => {
+				KubernetesConfigDetails {
+					cluster_type: ClusterType::UserOwned {
+						region_id: region.id,
+						ingress_ip_addr,
+					},
+					kube_config: config_file,
+				}
+			}
 			_ => {
 				log::info!("cluster {region_id} is not yet initialized");
 				return Err(Error::empty().body(format!(
@@ -102,7 +101,8 @@ pub async fn create_do_k8s_cluster(
 	region: &str,
 	api_token: &str,
 	cluster_name: &str,
-	num_node: &u16,
+	min_nodes: u16,
+	max_nodes: u16,
 	node_name: &str,
 	node_size_slug: &str,
 	request_id: &Uuid,
@@ -121,9 +121,11 @@ pub async fn create_do_k8s_cluster(
 			version: "1.24".to_string(),
 			name: cluster_name.to_string(),
 			node_pools: vec![K8NodePool {
-				count: num_node.to_owned(),
 				name: node_name.to_string(),
 				size: node_size_slug.to_string(),
+				auto_scale: true,
+				min_nodes,
+				max_nodes,
 			}],
 		})
 		.send()

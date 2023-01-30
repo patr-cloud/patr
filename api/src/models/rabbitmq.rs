@@ -77,6 +77,7 @@ pub enum BYOCData {
 	},
 	DeleteKubernetesCluster {
 		region_id: Uuid,
+		workspace_id: Uuid,
 		kube_config: String,
 		request_id: Uuid,
 	},

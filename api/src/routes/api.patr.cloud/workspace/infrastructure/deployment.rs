@@ -1623,6 +1623,7 @@ async fn delete_deployment(
 		Some(&login_id),
 		&ip_address,
 		false,
+		true,
 		&config,
 		&request_id,
 	)
