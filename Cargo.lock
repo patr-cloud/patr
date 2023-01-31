@@ -664,8 +664,8 @@ dependencies = [
 
 [[package]]
 name = "cloudflare"
-version = "0.9.1"
-source = "git+https://github.com/kavin-kr/cloudflare-rs?branch=feature/custom_hostname#2be7f7f0738ba63914b5be87abc45406da698343"
+version = "0.10.1"
+source = "git+https://github.com/kavin-kr/cloudflare-rs?branch=feature/custom_hostname#d3976064de86c2f272c501923dc970068df2b557"
 dependencies = [
  "anyhow",
  "async-trait",
