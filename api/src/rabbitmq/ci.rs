@@ -471,6 +471,21 @@ pub async fn process_request(
 				}
 			}
 		}
+		CIData::SyncRepo {
+			workspace_id,
+			git_provider_id,
+			request_id,
+			github_access_token,
+		} => {
+			service::sync_github_repos(
+				connection,
+				&workspace_id,
+				&git_provider_id,
+				github_access_token,
+				&request_id,
+			)
+			.await?;
+		}
 	}
 	Ok(())
 }

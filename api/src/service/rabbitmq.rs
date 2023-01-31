@@ -383,6 +383,26 @@ pub async fn queue_setup_kubernetes_cluster(
 	.await
 }
 
+pub async fn queue_sync_github_repo(
+	workspace_id: &Uuid,
+	git_provider_id: &Uuid,
+	request_id: &Uuid,
+	github_access_token: String,
+	config: &Settings,
+) -> Result<(), Error> {
+	send_message_to_ci_queue(
+		&CIData::SyncRepo {
+			workspace_id: workspace_id.clone(),
+			git_provider_id: git_provider_id.clone(),
+			request_id: request_id.clone(),
+			github_access_token,
+		},
+		config,
+		request_id,
+	)
+	.await
+}
+
 pub async fn queue_docker_notification_error(
 	request_body: &str,
 	content_type: &str,

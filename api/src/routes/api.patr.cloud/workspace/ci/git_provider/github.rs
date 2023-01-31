@@ -791,6 +791,7 @@ async fn sync_repositories(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
+	let config = context.get_state().config.clone();
 	log::trace!("request_id: {request_id} - Syncing github repos for workspace {workspace_id}");
 
 	let git_provider = db::get_git_provider_details_for_workspace_using_domain(
@@ -805,12 +806,12 @@ async fn sync_repositories(
 		.zip(git_provider.password)
 		.status(500)?;
 
-	service::sync_github_repos(
-		context.get_database_connection(),
+	service::queue_sync_github_repo(
 		&git_provider.workspace_id,
 		&git_provider.id,
-		access_token,
 		&request_id,
+		access_token,
+		&config,
 	)
 	.await?;
 
