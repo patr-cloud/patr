@@ -12,6 +12,7 @@ use api_models::{
 };
 use chrono::{Datelike, Duration, Utc};
 use eve_rs::AsError;
+use reqwest::Client;
 
 use super::get_ip_address_info;
 /// This module validates user info and performs tasks related to user
@@ -22,7 +23,7 @@ use super::get_ip_address_info;
 use crate::{
 	db::{self, User, UserLoginType, UserToSignUp, UserWebLogin},
 	error,
-	models::{rbac, AccessTokenData, ExposedUserData},
+	models::{rbac, AccessTokenData, ExposedUserData, IpQualityScore},
 	service,
 	utils::{settings::Settings, validator, Error},
 	Database,
@@ -236,6 +237,7 @@ pub async fn create_user_join_request(
 	account_type: &SignUpAccountType,
 	recovery_method: &RecoveryMethod,
 	coupon_code: Option<&str>,
+	config: &Settings,
 ) -> Result<(UserToSignUp, String), Error> {
 	// Check if the username is allowed
 	if !is_username_allowed(connection, username).await? {
@@ -296,6 +298,39 @@ pub async fn create_user_join_request(
 				return Error::as_result()
 					.status(400)
 					.body(error!(INVALID_EMAIL).to_string())?;
+			}
+
+			// Check if any one of their emails are spam or disposable
+			let spam_score = Client::new()
+				.get(format!(
+					"{}/{}/{}",
+					config.ip_quality.host,
+					config.ip_quality.token,
+					recovery_email
+				))
+				.send()
+				.await?
+				.json::<IpQualityScore>()
+				.await?;
+
+			if spam_score.disposable || spam_score.fraud_score > 75 {
+				if spam_score.disposable {
+					log::info!(
+						"Email: {} is a disposable email",
+						recovery_email,
+					);
+					return Error::as_result()
+						.status(400)
+						.body(error!(TEMPORARY_EMAIL).to_string())?;
+				} else {
+					log::info!(
+						"Email: {} is a spam email with fraud score of: {}",
+						recovery_email,
+						spam_score.fraud_score
+					);
+
+					// db::mark_workspace_as_spam(connection, workspace_id)?;
+				}
 			}
 
 			// extract the email_local and domain name from it
@@ -1184,41 +1219,47 @@ pub async fn join_user(
 		}
 	}
 
-	// if let Some(ref recovery_email) = recovery_email_to {
-	// 	// Reference for APIs docs of ipqualityscore can be found in this
-	// 	// url https://www.ipqualityscore.com/documentation/email-validation/overview
-	// 	let email_spam_result = Client::new()
-	// 		.get(format!(
-	// 			"{}/{}/{}",
-	// 			config.ip_quality.host, config.ip_quality.token, recovery_email
-	// 		))
-	// 		.send()
-	// 		.await?
-	// 		.json::<IpQualityScore>()
-	// 		.await?;
+	if let Some(ref recovery_email) = recovery_email_to {
+		// Reference for APIs docs of ipqualityscore can be found in this
+		// url https://www.ipqualityscore.com/documentation/email-validation/overview
+		let email_spam_result = Client::new()
+			.get(format!(
+				"{}/{}/{}",
+				config.ip_quality.host, config.ip_quality.token, recovery_email
+			))
+			.send()
+			.await?
+			.json::<IpQualityScore>()
+			.await?;
 
-	// 	let disposable = email_spam_result.disposable;
+		let disposable = email_spam_result.disposable;
+		let is_spam = email_spam_result.fraud_score > 75;
 
-	// 	let workspaces =
-	// 		db::get_all_workspaces_for_user(connection, &user_id).await?;
+		let workspaces =
+			db::get_all_workspaces_for_user(connection, &user_id).await?;
 
-	// 	if disposable {
-	// 		for workspace in &workspaces {
-	// 			db::set_resource_limit_for_workspace(
-	// 				connection,
-	// 				&workspace.id,
-	// 				0,
-	// 				0,
-	// 				0,
-	// 				0,
-	// 				0,
-	// 				0,
-	// 				0,
-	// 			)
-	// 			.await?;
-	// 		}
-	// 	}
-	// }
+		if disposable || is_spam {
+			for workspace in &workspaces {
+				if disposable {
+					db::set_resource_limit_for_workspace(
+						connection,
+						&workspace.id,
+						0,
+						0,
+						0,
+						0,
+						0,
+						0,
+						0,
+					)
+					.await?;
+				} else {
+					db::mark_workspace_as_spam(connection, &workspace.id)
+						.await?;
+				}
+			}
+		}
+	}
 
 	db::delete_user_to_be_signed_up(connection, &user_data.username).await?;
 
