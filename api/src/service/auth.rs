@@ -237,7 +237,6 @@ pub async fn create_user_join_request(
 	account_type: &SignUpAccountType,
 	recovery_method: &RecoveryMethod,
 	coupon_code: Option<&str>,
-	config: &Settings,
 ) -> Result<(UserToSignUp, String), Error> {
 	// Check if the username is allowed
 	if !is_username_allowed(connection, username).await? {
@@ -298,37 +297,6 @@ pub async fn create_user_join_request(
 				return Error::as_result()
 					.status(400)
 					.body(error!(INVALID_EMAIL).to_string())?;
-			}
-
-			// Check if any one of their emails are spam or disposable
-			let spam_score = Client::new()
-				.get(format!(
-					"{}/{}/{}",
-					config.ip_quality.host,
-					config.ip_quality.token,
-					recovery_email
-				))
-				.send()
-				.await?
-				.json::<IpQualityScore>()
-				.await?;
-
-			if spam_score.disposable || spam_score.fraud_score > 75 {
-				if spam_score.disposable {
-					log::info!(
-						"Email: {} is a disposable email",
-						recovery_email,
-					);
-					return Error::as_result()
-						.status(400)
-						.body(error!(TEMPORARY_EMAIL).to_string())?;
-				} else {
-					log::warn!(
-						"Email: {} is a spam email with fraud score of: {}",
-						recovery_email,
-						spam_score.fraud_score
-					);
-				}
 			}
 
 			// extract the email_local and domain name from it

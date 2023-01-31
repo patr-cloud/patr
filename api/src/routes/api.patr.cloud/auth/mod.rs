@@ -248,8 +248,6 @@ async fn sign_up(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let config = context.get_state().config.clone();
-
 	let (user_to_sign_up, otp) = service::create_user_join_request(
 		context.get_database_connection(),
 		username.to_lowercase().trim(),
@@ -259,7 +257,6 @@ async fn sign_up(
 		&account_type,
 		&recovery_method,
 		coupon_code.as_deref(),
-		&config,
 	)
 	.await?;
 	// send otp
