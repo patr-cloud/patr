@@ -323,13 +323,11 @@ pub async fn create_user_join_request(
 						.status(400)
 						.body(error!(TEMPORARY_EMAIL).to_string())?;
 				} else {
-					log::info!(
+					log::warn!(
 						"Email: {} is a spam email with fraud score of: {}",
 						recovery_email,
 						spam_score.fraud_score
 					);
-
-					// db::mark_workspace_as_spam(connection, workspace_id)?;
 				}
 			}
 
