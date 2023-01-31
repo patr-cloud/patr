@@ -767,77 +767,77 @@ pub async fn send_partial_payment_success_email(
 /// errors
 ///
 /// [`TEmail`]: TEmail
-#[cfg(not(debug_assertions))]
-async fn send_email<TEmail>(
-	body: TEmail,
-	to: Mailbox,
-	reply_to: Option<Mailbox>,
-	subject: &str,
-) -> Result<(), Error>
-where
-	TEmail: EmailTemplate + Send + Sync + 'static,
-{
-	use lettre::{
-		transport::smtp::authentication::Credentials,
-		AsyncSmtpTransport,
-		AsyncTransport,
-		Message,
-		Tokio1Executor,
-	};
-	use tokio::{task, task::JoinHandle};
+// #[cfg(not(debug_assertions))]
+// async fn send_email<TEmail>(
+// 	body: TEmail,
+// 	to: Mailbox,
+// 	reply_to: Option<Mailbox>,
+// 	subject: &str,
+// ) -> Result<(), Error>
+// where
+// 	TEmail: EmailTemplate + Send + Sync + 'static,
+// {
+// 	use lettre::{
+// 		transport::smtp::authentication::Credentials,
+// 		AsyncSmtpTransport,
+// 		AsyncTransport,
+// 		Message,
+// 		Tokio1Executor,
+// 	};
+// 	use tokio::{task, task::JoinHandle};
 
-	use crate::{service, utils::handlebar_registry};
+// 	use crate::{service, utils::handlebar_registry};
 
-	let subject = subject.to_string();
-	let join_handle: JoinHandle<Result<_, Error>> = task::spawn(async move {
-		let settings = service::get_settings();
-		let mut builder = Message::builder()
-			.from(settings.email.from.parse()?)
-			.to(to.clone())
-			.subject(subject);
-		if let Some(reply_to) = reply_to {
-			builder = builder.reply_to(reply_to);
-		} else {
-			builder = builder.reply_to("support@patr.cloud".parse()?);
-		}
+// 	let subject = subject.to_string();
+// 	let join_handle: JoinHandle<Result<_, Error>> = task::spawn(async move {
+// 		let settings = service::get_settings();
+// 		let mut builder = Message::builder()
+// 			.from(settings.email.from.parse()?)
+// 			.to(to.clone())
+// 			.subject(subject);
+// 		if let Some(reply_to) = reply_to {
+// 			builder = builder.reply_to(reply_to);
+// 		} else {
+// 			builder = builder.reply_to("support@patr.cloud".parse()?);
+// 		}
 
-		let message = builder.multipart(
-			body.render_body(handlebar_registry::get_handlebar_registry())
-				.await?,
-		)?;
+// 		let message = builder.multipart(
+// 			body.render_body(handlebar_registry::get_handlebar_registry())
+// 				.await?,
+// 		)?;
 
-		let credentials = Credentials::new(
-			settings.email.username.clone(),
-			settings.email.password.clone(),
-		);
+// 		let credentials = Credentials::new(
+// 			settings.email.username.clone(),
+// 			settings.email.password.clone(),
+// 		);
 
-		let response = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(
-			&settings.email.host,
-		)?
-		.credentials(credentials)
-		.port(settings.email.port)
-		.build::<Tokio1Executor>()
-		.send(message)
-		.await?;
+// 		let response = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(
+// 			&settings.email.host,
+// 		)?
+// 		.credentials(credentials)
+// 		.port(settings.email.port)
+// 		.build::<Tokio1Executor>()
+// 		.send(message)
+// 		.await?;
 
-		if !response.is_positive() {
-			log::error!("Error sending email to `{}`: {}", to, response.code());
-		}
+// 		if !response.is_positive() {
+// 			log::error!("Error sending email to `{}`: {}", to, response.code());
+// 		}
 
-		Ok(())
-	});
+// 		Ok(())
+// 	});
 
-	let _ = task::spawn(async {
-		let result = join_handle.await;
+// 	let _ = task::spawn(async {
+// 		let result = join_handle.await;
 
-		if let Ok(Err(error)) = result {
-			// TODO log this error
-			log::error!("Unable to send email: {}", error.get_error());
-		}
-	});
+// 		if let Ok(Err(error)) = result {
+// 			// TODO log this error
+// 			log::error!("Unable to send email: {}", error.get_error());
+// 		}
+// 	});
 
-	Ok(())
-}
+// 	Ok(())
+// }
 
 #[cfg(debug_assertions)]
 async fn send_email<TEmail>(
