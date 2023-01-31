@@ -119,10 +119,14 @@ pub(super) async fn mark_existing_workspaces_as_spam(
 	.map(|row| row.get::<Uuid, _>("id"))
 	.collect::<Vec<_>>();
 
-	for user_id in users {
+	let total_users = users.len();
+
+	for (idx, user_id) in users.into_iter().enumerate() {
 		log::trace!(
-			"request_id: {} got migration request for user: {}",
+			"request_id: {} migrating user - {}/{} with user_id: {}",
 			request_id,
+			idx + 1,
+			total_users,
 			user_id
 		);
 		let emails = query!(
