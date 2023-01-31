@@ -636,42 +636,45 @@ pub(super) async fn add_delete_region_permission(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
-	let permission = "workspace::region::delete";
-	let uuid = loop {
-		let uuid = Uuid::new_v4();
+	let permissions = ["workspace::region::info", "workspace::region::delete"];
 
-		let exists = query!(
+	for permission in permissions {
+		let uuid = loop {
+			let uuid = Uuid::new_v4();
+
+			let exists = query!(
+				r#"
+				SELECT
+					*
+				FROM
+					permission
+				WHERE
+					id = $1;
+				"#,
+				&uuid
+			)
+			.fetch_optional(&mut *connection)
+			.await?
+			.is_some();
+
+			if !exists {
+				break uuid;
+			}
+		};
+
+		query!(
 			r#"
-			SELECT
-				*
-			FROM
+			INSERT INTO
 				permission
-			WHERE
-				id = $1;
+			VALUES
+				($1, $2, '');
 			"#,
-			&uuid
+			&uuid,
+			permission
 		)
 		.fetch_optional(&mut *connection)
-		.await?
-		.is_some();
-
-		if !exists {
-			break uuid;
-		}
-	};
-
-	query!(
-		r#"
-		INSERT INTO
-			permission
-		VALUES
-			($1, $2, '');
-		"#,
-		&uuid,
-		permission
-	)
-	.fetch_optional(&mut *connection)
-	.await?;
+		.await?;
+	}
 
 	Ok(())
 }
@@ -727,7 +730,13 @@ pub(super) async fn migrate_to_kubeconfig(
 		FROM
 			deployment_region
 		WHERE
-			ready = true;
+			workspace_id IS NOT NULL AND
+			ready = TRUE AND
+			kubernetes_cluster_url IS NOT NULL AND
+			kubernetes_ca_data IS NOT NULL AND
+			kubernetes_auth_username IS NOT NULL AND
+			kubernetes_auth_token IS NOT NULL AND
+			kubernetes_ingress_ip_addr IS NOT NULL;
 		"#
 	)
 	.fetch_all(&mut *connection)
