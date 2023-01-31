@@ -96,33 +96,7 @@ pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), Error> {
-	add_spam_table_columns(connection, config).await?;
 	mark_existing_workspaces_as_spam(connection, config).await?;
-	Ok(())
-}
-
-pub(super) async fn add_spam_table_columns(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
-) -> Result<(), Error> {
-	query!(
-		r#"
-		ALTER TABLE workspace
-		ADD COLUMN is_spam BOOLEAN NOT NULL DEFAULT FALSE;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE workspace
-		ALTER COLUMN is_spam DROP DEFAULT;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	Ok(())
 }
 
