@@ -1231,7 +1231,8 @@ pub async fn update_build_step_finished_time(
 pub async fn set_syncing(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	git_provider_id: &Uuid,
-	last_synced: &DateTime<Utc>,
+	is_syncing: bool,
+	last_synced: Option<DateTime<Utc>>,
 ) -> Result<(), sqlx::Error> {
 	query_as!(
 		GitProvider,
@@ -1239,11 +1240,12 @@ pub async fn set_syncing(
 		UPDATE
 			ci_git_provider
 		SET
-			is_syncing = TRUE,
-			last_synced = $1
+			is_syncing = $1,
+			last_synced = COALESCE($2, last_synced)
 		WHERE
-			id = $2;
+			id = $3;
 		"#,
+		is_syncing,
 		last_synced as _,
 		git_provider_id as _,
 	)

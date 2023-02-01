@@ -485,6 +485,7 @@ pub async fn process_request(
 				&request_id,
 			)
 			.await?;
+			db::set_syncing(connection, &git_provider_id, false, Some(Utc::now())).await?;
 		}
 	}
 	Ok(())

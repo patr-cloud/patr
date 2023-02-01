@@ -807,8 +807,7 @@ async fn sync_repositories(
 		.status(500)?;
 
 	if !git_provider.is_syncing {
-		let sync_date = Utc::now();
-		db::set_syncing(context.get_database_connection(), &git_provider.id, &sync_date).await?;
+		db::set_syncing(context.get_database_connection(), &git_provider.id, true, None).await?;
 		service::queue_sync_github_repo(
 			&git_provider.workspace_id,
 			&git_provider.id,
