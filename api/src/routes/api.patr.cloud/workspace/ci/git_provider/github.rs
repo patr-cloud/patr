@@ -806,14 +806,18 @@ async fn sync_repositories(
 		.zip(git_provider.password)
 		.status(500)?;
 
-	service::queue_sync_github_repo(
-		&git_provider.workspace_id,
-		&git_provider.id,
-		&request_id,
-		access_token,
-		&config,
-	)
-	.await?;
+	if !git_provider.is_syncing {
+		let sync_date = Utc::now();
+		db::set_syncing(context.get_database_connection(), &git_provider.id, &sync_date).await?;
+		service::queue_sync_github_repo(
+			&git_provider.workspace_id,
+			&git_provider.id,
+			&request_id,
+			access_token,
+			&config,
+		)
+		.await?;
+	}
 
 	context.success(SyncReposResponse {});
 	Ok(context)
