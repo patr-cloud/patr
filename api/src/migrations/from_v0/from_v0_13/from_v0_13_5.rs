@@ -17,6 +17,7 @@ pub(super) async fn migrate(
 	add_volume_payment_history(&mut *connection, config).await?;
 	add_deployment_volume_info(&mut *connection, config).await?;
 	add_volume_storage_limit_to_workspace(&mut *connection, config).await?;
+	add_sync_column(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -176,6 +177,27 @@ async fn add_volume_storage_limit_to_workspace(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	Ok(())
+}
+
+pub(super) async fn add_sync_column(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	log::info!("Adding is_syncing and last_synced column");
+
+	query!(
+		r#"
+		ALTER TABLE ci_git_provider
+		ADD COLUMN is_syncing BOOL NOT NULL DEFAULT FALSE, 
+		ADD COLUMN last_synced TIMESTAMPTZ DEFAULT NULL;            
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	log::info!("Done");
 
 	Ok(())
 }
