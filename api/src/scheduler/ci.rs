@@ -1,4 +1,5 @@
 use api_models::utils::Uuid;
+use chrono::Utc;
 use sqlx::Acquire;
 
 use super::Job;
@@ -32,13 +33,21 @@ async fn sync_repos() -> Result<(), Error> {
 			let mut connection = connection.begin().await?;
 
 			log::info!("request_id: {} - Syncing repos for workspace {} from git_provider {}", request_id, workspace.id, git_provider.id);
-
+			db::set_syncing(&mut connection, &git_provider.id, true, None)
+				.await?;
 			let result = service::sync_repos_for_git_provider(
 				&mut connection,
 				&git_provider,
 				&request_id,
 			)
 			.await;
+			db::set_syncing(
+				&mut connection,
+				&git_provider.id,
+				false,
+				Some(Utc::now()),
+			)
+			.await?;
 
 			match result {
 				Ok(()) => {
