@@ -9,6 +9,7 @@ use api_models::{
 		DeploymentRegistry,
 		DeploymentRunningDetails,
 		DeploymentStatus,
+		DeploymentVolume,
 		EnvironmentVariableValue,
 		ExposedPortType,
 		Metric,
@@ -266,7 +267,7 @@ pub async fn create_deployment_in_workspace(
 		.await?;
 	}
 
-	for (path, size) in &deployment_running_details.volumes {
+	for (name, volume) in &deployment_running_details.volumes {
 		log::trace!("request_id: {} - creating volume resource", request_id);
 		let volume_id = db::generate_new_resource_id(connection).await?;
 
@@ -287,8 +288,9 @@ pub async fn create_deployment_in_workspace(
 			connection,
 			&deployment_id,
 			&volume_id,
-			*size as i32,
-			path.as_str(),
+			name.as_str(),
+			volume.size as i32,
+			volume.path.as_str(),
 		)
 		.await?;
 	}
@@ -346,7 +348,7 @@ pub async fn update_deployment(
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
 	config_mounts: Option<&BTreeMap<String, Base64String>>,
-	volumes: Option<&BTreeMap<String, u32>>,
+	volumes: Option<&BTreeMap<String, DeploymentVolume>>,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
@@ -355,10 +357,17 @@ pub async fn update_deployment(
 		deployment_id
 	);
 
+	db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
 	// Get volume size for checking the limit
 	// let mut volume_size: usize = 0;
 	let volume_size = if let Some(volumes) = volumes {
-		let volume_size = volumes.values().fold(0, |acc, size| acc + *size);
+		let volume_size = volumes
+			.iter()
+			.fold(0, |acc, (_, volume)| acc + volume.size as u32);
 		volume_size
 	} else {
 		0
@@ -486,33 +495,75 @@ pub async fn update_deployment(
 	}
 
 	if let Some(volumes) = volumes {
-		for (path, size) in volumes {
-			let volume = db::get_volume_by_path_and_deployment_id(
-				connection,
-				deployment_id,
-				path.as_str(),
-			)
-			.await?;
+		let mut deployment_volumes =
+			db::get_all_deployment_volumes(connection, deployment_id)
+				.await?
+				.into_iter()
+				.map(|volume| (volume.name.clone(), volume))
+				.collect::<BTreeMap<_, _>>();
 
-			if let Some(volume) = volume {
-				if *size < volume.size as u32 {
+		for (name, volume) in volumes {
+			if let Some(value) = deployment_volumes.remove(name) {
+				// check value is modified or not by user ie volume
+				if volume.size < value.size as u16 {
 					return Error::as_result()
 						.status(400)
 						.body(error!(REDUCED_VOLUME_SIZE).to_string())?;
+				} else if volume.size as i32 > value.size {
+					db::update_volume_for_deployment(
+						connection,
+						deployment_id,
+						volume.size as i32,
+						name,
+					)
+					.await?;
+				} else {
+					continue;
 				}
+			} else {
+				// create new volume
+				let volume_id =
+					db::generate_new_resource_id(connection).await?;
 
-				db::update_volume_for_deployment(
+				db::create_resource(
 					connection,
-					deployment_id,
-					size,
-					path.as_str(),
+					&volume_id,
+					rbac::RESOURCE_TYPES
+						.get()
+						.unwrap()
+						.get(rbac::resource_types::VOLUME)
+						.unwrap(),
+					workspace_id,
+					&Utc::now(),
 				)
 				.await?;
-			} else {
-				return Error::as_result()
-					.status(400)
-					.body(error!(REDUCED_VOLUME_SIZE).to_string())?;
+
+				db::add_volume_for_deployment(
+					connection,
+					deployment_id,
+					&volume_id,
+					name,
+					volume.size as i32,
+					&volume.path,
+				)
+				.await?;
 			}
+		}
+
+		// now remove the remaining in deployment_volumes(DB)
+		for (_, deployment_volume) in deployment_volumes {
+			// Deleting volume here as this transaction will be commited before
+			// the start deployment is called, and hence latest data is fetch
+			// from db using get_full_deployment_config() and in the
+			// update_kubernetes deployment function will be updated with new
+			// PVC and hence this PVC will be detached and then we can delete it
+			// manually there
+			db::delete_volume(
+				connection,
+				&deployment_volume.volume_id,
+				&Utc::now(),
+			)
+			.await?;
 		}
 	}
 
@@ -676,7 +727,15 @@ pub async fn get_full_deployment_config(
 	let volumes = db::get_all_deployment_volumes(connection, deployment_id)
 		.await?
 		.into_iter()
-		.map(|volume| (volume.path, volume.size as u32))
+		.map(|volume| {
+			(
+				volume.name,
+				DeploymentVolume {
+					path: volume.path,
+					size: volume.size as u16,
+				},
+			)
+		})
 		.collect();
 
 	log::trace!("request_id: {} - Full deployment config for deployment with id: {} successfully retreived", request_id, deployment_id);
@@ -1185,7 +1244,7 @@ async fn check_deployment_creation_limit(
 	machine_type: &Uuid,
 	min_horizontal_scale: &u16,
 	max_horizontal_scale: &u16,
-	volumes: &BTreeMap<String, u32>,
+	volumes: &BTreeMap<String, DeploymentVolume>,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {request_id} - Checking whether new deployment creation is limited");
@@ -1201,12 +1260,15 @@ async fn check_deployment_creation_limit(
 			.await?
 			.len();
 
-	let volume_size = volumes.values().sum::<u32>();
+	let volume_size = volumes
+		.iter()
+		.fold(0, |acc, (_, volume)| acc + volume.size as u32);
 
 	let card_added =
 		db::get_default_payment_method_for_workspace(connection, workspace_id)
 			.await?
 			.is_some();
+
 	if !card_added {
 		// check whether free limit is exceeded
 		if current_deployment_count >= free_limits::DEPLOYMENT_COUNT {
@@ -1659,6 +1721,11 @@ pub async fn delete_deployment(
 			request_id,
 		)
 		.await?;
+
+		for volume in volumes {
+			db::delete_volume(connection, &volume.volume_id, &Utc::now())
+				.await?;
+		}
 	}
 
 	Ok(())

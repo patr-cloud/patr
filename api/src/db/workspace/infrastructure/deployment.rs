@@ -63,6 +63,7 @@ pub struct DeploymentConfigMount {
 
 pub struct DeploymentVolume {
 	pub volume_id: Uuid,
+	pub name: String,
 	pub deployment_id: Uuid,
 	pub size: i32,
 	pub path: String,
@@ -349,12 +350,18 @@ pub async fn initialize_deployment_pre(
 		r#"
 		CREATE TABLE deployment_volume(
 			id UUID CONSTRAINT deployment_volume_pk PRIMARY KEY,
+			name TEXT NOT NULL,
 			deployment_id UUID NOT NULL
 				CONSTRAINT deployment_volume_fk_deployment_id
 					REFERENCES deployment(id),
 			volume_size INT NOT NULL CONSTRAINT
 				deployment_volume_chk_size_unsigned CHECK(volume_size > 0),
-			volume_mount_path TEXT NOT NULL
+			volume_mount_path TEXT NOT NULL,
+			deleted TIMESTAMPTZ,
+			CONSTRAINT deployment_volume_name_unique_deployment_id
+				UNIQUE(deployment_id, name),
+			CONSTRAINT deployment_volume_path_unique_deployment_id
+				UNIQUE(deployment_id, path)
 		);
 		"#
 	)
@@ -1183,6 +1190,7 @@ pub async fn add_volume_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	volume_id: &Uuid,
+	name: &str,
 	size: i32,
 	path: &str,
 ) -> Result<(), sqlx::Error> {
@@ -1191,14 +1199,16 @@ pub async fn add_volume_for_deployment(
 		INSERT INTO 
 			deployment_volume(
 				id,
+				name,
 				deployment_id,
 				volume_size,
 				volume_mount_path
 			)
 		VALUES
-			($1, $2, $3, $4);
+			($1, $2, $3, $4, $5);
 		"#,
 		volume_id as _,
+		name,
 		deployment_id as _,
 		size as _,
 		path,
@@ -1211,8 +1221,8 @@ pub async fn add_volume_for_deployment(
 pub async fn update_volume_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
-	size: &u32,
-	path: &str,
+	size: i32,
+	name: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1221,11 +1231,11 @@ pub async fn update_volume_for_deployment(
 		SET
 			volume_size = $1
 		WHERE
-			volume_mount_path = $2 AND
+			name = $2 AND
 			deployment_id = $3;
 		"#,
-		*size as i32,
-		path,
+		size,
+		name,
 		deployment_id as _,
 	)
 	.execute(&mut *connection)
@@ -1233,30 +1243,26 @@ pub async fn update_volume_for_deployment(
 	.map(|_| ())
 }
 
-pub async fn get_volume_by_path_and_deployment_id(
+pub async fn delete_volume(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	mount_path: &str,
-) -> Result<Option<DeploymentVolume>, sqlx::Error> {
-	query_as!(
-		DeploymentVolume,
+	volume_id: &Uuid,
+	deleteed_time: &DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query!(
 		r#"
-		SELECT
-			id as "volume_id: _",
-			deployment_id as "deployment_id: _",
-			volume_size as "size: _",
-			volume_mount_path as "path: _"
-		FROM
+		UPDATE 
 			deployment_volume
+		SET
+			deleted = $1
 		WHERE
-			deployment_id = $1 AND
-			volume_mount_path = $2;
+			id = $2;
 		"#,
-		deployment_id as _,
-		mount_path
+		deleteed_time as _,
+		volume_id as _,
 	)
-	.fetch_optional(&mut *connection)
+	.execute(&mut *connection)
 	.await
+	.map(|_| ())
 }
 
 pub async fn get_all_deployment_volumes(
@@ -1268,13 +1274,40 @@ pub async fn get_all_deployment_volumes(
 		r#"
 		SELECT
 			id as "volume_id: _",
+			name,
 			deployment_id as "deployment_id: _",
 			volume_size as "size: _",
 			volume_mount_path as "path: _"
 		FROM
 			deployment_volume
 		WHERE
-			deployment_id = $1;
+			deployment_id = $1 AND
+			deleted IS NULL;
+		"#,
+		deployment_id as _,
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn get_deleted_volumes_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+) -> Result<Vec<DeploymentVolume>, sqlx::Error> {
+	query_as!(
+		DeploymentVolume,
+		r#"
+		SELECT
+			id as "volume_id: _",
+			name,
+			deployment_id as "deployment_id: _",
+			volume_size as "size: _",
+			volume_mount_path as "path: _"
+		FROM
+			deployment_volume
+		WHERE
+			deployment_id = $1 AND
+			deleted IS NOT NULL;
 		"#,
 		deployment_id as _,
 	)

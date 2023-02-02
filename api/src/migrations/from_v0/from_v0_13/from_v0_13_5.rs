@@ -133,13 +133,19 @@ async fn add_deployment_volume_info(
 		r#"
 		CREATE TABLE deployment_volume(
 			id UUID CONSTRAINT deployment_volume_pk PRIMARY KEY,
+			name TEXT NOT NULL,
 			deployment_id UUID NOT NULL
 				CONSTRAINT deployment_volume_fk_deployment_id
 					REFERENCES deployment(id),
 			volume_size INT NOT NULL CONSTRAINT
 				deployment_volume_chk_size_unsigned
 					CHECK(volume_size > 0),
-			volume_mount_path TEXT NOT NULL
+			volume_mount_path TEXT NOT NULL,
+			deleted TIMESTAMPTZ,
+			CONSTRAINT deployment_volume_name_unique_deployment_id
+				UNIQUE(deployment_id, name),
+			CONSTRAINT deployment_volume_path_unique_deployment_id
+				UNIQUE(deployment_id, path)
 		);
 		"#
 	)

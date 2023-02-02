@@ -1718,7 +1718,7 @@ async fn update_deployment(
 
 	let ip_address = routes::get_request_ip_address(&context);
 
-	let updated_min_replica = min_horizontal_scale.unwrap_or(0);
+	let updated_min_replica = min_horizontal_scale;
 	let current_min_replicas = db::get_deployment_by_id(
 		context.get_database_connection(),
 		&deployment_id,
@@ -1817,7 +1817,8 @@ async fn update_deployment(
 				&deployment_id,
 				&deployment,
 				&deployment_running_details,
-				updated_min_replica,
+				updated_min_replica
+					.unwrap_or(deployment_running_details.min_horizontal_scale),
 				&user_id,
 				&login_id,
 				&ip_address,
@@ -1828,29 +1829,46 @@ async fn update_deployment(
 			)
 			.await?;
 
+			let kubeconfig = service::get_kubernetes_config_for_region(
+				context.get_database_connection(),
+				&deployment.region,
+				&config,
+			)
+			.await?;
 			// Deleting volumes if there are any
-			if updated_min_replica < current_min_replicas {
-				let kubeconfig = service::get_kubernetes_config_for_region(
-					context.get_database_connection(),
-					&deployment.region,
-					&config,
-				)
-				.await?;
-
-				// e.g - if current min_replicas=5 and user wanted to reduce the
-				// replica to 2 in that case updated updated_min_replica become
-				// 2 which means we have to get rid of extra 3 volumes. Hence
-				// delete extra volumes
-				service::delete_kubernetes_volumes(
-					&workspace_id,
-					&deployment_id,
-					&volumes,
-					(updated_min_replica, current_min_replicas),
-					kubeconfig,
-					&request_id,
-				)
-				.await?;
+			if let Some(updated_min_replica) = updated_min_replica {
+				if updated_min_replica < current_min_replicas {
+					// e.g - if current min_replicas=5 and user wanted to reduce
+					// the replica to 2 in that case updated updated_min_replica
+					// become 2 which means we have to get rid of extra 3
+					// volumes. Hence delete extra volumes
+					service::delete_kubernetes_volumes(
+						&workspace_id,
+						&deployment_id,
+						&volumes,
+						(updated_min_replica, current_min_replicas),
+						kubeconfig.clone(),
+						&request_id,
+					)
+					.await?;
+				}
 			}
+
+			let volume_deleted = db::get_deleted_volumes_for_deployment(
+				context.get_database_connection(),
+				&deployment_id,
+			)
+			.await?;
+
+			service::delete_kubernetes_volumes(
+				&workspace_id,
+				&deployment_id,
+				&volume_deleted,
+				(0, deployment_running_details.max_horizontal_scale),
+				kubeconfig,
+				&request_id,
+			)
+			.await?;
 
 			context.commit_database_transaction().await?;
 
