@@ -1835,11 +1835,12 @@ async fn update_deployment(
 				&config,
 			)
 			.await?;
+
 			// Deleting volumes if there are any
 			if let Some(updated_min_replica) = updated_min_replica {
 				if updated_min_replica < current_min_replicas {
 					// e.g - if current min_replicas=5 and user wanted to reduce
-					// the replica to 2 in that case updated updated_min_replica
+					// the replica to 2 in that case updated_min_replica
 					// become 2 which means we have to get rid of extra 3
 					// volumes. Hence delete extra volumes
 					service::delete_kubernetes_volumes(
@@ -1854,7 +1855,7 @@ async fn update_deployment(
 				}
 			}
 
-			let volume_deleted = db::get_deleted_volumes_for_deployment(
+			let deleted_volumes = db::get_deleted_volumes_for_deployment(
 				context.get_database_connection(),
 				&deployment_id,
 			)
@@ -1863,7 +1864,7 @@ async fn update_deployment(
 			service::delete_kubernetes_volumes(
 				&workspace_id,
 				&deployment_id,
-				&volume_deleted,
+				&deleted_volumes,
 				(0, deployment_running_details.max_horizontal_scale),
 				kubeconfig,
 				&request_id,

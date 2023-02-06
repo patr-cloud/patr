@@ -564,6 +564,17 @@ pub async fn update_deployment(
 				&Utc::now(),
 			)
 			.await?;
+
+			// Stopping the deployment here as there is no stop_usage only used
+			// for none deleted volumes, but this volume will be deleted in
+			// above function. However deleting it from kubernetes is done after
+			// start deployment function in update deployment route
+			db::stop_volume_usage_history(
+				connection,
+				&deployment_volume.volume_id,
+				&Utc::now(),
+			)
+			.await?;
 		}
 	}
 
@@ -1423,6 +1434,7 @@ pub async fn start_deployment(
 				.await?;
 			}
 		}
+
 		db::start_deployment_usage_history(
 			connection,
 			workspace_id,
