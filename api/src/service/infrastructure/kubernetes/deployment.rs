@@ -57,7 +57,6 @@ use k8s_openapi::{
 			IngressRule,
 			IngressServiceBackend,
 			IngressSpec,
-			IngressTLS,
 			ServiceBackendPort,
 		},
 	},
@@ -81,12 +80,7 @@ use crate::{
 	db::{self, DeploymentVolume},
 	error,
 	models::deployment,
-	service::{
-		self,
-		ext_traits::DeleteOpt,
-		ClusterType,
-		KubernetesConfigDetails,
-	},
+	service::{self, ext_traits::DeleteOpt, KubernetesConfigDetails},
 	utils::{constants::request_keys, settings::Settings, Error},
 	Database,
 };
@@ -624,69 +618,42 @@ pub async fn update_kubernetes_deployment(
 		)
 		.await?;
 
-	let annotations = std::iter::once((
-			"kubernetes.io/ingress.class".to_string(),
-			"nginx".to_string(),
-		))
-		.chain(match &kubeconfig.cluster_type {
-			ClusterType::PatrOwned => None,
-			ClusterType::UserOwned { .. } => Some((
-				"cert-manager.io/cluster-issuer".to_string(),
-				config.kubernetes.cert_issuer_http.clone(),
-			)),
-		})
-	.collect();
+	let annotations = [(
+		"kubernetes.io/ingress.class".to_string(),
+		"nginx".to_string(),
+	)]
+	.into();
 
-	let (ingress_rules, tls_rules) = running_details
+	let ingress_rules = running_details
 		.ports
 		.iter()
 		.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
-		.map(|(port, _)| {
-			(
-				IngressRule {
-					host: Some(format!(
-						"{}-{}.patr.cloud",
-						port, deployment.id
-					)),
-					http: Some(HTTPIngressRuleValue {
-						paths: vec![HTTPIngressPath {
-							backend: IngressBackend {
-								service: Some(IngressServiceBackend {
-									name: format!("service-{}", deployment.id),
-									port: Some(ServiceBackendPort {
-										number: Some(port.value() as i32),
-										..ServiceBackendPort::default()
-									}),
-								}),
-								..Default::default()
-							},
-							path: Some("/".to_string()),
-							path_type: "Prefix".to_string(),
-						}],
-					}),
-				},
-				match &kubeconfig.cluster_type {
-					ClusterType::PatrOwned => IngressTLS {
-						hosts: Some(vec![
-							"*.patr.cloud".to_string(),
-							"patr.cloud".to_string(),
-						]),
-						secret_name: None,
+		.map(|(port, _)| IngressRule {
+			host: Some(format!(
+				"{}-{}.{}.{}",
+				port,
+				deployment.id,
+				deployment.region,
+				config.cloudflare.region_root_domain
+			)),
+			http: Some(HTTPIngressRuleValue {
+				paths: vec![HTTPIngressPath {
+					backend: IngressBackend {
+						service: Some(IngressServiceBackend {
+							name: format!("service-{}", deployment.id),
+							port: Some(ServiceBackendPort {
+								number: Some(port.value() as i32),
+								..ServiceBackendPort::default()
+							}),
+						}),
+						..Default::default()
 					},
-					ClusterType::UserOwned { .. } => IngressTLS {
-						hosts: Some(vec![format!(
-							"{}-{}.patr.cloud",
-							port, deployment.id
-						)]),
-						secret_name: Some(format!(
-							"cert-{}-{}",
-							port, deployment.id
-						)),
-					},
-				},
-			)
+					path: Some("/".to_string()),
+					path_type: "Prefix".to_string(),
+				}],
+			}),
 		})
-		.unzip::<_, _, Vec<_>, Vec<_>>();
+		.collect();
 
 	let kubernetes_ingress = Ingress {
 		metadata: ObjectMeta {
@@ -696,7 +663,6 @@ pub async fn update_kubernetes_deployment(
 		},
 		spec: Some(IngressSpec {
 			rules: Some(ingress_rules),
-			tls: Some(tls_rules),
 			..IngressSpec::default()
 		}),
 		..Ingress::default()

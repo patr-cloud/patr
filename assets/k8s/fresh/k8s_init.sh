@@ -5,6 +5,10 @@ set -uex
 CLUSTER_ID=${1:?"Missing parameter: CLUSTER_ID"}
 PARENT_WORKSPACE_ID=${2:?"Missing parameter: PARENT_WORKSPACE_ID"}
 KUBECONFIG_PATH=${3:?"Missing parameter: KUBECONFIG_PATH"}
+TLS_CERT_PATH=${4:?"Missing parameter: TLS_CERT_PATH"}
+TLS_KEY_PATH=${5:?"Missing parameter: TLS_KEY_PATH"}
+
+DEFAULT_CERT_NAME="default-cert-$CLUSTER_ID"
 
 if [ ! -f $KUBECONFIG_PATH ]; then
     echo "Kubeconfig file not found: $KUBECONFIG_PATH"
@@ -20,11 +24,15 @@ CONFIG_DIR="$SCRIPT_DIR/config"
 
 echo "Initializing $CLUSTER_ID cluster"
 
-echo "Installing emberstack relfector"
-helm upgrade --install reflector emberstack/reflector
+kubectl create namespace ingress-nginx
+
+echo "Storing origin CA certificate as secret"
+kubectl create secret tls $DEFAULT_CERT_NAME --cert=$TLS_CERT_PATH --key=$TLS_KEY_PATH --namespace ingress-nginx
 
 echo "Installing nginx as ingress for cluster"
-helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace
+helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+    --namespace ingress-nginx --create-namespace \
+    --set controller.extraArgs.default-ssl-certificate="ingress-nginx/$DEFAULT_CERT_NAME"
 
 echo "Waiting for nginx ingress controller to be ready"
 kubectl wait --namespace ingress-nginx --for=condition=available deployment --selector=app.kubernetes.io/component=controller --timeout=-1s > /dev/null
@@ -32,38 +40,13 @@ kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.
 
 echo "Ingress controller is ready"
 
-echo "Installing cert-manager"
-helm upgrade --install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set installCRDs=true
-
-echo "Waiting for cert-manager to be ready"
-kubectl wait --namespace cert-manager --for=condition=available deployment --selector=app.kubernetes.io/component=controller --timeout=-1s > /dev/null
-kubectl wait --namespace cert-manager --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=-1s > /dev/null
-
-echo "Setup cert-manager with ACME HTTP01 challenge"
-kubectl apply -f - <<EOF
-apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
-metadata:
-  name: letsencrypt-prod-http
-spec:
-  acme:
-    server: https://acme-v02.api.letsencrypt.org/directory
-    email: postmaster+$CLUSTER_ID@vicara.co
-    privateKeySecretRef:
-      name: letsencrypt-prod
-    solvers:
-      - http01:
-          ingress:
-            class: nginx
-EOF
-
 echo "Creating parent workspace in new cluster"
 echo "apiVersion: v1
 kind: Namespace
 metadata:
   name: $PARENT_WORKSPACE_ID" | kubectl apply -f -
 
-rm $KUBECONFIG_PATH
+rm $KUBECONFIG_PATH $TLS_CERT_PATH $TLS_KEY_PATH
 
 echo "Successfully initialized cluster $CLUSTER_ID"
 

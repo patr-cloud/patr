@@ -1,10 +1,10 @@
 mod ci;
 mod deployment;
-mod managed_url;
-mod static_site;
 mod workspace;
 
 pub mod ext_traits;
+
+use std::{net::IpAddr, str::FromStr};
 
 use k8s_openapi::api::core::v1::{Secret, Service};
 use kube::{
@@ -20,17 +20,10 @@ use kube::{
 	core::{ErrorResponse},
 	Api,
 	Config,
-	Error as KubeError,
 };
 use url::Host;
 
-pub use self::{
-	ci::*,
-	deployment::*,
-	managed_url::*,
-	static_site::*,
-	workspace::*,
-};
+pub use self::{ci::*, deployment::*, workspace::*};
 use crate::utils::{settings::Settings, Error};
 
 async fn get_kubernetes_client(

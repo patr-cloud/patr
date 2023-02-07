@@ -152,6 +152,7 @@ dependencies = [
  "patr-api-dto",
  "patr-macros",
  "rand 0.8.5",
+ "rcgen",
  "redis",
  "regex",
  "reqwest",
@@ -666,7 +667,7 @@ dependencies = [
 [[package]]
 name = "cloudflare"
 version = "0.10.1"
-source = "git+https://github.com/kavin-kr/cloudflare-rs?branch=feature/custom_hostname#d3976064de86c2f272c501923dc970068df2b557"
+source = "git+https://github.com/kavin-kr/cloudflare-rs?branch=feature/origin-ca-cert#d744375ed65a5179529db9fb6a28f7fdd5f1194e"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -679,6 +680,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_qs 0.10.1",
+ "serde_repr",
  "serde_with",
  "url",
  "uuid 1.2.2",
@@ -2927,6 +2929,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "rcgen"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffbe84efe2f38dea12e9bfc1f65377fdf03e53a18cb3b995faedf7934c7e785b"
+dependencies = [
+ "pem 1.1.0",
+ "ring",
+ "time 0.3.17",
+ "yasna",
+]
+
+[[package]]
 name = "reactor-trait"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3499,6 +3513,17 @@ dependencies = [
  "percent-encoding",
  "serde",
  "thiserror",
+]
+
+[[package]]
+name = "serde_repr"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a5ec9fa74a20ebbe5d9ac23dac1fc96ba0ecfe9f50f2843b52e537b10fbcb4e"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -4788,6 +4813,9 @@ name = "yasna"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "346d34a236c9d3e5f3b9b74563f238f955bbd05fa0b8b4efa53c130c43982f4c"
+dependencies = [
+ "time 0.3.17",
+]
 
 [[package]]
 name = "zeroize"

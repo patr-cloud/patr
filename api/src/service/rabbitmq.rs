@@ -363,6 +363,8 @@ pub async fn queue_clean_ci_build_pipeline(
 pub async fn queue_setup_kubernetes_cluster(
 	region_id: &Uuid,
 	kube_config: Kubeconfig,
+	tls_cer: &str,
+	tls_key: &str,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -486,6 +488,8 @@ pub async fn queue_delete_kubernetes_cluster(
 			region_id: region_id.clone(),
 			workspace_id: workspace_id.clone(),
 			kube_config,
+			tls_cert: tls_cer.to_owned(),
+			tls_key: tls_key.to_owned(),
 			request_id: request_id.clone(),
 		}),
 		config,

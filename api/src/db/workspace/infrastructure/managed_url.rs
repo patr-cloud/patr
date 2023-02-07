@@ -1,6 +1,5 @@
 use api_models::utils::Uuid;
 use chrono::{DateTime, Utc};
-use futures::TryStreamExt;
 
 use crate::{query, query_as, Database};
 
@@ -700,42 +699,5 @@ pub async fn get_all_managed_urls_for_host(
 		domain_id as _
 	)
 	.fetch_all(connection)
-	.await
-}
-
-pub async fn get_all_deployment_managed_urls_for_host_in_region(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	sub_domain: &str,
-	domain_id: &Uuid,
-	workspace_id: &Uuid,
-	region_id: &Uuid,
-) -> Result<Vec<(String, Uuid, i32)>, sqlx::Error> {
-	query!(
-		r#"
-		SELECT
-			path,
-			deployment_id as "deployment_id!: Uuid",
-			port as "port!"
-		FROM
-			managed_url
-		JOIN
-			deployment ON deployment.id = managed_url.deployment_id
-		WHERE
-			managed_url.deleted IS NULL AND
-			deployment_id IS NOT NULL AND
-			port IS NOT NULL AND
-			sub_domain = $1 AND
-			domain_id = $2 AND
-			deployment.region = $3 AND
-			managed_url.workspace_id = $4;
-		"#,
-		sub_domain,
-		domain_id as _,
-		region_id as _,
-		workspace_id as _,
-	)
-	.fetch(connection)
-	.map_ok(|record| (record.path, record.deployment_id, record.port))
-	.try_collect()
 	.await
 }

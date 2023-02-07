@@ -20,10 +20,12 @@ pub struct Region {
 	pub cloud_provider: InfrastructureCloudProvider,
 	pub workspace_id: Option<Uuid>,
 	pub ingress_hostname: Option<String>,
-	pub message_log: Option<String>,
+	pub ready: bool,
+	pub cf_cert_id: Option<String>,
 	pub config_file: Option<Kubeconfig>,
 	pub status: RegionStatus,
 	pub disconnected_at: Option<DateTime<Utc>>,
+	pub message_log: Option<String>,
 }
 
 impl Region {
@@ -98,6 +100,7 @@ pub async fn initialize_region_pre(
 			workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id
 				REFERENCES workspace(id),
 			ingress_hostname TEXT,
+			cf_cert_id TEXT,
 			message_log TEXT,
 			config_file JSON,
 			deleted TIMESTAMPTZ,
@@ -153,25 +156,26 @@ pub async fn initialize_region_post(
 			}
 		};
 
-		query!(
-			r#"
-			INSERT INTO
-				deployment_region(
-					id,
-					name,
-					provider,
-					status
-				)
-			VALUES
-				($1, $2, $3, $4);
-			"#,
-			region_id as _,
-			region.name,
-			region.cloud_provider as _,
-			region.status as _,
-		)
-		.execute(&mut *connection)
-		.await?;
+				query!(
+				r#"
+				INSERT INTO
+					deployment_region(
+						id,
+						name,
+						provider,
+						status
+					)
+				VALUES
+					($1, $2, $3, $4);
+				"#,
+				region_id as _,
+				region.name,
+				region.cloud_provider as _,
+				region.status as _,
+			)
+			.execute(&mut *connection)
+			.await?;
+	}
 	}
 
 	Ok(())
@@ -189,6 +193,7 @@ pub async fn get_region_by_id(
 			name,
 			provider as "cloud_provider: _",
 			workspace_id as "workspace_id: _",
+			cf_cert_id,
 			ingress_hostname as "ingress_hostname: _",
 			message_log,
 			config_file as "config_file: _",
@@ -218,6 +223,7 @@ pub async fn get_all_deployment_regions_for_workspace(
 			name,
 			provider as "cloud_provider: _",
 			workspace_id as "workspace_id: _",
+			cf_cert_id,
 			ingress_hostname as "ingress_hostname: _",
 			message_log,
 			config_file as "config_file: _",
@@ -352,6 +358,7 @@ pub async fn add_deployment_region_to_workspace(
 	name: &str,
 	cloud_provider: &InfrastructureCloudProvider,
 	workspace_id: &Uuid,
+	cf_cert_id: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -361,15 +368,17 @@ pub async fn add_deployment_region_to_workspace(
 				name,
 				provider,
 				workspace_id,
+				cf_cert_id,
 				status
 			)
 		VALUES
-			($1, $2, $3, $4, $5);
+			($1, $2, $3, $4, $5, $5);
 		"#,
 		region_id as _,
 		name,
 		cloud_provider as _,
 		workspace_id as _,
+		cf_cert_id as _,
 		RegionStatus::Creating as _,
 	)
 	.execute(&mut *connection)

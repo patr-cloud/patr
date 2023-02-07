@@ -368,12 +368,18 @@ async fn add_region(
 			// region
 		}
 		AddRegionToWorkspaceData::KubeConfig { config_file } => {
+			let cf_cert = service::create_origin_ca_certificate_for_region(
+				&region_id, &config,
+			)
+			.await?;
+
 			db::add_deployment_region_to_workspace(
 				context.get_database_connection(),
 				&region_id,
 				&name,
 				&InfrastructureCloudProvider::Other,
 				&workspace_id,
+				&cf_cert.id,
 			)
 			.await?;
 
@@ -382,6 +388,8 @@ async fn add_region(
 			service::queue_setup_kubernetes_cluster(
 				&region_id,
 				config_file,
+				&cf_cert.cert,
+				&cf_cert.key,
 				&config,
 				&request_id,
 			)

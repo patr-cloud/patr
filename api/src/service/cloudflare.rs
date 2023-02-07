@@ -5,14 +5,24 @@ use cloudflare::{
 	endpoints::{
 		workers::{self, CreateRouteParams},
 		workerskv,
-		zone::custom_hostname::{
-			CreateCustomHostname,
-			CreateCustomHostnameParams,
-			DeleteCustomHostname,
-			EditCustomHostname,
-			EditCustomHostnameParams,
-			SslParams,
-			SslSettingsParams,
+		zone::{
+			certificates::{
+				CertificateRequestType,
+				CertificateRequestedValidity,
+				CreateCertifcate,
+				CreateCertifcateBody,
+				RevokeCertificate,
+			},
+			custom_hostname::{
+				ActivationStatus,
+				CreateCustomHostname,
+				CreateCustomHostnameParams,
+				DeleteCustomHostname,
+				EditCustomHostname,
+				EditCustomHostnameParams,
+				SslParams,
+				SslSettingsParams,
+			},
 		},
 	},
 	framework::{
@@ -43,16 +53,15 @@ pub async fn get_cloudflare_client(
 		token: config.cloudflare.api_token.clone(),
 	};
 
-	let client = if let Ok(client) = CloudflareClient::new(
+	CloudflareClient::new(
 		credentials,
 		HttpApiClientConfig::default(),
 		Environment::Production,
-	) {
-		client
-	} else {
-		return Err(Error::empty());
-	};
-	Ok(client)
+	)
+	.map_err(|err| {
+		log::error!("Error while initializing cloudflare client: {}", err);
+		Error::empty()
+	})
 }
 
 async fn update_kv_for_routing(
@@ -389,7 +398,7 @@ pub async fn delete_domain_from_cloudflare_worker_routes(
 pub async fn add_custom_hostname_to_cloudflare(
 	host: &str,
 	config: &Settings,
-) -> Result<(String, String), Error> {
+) -> Result<(String, ActivationStatus), Error> {
 	let cf_client = get_cloudflare_client(config).await?;
 
 	let response = cf_client
@@ -432,7 +441,7 @@ pub async fn delete_custom_hostname_from_cloudflare(
 pub async fn refresh_custom_hostname_in_cloudflare(
 	custom_hostname_id: &str,
 	config: &Settings,
-) -> Result<String, Error> {
+) -> Result<ActivationStatus, Error> {
 	let cf_client = get_cloudflare_client(config).await?;
 
 	let response = cf_client
@@ -454,4 +463,87 @@ pub async fn refresh_custom_hostname_in_cloudflare(
 		.await?;
 
 	Ok(response.result.status)
+}
+
+pub struct CfCertificate {
+	pub id: String,
+	pub cert: String,
+	pub key: String,
+}
+
+pub async fn create_origin_ca_certificate_for_region(
+	region_id: &Uuid,
+	config: &Settings,
+) -> Result<CfCertificate, Error> {
+	let hostnames = vec![
+		format!("{}.{}", region_id, config.cloudflare.region_root_domain),
+		format!("*.{}.{}", region_id, config.cloudflare.region_root_domain),
+	];
+
+	let cert = rcgen::generate_simple_self_signed(hostnames.clone())?;
+
+	// for origin ca, origin_ca_key should be used for client
+	let cf_client = {
+		let credentials = Credentials::Service {
+			key: config.cloudflare.origin_ca_key.clone(),
+		};
+
+		CloudflareClient::new(
+			credentials,
+			HttpApiClientConfig::default(),
+			Environment::Production,
+		)
+		.map_err(|err| {
+			log::error!("Error while initializing cloudflare client: {}", err);
+			Error::empty()
+		})?
+	};
+
+	let response = cf_client
+		.request_handle(&CreateCertifcate {
+			body: CreateCertifcateBody {
+				csr: cert.serialize_request_pem()?,
+				hostnames,
+				request_type: CertificateRequestType::OriginEcc,
+				requested_validity: CertificateRequestedValidity::Days_5475,
+			},
+		})
+		.await?;
+
+	Ok(CfCertificate {
+		id: response.result.id,
+		cert: response.result.certificate,
+		key: cert.serialize_private_key_pem(),
+	})
+}
+
+#[allow(unused)]
+pub async fn revoke_origin_ca_certificate(
+	certificate_id: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	// for origin ca, origin_ca_key should be used for client
+	let cf_client = {
+		let credentials = Credentials::Service {
+			key: config.cloudflare.origin_ca_key.clone(),
+		};
+
+		CloudflareClient::new(
+			credentials,
+			HttpApiClientConfig::default(),
+			Environment::Production,
+		)
+		.map_err(|err| {
+			log::error!("Error while initializing cloudflare client: {}", err);
+			Error::empty()
+		})?
+	};
+
+	cf_client
+		.request_handle(&RevokeCertificate {
+			identifier: certificate_id,
+		})
+		.await?;
+
+	Ok(())
 }

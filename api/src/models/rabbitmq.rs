@@ -63,6 +63,8 @@ pub enum BYOCData {
 	InitKubernetesCluster {
 		region_id: Uuid,
 		kube_config: Kubeconfig,
+		tls_cert: String,
+		tls_key: String,
 		request_id: Uuid,
 	},
 	CheckClusterForReadiness {

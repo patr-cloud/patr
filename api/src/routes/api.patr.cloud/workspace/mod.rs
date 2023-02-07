@@ -628,6 +628,9 @@ async fn delete_workspace(
 			.body(error!(CANNOT_DELETE_WORKSPACE).to_string()));
 	}
 
+	// todo: check whether all the region is deleted
+	// delete workspace in that region
+
 	service::delete_kubernetes_namespace(
 		namespace,
 		service::get_kubernetes_config_for_default_region(&config),
