@@ -16,7 +16,6 @@ export KUBECONFIG=$KUBECONFIG_PATH
 
 helm uninstall ingress-nginx -n=ingress-nginx
 helm uninstall cert-manager -n=cert-manager
-helm uninstall reflector
 
 kubectl delete ns ingress-nginx
 kubectl delete ns cert-manager

@@ -24,6 +24,8 @@ pub(super) async fn process_request(
 			certificate_authority_data,
 			auth_username,
 			auth_token,
+			tls_cert,
+			tls_key,
 			request_id,
 		} => {
 			let region = if let Some(region) =
@@ -46,9 +48,14 @@ pub(super) async fn process_request(
 				&certificate_authority_data,
 			);
 
-			let kubeconfig_path = format!("{region_id}.yml");
-
+			let kubeconfig_path = format!("kube-config-{region_id}.yml");
 			fs::write(&kubeconfig_path, &kubeconfig_content).await?;
+
+			let tls_cert_path = format!("tls-cert-{region_id}.cert");
+			fs::write(&tls_cert_path, &tls_cert).await?;
+
+			let tls_key_path = format!("tls-key-{region_id}.key");
+			fs::write(&tls_key_path, &tls_key).await?;
 
 			// safe to return as only customer cluster is initalized here,
 			// so workspace_id will be present
@@ -63,7 +70,9 @@ pub(super) async fn process_request(
 					region_id.as_str(),
 					&parent_workspace,
 					&kubeconfig_path,
-				])
+					&tls_cert_path,
+					&tls_key_path,
+					])
 				.output()
 				.await?;
 
@@ -160,22 +169,9 @@ pub(super) async fn process_request(
 				}
 			};
 
-			let region = db::get_region_by_id(connection, &region_id)
-				.await?
-				.status(500)?;
-
-			service::create_external_service_for_region(
-				region.workspace_id.as_ref().status(500)?.as_str(),
-				&region_id,
-				&ip_addr,
-				service::get_kubernetes_config_for_default_region(config)
-					.auth_details,
-			)
-			.await?;
-
 			let patr_domain = db::get_domain_by_name(
 				connection,
-				"patr.cloud",
+				&config.cloudflare.region_root_domain,
 			)
 			.await?
 			.status(500)?;
@@ -193,11 +189,13 @@ pub(super) async fn process_request(
 				std::net::IpAddr::V6(ip_v6) => DnsRecordValue::AAAA { target: ip_v6, proxied: false },
 			};
 
+			// todo: currently only *.region_id.region_root_domain is added due to dns limits
+			// if needed add region_id.region_root_domain also to dns records of region_root_domain
 			service::create_patr_domain_dns_record(
 				connection,
 				&resource.owner_id,
 				&patr_domain.id,
-				region_id.as_str(),
+				&format!("*.{}", region_id),
 				0,
 				&dns_record,
 				config,

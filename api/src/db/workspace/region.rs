@@ -6,7 +6,7 @@ use api_models::{
 };
 
 use crate::{
-	models::deployment::{DefaultDeploymentRegion, DEFAULT_DEPLOYMENT_REGIONS},
+	models::deployment::DEFAULT_DEPLOYMENT_REGIONS,
 	query,
 	query_as,
 	Database,
@@ -16,14 +16,15 @@ pub struct DeploymentRegion {
 	pub id: Uuid,
 	pub name: String,
 	pub cloud_provider: InfrastructureCloudProvider,
-	pub ready: bool,
 	pub workspace_id: Option<Uuid>,
-	pub message_log: Option<String>,
+	pub ready: bool,
+	pub cf_cert_id: Option<String>,
 	pub kubernetes_cluster_url: Option<String>,
 	pub kubernetes_auth_username: Option<String>,
 	pub kubernetes_auth_token: Option<String>,
 	pub kubernetes_ca_data: Option<String>,
 	pub kubernetes_ingress_ip_addr: Option<IpAddr>,
+	pub message_log: Option<String>,
 }
 
 impl DeploymentRegion {
@@ -55,6 +56,7 @@ pub async fn initialize_region_pre(
 			workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id
 				REFERENCES workspace(id),
 			ready BOOLEAN NOT NULL,
+			cf_cert_id TEXT,
 			kubernetes_cluster_url TEXT,
 			kubernetes_auth_username TEXT,
 			kubernetes_auth_token TEXT,
@@ -63,7 +65,8 @@ pub async fn initialize_region_pre(
 			message_log TEXT,
 			CONSTRAINT deployment_region_chk_ready_or_not CHECK(
 				(
-					workspace_id IS NOT NULL AND (
+					workspace_id IS NOT NULL AND
+					cf_cert_id IS NOT NULL AND (
 						(
 							ready = TRUE AND
 							kubernetes_cluster_url IS NOT NULL AND
@@ -82,6 +85,7 @@ pub async fn initialize_region_pre(
 					)
 				) OR (
 					workspace_id IS NULL AND
+					cf_cert_id IS NULL AND
 					kubernetes_cluster_url IS NULL AND
 					kubernetes_ca_data IS NULL AND
 					kubernetes_auth_username IS NULL AND
@@ -102,60 +106,51 @@ pub async fn initialize_region_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	for region in &DEFAULT_DEPLOYMENT_REGIONS {
-		populate_region(&mut *connection, region).await?;
+		let region_id = loop {
+			let region_id = Uuid::new_v4();
+
+			let row = query!(
+				r#"
+				SELECT
+					id as "id: Uuid"
+				FROM
+					deployment_region
+				WHERE
+					id = $1;
+				"#,
+				region_id as _
+			)
+			.fetch_optional(&mut *connection)
+			.await?;
+
+			if row.is_none() {
+				break region_id;
+			}
+		};
+
+		// Populate leaf node
+		query!(
+			r#"
+			INSERT INTO
+				deployment_region(
+					id,
+					name,
+					provider,
+					ready
+				)
+			VALUES
+				($1, $2, $3, $4);
+			"#,
+			region_id as _,
+			region.name,
+			region.cloud_provider as _,
+			region.is_ready
+		)
+		.execute(&mut *connection)
+		.await?;
 	}
 
 	Ok(())
-}
-
-async fn populate_region(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	region: &DefaultDeploymentRegion,
-) -> Result<Uuid, sqlx::Error> {
-	let region_id = loop {
-		let region_id = Uuid::new_v4();
-
-		let row = query!(
-			r#"
-			SELECT
-				id as "id: Uuid"
-			FROM
-				deployment_region
-			WHERE
-				id = $1;
-			"#,
-			region_id as _
-		)
-		.fetch_optional(&mut *connection)
-		.await?;
-
-		if row.is_none() {
-			break region_id;
-		}
-	};
-
-	// Populate leaf node
-	query!(
-		r#"
-		INSERT INTO
-			deployment_region(
-				id,
-				name,
-				provider,
-				ready
-			)
-		VALUES
-			($1, $2, $3, $4);
-		"#,
-		region_id as _,
-		region.name,
-		region.cloud_provider as _,
-		region.is_ready
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(region_id)
 }
 
 pub async fn get_region_by_id(
@@ -171,6 +166,7 @@ pub async fn get_region_by_id(
 			provider as "cloud_provider: _",
 			ready,
 			workspace_id as "workspace_id: _",
+			cf_cert_id,
 			message_log,
 			kubernetes_cluster_url,
 			kubernetes_auth_username,
@@ -201,6 +197,7 @@ pub async fn get_all_deployment_regions_for_workspace(
 			provider as "cloud_provider: _",
 			ready,
 			workspace_id as "workspace_id: _",
+			cf_cert_id,
 			message_log,
 			kubernetes_cluster_url,
 			kubernetes_auth_username,
@@ -225,6 +222,7 @@ pub async fn add_deployment_region_to_workspace(
 	name: &str,
 	cloud_provider: &InfrastructureCloudProvider,
 	workspace_id: &Uuid,
+	cf_cert_id: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -234,6 +232,7 @@ pub async fn add_deployment_region_to_workspace(
 				name,
 				provider,
 				workspace_id,
+				cf_cert_id,
 				ready,
 				kubernetes_cluster_url,
 				kubernetes_auth_username,
@@ -242,12 +241,13 @@ pub async fn add_deployment_region_to_workspace(
 				message_log
 			)
 		VALUES
-			($1, $2, $3, $4, FALSE, NULL, NULL, NULL, NULL, NULL);
+			($1, $2, $3, $4, $5, FALSE, NULL, NULL, NULL, NULL, NULL);
 		"#,
 		region_id as _,
 		name,
 		cloud_provider as _,
 		workspace_id as _,
+		cf_cert_id as _,
 	)
 	.execute(&mut *connection)
 	.await

@@ -142,6 +142,7 @@ pub struct CloudflareSettings {
 	pub account_email: String,
 	#[serde(alias = "apitoken")]
 	pub api_token: String,
+
 	#[serde(alias = "kvroutingns")]
 	pub kv_routing_ns: String,
 	#[serde(alias = "kvdeploymentns")]
@@ -150,6 +151,12 @@ pub struct CloudflareSettings {
 	pub kv_static_site_ns: String,
 	#[serde(alias = "kvregionns")]
 	pub kv_region_ns: String,
+
+	#[serde(alias = "regionrootdomain")]
+	pub region_root_domain: String,
+	#[serde(alias = "regionrootdomain")]
+	pub origin_ca_key: String,
+
 	#[serde(alias = "patrzoneidentifier")]
 	pub patr_zone_identifier: String,
 	#[serde(alias = "workerscript")]

@@ -3,6 +3,7 @@ use api_models::{
 	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
+use cloudflare::endpoints::zone::custom_hostname::ActivationStatus;
 use eve_rs::AsError;
 
 use crate::{
@@ -212,46 +213,6 @@ pub async fn create_new_managed_url_in_workspace(
 	)
 	.await?;
 
-	if let ManagedUrlType::ProxyDeployment {
-		deployment_id,
-		port: _,
-	} = url_type
-	{
-		let deployment = db::get_deployment_by_id(connection, deployment_id)
-			.await?
-			.status(500)?;
-
-		// should call this method after updating mananged url in db
-		let deployment_mananged_url =
-			db::get_all_deployment_managed_urls_for_host_in_region(
-				connection,
-				sub_domain,
-				domain_id,
-				workspace_id,
-				&deployment.region,
-			)
-			.await?;
-
-		let kubeconfig = service::get_kubernetes_config_for_region(
-			connection,
-			&deployment.region,
-			config,
-		)
-		.await?;
-
-		service::update_kubernetes_managed_url(
-			workspace_id,
-			&domain.id,
-			sub_domain,
-			&domain.name,
-			deployment_mananged_url,
-			kubeconfig,
-			config,
-			request_id,
-		)
-		.await?;
-	}
-
 	service::update_cloudflare_kv_for_managed_url(
 		connection, sub_domain, domain_id, config,
 	)
@@ -366,52 +327,6 @@ pub async fn update_managed_url(
 		}
 	}
 
-	if let ManagedUrlType::ProxyDeployment {
-		deployment_id,
-		port: _,
-	} = url_type
-	{
-		let deployment = db::get_deployment_by_id(connection, deployment_id)
-			.await?
-			.status(500)?;
-
-		// update the k8s managed url cert for deployment alone
-		let domain =
-			db::get_workspace_domain_by_id(connection, &managed_url.domain_id)
-				.await?
-				.status(500)?;
-
-		// should call this method after updating mananged url in db
-		let deployment_mananged_url =
-			db::get_all_deployment_managed_urls_for_host_in_region(
-				connection,
-				&managed_url.sub_domain,
-				&managed_url.domain_id,
-				&managed_url.workspace_id,
-				&deployment.region,
-			)
-			.await?;
-
-		let kubeconfig = service::get_kubernetes_config_for_region(
-			connection,
-			&deployment.region,
-			config,
-		)
-		.await?;
-
-		service::update_kubernetes_managed_url(
-			&managed_url.workspace_id,
-			&domain.id,
-			&managed_url.sub_domain,
-			&domain.name,
-			deployment_mananged_url,
-			kubeconfig,
-			config,
-			request_id,
-		)
-		.await?;
-	}
-
 	// as of now subdomain update for managed url is not supported,
 	// so we don't need to care about deleting previous host
 	service::update_cloudflare_kv_for_managed_url(
@@ -468,56 +383,6 @@ pub async fn delete_managed_url(
 		"request_id: {} - Deleting managed url on Kubernetes.",
 		request_id
 	);
-
-	if let (
-		DbManagedUrlType::ProxyToDeployment,
-		Some(deployment_id),
-		Some(_port),
-	) = (
-		managed_url.url_type,
-		managed_url.deployment_id,
-		managed_url.port,
-	) {
-		let deployment = db::get_deployment_by_id(connection, &deployment_id)
-			.await?
-			.status(500)?;
-
-		// update the k8s managed url cert for deployment alone
-		let domain =
-			db::get_workspace_domain_by_id(connection, &managed_url.domain_id)
-				.await?
-				.status(500)?;
-
-		// should call this method after updating mananged url in db
-		let deployment_mananged_url =
-			db::get_all_deployment_managed_urls_for_host_in_region(
-				connection,
-				&managed_url.sub_domain,
-				&managed_url.domain_id,
-				&managed_url.workspace_id,
-				&deployment.region,
-			)
-			.await?;
-
-		let kubeconfig = service::get_kubernetes_config_for_region(
-			connection,
-			&deployment.region,
-			config,
-		)
-		.await?;
-
-		service::update_kubernetes_managed_url(
-			&managed_url.workspace_id,
-			&domain.id,
-			&managed_url.sub_domain,
-			&domain.name,
-			deployment_mananged_url,
-			kubeconfig,
-			config,
-			request_id,
-		)
-		.await?;
-	}
 
 	let host_deletable = db::get_all_managed_urls_for_host(
 		connection,
@@ -615,7 +480,7 @@ pub async fn verify_managed_url_configuration(
 		)
 		.await?;
 
-		if status != "active" {
+		if status != ActivationStatus::Active {
 			log::info!(
 				"request_id: {} - Custom host name is not pointed to patr fallback origin",
 				request_id

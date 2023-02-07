@@ -1,26 +1,13 @@
 mod ci;
 mod deployment;
-mod managed_url;
-mod static_site;
 mod workspace;
 
 pub mod ext_traits;
 
 use std::{net::IpAddr, str::FromStr};
 
-use api_models::utils::Uuid;
-use k8s_openapi::api::core::v1::{
-	EndpointAddress,
-	EndpointPort,
-	EndpointSubset,
-	Endpoints,
-	Secret,
-	Service,
-	ServicePort,
-	ServiceSpec,
-};
+use k8s_openapi::api::core::v1::Service;
 use kube::{
-	api::{Patch, PatchParams},
 	config::{
 		AuthInfo,
 		Cluster,
@@ -30,19 +17,11 @@ use kube::{
 		NamedCluster,
 		NamedContext,
 	},
-	core::{ErrorResponse, ObjectMeta},
 	Api,
 	Config,
-	Error as KubeError,
 };
 
-pub use self::{
-	ci::*,
-	deployment::*,
-	managed_url::*,
-	static_site::*,
-	workspace::*,
-};
+pub use self::{ci::*, deployment::*, workspace::*};
 use crate::{
 	service::KubernetesAuthDetails,
 	utils::{settings::Settings, Error},
@@ -146,21 +125,6 @@ async fn get_kubernetes_config(
 	Ok(client)
 }
 
-async fn secret_exists(
-	secret_name: &str,
-	kubernetes_client: kube::Client,
-	namespace: &str,
-) -> Result<bool, KubeError> {
-	let secret = Api::<Secret>::namespaced(kubernetes_client, namespace)
-		.get(secret_name)
-		.await;
-	match secret {
-		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),
-		Err(err) => Err(err),
-		Ok(_) => Ok(true),
-	}
-}
-
 pub async fn get_external_ip_addr_for_load_balancer(
 	namespace: &str,
 	service_name: &str,
@@ -183,61 +147,4 @@ pub async fn get_external_ip_addr_for_load_balancer(
 		.and_then(|ip_addr| IpAddr::from_str(&ip_addr).ok());
 
 	Ok(ip_addr)
-}
-
-pub async fn create_external_service_for_region(
-	parent_namespace: &str,
-	region_id: &Uuid,
-	external_ip_addr: &IpAddr,
-	kube_auth_details: KubernetesAuthDetails,
-) -> Result<(), Error> {
-	let kube_client = get_kubernetes_client(kube_auth_details).await?;
-
-	Api::<Service>::namespaced(kube_client.clone(), parent_namespace)
-		.patch(
-			&format!("service-{}", region_id),
-			&PatchParams::apply(&format!("service-{}", region_id)),
-			&Patch::Apply(Service {
-				metadata: ObjectMeta {
-					name: Some(format!("service-{}", region_id)),
-					..ObjectMeta::default()
-				},
-				spec: Some(ServiceSpec {
-					ports: Some(vec![ServicePort {
-						port: 80,
-						protocol: Some("TCP".to_owned()),
-						..Default::default()
-					}]),
-					..ServiceSpec::default()
-				}),
-				..Service::default()
-			}),
-		)
-		.await?;
-
-	Api::<Endpoints>::namespaced(kube_client, parent_namespace)
-		.patch(
-			&format!("service-{}", region_id),
-			&PatchParams::apply(&format!("service-{}", region_id)),
-			&Patch::Apply(Endpoints {
-				metadata: ObjectMeta {
-					name: Some(format!("service-{}", region_id)),
-					..ObjectMeta::default()
-				},
-				subsets: Some(vec![EndpointSubset {
-					addresses: Some(vec![EndpointAddress {
-						ip: external_ip_addr.to_string(),
-						..Default::default()
-					}]),
-					ports: Some(vec![EndpointPort {
-						port: 80,
-						..Default::default()
-					}]),
-					..Default::default()
-				}]),
-			}),
-		)
-		.await?;
-
-	Ok(())
 }

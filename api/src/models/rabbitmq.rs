@@ -65,6 +65,8 @@ pub enum BYOCData {
 		certificate_authority_data: String,
 		auth_username: String,
 		auth_token: String,
+		tls_cert: String,
+		tls_key: String,
 		request_id: Uuid,
 	},
 	CheckClusterForReadiness {

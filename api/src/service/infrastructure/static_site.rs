@@ -16,7 +16,7 @@ use crate::{
 	db::{self, StaticSitePlan},
 	error,
 	models::{self, rbac},
-	service::{self, infrastructure::kubernetes},
+	service,
 	utils::{constants::free_limits, settings::Settings, validator, Error},
 	Database,
 };
@@ -165,20 +165,12 @@ pub async fn upload_static_site(
 
 pub async fn stop_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
+	_workspace_id: &Uuid,
 	static_site_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {} - Getting deployment id from db", request_id);
-
-	kubernetes::delete_kubernetes_static_site(
-		workspace_id,
-		static_site_id,
-		config,
-		request_id,
-	)
-	.await?;
 
 	service::update_cloudflare_kv_for_static_site(
 		static_site_id,
@@ -204,23 +196,15 @@ pub async fn stop_static_site(
 
 pub async fn delete_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
+	_workspace_id: &Uuid,
 	static_site_id: &Uuid,
 	config: &Settings,
-	request_id: &Uuid,
+	_request_id: &Uuid,
 ) -> Result<(), Error> {
 	let static_site = db::get_static_site_by_id(connection, static_site_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	kubernetes::delete_kubernetes_static_site(
-		workspace_id,
-		static_site_id,
-		config,
-		request_id,
-	)
-	.await?;
 
 	service::update_cloudflare_kv_for_static_site(
 		static_site_id,
@@ -417,7 +401,7 @@ pub async fn upload_static_site_files_to_s3(
 
 pub async fn update_static_site_and_db_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
+	_workspace_id: &Uuid,
 	static_site_id: &Uuid,
 	upload_id: &Uuid,
 	_running_details: &StaticSiteDetails,
@@ -429,24 +413,15 @@ pub async fn update_static_site_and_db_status(
 		static_site_id,
 		upload_id
 	);
-	let result = service::update_kubernetes_static_site(
-		workspace_id,
-		static_site_id,
-		upload_id,
-		&StaticSiteDetails {},
-		config,
-		request_id,
-	)
-	.await;
 
-	service::update_cloudflare_kv_for_static_site(
+	let result = service::update_cloudflare_kv_for_static_site(
 		static_site_id,
 		models::cloudflare::static_site::Value::Running {
 			upload_id: upload_id.clone(),
 		},
 		config,
 	)
-	.await?;
+	.await;
 
 	if let Err(err) = result {
 		log::error!(

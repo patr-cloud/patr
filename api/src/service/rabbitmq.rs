@@ -364,6 +364,8 @@ pub async fn queue_setup_kubernetes_cluster(
 	certificate_authority_data: &str,
 	auth_username: &str,
 	auth_token: &str,
+	tls_cer: &str,
+	tls_key: &str,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -374,6 +376,8 @@ pub async fn queue_setup_kubernetes_cluster(
 			certificate_authority_data: certificate_authority_data.to_string(),
 			auth_username: auth_username.to_string(),
 			auth_token: auth_token.to_string(),
+			tls_cert: tls_cer.to_owned(),
+			tls_key: tls_key.to_owned(),
 			request_id: request_id.clone(),
 		}),
 		config,
