@@ -330,6 +330,7 @@ async fn get_workspace_info(
 		super_admin_id: workspace.super_admin_id,
 		alert_emails: workspace.alert_emails,
 		default_payment_method_id: workspace.default_payment_method_id,
+		is_verified: !workspace.is_spam,
 	})
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
