@@ -1132,6 +1132,7 @@ async fn get_workspaces_for_user(
 		super_admin_id: workspace.super_admin_id,
 		alert_emails: workspace.alert_emails,
 		default_payment_method_id: workspace.default_payment_method_id,
+		is_verified: !workspace.is_spam,
 	})
 	.collect::<Vec<_>>();
 
