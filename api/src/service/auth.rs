@@ -1185,7 +1185,7 @@ pub async fn join_user(
 		}
 	}
 
-	if let Some(ref recovery_email) = recovery_email_to {
+	if let Some(ref recovery_email) = welcome_email_to {
 		// Reference for APIs docs of ipqualityscore can be found in this
 		// url https://www.ipqualityscore.com/documentation/email-validation/overview
 		let email_spam_result = Client::new()
