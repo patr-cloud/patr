@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use eve_rs::AsError;
+use sqlx::Connection;
 use kube::config::Kubeconfig;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -156,8 +157,10 @@ pub(super) async fn process_request(
 					Ok(())
 				}
 				Ok(Some(hostname)) => {
+					let mut connection = connection.begin().await?;
+
 					db::mark_deployment_region_as_active(
-						connection,
+						&mut connection,
 						&region_id,
 						kube_config,
 						&hostname,
@@ -165,7 +168,7 @@ pub(super) async fn process_request(
 					.await?;
 
 					db::append_messge_log_for_region(
-						connection,
+						&mut connection,
 						&region_id,
 						concat!(
 							"Successfully assigned host for load balancer.\n",
@@ -175,14 +178,14 @@ pub(super) async fn process_request(
 					.await?;
 
 					let patr_domain = db::get_domain_by_name(
-						connection,
+						&mut connection,
 						&config.cloudflare.region_root_domain,
 					)
 					.await?
 					.status(500)?;
 		
 					let resource = db::get_resource_by_id(
-						connection,
+						&mut connection,
 						&patr_domain.id,
 					)
 					.await?
@@ -193,11 +196,12 @@ pub(super) async fn process_request(
 						std::net::IpAddr::V4(ip_v4) => DnsRecordValue::A { target: ip_v4, proxied: false },
 						std::net::IpAddr::V6(ip_v6) => DnsRecordValue::AAAA { target: ip_v6, proxied: false },
 					};
+
 		
 					// todo: currently only *.region_id.region_root_domain is added due to dns limits
 					// if needed add region_id.region_root_domain also to dns records of region_root_domain
 					service::create_patr_domain_dns_record(
-						connection,
+						&mut connection,
 						&resource.owner_id,
 						&patr_domain.id,
 						&format!("*.{}", region_id),
@@ -207,6 +211,8 @@ pub(super) async fn process_request(
 						&request_id,
 					)
 					.await?;
+
+					connection.commit().await?;
 
 					Ok(())
 				}
@@ -396,10 +402,6 @@ pub(super) async fn process_request(
 
 			service::update_cloudflare_kv_for_region(&region_id, &ip_addr.to_string(), config).await?;
 
-				return Ok(());
-			}
-
-			log::info!("Un-Initialized cluster {region_id} successfully");
 			Ok(())
 		}
 	}

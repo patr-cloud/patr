@@ -100,8 +100,8 @@ pub async fn initialize_region_pre(
 			workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id
 				REFERENCES workspace(id),
 			ingress_hostname TEXT,
-			cf_cert_id TEXT,
 			message_log TEXT,
+			cf_cert_id TEXT,
 			config_file JSON,
 			deleted TIMESTAMPTZ,
 			status REGION_STATUS NOT NULL,

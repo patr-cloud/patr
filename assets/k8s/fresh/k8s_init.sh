@@ -24,10 +24,15 @@ CONFIG_DIR="$SCRIPT_DIR/config"
 
 echo "Initializing $CLUSTER_ID cluster"
 
-kubectl create namespace ingress-nginx
+kubectl create namespace ingress-nginx \
+    --dry-run=client -o yaml | kubectl apply -f -
 
 echo "Storing origin CA certificate as secret"
-kubectl create secret tls $DEFAULT_CERT_NAME --cert=$TLS_CERT_PATH --key=$TLS_KEY_PATH --namespace ingress-nginx
+kubectl create secret tls $DEFAULT_CERT_NAME \
+    --cert=$TLS_CERT_PATH \
+    --key=$TLS_KEY_PATH \
+    --namespace ingress-nginx \
+    --dry-run=client -o yaml | kubectl apply -f -
 
 echo "Installing nginx as ingress for cluster"
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
@@ -35,16 +40,16 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
     --set controller.extraArgs.default-ssl-certificate="ingress-nginx/$DEFAULT_CERT_NAME"
 
 echo "Waiting for nginx ingress controller to be ready"
-kubectl wait --namespace ingress-nginx --for=condition=available deployment --selector=app.kubernetes.io/component=controller --timeout=-1s > /dev/null
-kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=-1s > /dev/null
+kubectl wait --namespace ingress-nginx --for=condition=available deployment \
+    --selector=app.kubernetes.io/component=controller --timeout=-1s > /dev/null
+kubectl wait --namespace ingress-nginx --for=condition=ready pod \
+    --selector=app.kubernetes.io/component=controller --timeout=-1s > /dev/null
 
 echo "Ingress controller is ready"
 
 echo "Creating parent workspace in new cluster"
-echo "apiVersion: v1
-kind: Namespace
-metadata:
-  name: $PARENT_WORKSPACE_ID" | kubectl apply -f -
+kubectl create namespace "$PARENT_WORKSPACE_ID" \
+    --dry-run=client -o yaml | kubectl apply -f -
 
 rm $KUBECONFIG_PATH $TLS_CERT_PATH $TLS_KEY_PATH
 

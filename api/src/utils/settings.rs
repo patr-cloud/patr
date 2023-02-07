@@ -149,8 +149,6 @@ pub struct CloudflareSettings {
 	pub kv_deployment_ns: String,
 	#[serde(alias = "kvstaticsitens")]
 	pub kv_static_site_ns: String,
-	#[serde(alias = "kvregionns")]
-	pub kv_region_ns: String,
 
 	#[serde(alias = "regionrootdomain")]
 	pub region_root_domain: String,
