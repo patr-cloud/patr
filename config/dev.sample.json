@@ -49,7 +49,6 @@
 		"kvRoutingNs": "kvRoutingNs",
 		"kvDeploymentNs": "kvDeploymentNs",
 		"kvStaticSiteNs": "kvStaticSiteNs",
-		"kvRegionNs": "kvRegionNs",
 		"regionRootDomain": "regionRootDomain",
 		"originCaKey": "originCaKey",
 		"patrZoneIdentifier": "patrZoneIdentifier",

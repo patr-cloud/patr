@@ -56,13 +56,13 @@ pub async fn initialize_region_pre(
 			workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id
 				REFERENCES workspace(id),
 			ready BOOLEAN NOT NULL,
-			cf_cert_id TEXT,
 			kubernetes_cluster_url TEXT,
 			kubernetes_auth_username TEXT,
 			kubernetes_auth_token TEXT,
 			kubernetes_ca_data TEXT,
 			kubernetes_ingress_ip_addr INET,
 			message_log TEXT,
+			cf_cert_id TEXT,
 			CONSTRAINT deployment_region_chk_ready_or_not CHECK(
 				(
 					workspace_id IS NOT NULL AND

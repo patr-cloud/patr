@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use api_models::models::workspace::domain::DnsRecordValue;
 use eve_rs::AsError;
+use sqlx::Connection;
 use tokio::{fs, process::Command};
 
 use crate::{
@@ -189,10 +190,12 @@ pub(super) async fn process_request(
 				std::net::IpAddr::V6(ip_v6) => DnsRecordValue::AAAA { target: ip_v6, proxied: false },
 			};
 
+			let mut connection = connection.begin().await?;
+
 			// todo: currently only *.region_id.region_root_domain is added due to dns limits
 			// if needed add region_id.region_root_domain also to dns records of region_root_domain
 			service::create_patr_domain_dns_record(
-				connection,
+				&mut connection,
 				&resource.owner_id,
 				&patr_domain.id,
 				&format!("*.{}", region_id),
@@ -204,7 +207,7 @@ pub(super) async fn process_request(
 			.await?;
 
 			db::mark_deployment_region_as_ready(
-				connection,
+				&mut connection,
 				&region_id,
 				&cluster_url,
 				&auth_username,
@@ -215,12 +218,12 @@ pub(super) async fn process_request(
 			.await?;
 
 			db::append_messge_log_for_region(
-				connection,
+				&mut connection,
 				&region_id,
 				"Successfully assigned IP Addr for load balancer.\nRegion is now ready for deployments"
 			).await?;
 
-			service::update_cloudflare_kv_for_region(&region_id, &ip_addr.to_string(), config).await?;
+			connection.commit().await?;
 
 			Ok(())
 		}
