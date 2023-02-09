@@ -8377,6 +8377,16 @@
     },
     "query": "INSERT INTO ci_repos ( id, repo_owner, repo_name, clone_url, webhook_secret, build_machine_type_id, status, git_provider_id, git_provider_repo_uid ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
   },
+  "8c78e77fdf66b84bbca2469cdaabaf6b973fc3096863f867c410efdafcfe216e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_volume( id UUID CONSTRAINT deployment_volume_pk PRIMARY KEY, name TEXT NOT NULL, deployment_id UUID NOT NULL CONSTRAINT deployment_volume_fk_deployment_id REFERENCES deployment(id), volume_size INT NOT NULL CONSTRAINT deployment_volume_chk_size_unsigned CHECK(volume_size > 0), volume_mount_path TEXT NOT NULL, deleted TIMESTAMPTZ, CONSTRAINT deployment_volume_name_unique_deployment_id UNIQUE(deployment_id, name), CONSTRAINT deployment_volume_path_unique_deployment_id UNIQUE(deployment_id, volume_mount_path) );"
+  },
   "8d2c961f04458f116b2d9e7f00668a83febae5648c3c4774795ff2bbe6f6e364": {
     "describe": {
       "columns": [],
@@ -13860,16 +13870,6 @@
       }
     },
     "query": "CREATE TABLE docker_registry_repository_tag( repository_id UUID NOT NULL CONSTRAINT docker_registry_repository_tag_fk_repository_id REFERENCES docker_registry_repository(id), tag TEXT NOT NULL, manifest_digest TEXT NOT NULL, last_updated TIMESTAMPTZ NOT NULL, CONSTRAINT docker_registry_repository_tag_pk PRIMARY KEY( repository_id, tag ), CONSTRAINT docker_registry_repository_tag_fk_repository_id_manifest_digest FOREIGN KEY(repository_id, manifest_digest) REFERENCES docker_registry_repository_manifest( repository_id, manifest_digest ) );"
-  },
-  "f53563aa5ae3320fc5aa98813e529b6460e4394971ac9c1fbd228e4fb9dce0db": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment_volume( id UUID CONSTRAINT deployment_volume_pk PRIMARY KEY, name TEXT NOT NULL, deployment_id UUID NOT NULL CONSTRAINT deployment_volume_fk_deployment_id REFERENCES deployment(id), volume_size INT NOT NULL CONSTRAINT deployment_volume_chk_size_unsigned CHECK(volume_size > 0), volume_mount_path TEXT NOT NULL, deleted TIMESTAMPTZ, CONSTRAINT deployment_volume_name_unique_deployment_id UNIQUE(deployment_id, name), CONSTRAINT deployment_volume_path_unique_deployment_id UNIQUE(deployment_id, path) );"
   },
   "f580af1d3dd23ca8b5a158eb610cb5b28b4e26ea0137e55679a92fc6bd33d42d": {
     "describe": {
