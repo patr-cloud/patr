@@ -95,10 +95,11 @@ async fn notification_handler(
 		service::queue_docker_notification_error(
 			&context.get_body()?,
 			context.get_content_type().as_str(),
-			&context.get_header("Authorization").status(400)?,
 			&request_id,
 		)
 		.await?;
+
+		return Ok(context);
 	}
 
 	log::trace!(

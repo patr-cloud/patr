@@ -178,7 +178,6 @@ pub enum DockerWebhookData {
 	NotificationHandler {
 		request_body: String,
 		content_type: String,
-		content_header: String,
 		request_id: Uuid,
 	},
 }

@@ -386,14 +386,12 @@ pub async fn queue_setup_kubernetes_cluster(
 pub async fn queue_docker_notification_error(
 	request_body: &str,
 	content_type: &str,
-	content_header: &str,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	send_message_to_docker_webhook_queue(
 		&DockerWebhookData::NotificationHandler {
 			request_body: request_body.to_string(),
 			content_type: content_type.to_string(),
-			content_header: content_header.to_string(),
 			request_id: request_id.clone(),
 		},
 		request_id,
