@@ -18,6 +18,7 @@ use crate::{
 		CIData,
 		DeploymentRequestData,
 		DockerRegistryData,
+		DockerWebhookData,
 		InfraRequestData,
 		Queue,
 	},
@@ -380,4 +381,60 @@ pub async fn queue_setup_kubernetes_cluster(
 		request_id,
 	)
 	.await
+}
+
+pub async fn queue_docker_notification_error(
+	request_body: &str,
+	content_type: &str,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_docker_webhook_queue(
+		&DockerWebhookData::NotificationHandler {
+			request_body: request_body.to_string(),
+			content_type: content_type.to_string(),
+			request_id: request_id.clone(),
+		},
+		request_id,
+	)
+	.await
+}
+
+pub async fn send_message_to_docker_webhook_queue(
+	message: &DockerWebhookData,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let app = service::get_app();
+	let (channel, rabbitmq_connection) =
+		rabbitmq::get_rabbitmq_connection_channel(&app.rabbitmq).await?;
+
+	let confirmation = channel
+		.basic_publish(
+			"",
+			"dockerWebhookError", /* not putting this in Queue enum as we
+			                       * don't want this handle/consume */
+			BasicPublishOptions::default(),
+			serde_json::to_string(&message)?.as_bytes(),
+			BasicProperties::default(),
+		)
+		.await?
+		.await?;
+
+	if !confirmation.is_ack() {
+		log::error!("request_id: {} - RabbitMQ publish failed", request_id);
+		return Err(Error::empty());
+	}
+
+	channel.close(200, "Normal shutdown").await.map_err(|e| {
+		log::error!("Error closing rabbitmq channel: {}", e);
+		Error::from(e)
+	})?;
+
+	rabbitmq_connection
+		.close(200, "Normal shutdown")
+		.await
+		.map_err(|e| {
+			log::error!("Error closing rabbitmq connection: {}", e);
+			Error::from(e)
+		})?;
+	Ok(())
 }
