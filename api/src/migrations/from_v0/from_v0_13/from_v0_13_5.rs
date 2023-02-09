@@ -145,7 +145,7 @@ async fn add_deployment_volume_info(
 			CONSTRAINT deployment_volume_name_unique_deployment_id
 				UNIQUE(deployment_id, name),
 			CONSTRAINT deployment_volume_path_unique_deployment_id
-				UNIQUE(deployment_id, path)
+				UNIQUE(deployment_id, volume_mount_path)
 		);
 		"#
 	)
