@@ -1014,7 +1014,8 @@ pub async fn get_volume_payment_history_by_volume_id(
 		FROM
 			volume_payment_history
 		WHERE
-			volume_id = $1;
+			volume_id = $1 AND
+			stop_time IS NULL;
 		"#,
 		volume_id as _,
 	)

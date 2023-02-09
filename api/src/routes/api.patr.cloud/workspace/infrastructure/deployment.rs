@@ -974,7 +974,6 @@ async fn create_deployment(
 							current_live_digest: Some(digest),
 						},
 						&deployment_running_details,
-						deployment_running_details.min_horizontal_scale,
 						&user_id,
 						&login_id,
 						&ip_address,
@@ -1004,7 +1003,6 @@ async fn create_deployment(
 					current_live_digest: None,
 				},
 				&deployment_running_details,
-				deployment_running_details.min_horizontal_scale,
 				&user_id,
 				&login_id,
 				&ip_address,
@@ -1201,7 +1199,6 @@ async fn start_deployment(
 		&deployment_id,
 		&deployment,
 		&deployment_running_details,
-		deployment_running_details.min_horizontal_scale,
 		&user_id,
 		&login_id,
 		&ip_address,
@@ -1718,16 +1715,6 @@ async fn update_deployment(
 
 	let ip_address = routes::get_request_ip_address(&context);
 
-	let updated_min_replica = min_horizontal_scale;
-	let current_min_replicas = db::get_deployment_by_id(
-		context.get_database_connection(),
-		&deployment_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?
-	.min_horizontal_scale as u16;
-
 	// Is any one value present?
 	if name.is_none() &&
 		machine_type.is_none() &&
@@ -1782,106 +1769,22 @@ async fn update_deployment(
 		liveness_probe.as_ref(),
 		config_mounts.as_ref(),
 		volumes.as_ref(),
+		&user_id,
+		&login_id,
+		&ip_address,
+		&metadata,
+		&config,
 		&request_id,
 	)
 	.await?;
 
-	context.commit_database_transaction().await?;
-
-	let (deployment, workspace_id, _, deployment_running_details) =
-		service::get_full_deployment_config(
-			context.get_database_connection(),
-			&deployment_id,
-			&request_id,
-		)
-		.await?;
-
-	let volumes = db::get_all_deployment_volumes(
-		context.get_database_connection(),
+	service::queue_check_and_update_deployment_status(
+		&workspace_id,
 		&deployment_id,
+		&config,
+		&request_id,
 	)
 	.await?;
-
-	match &deployment.status {
-		DeploymentStatus::Stopped |
-		DeploymentStatus::Deleted |
-		DeploymentStatus::Created => {
-			// Don't update deployments that are explicitly stopped or deleted
-		}
-		_ => {
-			let current_time = Utc::now();
-
-			service::start_deployment(
-				context.get_database_connection(),
-				&workspace_id,
-				&deployment_id,
-				&deployment,
-				&deployment_running_details,
-				updated_min_replica
-					.unwrap_or(deployment_running_details.min_horizontal_scale),
-				&user_id,
-				&login_id,
-				&ip_address,
-				&metadata,
-				&current_time,
-				&config,
-				&request_id,
-			)
-			.await?;
-
-			let kubeconfig = service::get_kubernetes_config_for_region(
-				context.get_database_connection(),
-				&deployment.region,
-				&config,
-			)
-			.await?;
-
-			// Deleting volumes if there are any
-			if let Some(updated_min_replica) = updated_min_replica {
-				if updated_min_replica < current_min_replicas {
-					// e.g - if current min_replicas=5 and user wanted to reduce
-					// the replica to 2 in that case updated_min_replica
-					// become 2 which means we have to get rid of extra 3
-					// volumes. Hence delete extra volumes
-					service::delete_kubernetes_volumes(
-						&workspace_id,
-						&deployment_id,
-						&volumes,
-						(updated_min_replica, current_min_replicas),
-						kubeconfig.clone(),
-						&request_id,
-					)
-					.await?;
-				}
-			}
-
-			let deleted_volumes = db::get_deleted_volumes_for_deployment(
-				context.get_database_connection(),
-				&deployment_id,
-			)
-			.await?;
-
-			service::delete_kubernetes_volumes(
-				&workspace_id,
-				&deployment_id,
-				&deleted_volumes,
-				(0, deployment_running_details.max_horizontal_scale),
-				kubeconfig,
-				&request_id,
-			)
-			.await?;
-
-			context.commit_database_transaction().await?;
-
-			service::queue_check_and_update_deployment_status(
-				&workspace_id,
-				&deployment_id,
-				&config,
-				&request_id,
-			)
-			.await?;
-		}
-	}
 
 	context.success(UpdateDeploymentResponse {});
 	Ok(context)

@@ -334,6 +334,7 @@ pub async fn get_deployment_container_logs(
 	Ok(logs)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn update_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
@@ -349,6 +350,11 @@ pub async fn update_deployment(
 	liveness_probe: Option<&DeploymentProbe>,
 	config_mounts: Option<&BTreeMap<String, Base64String>>,
 	volumes: Option<&BTreeMap<String, DeploymentVolume>>,
+	user_id: &Uuid,
+	login_id: &Uuid,
+	ip_address: &str,
+	metadata: &DeploymentMetadata,
+	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
@@ -357,10 +363,13 @@ pub async fn update_deployment(
 		deployment_id
 	);
 
-	db::get_deployment_by_id(connection, deployment_id)
+	let current_time = Utc::now();
+
+	let old_min_replicas = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?
+		.min_horizontal_scale as u16;
 
 	// Get volume size for checking the limit
 	// let mut volume_size: usize = 0;
@@ -616,6 +625,86 @@ pub async fn update_deployment(
 		"request_id: {} - Deployment updated in the database",
 		request_id
 	);
+
+	let (deployment, _, _, running_details) =
+		get_full_deployment_config(connection, deployment_id, request_id)
+			.await?;
+
+	let volumes =
+		db::get_all_deployment_volumes(connection, deployment_id).await?;
+
+	for volume in &volumes {
+		if let Some(new_min_replica) = min_horizontal_scale {
+			if new_min_replica != old_min_replicas {
+				db::stop_volume_usage_history(
+					connection,
+					&volume.volume_id,
+					&Utc::now(),
+				)
+				.await?;
+			}
+		}
+	}
+
+	match &deployment.status {
+		DeploymentStatus::Stopped |
+		DeploymentStatus::Deleted |
+		DeploymentStatus::Created => {
+			// Don't update deployments that are explicitly stopped or deleted
+		}
+		_ => {
+			service::start_deployment(
+				connection,
+				workspace_id,
+				deployment_id,
+				&deployment,
+				&running_details,
+				user_id,
+				login_id,
+				ip_address,
+				metadata,
+				&current_time,
+				config,
+				request_id,
+			)
+			.await?;
+		}
+	}
+
+	let kubeconfig = service::get_kubernetes_config_for_region(
+		connection,
+		&deployment.region,
+		config,
+	)
+	.await?;
+
+	if let Some(new_min_replicas) = min_horizontal_scale {
+		if new_min_replicas < old_min_replicas {
+			service::delete_kubernetes_volumes(
+				workspace_id,
+				deployment_id,
+				&volumes,
+				(new_min_replicas, old_min_replicas),
+				kubeconfig.clone(),
+				request_id,
+			)
+			.await?;
+		}
+	}
+
+	let deleted_volumes =
+		db::get_deleted_volumes_for_deployment(connection, deployment_id)
+			.await?;
+
+	service::delete_kubernetes_volumes(
+		workspace_id,
+		deployment_id,
+		&deleted_volumes,
+		(0, running_details.min_horizontal_scale),
+		kubeconfig,
+		request_id,
+	)
+	.await?;
 
 	Ok(())
 }
@@ -1358,7 +1447,6 @@ pub async fn start_deployment(
 	deployment_id: &Uuid,
 	deployment: &Deployment,
 	deployment_running_details: &DeploymentRunningDetails,
-	updated_min_replicas: u16,
 	user_id: &Uuid,
 	login_id: &Uuid,
 	ip_address: &str,
@@ -1413,23 +1501,12 @@ pub async fn start_deployment(
 			.await?
 			.is_none()
 			{
-				if updated_min_replicas !=
-					deployment_running_details.min_horizontal_scale
-				{
-					db::stop_volume_usage_history(
-						connection,
-						&volume.volume_id,
-						current_time,
-					)
-					.await?;
-				}
-
 				db::start_volume_usage_history(
 					connection,
 					workspace_id,
 					&volume.volume_id,
 					volume.size as u64 * 1000u64 * 1000u64 * 1000u64,
-					updated_min_replicas,
+					deployment_running_details.min_horizontal_scale,
 					current_time,
 				)
 				.await?;

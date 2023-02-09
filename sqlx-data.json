@@ -6591,56 +6591,6 @@
     },
     "query": "SELECT COUNT(*) as \"count!\" FROM managed_url INNER JOIN workspace ON managed_url.workspace_id = workspace.id WHERE url_type = 'proxy_to_deployment' AND workspace.super_admin_id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );"
   },
-  "7a509a2cf1b2152122dbd1bb4e80700ad1d7beedbcbd58e5069f8799ad548190": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "volume_id: _",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "storage",
-          "ordinal": 2,
-          "type_info": "Int8"
-        },
-        {
-          "name": "number_of_volumes",
-          "ordinal": 3,
-          "type_info": "Int4"
-        },
-        {
-          "name": "start_time: _",
-          "ordinal": 4,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "stop_time: _",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tvolume_id as \"volume_id: _\",\n\t\t\tstorage,\n\t\t\tnumber_of_volumes,\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tvolume_payment_history\n\t\tWHERE\n\t\t\tvolume_id = $1;\n\t\t"
-  },
   "7ace9ec583003ac93b1b9f4f45a498c89a453b0350da83a1cf9f4660d02b6f90": {
     "describe": {
       "columns": [],
@@ -10345,6 +10295,56 @@
       }
     },
     "query": "SELECT id as \"id: Uuid\", name::TEXT as \"name!: String\", super_admin_id as \"super_admin_id: Uuid\", active, alert_emails as \"alert_emails: Vec<String>\", payment_type as \"payment_type: PaymentType\", default_payment_method_id as \"default_payment_method_id: String\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, volume_storage_limit, stripe_customer_id, address_id as \"address_id: Uuid\", amount_due_in_cents, is_spam FROM workspace WHERE super_admin_id = $1;"
+  },
+  "b0c443b846e70014265a8d3badb55e6be43cef6437934f3ff5e1ae9cd8383c92": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "volume_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "storage",
+          "ordinal": 2,
+          "type_info": "Int8"
+        },
+        {
+          "name": "number_of_volumes",
+          "ordinal": 3,
+          "type_info": "Int4"
+        },
+        {
+          "name": "start_time: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "stop_time: _",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tvolume_id as \"volume_id: _\",\n\t\t\tstorage,\n\t\t\tnumber_of_volumes,\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tvolume_payment_history\n\t\tWHERE\n\t\t\tvolume_id = $1 AND\n\t\t\tstop_time IS NULL;\n\t\t"
   },
   "b11d8732266d0d95fcacd195466325df74bd8ca6e0e2234b3f10141015ab85e5": {
     "describe": {
