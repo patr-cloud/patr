@@ -365,10 +365,10 @@ pub async fn update_deployment(
 	// Get volume size for checking the limit
 	// let mut volume_size: usize = 0;
 	let volume_size = if let Some(volumes) = volumes {
-		let volume_size = volumes
+		volumes
 			.iter()
-			.fold(0, |acc, (_, volume)| acc + volume.size as u32);
-		volume_size
+			.map(|(_, volume)| volume.size as u32)
+			.sum::<u32>()
 	} else {
 		0
 	};
@@ -1273,7 +1273,8 @@ async fn check_deployment_creation_limit(
 
 	let volume_size = volumes
 		.iter()
-		.fold(0, |acc, (_, volume)| acc + volume.size as u32);
+		.map(|(_, volume)| volume.size as u32)
+		.sum::<u32>();
 
 	let card_added =
 		db::get_default_payment_method_for_workspace(connection, workspace_id)
