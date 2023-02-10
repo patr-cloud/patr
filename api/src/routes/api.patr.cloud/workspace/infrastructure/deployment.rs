@@ -1679,18 +1679,24 @@ async fn update_deployment(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
+
+	// workspace_id in UpdateDeploymentRequest struct parsed as null uuid(0..0),
+	// hence taking the value here which will be same
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
 	.unwrap();
 
 	log::trace!(
-		"{} - Updating deployment with id: {}",
+		"request_id: {} - Updating deployment with id: {}",
 		request_id,
 		deployment_id
 	);
 	let UpdateDeploymentRequest {
-		workspace_id,
 		deployment_id: _,
 		name,
 		machine_type,
@@ -1703,17 +1709,12 @@ async fn update_deployment(
 		liveness_probe,
 		config_mounts,
 		volumes,
+		..
 	} = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let name = name.as_ref().map(|name| name.trim());
-
-	let user_id = context.get_token_data().unwrap().user_id().clone();
-
-	let login_id = context.get_token_data().unwrap().login_id().clone();
-
-	let ip_address = routes::get_request_ip_address(&context);
 
 	// Is any one value present?
 	if name.is_none() &&
@@ -1734,18 +1735,6 @@ async fn update_deployment(
 	}
 
 	let config = context.get_state().config.clone();
-
-	let metadata = DeploymentMetadata::Update {
-		name: name.map(|n| n.to_string()),
-		machine_type: machine_type.clone(),
-		deploy_on_push,
-		min_horizontal_scale,
-		max_horizontal_scale,
-		ports: ports.clone(),
-		environment_variables: environment_variables.clone(),
-		startup_probe: startup_probe.clone(),
-		liveness_probe: liveness_probe.clone(),
-	};
 
 	service::update_deployment(
 		context.get_database_connection(),
@@ -1769,10 +1758,6 @@ async fn update_deployment(
 		liveness_probe.as_ref(),
 		config_mounts.as_ref(),
 		volumes.as_ref(),
-		&user_id,
-		&login_id,
-		&ip_address,
-		&metadata,
 		&config,
 		&request_id,
 	)

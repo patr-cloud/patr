@@ -350,10 +350,6 @@ pub async fn update_deployment(
 	liveness_probe: Option<&DeploymentProbe>,
 	config_mounts: Option<&BTreeMap<String, Base64String>>,
 	volumes: Option<&BTreeMap<String, DeploymentVolume>>,
-	user_id: &Uuid,
-	login_id: &Uuid,
-	ip_address: &str,
-	metadata: &DeploymentMetadata,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -672,11 +668,11 @@ pub async fn update_deployment(
 
 				if new_min_replica < old_min_replicas {
 					// Delete any excess volumes that are present
-					for replica_index in old_min_replicas..new_min_replica {
+					for replica_index in new_min_replica..old_min_replicas {
 						service::delete_kubernetes_volume(
 							workspace_id,
 							deployment_id,
-							&volume,
+							volume,
 							replica_index,
 							kubeconfig.clone(),
 							request_id,
@@ -708,6 +704,13 @@ pub async fn update_deployment(
 			)
 			.await?
 			{
+				db::stop_deployment_usage_history(
+					connection,
+					deployment_id,
+					&now,
+				)
+				.await?;
+
 				db::start_deployment_usage_history(
 					connection,
 					workspace_id,

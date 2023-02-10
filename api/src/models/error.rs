@@ -245,10 +245,10 @@ pub mod message {
 		"Cannot update volume size to be less than the actual size given at the time of creating deployment";
 
 	// error constants for billing related things
-	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "You have reached the maximun free limit allowed to create resources without adding a payment card, kindly add a card to create more resources";
-	pub const CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT: &str = "Only base deployment machine type is allowed under free plan, kindly add a card to create deployment with bigger machine type";
-	pub const REPLICA_LIMIT_EXCEEDED: &str = "Only one minimum and maximum replicas allowed under the free plan,  kindly add a card to create deployment with multiple replicas";
-	pub const CARDLESS_VOLUME_LIMIT_EXCEEDED: &str = "Only 10GB volume storage allowed under the free plan,  kindly add a card to create volume with more storage";
+	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "You have reached the maximun free limit allowed to create resources without adding a payment card. Kindly add a card to create more resources";
+	pub const CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT: &str = "Only base deployment machine type is allowed under free plan. Kindly add a card to create deployment with bigger machine type";
+	pub const REPLICA_LIMIT_EXCEEDED: &str = "Only one minimum and maximum replicas allowed under the free plan. Kindly add a card to create deployment with multiple replicas";
+	pub const CARDLESS_VOLUME_LIMIT_EXCEEDED: &str = "No volume storage allowed under the free plan. Kindly add a card to create volume with more storage";
 
 	// error constants for CI
 	pub const INVALID_STATE_VALUE: &str =

@@ -1290,31 +1290,6 @@ pub async fn get_all_deployment_volumes(
 	.await
 }
 
-pub async fn get_deleted_volumes_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-) -> Result<Vec<DeploymentVolume>, sqlx::Error> {
-	query_as!(
-		DeploymentVolume,
-		r#"
-		SELECT
-			id as "volume_id: _",
-			name,
-			deployment_id as "deployment_id: _",
-			volume_size as "size: _",
-			volume_mount_path as "path: _"
-		FROM
-			deployment_volume
-		WHERE
-			deployment_id = $1 AND
-			deleted IS NOT NULL;
-		"#,
-		deployment_id as _,
-	)
-	.fetch_all(&mut *connection)
-	.await
-}
-
 pub async fn get_all_deployment_config_mounts(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
