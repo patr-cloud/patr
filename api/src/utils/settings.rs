@@ -150,8 +150,8 @@ pub struct CloudflareSettings {
 	#[serde(alias = "kvstaticsitens")]
 	pub kv_static_site_ns: String,
 
-	#[serde(alias = "regionrootdomain")]
-	pub region_root_domain: String,
+	#[serde(alias = "onpatrdomain")]
+	pub onpatr_domain: String,
 	#[serde(alias = "regionrootdomain")]
 	pub origin_ca_key: String,
 

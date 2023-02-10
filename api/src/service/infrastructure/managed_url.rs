@@ -457,7 +457,8 @@ pub async fn verify_managed_url_configuration(
 				};
 				sub_domain_match &&
 					matches!(record.r#type, DnsRecordType::CNAME) &&
-					record.value == "ingress.patr.cloud"
+					record.value == "ingress.patr.cloud" // todo: need to update to
+				                     // app_onpatr_domain
 			})
 	} else {
 		// external domain

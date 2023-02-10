@@ -634,7 +634,7 @@ pub async fn update_kubernetes_deployment(
 				port,
 				deployment.id,
 				deployment.region,
-				config.cloudflare.region_root_domain
+				config.cloudflare.onpatr_domain
 			)),
 			http: Some(HTTPIngressRuleValue {
 				paths: vec![HTTPIngressPath {
@@ -690,7 +690,7 @@ pub async fn update_kubernetes_deployment(
 			.ports
 			.iter()
 			.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
-			.map(|(port, _)| format!("{}-{}.patr.cloud", port, deployment.id))
+			.map(|(port, _)| format!("{}-{}.patr.cloud", port, deployment.id)) // todo: update to app_onpatr_domain
 			.collect::<Vec<_>>()
 			.join(",")
 	);

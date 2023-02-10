@@ -35,7 +35,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		cloudflare::{self, deployment::Status},
+		cloudflare,
 		deployment::{Logs, PrometheusResponse, MACHINE_TYPES},
 		rbac::{self, permissions},
 		DeploymentMetadata,
@@ -1366,7 +1366,8 @@ async fn check_deployment_creation_limit(
 ) -> Result<(), Error> {
 	log::trace!("request_id: {request_id} - Checking whether new deployment creation is limited");
 
-	if is_byoc_region {
+	// todo: either add debug_assertions to all or remove it from all
+	if is_byoc_region || cfg!(debug_assertions) {
 		// if byoc, then don't need to check free/paid/total limits
 		// as this deloyment is going to be deployed on their cluster
 		return Ok(());
@@ -1598,15 +1599,13 @@ pub async fn start_deployment(
 
 	service::update_cloudflare_kv_for_deployment(
 		deployment_id,
-		cloudflare::deployment::Value {
+		cloudflare::deployment::Value::Running {
 			region_id: deployment.region.clone(),
-			status: cloudflare::deployment::Status::Running {
-				ports: deployment_running_details
-					.ports
-					.iter()
-					.map(|(port, _type)| port.value())
-					.collect(),
-			},
+			ports: deployment_running_details
+				.ports
+				.iter()
+				.map(|(port, _type)| port.value())
+				.collect(),
 		},
 		config,
 	)
@@ -1774,10 +1773,7 @@ pub async fn stop_deployment(
 
 	service::update_cloudflare_kv_for_deployment(
 		deployment_id,
-		cloudflare::deployment::Value {
-			region_id: region_id.to_owned(),
-			status: Status::Stopped,
-		},
+		cloudflare::deployment::Value::Stopped,
 		config,
 	)
 	.await?;
@@ -1875,10 +1871,7 @@ pub async fn delete_deployment(
 
 	service::update_cloudflare_kv_for_deployment(
 		deployment_id,
-		cloudflare::deployment::Value {
-			region_id: region_id.to_owned(),
-			status: Status::Deleted,
-		},
+		cloudflare::deployment::Value::Deleted,
 		config,
 	)
 	.await?;

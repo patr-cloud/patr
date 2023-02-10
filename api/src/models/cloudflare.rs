@@ -8,13 +8,13 @@ pub mod routing {
 	#[serde(tag = "type", rename_all = "camelCase")]
 	pub enum UrlType {
 		#[serde(rename_all = "camelCase")]
-		ProxyDeployment { deployment_id: Uuid },
+		ProxyDeployment { deployment_id: Uuid, port: u16 },
 		#[serde(rename_all = "camelCase")]
 		ProxyStaticSite { static_site_id: Uuid },
 		#[serde(rename_all = "camelCase")]
 		ProxyUrl { url: String },
 		#[serde(rename_all = "camelCase")]
-		Redirect { url: String },
+		Redirect { url: String, permanent: bool },
 	}
 
 	#[derive(Debug)]
@@ -49,21 +49,15 @@ pub mod deployment {
 
 	#[derive(Debug, Serialize, Deserialize)]
 	#[serde(rename_all = "camelCase")]
-	pub enum Status {
+	pub enum Value {
 		Created,
 		Stopped,
 		Deleted,
 		#[serde(rename_all = "camelCase")]
 		Running {
+			region_id: Uuid,
 			ports: Vec<u16>,
 		},
-	}
-
-	#[derive(Debug, Serialize, Deserialize)]
-	#[serde(rename_all = "camelCase")]
-	pub struct Value {
-		pub region_id: Uuid,
-		pub status: Status,
 	}
 }
 
@@ -88,29 +82,6 @@ pub mod static_site {
 		Stopped,
 		Deleted,
 		#[serde(rename_all = "camelCase")]
-		Running {
-			upload_id: Uuid,
-		},
-	}
-}
-
-pub mod region {
-	use std::fmt::Display;
-
-	use api_models::utils::Uuid;
-	use serde::{Deserialize, Serialize};
-
-	pub struct Key(pub Uuid);
-
-	impl Display for Key {
-		fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-			write!(f, "{}", self.0)
-		}
-	}
-
-	#[derive(Debug, Serialize, Deserialize)]
-	#[serde(rename_all = "camelCase")]
-	pub struct Value {
-		pub host: String,
+		Serving(Uuid),
 	}
 }
