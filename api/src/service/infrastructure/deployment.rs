@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, str};
+use std::{cmp::Ordering, collections::BTreeMap, str};
 
 use api_models::{
 	models::workspace::infrastructure::deployment::{
@@ -277,7 +277,7 @@ pub async fn create_deployment_in_workspace(
 			rbac::RESOURCE_TYPES
 				.get()
 				.unwrap()
-				.get(rbac::resource_types::VOLUME)
+				.get(rbac::resource_types::DEPLOYMENT_VOLUME)
 				.unwrap(),
 			workspace_id,
 			&created_time,
@@ -363,7 +363,7 @@ pub async fn update_deployment(
 		deployment_id
 	);
 
-	let current_time = Utc::now();
+	let now = Utc::now();
 
 	let old_min_replicas = db::get_deployment_by_id(connection, deployment_id)
 		.await?
@@ -372,7 +372,6 @@ pub async fn update_deployment(
 		.min_horizontal_scale as u16;
 
 	// Get volume size for checking the limit
-	// let mut volume_size: usize = 0;
 	let volume_size = if let Some(volumes) = volumes {
 		volumes
 			.iter()
@@ -383,7 +382,6 @@ pub async fn update_deployment(
 	};
 
 	// Check if card is added
-
 	let card_added =
 		db::get_default_payment_method_for_workspace(connection, workspace_id)
 			.await?
@@ -397,8 +395,7 @@ pub async fn update_deployment(
 				.status(500)?;
 
 			if machine_type_to_be_deployed != &(1, 2) {
-				log::info!("request_id: {request_id} - Only basic machine type is allowed
-	under free plan");
+				log::info!("request_id: {request_id} - Only basic machine type is allowed under free plan");
 				return Error::as_result().status(400).body(
 					error!(CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT).to_string(),
 				)?;
@@ -407,8 +404,7 @@ pub async fn update_deployment(
 		if let Some(max_horizontal_scale) = max_horizontal_scale {
 			if max_horizontal_scale > 1 {
 				log::info!(
-					"request_id: {request_id} - Only one replica allowed under
-	free plan without card"
+					"request_id: {request_id} - Only one replica allowed under free plan without card"
 				);
 				return Error::as_result()
 					.status(400)
@@ -419,8 +415,7 @@ pub async fn update_deployment(
 		if let Some(min_horizontal_scale) = min_horizontal_scale {
 			if min_horizontal_scale > 1 {
 				log::info!(
-					"request_id: {request_id} - Only one replica allowed under
-	free plan without card"
+					"request_id: {request_id} - Only one replica allowed under free plan without card"
 				);
 				return Error::as_result()
 					.status(400)
@@ -436,16 +431,21 @@ pub async fn update_deployment(
 		}
 	}
 
-	let workspace_volume_limit =
-		db::get_workspace_info(connection, workspace_id)
-			.await?
-			.status(500)?
-			.volume_storage_limit;
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
+	let workspace_volume_limit = workspace.volume_storage_limit;
 
 	if volume_size > workspace_volume_limit as u32 {
 		return Error::as_result()
 			.status(400)
 			.body(error!(VOLUME_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	if workspace.is_spam {
+		return Err(Error::empty()
+			.status(401)
+			.body(error!(UNVERIFIED_WORKSPACE).to_string()));
 	}
 
 	db::begin_deferred_constraints(connection).await?;
@@ -503,34 +503,42 @@ pub async fn update_deployment(
 		}
 	}
 
-	if let Some(volumes) = volumes {
-		let mut deployment_volumes =
+	if let Some(updated_volumes) = volumes {
+		let mut current_volumes =
 			db::get_all_deployment_volumes(connection, deployment_id)
 				.await?
 				.into_iter()
 				.map(|volume| (volume.name.clone(), volume))
 				.collect::<BTreeMap<_, _>>();
 
-		for (name, volume) in volumes {
-			if let Some(value) = deployment_volumes.remove(name) {
-				// check value is modified or not by user ie volume
-				if volume.size < value.size as u16 {
-					return Error::as_result()
-						.status(400)
-						.body(error!(REDUCED_VOLUME_SIZE).to_string())?;
-				} else if volume.size as i32 > value.size {
-					db::update_volume_for_deployment(
-						connection,
-						deployment_id,
-						volume.size as i32,
-						name,
-					)
-					.await?;
-				} else {
-					continue;
+		for (name, volume) in updated_volumes {
+			if let Some(value) = current_volumes.remove(name) {
+				// The new volume is there in the current volumes. Update it
+
+				let current_size = value.size as u16;
+				let new_size = volume.size;
+
+				match new_size.cmp(&current_size) {
+					Ordering::Less => {
+						// Volume size cannot be reduced
+						return Error::as_result()
+							.status(400)
+							.body(error!(REDUCED_VOLUME_SIZE).to_string())?;
+					}
+					Ordering::Equal => (), // Ignore
+					Ordering::Greater => {
+						db::update_volume_for_deployment(
+							connection,
+							deployment_id,
+							new_size as i32,
+							name,
+						)
+						.await?;
+					}
 				}
 			} else {
-				// create new volume
+				// The new volume is not there in the current volumes. Create
+				// new volume
 				let volume_id =
 					db::generate_new_resource_id(connection).await?;
 
@@ -540,10 +548,10 @@ pub async fn update_deployment(
 					rbac::RESOURCE_TYPES
 						.get()
 						.unwrap()
-						.get(rbac::resource_types::VOLUME)
+						.get(rbac::resource_types::DEPLOYMENT_VOLUME)
 						.unwrap(),
 					workspace_id,
-					&Utc::now(),
+					&now,
 				)
 				.await?;
 
@@ -560,19 +568,15 @@ pub async fn update_deployment(
 		}
 
 		// now remove the remaining in deployment_volumes(DB)
-		for (_, deployment_volume) in deployment_volumes {
+		for (_, deployment_volume) in current_volumes {
 			// Deleting volume here as this transaction will be commited before
 			// the start deployment is called, and hence latest data is fetch
 			// from db using get_full_deployment_config() and in the
 			// update_kubernetes deployment function will be updated with new
 			// PVC and hence this PVC will be detached and then we can delete it
 			// manually there
-			db::delete_volume(
-				connection,
-				&deployment_volume.volume_id,
-				&Utc::now(),
-			)
-			.await?;
+			db::delete_volume(connection, &deployment_volume.volume_id, &now)
+				.await?;
 
 			// Stopping the deployment here as there is no stop_usage only used
 			// for none deleted volumes, but this volume will be deleted in
@@ -581,7 +585,7 @@ pub async fn update_deployment(
 			db::stop_volume_usage_history(
 				connection,
 				&deployment_volume.volume_id,
-				&Utc::now(),
+				&now,
 			)
 			.await?;
 		}
@@ -633,15 +637,53 @@ pub async fn update_deployment(
 	let volumes =
 		db::get_all_deployment_volumes(connection, deployment_id).await?;
 
-	for volume in &volumes {
-		if let Some(new_min_replica) = min_horizontal_scale {
-			if new_min_replica != old_min_replicas {
-				db::stop_volume_usage_history(
-					connection,
-					&volume.volume_id,
-					&Utc::now(),
-				)
-				.await?;
+	let kubeconfig = service::get_kubernetes_config_for_region(
+		connection,
+		&deployment.region,
+		config,
+	)
+	.await?;
+
+	if let Some(new_min_replica) = min_horizontal_scale {
+		if new_min_replica != old_min_replicas {
+			let is_patr_cluster = service::is_deployed_on_patr_cluster(
+				connection,
+				&deployment.region,
+			)
+			.await?;
+			for volume in &volumes {
+				if is_patr_cluster {
+					db::stop_volume_usage_history(
+						connection,
+						&volume.volume_id,
+						&now,
+					)
+					.await?;
+					db::start_volume_usage_history(
+						connection,
+						workspace_id,
+						&volume.volume_id,
+						volume.size as u64 * 1000u64 * 1000u64 * 1000u64,
+						new_min_replica,
+						&now,
+					)
+					.await?;
+				}
+
+				if new_min_replica < old_min_replicas {
+					// Delete any excess volumes that are present
+					for replica_index in old_min_replicas..new_min_replica {
+						service::delete_kubernetes_volume(
+							workspace_id,
+							deployment_id,
+							&volume,
+							replica_index,
+							kubeconfig.clone(),
+							request_id,
+						)
+						.await?;
+					}
+				}
 			}
 		}
 	}
@@ -653,58 +695,54 @@ pub async fn update_deployment(
 			// Don't update deployments that are explicitly stopped or deleted
 		}
 		_ => {
-			service::start_deployment(
+			db::update_deployment_status(
 				connection,
-				workspace_id,
 				deployment_id,
+				&DeploymentStatus::Deploying,
+			)
+			.await?;
+
+			if service::is_deployed_on_patr_cluster(
+				connection,
+				&deployment.region,
+			)
+			.await?
+			{
+				db::start_deployment_usage_history(
+					connection,
+					workspace_id,
+					deployment_id,
+					&deployment.machine_type,
+					running_details.min_horizontal_scale as i32,
+					&now,
+				)
+				.await?;
+			}
+
+			let (image_name, digest) =
+				service::get_image_name_and_digest_for_deployment_image(
+					connection,
+					&deployment.registry,
+					&deployment.image_tag,
+					config,
+					request_id,
+				)
+				.await?;
+
+			service::update_kubernetes_deployment(
+				workspace_id,
 				&deployment,
+				&image_name,
+				digest.as_deref(),
 				&running_details,
-				user_id,
-				login_id,
-				ip_address,
-				metadata,
-				&current_time,
+				&volumes,
+				kubeconfig,
 				config,
 				request_id,
 			)
 			.await?;
 		}
 	}
-
-	let kubeconfig = service::get_kubernetes_config_for_region(
-		connection,
-		&deployment.region,
-		config,
-	)
-	.await?;
-
-	if let Some(new_min_replicas) = min_horizontal_scale {
-		if new_min_replicas < old_min_replicas {
-			service::delete_kubernetes_volumes(
-				workspace_id,
-				deployment_id,
-				&volumes,
-				(new_min_replicas, old_min_replicas),
-				kubeconfig.clone(),
-				request_id,
-			)
-			.await?;
-		}
-	}
-
-	let deleted_volumes =
-		db::get_deleted_volumes_for_deployment(connection, deployment_id)
-			.await?;
-
-	service::delete_kubernetes_volumes(
-		workspace_id,
-		deployment_id,
-		&deleted_volumes,
-		(0, running_details.min_horizontal_scale),
-		kubeconfig,
-		request_id,
-	)
-	.await?;
 
 	Ok(())
 }
@@ -1426,7 +1464,7 @@ async fn check_deployment_creation_limit(
 		return Error::as_result()
 			.status(400)
 			.body(error!(VOLUME_LIMIT_EXCEEDED).to_string())?;
-	};
+	}
 
 	// check whether total resource limit is exceeded
 	if super::resource_limit_crossed(connection, workspace_id, request_id)
@@ -1751,10 +1789,12 @@ pub async fn delete_deployment(
 		request_id
 	);
 
+	let now = Utc::now();
+
 	let min_replicas = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(500)?
-		.min_horizontal_scale;
+		.min_horizontal_scale as u16;
 
 	db::delete_deployment(connection, deployment_id, &Utc::now()).await?;
 
@@ -1765,7 +1805,7 @@ pub async fn delete_deployment(
 		&audit_log_id,
 		workspace_id,
 		ip_address,
-		&Utc::now(),
+		&now,
 		user_id,
 		login_id,
 		deployment_id,
@@ -1781,40 +1821,35 @@ pub async fn delete_deployment(
 	)
 	.await?;
 
-	let workspace = db::get_workspace_info(connection, workspace_id)
-		.await?
-		.status(500)?;
+	let kubeconfig = service::get_kubernetes_config_for_region(
+		connection, region_id, config,
+	)
+	.await?;
 
-	if !workspace.is_spam {
-		let kubeconfig = service::get_kubernetes_config_for_region(
-			connection, region_id, config,
-		)
-		.await?;
+	service::delete_kubernetes_deployment(
+		workspace_id,
+		deployment_id,
+		kubeconfig.clone(),
+		request_id,
+	)
+	.await?;
 
-		service::delete_kubernetes_deployment(
-			workspace_id,
-			deployment_id,
-			kubeconfig.clone(),
-			request_id,
-		)
-		.await?;
+	let volumes =
+		db::get_all_deployment_volumes(connection, deployment_id).await?;
 
-		let volumes =
-			db::get_all_deployment_volumes(connection, deployment_id).await?;
+	for volume in volumes {
+		db::delete_volume(connection, &volume.volume_id, &now).await?;
 
-		service::delete_kubernetes_volumes(
-			workspace_id,
-			deployment_id,
-			&volumes,
-			(0, min_replicas as u16),
-			kubeconfig,
-			request_id,
-		)
-		.await?;
-
-		for volume in volumes {
-			db::delete_volume(connection, &volume.volume_id, &Utc::now())
-				.await?;
+		for replica_index in 0..min_replicas {
+			service::delete_kubernetes_volume(
+				workspace_id,
+				deployment_id,
+				&volume,
+				replica_index,
+				kubeconfig.clone(),
+				request_id,
+			)
+			.await?;
 		}
 	}
 

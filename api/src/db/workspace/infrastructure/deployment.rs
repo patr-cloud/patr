@@ -1246,7 +1246,7 @@ pub async fn update_volume_for_deployment(
 pub async fn delete_volume(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	volume_id: &Uuid,
-	deleteed_time: &DateTime<Utc>,
+	deleted_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1257,7 +1257,7 @@ pub async fn delete_volume(
 		WHERE
 			id = $2;
 		"#,
-		deleteed_time as _,
+		deleted_time as _,
 		volume_id as _,
 	)
 	.execute(&mut *connection)

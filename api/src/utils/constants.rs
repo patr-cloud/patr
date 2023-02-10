@@ -83,5 +83,5 @@ pub mod free_limits {
 	pub const SECRET_COUNT: usize = 3;
 	pub const DOCKER_REPOSITORY_STORAGE_IN_BYTES: usize =
 		10 * 1024 * 1024 * 1024; // 10 GB
-	pub const VOLUME_STORAGE_IN_BYTE: usize = 10 * 1024 * 1024 * 1024; // 10 GB
+	pub const VOLUME_STORAGE_IN_BYTE: usize = 0; // 0 GB - No free volumes
 }

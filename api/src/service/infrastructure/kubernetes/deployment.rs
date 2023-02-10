@@ -937,11 +937,11 @@ pub async fn delete_kubernetes_deployment(
 	Ok(())
 }
 
-pub async fn delete_kubernetes_volumes(
+pub async fn delete_kubernetes_volume(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-	volumes: &Vec<DeploymentVolume>,
-	replica_range: (u16, u16),
+	volume: &DeploymentVolume,
+	replica_index: u16,
 	kubeconfig: KubernetesConfigDetails,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -949,22 +949,18 @@ pub async fn delete_kubernetes_volumes(
 		super::get_kubernetes_client(kubeconfig.auth_details).await?;
 
 	log::trace!("request_id: {} - deleting the pvc", request_id);
-	for volume in volumes {
-		for idx in replica_range.0..replica_range.1 {
-			Api::<PersistentVolumeClaim>::namespaced(
-				kubernetes_client.clone(),
-				workspace_id.as_str(),
-			)
-			.delete_opt(
-				&format!(
-					"pvc-{}-sts-{}-{}",
-					volume.volume_id, deployment_id, idx
-				),
-				&DeleteParams::default(),
-			)
-			.await?;
-		}
-	}
+	Api::<PersistentVolumeClaim>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.delete_opt(
+		&format!(
+			"pvc-{}-sts-{}-{}",
+			volume.volume_id, deployment_id, replica_index
+		),
+		&DeleteParams::default(),
+	)
+	.await?;
 	Ok(())
 }
 

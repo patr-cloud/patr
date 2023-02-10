@@ -1165,8 +1165,7 @@ pub async fn calculate_total_bill_for_workspace_till(
 		})
 		.sum();
 
-	let volume_charge =
-		volume_usage.iter().map(|bill| bill.amount).sum::<u64>();
+	let volume_charge = volume_usage.iter().map(|bill| bill.amount).sum();
 	let database_charge = database_usage.iter().map(|bill| bill.amount).sum();
 	let static_site_charge =
 		static_site_usage.iter().map(|bill| bill.amount).sum();
@@ -1251,7 +1250,7 @@ pub async fn get_total_resource_usage(
 		})
 		.sum();
 
-	log::trace!("request_id: {} getting bill for all volumes", request_id,);
+	log::trace!("request_id: {} getting bill for all volumes", request_id);
 
 	let volume_usage = calculate_volumes_bill_for_workspace_till(
 		connection,

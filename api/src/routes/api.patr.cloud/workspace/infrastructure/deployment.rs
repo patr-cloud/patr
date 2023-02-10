@@ -1778,6 +1778,8 @@ async fn update_deployment(
 	)
 	.await?;
 
+	context.commit_database_transaction().await?;
+
 	service::queue_check_and_update_deployment_status(
 		&workspace_id,
 		&deployment_id,
