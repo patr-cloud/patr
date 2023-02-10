@@ -1021,8 +1021,7 @@ pub async fn join_user(
 					.unwrap_or(true) && coupon_detail
 					.credits_in_cents > 0;
 
-				if is_coupon_valid
-				{
+				if is_coupon_valid {
 					// It's not expired, it has usage remaining, AND it has a
 					// non zero positive credit value. Give them some fucking
 					// credits
@@ -1052,7 +1051,7 @@ pub async fn join_user(
 				}
 			}
 		}
-		
+
 		welcome_email_to = Some(format!(
 			"{}@{}",
 			user_data.business_email_local.unwrap(),
