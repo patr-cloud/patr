@@ -202,6 +202,9 @@ pub async fn update_cloudflare_kv_for_managed_url(
 					db::ManagedUrlType::ProxyToDeployment => {
 						UrlType::ProxyDeployment {
 							deployment_id: managed_url.deployment_id?,
+							port: managed_url.port.and_then(|port| {
+								TryFrom::try_from(port).ok()
+							})?,
 						}
 					}
 					db::ManagedUrlType::ProxyToStaticSite => {
@@ -214,6 +217,7 @@ pub async fn update_cloudflare_kv_for_managed_url(
 					},
 					db::ManagedUrlType::Redirect => UrlType::Redirect {
 						url: managed_url.url?,
+						permanent: managed_url.permanent_redirect?,
 					},
 				};
 
@@ -237,22 +241,6 @@ pub async fn update_cloudflare_kv_for_managed_url(
 	Ok(())
 }
 
-async fn update_cloudflare_kv_for_patr_url(
-	resource_id: &Uuid,
-	value: routing::UrlType,
-	config: &Settings,
-) -> Result<(), Error> {
-	let key = routing::Key {
-		sub_domain: resource_id.to_string(),
-		domain: "patr.cloud".to_string(),
-	};
-	let value = routing::Value(HashMap::from([("/".to_owned(), value)]));
-
-	update_kv_for_routing(key, value, config).await?;
-
-	Ok(())
-}
-
 pub async fn update_cloudflare_kv_for_deployment(
 	deployment_id: &Uuid,
 	value: deployment::Value,
@@ -261,14 +249,6 @@ pub async fn update_cloudflare_kv_for_deployment(
 	let key = deployment::Key(deployment_id.to_owned());
 	// todo: Is it okay to update routing every time?
 	// todo: for stop/delete page use ttl of 7-15 days from here itself
-	update_cloudflare_kv_for_patr_url(
-		deployment_id,
-		routing::UrlType::ProxyDeployment {
-			deployment_id: deployment_id.clone(),
-		},
-		config,
-	)
-	.await?;
 	update_kv_for_deployment(key, value, config).await?;
 
 	Ok(())
@@ -282,14 +262,6 @@ pub async fn update_cloudflare_kv_for_static_site(
 	let key = static_site::Key(static_site_id.to_owned());
 	// todo: Is it okay to update routing every time?
 	// todo: for stop/delete page use ttl of 7-15 days from here itself
-	update_cloudflare_kv_for_patr_url(
-		static_site_id,
-		routing::UrlType::ProxyStaticSite {
-			static_site_id: static_site_id.clone(),
-		},
-		config,
-	)
-	.await?;
 	update_kv_for_static_site(key, value, config).await?;
 
 	Ok(())
@@ -411,8 +383,8 @@ pub async fn create_origin_ca_certificate_for_region(
 	config: &Settings,
 ) -> Result<CfCertificate, Error> {
 	let hostnames = vec![
-		format!("{}.{}", region_id, config.cloudflare.region_root_domain),
-		format!("*.{}.{}", region_id, config.cloudflare.region_root_domain),
+		format!("{}.{}", region_id, config.cloudflare.onpatr_domain),
+		format!("*.{}.{}", region_id, config.cloudflare.onpatr_domain),
 	];
 
 	let cert = rcgen::generate_simple_self_signed(hostnames.clone())?;

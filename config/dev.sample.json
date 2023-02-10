@@ -49,7 +49,7 @@
 		"kvRoutingNs": "kvRoutingNs",
 		"kvDeploymentNs": "kvDeploymentNs",
 		"kvStaticSiteNs": "kvStaticSiteNs",
-		"regionRootDomain": "regionRootDomain",
+		"onpatrDomain": "onpatrDomain",
 		"originCaKey": "originCaKey",
 		"patrZoneIdentifier": "patrZoneIdentifier",
 		"workerScript": "workerScript"

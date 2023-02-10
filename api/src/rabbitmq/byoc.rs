@@ -170,20 +170,19 @@ pub(super) async fn process_request(
 				}
 			};
 
-			let patr_domain = db::get_domain_by_name(
+			let onpatr_domain = db::get_domain_by_name(
 				connection,
-				&config.cloudflare.region_root_domain,
+				&config.cloudflare.onpatr_domain,
 			)
 			.await?
 			.status(500)?;
 
 			let resource = db::get_resource_by_id(
 				connection,
-				&patr_domain.id,
+				&onpatr_domain.id,
 			)
 			.await?
 			.status(500)?;
-
 
 			let dns_record = match ip_addr {
 				std::net::IpAddr::V4(ip_v4) => DnsRecordValue::A { target: ip_v4, proxied: false },
@@ -197,7 +196,7 @@ pub(super) async fn process_request(
 			service::create_patr_domain_dns_record(
 				&mut connection,
 				&resource.owner_id,
-				&patr_domain.id,
+				&onpatr_domain.id,
 				&format!("*.{}", region_id),
 				0,
 				&dns_record,

@@ -15,7 +15,7 @@ use zip::ZipArchive;
 use crate::{
 	db::{self, StaticSitePlan},
 	error,
-	models::{self, rbac},
+	models::{cloudflare, rbac},
 	service,
 	utils::{constants::free_limits, settings::Settings, validator, Error},
 	Database,
@@ -106,7 +106,7 @@ pub async fn create_static_site_in_workspace(
 
 	service::update_cloudflare_kv_for_static_site(
 		&static_site_id,
-		models::cloudflare::static_site::Value::Created,
+		cloudflare::static_site::Value::Created,
 		config,
 	)
 	.await?;
@@ -174,7 +174,7 @@ pub async fn stop_static_site(
 
 	service::update_cloudflare_kv_for_static_site(
 		static_site_id,
-		models::cloudflare::static_site::Value::Stopped,
+		cloudflare::static_site::Value::Stopped,
 		config,
 	)
 	.await?;
@@ -208,7 +208,7 @@ pub async fn delete_static_site(
 
 	service::update_cloudflare_kv_for_static_site(
 		static_site_id,
-		models::cloudflare::static_site::Value::Deleted,
+		cloudflare::static_site::Value::Deleted,
 		config,
 	)
 	.await?;
@@ -416,9 +416,7 @@ pub async fn update_static_site_and_db_status(
 
 	let result = service::update_cloudflare_kv_for_static_site(
 		static_site_id,
-		models::cloudflare::static_site::Value::Running {
-			upload_id: upload_id.clone(),
-		},
+		cloudflare::static_site::Value::Serving(upload_id.clone()),
 		config,
 	)
 	.await;

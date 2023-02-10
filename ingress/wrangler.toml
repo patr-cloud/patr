@@ -1,0 +1,16 @@
+name = "ingress"
+main = "src/index.ts"
+compatibility_date = "2023-02-08"
+
+kv_namespaces = [
+    { binding = "ROUTING", id = "02fac24b488a44799d6b2c9d26686dc8", preview_id = "02fac24b488a44799d6b2c9d26686dc8" },
+    { binding = "DEPLOYMENT", id = "8d46a2c044e94da8adbd5d71e11ec579", preview_id = "8d46a2c044e94da8adbd5d71e11ec579" },
+    { binding = "STATIC_SITE", id = "d820633950c147b1a46e7e169b6fb9d5", preview_id = "d820633950c147b1a46e7e169b6fb9d5" },
+]
+
+r2_buckets = [
+    { binding = "STATIC_SITE_STORAGE", bucket_name = "static-site-storage", preview_bucket_name = "static-site-storage" }
+]
+
+[vars]
+ONPATR_DOMAIN = "patr.live"
