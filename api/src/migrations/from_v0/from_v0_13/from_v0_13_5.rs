@@ -92,7 +92,7 @@ async fn add_volume_resource_type(
 				description
 			)
 		VALUES
-			($1, 'volume', '');
+			($1, 'deploymentVolume', '');
 		"#,
 		&resource_type_id
 	)
