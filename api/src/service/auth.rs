@@ -3,7 +3,10 @@ use std::net::IpAddr;
 use api_models::{
 	models::{
 		auth::{PreferredRecoveryOption, RecoveryMethod, SignUpAccountType},
-		workspace::billing::{PaymentStatus, TransactionType},
+		workspace::{
+			billing::{PaymentStatus, TransactionType},
+			domain::DomainNameserverType,
+		},
 	},
 	utils::{DateTime, ResourceType, Uuid},
 };
@@ -972,41 +975,166 @@ pub async fn join_user(
 	let recovery_email_to; // Send "this email is a recovery email for ..." here
 	let recovery_phone_number_to; // Notify this phone that it's a recovery phone number
 
-	if let Some((email_local, domain_id)) = user_data
-		.recovery_email_local
-		.as_ref()
-		.zip(user_data.recovery_email_domain_id.as_ref())
-	{
-		let email_domain = db::get_personal_domain_by_id(connection, domain_id)
-			.await?
-			.status(500)?
-			.name;
-		welcome_email_to = Some(format!("{}@{}", email_local, email_domain));
-		recovery_email_to = Some(format!("{}@{}", email_local, email_domain));
-		recovery_phone_number_to = None;
-	} else if let Some((phone_country_code, phone_number)) = user_data
-		.recovery_phone_country_code
-		.as_ref()
-		.zip(user_data.recovery_phone_number.as_ref())
-	{
-		let country = db::get_phone_country_by_country_code(
+	// For an business, create the workspace and domain
+	if user_data.account_type.is_business() {
+		let workspace_id = service::create_workspace(
 			connection,
-			phone_country_code,
+			user_data.business_name.as_ref().unwrap(),
+			&user_id,
+			false,
+			&recovery_email,
+			config,
 		)
-		.await?
-		.status(500)?;
-		recovery_phone_number_to =
-			Some(format!("+{}{}", country.phone_code, phone_number));
-		welcome_email_to = None;
-		recovery_email_to = None;
+		.await?;
+
+		// TODO: remove this and add logs to auth and other patrs of the api
+		let request_id = Uuid::new_v4();
+		let domain_id = service::add_domain_to_workspace(
+			connection,
+			user_data.business_domain_name.as_ref().unwrap(),
+			&DomainNameserverType::External,
+			&workspace_id,
+			config,
+			&request_id,
+		)
+		.await?;
+
+		db::add_business_email_for_user(
+			connection,
+			&user_id,
+			user_data.business_email_local.as_ref().unwrap(),
+			&domain_id,
+		)
+		.await?;
+
+		if let Some(coupon_code) = user_data.coupon_code.as_deref() {
+			if let Some(coupon_detail) =
+				db::get_sign_up_coupon_by_code(connection, coupon_code).await?
+			{
+				// Add coupon credits for their business account
+				let is_coupon_valid = coupon_detail
+					.expiry
+					.map(|expiry| expiry > now)
+					.unwrap_or(true) && coupon_detail
+					.uses_remaining
+					.map(|uses_remaining| uses_remaining > 0)
+					.unwrap_or(true) && coupon_detail
+					.credits_in_cents > 0;
+
+				if is_coupon_valid
+				{
+					// It's not expired, it has usage remaining, AND it has a
+					// non zero positive credit value. Give them some fucking
+					// credits
+					let transaction_id =
+						db::generate_new_transaction_id(connection).await?;
+					db::create_transaction(
+						connection,
+						&workspace_id,
+						&transaction_id,
+						now.month() as i32,
+						coupon_detail.credits_in_cents,
+						Some("coupon-credits"),
+						&DateTime::from(now),
+						&TransactionType::Credits,
+						&PaymentStatus::Success,
+						Some("Coupon credits"),
+					)
+					.await?;
+					if let Some(uses_remaining) = coupon_detail.uses_remaining {
+						db::update_coupon_code_uses_remaining(
+							connection,
+							coupon_code,
+							uses_remaining.saturating_sub(1),
+						)
+						.await?;
+					}
+				}
+			}
+		}
+		
+		welcome_email_to = Some(format!(
+			"{}@{}",
+			user_data.business_email_local.unwrap(),
+			user_data.business_domain_name.unwrap()
+		));
+		if let Some((email_local, domain_id)) = user_data
+			.recovery_email_local
+			.as_ref()
+			.zip(user_data.recovery_email_domain_id.as_ref())
+		{
+			recovery_email_to = Some(format!(
+				"{}@{}",
+				email_local,
+				db::get_personal_domain_by_id(connection, domain_id)
+					.await?
+					.status(500)?
+					.name
+			));
+			recovery_phone_number_to = None;
+		} else if let Some((phone_country_code, phone_number)) = user_data
+			.recovery_phone_country_code
+			.as_ref()
+			.zip(user_data.recovery_phone_number.as_ref())
+		{
+			let country = db::get_phone_country_by_country_code(
+				connection,
+				phone_country_code,
+			)
+			.await?
+			.status(500)?;
+			recovery_phone_number_to =
+				Some(format!("+{}{}", country.phone_code, phone_number));
+			recovery_email_to = None;
+		} else {
+			log::error!(
+				"Got neither recovery email, nor recovery phone number while signing up user: {}",
+				user_data.username
+			);
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
+		}
 	} else {
-		log::error!(
-                "Got neither recovery email, nor recovery phone number while signing up user: {}",
-                user_data.username
-            );
-		return Err(Error::empty()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string()));
+		if let Some((email_local, domain_id)) = user_data
+			.recovery_email_local
+			.as_ref()
+			.zip(user_data.recovery_email_domain_id.as_ref())
+		{
+			let email_domain =
+				db::get_personal_domain_by_id(connection, domain_id)
+					.await?
+					.status(500)?
+					.name;
+			welcome_email_to =
+				Some(format!("{}@{}", email_local, email_domain));
+			recovery_email_to =
+				Some(format!("{}@{}", email_local, email_domain));
+			recovery_phone_number_to = None;
+		} else if let Some((phone_country_code, phone_number)) = user_data
+			.recovery_phone_country_code
+			.as_ref()
+			.zip(user_data.recovery_phone_number.as_ref())
+		{
+			let country = db::get_phone_country_by_country_code(
+				connection,
+				phone_country_code,
+			)
+			.await?
+			.status(500)?;
+			recovery_phone_number_to =
+				Some(format!("+{}{}", country.phone_code, phone_number));
+			welcome_email_to = None;
+			recovery_email_to = None;
+		} else {
+			log::error!(
+					"Got neither recovery email, nor recovery phone number while signing up user: {}",
+					user_data.username
+				);
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
+		}
 	}
 
 	if user_data.account_type.is_personal() {
