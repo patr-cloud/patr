@@ -846,402 +846,236 @@ pub async fn reset_password(
 /// [`Transaction`]: Transaction
 /// ['JoinUser`]: JoinUser
 pub async fn join_user(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	otp: &str,
-	username: &str,
-	created_ip: &IpAddr,
-	user_agent: &str,
-	config: &Settings,
+    connection: &mut <Database as sqlx::Database>::Connection,
+    otp: &str,
+    username: &str,
+    created_ip: &IpAddr,
+    user_agent: &str,
+    config: &Settings,
 ) -> Result<JoinUser, Error> {
-	let user_data = db::get_user_to_sign_up_by_username(connection, username)
-		.await?
-		.status(200)
-		.body(error!(OTP_EXPIRED).to_string())?;
+    let user_data = db::get_user_to_sign_up_by_username(connection, username)
+        .await?
+        .status(200)
+        .body(error!(OTP_EXPIRED).to_string())?;
 
-	let success = service::validate_hash(otp, &user_data.otp_hash)?;
+    let success = service::validate_hash(otp, &user_data.otp_hash)?;
 
-	if !success {
-		Error::as_result()
-			.status(200)
-			.body(error!(INVALID_OTP).to_string())?;
-	}
+    if !success {
+        Error::as_result()
+            .status(200)
+            .body(error!(INVALID_OTP).to_string())?;
+    }
 
-	if user_data.otp_expiry < Utc::now() {
-		Error::as_result()
-			.status(200)
-			.body(error!(OTP_EXPIRED).to_string())?;
-	}
+    if user_data.otp_expiry < Utc::now() {
+        Error::as_result()
+            .status(200)
+            .body(error!(OTP_EXPIRED).to_string())?;
+    }
 
-	// First create user,
-	// Then create an workspace if a business account,
-	// Then add the domain if business account,
-	// Then create personal workspace regardless,
-	// Then set email to recovery email if personal account,
-	// And finally send the token, along with the email to the user
+    // First create user,
+    // Then create personal workspace,
+    // Then set email to recovery email if personal account,
+    // And finally send the token, along with the email to the user
 
-	let user_id = db::generate_new_user_id(connection).await?;
-	let now = Utc::now();
+    let user_id = db::generate_new_user_id(connection).await?;
+    let now = Utc::now();
 
-	if rbac::GOD_USER_ID.get().is_none() {
-		rbac::GOD_USER_ID
-			.set(user_id.clone())
-			.expect("GOD_USER_ID was already set");
-	}
+    if rbac::GOD_USER_ID.get().is_none() {
+        rbac::GOD_USER_ID
+            .set(user_id.clone())
+            .expect("GOD_USER_ID was already set");
+    }
+	
+    db::begin_deferred_constraints(connection).await?;
 
-	let recovery_email_local = user_data.recovery_email_local.as_deref();
-	let recovery_email_domain_id = user_data.recovery_email_domain_id.as_ref();
-	let recovery_phone_country_code =
-		user_data.recovery_phone_country_code.as_deref();
-	let recovery_phone_number = user_data.recovery_phone_number.as_deref();
-	db::begin_deferred_constraints(connection).await?;
+    if let Some((email_local, domain_id)) = user_data
+        .recovery_email_local
+        .as_ref()
+        .zip(user_data.recovery_email_domain_id.as_ref())
+    {
+        db::add_personal_email_for_user(
+            connection,
+            &user_id,
+            email_local,
+            domain_id,
+        )
+        .await?;
+    } else if let Some((phone_country_code, phone_number)) = user_data
+        .recovery_phone_country_code
+        .as_ref()
+        .zip(user_data.recovery_phone_number.as_ref())
+    {
+        db::add_phone_number_for_user(
+            connection,
+            &user_id,
+            phone_country_code,
+            phone_number,
+        )
+        .await?;
+    } else {
+        log::error!(
+            "Got neither recovery email, nor recovery phone number while signing up user: {}",
+            user_data.username
+        );
 
-	if let Some((email_local, domain_id)) = user_data
-		.recovery_email_local
-		.as_ref()
-		.zip(user_data.recovery_email_domain_id.as_ref())
-	{
-		db::add_personal_email_for_user(
-			connection,
-			&user_id,
-			email_local,
-			domain_id,
-		)
-		.await?;
-	} else if let Some((phone_country_code, phone_number)) = user_data
-		.recovery_phone_country_code
-		.as_ref()
-		.zip(user_data.recovery_phone_number.as_ref())
-	{
-		db::add_phone_number_for_user(
-			connection,
-			&user_id,
-			phone_country_code,
-			phone_number,
-		)
-		.await?;
-	} else {
-		log::error!(
-			"Got neither recovery email, nor recovery phone number while signing up user: {}",
-			user_data.username
-		);
+        return Err(Error::empty()
+            .status(500)
+            .body(error!(SERVER_ERROR).to_string()));
+    }
 
-		return Err(Error::empty()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string()));
-	}
+    db::create_user(
+        connection,
+        &user_id,
+        &user_data.username,
+        &user_data.password,
+        (&user_data.first_name, &user_data.last_name),
+        &now,
+        user_data.recovery_email_local.as_deref(),
+        user_data.recovery_email_domain_id.as_ref(),
+        user_data.recovery_phone_country_code.as_deref(),
+        user_data.recovery_phone_number.as_deref(),
+        3,
+        user_data.coupon_code.as_deref(),
+    )
+    .await?;
 
-	db::create_user(
-		connection,
-		&user_id,
-		&user_data.username,
-		&user_data.password,
-		(&user_data.first_name, &user_data.last_name),
-		&now,
-		recovery_email_local,
-		recovery_email_domain_id,
-		recovery_phone_country_code,
-		recovery_phone_number,
-		3,
-		user_data.coupon_code.as_deref(),
-	)
-	.await?;
-	db::end_deferred_constraints(connection).await?;
+    db::end_deferred_constraints(connection).await?;
 
-	let welcome_email_to; // Send the "welcome to patr" email here
-	let recovery_email_to; // Send "this email is a recovery email for ..." here
-	let recovery_phone_number_to; // Notify this phone that it's a recovery phone number
+	let recovery_email: Vec<String> = if let Some((email_local, domain_id)) =
+        user_data.recovery_email_local.as_deref().zip(user_data.recovery_email_domain_id.as_ref())
+    {
+        let domain = db::get_personal_domain_by_id(connection, domain_id)
+            .await?
+            .status(500)
+            .body(error!(SERVER_ERROR).to_string())?;
 
-	let recovery_emails: Vec<String> = if let Some((email_local, domain_id)) =
-		recovery_email_local.zip(recovery_email_domain_id)
-	{
-		let domain = db::get_personal_domain_by_id(connection, domain_id)
-			.await?
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
-
-		vec![format!("{}@{}", email_local, domain.name)]
-	} else {
-		vec![]
-	};
-
-	// For an business, create the workspace and domain
-	if user_data.account_type.is_business() {
-		let workspace_id = service::create_workspace(
-			connection,
-			user_data.business_name.as_ref().unwrap(),
-			&user_id,
-			false,
-			&recovery_emails,
-			config,
-		)
-		.await?;
-
-		// TODO: remove this and add logs to auth and other patrs of the api
-		let request_id = Uuid::new_v4();
-		let domain_id = service::add_domain_to_workspace(
-			connection,
-			user_data.business_domain_name.as_ref().unwrap(),
-			&DomainNameserverType::External,
-			&workspace_id,
-			config,
-			&request_id,
-		)
-		.await?;
-
-		db::add_business_email_for_user(
-			connection,
-			&user_id,
-			user_data.business_email_local.as_ref().unwrap(),
-			&domain_id,
-		)
-		.await?;
-
-		if let Some(coupon_code) = user_data.coupon_code.as_deref() {
-			if let Some(coupon) =
-				db::get_sign_up_coupon_by_code(connection, coupon_code).await?
-			{
-				// Add coupon credits for their business account
-				let is_not_expired =
-					coupon.expiry.map(|expiry| expiry > now).unwrap_or(true);
-				let has_usage_remaining = coupon
-					.uses_remaining
-					.map(|uses_remaining| uses_remaining > 0)
-					.unwrap_or(true);
-
-				if is_not_expired &&
-					has_usage_remaining && coupon.credits_in_cents > 0
-				{
-					// It's not expired, it has usage remaining, AND it has a
-					// non zero positive credit value. Give them some fucking
-					// credits
-					let transaction_id =
-						db::generate_new_transaction_id(connection).await?;
-					db::create_transaction(
-						connection,
-						&workspace_id,
-						&transaction_id,
-						now.month() as i32,
-						coupon.credits_in_cents,
-						Some("coupon-credits"),
-						&DateTime::from(now),
-						&TransactionType::Credits,
-						&PaymentStatus::Success,
-						Some("Coupon credits"),
-					)
-					.await?;
-					if let Some(uses_remaining) = coupon.uses_remaining {
-						db::update_coupon_code_uses_remaining(
-							connection,
-							coupon_code,
-							uses_remaining.saturating_sub(1),
-						)
-						.await?;
-					}
-				}
-			}
-		}
-
-		welcome_email_to = Some(format!(
-			"{}@{}",
-			user_data.business_email_local.unwrap(),
-			user_data.business_domain_name.unwrap()
-		));
-		if let Some((email_local, domain_id)) = user_data
-			.recovery_email_local
-			.as_ref()
-			.zip(user_data.recovery_email_domain_id.as_ref())
-		{
-			recovery_email_to = Some(format!(
-				"{}@{}",
-				email_local,
-				db::get_personal_domain_by_id(connection, domain_id)
-					.await?
-					.status(500)?
-					.name
-			));
-			recovery_phone_number_to = None;
-		} else if let Some((phone_country_code, phone_number)) = user_data
-			.recovery_phone_country_code
-			.as_ref()
-			.zip(user_data.recovery_phone_number.as_ref())
-		{
-			let country = db::get_phone_country_by_country_code(
-				connection,
-				phone_country_code,
-			)
-			.await?
-			.status(500)?;
-			recovery_phone_number_to =
-				Some(format!("+{}{}", country.phone_code, phone_number));
-			recovery_email_to = None;
-		} else {
-			log::error!(
-				"Got neither recovery email, nor recovery phone number while signing up user: {}",
-				user_data.username
-			);
-			return Err(Error::empty()
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string()));
-		}
-	} else {
-		if let Some((email_local, domain_id)) = user_data
-			.recovery_email_local
-			.as_ref()
-			.zip(user_data.recovery_email_domain_id.as_ref())
-		{
-			welcome_email_to = Some(format!(
-				"{}@{}",
-				email_local,
-				db::get_personal_domain_by_id(connection, domain_id)
-					.await?
-					.status(500)?
-					.name
-			));
-			recovery_phone_number_to = None;
-		} else if let Some((phone_country_code, phone_number)) = user_data
-			.recovery_phone_country_code
-			.as_ref()
-			.zip(user_data.recovery_phone_number.as_ref())
-		{
-			let country = db::get_phone_country_by_country_code(
-				connection,
-				phone_country_code,
-			)
-			.await?
-			.status(500)?;
-			recovery_phone_number_to =
-				Some(format!("+{}{}", country.phone_code, phone_number));
-			welcome_email_to = None;
-		} else {
-			log::error!(
-				"Got neither recovery email, nor recovery phone number while signing up user: {}",
-				user_data.username
-			);
-			return Err(Error::empty()
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string()));
-		}
-
-		recovery_email_to = None;
-	}
+        vec![format!("{}@{}", email_local, domain.name)]
+    } else {
+        vec![]
+    };
 
 	// add personal workspace
-	let personal_workspace_name =
-		service::get_personal_workspace_name(&user_id);
-	let personal_workspace_id = service::create_workspace(
-		connection,
-		&personal_workspace_name,
-		&user_id,
-		true,
-		&recovery_emails,
-		config,
-	)
-	.await?;
+    let personal_workspace_name =
+        service::get_personal_workspace_name(&user_id);
+    let personal_workspace_id = service::create_workspace(
+        connection,
+        &personal_workspace_name,
+        &user_id,
+        true,
+        &recovery_email,
+        config,
+    )
+    .await?;
 
-	if user_data.account_type.is_personal() {
-		if let Some(coupon_code) = user_data.coupon_code.as_deref() {
-			if let Some(coupon) =
-				db::get_sign_up_coupon_by_code(connection, coupon_code).await?
-			{
-				// Add coupon credits for their personal account
-				let is_not_expired =
-					coupon.expiry.map(|expiry| expiry > now).unwrap_or(true);
-				let has_usage_remaining = coupon
-					.uses_remaining
-					.map(|uses_remaining| uses_remaining > 0)
-					.unwrap_or(true);
+	//Check and select recovery options as provided
+    let welcome_email_to; // Send the "welcome to patr" email here
+    let recovery_email_to; // Send "this email is a recovery email for ..." here
+    let recovery_phone_number_to; // Notify this phone that it's a recovery phone number
 
-				if is_not_expired &&
-					has_usage_remaining && coupon.credits_in_cents > 0
-				{
-					// It's not expired, it has usage remaining, AND it has a
-					// non zero positive credit value. Give them some fucking
-					// credits
-					let transaction_id =
-						db::generate_new_transaction_id(connection).await?;
-					db::create_transaction(
-						connection,
-						&personal_workspace_id,
-						&transaction_id,
-						now.month() as i32,
-						coupon.credits_in_cents,
-						Some("coupon-credits"),
-						&DateTime::from(now),
-						&TransactionType::Credits,
-						&PaymentStatus::Success,
-						Some("Coupon credits"),
-					)
-					.await?;
-					if let Some(uses_remaining) = coupon.uses_remaining {
-						db::update_coupon_code_uses_remaining(
-							connection,
-							coupon_code,
-							uses_remaining.saturating_sub(1),
-						)
-						.await?;
-					}
-				}
-			}
-		}
-	}
+    if let Some((email_local, domain_id)) = user_data
+        .recovery_email_local
+        .as_ref()
+        .zip(user_data.recovery_email_domain_id.as_ref())
+    {
+        let email_domain = db::get_personal_domain_by_id(connection, domain_id).await?.status(500)?.name;
+        welcome_email_to = Some(format!(
+            "{}@{}",
+            email_local,
+            email_domain
+        ));
+		recovery_email_to = Some(format!(
+            "{}@{}",
+            email_local,
+            email_domain
+        ));
+        recovery_phone_number_to = None;
+    } else if let Some((phone_country_code, phone_number)) = user_data
+        .recovery_phone_country_code
+        .as_ref()
+        .zip(user_data.recovery_phone_number.as_ref())
+    {
+        let country = db::get_phone_country_by_country_code(
+            connection,
+            phone_country_code,
+        )
+        .await?
+        .status(500)?;
+        recovery_phone_number_to =
+            Some(format!("+{}{}", country.phone_code, phone_number));
+        welcome_email_to = None;
+		recovery_email_to = None;
+    } else {
+        log::error!(
+                "Got neither recovery email, nor recovery phone number while signing up user: {}",
+                user_data.username
+            );
+        return Err(Error::empty()
+            .status(500)
+            .body(error!(SERVER_ERROR).to_string()));
+    }
 
-	if let Some(ref recovery_email) = welcome_email_to {
-		// Reference for APIs docs of ipqualityscore can be found in this
-		// url https://www.ipqualityscore.com/documentation/email-validation/overview
-		let email_spam_result = Client::new()
-			.get(format!(
-				"{}/{}/{}",
-				config.ip_quality.host, config.ip_quality.token, recovery_email
-			))
-			.send()
-			.await?
-			.json::<IpQualityScore>()
-			.await?;
+    if user_data.account_type.is_personal() {
+        if let Some(coupon_code) = user_data.coupon_code.as_deref() {
+            if let Some(coupon_detail) =
+                db::get_sign_up_coupon_by_code(connection, coupon_code).await?
+            {
+                // Check coupon validity condition
+                let is_coupon_valid = coupon_detail
+                    .expiry
+                    .map(|expiry| expiry > now)
+                    .unwrap_or(true) && coupon_detail
+                    .uses_remaining
+                    .map(|uses_remaining| uses_remaining > 0)
+                    .unwrap_or(true) && coupon_detail
+                    .credits_in_cents > 0;
 
-		let disposable = email_spam_result.disposable;
-		let is_spam = email_spam_result.fraud_score > 75;
+                // It's not expired, it has usage remaining, AND it has a
+                // non zero positive credit value. Give them some fucking
+                // credits
+                if is_coupon_valid {
+                    let transaction_id =
+                        db::generate_new_transaction_id(connection).await?;
+                    db::create_transaction(
+                        connection,
+                        &personal_workspace_id,
+                        &transaction_id,
+                        now.month() as i32,
+                        coupon_detail.credits_in_cents,
+                        Some("coupon-credits"),
+                        &DateTime::from(now),
+                        &TransactionType::Credits,
+                        &PaymentStatus::Success,
+                        Some("Coupon credits"),
+                    )
+                    .await?;
+                    if let Some(uses_remaining) = coupon_detail.uses_remaining {
+                        db::update_coupon_code_uses_remaining(
+                            connection,
+                            coupon_code,
+                            uses_remaining.saturating_sub(1),
+                        )
+                        .await?;
+                    }
+                }
+            }
+        }
+    }
 
-		let workspaces =
-			db::get_all_workspaces_for_user(connection, &user_id).await?;
+    db::delete_user_to_be_signed_up(connection, &user_data.username).await?;
 
-		if disposable || is_spam {
-			for workspace in &workspaces {
-				if disposable {
-					db::set_resource_limit_for_workspace(
-						connection,
-						&workspace.id,
-						0,
-						0,
-						0,
-						0,
-						0,
-						0,
-						0,
-					)
-					.await?;
-				} else {
-					db::mark_workspace_as_spam(connection, &workspace.id)
-						.await?;
-				}
-			}
-		}
-	}
+    let (UserWebLogin { login_id, .. }, jwt, refresh_token) =
+        sign_in_user(connection, &user_id, created_ip, user_agent, config)
+            .await?;
+    let response = JoinUser {
+        jwt,
+        login_id,
+        refresh_token,
+        welcome_email_to,
+        recovery_email_to,
+        recovery_phone_number_to,
+    };
 
-	db::delete_user_to_be_signed_up(connection, &user_data.username).await?;
-
-	let (UserWebLogin { login_id, .. }, jwt, refresh_token) =
-		sign_in_user(connection, &user_id, created_ip, user_agent, config)
-			.await?;
-	let response = JoinUser {
-		jwt,
-		login_id,
-		refresh_token,
-		welcome_email_to,
-		recovery_email_to,
-		recovery_phone_number_to,
-	};
-
-	Ok(response)
+    Ok(response)
 }
 
 pub async fn resend_user_sign_up_otp(
