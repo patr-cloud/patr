@@ -443,20 +443,20 @@ pub fn check_contact_details(
 		.as_ref()
 		.zip(contact_detail.recovery_email_domain_id.as_ref())
 	{
-		return (true, false, Some(email_local), None, Some(domain_id));
+		(true, false, Some(email_local), None, Some(domain_id))
 	} else if let Some((phone_country_code, phone_number)) = contact_detail
 		.recovery_phone_country_code
 		.as_ref()
 		.zip(contact_detail.recovery_phone_number.as_ref())
 	{
-		return (
+		(
 			false,
 			true,
 			Some(phone_number),
 			Some(phone_country_code),
 			None,
-		);
+		)
 	} else {
-		return (false, false, None, None, None);
+		(false, false, None, None, None)
 	}
 }
