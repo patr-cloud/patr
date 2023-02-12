@@ -71,6 +71,7 @@ pub mod default_limits {
 	pub const DOCKER_REPOSITORY_STORAGE: i32 = 200;
 	pub const DOMAINS: i32 = 5;
 	pub const SECRETS: i32 = 150;
+	pub const VOLUME_STORAGE: i32 = 100;
 }
 
 pub mod free_limits {
@@ -82,4 +83,5 @@ pub mod free_limits {
 	pub const SECRET_COUNT: usize = 3;
 	pub const DOCKER_REPOSITORY_STORAGE_IN_BYTES: usize =
 		10 * 1024 * 1024 * 1024; // 10 GB
+	pub const VOLUME_STORAGE_IN_BYTE: usize = 0; // 0 GB - No free volumes
 }

@@ -209,4 +209,5 @@ pub mod resource_types {
 	pub const STATIC_SITE_UPLOAD: &str = "staticSiteUpload";
 	pub const CI_REPO: &str = "ciRepo";
 	pub const DEPLOYMENT_REGION: &str = "deploymentRegion";
+	pub const DEPLOYMENT_VOLUME: &str = "deploymentVolume";
 }

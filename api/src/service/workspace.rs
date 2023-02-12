@@ -143,6 +143,7 @@ pub async fn create_workspace(
 		default_limits::DOCKER_REPOSITORY_STORAGE,
 		default_limits::DOMAINS,
 		default_limits::SECRETS,
+		default_limits::VOLUME_STORAGE,
 		&stripe_customer_id,
 		&PaymentType::Card,
 	)
