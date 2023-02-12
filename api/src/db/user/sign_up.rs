@@ -3,6 +3,7 @@ use chrono::{DateTime, Utc};
 
 use crate::{query, query_as, Database};
 
+#[derive(Clone)]
 pub struct UserToSignUp {
 	pub username: String,
 	pub account_type: ResourceType,

@@ -888,28 +888,29 @@ pub async fn join_user(
 
 	db::begin_deferred_constraints(connection).await?;
 
-	if let Some((email_local, domain_id)) = user_data
-		.recovery_email_local
-		.as_ref()
-		.zip(user_data.recovery_email_domain_id.as_ref())
-	{
+	let user_contact_details = &user_data.clone();
+	let (
+		is_recovery_email_present,
+		is_recovery_phone_present,
+		contact_content,
+		contact_code_id,
+	) = service::check_contact_details(user_contact_details);
+
+	if is_recovery_email_present {
+		let domain_id = Uuid::parse_str(&contact_code_id)?;
 		db::add_personal_email_for_user(
 			connection,
 			&user_id,
-			email_local,
-			domain_id,
+			contact_content,
+			&domain_id,
 		)
 		.await?;
-	} else if let Some((phone_country_code, phone_number)) = user_data
-		.recovery_phone_country_code
-		.as_ref()
-		.zip(user_data.recovery_phone_number.as_ref())
-	{
+	} else if is_recovery_phone_present {
 		db::add_phone_number_for_user(
 			connection,
 			&user_id,
-			phone_country_code,
-			phone_number,
+			contact_code_id,
+			contact_content,
 		)
 		.await?;
 	} else {
@@ -941,18 +942,13 @@ pub async fn join_user(
 
 	db::end_deferred_constraints(connection).await?;
 
-	let recovery_email: Vec<String> = if let Some((email_local, domain_id)) =
-		user_data
-			.recovery_email_local
-			.as_deref()
-			.zip(user_data.recovery_email_domain_id.as_ref())
-	{
-		let domain = db::get_personal_domain_by_id(connection, domain_id)
+	let recovery_email: Vec<String> = if is_recovery_email_present {
+		let domain_id = Uuid::parse_str(&contact_code_id)?;
+		let domain = db::get_personal_domain_by_id(connection, &domain_id)
 			.await?
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
-
-		vec![format!("{}@{}", email_local, domain.name)]
+		vec![format!("{}@{}", contact_content, domain.name)]
 	} else {
 		vec![]
 	};
@@ -1021,10 +1017,10 @@ pub async fn join_user(
 					.unwrap_or(true) && coupon_detail
 					.credits_in_cents > 0;
 
+				// It's not expired, it has usage remaining, AND it has a
+				// non zero positive credit value. Give them some fucking
+				// credits
 				if is_coupon_valid {
-					// It's not expired, it has usage remaining, AND it has a
-					// non zero positive credit value. Give them some fucking
-					// credits
 					let transaction_id =
 						db::generate_new_transaction_id(connection).await?;
 					db::create_transaction(
@@ -1051,39 +1047,30 @@ pub async fn join_user(
 				}
 			}
 		}
-
 		welcome_email_to = Some(format!(
 			"{}@{}",
 			user_data.business_email_local.unwrap(),
 			user_data.business_domain_name.unwrap()
 		));
-		if let Some((email_local, domain_id)) = user_data
-			.recovery_email_local
-			.as_ref()
-			.zip(user_data.recovery_email_domain_id.as_ref())
-		{
-			recovery_email_to = Some(format!(
-				"{}@{}",
-				email_local,
-				db::get_personal_domain_by_id(connection, domain_id)
+		if is_recovery_email_present {
+			let domain_id = Uuid::parse_str(&contact_code_id)?;
+			let email_domain =
+				db::get_personal_domain_by_id(connection, &domain_id)
 					.await?
 					.status(500)?
-					.name
-			));
+					.name;
+			recovery_email_to =
+				Some(format!("{}@{}", contact_content, email_domain));
 			recovery_phone_number_to = None;
-		} else if let Some((phone_country_code, phone_number)) = user_data
-			.recovery_phone_country_code
-			.as_ref()
-			.zip(user_data.recovery_phone_number.as_ref())
-		{
+		} else if is_recovery_phone_present {
 			let country = db::get_phone_country_by_country_code(
 				connection,
-				phone_country_code,
+				contact_code_id,
 			)
 			.await?
 			.status(500)?;
 			recovery_phone_number_to =
-				Some(format!("+{}{}", country.phone_code, phone_number));
+				Some(format!("+{}{}", country.phone_code, contact_content));
 			recovery_email_to = None;
 		} else {
 			log::error!(
@@ -1095,48 +1082,6 @@ pub async fn join_user(
 				.body(error!(SERVER_ERROR).to_string()));
 		}
 	} else {
-		if let Some((email_local, domain_id)) = user_data
-			.recovery_email_local
-			.as_ref()
-			.zip(user_data.recovery_email_domain_id.as_ref())
-		{
-			let email_domain =
-				db::get_personal_domain_by_id(connection, domain_id)
-					.await?
-					.status(500)?
-					.name;
-			welcome_email_to =
-				Some(format!("{}@{}", email_local, email_domain));
-			recovery_email_to =
-				Some(format!("{}@{}", email_local, email_domain));
-			recovery_phone_number_to = None;
-		} else if let Some((phone_country_code, phone_number)) = user_data
-			.recovery_phone_country_code
-			.as_ref()
-			.zip(user_data.recovery_phone_number.as_ref())
-		{
-			let country = db::get_phone_country_by_country_code(
-				connection,
-				phone_country_code,
-			)
-			.await?
-			.status(500)?;
-			recovery_phone_number_to =
-				Some(format!("+{}{}", country.phone_code, phone_number));
-			welcome_email_to = None;
-			recovery_email_to = None;
-		} else {
-			log::error!(
-					"Got neither recovery email, nor recovery phone number while signing up user: {}",
-					user_data.username
-				);
-			return Err(Error::empty()
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string()));
-		}
-	}
-
-	if user_data.account_type.is_personal() {
 		if let Some(coupon_code) = user_data.coupon_code.as_deref() {
 			if let Some(coupon_detail) =
 				db::get_sign_up_coupon_by_code(connection, coupon_code).await?
@@ -1180,6 +1125,39 @@ pub async fn join_user(
 					}
 				}
 			}
+		}
+
+		if is_recovery_email_present {
+			let domain_id = Uuid::parse_str(&contact_code_id)?;
+			let email_domain =
+				db::get_personal_domain_by_id(connection, &domain_id)
+					.await?
+					.status(500)?
+					.name;
+			welcome_email_to =
+				Some(format!("{}@{}", contact_content, email_domain));
+			recovery_email_to =
+				Some(format!("{}@{}", contact_content, email_domain));
+			recovery_phone_number_to = None;
+		} else if is_recovery_phone_present {
+			let country = db::get_phone_country_by_country_code(
+				connection,
+				contact_code_id,
+			)
+			.await?
+			.status(500)?;
+			recovery_phone_number_to =
+				Some(format!("+{}{}", country.phone_code, contact_content));
+			welcome_email_to = None;
+			recovery_email_to = None;
+		} else {
+			log::error!(
+					"Got neither recovery email, nor recovery phone number while signing up user: {}",
+					user_data.username
+				);
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
 		}
 	}
 

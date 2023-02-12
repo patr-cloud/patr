@@ -18,7 +18,7 @@ use eve_rs::AsError;
 use serde::Deserialize;
 
 use crate::{
-	db,
+	db::{self, UserToSignUp},
 	error,
 	models::IpAddressInfo,
 	service,
@@ -433,4 +433,26 @@ pub async fn get_ip_address_info(
 	};
 
 	Ok(result)
+}
+
+pub fn check_contact_details(
+	contact_detail: &UserToSignUp,
+) -> (bool, bool, &String, &String) {
+	let no_detail;
+	let no_detail_id;
+	if let Some((email_local, domain_id)) = contact_detail
+		.recovery_email_local
+		.as_ref()
+		.zip(contact_detail.recovery_email_domain_id.as_ref())
+	{
+		return (true, false, email_local, &domain_id.to_string());
+	} else if let Some((phone_country_code, phone_number)) = contact_detail
+		.recovery_phone_country_code
+		.as_ref()
+		.zip(contact_detail.recovery_phone_number.as_ref())
+	{
+		return (false, true, phone_number, phone_country_code);
+	} else {
+		return (false, false, no_detail, no_detail_id);
+	}
 }
