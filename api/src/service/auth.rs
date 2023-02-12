@@ -894,15 +894,15 @@ pub async fn join_user(
 		is_recovery_phone_present,
 		contact_content,
 		contact_code_id,
+		contact_domain_id,
 	) = service::check_contact_details(user_contact_details);
 
 	if is_recovery_email_present {
-		let domain_id = Uuid::parse_str(contact_code_id.as_ref().unwrap())?;
 		db::add_personal_email_for_user(
 			connection,
 			&user_id,
 			contact_content.as_ref().unwrap(),
-			&domain_id,
+			contact_domain_id.unwrap(),
 		)
 		.await?;
 	} else if is_recovery_phone_present {
@@ -943,11 +943,13 @@ pub async fn join_user(
 	db::end_deferred_constraints(connection).await?;
 
 	let recovery_email: Vec<String> = if is_recovery_email_present {
-		let domain_id = Uuid::parse_str(contact_code_id.as_ref().unwrap())?;
-		let domain = db::get_personal_domain_by_id(connection, &domain_id)
-			.await?
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+		let domain = db::get_personal_domain_by_id(
+			connection,
+			contact_domain_id.unwrap(),
+		)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
 		vec![format!(
 			"{}@{}",
 			contact_content.as_ref().unwrap(),
@@ -1057,8 +1059,6 @@ pub async fn join_user(
 			user_data.business_domain_name.unwrap()
 		));
 		if is_recovery_email_present {
-			let domain_id =
-				Uuid::parse_str(&contact_code_id.as_ref().unwrap())?;
 			let email_domain =
 				db::get_personal_domain_by_id(connection, &domain_id)
 					.await?
@@ -1139,12 +1139,13 @@ pub async fn join_user(
 		}
 
 		if is_recovery_email_present {
-			let domain_id = Uuid::parse_str(contact_code_id.as_ref().unwrap())?;
-			let email_domain =
-				db::get_personal_domain_by_id(connection, &domain_id)
-					.await?
-					.status(500)?
-					.name;
+			let email_domain = db::get_personal_domain_by_id(
+				connection,
+				contact_domain_id.unwrap(),
+			)
+			.await?
+			.status(500)?
+			.name;
 			welcome_email_to = Some(format!(
 				"{}@{}",
 				contact_content.as_ref().unwrap(),

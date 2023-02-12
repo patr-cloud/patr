@@ -437,19 +437,26 @@ pub async fn get_ip_address_info(
 
 pub fn check_contact_details(
 	contact_detail: &UserToSignUp,
-) -> (bool, bool, Option<String>, Option<String>) {
+) -> (bool, bool, Option<&String>, Option<&String>, Option<&Uuid>) {
 	if let Some((email_local, domain_id)) = contact_detail
 		.recovery_email_local
-		.zip(contact_detail.recovery_email_domain_id)
+		.as_ref()
+		.zip(contact_detail.recovery_email_domain_id.as_ref())
 	{
-		let domain_string = domain_id.to_string();
-		return (true, false, Some(email_local), Some(domain_string));
+		return (true, false, Some(email_local), None, Some(domain_id));
 	} else if let Some((phone_country_code, phone_number)) = contact_detail
 		.recovery_phone_country_code
-		.zip(contact_detail.recovery_phone_number)
+		.as_ref()
+		.zip(contact_detail.recovery_phone_number.as_ref())
 	{
-		return (false, true, Some(phone_number), Some(phone_country_code));
+		return (
+			false,
+			true,
+			Some(phone_number),
+			Some(phone_country_code),
+			None,
+		);
 	} else {
-		return (false, false, None, None);
+		return (false, false, None, None, None);
 	}
 }
