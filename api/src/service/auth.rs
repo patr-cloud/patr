@@ -897,11 +897,11 @@ pub async fn join_user(
 	) = service::check_contact_details(user_contact_details);
 
 	if is_recovery_email_present {
-		let domain_id = Uuid::parse_str(&contact_code_id)?;
+		let domain_id = Uuid::parse_str(&contact_code_id.unwrap())?;
 		db::add_personal_email_for_user(
 			connection,
 			&user_id,
-			contact_content,
+			contact_content.unwrap(),
 			&domain_id,
 		)
 		.await?;
@@ -909,8 +909,8 @@ pub async fn join_user(
 		db::add_phone_number_for_user(
 			connection,
 			&user_id,
-			contact_code_id,
-			contact_content,
+			contact_code_id.unwrap(),
+			contact_content.unwrap(),
 		)
 		.await?;
 	} else {
@@ -943,12 +943,12 @@ pub async fn join_user(
 	db::end_deferred_constraints(connection).await?;
 
 	let recovery_email: Vec<String> = if is_recovery_email_present {
-		let domain_id = Uuid::parse_str(&contact_code_id)?;
+		let domain_id = Uuid::parse_str(&contact_code_id.unwrap())?;
 		let domain = db::get_personal_domain_by_id(connection, &domain_id)
 			.await?
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
-		vec![format!("{}@{}", contact_content, domain.name)]
+		vec![format!("{}@{}", contact_content.unwrap(), domain.name)]
 	} else {
 		vec![]
 	};
@@ -1053,24 +1053,27 @@ pub async fn join_user(
 			user_data.business_domain_name.unwrap()
 		));
 		if is_recovery_email_present {
-			let domain_id = Uuid::parse_str(&contact_code_id)?;
+			let domain_id = Uuid::parse_str(&contact_code_id.unwrap())?;
 			let email_domain =
 				db::get_personal_domain_by_id(connection, &domain_id)
 					.await?
 					.status(500)?
 					.name;
 			recovery_email_to =
-				Some(format!("{}@{}", contact_content, email_domain));
+				Some(format!("{}@{}", contact_content.unwrap(), email_domain));
 			recovery_phone_number_to = None;
 		} else if is_recovery_phone_present {
 			let country = db::get_phone_country_by_country_code(
 				connection,
-				contact_code_id,
+				contact_code_id.unwrap(),
 			)
 			.await?
 			.status(500)?;
-			recovery_phone_number_to =
-				Some(format!("+{}{}", country.phone_code, contact_content));
+			recovery_phone_number_to = Some(format!(
+				"+{}{}",
+				country.phone_code,
+				contact_content.unwrap()
+			));
 			recovery_email_to = None;
 		} else {
 			log::error!(
@@ -1128,26 +1131,29 @@ pub async fn join_user(
 		}
 
 		if is_recovery_email_present {
-			let domain_id = Uuid::parse_str(&contact_code_id)?;
+			let domain_id = Uuid::parse_str(&contact_code_id.unwrap())?;
 			let email_domain =
 				db::get_personal_domain_by_id(connection, &domain_id)
 					.await?
 					.status(500)?
 					.name;
 			welcome_email_to =
-				Some(format!("{}@{}", contact_content, email_domain));
+				Some(format!("{}@{}", contact_content.unwrap(), email_domain));
 			recovery_email_to =
-				Some(format!("{}@{}", contact_content, email_domain));
+				Some(format!("{}@{}", contact_content.unwrap(), email_domain));
 			recovery_phone_number_to = None;
 		} else if is_recovery_phone_present {
 			let country = db::get_phone_country_by_country_code(
 				connection,
-				contact_code_id,
+				contact_code_id.unwrap(),
 			)
 			.await?
 			.status(500)?;
-			recovery_phone_number_to =
-				Some(format!("+{}{}", country.phone_code, contact_content));
+			recovery_phone_number_to = Some(format!(
+				"+{}{}",
+				country.phone_code,
+				contact_content.unwrap()
+			));
 			welcome_email_to = None;
 			recovery_email_to = None;
 		} else {
