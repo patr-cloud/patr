@@ -1011,45 +1011,20 @@ pub async fn join_user(
 				.await?;
 		}
 
-		welcome_email_to = Some(format!(
-			"{}@{}",
-			user_data.business_email_local.as_ref().unwrap(),
-			user_data.business_domain_name.as_ref().unwrap()
-		));
-		if is_recovery_email_present {
-			let email_domain =
-				db::get_personal_domain_by_id(connection, &domain_id)
-					.await?
-					.status(500)?
-					.name;
-			recovery_email_to = Some(format!(
-				"{}@{}",
-				contact_content.as_ref().unwrap(),
-				email_domain
-			));
-			recovery_phone_number_to = None;
-		} else if is_recovery_phone_present {
-			let country = db::get_phone_country_by_country_code(
-				connection,
-				contact_code_id.as_ref().unwrap(),
-			)
-			.await?
-			.status(500)?;
-			recovery_phone_number_to = Some(format!(
-				"+{}{}",
-				country.phone_code,
-				contact_content.as_ref().unwrap()
-			));
-			recovery_email_to = None;
-		} else {
-			log::error!(
-				"Got neither recovery email, nor recovery phone number while signing up user: {}",
-				user_data.username
-			);
-			return Err(Error::empty()
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string()));
-		}
+		(
+			welcome_email_to,
+			recovery_email_to,
+			recovery_phone_number_to,
+		) = service::get_recovery_method(
+			connection,
+			is_recovery_email_present,
+			is_recovery_phone_present,
+			contact_content,
+			contact_code_id,
+			contact_domain_id,
+			&user_data,
+		)
+		.await?;
 	} else {
 		if let Some(coupon_code) = user_data.coupon_code.as_deref() {
 			service::check_coupon(
@@ -1061,48 +1036,20 @@ pub async fn join_user(
 			.await?;
 		}
 
-		if is_recovery_email_present {
-			let email_domain = db::get_personal_domain_by_id(
-				connection,
-				contact_domain_id.unwrap(),
-			)
-			.await?
-			.status(500)?
-			.name;
-			welcome_email_to = Some(format!(
-				"{}@{}",
-				contact_content.as_ref().unwrap(),
-				email_domain
-			));
-			recovery_email_to = Some(format!(
-				"{}@{}",
-				contact_content.as_ref().unwrap(),
-				email_domain
-			));
-			recovery_phone_number_to = None;
-		} else if is_recovery_phone_present {
-			let country = db::get_phone_country_by_country_code(
-				connection,
-				contact_code_id.as_ref().unwrap(),
-			)
-			.await?
-			.status(500)?;
-			recovery_phone_number_to = Some(format!(
-				"+{}{}",
-				country.phone_code,
-				contact_content.as_ref().unwrap()
-			));
-			welcome_email_to = None;
-			recovery_email_to = None;
-		} else {
-			log::error!(
-					"Got neither recovery email, nor recovery phone number while signing up user: {}",
-					user_data.username
-				);
-			return Err(Error::empty()
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string()));
-		}
+		(
+			welcome_email_to,
+			recovery_email_to,
+			recovery_phone_number_to,
+		) = service::get_recovery_method(
+			connection,
+			is_recovery_email_present,
+			is_recovery_phone_present,
+			contact_content,
+			contact_code_id,
+			contact_domain_id,
+			&user_data,
+		)
+		.await?;
 	}
 
 	if let Some(ref recovery_email) = welcome_email_to {

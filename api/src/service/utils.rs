@@ -464,6 +464,112 @@ pub fn check_contact_details(
 	}
 }
 
+pub async fn get_recovery_method(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	is_recovery_email_present: bool,
+	is_recovery_phone_present: bool,
+	contact_content: Option<&String>,
+	contact_code_id: Option<&String>,
+	contact_domain_id: Option<&Uuid>,
+	user_data: &UserToSignUp,
+) -> Result<(Option<String>, Option<String>, Option<String>), Error> {
+	let welcome_email_to;
+	let recovery_email_to;
+	let recovery_phone_number_to;
+	if user_data.account_type.is_business() {
+		welcome_email_to = Some(format!(
+			"{}@{}",
+			user_data.business_email_local.as_ref().unwrap(),
+			user_data.business_domain_name.as_ref().unwrap()
+		));
+		if is_recovery_email_present {
+			let email_domain = db::get_personal_domain_by_id(
+				connection,
+				contact_domain_id.unwrap(),
+			)
+			.await?
+			.status(500)?
+			.name;
+			recovery_email_to = Some(format!(
+				"{}@{}",
+				contact_content.as_ref().unwrap(),
+				email_domain
+			));
+			recovery_phone_number_to = None;
+		} else if is_recovery_phone_present {
+			let country = db::get_phone_country_by_country_code(
+				connection,
+				contact_code_id.as_ref().unwrap(),
+			)
+			.await?
+			.status(500)?;
+			recovery_phone_number_to = Some(format!(
+				"+{}{}",
+				country.phone_code,
+				contact_content.as_ref().unwrap()
+			));
+			recovery_email_to = None;
+		} else {
+			log::error!(
+				"Got neither recovery email, nor recovery phone number while signing up user: {}",
+				user_data.username
+			);
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
+		}
+	} else {
+		if is_recovery_email_present {
+			let email_domain = db::get_personal_domain_by_id(
+				connection,
+				contact_domain_id.unwrap(),
+			)
+			.await?
+			.status(500)?
+			.name;
+			welcome_email_to = Some(format!(
+				"{}@{}",
+				contact_content.as_ref().unwrap(),
+				email_domain
+			));
+			recovery_email_to = Some(format!(
+				"{}@{}",
+				contact_content.as_ref().unwrap(),
+				email_domain
+			));
+			recovery_phone_number_to = None;
+		} else if is_recovery_phone_present {
+			let country = db::get_phone_country_by_country_code(
+				connection,
+				contact_code_id.as_ref().unwrap(),
+			)
+			.await?
+			.status(500)?;
+			recovery_phone_number_to = Some(format!(
+				"+{}{}",
+				country.phone_code,
+				contact_content.as_ref().unwrap()
+			));
+			welcome_email_to = None;
+			recovery_email_to = None;
+		} else {
+			log::error!(
+					"Got neither recovery email, nor recovery phone number while signing up user: {}",
+					user_data.username
+				);
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
+		}
+	}
+
+	Ok((
+		welcome_email_to,
+		recovery_email_to,
+		recovery_phone_number_to,
+	))
+}
+
 pub async fn check_coupon(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	coupon_code: &str,
