@@ -518,49 +518,47 @@ pub async fn get_recovery_method(
 				.status(500)
 				.body(error!(SERVER_ERROR).to_string()));
 		}
+	} else if is_recovery_email_present {
+		let email_domain = db::get_personal_domain_by_id(
+			connection,
+			contact_domain_id.unwrap(),
+		)
+		.await?
+		.status(500)?
+		.name;
+		welcome_email_to = Some(format!(
+			"{}@{}",
+			contact_content.as_ref().unwrap(),
+			email_domain
+		));
+		recovery_email_to = Some(format!(
+			"{}@{}",
+			contact_content.as_ref().unwrap(),
+			email_domain
+		));
+		recovery_phone_number_to = None;
+	} else if is_recovery_phone_present {
+		let country = db::get_phone_country_by_country_code(
+			connection,
+			contact_code_id.as_ref().unwrap(),
+		)
+		.await?
+		.status(500)?;
+		recovery_phone_number_to = Some(format!(
+			"+{}{}",
+			country.phone_code,
+			contact_content.as_ref().unwrap()
+		));
+		welcome_email_to = None;
+		recovery_email_to = None;
 	} else {
-		if is_recovery_email_present {
-			let email_domain = db::get_personal_domain_by_id(
-				connection,
-				contact_domain_id.unwrap(),
-			)
-			.await?
-			.status(500)?
-			.name;
-			welcome_email_to = Some(format!(
-				"{}@{}",
-				contact_content.as_ref().unwrap(),
-				email_domain
-			));
-			recovery_email_to = Some(format!(
-				"{}@{}",
-				contact_content.as_ref().unwrap(),
-				email_domain
-			));
-			recovery_phone_number_to = None;
-		} else if is_recovery_phone_present {
-			let country = db::get_phone_country_by_country_code(
-				connection,
-				contact_code_id.as_ref().unwrap(),
-			)
-			.await?
-			.status(500)?;
-			recovery_phone_number_to = Some(format!(
-				"+{}{}",
-				country.phone_code,
-				contact_content.as_ref().unwrap()
-			));
-			welcome_email_to = None;
-			recovery_email_to = None;
-		} else {
-			log::error!(
+		log::error!(
 					"Got neither recovery email, nor recovery phone number while signing up user: {}",
 					user_data.username
 				);
-			return Err(Error::empty()
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string()));
-		}
+		return Err(Error::empty()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string()));
 	}
 
 	Ok((
