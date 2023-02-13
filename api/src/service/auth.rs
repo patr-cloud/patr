@@ -1006,13 +1006,10 @@ pub async fn join_user(
 		)
 		.await?;
 
-		service::check_coupon(
-			connection,
-			user_data.coupon_code.as_deref(),
-			now,
-			&workspace_id,
-		)
-		.await?;
+		if let Some(coupon_code) = user_data.coupon_code.as_deref() {
+			service::check_coupon(connection, coupon_code, now, &workspace_id)
+				.await?;
+		}
 
 		welcome_email_to = Some(format!(
 			"{}@{}",
@@ -1054,13 +1051,15 @@ pub async fn join_user(
 				.body(error!(SERVER_ERROR).to_string()));
 		}
 	} else {
-		service::check_coupon(
-			connection,
-			user_data.coupon_code.as_deref(),
-			now,
-			&personal_workspace_id,
-		)
-		.await?;
+		if let Some(coupon_code) = user_data.coupon_code.as_deref() {
+			service::check_coupon(
+				connection,
+				coupon_code,
+				now,
+				&personal_workspace_id,
+			)
+			.await?;
+		}
 
 		if is_recovery_email_present {
 			let email_domain = db::get_personal_domain_by_id(

@@ -466,51 +466,49 @@ pub fn check_contact_details(
 
 pub async fn check_coupon(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	coupon_code: Option<&str>,
+	coupon_code: &str,
 	now: DateTime<Utc>,
 	workspace_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
-	if let Some(coupon_code) = coupon_code.as_deref() {
-		if let Some(coupon_detail) =
-			db::get_sign_up_coupon_by_code(connection, coupon_code).await?
-		{
-			// Add coupon credits for their business account
-			let is_coupon_valid =
-				coupon_detail
-					.expiry
-					.map(|expiry| expiry > now)
-					.unwrap_or(true) && coupon_detail
-					.uses_remaining
-					.map(|uses_remaining| uses_remaining > 0)
-					.unwrap_or(true) && coupon_detail.credits_in_cents > 0;
+	if let Some(coupon_detail) =
+		db::get_sign_up_coupon_by_code(connection, coupon_code).await?
+	{
+		// Add coupon credits for their business account
+		let is_coupon_valid =
+			coupon_detail
+				.expiry
+				.map(|expiry| expiry > now)
+				.unwrap_or(true) && coupon_detail
+				.uses_remaining
+				.map(|uses_remaining| uses_remaining > 0)
+				.unwrap_or(true) && coupon_detail.credits_in_cents > 0;
 
-			// It's not expired, it has usage remaining, AND it has a
-			// non zero positive credit value. Give them some fucking
-			// credits
-			if is_coupon_valid {
-				let transaction_id =
-					db::generate_new_transaction_id(connection).await?;
-				db::create_transaction(
+		// It's not expired, it has usage remaining, AND it has a
+		// non zero positive credit value. Give them some fucking
+		// credits
+		if is_coupon_valid {
+			let transaction_id =
+				db::generate_new_transaction_id(connection).await?;
+			db::create_transaction(
+				connection,
+				workspace_id,
+				&transaction_id,
+				now.month() as i32,
+				coupon_detail.credits_in_cents,
+				Some("coupon-credits"),
+				&now,
+				&TransactionType::Credits,
+				&PaymentStatus::Success,
+				Some("Coupon credits"),
+			)
+			.await?;
+			if let Some(uses_remaining) = coupon_detail.uses_remaining {
+				db::update_coupon_code_uses_remaining(
 					connection,
-					&workspace_id,
-					&transaction_id,
-					now.month() as i32,
-					coupon_detail.credits_in_cents,
-					Some("coupon-credits"),
-					&DateTime::from(now),
-					&TransactionType::Credits,
-					&PaymentStatus::Success,
-					Some("Coupon credits"),
+					coupon_code,
+					uses_remaining.saturating_sub(1),
 				)
 				.await?;
-				if let Some(uses_remaining) = coupon_detail.uses_remaining {
-					db::update_coupon_code_uses_remaining(
-						connection,
-						coupon_code,
-						uses_remaining.saturating_sub(1),
-					)
-					.await?;
-				}
 			}
 		}
 	}
