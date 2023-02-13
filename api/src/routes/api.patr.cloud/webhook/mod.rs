@@ -11,7 +11,6 @@ use serde_json::json;
 use crate::{
 	app::{create_eve_app, App},
 	db,
-	error,
 	models::{
 		error::{id as ErrorId, message as ErrorMessage},
 		Action,
@@ -91,9 +90,16 @@ async fn notification_handler(
 	if context.get_content_type().as_str() !=
 		"application/vnd.docker.distribution.events.v1+json"
 	{
-		return Err(Error::empty()
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string()));
+		// Put the different "content-type" header and body in the queue and log
+		// the message there
+		service::queue_docker_notification_error(
+			&context.get_body()?,
+			context.get_content_type().as_str(),
+			&request_id,
+		)
+		.await?;
+
+		return Ok(context);
 	}
 
 	log::trace!(
