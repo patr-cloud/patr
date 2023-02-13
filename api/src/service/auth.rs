@@ -885,7 +885,7 @@ pub async fn join_user(
 
 	db::begin_deferred_constraints(connection).await?;
 
-	let user_contact_details = &user_data.clone();
+	let user_contact_details = &user_data;
 	let (
 		is_recovery_email_present,
 		is_recovery_phone_present,
@@ -1013,8 +1013,8 @@ pub async fn join_user(
 
 		welcome_email_to = Some(format!(
 			"{}@{}",
-			user_data.business_email_local.unwrap(),
-			user_data.business_domain_name.unwrap()
+			user_data.business_email_local.as_ref().unwrap(),
+			user_data.business_domain_name.as_ref().unwrap()
 		));
 		if is_recovery_email_present {
 			let email_domain =
