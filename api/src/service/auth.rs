@@ -3,14 +3,11 @@ use std::net::IpAddr;
 use api_models::{
 	models::{
 		auth::{PreferredRecoveryOption, RecoveryMethod, SignUpAccountType},
-		workspace::{
-			billing::{PaymentStatus, TransactionType},
-			domain::DomainNameserverType,
-		},
+		workspace::domain::DomainNameserverType,
 	},
-	utils::{DateTime, ResourceType, Uuid},
+	utils::{ResourceType, Uuid},
 };
-use chrono::{Datelike, Duration, Utc};
+use chrono::{Duration, Utc};
 use eve_rs::AsError;
 use reqwest::Client;
 
@@ -1009,50 +1006,14 @@ pub async fn join_user(
 		)
 		.await?;
 
-		if let Some(coupon_code) = user_data.coupon_code.as_deref() {
-			if let Some(coupon_detail) =
-				db::get_sign_up_coupon_by_code(connection, coupon_code).await?
-			{
-				// Add coupon credits for their business account
-				let is_coupon_valid = coupon_detail
-					.expiry
-					.map(|expiry| expiry > now)
-					.unwrap_or(true) && coupon_detail
-					.uses_remaining
-					.map(|uses_remaining| uses_remaining > 0)
-					.unwrap_or(true) && coupon_detail
-					.credits_in_cents > 0;
+		service::check_coupon(
+			connection,
+			user_data.coupon_code.as_deref(),
+			now,
+			&workspace_id,
+		)
+		.await?;
 
-				// It's not expired, it has usage remaining, AND it has a
-				// non zero positive credit value. Give them some fucking
-				// credits
-				if is_coupon_valid {
-					let transaction_id =
-						db::generate_new_transaction_id(connection).await?;
-					db::create_transaction(
-						connection,
-						&workspace_id,
-						&transaction_id,
-						now.month() as i32,
-						coupon_detail.credits_in_cents,
-						Some("coupon-credits"),
-						&DateTime::from(now),
-						&TransactionType::Credits,
-						&PaymentStatus::Success,
-						Some("Coupon credits"),
-					)
-					.await?;
-					if let Some(uses_remaining) = coupon_detail.uses_remaining {
-						db::update_coupon_code_uses_remaining(
-							connection,
-							coupon_code,
-							uses_remaining.saturating_sub(1),
-						)
-						.await?;
-					}
-				}
-			}
-		}
 		welcome_email_to = Some(format!(
 			"{}@{}",
 			user_data.business_email_local.unwrap(),
@@ -1093,50 +1054,13 @@ pub async fn join_user(
 				.body(error!(SERVER_ERROR).to_string()));
 		}
 	} else {
-		if let Some(coupon_code) = user_data.coupon_code.as_deref() {
-			if let Some(coupon_detail) =
-				db::get_sign_up_coupon_by_code(connection, coupon_code).await?
-			{
-				// Check coupon validity condition
-				let is_coupon_valid = coupon_detail
-					.expiry
-					.map(|expiry| expiry > now)
-					.unwrap_or(true) && coupon_detail
-					.uses_remaining
-					.map(|uses_remaining| uses_remaining > 0)
-					.unwrap_or(true) && coupon_detail
-					.credits_in_cents > 0;
-
-				// It's not expired, it has usage remaining, AND it has a
-				// non zero positive credit value. Give them some fucking
-				// credits
-				if is_coupon_valid {
-					let transaction_id =
-						db::generate_new_transaction_id(connection).await?;
-					db::create_transaction(
-						connection,
-						&personal_workspace_id,
-						&transaction_id,
-						now.month() as i32,
-						coupon_detail.credits_in_cents,
-						Some("coupon-credits"),
-						&DateTime::from(now),
-						&TransactionType::Credits,
-						&PaymentStatus::Success,
-						Some("Coupon credits"),
-					)
-					.await?;
-					if let Some(uses_remaining) = coupon_detail.uses_remaining {
-						db::update_coupon_code_uses_remaining(
-							connection,
-							coupon_code,
-							uses_remaining.saturating_sub(1),
-						)
-						.await?;
-					}
-				}
-			}
-		}
+		service::check_coupon(
+			connection,
+			user_data.coupon_code.as_deref(),
+			now,
+			&personal_workspace_id,
+		)
+		.await?;
 
 		if is_recovery_email_present {
 			let email_domain = db::get_personal_domain_by_id(
