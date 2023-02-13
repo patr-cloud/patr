@@ -912,9 +912,9 @@ pub async fn join_user(
 		.await?;
 	} else {
 		log::error!(
-            "Got neither recovery email, nor recovery phone number while signing up user: {}",
-            user_data.username
-        );
+			"Got neither recovery email, nor recovery phone number while signing up user: {}",
+			user_data.username
+		);
 
 		return Err(Error::empty()
 			.status(500)
