@@ -932,7 +932,7 @@ pub async fn join_user(
 		user_data.recovery_email_domain_id.as_ref(),
 		user_data.recovery_phone_country_code.as_deref(),
 		user_data.recovery_phone_number.as_deref(),
-		3,
+		3, //Set the users default workspace limit
 		user_data.coupon_code.as_deref(),
 	)
 	.await?;
