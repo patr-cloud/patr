@@ -2,8 +2,9 @@ Hello {{username}},
 
 Payment for your billing period {{stringify-month billBreakdown.month}} {{billBreakdown.year}} amounting to ${{cents-to-dollars billBreakdown.totalCharge}} for the workspace {{workspaceName}} was unsuccessful. 
 
-Detailed Charges Deployment Usage:
-Detailed Charges Deployment Usage:
+Detailed Charges 
+
+Deployment Usage:
 {{#each billBreakdown.deploymentUsage}}
   Name: {{this.name}}
   {{#each this.deploymentBill}}
@@ -19,6 +20,20 @@ Detailed Charges Deployment Usage:
     Hours used: {{this.hours}}
     Bill Amount: ${{cents-to-dollars this.amount}}
   {{/each}}
+{{/each}}
+Volume Usage:
+{{#each billBreakdown.volumeUsage}}
+  No.of Volumes: {{this.numberOfVolume}}
+  Storage: {{this.storage}}
+  Monthly Charge: ${{cents-to-dollars this.monthlyCharge}}
+  From: {{format-date this.startTime}}
+  {{#if this.stopTime}}
+  Till: {{format-date this.stopTime}}
+  {{else}}
+  Till: Present
+  {{/if}}
+  Hours used: {{this.hours}}
+  Bill Amount: ${{cents-to-dollars this.amount}}
 {{/each}}
 Database Usage:
 {{#each billBreakdown.databaseUsage}}
