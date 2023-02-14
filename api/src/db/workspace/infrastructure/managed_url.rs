@@ -693,7 +693,8 @@ pub async fn get_all_managed_urls_for_host(
 		WHERE
 			deleted IS NULL AND
 			sub_domain = $1 AND
-			domain_id = $2;
+			domain_id = $2
+		ORDER BY path DESC;
 		"#,
 		sub_domain,
 		domain_id as _

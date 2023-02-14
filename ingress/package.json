@@ -10,8 +10,5 @@
   "scripts": {
     "start": "wrangler dev",
     "deploy": "wrangler publish"
-  },
-  "dependencies": {
-    "aws4fetch": "^1.0.17"
   }
 }

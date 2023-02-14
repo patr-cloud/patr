@@ -1,5 +1,4 @@
-import { AwsClient } from "aws4fetch";
-import { DeploymentValue, RoutingValue } from "./models";
+import { DeploymentValue, RoutingValue, UrlType } from "./models";
 import { fetchStaticSite } from "./staticSite";
 
 export interface Env {
@@ -25,12 +24,12 @@ export default {
             let url = new URL(request.url);
             if (url.hostname.endsWith(env.ONPATR_DOMAIN)) {
                 // onpatr_domain should not be used in managed url
-                return fetchOnPatrRequest(request, env, url);
+                return await fetchOnPatrRequest(request, env, url);
             } else {
-                return fetchManagedUrlRequest(request, env, url);
+                return await fetchManagedUrlRequest(request, env, url);
             }
         } catch (exception) {
-            console.log(
+            console.error(
                 `Error while fetching request in cf ingress - ${exception}`
             );
             return new Response("500 Internal Server Error", { status: 500 });
@@ -61,45 +60,60 @@ async function fetchManagedUrlRequest(
     env: Env,
     url: URL
 ): Promise<Response> {
-    let routes = await env.ROUTING.get<RoutingValue>(url.hostname);
-    if (routes) {
-        // todo: need to use use customer route matching
-        let matched_route = routes.get(url.pathname);
-        if (matched_route) {
-            switch (matched_route.type) {
-                case "proxyDeployment":
-                    return fetchDeployment(
-                        request,
-                        env,
-                        matched_route.deploymentId,
-                        matched_route.port
-                    );
-                case "proxyStaticSite":
-                    return fetchStaticSite(
-                        request,
-                        env,
-                        matched_route.staticSiteId
-                    );
-                case "proxyUrl":
-                    return proxyUrl(request, env, "/", matched_route.url); // todo
-                case "redirect":
-                    return redirectUrl(
-                        request,
-                        env,
-                        matched_route.url,
-                        matched_route.permanent
-                    );
-                default:
-                    return new Response(
-                        "500 Internal Server Error - Invalid router type",
-                        { status: 500 }
-                    );
-            }
-        } else {
-            return new Response("404 Not Found - URL", { status: 404 });
-        }
-    } else {
+    // todo: wildcard hostname is not matched
+    // todo: path string should be updated to wildcard matching
+    const routesStr = await env.ROUTING.get(url.hostname);
+    if (!routesStr) {
         return new Response("404 Not Found - HOST", { status: 404 });
+    }
+
+    const routes = JSON.parse(routesStr) as RoutingValue;
+    let matched_route: UrlType | null = null;
+    for (const route of routes) {
+        if (url.pathname.startsWith(route.path)) {
+            matched_route = route
+            break;
+        }
+    }
+
+    if (!matched_route) {
+        return new Response("404 Not Found - URL", { status: 404 });
+    }
+
+    switch (matched_route.type) {
+        case "proxyDeployment":
+            return fetchDeployment(
+                request,
+                env,
+                matched_route.deploymentId,
+                matched_route.port
+            );
+        case "proxyStaticSite":
+            return fetchStaticSite(
+                request,
+                env,
+                matched_route.staticSiteId
+            );
+        case "proxyUrl":
+            return proxyUrl(
+                request,
+                env,
+                matched_route.path,
+                matched_route.url
+            );
+        case "redirect":
+            return redirectUrl(
+                request,
+                env,
+                matched_route.path,
+                matched_route.url,
+                matched_route.permanent
+            );
+        default:
+            return new Response(
+                "500 Internal Server Error - Invalid router type",
+                { status: 500 }
+            );
     }
 }
 
@@ -114,7 +128,9 @@ async function fetchDeployment(
     if (!deploymentStatusStr) {
         return new Response(
             "500 Internal Server Error - Deployment not found",
-            { status: 500 }
+            {
+                status: 500,
+            }
         );
     }
 
@@ -151,13 +167,17 @@ async function fetchDeployment(
         } else {
             return new Response(
                 "500 Internal Server Error - Port not running",
-                { status: 500 }
+                {
+                    status: 500,
+                }
             );
         }
     } else {
         return new Response(
             "500 Internal Server Error - Invalid deployment type",
-            { status: 500 }
+            {
+                status: 500,
+            }
         );
     }
 }
@@ -168,13 +188,15 @@ async function proxyUrl(
     matched_path: string,
     to_url: string
 ): Promise<Response> {
-    // todo: make sure that it is okay to allow methods other than GET
-    // todo: handle headers and other stuff
-    // todo: use matched path and strip it accordingly
+    let incomingUrl = new URL(request.url);
 
-    let destination_url = new URL(to_url);
+    // todo: http won't work
+    let destinationUrl = new URL(`https://${to_url}`);
+    destinationUrl.search = incomingUrl.search;
+    destinationUrl.pathname = destinationUrl.pathname + incomingUrl.pathname.substring(matched_path.length);
+
     return fetch(
-        new Request(destination_url, {
+        new Request(destinationUrl, {
             method: request.method,
             headers: request.headers,
             body: request.body,
@@ -189,12 +211,20 @@ async function proxyUrl(
 async function redirectUrl(
     request: Request,
     env: Env,
+    matched_path: string,
     to_url: string,
     permanent: boolean
 ): Promise<Response> {
-    // todo: make sure to_url is a domain or strip the common things
     // see: https://developers.cloudflare.com/workers/examples/redirect/
 
+    // todo: http won't work
+    let incomingUrl = new URL(request.url);
+
+    let destinationUrl = new URL(`https://${to_url}`);
+    destinationUrl.search = incomingUrl.search;
+    destinationUrl.pathname = destinationUrl.pathname + incomingUrl.pathname.substring(matched_path.length);
+
     let redirectStatus = permanent ? 301 : 302;
-    return Response.redirect(to_url, redirectStatus);
+
+    return Response.redirect(destinationUrl.toString(), redirectStatus);
 }
