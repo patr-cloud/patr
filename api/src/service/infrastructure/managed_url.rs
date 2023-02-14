@@ -25,7 +25,7 @@ pub async fn create_new_managed_url_in_workspace(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
-	log::trace!("request_id: {} - Creating a new managed url with sub_domain: {} and domain_id: {} on Kubernetes with request_id: {}",
+	log::trace!("request_id: {} - Creating a new managed url with sub_domain: {} and domain_id: {} with request_id: {}",
 		request_id,
 		sub_domain,
 		domain_id,
@@ -230,7 +230,8 @@ pub async fn update_managed_url(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	log::trace!("request_id: {} - Updating managed url with id: {} on Kubernetes with request_id: {}",
+	log::trace!(
+		"request_id: {} - Updating managed url with id: {} with request_id: {}",
 		request_id,
 		managed_url_id,
 		request_id
@@ -348,7 +349,8 @@ pub async fn delete_managed_url(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	log::trace!("request_id: {} - Deleting managed url with id: {} on Kubernetes with request_id: {}",
+	log::trace!(
+		"request_id: {} - Deleting managed url with id: {} with request_id: {}",
 		request_id,
 		managed_url_id,
 		request_id
