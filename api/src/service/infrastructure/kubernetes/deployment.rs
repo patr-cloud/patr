@@ -96,7 +96,7 @@ pub async fn update_kubernetes_deployment(
 	let namespace = workspace_id.as_str();
 
 	log::trace!(
-		"Deploying the container with id: {} on kubernetes with request_id: {}",
+		"Deploying the container with id: {} with request_id: {}",
 		deployment.id,
 		request_id,
 	);
