@@ -232,6 +232,171 @@
         class="txt-light txt-medium py-sm"
         style="font-weight: 500; padding-top: 0.5rem; padding-bottom: 0.5rem; color: #ffffff;"
       >
+        Volume usages
+        <table class="full-width" style="width: 100%">
+          <tr>
+            <td class="pb-xs" style="padding-top: .25rem">
+              {{#unless billBreakdown.volumeUsage}}
+                <table>
+                  <tbody>
+                    <tr>
+                      <td class="txt-light" style="color: #ffffff;">
+                        No usages
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              {{/unless}}
+              {{#if billBreakdown.volumeUsage}}
+                <table
+                  class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
+                  style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
+                  width="100%"
+                  bgcolor="#23203e"
+                >
+                  <thead
+                    class="bg-secondary-medium"
+                    style="background-color: #2e2450;"
+                    bgcolor="#2e2450"
+                  >
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      No.of Volumes
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Storage
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Monthly Charge
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      From
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Till
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Hours Used
+                    </th>
+                    <th
+                      class="txt-light px-md py-sm txt-center"
+                      style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                      align="center"
+                    >
+                      Bill Amount
+                    </th>
+                  </thead>
+                  <tbody>
+                    {{#each billBreakdown.volumeUsage}}
+                      <tr>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          {{this.numberOfVolume}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          {{this.storage}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          ${{cents-to-dollars this.monthlyCharge}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          {{format-date this.startTime}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          {{#if this.stopTime}}
+                            {{format-date this.stopTime}}
+                          {{else}}
+                            Present
+                          {{/if}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          {{this.hours}}
+                        </td>
+                        <td
+                          class="txt-light px-md py-xs txt-center"
+                          style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #ffffff;"
+                          align="center"
+                        >
+                          ${{cents-to-dollars this.amount}}
+                        </td>
+                      </tr>
+                    {{/each}}
+                    <tr
+                      class="bg-secondary-medium"
+                      style="background-color:#2e2450"
+                      bgcolor="#2e2450"
+                    >
+                      <td
+                        colspan="5"
+                        class="txt-light txt-right px-md py-xs"
+                        style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; color: #ffffff; text-align: right"
+                        align="right"
+                      >
+                        Total Volume Charges
+                      </td>
+                      <td
+                        class="txt-primary px-md py-xs txt-center"
+                        style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
+                        align="center"
+                      >${{cents-to-dollars billBreakdown.volumeCharge}}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              {{/if}}
+            </td>
+          </tr>
+        </table>
+      </li>
+      <li
+        class="txt-light txt-medium py-sm"
+        style="font-weight: 500; padding-top: 0.5rem; padding-bottom: 0.5rem; color: #ffffff;"
+      >
         Database usages
         <table class="full-width" style="width: 100%">
           <tr>
