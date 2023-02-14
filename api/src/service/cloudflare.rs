@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use api_models::utils::Uuid;
 use cloudflare::{
 	endpoints::{
@@ -38,7 +36,7 @@ use crate::{
 	db,
 	models::cloudflare::{
 		deployment,
-		routing::{self, UrlType},
+		routing::{self, RouteType, UrlType},
 		static_site,
 	},
 	utils::{settings::Settings, Error},
@@ -192,13 +190,13 @@ pub async fn update_cloudflare_kv_for_managed_url(
 		.await?
 		.status(500)?;
 
-	let all_managed_urls_for_host =
+	let all_managed_urls_for_host_in_sorted_order =
 		db::get_all_managed_urls_for_host(connection, sub_domain, domain_id)
 			.await?
 			.into_iter()
 			.filter_map(|managed_url| {
-				let key = managed_url.path;
-				let value = match managed_url.url_type {
+				let path = managed_url.path;
+				let url_type = match managed_url.url_type {
 					db::ManagedUrlType::ProxyToDeployment => {
 						UrlType::ProxyDeployment {
 							deployment_id: managed_url.deployment_id?,
@@ -221,9 +219,9 @@ pub async fn update_cloudflare_kv_for_managed_url(
 					},
 				};
 
-				Some((key, value))
+				Some(RouteType { path, url_type })
 			})
-			.collect::<HashMap<_, _>>();
+			.collect::<Vec<_>>();
 
 	let key = routing::Key {
 		sub_domain: sub_domain.to_owned(),
@@ -231,10 +229,10 @@ pub async fn update_cloudflare_kv_for_managed_url(
 	};
 
 	// if no managed url is present, then delete the already existing key
-	if all_managed_urls_for_host.is_empty() {
+	if all_managed_urls_for_host_in_sorted_order.is_empty() {
 		delete_kv_for_routing(key, config).await?;
 	} else {
-		let value = routing::Value(all_managed_urls_for_host);
+		let value = routing::Value(all_managed_urls_for_host_in_sorted_order);
 		update_kv_for_routing(key, value, config).await?;
 	}
 

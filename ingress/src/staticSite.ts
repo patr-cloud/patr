@@ -1,6 +1,8 @@
 import { Env } from ".";
 import { StaticSiteValue } from "./models";
 
+// reference: https://developers.cloudflare.com/pages/platform/serving-pages/
+
 export async function fetchStaticSite(
     request: Request,
     env: Env,
@@ -21,54 +23,88 @@ export async function fetchStaticSite(
         return new Response(null, { headers: { allow: "GET, HEAD, OPTIONS" } });
     }
 
-    let staticSiteStatusStr = await env.STATIC_SITE.get(staticSiteId);
-
+    const staticSiteStatusStr = await env.STATIC_SITE.get(staticSiteId);
     if (!staticSiteStatusStr) {
         return new Response(
             "500 Internal Server Error - Static Site not found",
-            { status: 500 }
+            {
+                status: 500,
+            }
         );
     }
 
-    let staticSiteStatus = JSON.parse(staticSiteStatusStr) as StaticSiteValue;
+    const staticSiteStatus = JSON.parse(staticSiteStatusStr) as StaticSiteValue;
     if (staticSiteStatus === "created") {
         return new Response(
             "Static Site is created, try uploading some sites",
-            { status: 404 }
+            {
+                status: 404,
+            }
         );
     } else if (staticSiteStatus === "deleted") {
         return new Response("Static Site is deleted", { status: 404 });
     } else if (staticSiteStatus === "stopped") {
         return new Response("Static Site is stopped", { status: 404 });
     } else if (staticSiteStatus.serving) {
-        let filePrefix = `${staticSiteId}/${staticSiteStatus.serving}`;
+        const filePrefix = `${staticSiteId}/${staticSiteStatus.serving}`;
 
-        let requestedFilePath = decodeURIComponent(
+        const requestedFilePath = decodeURIComponent(
             new URL(request.url).pathname
-        );
+        )
+            .split("/")
+            .filter((s) => s !== "")
+            .join("/");
 
-        let originalFilePath = `${filePrefix}${requestedFilePath}`;
-        if (originalFilePath.endsWith("/")) {
-            originalFilePath = originalFilePath + "index.html";
-        }
+        // todo:
+        //  - range headers
+        //  - cache
+        //  - file matching logic
 
-        // todo: handle head method and range headers
+        const filePathToTry = requestedFilePath
+            ? [
+                  `${filePrefix}/${requestedFilePath}`,
+                  `${filePrefix}/${requestedFilePath}/index.html`,
+                  `${filePrefix}/${requestedFilePath}/index.htm`,
+                  `${filePrefix}/index.html`,
+                  `${filePrefix}/index.htm`,
+                  `${filePrefix}/404.html`,
+              ]
+            : [
+                  `${filePrefix}/index.html`,
+                  `${filePrefix}/index.htm`,
+                  `${filePrefix}/404.html`,
+              ];
 
-        console.log("f1: ", originalFilePath);
-        var file = await env.STATIC_SITE_STORAGE.get(originalFilePath);
-        if (!file) {
-            let indexFilePath = `${filePrefix}/index.html`;
-            console.log("f2: ", indexFilePath);
-            file = await env.STATIC_SITE_STORAGE.get(indexFilePath);
-        }
+        for (const filePath of filePathToTry) {
+            const fileMeta = await env.STATIC_SITE_STORAGE.head(filePath);
+            if (!fileMeta) {
+                continue;
+            }
 
-        if (file?.body) {
-            return new Response(file?.body, { status: 200, headers:  [["content-type", file.httpMetadata?.contentType ?? "application/octet-stream"]]});
-        } else {
-            return new Response("500 Not Found - Requested file not found", {
-                status: 404,
+            const headers = [
+                [
+                    "content-type",
+                    fileMeta.httpMetadata?.contentType ??
+                        "application/octet-stream",
+                ],
+                ["content-length", fileMeta.size.toString()],
+                ["etag", fileMeta.etag],
+            ];
+
+            const fileContent =
+                request.method === "HEAD"
+                    ? null
+                    : await env.STATIC_SITE_STORAGE.get(filePath);
+
+            return new Response(fileContent?.body, {
+                status: 200,
+                headers: headers,
             });
         }
+
+        return new Response("404 Not Found - Requested file not found", {
+            status: 404,
+        });
     } else {
         return new Response(
             "500 Internal Server Error - Invalid static site type",

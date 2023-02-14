@@ -1,5 +1,5 @@
 pub mod routing {
-	use std::{collections::HashMap, fmt::Display};
+	use std::fmt::Display;
 
 	use api_models::utils::Uuid;
 	use serde::{Deserialize, Serialize};
@@ -29,8 +29,16 @@ pub mod routing {
 		}
 	}
 
+	#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+	#[serde(rename_all = "camelCase")]
+	pub struct RouteType {
+		pub path: String,
+		#[serde(flatten)]
+		pub url_type: UrlType,
+	}
+
 	#[derive(Debug, Serialize, Deserialize)]
-	pub struct Value(pub HashMap<String, UrlType>);
+	pub struct Value(pub Vec<RouteType>);
 }
 
 pub mod deployment {
