@@ -153,6 +153,10 @@ async function fetchDeployment(
             let destination_url = new URL(request.url);
             destination_url.host = `${port}-${deploymentId}.${deploymentStatus.running.regionId}.${env.ONPATR_DOMAIN}`;
 
+            // todo: need to add extra headers like client ip
+            // see: https://fly.io/docs/reference/runtime-environment/#request-headers
+            // see: https://developers.cloudflare.com/fundamentals/get-started/reference/http-request-headers/
+
             let modified_request = new Request(destination_url, {
                 method: request.method,
                 headers: request.headers,

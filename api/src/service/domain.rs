@@ -915,10 +915,6 @@ async fn check_domain_creation_limit(
 ) -> Result<(), Error> {
 	log::trace!("request_id: {request_id} - Checking whether new domain creation is limited");
 
-	if cfg!(debug_assertions) {
-		return Ok(());
-	}
-
 	let current_domain_count =
 		db::get_domains_for_workspace(connection, workspace_id)
 			.await?
