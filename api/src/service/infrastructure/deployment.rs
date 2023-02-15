@@ -1086,8 +1086,7 @@ async fn check_deployment_creation_limit(
 ) -> Result<(), Error> {
 	log::trace!("request_id: {request_id} - Checking whether new deployment creation is limited");
 
-	// todo: either add debug_assertions to all or remove it from all
-	if is_byoc_region || cfg!(debug_assertions) {
+	if is_byoc_region {
 		// if byoc, then don't need to check free/paid/total limits
 		// as this deloyment is going to be deployed on their cluster
 		return Ok(());
