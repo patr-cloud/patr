@@ -77,6 +77,17 @@ pub mod permissions {
 					"workspace::infrastructure::managedDatabase::info";
 			}
 
+			pub mod patr_database {
+				pub const CREATE: &str =
+					"workspace::infrastructure::patrDatabase::create";
+				pub const LIST: &str =
+					"workspace::infrastructure::patrDatabase::list";
+				pub const DELETE: &str =
+					"workspace::infrastructure::patrDatabase::delete";
+				pub const INFO: &str =
+					"workspace::infrastructure::patrDatabase::info";
+			}
+
 			pub mod static_site {
 				pub const LIST: &str =
 					"workspace::infrastructure::staticSite::list";
@@ -210,4 +221,5 @@ pub mod resource_types {
 	pub const CI_REPO: &str = "ciRepo";
 	pub const DEPLOYMENT_REGION: &str = "deploymentRegion";
 	pub const DEPLOYMENT_VOLUME: &str = "deploymentVolume";
+	pub const PATR_DATABASE: &str = "patrDatabase";
 }

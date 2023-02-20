@@ -77,6 +77,7 @@ pub mod default_limits {
 pub mod free_limits {
 	pub const DEPLOYMENT_COUNT: usize = 1;
 	pub const DATABASE_COUNT: usize = 0;
+	pub const PATR_DATABASE_COUNT: usize = 1;
 	pub const STATIC_SITE_COUNT: usize = 3;
 	pub const MANAGED_URL_COUNT: usize = 10;
 	pub const DOMAIN_COUNT: usize = 1;

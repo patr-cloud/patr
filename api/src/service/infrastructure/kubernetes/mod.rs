@@ -1,5 +1,6 @@
 mod certificate;
 mod ci;
+mod database;
 mod deployment;
 mod managed_url;
 mod static_site;
@@ -40,6 +41,7 @@ use kube::{
 pub use self::{
 	certificate::*,
 	ci::*,
+	database::*,
 	deployment::*,
 	managed_url::*,
 	static_site::*,
