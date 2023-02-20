@@ -99,3 +99,15 @@ vicara-api.iml
 
 # ignore log files
 *.log
+
+# Vault stuff
+config.yaml
+injector.yaml
+test.yaml
+value.yaml
+
+# Database master-slave stuff
+configmap.yaml
+readservice.yaml
+service.yaml
+statefulset.yaml
