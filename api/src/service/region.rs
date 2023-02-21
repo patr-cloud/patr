@@ -1,5 +1,6 @@
 use api_models::{models::workspace::region::RegionStatus, utils::Uuid};
 use eve_rs::AsError;
+use once_cell::sync::OnceCell;
 use kube::config::{
 	AuthInfo,
 	Cluster,
@@ -30,7 +31,29 @@ pub enum ClusterType {
 #[derive(Debug, Clone)]
 pub struct KubernetesConfigDetails {
 	pub cluster_type: ClusterType,
-	pub kube_config: Kubeconfig,
+	pub auth_details: KubernetesAuthDetails,
+}
+
+static DEFAULT_REGION_ID: OnceCell<Uuid> = OnceCell::new();
+
+/// Panics if the expected values are not present.
+/// Allowed to use only during init phase
+pub async fn initialize_default_region_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) {
+	let region_id = db::get_default_region_id(connection).await.expect(
+		"Default region should be populated before initializing the struct",
+	);
+
+	DEFAULT_REGION_ID
+		.set(region_id)
+		.expect("DEFAULT_REGION_ID is already set");
+}
+
+pub fn get_default_region_id<'a>() -> &'a Uuid {
+	DEFAULT_REGION_ID
+		.get()
+		.expect("DEFAULT_REGION_ID should be initialized before accessing it")
 }
 
 pub fn get_kubernetes_config_for_default_region(

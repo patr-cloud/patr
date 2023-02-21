@@ -94,6 +94,7 @@ pub async fn update_kubernetes_deployment(
 	deployment_volumes: &Vec<DeploymentVolume>,
 	cluster_type: &ClusterType,
 	kubeconfig: Kubeconfig,
+	deployed_region_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -633,7 +634,7 @@ pub async fn update_kubernetes_deployment(
 				"{}-{}.{}.{}",
 				port,
 				deployment.id,
-				deployment.region,
+				deployed_region_id,
 				config.cloudflare.onpatr_domain
 			)),
 			http: Some(HTTPIngressRuleValue {

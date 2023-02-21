@@ -112,6 +112,19 @@ pub async fn initialize_region_pre(
 	.execute(&mut *connection)
 	.await?;
 
+	// todo: create unique index
+	// query!(
+	// 	r#"
+	// 	CREATE UNIQUE INDEX deployment_region_uq_workspace_id_name
+	// 	ON deployment_region(workspace_id, name)
+	// 	WHERE
+	// 		deleted IS NULL AND
+	// 		workspace_id IS NOT NULL;
+	// 	"#
+	// )
+	// .execute(&mut *connection)
+	// .await?;
+
 	// todo: add check constraint
 	// 	1. if the status is deleted, then the deleted should have timestamp
 	//  2. if the status is disconnected, then the last disconnected should have
@@ -179,6 +192,27 @@ pub async fn initialize_region_post(
 	}
 
 	Ok(())
+}
+
+pub async fn get_default_region_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Uuid, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			id as "id: Uuid"
+		FROM
+			deployment_region
+		WHERE
+			name = 'Singapore'
+			AND provider = 'digitalocean'
+			AND workspace_id IS NULL
+			AND ready = TRUE;
+		"#
+	)
+	.fetch_one(&mut *connection)
+	.await
+	.map(|row| row.id)
 }
 
 pub async fn get_region_by_id(
