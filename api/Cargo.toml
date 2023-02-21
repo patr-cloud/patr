@@ -84,6 +84,7 @@ vaultrs = "0.6"
 zeroize = "1"
 zip = "0.6"
 rcgen = "0.10.0"
+itertools = "0.10.5"
 
 [dependencies.log4rs]
 default-features = false

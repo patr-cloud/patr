@@ -1247,6 +1247,12 @@ pub async fn start_deployment(
 	)
 	.await?;
 
+	let deployed_region_id = match &kubeconfig.cluster_type {
+		service::ClusterType::PatrOwned => service::get_default_region_id(),
+		service::ClusterType::UserOwned { region_id, .. } => region_id,
+	}
+	.clone();
+
 	service::update_kubernetes_deployment(
 		workspace_id,
 		deployment,
@@ -1254,6 +1260,7 @@ pub async fn start_deployment(
 		digest.as_deref(),
 		deployment_running_details,
 		kubeconfig,
+		&deployed_region_id,
 		config,
 		request_id,
 	)
@@ -1262,7 +1269,7 @@ pub async fn start_deployment(
 	service::update_cloudflare_kv_for_deployment(
 		deployment_id,
 		cloudflare::deployment::Value::Running {
-			region_id: deployment.region.clone(),
+			region_id: deployed_region_id,
 			ports: deployment_running_details
 				.ports
 				.iter()
@@ -1329,6 +1336,12 @@ pub async fn update_deployment_image(
 		service::get_kubernetes_config_for_region(connection, region, config)
 			.await?;
 
+	let deployed_region_id = match &kubeconfig.cluster_type {
+		service::ClusterType::PatrOwned => service::get_default_region_id(),
+		service::ClusterType::UserOwned { region_id, .. } => region_id,
+	}
+	.clone();
+
 	service::update_kubernetes_deployment(
 		workspace_id,
 		&Deployment {
@@ -1345,6 +1358,7 @@ pub async fn update_deployment_image(
 		Some(digest),
 		deployment_running_details,
 		kubeconfig,
+		&deployed_region_id,
 		config,
 		request_id,
 	)

@@ -232,6 +232,11 @@ pub async fn add_domain_to_workspace(
 			"request_id: {} - Adding domain to internal nameserver",
 			request_id
 		);
+		if ["cf", "ga", "gq", "ml", "tk"].contains(&tld) {
+			return Err(Error::empty()
+				.status(400)
+				.body(error!(INVALID_DOMAIN_NAME).to_string()));
+		}
 		// create zone
 		let client = service::get_cloudflare_client(config).await?;
 		log::trace!(
