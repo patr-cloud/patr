@@ -58,6 +58,7 @@ pub async fn create_kubernetes_mysql_database(
 	db_plan: &PatrDatabasePlan,
 	kubeconfig: KubernetesConfigDetails,
 	request_id: &Uuid,
+	replica_numbers: i32,
 ) -> Result<(), Error> {
 	let kubernetes_client =
 		super::super::get_kubernetes_client(kubeconfig.auth_details).await?;
@@ -77,9 +78,6 @@ pub async fn create_kubernetes_mysql_database(
 
 	// plan
 	let (db_ram, db_cpu, db_volume) = db_plan.get_resource_limits();
-
-	//number of replication
-	let replica_numbers = 2;
 	let labels =
 		BTreeMap::from([("database".to_owned(), database_id.to_string())]);
 

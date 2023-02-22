@@ -29,6 +29,7 @@ pub async fn create_patr_database_in_workspace(
 	workspace_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
+	replica_numbers: i32,
 ) -> Result<Uuid, Error> {
 	log::trace!("request_id: {} - Creating a patr database with name: {} and db_name: {} on DigitalOcean App platform with request_id: {}",
 		request_id,
@@ -106,7 +107,7 @@ pub async fn create_patr_database_in_workspace(
 
 	let (version, port, username) = match engine {
 		PatrDatabaseEngine::Postgres => ("12", 5432, "postgres"),
-		PatrDatabaseEngine::Mysql => ("8", 3306, "root"),
+		PatrDatabaseEngine::Mysql => ("5", 3306, "root"),
 	};
 
 	log::trace!(
@@ -127,6 +128,7 @@ pub async fn create_patr_database_in_workspace(
 		port,
 		username,
 		&password,
+		replica_numbers,
 	)
 	.await?;
 	log::trace!("request_id: {} - Resource generation complete", request_id);
@@ -149,6 +151,7 @@ pub async fn create_patr_database_in_workspace(
 				database_plan,
 				kubeconfig,
 				request_id,
+				replica_numbers
 			)
 			.await?;
 		}

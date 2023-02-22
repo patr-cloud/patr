@@ -213,6 +213,7 @@ async fn list_all_database_clusters(
 			username: database.username,
 			password: database.password,
 		},
+		replica_numbers: database.replica_numbers,
 	})
 	.collect::<Vec<_>>();
 
@@ -247,6 +248,7 @@ async fn create_database_cluster(
 		engine,
 		database_plan,
 		region,
+		replica_numbers,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -262,6 +264,7 @@ async fn create_database_cluster(
 		&workspace_id,
 		&config,
 		&request_id,
+		replica_numbers,
 	)
 	.await?;
 
@@ -316,6 +319,7 @@ async fn get_patr_database_info(
 			username: database.username,
 			password: database.password,
 		},
+		replica_numbers: database.replica_numbers,
 	})
 	.status(400)
 	.body(error!(WRONG_PARAMETERS).to_string())?;
