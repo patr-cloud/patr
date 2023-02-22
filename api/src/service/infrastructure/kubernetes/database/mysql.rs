@@ -210,7 +210,6 @@ pub async fn create_kubernetes_mysql_database(
 	let db_pvc_template = PersistentVolumeClaim {
 		metadata: ObjectMeta {
 			name: Some(pvc_prefix_for_db.to_owned()),
-			// labels: Some(labels.clone()),
 			..Default::default()
 		},
 		spec: Some(PersistentVolumeClaimSpec {
@@ -235,10 +234,10 @@ pub async fn create_kubernetes_mysql_database(
 			init_containers: Some(vec![
 				Container {
 					name: "init-mysql".to_owned(),
-					image: Some("mysql:8.0.31-debian".to_owned()),
+					image: Some("mysql:5.7".to_owned()),
 					command: Some(vec![
 						"bash".to_owned(),
-						"-c".to_owned(),
+						"\"-c\"".to_owned(),
 						"|".to_owned(),
 						generate_command_data_template("init_container"),
 					]),
@@ -263,7 +262,7 @@ pub async fn create_kubernetes_mysql_database(
 					),
 					command: Some(vec![
 						"bash".to_owned(),
-						"-c".to_owned(),
+						"\"-c\"".to_owned(),
 						"|".to_owned(),
 						generate_command_data_template("init_clone_container"),
 					]),
@@ -286,8 +285,7 @@ pub async fn create_kubernetes_mysql_database(
 			containers: vec![
 				Container {
 					name: "mysql".to_owned(),
-					image: Some("mysql:8.0.31-debian".to_owned()),
-					// image_pull_policy: Some("Always".to_string()),
+					image: Some("mysql:5.7".to_owned()),
 					env: Some(vec![EnvVar {
 						name: "MYSQL_ROOT_PASSWORD".to_owned(),
 						value_from: Some(EnvVarSource {
@@ -386,7 +384,7 @@ pub async fn create_kubernetes_mysql_database(
 					}]),
 					command: Some(vec![
 						"bash".to_owned(),
-						"-c".to_owned(),
+						"\"-c\"".to_owned(),
 						"|".to_owned(),
 						generate_command_data_template("container"),
 					]),
@@ -414,14 +412,7 @@ pub async fn create_kubernetes_mysql_database(
 							]
 							.into(),
 						),
-						// to check
-						limits: Some(
-							[
-								("memory".to_string(), Quantity("".to_owned())),
-								("cpu".to_string(), Quantity("".to_owned())),
-							]
-							.into(),
-						),
+						..Default::default()
 					}),
 					..Default::default()
 				},
@@ -450,7 +441,6 @@ pub async fn create_kubernetes_mysql_database(
 	let statefulset_spec_for_db = StatefulSet {
 		metadata: ObjectMeta {
 			name: Some(sts_name_for_db.clone()),
-			// labels: Some(labels.clone()),
 			..Default::default()
 		},
 		spec: Some(StatefulSetSpec {
