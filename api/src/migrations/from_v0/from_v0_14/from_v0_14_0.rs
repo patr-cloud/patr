@@ -1,133 +1,21 @@
-use std::fmt;
+use crate::{
+	migrate_query as query,
+	utils::{settings::Settings, Error},
+	Database,
+};
 
-use api_macros::query;
-use serde::{Deserialize, Serialize};
-
-use crate::Database;
-
-#[derive(
-	Debug, sqlx::Type, Serialize, Deserialize, PartialEq, Eq, Hash, Clone,
-)]
-#[sqlx(type_name = "DEPLOYMENT_PLAN", rename_all = "lowercase")]
-pub enum DeploymentPlan {
-	Free,
-	Pro,
-}
-
-#[derive(
-	Debug, sqlx::Type, Serialize, Deserialize, PartialEq, Eq, Hash, Clone,
-)]
-#[sqlx(type_name = "STATIC_SITE_PLAN", rename_all = "lowercase")]
-pub enum StaticSitePlan {
-	Free,
-	Pro,
-	Unlimited,
-}
-
-impl fmt::Display for StaticSitePlan {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		match self {
-			StaticSitePlan::Free => write!(f, "free"),
-			StaticSitePlan::Pro => write!(f, "pro"),
-			StaticSitePlan::Unlimited => write!(f, "unlimited"),
-		}
-	}
-}
-
-impl fmt::Display for DeploymentPlan {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		match self {
-			DeploymentPlan::Free => write!(f, "free"),
-			DeploymentPlan::Pro => write!(f, "pro"),
-		}
-	}
-}
-
-#[derive(
-	Debug, sqlx::Type, Serialize, Deserialize, PartialEq, Eq, Hash, Clone,
-)]
-#[sqlx(type_name = "DATABASE_PLAN", rename_all = "lowercase")]
-pub enum DatabasePlan {
-	Free,
-	Unlimited,
-}
-
-impl fmt::Display for DatabasePlan {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		match self {
-			DatabasePlan::Free => write!(f, "free"),
-			DatabasePlan::Unlimited => write!(f, "unlimited"),
-		}
-	}
-}
-
-#[derive(
-	Debug, sqlx::Type, Serialize, Deserialize, PartialEq, Eq, Hash, Clone,
-)]
-#[sqlx(type_name = "SECRETS_PLAN", rename_all = "lowercase")]
-pub enum SecretsPlan {
-	Free,
-	Pro,
-	Unlimited,
-}
-
-impl fmt::Display for SecretsPlan {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		match self {
-			SecretsPlan::Free => write!(f, "free"),
-			SecretsPlan::Pro => write!(f, "pro"),
-			SecretsPlan::Unlimited => write!(f, "unlimited"),
-		}
-	}
-}
-
-#[derive(
-	Debug, sqlx::Type, Serialize, Deserialize, PartialEq, Eq, Hash, Clone,
-)]
-#[sqlx(type_name = "DOMAIN_PLAN", rename_all = "lowercase")]
-pub enum DomainPlan {
-	Free,
-	Pro,
-	Unlimited,
-}
-
-impl fmt::Display for DomainPlan {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		match self {
-			DomainPlan::Free => write!(f, "free"),
-			DomainPlan::Pro => write!(f, "pro"),
-			DomainPlan::Unlimited => write!(f, "unlimited"),
-		}
-	}
-}
-
-#[derive(
-	Debug, sqlx::Type, Serialize, Deserialize, PartialEq, Eq, Hash, Clone,
-)]
-#[sqlx(type_name = "DOCKER_REPO_PLAN", rename_all = "lowercase")]
-pub enum DockerRepoPlan {
-	Free,
-	Pro,
-	Unlimited,
-}
-
-impl fmt::Display for DockerRepoPlan {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		match self {
-			DockerRepoPlan::Free => write!(f, "free"),
-			DockerRepoPlan::Pro => write!(f, "pro"),
-			DockerRepoPlan::Unlimited => write!(f, "unlimited"),
-		}
-	}
-}
-
-pub async fn initialize_pricing_pre(
+pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
-	log::info!("Initializing pricing tables");
+	config: &Settings,
+) -> Result<(), Error> {
+	new_pricing_tables(connection, config).await?;
+	Ok(())
+}
 
-	// TODO - Come up with better enum names for resource pricing plans
-
+pub(super) async fn new_pricing_tables(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
 	query!(
 		r#"
 		CREATE TYPE DEPLOYMENT_PLAN AS ENUM(
@@ -320,14 +208,6 @@ pub async fn initialize_pricing_pre(
 	)
 	.execute(&mut *connection)
 	.await?;
-
-	Ok(())
-}
-
-pub async fn initialize_pricing_post(
-	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
-	log::info!("Finishing up pricing tables initialization");
 
 	query!(
 		r#"

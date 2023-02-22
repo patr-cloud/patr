@@ -12,6 +12,8 @@ use sqlx::query_as;
 use super::ManagedDatabasePlan;
 use crate::Database;
 
+mod pricing;
+
 pub struct DeploymentPaymentHistory {
 	pub workspace_id: Uuid,
 	pub deployment_id: Uuid,
@@ -350,6 +352,7 @@ pub async fn initialize_billing_pre(
 	.execute(&mut *connection)
 	.await?;
 
+	pricing::initialize_pricing_pre(connection).await?;
 	Ok(())
 }
 
@@ -448,6 +451,8 @@ pub async fn initialize_billing_post(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	pricing::initialize_pricing_post(connection).await?;
 
 	Ok(())
 }
