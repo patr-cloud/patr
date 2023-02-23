@@ -18,7 +18,7 @@ pub async fn create_kubernetes_namespace(
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let client =
-		super::get_kubernetes_client(&kubeconfig_details.kube_config).await?;
+		super::get_kubernetes_client(kubeconfig_details.kube_config).await?;
 
 	log::trace!("request_id: {} - creating namespace", request_id);
 	let kubernetes_namespace = Namespace {
@@ -43,7 +43,7 @@ pub async fn delete_kubernetes_namespace(
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let client =
-		super::get_kubernetes_client(&kubeconfig_details.kube_config).await?;
+		super::get_kubernetes_client(kubeconfig_details.kube_config).await?;
 
 	log::trace!("request_id: {} - deleting namespace", request_id);
 

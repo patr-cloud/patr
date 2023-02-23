@@ -127,7 +127,7 @@ pub(super) async fn process_request(
 						service::delete_kubernetes_deployment(
 							&workspace.id,
 							&deployment.id,
-							&kube_config.kube_config,
+							kube_config.kube_config,
 							&request_id,
 						)
 						.await?;

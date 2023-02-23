@@ -40,7 +40,8 @@ pub(super) async fn process_request(
 
 			let kubeconfig_path = format!("{region_id}.yml");
 
-			fs::write(&kubeconfig_path, &kube_config).await?;
+			fs::write(&kubeconfig_path, serde_yaml::to_string(&kube_config)?)
+				.await?;
 
 			// safe to return as only customer cluster is initalized here,
 			// so workspace_id will be present
@@ -103,18 +104,28 @@ pub(super) async fn process_request(
 		} => {
 			log::info!("Checking readiness of external load balancer ip in cluster {region_id}");
 
-			let ip_addr = service::get_external_ip_addr_for_load_balancer(
+			let ingress_hostname = service::get_load_balancer_hostname(
 				"ingress-nginx",
 				"ingress-nginx-controller",
-				&kube_config,
+				kube_config.clone(),
 			)
-			.await?;
+			.await;
 
-			let ip_addr = match ip_addr {
-				Some(ip_addr) => ip_addr,
-				None => {
-					// if ip is not ready yet, then wait for two mins and then
-					// check again
+			match ingress_hostname {
+				Err(err) => {
+					log::info!(
+						"Error while getting hostname for ingress - {}",
+						err.get_error()
+					);
+					log::info!("So marking the cluster {region_id} as errored");
+					db::mark_deployment_region_as_errored(
+						connection, &region_id,
+					)
+					.await?;
+
+					Ok(())
+				}
+				Ok(None) => {
 					tokio::time::sleep(Duration::from_secs(2 * 60)).await;
 					service::send_message_to_infra_queue(
 						&InfraRequestData::BYOC(
@@ -128,42 +139,31 @@ pub(super) async fn process_request(
 						&request_id,
 					)
 					.await?;
-					return Ok(());
+
+					Ok(())
 				}
-			};
+				Ok(Some(hostname)) => {
+					db::mark_deployment_region_as_active(
+						connection,
+						&region_id,
+						kube_config,
+						&hostname,
+					)
+					.await?;
 
-			let region = db::get_region_by_id(connection, &region_id)
-				.await?
-				.status(500)?;
+					db::append_messge_log_for_region(
+						connection,
+						&region_id,
+						concat!(
+							"Successfully assigned host for load balancer.\n",
+							"Region is now ready for deployments.\n"
+						),
+					)
+					.await?;
 
-			let default_region_kubeconfig =
-				service::get_kubernetes_config_for_default_region(config);
-
-			service::create_external_service_for_region(
-				region.workspace_id.as_ref().status(500)?.as_str(),
-				&region_id,
-				&ip_addr,
-				&default_region_kubeconfig.kube_config,
-			)
-			.await?;
-
-			db::mark_deployment_region_as_ready(
-				connection,
-				&region_id,
-				&serde_json::to_value(&serde_yaml::from_str::<Kubeconfig>(
-					&kube_config,
-				)?)?,
-				&ip_addr,
-			)
-			.await?;
-
-			db::append_messge_log_for_region(
-				connection,
-				&region_id,
-				"Successfully assigned IP Addr for load balancer.\nRegion is now ready for deployments"
-			).await?;
-
-			Ok(())
+					Ok(())
+				}
+			}
 		}
 		BYOCData::GetDigitalOceanKubeconfig {
 			api_token,
@@ -172,8 +172,6 @@ pub(super) async fn process_request(
 			request_id,
 		} => {
 			let client = Client::new();
-			// Handle the case while initiallization of the cluster and requeue
-			// the job for every 5 minutes to get the update
 			log::trace!(
 				"request_id: {} checking for readiness and getting kubeconfig",
 				request_id
@@ -243,11 +241,38 @@ pub(super) async fn process_request(
 						&request_id,
 					)
 					.await?;
-					return Ok(());
+
+					Ok(())
 				}
 				ClusterState::Running => {
 					// cluster ready
-					// go to next step
+					let do_cluster_url = format!(
+						"https://api.digitalocean.com/v2/kubernetes/clusters/{}/kubeconfig",
+						cluster_id
+					);
+					let response = client
+						.get(do_cluster_url)
+						.bearer_auth(api_token.clone())
+						.send()
+						.await?;
+					let kube_config = response.text().await?;
+					let kube_config = Kubeconfig::from_yaml(&kube_config)?;
+
+					// initialize the cluster with patr script
+					service::send_message_to_infra_queue(
+						&InfraRequestData::BYOC(
+							BYOCData::InitKubernetesCluster {
+								region_id,
+								kube_config,
+								request_id: request_id.clone(),
+							},
+						),
+						config,
+						&request_id,
+					)
+					.await?;
+
+					Ok(())
 				}
 				remaining_state => {
 					// unknown error occurred while creating cluster in do, so
@@ -270,31 +295,9 @@ pub(super) async fn process_request(
 					)
 					.await?;
 
-					return Ok(());
+					Ok(())
 				}
 			}
-
-			let response = client
-				.get(format!("https://api.digitalocean.com/v2/kubernetes/clusters/{}/kubeconfig", cluster_id))
-				.bearer_auth(api_token.clone())
-				.send()
-				.await?;
-			let kube_config = response.text().await?;
-
-			// TODO - to be only called once we get the kube_config
-			// initialize the cluster with patr script
-			service::send_message_to_infra_queue(
-				&InfraRequestData::BYOC(BYOCData::InitKubernetesCluster {
-					region_id,
-					kube_config,
-					request_id: request_id.clone(),
-				}),
-				config,
-				&request_id,
-			)
-			.await?;
-
-			Ok(())
 		}
 		BYOCData::DeleteKubernetesCluster {
 			region_id,
@@ -310,7 +313,8 @@ pub(super) async fn process_request(
 
 			let kubeconfig_path = format!("{region_id}.yml");
 
-			fs::write(&kubeconfig_path, &kube_config).await?;
+			fs::write(&kubeconfig_path, &serde_yaml::to_string(&kube_config)?)
+				.await?;
 
 			let output = Command::new("assets/k8s/fresh/k8s_uninit.sh")
 				.args([

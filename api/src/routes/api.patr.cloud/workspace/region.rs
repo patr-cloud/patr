@@ -6,16 +6,17 @@ use api_models::{
 		AddRegionToWorkspaceResponse,
 		DeleteRegionFromWorkspaceRequest,
 		DeleteRegionFromWorkspaceResponse,
-		GetRegionResponse,
+		GetRegionInfoResponse,
 		InfrastructureCloudProvider,
 		ListRegionsForWorkspaceResponse,
 		Region,
+		RegionStatus,
+		RegionType,
 	},
 	utils::Uuid,
 };
 use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use kube::config::Kubeconfig;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -86,11 +87,18 @@ pub fn create_sub_app(
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
+					let region_id =
+						context.get_param(request_keys::REGION_ID).unwrap();
+					let region_id = Uuid::parse_str(region_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&workspace_id,
+						&region_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -152,11 +160,18 @@ pub fn create_sub_app(
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
+					let region_id =
+						context.get_param(request_keys::REGION_ID).unwrap();
+					let region_id = Uuid::parse_str(region_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&workspace_id,
+						&region_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -184,6 +199,7 @@ async fn list_regions(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
+
 	let regions = db::get_all_deployment_regions_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
@@ -191,12 +207,15 @@ async fn list_regions(
 	.await?
 	.into_iter()
 	.map(|region| Region {
+		r#type: if region.is_byoc_region() {
+			RegionType::BYOC
+		} else {
+			RegionType::PatrOwned
+		},
 		id: region.id,
 		name: region.name,
 		cloud_provider: region.cloud_provider,
-		ready: region.ready,
-		default: region.workspace_id.is_none(),
-		message_log: region.message_log,
+		status: region.status,
 	})
 	.collect();
 
@@ -223,23 +242,30 @@ async fn get_region(
 			.status(404)
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	if region.workspace_id.is_some() && region.last_disconnected.is_none() {
+	if region.workspace_id.is_some() && region.disconnected_at.is_none() {
 		return Error::as_result()
 			.status(500)
 			.body(error!(REGION_NOT_CONNECTED).to_string())?;
 	}
 
-	let region = Region {
+	let region_response = Region {
+		r#type: if region.is_byoc_region() {
+			RegionType::BYOC
+		} else {
+			RegionType::PatrOwned
+		},
 		id: region.id,
 		name: region.name,
 		cloud_provider: region.cloud_provider,
-		ready: region.ready,
-		default: region.workspace_id.is_none(),
-		message_log: region.message_log,
+		status: region.status,
 	};
 
 	log::trace!("request_id: {} - Returning region", request_id);
-	context.success(GetRegionResponse { region });
+	context.success(GetRegionInfoResponse {
+		region: region_response,
+		disconnected_at: region.disconnected_at.map(Into::into),
+		message_log: region.message_log,
+	});
 	Ok(context)
 }
 
@@ -291,6 +317,7 @@ async fn add_region(
 			cluster_name,
 			min_nodes,
 			max_nodes,
+			auto_scale,
 			node_name,
 			node_size_slug,
 		} => {
@@ -315,6 +342,7 @@ async fn add_region(
 				&cluster_name,
 				min_nodes,
 				max_nodes,
+				auto_scale,
 				&node_name,
 				&node_size_slug,
 				&request_id,
@@ -340,25 +368,6 @@ async fn add_region(
 			// region
 		}
 		AddRegionToWorkspaceData::KubeConfig { config_file } => {
-			let kube_config =
-				std::str::from_utf8(&base64::decode(&config_file)?)?
-					.to_string();
-
-			match Kubeconfig::from_yaml(&kube_config) {
-				Ok(_) => {
-					log::trace!(
-						"request_id: {} succussfully parsed kubeconfig file",
-						request_id
-					);
-				}
-				Err(err) => {
-					log::error!("request_id: {} unable to parse the kube_config file. Error: {}", request_id, err);
-					return Error::as_result()
-						.status(500)
-						.body(error!(INVALID_KUBE_CONFIG).to_string())?;
-				}
-			};
-
 			db::add_deployment_region_to_workspace(
 				context.get_database_connection(),
 				&region_id,
@@ -372,7 +381,7 @@ async fn add_region(
 
 			service::queue_setup_kubernetes_cluster(
 				&region_id,
-				&kube_config,
+				config_file,
 				&config,
 				&request_id,
 			)
@@ -427,7 +436,8 @@ async fn delete_region(
 			.status(404)
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	if !&region.ready {
+	// todo: how to delete the region if it got stuck in creating state
+	if region.status != RegionStatus::Active {
 		return Error::as_result()
 			.status(404)
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
@@ -469,7 +479,7 @@ async fn delete_region(
 		service::queue_delete_kubernetes_cluster(
 			&region_id,
 			&workspace_id,
-			&region.config_file.unwrap_or_default(),
+			region.config_file.unwrap_or_default(),
 			&config,
 			&request_id,
 		)

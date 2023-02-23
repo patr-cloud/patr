@@ -70,6 +70,7 @@ use k8s_openapi::{
 };
 use kube::{
 	api::{DeleteParams, ListParams, Patch, PatchParams},
+	config::Kubeconfig,
 	core::{ErrorResponse, ObjectMeta},
 	Api,
 	Error as KubeError,
@@ -98,7 +99,7 @@ pub async fn update_kubernetes_deployment(
 	running_details: &DeploymentRunningDetails,
 	deployment_volumes: &Vec<DeploymentVolume>,
 	cluster_type: &ClusterType,
-	kubeconfig: &str,
+	kubeconfig: Kubeconfig,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -757,10 +758,9 @@ pub async fn update_kubernetes_deployment(
 		// create a ingress in patr cluster to point to user's cluster
 		let default_region_kubeconfig =
 			get_kubernetes_config_for_default_region(config);
-		let kubernetes_client = super::get_kubernetes_client(
-			&default_region_kubeconfig.kube_config,
-		)
-		.await?;
+		let kubernetes_client =
+			super::get_kubernetes_client(default_region_kubeconfig.kube_config)
+				.await?;
 
 		let exposted_ports = running_details
 			.ports
@@ -864,7 +864,7 @@ pub async fn update_kubernetes_deployment(
 pub async fn delete_kubernetes_deployment(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-	kubeconfig: &str,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
@@ -982,7 +982,7 @@ pub async fn get_kubernetes_deployment_status(
 	)
 	.await?;
 	let kubernetes_client =
-		super::get_kubernetes_client(&kube_config_details.kube_config).await?;
+		super::get_kubernetes_client(kube_config_details.kube_config).await?;
 
 	let is_deployment =
 		db::get_all_deployment_volumes(connection, deployment_id)

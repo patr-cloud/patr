@@ -1,43 +1,62 @@
-use std::net::IpAddr;
-
 use api_models::{
-	models::workspace::region::InfrastructureCloudProvider,
+	models::workspace::region::{InfrastructureCloudProvider, RegionStatus},
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
+use futures::TryStreamExt;
+use kube::config::Kubeconfig;
+use url::Host;
 
 use crate::{
-	models::deployment::{DefaultDeploymentRegion, DEFAULT_DEPLOYMENT_REGIONS},
+	models::deployment::DEFAULT_DEPLOYMENT_REGIONS,
 	query,
 	query_as,
 	Database,
 };
 
-pub struct DeploymentRegion {
+pub struct Region {
 	pub id: Uuid,
 	pub name: String,
 	pub cloud_provider: InfrastructureCloudProvider,
-	pub ready: bool,
 	pub workspace_id: Option<Uuid>,
+	pub ingress_hostname: Option<String>,
 	pub message_log: Option<String>,
-	pub config_file: Option<String>,
-	pub kubernetes_ingress_ip_addr: Option<IpAddr>,
-	pub last_disconnected: Option<DateTime<Utc>>,
+	pub config_file: Option<Kubeconfig>,
+	pub status: RegionStatus,
+	pub disconnected_at: Option<DateTime<Utc>>,
 }
 
-pub struct BYOCRegion {
-	pub id: Uuid,
-	pub name: String,
-	pub cloud_provider: InfrastructureCloudProvider,
-	pub ready: bool,
-	pub workspace_id: Uuid,
-	pub config_file: String,
-	pub last_disconnected: Option<DateTime<Utc>>,
-}
-
-impl DeploymentRegion {
+impl Region {
 	pub fn is_byoc_region(&self) -> bool {
 		self.workspace_id.is_some()
+	}
+}
+
+struct DbRegion {
+	pub id: Uuid,
+	pub name: String,
+	pub cloud_provider: InfrastructureCloudProvider,
+	pub workspace_id: Option<Uuid>,
+	pub ingress_hostname: Option<String>,
+	pub message_log: Option<String>,
+	pub config_file: Option<sqlx::types::Json<Kubeconfig>>,
+	pub status: RegionStatus,
+	pub disconnected_at: Option<DateTime<Utc>>,
+}
+
+impl From<DbRegion> for Region {
+	fn from(from: DbRegion) -> Self {
+		Self {
+			id: from.id,
+			name: from.name,
+			cloud_provider: from.cloud_provider,
+			workspace_id: from.workspace_id,
+			ingress_hostname: from.ingress_hostname,
+			message_log: from.message_log,
+			config_file: from.config_file.map(|config| config.0),
+			status: from.status,
+			disconnected_at: from.disconnected_at,
+		}
 	}
 }
 
@@ -61,7 +80,9 @@ pub async fn initialize_region_pre(
 			'creating',
 			'active',
 			'errored',
-			'deleted'
+			'deleted',
+			'disconnected',
+			'coming_soon'
 		);
 		"#
 	)
@@ -76,37 +97,22 @@ pub async fn initialize_region_pre(
 			provider INFRASTRUCTURE_CLOUD_PROVIDER NOT NULL,
 			workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id
 				REFERENCES workspace(id),
-			ready BOOLEAN NOT NULL,
-			kubernetes_ingress_ip_addr INET,
+			ingress_hostname TEXT,
 			message_log TEXT,
-			config_file TEXT,
+			config_file JSON,
 			deleted TIMESTAMPTZ,
-			status REGION_STATUS NOT NULL DEFAULT 'creating',
-			last_disconnected TIMESTAMPTZ,
-			CONSTRAINT deployment_region_chk_ready_or_not CHECK(
-				(
-					workspace_id IS NOT NULL AND (
-						(
-							ready = TRUE AND
-							config_file IS NOT NULL AND
-							kubernetes_ingress_ip_addr IS NOT NULL
-						) OR (
-							ready = FALSE AND
-							config_file IS NULL AND
-							kubernetes_ingress_ip_addr IS NULL
-						)
-					)
-				) OR (
-					workspace_id IS NULL AND
-					config_file IS NULL AND
-					kubernetes_ingress_ip_addr IS NULL
-				)
-			)
+			status REGION_STATUS NOT NULL,
+			disconnected_at TIMESTAMPTZ
 		);
 		"#
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	// todo: add check constraint
+	// 	1. if the status is deleted, then the deleted should have timestamp
+	//  2. if the status is disconnected, then the last disconnected should have
+	// timestamp
 
 	Ok(())
 }
@@ -114,80 +120,80 @@ pub async fn initialize_region_pre(
 pub async fn initialize_region_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
-	for region in &DEFAULT_DEPLOYMENT_REGIONS {
-		populate_region(&mut *connection, region).await?;
+	query!(
+		r#"
+		ALTER TABLE deployment_region
+			ADD CONSTRAINT deployment_region_fk_id_workspace_id
+			FOREIGN KEY (id, workspace_id) REFERENCES resource(id, owner_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	for region in DEFAULT_DEPLOYMENT_REGIONS {
+		let region_id = loop {
+			let region_id = Uuid::new_v4();
+
+			let row = query!(
+				r#"
+				SELECT
+					id as "id: Uuid"
+				FROM
+					deployment_region
+				WHERE
+					id = $1;
+				"#,
+				region_id as _
+			)
+			.fetch_optional(&mut *connection)
+			.await?;
+
+			if row.is_none() {
+				break region_id;
+			}
+		};
+
+		query!(
+			r#"
+			INSERT INTO
+				deployment_region(
+					id,
+					name,
+					provider,
+					status
+				)
+			VALUES
+				($1, $2, $3, $4);
+			"#,
+			region_id as _,
+			region.name,
+			region.cloud_provider as _,
+			region.status as _,
+		)
+		.execute(&mut *connection)
+		.await?;
 	}
 
 	Ok(())
 }
 
-async fn populate_region(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	region: &DefaultDeploymentRegion,
-) -> Result<Uuid, sqlx::Error> {
-	let region_id = loop {
-		let region_id = Uuid::new_v4();
-
-		let row = query!(
-			r#"
-			SELECT
-				id as "id: Uuid"
-			FROM
-				deployment_region
-			WHERE
-				id = $1;
-			"#,
-			region_id as _
-		)
-		.fetch_optional(&mut *connection)
-		.await?;
-
-		if row.is_none() {
-			break region_id;
-		}
-	};
-
-	// Populate leaf node
-	query!(
-		r#"
-		INSERT INTO
-			deployment_region(
-				id,
-				name,
-				provider,
-				ready
-			)
-		VALUES
-			($1, $2, $3, $4);
-		"#,
-		region_id as _,
-		region.name,
-		region.cloud_provider as _,
-		region.is_ready
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(region_id)
-}
-
 pub async fn get_region_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
-) -> Result<Option<DeploymentRegion>, sqlx::Error> {
+) -> Result<Option<Region>, sqlx::Error> {
 	query_as!(
-		DeploymentRegion,
+		DbRegion,
 		r#"
 		SELECT
 			id as "id: _",
 			name,
 			provider as "cloud_provider: _",
-			ready,
 			workspace_id as "workspace_id: _",
+			ingress_hostname as "ingress_hostname: _",
 			message_log,
-			config_file,
-			kubernetes_ingress_ip_addr as "kubernetes_ingress_ip_addr: _",
-			last_disconnected as "last_disconnected: _"
+			config_file as "config_file: _",
+			status as "status: _",
+			disconnected_at as "disconnected_at: _"
 		FROM
 			deployment_region
 		WHERE
@@ -197,79 +203,142 @@ pub async fn get_region_by_id(
 	)
 	.fetch_optional(&mut *connection)
 	.await
+	.map(|opt_region| opt_region.map(|region| region.into()))
 }
 
 pub async fn get_all_deployment_regions_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<Vec<DeploymentRegion>, sqlx::Error> {
+) -> Result<Vec<Region>, sqlx::Error> {
 	query_as!(
-		DeploymentRegion,
+		DbRegion,
 		r#"
 		SELECT
 			id as "id: _",
 			name,
 			provider as "cloud_provider: _",
-			ready,
 			workspace_id as "workspace_id: _",
+			ingress_hostname as "ingress_hostname: _",
 			message_log,
-			config_file,
-			kubernetes_ingress_ip_addr as "kubernetes_ingress_ip_addr: _",
-			last_disconnected as "last_disconnected: _"
+			config_file as "config_file: _",
+			status as "status: _",
+			disconnected_at as "disconnected_at: _"
 		FROM
 			deployment_region
 		WHERE
-			workspace_id IS NULL OR
-			workspace_id = $1;
+			status != 'deleted' AND
+			(
+				workspace_id IS NULL OR
+				workspace_id = $1
+			);
 		"#,
 		workspace_id as _,
 	)
-	.fetch_all(&mut *connection)
+	.fetch(&mut *connection)
+	.map_ok(|region| region.into())
+	.try_collect()
 	.await
 }
 
-pub async fn get_all_ready_byoc_region(
+pub async fn get_all_active_byoc_region(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<BYOCRegion>, sqlx::Error> {
+) -> Result<Vec<Region>, sqlx::Error> {
 	query_as!(
-		BYOCRegion,
+		DbRegion,
 		r#"
 		SELECT
 			id as "id: _",
 			name,
 			provider as "cloud_provider: _",
-			ready,
-			workspace_id as "workspace_id!: _",
-			config_file as "config_file!: _",
-			last_disconnected as "last_disconnected: _"
+			workspace_id as "workspace_id: _",
+			ingress_hostname as "ingress_hostname: _",
+			message_log,
+			config_file as "config_file: _",
+			status as "status: _",
+			disconnected_at as "disconnected_at: _"
 		FROM
 			deployment_region
 		WHERE
 			workspace_id IS NOT NULL AND
-			ready = TRUE AND
-			deleted IS NULL AND
-			status != 'deleted';
+			status = 'active';
 		"#,
 	)
-	.fetch_all(&mut *connection)
+	.fetch(&mut *connection)
+	.map_ok(|region| region.into())
+	.try_collect()
 	.await
 }
 
-pub async fn update_byoc_region_connected(
+pub async fn get_all_disconnected_byoc_region(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<Region>, sqlx::Error> {
+	query_as!(
+		DbRegion,
+		r#"
+		SELECT
+			id as "id: _",
+			name,
+			provider as "cloud_provider: _",
+			workspace_id as "workspace_id: _",
+			ingress_hostname as "ingress_hostname: _",
+			message_log,
+			config_file as "config_file: _",
+			status as "status: _",
+			disconnected_at as "disconnected_at: _"
+		FROM
+			deployment_region
+		WHERE
+			workspace_id IS NOT NULL AND
+			status = 'disconnected' AND
+			disconnected_at IS NOT NULL
+		ORDER BY disconnected_at;
+		"#,
+	)
+	.fetch(&mut *connection)
+	.map_ok(|region| region.into())
+	.try_collect()
+	.await
+}
+
+pub async fn mark_byoc_region_as_reconnected(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
-	last_disconnected: Option<&DateTime<Utc>>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		UPDATE
 			deployment_region
 		SET
-			last_disconnected = $1 
+			disconnected_at = NULL,
+			status = 'active'
 		WHERE
+			workspace_id IS NOT NULL AND
+			id = $1;
+		"#,
+		region_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn mark_byoc_region_as_disconnected(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	region_id: &Uuid,
+	disconnected_at: &DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment_region
+		SET
+			disconnected_at = $1,
+			status = 'disconnected'
+		WHERE
+			workspace_id IS NOT NULL AND
 			id = $2;
 		"#,
-		last_disconnected as _,
+		disconnected_at as _,
 		region_id as _
 	)
 	.execute(&mut *connection)
@@ -292,44 +361,45 @@ pub async fn add_deployment_region_to_workspace(
 				name,
 				provider,
 				workspace_id,
-				ready,
-				config_file,
 				status
 			)
 		VALUES
-			($1, $2, $3, $4, FALSE, NULL, 'creating');
+			($1, $2, $3, $4, $5);
 		"#,
 		region_id as _,
 		name,
 		cloud_provider as _,
 		workspace_id as _,
+		RegionStatus::Creating as _,
 	)
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
-pub async fn mark_deployment_region_as_ready(
+pub async fn mark_deployment_region_as_active(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
-	kube_config: &serde_json::Value,
-	kubernetes_ingress_ip_addr: &IpAddr,
+	kube_config: Kubeconfig,
+	ingress_hostname: &Host,
 ) -> Result<(), sqlx::Error> {
+	let kube_config = sqlx::types::Json(kube_config);
+	let ingress_hostname = ingress_hostname.to_string();
+
 	query!(
 		r#"
 		UPDATE
 			deployment_region
 		SET
-			ready = TRUE,
 			status = 'active',
 			config_file = $2,
-			kubernetes_ingress_ip_addr = $3
+			ingress_hostname = $3
 		WHERE
 			id = $1;
 		"#,
 		region_id as _,
 		kube_config as _,
-		kubernetes_ingress_ip_addr as _,
+		ingress_hostname as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -390,9 +460,8 @@ pub async fn delete_region(
 		SET
 			deleted = $2,
 			status = 'deleted',
-			ready = FALSE,
 			config_file = NULL,
-			kubernetes_ingress_ip_addr = NULL
+			ingress_hostname = NULL
 		WHERE
 			id = $1;
 		"#,
