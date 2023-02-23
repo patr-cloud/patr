@@ -1,19 +1,22 @@
 use std::{cmp::Ordering, collections::BTreeMap, str};
 
 use api_models::{
-	models::workspace::infrastructure::deployment::{
-		Deployment,
-		DeploymentLogs,
-		DeploymentMetrics,
-		DeploymentProbe,
-		DeploymentRegistry,
-		DeploymentRunningDetails,
-		DeploymentStatus,
-		DeploymentVolume,
+	models::workspace::{
+		infrastructure::deployment::{
+			Deployment,
+			DeploymentLogs,
+			DeploymentMetrics,
+			DeploymentProbe,
+			DeploymentRegistry,
+			DeploymentRunningDetails,
+			DeploymentStatus,
+			DeploymentVolume,
 		EnvironmentVariableValue,
-		ExposedPortType,
-		Metric,
-		PatrRegistry,
+			ExposedPortType,
+			Metric,
+			PatrRegistry,
+		},
+		region::RegionStatus,
 	},
 	utils::{
 		constants,
@@ -104,7 +107,9 @@ pub async fn create_deployment_in_workspace(
 		.status(400)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	if !(region_details.ready || region_details.workspace_id.is_none()) {
+	if !(region_details.status == RegionStatus::Active ||
+		region_details.workspace_id.is_none())
+	{
 		return Err(Error::empty()
 			.status(500)
 			.body(error!(REGION_NOT_READY_YET).to_string()));
@@ -1581,7 +1586,7 @@ pub async fn start_deployment(
 		deployment_running_details,
 		&volumes,
 		&kube_config_details.cluster_type,
-			&kube_config_details.kube_config,
+			kube_config_details.kube_config,
 		config,
 		request_id,
 	)
@@ -1666,7 +1671,7 @@ pub async fn update_deployment_image(
 		deployment_running_details,
 		&volumes,
 		&kube_config_details.cluster_type,
-			&kube_config_details.kube_config,
+			kube_config_details.kube_config,
 		config,
 		request_id,
 	)
@@ -1739,7 +1744,7 @@ pub async fn stop_deployment(
 	service::delete_kubernetes_deployment(
 		workspace_id,
 		deployment_id,
-		&kube_config_details.kube_config,
+		kube_config_details.kube_config,
 		request_id,
 	)
 	.await?;
@@ -1827,7 +1832,7 @@ pub async fn delete_deployment(
 				deployment_id,
 				&volume,
 				replica_index,
-				&kube_config_details.kube_config.clone(),
+				kube_config_details.kube_config.clone(),
 				request_id,
 			)
 			.await?;

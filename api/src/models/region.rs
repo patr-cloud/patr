@@ -7,8 +7,7 @@ pub struct K8sConfig {
 	pub region: String,
 	pub name: String,
 	pub version: String,
-	pub node_pools: Vec<K8NodePool>, /* TODO: add more info about high
-	                                  * availablity and other stuff */
+	pub node_pools: Vec<K8NodePool>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -34,7 +33,3 @@ pub struct K8sClusterCreateInfo {
 	pub created_at: String,
 	pub updated_at: String,
 }
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct DOKubeConfig {}

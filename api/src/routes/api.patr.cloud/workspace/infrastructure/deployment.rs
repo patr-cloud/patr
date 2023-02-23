@@ -1906,7 +1906,7 @@ async fn get_deployment_metrics(
 	.status(500)?;
 
 	if region.workspace_id.is_some() {
-		if region.last_disconnected.is_some() {
+		if region.disconnected_at.is_some() {
 			return Err(Error::empty()
 				.status(500)
 				.body(error!(REGION_NOT_CONNECTED).to_string()));

@@ -533,6 +533,16 @@
     },
     "query": "SELECT login_id FROM user_login WHERE login_id = $1;"
   },
+  "0a3d51110485ba1affb9386dd5bb2899d46709fcb86c2b01b27139c714676e94": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TYPE REGION_STATUS AS ENUM( 'creating', 'active', 'errored', 'deleted', 'disconnected', 'coming_soon' );"
+  },
   "0b1c4d60eaa3500838353a184c71aa831ee769bc0f04f677438db369d1e3a7fe": {
     "describe": {
       "columns": [
@@ -2732,6 +2742,19 @@
     },
     "query": "SELECT COUNT(*) as \"count!\" FROM static_site INNER JOIN workspace ON static_site.workspace_id = workspace.id WHERE status = 'deleted' AND workspace.super_admin_id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );"
   },
+  "2918ada6945b9004289f65d7b2510a4520a28407bf7ce14eb9777573378b7633": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Timestamptz",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE deployment_region SET disconnected_at = $1, status = 'disconnected' WHERE workspace_id IS NOT NULL AND id = $2;"
+  },
   "292b36a0ab84f6022c19fafc224ce4d2a090fa4a4df94a861480c5835ff6f864": {
     "describe": {
       "columns": [],
@@ -2887,6 +2910,98 @@
       }
     },
     "query": "DELETE FROM resource WHERE id = $1;"
+  },
+  "30c13ab8d6ab444c2e14e01cedaacddaec8b9a323842769f6a10cf391b687d3c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "cloud_provider: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "digitalocean",
+                  "other"
+                ]
+              },
+              "name": "infrastructure_cloud_provider"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "ingress_hostname: _",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "message_log",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "config_file: _",
+          "ordinal": 6,
+          "type_info": "Json"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 7,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "creating",
+                  "active",
+                  "errored",
+                  "deleted",
+                  "disconnected",
+                  "coming_soon"
+                ]
+              },
+              "name": "region_status"
+            }
+          }
+        },
+        {
+          "name": "disconnected_at: _",
+          "ordinal": 8,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", workspace_id as \"workspace_id: _\", ingress_hostname as \"ingress_hostname: _\", message_log, config_file as \"config_file: _\", status as \"status: _\", disconnected_at as \"disconnected_at: _\" FROM deployment_region WHERE status != 'deleted' AND ( workspace_id IS NULL OR workspace_id = $1 );"
   },
   "30d5189d2eb49418b8be8c9487aefa6f2364cc70a3d179002cb59c8f893b4c3b": {
     "describe": {
@@ -3545,6 +3660,16 @@
       }
     },
     "query": "CREATE TABLE resource_type( id UUID CONSTRAINT resource_type_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE, description VARCHAR(500) NOT NULL );"
+  },
+  "38683e007307f1ee57be054e7d3af289c4e169e7c2880bb514171a303e791e32": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "ALTER TABLE deployment_region ADD CONSTRAINT deployment_region_fk_id_workspace_id FOREIGN KEY (id, workspace_id) REFERENCES resource(id, owner_id);"
   },
   "382152db383891a0bd3bc62f641182c52a318de9a91a1720f4370a9a61a8c179": {
     "describe": {
@@ -4607,31 +4732,6 @@
     },
     "query": "DELETE FROM role_permissions_resource WHERE role_id = $1;"
   },
-  "4ff5ec60d357058fdd2e89eeae88282f2ddca173e3997c59b225d1fa4e84a2a5": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "digitalocean",
-                  "other"
-                ]
-              },
-              "name": "infrastructure_cloud_provider"
-            }
-          },
-          "Uuid"
-        ]
-      }
-    },
-    "query": "INSERT INTO deployment_region( id, name, provider, workspace_id, ready, config_file, status ) VALUES ($1, $2, $3, $4, FALSE, NULL, 'creating');"
-  },
   "503b206db96ce1497dfb887e1d4099d16d782e1649067ecba6cecb0c5b8623fa": {
     "describe": {
       "columns": [
@@ -5219,19 +5319,6 @@
       }
     },
     "query": "ALTER TABLE workspace ADD CONSTRAINT workspace_default_payment_method_id_fk FOREIGN KEY (default_payment_method_id) REFERENCES payment_method(payment_method_id) DEFERRABLE INITIALLY DEFERRED;"
-  },
-  "584529fba814a819e3db3ba17201fe1c3e0b95167b85dd3b52d0b80074a83eea": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Timestamptz",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment_region SET last_disconnected = $1 WHERE id = $2;"
   },
   "596263b2e3a73f7471e29ba577e91c086364896755cfd4dad9eb62b5cbbde966": {
     "describe": {
@@ -6350,19 +6437,6 @@
     },
     "query": "\n\t\tUPDATE\n\t\t\tci_git_provider\n\t\tSET\n\t\t\tis_deleted = TRUE,\n\t\t\tpassword = NULL\n\t\tWHERE\n\t\t\tid = $1;\n\t\t"
   },
-  "6c60aef7135bebd4602b9c973b0b520e407f382d066a7badbeb01f32e24f6cdf": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "UPDATE deployment_region SET deleted = $2, status = 'deleted', ready = FALSE, config_file = NULL, kubernetes_ingress_ip_addr = NULL WHERE id = $1;"
-  },
   "6d05ec700171bd657820ee746c78041cb00108a2cd8a54fe655f1bd5e20d99ff": {
     "describe": {
       "columns": [],
@@ -6472,6 +6546,18 @@
       }
     },
     "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE workspace_id = $1;"
+  },
+  "70a6eaa0aed40df568813a7b0ada2c007f746cf98f4e961012353ea459123868": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE deployment_region SET disconnected_at = NULL, status = 'active' WHERE workspace_id IS NOT NULL AND id = $1;"
   },
   "71851c0dceb357cee7d00bff65ca31965f2aef6778a2f86283fa626ec6359412": {
     "describe": {
@@ -7104,6 +7190,20 @@
       }
     },
     "query": "CREATE INDEX role_permissions_resource_type_idx_role_id_resource_type_id ON role_permissions_resource_type (role_id, resource_type_id);"
+  },
+  "7ec5e027f15dbd4d44097a25c736603c6e28c11a3b127ce5501c4595d6cb58aa": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Json",
+          "Text"
+        ]
+      }
+    },
+    "query": "UPDATE deployment_region SET status = 'active', config_file = $2, ingress_hostname = $3 WHERE id = $1;"
   },
   "7f66a51f2f44f191c1ef037052befcf915b6708fec9af7ae677d827a0524a983": {
     "describe": {
@@ -7910,6 +8010,98 @@
       }
     },
     "query": "ALTER TABLE transaction ADD CONSTRAINT transaction_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id);"
+  },
+  "853b9c593e6eb2f4bebe3fa8080757aa2a5eb44635fbdf8f0d0bcc574fdfd163": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "cloud_provider: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "digitalocean",
+                  "other"
+                ]
+              },
+              "name": "infrastructure_cloud_provider"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "ingress_hostname: _",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "message_log",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "config_file: _",
+          "ordinal": 6,
+          "type_info": "Json"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 7,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "creating",
+                  "active",
+                  "errored",
+                  "deleted",
+                  "disconnected",
+                  "coming_soon"
+                ]
+              },
+              "name": "region_status"
+            }
+          }
+        },
+        {
+          "name": "disconnected_at: _",
+          "ordinal": 8,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", workspace_id as \"workspace_id: _\", ingress_hostname as \"ingress_hostname: _\", message_log, config_file as \"config_file: _\", status as \"status: _\", disconnected_at as \"disconnected_at: _\" FROM deployment_region WHERE id = $1;"
   },
   "855f26245fffa3c12a4f05b04f8e55b9d5ce33eeccf371b8412962fc60ac7dd1": {
     "describe": {
@@ -9009,6 +9201,138 @@
     },
     "query": "CREATE TABLE workspace_user( user_id UUID NOT NULL CONSTRAINT workspace_user_fk_user_id REFERENCES \"user\"(id), workspace_id UUID NOT NULL CONSTRAINT workspace_user_fk_workspace_id REFERENCES workspace(id), role_id UUID NOT NULL CONSTRAINT workspace_user_fk_role_id REFERENCES role(id), CONSTRAINT workspace_user_pk PRIMARY KEY(user_id, workspace_id, role_id) );"
   },
+  "96b926be5d8f26685c810fd9cb9cde901c9da7f2dc6fe54d43e5d1b6ffa31f21": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: String",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "super_admin_id: Uuid",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "active",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "alert_emails: Vec<String>",
+          "ordinal": 4,
+          "type_info": "VarcharArray"
+        },
+        {
+          "name": "payment_type: PaymentType",
+          "ordinal": 5,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "card",
+                  "enterprise"
+                ]
+              },
+              "name": "payment_type"
+            }
+          }
+        },
+        {
+          "name": "default_payment_method_id: String",
+          "ordinal": 6,
+          "type_info": "Text"
+        },
+        {
+          "name": "deployment_limit",
+          "ordinal": 7,
+          "type_info": "Int4"
+        },
+        {
+          "name": "static_site_limit",
+          "ordinal": 8,
+          "type_info": "Int4"
+        },
+        {
+          "name": "database_limit",
+          "ordinal": 9,
+          "type_info": "Int4"
+        },
+        {
+          "name": "managed_url_limit",
+          "ordinal": 10,
+          "type_info": "Int4"
+        },
+        {
+          "name": "secret_limit",
+          "ordinal": 11,
+          "type_info": "Int4"
+        },
+        {
+          "name": "domain_limit",
+          "ordinal": 12,
+          "type_info": "Int4"
+        },
+        {
+          "name": "docker_repository_storage_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "stripe_customer_id",
+          "ordinal": 14,
+          "type_info": "Text"
+        },
+        {
+          "name": "address_id: Uuid",
+          "ordinal": 15,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "amount_due_in_cents",
+          "ordinal": 16,
+          "type_info": "Int8"
+        },
+        {
+          "name": "is_spam",
+          "ordinal": 17,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: Uuid\", name::TEXT as \"name!: String\", super_admin_id as \"super_admin_id: Uuid\", active, alert_emails as \"alert_emails: Vec<String>\", payment_type as \"payment_type: PaymentType\", default_payment_method_id as \"default_payment_method_id: String\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, stripe_customer_id, address_id as \"address_id: Uuid\", amount_due_in_cents, is_spam FROM workspace WHERE id = $1 AND deleted IS NULL;"
+  },
   "96e525b047f0838a7c25a1277bae273d2ce2aaf541f0b2aad82404728baecc42": {
     "describe": {
       "columns": [],
@@ -9017,36 +9341,7 @@
         "Left": []
       }
     },
-    "query": "CREATE TYPE RESOURCE_OWNER_TYPE AS ENUM( 'personal', 'business' );"
-  },
-  "9733ca414a05574a04cc7e723043e606936d009f3b5fa595225aaedcd4e71d07": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Uuid"
-        ]
-      }
-    },
-    "query": "INSERT INTO secret( id, name, workspace_id, deployment_id ) VALUES ($1, $2, $3, NULL);"
-  },
-  "9812ea5c7c65e99cde5228c6e4d96194ada29029922f09ad6f5dc1fa7fb2c25f": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TYPE INFRASTRUCTURE_CLOUD_PROVIDER AS ENUM( 'digitalocean', 'other' );"
+    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", workspace_id as \"workspace_id: _\", ingress_hostname as \"ingress_hostname: _\", message_log, config_file as \"config_file: _\", status as \"status: _\", disconnected_at as \"disconnected_at: _\" FROM deployment_region WHERE workspace_id IS NOT NULL AND status = 'disconnected' AND disconnected_at IS NOT NULL ORDER BY disconnected_at;"
   },
   "997947986aa00232ee0ef91426b9a53e3af707486cbc1799eb05d2501d2d7ce9": {
     "describe": {
@@ -9638,6 +9933,46 @@
     },
     "query": "SELECT * FROM information_schema.tables WHERE table_catalog = $1 AND table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name != 'spatial_ref_sys';"
   },
+  "9febf9ae18c2a3188a6f8048882ee7dec3c8a028bea2540d18347ddaccfa4cfe": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "digitalocean",
+                  "other"
+                ]
+              },
+              "name": "infrastructure_cloud_provider"
+            }
+          },
+          "Uuid",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "creating",
+                  "active",
+                  "errored",
+                  "deleted",
+                  "disconnected",
+                  "coming_soon"
+                ]
+              },
+              "name": "region_status"
+            }
+          }
+        ]
+      }
+    },
+    "query": "INSERT INTO deployment_region( id, name, provider, workspace_id, status ) VALUES ($1, $2, $3, $4, $5);"
+  },
   "a1ef5b3c2269453d465e5f47f7bd9a8d8e7cd237085cf1a59a4c55ddd093c269": {
     "describe": {
       "columns": [
@@ -9884,20 +10219,6 @@
       }
     },
     "query": "CREATE TYPE TRANSACTION_TYPE as ENUM( 'bill', 'credits', 'payment' );"
-  },
-  "a73a64226c73e75b3edad17a703be600285dfc03471bcf353eda7d3b559a7588": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          "Inet"
-        ]
-      }
-    },
-    "query": "UPDATE deployment_region SET ready = TRUE, status = 'active', config_file = $2, kubernetes_ingress_ip_addr = $3 WHERE id = $1;"
   },
   "a780a4512b2ca58787f293e3033771d289cd7b0308573b4271865e3d63121215": {
     "describe": {
@@ -10427,6 +10748,96 @@
       }
     },
     "query": "INSERT INTO docker_registry_repository( id, workspace_id, name ) VALUES ($1, $2, $3);"
+  },
+  "b00fef007444a61862204d86975caa638d9086736aceb616c20a17a7961d3c68": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "cloud_provider: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "digitalocean",
+                  "other"
+                ]
+              },
+              "name": "infrastructure_cloud_provider"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "ingress_hostname: _",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "message_log",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "config_file: _",
+          "ordinal": 6,
+          "type_info": "Json"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 7,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "creating",
+                  "active",
+                  "errored",
+                  "deleted",
+                  "disconnected",
+                  "coming_soon"
+                ]
+              },
+              "name": "region_status"
+            }
+          }
+        },
+        {
+          "name": "disconnected_at: _",
+          "ordinal": 8,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", workspace_id as \"workspace_id: _\", ingress_hostname as \"ingress_hostname: _\", message_log, config_file as \"config_file: _\", status as \"status: _\", disconnected_at as \"disconnected_at: _\" FROM deployment_region WHERE workspace_id IS NOT NULL AND status = 'active';"
   },
   "b03771550cbb6eaae1e32df3e7c070782396cc5ebf30eaf155d9c2584842cbcf": {
     "describe": {
@@ -12081,6 +12492,45 @@
     },
     "query": "SELECT upload_id as \"id: _\", message, uploaded_by as \"uploaded_by: _\", created as \"created: _\" FROM static_site_upload_history WHERE static_site_id = $1 AND upload_id = $2;"
   },
+  "d0f64ebfb3ad1ad0acb3de958b09771a607d2a574e1afa2fa0e6afbec2026143": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "digitalocean",
+                  "other"
+                ]
+              },
+              "name": "infrastructure_cloud_provider"
+            }
+          },
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "creating",
+                  "active",
+                  "errored",
+                  "deleted",
+                  "disconnected",
+                  "coming_soon"
+                ]
+              },
+              "name": "region_status"
+            }
+          }
+        ]
+      }
+    },
+    "query": "INSERT INTO deployment_region( id, name, provider, status ) VALUES ($1, $2, $3, $4);"
+  },
   "d14a4f660116ca6bcc7be3a2bcadc628efb0a977794352e8f90aed5ae668d19e": {
     "describe": {
       "columns": [
@@ -12223,7 +12673,17 @@
     },
     "query": "SELECT tag, last_updated, manifest_digest FROM docker_registry_repository_tag WHERE repository_id = $1 AND tag = $2;"
   },
-  "d5244a5633b4ad41c1ccbf69122b6800a97876579b85eb06aaf0cf3b024e6d6d": {
+  "d3d08674a34b872f9407cd28eeda8b305024f133dd62536f51dc7618e35738b6": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE docker_registry_repository_manifest( repository_id UUID NOT NULL CONSTRAINT docker_registry_repository_manifest_fk_repository_id REFERENCES docker_registry_repository(id), manifest_digest TEXT NOT NULL, size BIGINT NOT NULL CONSTRAINT docker_registry_repository_manifest_chk_size_unsigned CHECK(size >= 0), created TIMESTAMPTZ NOT NULL, CONSTRAINT docker_registry_repository_manifest_pk PRIMARY KEY( repository_id, manifest_digest ) );"
+  },
+  "d3dd14301e39841c7027251c66667c349f284f0ab47a38a38d0001c52391593e": {
     "describe": {
       "columns": [
         {
@@ -12232,43 +12692,13 @@
           "type_info": "Uuid"
         },
         {
-          "name": "name",
+          "name": "username",
           "ordinal": 1,
-          "type_info": "Text"
+          "type_info": "Varchar"
         },
         {
-          "name": "cloud_provider: _",
+          "name": "password",
           "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "digitalocean",
-                  "other"
-                ]
-              },
-              "name": "infrastructure_cloud_provider"
-            }
-          }
-        },
-        {
-          "name": "ready",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 4,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "message_log",
-          "ordinal": 5,
-          "type_info": "Text"
-        },
-        {
-          "name": "kubernetes_cluster_url",
-          "ordinal": 6,
           "type_info": "Text"
         },
         {
@@ -12322,16 +12752,6 @@
       }
     },
     "query": "INSERT INTO ci_build_machine_type( id, cpu, ram, volume ) VALUES ($1, $2, $3, $4);"
-  },
-  "d74aff69dbb38610fe2369f7b972703fc95b5d3191e760c44b38bc00221e0632": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment_region( id UUID CONSTRAINT deployment_region_pk PRIMARY KEY, name TEXT NOT NULL, provider INFRASTRUCTURE_CLOUD_PROVIDER NOT NULL, workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id REFERENCES workspace(id), ready BOOLEAN NOT NULL, kubernetes_ingress_ip_addr INET, message_log TEXT, config_file TEXT, deleted TIMESTAMPTZ, status REGION_STATUS NOT NULL DEFAULT 'creating', last_disconnected TIMESTAMPTZ, CONSTRAINT deployment_region_chk_ready_or_not CHECK( ( workspace_id IS NOT NULL AND ( ( ready = TRUE AND config_file IS NOT NULL AND kubernetes_ingress_ip_addr IS NOT NULL ) OR ( ready = FALSE AND config_file IS NULL AND kubernetes_ingress_ip_addr IS NULL ) ) ) OR ( workspace_id IS NULL AND config_file IS NULL AND kubernetes_ingress_ip_addr IS NULL ) ) );"
   },
   "d7d741929d208783d19d6806a7290d6a72c5af01febf4a91bdcc0df2bcf6e765": {
     "describe": {
@@ -12589,6 +13009,16 @@
       }
     },
     "query": "UPDATE workspace SET name = COALESCE($1, name), alert_emails = COALESCE($2, alert_emails), default_payment_method_id = COALESCE($3, default_payment_method_id) WHERE id = $4;"
+  },
+  "da3473b383e52b787d5d0b1320c0cc1c73ae58b5517751cfbee2b9caba9488d0": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_region( id UUID CONSTRAINT deployment_region_pk PRIMARY KEY, name TEXT NOT NULL, provider INFRASTRUCTURE_CLOUD_PROVIDER NOT NULL, workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id REFERENCES workspace(id), ingress_hostname TEXT, message_log TEXT, config_file JSON, deleted TIMESTAMPTZ, status REGION_STATUS NOT NULL, disconnected_at TIMESTAMPTZ );"
   },
   "da3901cb1079f58c9b722ee678e97e05baa99e5ee5747e51b084a3c1a60063d7": {
     "describe": {
@@ -13535,109 +13965,6 @@
       }
     },
     "query": "INSERT INTO deployment( id, name, registry, repository_id, image_name, image_tag, status, workspace_id, region, min_horizontal_scale, max_horizontal_scale, machine_type, deploy_on_push, startup_probe_port, startup_probe_path, startup_probe_port_type, liveness_probe_port, liveness_probe_path, liveness_probe_port_type ) VALUES ( $1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16 );"
-  },
-  "ea6f7fd3b30a58622ef6a5fffc13023b34d991b9d8681ae557be90c7f7a69b9f": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "digitalocean",
-                  "other"
-                ]
-              },
-              "name": "infrastructure_cloud_provider"
-            }
-          },
-          "Bool"
-        ]
-      }
-    },
-    "query": "INSERT INTO deployment_region( id, name, provider, ready ) VALUES ($1, $2, $3, $4);"
-  },
-  "eab0f148cb2819db031fa8aa3b9add8d6b71c1d75c1e8fffe1a62bd4c9226cb2": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "cloud_provider: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "digitalocean",
-                  "other"
-                ]
-              },
-              "name": "infrastructure_cloud_provider"
-            }
-          }
-        },
-        {
-          "name": "ready",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 4,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "message_log",
-          "ordinal": 5,
-          "type_info": "Text"
-        },
-        {
-          "name": "config_file",
-          "ordinal": 6,
-          "type_info": "Text"
-        },
-        {
-          "name": "kubernetes_ingress_ip_addr: _",
-          "ordinal": 7,
-          "type_info": "Inet"
-        },
-        {
-          "name": "last_disconnected: _",
-          "ordinal": 8,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", ready, workspace_id as \"workspace_id: _\", message_log, config_file, kubernetes_ingress_ip_addr as \"kubernetes_ingress_ip_addr: _\", last_disconnected as \"last_disconnected: _\" FROM deployment_region WHERE workspace_id IS NULL OR workspace_id = $1;"
   },
   "ebb50db24a70648653710428f4bc4db0b5a33f683894476370d206816a85a557": {
     "describe": {
@@ -14894,16 +15221,6 @@
     },
     "query": "CREATE TABLE coupon_code( code TEXT CONSTRAINT coupon_code_pk PRIMARY KEY, credits_in_cents BIGINT NOT NULL CONSTRAINT coupon_code_chk_credits_in_cents_positive CHECK (credits_in_cents >= 0), expiry TIMESTAMPTZ, uses_remaining INTEGER CONSTRAINT coupon_code_chk_uses_remaining_positive CHECK( uses_remaining IS NULL OR uses_remaining > 0 ) );"
   },
-  "fe3335c047e3809a0107fad566fa2203f0ccef3a13082c84fd9a356008aadb24": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TYPE REGION_STATUS AS ENUM( 'creating', 'active', 'errored', 'deleted' );"
-  },
   "fe84284d0561dc586bf1441d648319e13304f2a503699b3a1f920f784439c9f9": {
     "describe": {
       "columns": [],
@@ -14937,6 +15254,19 @@
       }
     },
     "query": "CREATE UNIQUE INDEX managed_url_uq_sub_domain_domain_id_path ON managed_url(sub_domain, domain_id, path) WHERE deleted IS NULL;"
+  },
+  "ff0463d7cc190cf84d8aa9724f4916ba92960ee12fbd3a26569031a34dcc468f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "UPDATE deployment_region SET deleted = $2, status = 'deleted', config_file = NULL, ingress_hostname = NULL WHERE id = $1;"
   },
   "ff096d079cff3057d77210c78f787da16294324cc159a2f05367ca370a7069c7": {
     "describe": {

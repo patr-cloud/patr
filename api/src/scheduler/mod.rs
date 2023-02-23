@@ -63,7 +63,9 @@ fn get_scheduled_jobs() -> Vec<Job> {
 		ci::sync_repo_job(),
 		// User jobs
 		user::revoke_expired_tokens_job(),
-		byoc::recheck_connection_to_cluster_job(),
+		// byoc jobs
+		byoc::check_status_of_active_byoc_regions_job(),
+		byoc::handle_disconnected_byoc_regions_job(),
 	]
 }
 

@@ -8,6 +8,7 @@ use api_models::{
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
+use kube::config::Kubeconfig;
 use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
@@ -361,14 +362,14 @@ pub async fn queue_clean_ci_build_pipeline(
 
 pub async fn queue_setup_kubernetes_cluster(
 	region_id: &Uuid,
-	kube_config: &str,
+	kube_config: Kubeconfig,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	send_message_to_infra_queue(
 		&InfraRequestData::BYOC(BYOCData::InitKubernetesCluster {
 			region_id: region_id.clone(),
-			kube_config: kube_config.to_string(),
+			kube_config,
 			request_id: request_id.clone(),
 		}),
 		config,
@@ -476,7 +477,7 @@ pub async fn queue_get_kube_config_for_do_cluster(
 pub async fn queue_delete_kubernetes_cluster(
 	region_id: &Uuid,
 	workspace_id: &Uuid,
-	kube_config: &str,
+	kube_config: Kubeconfig,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -484,7 +485,7 @@ pub async fn queue_delete_kubernetes_cluster(
 		&InfraRequestData::BYOC(BYOCData::DeleteKubernetesCluster {
 			region_id: region_id.clone(),
 			workspace_id: workspace_id.clone(),
-			kube_config: kube_config.to_string(),
+			kube_config,
 			request_id: request_id.clone(),
 		}),
 		config,

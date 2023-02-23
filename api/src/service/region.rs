@@ -1,7 +1,14 @@
-use std::net::IpAddr;
-
-use api_models::utils::Uuid;
+use api_models::{models::workspace::region::RegionStatus, utils::Uuid};
 use eve_rs::AsError;
+use kube::config::{
+	AuthInfo,
+	Cluster,
+	Context,
+	Kubeconfig,
+	NamedAuthInfo,
+	NamedCluster,
+	NamedContext,
+};
 use reqwest::Client;
 
 use crate::{
@@ -16,7 +23,7 @@ pub enum ClusterType {
 	PatrOwned,
 	UserOwned {
 		region_id: Uuid,
-		ingress_ip_addr: IpAddr,
+		ingress_ip_addr: String,
 	},
 }
 
@@ -31,7 +38,7 @@ pub struct KubernetesAuthDetails {
 #[derive(Debug, Clone)]
 pub struct KubernetesConfigDetails {
 	pub cluster_type: ClusterType,
-	pub kube_config: String,
+	pub kube_config: Kubeconfig,
 }
 
 pub fn get_kubernetes_config_for_default_region(
@@ -41,7 +48,6 @@ pub fn get_kubernetes_config_for_default_region(
 		cluster_type: ClusterType::PatrOwned,
 		kube_config: generate_kubeconfig_from_template(
 			&config.kubernetes.cluster_url,
-			&config.kubernetes.auth_username,
 			&config.kubernetes.auth_token,
 			&config.kubernetes.certificate_authority_data,
 		),
@@ -65,26 +71,23 @@ pub async fn get_kubernetes_config_for_region(
 			cluster_type: ClusterType::PatrOwned,
 			kube_config: generate_kubeconfig_from_template(
 				&config.kubernetes.cluster_url,
-				&config.kubernetes.auth_username,
 				&config.kubernetes.auth_token,
 				&config.kubernetes.certificate_authority_data,
 			),
 		}
 	} else {
-		match (
-			region.ready,
-			region.config_file,
-			region.kubernetes_ingress_ip_addr,
-		) {
-			(true, Some(config_file), Some(ingress_ip_addr)) => {
-				KubernetesConfigDetails {
-					cluster_type: ClusterType::UserOwned {
-						region_id: region.id,
-						ingress_ip_addr,
-					},
-					kube_config: config_file,
-				}
-			}
+		match (region.status, region.config_file, region.ingress_hostname) {
+			(
+				RegionStatus::Active,
+				Some(config_file),
+				Some(ingress_ip_addr),
+			) => KubernetesConfigDetails {
+				cluster_type: ClusterType::UserOwned {
+					region_id: region.id,
+					ingress_ip_addr,
+				},
+				kube_config: config_file,
+			},
 			_ => {
 				log::info!("cluster {region_id} is not yet initialized");
 				return Err(Error::empty().body(format!(
@@ -103,6 +106,7 @@ pub async fn create_do_k8s_cluster(
 	cluster_name: &str,
 	min_nodes: u16,
 	max_nodes: u16,
+	auto_scale: bool,
 	node_name: &str,
 	node_size_slug: &str,
 	request_id: &Uuid,
@@ -118,12 +122,12 @@ pub async fn create_do_k8s_cluster(
 		.bearer_auth(api_token)
 		.json(&K8sConfig {
 			region: region.to_string(),
-			version: "1.24".to_string(),
+			version: "latest".to_string(),
 			name: cluster_name.to_string(),
 			node_pools: vec![K8NodePool {
 				name: node_name.to_string(),
 				size: node_size_slug.to_string(),
-				auto_scale: true,
+				auto_scale,
 				min_nodes,
 				max_nodes,
 			}],
@@ -150,28 +154,46 @@ pub async fn is_deployed_on_patr_cluster(
 
 pub fn generate_kubeconfig_from_template(
 	cluster_url: &str,
-	auth_username: &str,
 	auth_token: &str,
 	certificate_authority_data: &str,
-) -> String {
-	format!(
-		r#"apiVersion: v1
-kind: Config
-clusters:
-  - name: kubernetesCluster
-    cluster:
-      certificate-authority-data: {certificate_authority_data}
-      server: {cluster_url}
-users:
-  - name: {auth_username}
-    user:
-      token: {auth_token}
-contexts:
-  - name: kubernetesContext
-    context:
-      cluster: kubernetesCluster
-      user: {auth_username}
-current-context: kubernetesContext
-preferences: {{}}"#
-	)
+) -> Kubeconfig {
+	let cluster_name = "clusterId";
+	let context_name = "contextId";
+	let auth_info = "authInfoId";
+
+	Kubeconfig {
+		api_version: Some("v1".into()),
+		kind: Some("Config".into()),
+		clusters: vec![NamedCluster {
+			name: cluster_name.into(),
+			cluster: Cluster {
+				server: cluster_url.into(),
+				certificate_authority_data: Some(
+					certificate_authority_data.into(),
+				),
+				certificate_authority: None,
+				proxy_url: None,
+				extensions: None,
+				insecure_skip_tls_verify: None,
+			},
+		}],
+		auth_infos: vec![NamedAuthInfo {
+			name: auth_info.into(),
+			auth_info: AuthInfo {
+				token: Some(auth_token.to_owned().into()),
+				..Default::default()
+			},
+		}],
+		contexts: vec![NamedContext {
+			name: context_name.into(),
+			context: Context {
+				cluster: cluster_name.into(),
+				user: auth_info.into(),
+				extensions: None,
+				namespace: None,
+			},
+		}],
+		current_context: Some(context_name.into()),
+		..Default::default()
+	}
 }

@@ -8,6 +8,7 @@ use api_models::{
 	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
+use kube::config::Kubeconfig;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -61,12 +62,12 @@ pub enum InfraRequestData {
 pub enum BYOCData {
 	InitKubernetesCluster {
 		region_id: Uuid,
-		kube_config: String,
+		kube_config: Kubeconfig,
 		request_id: Uuid,
 	},
 	CheckClusterForReadiness {
 		region_id: Uuid,
-		kube_config: String,
+		kube_config: Kubeconfig,
 		request_id: Uuid,
 	},
 	GetDigitalOceanKubeconfig {
@@ -78,7 +79,7 @@ pub enum BYOCData {
 	DeleteKubernetesCluster {
 		region_id: Uuid,
 		workspace_id: Uuid,
-		kube_config: String,
+		kube_config: Kubeconfig,
 		request_id: Uuid,
 	},
 }

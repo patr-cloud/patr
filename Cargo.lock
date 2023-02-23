@@ -165,6 +165,7 @@ dependencies = [
  "sqlx",
  "tokio",
  "trust-dns-client",
+ "url",
  "vaultrs",
  "zeroize",
  "zip",
