@@ -1436,50 +1436,6 @@
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE workspace_id = $1 AND region = $2 AND status != 'deleted';"
   },
-  "14e09ce42c4ccdf2618cbce618c563d01de7a19d3269d320575d5dc11b1d0bb6": {
-    "describe": {
-      "columns": [
-        {
-          "name": "volume_id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "size: _",
-          "ordinal": 3,
-          "type_info": "Int4"
-        },
-        {
-          "name": "path: _",
-          "ordinal": 4,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"volume_id: _\", name, deployment_id as \"deployment_id: _\", volume_size as \"size: _\", volume_mount_path as \"path: _\" FROM deployment_volume WHERE deployment_id = $1 AND deleted IS NOT NULL;"
-  },
   "15d97c8249593f00516ac5b30598779bda9d6214d2341d0166ada2e5dbc4a9e5": {
     "describe": {
       "columns": [],
@@ -3590,16 +3546,6 @@
     },
     "query": "CREATE TABLE resource_type( id UUID CONSTRAINT resource_type_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE, description VARCHAR(500) NOT NULL );"
   },
-  "38683e007307f1ee57be054e7d3af289c4e169e7c2880bb514171a303e791e32": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "ALTER TABLE deployment_region ADD CONSTRAINT deployment_region_fk_id_workspace_id FOREIGN KEY (id, workspace_id) REFERENCES resource(id, owner_id);"
-  },
   "382152db383891a0bd3bc62f641182c52a318de9a91a1720f4370a9a61a8c179": {
     "describe": {
       "columns": [],
@@ -3609,6 +3555,16 @@
       }
     },
     "query": "CREATE TABLE IF NOT EXISTS volume_payment_history( workspace_id UUID NOT NULL, volume_id UUID NOT NULL, storage BIGINT NOT NULL, number_of_volumes INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
+  },
+  "38683e007307f1ee57be054e7d3af289c4e169e7c2880bb514171a303e791e32": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "ALTER TABLE deployment_region ADD CONSTRAINT deployment_region_fk_id_workspace_id FOREIGN KEY (id, workspace_id) REFERENCES resource(id, owner_id);"
   },
   "395329c4d7ee7f4b8c8617af25cf03c40a815a0b4c97eaef2972bdd27d39a4a6": {
     "describe": {
@@ -7412,138 +7368,6 @@
     },
     "query": "UPDATE secret SET name = $1 WHERE id = $2;"
   },
-  "829f41f92a8fd4465f8ae007346ff710aff3ee0c8c83399e5c6a74a22ac0af86": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: String",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "super_admin_id: Uuid",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "active",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "alert_emails: Vec<String>",
-          "ordinal": 4,
-          "type_info": "VarcharArray"
-        },
-        {
-          "name": "payment_type: PaymentType",
-          "ordinal": 5,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "card",
-                  "enterprise"
-                ]
-              },
-              "name": "payment_type"
-            }
-          }
-        },
-        {
-          "name": "default_payment_method_id: String",
-          "ordinal": 6,
-          "type_info": "Text"
-        },
-        {
-          "name": "deployment_limit",
-          "ordinal": 7,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_limit",
-          "ordinal": 8,
-          "type_info": "Int4"
-        },
-        {
-          "name": "database_limit",
-          "ordinal": 9,
-          "type_info": "Int4"
-        },
-        {
-          "name": "managed_url_limit",
-          "ordinal": 10,
-          "type_info": "Int4"
-        },
-        {
-          "name": "secret_limit",
-          "ordinal": 11,
-          "type_info": "Int4"
-        },
-        {
-          "name": "domain_limit",
-          "ordinal": 12,
-          "type_info": "Int4"
-        },
-        {
-          "name": "docker_repository_storage_limit",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "stripe_customer_id",
-          "ordinal": 14,
-          "type_info": "Text"
-        },
-        {
-          "name": "address_id: Uuid",
-          "ordinal": 15,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "amount_due_in_cents",
-          "ordinal": 16,
-          "type_info": "Int8"
-        },
-        {
-          "name": "is_spam",
-          "ordinal": 17,
-          "type_info": "Bool"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: Uuid\", name::TEXT as \"name!: String\", super_admin_id as \"super_admin_id: Uuid\", active, alert_emails as \"alert_emails: Vec<String>\", payment_type as \"payment_type: PaymentType\", default_payment_method_id as \"default_payment_method_id: String\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, stripe_customer_id, address_id as \"address_id: Uuid\", amount_due_in_cents, is_spam FROM workspace WHERE super_admin_id = $1 AND deleted IS NULL;"
-  },
   "82b24edd9f2340f5b6d247980a1a2245a317be52245d3791f5b0835a10397128": {
     "describe": {
       "columns": [],
@@ -8556,12 +8380,13 @@
       ],
       "nullable": [
         null,
+        false,
+        false,
+        false,
+        false,
         true,
-        true,
-        true,
-        true,
-        true,
-        false
+        true
+      ],
       "parameters": {
         "Left": []
       }
@@ -9162,142 +8987,129 @@
     },
     "query": "CREATE TABLE workspace_user( user_id UUID NOT NULL CONSTRAINT workspace_user_fk_user_id REFERENCES \"user\"(id), workspace_id UUID NOT NULL CONSTRAINT workspace_user_fk_workspace_id REFERENCES workspace(id), role_id UUID NOT NULL CONSTRAINT workspace_user_fk_role_id REFERENCES role(id), CONSTRAINT workspace_user_pk PRIMARY KEY(user_id, workspace_id, role_id) );"
   },
-  "96b926be5d8f26685c810fd9cb9cde901c9da7f2dc6fe54d43e5d1b6ffa31f21": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: String",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "super_admin_id: Uuid",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "active",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "alert_emails: Vec<String>",
-          "ordinal": 4,
-          "type_info": "VarcharArray"
-        },
-        {
-          "name": "payment_type: PaymentType",
-          "ordinal": 5,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "card",
-                  "enterprise"
-                ]
-              },
-              "name": "payment_type"
-            }
-          }
-        },
-        {
-          "name": "default_payment_method_id: String",
-          "ordinal": 6,
-          "type_info": "Text"
-        },
-        {
-          "name": "deployment_limit",
-          "ordinal": 7,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_limit",
-          "ordinal": 8,
-          "type_info": "Int4"
-        },
-        {
-          "name": "database_limit",
-          "ordinal": 9,
-          "type_info": "Int4"
-        },
-        {
-          "name": "managed_url_limit",
-          "ordinal": 10,
-          "type_info": "Int4"
-        },
-        {
-          "name": "secret_limit",
-          "ordinal": 11,
-          "type_info": "Int4"
-        },
-        {
-          "name": "domain_limit",
-          "ordinal": 12,
-          "type_info": "Int4"
-        },
-        {
-          "name": "docker_repository_storage_limit",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "stripe_customer_id",
-          "ordinal": 14,
-          "type_info": "Text"
-        },
-        {
-          "name": "address_id: Uuid",
-          "ordinal": 15,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "amount_due_in_cents",
-          "ordinal": 16,
-          "type_info": "Int8"
-        },
-        {
-          "name": "is_spam",
-          "ordinal": 17,
-          "type_info": "Bool"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: Uuid\", name::TEXT as \"name!: String\", super_admin_id as \"super_admin_id: Uuid\", active, alert_emails as \"alert_emails: Vec<String>\", payment_type as \"payment_type: PaymentType\", default_payment_method_id as \"default_payment_method_id: String\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, stripe_customer_id, address_id as \"address_id: Uuid\", amount_due_in_cents, is_spam FROM workspace WHERE id = $1 AND deleted IS NULL;"
-  },
   "96e525b047f0838a7c25a1277bae273d2ce2aaf541f0b2aad82404728baecc42": {
     "describe": {
       "columns": [],
       "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TYPE RESOURCE_OWNER_TYPE AS ENUM( 'personal', 'business' );"
+  },
+  "9733ca414a05574a04cc7e723043e606936d009f3b5fa595225aaedcd4e71d07": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          },
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO secret( id, name, workspace_id, deployment_id ) VALUES ($1, $2, $3, NULL);"
+  },
+  "9812ea5c7c65e99cde5228c6e4d96194ada29029922f09ad6f5dc1fa7fb2c25f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TYPE INFRASTRUCTURE_CLOUD_PROVIDER AS ENUM( 'digitalocean', 'other' );"
+  },
+  "989fd4e5c08c7a828bc013f11e466e11bbfc795a60031013600421d62eb0ed29": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "cloud_provider: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "digitalocean",
+                  "other"
+                ]
+              },
+              "name": "infrastructure_cloud_provider"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "ingress_hostname: _",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "message_log",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "config_file: _",
+          "ordinal": 6,
+          "type_info": "Json"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 7,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "creating",
+                  "active",
+                  "errored",
+                  "deleted",
+                  "disconnected",
+                  "coming_soon"
+                ]
+              },
+              "name": "region_status"
+            }
+          }
+        },
+        {
+          "name": "disconnected_at: _",
+          "ordinal": 8,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true
+      ],
       "parameters": {
         "Left": []
       }
@@ -12723,24 +12535,64 @@
           "type_info": "Text"
         },
         {
-          "name": "kubernetes_auth_username",
+          "name": "first_name",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "last_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "dob",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "bio",
+          "ordinal": 6,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "location",
           "ordinal": 7,
-          "type_info": "Text"
+          "type_info": "Varchar"
         },
         {
-          "name": "kubernetes_auth_token",
+          "name": "created",
           "ordinal": 8,
-          "type_info": "Text"
+          "type_info": "Timestamptz"
         },
         {
-          "name": "kubernetes_ca_data",
+          "name": "recovery_email_local",
           "ordinal": 9,
-          "type_info": "Text"
+          "type_info": "Varchar"
         },
         {
-          "name": "kubernetes_ingress_ip_addr: _",
+          "name": "recovery_email_domain_id: _",
           "ordinal": 10,
-          "type_info": "Inet"
+          "type_info": "Uuid"
+        },
+        {
+          "name": "recovery_phone_country_code",
+          "ordinal": 11,
+          "type_info": "Bpchar"
+        },
+        {
+          "name": "recovery_phone_number",
+          "ordinal": 12,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "workspace_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "sign_up_coupon",
+          "ordinal": 14,
+          "type_info": "Text"
         }
       ],
       "nullable": [
@@ -12748,161 +12600,41 @@
         false,
         false,
         false,
+        false,
+        true,
+        true,
+        true,
+        false,
         true,
         true,
         true,
         true,
-        true,
-        true,
+        false,
         true
       ],
       "parameters": {
         "Left": [
-          "Uuid"
+          "Bpchar",
+          "Text"
         ]
       }
     },
-    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", ready, workspace_id as \"workspace_id: _\", message_log, kubernetes_cluster_url, kubernetes_auth_username, kubernetes_auth_token, kubernetes_ca_data, kubernetes_ingress_ip_addr as \"kubernetes_ingress_ip_addr: _\" FROM deployment_region WHERE id = $1;"
+    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" INNER JOIN user_phone_number ON \"user\".id = user_phone_number.user_id WHERE user_phone_number.country_code = $1 AND user_phone_number.number = $2;"
   },
   "d554e0cdaefed7bec784a16adfa3a7e2e844251ddab8d60a00e481b7adc938d9": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
-        "Left": []
+        "Left": [
+          "Uuid",
+          "Int4",
+          "Int4",
+          "Int4"
+        ]
       }
     },
     "query": "INSERT INTO ci_build_machine_type( id, cpu, ram, volume ) VALUES ($1, $2, $3, $4);"
-  },
-  "d7d741929d208783d19d6806a7290d6a72c5af01febf4a91bdcc0df2bcf6e765": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: String",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "super_admin_id: Uuid",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "active",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "alert_emails: Vec<String>",
-          "ordinal": 4,
-          "type_info": "VarcharArray"
-        },
-        {
-          "name": "payment_type: PaymentType",
-          "ordinal": 5,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "card",
-                  "enterprise"
-                ]
-              },
-              "name": "payment_type"
-            }
-          }
-        },
-        {
-          "name": "default_payment_method_id: String",
-          "ordinal": 6,
-          "type_info": "Text"
-        },
-        {
-          "name": "deployment_limit",
-          "ordinal": 7,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_limit",
-          "ordinal": 8,
-          "type_info": "Int4"
-        },
-        {
-          "name": "database_limit",
-          "ordinal": 9,
-          "type_info": "Int4"
-        },
-        {
-          "name": "managed_url_limit",
-          "ordinal": 10,
-          "type_info": "Int4"
-        },
-        {
-          "name": "secret_limit",
-          "ordinal": 11,
-          "type_info": "Int4"
-        },
-        {
-          "name": "domain_limit",
-          "ordinal": 12,
-          "type_info": "Int4"
-        },
-        {
-          "name": "docker_repository_storage_limit",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "stripe_customer_id",
-          "ordinal": 14,
-          "type_info": "Text"
-        },
-        {
-          "name": "address_id: Uuid",
-          "ordinal": 15,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "amount_due_in_cents",
-          "ordinal": 16,
-          "type_info": "Int8"
-        },
-        {
-          "name": "is_spam",
-          "ordinal": 17,
-          "type_info": "Bool"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "SELECT DISTINCT id as \"id: Uuid\", name::TEXT as \"name!: String\", super_admin_id as \"super_admin_id: Uuid\", active, alert_emails as \"alert_emails: Vec<String>\", payment_type as \"payment_type: PaymentType\", default_payment_method_id as \"default_payment_method_id: String\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, stripe_customer_id, address_id as \"address_id: Uuid\", amount_due_in_cents, is_spam FROM workspace WHERE deleted IS NULL;"
   },
   "d7e60cbbd6b83c7176f0e04faf6540b7bc9952273aa83cf7783626886748671c": {
     "describe": {

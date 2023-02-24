@@ -11,7 +11,7 @@ use api_models::{
 			DeploymentRunningDetails,
 			DeploymentStatus,
 			DeploymentVolume,
-		EnvironmentVariableValue,
+			EnvironmentVariableValue,
 			ExposedPortType,
 			Metric,
 			PatrRegistry,
@@ -734,7 +734,8 @@ pub async fn update_deployment(
 				None,
 				&running_details,
 				&volumes,
-				kubeconfig,
+				&kubeconfig.cluster_type,
+				kubeconfig.kube_config,
 				config,
 				request_id,
 			)
@@ -1603,20 +1604,20 @@ pub async fn start_deployment(
 		)
 		.await?;
 
-	service::update_kubernetes_deployment(
-		workspace_id,
-		deployment,
-		&image_name,
-		digest.as_deref(),
-		deployment_running_details,
-		&volumes,
-		&kube_config_details.cluster_type,
+		service::update_kubernetes_deployment(
+			workspace_id,
+			deployment,
+			&image_name,
+			digest.as_deref(),
+			deployment_running_details,
+			&volumes,
+			&kube_config_details.cluster_type,
 			kube_config_details.kube_config,
-		config,
-		request_id,
-	)
-	.await?;
-
+			config,
+			request_id,
+		)
+		.await?;
+	}
 	Ok(())
 }
 
@@ -1673,36 +1674,39 @@ pub async fn update_deployment_image(
 			&DeploymentStatus::Running,
 		)
 		.await?;
+
+		Ok(())
 	} else {
 		let kube_config_details = service::get_kubernetes_config_for_region(
 			connection, region, config,
 		)
 		.await?;
 
-	service::update_kubernetes_deployment(
-		workspace_id,
-		&Deployment {
-			id: deployment_id.clone(),
-			name: name.to_string(),
-			registry: registry.clone(),
-			image_tag: image_tag.to_string(),
-			status: DeploymentStatus::Pushed,
-			region: region.clone(),
-			machine_type: machine_type.clone(),
-			current_live_digest: Some(digest.to_string()),
-		},
-		image_name,
-		Some(digest),
-		deployment_running_details,
-		&volumes,
-		&kube_config_details.cluster_type,
+		service::update_kubernetes_deployment(
+			workspace_id,
+			&Deployment {
+				id: deployment_id.clone(),
+				name: name.to_string(),
+				registry: registry.clone(),
+				image_tag: image_tag.to_string(),
+				status: DeploymentStatus::Pushed,
+				region: region.clone(),
+				machine_type: machine_type.clone(),
+				current_live_digest: Some(digest.to_string()),
+			},
+			image_name,
+			Some(digest),
+			deployment_running_details,
+			&volumes,
+			&kube_config_details.cluster_type,
 			kube_config_details.kube_config,
-		config,
-		request_id,
-	)
-	.await?;
+			config,
+			request_id,
+		)
+		.await?;
 
-	Ok(())
+		Ok(())
+	}
 }
 
 pub async fn stop_deployment(
@@ -1837,30 +1841,31 @@ pub async fn delete_deployment(
 		)
 		.await?;
 
-	service::delete_kubernetes_deployment(
-		workspace_id,
-		deployment_id,
-		kubeconfig.clone(),
-		request_id,
-	)
-	.await?;
+		service::delete_kubernetes_deployment(
+			workspace_id,
+			deployment_id,
+			kube_config_details.kube_config.clone(),
+			request_id,
+		)
+		.await?;
 
-	let volumes =
-		db::get_all_deployment_volumes(connection, deployment_id).await?;
+		let volumes =
+			db::get_all_deployment_volumes(connection, deployment_id).await?;
 
-	for volume in volumes {
-		db::delete_volume(connection, &volume.volume_id, &now).await?;
+		for volume in volumes {
+			db::delete_volume(connection, &volume.volume_id, &now).await?;
 
-		for replica_index in 0..min_replicas {
-			service::delete_kubernetes_volume(
-				workspace_id,
-				deployment_id,
-				&volume,
-				replica_index,
-				kube_config_details.kube_config.clone(),
-				request_id,
-			)
-			.await?;
+			for replica_index in 0..min_replicas {
+				service::delete_kubernetes_volume(
+					workspace_id,
+					deployment_id,
+					&volume,
+					replica_index,
+					kube_config_details.clone(),
+					request_id,
+				)
+				.await?;
+			}
 		}
 	}
 

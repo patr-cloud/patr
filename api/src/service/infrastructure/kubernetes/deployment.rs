@@ -86,6 +86,7 @@ use crate::{
 		ext_traits::DeleteOpt,
 		get_kubernetes_config_for_default_region,
 		ClusterType,
+		KubernetesConfigDetails,
 	},
 	utils::{constants::request_keys, settings::Settings, Error},
 	Database,
@@ -945,7 +946,7 @@ pub async fn delete_kubernetes_volume(
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let kubernetes_client =
-		super::get_kubernetes_client(kubeconfig.auth_details).await?;
+		super::get_kubernetes_client(kubeconfig.kube_config).await?;
 
 	log::trace!("request_id: {} - deleting the pvc", request_id);
 	Api::<PersistentVolumeClaim>::namespaced(
