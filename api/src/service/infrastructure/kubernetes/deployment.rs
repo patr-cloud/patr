@@ -753,7 +753,7 @@ pub async fn update_kubernetes_deployment(
 
 	if let ClusterType::UserOwned {
 		region_id,
-		ingress_ip_addr: _,
+		ingress_hostname: _,
 	} = cluster_type
 	{
 		// create a ingress in patr cluster to point to user's cluster

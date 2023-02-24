@@ -53,6 +53,10 @@ use super::{
 };
 use crate::{
 	models::EmailTemplate,
+	service::notifier::email::{
+		ByocDisconnectedReminder,
+		DomainVerificationReminder,
+	},
 	utils::{
 		handlebar_registry::{
 			get_handlebar_registry,
@@ -499,11 +503,38 @@ async fn test_domain_unverified_email() -> Result<(), Error> {
 }
 
 #[tokio::test]
+async fn test_domain_verification_reminder_email() -> Result<(), Error> {
+	send_email(DomainVerificationReminder {
+		domain_name: "domain_name".to_owned(),
+		domain_id: "domain_id".to_owned(),
+		username: "username".to_owned(),
+		is_internal: false,
+		patr_nameservers1: "patr_nameservers1".to_owned(),
+		patr_nameservers2: "patr_nameservers2".to_owned(),
+		patr_verify_sub_domain: "patr_verify_sub_domain".to_owned(),
+		deadline_limit: 5,
+	})
+	.await
+}
+
+#[tokio::test]
 async fn test_domain_verified_email() -> Result<(), Error> {
 	send_email(DomainVerified {
 		domain_name: "domainName".to_owned(),
 		username: "username".to_owned(),
 		domain_id: "domainId".to_owned(),
+	})
+	.await
+}
+
+#[tokio::test]
+async fn test_byoc_disconnected_reminder_email() -> Result<(), Error> {
+	send_email(ByocDisconnectedReminder {
+		username: "username".to_owned(),
+		workspace_name: "workspace_name".to_owned(),
+		region_name: "region_name".to_owned(),
+		region_id: "region_id".to_owned(),
+		deadline_limit: 4,
 	})
 	.await
 }

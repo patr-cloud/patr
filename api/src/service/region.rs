@@ -23,16 +23,8 @@ pub enum ClusterType {
 	PatrOwned,
 	UserOwned {
 		region_id: Uuid,
-		ingress_ip_addr: String,
+		ingress_hostname: String,
 	},
-}
-
-#[derive(Debug, Clone)]
-pub struct KubernetesAuthDetails {
-	pub cluster_url: String,
-	pub auth_username: String,
-	pub auth_token: String,
-	pub certificate_authority_data: String,
 }
 
 #[derive(Debug, Clone)]
@@ -46,11 +38,52 @@ pub fn get_kubernetes_config_for_default_region(
 ) -> KubernetesConfigDetails {
 	KubernetesConfigDetails {
 		cluster_type: ClusterType::PatrOwned,
-		kube_config: generate_kubeconfig_from_template(
-			&config.kubernetes.cluster_url,
-			&config.kubernetes.auth_token,
-			&config.kubernetes.certificate_authority_data,
-		),
+		kube_config: {
+			let cluster_name = "clusterId";
+			let context_name = "contextId";
+			let auth_info = "authInfoId";
+
+			Kubeconfig {
+				api_version: Some("v1".into()),
+				kind: Some("Config".into()),
+				clusters: vec![NamedCluster {
+					name: cluster_name.into(),
+					cluster: Cluster {
+						server: config.kubernetes.cluster_url.to_owned(),
+						certificate_authority_data: Some(
+							config
+								.kubernetes
+								.certificate_authority_data
+								.to_owned(),
+						),
+						certificate_authority: None,
+						proxy_url: None,
+						extensions: None,
+						insecure_skip_tls_verify: None,
+					},
+				}],
+				auth_infos: vec![NamedAuthInfo {
+					name: auth_info.into(),
+					auth_info: AuthInfo {
+						token: Some(
+							config.kubernetes.auth_token.to_owned().into(),
+						),
+						..Default::default()
+					},
+				}],
+				contexts: vec![NamedContext {
+					name: context_name.into(),
+					context: Context {
+						cluster: cluster_name.into(),
+						user: auth_info.into(),
+						extensions: None,
+						namespace: None,
+					},
+				}],
+				current_context: Some(context_name.into()),
+				..Default::default()
+			}
+		},
 	}
 }
 
@@ -67,14 +100,7 @@ pub async fn get_kubernetes_config_for_region(
 		// use the patr clusters
 
 		// for now returing the default cluster credentials
-		KubernetesConfigDetails {
-			cluster_type: ClusterType::PatrOwned,
-			kube_config: generate_kubeconfig_from_template(
-				&config.kubernetes.cluster_url,
-				&config.kubernetes.auth_token,
-				&config.kubernetes.certificate_authority_data,
-			),
-		}
+		get_kubernetes_config_for_default_region(config)
 	} else {
 		match (region.status, region.config_file, region.ingress_hostname) {
 			(
@@ -84,7 +110,7 @@ pub async fn get_kubernetes_config_for_region(
 			) => KubernetesConfigDetails {
 				cluster_type: ClusterType::UserOwned {
 					region_id: region.id,
-					ingress_ip_addr,
+					ingress_hostname: ingress_ip_addr,
 				},
 				kube_config: config_file,
 			},
@@ -150,50 +176,4 @@ pub async fn is_deployed_on_patr_cluster(
 		.await?
 		.status(500)?;
 	Ok(region.workspace_id.is_none())
-}
-
-pub fn generate_kubeconfig_from_template(
-	cluster_url: &str,
-	auth_token: &str,
-	certificate_authority_data: &str,
-) -> Kubeconfig {
-	let cluster_name = "clusterId";
-	let context_name = "contextId";
-	let auth_info = "authInfoId";
-
-	Kubeconfig {
-		api_version: Some("v1".into()),
-		kind: Some("Config".into()),
-		clusters: vec![NamedCluster {
-			name: cluster_name.into(),
-			cluster: Cluster {
-				server: cluster_url.into(),
-				certificate_authority_data: Some(
-					certificate_authority_data.into(),
-				),
-				certificate_authority: None,
-				proxy_url: None,
-				extensions: None,
-				insecure_skip_tls_verify: None,
-			},
-		}],
-		auth_infos: vec![NamedAuthInfo {
-			name: auth_info.into(),
-			auth_info: AuthInfo {
-				token: Some(auth_token.to_owned().into()),
-				..Default::default()
-			},
-		}],
-		contexts: vec![NamedContext {
-			name: context_name.into(),
-			context: Context {
-				cluster: cluster_name.into(),
-				user: auth_info.into(),
-				extensions: None,
-				namespace: None,
-			},
-		}],
-		current_context: Some(context_name.into()),
-		..Default::default()
-	}
 }

@@ -5,20 +5,20 @@ use sqlx::Acquire;
 use super::Job;
 use crate::{db, service, utils::Error};
 
-// Every day at 6 am
+// Every day at 3 am
 pub(super) fn check_status_of_active_byoc_regions_job() -> Job {
 	Job::new(
 		String::from("Update region connection status"),
-		"0 0 6 * * *".parse().unwrap(),
+		"0 0 3 * * *".parse().unwrap(),
 		|| Box::pin(check_status_of_active_byoc_regions()),
 	)
 }
 
-// Every day at 3 am
+// Every day at 6 am
 pub(super) fn handle_disconnected_byoc_regions_job() -> Job {
 	Job::new(
 		String::from("Handle disconnected byoc regions"),
-		"0 0 3 * * *".parse().unwrap(),
+		"0 0 6 * * *".parse().unwrap(),
 		|| Box::pin(handle_disconnected_byoc_regions()),
 	)
 }
@@ -65,8 +65,6 @@ async fn check_status_of_active_byoc_regions() -> Result<(), Error> {
 				log::info!(
 					"So marking the cluster {region_id} as disconnected"
 				);
-
-				// todo: send email
 
 				db::mark_byoc_region_as_disconnected(
 					&mut connection,
@@ -144,7 +142,7 @@ async fn handle_disconnected_byoc_regions() -> Result<(), Error> {
 
 				let disconnected_at = Utc::now()
 					.signed_duration_since(disconnected_at)
-					.num_days();
+					.num_days() as u64;
 
 				if disconnected_at > 7 {
 					// mark all the deployments for that region as deleted and
@@ -184,11 +182,14 @@ async fn handle_disconnected_byoc_regions() -> Result<(), Error> {
 
 					db::delete_region(&mut connection, &region_id, &Utc::now())
 						.await?;
-
-				// todo: send a email that resouorces in that region has been
-				// marked as deleted
 				} else {
-					// todo: send a reminder email about region got disconnected
+					service::send_byoc_region_disconnected_reminder_email(
+						&mut connection,
+						&workspace_id,
+						&region_id,
+						7 - disconnected_at,
+					)
+					.await?;
 				}
 			}
 		}
