@@ -1,6 +1,5 @@
 use api_models::{models::workspace::region::RegionStatus, utils::Uuid};
 use eve_rs::AsError;
-use once_cell::sync::OnceCell;
 use kube::config::{
 	AuthInfo,
 	Cluster,
@@ -10,6 +9,7 @@ use kube::config::{
 	NamedCluster,
 	NamedContext,
 };
+use once_cell::sync::OnceCell;
 use reqwest::Client;
 
 use crate::{
@@ -31,7 +31,7 @@ pub enum ClusterType {
 #[derive(Debug, Clone)]
 pub struct KubernetesConfigDetails {
 	pub cluster_type: ClusterType,
-	pub auth_details: KubernetesAuthDetails,
+	pub kube_config: Kubeconfig,
 }
 
 static DEFAULT_REGION_ID: OnceCell<Uuid> = OnceCell::new();

@@ -703,6 +703,14 @@ pub async fn update_deployment(
 				.await?;
 			}
 
+			let deployed_region_id = match &kubeconfig.cluster_type {
+				service::ClusterType::PatrOwned => {
+					service::get_default_region_id()
+				}
+				service::ClusterType::UserOwned { region_id, .. } => region_id,
+			}
+			.clone();
+
 			service::update_kubernetes_deployment(
 				workspace_id,
 				&deployment,
@@ -713,9 +721,9 @@ pub async fn update_deployment(
 <<<<<<< HEAD
 				kubeconfig.clone(),
 =======
-				&kubeconfig.cluster_type,
 				kubeconfig.kube_config,
 >>>>>>> 8bd54912 (Rebased on top of dev - 13.5)
+				&deployed_region_id,
 				config,
 				request_id,
 			)
@@ -1582,7 +1590,7 @@ pub async fn start_deployment(
 	)
 	.await?;
 
-	let deployed_region_id = match &kubeconfig.cluster_type {
+	let deployed_region_id = match &kube_config_details.cluster_type {
 		service::ClusterType::PatrOwned => service::get_default_region_id(),
 		service::ClusterType::UserOwned { region_id, .. } => region_id,
 	}
@@ -1595,7 +1603,6 @@ pub async fn start_deployment(
 		digest.as_deref(),
 		deployment_running_details,
 		&volumes,
-		&kube_config_details.cluster_type,
 		kube_config_details.kube_config,
 		&deployed_region_id,
 		config,
@@ -1681,11 +1688,11 @@ pub async fn update_deployment_image(
 		)
 		.await?;
 
-	let deployed_region_id = match &kubeconfig.cluster_type {
-		service::ClusterType::PatrOwned => service::get_default_region_id(),
-		service::ClusterType::UserOwned { region_id, .. } => region_id,
-	}
-	.clone();
+		let deployed_region_id = match &kube_config_details.cluster_type {
+			service::ClusterType::PatrOwned => service::get_default_region_id(),
+			service::ClusterType::UserOwned { region_id, .. } => region_id,
+		}
+		.clone();
 
 		service::update_kubernetes_deployment(
 			workspace_id,
@@ -1703,9 +1710,8 @@ pub async fn update_deployment_image(
 			Some(digest),
 			deployment_running_details,
 			&volumes,
-			&kube_config_details.cluster_type,
 			kube_config_details.kube_config,
-		&deployed_region_id,
+			&deployed_region_id,
 			config,
 			request_id,
 		)
@@ -1776,7 +1782,7 @@ pub async fn stop_deployment(
 	)
 	.await?;
 
-	service::stop_kubernetes_deployment(
+	service::delete_kubernetes_deployment(
 		workspace_id,
 		deployment_id,
 		kube_config_details.kube_config,

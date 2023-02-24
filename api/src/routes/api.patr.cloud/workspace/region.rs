@@ -325,12 +325,19 @@ async fn add_region(
 				"request_id: {} creating digital ocean k8s cluster in db",
 				request_id
 			);
+
+			let cf_cert = service::create_origin_ca_certificate_for_region(
+				&region_id, &config,
+			)
+			.await?;
+
 			db::add_deployment_region_to_workspace(
 				context.get_database_connection(),
 				&region_id,
 				&name,
 				&InfrastructureCloudProvider::Digitalocean,
 				&workspace_id,
+				&cf_cert.id,
 			)
 			.await?;
 
@@ -359,6 +366,8 @@ async fn add_region(
 				&api_token,
 				&cluster_id,
 				&region_id,
+				&cf_cert.cert,
+				&cf_cert.key,
 				&config,
 				&request_id,
 			)

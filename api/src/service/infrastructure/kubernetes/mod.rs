@@ -4,9 +4,7 @@ mod workspace;
 
 pub mod ext_traits;
 
-use std::{net::IpAddr, str::FromStr};
-
-use k8s_openapi::api::core::v1::{Secret, Service};
+use k8s_openapi::api::core::v1::Service;
 use kube::{
 	config::{
 		AuthInfo,
@@ -17,7 +15,6 @@ use kube::{
 		NamedCluster,
 		NamedContext,
 	},
-	core::{ErrorResponse},
 	Api,
 	Config,
 };
@@ -86,21 +83,6 @@ async fn get_kubernetes_config(
 	let client = kube::Client::try_from(config)?;
 
 	Ok(client)
-}
-
-async fn secret_exists(
-	secret_name: &str,
-	kubernetes_client: kube::Client,
-	namespace: &str,
-) -> Result<bool, KubeError> {
-	let secret = Api::<Secret>::namespaced(kubernetes_client, namespace)
-		.get(secret_name)
-		.await;
-	match secret {
-		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),
-		Err(err) => Err(err),
-		Ok(_) => Ok(true),
-	}
 }
 
 pub async fn get_load_balancer_hostname(

@@ -196,6 +196,8 @@ pub async fn delete_all_resources_in_workspace(
 			None,
 			"0.0.0.0",
 			true,
+			// todo: delete region when deleting workspace
+			// todo: how to delete it for byoc
 			true,
 			config,
 			request_id,

@@ -20,12 +20,11 @@ pub struct Region {
 	pub cloud_provider: InfrastructureCloudProvider,
 	pub workspace_id: Option<Uuid>,
 	pub ingress_hostname: Option<String>,
-	pub ready: bool,
+	pub message_log: Option<String>,
 	pub cf_cert_id: Option<String>,
 	pub config_file: Option<Kubeconfig>,
 	pub status: RegionStatus,
 	pub disconnected_at: Option<DateTime<Utc>>,
-	pub message_log: Option<String>,
 }
 
 impl Region {
@@ -41,6 +40,7 @@ struct DbRegion {
 	pub workspace_id: Option<Uuid>,
 	pub ingress_hostname: Option<String>,
 	pub message_log: Option<String>,
+	pub cf_cert_id: Option<String>,
 	pub config_file: Option<sqlx::types::Json<Kubeconfig>>,
 	pub status: RegionStatus,
 	pub disconnected_at: Option<DateTime<Utc>>,
@@ -55,6 +55,7 @@ impl From<DbRegion> for Region {
 			workspace_id: from.workspace_id,
 			ingress_hostname: from.ingress_hostname,
 			message_log: from.message_log,
+			cf_cert_id: from.cf_cert_id,
 			config_file: from.config_file.map(|config| config.0),
 			status: from.status,
 			disconnected_at: from.disconnected_at,
@@ -169,26 +170,25 @@ pub async fn initialize_region_post(
 			}
 		};
 
-				query!(
-				r#"
-				INSERT INTO
-					deployment_region(
-						id,
-						name,
-						provider,
-						status
-					)
-				VALUES
-					($1, $2, $3, $4);
-				"#,
-				region_id as _,
-				region.name,
-				region.cloud_provider as _,
-				region.status as _,
-			)
-			.execute(&mut *connection)
-			.await?;
-	}
+		query!(
+			r#"
+			INSERT INTO
+				deployment_region(
+					id,
+					name,
+					provider,
+					status
+				)
+			VALUES
+				($1, $2, $3, $4);
+			"#,
+			region_id as _,
+			region.name,
+			region.cloud_provider as _,
+			region.status as _,
+		)
+		.execute(&mut *connection)
+		.await?;
 	}
 
 	Ok(())
@@ -207,7 +207,7 @@ pub async fn get_default_region_id(
 			name = 'Singapore'
 			AND provider = 'digitalocean'
 			AND workspace_id IS NULL
-			AND ready = TRUE;
+			AND status = 'active';
 		"#
 	)
 	.fetch_one(&mut *connection)
@@ -227,9 +227,9 @@ pub async fn get_region_by_id(
 			name,
 			provider as "cloud_provider: _",
 			workspace_id as "workspace_id: _",
-			cf_cert_id,
 			ingress_hostname as "ingress_hostname: _",
 			message_log,
+			cf_cert_id,
 			config_file as "config_file: _",
 			status as "status: _",
 			disconnected_at as "disconnected_at: _"
@@ -257,9 +257,9 @@ pub async fn get_all_deployment_regions_for_workspace(
 			name,
 			provider as "cloud_provider: _",
 			workspace_id as "workspace_id: _",
-			cf_cert_id,
 			ingress_hostname as "ingress_hostname: _",
 			message_log,
+			cf_cert_id,
 			config_file as "config_file: _",
 			status as "status: _",
 			disconnected_at as "disconnected_at: _"
@@ -293,6 +293,7 @@ pub async fn get_all_active_byoc_region(
 			workspace_id as "workspace_id: _",
 			ingress_hostname as "ingress_hostname: _",
 			message_log,
+			cf_cert_id,
 			config_file as "config_file: _",
 			status as "status: _",
 			disconnected_at as "disconnected_at: _"
@@ -322,6 +323,7 @@ pub async fn get_all_disconnected_byoc_region(
 			workspace_id as "workspace_id: _",
 			ingress_hostname as "ingress_hostname: _",
 			message_log,
+			cf_cert_id,
 			config_file as "config_file: _",
 			status as "status: _",
 			disconnected_at as "disconnected_at: _"
@@ -406,7 +408,7 @@ pub async fn add_deployment_region_to_workspace(
 				status
 			)
 		VALUES
-			($1, $2, $3, $4, $5, $5);
+			($1, $2, $3, $4, $5, $6);
 		"#,
 		region_id as _,
 		name,

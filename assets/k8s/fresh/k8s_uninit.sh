@@ -19,10 +19,8 @@ echo "Deleting patr workspace from cluster"
 kubectl delete namespace "$PARENT_WORKSPACE_ID"
 
 helm uninstall ingress-nginx -n=ingress-nginx
-helm uninstall cert-manager -n=cert-manager
 
 kubectl delete namespace ingress-nginx
-kubectl delete ns cert-manager
 
 rm $KUBECONFIG_PATH
 

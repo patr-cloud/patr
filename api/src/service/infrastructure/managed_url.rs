@@ -329,7 +329,7 @@ pub async fn update_managed_url(
 	}
 
 	// as of now subdomain update for managed url is not supported,
-	// so we don't need to care about deleting previous host
+	// so we don't need to care about deleting previous host in cf kv
 	service::update_cloudflare_kv_for_managed_url(
 		connection,
 		&managed_url.sub_domain,

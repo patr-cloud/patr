@@ -1,10 +1,11 @@
 use std::time::Duration;
 
+use api_models::models::workspace::domain::DnsRecordValue;
 use eve_rs::AsError;
-use sqlx::Connection;
 use kube::config::Kubeconfig;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use sqlx::Connection;
 use tokio::{fs, process::Command};
 
 use crate::{
@@ -67,7 +68,7 @@ pub(super) async fn process_request(
 					&kubeconfig_path,
 					&tls_cert_path,
 					&tls_key_path,
-					])
+				])
 				.output()
 				.await?;
 
@@ -183,22 +184,33 @@ pub(super) async fn process_request(
 					)
 					.await?
 					.status(500)?;
-		
+
 					let resource = db::get_resource_by_id(
 						&mut connection,
 						&onpatr_domain.id,
 					)
 					.await?
 					.status(500)?;
-				
-					let dns_record = match ip_addr {
-						std::net::IpAddr::V4(ip_v4) => DnsRecordValue::A { target: ip_v4, proxied: false },
-						std::net::IpAddr::V6(ip_v6) => DnsRecordValue::AAAA { target: ip_v6, proxied: false },
+
+					let dns_record = match hostname {
+						url::Host::Domain(domain) => DnsRecordValue::CNAME {
+							target: domain,
+							proxied: false,
+						},
+						url::Host::Ipv4(ip_v4) => DnsRecordValue::A {
+							target: ip_v4,
+							proxied: false,
+						},
+						url::Host::Ipv6(ip_v6) => DnsRecordValue::AAAA {
+							target: ip_v6,
+							proxied: false,
+						},
 					};
 
-		
-					// todo: currently only *.region_id.region_root_domain is added due to dns limits
-					// if needed add region_id.region_root_domain also to dns records of region_root_domain
+					// todo: currently only *.region_id.region_root_domain is
+					// added due to dns limits if needed add
+					// region_id.region_root_domain also to dns records of
+					// region_root_domain
 					service::create_patr_domain_dns_record(
 						&mut connection,
 						&resource.owner_id,
@@ -221,6 +233,8 @@ pub(super) async fn process_request(
 			api_token,
 			cluster_id,
 			region_id,
+			tls_cert,
+			tls_key,
 			request_id,
 		} => {
 			let client = Client::new();
@@ -286,6 +300,8 @@ pub(super) async fn process_request(
 								api_token,
 								cluster_id,
 								region_id,
+								tls_cert,
+								tls_key,
 								request_id: request_id.clone(),
 							},
 						),
@@ -316,6 +332,8 @@ pub(super) async fn process_request(
 							BYOCData::InitKubernetesCluster {
 								region_id,
 								kube_config,
+								tls_cert,
+								tls_key,
 								request_id: request_id.clone(),
 							},
 						),
@@ -399,8 +417,10 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-			service::update_cloudflare_kv_for_region(&region_id, &ip_addr.to_string(), config).await?;
+				return Ok(());
+			}
 
+			log::info!("Un-Initialized cluster {region_id} successfully");
 			Ok(())
 		}
 	}

@@ -615,6 +615,8 @@ async fn delete_workspace(
 		)
 		.await?;
 
+	// todo: make sure region is also deleted
+
 	if !domains.is_empty() ||
 		!docker_repositories.is_empty() ||
 		!managed_database.is_empty() ||

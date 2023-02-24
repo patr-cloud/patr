@@ -92,7 +92,6 @@ pub async fn update_kubernetes_deployment(
 	digest: Option<&str>,
 	running_details: &DeploymentRunningDetails,
 	deployment_volumes: &Vec<DeploymentVolume>,
-	cluster_type: &ClusterType,
 	kubeconfig: Kubeconfig,
 	deployed_region_id: &Uuid,
 	config: &Settings,
@@ -611,13 +610,80 @@ pub async fn update_kubernetes_deployment(
 			namespace,
 		);
 
-	hpa_api
-		.patch(
-			&format!("hpa-{}", deployment.id),
-			&PatchParams::apply(&format!("hpa-{}", deployment.id)),
-			&Patch::Apply(kubernetes_hpa),
+		hpa_api
+			.patch(
+				&format!("hpa-{}", deployment.id),
+				&PatchParams::apply(&format!("hpa-{}", deployment.id)),
+				&Patch::Apply(kubernetes_hpa),
+			)
+			.await?;
+	} else {
+		let kubernetes_sts = StatefulSet {
+			metadata,
+			spec: Some(StatefulSetSpec {
+				replicas,
+				selector,
+				service_name: format!("service-{}", deployment.id),
+				template,
+				update_strategy: Some(StatefulSetUpdateStrategy {
+					type_: Some("RollingUpdate".to_owned()),
+					..StatefulSetUpdateStrategy::default()
+				}),
+				volume_claim_templates: Some(pvc),
+				..StatefulSetSpec::default()
+			}),
+			..StatefulSet::default()
+		};
+
+		// Create the statefulset defined above
+		log::trace!("request_id: {} - creating statefulset", request_id);
+		let sts_api = Api::<StatefulSet>::namespaced(
+			kubernetes_client.clone(),
+			namespace,
+		);
+
+		sts_api
+			.patch(
+				&format!("sts-{}", deployment.id),
+				&PatchParams::apply(&format!("sts-{}", deployment.id)),
+				&Patch::Apply(kubernetes_sts),
+			)
+			.await?;
+
+		// This is because if a user wanted to add the volume to there
+		// deployment then a deployment will be converted to sts
+		log::trace!(
+			"request_id: {} - deleting the deployment set if there are any",
+			request_id
+		);
+
+		Api::<K8sDeployment>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
+		.delete_opt(
+			&format!("deployment-{}", deployment.id),
+			&DeleteParams::default(),
 		)
 		.await?;
+
+		// Delete the HPA, if any
+		log::trace!(
+			"request_id: {} - deleting horizontal pod autoscalar",
+			request_id
+		);
+		let hpa_api = Api::<HorizontalPodAutoscaler>::namespaced(
+			kubernetes_client.clone(),
+			namespace,
+		);
+
+		hpa_api
+			.delete_opt(
+				&format!("hpa-{}", deployment.id),
+				&DeleteParams::default(),
+			)
+			.await?;
+	}
 
 	let annotations = [(
 		"kubernetes.io/ingress.class".to_string(),
@@ -739,7 +805,6 @@ pub async fn delete_kubernetes_deployment(
 	.await?;
 
 	log::trace!("request_id: {} - deleting the service", request_id);
-
 	Api::<Service>::namespaced(
 		kubernetes_client.clone(),
 		workspace_id.as_str(),
@@ -772,103 +837,6 @@ pub async fn delete_kubernetes_deployment(
 		request_id
 	);
 
-	Ok(kubernetes_client)
-}
-
-// If deployment is stopped, ingress cert will not be deleted as it may take
-// time to regenerate
-pub async fn stop_kubernetes_deployment(
-	workspace_id: &Uuid,
-	deployment_id: &Uuid,
-	kubeconfig: KubernetesConfigDetails,
-	request_id: &Uuid,
-) -> Result<kube::Client, Error> {
-	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
-
-	Api::<K8sDeployment>::namespaced(
-		kubernetes_client.clone(),
-		workspace_id.as_str(),
-	)
-	.delete_opt(
-		&format!("deployment-{}", deployment_id),
-		&DeleteParams::default(),
-	)
-	.await?;
-
-	log::trace!("request_id: {} - deleting the stateful set", request_id);
-
-	Api::<StatefulSet>::namespaced(
-		kubernetes_client.clone(),
-		workspace_id.as_str(),
-	)
-	.delete_opt(&format!("sts-{}", deployment_id), &DeleteParams::default())
-	.await?;
-
-	log::trace!("request_id: {} - deleting the config map", request_id);
-
-	Api::<ConfigMap>::namespaced(
-		kubernetes_client.clone(),
-		workspace_id.as_str(),
-	)
-	.delete_opt(
-		&format!("config-mount-{}", deployment_id),
-		&DeleteParams::default(),
-	)
-	.await?;
-
-	log::trace!("request_id: {} - deleting the service", request_id);
-
-	Api::<Service>::namespaced(
-		kubernetes_client.clone(),
-		workspace_id.as_str(),
-	)
-	.delete_opt(
-		&format!("service-{}", deployment_id),
-		&DeleteParams::default(),
-	)
-	.await?;
-
-	log::trace!("request_id: {} - deleting the hpa", request_id);
-
-	Api::<HorizontalPodAutoscaler>::namespaced(
-		kubernetes_client.clone(),
-		workspace_id.as_str(),
-	)
-	.delete_opt(&format!("hpa-{}", deployment_id), &DeleteParams::default())
-	.await?;
-
-	log::info!(
-		"request_id: {} - successfully stopped deployment",
-		request_id
-	);
-
-	Ok(kubernetes_client)
-}
-
-pub async fn delete_kubernetes_volume(
-	workspace_id: &Uuid,
-	deployment_id: &Uuid,
-	volume: &DeploymentVolume,
-	replica_index: u16,
-	kubeconfig: KubernetesConfigDetails,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	let kubernetes_client =
-		super::get_kubernetes_client(kubeconfig.kube_config).await?;
-
-	log::trace!("request_id: {} - deleting the pvc", request_id);
-	Api::<PersistentVolumeClaim>::namespaced(
-		kubernetes_client.clone(),
-		workspace_id.as_str(),
-	)
-	.delete_opt(
-		&format!(
-			"pvc-{}-sts-{}-{}",
-			volume.volume_id, deployment_id, replica_index
-		),
-		&DeleteParams::default(),
-	)
-	.await?;
 	Ok(())
 }
 

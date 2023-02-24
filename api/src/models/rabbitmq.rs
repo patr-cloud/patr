@@ -76,6 +76,8 @@ pub enum BYOCData {
 		api_token: String,
 		cluster_id: Uuid,
 		region_id: Uuid,
+		tls_cert: String,
+		tls_key: String,
 		request_id: Uuid,
 	},
 	DeleteKubernetesCluster {
