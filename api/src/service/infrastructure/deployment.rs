@@ -1569,34 +1569,32 @@ pub async fn start_deployment(
 		.status(500)?;
 
 	if workspace.is_spam {
-		db::update_deployment_status(
-			connection,
-			deployment_id,
-			&DeploymentStatus::Running,
-		)
-		.await?;
-	} else {
-		let kube_config_details = service::get_kubernetes_config_for_region(
-			connection,
-			&deployment.region,
-			config,
-		)
-		.await?;
-
-		service::update_kubernetes_deployment(
-			workspace_id,
-			deployment,
-			&image_name,
-			digest.as_deref(),
-			deployment_running_details,
-			&volumes,
-			&kube_config_details.cluster_type,
-			kube_config_details.kube_config,
-			config,
-			request_id,
-		)
-		.await?;
+		return Err(Error::empty()
+			.status(401)
+			.body(error!(UNVERIFIED_WORKSPACE).to_string()));
 	}
+
+	let kube_config_details = service::get_kubernetes_config_for_region(
+		connection,
+		&deployment.region,
+		config,
+	)
+	.await?;
+
+	service::update_kubernetes_deployment(
+		workspace_id,
+		deployment,
+		&image_name,
+		digest.as_deref(),
+		deployment_running_details,
+		&volumes,
+		&kube_config_details.cluster_type,
+		kube_config_details.kube_config,
+		config,
+		request_id,
+	)
+	.await?;
+
 	Ok(())
 }
 
