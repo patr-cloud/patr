@@ -121,7 +121,7 @@ pub async fn initialize_region_pre(
 					disconnected_at IS NULL AND
 					(
 						status = 'active' OR
-						status = 'disconnected'
+						status = 'coming_soon'
 					)
 				) OR (
 					workspace_id IS NOT NULL AND
@@ -135,7 +135,7 @@ pub async fn initialize_region_pre(
 						) OR (
 							status = 'creating' AND
 							ingress_hostname IS NULL AND
-							cf_cert_id IS NULL AND
+							cf_cert_id IS NOT NULL AND
 							config_file IS NULL AND
 							disconnected_at IS NULL
 						) OR (

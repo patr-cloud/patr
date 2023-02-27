@@ -3027,6 +3027,16 @@
     },
     "query": "INSERT INTO docker_repo_payment_history( workspace_id, storage, start_time, stop_time ) VALUES ( $1, $2, $3, NULL );"
   },
+  "2bb6177723641c71b5652b8ccb5829466d05d91ef7def54b87877114bed19573": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_region( id UUID CONSTRAINT deployment_region_pk PRIMARY KEY, name TEXT NOT NULL, provider INFRASTRUCTURE_CLOUD_PROVIDER NOT NULL, workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id REFERENCES workspace(id), ingress_hostname TEXT, message_log TEXT, cf_cert_id TEXT, config_file JSON, deleted TIMESTAMPTZ, status REGION_STATUS NOT NULL, disconnected_at TIMESTAMPTZ, CONSTRAINT deployment_region_chk_status CHECK( ( workspace_id IS NULL AND ingress_hostname IS NULL AND message_log IS NULL AND cf_cert_id IS NULL AND config_file IS NULL AND disconnected_at IS NULL AND ( status = 'active' OR status = 'coming_soon' ) ) OR ( workspace_id IS NOT NULL AND ( ( status = 'active' AND ingress_hostname IS NOT NULL AND cf_cert_id IS NOT NULL AND config_file IS NOT NULL AND disconnected_at IS NULL ) OR ( status = 'creating' AND ingress_hostname IS NULL AND cf_cert_id IS NOT NULL AND config_file IS NULL AND disconnected_at IS NULL ) OR ( status = 'disconnected' AND ingress_hostname IS NOT NULL AND cf_cert_id IS NOT NULL AND config_file IS NOT NULL AND disconnected_at IS NOT NULL ) OR ( status = 'deleted' AND deleted IS NOT NULL ) OR status = 'errored' ) ) ) );"
+  },
   "2bdd5a61671481fdc701daf6cbfd6d8ac3191450e799731de25e312d2af349e3": {
     "describe": {
       "columns": [],
@@ -9338,16 +9348,6 @@
       }
     },
     "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tcpu,\n\t\t\tram,\n\t\t\tvolume\n\t\tFROM\n\t\t\tci_build_machine_type\n\t\t"
-  },
-  "91d2ce2a05c7e2085c18d415196654e999b15321b35538ccf11c9ee585931a4d": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment_region( id UUID CONSTRAINT deployment_region_pk PRIMARY KEY, name TEXT NOT NULL, provider INFRASTRUCTURE_CLOUD_PROVIDER NOT NULL, workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id REFERENCES workspace(id), ingress_hostname TEXT, message_log TEXT, cf_cert_id TEXT, config_file JSON, deleted TIMESTAMPTZ, status REGION_STATUS NOT NULL, disconnected_at TIMESTAMPTZ, CONSTRAINT deployment_region_chk_status CHECK( ( workspace_id IS NULL AND ingress_hostname IS NULL AND message_log IS NULL AND cf_cert_id IS NULL AND config_file IS NULL AND disconnected_at IS NULL AND ( status = 'active' OR status = 'disconnected' ) ) OR ( workspace_id IS NOT NULL AND ( ( status = 'active' AND ingress_hostname IS NOT NULL AND cf_cert_id IS NOT NULL AND config_file IS NOT NULL AND disconnected_at IS NULL ) OR ( status = 'creating' AND ingress_hostname IS NULL AND cf_cert_id IS NULL AND config_file IS NULL AND disconnected_at IS NULL ) OR ( status = 'disconnected' AND ingress_hostname IS NOT NULL AND cf_cert_id IS NOT NULL AND config_file IS NOT NULL AND disconnected_at IS NOT NULL ) OR ( status = 'deleted' AND deleted IS NOT NULL ) OR status = 'errored' ) ) ) );"
   },
   "94b546b3a5cd834b6894b177e8af110afa25ff159b12553a5086927d96c09088": {
     "describe": {
