@@ -46,9 +46,6 @@ pub async fn initialize_managed_url_pre(
 	.execute(&mut *connection)
 	.await?;
 
-	// todo: add better constraint where
-	// (sub_domain, domain_id, cf_custom_hostname_id)
-	// should be same across all tables
 	query!(
 		r#"
 		CREATE TABLE managed_url(

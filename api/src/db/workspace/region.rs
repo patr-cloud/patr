@@ -110,30 +110,65 @@ pub async fn initialize_region_pre(
 			config_file JSON,
 			deleted TIMESTAMPTZ,
 			status REGION_STATUS NOT NULL,
-			disconnected_at TIMESTAMPTZ
+			disconnected_at TIMESTAMPTZ,
+			CONSTRAINT deployment_region_chk_status CHECK(
+				(
+					workspace_id IS NULL AND
+					ingress_hostname IS NULL AND
+					message_log IS NULL AND
+					cf_cert_id IS NULL AND
+					config_file IS NULL AND
+					disconnected_at IS NULL AND
+					(
+						status = 'active' OR
+						status = 'disconnected'
+					)
+				) OR (
+					workspace_id IS NOT NULL AND
+					(
+						(
+							status = 'active' AND
+							ingress_hostname IS NOT NULL AND
+							cf_cert_id IS NOT NULL AND
+							config_file IS NOT NULL AND
+							disconnected_at IS NULL
+						) OR (
+							status = 'creating' AND
+							ingress_hostname IS NULL AND
+							cf_cert_id IS NULL AND
+							config_file IS NULL AND
+							disconnected_at IS NULL
+						) OR (
+							status = 'disconnected' AND
+							ingress_hostname IS NOT NULL AND
+							cf_cert_id IS NOT NULL AND
+							config_file IS NOT NULL AND
+							disconnected_at IS NOT NULL
+						) OR (
+							status = 'deleted' AND
+							deleted IS NOT NULL
+						) OR
+						status = 'errored'
+					)
+				)
+			)
 		);
 		"#
 	)
 	.execute(&mut *connection)
 	.await?;
 
-	// todo: create unique index
-	// query!(
-	// 	r#"
-	// 	CREATE UNIQUE INDEX deployment_region_uq_workspace_id_name
-	// 	ON deployment_region(workspace_id, name)
-	// 	WHERE
-	// 		deleted IS NULL AND
-	// 		workspace_id IS NOT NULL;
-	// 	"#
-	// )
-	// .execute(&mut *connection)
-	// .await?;
-
-	// todo: add check constraint
-	// 	1. if the status is deleted, then the deleted should have timestamp
-	//  2. if the status is disconnected, then the last disconnected should have
-	// timestamp
+	query!(
+		r#"
+		CREATE UNIQUE INDEX deployment_region_uq_workspace_id_name
+		ON deployment_region(workspace_id, name)
+		WHERE
+			deleted IS NULL AND
+			workspace_id IS NOT NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }
@@ -508,9 +543,7 @@ pub async fn delete_region(
 			deployment_region
 		SET
 			deleted = $2,
-			status = 'deleted',
-			config_file = NULL,
-			ingress_hostname = NULL
+			status = 'deleted'
 		WHERE
 			id = $1;
 		"#,

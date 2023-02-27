@@ -757,7 +757,10 @@ pub async fn update_kubernetes_deployment(
 			.ports
 			.iter()
 			.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
-			.map(|(port, _)| format!("{}-{}.patr.cloud", port, deployment.id)) // todo: update to app_onpatr_domain
+			.map(|(port, _)| format!(
+				"{}-{}.{}",
+				port, deployment.id, config.cloudflare.onpatr_domain
+			))
 			.collect::<Vec<_>>()
 			.join(",")
 	);

@@ -9,6 +9,7 @@ mod static_site;
 use std::ops::DerefMut;
 
 use api_models::utils::Uuid;
+use chrono::Utc;
 use eve_rs::AsError;
 
 pub use self::{
@@ -272,7 +273,15 @@ pub async fn delete_all_resources_in_workspace(
 		.await?;
 	}
 
-	// todo: delete region when deleting workspace
+	// all the deployments are already deleted,
+	// so only need to delete the region alone from db
+	log::trace!("deleting all regions for workspace: {}", workspace_id);
+	let regions =
+		db::get_all_deployment_regions_for_workspace(connection, workspace_id)
+			.await?;
+	for region in regions {
+		db::delete_region(connection, &region.id, &Utc::now()).await?;
+	}
 
 	log::trace!(
 		"request_id: {} successfully  deleted all resources in workspace: {}",

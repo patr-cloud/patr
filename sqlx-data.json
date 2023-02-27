@@ -250,6 +250,19 @@
     },
     "query": "CREATE TABLE IF NOT EXISTS managed_database_payment_history( workspace_id UUID NOT NULL, database_id UUID NOT NULL, db_plan MANAGED_DATABASE_PLAN NOT NULL, start_time TIMESTAMPTZ NOT NULL, deletion_time TIMESTAMPTZ );"
   },
+  "03af86280fa0a60839a120b52b8431d3e3ef94c0151aaa6b88ea1807013ba86b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "UPDATE deployment_region SET deleted = $2, status = 'deleted' WHERE id = $1;"
+  },
   "0482c58c13e7b70e0a028857b17ad7278aa8071b07896785e0d2e20aafe20b58": {
     "describe": {
       "columns": [],
@@ -1815,6 +1828,16 @@
       }
     },
     "query": "UPDATE deployment_volume SET deleted = $1 WHERE id = $2;"
+  },
+  "1b5ab6441f6e3209491c8d9b101ebc494fdc43e5d1d54f8f6d87c68645231d95": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE UNIQUE INDEX deployment_region_uq_workspace_id_name ON deployment_region(workspace_id, name) WHERE deleted IS NULL AND workspace_id IS NOT NULL;"
   },
   "1b91d51ce01a40c989017198a841c47361919562817d7f58d41e147a10bc2b2c": {
     "describe": {
@@ -7746,16 +7769,6 @@
     },
     "query": "UPDATE deployment_region SET status = 'active', config_file = $2, ingress_hostname = $3 WHERE id = $1;"
   },
-  "7f7ac104f62146773fbc2add3840705793299fcba90a53d70d6704e94c315b2a": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment_region( id UUID CONSTRAINT deployment_region_pk PRIMARY KEY, name TEXT NOT NULL, provider INFRASTRUCTURE_CLOUD_PROVIDER NOT NULL, workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id REFERENCES workspace(id), ingress_hostname TEXT, message_log TEXT, cf_cert_id TEXT, config_file JSON, deleted TIMESTAMPTZ, status REGION_STATUS NOT NULL, disconnected_at TIMESTAMPTZ );"
-  },
   "7f9b090cc0013aadd0daed235a689086d001a05e18d401f0b03292615a7ad234": {
     "describe": {
       "columns": [],
@@ -9325,6 +9338,16 @@
       }
     },
     "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tcpu,\n\t\t\tram,\n\t\t\tvolume\n\t\tFROM\n\t\t\tci_build_machine_type\n\t\t"
+  },
+  "91d2ce2a05c7e2085c18d415196654e999b15321b35538ccf11c9ee585931a4d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_region( id UUID CONSTRAINT deployment_region_pk PRIMARY KEY, name TEXT NOT NULL, provider INFRASTRUCTURE_CLOUD_PROVIDER NOT NULL, workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id REFERENCES workspace(id), ingress_hostname TEXT, message_log TEXT, cf_cert_id TEXT, config_file JSON, deleted TIMESTAMPTZ, status REGION_STATUS NOT NULL, disconnected_at TIMESTAMPTZ, CONSTRAINT deployment_region_chk_status CHECK( ( workspace_id IS NULL AND ingress_hostname IS NULL AND message_log IS NULL AND cf_cert_id IS NULL AND config_file IS NULL AND disconnected_at IS NULL AND ( status = 'active' OR status = 'disconnected' ) ) OR ( workspace_id IS NOT NULL AND ( ( status = 'active' AND ingress_hostname IS NOT NULL AND cf_cert_id IS NOT NULL AND config_file IS NOT NULL AND disconnected_at IS NULL ) OR ( status = 'creating' AND ingress_hostname IS NULL AND cf_cert_id IS NULL AND config_file IS NULL AND disconnected_at IS NULL ) OR ( status = 'disconnected' AND ingress_hostname IS NOT NULL AND cf_cert_id IS NOT NULL AND config_file IS NOT NULL AND disconnected_at IS NOT NULL ) OR ( status = 'deleted' AND deleted IS NOT NULL ) OR status = 'errored' ) ) ) );"
   },
   "94b546b3a5cd834b6894b177e8af110afa25ff159b12553a5086927d96c09088": {
     "describe": {
@@ -15310,19 +15333,6 @@
       }
     },
     "query": "CREATE UNIQUE INDEX managed_url_uq_sub_domain_domain_id_path ON managed_url(sub_domain, domain_id, path) WHERE deleted IS NULL;"
-  },
-  "ff0463d7cc190cf84d8aa9724f4916ba92960ee12fbd3a26569031a34dcc468f": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "UPDATE deployment_region SET deleted = $2, status = 'deleted', config_file = NULL, ingress_hostname = NULL WHERE id = $1;"
   },
   "ff096d079cff3057d77210c78f787da16294324cc159a2f05367ca370a7069c7": {
     "describe": {
