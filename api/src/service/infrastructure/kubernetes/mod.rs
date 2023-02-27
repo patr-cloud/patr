@@ -85,11 +85,12 @@ async fn get_kubernetes_config(
 	Ok(client)
 }
 
-pub async fn get_load_balancer_hostname(
-	namespace: &str,
-	service_name: &str,
+pub async fn get_patr_ingress_load_balancer_hostname(
 	kube_config: Kubeconfig,
 ) -> Result<Option<Host>, Error> {
+	let namespace = "ingress-nginx";
+	let service_name = "ingress-nginx-controller";
+
 	let kube_client = get_kubernetes_client(kube_config).await?;
 
 	let service = Api::<Service>::namespaced(kube_client, namespace)
@@ -103,7 +104,9 @@ pub async fn get_load_balancer_hostname(
 		.and_then(|load_balancer_ingresses| {
 			load_balancer_ingresses.into_iter().next()
 		})
-		.and_then(|load_balancer_ingress| load_balancer_ingress.ip)
+		.and_then(|load_balancer_ingress| {
+			load_balancer_ingress.ip.or(load_balancer_ingress.hostname)
+		})
 		.map(|hostname| {
 			Host::parse(&hostname).map_err(|err| {
 				log::error!(

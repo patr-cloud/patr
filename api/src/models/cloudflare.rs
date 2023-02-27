@@ -55,7 +55,7 @@ pub mod deployment {
 		}
 	}
 
-	#[derive(Debug, Serialize, Deserialize)]
+	#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 	#[serde(rename_all = "camelCase")]
 	pub enum Value {
 		Created,
@@ -83,7 +83,7 @@ pub mod static_site {
 		}
 	}
 
-	#[derive(Debug, Serialize, Deserialize)]
+	#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 	#[serde(rename_all = "camelCase")]
 	pub enum Value {
 		Created,

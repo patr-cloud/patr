@@ -43,6 +43,8 @@ use crate::{
 	Database,
 };
 
+const DELETION_KV_TTL_IN_SECS: i64 = 15 * 24 * 60 * 60; // 15 days
+
 pub async fn get_cloudflare_client(
 	config: &Settings,
 ) -> Result<CloudflareClient, Error> {
@@ -100,29 +102,6 @@ async fn delete_kv_for_routing(
 	Ok(())
 }
 
-async fn update_kv_for_deployment(
-	key: deployment::Key,
-	value: deployment::Value,
-	config: &Settings,
-) -> Result<(), Error> {
-	let cf_client = get_cloudflare_client(config).await?;
-	cf_client
-		.request_handle(&workerskv::write_bulk::WriteBulk {
-			account_identifier: &config.cloudflare.account_id,
-			namespace_identifier: &config.cloudflare.kv_deployment_ns,
-			bulk_key_value_pairs: vec![workerskv::write_bulk::KeyValuePair {
-				key: key.to_string(),
-				value: serde_json::to_string(&value)?,
-				expiration: None,
-				expiration_ttl: None,
-				base64: None,
-			}],
-		})
-		.await?;
-
-	Ok(())
-}
-
 #[allow(dead_code)]
 async fn delete_kv_for_deployment(
 	key: deployment::Key,
@@ -134,29 +113,6 @@ async fn delete_kv_for_deployment(
 			account_identifier: &config.cloudflare.account_id,
 			namespace_identifier: &config.cloudflare.kv_deployment_ns,
 			key: &key.to_string(),
-		})
-		.await?;
-
-	Ok(())
-}
-
-async fn update_kv_for_static_site(
-	key: static_site::Key,
-	value: static_site::Value,
-	config: &Settings,
-) -> Result<(), Error> {
-	let cf_client = get_cloudflare_client(config).await?;
-	cf_client
-		.request_handle(&workerskv::write_bulk::WriteBulk {
-			account_identifier: &config.cloudflare.account_id,
-			namespace_identifier: &config.cloudflare.kv_static_site_ns,
-			bulk_key_value_pairs: vec![workerskv::write_bulk::KeyValuePair {
-				key: key.to_string(),
-				value: serde_json::to_string(&value)?,
-				expiration: None,
-				expiration_ttl: None,
-				base64: None,
-			}],
 		})
 		.await?;
 
@@ -245,9 +201,27 @@ pub async fn update_cloudflare_kv_for_deployment(
 	config: &Settings,
 ) -> Result<(), Error> {
 	let key = deployment::Key(deployment_id.to_owned());
-	// todo: Is it okay to update routing every time?
-	// todo: for stop/delete page use ttl of 7-15 days from here itself
-	update_kv_for_deployment(key, value, config).await?;
+
+	let expiration_ttl = if value == deployment::Value::Deleted {
+		Some(DELETION_KV_TTL_IN_SECS)
+	} else {
+		None
+	};
+
+	let cf_client = get_cloudflare_client(config).await?;
+	cf_client
+		.request_handle(&workerskv::write_bulk::WriteBulk {
+			account_identifier: &config.cloudflare.account_id,
+			namespace_identifier: &config.cloudflare.kv_deployment_ns,
+			bulk_key_value_pairs: vec![workerskv::write_bulk::KeyValuePair {
+				key: key.to_string(),
+				value: serde_json::to_string(&value)?,
+				expiration_ttl,
+				expiration: None,
+				base64: None,
+			}],
+		})
+		.await?;
 
 	Ok(())
 }
@@ -258,9 +232,27 @@ pub async fn update_cloudflare_kv_for_static_site(
 	config: &Settings,
 ) -> Result<(), Error> {
 	let key = static_site::Key(static_site_id.to_owned());
-	// todo: Is it okay to update routing every time?
-	// todo: for stop/delete page use ttl of 7-15 days from here itself
-	update_kv_for_static_site(key, value, config).await?;
+
+	let expiration_ttl = if value == static_site::Value::Deleted {
+		Some(DELETION_KV_TTL_IN_SECS)
+	} else {
+		None
+	};
+
+	let cf_client = get_cloudflare_client(config).await?;
+	cf_client
+		.request_handle(&workerskv::write_bulk::WriteBulk {
+			account_identifier: &config.cloudflare.account_id,
+			namespace_identifier: &config.cloudflare.kv_static_site_ns,
+			bulk_key_value_pairs: vec![workerskv::write_bulk::KeyValuePair {
+				key: key.to_string(),
+				value: serde_json::to_string(&value)?,
+				expiration_ttl,
+				expiration: None,
+				base64: None,
+			}],
+		})
+		.await?;
 
 	Ok(())
 }

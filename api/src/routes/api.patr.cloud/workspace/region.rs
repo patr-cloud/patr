@@ -372,9 +372,6 @@ async fn add_region(
 				&request_id,
 			)
 			.await?;
-
-			// TODO - send the appropriate email for success/failure of the
-			// region
 		}
 		AddRegionToWorkspaceData::KubeConfig { config_file } => {
 			let cf_cert = service::create_origin_ca_certificate_for_region(
@@ -453,8 +450,7 @@ async fn delete_region(
 			.status(404)
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	// todo: how to delete the region if it got stuck in creating state
-	if region.status != RegionStatus::Active {
+	if region.status == RegionStatus::Deleted {
 		return Error::as_result()
 			.status(404)
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
@@ -510,7 +506,6 @@ async fn delete_region(
 	)
 	.await?;
 
-	// TODO send emails about the action
 	context.success(DeleteRegionFromWorkspaceResponse {});
 	Ok(context)
 }

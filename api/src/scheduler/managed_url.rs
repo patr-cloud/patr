@@ -2,10 +2,6 @@ use api_models::{self, utils::Uuid};
 
 use crate::{db, scheduler::Job, service, utils::Error};
 
-// todo: does this scheduler really needed?
-// This is needed only if we are going to show some notification
-// about the misconfiguration to the user
-
 // Every 15 mins
 pub(super) fn configure_all_unconfigued_managed_urls_job() -> Job {
 	Job::new(

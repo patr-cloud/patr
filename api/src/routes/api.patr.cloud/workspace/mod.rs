@@ -615,7 +615,11 @@ async fn delete_workspace(
 		)
 		.await?;
 
-	// todo: make sure region is also deleted
+	let regions = db::get_all_deployment_regions_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?;
 
 	if !domains.is_empty() ||
 		!docker_repositories.is_empty() ||
@@ -623,15 +627,13 @@ async fn delete_workspace(
 		!deployments.is_empty() ||
 		!static_site.is_empty() ||
 		!managed_url.is_empty() ||
-		!connected_git_providers.is_empty()
+		!connected_git_providers.is_empty() ||
+		!regions.is_empty()
 	{
 		return Err(Error::empty()
 			.status(424)
 			.body(error!(CANNOT_DELETE_WORKSPACE).to_string()));
 	}
-
-	// todo: check whether all the region is deleted
-	// delete workspace in that region
 
 	service::delete_kubernetes_namespace(
 		namespace,

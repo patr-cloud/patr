@@ -2,16 +2,26 @@
 
 set -uex
 
+# validate inputs
 CLUSTER_ID=${1:?"Missing parameter: CLUSTER_ID"}
 PARENT_WORKSPACE_ID=${2:?"Missing parameter: PARENT_WORKSPACE_ID"}
 KUBECONFIG_PATH=${3:?"Missing parameter: KUBECONFIG_PATH"}
 TLS_CERT_PATH=${4:?"Missing parameter: TLS_CERT_PATH"}
 TLS_KEY_PATH=${5:?"Missing parameter: TLS_KEY_PATH"}
 
-DEFAULT_CERT_NAME="default-cert-$CLUSTER_ID"
-
+# validate input values
 if [ ! -f $KUBECONFIG_PATH ]; then
     echo "Kubeconfig file not found: $KUBECONFIG_PATH"
+    exit 1
+fi
+
+if [ ! -f $TLS_CERT_PATH ]; then
+    echo "TLS certificate file not found: $TLS_CERT_PATH"
+    exit 1
+fi
+
+if [ ! -f $TLS_KEY_PATH ]; then
+    echo "TLS private key file not found: $TLS_KEY_PATH"
     exit 1
 fi
 
@@ -21,6 +31,7 @@ export KUBECONFIG=$KUBECONFIG_PATH
 
 SCRIPT_DIR="$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)"
 CONFIG_DIR="$SCRIPT_DIR/config"
+DEFAULT_CERT_NAME="default-cert-$CLUSTER_ID"
 
 echo "Initializing $CLUSTER_ID cluster"
 
@@ -55,4 +66,4 @@ rm $KUBECONFIG_PATH $TLS_CERT_PATH $TLS_KEY_PATH
 
 echo "Successfully initialized cluster $CLUSTER_ID"
 
-echo "Waiting for load balancer to assign IP address..."
+echo "Waiting for load balancer to assign a host ..."

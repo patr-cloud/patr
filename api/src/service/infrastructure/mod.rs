@@ -9,6 +9,7 @@ mod static_site;
 use std::ops::DerefMut;
 
 use api_models::utils::Uuid;
+use eve_rs::AsError;
 
 pub use self::{
 	deployment::*,
@@ -187,6 +188,11 @@ pub async fn delete_all_resources_in_workspace(
 		db::get_deployments_for_workspace(connection, workspace_id).await?;
 
 	for deployment in deployments {
+		let region = db::get_region_by_id(connection, &deployment.region)
+			.await?
+			.status(500)?;
+
+		let delete_k8s_resource = region.is_patr_region();
 		service::delete_deployment(
 			connection,
 			&deployment.workspace_id,
@@ -196,9 +202,7 @@ pub async fn delete_all_resources_in_workspace(
 			None,
 			"0.0.0.0",
 			true,
-			// todo: delete region when deleting workspace
-			// todo: how to delete it for byoc
-			true,
+			delete_k8s_resource,
 			config,
 			request_id,
 		)
@@ -267,6 +271,8 @@ pub async fn delete_all_resources_in_workspace(
 		)
 		.await?;
 	}
+
+	// todo: delete region when deleting workspace
 
 	log::trace!(
 		"request_id: {} successfully  deleted all resources in workspace: {}",

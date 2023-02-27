@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use api_models::models::workspace::domain::DnsRecordValue;
+use api_models::models::workspace::{
+	domain::DnsRecordValue,
+	region::RegionStatus,
+};
 use eve_rs::AsError;
 use kube::config::Kubeconfig;
 use reqwest::Client;
@@ -42,7 +45,17 @@ pub(super) async fn process_request(
 				return Ok(());
 			};
 
-			let kubeconfig_path = format!("kube-config-{region_id}.yml");
+			if region.status != RegionStatus::Creating {
+				log::info!(
+					"request_id: {} - Status of region {} is {:?}, so dropping init msg in rabbitmq as it is not in `creating` state",
+					request_id,
+					region_id,
+					region.status,
+				);
+				return Ok(());
+			}
+
+			let kubeconfig_path = format!("init-kubeconfig-{region_id}.yaml");
 			fs::write(&kubeconfig_path, serde_yaml::to_string(&kube_config)?)
 				.await?;
 
@@ -59,8 +72,6 @@ pub(super) async fn process_request(
 				.map(|id| id.as_str().to_owned())
 				.status(500)?;
 
-			// todo: get both stdout and stderr in same stream -> use subprocess
-			// crate in future
 			let output = Command::new("assets/k8s/fresh/k8s_init.sh")
 				.args([
 					region_id.as_str(),
@@ -72,25 +83,21 @@ pub(super) async fn process_request(
 				.output()
 				.await?;
 
-			db::append_messge_log_for_region(
-				connection,
-				&region_id,
-				std::str::from_utf8(&output.stdout)?,
-			)
-			.await?;
+			let std_out = String::from_utf8_lossy(&output.stdout);
+			db::append_messge_log_for_region(connection, &region_id, &std_out)
+				.await?;
 
 			if !output.status.success() {
+				let std_err = String::from_utf8_lossy(&output.stderr);
 				log::debug!(
-                    "Error while initializing the cluster {}:\nStatus: {}\nStderr: {}\nStdout: {}",
+                    "Error while initializing the cluster {}:\nStatus: {}\nStdout: {}\nStderr: {}",
                     region_id,
                     output.status,
-                    String::from_utf8_lossy(&output.stderr),
-                    String::from_utf8_lossy(&output.stdout)
+                    std_out,
+                    std_err,
                 );
 				db::append_messge_log_for_region(
-					connection,
-					&region_id,
-					std::str::from_utf8(&output.stderr)?,
+					connection, &region_id, &std_err,
 				)
 				.await?;
 				// don't requeue
@@ -117,14 +124,40 @@ pub(super) async fn process_request(
 			kube_config,
 			request_id,
 		} => {
-			log::info!("Checking readiness of external load balancer ip in cluster {region_id}");
+			log::info!(
+				"request_id: {} - Checking readiness of external load balancer ip in cluster {}",
+				request_id,
+				region_id
+			);
 
-			let ingress_hostname = service::get_load_balancer_hostname(
-				"ingress-nginx",
-				"ingress-nginx-controller",
-				kube_config.clone(),
-			)
-			.await;
+			let region = if let Some(region) =
+				db::get_region_by_id(connection, &region_id).await?
+			{
+				region
+			} else {
+				log::error!(
+					"request_id: {} - Unable to find region with ID `{}`",
+					request_id,
+					&region_id
+				);
+				return Ok(());
+			};
+
+			if region.status != RegionStatus::Creating {
+				log::info!(
+					"request_id: {} - Status of region {} is {:?}, so dropping init msg in rabbitmq as it is not in `creating` state",
+					request_id,
+					region_id,
+					region.status,
+				);
+				return Ok(());
+			}
+
+			let ingress_hostname =
+				service::get_patr_ingress_load_balancer_hostname(
+					kube_config.clone(),
+				)
+				.await;
 
 			match ingress_hostname {
 				Err(err) => {
@@ -207,10 +240,6 @@ pub(super) async fn process_request(
 						},
 					};
 
-					// todo: currently only *.region_id.region_root_domain is
-					// added due to dns limits if needed add
-					// region_id.region_root_domain also to dns records of
-					// region_root_domain
 					service::create_patr_domain_dns_record(
 						&mut connection,
 						&resource.owner_id,
@@ -237,12 +266,35 @@ pub(super) async fn process_request(
 			tls_key,
 			request_id,
 		} => {
-			let client = Client::new();
 			log::trace!(
 				"request_id: {} checking for readiness and getting kubeconfig",
 				request_id
 			);
 
+			let region = if let Some(region) =
+				db::get_region_by_id(connection, &region_id).await?
+			{
+				region
+			} else {
+				log::error!(
+					"request_id: {} - Unable to find region with ID `{}`",
+					request_id,
+					&region_id
+				);
+				return Ok(());
+			};
+
+			if region.status != RegionStatus::Creating {
+				log::info!(
+					"request_id: {} - Status of region {} is {:?}, so dropping init msg in rabbitmq as it is not in `creating` state",
+					request_id,
+					region_id,
+					region.status,
+				);
+				return Ok(());
+			}
+
+			let client = Client::new();
 			let cluster_info = client
 				.get(format!(
 					"https://api.digitalocean.com/v2/kubernetes/clusters/{}",
@@ -381,7 +433,7 @@ pub(super) async fn process_request(
 				region_id
 			);
 
-			let kubeconfig_path = format!("{region_id}.yml");
+			let kubeconfig_path = format!("uninit-kubeconfig-{region_id}.yaml");
 
 			fs::write(&kubeconfig_path, &serde_yaml::to_string(&kube_config)?)
 				.await?;
@@ -395,28 +447,25 @@ pub(super) async fn process_request(
 				.output()
 				.await?;
 
-			db::append_messge_log_for_region(
-				connection,
-				&region_id,
-				std::str::from_utf8(&output.stdout)?,
-			)
-			.await?;
+			let std_out = String::from_utf8_lossy(&output.stdout);
+			db::append_messge_log_for_region(connection, &region_id, &std_out)
+				.await?;
 
 			if !output.status.success() {
+				let std_err = String::from_utf8_lossy(&output.stderr);
 				log::debug!(
-                    "Error while un-initializing the cluster {}:\nStatus: {}\nStderr: {}\nStdout: {}",
+                    "Error while un-initializing the cluster {}:\nStatus: {}\nStdout: {}\nStderr: {}",
                     region_id,
                     output.status,
-                    String::from_utf8_lossy(&output.stderr),
-                    String::from_utf8_lossy(&output.stdout)
+					std_out,
+					std_err
                 );
 				db::append_messge_log_for_region(
-					connection,
-					&region_id,
-					std::str::from_utf8(&output.stderr)?,
+					connection, &region_id, &std_err,
 				)
 				.await?;
 
+				// don't requeue
 				return Ok(());
 			}
 

@@ -7,7 +7,7 @@ use cloudflare::endpoints::zone::custom_hostname::ActivationStatus;
 use eve_rs::AsError;
 
 use crate::{
-	db::{self, DnsRecordType, ManagedUrlType as DbManagedUrlType},
+	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
 	models::rbac,
 	service,
@@ -55,9 +55,8 @@ pub async fn create_new_managed_url_in_workspace(
 	let domain = db::get_workspace_domain_by_id(connection, domain_id)
 		.await?
 		.status(500)?;
-	let cf_custom_hostname_id = if domain.is_ns_internal() {
-		None
-	} else {
+
+	let cf_custom_hostname_id = {
 		let existing_hostname = db::get_all_managed_urls_for_host(
 			connection, sub_domain, domain_id,
 		)
@@ -74,7 +73,7 @@ pub async fn create_new_managed_url_in_workspace(
 				)
 				.await?;
 
-				Some(id)
+				id
 			}
 		}
 	};
@@ -361,12 +360,6 @@ pub async fn delete_managed_url(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let domain =
-		db::get_workspace_domain_by_id(connection, &managed_url.domain_id)
-			.await?
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
-
 	db::delete_managed_url(connection, managed_url_id, &Utc::now()).await?;
 
 	let num_managed_urls =
@@ -394,22 +387,9 @@ pub async fn delete_managed_url(
 	.await?
 	.is_empty();
 
-	if domain.is_ns_external() && host_deletable {
-		let Some(cf_custom_hostname_id) = managed_url.cf_custom_hostname_id else {
-			log::warn!(
-				"request_id: {} - For external domain's managed_url {}, cf_custom_hostname_id is missing", 
-				request_id,
-				managed_url_id
-			);
-			return Err(
-				Error::empty()
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())
-			);
-		};
-
+	if host_deletable {
 		service::delete_custom_hostname_from_cloudflare(
-			&cf_custom_hostname_id,
+			&managed_url.cf_custom_hostname_id,
 			config,
 		)
 		.await?;
@@ -446,40 +426,9 @@ pub async fn verify_managed_url_configuration(
 		return Ok(false);
 	}
 
-	let configured = if domain.is_ns_internal() {
-		// Domain is verified. Check if the corresponding DNS records exist
-		db::get_dns_records_by_domain_id(connection, &managed_url.domain_id)
-			.await?
-			.into_iter()
-			.any(|record| {
-				let sub_domain_match = if record.name.starts_with('*') {
-					managed_url.sub_domain.ends_with(&record.name[1..])
-				} else {
-					record.name == managed_url.sub_domain
-				};
-				sub_domain_match &&
-					matches!(record.r#type, DnsRecordType::CNAME) &&
-					record.value == "ingress.patr.cloud"
-				// todo: need to update to app_onpatr_domain
-				// todo: how to handle migrations for existing users?
-			})
-	} else {
-		// external domain
-		let Some(cf_custom_hostname_id) = managed_url.cf_custom_hostname_id else {
-			log::warn!(
-				"request_id: {} - For external domain's managed_url {}, cf_custom_hostname_id is missing", 
-				request_id,
-				managed_url_id
-			);
-			return Err(
-				Error::empty()
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())
-			);
-		};
-
+	let configured = {
 		let status = service::refresh_custom_hostname_in_cloudflare(
-			&cf_custom_hostname_id,
+			&managed_url.cf_custom_hostname_id,
 			config,
 		)
 		.await?;

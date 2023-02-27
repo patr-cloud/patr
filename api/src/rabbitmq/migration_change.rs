@@ -1,5 +1,6 @@
 use api_models::utils::DateTime;
 use chrono::Utc;
+use eve_rs::AsError;
 use reqwest::Client;
 use tokio::time;
 
@@ -132,6 +133,13 @@ pub(super) async fn process_request(
 						)
 						.await?;
 					} else {
+						let region = db::get_region_by_id(
+							connection,
+							&deployment.region,
+						)
+						.await?
+						.status(500)?;
+						let delete_k8s_resource = region.is_patr_region();
 						service::delete_deployment(
 							connection,
 							&workspace.id,
@@ -141,7 +149,7 @@ pub(super) async fn process_request(
 							None,
 							"0.0.0.0",
 							true,
-							true,
+							delete_k8s_resource,
 							config,
 							&request_id,
 						)

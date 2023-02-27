@@ -32,6 +32,7 @@ pub struct WorkspaceDomain {
 }
 
 impl WorkspaceDomain {
+	#[allow(dead_code)]
 	pub fn is_ns_external(&self) -> bool {
 		self.nameserver_type.is_external()
 	}

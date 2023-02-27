@@ -42,12 +42,8 @@ async fn check_status_of_active_byoc_regions() -> Result<(), Error> {
 	for (region_id, kubeconfig, prev_ingress_hostname) in active_byoc_regions {
 		let mut connection = connection.begin().await?;
 
-		let curr_ingress_hostname = service::get_load_balancer_hostname(
-			"ingress-nginx",
-			"ingress-nginx-controller",
-			kubeconfig,
-		)
-		.await;
+		let curr_ingress_hostname =
+			service::get_patr_ingress_load_balancer_hostname(kubeconfig).await;
 
 		match curr_ingress_hostname {
 			Ok(Some(curr_ingress_hostname))
@@ -111,12 +107,8 @@ async fn handle_disconnected_byoc_regions() -> Result<(), Error> {
 	{
 		let mut connection = connection.begin().await?;
 
-		let curr_ingress_hostname = service::get_load_balancer_hostname(
-			"ingress-nginx",
-			"ingress-nginx-controller",
-			kubeconfig,
-		)
-		.await;
+		let curr_ingress_hostname =
+			service::get_patr_ingress_load_balancer_hostname(kubeconfig).await;
 
 		match curr_ingress_hostname {
 			Ok(Some(curr_ingress_hostname))

@@ -31,6 +31,10 @@ impl Region {
 	pub fn is_byoc_region(&self) -> bool {
 		self.workspace_id.is_some()
 	}
+
+	pub fn is_patr_region(&self) -> bool {
+		!self.is_byoc_region()
+	}
 }
 
 struct DbRegion {
