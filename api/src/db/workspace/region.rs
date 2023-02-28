@@ -104,12 +104,12 @@ pub async fn initialize_region_pre(
 			provider INFRASTRUCTURE_CLOUD_PROVIDER NOT NULL,
 			workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id
 				REFERENCES workspace(id),
-			ingress_hostname TEXT,
 			message_log TEXT,
+			status REGION_STATUS NOT NULL,
+			ingress_hostname TEXT,
 			cf_cert_id TEXT,
 			config_file JSON,
 			deleted TIMESTAMPTZ,
-			status REGION_STATUS NOT NULL,
 			disconnected_at TIMESTAMPTZ,
 			CONSTRAINT deployment_region_chk_status CHECK(
 				(
@@ -278,6 +278,40 @@ pub async fn get_region_by_id(
 			id = $1;
 		"#,
 		region_id as _,
+	)
+	.fetch_optional(&mut *connection)
+	.await
+	.map(|opt_region| opt_region.map(|region| region.into()))
+}
+
+pub async fn get_region_by_name_in_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	name: &str,
+	workspace_id: &Uuid,
+) -> Result<Option<Region>, sqlx::Error> {
+	query_as!(
+		DbRegion,
+		r#"
+		SELECT
+			id as "id: _",
+			name,
+			provider as "cloud_provider: _",
+			workspace_id as "workspace_id: _",
+			ingress_hostname as "ingress_hostname: _",
+			message_log,
+			cf_cert_id,
+			config_file as "config_file: _",
+			status as "status: _",
+			disconnected_at as "disconnected_at: _"
+		FROM
+			deployment_region
+		WHERE
+			name = $1 AND
+			workspace_id = $2 AND
+			status != 'deleted';
+		"#,
+		name as _,
+		workspace_id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await

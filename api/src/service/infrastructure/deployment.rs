@@ -105,11 +105,15 @@ pub async fn create_deployment_in_workspace(
 	// validate whether the deployment region is ready
 	let region_details = db::get_region_by_id(connection, region)
 		.await?
+		.filter(|value| {
+			value.is_patr_region() ||
+				value.workspace_id.as_ref() == Some(workspace_id)
+		})
 		.status(400)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	if !(region_details.status == RegionStatus::Active ||
-		region_details.workspace_id.is_none())
+		region_details.is_patr_region())
 	{
 		return Err(Error::empty()
 			.status(500)

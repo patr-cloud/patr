@@ -289,6 +289,22 @@ async fn add_region(
 	let config = context.get_state().config.clone();
 
 	log::trace!(
+		"request_id: {} - Checking if the deployment name already exists",
+		request_id
+	);
+	let existing_region = db::get_region_by_name_in_workspace(
+		context.get_database_connection(),
+		&name,
+		&workspace_id,
+	)
+	.await?;
+	if existing_region.is_some() {
+		Error::as_result()
+			.status(200)
+			.body(error!(RESOURCE_EXISTS).to_string())?;
+	}
+
+	log::trace!(
 		"{} - Adding new region to workspace {}",
 		request_id,
 		workspace_id,
