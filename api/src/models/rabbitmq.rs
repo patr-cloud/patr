@@ -160,6 +160,12 @@ pub enum CIData {
 		build_id: BuildId,
 		request_id: Uuid,
 	},
+	SyncRepo {
+		workspace_id: Uuid,
+		git_provider_id: Uuid,
+		request_id: Uuid,
+		github_access_token: String,
+	},
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

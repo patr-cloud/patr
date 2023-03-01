@@ -26,6 +26,8 @@ pub struct GitProvider {
 	pub login_name: Option<String>,
 	// TODO: is it okay to store and use bare apiToken/password?
 	pub password: Option<String>,
+	pub is_syncing: bool,
+	pub last_synced: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -112,6 +114,8 @@ pub async fn initialize_ci_pre(
 			login_name 			TEXT,
 			password 			TEXT,
 			is_deleted			BOOL NOT NULL DEFAULT FALSE,
+			is_syncing			BOOL NOT NULL DEFAULT FALSE,
+			last_synced			TIMESTAMPTZ DEFAULT NULL,
 
 			CONSTRAINT ci_git_provider_ch_login_name_password_is_deleted
 				CHECK (
@@ -369,7 +373,9 @@ pub async fn get_git_provider_details_by_id(
 			domain_name,
 			git_provider_type as "git_provider_type: _",
 			login_name,
-			password
+			password,
+			is_syncing,
+			last_synced
 		FROM
 			ci_git_provider
 		WHERE
@@ -416,7 +422,9 @@ pub async fn list_connected_git_providers_for_workspace(
 			domain_name,
 			git_provider_type as "git_provider_type: _",
 			login_name,
-			password
+			password,
+			is_syncing,
+			last_synced
 		FROM
 			ci_git_provider
 		WHERE (
@@ -444,7 +452,9 @@ pub async fn get_git_provider_details_for_workspace_using_domain(
 			domain_name,
 			git_provider_type as "git_provider_type: _",
 			login_name,
-			password
+			password,
+			is_syncing,
+			last_synced
 		FROM
 			ci_git_provider
 		WHERE (
@@ -1212,6 +1222,32 @@ pub async fn update_build_step_finished_time(
 		build_num,
 		step_id,
 		finished as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn set_syncing(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	git_provider_id: &Uuid,
+	is_syncing: bool,
+	last_synced: Option<DateTime<Utc>>,
+) -> Result<(), sqlx::Error> {
+	query_as!(
+		GitProvider,
+		r#"
+		UPDATE
+			ci_git_provider
+		SET
+			is_syncing = $1,
+			last_synced = COALESCE($2, last_synced)
+		WHERE
+			id = $3;
+		"#,
+		is_syncing,
+		last_synced as _,
+		git_provider_id as _,
 	)
 	.execute(&mut *connection)
 	.await
