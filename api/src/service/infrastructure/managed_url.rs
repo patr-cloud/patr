@@ -65,7 +65,7 @@ pub async fn create_new_managed_url_in_workspace(
 		.next();
 
 		match existing_hostname {
-			Some(managed_url) => managed_url.cf_custom_hostname_id,
+			Some(managed_url) => managed_url.cloudflare_custom_hostname_id,
 			None => {
 				let (id, _status) = service::add_custom_hostname_to_cloudflare(
 					&format!("{}.{}", sub_domain, domain.name),
@@ -389,7 +389,7 @@ pub async fn delete_managed_url(
 
 	if host_deletable {
 		service::delete_custom_hostname_from_cloudflare(
-			&managed_url.cf_custom_hostname_id,
+			&managed_url.cloudflare_custom_hostname_id,
 			config,
 		)
 		.await?;
@@ -428,7 +428,7 @@ pub async fn verify_managed_url_configuration(
 
 	let configured = {
 		let status = service::refresh_custom_hostname_in_cloudflare(
-			&managed_url.cf_custom_hostname_id,
+			&managed_url.cloudflare_custom_hostname_id,
 			config,
 		)
 		.await?;

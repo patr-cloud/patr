@@ -69,11 +69,11 @@ pub async fn initialize_region_pre(
 
 	query!(
 		r#"
-		CREATE TABLE deployment_region(
-			id UUID CONSTRAINT deployment_region_pk PRIMARY KEY,
+		CREATE TABLE region(
+			id UUID CONSTRAINT region_pk PRIMARY KEY,
 			name TEXT NOT NULL,
 			provider INFRASTRUCTURE_CLOUD_PROVIDER NOT NULL,
-			workspace_id UUID CONSTRAINT deployment_region_fk_workspace_id
+			workspace_id UUID CONSTRAINT region_fk_workspace_id
 				REFERENCES workspace(id),
 			message_log TEXT,
 			status REGION_STATUS NOT NULL,
@@ -82,7 +82,7 @@ pub async fn initialize_region_pre(
 			config_file JSON,
 			deleted TIMESTAMPTZ,
 			disconnected_at TIMESTAMPTZ,
-			CONSTRAINT deployment_region_chk_status CHECK(
+			CONSTRAINT region_chk_status CHECK(
 				(
 					status = 'creating'
 				) OR (
@@ -115,7 +115,7 @@ pub async fn initialize_region_pre(
 	query!(
 		r#"
 		CREATE UNIQUE INDEX
-			deployment_region_uq_workspace_id_name
+			region_uq_workspace_id_name
 		ON
 			deployment_region(workspace_id, name)
 		WHERE
@@ -135,7 +135,7 @@ pub async fn initialize_region_post(
 	query!(
 		r#"
 		ALTER TABLE deployment_region
-		ADD CONSTRAINT deployment_region_fk_id_workspace_id
+		ADD CONSTRAINT region_fk_id_workspace_id
 		FOREIGN KEY (id, workspace_id) REFERENCES resource(id, owner_id);
 		"#
 	)
@@ -219,7 +219,7 @@ pub async fn get_region_by_id(
 }
 
 pub async fn get_all_default_regions(
-	connection: &mut <Database as sqlx::Database>::Connection
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Vec<Region>, sqlx::Error> {
 	query_as!(
 		Region,
@@ -419,7 +419,7 @@ pub async fn set_region_as_disconnected(
 	.map(|_| ())
 }
 
-pub async fn add_deployment_region_to_workspace(
+pub async fn add_region_to_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
 	name: &str,

@@ -70,7 +70,7 @@ async fn update_kv_for_routing(
 ) -> Result<(), Error> {
 	let cf_client = get_cloudflare_client(config).await?;
 	cf_client
-		.request_handle(&workerskv::write_bulk::WriteBulk {
+		.request(&workerskv::write_bulk::WriteBulk {
 			account_identifier: &config.cloudflare.account_id,
 			namespace_identifier: &config.cloudflare.kv_routing_ns,
 			bulk_key_value_pairs: vec![workerskv::write_bulk::KeyValuePair {
@@ -92,43 +92,9 @@ async fn delete_kv_for_routing(
 ) -> Result<(), Error> {
 	let cf_client = get_cloudflare_client(config).await?;
 	cf_client
-		.request_handle(&workerskv::delete_key::DeleteKey {
+		.request(&workerskv::delete_key::DeleteKey {
 			account_identifier: &config.cloudflare.account_id,
 			namespace_identifier: &config.cloudflare.kv_routing_ns,
-			key: &key.to_string(),
-		})
-		.await?;
-
-	Ok(())
-}
-
-#[allow(dead_code)]
-async fn delete_kv_for_deployment(
-	key: deployment::Key,
-	config: &Settings,
-) -> Result<(), Error> {
-	let cf_client = get_cloudflare_client(config).await?;
-	cf_client
-		.request_handle(&workerskv::delete_key::DeleteKey {
-			account_identifier: &config.cloudflare.account_id,
-			namespace_identifier: &config.cloudflare.kv_deployment_ns,
-			key: &key.to_string(),
-		})
-		.await?;
-
-	Ok(())
-}
-
-#[allow(dead_code)]
-async fn delete_kv_for_static_site(
-	key: static_site::Key,
-	config: &Settings,
-) -> Result<(), Error> {
-	let cf_client = get_cloudflare_client(config).await?;
-	cf_client
-		.request_handle(&workerskv::delete_key::DeleteKey {
-			account_identifier: &config.cloudflare.account_id,
-			namespace_identifier: &config.cloudflare.kv_static_site_ns,
 			key: &key.to_string(),
 		})
 		.await?;
@@ -168,10 +134,12 @@ pub async fn update_cloudflare_kv_for_managed_url(
 					}
 					db::ManagedUrlType::ProxyUrl => UrlType::ProxyUrl {
 						url: managed_url.url?,
+						http_only: managed_url.http_only?,
 					},
 					db::ManagedUrlType::Redirect => UrlType::Redirect {
 						url: managed_url.url?,
-						permanent: managed_url.permanent_redirect?,
+						http_only: managed_url.http_only?,
+						permanent_redirect: managed_url.permanent_redirect?,
 					},
 				};
 
@@ -210,7 +178,7 @@ pub async fn update_cloudflare_kv_for_deployment(
 
 	let cf_client = get_cloudflare_client(config).await?;
 	cf_client
-		.request_handle(&workerskv::write_bulk::WriteBulk {
+		.request(&workerskv::write_bulk::WriteBulk {
 			account_identifier: &config.cloudflare.account_id,
 			namespace_identifier: &config.cloudflare.kv_deployment_ns,
 			bulk_key_value_pairs: vec![workerskv::write_bulk::KeyValuePair {
@@ -241,7 +209,7 @@ pub async fn update_cloudflare_kv_for_static_site(
 
 	let cf_client = get_cloudflare_client(config).await?;
 	cf_client
-		.request_handle(&workerskv::write_bulk::WriteBulk {
+		.request(&workerskv::write_bulk::WriteBulk {
 			account_identifier: &config.cloudflare.account_id,
 			namespace_identifier: &config.cloudflare.kv_static_site_ns,
 			bulk_key_value_pairs: vec![workerskv::write_bulk::KeyValuePair {
@@ -264,7 +232,7 @@ pub async fn add_domain_to_cloudflare_worker_routes(
 	let cf_client = get_cloudflare_client(config).await?;
 
 	let response = cf_client
-		.request_handle(&workers::CreateRoute {
+		.request(&workers::CreateRoute {
 			zone_identifier: &config.cloudflare.patr_zone_identifier,
 			params: CreateRouteParams {
 				pattern: format!("*{}/*", host),
@@ -283,7 +251,7 @@ pub async fn delete_domain_from_cloudflare_worker_routes(
 	let cf_client = get_cloudflare_client(config).await?;
 
 	cf_client
-		.request_handle(&workers::DeleteRoute {
+		.request(&workers::DeleteRoute {
 			zone_identifier: &config.cloudflare.patr_zone_identifier,
 			identifier: route_id,
 		})
@@ -299,7 +267,7 @@ pub async fn add_custom_hostname_to_cloudflare(
 	let cf_client = get_cloudflare_client(config).await?;
 
 	let response = cf_client
-		.request_handle(&CreateCustomHostname {
+		.request(&CreateCustomHostname {
 			zone_identifier: &config.cloudflare.patr_zone_identifier,
 			params: CreateCustomHostnameParams {
 				hostname: host.to_owned(),
@@ -326,7 +294,7 @@ pub async fn delete_custom_hostname_from_cloudflare(
 	let cf_client = get_cloudflare_client(config).await?;
 
 	cf_client
-		.request_handle(&DeleteCustomHostname {
+		.request(&DeleteCustomHostname {
 			zone_identifier: &config.cloudflare.patr_zone_identifier,
 			identifier: custom_hostname_id,
 		})
@@ -342,7 +310,7 @@ pub async fn refresh_custom_hostname_in_cloudflare(
 	let cf_client = get_cloudflare_client(config).await?;
 
 	let response = cf_client
-		.request_handle(&EditCustomHostname {
+		.request(&EditCustomHostname {
 			zone_identifier: &config.cloudflare.patr_zone_identifier,
 			identifier: custom_hostname_id,
 			params: EditCustomHostnameParams {
@@ -397,7 +365,7 @@ pub async fn create_origin_ca_certificate_for_region(
 	};
 
 	let response = cf_client
-		.request_handle(&CreateCertifcate {
+		.request(&CreateCertifcate {
 			body: CreateCertifcateBody {
 				csr: cert.serialize_request_pem()?,
 				hostnames,
@@ -414,7 +382,6 @@ pub async fn create_origin_ca_certificate_for_region(
 	})
 }
 
-#[allow(unused)]
 pub async fn revoke_origin_ca_certificate(
 	certificate_id: &str,
 	config: &Settings,
@@ -437,7 +404,7 @@ pub async fn revoke_origin_ca_certificate(
 	};
 
 	cf_client
-		.request_handle(&RevokeCertificate {
+		.request(&RevokeCertificate {
 			identifier: certificate_id,
 		})
 		.await?;

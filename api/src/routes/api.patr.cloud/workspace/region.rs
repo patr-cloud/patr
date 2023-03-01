@@ -13,7 +13,7 @@ use api_models::{
 		RegionStatus,
 		RegionType,
 	},
-	utils::Uuid,
+	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
@@ -248,22 +248,20 @@ async fn get_region(
 			.body(error!(REGION_NOT_CONNECTED).to_string())?;
 	}
 
-	let region_response = Region {
-		r#type: if region.is_byoc_region() {
-			RegionType::BYOC
-		} else {
-			RegionType::PatrOwned
-		},
-		id: region.id,
-		name: region.name,
-		cloud_provider: region.cloud_provider,
-		status: region.status,
-	};
-
 	log::trace!("request_id: {} - Returning region", request_id);
 	context.success(GetRegionInfoResponse {
-		region: region_response,
-		disconnected_at: region.disconnected_at.map(Into::into),
+		region: Region {
+			r#type: if region.is_byoc_region() {
+				RegionType::BYOC
+			} else {
+				RegionType::PatrOwned
+			},
+			id: region.id,
+			name: region.name,
+			cloud_provider: region.cloud_provider,
+			status: region.status,
+		},
+		disconnected_at: region.disconnected_at.map(DateTime),
 		message_log: region.message_log,
 	});
 	Ok(context)
@@ -347,7 +345,7 @@ async fn add_region(
 			)
 			.await?;
 
-			db::add_deployment_region_to_workspace(
+			db::add_region_to_workspace(
 				context.get_database_connection(),
 				&region_id,
 				&name,
@@ -395,7 +393,7 @@ async fn add_region(
 			)
 			.await?;
 
-			db::add_deployment_region_to_workspace(
+			db::add_region_to_workspace(
 				context.get_database_connection(),
 				&region_id,
 				&name,
@@ -504,11 +502,15 @@ async fn delete_region(
 		.await?
 	}
 
+	if let Some(cert_id) = region.cloudflare_certificate_id {
+		service::revoke_origin_ca_certificate(&cert_id, &config).await?;
+	}
+
 	if hard_delete {
 		service::queue_delete_kubernetes_cluster(
 			&region_id,
 			&workspace_id,
-			region.config_file.unwrap_or_default(),
+			region.config_file.unwrap_or_default().0,
 			&config,
 			&request_id,
 		)

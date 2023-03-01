@@ -7,13 +7,15 @@ use api_models::models::workspace::{
 use eve_rs::AsError;
 use kube::config::Kubeconfig;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
 use sqlx::Connection;
 use tokio::{fs, process::Command};
 
 use crate::{
 	db,
-	models::rabbitmq::{BYOCData, InfraRequestData},
+	models::{
+		digitalocean::ClusterState,
+		rabbitmq::{BYOCData, InfraRequestData},
+	},
 	service,
 	utils::{settings::Settings, Error},
 	Database,
@@ -32,11 +34,8 @@ pub(super) async fn process_request(
 			tls_key,
 			request_id,
 		} => {
-			let region = if let Some(region) =
-				db::get_region_by_id(connection, &region_id).await?
-			{
-				region
-			} else {
+			let Some(region) =
+				db::get_region_by_id(connection, &region_id).await? else {
 				log::error!(
 					"request_id: {} - Unable to find region with ID `{}`",
 					request_id,
@@ -46,8 +45,12 @@ pub(super) async fn process_request(
 			};
 
 			if region.status != RegionStatus::Creating {
-				log::info!(
-					"request_id: {} - Status of region {} is {:?}, so dropping init msg in rabbitmq as it is not in `creating` state",
+				log::error!(
+					concat!(
+						"request_id: {} - Status of region {} is {:?}, so",
+						" dropping init msg in rabbitmq as it is not ",
+						"in `creating` state"
+					),
 					request_id,
 					region_id,
 					region.status,
@@ -67,10 +70,7 @@ pub(super) async fn process_request(
 
 			// safe to return as only customer cluster is initalized here,
 			// so workspace_id will be present
-			let parent_workspace = region
-				.workspace_id
-				.map(|id| id.as_str().to_owned())
-				.status(500)?;
+			let parent_workspace = region.workspace_id.status(500)?.to_string();
 
 			let output = Command::new("assets/k8s/fresh/k8s_init.sh")
 				.args([
@@ -125,16 +125,16 @@ pub(super) async fn process_request(
 			request_id,
 		} => {
 			log::info!(
-				"request_id: {} - Checking readiness of external load balancer ip in cluster {}",
+				concat!(
+					"request_id: {} - Checking readiness of external ",
+					"load balancer host in cluster {}"
+				),
 				request_id,
 				region_id
 			);
 
-			let region = if let Some(region) =
-				db::get_region_by_id(connection, &region_id).await?
-			{
-				region
-			} else {
+			let Some(region) =
+				db::get_region_by_id(connection, &region_id).await? else {
 				log::error!(
 					"request_id: {} - Unable to find region with ID `{}`",
 					request_id,
@@ -144,8 +144,12 @@ pub(super) async fn process_request(
 			};
 
 			if region.status != RegionStatus::Creating {
-				log::info!(
-					"request_id: {} - Status of region {} is {:?}, so dropping init msg in rabbitmq as it is not in `creating` state",
+				log::error!(
+					concat!(
+						"request_id: {} - Status of region {} is {:?}, so",
+						" dropping init msg in rabbitmq as it is not ",
+						"in `creating` state"
+					),
 					request_id,
 					region_id,
 					region.status,
@@ -166,15 +170,13 @@ pub(super) async fn process_request(
 						err.get_error()
 					);
 					log::info!("So marking the cluster {region_id} as errored");
-					db::set_region_as_errored(
-						connection, &region_id,
-					)
-					.await?;
+					db::set_region_as_errored(connection, &region_id).await?;
 
 					Ok(())
 				}
 				Ok(None) => {
-					tokio::time::sleep(Duration::from_secs(2 * 60)).await;
+					// Retry in 1 min
+					tokio::time::sleep(Duration::from_secs(60)).await;
 					service::send_message_to_infra_queue(
 						&InfraRequestData::BYOC(
 							BYOCData::CheckClusterForReadiness {
@@ -250,7 +252,18 @@ pub(super) async fn process_request(
 						config,
 						&request_id,
 					)
-					.await?;
+					.await
+					.map_err(|err| {
+						log::error!(
+							concat!(
+								"request_id: {} Error",
+								" creating DNS for region {}",
+							),
+							request_id,
+							region_id
+						);
+						err
+					})?;
 
 					connection.commit().await?;
 
@@ -271,11 +284,9 @@ pub(super) async fn process_request(
 				request_id
 			);
 
-			let region = if let Some(region) =
+			let Some(region) =
 				db::get_region_by_id(connection, &region_id).await?
-			{
-				region
-			} else {
+			else {
 				log::error!(
 					"request_id: {} - Unable to find region with ID `{}`",
 					request_id,
@@ -285,8 +296,12 @@ pub(super) async fn process_request(
 			};
 
 			if region.status != RegionStatus::Creating {
-				log::info!(
-					"request_id: {} - Status of region {} is {:?}, so dropping init msg in rabbitmq as it is not in `creating` state",
+				log::error!(
+					concat!(
+						"request_id: {} - Status of region {} is {:?}, so",
+						" dropping init msg in rabbitmq as it is not ",
+						"in `creating` state"
+					),
 					request_id,
 					region_id,
 					region.status,
@@ -311,18 +326,6 @@ pub(super) async fn process_request(
 				})
 				.ok();
 
-			#[derive(Debug, Serialize, Deserialize)]
-			#[serde(rename_all = "lowercase")]
-			enum ClusterState {
-				Running,
-				Provisioning,
-				Degraded,
-				Error,
-				Deleted,
-				Upgrading,
-				Deleting,
-			}
-
 			let cluster_state = cluster_info
 				.as_ref()
 				.and_then(|cluster_info| cluster_info.get("kubernetes_cluster"))
@@ -342,10 +345,14 @@ pub(super) async fn process_request(
 			match cluster_state {
 				ClusterState::Provisioning => {
 					log::info!(
-						"request_id: {} Cluster is privisioning state. Trying again after 2mins...",
+						concat!(
+							"request_id: {} Cluster is privisioning state.",
+							" Trying again after 1min..."
+						),
 						request_id,
 					);
-					tokio::time::sleep(Duration::from_secs(2 * 60)).await;
+					// Check again in 1 min
+					tokio::time::sleep(Duration::from_secs(60)).await;
 					service::send_message_to_infra_queue(
 						&InfraRequestData::BYOC(
 							BYOCData::GetDigitalOceanKubeconfig {
@@ -367,7 +374,10 @@ pub(super) async fn process_request(
 				ClusterState::Running => {
 					// cluster ready
 					let do_cluster_url = format!(
-						"https://api.digitalocean.com/v2/kubernetes/clusters/{}/kubeconfig",
+						concat!(
+							"https://api.digitalocean.com/v2",
+							"/kubernetes/clusters/{}/kubeconfig"
+						),
 						cluster_id
 					);
 					let response = client
@@ -376,7 +386,22 @@ pub(super) async fn process_request(
 						.send()
 						.await?;
 					let kube_config = response.text().await?;
-					let kube_config = Kubeconfig::from_yaml(&kube_config)?;
+					let Ok(kube_config) = Kubeconfig::from_yaml(&kube_config) else {
+						db::append_messge_log_for_region(
+							connection,
+							&region_id,
+							concat!(
+								"Received invalid kubeconfig from DigitalOcean",
+								".\nYou can download the KubeConfig from your ",
+								"DigitalOcean dashboard, and add your cluster ",
+								"manually to Patr"
+							),
+						)
+						.await?;
+						db::set_region_as_errored(connection, &region_id).await?;
+
+						return Ok(());
+					};
 
 					// initialize the cluster with patr script
 					service::send_message_to_infra_queue(
@@ -400,7 +425,10 @@ pub(super) async fn process_request(
 					// unknown error occurred while creating cluster in do, so
 					// log and then quit
 					log::error!(
-						"request_id: {} Cluster state is not expected := `{:?}`. So marking the cluster as errored",
+						concat!(
+							"request_id: {} Cluster state is not expected",
+							" := `{:?}`. So marking the cluster as errored"
+						),
 						request_id,
 						remaining_state,
 					);
@@ -408,14 +436,14 @@ pub(super) async fn process_request(
 					db::append_messge_log_for_region(
 						connection,
 						&region_id,
-						"Error occurred while initialing the cluster in DO, try creating a new cluster again",
+						concat!(
+							"Error occurred while initialing the",
+							" cluster in DO, try creating a new cluster again"
+						),
 					)
 					.await?;
 
-					db::set_region_as_errored(
-						connection, &region_id,
-					)
-					.await?;
+					db::set_region_as_errored(connection, &region_id).await?;
 
 					Ok(())
 				}
@@ -454,12 +482,15 @@ pub(super) async fn process_request(
 			if !output.status.success() {
 				let std_err = String::from_utf8_lossy(&output.stderr);
 				log::debug!(
-                    "Error while un-initializing the cluster {}:\nStatus: {}\nStdout: {}\nStderr: {}",
-                    region_id,
-                    output.status,
+					concat!(
+						"Error while un-initializing the cluster {}:",
+						"\nStatus: {}\nStdout: {}\nStderr: {}"
+					),
+					region_id,
+					output.status,
 					std_out,
 					std_err
-                );
+				);
 				db::append_messge_log_for_region(
 					connection, &region_id, &std_err,
 				)

@@ -1,4 +1,4 @@
-use api_models::{models::workspace::region::RegionStatus, utils::Uuid};
+use api_models::utils::Uuid;
 use chrono::Utc;
 use sqlx::Acquire;
 
@@ -31,12 +31,7 @@ async fn check_status_of_active_byoc_regions() -> Result<(), Error> {
 		.await?
 		.into_iter()
 		.filter_map(|region| {
-			(region.status == RegionStatus::Active && region.is_byoc_region())
-				.then_some((
-					region.id,
-					region.config_file?.0,
-					region.ingress_hostname?,
-				))
+			Some((region.id, region.config_file?.0, region.ingress_hostname?))
 		});
 
 	for (region_id, kubeconfig, prev_ingress_hostname) in active_byoc_regions {
@@ -86,9 +81,7 @@ async fn handle_disconnected_byoc_regions() -> Result<(), Error> {
 			.await?
 			.into_iter()
 			.filter_map(|region| {
-				(region.status == RegionStatus::Disconnected &&
-					region.is_byoc_region())
-				.then_some((
+				Some((
 					region.id,
 					region.workspace_id?,
 					region.config_file?.0,
@@ -119,11 +112,8 @@ async fn handle_disconnected_byoc_regions() -> Result<(), Error> {
 					"Region `{}` got connected again. So marking it as active",
 					region_id
 				);
-				db::set_region_as_connected(
-					&mut connection,
-					&region_id,
-				)
-				.await?;
+				db::set_region_as_connected(&mut connection, &region_id)
+					.await?;
 			}
 			invalid_cases => {
 				log::info!(

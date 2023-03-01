@@ -7,16 +7,15 @@ use sqlx::types::Json;
 use crate::{
 	db,
 	error,
-	models::{K8NodePool, K8sConfig, K8sCreateCluster},
-	utils::{settings::Settings, Error},
+	models::digitalocean::{K8NodePool, K8sConfig, K8sCreateCluster},
+	utils::Error,
 	Database,
 };
 
 pub async fn get_kubernetes_config_for_region(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
-	config: &Settings,
-) -> Result<Kubeconfig, Error> {
+) -> Result<(Kubeconfig, Uuid), Error> {
 	let region = db::get_region_by_id(connection, region_id)
 		.await?
 		.status(500)?;
@@ -30,20 +29,20 @@ pub async fn get_kubernetes_config_for_region(
 		(RegionStatus::Active, _, Some(Json(config)), Some(_)) => {
 			// If the region is active, regardless of the workspace, use the
 			// config
-			Ok(config)
+			Ok((config, region.id))
 		}
 		(RegionStatus::ComingSoon, None, ..) => {
 			// If the region is default, and is coming soon, get the first
 			// default valid region
-			let config = db::get_all_default_regions(connection)
+			let deployed_region = db::get_all_default_regions(connection)
 				.await?
 				.into_iter()
 				.find(|region| region.status == RegionStatus::Active)
-				.status(500)?
-				.config_file
-				.status(500)?
-				.0;
-			Ok(config)
+				.status(500)?;
+			Ok((
+				deployed_region.config_file.status(500)?.0,
+				deployed_region.id,
+			))
 		}
 		_ => Err(Error::empty()
 			.status(400)

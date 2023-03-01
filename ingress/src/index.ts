@@ -62,8 +62,7 @@ async function fetchManagedUrlRequest(
 ): Promise<Response> {
     // todo: wildcard hostname is not matched
     // todo: path string should be updated to wildcard matching
-    let hostname = url.hostname.split('.').length > 2 ? url.hostname : `@.${url.hostname}`;
-    const routesStr = await env.ROUTING.get(hostname);
+    const routesStr = await env.ROUTING.get(url.hostname);
     if (!routesStr) {
         return new Response("404 Not Found - HOST", { status: 404 });
     }

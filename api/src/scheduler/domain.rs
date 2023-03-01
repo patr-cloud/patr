@@ -2,7 +2,7 @@ use api_models::{self, utils::Uuid};
 use chrono::Utc;
 use cloudflare::{
 	endpoints::zone::{self, Status},
-	framework::{async_api::ApiClient, response::ApiFailure},
+	framework::response::ApiFailure,
 };
 use eve_rs::AsError;
 use sqlx::Connection;

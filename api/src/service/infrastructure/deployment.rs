@@ -606,12 +606,12 @@ pub async fn update_deployment(
 	let volumes =
 		db::get_all_deployment_volumes(connection, deployment_id).await?;
 
-	let kubeconfig = service::get_kubernetes_config_for_region(
-		connection,
-		&deployment.region,
-		config,
-	)
-	.await?;
+	let (kubeconfig, deployed_region_id) =
+		service::get_kubernetes_config_for_region(
+			connection,
+			&deployment.region,
+		)
+		.await?;
 
 	if let Some(new_min_replica) = min_horizontal_scale {
 		if new_min_replica != old_min_replicas {
@@ -707,14 +707,6 @@ pub async fn update_deployment(
 				.await?;
 			}
 
-			let deployed_region_id = match &kubeconfig.cluster_type {
-				service::ClusterType::PatrOwned => {
-					service::get_default_region_id()
-				}
-				service::ClusterType::UserOwned { region_id, .. } => region_id,
-			}
-			.clone();
-
 			service::update_kubernetes_deployment(
 				workspace_id,
 				&deployment,
@@ -725,7 +717,7 @@ pub async fn update_deployment(
 <<<<<<< HEAD
 				kubeconfig.clone(),
 =======
-				kubeconfig.kube_config,
+				kubeconfig,
 >>>>>>> 8bd54912 (Rebased on top of dev - 13.5)
 				&deployed_region_id,
 				config,
@@ -1587,18 +1579,12 @@ pub async fn start_deployment(
 			.body(error!(UNVERIFIED_WORKSPACE).to_string()));
 	}
 
-	let kube_config_details = service::get_kubernetes_config_for_region(
-		connection,
-		&deployment.region,
-		config,
-	)
-	.await?;
-
-	let deployed_region_id = match &kube_config_details.cluster_type {
-		service::ClusterType::PatrOwned => service::get_default_region_id(),
-		service::ClusterType::UserOwned { region_id, .. } => region_id,
-	}
-	.clone();
+	let (kubeconfig, deployed_region_id) =
+		service::get_kubernetes_config_for_region(
+			connection,
+			&deployment.region,
+		)
+		.await?;
 
 	service::update_kubernetes_deployment(
 		workspace_id,
@@ -1607,7 +1593,7 @@ pub async fn start_deployment(
 		digest.as_deref(),
 		deployment_running_details,
 		&volumes,
-		kube_config_details.kube_config,
+		kubeconfig,
 		&deployed_region_id,
 		config,
 		request_id,
@@ -1687,16 +1673,9 @@ pub async fn update_deployment_image(
 
 		Ok(())
 	} else {
-		let kube_config_details = service::get_kubernetes_config_for_region(
-			connection, region, config,
-		)
-		.await?;
-
-		let deployed_region_id = match &kube_config_details.cluster_type {
-			service::ClusterType::PatrOwned => service::get_default_region_id(),
-			service::ClusterType::UserOwned { region_id, .. } => region_id,
-		}
-		.clone();
+		let (kubeconfig, deployed_region_id) =
+			service::get_kubernetes_config_for_region(connection, &region)
+				.await?;
 
 		service::update_kubernetes_deployment(
 			workspace_id,
@@ -1714,7 +1693,7 @@ pub async fn update_deployment_image(
 			Some(digest),
 			deployment_running_details,
 			&volumes,
-			kube_config_details.kube_config,
+			kubeconfig,
 			&deployed_region_id,
 			config,
 			request_id,
@@ -1781,15 +1760,14 @@ pub async fn stop_deployment(
 	)
 	.await?;
 
-	let kube_config_details = service::get_kubernetes_config_for_region(
-		connection, region_id, config,
-	)
-	.await?;
+	let (kubeconfig, _) =
+		service::get_kubernetes_config_for_region(connection, region_id)
+			.await?;
 
 	service::delete_kubernetes_deployment(
 		workspace_id,
 		deployment_id,
-		kube_config_details.kube_config,
+		kubeconfig,
 		request_id,
 	)
 	.await?;
@@ -1859,15 +1837,14 @@ pub async fn delete_deployment(
 		.status(500)?;
 
 	if delete_k8s_resource && !workspace.is_spam {
-		let kube_config_details = service::get_kubernetes_config_for_region(
-			connection, region_id, config,
-		)
-		.await?;
+		let (kubeconfig, _) =
+			service::get_kubernetes_config_for_region(connection, region_id)
+				.await?;
 
 		service::delete_kubernetes_deployment(
 			workspace_id,
 			deployment_id,
-			kube_config_details.kube_config.clone(),
+			kubeconfig.clone(),
 			request_id,
 		)
 		.await?;
@@ -1884,7 +1861,7 @@ pub async fn delete_deployment(
 					deployment_id,
 					&volume,
 					replica_index,
-					kube_config_details.clone(),
+					kubeconfig.clone(),
 					request_id,
 				)
 				.await?;

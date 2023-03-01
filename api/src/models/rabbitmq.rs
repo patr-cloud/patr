@@ -22,18 +22,11 @@ pub enum Queue {
 	Infrastructure,
 	Ci,
 	Billing,
-	MigrationChange,
 }
 
 impl Queue {
 	pub fn iterator() -> Iter<'static, Queue> {
-		static QUEUE: [Queue; 4] = [
-			Queue::Infrastructure,
-			Queue::Ci,
-			Queue::Billing,
-			Queue::MigrationChange,
-		];
-		QUEUE.iter()
+		[Queue::Infrastructure, Queue::Ci, Queue::Billing].iter()
 	}
 }
 
@@ -43,7 +36,6 @@ impl fmt::Display for Queue {
 			Queue::Infrastructure => write!(f, "infrastructure"),
 			Queue::Ci => write!(f, "ci"),
 			Queue::Billing => write!(f, "billing"),
-			Queue::MigrationChange => write!(f, "migrationChange"),
 		}
 	}
 }
@@ -170,16 +162,6 @@ pub enum CIData {
 		git_provider_id: Uuid,
 		request_id: Uuid,
 		github_access_token: String,
-	},
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(tag = "action", rename_all = "camelCase")]
-pub enum MigrationChangeData {
-	CheckUserAccountForSpam {
-		user_id: Uuid,
-		process_after: DateTime<Utc>,
-		request_id: Uuid,
 	},
 }
 

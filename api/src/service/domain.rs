@@ -5,29 +5,26 @@ use api_models::{
 	utils::{DateTime, ResourceType, Uuid},
 };
 use chrono::Utc;
-use cloudflare::{
-	endpoints::{
-		dns::{
-			CreateDnsRecord,
-			CreateDnsRecordParams,
-			DeleteDnsRecord,
-			DnsContent,
-			UpdateDnsRecord,
-			UpdateDnsRecordParams,
-		},
-		zone::{
-			AccountId,
-			CreateZone,
-			CreateZoneParams,
-			DeleteZone,
-			ListZones,
-			ListZonesParams,
-			Status,
-			Type,
-			ZoneDetails,
-		},
+use cloudflare::endpoints::{
+	dns::{
+		CreateDnsRecord,
+		CreateDnsRecordParams,
+		DeleteDnsRecord,
+		DnsContent,
+		UpdateDnsRecord,
+		UpdateDnsRecordParams,
 	},
-	framework::async_api::ApiClient,
+	zone::{
+		AccountId,
+		CreateZone,
+		CreateZoneParams,
+		DeleteZone,
+		ListZones,
+		ListZonesParams,
+		Status,
+		Type,
+		ZoneDetails,
+	},
 };
 use eve_rs::AsError;
 use tokio::{net::UdpSocket, task};

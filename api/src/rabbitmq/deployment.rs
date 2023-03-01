@@ -48,7 +48,6 @@ pub(super) async fn process_request(
 					connection,
 					&deployment_id,
 					workspace_id.as_str(),
-					config,
 				)
 				.await?;
 

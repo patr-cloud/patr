@@ -80,7 +80,7 @@ use crate::{
 	db::{self, DeploymentVolume},
 	error,
 	models::deployment,
-	service::{self, ext_traits::DeleteOpt, KubernetesConfigDetails},
+	service::{self, ext_traits::DeleteOpt},
 	utils::{constants::request_keys, settings::Settings, Error},
 	Database,
 };
@@ -848,11 +848,10 @@ pub async fn delete_kubernetes_volume(
 	deployment_id: &Uuid,
 	volume: &DeploymentVolume,
 	replica_index: u16,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client =
-		super::get_kubernetes_client(kubeconfig.kube_config).await?;
+	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
 
 	log::trace!("request_id: {} - deleting the pvc", request_id);
 	Api::<PersistentVolumeClaim>::namespaced(
@@ -932,21 +931,18 @@ pub async fn get_kubernetes_deployment_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	namespace: &str,
-	config: &Settings,
 ) -> Result<DeploymentStatus, Error> {
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let kube_config_details = service::get_kubernetes_config_for_region(
+	let (kubeconfig, _) = service::get_kubernetes_config_for_region(
 		connection,
 		&deployment.region,
-		config,
 	)
 	.await?;
-	let kubernetes_client =
-		super::get_kubernetes_client(kube_config_details.kube_config).await?;
+	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
 
 	let is_deployment =
 		db::get_all_deployment_volumes(connection, deployment_id)

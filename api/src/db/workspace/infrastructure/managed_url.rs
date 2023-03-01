@@ -26,7 +26,7 @@ pub struct ManagedUrl {
 	pub is_configured: bool,
 	pub permanent_redirect: Option<bool>,
 	pub http_only: Option<bool>,
-	pub cf_custom_hostname_id: String,
+	pub cloudflare_custom_hostname_id: String,
 }
 
 pub async fn initialize_managed_url_pre(
@@ -69,7 +69,7 @@ pub async fn initialize_managed_url_pre(
 			deleted TIMESTAMPTZ,
 			permanent_redirect BOOLEAN,
 			http_only BOOLEAN,
-			cf_custom_hostname_id TEXT NOT NULL,
+			cloudflare_custom_hostname_id TEXT NOT NULL,
 			CONSTRAINT managed_url_chk_values_null_or_not_null CHECK(
 				(
 					url_type = 'proxy_to_deployment' AND
@@ -183,7 +183,7 @@ pub async fn get_all_managed_urls_in_workspace(
 			is_configured,
 			permanent_redirect as "permanent_redirect: _",
 			http_only as "http_only: _",
-			cf_custom_hostname_id
+			cloudflare_custom_hostname_id
 		FROM
 			managed_url
 		WHERE
@@ -217,7 +217,7 @@ pub async fn get_all_managed_urls_for_domain(
 			is_configured,
 			permanent_redirect as "permanent_redirect: _",
 			http_only as "http_only: _",
-			cf_custom_hostname_id
+			cloudflare_custom_hostname_id
 		FROM
 			managed_url
 		WHERE
@@ -250,7 +250,7 @@ pub async fn get_all_unconfigured_managed_urls(
 			is_configured,
 			permanent_redirect as "permanent_redirect: _",
 			http_only as "http_only: _",
-			cf_custom_hostname_id
+			cloudflare_custom_hostname_id
 		FROM
 			managed_url
 		WHERE
@@ -282,7 +282,7 @@ pub async fn get_all_configured_managed_urls(
 			is_configured,
 			permanent_redirect,
 			http_only,
-			cf_custom_hostname_id
+			cloudflare_custom_hostname_id
 		FROM
 			managed_url
 		WHERE
@@ -309,7 +309,7 @@ pub async fn create_new_managed_url_in_workspace(
 	is_configured: bool,
 	permanent_redirect: Option<bool>,
 	http_only: Option<bool>,
-	cf_custom_hostname_id: String,
+	cloudflare_custom_hostname_id: String,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -328,7 +328,7 @@ pub async fn create_new_managed_url_in_workspace(
 				is_configured,
 				permanent_redirect,
 				http_only,
-				cf_custom_hostname_id
+				cloudflare_custom_hostname_id
 			)
 		VALUES
 			(
@@ -361,7 +361,7 @@ pub async fn create_new_managed_url_in_workspace(
 		is_configured,
 		permanent_redirect,
 		http_only,
-		cf_custom_hostname_id
+		cloudflare_custom_hostname_id
 	)
 	.execute(&mut *connection)
 	.await
@@ -389,7 +389,7 @@ pub async fn get_managed_url_by_id(
 			is_configured,
 			permanent_redirect as "permanent_redirect: _",
 			http_only as "http_only: _",
-			cf_custom_hostname_id
+			cloudflare_custom_hostname_id
 		FROM
 			managed_url
 		WHERE
@@ -551,7 +551,7 @@ pub async fn get_all_managed_urls_for_deployment(
 			is_configured as "is_configured!: _",
 			permanent_redirect as "permanent_redirect!: _",
 			http_only as "http_only!: _",
-			cf_custom_hostname_id as "cf_custom_hostname_id!: _"
+			cloudflare_custom_hostname_id as "cloudflare_custom_hostname_id!: _"
 		FROM
 			managed_url_list
 		WHERE
@@ -627,7 +627,7 @@ pub async fn get_all_managed_urls_for_static_site(
 			is_configured as "is_configured!: _",
 			permanent_redirect as "permanent_redirect!: _",
 			http_only as "http_only!: _",
-			cf_custom_hostname_id as "cf_custom_hostname_id!: _"
+			cloudflare_custom_hostname_id as "cloudflare_custom_hostname_id!: _"
 		FROM
 			managed_url_list
 		WHERE
@@ -684,7 +684,7 @@ pub async fn get_all_managed_urls_for_host(
 			is_configured,
 			permanent_redirect,
 			http_only,
-			cf_custom_hostname_id
+			cloudflare_custom_hostname_id
 		FROM
 			managed_url
 		WHERE

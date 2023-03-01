@@ -1,7 +1,10 @@
 pub mod routing {
 	use std::fmt::Display;
 
-	use api_models::utils::Uuid;
+	use api_models::{
+		models::workspace::infrastructure::managed_urls::ManagedUrlType,
+		utils::Uuid,
+	};
 	use serde::{Deserialize, Serialize};
 
 	#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -12,9 +15,42 @@ pub mod routing {
 		#[serde(rename_all = "camelCase")]
 		ProxyStaticSite { static_site_id: Uuid },
 		#[serde(rename_all = "camelCase")]
-		ProxyUrl { url: String },
+		ProxyUrl { url: String, http_only: bool },
 		#[serde(rename_all = "camelCase")]
-		Redirect { url: String, permanent: bool },
+		Redirect {
+			url: String,
+			http_only: bool,
+			permanent_redirect: bool,
+		},
+	}
+
+	impl From<ManagedUrlType> for UrlType {
+		fn from(value: ManagedUrlType) -> Self {
+			match value {
+				ManagedUrlType::ProxyDeployment {
+					deployment_id,
+					port,
+				} => Self::ProxyDeployment {
+					deployment_id,
+					port,
+				},
+				ManagedUrlType::ProxyStaticSite { static_site_id } => {
+					Self::ProxyStaticSite { static_site_id }
+				}
+				ManagedUrlType::ProxyUrl { url, http_only } => {
+					Self::ProxyUrl { url, http_only }
+				}
+				ManagedUrlType::Redirect {
+					url,
+					permanent_redirect,
+					http_only,
+				} => Self::Redirect {
+					url,
+					permanent_redirect,
+					http_only,
+				},
+			}
+		}
 	}
 
 	#[derive(Debug)]
@@ -25,7 +61,11 @@ pub mod routing {
 
 	impl Display for Key {
 		fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-			write!(f, "{}.{}", self.sub_domain, self.domain)
+			if self.sub_domain == "@" {
+				write!(f, "{}", self.domain)
+			} else {
+				write!(f, "{}.{}", self.sub_domain, self.domain)
+			}
 		}
 	}
 

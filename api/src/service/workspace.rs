@@ -1,8 +1,12 @@
 use std::str::FromStr;
 
-use api_models::{models::workspace::billing::Address, utils::Uuid};
+use api_models::{
+	models::workspace::{billing::Address, region::RegionStatus},
+	utils::Uuid,
+};
 use chrono::Utc;
 use eve_rs::AsError;
+use sqlx::types::Json;
 use stripe::{Client, CreateCustomer, Customer, CustomerId, UpdateCustomer};
 
 use crate::{
@@ -150,12 +154,23 @@ pub async fn create_workspace(
 	.await?;
 	db::end_deferred_constraints(connection).await?;
 
-	super::create_kubernetes_namespace(
-		resource_id.as_str(),
-		super::get_kubernetes_config_for_default_region(config),
-		&Uuid::new_v4(),
-	)
-	.await?;
+	for config in db::get_all_default_regions(connection)
+		.await?
+		.into_iter()
+		.filter_map(|region| {
+			if region.status == RegionStatus::Active {
+				region.config_file.map(|Json(config)| config)
+			} else {
+				None
+			}
+		}) {
+		super::create_kubernetes_namespace(
+			resource_id.as_str(),
+			config,
+			&Uuid::new_v4(),
+		)
+		.await?;
+	}
 
 	Ok(resource_id)
 }

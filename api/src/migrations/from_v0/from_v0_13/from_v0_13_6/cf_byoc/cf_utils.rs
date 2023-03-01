@@ -40,7 +40,7 @@ pub async fn create_cf_worker_routes_for_domain(
 	let cf_client = get_cloudflare_client(config)?;
 
 	let response = cf_client
-		.request_handle(&workers::CreateRoute {
+		.request(&workers::CreateRoute {
 			zone_identifier: &config.cloudflare.patr_zone_identifier,
 			params: CreateRouteParams {
 				pattern: format!("*{}/*", domain),
@@ -59,7 +59,7 @@ pub async fn create_cf_custom_hostname(
 	let cf_client = get_cloudflare_client(config)?;
 
 	let response = cf_client
-		.request_handle(&CreateCustomHostname {
+		.request(&CreateCustomHostname {
 			zone_identifier: &config.cloudflare.patr_zone_identifier,
 			params: CreateCustomHostnameParams {
 				hostname: host.to_owned(),
@@ -86,7 +86,7 @@ pub async fn update_kv_for_deployment(
 	let cf_client = get_cloudflare_client(config)?;
 
 	cf_client
-		.request_handle(&workerskv::write_bulk::WriteBulk {
+		.request(&workerskv::write_bulk::WriteBulk {
 			account_identifier: &config.cloudflare.account_id,
 			namespace_identifier: &config.cloudflare.kv_deployment_ns,
 			bulk_key_value_pairs: kv,
@@ -103,7 +103,7 @@ pub async fn update_kv_for_static_site(
 	let cf_client = get_cloudflare_client(config)?;
 
 	cf_client
-		.request_handle(&workerskv::write_bulk::WriteBulk {
+		.request(&workerskv::write_bulk::WriteBulk {
 			account_identifier: &config.cloudflare.account_id,
 			namespace_identifier: &config.cloudflare.kv_static_site_ns,
 			bulk_key_value_pairs: kv,
@@ -120,7 +120,7 @@ pub async fn update_kv_for_managed_url(
 	let cf_client = get_cloudflare_client(config)?;
 
 	cf_client
-		.request_handle(&workerskv::write_bulk::WriteBulk {
+		.request(&workerskv::write_bulk::WriteBulk {
 			account_identifier: &config.cloudflare.account_id,
 			namespace_identifier: &config.cloudflare.kv_routing_ns,
 			bulk_key_value_pairs: kv,
