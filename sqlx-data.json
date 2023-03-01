@@ -13908,6 +13908,39 @@
     },
     "query": "CREATE INDEX user_idx_created ON \"user\" (created);"
   },
+  "f5dd46e52616999fa9c7c21663af85f706e35aa6e771dc82076207894533e31a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "user_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "role_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT user_id as \"user_id: _\", workspace_id as \"workspace_id: _\", role_id as \"role_id: _\" FROM workspace_user WHERE workspace_id = $1 AND role_id = $2;"
+  },
   "f64a974f4fb86abd802186e8a8fd86f98a1bfac51f17ea166dd26bead23352cd": {
     "describe": {
       "columns": [],
