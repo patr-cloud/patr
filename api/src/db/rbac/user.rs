@@ -89,7 +89,7 @@ pub async fn list_all_users_with_roles_in_workspace(
 	Ok(users)
 }
 
-pub async fn list_all_users_with_role_in_workspace(
+pub async fn list_all_users_for_role_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	role_id: &Uuid,
