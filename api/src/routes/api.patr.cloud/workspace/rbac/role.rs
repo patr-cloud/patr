@@ -5,9 +5,10 @@ use api_models::{
 		DeleteRoleResponse,
 		GetRoleDetailsResponse,
 		ListAllRolesResponse,
+		ListUsersForRoleResponse,
 		Role,
 		UpdateRoleRequest,
-		UpdateRoleResponse, ListUsersForRoleResponse,
+		UpdateRoleResponse,
 	},
 	utils::Uuid,
 };
