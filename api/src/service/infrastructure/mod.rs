@@ -218,10 +218,8 @@ pub async fn delete_all_resources_in_workspace(
 	for site in static_site {
 		service::delete_static_site(
 			connection,
-			workspace_id,
 			&site.id,
 			config,
-			request_id,
 		)
 		.await?;
 	}

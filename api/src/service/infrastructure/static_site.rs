@@ -1,10 +1,7 @@
 use std::io::{Cursor, Read};
 
 use api_models::{
-	models::workspace::infrastructure::{
-		deployment::DeploymentStatus,
-		static_site::StaticSiteDetails,
-	},
+	models::workspace::infrastructure::deployment::DeploymentStatus,
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
@@ -165,7 +162,6 @@ pub async fn upload_static_site(
 
 pub async fn stop_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	_workspace_id: &Uuid,
 	static_site_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
@@ -196,10 +192,8 @@ pub async fn stop_static_site(
 
 pub async fn delete_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	_workspace_id: &Uuid,
 	static_site_id: &Uuid,
 	config: &Settings,
-	_request_id: &Uuid,
 ) -> Result<(), Error> {
 	let static_site = db::get_static_site_by_id(connection, static_site_id)
 		.await?
@@ -401,10 +395,8 @@ pub async fn upload_static_site_files_to_s3(
 
 pub async fn update_static_site_and_db_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	_workspace_id: &Uuid,
 	static_site_id: &Uuid,
 	upload_id: &Uuid,
-	_running_details: &StaticSiteDetails,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -719,10 +711,8 @@ async fn create_static_site_upload(
 	} else {
 		service::update_static_site_and_db_status(
 			connection,
-			workspace_id,
 			static_site_id,
 			&upload_id,
-			&StaticSiteDetails {},
 			config,
 			request_id,
 		)
