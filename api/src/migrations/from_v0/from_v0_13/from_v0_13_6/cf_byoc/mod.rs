@@ -2,7 +2,7 @@ mod cf_models;
 mod cf_utils;
 mod k8s_migrations;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use api_models::utils::Uuid;
 use cloudflare::endpoints::workerskv::write_bulk::KeyValuePair;
@@ -16,9 +16,11 @@ use crate::{
 	migrations::from_v0::from_v0_13::from_v0_13_6::cf_byoc::{
 		cf_models::routing::{RouteType, UrlType},
 		k8s_migrations::{
+			delete_k8s_certificate_resources,
 			delete_k8s_managed_url_resources,
 			delete_k8s_region_resources,
 			delete_k8s_static_site_resources,
+			patch_ingress_for_default_region_deployments,
 		},
 	},
 	utils::{settings::Settings, Error},
@@ -31,6 +33,11 @@ pub async fn migrate(
 ) -> Result<(), Error> {
 	log::info!("Running cloudflare ingress migrations");
 
+	// manual migrations before deploying:
+	//  - sync s3 buckets from do to r2
+	//  - delete byoc dns records from {region-id}.patr.cloud
+	//  - create origin ca cert for sgp cluster and set it as default
+
 	migrate_byoc_region(connection, config).await?;
 	migrate_workspace_domain(connection, config).await?;
 	migrate_managed_url(connection, config).await?;
@@ -42,163 +49,10 @@ pub async fn migrate(
 	delete_k8s_region_resources(connection, config).await?;
 	delete_k8s_static_site_resources(connection, config).await?;
 	delete_k8s_managed_url_resources(connection, config).await?;
-	// todo: cert & tls secret deletion
-	// todo: patch ing of def cluster
-	// todo: managed_url cert
+	delete_k8s_certificate_resources(connection, config).await?;
+	patch_ingress_for_default_region_deployments(connection, config).await?;
 
 	log::info!("Completed cloudflare ingress migrations");
-	Ok(())
-}
-
-async fn migrate_workspace_domain(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	config: &Settings,
-) -> Result<(), Error> {
-	log::info!("Running workspace domain migrations for cf ingress");
-
-	query!(
-		r#"
-		ALTER TABLE workspace_domain
-			ADD COLUMN cf_route_id TEXT NOT NULL
-				DEFAULT 'already_deleted';
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE workspace_domain
-			ALTER COLUMN cf_route_id DROP DEFAULT;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	// todo: there should not be any duplicates in the query
-	let valid_workspace_domain = query!(
-		r#"
-		SELECT
-			workspace_domain.id as "domain_id",
-			concat(domain.name, '.', domain.tld) AS "domain_name"
-		FROM workspace_domain
-		JOIN domain
-			ON workspace_domain.id = domain.id
-		WHERE domain.deleted IS NULL;
-		"#
-	)
-	.fetch(&mut *connection)
-	.map_ok(|row| {
-		(
-			row.get::<Uuid, _>("domain_id"),
-			row.get::<String, _>("domain_name"),
-		)
-	})
-	.try_collect::<Vec<_>>()
-	.await?;
-
-	for (idx, (domain_id, domain_name)) in
-		valid_workspace_domain.iter().enumerate()
-	{
-		log::info!(
-			"{}/{} - Creating cf worker routes for domain {} with name `{}`",
-			idx,
-			valid_workspace_domain.len(),
-			domain_name,
-			domain_id,
-		);
-
-		// todo: make idempotent
-		let cf_route_id =
-			cf_utils::create_cf_worker_routes_for_domain(domain_name, config)
-				.await?;
-
-		query!(
-			r#"
-				UPDATE
-					workspace_domain
-				SET
-					cf_route_id = $2
-				WHERE
-					id = $1;
-				"#,
-			&domain_id,
-			&cf_route_id
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	log::info!("Completed workspace domain migrations for cf ingress");
-	Ok(())
-}
-
-async fn migrate_managed_url(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	config: &Settings,
-) -> Result<(), Error> {
-	log::info!("Running managed url migrations for cf ingress");
-
-	query!(
-		r#"
-			ALTER TABLE managed_url
-				ADD COLUMN cf_custom_hostname_id TEXT;
-			"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	let valid_custom_hostnames = query!(
-			r#"
-			SELECT
-				DISTINCT CONCAT(managed_url.sub_domain, '.', domain.name, '.', domain.tld) as "hostname"
-			FROM managed_url
-			JOIN workspace_domain
-				ON workspace_domain.id = managed_url.domain_id
-			JOIN domain
-				ON domain.id = workspace_domain.id
-			WHERE
-				managed_url.deleted IS NULL;
-			"#
-		)
-		.fetch(&mut *connection)
-		.map_ok(|row| {
-				row.get::<String, _>("hostname")
-		})
-		.try_collect::<Vec<_>>()
-		.await?;
-
-	for (idx, hostname) in valid_custom_hostnames.iter().enumerate() {
-		log::info!(
-			" {}/{} - Creating cf custom hostname for {}",
-			idx,
-			valid_custom_hostnames.len(),
-			hostname
-		);
-
-		let cf_hostname = hostname.strip_prefix("@.").unwrap_or(hostname);
-		// todo: make idempotent
-		let cf_custom_hostname_id =
-			cf_utils::create_cf_custom_hostname(cf_hostname, config).await?;
-
-		query!(
-			r#"
-				UPDATE managed_url
-				SET cf_custom_hostname_id = $2
-				FROM domain
-				WHERE
-					managed_url.deleted IS NULL AND
-					domain.id = managed_url.domain_id AND
-					CONCAT(managed_url.sub_domain, '.', domain.name, '.', domain.tld) = $1;
-				"#,
-			hostname,
-			&cf_custom_hostname_id
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	log::info!("Completed managed url migrations for cf ingress");
 	Ok(())
 }
 
@@ -207,6 +61,15 @@ async fn migrate_byoc_region(
 	_config: &Settings,
 ) -> Result<(), Error> {
 	log::info!("Running byoc region migrations for cf ingress");
+
+	query!(
+		r#"
+		ALTER TABLE deployment_region
+		RENAME TO region;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	// 1. Delete resources associated with byoc region
 
@@ -220,7 +83,7 @@ async fn migrate_byoc_region(
 		FROM deployment
 		WHERE region IN (
 			SELECT id
-			FROM deployment_region
+			FROM region
 			WHERE workspace_id IS NOT NULL
 		);
 		"#
@@ -276,11 +139,11 @@ async fn migrate_byoc_region(
 
 	query!(
 		r#"
-		ALTER TABLE deployment_region
+		ALTER TABLE region
 			DROP CONSTRAINT deployment_region_chk_ready_or_not,
 			ADD COLUMN status REGION_STATUS,
 			ADD COLUMN ingress_hostname TEXT,
-			ADD COLUMN cf_cert_id TEXT,
+			ADD COLUMN cloudflare_certificate_id TEXT,
 			ADD COLUMN config_file JSON,
 			ADD COLUMN deleted TIMESTAMPTZ,
 			ADD COLUMN disconnected_at TIMESTAMPTZ;
@@ -292,7 +155,7 @@ async fn migrate_byoc_region(
 	log::info!("Marking all BYOC region as deleted");
 	query!(
 		r#"
-		UPDATE deployment_region
+		UPDATE region
 		SET status =
 			CASE
 				WHEN (workspace_id IS NULL AND ready = true)
@@ -308,7 +171,7 @@ async fn migrate_byoc_region(
 
 	query!(
 		r#"
-		UPDATE deployment_region
+		UPDATE region
 		SET deleted = NOW()
 		WHERE status = 'deleted';
 		"#
@@ -318,7 +181,7 @@ async fn migrate_byoc_region(
 
 	query!(
 		r#"
-		ALTER TABLE deployment_region
+		ALTER TABLE region
 			DROP COLUMN ready,
 			DROP COLUMN kubernetes_cluster_url,
 			DROP COLUMN kubernetes_auth_username,
@@ -326,45 +189,28 @@ async fn migrate_byoc_region(
 			DROP COLUMN kubernetes_ca_data,
 			DROP COLUMN kubernetes_ingress_ip_addr,
 			ALTER COLUMN status SET NOT NULL,
-			ADD CONSTRAINT deployment_region_chk_status CHECK(
+			ADD CONSTRAINT region_chk_status CHECK(
 				(
-					workspace_id IS NULL AND
-					ingress_hostname IS NULL AND
-					message_log IS NULL AND
-					cf_cert_id IS NULL AND
-					config_file IS NULL AND
-					disconnected_at IS NULL AND
-					(
-						status = 'active' OR
-						status = 'coming_soon'
-					)
+					status = 'creating'
 				) OR (
-					workspace_id IS NOT NULL AND
-					(
-						(
-							status = 'active' AND
-							ingress_hostname IS NOT NULL AND
-							cf_cert_id IS NOT NULL AND
-							config_file IS NOT NULL AND
-							disconnected_at IS NULL
-						) OR (
-							status = 'creating' AND
-							ingress_hostname IS NULL AND
-							cf_cert_id IS NOT NULL AND
-							config_file IS NULL AND
-							disconnected_at IS NULL
-						) OR (
-							status = 'disconnected' AND
-							ingress_hostname IS NOT NULL AND
-							cf_cert_id IS NOT NULL AND
-							config_file IS NOT NULL AND
-							disconnected_at IS NOT NULL
-						) OR (
-							status = 'deleted' AND
-							deleted IS NOT NULL
-						) OR
-						status = 'errored'
-					)
+					status = 'active' AND
+					ingress_hostname IS NOT NULL AND
+					cloudflare_certificate_id IS NOT NULL AND
+					config_file IS NOT NULL AND
+					disconnected_at IS NULL
+				) OR (
+					status = 'errored'
+				) OR (
+					status = 'deleted' AND
+					deleted IS NOT NULL
+				) OR (
+					status = 'disconnected' AND
+					ingress_hostname IS NOT NULL AND
+					cloudflare_certificate_id IS NOT NULL AND
+					config_file IS NOT NULL AND
+					disconnected_at IS NOT NULL
+				) OR (
+					status = 'coming_soon'
 				)
 			);
 		"#
@@ -374,8 +220,8 @@ async fn migrate_byoc_region(
 
 	query!(
 		r#"
-		CREATE UNIQUE INDEX deployment_region_uq_workspace_id_name
-		ON deployment_region(workspace_id, name)
+		CREATE UNIQUE INDEX region_uq_workspace_id_name
+		ON region(workspace_id, name)
 		WHERE
 			deleted IS NULL AND
 			workspace_id IS NOT NULL;
@@ -386,18 +232,176 @@ async fn migrate_byoc_region(
 
 	query!(
 		r#"
-		ALTER TABLE deployment_region
-			ADD CONSTRAINT deployment_region_fk_id_workspace_id
+		ALTER TABLE region
+			ADD CONSTRAINT region_fk_id_workspace_id
 			FOREIGN KEY (id, workspace_id) REFERENCES resource(id, owner_id);
 		"#
 	)
 	.execute(&mut *connection)
 	.await?;
 
-	// todo: for all the deleted region delete dns record from
-	// {region_id}-patr.cloud
-
 	log::info!("Completed byoc region migrations for cf ingress");
+	Ok(())
+}
+
+async fn migrate_workspace_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+) -> Result<(), Error> {
+	log::info!("Running workspace domain migrations for cf ingress");
+
+	query!(
+		r#"
+		ALTER TABLE workspace_domain
+			ADD COLUMN cloudflare_worker_route_id TEXT NOT NULL
+				DEFAULT 'already_deleted';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace_domain
+			ALTER COLUMN cloudflare_worker_route_id DROP DEFAULT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	let valid_workspace_domain = query!(
+		r#"
+		SELECT
+			workspace_domain.id as "domain_id",
+			concat(domain.name, '.', domain.tld) AS "domain_name"
+		FROM workspace_domain
+		JOIN domain
+			ON workspace_domain.id = domain.id
+		WHERE domain.deleted IS NULL;
+		"#
+	)
+	.fetch(&mut *connection)
+	.map_ok(|row| {
+		(
+			row.get::<Uuid, _>("domain_id"),
+			row.get::<String, _>("domain_name"),
+		)
+	})
+	.try_collect::<Vec<_>>()
+	.await?;
+
+	for (idx, (domain_id, domain_name)) in
+		valid_workspace_domain.iter().enumerate()
+	{
+		log::info!(
+			"{}/{} - Creating cf worker routes for domain {} with name `{}`",
+			idx,
+			valid_workspace_domain.len(),
+			domain_name,
+			domain_id,
+		);
+
+		tokio::time::sleep(Duration::from_millis(300)).await;
+		let cloudflare_worker_route_id =
+			cf_utils::create_cf_worker_routes_for_domain(domain_name, config)
+				.await?;
+
+		query!(
+			r#"
+			UPDATE
+				workspace_domain
+			SET
+				cloudflare_worker_route_id = $2
+			WHERE
+				id = $1;
+			"#,
+			&domain_id,
+			&cloudflare_worker_route_id
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	log::info!("Completed workspace domain migrations for cf ingress");
+	Ok(())
+}
+
+async fn migrate_managed_url(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+) -> Result<(), Error> {
+	log::info!("Running managed url migrations for cf ingress");
+
+	query!(
+		r#"
+		ALTER TABLE managed_url
+			ADD COLUMN cf_custom_hostname_id TEXT NOT NULL
+				DEFAULT 'already_deleted';;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE managed_url
+			ADD COLUMN cf_custom_hostname_id DROP DEFAULT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	let valid_custom_hostnames = query!(
+			r#"
+			SELECT
+				DISTINCT CONCAT(managed_url.sub_domain, '.', domain.name, '.', domain.tld) as "hostname"
+			FROM managed_url
+			JOIN workspace_domain
+				ON workspace_domain.id = managed_url.domain_id
+			JOIN domain
+				ON domain.id = workspace_domain.id
+			WHERE
+				managed_url.deleted IS NULL;
+			"#
+		)
+		.fetch(&mut *connection)
+		.map_ok(|row| {
+				row.get::<String, _>("hostname")
+		})
+		.try_collect::<Vec<_>>()
+		.await?;
+
+	for (idx, hostname) in valid_custom_hostnames.iter().enumerate() {
+		log::info!(
+			" {}/{} - Creating cf custom hostname for {}",
+			idx,
+			valid_custom_hostnames.len(),
+			hostname
+		);
+
+		let cf_hostname = hostname.strip_prefix("@.").unwrap_or(hostname);
+		tokio::time::sleep(Duration::from_millis(300)).await;
+		let cf_custom_hostname_id =
+			cf_utils::create_cf_custom_hostname(cf_hostname, config).await?;
+
+		query!(
+			r#"
+				UPDATE managed_url
+				SET cf_custom_hostname_id = $2
+				FROM domain
+				WHERE
+					managed_url.deleted IS NULL AND
+					domain.id = managed_url.domain_id AND
+					CONCAT(managed_url.sub_domain, '.', domain.name, '.', domain.tld) = $1;
+				"#,
+			hostname,
+			&cf_custom_hostname_id
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	log::info!("Completed managed url migrations for cf ingress");
 	Ok(())
 }
 
@@ -427,7 +431,7 @@ async fn update_cloudflare_kv_for_deployments(
 		SELECT
 			id as "id: Uuid"
 		FROM
-			deployment_region
+			region
 		WHERE
 			name = 'Singapore'
 			AND provider = 'digitalocean'
@@ -521,6 +525,7 @@ async fn update_cloudflare_kv_for_deployments(
 			total_count,
 		);
 		next_idx += kv.len();
+		tokio::time::sleep(Duration::from_millis(300)).await;
 		cf_utils::update_kv_for_deployment(kv, config).await?;
 	}
 
@@ -602,6 +607,7 @@ async fn update_cloudflare_kv_for_static_sites(
 			total_count,
 		);
 		next_idx += kv.len();
+		tokio::time::sleep(Duration::from_millis(300)).await;
 		cf_utils::update_kv_for_static_site(kv, config).await?;
 	}
 
@@ -636,7 +642,8 @@ async fn update_cloudflare_kv_for_managed_urls(
 			managed_url.port,
 			managed_url.static_site_id,
 			managed_url.url,
-			managed_url.permanent_redirect
+			managed_url.permanent_redirect,
+			managed_url.http_only
 		FROM
 			managed_url
 		JOIN workspace_domain
@@ -666,6 +673,7 @@ async fn update_cloudflare_kv_for_managed_urls(
 			row.get::<Option<Uuid>, _>("static_site_id"),
 			row.get::<Option<String>, _>("url"),
 			row.get::<Option<bool>, _>("permanent_redirect"),
+			row.get::<Option<bool>, _>("http_only"),
 		)
 	})
 	.filter_map(
@@ -679,6 +687,7 @@ async fn update_cloudflare_kv_for_managed_urls(
 			static_site_id,
 			url,
 			permanent_redirect,
+			http_only,
 		)| {
 			let url_type = match url_type {
 				ManagedUrlType::ProxyToDeployment => UrlType::ProxyDeployment {
@@ -688,10 +697,14 @@ async fn update_cloudflare_kv_for_managed_urls(
 				ManagedUrlType::ProxyToStaticSite => UrlType::ProxyStaticSite {
 					static_site_id: static_site_id?,
 				},
-				ManagedUrlType::ProxyUrl => UrlType::ProxyUrl { url: url? },
+				ManagedUrlType::ProxyUrl => UrlType::ProxyUrl {
+					url: url?,
+					http_only: http_only?,
+				},
 				ManagedUrlType::Redirect => UrlType::Redirect {
 					url: url?,
-					permanent: permanent_redirect?,
+					permanent_redirect: permanent_redirect?,
+					http_only: http_only?,
 				},
 			};
 
@@ -736,6 +749,7 @@ async fn update_cloudflare_kv_for_managed_urls(
 			total_count,
 		);
 		next_idx += kv.len();
+		tokio::time::sleep(Duration::from_millis(300)).await;
 		cf_utils::update_kv_for_managed_url(kv, config).await?;
 	}
 

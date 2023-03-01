@@ -278,7 +278,7 @@ pub async fn get_region_by_name_in_workspace(
 	.await
 }
 
-pub async fn get_all_deployment_regions_for_workspace(
+pub async fn get_all_regions_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 ) -> Result<Vec<Region>, sqlx::Error> {

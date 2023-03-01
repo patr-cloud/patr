@@ -12,9 +12,13 @@ pub mod routing {
 		#[serde(rename_all = "camelCase")]
 		ProxyStaticSite { static_site_id: Uuid },
 		#[serde(rename_all = "camelCase")]
-		ProxyUrl { url: String },
+		ProxyUrl { url: String, http_only: bool },
 		#[serde(rename_all = "camelCase")]
-		Redirect { url: String, permanent: bool },
+		Redirect {
+			url: String,
+			http_only: bool,
+			permanent_redirect: bool,
+		},
 	}
 
 	#[derive(Debug)]
@@ -25,7 +29,11 @@ pub mod routing {
 
 	impl Display for Key {
 		fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-			write!(f, "{}.{}", self.sub_domain, self.domain)
+			if self.sub_domain == "@" {
+				write!(f, "{}", self.domain)
+			} else {
+				write!(f, "{}.{}", self.sub_domain, self.domain)
+			}
 		}
 	}
 
@@ -55,7 +63,7 @@ pub mod deployment {
 		}
 	}
 
-	#[derive(Debug, Serialize, Deserialize)]
+	#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 	#[serde(rename_all = "camelCase")]
 	pub enum Value {
 		Created,
@@ -83,7 +91,7 @@ pub mod static_site {
 		}
 	}
 
-	#[derive(Debug, Serialize, Deserialize)]
+	#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 	#[serde(rename_all = "camelCase")]
 	pub enum Value {
 		Created,

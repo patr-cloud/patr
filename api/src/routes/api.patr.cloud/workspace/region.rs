@@ -200,7 +200,7 @@ async fn list_regions(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let regions = db::get_all_deployment_regions_for_workspace(
+	let regions = db::get_all_regions_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 	)
