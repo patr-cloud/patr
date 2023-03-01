@@ -1,4 +1,5 @@
 use api_models::utils::Uuid;
+use sqlx::Acquire;
 
 use super::Job;
 use crate::{db, service, utils::Error};
@@ -20,9 +21,6 @@ async fn sync_repos() -> Result<(), Error> {
 	for workspace in workspaces {
 		let request_id = Uuid::new_v4();
 
-		let mut connection =
-			super::CONFIG.get().unwrap().database.begin().await?;
-
 		let connected_git_providers =
 			db::list_connected_git_providers_for_workspace(
 				&mut connection,
@@ -31,16 +29,31 @@ async fn sync_repos() -> Result<(), Error> {
 			.await?;
 
 		for git_provider in connected_git_providers {
+			let mut connection = connection.begin().await?;
+
 			log::info!("request_id: {} - Syncing repos for workspace {} from git_provider {}", request_id, workspace.id, git_provider.id);
-			service::sync_repos_for_git_provider(
+
+			let result = service::sync_repos_for_git_provider(
 				&mut connection,
 				&git_provider,
 				&request_id,
 			)
-			.await?;
-		}
+			.await;
 
-		connection.commit().await?;
+			match result {
+				Ok(()) => {
+					connection.commit().await?;
+				}
+				Err(err) => {
+					log::error!(
+						"request_id - {} : Error while syncing git provider {} => {}",
+						request_id,
+						git_provider.id,
+						err.get_error()
+					);
+				}
+			}
+		}
 	}
 
 	Ok(())
