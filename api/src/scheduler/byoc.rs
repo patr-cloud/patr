@@ -34,7 +34,7 @@ async fn check_status_of_active_byoc_regions() -> Result<(), Error> {
 			(region.status == RegionStatus::Active && region.is_byoc_region())
 				.then_some((
 					region.id,
-					region.config_file?,
+					region.config_file?.0,
 					region.ingress_hostname?,
 				))
 		});
@@ -62,7 +62,7 @@ async fn check_status_of_active_byoc_regions() -> Result<(), Error> {
 					"So marking the cluster {region_id} as disconnected"
 				);
 
-				db::mark_byoc_region_as_disconnected(
+				db::set_region_as_disconnected(
 					&mut connection,
 					&region_id,
 					&Utc::now(),
@@ -91,7 +91,7 @@ async fn handle_disconnected_byoc_regions() -> Result<(), Error> {
 				.then_some((
 					region.id,
 					region.workspace_id?,
-					region.config_file?,
+					region.config_file?.0,
 					region.ingress_hostname?,
 					region.disconnected_at?,
 				))
@@ -119,7 +119,7 @@ async fn handle_disconnected_byoc_regions() -> Result<(), Error> {
 					"Region `{}` got connected again. So marking it as active",
 					region_id
 				);
-				db::mark_byoc_region_as_reconnected(
+				db::set_region_as_connected(
 					&mut connection,
 					&region_id,
 				)

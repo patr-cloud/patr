@@ -1,152 +1,54 @@
 use api_models::{models::workspace::region::RegionStatus, utils::Uuid};
 use eve_rs::AsError;
-use kube::config::{
-	AuthInfo,
-	Cluster,
-	Context,
-	Kubeconfig,
-	NamedAuthInfo,
-	NamedCluster,
-	NamedContext,
-};
-use once_cell::sync::OnceCell;
+use kube::config::Kubeconfig;
 use reqwest::Client;
+use sqlx::types::Json;
 
 use crate::{
 	db,
+	error,
 	models::{K8NodePool, K8sConfig, K8sCreateCluster},
 	utils::{settings::Settings, Error},
 	Database,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ClusterType {
-	PatrOwned,
-	UserOwned {
-		region_id: Uuid,
-		ingress_hostname: String,
-	},
-}
-
-#[derive(Debug, Clone)]
-pub struct KubernetesConfigDetails {
-	pub cluster_type: ClusterType,
-	pub kube_config: Kubeconfig,
-}
-
-static DEFAULT_REGION_ID: OnceCell<Uuid> = OnceCell::new();
-
-/// Panics if the expected values are not present.
-/// Allowed to use only during init phase
-pub async fn initialize_default_region_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-) {
-	let region_id = db::get_default_region_id(connection).await.expect(
-		"Default region should be populated before initializing the struct",
-	);
-
-	DEFAULT_REGION_ID
-		.set(region_id)
-		.expect("DEFAULT_REGION_ID is already set");
-}
-
-pub fn get_default_region_id<'a>() -> &'a Uuid {
-	DEFAULT_REGION_ID
-		.get()
-		.expect("DEFAULT_REGION_ID should be initialized before accessing it")
-}
-
-pub fn get_kubernetes_config_for_default_region(
-	config: &Settings,
-) -> KubernetesConfigDetails {
-	KubernetesConfigDetails {
-		cluster_type: ClusterType::PatrOwned,
-		kube_config: {
-			let cluster_name = "clusterId";
-			let context_name = "contextId";
-			let auth_info = "authInfoId";
-
-			Kubeconfig {
-				api_version: Some("v1".into()),
-				kind: Some("Config".into()),
-				clusters: vec![NamedCluster {
-					name: cluster_name.into(),
-					cluster: Cluster {
-						server: config.kubernetes.cluster_url.to_owned(),
-						certificate_authority_data: Some(
-							config
-								.kubernetes
-								.certificate_authority_data
-								.to_owned(),
-						),
-						certificate_authority: None,
-						proxy_url: None,
-						extensions: None,
-						insecure_skip_tls_verify: None,
-					},
-				}],
-				auth_infos: vec![NamedAuthInfo {
-					name: auth_info.into(),
-					auth_info: AuthInfo {
-						token: Some(
-							config.kubernetes.auth_token.to_owned().into(),
-						),
-						..Default::default()
-					},
-				}],
-				contexts: vec![NamedContext {
-					name: context_name.into(),
-					context: Context {
-						cluster: cluster_name.into(),
-						user: auth_info.into(),
-						extensions: None,
-						namespace: None,
-					},
-				}],
-				current_context: Some(context_name.into()),
-				..Default::default()
-			}
-		},
-	}
-}
-
 pub async fn get_kubernetes_config_for_region(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
 	config: &Settings,
-) -> Result<KubernetesConfigDetails, Error> {
+) -> Result<Kubeconfig, Error> {
 	let region = db::get_region_by_id(connection, region_id)
 		.await?
 		.status(500)?;
 
-	let kubeconfig = if region.workspace_id.is_none() {
-		// use the patr clusters
-
-		// for now returing the default cluster credentials
-		get_kubernetes_config_for_default_region(config)
-	} else {
-		match (region.status, region.config_file, region.ingress_hostname) {
-			(
-				RegionStatus::Active,
-				Some(config_file),
-				Some(ingress_ip_addr),
-			) => KubernetesConfigDetails {
-				cluster_type: ClusterType::UserOwned {
-					region_id: region.id,
-					ingress_hostname: ingress_ip_addr,
-				},
-				kube_config: config_file,
-			},
-			_ => {
-				log::info!("cluster {region_id} is not yet initialized");
-				return Err(Error::empty().body(format!(
-					"cluster {region_id} is not yet initialized"
-				)));
-			}
+	match (
+		region.status,
+		region.workspace_id,
+		region.config_file,
+		region.ingress_hostname,
+	) {
+		(RegionStatus::Active, _, Some(Json(config)), Some(_)) => {
+			// If the region is active, regardless of the workspace, use the
+			// config
+			Ok(config)
 		}
-	};
-
-	Ok(kubeconfig)
+		(RegionStatus::ComingSoon, None, ..) => {
+			// If the region is default, and is coming soon, get the first
+			// default valid region
+			let config = db::get_all_default_regions(connection)
+				.await?
+				.into_iter()
+				.find(|region| region.status == RegionStatus::Active)
+				.status(500)?
+				.config_file
+				.status(500)?
+				.0;
+			Ok(config)
+		}
+		_ => Err(Error::empty()
+			.status(400)
+			.body(error!(REGION_NOT_READY_YET).to_string())),
+	}
 }
 
 pub async fn create_do_k8s_cluster(

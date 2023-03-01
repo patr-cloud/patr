@@ -299,9 +299,9 @@ async fn add_region(
 	)
 	.await?;
 	if existing_region.is_some() {
-		Error::as_result()
-			.status(200)
-			.body(error!(RESOURCE_EXISTS).to_string())?;
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(RESOURCE_EXISTS).to_string()));
 	}
 
 	log::trace!(

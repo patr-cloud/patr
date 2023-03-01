@@ -88,6 +88,8 @@ pub async fn initialize(app: &App) -> Result<(), Error> {
 		transaction.commit().await?;
 
 		log::info!("Database created fresh");
+
+		Ok(())
 	} else {
 		// If it already exists, perform a migration with the known values
 
@@ -171,10 +173,7 @@ pub async fn initialize(app: &App) -> Result<(), Error> {
 			.expect("MACHINE_TYPES is already set");
 
 		drop(transaction);
+
+		Ok(())
 	}
-
-	let mut transaction = app.database.begin().await?;
-	service::initialize_default_region_id(&mut transaction).await;
-
-	Ok(())
 }

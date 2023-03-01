@@ -5,6 +5,7 @@ use api_models::{
 use chrono::{DateTime, Utc};
 use futures::TryStreamExt;
 use kube::config::Kubeconfig;
+use sqlx::types::Json;
 use url::Host;
 
 use crate::{
@@ -21,8 +22,8 @@ pub struct Region {
 	pub workspace_id: Option<Uuid>,
 	pub ingress_hostname: Option<String>,
 	pub message_log: Option<String>,
-	pub cf_cert_id: Option<String>,
-	pub config_file: Option<Kubeconfig>,
+	pub cloudflare_certificate_id: Option<String>,
+	pub config_file: Option<Json<Kubeconfig>>,
 	pub status: RegionStatus,
 	pub disconnected_at: Option<DateTime<Utc>>,
 }
@@ -34,36 +35,6 @@ impl Region {
 
 	pub fn is_patr_region(&self) -> bool {
 		!self.is_byoc_region()
-	}
-}
-
-struct DbRegion {
-	pub id: Uuid,
-	pub name: String,
-	pub cloud_provider: InfrastructureCloudProvider,
-	pub workspace_id: Option<Uuid>,
-	pub ingress_hostname: Option<String>,
-	pub message_log: Option<String>,
-	pub cf_cert_id: Option<String>,
-	pub config_file: Option<sqlx::types::Json<Kubeconfig>>,
-	pub status: RegionStatus,
-	pub disconnected_at: Option<DateTime<Utc>>,
-}
-
-impl From<DbRegion> for Region {
-	fn from(from: DbRegion) -> Self {
-		Self {
-			id: from.id,
-			name: from.name,
-			cloud_provider: from.cloud_provider,
-			workspace_id: from.workspace_id,
-			ingress_hostname: from.ingress_hostname,
-			message_log: from.message_log,
-			cf_cert_id: from.cf_cert_id,
-			config_file: from.config_file.map(|config| config.0),
-			status: from.status,
-			disconnected_at: from.disconnected_at,
-		}
 	}
 }
 
@@ -107,49 +78,32 @@ pub async fn initialize_region_pre(
 			message_log TEXT,
 			status REGION_STATUS NOT NULL,
 			ingress_hostname TEXT,
-			cf_cert_id TEXT,
+			cloudflare_certificate_id TEXT,
 			config_file JSON,
 			deleted TIMESTAMPTZ,
 			disconnected_at TIMESTAMPTZ,
 			CONSTRAINT deployment_region_chk_status CHECK(
 				(
-					workspace_id IS NULL AND
-					ingress_hostname IS NULL AND
-					message_log IS NULL AND
-					cf_cert_id IS NULL AND
-					config_file IS NULL AND
-					disconnected_at IS NULL AND
-					(
-						status = 'active' OR
-						status = 'coming_soon'
-					)
+					status = 'creating'
 				) OR (
-					workspace_id IS NOT NULL AND
-					(
-						(
-							status = 'active' AND
-							ingress_hostname IS NOT NULL AND
-							cf_cert_id IS NOT NULL AND
-							config_file IS NOT NULL AND
-							disconnected_at IS NULL
-						) OR (
-							status = 'creating' AND
-							ingress_hostname IS NULL AND
-							cf_cert_id IS NOT NULL AND
-							config_file IS NULL AND
-							disconnected_at IS NULL
-						) OR (
-							status = 'disconnected' AND
-							ingress_hostname IS NOT NULL AND
-							cf_cert_id IS NOT NULL AND
-							config_file IS NOT NULL AND
-							disconnected_at IS NOT NULL
-						) OR (
-							status = 'deleted' AND
-							deleted IS NOT NULL
-						) OR
-						status = 'errored'
-					)
+					status = 'active' AND
+					ingress_hostname IS NOT NULL AND
+					cloudflare_certificate_id IS NOT NULL AND
+					config_file IS NOT NULL AND
+					disconnected_at IS NULL
+				) OR (
+					status = 'errored'
+				) OR (
+					status = 'deleted' AND
+					deleted IS NOT NULL
+				) OR (
+					status = 'disconnected' AND
+					ingress_hostname IS NOT NULL AND
+					cloudflare_certificate_id IS NOT NULL AND
+					config_file IS NOT NULL AND
+					disconnected_at IS NOT NULL
+				) OR (
+					status = 'coming_soon'
 				)
 			)
 		);
@@ -160,8 +114,10 @@ pub async fn initialize_region_pre(
 
 	query!(
 		r#"
-		CREATE UNIQUE INDEX deployment_region_uq_workspace_id_name
-		ON deployment_region(workspace_id, name)
+		CREATE UNIQUE INDEX
+			deployment_region_uq_workspace_id_name
+		ON
+			deployment_region(workspace_id, name)
 		WHERE
 			deleted IS NULL AND
 			workspace_id IS NOT NULL;
@@ -179,8 +135,8 @@ pub async fn initialize_region_post(
 	query!(
 		r#"
 		ALTER TABLE deployment_region
-			ADD CONSTRAINT deployment_region_fk_id_workspace_id
-			FOREIGN KEY (id, workspace_id) REFERENCES resource(id, owner_id);
+		ADD CONSTRAINT deployment_region_fk_id_workspace_id
+		FOREIGN KEY (id, workspace_id) REFERENCES resource(id, owner_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -233,33 +189,12 @@ pub async fn initialize_region_post(
 	Ok(())
 }
 
-pub async fn get_default_region_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Uuid, sqlx::Error> {
-	query!(
-		r#"
-		SELECT
-			id as "id: Uuid"
-		FROM
-			deployment_region
-		WHERE
-			name = 'Singapore'
-			AND provider = 'digitalocean'
-			AND workspace_id IS NULL
-			AND status = 'active';
-		"#
-	)
-	.fetch_one(&mut *connection)
-	.await
-	.map(|row| row.id)
-}
-
 pub async fn get_region_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
 ) -> Result<Option<Region>, sqlx::Error> {
 	query_as!(
-		DbRegion,
+		Region,
 		r#"
 		SELECT
 			id as "id: _",
@@ -268,7 +203,7 @@ pub async fn get_region_by_id(
 			workspace_id as "workspace_id: _",
 			ingress_hostname as "ingress_hostname: _",
 			message_log,
-			cf_cert_id,
+			cloudflare_certificate_id,
 			config_file as "config_file: _",
 			status as "status: _",
 			disconnected_at as "disconnected_at: _"
@@ -281,16 +216,13 @@ pub async fn get_region_by_id(
 	)
 	.fetch_optional(&mut *connection)
 	.await
-	.map(|opt_region| opt_region.map(|region| region.into()))
 }
 
-pub async fn get_region_by_name_in_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	name: &str,
-	workspace_id: &Uuid,
-) -> Result<Option<Region>, sqlx::Error> {
+pub async fn get_all_default_regions(
+	connection: &mut <Database as sqlx::Database>::Connection
+) -> Result<Vec<Region>, sqlx::Error> {
 	query_as!(
-		DbRegion,
+		Region,
 		r#"
 		SELECT
 			id as "id: _",
@@ -299,7 +231,36 @@ pub async fn get_region_by_name_in_workspace(
 			workspace_id as "workspace_id: _",
 			ingress_hostname as "ingress_hostname: _",
 			message_log,
-			cf_cert_id,
+			cloudflare_certificate_id,
+			config_file as "config_file: _",
+			status as "status: _",
+			disconnected_at as "disconnected_at: _"
+		FROM
+			deployment_region
+		WHERE
+			workspace_id = NULL;
+		"#,
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn get_region_by_name_in_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	name: &str,
+	workspace_id: &Uuid,
+) -> Result<Option<Region>, sqlx::Error> {
+	query_as!(
+		Region,
+		r#"
+		SELECT
+			id as "id: _",
+			name,
+			provider as "cloud_provider: _",
+			workspace_id as "workspace_id: _",
+			ingress_hostname as "ingress_hostname: _",
+			message_log,
+			cloudflare_certificate_id,
 			config_file as "config_file: _",
 			status as "status: _",
 			disconnected_at as "disconnected_at: _"
@@ -315,7 +276,6 @@ pub async fn get_region_by_name_in_workspace(
 	)
 	.fetch_optional(&mut *connection)
 	.await
-	.map(|opt_region| opt_region.map(|region| region.into()))
 }
 
 pub async fn get_all_deployment_regions_for_workspace(
@@ -323,7 +283,7 @@ pub async fn get_all_deployment_regions_for_workspace(
 	workspace_id: &Uuid,
 ) -> Result<Vec<Region>, sqlx::Error> {
 	query_as!(
-		DbRegion,
+		Region,
 		r#"
 		SELECT
 			id as "id: _",
@@ -332,7 +292,7 @@ pub async fn get_all_deployment_regions_for_workspace(
 			workspace_id as "workspace_id: _",
 			ingress_hostname as "ingress_hostname: _",
 			message_log,
-			cf_cert_id,
+			cloudflare_certificate_id,
 			config_file as "config_file: _",
 			status as "status: _",
 			disconnected_at as "disconnected_at: _"
@@ -357,7 +317,7 @@ pub async fn get_all_active_byoc_region(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Vec<Region>, sqlx::Error> {
 	query_as!(
-		DbRegion,
+		Region,
 		r#"
 		SELECT
 			id as "id: _",
@@ -366,7 +326,7 @@ pub async fn get_all_active_byoc_region(
 			workspace_id as "workspace_id: _",
 			ingress_hostname as "ingress_hostname: _",
 			message_log,
-			cf_cert_id,
+			cloudflare_certificate_id,
 			config_file as "config_file: _",
 			status as "status: _",
 			disconnected_at as "disconnected_at: _"
@@ -387,7 +347,7 @@ pub async fn get_all_disconnected_byoc_region(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Vec<Region>, sqlx::Error> {
 	query_as!(
-		DbRegion,
+		Region,
 		r#"
 		SELECT
 			id as "id: _",
@@ -396,7 +356,7 @@ pub async fn get_all_disconnected_byoc_region(
 			workspace_id as "workspace_id: _",
 			ingress_hostname as "ingress_hostname: _",
 			message_log,
-			cf_cert_id,
+			cloudflare_certificate_id,
 			config_file as "config_file: _",
 			status as "status: _",
 			disconnected_at as "disconnected_at: _"
@@ -415,7 +375,7 @@ pub async fn get_all_disconnected_byoc_region(
 	.await
 }
 
-pub async fn mark_byoc_region_as_reconnected(
+pub async fn set_region_as_connected(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
@@ -427,7 +387,6 @@ pub async fn mark_byoc_region_as_reconnected(
 			disconnected_at = NULL,
 			status = 'active'
 		WHERE
-			workspace_id IS NOT NULL AND
 			id = $1;
 		"#,
 		region_id as _
@@ -437,7 +396,7 @@ pub async fn mark_byoc_region_as_reconnected(
 	.map(|_| ())
 }
 
-pub async fn mark_byoc_region_as_disconnected(
+pub async fn set_region_as_disconnected(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
 	disconnected_at: &DateTime<Utc>,
@@ -450,7 +409,6 @@ pub async fn mark_byoc_region_as_disconnected(
 			disconnected_at = $1,
 			status = 'disconnected'
 		WHERE
-			workspace_id IS NOT NULL AND
 			id = $2;
 		"#,
 		disconnected_at as _,
@@ -467,7 +425,7 @@ pub async fn add_deployment_region_to_workspace(
 	name: &str,
 	cloud_provider: &InfrastructureCloudProvider,
 	workspace_id: &Uuid,
-	cf_cert_id: &str,
+	cloudflare_certificate_id: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -477,33 +435,29 @@ pub async fn add_deployment_region_to_workspace(
 				name,
 				provider,
 				workspace_id,
-				cf_cert_id,
+				cloudflare_certificate_id,
 				status
 			)
 		VALUES
-			($1, $2, $3, $4, $5, $6);
+			($1, $2, $3, $4, $5, 'creating');
 		"#,
 		region_id as _,
 		name,
 		cloud_provider as _,
 		workspace_id as _,
-		cf_cert_id as _,
-		RegionStatus::Creating as _,
+		cloudflare_certificate_id as _,
 	)
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
-pub async fn mark_deployment_region_as_active(
+pub async fn set_region_as_active(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
 	kube_config: Kubeconfig,
 	ingress_hostname: &Host,
 ) -> Result<(), sqlx::Error> {
-	let kube_config = sqlx::types::Json(kube_config);
-	let ingress_hostname = ingress_hostname.to_string();
-
 	query!(
 		r#"
 		UPDATE
@@ -511,20 +465,21 @@ pub async fn mark_deployment_region_as_active(
 		SET
 			status = 'active',
 			config_file = $2,
-			ingress_hostname = $3
+			ingress_hostname = $3,
+			disconnected_at = NULL
 		WHERE
 			id = $1;
 		"#,
 		region_id as _,
-		kube_config as _,
-		ingress_hostname as _,
+		Json(kube_config) as _,
+		ingress_hostname.to_string(),
 	)
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
-pub async fn mark_deployment_region_as_errored(
+pub async fn set_region_as_errored(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
 ) -> Result<(), sqlx::Error> {

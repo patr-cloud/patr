@@ -166,7 +166,7 @@ pub(super) async fn process_request(
 						err.get_error()
 					);
 					log::info!("So marking the cluster {region_id} as errored");
-					db::mark_deployment_region_as_errored(
+					db::set_region_as_errored(
 						connection, &region_id,
 					)
 					.await?;
@@ -193,7 +193,7 @@ pub(super) async fn process_request(
 				Ok(Some(hostname)) => {
 					let mut connection = connection.begin().await?;
 
-					db::mark_deployment_region_as_active(
+					db::set_region_as_active(
 						&mut connection,
 						&region_id,
 						kube_config,
@@ -412,7 +412,7 @@ pub(super) async fn process_request(
 					)
 					.await?;
 
-					db::mark_deployment_region_as_errored(
+					db::set_region_as_errored(
 						connection, &region_id,
 					)
 					.await?;

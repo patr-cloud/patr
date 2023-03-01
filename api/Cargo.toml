@@ -23,7 +23,7 @@ async-trait = "0.1"
 base32 = "0.4"
 base64 = "0.13"
 chrono = "0.4"
-cloudflare = { git = "https://github.com/vicara-hq/cloudflare-rs" }
+cloudflare = { git = "https://github.com/vicara-hq/cloudflare-rs", branch = "patr-must-haves" }
 config_rs = { version = "0.13", package = "config" }
 cron = "0.12"
 deadpool = "*"
