@@ -1096,8 +1096,8 @@ async fn add_resource_requests_for_running_deployments(
 			preferences: None,
 			clusters: vec![NamedCluster {
 				name: config.kubernetes.cluster_name.clone(),
-				cluster: Cluster {
-					server: config.kubernetes.cluster_url.clone(),
+				cluster: Some(Cluster {
+					server: Some(config.kubernetes.cluster_url.clone()),
 					insecure_skip_tls_verify: None,
 					certificate_authority: None,
 					certificate_authority_data: Some(
@@ -1105,24 +1105,25 @@ async fn add_resource_requests_for_running_deployments(
 					),
 					proxy_url: None,
 					extensions: None,
-				},
+					..Default::default()
+				}),
 			}],
 			auth_infos: vec![NamedAuthInfo {
 				name: config.kubernetes.auth_name.clone(),
-				auth_info: AuthInfo {
+				auth_info: Some(AuthInfo {
 					username: Some(config.kubernetes.auth_username.clone()),
 					token: Some(config.kubernetes.auth_token.clone().into()),
 					..Default::default()
-				},
+				}),
 			}],
 			contexts: vec![NamedContext {
 				name: config.kubernetes.context_name.clone(),
-				context: Context {
+				context: Some(Context {
 					cluster: config.kubernetes.cluster_name.clone(),
 					user: config.kubernetes.auth_username.clone(),
 					extensions: None,
 					namespace: None,
-				},
+				}),
 			}],
 			current_context: Some(config.kubernetes.context_name.clone()),
 			extensions: None,

@@ -391,7 +391,8 @@ pub async fn update_deployment(
 				.status(500)?;
 
 			if machine_type_to_be_deployed != &(1, 2) {
-				log::info!("request_id: {request_id} - Only basic machine type is allowed under free plan");
+				log::info!("request_id: {request_id} - Only basic machine type is allowed
+	under free plan");
 				return Error::as_result().status(400).body(
 					error!(CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT).to_string(),
 				)?;
@@ -400,8 +401,8 @@ pub async fn update_deployment(
 		if let Some(max_horizontal_scale) = max_horizontal_scale {
 			if max_horizontal_scale > 1 {
 				log::info!(
-					"request_id: {request_id} - Only one replica allowed under free plan without card"
-				);
+					"request_id: {request_id} - Only one replica allowed under free plan
+	without card" 			);
 				return Error::as_result()
 					.status(400)
 					.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
@@ -411,15 +412,15 @@ pub async fn update_deployment(
 		if let Some(min_horizontal_scale) = min_horizontal_scale {
 			if min_horizontal_scale > 1 {
 				log::info!(
-					"request_id: {request_id} - Only one replica allowed under free plan without card"
-				);
+					"request_id: {request_id} - Only one replica allowed under free plan
+	without card" 			);
 				return Error::as_result()
 					.status(400)
 					.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
 			}
 		}
 
-		let volume_size_in_bytes = (volume_size * 1024 * 1024 * 1024) as usize;
+		let volume_size_in_bytes = volume_size as usize * 1024 * 1024 * 1024;
 		if volume_size_in_bytes > free_limits::VOLUME_STORAGE_IN_BYTE {
 			return Error::as_result()
 				.status(400)
@@ -722,6 +723,18 @@ pub async fn update_deployment(
 				.await?;
 			}
 
+			for volume in &volumes {
+				service::update_kubernetes_volume(
+					workspace_id,
+					deployment_id,
+					volume,
+					running_details.min_horizontal_scale,
+					kubeconfig.clone(),
+					request_id,
+				)
+				.await?;
+			}
+
 			service::update_kubernetes_deployment(
 				workspace_id,
 				&deployment,
@@ -729,7 +742,7 @@ pub async fn update_deployment(
 				None,
 				&running_details,
 				&volumes,
-				kubeconfig,
+				kubeconfig.clone(),
 				config,
 				request_id,
 			)
@@ -1430,7 +1443,7 @@ async fn check_deployment_creation_limit(
 				.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
 		}
 
-		let volume_size_in_byte = (volume_size * 1024 * 1024 * 1024) as usize;
+		let volume_size_in_byte = volume_size as usize * 1024 * 1024 * 1024;
 		if volume_size_in_byte > free_limits::VOLUME_STORAGE_IN_BYTE {
 			return Error::as_result()
 				.status(400)

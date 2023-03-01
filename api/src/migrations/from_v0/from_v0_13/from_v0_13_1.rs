@@ -380,8 +380,8 @@ async fn get_kube_config(
 			kind: Some("Config".to_string()),
 			clusters: vec![NamedCluster {
 				name: "kubernetesCluster".to_owned(),
-				cluster: Cluster {
-					server: cluster_url.to_string(),
+				cluster: Some(Cluster {
+					server: Some(cluster_url.to_string()),
 					certificate_authority_data: Some(
 						certificate_authority_data.to_string(),
 					),
@@ -389,23 +389,24 @@ async fn get_kube_config(
 					certificate_authority: None,
 					proxy_url: None,
 					extensions: None,
-				},
+					..Default::default()
+				}),
 			}],
 			auth_infos: vec![NamedAuthInfo {
 				name: auth_username.to_string(),
-				auth_info: AuthInfo {
+				auth_info: Some(AuthInfo {
 					token: Some(auth_token.to_string().into()),
 					..Default::default()
-				},
+				}),
 			}],
 			contexts: vec![NamedContext {
 				name: "kubernetesContext".to_owned(),
-				context: Context {
+				context: Some(Context {
 					cluster: "kubernetesCluster".to_owned(),
 					user: auth_username.to_string(),
 					extensions: None,
 					namespace: None,
-				},
+				}),
 			}],
 			current_context: Some("kubernetesContext".to_owned()),
 			preferences: None,

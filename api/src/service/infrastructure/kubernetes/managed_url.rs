@@ -100,7 +100,7 @@ pub async fn update_kubernetes_managed_url(
 							..Default::default()
 						},
 						path: Some(managed_url.path.to_string()),
-						path_type: Some("Prefix".to_string()),
+						path_type: "Prefix".to_string(),
 					}],
 				}),
 			},
@@ -148,7 +148,7 @@ pub async fn update_kubernetes_managed_url(
 								..Default::default()
 							},
 							path: Some(managed_url.path.to_string()),
-							path_type: Some("Prefix".to_string()),
+							path_type: "Prefix".to_string(),
 						}],
 					}),
 				},
@@ -247,7 +247,7 @@ pub async fn update_kubernetes_managed_url(
 								..Default::default()
 							},
 							path: Some(managed_url.path.to_string()),
-							path_type: Some("Prefix".to_string()),
+							path_type: "Prefix".to_string(),
 						}],
 					}),
 				},
@@ -354,7 +354,7 @@ pub async fn update_kubernetes_managed_url(
 								..Default::default()
 							},
 							path: Some(managed_url.path.to_string()),
-							path_type: Some("Prefix".to_string()),
+							path_type: "Prefix".to_string(),
 						}],
 					}),
 				},
@@ -569,7 +569,7 @@ pub async fn create_managed_url_verification_ingress(
 					..Default::default()
 				},
 				path: Some("/.well-known/patr-verification/".to_string()),
-				path_type: Some("Prefix".to_string()),
+				path_type: "Prefix".to_string(),
 			}],
 		}),
 	};
