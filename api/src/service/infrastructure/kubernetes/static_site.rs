@@ -129,7 +129,7 @@ pub async fn update_kubernetes_static_site(
 					..Default::default()
 				},
 				path: Some("/".to_string()),
-				path_type: Some("Prefix".to_string()),
+				path_type: "Prefix".to_string(),
 			}],
 		}),
 	}];

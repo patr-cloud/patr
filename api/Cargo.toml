@@ -36,10 +36,10 @@ handlebars = "4"
 hex = "0.4"
 hmac = "0.12"
 jsonwebtoken = "8"
-k8s-openapi = { version = "0.16", default-features = true, features = [
-	"v1_21",
+k8s-openapi = { version = "0.17", default-features = true, features = [
+	"v1_24",
 ] } # Kube-rs depends on k8s-openapi
-kube = { version = "0.76", default-features = true, features = [
+kube = { version = "0.78", default-features = true, features = [
 	"derive",
 	"runtime",
 ] } # Library for talking to Kubernetes API
