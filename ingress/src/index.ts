@@ -22,6 +22,11 @@ export default {
     ): Promise<Response> {
         try {
             let url = new URL(request.url);
+            if (url.protocol === "http:") {
+                url.protocol = "https:";
+                return Response.redirect(url.toString(), 301);
+            }
+
             if (url.hostname.endsWith(env.ONPATR_DOMAIN)) {
                 // onpatr_domain should not be used in managed url
                 return await fetchOnPatrRequest(request, env, url);
@@ -71,7 +76,7 @@ async function fetchManagedUrlRequest(
     let matched_route: UrlType | null = null;
     for (const route of routes) {
         if (url.pathname.startsWith(route.path)) {
-            matched_route = route
+            matched_route = route;
             break;
         }
     }
@@ -89,17 +94,14 @@ async function fetchManagedUrlRequest(
                 matched_route.port
             );
         case "proxyStaticSite":
-            return fetchStaticSite(
-                request,
-                env,
-                matched_route.staticSiteId
-            );
+            return fetchStaticSite(request, env, matched_route.staticSiteId);
         case "proxyUrl":
             return proxyUrl(
                 request,
                 env,
                 matched_route.path,
-                matched_route.url
+                matched_route.url,
+                matched_route.httpOnly
             );
         case "redirect":
             return redirectUrl(
@@ -107,7 +109,8 @@ async function fetchManagedUrlRequest(
                 env,
                 matched_route.path,
                 matched_route.url,
-                matched_route.permanent
+                matched_route.permanent_redirect,
+                matched_route.httpOnly
             );
         default:
             return new Response(
@@ -190,14 +193,19 @@ async function proxyUrl(
     request: Request,
     env: Env,
     matched_path: string,
-    to_url: string
+    to_url: string,
+    httpOnly: boolean
 ): Promise<Response> {
     let incomingUrl = new URL(request.url);
 
-    // todo: http won't work
-    let destinationUrl = new URL(`https://${to_url}`);
+    let destinationUrl = httpOnly
+        ? new URL(`http://${to_url}`)
+        : new URL(`https://${to_url}`);
     destinationUrl.search = incomingUrl.search;
-    destinationUrl.pathname = destinationUrl.pathname + incomingUrl.pathname.substring(matched_path.length);
+    destinationUrl.pathname =
+        destinationUrl.pathname +
+        incomingUrl.pathname.substring(matched_path.length);
+    destinationUrl.hash = incomingUrl.hash;
 
     return fetch(
         new Request(destinationUrl, {
@@ -217,18 +225,23 @@ async function redirectUrl(
     env: Env,
     matched_path: string,
     to_url: string,
-    permanent: boolean
+    permanent_redirect: boolean,
+    httpOnly: boolean
 ): Promise<Response> {
     // see: https://developers.cloudflare.com/workers/examples/redirect/
 
-    // todo: http won't work
     let incomingUrl = new URL(request.url);
 
-    let destinationUrl = new URL(`https://${to_url}`);
+    let destinationUrl = httpOnly
+        ? new URL(`http://${to_url}`)
+        : new URL(`https://${to_url}`);
     destinationUrl.search = incomingUrl.search;
-    destinationUrl.pathname = destinationUrl.pathname + incomingUrl.pathname.substring(matched_path.length);
+    destinationUrl.pathname =
+        destinationUrl.pathname +
+        incomingUrl.pathname.substring(matched_path.length);
+    destinationUrl.hash = incomingUrl.hash;
 
-    let redirectStatus = permanent ? 301 : 302;
+    let redirectStatus = permanent_redirect ? 301 : 302;
 
     return Response.redirect(destinationUrl.toString(), redirectStatus);
 }

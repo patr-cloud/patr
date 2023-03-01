@@ -192,18 +192,19 @@ pub async fn add_domain_to_workspace(
 	)
 	.await?;
 
-	let cf_route_id = service::add_domain_to_cloudflare_worker_routes(
-		full_domain_name,
-		config,
-	)
-	.await?;
+	let cloudflare_worker_route_id =
+		service::add_domain_to_cloudflare_worker_routes(
+			full_domain_name,
+			config,
+		)
+		.await?;
 
 	log::trace!("request_id: {} - Adding domain to workspace", request_id);
 	db::add_to_workspace_domain(
 		connection,
 		&domain_id,
 		nameserver_type,
-		&cf_route_id,
+		&cloudflare_worker_route_id,
 	)
 	.await?;
 
@@ -901,7 +902,7 @@ pub async fn delete_domain_in_workspace(
 	}
 
 	service::delete_domain_from_cloudflare_worker_routes(
-		&domain.cf_route_id,
+		&domain.cloudflare_worker_route_id,
 		config,
 	)
 	.await?;

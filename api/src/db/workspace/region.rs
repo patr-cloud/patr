@@ -3,7 +3,6 @@ use api_models::{
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
-use futures::TryStreamExt;
 use kube::config::Kubeconfig;
 use sqlx::types::Json;
 use url::Host;
@@ -41,6 +40,7 @@ impl Region {
 pub async fn initialize_region_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Initializing region tables");
 	query!(
 		r#"
 		CREATE TYPE INFRASTRUCTURE_CLOUD_PROVIDER AS ENUM(
@@ -117,7 +117,7 @@ pub async fn initialize_region_pre(
 		CREATE UNIQUE INDEX
 			region_uq_workspace_id_name
 		ON
-			deployment_region(workspace_id, name)
+			region(workspace_id, name)
 		WHERE
 			deleted IS NULL AND
 			workspace_id IS NOT NULL;
@@ -134,7 +134,7 @@ pub async fn initialize_region_post(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		ALTER TABLE deployment_region
+		ALTER TABLE region
 		ADD CONSTRAINT region_fk_id_workspace_id
 		FOREIGN KEY (id, workspace_id) REFERENCES resource(id, owner_id);
 		"#
@@ -151,7 +151,7 @@ pub async fn initialize_region_post(
 				SELECT
 					id as "id: Uuid"
 				FROM
-					deployment_region
+					region
 				WHERE
 					id = $1;
 				"#,
@@ -168,7 +168,7 @@ pub async fn initialize_region_post(
 		query!(
 			r#"
 			INSERT INTO
-				deployment_region(
+				region(
 					id,
 					name,
 					provider,
@@ -208,7 +208,7 @@ pub async fn get_region_by_id(
 			status as "status: _",
 			disconnected_at as "disconnected_at: _"
 		FROM
-			deployment_region
+			region
 		WHERE
 			id = $1;
 		"#,
@@ -236,7 +236,7 @@ pub async fn get_all_default_regions(
 			status as "status: _",
 			disconnected_at as "disconnected_at: _"
 		FROM
-			deployment_region
+			region
 		WHERE
 			workspace_id = NULL;
 		"#,
@@ -265,7 +265,7 @@ pub async fn get_region_by_name_in_workspace(
 			status as "status: _",
 			disconnected_at as "disconnected_at: _"
 		FROM
-			deployment_region
+			region
 		WHERE
 			name = $1 AND
 			workspace_id = $2 AND
@@ -297,7 +297,7 @@ pub async fn get_all_deployment_regions_for_workspace(
 			status as "status: _",
 			disconnected_at as "disconnected_at: _"
 		FROM
-			deployment_region
+			region
 		WHERE
 			status != 'deleted' AND
 			(
@@ -307,9 +307,7 @@ pub async fn get_all_deployment_regions_for_workspace(
 		"#,
 		workspace_id as _,
 	)
-	.fetch(&mut *connection)
-	.map_ok(|region| region.into())
-	.try_collect()
+	.fetch_all(&mut *connection)
 	.await
 }
 
@@ -331,15 +329,13 @@ pub async fn get_all_active_byoc_region(
 			status as "status: _",
 			disconnected_at as "disconnected_at: _"
 		FROM
-			deployment_region
+			region
 		WHERE
 			workspace_id IS NOT NULL AND
 			status = 'active';
 		"#,
 	)
-	.fetch(&mut *connection)
-	.map_ok(|region| region.into())
-	.try_collect()
+	.fetch_all(&mut *connection)
 	.await
 }
 
@@ -361,7 +357,7 @@ pub async fn get_all_disconnected_byoc_region(
 			status as "status: _",
 			disconnected_at as "disconnected_at: _"
 		FROM
-			deployment_region
+			region
 		WHERE
 			workspace_id IS NOT NULL AND
 			status = 'disconnected' AND
@@ -369,9 +365,7 @@ pub async fn get_all_disconnected_byoc_region(
 		ORDER BY disconnected_at;
 		"#,
 	)
-	.fetch(&mut *connection)
-	.map_ok(|region| region.into())
-	.try_collect()
+	.fetch_all(&mut *connection)
 	.await
 }
 
@@ -382,7 +376,7 @@ pub async fn set_region_as_connected(
 	query!(
 		r#"
 		UPDATE
-			deployment_region
+			region
 		SET
 			disconnected_at = NULL,
 			status = 'active'
@@ -404,7 +398,7 @@ pub async fn set_region_as_disconnected(
 	query!(
 		r#"
 		UPDATE
-			deployment_region
+			region
 		SET
 			disconnected_at = $1,
 			status = 'disconnected'
@@ -430,7 +424,7 @@ pub async fn add_region_to_workspace(
 	query!(
 		r#"
 		INSERT INTO
-			deployment_region(
+			region(
 				id,
 				name,
 				provider,
@@ -461,7 +455,7 @@ pub async fn set_region_as_active(
 	query!(
 		r#"
 		UPDATE
-			deployment_region
+			region
 		SET
 			status = 'active',
 			config_file = $2,
@@ -486,7 +480,7 @@ pub async fn set_region_as_errored(
 	query!(
 		r#"
 		UPDATE
-			deployment_region
+			region
 		SET
 			status = 'errored'
 		WHERE
@@ -507,7 +501,7 @@ pub async fn append_messge_log_for_region(
 	query!(
 		r#"
 		UPDATE
-			deployment_region
+			region
 		SET
 			message_log = CONCAT(message_log, $2::TEXT)
 		WHERE
@@ -529,7 +523,7 @@ pub async fn delete_region(
 	query!(
 		r#"
 		UPDATE
-			deployment_region
+			region
 		SET
 			deleted = $2,
 			status = 'deleted'

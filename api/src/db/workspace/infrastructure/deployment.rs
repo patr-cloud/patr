@@ -130,7 +130,7 @@ pub async fn initialize_deployment_pre(
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
 			workspace_id UUID NOT NULL,
 			region UUID NOT NULL CONSTRAINT deployment_fk_region
-				REFERENCES deployment_region(id),
+				REFERENCES region(id),
 			min_horizontal_scale SMALLINT NOT NULL
 				CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK(
 					min_horizontal_scale >= 0 AND min_horizontal_scale <= 256

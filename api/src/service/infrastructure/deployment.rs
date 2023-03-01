@@ -1674,7 +1674,7 @@ pub async fn update_deployment_image(
 		Ok(())
 	} else {
 		let (kubeconfig, deployed_region_id) =
-			service::get_kubernetes_config_for_region(connection, &region)
+			service::get_kubernetes_config_for_region(connection, region)
 				.await?;
 
 		service::update_kubernetes_deployment(

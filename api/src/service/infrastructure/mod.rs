@@ -216,12 +216,7 @@ pub async fn delete_all_resources_in_workspace(
 		db::get_static_sites_for_workspace(connection, workspace_id).await?;
 
 	for site in static_site {
-		service::delete_static_site(
-			connection,
-			&site.id,
-			config,
-		)
-		.await?;
+		service::delete_static_site(connection, &site.id, config).await?;
 	}
 
 	// Get docker repositories and delete all the docker repositories for a
