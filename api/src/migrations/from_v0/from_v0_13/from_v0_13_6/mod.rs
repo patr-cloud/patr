@@ -1,4 +1,4 @@
-mod cloudflare_ingress;
+mod cf_byoc;
 
 use crate::{
 	utils::{settings::Settings, Error},
@@ -9,6 +9,6 @@ pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), Error> {
-	cloudflare_ingress::migrate(connection, config).await?;
+	cf_byoc::migrate(connection, config).await?;
 	Ok(())
 }

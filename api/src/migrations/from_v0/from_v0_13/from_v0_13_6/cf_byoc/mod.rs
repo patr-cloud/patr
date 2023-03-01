@@ -1,6 +1,6 @@
-mod cf_client;
+mod cf_models;
+mod cf_utils;
 mod k8s_migrations;
-mod models;
 
 use std::collections::HashMap;
 
@@ -13,13 +13,13 @@ use sqlx::Row;
 
 use crate::{
 	migrate_query as query,
-	migrations::from_v0::from_v0_13::from_v0_13_6::cloudflare_ingress::{
+	migrations::from_v0::from_v0_13::from_v0_13_6::cf_byoc::{
+		cf_models::routing::{RouteType, UrlType},
 		k8s_migrations::{
 			delete_k8s_managed_url_resources,
 			delete_k8s_region_resources,
 			delete_k8s_static_site_resources,
 		},
-		models::routing::{RouteType, UrlType},
 	},
 	utils::{settings::Settings, Error},
 	Database,
@@ -29,21 +29,22 @@ pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), Error> {
-	// todo: run migrations with original data in db
 	log::info!("Running cloudflare ingress migrations");
 
-	// non-idempotent migrations
 	migrate_byoc_region(connection, config).await?;
 	migrate_workspace_domain(connection, config).await?;
 	migrate_managed_url(connection, config).await?;
+
 	update_cloudflare_kv_for_deployments(connection, config).await?;
 	update_cloudflare_kv_for_static_sites(connection, config).await?;
 	update_cloudflare_kv_for_managed_urls(connection, config).await?;
 
-	// idempotent migrations
 	delete_k8s_region_resources(connection, config).await?;
 	delete_k8s_static_site_resources(connection, config).await?;
 	delete_k8s_managed_url_resources(connection, config).await?;
+	// todo: cert & tls secret deletion
+	// todo: patch ing of def cluster
+	// todo: managed_url cert
 
 	log::info!("Completed cloudflare ingress migrations");
 	Ok(())
@@ -57,33 +58,34 @@ async fn migrate_workspace_domain(
 
 	query!(
 		r#"
-			ALTER TABLE workspace_domain
-				ADD COLUMN cf_route_id TEXT NOT NULL
-					DEFAULT 'already_deleted';
-			"#
+		ALTER TABLE workspace_domain
+			ADD COLUMN cf_route_id TEXT NOT NULL
+				DEFAULT 'already_deleted';
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;
 
 	query!(
 		r#"
-			ALTER TABLE workspace_domain
-				ALTER COLUMN cf_route_id DROP DEFAULT;
-			"#
+		ALTER TABLE workspace_domain
+			ALTER COLUMN cf_route_id DROP DEFAULT;
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;
 
+	// todo: there should not be any duplicates in the query
 	let valid_workspace_domain = query!(
 		r#"
-			SELECT
-				workspace_domain.id as "domain_id",
-				concat(domain.name, '.', domain.tld) AS "domain_name"
-			FROM workspace_domain
-			JOIN domain
-				ON workspace_domain.id = domain.id
-			WHERE domain.deleted IS NULL;
-			"#
+		SELECT
+			workspace_domain.id as "domain_id",
+			concat(domain.name, '.', domain.tld) AS "domain_name"
+		FROM workspace_domain
+		JOIN domain
+			ON workspace_domain.id = domain.id
+		WHERE domain.deleted IS NULL;
+		"#
 	)
 	.fetch(&mut *connection)
 	.map_ok(|row| {
@@ -106,8 +108,9 @@ async fn migrate_workspace_domain(
 			domain_id,
 		);
 
+		// todo: make idempotent
 		let cf_route_id =
-			cf_client::create_cf_worker_routes_for_domain(domain_name, config)
+			cf_utils::create_cf_worker_routes_for_domain(domain_name, config)
 				.await?;
 
 		query!(
@@ -145,7 +148,6 @@ async fn migrate_managed_url(
 	.execute(&mut *connection)
 	.await?;
 
-	// todo: update query based on customhostname issue
 	let valid_custom_hostnames = query!(
 			r#"
 			SELECT
@@ -156,7 +158,6 @@ async fn migrate_managed_url(
 			JOIN domain
 				ON domain.id = workspace_domain.id
 			WHERE
-				workspace_domain.nameserver_type = 'external' AND
 				managed_url.deleted IS NULL;
 			"#
 		)
@@ -176,8 +177,9 @@ async fn migrate_managed_url(
 		);
 
 		let cf_hostname = hostname.strip_prefix("@.").unwrap_or(hostname);
+		// todo: make idempotent
 		let cf_custom_hostname_id =
-			cf_client::create_cf_custom_hostname(cf_hostname, config).await?;
+			cf_utils::create_cf_custom_hostname(cf_hostname, config).await?;
 
 		query!(
 			r#"
@@ -206,71 +208,202 @@ async fn migrate_byoc_region(
 ) -> Result<(), Error> {
 	log::info!("Running byoc region migrations for cf ingress");
 
+	// 1. Delete resources associated with byoc region
+
+	// no managed url is pointed to byoc region deployments,
+	// so no need to handle it in migrations
+
+	// delete the byoc deployments
+	let byoc_deployments = query!(
+		r#"
+		SELECT id
+		FROM deployment
+		WHERE region IN (
+			SELECT id
+			FROM deployment_region
+			WHERE workspace_id IS NOT NULL
+		);
+		"#
+	)
+	.fetch(&mut *connection)
+	.map_ok(|row| row.get::<Uuid, _>("id"))
+	.try_collect::<Vec<_>>()
+	.await?;
+
+	for (idx, deployment_id) in byoc_deployments.iter().enumerate() {
+		log::info!(
+			"{}/{} - Marking BYOC deployment `{}` as deleted",
+			idx,
+			byoc_deployments.len(),
+			deployment_id,
+		);
+
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				deleted = NOW(),
+				status = 'deleted'
+			WHERE
+				id = $1;
+			"#,
+			deployment_id
+		)
+		.execute(&mut *connection)
+		.await?;
+
+		// audit log for deployment is not added,
+		// as it is not maintained properly
+	}
+
+	// 2. Delete byoc region
+
 	query!(
 		r#"
-			ALTER TABLE deployment_region
-				ADD COLUMN cf_cert_id TEXT;
-			"#
+		CREATE TYPE REGION_STATUS AS ENUM(
+			'creating',
+			'active',
+			'errored',
+			'deleted',
+			'disconnected',
+			'coming_soon'
+		);
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;
 
 	query!(
 		r#"
-			ALTER TABLE deployment_region
-				DROP CONSTRAINT deployment_region_chk_ready_or_not;
-			"#
+		ALTER TABLE deployment_region
+			DROP CONSTRAINT deployment_region_chk_ready_or_not,
+			ADD COLUMN status REGION_STATUS,
+			ADD COLUMN ingress_hostname TEXT,
+			ADD COLUMN cf_cert_id TEXT,
+			ADD COLUMN config_file JSON,
+			ADD COLUMN deleted TIMESTAMPTZ,
+			ADD COLUMN disconnected_at TIMESTAMPTZ;
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;
 
-	// todo: mark all the running byoc region and their deployments as
-	// 		 deleted as currently running ones are used for testing,
-	//		 depends on byoc PR
+	log::info!("Marking all BYOC region as deleted");
+	query!(
+		r#"
+		UPDATE deployment_region
+		SET status =
+			CASE
+				WHEN (workspace_id IS NULL AND ready = true)
+					THEN 'active'::REGION_STATUS
+				WHEN (workspace_id IS NULL AND ready = false)
+					THEN 'coming_soon'::REGION_STATUS
+				ELSE 'deleted'::REGION_STATUS
+			END;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	query!(
 		r#"
-			ALTER TABLE deployment_region
-				ADD CONSTRAINT deployment_region_chk_ready_or_not CHECK(
+		UPDATE deployment_region
+		SET deleted = NOW()
+		WHERE status = 'deleted';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_region
+			DROP COLUMN ready,
+			DROP COLUMN kubernetes_cluster_url,
+			DROP COLUMN kubernetes_auth_username,
+			DROP COLUMN kubernetes_auth_token,
+			DROP COLUMN kubernetes_ca_data,
+			DROP COLUMN kubernetes_ingress_ip_addr,
+			ALTER COLUMN status SET NOT NULL,
+			ADD CONSTRAINT deployment_region_chk_status CHECK(
+				(
+					workspace_id IS NULL AND
+					ingress_hostname IS NULL AND
+					message_log IS NULL AND
+					cf_cert_id IS NULL AND
+					config_file IS NULL AND
+					disconnected_at IS NULL AND
 					(
-						workspace_id IS NOT NULL AND
-						cf_cert_id IS NOT NULL AND (
-							(
-								ready = TRUE AND
-								kubernetes_cluster_url IS NOT NULL AND
-								kubernetes_ca_data IS NOT NULL AND
-								kubernetes_auth_username IS NOT NULL AND
-								kubernetes_auth_token IS NOT NULL AND
-								kubernetes_ingress_ip_addr IS NOT NULL
-							) OR (
-								ready = FALSE AND
-								kubernetes_cluster_url IS NULL AND
-								kubernetes_ca_data IS NULL AND
-								kubernetes_auth_username IS NULL AND
-								kubernetes_auth_username IS NULL AND
-								kubernetes_ingress_ip_addr IS NULL
-							)
-						)
-					) OR (
-						workspace_id IS NULL AND
-						cf_cert_id IS NULL AND
-						kubernetes_cluster_url IS NULL AND
-						kubernetes_ca_data IS NULL AND
-						kubernetes_auth_username IS NULL AND
-						kubernetes_auth_token IS NULL AND
-						kubernetes_ingress_ip_addr IS NULL
+						status = 'active' OR
+						status = 'coming_soon'
 					)
-				);
-			"#
+				) OR (
+					workspace_id IS NOT NULL AND
+					(
+						(
+							status = 'active' AND
+							ingress_hostname IS NOT NULL AND
+							cf_cert_id IS NOT NULL AND
+							config_file IS NOT NULL AND
+							disconnected_at IS NULL
+						) OR (
+							status = 'creating' AND
+							ingress_hostname IS NULL AND
+							cf_cert_id IS NOT NULL AND
+							config_file IS NULL AND
+							disconnected_at IS NULL
+						) OR (
+							status = 'disconnected' AND
+							ingress_hostname IS NOT NULL AND
+							cf_cert_id IS NOT NULL AND
+							config_file IS NOT NULL AND
+							disconnected_at IS NOT NULL
+						) OR (
+							status = 'deleted' AND
+							deleted IS NOT NULL
+						) OR
+						status = 'errored'
+					)
+				)
+			);
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	query!(
+		r#"
+		CREATE UNIQUE INDEX deployment_region_uq_workspace_id_name
+		ON deployment_region(workspace_id, name)
+		WHERE
+			deleted IS NULL AND
+			workspace_id IS NOT NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_region
+			ADD CONSTRAINT deployment_region_fk_id_workspace_id
+			FOREIGN KEY (id, workspace_id) REFERENCES resource(id, owner_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// todo: for all the deleted region delete dns record from
+	// {region_id}-patr.cloud
 
 	log::info!("Completed byoc region migrations for cf ingress");
 	Ok(())
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
+#[derive(
+	Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, sqlx::Type,
+)]
 #[serde(rename_all = "camelCase")]
 #[sqlx(type_name = "DEPLOYMENT_STATUS", rename_all = "lowercase")]
 pub enum DeploymentStatus {
@@ -299,7 +432,7 @@ async fn update_cloudflare_kv_for_deployments(
 			name = 'Singapore'
 			AND provider = 'digitalocean'
 			AND workspace_id IS NULL
-			AND ready = TRUE;
+			AND status = 'active';
 		"#
 	)
 	.fetch_one(&mut *connection)
@@ -314,11 +447,13 @@ async fn update_cloudflare_kv_for_deployments(
 		SELECT
 			deployment.id,
 			deployment.status,
-			ARRAY_REMOVE(ARRAY_AGG(deployment_exposed_port.port), NULL) as "ports"
+			deployment_exposed_port.port
 		FROM deployment
 		LEFT JOIN deployment_exposed_port
 			ON deployment_exposed_port.deployment_id = deployment.id
-		GROUP BY deployment.workspace_id,  deployment.id, deployment.status;
+		WHERE
+			deployment.status != 'deleted' AND
+			deployemnt.deleted IS NULL;
 		"#
 	)
 	.fetch(connection)
@@ -326,65 +461,67 @@ async fn update_cloudflare_kv_for_deployments(
 		(
 			row.get::<Uuid, _>("id"),
 			row.get::<DeploymentStatus, _>("status"),
-			row.get::<Vec<i32>, _>("ports"),
+			row.get::<Option<i32>, _>("port"),
 		)
 	})
 	.try_collect::<Vec<_>>()
 	.await?;
 
-	// todo: remove deployment deleted status after 30 days
-	{
-		let total_count = deployment_details.len();
-		let mut next_idx = 1;
+	let deployment_details = deployment_details.into_iter().fold(
+		HashMap::<(Uuid, DeploymentStatus), Vec<u16>>::new(),
+		|mut accu, (id, status, port)| {
+			if let Some(port) = port {
+				accu.entry((id, status)).or_default().push(port as u16);
+			}
+			accu
+		},
+	);
 
-		for chunk in &deployment_details.into_iter().chunks(500) {
-			let kv = chunk
-				.map(|(deployment_id, deployment_status, deployed_ports)| {
-					let key =
-						models::deployment::Key(deployment_id).to_string();
-					let value =
-						serde_json::to_string(&match deployment_status {
-							DeploymentStatus::Created => {
-								models::deployment::Value::Created
-							}
-							DeploymentStatus::Deploying |
-							DeploymentStatus::Pushed |
-							DeploymentStatus::Running |
-							DeploymentStatus::Errored => models::deployment::Value::Running {
-								region_id: default_region_id.clone(),
-								ports: deployed_ports
-									.iter()
-									.map(|&port| port as u16)
-									.collect(),
-							},
-							DeploymentStatus::Stopped => {
-								models::deployment::Value::Stopped
-							}
-							DeploymentStatus::Deleted => {
-								models::deployment::Value::Deleted
-							}
-						})
-						.expect("Serialization should not fail");
+	let total_count = deployment_details.len();
+	let mut next_idx = 1;
 
-					KeyValuePair {
-						key,
-						value,
-						expiration: None,
-						expiration_ttl: None,
-						base64: None,
+	for chunk in &deployment_details.into_iter().chunks(500) {
+		let kv = chunk
+			.map(|((deployment_id, deployment_status), deployed_ports)| {
+				let key = cf_models::deployment::Key(deployment_id).to_string();
+				let value = serde_json::to_string(&match deployment_status {
+					DeploymentStatus::Created => {
+						cf_models::deployment::Value::Created
+					}
+					DeploymentStatus::Deploying |
+					DeploymentStatus::Pushed |
+					DeploymentStatus::Running |
+					DeploymentStatus::Errored => cf_models::deployment::Value::Running {
+						region_id: default_region_id.clone(),
+						ports: deployed_ports,
+					},
+					DeploymentStatus::Stopped => {
+						cf_models::deployment::Value::Stopped
+					}
+					DeploymentStatus::Deleted => {
+						cf_models::deployment::Value::Deleted
 					}
 				})
-				.collect::<Vec<_>>();
+				.expect("Serialization should not fail");
 
-			log::info!(
-				"Updating KV for deployments: {}-{}/{}",
-				next_idx,
-				next_idx + kv.len(),
-				total_count,
-			);
-			next_idx += kv.len();
-			cf_client::update_kv_for_deployment(kv, config).await?;
-		}
+				KeyValuePair {
+					key,
+					value,
+					expiration: None,
+					expiration_ttl: None,
+					base64: None,
+				}
+			})
+			.collect::<Vec<_>>();
+
+		log::info!(
+			"Updating KV for deployments: {}-{}/{}",
+			next_idx,
+			next_idx + kv.len(),
+			total_count,
+		);
+		next_idx += kv.len();
+		cf_utils::update_kv_for_deployment(kv, config).await?;
 	}
 
 	log::info!("Updated deployment kv for cf ingress");
@@ -404,7 +541,10 @@ async fn update_cloudflare_kv_for_static_sites(
 			static_site.id,
 			static_site.status,
 			static_site.current_live_upload
-		FROM static_site;
+		FROM static_site
+		WHERE 
+			status != 'deleted' AND
+			deleted IS NULL;
 		"#
 	)
 	.fetch(connection)
@@ -418,58 +558,51 @@ async fn update_cloudflare_kv_for_static_sites(
 	.try_collect::<Vec<_>>()
 	.await?;
 
-	// todo: remove static site deleted status after 30 days
-	{
-		let total_count = static_site_details.len();
-		let mut next_idx = 1;
+	let total_count = static_site_details.len();
+	let mut next_idx = 1;
 
-		for chunk in &static_site_details.into_iter().chunks(500) {
-			let kv = chunk
-				.map(
-					|(
-						static_site_id,
+	for chunk in &static_site_details.into_iter().chunks(500) {
+		let kv = chunk
+			.map(
+				|(static_site_id, static_site_status, current_live_upload)| {
+					let key =
+						cf_models::static_site::Key(static_site_id).to_string();
+					let value = serde_json::to_string(&match (
 						static_site_status,
 						current_live_upload,
-					)| {
-						let key = models::static_site::Key(static_site_id)
-							.to_string();
-						let value = serde_json::to_string(&match (
-							static_site_status,
-							current_live_upload,
-						) {
-							(DeploymentStatus::Created, _) => {
-								models::static_site::Value::Created
-							}
-							(DeploymentStatus::Running, Some(upload_id)) => {
-								models::static_site::Value::Serving(upload_id)
-							}
-							(DeploymentStatus::Deleted, _) => {
-								models::static_site::Value::Deleted
-							}
-							_ => models::static_site::Value::Stopped,
-						})
-						.expect("Serialization should not fail");
-
-						KeyValuePair {
-							key,
-							value,
-							expiration: None,
-							expiration_ttl: None,
-							base64: None,
+					) {
+						(DeploymentStatus::Created, _) => {
+							cf_models::static_site::Value::Created
 						}
-					},
-				)
-				.collect::<Vec<_>>();
+						(DeploymentStatus::Running, Some(upload_id)) => {
+							cf_models::static_site::Value::Serving(upload_id)
+						}
+						(DeploymentStatus::Deleted, _) => {
+							cf_models::static_site::Value::Deleted
+						}
+						_ => cf_models::static_site::Value::Stopped,
+					})
+					.expect("Serialization should not fail");
 
-			log::info!(
-				"Updating KV for static sites: {}-{}/{}",
-				next_idx,
-				next_idx + kv.len(),
-				total_count,
-			);
-			next_idx += kv.len();
-			cf_client::update_kv_for_static_site(kv, config).await?;
-		}
+					KeyValuePair {
+						key,
+						value,
+						expiration: None,
+						expiration_ttl: None,
+						base64: None,
+					}
+				},
+			)
+			.collect::<Vec<_>>();
+
+		log::info!(
+			"Updating KV for static sites: {}-{}/{}",
+			next_idx,
+			next_idx + kv.len(),
+			total_count,
+		);
+		next_idx += kv.len();
+		cf_utils::update_kv_for_static_site(kv, config).await?;
 	}
 
 	log::info!("Updated static site kv for cf ingress");
@@ -573,39 +706,37 @@ async fn update_cloudflare_kv_for_managed_urls(
 		},
 	);
 
-	{
-		let total_count = managed_url_details.len();
-		let mut next_idx = 1;
+	let total_count = managed_url_details.len();
+	let mut next_idx = 1;
 
-		for chunk in &managed_url_details.into_iter().chunks(50) {
-			let kv = chunk
-				.map(|((sub_domain, domain), route_types)| {
-					let key =
-						models::routing::Key { sub_domain, domain }.to_string();
-					let value = serde_json::to_string(&models::routing::Value(
-						route_types,
-					))
-					.expect("Serialization should not fail");
+	for chunk in &managed_url_details.into_iter().chunks(50) {
+		let kv = chunk
+			.map(|((sub_domain, domain), route_types)| {
+				let key =
+					cf_models::routing::Key { sub_domain, domain }.to_string();
+				let value = serde_json::to_string(&cf_models::routing::Value(
+					route_types,
+				))
+				.expect("Serialization should not fail");
 
-					KeyValuePair {
-						key,
-						value,
-						expiration: None,
-						expiration_ttl: None,
-						base64: None,
-					}
-				})
-				.collect::<Vec<_>>();
+				KeyValuePair {
+					key,
+					value,
+					expiration: None,
+					expiration_ttl: None,
+					base64: None,
+				}
+			})
+			.collect::<Vec<_>>();
 
-			log::info!(
-				"Updating KV for managed url host: {}-{}/{}",
-				next_idx,
-				next_idx + kv.len(),
-				total_count,
-			);
-			next_idx += kv.len();
-			cf_client::update_kv_for_managed_url(kv, config).await?;
-		}
+		log::info!(
+			"Updating KV for managed url host: {}-{}/{}",
+			next_idx,
+			next_idx + kv.len(),
+			total_count,
+		);
+		next_idx += kv.len();
+		cf_utils::update_kv_for_managed_url(kv, config).await?;
 	}
 
 	log::info!("Updated managed url kv for cf ingress");
