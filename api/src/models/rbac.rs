@@ -184,7 +184,7 @@ pub mod permissions {
 				pub const DELETE: &str =
 					"workspace::billing::billing_address::delete";
 				pub const INFO: &str =
-					"workspace::billing::billing_address::info ";
+					"workspace::billing::billing_address::info";
 				pub const EDIT: &str =
 					"workspace::billing::billing_address::edit";
 			}

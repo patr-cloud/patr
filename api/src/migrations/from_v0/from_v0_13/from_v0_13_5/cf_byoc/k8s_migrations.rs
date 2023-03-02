@@ -75,48 +75,52 @@ async fn get_kubernetes_client_for_default_region(
 	config: &Settings,
 ) -> Result<kube::Client, Error> {
 	let kubeconfig = Config::from_custom_kubeconfig(
-		Kubeconfig {
-			api_version: Some("v1".to_string()),
-			kind: Some("Config".to_string()),
-			clusters: vec![NamedCluster {
-				name: "kubernetesCluster".to_owned(),
-				cluster: Cluster {
-					server: config.kubernetes.cluster_url.to_owned(),
-					certificate_authority_data: Some(
-						config.kubernetes.certificate_authority_data.to_owned(),
-					),
-					insecure_skip_tls_verify: None,
-					certificate_authority: None,
-					proxy_url: None,
-					extensions: None,
-				},
-			}],
-			auth_infos: vec![NamedAuthInfo {
-				name: config.kubernetes.auth_username.to_owned().clone(),
-				auth_info: AuthInfo {
-					token: Some(config.kubernetes.auth_token.to_owned().into()),
-					..Default::default()
-				},
-			}],
-			contexts: vec![NamedContext {
-				name: "kubernetesContext".to_owned(),
-				context: Context {
-					cluster: "kubernetesCluster".to_owned(),
-					user: config.kubernetes.auth_username.to_owned(),
-					extensions: None,
-					namespace: None,
-				},
-			}],
-			current_context: Some("kubernetesContext".to_owned()),
-			preferences: None,
-			extensions: None,
-		},
+		get_default_region_kubeconfig(config),
 		&Default::default(),
 	)
 	.await?;
 
 	let kube_client = kube::Client::try_from(kubeconfig)?;
 	Ok(kube_client)
+}
+
+pub fn get_default_region_kubeconfig(config: &Settings) -> Kubeconfig {
+	Kubeconfig {
+		api_version: Some("v1".to_string()),
+		kind: Some("Config".to_string()),
+		clusters: vec![NamedCluster {
+			name: "kubernetesCluster".to_owned(),
+			cluster: Cluster {
+				server: config.kubernetes.cluster_url.to_owned(),
+				certificate_authority_data: Some(
+					config.kubernetes.certificate_authority_data.to_owned(),
+				),
+				insecure_skip_tls_verify: None,
+				certificate_authority: None,
+				proxy_url: None,
+				extensions: None,
+			},
+		}],
+		auth_infos: vec![NamedAuthInfo {
+			name: config.kubernetes.auth_username.to_owned(),
+			auth_info: AuthInfo {
+				token: Some(config.kubernetes.auth_token.to_owned().into()),
+				..Default::default()
+			},
+		}],
+		contexts: vec![NamedContext {
+			name: "kubernetesContext".to_owned(),
+			context: Context {
+				cluster: "kubernetesCluster".to_owned(),
+				user: config.kubernetes.auth_username.to_owned(),
+				extensions: None,
+				namespace: None,
+			},
+		}],
+		current_context: Some("kubernetesContext".to_owned()),
+		preferences: None,
+		extensions: None,
+	}
 }
 
 pub async fn delete_k8s_static_site_resources(
@@ -137,6 +141,11 @@ pub async fn delete_k8s_static_site_resources(
 	})
 	.try_collect::<Vec<_>>()
 	.await?;
+
+	if static_site_details.is_empty() {
+		// added to skip ci error
+		return Ok(());
+	}
 
 	let kube_client = get_kubernetes_client_for_default_region(config).await?;
 
@@ -173,7 +182,7 @@ pub async fn delete_k8s_static_site_resources(
 
 				log::info!(
 					"{}/{} - Successfully deleted k8s resources for static site {}",
-					idx,
+					idx + 1,
 					total_count,
 					static_site_id
 				);
@@ -218,6 +227,11 @@ pub async fn delete_k8s_region_resources(
 	.try_collect::<Vec<_>>()
 	.await?;
 
+	if region_details.is_empty() {
+		// added to skip ci error
+		return Ok(());
+	}
+
 	let kube_client = get_kubernetes_client_for_default_region(config).await?;
 
 	let total_count = region_details.len();
@@ -253,7 +267,7 @@ pub async fn delete_k8s_region_resources(
 
 				log::info!(
 					"{}/{} - Successfully deleted k8s resources for region {}",
-					idx,
+					idx + 1,
 					total_count,
 					region_id
 				);
@@ -296,6 +310,11 @@ pub async fn delete_k8s_managed_url_resources(
 	.try_collect::<Vec<_>>()
 	.await?;
 
+	if managed_url_details.is_empty() {
+		// added to skip ci error
+		return Ok(());
+	}
+
 	let kube_client = get_kubernetes_client_for_default_region(config).await?;
 
 	let total_count = managed_url_details.len();
@@ -318,7 +337,7 @@ pub async fn delete_k8s_managed_url_resources(
 					return Err((managed_url_id, err));
 				};
 
-				let ingress_deletion_result = Api::<Endpoints>::namespaced(
+				let ingress_deletion_result = Api::<Ingress>::namespaced(
 					kube_client.clone(),
 					namespace,
 				)
@@ -355,7 +374,7 @@ pub async fn delete_k8s_managed_url_resources(
 
 				log::info!(
 					"{}/{} - Successfully deleted k8s resources for region {}",
-					idx,
+					idx + 1,
 					total_count,
 					managed_url_id
 				);
@@ -379,7 +398,7 @@ pub async fn delete_k8s_managed_url_resources(
 	Ok(())
 }
 
-pub async fn delete_k8s_certificate_resources(
+pub async fn delete_k8s_certificate_resources_for_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), Error> {
@@ -397,6 +416,11 @@ pub async fn delete_k8s_certificate_resources(
 	.map_ok(|row| (row.get::<Uuid, _>("owner_id"), row.get::<Uuid, _>("id")))
 	.try_collect::<Vec<_>>()
 	.await?;
+
+	if domain_details.is_empty() {
+		// added to skip ci error
+		return Ok(());
+	}
 
 	let kube_client = get_kubernetes_client_for_default_region(config).await?;
 
@@ -439,11 +463,11 @@ pub async fn delete_k8s_certificate_resources(
 				}
 
 				log::info!(
-					"{}/{} - Successfully deleted k8s certificate resources for domain {}",
-					idx,
-					total_count,
-					domain_id
-				);
+					    "{}/{} - Successfully deleted k8s certificate resources for domain {}",
+					    idx + 1,
+					    total_count,
+					    domain_id
+				    );
 
 				Result::<Uuid, (Uuid, kube::Error)>::Ok(domain_id)
 			}
@@ -453,15 +477,21 @@ pub async fn delete_k8s_certificate_resources(
 			match task_result {
 				Ok(_) => {}
 				Err((domain_id, err)) => log::info!(
-					"Error while deleting certificate resource for domain {} - {}",
-					domain_id,
-					err
-				),
+					    "Error while deleting certificate resource for domain {} - {}",
+					    domain_id,
+					    err
+				    ),
 			}
 		})
 		.await;
+	Ok(())
+}
 
-	let domain_details = query!(
+pub async fn delete_k8s_certificate_resources_for_managed_url(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+) -> Result<(), Error> {
+	let managed_url_domain_details = query!(
 		r#"
 		SELECT
 			id,
@@ -484,10 +514,15 @@ pub async fn delete_k8s_certificate_resources(
 	.try_collect::<Vec<_>>()
 	.await?;
 
+	if managed_url_domain_details.is_empty() {
+		// added to skip ci error
+		return Ok(());
+	}
+
 	let kube_client = get_kubernetes_client_for_default_region(config).await?;
 
-	let total_count = domain_details.len();
-	stream::iter(domain_details)
+	let total_count = managed_url_domain_details.len();
+	stream::iter(managed_url_domain_details)
 		.enumerate()
 		.map(
 			|(idx, (managed_url_id, workspace_id, sub_domain, domain_id))| {
@@ -565,11 +600,11 @@ pub async fn delete_k8s_certificate_resources(
 					}
 
 					log::info!(
-						"{}/{} - Successfully deleted k8s certificate resources for managed_url {}",
-						idx,
-						total_count,
-						managed_url_id
-					);
+						    "{}/{} - Successfully deleted k8s certificate resources for managed_url {}",
+						    idx + 1,
+						    total_count,
+						    managed_url_id
+					    );
 
 					Result::<Uuid, (Uuid, kube::Error)>::Ok(managed_url_id)
 				}
@@ -580,14 +615,13 @@ pub async fn delete_k8s_certificate_resources(
 			match task_result {
 				Ok(_) => {}
 				Err((domain_id, err)) => log::info!(
-						"Error while deleting certificate resource for managed_url {} - {}",
-						domain_id,
-						err
-					),
+						    "Error while deleting certificate resource for managed_url {} - {}",
+						    domain_id,
+						    err
+					    ),
 			}
 		})
 		.await;
-
 	Ok(())
 }
 
@@ -598,7 +632,7 @@ pub async fn patch_ingress_for_default_region_deployments(
 	let default_region_id = query!(
 		r#"
 		SELECT
-			id as "id: Uuid"
+			id
 		FROM
 			region
 		WHERE
@@ -648,6 +682,11 @@ pub async fn patch_ingress_for_default_region_deployments(
 			accu
 		},
 	);
+
+	if running_deployments.is_empty() {
+		// added to skip ci error
+		return Ok(());
+	}
 
 	let kube_client = get_kubernetes_client_for_default_region(config).await?;
 
@@ -724,7 +763,7 @@ pub async fn patch_ingress_for_default_region_deployments(
 					Ok(_ingress) => {
 						log::info!(
 							"{}/{} - Successfully patched ingress for deployment {}",
-							idx,
+							idx + 1,
 							total_count,
 							deployment_id
 						);
@@ -733,7 +772,7 @@ pub async fn patch_ingress_for_default_region_deployments(
 						code: 404, ..
 					})) => log::error!(
 						"{}/{} - Ingress for deployment {} not found, hence skipping patch",
-						idx,
+						idx + 1,
 						total_count,
 						deployment_id
 					),

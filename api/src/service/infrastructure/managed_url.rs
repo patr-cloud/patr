@@ -56,7 +56,7 @@ pub async fn create_new_managed_url_in_workspace(
 		.await?
 		.status(500)?;
 
-	let cf_custom_hostname_id = {
+	let cloudflare_custom_hostname_id = {
 		let existing_hostname = db::get_all_managed_urls_for_host(
 			connection, sub_domain, domain_id,
 		)
@@ -103,7 +103,7 @@ pub async fn create_new_managed_url_in_workspace(
 				false,
 				None,
 				None,
-				cf_custom_hostname_id,
+				cloudflare_custom_hostname_id,
 			)
 			.await?;
 		}
@@ -127,7 +127,7 @@ pub async fn create_new_managed_url_in_workspace(
 				false,
 				None,
 				None,
-				cf_custom_hostname_id,
+				cloudflare_custom_hostname_id,
 			)
 			.await?;
 		}
@@ -151,7 +151,7 @@ pub async fn create_new_managed_url_in_workspace(
 				false,
 				None,
 				Some(*http_only),
-				cf_custom_hostname_id,
+				cloudflare_custom_hostname_id,
 			)
 			.await?;
 		}
@@ -179,7 +179,7 @@ pub async fn create_new_managed_url_in_workspace(
 				false,
 				Some(*permanent_redirect),
 				Some(*http_only),
-				cf_custom_hostname_id,
+				cloudflare_custom_hostname_id,
 			)
 			.await?;
 		}

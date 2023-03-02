@@ -9,17 +9,19 @@ use cloudflare::endpoints::workerskv::write_bulk::KeyValuePair;
 use futures::TryStreamExt;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use sqlx::Row;
+use sqlx::{types::Json, Row};
 
 use crate::{
 	migrate_query as query,
-	migrations::from_v0::from_v0_13::from_v0_13_6::cf_byoc::{
+	migrations::from_v0::from_v0_13::from_v0_13_5::cf_byoc::{
 		cf_models::routing::{RouteType, UrlType},
 		k8s_migrations::{
-			delete_k8s_certificate_resources,
+			delete_k8s_certificate_resources_for_domain,
+			delete_k8s_certificate_resources_for_managed_url,
 			delete_k8s_managed_url_resources,
 			delete_k8s_region_resources,
 			delete_k8s_static_site_resources,
+			get_default_region_kubeconfig,
 			patch_ingress_for_default_region_deployments,
 		},
 	},
@@ -49,7 +51,9 @@ pub async fn migrate(
 	delete_k8s_region_resources(connection, config).await?;
 	delete_k8s_static_site_resources(connection, config).await?;
 	delete_k8s_managed_url_resources(connection, config).await?;
-	delete_k8s_certificate_resources(connection, config).await?;
+	delete_k8s_certificate_resources_for_domain(connection, config).await?;
+	delete_k8s_certificate_resources_for_managed_url(connection, config)
+		.await?;
 	patch_ingress_for_default_region_deployments(connection, config).await?;
 
 	log::info!("Completed cloudflare ingress migrations");
@@ -58,7 +62,7 @@ pub async fn migrate(
 
 async fn migrate_byoc_region(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
+	config: &Settings,
 ) -> Result<(), Error> {
 	log::info!("Running byoc region migrations for cf ingress");
 
@@ -70,6 +74,62 @@ async fn migrate_byoc_region(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE region
+		RENAME CONSTRAINT deployment_region_pk TO region_pk;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE region
+		RENAME CONSTRAINT deployment_region_fk_workspace_id TO region_fk_workspace_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	for permission in ["workspace::region::info", "workspace::region::delete"] {
+		let uuid = loop {
+			let uuid = Uuid::new_v4();
+
+			let exists = query!(
+				r#"
+				SELECT
+					*
+				FROM
+					permission
+				WHERE
+					id = $1;
+				"#,
+				&uuid
+			)
+			.fetch_optional(&mut *connection)
+			.await?
+			.is_some();
+
+			if !exists {
+				break uuid;
+			}
+		};
+
+		query!(
+			r#"
+			INSERT INTO
+				permission
+			VALUES
+				($1, $2, '');
+			"#,
+			&uuid,
+			permission
+		)
+		.fetch_optional(&mut *connection)
+		.await?;
+	}
 
 	// 1. Delete resources associated with byoc region
 
@@ -96,7 +156,7 @@ async fn migrate_byoc_region(
 	for (idx, deployment_id) in byoc_deployments.iter().enumerate() {
 		log::info!(
 			"{}/{} - Marking BYOC deployment `{}` as deleted",
-			idx,
+			idx + 1,
 			byoc_deployments.len(),
 			deployment_id,
 		);
@@ -175,6 +235,41 @@ async fn migrate_byoc_region(
 		SET deleted = NOW()
 		WHERE status = 'deleted';
 		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	let default_region_id = query!(
+		r#"
+		SELECT
+			id
+		FROM
+			region
+		WHERE
+			name = 'Singapore'
+			AND provider = 'digitalocean'
+			AND workspace_id IS NULL
+			AND status = 'active';
+		"#
+	)
+	.fetch_one(&mut *connection)
+	.await
+	.map(|row| row.get::<Uuid, _>("id"))
+	.expect("Default region should be present already");
+
+	let kubeconfig = get_default_region_kubeconfig(config);
+	query!(
+		r#"
+		UPDATE region
+		SET
+			config_file = $1,
+			ingress_hostname = '',
+			cloudflare_certificate_id = ''
+		WHERE
+			id = $2;
+		"#,
+		Json(kubeconfig),
+		default_region_id,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -295,7 +390,7 @@ async fn migrate_workspace_domain(
 	{
 		log::info!(
 			"{}/{} - Creating cf worker routes for domain {} with name `{}`",
-			idx,
+			idx + 1,
 			valid_workspace_domain.len(),
 			domain_name,
 			domain_id,
@@ -335,7 +430,7 @@ async fn migrate_managed_url(
 	query!(
 		r#"
 		ALTER TABLE managed_url
-			ADD COLUMN cf_custom_hostname_id TEXT NOT NULL
+			ADD COLUMN cloudflare_custom_hostname_id TEXT NOT NULL
 				DEFAULT 'already_deleted';;
 		"#
 	)
@@ -345,7 +440,7 @@ async fn migrate_managed_url(
 	query!(
 		r#"
 		ALTER TABLE managed_url
-			ADD COLUMN cf_custom_hostname_id DROP DEFAULT;
+			ALTER COLUMN cloudflare_custom_hostname_id DROP DEFAULT;
 		"#
 	)
 	.execute(&mut *connection)
@@ -374,20 +469,20 @@ async fn migrate_managed_url(
 	for (idx, hostname) in valid_custom_hostnames.iter().enumerate() {
 		log::info!(
 			" {}/{} - Creating cf custom hostname for {}",
-			idx,
+			idx + 1,
 			valid_custom_hostnames.len(),
 			hostname
 		);
 
 		let cf_hostname = hostname.strip_prefix("@.").unwrap_or(hostname);
 		tokio::time::sleep(Duration::from_millis(300)).await;
-		let cf_custom_hostname_id =
+		let cloudflare_custom_hostname_id =
 			cf_utils::create_cf_custom_hostname(cf_hostname, config).await?;
 
 		query!(
 			r#"
 				UPDATE managed_url
-				SET cf_custom_hostname_id = $2
+				SET cloudflare_custom_hostname_id = $2
 				FROM domain
 				WHERE
 					managed_url.deleted IS NULL AND
@@ -395,7 +490,7 @@ async fn migrate_managed_url(
 					CONCAT(managed_url.sub_domain, '.', domain.name, '.', domain.tld) = $1;
 				"#,
 			hostname,
-			&cf_custom_hostname_id
+			&cloudflare_custom_hostname_id
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -429,7 +524,7 @@ async fn update_cloudflare_kv_for_deployments(
 	let default_region_id = query!(
 		r#"
 		SELECT
-			id as "id: Uuid"
+			id
 		FROM
 			region
 		WHERE
@@ -457,7 +552,7 @@ async fn update_cloudflare_kv_for_deployments(
 			ON deployment_exposed_port.deployment_id = deployment.id
 		WHERE
 			deployment.status != 'deleted' AND
-			deployemnt.deleted IS NULL;
+			deployment.deleted IS NULL;
 		"#
 	)
 	.fetch(connection)
@@ -521,7 +616,7 @@ async fn update_cloudflare_kv_for_deployments(
 		log::info!(
 			"Updating KV for deployments: {}-{}/{}",
 			next_idx,
-			next_idx + kv.len(),
+			next_idx + kv.len() - 1,
 			total_count,
 		);
 		next_idx += kv.len();
@@ -547,7 +642,7 @@ async fn update_cloudflare_kv_for_static_sites(
 			static_site.status,
 			static_site.current_live_upload
 		FROM static_site
-		WHERE 
+		WHERE
 			status != 'deleted' AND
 			deleted IS NULL;
 		"#
@@ -603,7 +698,7 @@ async fn update_cloudflare_kv_for_static_sites(
 		log::info!(
 			"Updating KV for static sites: {}-{}/{}",
 			next_idx,
-			next_idx + kv.len(),
+			next_idx + kv.len() - 1,
 			total_count,
 		);
 		next_idx += kv.len();
@@ -745,7 +840,7 @@ async fn update_cloudflare_kv_for_managed_urls(
 		log::info!(
 			"Updating KV for managed url host: {}-{}/{}",
 			next_idx,
-			next_idx + kv.len(),
+			next_idx + kv.len() - 1,
 			total_count,
 		);
 		next_idx += kv.len();

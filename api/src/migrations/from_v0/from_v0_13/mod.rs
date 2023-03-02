@@ -11,7 +11,6 @@ mod from_v0_13_2;
 mod from_v0_13_3;
 mod from_v0_13_4;
 mod from_v0_13_5;
-mod from_v0_13_6;
 
 /// # Description
 /// The function is used to migrate the database from one version to another
@@ -39,7 +38,6 @@ pub async fn migrate(
 		(0, 13, 3) => from_v0_13_3::migrate(&mut *connection, config).await,
 		(0, 13, 4) => from_v0_13_4::migrate(&mut *connection, config).await,
 		(0, 13, 5) => from_v0_13_5::migrate(&mut *connection, config).await,
-		(0, 13, 6) => from_v0_13_6::migrate(&mut *connection, config).await,
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
@@ -54,7 +52,5 @@ pub async fn migrate(
 /// This function returns [&'static str; _] containing a list of all migration
 /// versions
 pub fn get_migrations() -> Vec<&'static str> {
-	vec![
-		"0.13.0", "0.13.1", "0.13.2", "0.13.3", "0.13.4", "0.13.5", "0.13.6",
-	]
+	vec!["0.13.0", "0.13.1", "0.13.2", "0.13.3", "0.13.4", "0.13.5"]
 }

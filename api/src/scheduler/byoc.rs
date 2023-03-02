@@ -126,7 +126,7 @@ async fn handle_disconnected_byoc_regions() -> Result<(), Error> {
 					.signed_duration_since(disconnected_at)
 					.num_days() as u64;
 
-				if disconnected_at > 7 {
+				if disconnected_at >= 7 {
 					// mark all the deployments for that region as deleted and
 					// also mark the region as deleted.
 					let app_config = super::CONFIG.get().unwrap();

@@ -411,6 +411,46 @@
     },
     "query": "UPDATE static_site SET name = $1 WHERE id = $2;"
   },
+  "0920aa591b990f7813279814c0130b530053bb810ef089a55783de12343864d2": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "digitalocean",
+                  "other"
+                ]
+              },
+              "name": "infrastructure_cloud_provider"
+            }
+          },
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "creating",
+                  "active",
+                  "errored",
+                  "deleted",
+                  "disconnected",
+                  "coming_soon"
+                ]
+              },
+              "name": "region_status"
+            }
+          },
+          "Json"
+        ]
+      }
+    },
+    "query": "INSERT INTO region( id, name, provider, status, config_file, ingress_hostname, cloudflare_certificate_id ) VALUES ($1, $2, $3, $4, $5, '', '');"
+  },
   "09706c508df1f73266ecd89ee4d05447a57f0750e2309b1bfedfc28e9352fadc": {
     "describe": {
       "columns": [

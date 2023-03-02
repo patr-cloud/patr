@@ -3,7 +3,15 @@ use api_models::{
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
-use kube::config::Kubeconfig;
+use kube::config::{
+	AuthInfo,
+	Cluster,
+	Context,
+	Kubeconfig,
+	NamedAuthInfo,
+	NamedCluster,
+	NamedContext,
+};
 use sqlx::types::Json;
 use url::Host;
 
@@ -165,25 +173,94 @@ pub async fn initialize_region_post(
 			}
 		};
 
-		query!(
-			r#"
-			INSERT INTO
-				region(
-					id,
-					name,
-					provider,
-					status
-				)
-			VALUES
-				($1, $2, $3, $4);
-			"#,
-			region_id as _,
-			region.name,
-			region.cloud_provider as _,
-			region.status as _,
-		)
-		.execute(&mut *connection)
-		.await?;
+		if region.status == RegionStatus::Active {
+			let config = crate::service::get_settings();
+			let kubeconfig = Kubeconfig {
+				api_version: Some("v1".to_string()),
+				kind: Some("Config".to_string()),
+				clusters: vec![NamedCluster {
+					name: "kubernetesCluster".to_owned(),
+					cluster: Cluster {
+						server: config.kubernetes.cluster_url.to_owned(),
+						certificate_authority_data: Some(
+							config
+								.kubernetes
+								.certificate_authority_data
+								.to_owned(),
+						),
+						insecure_skip_tls_verify: None,
+						certificate_authority: None,
+						proxy_url: None,
+						extensions: None,
+					},
+				}],
+				auth_infos: vec![NamedAuthInfo {
+					name: config.kubernetes.auth_username.to_owned(),
+					auth_info: AuthInfo {
+						token: Some(
+							config.kubernetes.auth_token.to_owned().into(),
+						),
+						..Default::default()
+					},
+				}],
+				contexts: vec![NamedContext {
+					name: "kubernetesContext".to_owned(),
+					context: Context {
+						cluster: "kubernetesCluster".to_owned(),
+						user: config.kubernetes.auth_username.to_owned(),
+						extensions: None,
+						namespace: None,
+					},
+				}],
+				current_context: Some("kubernetesContext".to_owned()),
+				preferences: None,
+				extensions: None,
+			};
+
+			query!(
+				r#"
+				INSERT INTO
+					region(
+						id,
+						name,
+						provider,
+						status,
+						config_file,
+						ingress_hostname,
+						cloudflare_certificate_id
+					)
+				VALUES
+					($1, $2, $3, $4, $5, '', '');
+				"#,
+				region_id as _,
+				region.name,
+				region.cloud_provider as _,
+				region.status as _,
+				Json(kubeconfig) as _
+			)
+			.execute(&mut *connection)
+			.await?;
+		} else {
+			query!(
+				r#"
+				INSERT INTO
+					region(
+						id,
+						name,
+						provider,
+						status
+					)
+				VALUES
+					($1, $2, $3, $4);
+				"#,
+				region_id as _,
+				region.name,
+				region.cloud_provider as _,
+				region.status as _,
+			)
+			.execute(&mut *connection)
+			.await?;
+		}
 	}
 
 	Ok(())

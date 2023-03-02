@@ -20,11 +20,6 @@ pub const DEFAULT_MACHINE_TYPES: [(i16, i32); 5] = [
 
 pub const DEFAULT_DEPLOYMENT_REGIONS: [DefaultDeploymentRegion; 9] = [
 	DefaultDeploymentRegion {
-		name: "Singapore",
-		cloud_provider: InfrastructureCloudProvider::Digitalocean,
-		status: RegionStatus::Active,
-	},
-	DefaultDeploymentRegion {
 		name: "Bangalore",
 		cloud_provider: InfrastructureCloudProvider::Digitalocean,
 		status: RegionStatus::ComingSoon,
@@ -63,6 +58,11 @@ pub const DEFAULT_DEPLOYMENT_REGIONS: [DefaultDeploymentRegion; 9] = [
 		name: "San Francisco",
 		cloud_provider: InfrastructureCloudProvider::Digitalocean,
 		status: RegionStatus::ComingSoon,
+	},
+	DefaultDeploymentRegion {
+		name: "Singapore",
+		cloud_provider: InfrastructureCloudProvider::Digitalocean,
+		status: RegionStatus::Active,
 	},
 ];
 
