@@ -254,7 +254,6 @@ pub async fn update_kubernetes_deployment(
 			},
 		)
 		.await?;
-		return Ok(());
 	}
 
 	let mut volume_mounts: Vec<VolumeMount> = Vec::new();
@@ -1034,9 +1033,8 @@ pub async fn update_kubernetes_volume(
 			&PatchParams::apply(&format!(
 				"pvc-{}-sts-{}-{}",
 				volume.volume_id, deployment_id, idx
-			))
-			.force(),
-			&Patch::Apply(kubernetes_pvc),
+			)),
+			&Patch::Strategic(kubernetes_pvc),
 		)
 		.await?;
 	}
