@@ -3628,7 +3628,6 @@
         true,
         true
       ],
-      ],
       "parameters": {
         "Left": [
           "Uuid"
@@ -8422,65 +8421,6 @@
     },
     "query": "SELECT * FROM resource_type WHERE id = $1;"
   },
-  "85c700fdcc3cbc154cda0d2a3b85b81e7724263ec5c6f1f202e1469ff21c338b": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "domain_name",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "git_provider_type: _",
-          "ordinal": 3,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "github"
-                ]
-              },
-              "name": "ci_git_provider_type"
-            }
-          }
-        },
-        {
-          "name": "login_name",
-          "ordinal": 4,
-          "type_info": "Text"
-        },
-        {
-          "name": "password",
-          "ordinal": 5,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdomain_name,\n\t\t\tgit_provider_type as \"git_provider_type: _\",\n\t\t\tlogin_name,\n\t\t\tpassword\n\t\tFROM\n\t\t\tci_git_provider\n\t\tWHERE\n\t\t\tid = $1;\n\t\t"
-  },
   "860c561776aaf1f078eb0392b11b2be437f2cf6847a00b4d7214a158514664c4": {
     "describe": {
       "columns": [],
@@ -8489,7 +8429,7 @@
         "Left": []
       }
     },
-    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", workspace_id as \"workspace_id: _\", ingress_hostname as \"ingress_hostname: _\", message_log, cloudflare_certificate_id, config_file as \"config_file: _\", status as \"status: _\", disconnected_at as \"disconnected_at: _\" FROM region WHERE workspace_id = NULL;"
+    "query": "CREATE INDEX role_permissions_resource_idx_role_id_resource_id ON role_permissions_resource (role_id, resource_id);"
   },
   "8696e29f1ec3f80e57c28dbfac2fcc4df2d3b724eb90aa0e1530b33e99da0da1": {
     "describe": {
@@ -12347,67 +12287,30 @@
     },
     "query": "UPDATE patr_domain_dns_record SET value = $1, priority = $2, ttl = $3, proxied = $4 WHERE id = $5;"
   },
-  "c7aa98f53b10dde704419b6804a8539fc2d5322bb105e0c15c812358cf9af7dc": {
+  "c7badbbf95c47e30f52f6f6390e9af3a7e3f8cec8e9f6abe7e092bc2004eed5d": {
     "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "domain_name",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "git_provider_type: _",
-          "ordinal": 3,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "github"
-                ]
-              },
-              "name": "ci_git_provider_type"
-            }
-          }
-        },
-        {
-          "name": "login_name",
-          "ordinal": 4,
-          "type_info": "Text"
-        },
-        {
-          "name": "password",
-          "ordinal": 5,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        true,
-        true
-      ],
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE IF NOT EXISTS deployment_payment_history( workspace_id UUID NOT NULL, deployment_id UUID NOT NULL, machine_type UUID NOT NULL, num_instance INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
+  },
+  "ca4052cd85b594d288729c62e3e740161789ae97e7e711dd2609235c40e0d4ed": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
       "parameters": {
         "Left": [
           "Uuid",
-          "Text"
+          "Timestamptz"
         ]
       }
     },
-    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdomain_name,\n\t\t\tgit_provider_type as \"git_provider_type: _\",\n\t\t\tlogin_name,\n\t\t\tpassword\n\t\tFROM\n\t\t\tci_git_provider\n\t\tWHERE (\n\t\t\tworkspace_id = $1\n\t\t\tAND domain_name = $2\n\t\t\tAND is_deleted = FALSE\n\t\t);\n\t\t"
+    "query": "UPDATE region SET deleted = $2, status = 'deleted' WHERE id = $1;"
   },
-  "c7badbbf95c47e30f52f6f6390e9af3a7e3f8cec8e9f6abe7e092bc2004eed5d": {
+  "ca60cc0ae9e218485ef43ac8e8dd496780f22f180cc579029c623628421fd26e": {
     "describe": {
       "columns": [],
       "nullable": [],
@@ -12417,7 +12320,7 @@
     },
     "query": "CREATE INDEX workspace_user_idx_user_id ON workspace_user (user_id);"
   },
-  "ca60cc0ae9e218485ef43ac8e8dd496780f22f180cc579029c623628421fd26e": {
+  "ca6546683c1cab6eaff3c87094be9a166ba384526c88af671c38f1fe97152089": {
     "describe": {
       "columns": [],
       "nullable": [],
@@ -12428,20 +12331,6 @@
       }
     },
     "query": "DELETE FROM user_api_token_workspace_super_admin WHERE token_id = $1;"
-  },
-  "ca874f0342448c5d1d17505fafca29e7a823efbd5a71afb240add67f66eb14d0": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Json",
-          "Text"
-        ]
-      }
-    },
-    "query": "UPDATE region SET status = 'active', config_file = $2, ingress_hostname = $3, disconnected_at = NULL WHERE id = $1;"
   },
   "ca874f0342448c5d1d17505fafca29e7a823efbd5a71afb240add67f66eb14d0": {
     "describe": {
