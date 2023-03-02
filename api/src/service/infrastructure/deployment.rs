@@ -518,9 +518,9 @@ pub async fn update_deployment(
 				match new_size.cmp(&current_size) {
 					Ordering::Less => {
 						// Volume size cannot be reduced
-						return Error::as_result()
+						return Err(Error::empty())
 							.status(400)
-							.body(error!(REDUCED_VOLUME_SIZE).to_string())?;
+							.body(error!(REDUCED_VOLUME_SIZE).to_string());
 					}
 					Ordering::Equal => (), // Ignore
 					Ordering::Greater => {
@@ -534,57 +534,19 @@ pub async fn update_deployment(
 					}
 				}
 			} else {
-				// The new volume is not there in the current volumes. Create
-				// new volume
-				let volume_id =
-					db::generate_new_resource_id(connection).await?;
-
-				db::create_resource(
-					connection,
-					&volume_id,
-					rbac::RESOURCE_TYPES
-						.get()
-						.unwrap()
-						.get(rbac::resource_types::DEPLOYMENT_VOLUME)
-						.unwrap(),
-					workspace_id,
-					&now,
-				)
-				.await?;
-
-				db::add_volume_for_deployment(
-					connection,
-					deployment_id,
-					&volume_id,
-					name,
-					volume.size as i32,
-					&volume.path,
-				)
-				.await?;
+				// The new volume is not there in the current volumes. Prevent
+				// from adding it
+				return Err(Error::empty())
+					.status(400)
+					.body(error!(CANNOT_ADD_NEW_VOLUME).to_string());
 			}
 		}
 
-		// now remove the remaining in deployment_volumes(DB)
-		for (_, deployment_volume) in current_volumes {
-			// Deleting volume here as this transaction will be commited before
-			// the start deployment is called, and hence latest data is fetch
-			// from db using get_full_deployment_config() and in the
-			// update_kubernetes deployment function will be updated with new
-			// PVC and hence this PVC will be detached and then we can delete it
-			// manually there
-			db::delete_volume(connection, &deployment_volume.volume_id, &now)
-				.await?;
-
-			// Stopping the deployment here as there is no stop_usage only used
-			// for none deleted volumes, but this volume will be deleted in
-			// above function. However deleting it from kubernetes is done after
-			// start deployment function in update deployment route
-			db::stop_volume_usage_history(
-				connection,
-				&deployment_volume.volume_id,
-				&now,
-			)
-			.await?;
+		if !current_volumes.is_empty() {
+			// Preventing removing number of volume
+			return Err(Error::empty())
+				.status(400)
+				.body(error!(CANNOT_REMOVE_VOLUME).to_string());
 		}
 	}
 
