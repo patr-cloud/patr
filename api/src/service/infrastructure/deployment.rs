@@ -391,7 +391,8 @@ pub async fn update_deployment(
 				.status(500)?;
 
 			if machine_type_to_be_deployed != &(1, 2) {
-				log::info!("request_id: {request_id} - Only basic machine type is allowed under free plan");
+				log::info!("request_id: {request_id} - Only basic machine type is allowed
+	under free plan");
 				return Error::as_result().status(400).body(
 					error!(CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT).to_string(),
 				)?;
@@ -400,8 +401,8 @@ pub async fn update_deployment(
 		if let Some(max_horizontal_scale) = max_horizontal_scale {
 			if max_horizontal_scale > 1 {
 				log::info!(
-					"request_id: {request_id} - Only one replica allowed under free plan without card"
-				);
+					"request_id: {request_id} - Only one replica allowed under free plan
+	without card" 			);
 				return Error::as_result()
 					.status(400)
 					.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
@@ -411,15 +412,15 @@ pub async fn update_deployment(
 		if let Some(min_horizontal_scale) = min_horizontal_scale {
 			if min_horizontal_scale > 1 {
 				log::info!(
-					"request_id: {request_id} - Only one replica allowed under free plan without card"
-				);
+					"request_id: {request_id} - Only one replica allowed under free plan
+	without card" 			);
 				return Error::as_result()
 					.status(400)
 					.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
 			}
 		}
 
-		let volume_size_in_bytes = (volume_size * 1024 * 1024 * 1024) as usize;
+		let volume_size_in_bytes = volume_size as usize * 1024 * 1024 * 1024;
 		if volume_size_in_bytes > free_limits::VOLUME_STORAGE_IN_BYTE {
 			return Error::as_result()
 				.status(400)
@@ -517,9 +518,9 @@ pub async fn update_deployment(
 				match new_size.cmp(&current_size) {
 					Ordering::Less => {
 						// Volume size cannot be reduced
-						return Error::as_result()
+						return Err(Error::empty())
 							.status(400)
-							.body(error!(REDUCED_VOLUME_SIZE).to_string())?;
+							.body(error!(REDUCED_VOLUME_SIZE).to_string());
 					}
 					Ordering::Equal => (), // Ignore
 					Ordering::Greater => {
@@ -533,57 +534,19 @@ pub async fn update_deployment(
 					}
 				}
 			} else {
-				// The new volume is not there in the current volumes. Create
-				// new volume
-				let volume_id =
-					db::generate_new_resource_id(connection).await?;
-
-				db::create_resource(
-					connection,
-					&volume_id,
-					rbac::RESOURCE_TYPES
-						.get()
-						.unwrap()
-						.get(rbac::resource_types::DEPLOYMENT_VOLUME)
-						.unwrap(),
-					workspace_id,
-					&now,
-				)
-				.await?;
-
-				db::add_volume_for_deployment(
-					connection,
-					deployment_id,
-					&volume_id,
-					name,
-					volume.size as i32,
-					&volume.path,
-				)
-				.await?;
+				// The new volume is not there in the current volumes. Prevent
+				// from adding it
+				return Err(Error::empty())
+					.status(400)
+					.body(error!(CANNOT_ADD_NEW_VOLUME).to_string());
 			}
 		}
 
-		// now remove the remaining in deployment_volumes(DB)
-		for (_, deployment_volume) in current_volumes {
-			// Deleting volume here as this transaction will be commited before
-			// the start deployment is called, and hence latest data is fetch
-			// from db using get_full_deployment_config() and in the
-			// update_kubernetes deployment function will be updated with new
-			// PVC and hence this PVC will be detached and then we can delete it
-			// manually there
-			db::delete_volume(connection, &deployment_volume.volume_id, &now)
-				.await?;
-
-			// Stopping the deployment here as there is no stop_usage only used
-			// for none deleted volumes, but this volume will be deleted in
-			// above function. However deleting it from kubernetes is done after
-			// start deployment function in update deployment route
-			db::stop_volume_usage_history(
-				connection,
-				&deployment_volume.volume_id,
-				&now,
-			)
-			.await?;
+		if !current_volumes.is_empty() {
+			// Preventing removing number of volume
+			return Err(Error::empty())
+				.status(400)
+				.body(error!(CANNOT_REMOVE_VOLUME).to_string());
 		}
 	}
 
@@ -722,6 +685,18 @@ pub async fn update_deployment(
 				.await?;
 			}
 
+			for volume in &volumes {
+				service::update_kubernetes_volume(
+					workspace_id,
+					deployment_id,
+					volume,
+					running_details.min_horizontal_scale,
+					kubeconfig.clone(),
+					request_id,
+				)
+				.await?;
+			}
+
 			service::update_kubernetes_deployment(
 				workspace_id,
 				&deployment,
@@ -729,7 +704,7 @@ pub async fn update_deployment(
 				None,
 				&running_details,
 				&volumes,
-				kubeconfig,
+				kubeconfig.clone(),
 				config,
 				request_id,
 			)
@@ -1430,7 +1405,7 @@ async fn check_deployment_creation_limit(
 				.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
 		}
 
-		let volume_size_in_byte = (volume_size * 1024 * 1024 * 1024) as usize;
+		let volume_size_in_byte = volume_size as usize * 1024 * 1024 * 1024;
 		if volume_size_in_byte > free_limits::VOLUME_STORAGE_IN_BYTE {
 			return Error::as_result()
 				.status(400)

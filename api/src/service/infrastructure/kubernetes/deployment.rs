@@ -69,7 +69,7 @@ use k8s_openapi::{
 	ByteString,
 };
 use kube::{
-	api::{DeleteParams, ListParams, Patch, PatchParams},
+	api::{DeleteParams, ListParams, Patch, PatchParams, PropagationPolicy},
 	core::{ErrorResponse, ObjectMeta},
 	Api,
 	Error as KubeError,
@@ -235,6 +235,26 @@ pub async fn update_kubernetes_deployment(
 	]
 	.into_iter()
 	.collect();
+
+	if !deployment_volumes.is_empty() {
+		// Deleting STS using orphan flag to update the volumes
+		log::trace!(
+			"request_id: {} deleting sts without deleting the pod",
+			request_id
+		);
+		Api::<StatefulSet>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
+		.delete_opt(
+			&format!("sts-{}", deployment.id),
+			&DeleteParams {
+				propagation_policy: Some(PropagationPolicy::Orphan),
+				..DeleteParams::default()
+			},
+		)
+		.await?;
+	}
 
 	let mut volume_mounts: Vec<VolumeMount> = Vec::new();
 	let mut volumes: Vec<Volume> = Vec::new();
@@ -709,7 +729,7 @@ pub async fn update_kubernetes_deployment(
 								..Default::default()
 							},
 							path: Some("/".to_string()),
-							path_type: Some("Prefix".to_string()),
+							path_type: "Prefix".to_string(),
 						}],
 					}),
 				},
@@ -783,7 +803,7 @@ pub async fn update_kubernetes_deployment(
 							..Default::default()
 						},
 						path: Some("/".to_string()),
-						path_type: Some("Prefix".to_string()),
+						path_type: "Prefix".to_string(),
 					}],
 				}),
 			};
@@ -961,6 +981,63 @@ pub async fn delete_kubernetes_volume(
 		&DeleteParams::default(),
 	)
 	.await?;
+	Ok(())
+}
+
+pub async fn update_kubernetes_volume(
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	volume: &DeploymentVolume,
+	replica: u16,
+	kubeconfig: KubernetesConfigDetails,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let kubernetes_client =
+		super::get_kubernetes_client(kubeconfig.auth_details).await?;
+
+	log::trace!("request_id: {} - updating the pvc", request_id);
+	for idx in 0..replica {
+		let storage_limit = [(
+			"storage".to_string(),
+			Quantity(format!("{}Gi", volume.size)),
+		)]
+		.into_iter()
+		.collect::<BTreeMap<_, _>>();
+
+		let kubernetes_pvc = PersistentVolumeClaim {
+			metadata: ObjectMeta {
+				name: Some(format!(
+					"pvc-{}-sts-{}-{}",
+					volume.volume_id, deployment_id, idx
+				)),
+				namespace: Some(workspace_id.to_string()),
+				..ObjectMeta::default()
+			},
+			spec: Some(PersistentVolumeClaimSpec {
+				access_modes: Some(vec!["ReadWriteOnce".to_string()]),
+				resources: Some(ResourceRequirements {
+					requests: Some(storage_limit),
+					..ResourceRequirements::default()
+				}),
+				..PersistentVolumeClaimSpec::default()
+			}),
+			..PersistentVolumeClaim::default()
+		};
+
+		Api::<PersistentVolumeClaim>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
+		.patch(
+			&format!("pvc-{}-sts-{}-{}", volume.volume_id, deployment_id, idx),
+			&PatchParams::apply(&format!(
+				"pvc-{}-sts-{}-{}",
+				volume.volume_id, deployment_id, idx
+			)),
+			&Patch::Strategic(kubernetes_pvc),
+		)
+		.await?;
+	}
 	Ok(())
 }
 

@@ -526,8 +526,8 @@ async fn get_kubernetes_client(
 			kind: Some("Config".to_string()),
 			clusters: vec![NamedCluster {
 				name: "kubernetesCluster".to_owned(),
-				cluster: Cluster {
-					server: kube_auth_details.cluster_url,
+				cluster: Some(Cluster {
+					server: Some(kube_auth_details.cluster_url),
 					certificate_authority_data: Some(
 						kube_auth_details.certificate_authority_data,
 					),
@@ -535,23 +535,24 @@ async fn get_kubernetes_client(
 					certificate_authority: None,
 					proxy_url: None,
 					extensions: None,
-				},
+					..Default::default()
+				}),
 			}],
 			auth_infos: vec![NamedAuthInfo {
 				name: kube_auth_details.auth_username.clone(),
-				auth_info: AuthInfo {
+				auth_info: Some(AuthInfo {
 					token: Some(kube_auth_details.auth_token.into()),
 					..Default::default()
-				},
+				}),
 			}],
 			contexts: vec![NamedContext {
 				name: "kubernetesContext".to_owned(),
-				context: Context {
+				context: Some(Context {
 					cluster: "kubernetesCluster".to_owned(),
 					user: kube_auth_details.auth_username,
 					extensions: None,
 					namespace: None,
-				},
+				}),
 			}],
 			current_context: Some("kubernetesContext".to_owned()),
 			preferences: None,

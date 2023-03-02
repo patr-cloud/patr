@@ -59,8 +59,8 @@ async fn get_kubernetes_client(
 			kind: Some("Config".to_string()),
 			clusters: vec![NamedCluster {
 				name: "kubernetesCluster".to_owned(),
-				cluster: Cluster {
-					server: kube_auth_details.cluster_url,
+				cluster: Some(Cluster {
+					server: Some(kube_auth_details.cluster_url),
 					certificate_authority_data: Some(
 						kube_auth_details.certificate_authority_data,
 					),
@@ -68,23 +68,24 @@ async fn get_kubernetes_client(
 					certificate_authority: None,
 					proxy_url: None,
 					extensions: None,
-				},
+					..Default::default()
+				}),
 			}],
 			auth_infos: vec![NamedAuthInfo {
 				name: kube_auth_details.auth_username.clone(),
-				auth_info: AuthInfo {
+				auth_info: Some(AuthInfo {
 					token: Some(kube_auth_details.auth_token.into()),
 					..Default::default()
-				},
+				}),
 			}],
 			contexts: vec![NamedContext {
 				name: "kubernetesContext".to_owned(),
-				context: Context {
+				context: Some(Context {
 					cluster: "kubernetesCluster".to_owned(),
 					user: kube_auth_details.auth_username,
 					extensions: None,
 					namespace: None,
-				},
+				}),
 			}],
 			current_context: Some("kubernetesContext".to_owned()),
 			preferences: None,
@@ -106,8 +107,8 @@ async fn get_kubernetes_config(
 			preferences: None,
 			clusters: vec![NamedCluster {
 				name: config.kubernetes.cluster_name.clone(),
-				cluster: Cluster {
-					server: config.kubernetes.cluster_url.clone(),
+				cluster: Some(Cluster {
+					server: Some(config.kubernetes.cluster_url.clone()),
 					insecure_skip_tls_verify: None,
 					certificate_authority: None,
 					certificate_authority_data: Some(
@@ -115,24 +116,25 @@ async fn get_kubernetes_config(
 					),
 					proxy_url: None,
 					extensions: None,
-				},
+					..Default::default()
+				}),
 			}],
 			auth_infos: vec![NamedAuthInfo {
 				name: config.kubernetes.auth_name.clone(),
-				auth_info: AuthInfo {
+				auth_info: Some(AuthInfo {
 					username: Some(config.kubernetes.auth_username.clone()),
 					token: Some(config.kubernetes.auth_token.clone().into()),
 					..Default::default()
-				},
+				}),
 			}],
 			contexts: vec![NamedContext {
 				name: config.kubernetes.context_name.clone(),
-				context: Context {
+				context: Some(Context {
 					cluster: config.kubernetes.cluster_name.clone(),
 					user: config.kubernetes.auth_username.clone(),
 					extensions: None,
 					namespace: None,
-				},
+				}),
 			}],
 			current_context: Some(config.kubernetes.context_name.clone()),
 			extensions: None,
