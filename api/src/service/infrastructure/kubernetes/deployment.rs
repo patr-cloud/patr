@@ -948,20 +948,20 @@ pub async fn get_kubernetes_deployment_status(
 			.await?
 			.is_empty();
 
+	// if the ready replicas, is none then it is in deloying status.
+	// we will update deployment status based on the number of replicas and
+	// status message (CrashLoopBackOff/ErrImagePull)
+	// see: https://develop.vicara.co/vicara/vicara-api/issues/807
 	let container_status = if !is_deployment {
 		Api::<StatefulSet>::namespaced(kubernetes_client.clone(), namespace)
 			.get(&format!("sts-{}", deployment.id))
 			.await
-			.map(|status| {
-				status.status.and_then(|value| value.current_replicas)
-			})
+			.map(|status| status.status.and_then(|value| value.ready_replicas))
 	} else {
 		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace)
 			.get(&format!("deployment-{}", deployment.id))
 			.await
-			.map(|status| {
-				status.status.and_then(|value| value.available_replicas)
-			})
+			.map(|status| status.status.and_then(|value| value.ready_replicas))
 	};
 
 	let replicas = match container_status {
@@ -971,17 +971,22 @@ pub async fn get_kubernetes_deployment_status(
 			return Ok(DeploymentStatus::Deploying);
 		}
 		Err(err) => return Err(err.into()),
-		Ok(sts) => sts.status(500).body(error!(SERVER_ERROR).to_string())?,
+		Ok(sts) => sts,
 	};
 
-	let deployment_status =
-		if replicas == deployment.min_horizontal_scale as i32 {
+	let deployment_status = if let Some(replicas) = replicas {
+		if replicas >= deployment.min_horizontal_scale as i32 {
 			DeploymentStatus::Running
 		} else if replicas <= deployment.min_horizontal_scale as i32 {
 			DeploymentStatus::Deploying
 		} else {
 			DeploymentStatus::Errored
-		};
+		}
+	} else {
+		// if it is none, then it is not yet ready
+		// might be in ContainerCreating state or in some errored state
+		DeploymentStatus::Deploying
+	};
 
 	let event_api = Api::<Pod>::namespaced(kubernetes_client, namespace)
 		.list(
