@@ -355,8 +355,6 @@ async fn add_region(
 			)
 			.await?;
 
-			context.commit_database_transaction().await?;
-
 			let cluster_id = service::create_do_k8s_cluster(
 				&region.to_string(),
 				&api_token,
@@ -369,6 +367,8 @@ async fn add_region(
 				&request_id,
 			)
 			.await?;
+
+			context.commit_database_transaction().await?;
 
 			log::trace!(
 				"reqeust_id: {} successfully got k8s ID: {}",

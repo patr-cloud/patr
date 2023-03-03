@@ -2,6 +2,7 @@ use api_models::{models::workspace::region::RegionStatus, utils::Uuid};
 use eve_rs::AsError;
 use kube::config::Kubeconfig;
 use reqwest::Client;
+use serde_json::json;
 use sqlx::types::Json;
 
 use crate::{
@@ -67,7 +68,7 @@ pub async fn create_do_k8s_cluster(
 	);
 	let client = Client::new();
 
-	let k8s_cluster_id = client
+	let response = client
 		.post("https://api.digitalocean.com/v2/kubernetes/clusters")
 		.bearer_auth(api_token)
 		.json(&K8sConfig {
@@ -83,13 +84,35 @@ pub async fn create_do_k8s_cluster(
 			}],
 		})
 		.send()
-		.await?
-		.json::<K8sCreateCluster>()
-		.await?
-		.kubernetes_cluster
-		.id;
+		.await?;
 
-	Ok(k8s_cluster_id)
+	match response.error_for_status_ref() {
+		Ok(_) => {
+			let k8s_cluster_id = response
+				.json::<K8sCreateCluster>()
+				.await?
+				.kubernetes_cluster
+				.id;
+
+			Ok(k8s_cluster_id)
+		}
+		Err(_) => {
+			let err_status_code = response.status().as_u16();
+			let err_response = response.json::<serde_json::Value>().await?;
+			let do_error_msg = err_response
+				.get("message")
+				.and_then(|value| value.as_str())
+				.unwrap_or_default();
+			Err(Error::empty().status(err_status_code).body(
+				json!({
+					"success": false,
+					"error": "DigitalOcean Error",
+					"message": do_error_msg,
+				})
+				.to_string(),
+			))
+		}
+	}
 }
 
 pub async fn is_deployed_on_patr_cluster(
