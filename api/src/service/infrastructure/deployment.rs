@@ -720,6 +720,20 @@ pub async fn update_deployment(
 				request_id,
 			)
 			.await?;
+
+			service::update_cloudflare_kv_for_deployment(
+				deployment_id,
+				cloudflare::deployment::Value::Running {
+					region_id: deployed_region_id,
+					ports: running_details
+						.ports
+						.iter()
+						.map(|(port, _type)| port.value())
+						.collect(),
+				},
+				config,
+			)
+			.await?;
 		}
 	}
 
