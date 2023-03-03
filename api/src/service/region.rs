@@ -106,7 +106,7 @@ pub async fn create_do_k8s_cluster(
 			Err(Error::empty().status(err_status_code).body(
 				json!({
 					"success": false,
-					"error": "DigitalOcean Error",
+					"error": "digitaloceanError",
 					"message": do_error_msg,
 				})
 				.to_string(),
