@@ -40,6 +40,8 @@ pub async fn migrate(
 	//  - delete byoc dns records from {region-id}.patr.cloud
 	//  - create origin ca cert for sgp cluster and set it as default
 
+	fix_permission_whitespace_issue(connection, config).await?;
+
 	migrate_byoc_region(connection, config).await?;
 	migrate_workspace_domain(connection, config).await?;
 	migrate_managed_url(connection, config).await?;
@@ -57,6 +59,26 @@ pub async fn migrate(
 	patch_ingress_for_default_region_deployments(connection, config).await?;
 
 	log::info!("Completed cloudflare ingress migrations");
+	Ok(())
+}
+
+async fn fix_permission_whitespace_issue(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		UPDATE
+			permission
+		SET
+			name = 'workspace::billing::billing_address::info'
+		WHERE
+			name = 'workspace::billing::billing_address::info ';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
@@ -139,13 +161,19 @@ async fn migrate_byoc_region(
 	// delete the byoc deployments
 	let byoc_deployments = query!(
 		r#"
-		SELECT id
-		FROM deployment
-		WHERE region IN (
-			SELECT id
-			FROM region
-			WHERE workspace_id IS NOT NULL
-		);
+		SELECT
+			id
+		FROM
+			deployment
+		WHERE
+			region IN (
+				SELECT
+					id
+				FROM
+					region
+				WHERE
+					workspace_id IS NOT NULL
+			);
 		"#
 	)
 	.fetch(&mut *connection)
@@ -215,9 +243,10 @@ async fn migrate_byoc_region(
 	log::info!("Marking all BYOC region as deleted");
 	query!(
 		r#"
-		UPDATE region
-		SET status =
-			CASE
+		UPDATE
+			region
+		SET
+			status = CASE
 				WHEN (workspace_id IS NULL AND ready = true)
 					THEN 'active'::REGION_STATUS
 				WHEN (workspace_id IS NULL AND ready = false)
@@ -231,9 +260,12 @@ async fn migrate_byoc_region(
 
 	query!(
 		r#"
-		UPDATE region
-		SET deleted = NOW()
-		WHERE status = 'deleted';
+		UPDATE
+			region
+		SET
+			deleted = NOW()
+		WHERE
+			status = 'deleted';
 		"#
 	)
 	.execute(&mut *connection)
@@ -246,10 +278,10 @@ async fn migrate_byoc_region(
 		FROM
 			region
 		WHERE
-			name = 'Singapore'
-			AND provider = 'digitalocean'
-			AND workspace_id IS NULL
-			AND status = 'active';
+			name = 'Singapore' AND
+			provider = 'digitalocean' AND
+			workspace_id IS NULL AND
+			status = 'active';
 		"#
 	)
 	.fetch_one(&mut *connection)
@@ -260,7 +292,8 @@ async fn migrate_byoc_region(
 	let kubeconfig = get_default_region_kubeconfig(config);
 	query!(
 		r#"
-		UPDATE region
+		UPDATE
+			region
 		SET
 			config_file = $1,
 			ingress_hostname = '',
@@ -315,8 +348,10 @@ async fn migrate_byoc_region(
 
 	query!(
 		r#"
-		CREATE UNIQUE INDEX region_uq_workspace_id_name
-		ON region(workspace_id, name)
+		CREATE UNIQUE INDEX
+			region_uq_workspace_id_name
+		ON
+			region(workspace_id, name)
 		WHERE
 			deleted IS NULL AND
 			workspace_id IS NOT NULL;
@@ -328,8 +363,8 @@ async fn migrate_byoc_region(
 	query!(
 		r#"
 		ALTER TABLE region
-			ADD CONSTRAINT region_fk_id_workspace_id
-			FOREIGN KEY (id, workspace_id) REFERENCES resource(id, owner_id);
+		ADD CONSTRAINT region_fk_id_workspace_id
+		FOREIGN KEY (id, workspace_id) REFERENCES resource(id, owner_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -348,8 +383,7 @@ async fn migrate_workspace_domain(
 	query!(
 		r#"
 		ALTER TABLE workspace_domain
-			ADD COLUMN cloudflare_worker_route_id TEXT NOT NULL
-				DEFAULT 'already_deleted';
+		ADD COLUMN cloudflare_worker_route_id TEXT NOT NULL DEFAULT 'already_deleted';
 		"#
 	)
 	.execute(&mut *connection)
@@ -358,7 +392,7 @@ async fn migrate_workspace_domain(
 	query!(
 		r#"
 		ALTER TABLE workspace_domain
-			ALTER COLUMN cloudflare_worker_route_id DROP DEFAULT;
+		ALTER COLUMN cloudflare_worker_route_id DROP DEFAULT;
 		"#
 	)
 	.execute(&mut *connection)
@@ -369,10 +403,14 @@ async fn migrate_workspace_domain(
 		SELECT
 			workspace_domain.id as "domain_id",
 			concat(domain.name, '.', domain.tld) AS "domain_name"
-		FROM workspace_domain
-		JOIN domain
-			ON workspace_domain.id = domain.id
-		WHERE domain.deleted IS NULL;
+		FROM
+			workspace_domain
+		JOIN
+			domain
+		ON
+			workspace_domain.id = domain.id
+		WHERE
+			domain.deleted IS NULL;
 		"#
 	)
 	.fetch(&mut *connection)
@@ -430,8 +468,7 @@ async fn migrate_managed_url(
 	query!(
 		r#"
 		ALTER TABLE managed_url
-			ADD COLUMN cloudflare_custom_hostname_id TEXT NOT NULL
-				DEFAULT 'already_deleted';;
+		ADD COLUMN cloudflare_custom_hostname_id TEXT NOT NULL DEFAULT 'already_deleted';
 		"#
 	)
 	.execute(&mut *connection)
@@ -440,31 +477,40 @@ async fn migrate_managed_url(
 	query!(
 		r#"
 		ALTER TABLE managed_url
-			ALTER COLUMN cloudflare_custom_hostname_id DROP DEFAULT;
+		ALTER COLUMN cloudflare_custom_hostname_id DROP DEFAULT;
 		"#
 	)
 	.execute(&mut *connection)
 	.await?;
 
 	let valid_custom_hostnames = query!(
-			r#"
+		r#"
 			SELECT
-				DISTINCT CONCAT(managed_url.sub_domain, '.', domain.name, '.', domain.tld) as "hostname"
-			FROM managed_url
-			JOIN workspace_domain
-				ON workspace_domain.id = managed_url.domain_id
-			JOIN domain
-				ON domain.id = workspace_domain.id
+				DISTINCT CONCAT(
+					managed_url.sub_domain,
+					'.',
+					domain.name,
+					'.',
+					domain.tld
+				) as "hostname"
+			FROM
+				managed_url
+			JOIN
+				workspace_domain
+			ON
+				workspace_domain.id = managed_url.domain_id
+			JOIN
+				domain
+			ON
+				domain.id = workspace_domain.id
 			WHERE
 				managed_url.deleted IS NULL;
 			"#
-		)
-		.fetch(&mut *connection)
-		.map_ok(|row| {
-				row.get::<String, _>("hostname")
-		})
-		.try_collect::<Vec<_>>()
-		.await?;
+	)
+	.fetch(&mut *connection)
+	.map_ok(|row| row.get::<String, _>("hostname"))
+	.try_collect::<Vec<_>>()
+	.await?;
 
 	for (idx, hostname) in valid_custom_hostnames.iter().enumerate() {
 		log::info!(
@@ -481,14 +527,17 @@ async fn migrate_managed_url(
 
 		query!(
 			r#"
-				UPDATE managed_url
-				SET cloudflare_custom_hostname_id = $2
-				FROM domain
-				WHERE
-					managed_url.deleted IS NULL AND
-					domain.id = managed_url.domain_id AND
-					CONCAT(managed_url.sub_domain, '.', domain.name, '.', domain.tld) = $1;
-				"#,
+			UPDATE
+				managed_url
+			SET
+				cloudflare_custom_hostname_id = $2
+			FROM
+				domain
+			WHERE
+				managed_url.deleted IS NULL AND
+				domain.id = managed_url.domain_id AND
+				CONCAT(managed_url.sub_domain, '.', domain.name, '.', domain.tld) = $1;
+			"#,
 			hostname,
 			&cloudflare_custom_hostname_id
 		)
@@ -528,10 +577,10 @@ async fn update_cloudflare_kv_for_deployments(
 		FROM
 			region
 		WHERE
-			name = 'Singapore'
-			AND provider = 'digitalocean'
-			AND workspace_id IS NULL
-			AND status = 'active';
+			name = 'Singapore' AND
+			provider = 'digitalocean' AND
+			workspace_id IS NULL AND
+			status = 'active';
 		"#
 	)
 	.fetch_one(&mut *connection)
@@ -547,9 +596,12 @@ async fn update_cloudflare_kv_for_deployments(
 			deployment.id,
 			deployment.status,
 			deployment_exposed_port.port
-		FROM deployment
-		LEFT JOIN deployment_exposed_port
-			ON deployment_exposed_port.deployment_id = deployment.id
+		FROM
+			deployment
+		LEFT JOIN
+			deployment_exposed_port
+		ON
+			deployment_exposed_port.deployment_id = deployment.id
 		WHERE
 			deployment.status != 'deleted' AND
 			deployment.deleted IS NULL;
@@ -641,7 +693,8 @@ async fn update_cloudflare_kv_for_static_sites(
 			static_site.id,
 			static_site.status,
 			static_site.current_live_upload
-		FROM static_site
+		FROM
+			static_site
 		WHERE
 			status != 'deleted' AND
 			deleted IS NULL;
@@ -741,10 +794,14 @@ async fn update_cloudflare_kv_for_managed_urls(
 			managed_url.http_only
 		FROM
 			managed_url
-		JOIN workspace_domain
-			ON workspace_domain.id = managed_url.domain_id
-		JOIN domain
-			ON domain.id = workspace_domain.id
+		JOIN
+			workspace_domain
+		ON
+			workspace_domain.id = managed_url.domain_id
+		JOIN
+			domain
+		ON
+			domain.id = workspace_domain.id
 		WHERE
 			managed_url.deleted IS NULL AND
 			domain.deleted IS NULL

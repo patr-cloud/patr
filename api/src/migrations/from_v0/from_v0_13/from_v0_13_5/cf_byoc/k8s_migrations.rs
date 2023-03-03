@@ -133,7 +133,8 @@ pub async fn delete_k8s_static_site_resources(
 		SELECT
             workspace_id,
 			id
-		FROM static_site;
+		FROM
+			static_site;
 		"#
 	)
 	.fetch(connection)
@@ -216,7 +217,8 @@ pub async fn delete_k8s_region_resources(
 		SELECT
             workspace_id,
 			id
-		FROM region
+		FROM
+			region
 		WHERE
 			workspace_id IS NOT NULL;
 		"#
@@ -301,7 +303,8 @@ pub async fn delete_k8s_managed_url_resources(
 		SELECT
             workspace_id,
 			id
-		FROM managed_url;
+		FROM
+			managed_url;
 		"#
 	)
 	.fetch(connection)
@@ -406,9 +409,12 @@ pub async fn delete_k8s_certificate_resources_for_domain(
 		SELECT
             resource.owner_id,
 			workspace_domain.id
-		FROM workspace_domain
-		JOIN resource
-			ON resource.id = workspace_domain.id;
+		FROM
+			workspace_domain
+		JOIN
+			resource
+		ON 
+			resource.id = workspace_domain.id;
 		"#
 	)
 	.fetch(&mut *connection)
@@ -497,8 +503,10 @@ pub async fn delete_k8s_certificate_resources_for_managed_url(
 			workspace_id,
 			sub_domain,
 			domain_id
-		FROM managed_url
-		WHERE sub_domain != '@';
+		FROM
+			managed_url
+		WHERE
+			sub_domain != '@';
 		"#
 	)
 	.fetch(connection)
@@ -635,10 +643,10 @@ pub async fn patch_ingress_for_default_region_deployments(
 		FROM
 			region
 		WHERE
-			name = 'Singapore'
-			AND provider = 'digitalocean'
-			AND workspace_id IS NULL
-			AND status = 'active';
+			name = 'Singapore' AND
+			provider = 'digitalocean' AND
+			workspace_id IS NULL AND
+			status = 'active';
 		"#
 	)
 	.fetch_one(&mut *connection)
@@ -654,8 +662,10 @@ pub async fn patch_ingress_for_default_region_deployments(
 			deployment_exposed_port.port
 		FROM
 			deployment
-		JOIN deployment_exposed_port
-			ON deployment_exposed_port.deployment_id = deployment.id
+		JOIN
+			deployment_exposed_port
+		ON
+			deployment_exposed_port.deployment_id = deployment.id
 		WHERE
 			deployment.status = 'running' AND
 			deployment.deleted IS NULL;
