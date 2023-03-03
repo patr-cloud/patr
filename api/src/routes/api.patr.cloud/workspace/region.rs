@@ -242,12 +242,6 @@ async fn get_region(
 			.status(404)
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	if region.workspace_id.is_some() && region.disconnected_at.is_none() {
-		return Error::as_result()
-			.status(500)
-			.body(error!(REGION_NOT_CONNECTED).to_string())?;
-	}
-
 	log::trace!("request_id: {} - Returning region", request_id);
 	context.success(GetRegionInfoResponse {
 		region: Region {
