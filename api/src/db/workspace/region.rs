@@ -22,6 +22,7 @@ use crate::{
 	Database,
 };
 
+#[derive(Debug)]
 pub struct Region {
 	pub id: Uuid,
 	pub name: String,
@@ -316,7 +317,7 @@ pub async fn get_all_default_regions(
 		FROM
 			region
 		WHERE
-			workspace_id = NULL;
+			workspace_id IS NULL;
 		"#,
 	)
 	.fetch_all(&mut *connection)
