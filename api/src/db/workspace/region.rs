@@ -180,8 +180,8 @@ pub async fn initialize_region_post(
 				kind: Some("Config".to_string()),
 				clusters: vec![NamedCluster {
 					name: "kubernetesCluster".to_owned(),
-					cluster: Cluster {
-						server: config.kubernetes.cluster_url.to_owned(),
+					cluster: Some(Cluster {
+						server: Some(config.kubernetes.cluster_url.to_owned()),
 						certificate_authority_data: Some(
 							config
 								.kubernetes
@@ -192,25 +192,26 @@ pub async fn initialize_region_post(
 						certificate_authority: None,
 						proxy_url: None,
 						extensions: None,
-					},
+						..Default::default()
+					}),
 				}],
 				auth_infos: vec![NamedAuthInfo {
 					name: config.kubernetes.auth_username.to_owned(),
-					auth_info: AuthInfo {
+					auth_info: Some(AuthInfo {
 						token: Some(
 							config.kubernetes.auth_token.to_owned().into(),
 						),
 						..Default::default()
-					},
+					}),
 				}],
 				contexts: vec![NamedContext {
 					name: "kubernetesContext".to_owned(),
-					context: Context {
+					context: Some(Context {
 						cluster: "kubernetesCluster".to_owned(),
 						user: config.kubernetes.auth_username.to_owned(),
 						extensions: None,
 						namespace: None,
-					},
+					}),
 				}],
 				current_context: Some("kubernetesContext".to_owned()),
 				preferences: None,

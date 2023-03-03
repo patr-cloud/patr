@@ -874,11 +874,10 @@ pub async fn update_kubernetes_volume(
 	deployment_id: &Uuid,
 	volume: &DeploymentVolume,
 	replica: u16,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client =
-		super::get_kubernetes_client(kubeconfig.auth_details).await?;
+	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
 
 	log::trace!("request_id: {} - updating the pvc", request_id);
 	for idx in 0..replica {

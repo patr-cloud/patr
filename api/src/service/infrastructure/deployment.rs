@@ -714,11 +714,7 @@ pub async fn update_deployment(
 				None,
 				&running_details,
 				&volumes,
-<<<<<<< HEAD
-				kubeconfig.clone(),
-=======
 				kubeconfig,
->>>>>>> 8bd54912 (Rebased on top of dev - 13.5)
 				&deployed_region_id,
 				config,
 				request_id,

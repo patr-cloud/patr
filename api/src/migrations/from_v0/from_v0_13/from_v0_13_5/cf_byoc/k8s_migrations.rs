@@ -90,8 +90,8 @@ pub fn get_default_region_kubeconfig(config: &Settings) -> Kubeconfig {
 		kind: Some("Config".to_string()),
 		clusters: vec![NamedCluster {
 			name: "kubernetesCluster".to_owned(),
-			cluster: Cluster {
-				server: config.kubernetes.cluster_url.to_owned(),
+			cluster: Some(Cluster {
+				server: Some(config.kubernetes.cluster_url.to_owned()),
 				certificate_authority_data: Some(
 					config.kubernetes.certificate_authority_data.to_owned(),
 				),
@@ -99,23 +99,24 @@ pub fn get_default_region_kubeconfig(config: &Settings) -> Kubeconfig {
 				certificate_authority: None,
 				proxy_url: None,
 				extensions: None,
-			},
+				..Default::default()
+			}),
 		}],
 		auth_infos: vec![NamedAuthInfo {
 			name: config.kubernetes.auth_username.to_owned(),
-			auth_info: AuthInfo {
+			auth_info: Some(AuthInfo {
 				token: Some(config.kubernetes.auth_token.to_owned().into()),
 				..Default::default()
-			},
+			}),
 		}],
 		contexts: vec![NamedContext {
 			name: "kubernetesContext".to_owned(),
-			context: Context {
+			context: Some(Context {
 				cluster: "kubernetesCluster".to_owned(),
 				user: config.kubernetes.auth_username.to_owned(),
 				extensions: None,
 				namespace: None,
-			},
+			}),
 		}],
 		current_context: Some("kubernetesContext".to_owned()),
 		preferences: None,
@@ -337,15 +338,13 @@ pub async fn delete_k8s_managed_url_resources(
 					return Err((managed_url_id, err));
 				};
 
-				let ingress_deletion_result = Api::<Ingress>::namespaced(
-					kube_client.clone(),
-					namespace,
-				)
-				.delete_opt(
-					&format!("ingress-{}", managed_url_id),
-					&DeleteParams::default(),
-				)
-				.await;
+				let ingress_deletion_result =
+					Api::<Ingress>::namespaced(kube_client.clone(), namespace)
+						.delete_opt(
+							&format!("ingress-{}", managed_url_id),
+							&DeleteParams::default(),
+						)
+						.await;
 				if let Err(err) = ingress_deletion_result {
 					return Err((managed_url_id, err));
 				}
@@ -733,7 +732,7 @@ pub async fn patch_ingress_for_default_region_deployments(
 									..Default::default()
 								},
 								path: Some("/".to_string()),
-								path_type: Some("Prefix".to_string()),
+								path_type: "Prefix".to_string(),
 							}],
 						}),
 					})
