@@ -1,19 +1,22 @@
 use std::{cmp::Ordering, collections::BTreeMap, str};
 
 use api_models::{
-	models::workspace::infrastructure::deployment::{
-		Deployment,
-		DeploymentLogs,
-		DeploymentMetrics,
-		DeploymentProbe,
-		DeploymentRegistry,
-		DeploymentRunningDetails,
-		DeploymentStatus,
-		DeploymentVolume,
-		EnvironmentVariableValue,
-		ExposedPortType,
-		Metric,
-		PatrRegistry,
+	models::workspace::{
+		infrastructure::deployment::{
+			Deployment,
+			DeploymentLogs,
+			DeploymentMetrics,
+			DeploymentProbe,
+			DeploymentRegistry,
+			DeploymentRunningDetails,
+			DeploymentStatus,
+			DeploymentVolume,
+			EnvironmentVariableValue,
+			ExposedPortType,
+			Metric,
+			PatrRegistry,
+		},
+		region::RegionStatus,
 	},
 	utils::{
 		constants,
@@ -32,6 +35,7 @@ use crate::{
 	db,
 	error,
 	models::{
+		cloudflare,
 		deployment::{Logs, PrometheusResponse, MACHINE_TYPES},
 		rbac::{self, permissions},
 		DeploymentMetadata,
@@ -101,10 +105,16 @@ pub async fn create_deployment_in_workspace(
 	// validate whether the deployment region is ready
 	let region_details = db::get_region_by_id(connection, region)
 		.await?
+		.filter(|value| {
+			value.is_patr_region() ||
+				value.workspace_id.as_ref() == Some(workspace_id)
+		})
 		.status(400)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	if !(region_details.ready || region_details.workspace_id.is_none()) {
+	if !(region_details.status == RegionStatus::Active ||
+		region_details.is_patr_region())
+	{
 		return Err(Error::empty()
 			.status(500)
 			.body(error!(REGION_NOT_READY_YET).to_string()));
@@ -596,12 +606,12 @@ pub async fn update_deployment(
 	let volumes =
 		db::get_all_deployment_volumes(connection, deployment_id).await?;
 
-	let kubeconfig = service::get_kubernetes_config_for_region(
-		connection,
-		&deployment.region,
-		config,
-	)
-	.await?;
+	let (kubeconfig, deployed_region_id) =
+		service::get_kubernetes_config_for_region(
+			connection,
+			&deployment.region,
+		)
+		.await?;
 
 	if let Some(new_min_replica) = min_horizontal_scale {
 		if new_min_replica != old_min_replicas {
@@ -704,7 +714,8 @@ pub async fn update_deployment(
 				None,
 				&running_details,
 				&volumes,
-				kubeconfig.clone(),
+				kubeconfig,
+				&deployed_region_id,
 				config,
 				request_id,
 			)
@@ -1564,12 +1575,12 @@ pub async fn start_deployment(
 			.body(error!(UNVERIFIED_WORKSPACE).to_string()));
 	}
 
-	let kubeconfig = service::get_kubernetes_config_for_region(
-		connection,
-		&deployment.region,
-		config,
-	)
-	.await?;
+	let (kubeconfig, deployed_region_id) =
+		service::get_kubernetes_config_for_region(
+			connection,
+			&deployment.region,
+		)
+		.await?;
 
 	service::update_kubernetes_deployment(
 		workspace_id,
@@ -1579,8 +1590,23 @@ pub async fn start_deployment(
 		deployment_running_details,
 		&volumes,
 		kubeconfig,
+		&deployed_region_id,
 		config,
 		request_id,
+	)
+	.await?;
+
+	service::update_cloudflare_kv_for_deployment(
+		deployment_id,
+		cloudflare::deployment::Value::Running {
+			region_id: deployed_region_id,
+			ports: deployment_running_details
+				.ports
+				.iter()
+				.map(|(port, _type)| port.value())
+				.collect(),
+		},
+		config,
 	)
 	.await?;
 
@@ -1634,38 +1660,44 @@ pub async fn update_deployment_image(
 		db::get_all_deployment_volumes(connection, deployment_id).await?;
 
 	if workspace.is_spam {
-		return Err(Error::empty()
-			.status(401)
-			.body(error!(UNVERIFIED_WORKSPACE).to_string()));
+		db::update_deployment_status(
+			connection,
+			deployment_id,
+			&DeploymentStatus::Running,
+		)
+		.await?;
+
+		Ok(())
+	} else {
+		let (kubeconfig, deployed_region_id) =
+			service::get_kubernetes_config_for_region(connection, region)
+				.await?;
+
+		service::update_kubernetes_deployment(
+			workspace_id,
+			&Deployment {
+				id: deployment_id.clone(),
+				name: name.to_string(),
+				registry: registry.clone(),
+				image_tag: image_tag.to_string(),
+				status: DeploymentStatus::Pushed,
+				region: region.clone(),
+				machine_type: machine_type.clone(),
+				current_live_digest: Some(digest.to_string()),
+			},
+			image_name,
+			Some(digest),
+			deployment_running_details,
+			&volumes,
+			kubeconfig,
+			&deployed_region_id,
+			config,
+			request_id,
+		)
+		.await?;
+
+		Ok(())
 	}
-
-	let kubeconfig =
-		service::get_kubernetes_config_for_region(connection, region, config)
-			.await?;
-
-	service::update_kubernetes_deployment(
-		workspace_id,
-		&Deployment {
-			id: deployment_id.clone(),
-			name: name.to_string(),
-			registry: registry.clone(),
-			image_tag: image_tag.to_string(),
-			status: DeploymentStatus::Pushed,
-			region: region.clone(),
-			machine_type: machine_type.clone(),
-			current_live_digest: Some(digest.to_string()),
-		},
-		image_name,
-		Some(digest),
-		deployment_running_details,
-		&volumes,
-		kubeconfig,
-		config,
-		request_id,
-	)
-	.await?;
-
-	Ok(())
 }
 
 pub async fn stop_deployment(
@@ -1724,16 +1756,22 @@ pub async fn stop_deployment(
 	)
 	.await?;
 
-	let kubeconfig = service::get_kubernetes_config_for_region(
-		connection, region_id, config,
-	)
-	.await?;
+	let (kubeconfig, _) =
+		service::get_kubernetes_config_for_region(connection, region_id)
+			.await?;
 
 	service::delete_kubernetes_deployment(
 		workspace_id,
 		deployment_id,
 		kubeconfig,
 		request_id,
+	)
+	.await?;
+
+	service::update_cloudflare_kv_for_deployment(
+		deployment_id,
+		cloudflare::deployment::Value::Stopped,
+		config,
 	)
 	.await?;
 
@@ -1749,6 +1787,7 @@ pub async fn delete_deployment(
 	login_id: Option<&Uuid>,
 	ip_address: &str,
 	patr_action: bool,
+	delete_k8s_resource: bool,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -1789,37 +1828,49 @@ pub async fn delete_deployment(
 	)
 	.await?;
 
-	let kubeconfig = service::get_kubernetes_config_for_region(
-		connection, region_id, config,
-	)
-	.await?;
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
 
-	service::delete_kubernetes_deployment(
-		workspace_id,
-		deployment_id,
-		kubeconfig.clone(),
-		request_id,
-	)
-	.await?;
+	if delete_k8s_resource && !workspace.is_spam {
+		let (kubeconfig, _) =
+			service::get_kubernetes_config_for_region(connection, region_id)
+				.await?;
 
-	let volumes =
-		db::get_all_deployment_volumes(connection, deployment_id).await?;
+		service::delete_kubernetes_deployment(
+			workspace_id,
+			deployment_id,
+			kubeconfig.clone(),
+			request_id,
+		)
+		.await?;
 
-	for volume in volumes {
-		db::delete_volume(connection, &volume.volume_id, &now).await?;
+		let volumes =
+			db::get_all_deployment_volumes(connection, deployment_id).await?;
 
-		for replica_index in 0..min_replicas {
-			service::delete_kubernetes_volume(
-				workspace_id,
-				deployment_id,
-				&volume,
-				replica_index,
-				kubeconfig.clone(),
-				request_id,
-			)
-			.await?;
+		for volume in volumes {
+			db::delete_volume(connection, &volume.volume_id, &now).await?;
+
+			for replica_index in 0..min_replicas {
+				service::delete_kubernetes_volume(
+					workspace_id,
+					deployment_id,
+					&volume,
+					replica_index,
+					kubeconfig.clone(),
+					request_id,
+				)
+				.await?;
+			}
 		}
 	}
+
+	service::update_cloudflare_kv_for_deployment(
+		deployment_id,
+		cloudflare::deployment::Value::Deleted,
+		config,
+	)
+	.await?;
 
 	Ok(())
 }

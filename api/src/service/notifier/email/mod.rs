@@ -616,6 +616,40 @@ pub async fn send_domain_verified_email(
 }
 
 #[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/byoc-disconnected-reminder/template.json"]
+#[serde(rename_all = "camelCase")]
+struct ByocDisconnectedReminder {
+	username: String,
+	workspace_name: String,
+	region_name: String,
+	region_id: String,
+	deadline_limit: u64,
+}
+
+pub async fn send_byoc_disconnected_reminder_email(
+	username: String,
+	workspace_name: String,
+	region_name: String,
+	region_id: String,
+	deadline_limit: u64,
+	email: Mailbox,
+) -> Result<(), Error> {
+	send_email(
+		ByocDisconnectedReminder {
+			username,
+			workspace_name,
+			region_name,
+			region_id,
+			deadline_limit,
+		},
+		email,
+		None,
+		"[Action required] BYOC cluster not reachable",
+	)
+	.await
+}
+
+#[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/repo-storage-limit-exceed/template.json"]
 #[serde(rename_all = "camelCase")]
 struct RepositoryStorageLimitExceedEmail {

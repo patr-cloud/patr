@@ -788,10 +788,6 @@ async fn revert_static_site(
 		Uuid::parse_str(context.get_param(request_keys::UPLOAD_ID).unwrap())
 			.unwrap();
 
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-
 	// check if upload_id is present in the deploy history
 	db::get_static_site_upload_history_by_upload_id(
 		context.get_database_connection(),
@@ -816,41 +812,14 @@ async fn revert_static_site(
 
 	service::update_static_site_and_db_status(
 		context.get_database_connection(),
-		&workspace_id,
 		&static_site_id,
 		&upload_id,
-		&StaticSiteDetails {},
 		&config,
 		&request_id,
 	)
 	.await?;
 
 	context.commit_database_transaction().await?;
-
-	let managed_urls = db::get_managed_urls_for_static_site(
-		context.get_database_connection(),
-		&static_site_id,
-	)
-	.await?;
-
-	for managed_url in managed_urls {
-		service::update_kubernetes_managed_url(
-			&workspace_id,
-			&ManagedUrl {
-				id: managed_url.id,
-				sub_domain: managed_url.sub_domain,
-				domain_id: managed_url.domain_id,
-				path: managed_url.path,
-				url_type: ManagedUrlType::ProxyStaticSite {
-					static_site_id: static_site_id.to_owned(),
-				},
-				is_configured: managed_url.is_configured,
-			},
-			&config,
-			&request_id,
-		)
-		.await?;
-	}
 
 	context.success(RevertStaticSiteResponse {});
 	Ok(context)
@@ -885,11 +854,6 @@ async fn start_static_site(
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id)
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
 	let static_site_id = Uuid::parse_str(
 		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
 	)
@@ -915,10 +879,8 @@ async fn start_static_site(
 	if let Some(upload_id) = static_site.current_live_upload {
 		service::update_static_site_and_db_status(
 			context.get_database_connection(),
-			&workspace_id,
 			&static_site_id,
 			&upload_id,
-			&StaticSiteDetails {},
 			&config,
 			&request_id,
 		)
@@ -1053,31 +1015,6 @@ async fn upload_static_site(
 		static_site_id
 	);
 
-	let managed_urls = db::get_managed_urls_for_static_site(
-		context.get_database_connection(),
-		&static_site_id,
-	)
-	.await?;
-
-	for managed_url in managed_urls {
-		service::update_kubernetes_managed_url(
-			&workspace_id,
-			&ManagedUrl {
-				id: managed_url.id,
-				sub_domain: managed_url.sub_domain,
-				domain_id: managed_url.domain_id,
-				path: managed_url.path,
-				url_type: ManagedUrlType::ProxyStaticSite {
-					static_site_id: static_site_id.to_owned(),
-				},
-				is_configured: managed_url.is_configured,
-			},
-			&config,
-			&request_id,
-		)
-		.await?;
-	}
-
 	context.success(UploadStaticSiteResponse { upload_id });
 	Ok(context)
 }
@@ -1109,11 +1046,6 @@ async fn stop_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id)
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
 	let static_site_id = Uuid::parse_str(
 		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
 	)
@@ -1130,7 +1062,6 @@ async fn stop_static_site(
 	let config = context.get_state().config.clone();
 	service::stop_static_site(
 		context.get_database_connection(),
-		&workspace_id,
 		&static_site_id,
 		&config,
 		&request_id,
@@ -1168,11 +1099,6 @@ async fn delete_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id)
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let request_id = Uuid::new_v4();
@@ -1217,10 +1143,8 @@ async fn delete_static_site(
 	let config = context.get_state().config.clone();
 	service::delete_static_site(
 		context.get_database_connection(),
-		&workspace_id,
 		&static_site_id,
 		&config,
-		&request_id,
 	)
 	.await?;
 

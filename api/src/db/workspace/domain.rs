@@ -28,9 +28,11 @@ pub struct WorkspaceDomain {
 	pub is_verified: bool,
 	pub nameserver_type: DomainNameserverType,
 	pub last_unverified: Option<DateTime<Utc>>,
+	pub cloudflare_worker_route_id: String,
 }
 
 impl WorkspaceDomain {
+	#[allow(dead_code)]
 	pub fn is_ns_external(&self) -> bool {
 		self.nameserver_type.is_external()
 	}
@@ -186,6 +188,7 @@ pub async fn initialize_domain_pre(
 			is_verified BOOLEAN NOT NULL,
 			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL,
 			last_unverified TIMESTAMPTZ,
+			cloudflare_worker_route_id TEXT NOT NULL,
 			CONSTRAINT workspace_domain_uq_id_nameserver_type
 				UNIQUE(id, nameserver_type),
 			CONSTRAINT workspace_domain_fk_id_domain_type
@@ -428,6 +431,7 @@ pub async fn add_to_workspace_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	nameserver_type: &DomainNameserverType,
+	cloudflare_worker_route_id: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -437,13 +441,15 @@ pub async fn add_to_workspace_domain(
 				domain_type,
 				is_verified,
 				nameserver_type,
-				last_unverified
+				last_unverified,
+				cloudflare_worker_route_id
 			)
 		VALUES
-			($1, 'business', FALSE, $2, NULL);
+			($1, 'business', FALSE, $2, NULL, $3);
 		"#,
 		domain_id as _,
 		nameserver_type as _,
+		cloudflare_worker_route_id
 	)
 	.execute(&mut *connection)
 	.await
@@ -529,7 +535,8 @@ pub async fn get_domains_for_workspace(
 			workspace_domain.domain_type as "domain_type: _",
 			workspace_domain.is_verified,
 			workspace_domain.nameserver_type as "nameserver_type: _",
-			workspace_domain.last_unverified as "last_unverified"
+			workspace_domain.last_unverified as "last_unverified",
+			workspace_domain.cloudflare_worker_route_id as "cloudflare_worker_route_id!"
 		FROM
 			domain
 		INNER JOIN
@@ -562,6 +569,7 @@ pub async fn get_all_unverified_domains(
 			workspace_domain.is_verified as "is_verified!",
 			workspace_domain.nameserver_type as "nameserver_type!: DomainNameserverType",
 			workspace_domain.last_unverified as "last_unverified",
+			workspace_domain.cloudflare_worker_route_id as "cloudflare_worker_route_id!",
 			patr_controlled_domain.zone_identifier as "zone_identifier?"
 		FROM
 			workspace_domain
@@ -590,6 +598,7 @@ pub async fn get_all_unverified_domains(
 				is_verified: row.is_verified,
 				nameserver_type: row.nameserver_type,
 				last_unverified: row.last_unverified,
+				cloudflare_worker_route_id: row.cloudflare_worker_route_id,
 			},
 			row.zone_identifier,
 		)
@@ -611,6 +620,7 @@ pub async fn get_all_verified_domains(
 			workspace_domain.is_verified as "is_verified!",
 			workspace_domain.nameserver_type as "nameserver_type!: DomainNameserverType",
 			workspace_domain.last_unverified as "last_unverified",
+			workspace_domain.cloudflare_worker_route_id as "cloudflare_worker_route_id!",
 			patr_controlled_domain.zone_identifier as "zone_identifier?"
 		FROM
 			workspace_domain
@@ -639,6 +649,7 @@ pub async fn get_all_verified_domains(
 				is_verified: row.is_verified,
 				nameserver_type: row.nameserver_type,
 				last_unverified: row.last_unverified,
+				cloudflare_worker_route_id: row.cloudflare_worker_route_id,
 			},
 			row.zone_identifier,
 		)
@@ -748,7 +759,8 @@ pub async fn get_workspace_domain_by_id(
 			workspace_domain.domain_type as "domain_type: _",
 			workspace_domain.is_verified,
 			workspace_domain.nameserver_type as "nameserver_type: _",
-			workspace_domain.last_unverified as "last_unverified!: _"
+			workspace_domain.last_unverified as "last_unverified!: _",
+			workspace_domain.cloudflare_worker_route_id as "cloudflare_worker_route_id!"
 		FROM
 			workspace_domain
 		INNER JOIN

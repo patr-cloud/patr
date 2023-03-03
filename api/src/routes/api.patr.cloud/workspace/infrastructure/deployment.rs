@@ -47,6 +47,7 @@ use crate::{
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
 	models::{
+		cloudflare::deployment,
 		rbac::{self, permissions},
 		DeploymentMetadata,
 		ResourceType,
@@ -921,6 +922,13 @@ async fn create_deployment(
 	)
 	.await?;
 
+	service::update_cloudflare_kv_for_deployment(
+		&id,
+		deployment::Value::Created,
+		&config,
+	)
+	.await?;
+
 	context.commit_database_transaction().await?;
 
 	if deploy_on_create {
@@ -1623,6 +1631,7 @@ async fn delete_deployment(
 		Some(&login_id),
 		&ip_address,
 		false,
+		true,
 		&config,
 		&request_id,
 	)
@@ -1897,12 +1906,14 @@ async fn get_deployment_metrics(
 	.status(500)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	if !service::is_deployed_on_patr_cluster(
+	let region = db::get_region_by_id(
 		context.get_database_connection(),
 		&deployment.region,
 	)
 	.await?
-	{
+	.status(500)?;
+
+	if region.is_byoc_region() {
 		return Err(Error::empty().status(500).body(
 			error!(FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER).to_string(),
 		));

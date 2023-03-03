@@ -8,6 +8,7 @@ use api_models::{
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
+use kube::config::Kubeconfig;
 use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
@@ -361,20 +362,18 @@ pub async fn queue_clean_ci_build_pipeline(
 
 pub async fn queue_setup_kubernetes_cluster(
 	region_id: &Uuid,
-	cluster_url: &str,
-	certificate_authority_data: &str,
-	auth_username: &str,
-	auth_token: &str,
+	kube_config: Kubeconfig,
+	tls_cer: &str,
+	tls_key: &str,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	send_message_to_infra_queue(
 		&InfraRequestData::BYOC(BYOCData::InitKubernetesCluster {
 			region_id: region_id.clone(),
-			cluster_url: cluster_url.to_owned(),
-			certificate_authority_data: certificate_authority_data.to_string(),
-			auth_username: auth_username.to_string(),
-			auth_token: auth_token.to_string(),
+			kube_config,
+			tls_cert: tls_cer.to_owned(),
+			tls_key: tls_key.to_owned(),
 			request_id: request_id.clone(),
 		}),
 		config,
@@ -457,4 +456,48 @@ pub async fn send_message_to_docker_webhook_queue(
 			Error::from(e)
 		})?;
 	Ok(())
+}
+
+pub async fn queue_get_kube_config_for_do_cluster(
+	api_token: &str,
+	cluster_id: &Uuid,
+	region_id: &Uuid,
+	tls_cer: &str,
+	tls_key: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_infra_queue(
+		&InfraRequestData::BYOC(BYOCData::GetDigitalOceanKubeconfig {
+			api_token: api_token.to_string(),
+			cluster_id: cluster_id.clone(),
+			region_id: region_id.clone(),
+			tls_cert: tls_cer.to_owned(),
+			tls_key: tls_key.to_owned(),
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await
+}
+
+pub async fn queue_delete_kubernetes_cluster(
+	region_id: &Uuid,
+	workspace_id: &Uuid,
+	kube_config: Kubeconfig,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_infra_queue(
+		&InfraRequestData::BYOC(BYOCData::DeleteKubernetesCluster {
+			region_id: region_id.clone(),
+			workspace_id: workspace_id.clone(),
+			kube_config,
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await
 }

@@ -3,21 +3,19 @@ use k8s_openapi::{self, api::core::v1::Namespace};
 use kube::{
 	self,
 	api::{DeleteParams, PostParams, PropagationPolicy},
+	config::Kubeconfig,
 	core::ObjectMeta,
 	Api,
 };
 
-use crate::{
-	service::{ext_traits::DeleteOpt, KubernetesConfigDetails},
-	utils::Error,
-};
+use crate::{service::ext_traits::DeleteOpt, utils::Error};
 
 pub async fn create_kubernetes_namespace(
 	namespace_name: &str,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_client(kubeconfig.auth_details).await?;
+	let client = super::get_kubernetes_client(kubeconfig).await?;
 
 	log::trace!("request_id: {} - creating namespace", request_id);
 	let kubernetes_namespace = Namespace {
@@ -38,10 +36,10 @@ pub async fn create_kubernetes_namespace(
 
 pub async fn delete_kubernetes_namespace(
 	namespace_name: &str,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_client(kubeconfig.auth_details).await?;
+	let client = super::get_kubernetes_client(kubeconfig).await?;
 
 	log::trace!("request_id: {} - deleting namespace", request_id);
 

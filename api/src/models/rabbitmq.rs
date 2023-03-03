@@ -1,13 +1,14 @@
 use std::{fmt, slice::Iter};
 
 use api_models::{
-	models::workspace::{
-		infrastructure::deployment::{Deployment, DeploymentRunningDetails},
-		region::DigitaloceanRegion,
+	models::workspace::infrastructure::deployment::{
+		Deployment,
+		DeploymentRunningDetails,
 	},
 	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
+use kube::config::Kubeconfig;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -21,18 +22,11 @@ pub enum Queue {
 	Infrastructure,
 	Ci,
 	Billing,
-	MigrationChange,
 }
 
 impl Queue {
 	pub fn iterator() -> Iter<'static, Queue> {
-		static QUEUE: [Queue; 4] = [
-			Queue::Infrastructure,
-			Queue::Ci,
-			Queue::Billing,
-			Queue::MigrationChange,
-		];
-		QUEUE.iter()
+		[Queue::Infrastructure, Queue::Ci, Queue::Billing].iter()
 	}
 }
 
@@ -42,7 +36,6 @@ impl fmt::Display for Queue {
 			Queue::Infrastructure => write!(f, "infrastructure"),
 			Queue::Ci => write!(f, "ci"),
 			Queue::Billing => write!(f, "billing"),
-			Queue::MigrationChange => write!(f, "migrationChange"),
 		}
 	}
 }
@@ -61,24 +54,28 @@ pub enum InfraRequestData {
 pub enum BYOCData {
 	InitKubernetesCluster {
 		region_id: Uuid,
-		cluster_url: String,
-		certificate_authority_data: String,
-		auth_username: String,
-		auth_token: String,
+		kube_config: Kubeconfig,
+		tls_cert: String,
+		tls_key: String,
 		request_id: Uuid,
 	},
 	CheckClusterForReadiness {
 		region_id: Uuid,
-		cluster_url: String,
-		certificate_authority_data: String,
-		auth_username: String,
-		auth_token: String,
+		kube_config: Kubeconfig,
 		request_id: Uuid,
 	},
-	CreateDigitaloceanCluster {
+	GetDigitalOceanKubeconfig {
+		api_token: String,
+		cluster_id: Uuid,
 		region_id: Uuid,
-		digitalocean_region: DigitaloceanRegion,
-		access_token: String,
+		tls_cert: String,
+		tls_key: String,
+		request_id: Uuid,
+	},
+	DeleteKubernetesCluster {
+		region_id: Uuid,
+		workspace_id: Uuid,
+		kube_config: Kubeconfig,
 		request_id: Uuid,
 	},
 }
@@ -165,16 +162,6 @@ pub enum CIData {
 		git_provider_id: Uuid,
 		request_id: Uuid,
 		github_access_token: String,
-	},
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(tag = "action", rename_all = "camelCase")]
-pub enum MigrationChangeData {
-	CheckUserAccountForSpam {
-		user_id: Uuid,
-		process_after: DateTime<Utc>,
-		request_id: Uuid,
 	},
 }
 

@@ -45,7 +45,14 @@
 	"cloudflare": {
 		"accountId": "<example-account-id>",
 		"accountEmail": "account@example.com",
-		"apiToken": "<example-api-token>"
+		"apiToken": "<example-api-token>",
+		"kvRoutingNs": "kvRoutingNs",
+		"kvDeploymentNs": "kvDeploymentNs",
+		"kvStaticSiteNs": "kvStaticSiteNs",
+		"onpatrDomain": "onpatrDomain",
+		"originCaKey": "originCaKey",
+		"patrZoneIdentifier": "patrZoneIdentifier",
+		"workerScript": "workerScript"
 	},
 	"dockerRegistry": {
 		"serviceName": "Deployer Registry Service",

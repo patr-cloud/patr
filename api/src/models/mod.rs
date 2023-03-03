@@ -1,8 +1,10 @@
 pub mod ci;
+pub mod cloudflare;
 pub mod deployment;
 pub mod error;
 pub mod rabbitmq;
 pub mod rbac;
+pub mod region;
 
 mod auditlog;
 mod auth;
@@ -23,6 +25,7 @@ pub use self::{
 	auth::*,
 	docker_registry::*,
 	email_template::*,
+	region::*,
 	twilio_sms::*,
 };
 

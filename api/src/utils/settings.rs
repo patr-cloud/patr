@@ -142,6 +142,23 @@ pub struct CloudflareSettings {
 	pub account_email: String,
 	#[serde(alias = "apitoken")]
 	pub api_token: String,
+
+	#[serde(alias = "kvroutingns")]
+	pub kv_routing_ns: String,
+	#[serde(alias = "kvdeploymentns")]
+	pub kv_deployment_ns: String,
+	#[serde(alias = "kvstaticsitens")]
+	pub kv_static_site_ns: String,
+
+	#[serde(alias = "onpatrdomain")]
+	pub onpatr_domain: String,
+	#[serde(alias = "regionrootdomain")]
+	pub origin_ca_key: String,
+
+	#[serde(alias = "patrzoneidentifier")]
+	pub patr_zone_identifier: String,
+	#[serde(alias = "workerscript")]
+	pub worker_script: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

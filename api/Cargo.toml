@@ -23,7 +23,7 @@ async-trait = "0.1"
 base32 = "0.4"
 base64 = "0.13"
 chrono = "0.4"
-cloudflare = { git = "https://github.com/vicara-hq/cloudflare-rs" }
+cloudflare = { git = "https://github.com/vicara-hq/cloudflare-rs", branch = "patr-must-haves" }
 config_rs = { version = "0.13", package = "config" }
 cron = "0.12"
 deadpool = "*"
@@ -83,6 +83,9 @@ trust-dns-client = "0.22"
 vaultrs = "0.6"
 zeroize = "1"
 zip = "0.6"
+rcgen = "0.10.0"
+url = "2.2"
+itertools = "0.10.5"
 
 [dependencies.log4rs]
 default-features = false

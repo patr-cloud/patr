@@ -1,5 +1,6 @@
 use api_models::{
 	models::workspace::{
+		region::RegionStatus,
 		CreateNewWorkspaceRequest,
 		CreateNewWorkspaceResponse,
 		DeleteWorkspaceResponse,
@@ -16,6 +17,7 @@ use api_models::{
 };
 use chrono::{Duration, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use sqlx::types::Json;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -570,8 +572,6 @@ async fn delete_workspace(
 
 	let namespace = workspace_id.as_str();
 
-	let config = context.get_state().config.clone();
-
 	let domains = db::get_domains_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
@@ -615,25 +615,39 @@ async fn delete_workspace(
 		)
 		.await?;
 
+	let regions = db::get_all_regions_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?;
+
 	if !domains.is_empty() ||
 		!docker_repositories.is_empty() ||
 		!managed_database.is_empty() ||
 		!deployments.is_empty() ||
 		!static_site.is_empty() ||
 		!managed_url.is_empty() ||
-		!connected_git_providers.is_empty()
+		!connected_git_providers.is_empty() ||
+		!regions.is_empty()
 	{
 		return Err(Error::empty()
 			.status(424)
 			.body(error!(CANNOT_DELETE_WORKSPACE).to_string()));
 	}
 
-	service::delete_kubernetes_namespace(
-		namespace,
-		service::get_kubernetes_config_for_default_region(&config),
-		&request_id,
-	)
-	.await?;
+	for config in db::get_all_default_regions(context.get_database_connection())
+		.await?
+		.into_iter()
+		.filter_map(|region| {
+			if region.status == RegionStatus::Active {
+				region.config_file.map(|Json(config)| config)
+			} else {
+				None
+			}
+		}) {
+		service::delete_kubernetes_namespace(namespace, config, &request_id)
+			.await?;
+	}
 
 	db::delete_workspace(
 		context.get_database_connection(),

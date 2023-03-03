@@ -1,10 +1,7 @@
 use std::io::{Cursor, Read};
 
 use api_models::{
-	models::workspace::infrastructure::{
-		deployment::DeploymentStatus,
-		static_site::StaticSiteDetails,
-	},
+	models::workspace::infrastructure::deployment::DeploymentStatus,
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
@@ -15,8 +12,8 @@ use zip::ZipArchive;
 use crate::{
 	db::{self, StaticSitePlan},
 	error,
-	models::rbac,
-	service::{self, infrastructure::kubernetes},
+	models::{cloudflare, rbac},
+	service,
 	utils::{constants::free_limits, settings::Settings, validator, Error},
 	Database,
 };
@@ -104,6 +101,13 @@ pub async fn create_static_site_in_workspace(
 		request_id
 	);
 
+	service::update_cloudflare_kv_for_static_site(
+		&static_site_id,
+		cloudflare::static_site::Value::Created,
+		config,
+	)
+	.await?;
+
 	if let Some(file) = file {
 		create_static_site_upload(
 			connection,
@@ -158,18 +162,16 @@ pub async fn upload_static_site(
 
 pub async fn stop_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
 	static_site_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {} - Getting deployment id from db", request_id);
 
-	kubernetes::delete_kubernetes_static_site(
-		workspace_id,
+	service::update_cloudflare_kv_for_static_site(
 		static_site_id,
+		cloudflare::static_site::Value::Stopped,
 		config,
-		request_id,
 	)
 	.await?;
 
@@ -190,21 +192,18 @@ pub async fn stop_static_site(
 
 pub async fn delete_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
 	static_site_id: &Uuid,
 	config: &Settings,
-	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let static_site = db::get_static_site_by_id(connection, static_site_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	kubernetes::delete_kubernetes_static_site(
-		workspace_id,
+	service::update_cloudflare_kv_for_static_site(
 		static_site_id,
+		cloudflare::static_site::Value::Deleted,
 		config,
-		request_id,
 	)
 	.await?;
 
@@ -396,10 +395,8 @@ pub async fn upload_static_site_files_to_s3(
 
 pub async fn update_static_site_and_db_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
 	static_site_id: &Uuid,
 	upload_id: &Uuid,
-	_running_details: &StaticSiteDetails,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -408,13 +405,11 @@ pub async fn update_static_site_and_db_status(
 		static_site_id,
 		upload_id
 	);
-	let result = service::update_kubernetes_static_site(
-		workspace_id,
+
+	let result = service::update_cloudflare_kv_for_static_site(
 		static_site_id,
-		upload_id,
-		&StaticSiteDetails {},
+		cloudflare::static_site::Value::Serving(upload_id.clone()),
 		config,
-		request_id,
 	)
 	.await;
 
@@ -716,10 +711,8 @@ async fn create_static_site_upload(
 	} else {
 		service::update_static_site_and_db_status(
 			connection,
-			workspace_id,
 			static_site_id,
 			&upload_id,
-			&StaticSiteDetails {},
 			config,
 			request_id,
 		)

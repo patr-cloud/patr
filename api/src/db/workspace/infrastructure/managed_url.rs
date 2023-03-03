@@ -26,6 +26,7 @@ pub struct ManagedUrl {
 	pub is_configured: bool,
 	pub permanent_redirect: Option<bool>,
 	pub http_only: Option<bool>,
+	pub cloudflare_custom_hostname_id: String,
 }
 
 pub async fn initialize_managed_url_pre(
@@ -68,6 +69,7 @@ pub async fn initialize_managed_url_pre(
 			deleted TIMESTAMPTZ,
 			permanent_redirect BOOLEAN,
 			http_only BOOLEAN,
+			cloudflare_custom_hostname_id TEXT NOT NULL,
 			CONSTRAINT managed_url_chk_values_null_or_not_null CHECK(
 				(
 					url_type = 'proxy_to_deployment' AND
@@ -180,7 +182,8 @@ pub async fn get_all_managed_urls_in_workspace(
 			workspace_id as "workspace_id: _",
 			is_configured,
 			permanent_redirect as "permanent_redirect: _",
-			http_only as "http_only: _"
+			http_only as "http_only: _",
+			cloudflare_custom_hostname_id
 		FROM
 			managed_url
 		WHERE
@@ -213,7 +216,8 @@ pub async fn get_all_managed_urls_for_domain(
 			workspace_id as "workspace_id: _",
 			is_configured,
 			permanent_redirect as "permanent_redirect: _",
-			http_only as "http_only: _"
+			http_only as "http_only: _",
+			cloudflare_custom_hostname_id
 		FROM
 			managed_url
 		WHERE
@@ -245,11 +249,44 @@ pub async fn get_all_unconfigured_managed_urls(
 			workspace_id as "workspace_id: _",
 			is_configured,
 			permanent_redirect as "permanent_redirect: _",
-			http_only as "http_only: _"
+			http_only as "http_only: _",
+			cloudflare_custom_hostname_id
 		FROM
 			managed_url
 		WHERE
 			is_configured = FALSE AND
+			deleted IS NULL;
+		"#
+	)
+	.fetch_all(connection)
+	.await
+}
+
+pub async fn get_all_configured_managed_urls(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<ManagedUrl>, sqlx::Error> {
+	query_as!(
+		ManagedUrl,
+		r#"
+		SELECT
+			id as "id: _",
+			sub_domain,
+			domain_id as "domain_id: _",
+			path,
+			url_type as "url_type: _",
+			deployment_id as "deployment_id: _",
+			port,
+			static_site_id as "static_site_id: _",
+			url,
+			workspace_id as "workspace_id: _",
+			is_configured,
+			permanent_redirect,
+			http_only,
+			cloudflare_custom_hostname_id
+		FROM
+			managed_url
+		WHERE
+			is_configured = TRUE AND
 			deleted IS NULL;
 		"#
 	)
@@ -272,6 +309,7 @@ pub async fn create_new_managed_url_in_workspace(
 	is_configured: bool,
 	permanent_redirect: Option<bool>,
 	http_only: Option<bool>,
+	cloudflare_custom_hostname_id: String,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -289,7 +327,8 @@ pub async fn create_new_managed_url_in_workspace(
 				workspace_id,
 				is_configured,
 				permanent_redirect,
-				http_only
+				http_only,
+				cloudflare_custom_hostname_id
 			)
 		VALUES
 			(
@@ -305,7 +344,8 @@ pub async fn create_new_managed_url_in_workspace(
 				$10,
 				$11,
 				$12,
-				$13
+				$13,
+				$14
 			);
 		"#,
 		managed_url_id as _,
@@ -320,7 +360,8 @@ pub async fn create_new_managed_url_in_workspace(
 		workspace_id as _,
 		is_configured,
 		permanent_redirect,
-		http_only
+		http_only,
+		cloudflare_custom_hostname_id
 	)
 	.execute(&mut *connection)
 	.await
@@ -347,7 +388,8 @@ pub async fn get_managed_url_by_id(
 			workspace_id as "workspace_id: _",
 			is_configured,
 			permanent_redirect as "permanent_redirect: _",
-			http_only as "http_only: _"
+			http_only as "http_only: _",
+			cloudflare_custom_hostname_id
 		FROM
 			managed_url
 		WHERE
@@ -508,7 +550,8 @@ pub async fn get_all_managed_urls_for_deployment(
 			workspace_id as "workspace_id!: _",
 			is_configured as "is_configured!: _",
 			permanent_redirect as "permanent_redirect!: _",
-			http_only as "http_only!: _"
+			http_only as "http_only!: _",
+			cloudflare_custom_hostname_id as "cloudflare_custom_hostname_id!: _"
 		FROM
 			managed_url_list
 		WHERE
@@ -583,7 +626,8 @@ pub async fn get_all_managed_urls_for_static_site(
 			workspace_id as "workspace_id!: _",
 			is_configured as "is_configured!: _",
 			permanent_redirect as "permanent_redirect!: _",
-			http_only as "http_only!: _"
+			http_only as "http_only!: _",
+			cloudflare_custom_hostname_id as "cloudflare_custom_hostname_id!: _"
 		FROM
 			managed_url_list
 		WHERE
@@ -616,4 +660,42 @@ pub async fn get_active_managed_url_count_for_domain(
 	.fetch_one(&mut *connection)
 	.await
 	.map(|row| row.count.unwrap_or(0))
+}
+
+pub async fn get_all_managed_urls_for_host(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	sub_domain: &str,
+	domain_id: &Uuid,
+) -> Result<Vec<ManagedUrl>, sqlx::Error> {
+	query_as!(
+		ManagedUrl,
+		r#"
+		SELECT
+			id as "id: _",
+			sub_domain,
+			domain_id as "domain_id: _",
+			path,
+			url_type as "url_type: _",
+			deployment_id as "deployment_id: _",
+			port,
+			static_site_id as "static_site_id: _",
+			url,
+			workspace_id as "workspace_id: _",
+			is_configured,
+			permanent_redirect,
+			http_only,
+			cloudflare_custom_hostname_id
+		FROM
+			managed_url
+		WHERE
+			deleted IS NULL AND
+			sub_domain = $1 AND
+			domain_id = $2
+		ORDER BY path DESC;
+		"#,
+		sub_domain,
+		domain_id as _
+	)
+	.fetch_all(connection)
+	.await
 }

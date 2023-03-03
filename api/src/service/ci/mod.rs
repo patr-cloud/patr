@@ -15,10 +15,9 @@ use api_models::{
 			When,
 			Work,
 		},
-		workspace::ci::git_provider::{
-			BuildStepStatus,
-			GitProviderType,
-			RepoStatus,
+		workspace::{
+			ci::git_provider::{BuildStepStatus, GitProviderType, RepoStatus},
+			region::RegionStatus,
 		},
 	},
 	utils::Uuid,
@@ -26,6 +25,7 @@ use api_models::{
 use chrono::Utc;
 use eve_rs::AsError;
 use globset::{Glob, GlobSetBuilder};
+use sqlx::types::Json;
 
 use crate::{
 	db::{self, GitProvider},
@@ -388,7 +388,17 @@ pub async fn add_build_steps_in_k8s(
 
 	service::infrastructure::create_kubernetes_namespace(
 		&build_id.get_build_namespace(),
-		service::get_kubernetes_config_for_default_region(config),
+		db::get_all_default_regions(&mut *connection)
+			.await?
+			.into_iter()
+			.find_map(|region| {
+				if region.status == RegionStatus::Active {
+					region.config_file.map(|Json(config)| config)
+				} else {
+					None
+				}
+			})
+			.status(500)?,
 		request_id,
 	)
 	.await?;

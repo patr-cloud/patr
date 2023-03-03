@@ -19,13 +19,7 @@ use tokio::{signal, task};
 
 use crate::{
 	app::App,
-	models::rabbitmq::{
-		BillingData,
-		CIData,
-		InfraRequestData,
-		MigrationChangeData,
-		Queue,
-	},
+	models::rabbitmq::{BillingData, CIData, InfraRequestData, Queue},
 	utils::{settings::Settings, Error},
 };
 
@@ -35,7 +29,6 @@ mod ci;
 mod database;
 mod deployment;
 mod docker_registry;
-mod migration_change;
 
 pub use ci::{BuildId, BuildStep, BuildStepId};
 
@@ -149,26 +142,6 @@ pub async fn start_consumer(app: &App) {
 							}
 						};
 						process_billing_queue_payload(payload, &app).await
-					}
-					Queue::MigrationChange => {
-						let payload = serde_json::from_slice::<
-							MigrationChangeData,
-						>(&delivery.data);
-
-						let payload = match payload {
-							Ok(payload) => payload,
-							Err(err) => {
-								log::error!(
-									"Unknown payload recieved: `{}`",
-									String::from_utf8(delivery.data)
-										.unwrap_or_default()
-								);
-								log::error!("Error parsing payload: {}  for migration queue", err);
-								continue;
-							}
-						};
-						process_migration_change_queue_payload(payload, &app)
-							.await
 					}
 				};
 				let ack_result = if let Err(error) = result {
@@ -284,23 +257,6 @@ async fn process_billing_queue_payload(
 	let config = &app.config;
 	let mut connection = app.database.acquire().await?;
 	billing::process_request(&mut connection, data, config)
-		.await
-		.map_err(|error| {
-			log::error!(
-				"Error processing bills RabbitMQ message: {}",
-				error.get_error()
-			);
-			error
-		})
-}
-
-async fn process_migration_change_queue_payload(
-	data: MigrationChangeData,
-	app: &App,
-) -> Result<(), Error> {
-	let config = &app.config;
-	let mut connection = app.database.begin().await?;
-	migration_change::process_request(&mut connection, data, config)
 		.await
 		.map_err(|error| {
 			log::error!(

@@ -88,6 +88,7 @@ pub async fn initialize(app: &App) -> Result<(), Error> {
 		transaction.commit().await?;
 
 		log::info!("Database created fresh");
+
 		Ok(())
 	} else {
 		// If it already exists, perform a migration with the known values

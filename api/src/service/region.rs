@@ -1,106 +1,95 @@
-use std::net::IpAddr;
-
-use api_models::utils::Uuid;
+use api_models::{models::workspace::region::RegionStatus, utils::Uuid};
 use eve_rs::AsError;
+use kube::config::Kubeconfig;
+use reqwest::Client;
+use sqlx::types::Json;
 
 use crate::{
 	db,
-	utils::{settings::Settings, Error},
+	error,
+	models::digitalocean::{K8NodePool, K8sConfig, K8sCreateCluster},
+	utils::Error,
 	Database,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ClusterType {
-	PatrOwned,
-	UserOwned {
-		region_id: Uuid,
-		ingress_ip_addr: IpAddr,
-	},
-}
-
-#[derive(Debug, Clone)]
-pub struct KubernetesAuthDetails {
-	pub cluster_url: String,
-	pub auth_username: String,
-	pub auth_token: String,
-	pub certificate_authority_data: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct KubernetesConfigDetails {
-	pub cluster_type: ClusterType,
-	pub auth_details: KubernetesAuthDetails,
-}
-
-pub fn get_kubernetes_config_for_default_region(
-	config: &Settings,
-) -> KubernetesConfigDetails {
-	KubernetesConfigDetails {
-		cluster_type: ClusterType::PatrOwned,
-		auth_details: KubernetesAuthDetails {
-			cluster_url: config.kubernetes.cluster_url.to_owned(),
-			auth_username: config.kubernetes.auth_username.to_owned(),
-			auth_token: config.kubernetes.auth_token.to_owned(),
-			certificate_authority_data: config
-				.kubernetes
-				.certificate_authority_data
-				.to_owned(),
-		},
-	}
-}
 
 pub async fn get_kubernetes_config_for_region(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
-	config: &Settings,
-) -> Result<KubernetesConfigDetails, Error> {
+) -> Result<(Kubeconfig, Uuid), Error> {
 	let region = db::get_region_by_id(connection, region_id)
 		.await?
 		.status(500)?;
 
-	let kubeconfig = if region.workspace_id.is_none() {
-		// use the patr clusters
-
-		// for now returing the default cluster credentials
-		get_kubernetes_config_for_default_region(config)
-	} else {
-		match (
-			region.ready,
-			region.kubernetes_cluster_url,
-			region.kubernetes_auth_username,
-			region.kubernetes_auth_token,
-			region.kubernetes_ca_data,
-			region.kubernetes_ingress_ip_addr,
-		) {
-			(
-				true,
-				Some(cluster_url),
-				Some(auth_username),
-				Some(auth_token),
-				Some(certificate_authority_data),
-				Some(ingress_ip_addr),
-			) => KubernetesConfigDetails {
-				cluster_type: ClusterType::UserOwned {
-					region_id: region.id,
-					ingress_ip_addr,
-				},
-				auth_details: KubernetesAuthDetails {
-					cluster_url,
-					auth_username,
-					auth_token,
-					certificate_authority_data,
-				},
-			},
-			_ => {
-				log::info!("cluster {region_id} is not yet initialized");
-				return Err(Error::empty().body(format!(
-					"cluster {region_id} is not yet initialized"
-				)));
-			}
+	match (
+		region.status,
+		region.workspace_id,
+		region.config_file,
+		region.ingress_hostname,
+	) {
+		(RegionStatus::Active, _, Some(Json(config)), Some(_)) => {
+			// If the region is active, regardless of the workspace, use the
+			// config
+			Ok((config, region.id))
 		}
-	};
+		(RegionStatus::ComingSoon, None, ..) => {
+			// If the region is default, and is coming soon, get the first
+			// default valid region
+			let deployed_region = db::get_all_default_regions(connection)
+				.await?
+				.into_iter()
+				.find(|region| region.status == RegionStatus::Active)
+				.status(500)?;
+			Ok((
+				deployed_region.config_file.status(500)?.0,
+				deployed_region.id,
+			))
+		}
+		_ => Err(Error::empty()
+			.status(400)
+			.body(error!(REGION_NOT_READY_YET).to_string())),
+	}
+}
 
-	Ok(kubeconfig)
+pub async fn create_do_k8s_cluster(
+	region: &str,
+	api_token: &str,
+	cluster_name: &str,
+	min_nodes: u16,
+	max_nodes: u16,
+	auto_scale: bool,
+	node_name: &str,
+	node_size_slug: &str,
+	request_id: &Uuid,
+) -> Result<Uuid, Error> {
+	log::trace!(
+		"request_id: {} creating digital ocean k8s cluster using api call",
+		request_id
+	);
+	let client = Client::new();
+
+	let k8s_cluster_id = client
+		.post("https://api.digitalocean.com/v2/kubernetes/clusters")
+		.bearer_auth(api_token)
+		.json(&K8sConfig {
+			region: region.to_string(),
+			version: "latest".to_string(),
+			name: cluster_name.to_string(),
+			node_pools: vec![K8NodePool {
+				name: node_name.to_string(),
+				size: node_size_slug.to_string(),
+				auto_scale,
+				min_nodes,
+				max_nodes,
+			}],
+		})
+		.send()
+		.await?
+		.json::<K8sCreateCluster>()
+		.await?
+		.kubernetes_cluster
+		.id;
+
+	Ok(k8s_cluster_id)
 }
 
 pub async fn is_deployed_on_patr_cluster(

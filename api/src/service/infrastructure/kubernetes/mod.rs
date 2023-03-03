@@ -1,27 +1,11 @@
-mod certificate;
 mod ci;
 mod deployment;
-mod managed_url;
-mod static_site;
 mod workspace;
 
 pub mod ext_traits;
 
-use std::{net::IpAddr, str::FromStr};
-
-use api_models::utils::Uuid;
-use k8s_openapi::api::core::v1::{
-	EndpointAddress,
-	EndpointPort,
-	EndpointSubset,
-	Endpoints,
-	Secret,
-	Service,
-	ServicePort,
-	ServiceSpec,
-};
+use k8s_openapi::api::core::v1::Service;
 use kube::{
-	api::{Patch, PatchParams},
 	config::{
 		AuthInfo,
 		Cluster,
@@ -31,69 +15,20 @@ use kube::{
 		NamedCluster,
 		NamedContext,
 	},
-	core::{ApiResource, DynamicObject, ErrorResponse, ObjectMeta},
 	Api,
 	Config,
-	Error as KubeError,
 };
+use url::Host;
 
-pub use self::{
-	certificate::*,
-	ci::*,
-	deployment::*,
-	managed_url::*,
-	static_site::*,
-	workspace::*,
-};
-use crate::{
-	service::KubernetesAuthDetails,
-	utils::{settings::Settings, Error},
-};
+pub use self::{ci::*, deployment::*, workspace::*};
+use crate::utils::{settings::Settings, Error};
 
 async fn get_kubernetes_client(
-	kube_auth_details: KubernetesAuthDetails,
+	kube_config: Kubeconfig,
 ) -> Result<kube::Client, Error> {
-	let kubeconfig = Config::from_custom_kubeconfig(
-		Kubeconfig {
-			api_version: Some("v1".to_string()),
-			kind: Some("Config".to_string()),
-			clusters: vec![NamedCluster {
-				name: "kubernetesCluster".to_owned(),
-				cluster: Some(Cluster {
-					server: Some(kube_auth_details.cluster_url),
-					certificate_authority_data: Some(
-						kube_auth_details.certificate_authority_data,
-					),
-					insecure_skip_tls_verify: None,
-					certificate_authority: None,
-					proxy_url: None,
-					extensions: None,
-					..Default::default()
-				}),
-			}],
-			auth_infos: vec![NamedAuthInfo {
-				name: kube_auth_details.auth_username.clone(),
-				auth_info: Some(AuthInfo {
-					token: Some(kube_auth_details.auth_token.into()),
-					..Default::default()
-				}),
-			}],
-			contexts: vec![NamedContext {
-				name: "kubernetesContext".to_owned(),
-				context: Some(Context {
-					cluster: "kubernetesCluster".to_owned(),
-					user: kube_auth_details.auth_username,
-					extensions: None,
-					namespace: None,
-				}),
-			}],
-			current_context: Some("kubernetesContext".to_owned()),
-			preferences: None,
-			extensions: None,
-		},
-		&Default::default(),
-	)
-	.await?;
+	let kubeconfig =
+		Config::from_custom_kubeconfig(kube_config, &Default::default())
+			.await?;
 
 	let kube_client = kube::Client::try_from(kubeconfig)?;
 	Ok(kube_client)
@@ -150,125 +85,39 @@ async fn get_kubernetes_config(
 	Ok(client)
 }
 
-async fn certificate_exists(
-	certificate_name: &str,
-	kubernetes_client: kube::Client,
-	namespace: &str,
-) -> Result<bool, KubeError> {
-	let certificate_resource = ApiResource {
-		group: "cert-manager.io".to_string(),
-		version: "v1".to_string(),
-		api_version: "cert-manager.io/v1".to_string(),
-		kind: "certificate".to_string(),
-		plural: "certificates".to_string(),
-	};
+pub async fn get_patr_ingress_load_balancer_hostname(
+	kube_config: Kubeconfig,
+) -> Result<Option<Host>, Error> {
+	let namespace = "ingress-nginx";
+	let service_name = "ingress-nginx-controller";
 
-	let certificate = Api::<DynamicObject>::namespaced_with(
-		kubernetes_client,
-		namespace,
-		&certificate_resource,
-	)
-	.get(certificate_name)
-	.await;
-	match certificate {
-		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),
-		Err(err) => Err(err),
-		Ok(_) => Ok(true),
-	}
-}
-
-async fn secret_exists(
-	secret_name: &str,
-	kubernetes_client: kube::Client,
-	namespace: &str,
-) -> Result<bool, KubeError> {
-	let secret = Api::<Secret>::namespaced(kubernetes_client, namespace)
-		.get(secret_name)
-		.await;
-	match secret {
-		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),
-		Err(err) => Err(err),
-		Ok(_) => Ok(true),
-	}
-}
-
-pub async fn get_external_ip_addr_for_load_balancer(
-	namespace: &str,
-	service_name: &str,
-	kube_auth_details: KubernetesAuthDetails,
-) -> Result<Option<IpAddr>, Error> {
-	let kube_client = get_kubernetes_client(kube_auth_details).await?;
+	let kube_client = get_kubernetes_client(kube_config).await?;
 
 	let service = Api::<Service>::namespaced(kube_client, namespace)
 		.get_status(service_name)
 		.await?;
 
-	let ip_addr = service
+	let hostname = service
 		.status
 		.and_then(|status| status.load_balancer)
 		.and_then(|load_balancer| load_balancer.ingress)
 		.and_then(|load_balancer_ingresses| {
 			load_balancer_ingresses.into_iter().next()
 		})
-		.and_then(|load_balancer_ingress| load_balancer_ingress.ip)
-		.and_then(|ip_addr| IpAddr::from_str(&ip_addr).ok());
+		.and_then(|load_balancer_ingress| {
+			load_balancer_ingress.ip.or(load_balancer_ingress.hostname)
+		})
+		.map(|hostname| {
+			Host::parse(&hostname).map_err(|err| {
+				log::error!(
+					"Error while parsing host `{}` - `{}`",
+					hostname,
+					err
+				);
+				Error::empty().body("Hostname Parse error")
+			})
+		})
+		.transpose()?;
 
-	Ok(ip_addr)
-}
-
-pub async fn create_external_service_for_region(
-	parent_namespace: &str,
-	region_id: &Uuid,
-	external_ip_addr: &IpAddr,
-	kube_auth_details: KubernetesAuthDetails,
-) -> Result<(), Error> {
-	let kube_client = get_kubernetes_client(kube_auth_details).await?;
-
-	Api::<Service>::namespaced(kube_client.clone(), parent_namespace)
-		.patch(
-			&format!("service-{}", region_id),
-			&PatchParams::apply(&format!("service-{}", region_id)),
-			&Patch::Apply(Service {
-				metadata: ObjectMeta {
-					name: Some(format!("service-{}", region_id)),
-					..ObjectMeta::default()
-				},
-				spec: Some(ServiceSpec {
-					ports: Some(vec![ServicePort {
-						port: 80,
-						protocol: Some("TCP".to_owned()),
-						..Default::default()
-					}]),
-					..ServiceSpec::default()
-				}),
-				..Service::default()
-			}),
-		)
-		.await?;
-
-	Api::<Endpoints>::namespaced(kube_client, parent_namespace)
-		.patch(
-			&format!("service-{}", region_id),
-			&PatchParams::apply(&format!("service-{}", region_id)),
-			&Patch::Apply(Endpoints {
-				metadata: ObjectMeta {
-					name: Some(format!("service-{}", region_id)),
-					..ObjectMeta::default()
-				},
-				subsets: Some(vec![EndpointSubset {
-					addresses: Some(vec![EndpointAddress {
-						ip: external_ip_addr.to_string(),
-						..Default::default()
-					}]),
-					ports: Some(vec![EndpointPort {
-						port: 80,
-						..Default::default()
-					}]),
-					..Default::default()
-				}]),
-			}),
-		)
-		.await?;
-
-	Ok(())
+	Ok(hostname)
 }
