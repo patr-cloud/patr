@@ -25,6 +25,7 @@ pub struct PatrDatabase {
 	pub port: i32,
 	pub username: String,
 	pub password: String,
+	pub replica_numbers: i32,
 }
 
 pub async fn initialize_patr_database_pre(
@@ -36,7 +37,8 @@ pub async fn initialize_patr_database_pre(
 		r#"
 		CREATE TYPE PATR_DATABASE_ENGINE AS ENUM(
 			'postgres',
-			'mysql'
+			'mysql',
+			'redis'
 		);
 		"#
 	)
@@ -86,6 +88,7 @@ pub async fn initialize_patr_database_pre(
 			port 			INTEGER 				NOT NULL,
 			username 		TEXT 					NOT NULL,
 			password 		TEXT 					NOT NULL,
+			replica_numbers INTEGER					NOT NULL DEFAULT 1,
 			deleted 		TIMESTAMPTZ,
 
 			CONSTRAINT patr_database_pk
@@ -151,6 +154,7 @@ pub async fn create_patr_database(
 	port: i32,
 	username: &str,
 	password: &str,
+	replica_numbers: i32,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -166,9 +170,10 @@ pub async fn create_patr_database(
 			host,
 			port,
 			username,
-			password
+			password,
+			replica_numbers
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);
 		"#,
 		id as _,
 		name as _,
@@ -182,6 +187,7 @@ pub async fn create_patr_database(
 		port,
 		username,
 		password,
+		replica_numbers,
 	)
 	.execute(&mut *connection)
 	.await
@@ -203,6 +209,28 @@ pub async fn update_patr_database_status(
 			id = $2;
 		"#,
 		status as _,
+		id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_patr_database_replicas(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+	replica_numbers: i32,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			patr_database
+		SET
+			replica_numbers = $1
+		WHERE
+			id = $2;
+		"#,
+		replica_numbers as _,
 		id as _,
 	)
 	.execute(&mut *connection)
@@ -253,7 +281,8 @@ pub async fn get_all_patr_database_for_workspace(
 			host,
 			port,
 			username,
-			password
+			password,
+			replica_numbers
 		FROM
 			patr_database
 		WHERE
@@ -286,7 +315,8 @@ pub async fn get_patr_database_by_id(
 			host,
 			port,
 			username,
-			password
+			password,
+			replica_numbers
 		FROM
 			patr_database
 		WHERE
@@ -319,7 +349,8 @@ pub async fn get_patr_database_by_id_including_deleted(
 			host,
 			port,
 			username,
-			password
+			password,
+			replica_numbers
 		FROM
 			patr_database
 		WHERE

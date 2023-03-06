@@ -52,6 +52,7 @@ pub(super) async fn process_request(
 					&database_id,
 					config,
 					&request_id,
+					database.replica_numbers,
 				)
 				.await?;
 

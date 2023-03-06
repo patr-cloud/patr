@@ -1,4 +1,5 @@
 mod mysql;
+mod redis;
 
 use api_models::{
 	models::workspace::infrastructure::database::{
@@ -13,6 +14,7 @@ use k8s_openapi::{
 };
 use kube::Api;
 pub use mysql::*;
+pub use redis::*;
 
 use crate::{service::KubernetesConfigDetails, utils::Error};
 
@@ -40,6 +42,7 @@ pub async fn get_kubernetes_database_status(
 	database_id: &Uuid,
 	kubeconfig: KubernetesConfigDetails,
 	request_id: &Uuid,
+	replica_numbers: i32,
 ) -> Result<PatrDatabaseStatus, Error> {
 	let kubernetes_client =
 		super::get_kubernetes_client(kubeconfig.auth_details).await?;
@@ -48,7 +51,7 @@ pub async fn get_kubernetes_database_status(
 	let namespace = workspace_id.as_str();
 	let sts_name_for_db = format!("db-{database_id}");
 
-	log::trace!("request_id: {request_id} - Getting statefulset statis for database {database_id}");
+	log::trace!("request_id: {request_id} - Getting statefulset status for database {database_id}");
 	let sts =
 		Api::<StatefulSet>::namespaced(kubernetes_client.clone(), namespace)
 			.get_opt(&sts_name_for_db)
@@ -63,7 +66,7 @@ pub async fn get_kubernetes_database_status(
 	};
 
 	// todo: need to change when database cluster is used
-	if ready_replicas == 1 {
+	if ready_replicas == replica_numbers {
 		Ok(PatrDatabaseStatus::Running)
 	} else {
 		Ok(PatrDatabaseStatus::Creating)

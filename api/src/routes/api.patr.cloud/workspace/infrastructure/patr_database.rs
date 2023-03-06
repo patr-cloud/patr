@@ -176,6 +176,45 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(delete_patr_database)),
 		],
 	);
+	app.post(
+		"/:databaseId/",
+		[
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::infrastructure::patr_database::EDIT,
+				resource: closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let database_id =
+						context.get_param(request_keys::DATABASE_ID).unwrap();
+					let database_id_string = Uuid::parse_str(database_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&database_id_string,
+					)
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			},
+			EveMiddleware::CustomFunction(pin_fn!(modify_database_cluster)),
+		],
+	);
 	app
 }
 
@@ -213,6 +252,7 @@ async fn list_all_database_clusters(
 			username: database.username,
 			password: database.password,
 		},
+		replica_numbers: database.replica_numbers,
 	})
 	.collect::<Vec<_>>();
 
@@ -247,6 +287,7 @@ async fn create_database_cluster(
 		engine,
 		database_plan,
 		region,
+		replica_numbers,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -262,6 +303,7 @@ async fn create_database_cluster(
 		&workspace_id,
 		&config,
 		&request_id,
+		replica_numbers,
 	)
 	.await?;
 
@@ -316,6 +358,7 @@ async fn get_patr_database_info(
 			username: database.username,
 			password: database.password,
 		},
+		replica_numbers: database.replica_numbers,
 	})
 	.status(400)
 	.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -377,5 +420,48 @@ async fn delete_patr_database(
 	.await;
 
 	context.success(DeleteDatabaseResponse {});
+	Ok(context)
+}
+
+async fn modify_database_cluster(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
+	let database_id =
+		Uuid::parse_str(context.get_param(request_keys::DATABASE_ID).unwrap())
+			.unwrap();
+
+	let replica_numbers = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let database = db::get_patr_database_by_id(
+		context.get_database_connection(),
+		&database_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let config = context.get_state().config.clone();
+	log::trace!("request_id: {} - Modifying database cluster", request_id);
+	service::modify_patr_database(
+		context.get_database_connection(),
+		&database_id,
+		&config,
+		&request_id,
+		replica_numbers,
+	)
+	.await?;
+	log::trace!("request_id: {} - Updating values in database", request_id);
+	db::update_patr_database_replicas(
+		context.get_database_connection(),
+		&database_id,
+		replica_numbers,
+	)
+	.await?;
 	Ok(context)
 }
