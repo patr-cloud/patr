@@ -18,6 +18,9 @@ use k8s_openapi::{
 			DeploymentSpec,
 			DeploymentStrategy,
 			RollingUpdateDeployment,
+			StatefulSet,
+			StatefulSetSpec,
+			StatefulSetUpdateStrategy,
 		},
 		autoscaling::v1::{
 			CrossVersionObjectReference,
@@ -33,6 +36,8 @@ use k8s_openapi::{
 			HTTPGetAction,
 			KeyToPath,
 			LocalObjectReference,
+			PersistentVolumeClaim,
+			PersistentVolumeClaimSpec,
 			Pod,
 			PodSpec,
 			PodTemplateSpec,
@@ -52,7 +57,6 @@ use k8s_openapi::{
 			IngressRule,
 			IngressServiceBackend,
 			IngressSpec,
-			IngressTLS,
 			ServiceBackendPort,
 		},
 	},
@@ -64,7 +68,8 @@ use k8s_openapi::{
 	ByteString,
 };
 use kube::{
-	api::{DeleteParams, ListParams, Patch, PatchParams},
+	api::{DeleteParams, ListParams, Patch, PatchParams, PropagationPolicy},
+	config::Kubeconfig,
 	core::{ErrorResponse, ObjectMeta},
 	Api,
 	Error as KubeError,
@@ -72,16 +77,10 @@ use kube::{
 use sha2::{Digest, Sha512};
 
 use crate::{
-	db,
+	db::{self, DeploymentVolume},
 	error,
 	models::deployment,
-	service::{
-		self,
-		ext_traits::DeleteOpt,
-		get_kubernetes_config_for_default_region,
-		ClusterType,
-		KubernetesConfigDetails,
-	},
+	service::{self, ext_traits::DeleteOpt},
 	utils::{constants::request_keys, settings::Settings, Error},
 	Database,
 };
@@ -92,19 +91,19 @@ pub async fn update_kubernetes_deployment(
 	full_image: &str,
 	digest: Option<&str>,
 	running_details: &DeploymentRunningDetails,
-	kubeconfig: KubernetesConfigDetails,
+	deployment_volumes: &Vec<DeploymentVolume>,
+	kubeconfig: Kubeconfig,
+	deployed_region_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let cluster_type = kubeconfig.cluster_type;
-	let kubernetes_client =
-		super::get_kubernetes_client(kubeconfig.auth_details).await?;
+	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
 
 	// the namespace is workspace id
 	let namespace = workspace_id.as_str();
 
 	log::trace!(
-		"Deploying the container with id: {} on kubernetes with request_id: {}",
+		"Deploying the container with id: {} with request_id: {}",
 		deployment.id,
 		request_id,
 	);
@@ -230,224 +229,93 @@ pub async fn update_kubernetes_deployment(
 	.into_iter()
 	.collect();
 
-	let kubernetes_deployment = K8sDeployment {
-		metadata: ObjectMeta {
-			name: Some(format!("deployment-{}", deployment.id)),
-			namespace: Some(namespace.to_string()),
-			labels: Some(labels.clone()),
-			..ObjectMeta::default()
-		},
-		spec: Some(DeploymentSpec {
-			replicas: Some(running_details.min_horizontal_scale as i32),
-			selector: LabelSelector {
-				match_expressions: None,
-				match_labels: Some(labels.clone()),
+	if !deployment_volumes.is_empty() {
+		// Deleting STS using orphan flag to update the volumes
+		log::trace!(
+			"request_id: {} deleting sts without deleting the pod",
+			request_id
+		);
+		Api::<StatefulSet>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
+		.delete_opt(
+			&format!("sts-{}", deployment.id),
+			&DeleteParams {
+				propagation_policy: Some(PropagationPolicy::Orphan),
+				..DeleteParams::default()
 			},
-			template: PodTemplateSpec {
-				spec: Some(PodSpec {
-					containers: vec![Container {
-						name: format!("deployment-{}", deployment.id),
-						image: Some(image_name),
-						image_pull_policy: Some("Always".to_string()),
-						ports: Some(
-							running_details
-								.ports
-								.keys()
-								.map(|port| ContainerPort {
-									container_port: port.value() as i32,
-									..ContainerPort::default()
-								})
-								.collect::<Vec<_>>(),
-						),
-						startup_probe: running_details
-							.startup_probe
-							.as_ref()
-							.map(|probe| Probe {
-								http_get: Some(HTTPGetAction {
-									path: Some(probe.path.clone()),
-									port: IntOrString::Int(probe.port as i32),
-									scheme: Some("HTTP".to_string()),
-									..HTTPGetAction::default()
-								}),
-								failure_threshold: Some(15),
-								period_seconds: Some(10),
-								timeout_seconds: Some(3),
-								..Probe::default()
-							}),
-						liveness_probe: running_details
-							.liveness_probe
-							.as_ref()
-							.map(|probe| Probe {
-								http_get: Some(HTTPGetAction {
-									path: Some(probe.path.clone()),
-									port: IntOrString::Int(probe.port as i32),
-									scheme: Some("HTTP".to_string()),
-									..HTTPGetAction::default()
-								}),
-								failure_threshold: Some(15),
-								period_seconds: Some(10),
-								timeout_seconds: Some(3),
-								..Probe::default()
-							}),
-						env: Some(
-							running_details
-								.environment_variables
-								.iter()
-								.map(|(name, value)| {
-									use EnvironmentVariableValue::*;
-									EnvVar {
-										name: name.clone(),
-										value: Some(match value {
-											String(value) => value.clone(),
-											Secret { from_secret } => {
-												format!(
-													"vault:secret/data/{}/{}#data",
-													workspace_id, from_secret
-												)
-											}
-										}),
-										..EnvVar::default()
-									}
-								})
-								.chain([
-									EnvVar {
-										name: "PATR".to_string(),
-										value: Some("true".to_string()),
-										..EnvVar::default()
-									},
-									EnvVar {
-										name: "WORKSPACE_ID".to_string(),
-										value: Some(workspace_id.to_string()),
-										..EnvVar::default()
-									},
-									EnvVar {
-										name: "DEPLOYMENT_ID".to_string(),
-										value: Some(deployment.id.to_string()),
-										..EnvVar::default()
-									},
-									EnvVar {
-										name: "DEPLOYMENT_NAME".to_string(),
-										value: Some(deployment.name.clone()),
-										..EnvVar::default()
-									},
-									EnvVar {
-										name: "CONFIG_MAP_HASH".to_string(),
-										value: Some(config_map_hash),
-										..EnvVar::default()
-									},
-								])
-								.collect::<Vec<_>>(),
-						),
-						resources: Some(ResourceRequirements {
-							limits: Some(machine_type),
-							// https://blog.kubecost.com/blog/requests-and-limits/#the-tradeoffs
-							// using too low values for resource request will
-							// result in frequent pod restarts if memory usage
-							// increases and may result in starvation
-							//
-							// currently used 5% of the mininum deployment
-							// machine type as a request values
-							requests: Some(
-								[
-									(
-										"memory".to_string(),
-										Quantity("25M".to_owned()),
-									),
-									(
-										"cpu".to_string(),
-										Quantity("50m".to_owned()),
-									),
-								]
-								.into_iter()
-								.collect(),
-							),
-						}),
-						volume_mounts: if !running_details
-							.config_mounts
-							.is_empty()
-						{
-							Some(vec![VolumeMount {
-								name: "config-mounts".to_string(),
-								mount_path: "/etc/config".to_string(),
-								..VolumeMount::default()
-							}])
-						} else {
-							None
-						},
-						..Container::default()
-					}],
-					volumes: if !running_details.config_mounts.is_empty() {
-						Some(vec![Volume {
-							name: "config-mounts".to_string(),
-							config_map: Some(ConfigMapVolumeSource {
-								name: Some(format!(
-									"config-mount-{}",
-									deployment.id
-								)),
-								items: Some(
-									running_details
-										.config_mounts
-										.keys()
-										.map(|path| KeyToPath {
-											key: path.clone(),
-											path: path.clone(),
-											..KeyToPath::default()
-										})
-										.collect(),
-								),
-								..ConfigMapVolumeSource::default()
-							}),
-							..Volume::default()
-						}])
-					} else {
-						None
-					},
-					image_pull_secrets: deployment
-						.registry
-						.is_patr_registry()
-						.then(|| {
-							// TODO: for now patr registry is not supported for
-							// user clusters, need to create a separate secret
-							// for each private repo in future
-							vec![LocalObjectReference {
-								name: Some("patr-regcred".to_string()),
-							}]
-						}),
-					..PodSpec::default()
-				}),
-				metadata: Some(ObjectMeta {
-					labels: Some(labels.clone()),
-					annotations: Some(annotations),
-					..ObjectMeta::default()
-				}),
-			},
-			strategy: Some(DeploymentStrategy {
-				type_: Some("RollingUpdate".to_owned()),
-				rolling_update: Some(RollingUpdateDeployment {
-					max_surge: Some(IntOrString::Int(1)),
-					max_unavailable: Some(IntOrString::String(
-						"25%".to_owned(),
-					)),
-				}),
-			}),
-			..DeploymentSpec::default()
-		}),
-		..K8sDeployment::default()
-	};
-
-	// Create the deployment defined above
-	log::trace!("request_id: {} - creating deployment", request_id);
-	let deployment_api =
-		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace);
-
-	deployment_api
-		.patch(
-			&format!("deployment-{}", deployment.id),
-			&PatchParams::apply(&format!("deployment-{}", deployment.id)),
-			&Patch::Apply(kubernetes_deployment),
 		)
 		.await?;
+	}
 
+	let mut volume_mounts: Vec<VolumeMount> = Vec::new();
+	let mut volumes: Vec<Volume> = Vec::new();
+	let mut pvc: Vec<PersistentVolumeClaim> = Vec::new();
+
+	if !running_details.config_mounts.is_empty() {
+		volume_mounts.push(VolumeMount {
+			name: "config-mounts".to_string(),
+			mount_path: "/etc/config".to_string(),
+			..VolumeMount::default()
+		});
+		volumes.push(Volume {
+			name: "config-mounts".to_string(),
+			config_map: Some(ConfigMapVolumeSource {
+				name: Some(format!("config-mount-{}", deployment.id)),
+				items: Some(
+					running_details
+						.config_mounts
+						.keys()
+						.map(|path| KeyToPath {
+							key: path.clone(),
+							path: path.clone(),
+							..KeyToPath::default()
+						})
+						.collect(),
+				),
+				..ConfigMapVolumeSource::default()
+			}),
+			..Volume::default()
+		})
+	}
+
+	for volume in deployment_volumes {
+		volume_mounts.push(VolumeMount {
+			name: format!("pvc-{}", volume.volume_id),
+			// make sure user does not have the mount_path in the directory
+			// in the fs, by my observation it gives crashLoopBackOff error
+			mount_path: volume.path.to_string(),
+			..VolumeMount::default()
+		});
+
+		let storage_limit = [(
+			"storage".to_string(),
+			Quantity(format!("{}Gi", volume.size)),
+		)]
+		.into_iter()
+		.collect::<BTreeMap<_, _>>();
+
+		pvc.push(PersistentVolumeClaim {
+			metadata: ObjectMeta {
+				name: Some(format!("pvc-{}", volume.volume_id)),
+				namespace: Some(workspace_id.to_string()),
+				..ObjectMeta::default()
+			},
+			spec: Some(PersistentVolumeClaimSpec {
+				access_modes: Some(vec!["ReadWriteOnce".to_string()]),
+				resources: Some(ResourceRequirements {
+					requests: Some(storage_limit),
+					..ResourceRequirements::default()
+				}),
+				..PersistentVolumeClaimSpec::default()
+			}),
+			..PersistentVolumeClaim::default()
+		});
+	}
+
+	// Creating service before deployment and sts as sts need service to be
+	// present before sts is created
 	let kubernetes_service = Service {
 		metadata: ObjectMeta {
 			name: Some(format!("service-{}", deployment.id)),
@@ -468,7 +336,12 @@ pub async fn update_kubernetes_deployment(
 					})
 					.collect::<Vec<_>>(),
 			),
-			selector: Some(labels),
+			selector: Some(labels.clone()),
+			cluster_ip: if running_details.volumes.is_empty() {
+				None
+			} else {
+				Some("None".to_string())
+			},
 			..ServiceSpec::default()
 		}),
 		..Service::default()
@@ -487,105 +360,376 @@ pub async fn update_kubernetes_deployment(
 		)
 		.await?;
 
-	// HPA - horizontal pod autoscaler
-	let kubernetes_hpa = HorizontalPodAutoscaler {
-		metadata: ObjectMeta {
-			name: Some(format!("hpa-{}", deployment.id)),
-			namespace: Some(namespace.to_string()),
-			..ObjectMeta::default()
-		},
-		spec: Some(HorizontalPodAutoscalerSpec {
-			scale_target_ref: CrossVersionObjectReference {
-				api_version: Some("apps/v1".to_string()),
-				kind: "Deployment".to_string(),
-				name: format!("deployment-{}", deployment.id),
+	let metadata = ObjectMeta {
+		name: Some(format!(
+			"{}-{}",
+			if running_details.volumes.is_empty() {
+				"deployment"
+			} else {
+				"sts"
 			},
-			min_replicas: Some(running_details.min_horizontal_scale.into()),
-			max_replicas: running_details.max_horizontal_scale.into(),
-			target_cpu_utilization_percentage: Some(80),
+			deployment.id
+		)),
+		namespace: Some(namespace.to_string()),
+		labels: Some(labels.clone()),
+		..ObjectMeta::default()
+	};
+	let replicas = Some(running_details.min_horizontal_scale as i32);
+	let selector = LabelSelector {
+		match_expressions: None,
+		match_labels: Some(labels.clone()),
+	};
+	let template = PodTemplateSpec {
+		spec: Some(PodSpec {
+			containers: vec![Container {
+				name: format!(
+					"{}-{}",
+					if running_details.volumes.is_empty() {
+						"deployment"
+					} else {
+						"sts"
+					},
+					deployment.id
+				),
+				image: Some(image_name),
+				image_pull_policy: Some("Always".to_string()),
+				ports: Some(
+					running_details
+						.ports
+						.keys()
+						.map(|port| ContainerPort {
+							container_port: port.value() as i32,
+							..ContainerPort::default()
+						})
+						.collect::<Vec<_>>(),
+				),
+				startup_probe: running_details.startup_probe.as_ref().map(
+					|probe| Probe {
+						http_get: Some(HTTPGetAction {
+							path: Some(probe.path.clone()),
+							port: IntOrString::Int(probe.port as i32),
+							scheme: Some("HTTP".to_string()),
+							..HTTPGetAction::default()
+						}),
+						failure_threshold: Some(15),
+						period_seconds: Some(10),
+						timeout_seconds: Some(3),
+						..Probe::default()
+					},
+				),
+				liveness_probe: running_details.liveness_probe.as_ref().map(
+					|probe| Probe {
+						http_get: Some(HTTPGetAction {
+							path: Some(probe.path.clone()),
+							port: IntOrString::Int(probe.port as i32),
+							scheme: Some("HTTP".to_string()),
+							..HTTPGetAction::default()
+						}),
+						failure_threshold: Some(15),
+						period_seconds: Some(10),
+						timeout_seconds: Some(3),
+						..Probe::default()
+					},
+				),
+				env: Some(
+					running_details
+						.environment_variables
+						.iter()
+						.map(|(name, value)| {
+							use EnvironmentVariableValue::*;
+							EnvVar {
+								name: name.clone(),
+								value: Some(match value {
+									String(value) => value.clone(),
+									Secret { from_secret } => {
+										format!(
+											"vault:secret/data/{}/{}#data",
+											workspace_id, from_secret
+										)
+									}
+								}),
+								..EnvVar::default()
+							}
+						})
+						.chain([
+							EnvVar {
+								name: "PATR".to_string(),
+								value: Some("true".to_string()),
+								..EnvVar::default()
+							},
+							EnvVar {
+								name: "WORKSPACE_ID".to_string(),
+								value: Some(workspace_id.to_string()),
+								..EnvVar::default()
+							},
+							EnvVar {
+								name: "DEPLOYMENT_ID".to_string(),
+								value: Some(deployment.id.to_string()),
+								..EnvVar::default()
+							},
+							EnvVar {
+								name: "DEPLOYMENT_NAME".to_string(),
+								value: Some(deployment.name.clone()),
+								..EnvVar::default()
+							},
+							EnvVar {
+								name: "CONFIG_MAP_HASH".to_string(),
+								value: Some(config_map_hash),
+								..EnvVar::default()
+							},
+						])
+						.collect::<Vec<_>>(),
+				),
+				resources: Some(ResourceRequirements {
+					limits: Some(machine_type),
+					// https://blog.kubecost.com/blog/requests-and-limits/#the-tradeoffs
+					// using too low values for resource request
+					// will result in frequent pod restarts if
+					// memory usage increases and may result in
+					// starvation
+					//
+					// currently used 5% of the mininum deployment
+					// machine type as a request values
+					requests: Some(
+						[
+							("memory".to_string(), Quantity("25M".to_owned())),
+							("cpu".to_string(), Quantity("50m".to_owned())),
+						]
+						.into_iter()
+						.collect(),
+					),
+				}),
+				volume_mounts: if !volume_mounts.is_empty() {
+					Some(volume_mounts)
+				} else {
+					None
+				},
+				..Container::default()
+			}],
+			volumes: if !volumes.is_empty() {
+				Some(volumes)
+			} else {
+				None
+			},
+			image_pull_secrets: deployment.registry.is_patr_registry().then(
+				|| {
+					// TODO: for now patr registry is not supported
+					// for user clusters, need to create a separate
+					// secret for each private repo in future
+					vec![LocalObjectReference {
+						name: Some("patr-regcred".to_string()),
+					}]
+				},
+			),
+			..PodSpec::default()
 		}),
-		..HorizontalPodAutoscaler::default()
+		metadata: Some(ObjectMeta {
+			labels: Some(labels.clone()),
+			annotations: Some(annotations),
+			..ObjectMeta::default()
+		}),
 	};
 
-	// Create the HPA defined above
-	log::trace!(
-		"request_id: {} - creating horizontal pod autoscalar",
-		request_id
-	);
-	let hpa_api = Api::<HorizontalPodAutoscaler>::namespaced(
-		kubernetes_client.clone(),
-		namespace,
-	);
+	if running_details.volumes.is_empty() {
+		let kubernetes_deployment = K8sDeployment {
+			metadata,
+			spec: Some(DeploymentSpec {
+				replicas,
+				selector,
+				template,
+				strategy: Some(DeploymentStrategy {
+					type_: Some("RollingUpdate".to_owned()),
+					rolling_update: Some(RollingUpdateDeployment {
+						max_surge: Some(IntOrString::Int(1)),
+						max_unavailable: Some(IntOrString::String(
+							"25%".to_owned(),
+						)),
+					}),
+				}),
+				..DeploymentSpec::default()
+			}),
+			..K8sDeployment::default()
+		};
 
-	hpa_api
-		.patch(
-			&format!("hpa-{}", deployment.id),
-			&PatchParams::apply(&format!("hpa-{}", deployment.id)),
-			&Patch::Apply(kubernetes_hpa),
+		// Create the deployment defined above
+		log::trace!("request_id: {} - creating deployment", request_id);
+		let deployment_api = Api::<K8sDeployment>::namespaced(
+			kubernetes_client.clone(),
+			namespace,
+		);
+
+		deployment_api
+			.patch(
+				&format!("deployment-{}", deployment.id),
+				&PatchParams::apply(&format!("deployment-{}", deployment.id)),
+				&Patch::Apply(kubernetes_deployment),
+			)
+			.await?;
+
+		// This is because if a user wanted to delete the volume from there sts
+		// then a sts will be converted to deployment
+		log::trace!(
+			"request_id: {} - deleting the stateful set if there are any",
+			request_id
+		);
+
+		Api::<StatefulSet>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
+		.delete_opt(&format!("sts-{}", deployment.id), &DeleteParams::default())
+		.await?;
+
+		// HPA - horizontal pod autoscaler
+		let kubernetes_hpa = HorizontalPodAutoscaler {
+			metadata: ObjectMeta {
+				name: Some(format!("hpa-{}", deployment.id)),
+				namespace: Some(namespace.to_string()),
+				..ObjectMeta::default()
+			},
+			spec: Some(HorizontalPodAutoscalerSpec {
+				scale_target_ref: CrossVersionObjectReference {
+					api_version: Some("apps/v1".to_string()),
+					kind: "Deployment".to_string(),
+					name: format!("deployment-{}", deployment.id),
+				},
+				min_replicas: Some(running_details.min_horizontal_scale.into()),
+				max_replicas: running_details.max_horizontal_scale.into(),
+				target_cpu_utilization_percentage: Some(80),
+			}),
+			..HorizontalPodAutoscaler::default()
+		};
+
+		// Create the HPA defined above
+		log::trace!(
+			"request_id: {} - creating horizontal pod autoscalar",
+			request_id
+		);
+		let hpa_api = Api::<HorizontalPodAutoscaler>::namespaced(
+			kubernetes_client.clone(),
+			namespace,
+		);
+
+		hpa_api
+			.patch(
+				&format!("hpa-{}", deployment.id),
+				&PatchParams::apply(&format!("hpa-{}", deployment.id)),
+				&Patch::Apply(kubernetes_hpa),
+			)
+			.await?;
+	} else {
+		let kubernetes_sts = StatefulSet {
+			metadata,
+			spec: Some(StatefulSetSpec {
+				replicas,
+				selector,
+				service_name: format!("service-{}", deployment.id),
+				template,
+				update_strategy: Some(StatefulSetUpdateStrategy {
+					type_: Some("RollingUpdate".to_owned()),
+					..StatefulSetUpdateStrategy::default()
+				}),
+				volume_claim_templates: Some(pvc),
+				..StatefulSetSpec::default()
+			}),
+			..StatefulSet::default()
+		};
+
+		// Create the statefulset defined above
+		log::trace!("request_id: {} - creating statefulset", request_id);
+		let sts_api = Api::<StatefulSet>::namespaced(
+			kubernetes_client.clone(),
+			namespace,
+		);
+
+		sts_api
+			.patch(
+				&format!("sts-{}", deployment.id),
+				&PatchParams::apply(&format!("sts-{}", deployment.id)),
+				&Patch::Apply(kubernetes_sts),
+			)
+			.await?;
+
+		// This is because if a user wanted to add the volume to there
+		// deployment then a deployment will be converted to sts
+		log::trace!(
+			"request_id: {} - deleting the deployment set if there are any",
+			request_id
+		);
+
+		Api::<K8sDeployment>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
+		.delete_opt(
+			&format!("deployment-{}", deployment.id),
+			&DeleteParams::default(),
 		)
 		.await?;
 
-	let annotations = [
-		(
-			"kubernetes.io/ingress.class".to_string(),
-			"nginx".to_string(),
-		),
-		(
-			"cert-manager.io/cluster-issuer".to_string(),
-			config.kubernetes.cert_issuer_dns.clone(),
-		),
-	]
-	.into_iter()
-	.collect::<BTreeMap<_, _>>();
+		// Delete the HPA, if any
+		log::trace!(
+			"request_id: {} - deleting horizontal pod autoscalar",
+			request_id
+		);
+		let hpa_api = Api::<HorizontalPodAutoscaler>::namespaced(
+			kubernetes_client.clone(),
+			namespace,
+		);
 
-	let (default_ingress_rules, default_tls_rules) = running_details
+		hpa_api
+			.delete_opt(
+				&format!("hpa-{}", deployment.id),
+				&DeleteParams::default(),
+			)
+			.await?;
+	}
+
+	let annotations = [(
+		"kubernetes.io/ingress.class".to_string(),
+		"nginx".to_string(),
+	)]
+	.into();
+
+	let ingress_rules = running_details
 		.ports
 		.iter()
 		.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
-		.map(|(port, _)| {
-			(
-				IngressRule {
-					host: Some(format!(
-						"{}-{}.patr.cloud",
-						port, deployment.id
-					)),
-					http: Some(HTTPIngressRuleValue {
-						paths: vec![HTTPIngressPath {
-							backend: IngressBackend {
-								service: Some(IngressServiceBackend {
-									name: format!("service-{}", deployment.id),
-									port: Some(ServiceBackendPort {
-										number: Some(port.value() as i32),
-										..ServiceBackendPort::default()
-									}),
-								}),
-								..Default::default()
-							},
-							path: Some("/".to_string()),
-							path_type: Some("Prefix".to_string()),
-						}],
-					}),
-				},
-				IngressTLS {
-					hosts: Some(vec![
-						"*.patr.cloud".to_string(),
-						"patr.cloud".to_string(),
-					]),
-					secret_name: None,
-				},
-			)
+		.map(|(port, _)| IngressRule {
+			host: Some(format!(
+				"{}-{}.{}.{}",
+				port,
+				deployment.id,
+				deployed_region_id,
+				config.cloudflare.onpatr_domain
+			)),
+			http: Some(HTTPIngressRuleValue {
+				paths: vec![HTTPIngressPath {
+					backend: IngressBackend {
+						service: Some(IngressServiceBackend {
+							name: format!("service-{}", deployment.id),
+							port: Some(ServiceBackendPort {
+								number: Some(port.value() as i32),
+								..ServiceBackendPort::default()
+							}),
+						}),
+						..Default::default()
+					},
+					path: Some("/".to_string()),
+					path_type: "Prefix".to_string(),
+				}],
+			}),
 		})
-		.unzip::<_, _, Vec<_>, Vec<_>>();
+		.collect();
 
 	let kubernetes_ingress = Ingress {
 		metadata: ObjectMeta {
 			name: Some(format!("ingress-{}", deployment.id)),
-			annotations: Some(annotations.clone()),
+			annotations: Some(annotations),
 			..ObjectMeta::default()
 		},
 		spec: Some(IngressSpec {
-			rules: Some(default_ingress_rules),
-			tls: Some(default_tls_rules.clone()),
+			rules: Some(ingress_rules),
 			..IngressSpec::default()
 		}),
 		..Ingress::default()
@@ -593,7 +737,8 @@ pub async fn update_kubernetes_deployment(
 
 	// Create the ingress defined above
 	log::trace!("request_id: {} - creating ingress", request_id);
-	let ingress_api = Api::<Ingress>::namespaced(kubernetes_client, namespace);
+	let ingress_api =
+		Api::<Ingress>::namespaced(kubernetes_client.clone(), namespace);
 
 	ingress_api
 		.patch(
@@ -602,99 +747,6 @@ pub async fn update_kubernetes_deployment(
 			&Patch::Apply(kubernetes_ingress),
 		)
 		.await?;
-
-	if let ClusterType::UserOwned {
-		region_id,
-		ingress_ip_addr: _,
-	} = cluster_type
-	{
-		// create a ingress in patr cluster to point to user's cluster
-		let kubernetes_client = super::get_kubernetes_client(
-			get_kubernetes_config_for_default_region(config).auth_details,
-		)
-		.await?;
-
-		let exposted_ports = running_details
-			.ports
-			.iter()
-			.filter(|(_, port_type)| *port_type == &ExposedPortType::Http);
-
-		for (port, _) in exposted_ports {
-			let ingress_rule = IngressRule {
-				host: Some(format!("{}-{}.patr.cloud", port, deployment.id)),
-				http: Some(HTTPIngressRuleValue {
-					paths: vec![HTTPIngressPath {
-						backend: IngressBackend {
-							service: Some(IngressServiceBackend {
-								name: format!("service-{}", region_id.as_str()),
-								port: Some(ServiceBackendPort {
-									number: Some(80),
-									..ServiceBackendPort::default()
-								}),
-							}),
-							..Default::default()
-						},
-						path: Some("/".to_string()),
-						path_type: Some("Prefix".to_string()),
-					}],
-				}),
-			};
-
-			let annotations = [
-				(
-					"kubernetes.io/ingress.class".to_string(),
-					"nginx".to_string(),
-				),
-				(
-					String::from("nginx.ingress.kubernetes.io/upstream-vhost"),
-					format!("{}-{}.patr.cloud", port, deployment.id),
-				),
-				(
-					String::from(
-						"nginx.ingress.kubernetes.io/backend-protocol",
-					),
-					"HTTP".to_string(),
-				),
-				// TODO: add cert manager annotations,
-				// once ssl certificate is used in customers cluster
-			]
-			.into_iter()
-			.collect();
-
-			let kubernetes_ingress = Ingress {
-				metadata: ObjectMeta {
-					name: Some(format!("ingress-{}", deployment.id)),
-					annotations: Some(annotations),
-					..ObjectMeta::default()
-				},
-				spec: Some(IngressSpec {
-					rules: Some(vec![ingress_rule]),
-					tls: Some(vec![IngressTLS {
-						hosts: Some(vec![
-							"*.patr.cloud".to_string(),
-							"patr.cloud".to_string(),
-						]),
-						secret_name: None,
-					}]),
-					..IngressSpec::default()
-				}),
-				..Ingress::default()
-			};
-
-			let ingress_api = Api::<Ingress>::namespaced(
-				kubernetes_client.clone(),
-				namespace,
-			);
-
-			ingress_api
-				.patch(
-					&format!("ingress-{}", deployment.id),
-					&PatchParams::apply(&format!("ingress-{}", deployment.id)),
-					&Patch::Apply(kubernetes_ingress),
-				)
-				.await?;
-		}
-	}
 
 	log::trace!("request_id: {} - deployment created", request_id);
 
@@ -705,7 +757,10 @@ pub async fn update_kubernetes_deployment(
 			.ports
 			.iter()
 			.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
-			.map(|(port, _)| format!("{}-{}.patr.cloud", port, deployment.id))
+			.map(|(port, _)| format!(
+				"{}-{}.{}",
+				port, deployment.id, config.cloudflare.onpatr_domain
+			))
 			.collect::<Vec<_>>()
 			.join(",")
 	);
@@ -716,13 +771,10 @@ pub async fn update_kubernetes_deployment(
 pub async fn delete_kubernetes_deployment(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client =
-		super::get_kubernetes_client(kubeconfig.auth_details).await?;
-
-	log::trace!("request_id: {} - deleting the deployment", request_id);
+	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
 
 	Api::<K8sDeployment>::namespaced(
 		kubernetes_client.clone(),
@@ -732,6 +784,15 @@ pub async fn delete_kubernetes_deployment(
 		&format!("deployment-{}", deployment_id),
 		&DeleteParams::default(),
 	)
+	.await?;
+
+	log::trace!("request_id: {} - deleting the stateful set", request_id);
+
+	Api::<StatefulSet>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.delete_opt(&format!("sts-{}", deployment_id), &DeleteParams::default())
 	.await?;
 
 	log::trace!("request_id: {} - deleting the config map", request_id);
@@ -782,42 +843,149 @@ pub async fn delete_kubernetes_deployment(
 	Ok(())
 }
 
+pub async fn delete_kubernetes_volume(
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	volume: &DeploymentVolume,
+	replica_index: u16,
+	kubeconfig: Kubeconfig,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
+
+	log::trace!("request_id: {} - deleting the pvc", request_id);
+	Api::<PersistentVolumeClaim>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.delete_opt(
+		&format!(
+			"pvc-{}-sts-{}-{}",
+			volume.volume_id, deployment_id, replica_index
+		),
+		&DeleteParams::default(),
+	)
+	.await?;
+	Ok(())
+}
+
+pub async fn update_kubernetes_volume(
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	volume: &DeploymentVolume,
+	replica: u16,
+	kubeconfig: Kubeconfig,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
+
+	log::trace!("request_id: {} - updating the pvc", request_id);
+	for idx in 0..replica {
+		let storage_limit = [(
+			"storage".to_string(),
+			Quantity(format!("{}Gi", volume.size)),
+		)]
+		.into_iter()
+		.collect::<BTreeMap<_, _>>();
+
+		let kubernetes_pvc = PersistentVolumeClaim {
+			metadata: ObjectMeta {
+				name: Some(format!(
+					"pvc-{}-sts-{}-{}",
+					volume.volume_id, deployment_id, idx
+				)),
+				namespace: Some(workspace_id.to_string()),
+				..ObjectMeta::default()
+			},
+			spec: Some(PersistentVolumeClaimSpec {
+				access_modes: Some(vec!["ReadWriteOnce".to_string()]),
+				resources: Some(ResourceRequirements {
+					requests: Some(storage_limit),
+					..ResourceRequirements::default()
+				}),
+				..PersistentVolumeClaimSpec::default()
+			}),
+			..PersistentVolumeClaim::default()
+		};
+
+		Api::<PersistentVolumeClaim>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
+		.patch(
+			&format!("pvc-{}-sts-{}-{}", volume.volume_id, deployment_id, idx),
+			&PatchParams::apply(&format!(
+				"pvc-{}-sts-{}-{}",
+				volume.volume_id, deployment_id, idx
+			)),
+			&Patch::Strategic(kubernetes_pvc),
+		)
+		.await?;
+	}
+	Ok(())
+}
+
 // TODO: add the logic of errored deployment
 pub async fn get_kubernetes_deployment_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	namespace: &str,
-	config: &Settings,
 ) -> Result<DeploymentStatus, Error> {
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let kubeconfig = service::get_kubernetes_config_for_region(
+	let (kubeconfig, _) = service::get_kubernetes_config_for_region(
 		connection,
 		&deployment.region,
-		config,
 	)
 	.await?;
-	let kubernetes_client =
-		super::get_kubernetes_client(kubeconfig.auth_details).await?;
+	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
 
-	let deployment_result =
+	let is_deployment =
+		db::get_all_deployment_volumes(connection, deployment_id)
+			.await?
+			.is_empty();
+
+	// if the ready replicas, is none then it is in deloying status.
+	// we will update deployment status based on the number of replicas and
+	// status message (CrashLoopBackOff/ErrImagePull)
+	// see: https://develop.vicara.co/vicara/vicara-api/issues/807
+	let container_status = if !is_deployment {
+		Api::<StatefulSet>::namespaced(kubernetes_client.clone(), namespace)
+			.get(&format!("sts-{}", deployment.id))
+			.await
+			.map(|status| status.status.and_then(|value| value.ready_replicas))
+	} else {
 		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace)
 			.get(&format!("deployment-{}", deployment.id))
-			.await;
-	let deployment_status = match deployment_result {
+			.await
+			.map(|status| status.status.and_then(|value| value.ready_replicas))
+	};
+
+	let replicas = match container_status {
 		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => {
 			// TODO: This is a temporary fix to solve issue #361.
 			// Need to find a better solution to do this
 			return Ok(DeploymentStatus::Deploying);
 		}
 		Err(err) => return Err(err.into()),
-		Ok(deployment) => deployment
-			.status
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?,
+		Ok(sts) => sts,
+	};
+
+	let deployment_status = if let Some(replicas) = replicas {
+		if replicas >= deployment.min_horizontal_scale as i32 {
+			DeploymentStatus::Running
+		} else if replicas <= deployment.min_horizontal_scale as i32 {
+			DeploymentStatus::Deploying
+		} else {
+			DeploymentStatus::Errored
+		}
+	} else {
+		// if it is none, then it is not yet ready
+		// might be in ContainerCreating state or in some errored state
+		DeploymentStatus::Deploying
 	};
 
 	let event_api = Api::<Pod>::namespaced(kubernetes_client, namespace)
@@ -854,16 +1022,5 @@ pub async fn get_kubernetes_deployment_status(
 	{
 		return Ok(DeploymentStatus::Errored);
 	}
-
-	if deployment_status.available_replicas ==
-		Some(deployment.min_horizontal_scale.into())
-	{
-		Ok(DeploymentStatus::Running)
-	} else if deployment_status.available_replicas <=
-		Some(deployment.min_horizontal_scale.into())
-	{
-		Ok(DeploymentStatus::Deploying)
-	} else {
-		Ok(DeploymentStatus::Errored)
-	}
+	Ok(deployment_status)
 }

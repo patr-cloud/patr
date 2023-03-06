@@ -88,3 +88,33 @@ pub async fn list_all_users_with_roles_in_workspace(
 
 	Ok(users)
 }
+
+pub async fn list_all_users_for_role_in_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	role_id: &Uuid,
+) -> Result<Vec<Uuid>, sqlx::Error> {
+	let user_ids = query_as!(
+		WorkspaceUser,
+		r#"
+		SELECT
+			user_id as "user_id: _",
+			workspace_id as "workspace_id: _",
+			role_id as "role_id: _"
+		FROM
+			workspace_user
+		WHERE
+			workspace_id = $1 AND
+			role_id = $2;
+		"#,
+		workspace_id as _,
+		role_id as _,
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|user| user.user_id)
+	.collect::<Vec<_>>();
+
+	Ok(user_ids)
+}

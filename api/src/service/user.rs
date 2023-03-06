@@ -216,11 +216,19 @@ pub async fn change_password_for_user(
 		.body(error!(USER_NOT_FOUND).to_string())?;
 
 	let success = service::validate_hash(current_password, &user.password)?;
+	let is_password_same =
+		service::validate_hash(new_password, &user.password)?;
 
 	if !success {
 		Error::as_result()
 			.status(400)
 			.body(error!(INVALID_PASSWORD).to_string())?;
+	}
+
+	if is_password_same {
+		Error::as_result()
+			.status(400)
+			.body(error!(PASSWORD_UNCHANGED).to_string())?;
 	}
 
 	let new_password = service::hash(new_password.as_bytes())?;

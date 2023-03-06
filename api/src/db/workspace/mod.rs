@@ -40,6 +40,7 @@ pub struct Workspace {
 	pub docker_repository_storage_limit: i32,
 	pub domain_limit: i32,
 	pub secret_limit: i32,
+	pub volume_storage_limit: i32,
 	pub stripe_customer_id: String,
 	pub address_id: Option<Uuid>,
 	pub amount_due_in_cents: u64,
@@ -132,6 +133,7 @@ pub async fn initialize_workspaces_pre(
 					CHECK (amount_due_in_cents >= 0),
 			deleted TIMESTAMPTZ,
 			is_spam BOOLEAN NOT NULL,
+			volume_storage_limit INTEGER NOT NULL,
 			CONSTRAINT workspace_uq_id_super_admin_id
 				UNIQUE(id, super_admin_id)
 		);
@@ -355,6 +357,7 @@ pub async fn create_workspace(
 	docker_repository_storage_limit: i32,
 	domain_limit: i32,
 	secret_limit: i32,
+	volume_storage_limit: i32,
 	stripe_customer_id: &str,
 	payment_type: &PaymentType,
 ) -> Result<(), sqlx::Error> {
@@ -376,6 +379,7 @@ pub async fn create_workspace(
 				docker_repository_storage_limit,
 				domain_limit,
 				secret_limit,
+				volume_storage_limit,
 				stripe_customer_id,
 				address_id,
 				amount_due_in_cents,
@@ -398,8 +402,9 @@ pub async fn create_workspace(
 				$12,
 				$13,
 				$14,
-				NULL,
 				$15,
+				NULL,
+				$16,
 				FALSE
 			);
 		"#,
@@ -416,6 +421,7 @@ pub async fn create_workspace(
 		docker_repository_storage_limit,
 		domain_limit,
 		secret_limit,
+		volume_storage_limit,
 		stripe_customer_id,
 		0 as i32
 	)
@@ -445,6 +451,7 @@ pub async fn get_workspace_info(
 			secret_limit,
 			domain_limit,
 			docker_repository_storage_limit,
+			volume_storage_limit,
 			stripe_customer_id,
 			address_id as "address_id: Uuid",
 			amount_due_in_cents,
@@ -476,6 +483,7 @@ pub async fn get_workspace_info(
 			domain_limit: row.domain_limit,
 			docker_repository_storage_limit: row
 				.docker_repository_storage_limit,
+			volume_storage_limit: row.volume_storage_limit,
 			stripe_customer_id: row.stripe_customer_id,
 			address_id: row.address_id,
 			amount_due_in_cents: row.amount_due_in_cents as u64,
@@ -505,6 +513,7 @@ pub async fn get_workspace_by_name(
 			secret_limit,
 			domain_limit,
 			docker_repository_storage_limit,
+			volume_storage_limit,
 			stripe_customer_id,
 			address_id as "address_id: Uuid",
 			amount_due_in_cents,
@@ -535,6 +544,7 @@ pub async fn get_workspace_by_name(
 			domain_limit: row.domain_limit,
 			docker_repository_storage_limit: row
 				.docker_repository_storage_limit,
+			volume_storage_limit: row.volume_storage_limit,
 			stripe_customer_id: row.stripe_customer_id,
 			address_id: row.address_id,
 			amount_due_in_cents: row.amount_due_in_cents as u64,
@@ -763,6 +773,7 @@ pub async fn get_all_workspaces(
 			secret_limit,
 			domain_limit,
 			docker_repository_storage_limit,
+			volume_storage_limit,
 			stripe_customer_id,
 			address_id as "address_id: Uuid",
 			amount_due_in_cents,
@@ -791,6 +802,7 @@ pub async fn get_all_workspaces(
 		secret_limit: row.secret_limit,
 		domain_limit: row.domain_limit,
 		docker_repository_storage_limit: row.docker_repository_storage_limit,
+		volume_storage_limit: row.volume_storage_limit,
 		stripe_customer_id: row.stripe_customer_id,
 		address_id: row.address_id,
 		amount_due_in_cents: row.amount_due_in_cents as u64,

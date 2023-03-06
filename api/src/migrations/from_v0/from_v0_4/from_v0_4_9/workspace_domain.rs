@@ -8,7 +8,7 @@ use cloudflare::{
 		zone::{ListZones, ListZonesParams},
 	},
 	framework::{
-		async_api::{ApiClient, Client},
+		async_api::Client,
 		auth::Credentials,
 		Environment,
 		HttpApiClientConfig,

@@ -10,8 +10,10 @@ use crate::{app::App, utils::Error};
 static CONFIG: OnceCell<App> = OnceCell::new();
 
 pub mod billing;
+pub mod byoc;
 pub mod ci;
 pub mod domain;
+pub mod managed_url;
 pub mod user;
 
 pub fn initialize_jobs(app: &App) {
@@ -53,15 +55,20 @@ fn get_scheduled_jobs() -> Vec<Job> {
 	vec![
 		// Domain jobs
 		domain::verify_unverified_domains_job(),
-		domain::repatch_all_managed_urls_job(),
 		domain::reverify_verified_domains_job(),
 		domain::refresh_domain_tld_list_job(),
+		// managed url
+		managed_url::configure_all_unconfigued_managed_urls_job(),
+		managed_url::reverify_all_configured_managed_urls_job(),
 		// Billing jobs
 		billing::update_bill_job(),
 		// CI jobs
 		ci::sync_repo_job(),
 		// User jobs
 		user::revoke_expired_tokens_job(),
+		// byoc jobs
+		byoc::check_status_of_active_byoc_regions_job(),
+		byoc::handle_disconnected_byoc_regions_job(),
 	]
 }
 

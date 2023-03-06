@@ -9,6 +9,8 @@ mod static_site;
 use std::ops::DerefMut;
 
 use api_models::utils::Uuid;
+use chrono::Utc;
+use eve_rs::AsError;
 
 pub use self::{
 	deployment::*,
@@ -187,6 +189,11 @@ pub async fn delete_all_resources_in_workspace(
 		db::get_deployments_for_workspace(connection, workspace_id).await?;
 
 	for deployment in deployments {
+		let region = db::get_region_by_id(connection, &deployment.region)
+			.await?
+			.status(500)?;
+
+		let delete_k8s_resource = region.is_patr_region();
 		service::delete_deployment(
 			connection,
 			&deployment.workspace_id,
@@ -196,6 +203,7 @@ pub async fn delete_all_resources_in_workspace(
 			None,
 			"0.0.0.0",
 			true,
+			delete_k8s_resource,
 			config,
 			request_id,
 		)
@@ -208,14 +216,7 @@ pub async fn delete_all_resources_in_workspace(
 		db::get_static_sites_for_workspace(connection, workspace_id).await?;
 
 	for site in static_site {
-		service::delete_static_site(
-			connection,
-			workspace_id,
-			&site.id,
-			config,
-			request_id,
-		)
-		.await?;
+		service::delete_static_site(connection, &site.id, config).await?;
 	}
 
 	// Get docker repositories and delete all the docker repositories for a
@@ -263,6 +264,15 @@ pub async fn delete_all_resources_in_workspace(
 			request_id,
 		)
 		.await?;
+	}
+
+	// all the deployments are already deleted,
+	// so only need to delete the region alone from db
+	log::trace!("deleting all regions for workspace: {}", workspace_id);
+	let regions =
+		db::get_all_regions_for_workspace(connection, workspace_id).await?;
+	for region in regions {
+		db::delete_region(connection, &region.id, &Utc::now()).await?;
 	}
 
 	log::trace!(

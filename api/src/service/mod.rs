@@ -7,6 +7,7 @@
 mod auth;
 mod billing;
 mod ci;
+mod cloudflare;
 mod docker_registry;
 mod domain;
 mod infrastructure;
@@ -22,6 +23,7 @@ pub use self::{
 	auth::*,
 	billing::*,
 	ci::*,
+	cloudflare::*,
 	docker_registry::*,
 	domain::*,
 	infrastructure::*,

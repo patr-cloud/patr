@@ -61,6 +61,14 @@ pub struct DeploymentConfigMount {
 	pub deployment_id: Uuid,
 }
 
+pub struct DeploymentVolume {
+	pub volume_id: Uuid,
+	pub name: String,
+	pub deployment_id: Uuid,
+	pub size: i32,
+	pub path: String,
+}
+
 pub async fn initialize_deployment_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
@@ -122,7 +130,7 @@ pub async fn initialize_deployment_pre(
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
 			workspace_id UUID NOT NULL,
 			region UUID NOT NULL CONSTRAINT deployment_fk_region
-				REFERENCES deployment_region(id),
+				REFERENCES region(id),
 			min_horizontal_scale SMALLINT NOT NULL
 				CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK(
 					min_horizontal_scale >= 0 AND min_horizontal_scale <= 256
@@ -332,6 +340,28 @@ pub async fn initialize_deployment_pre(
 			created TIMESTAMPTZ NOT NULL,
 			CONSTRAINT deployment_image_digest_pk
 				PRIMARY KEY(deployment_id, image_digest)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE deployment_volume(
+			id UUID CONSTRAINT deployment_volume_pk PRIMARY KEY,
+			name TEXT NOT NULL,
+			deployment_id UUID NOT NULL
+				CONSTRAINT deployment_volume_fk_deployment_id
+					REFERENCES deployment(id),
+			volume_size INT NOT NULL CONSTRAINT
+				deployment_volume_chk_size_unsigned CHECK(volume_size > 0),
+			volume_mount_path TEXT NOT NULL,
+			deleted TIMESTAMPTZ,
+			CONSTRAINT deployment_volume_name_unique_deployment_id
+				UNIQUE(deployment_id, name),
+			CONSTRAINT deployment_volume_path_unique_deployment_id
+				UNIQUE(deployment_id, volume_mount_path)
 		);
 		"#
 	)
@@ -1156,6 +1186,110 @@ pub async fn add_config_mount_for_deployment(
 	.map(|_| ())
 }
 
+pub async fn add_volume_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	volume_id: &Uuid,
+	name: &str,
+	size: i32,
+	path: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO 
+			deployment_volume(
+				id,
+				name,
+				deployment_id,
+				volume_size,
+				volume_mount_path
+			)
+		VALUES
+			($1, $2, $3, $4, $5);
+		"#,
+		volume_id as _,
+		name,
+		deployment_id as _,
+		size as _,
+		path,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_volume_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	size: i32,
+	name: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE 
+			deployment_volume
+		SET
+			volume_size = $1
+		WHERE
+			name = $2 AND
+			deployment_id = $3;
+		"#,
+		size,
+		name,
+		deployment_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn delete_volume(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	volume_id: &Uuid,
+	deleted_time: &DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE 
+			deployment_volume
+		SET
+			deleted = $1
+		WHERE
+			id = $2;
+		"#,
+		deleted_time as _,
+		volume_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_all_deployment_volumes(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+) -> Result<Vec<DeploymentVolume>, sqlx::Error> {
+	query_as!(
+		DeploymentVolume,
+		r#"
+		SELECT
+			id as "volume_id: _",
+			name,
+			deployment_id as "deployment_id: _",
+			volume_size as "size: _",
+			volume_mount_path as "path: _"
+		FROM
+			deployment_volume
+		WHERE
+			deployment_id = $1 AND
+			deleted IS NULL;
+		"#,
+		deployment_id as _,
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
 pub async fn get_all_deployment_config_mounts(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
@@ -1346,6 +1480,47 @@ pub async fn get_all_digest_for_deployment(
 			deployment_id = $1;
 		"#,
 		deployment_id as _,
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn get_deployments_by_region_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	region_id: &Uuid,
+) -> Result<Vec<Deployment>, sqlx::Error> {
+	query_as!(
+		Deployment,
+		r#"
+		SELECT
+			id as "id: _",
+			name::TEXT as "name!: _",
+			registry,
+			repository_id as "repository_id: _",
+			image_name,
+			image_tag,
+			status as "status: _",
+			workspace_id as "workspace_id: _",
+			region as "region: _",
+			min_horizontal_scale,
+			max_horizontal_scale,
+			machine_type as "machine_type: _",
+			deploy_on_push,
+			startup_probe_port,
+			startup_probe_path,
+			liveness_probe_port,
+			liveness_probe_path,
+			current_live_digest
+		FROM
+			deployment
+		WHERE
+			workspace_id = $1 AND
+			region = $2 AND
+			status != 'deleted';
+		"#,
+		workspace_id as _,
+		region_id as _,
 	)
 	.fetch_all(&mut *connection)
 	.await

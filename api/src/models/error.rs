@@ -11,8 +11,10 @@ pub mod id {
 	pub const INVALID_PHONE_NUMBER: &str = "invalidPhoneNumber";
 	pub const INVALID_COUNTRY_CODE: &str = "invalidCountryCode";
 	pub const INVALID_WORKSPACE_NAME: &str = "invalidWorkspaceName";
+	pub const INVALID_BIRTHDAY: &str = "invalidBirthday";
 	pub const WORKSPACE_EXISTS: &str = "workspaceExists";
 	pub const PASSWORD_TOO_WEAK: &str = "passwordTooWeak";
+	pub const PASSWORD_UNCHANGED: &str = "passwordUnchanged";
 	pub const WRONG_PARAMETERS: &str = "wrongParameters";
 	pub const UNAUTHORIZED: &str = "unauthorized";
 	pub const EXPIRED: &str = "expired";
@@ -66,6 +68,7 @@ pub mod id {
 	pub const SECRET_LIMIT_EXCEEDED: &str = "secretLimitExceeded";
 	pub const REPOSITORY_SIZE_LIMIT_EXCEEDED: &str =
 		"repositorySizeLimitExceeded";
+	pub const VOLUME_LIMIT_EXCEEDED: &str = "volumeLimitExceeded";
 	pub const ADDRESS_ALREADY_EXISTS: &str = "addressAlreadyExists";
 	pub const ADDRESS_NOT_FOUND: &str = "addressNotFound";
 	pub const DOMAIN_LIMIT_EXCEEDED: &str = "domainLimitExceeded";
@@ -80,12 +83,17 @@ pub mod id {
 	pub const NOT_A_SUPER_ADMIN: &str = "notASuperAdmin";
 	pub const TEMPORARY_EMAIL: &str = "temporaryEmail";
 	pub const UNVERIFIED_WORKSPACE: &str = "unverifiedWorkspace";
+	pub const REDUCED_VOLUME_SIZE: &str = "reducedVolumeSize";
+	pub const CANNOT_ADD_NEW_VOLUME: &str = "cannotAddNewVolume";
+	pub const CANNOT_REMOVE_VOLUME: &str = "cannotRemoveVolume";
 
 	// error constants for billing related things
 	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "cardlessFreeLimitExceeded";
 	pub const CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT: &str =
 		"cardlessDeploymentMachineType";
 	pub const REPLICA_LIMIT_EXCEEDED: &str = "replicaLimitExceeded";
+	pub const CARDLESS_VOLUME_LIMIT_EXCEEDED: &str =
+		"cardlessVolumeLimitExceeded";
 
 	// error constants for CI
 	pub const INVALID_STATE_VALUE: &str = "invalidStateValue";
@@ -94,6 +102,7 @@ pub mod id {
 	pub const REGION_NOT_READY_YET: &str = "regionNotReadyYet";
 	pub const FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER: &str =
 		"featureNotSupportedForCustomCluster";
+	pub const REGION_NOT_CONNECTED: &str = "regionNotConnected";
 }
 
 #[allow(dead_code)]
@@ -111,9 +120,11 @@ pub mod message {
 	pub const INVALID_COUNTRY_CODE: &str =
 		"Your country code seems to be incorrect";
 	pub const INVALID_WORKSPACE_NAME: &str = "That workspace name is not valid";
+	pub const INVALID_BIRTHDAY: &str = "The entered date is invalid";
 	pub const WORKSPACE_EXISTS: &str = "That workspace name is already taken";
 	pub const PASSWORD_TOO_WEAK: &str =
 		"Your password is too weak. Please choose a stronger password";
+	pub const PASSWORD_UNCHANGED: &str = "Your new password matches your old password. Please choose a different password";
 	pub const WRONG_PARAMETERS: &str =
 		"An internal error occured. This incident has been reported";
 	pub const UNAUTHORIZED: &str =
@@ -217,6 +228,7 @@ pub mod message {
 	pub const MANAGED_URL_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number managed URLs allowed for your workspace, contact support to increase the limit";
 	pub const SECRET_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum number secrets allowed for your workspace, contact support to increase the limit";
 	pub const REPOSITORY_SIZE_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum size of repositories allowed for your workspace, contact support to increase the limit";
+	pub const VOLUME_LIMIT_EXCEEDED: &str = "You have reached the limit of the maximum size of the volumes allowed for your workspace, contact support to increase the limit";
 	pub const ADDRESS_ALREADY_EXISTS: &str =
 		"The address already exists, please use a different address";
 	pub const ADDRESS_NOT_FOUND: &str =
@@ -232,11 +244,16 @@ pub mod message {
 	pub const NOT_A_SUPER_ADMIN: &str = "You have to be super admin to perform this action. If you wish to continue please contact your administrator";
 	pub const TEMPORARY_EMAIL: &str = "We have detected your email to be temporary email. Please enter a valid email or contact support for help";
 	pub const UNVERIFIED_WORKSPACE: &str = "Your workspace has been blocked for suspicious activity. Please open a support ticket to unblock your workspace";
+	pub const REDUCED_VOLUME_SIZE: &str =
+		"Cannot update volume size to be less than the actual size given at the time of creating deployment";
+	pub const CANNOT_ADD_NEW_VOLUME: &str = "Adding new volume to your deployment is not allowed. You can try increasing the size or create a new deployment with desired number of volumes";
+	pub const CANNOT_REMOVE_VOLUME: &str = "Removing a volume from a deployment is not allowed, if you want to achieve the same please try deleting the deployment and create a new one";
 
 	// error constants for billing related things
-	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "You have reached the maximun free limit allowed to create resources without adding a payment card, kindly add a card to create more resources";
-	pub const CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT: &str = "Only base deployment machine type is allowed under free plan, kindly add a card to create deployment with bigger machine type";
-	pub const REPLICA_LIMIT_EXCEEDED: &str = "Only one minimum and maximum replicas allowed under the free plan,  kindly add a card to create deployment with multiple replicas";
+	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "You have reached the maximun free limit allowed to create resources without adding a payment card. Kindly add a card to create more resources";
+	pub const CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT: &str = "Only base deployment machine type is allowed under free plan. Kindly add a card to create deployment with bigger machine type";
+	pub const REPLICA_LIMIT_EXCEEDED: &str = "Only one minimum and maximum replicas allowed under the free plan. Kindly add a card to create deployment with multiple replicas";
+	pub const CARDLESS_VOLUME_LIMIT_EXCEEDED: &str = "No volume storage allowed under the free plan. Kindly add a card to create volume with more storage";
 
 	// error constants for CI
 	pub const INVALID_STATE_VALUE: &str =
@@ -246,4 +263,5 @@ pub mod message {
 	pub const REGION_NOT_READY_YET: &str = "The cluster is not initialized yet, wait for some time and then try again";
 	pub const FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER: &str =
 		"For custom cluster this feature is not supported";
+	pub const REGION_NOT_CONNECTED: &str = "We're unable to connect to your custom cluster. Kindly make sure your cluster is up and running. If you face any difficulty please contact support";
 }

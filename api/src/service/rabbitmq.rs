@@ -8,6 +8,7 @@ use api_models::{
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
+use kube::config::Kubeconfig;
 use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
@@ -18,6 +19,7 @@ use crate::{
 		CIData,
 		DeploymentRequestData,
 		DockerRegistryData,
+		DockerWebhookData,
 		InfraRequestData,
 		Queue,
 	},
@@ -360,20 +362,138 @@ pub async fn queue_clean_ci_build_pipeline(
 
 pub async fn queue_setup_kubernetes_cluster(
 	region_id: &Uuid,
-	cluster_url: &str,
-	certificate_authority_data: &str,
-	auth_username: &str,
-	auth_token: &str,
+	kube_config: Kubeconfig,
+	tls_cer: &str,
+	tls_key: &str,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	send_message_to_infra_queue(
 		&InfraRequestData::BYOC(BYOCData::InitKubernetesCluster {
 			region_id: region_id.clone(),
-			cluster_url: cluster_url.to_owned(),
-			certificate_authority_data: certificate_authority_data.to_string(),
-			auth_username: auth_username.to_string(),
-			auth_token: auth_token.to_string(),
+			kube_config,
+			tls_cert: tls_cer.to_owned(),
+			tls_key: tls_key.to_owned(),
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await
+}
+
+pub async fn queue_sync_github_repo(
+	workspace_id: &Uuid,
+	git_provider_id: &Uuid,
+	request_id: &Uuid,
+	github_access_token: String,
+	config: &Settings,
+) -> Result<(), Error> {
+	send_message_to_ci_queue(
+		&CIData::SyncRepo {
+			workspace_id: workspace_id.clone(),
+			git_provider_id: git_provider_id.clone(),
+			request_id: request_id.clone(),
+			github_access_token,
+		},
+		config,
+		request_id,
+	)
+	.await
+}
+
+pub async fn queue_docker_notification_error(
+	request_body: &str,
+	content_type: &str,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_docker_webhook_queue(
+		&DockerWebhookData::NotificationHandler {
+			request_body: request_body.to_string(),
+			content_type: content_type.to_string(),
+			request_id: request_id.clone(),
+		},
+		request_id,
+	)
+	.await
+}
+
+pub async fn send_message_to_docker_webhook_queue(
+	message: &DockerWebhookData,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let app = service::get_app();
+	let (channel, rabbitmq_connection) =
+		rabbitmq::get_rabbitmq_connection_channel(&app.rabbitmq).await?;
+
+	let confirmation = channel
+		.basic_publish(
+			"",
+			"dockerWebhookError", /* not putting this in Queue enum as we
+			                       * don't want this handle/consume */
+			BasicPublishOptions::default(),
+			serde_json::to_string(&message)?.as_bytes(),
+			BasicProperties::default(),
+		)
+		.await?
+		.await?;
+
+	if !confirmation.is_ack() {
+		log::error!("request_id: {} - RabbitMQ publish failed", request_id);
+		return Err(Error::empty());
+	}
+
+	channel.close(200, "Normal shutdown").await.map_err(|e| {
+		log::error!("Error closing rabbitmq channel: {}", e);
+		Error::from(e)
+	})?;
+
+	rabbitmq_connection
+		.close(200, "Normal shutdown")
+		.await
+		.map_err(|e| {
+			log::error!("Error closing rabbitmq connection: {}", e);
+			Error::from(e)
+		})?;
+	Ok(())
+}
+
+pub async fn queue_get_kube_config_for_do_cluster(
+	api_token: &str,
+	cluster_id: &Uuid,
+	region_id: &Uuid,
+	tls_cer: &str,
+	tls_key: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_infra_queue(
+		&InfraRequestData::BYOC(BYOCData::GetDigitalOceanKubeconfig {
+			api_token: api_token.to_string(),
+			cluster_id: cluster_id.clone(),
+			region_id: region_id.clone(),
+			tls_cert: tls_cer.to_owned(),
+			tls_key: tls_key.to_owned(),
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await
+}
+
+pub async fn queue_delete_kubernetes_cluster(
+	region_id: &Uuid,
+	workspace_id: &Uuid,
+	kube_config: Kubeconfig,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_infra_queue(
+		&InfraRequestData::BYOC(BYOCData::DeleteKubernetesCluster {
+			region_id: region_id.clone(),
+			workspace_id: workspace_id.clone(),
+			kube_config,
 			request_id: request_id.clone(),
 		}),
 		config,

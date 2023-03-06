@@ -1,5 +1,6 @@
 use std::{fmt::Debug, net::IpAddr};
 
+use api_models::utils::Uuid;
 use either::Either;
 use k8s_openapi::api::{
 	apps::v1::Deployment,
@@ -27,7 +28,7 @@ use kube::{
 };
 use reqwest::Client;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use sqlx::{types::Uuid, Row};
+use sqlx::Row;
 
 use crate::{
 	migrate_query as query,
@@ -148,7 +149,7 @@ pub(super) async fn mark_existing_workspaces_as_spam(
 			WHERE
 				personal_email.user_id = $1;
 			"#,
-			user_id,
+			&user_id,
 		)
 		.fetch_all(&mut *connection)
 		.await?
@@ -214,7 +215,7 @@ pub(super) async fn mark_existing_workspaces_as_spam(
 				) AND
 				workspace.deleted IS NULL;
 			"#,
-			user_id,
+			&user_id,
 		)
 		.fetch_all(&mut *connection)
 		.await?
@@ -241,7 +242,7 @@ pub(super) async fn mark_existing_workspaces_as_spam(
 					workspace_id = $1 AND
 					status != 'deleted';
 				"#,
-				workspace_id
+				&workspace_id
 			)
 			.fetch_all(&mut *connection)
 			.await?
@@ -253,7 +254,7 @@ pub(super) async fn mark_existing_workspaces_as_spam(
 			log::info!(
 				"Found {} deployments for workspace {}. Deleting...",
 				deployments_num,
-				workspace_id
+				&workspace_id
 			);
 
 			for (index, (deployment_id, deployment_region)) in
@@ -263,12 +264,12 @@ pub(super) async fn mark_existing_workspaces_as_spam(
 					"Deleting deployment {}/{} for workspace {}",
 					index + 1,
 					deployments_num,
-					workspace_id
+					&workspace_id
 				);
 
 				let (
 					ready,
-					regoin_workspace_id,
+					region_workspace_id,
 					kubernetes_cluster_url,
 					kubernetes_auth_username,
 					kubernetes_auth_token,
@@ -283,7 +284,7 @@ pub(super) async fn mark_existing_workspaces_as_spam(
 					WHERE
 						id = $1;
 					"#,
-					deployment_region,
+					&deployment_region,
 				)
 				.fetch_one(&mut *connection)
 				.await
@@ -306,7 +307,7 @@ pub(super) async fn mark_existing_workspaces_as_spam(
 				let kubeconfig = get_kubernetes_config_for_region(
 					deployment_region,
 					ready,
-					regoin_workspace_id,
+					region_workspace_id.clone(),
 					kubernetes_cluster_url,
 					kubernetes_auth_username,
 					kubernetes_auth_token,
@@ -339,7 +340,7 @@ pub(super) async fn mark_existing_workspaces_as_spam(
 						WHERE
 							id = $1;
 						"#,
-						workspace_id,
+						&workspace_id,
 					)
 					.execute(&mut *connection)
 					.await?;
@@ -348,7 +349,7 @@ pub(super) async fn mark_existing_workspaces_as_spam(
 						connection,
 						&deployment_id,
 						&workspace_id,
-						regoin_workspace_id.as_ref(),
+						region_workspace_id.as_ref(),
 						kubeconfig,
 						&request_id,
 					)
@@ -375,7 +376,7 @@ pub(super) async fn mark_existing_workspaces_as_spam(
 						WHERE
 							id = $1;
 						"#,
-						workspace_id,
+						&workspace_id,
 					)
 					.execute(&mut *connection)
 					.await?;
@@ -525,8 +526,8 @@ async fn get_kubernetes_client(
 			kind: Some("Config".to_string()),
 			clusters: vec![NamedCluster {
 				name: "kubernetesCluster".to_owned(),
-				cluster: Cluster {
-					server: kube_auth_details.cluster_url,
+				cluster: Some(Cluster {
+					server: Some(kube_auth_details.cluster_url),
 					certificate_authority_data: Some(
 						kube_auth_details.certificate_authority_data,
 					),
@@ -534,23 +535,24 @@ async fn get_kubernetes_client(
 					certificate_authority: None,
 					proxy_url: None,
 					extensions: None,
-				},
+					..Default::default()
+				}),
 			}],
 			auth_infos: vec![NamedAuthInfo {
 				name: kube_auth_details.auth_username.clone(),
-				auth_info: AuthInfo {
+				auth_info: Some(AuthInfo {
 					token: Some(kube_auth_details.auth_token.into()),
 					..Default::default()
-				},
+				}),
 			}],
 			contexts: vec![NamedContext {
 				name: "kubernetesContext".to_owned(),
-				context: Context {
+				context: Some(Context {
 					cluster: "kubernetesCluster".to_owned(),
 					user: kube_auth_details.auth_username,
 					extensions: None,
 					namespace: None,
-				},
+				}),
 			}],
 			current_context: Some("kubernetesContext".to_owned()),
 			preferences: None,

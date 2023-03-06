@@ -34,6 +34,7 @@ use api_models::{
 	},
 	utils::{DateTime, Uuid},
 };
+use chrono::{Datelike, Utc};
 use eve_rs::{App as EveApp, AsError, NextHandler};
 
 use crate::{
@@ -483,6 +484,14 @@ async fn update_user_info(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let user_id = context.get_token_data().unwrap().user_id().clone();
+
+	if let Some(dob) = birthday.as_ref() {
+		if (Utc::now().year() - dob.year()) < 13 {
+			Error::as_result()
+				.status(400)
+				.body(error!(INVALID_BIRTHDAY).to_string())?;
+		}
+	}
 
 	db::update_user_data(
 		context.get_database_connection(),

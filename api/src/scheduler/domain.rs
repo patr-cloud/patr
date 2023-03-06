@@ -1,20 +1,14 @@
-use api_models::{
-	models::workspace::infrastructure::managed_urls::{
-		ManagedUrl,
-		ManagedUrlType,
-	},
-	utils::Uuid,
-};
+use api_models::{self, utils::Uuid};
 use chrono::Utc;
 use cloudflare::{
 	endpoints::zone::{self, Status},
-	framework::{async_api::ApiClient, response::ApiFailure},
+	framework::response::ApiFailure,
 };
 use eve_rs::AsError;
 use sqlx::Connection;
 
 use crate::{
-	db::{self, ManagedUrlType as DbManagedUrlType},
+	db,
 	error,
 	scheduler::Job,
 	service,
@@ -28,15 +22,6 @@ pub(super) fn verify_unverified_domains_job() -> Job {
 		String::from("Verify unverified domains"),
 		"0 0 1/2 * * *".parse().unwrap(),
 		|| Box::pin(verify_unverified_domains()),
-	)
-}
-
-// Every 15 mins
-pub(super) fn repatch_all_managed_urls_job() -> Job {
-	Job::new(
-		String::from("Repatch all managed URLs"),
-		"0 0/15 * * * *".parse().unwrap(),
-		|| Box::pin(repatch_all_managed_urls()),
 	)
 }
 
@@ -154,19 +139,6 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 				}
 			};
 			if zone_active {
-				service::create_certificates(
-					&workspace_id,
-					&format!("certificate-{}", unverified_domain.id),
-					&format!("tls-{}", unverified_domain.id),
-					vec![
-						format!("*.{}", unverified_domain.name),
-						unverified_domain.name.clone(),
-					],
-					true,
-					&settings,
-					&request_id,
-				)
-				.await?;
 				// Domain is now verified
 				db::update_workspace_domain_status(
 					&mut connection,
@@ -254,7 +226,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 			)
 			.await?;
 			if verified {
-				// domain in initially unverified
+				// domain is initially unverified
 				// now it got verified
 				db::update_workspace_domain_status(
 					&mut connection,
@@ -331,214 +303,6 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 			}
 		}
 	}
-	Ok(())
-}
-
-async fn repatch_all_managed_urls() -> Result<(), Error> {
-	let request_id = Uuid::new_v4();
-	log::trace!("request_id: {} - Re-patching all Managed URLs", request_id);
-	let config = super::CONFIG.get().unwrap();
-	let mut connection = config.database.begin().await?;
-	let managed_urls =
-		db::get_all_unconfigured_managed_urls(&mut connection).await?;
-
-	for managed_url in managed_urls {
-		let Ok(is_configured) = service::verify_managed_url_configuration(
-			&mut connection,
-			&managed_url.id,
-			&config.config,
-			&request_id,
-		)
-		.await
-		.map_err(|err| {
-			log::error!("Error verifying managed URL: {}", err.get_error());
-			err
-		}) else {
-			continue;
-		};
-
-		if !is_configured {
-			continue;
-		}
-
-		let domain = db::get_workspace_domain_by_id(
-			&mut connection,
-			&managed_url.domain_id,
-		)
-		.await?
-		.status(500)?;
-
-		if domain.is_ns_external() {
-			// External domain
-			// Create certificate for the domain
-			let secret_name = if managed_url.sub_domain == "@" {
-				format!("tls-{}", managed_url.domain_id)
-			} else {
-				format!(
-					"tls-{}-{}",
-					managed_url.sub_domain, managed_url.domain_id
-				)
-			};
-			service::create_certificates(
-				&managed_url.workspace_id,
-				&if managed_url.sub_domain == "@" {
-					format!("certificate-{}", managed_url.domain_id)
-				} else {
-					format!(
-						"certificate-{}-{}",
-						managed_url.sub_domain, managed_url.domain_id
-					)
-				},
-				&secret_name,
-				vec![
-					if managed_url.sub_domain == "@" {
-						domain.name.to_string()
-					} else {
-						format!("{}.{}", managed_url.sub_domain, domain.name)
-					},
-				],
-				false,
-				&config.config,
-				&request_id,
-			)
-			.await?;
-
-			let cert_exists = service::is_kubernetes_certificate_secret_exists(
-				&managed_url.workspace_id,
-				&secret_name,
-				&config.config,
-				&request_id,
-			)
-			.await?;
-
-			if cert_exists {
-				db::update_managed_url_configuration_status(
-					&mut connection,
-					&managed_url.id,
-					true,
-				)
-				.await?;
-
-				service::update_kubernetes_managed_url(
-					&managed_url.workspace_id,
-					&ManagedUrl {
-						id: managed_url.id,
-						sub_domain: managed_url.sub_domain,
-						domain_id: managed_url.domain_id,
-						path: managed_url.path,
-						url_type: match managed_url.url_type {
-							DbManagedUrlType::ProxyToDeployment => {
-								ManagedUrlType::ProxyDeployment {
-									deployment_id: managed_url
-										.deployment_id
-										.status(500)?,
-									port: managed_url.port.status(500)? as u16,
-								}
-							}
-							DbManagedUrlType::ProxyToStaticSite => {
-								ManagedUrlType::ProxyStaticSite {
-									static_site_id: managed_url
-										.static_site_id
-										.status(500)?,
-								}
-							}
-							DbManagedUrlType::ProxyUrl => {
-								ManagedUrlType::ProxyUrl {
-									url: managed_url.url.status(500)?,
-									http_only: managed_url
-										.http_only
-										.status(500)?,
-								}
-							}
-							DbManagedUrlType::Redirect => {
-								ManagedUrlType::Redirect {
-									url: managed_url.url.status(500)?,
-									permanent_redirect: managed_url
-										.permanent_redirect
-										.status(500)?,
-									http_only: managed_url
-										.http_only
-										.status(500)?,
-								}
-							}
-						},
-						is_configured: true,
-					},
-					&config.config,
-					&request_id,
-				)
-				.await?;
-			}
-		} else {
-			let cert_exists = service::is_kubernetes_certificate_secret_exists(
-				&managed_url.workspace_id,
-				&format!("tls-{}", managed_url.domain_id),
-				&config.config,
-				&request_id,
-			)
-			.await?;
-
-			if cert_exists {
-				db::update_managed_url_configuration_status(
-					&mut connection,
-					&managed_url.id,
-					true,
-				)
-				.await?;
-
-				service::update_kubernetes_managed_url(
-					&managed_url.workspace_id,
-					&ManagedUrl {
-						id: managed_url.id,
-						sub_domain: managed_url.sub_domain,
-						domain_id: managed_url.domain_id,
-						path: managed_url.path,
-						url_type: match managed_url.url_type {
-							DbManagedUrlType::ProxyToDeployment => {
-								ManagedUrlType::ProxyDeployment {
-									deployment_id: managed_url
-										.deployment_id
-										.status(500)?,
-									port: managed_url.port.status(500)? as u16,
-								}
-							}
-							DbManagedUrlType::ProxyToStaticSite => {
-								ManagedUrlType::ProxyStaticSite {
-									static_site_id: managed_url
-										.static_site_id
-										.status(500)?,
-								}
-							}
-							DbManagedUrlType::ProxyUrl => {
-								ManagedUrlType::ProxyUrl {
-									url: managed_url.url.status(500)?,
-									http_only: managed_url
-										.http_only
-										.status(500)?,
-								}
-							}
-							DbManagedUrlType::Redirect => {
-								ManagedUrlType::Redirect {
-									url: managed_url.url.status(500)?,
-									permanent_redirect: managed_url
-										.permanent_redirect
-										.status(500)?,
-									http_only: managed_url
-										.http_only
-										.status(500)?,
-								}
-							}
-						},
-						is_configured: true,
-					},
-					&config.config,
-					&request_id,
-				)
-				.await?;
-			}
-		}
-	}
-
 	Ok(())
 }
 
@@ -700,18 +464,6 @@ async fn delete_unverified_domain(
 		request_id,
 	)
 	.await?;
-
-	if is_internal {
-		// Delete the certificate for the domain
-		service::delete_certificates_for_domain(
-			workspace_id,
-			&format!("certificate-{}", domain_id),
-			&format!("tls-{}", domain_id),
-			config,
-			request_id,
-		)
-		.await?;
-	}
 
 	Ok(())
 }

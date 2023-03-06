@@ -1,18 +1,22 @@
-use std::{collections::BTreeMap, str};
+use std::{cmp::Ordering, collections::BTreeMap, str};
 
 use api_models::{
-	models::workspace::infrastructure::deployment::{
-		Deployment,
-		DeploymentLogs,
-		DeploymentMetrics,
-		DeploymentProbe,
-		DeploymentRegistry,
-		DeploymentRunningDetails,
-		DeploymentStatus,
-		EnvironmentVariableValue,
-		ExposedPortType,
-		Metric,
-		PatrRegistry,
+	models::workspace::{
+		infrastructure::deployment::{
+			Deployment,
+			DeploymentLogs,
+			DeploymentMetrics,
+			DeploymentProbe,
+			DeploymentRegistry,
+			DeploymentRunningDetails,
+			DeploymentStatus,
+			DeploymentVolume,
+			EnvironmentVariableValue,
+			ExposedPortType,
+			Metric,
+			PatrRegistry,
+		},
+		region::RegionStatus,
 	},
 	utils::{
 		constants,
@@ -31,6 +35,7 @@ use crate::{
 	db,
 	error,
 	models::{
+		cloudflare,
 		deployment::{Logs, PrometheusResponse, MACHINE_TYPES},
 		rbac::{self, permissions},
 		DeploymentMetadata,
@@ -100,10 +105,16 @@ pub async fn create_deployment_in_workspace(
 	// validate whether the deployment region is ready
 	let region_details = db::get_region_by_id(connection, region)
 		.await?
+		.filter(|value| {
+			value.is_patr_region() ||
+				value.workspace_id.as_ref() == Some(workspace_id)
+		})
 		.status(400)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	if !(region_details.ready || region_details.workspace_id.is_none()) {
+	if !(region_details.status == RegionStatus::Active ||
+		region_details.is_patr_region())
+	{
 		return Err(Error::empty()
 			.status(500)
 			.body(error!(REGION_NOT_READY_YET).to_string()));
@@ -138,6 +149,7 @@ pub async fn create_deployment_in_workspace(
 		machine_type,
 		&deployment_running_details.min_horizontal_scale,
 		&deployment_running_details.max_horizontal_scale,
+		&deployment_running_details.volumes,
 		request_id,
 	)
 	.await?;
@@ -265,6 +277,34 @@ pub async fn create_deployment_in_workspace(
 		.await?;
 	}
 
+	for (name, volume) in &deployment_running_details.volumes {
+		log::trace!("request_id: {} - creating volume resource", request_id);
+		let volume_id = db::generate_new_resource_id(connection).await?;
+
+		db::create_resource(
+			connection,
+			&volume_id,
+			rbac::RESOURCE_TYPES
+				.get()
+				.unwrap()
+				.get(rbac::resource_types::DEPLOYMENT_VOLUME)
+				.unwrap(),
+			workspace_id,
+			&created_time,
+		)
+		.await?;
+
+		db::add_volume_for_deployment(
+			connection,
+			&deployment_id,
+			&volume_id,
+			name.as_str(),
+			volume.size as i32,
+			volume.path.as_str(),
+		)
+		.await?;
+	}
+
 	Ok(deployment_id)
 }
 
@@ -304,6 +344,7 @@ pub async fn get_deployment_container_logs(
 	Ok(logs)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn update_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
@@ -318,6 +359,8 @@ pub async fn update_deployment(
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
 	config_mounts: Option<&BTreeMap<String, Base64String>>,
+	volumes: Option<&BTreeMap<String, DeploymentVolume>>,
+	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
@@ -326,8 +369,25 @@ pub async fn update_deployment(
 		deployment_id
 	);
 
-	// Check if card is added
+	let now = Utc::now();
 
+	let old_min_replicas = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?
+		.min_horizontal_scale as u16;
+
+	// Get volume size for checking the limit
+	let volume_size = if let Some(volumes) = volumes {
+		volumes
+			.iter()
+			.map(|(_, volume)| volume.size as u32)
+			.sum::<u32>()
+	} else {
+		0
+	};
+
+	// Check if card is added
 	let card_added =
 		db::get_default_payment_method_for_workspace(connection, workspace_id)
 			.await?
@@ -341,7 +401,8 @@ pub async fn update_deployment(
 				.status(500)?;
 
 			if machine_type_to_be_deployed != &(1, 2) {
-				log::info!("request_id: {request_id} - Only basic machine type is allowed under free plan");
+				log::info!("request_id: {request_id} - Only basic machine type is allowed
+	under free plan");
 				return Error::as_result().status(400).body(
 					error!(CARDLESS_DEPLOYMENT_MACHINE_TYPE_LIMIT).to_string(),
 				)?;
@@ -349,7 +410,9 @@ pub async fn update_deployment(
 		}
 		if let Some(max_horizontal_scale) = max_horizontal_scale {
 			if max_horizontal_scale > 1 {
-				log::info!("request_id: {request_id} - Only one replica allowed under free plan without card");
+				log::info!(
+					"request_id: {request_id} - Only one replica allowed under free plan
+	without card" 			);
 				return Error::as_result()
 					.status(400)
 					.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
@@ -358,15 +421,42 @@ pub async fn update_deployment(
 
 		if let Some(min_horizontal_scale) = min_horizontal_scale {
 			if min_horizontal_scale > 1 {
-				log::info!("request_id: {request_id} - Only one replica allowed under free plan without card");
+				log::info!(
+					"request_id: {request_id} - Only one replica allowed under free plan
+	without card" 			);
 				return Error::as_result()
 					.status(400)
 					.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
 			}
 		}
+
+		let volume_size_in_bytes = volume_size as usize * 1024 * 1024 * 1024;
+		if volume_size_in_bytes > free_limits::VOLUME_STORAGE_IN_BYTE {
+			return Error::as_result()
+				.status(400)
+				.body(error!(CARDLESS_VOLUME_LIMIT_EXCEEDED).to_string())?;
+		}
+	}
+
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
+	let workspace_volume_limit = workspace.volume_storage_limit;
+
+	if volume_size > workspace_volume_limit as u32 {
+		return Error::as_result()
+			.status(400)
+			.body(error!(VOLUME_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	if workspace.is_spam {
+		return Err(Error::empty()
+			.status(401)
+			.body(error!(UNVERIFIED_WORKSPACE).to_string()));
 	}
 
 	db::begin_deferred_constraints(connection).await?;
+
 	if let Some(ports) = ports {
 		if ports.is_empty() {
 			return Err(Error::empty()
@@ -390,6 +480,7 @@ pub async fn update_deployment(
 			.await?;
 		}
 	}
+
 	db::update_deployment_details(
 		connection,
 		deployment_id,
@@ -416,6 +507,56 @@ pub async fn update_deployment(
 				file,
 			)
 			.await?;
+		}
+	}
+
+	if let Some(updated_volumes) = volumes {
+		let mut current_volumes =
+			db::get_all_deployment_volumes(connection, deployment_id)
+				.await?
+				.into_iter()
+				.map(|volume| (volume.name.clone(), volume))
+				.collect::<BTreeMap<_, _>>();
+
+		for (name, volume) in updated_volumes {
+			if let Some(value) = current_volumes.remove(name) {
+				// The new volume is there in the current volumes. Update it
+
+				let current_size = value.size as u16;
+				let new_size = volume.size;
+
+				match new_size.cmp(&current_size) {
+					Ordering::Less => {
+						// Volume size cannot be reduced
+						return Err(Error::empty())
+							.status(400)
+							.body(error!(REDUCED_VOLUME_SIZE).to_string());
+					}
+					Ordering::Equal => (), // Ignore
+					Ordering::Greater => {
+						db::update_volume_for_deployment(
+							connection,
+							deployment_id,
+							new_size as i32,
+							name,
+						)
+						.await?;
+					}
+				}
+			} else {
+				// The new volume is not there in the current volumes. Prevent
+				// from adding it
+				return Err(Error::empty())
+					.status(400)
+					.body(error!(CANNOT_ADD_NEW_VOLUME).to_string());
+			}
+		}
+
+		if !current_volumes.is_empty() {
+			// Preventing removing number of volume
+			return Err(Error::empty())
+				.status(400)
+				.body(error!(CANNOT_REMOVE_VOLUME).to_string());
 		}
 	}
 
@@ -457,6 +598,144 @@ pub async fn update_deployment(
 		"request_id: {} - Deployment updated in the database",
 		request_id
 	);
+
+	let (deployment, _, full_image, running_details) =
+		get_full_deployment_config(connection, deployment_id, request_id)
+			.await?;
+
+	let volumes =
+		db::get_all_deployment_volumes(connection, deployment_id).await?;
+
+	let (kubeconfig, deployed_region_id) =
+		service::get_kubernetes_config_for_region(
+			connection,
+			&deployment.region,
+		)
+		.await?;
+
+	if let Some(new_min_replica) = min_horizontal_scale {
+		if new_min_replica != old_min_replicas {
+			let is_patr_cluster = service::is_deployed_on_patr_cluster(
+				connection,
+				&deployment.region,
+			)
+			.await?;
+			for volume in &volumes {
+				if is_patr_cluster {
+					db::stop_volume_usage_history(
+						connection,
+						&volume.volume_id,
+						&now,
+					)
+					.await?;
+					db::start_volume_usage_history(
+						connection,
+						workspace_id,
+						&volume.volume_id,
+						volume.size as u64 * 1000u64 * 1000u64 * 1000u64,
+						new_min_replica,
+						&now,
+					)
+					.await?;
+				}
+
+				if new_min_replica < old_min_replicas {
+					// Delete any excess volumes that are present
+					for replica_index in new_min_replica..old_min_replicas {
+						service::delete_kubernetes_volume(
+							workspace_id,
+							deployment_id,
+							volume,
+							replica_index,
+							kubeconfig.clone(),
+							request_id,
+						)
+						.await?;
+					}
+				}
+			}
+		}
+	}
+
+	match &deployment.status {
+		DeploymentStatus::Stopped |
+		DeploymentStatus::Deleted |
+		DeploymentStatus::Created => {
+			// Don't update deployments that are explicitly stopped or deleted
+		}
+		_ => {
+			db::update_deployment_status(
+				connection,
+				deployment_id,
+				&DeploymentStatus::Deploying,
+			)
+			.await?;
+
+			if service::is_deployed_on_patr_cluster(
+				connection,
+				&deployment.region,
+			)
+			.await?
+			{
+				db::stop_deployment_usage_history(
+					connection,
+					deployment_id,
+					&now,
+				)
+				.await?;
+
+				db::start_deployment_usage_history(
+					connection,
+					workspace_id,
+					deployment_id,
+					&deployment.machine_type,
+					running_details.min_horizontal_scale as i32,
+					&now,
+				)
+				.await?;
+			}
+
+			for volume in &volumes {
+				service::update_kubernetes_volume(
+					workspace_id,
+					deployment_id,
+					volume,
+					running_details.min_horizontal_scale,
+					kubeconfig.clone(),
+					request_id,
+				)
+				.await?;
+			}
+
+			service::update_kubernetes_deployment(
+				workspace_id,
+				&deployment,
+				&full_image,
+				None,
+				&running_details,
+				&volumes,
+				kubeconfig,
+				&deployed_region_id,
+				config,
+				request_id,
+			)
+			.await?;
+
+			service::update_cloudflare_kv_for_deployment(
+				deployment_id,
+				cloudflare::deployment::Value::Running {
+					region_id: deployed_region_id,
+					ports: running_details
+						.ports
+						.iter()
+						.map(|(port, _type)| port.value())
+						.collect(),
+				},
+				config,
+			)
+			.await?;
+		}
+	}
 
 	Ok(())
 }
@@ -576,6 +855,20 @@ pub async fn get_full_deployment_config(
 			.map(|mount| (mount.path, mount.file.into()))
 			.collect();
 
+	let volumes = db::get_all_deployment_volumes(connection, deployment_id)
+		.await?
+		.into_iter()
+		.map(|volume| {
+			(
+				volume.name,
+				DeploymentVolume {
+					path: volume.path,
+					size: volume.size as u16,
+				},
+			)
+		})
+		.collect();
+
 	log::trace!("request_id: {} - Full deployment config for deployment with id: {} successfully retreived", request_id, deployment_id);
 
 	Ok((
@@ -597,6 +890,7 @@ pub async fn get_full_deployment_config(
 				.zip(liveness_probe_path)
 				.map(|(port, path)| DeploymentProbe { path, port }),
 			config_mounts,
+			volumes,
 		},
 	))
 }
@@ -1081,6 +1375,7 @@ async fn check_deployment_creation_limit(
 	machine_type: &Uuid,
 	min_horizontal_scale: &u16,
 	max_horizontal_scale: &u16,
+	volumes: &BTreeMap<String, DeploymentVolume>,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {request_id} - Checking whether new deployment creation is limited");
@@ -1096,10 +1391,16 @@ async fn check_deployment_creation_limit(
 			.await?
 			.len();
 
+	let volume_size = volumes
+		.iter()
+		.map(|(_, volume)| volume.size as u32)
+		.sum::<u32>();
+
 	let card_added =
 		db::get_default_payment_method_for_workspace(connection, workspace_id)
 			.await?
 			.is_some();
+
 	if !card_added {
 		// check whether free limit is exceeded
 		if current_deployment_count >= free_limits::DEPLOYMENT_COUNT {
@@ -1128,21 +1429,34 @@ async fn check_deployment_creation_limit(
 				.status(400)
 				.body(error!(REPLICA_LIMIT_EXCEEDED).to_string())?;
 		}
+
+		let volume_size_in_byte = volume_size as usize * 1024 * 1024 * 1024;
+		if volume_size_in_byte > free_limits::VOLUME_STORAGE_IN_BYTE {
+			return Error::as_result()
+				.status(400)
+				.body(error!(CARDLESS_VOLUME_LIMIT_EXCEEDED).to_string())?;
+		}
 	}
 
 	// check whether max deployment limit is exceeded
-	let max_deployment_limit = db::get_workspace_info(connection, workspace_id)
+	let workspace = db::get_workspace_info(connection, workspace_id)
 		.await?
 		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?
-		.deployment_limit;
-	if current_deployment_count >= max_deployment_limit as usize {
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	if current_deployment_count >= workspace.database_limit as usize {
 		log::info!(
 			"request_id: {request_id} - Max deployment limit for workspace reached"
 		);
 		return Error::as_result()
 			.status(400)
 			.body(error!(DEPLOYMENT_LIMIT_EXCEEDED).to_string())?;
+	}
+
+	if volume_size > workspace.volume_storage_limit as u32 {
+		return Error::as_result()
+			.status(400)
+			.body(error!(VOLUME_LIMIT_EXCEEDED).to_string())?;
 	}
 
 	// check whether total resource limit is exceeded
@@ -1191,9 +1505,45 @@ pub async fn start_deployment(
 	)
 	.await?;
 
+	let volumes =
+		db::get_all_deployment_volumes(connection, deployment_id).await?;
+
 	if service::is_deployed_on_patr_cluster(connection, &deployment.region)
 		.await?
 	{
+		for volume in &volumes {
+			log::trace!(
+				"request_id: {} starting volume usage history",
+				request_id
+			);
+
+			// TODO - Figure out a better solution to this. If possible try
+			// doing it on db layer.The aim is to handle the case when user has
+			// created the deployment but deploy_on_create is false.
+			// start_deployment is called from create, update and start
+			// deployment routes in which case we have to handle the case when
+			// user is starting is starting the deployment for the first time
+			// where volume_usage table is empty also considering that volume
+			// usage only stops when deployment is permanently deleted
+			if db::get_volume_payment_history_by_volume_id(
+				connection,
+				&volume.volume_id,
+			)
+			.await?
+			.is_none()
+			{
+				db::start_volume_usage_history(
+					connection,
+					workspace_id,
+					&volume.volume_id,
+					volume.size as u64 * 1000u64 * 1000u64 * 1000u64,
+					deployment_running_details.min_horizontal_scale,
+					current_time,
+				)
+				.await?;
+			}
+		}
+
 		db::start_deployment_usage_history(
 			connection,
 			workspace_id,
@@ -1239,12 +1589,12 @@ pub async fn start_deployment(
 			.body(error!(UNVERIFIED_WORKSPACE).to_string()));
 	}
 
-	let kubeconfig = service::get_kubernetes_config_for_region(
-		connection,
-		&deployment.region,
-		config,
-	)
-	.await?;
+	let (kubeconfig, deployed_region_id) =
+		service::get_kubernetes_config_for_region(
+			connection,
+			&deployment.region,
+		)
+		.await?;
 
 	service::update_kubernetes_deployment(
 		workspace_id,
@@ -1252,9 +1602,25 @@ pub async fn start_deployment(
 		&image_name,
 		digest.as_deref(),
 		deployment_running_details,
+		&volumes,
 		kubeconfig,
+		&deployed_region_id,
 		config,
 		request_id,
+	)
+	.await?;
+
+	service::update_cloudflare_kv_for_deployment(
+		deployment_id,
+		cloudflare::deployment::Value::Running {
+			region_id: deployed_region_id,
+			ports: deployment_running_details
+				.ports
+				.iter()
+				.map(|(port, _type)| port.value())
+				.collect(),
+		},
+		config,
 	)
 	.await?;
 
@@ -1304,38 +1670,48 @@ pub async fn update_deployment_image(
 		.await?
 		.status(500)?;
 
+	let volumes =
+		db::get_all_deployment_volumes(connection, deployment_id).await?;
+
 	if workspace.is_spam {
-		return Err(Error::empty()
-			.status(401)
-			.body(error!(UNVERIFIED_WORKSPACE).to_string()));
+		db::update_deployment_status(
+			connection,
+			deployment_id,
+			&DeploymentStatus::Running,
+		)
+		.await?;
+
+		Ok(())
+	} else {
+		let (kubeconfig, deployed_region_id) =
+			service::get_kubernetes_config_for_region(connection, region)
+				.await?;
+
+		service::update_kubernetes_deployment(
+			workspace_id,
+			&Deployment {
+				id: deployment_id.clone(),
+				name: name.to_string(),
+				registry: registry.clone(),
+				image_tag: image_tag.to_string(),
+				status: DeploymentStatus::Pushed,
+				region: region.clone(),
+				machine_type: machine_type.clone(),
+				current_live_digest: Some(digest.to_string()),
+			},
+			image_name,
+			Some(digest),
+			deployment_running_details,
+			&volumes,
+			kubeconfig,
+			&deployed_region_id,
+			config,
+			request_id,
+		)
+		.await?;
+
+		Ok(())
 	}
-
-	let kubeconfig =
-		service::get_kubernetes_config_for_region(connection, region, config)
-			.await?;
-
-	service::update_kubernetes_deployment(
-		workspace_id,
-		&Deployment {
-			id: deployment_id.clone(),
-			name: name.to_string(),
-			registry: registry.clone(),
-			image_tag: image_tag.to_string(),
-			status: DeploymentStatus::Pushed,
-			region: region.clone(),
-			machine_type: machine_type.clone(),
-			current_live_digest: Some(digest.to_string()),
-		},
-		image_name,
-		Some(digest),
-		deployment_running_details,
-		kubeconfig,
-		config,
-		request_id,
-	)
-	.await?;
-
-	Ok(())
 }
 
 pub async fn stop_deployment(
@@ -1394,16 +1770,22 @@ pub async fn stop_deployment(
 	)
 	.await?;
 
-	let kubeconfig = service::get_kubernetes_config_for_region(
-		connection, region_id, config,
-	)
-	.await?;
+	let (kubeconfig, _) =
+		service::get_kubernetes_config_for_region(connection, region_id)
+			.await?;
 
 	service::delete_kubernetes_deployment(
 		workspace_id,
 		deployment_id,
 		kubeconfig,
 		request_id,
+	)
+	.await?;
+
+	service::update_cloudflare_kv_for_deployment(
+		deployment_id,
+		cloudflare::deployment::Value::Stopped,
+		config,
 	)
 	.await?;
 
@@ -1419,6 +1801,7 @@ pub async fn delete_deployment(
 	login_id: Option<&Uuid>,
 	ip_address: &str,
 	patr_action: bool,
+	delete_k8s_resource: bool,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -1426,6 +1809,14 @@ pub async fn delete_deployment(
 		"request_id: {} - Updating the deployment deletion time in the database",
 		request_id
 	);
+
+	let now = Utc::now();
+
+	let min_replicas = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(500)?
+		.min_horizontal_scale as u16;
+
 	db::delete_deployment(connection, deployment_id, &Utc::now()).await?;
 
 	let audit_log_id =
@@ -1435,7 +1826,7 @@ pub async fn delete_deployment(
 		&audit_log_id,
 		workspace_id,
 		ip_address,
-		&Utc::now(),
+		&now,
 		user_id,
 		login_id,
 		deployment_id,
@@ -1455,20 +1846,45 @@ pub async fn delete_deployment(
 		.await?
 		.status(500)?;
 
-	if !workspace.is_spam {
-		let kubeconfig = service::get_kubernetes_config_for_region(
-			connection, region_id, config,
-		)
-		.await?;
+	if delete_k8s_resource && !workspace.is_spam {
+		let (kubeconfig, _) =
+			service::get_kubernetes_config_for_region(connection, region_id)
+				.await?;
 
 		service::delete_kubernetes_deployment(
 			workspace_id,
 			deployment_id,
-			kubeconfig,
+			kubeconfig.clone(),
 			request_id,
 		)
 		.await?;
+
+		let volumes =
+			db::get_all_deployment_volumes(connection, deployment_id).await?;
+
+		for volume in volumes {
+			db::delete_volume(connection, &volume.volume_id, &now).await?;
+
+			for replica_index in 0..min_replicas {
+				service::delete_kubernetes_volume(
+					workspace_id,
+					deployment_id,
+					&volume,
+					replica_index,
+					kubeconfig.clone(),
+					request_id,
+				)
+				.await?;
+			}
+		}
 	}
+
+	service::update_cloudflare_kv_for_deployment(
+		deployment_id,
+		cloudflare::deployment::Value::Deleted,
+		config,
+	)
+	.await?;
 
 	Ok(())
 }

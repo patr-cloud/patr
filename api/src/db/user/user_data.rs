@@ -51,7 +51,10 @@ pub async fn initialize_user_data_pre(
 			password TEXT NOT NULL,
 			first_name VARCHAR(100) NOT NULL,
 			last_name VARCHAR(100) NOT NULL,
-			dob TIMESTAMPTZ DEFAULT NULL,
+			dob TIMESTAMPTZ DEFAULT NULL 
+				CONSTRAINT user_chk_dob_is_13_plus CHECK(
+					dob IS NULL OR dob < (NOW() - INTERVAL '13 YEARS')
+				),
 			bio VARCHAR(128) DEFAULT NULL,
 			location VARCHAR(128) DEFAULT NULL,
 			created TIMESTAMPTZ NOT NULL,
@@ -555,6 +558,7 @@ pub async fn get_all_workspaces_for_user(
 			workspace.secret_limit,
 			workspace.domain_limit,
 			workspace.docker_repository_storage_limit,
+			workspace.volume_storage_limit,
 			workspace.stripe_customer_id,
 			workspace.address_id as "address_id: Uuid",
 			workspace.amount_due_in_cents,
@@ -592,6 +596,7 @@ pub async fn get_all_workspaces_for_user(
 		secret_limit: row.secret_limit,
 		domain_limit: row.domain_limit,
 		docker_repository_storage_limit: row.docker_repository_storage_limit,
+		volume_storage_limit: row.volume_storage_limit,
 		stripe_customer_id: row.stripe_customer_id,
 		address_id: row.address_id,
 		amount_due_in_cents: row.amount_due_in_cents as u64,
@@ -623,6 +628,7 @@ pub async fn get_all_workspaces_owned_by_user(
 			secret_limit,
 			domain_limit,
 			docker_repository_storage_limit,
+			volume_storage_limit,
 			stripe_customer_id,
 			address_id as "address_id: Uuid",
 			amount_due_in_cents,
@@ -653,6 +659,7 @@ pub async fn get_all_workspaces_owned_by_user(
 		secret_limit: row.secret_limit,
 		domain_limit: row.domain_limit,
 		docker_repository_storage_limit: row.docker_repository_storage_limit,
+		volume_storage_limit: row.volume_storage_limit,
 		stripe_customer_id: row.stripe_customer_id,
 		address_id: row.address_id,
 		amount_due_in_cents: row.amount_due_in_cents as u64,

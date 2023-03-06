@@ -47,6 +47,7 @@ use crate::{
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
 	models::{
+		cloudflare::deployment,
 		rbac::{self, permissions},
 		DeploymentMetadata,
 		ResourceType,
@@ -921,6 +922,13 @@ async fn create_deployment(
 	)
 	.await?;
 
+	service::update_cloudflare_kv_for_deployment(
+		&id,
+		deployment::Value::Created,
+		&config,
+	)
+	.await?;
+
 	context.commit_database_transaction().await?;
 
 	if deploy_on_create {
@@ -1277,6 +1285,7 @@ async fn stop_deployment(
 		request_id,
 		deployment_id
 	);
+
 	service::stop_deployment(
 		context.get_database_connection(),
 		&deployment.workspace_id,
@@ -1577,6 +1586,21 @@ async fn delete_deployment(
 			&Utc::now(),
 		)
 		.await?;
+
+		let volumes = db::get_all_deployment_volumes(
+			context.get_database_connection(),
+			&deployment.id,
+		)
+		.await?;
+
+		for volume in volumes {
+			db::stop_volume_usage_history(
+				context.get_database_connection(),
+				&volume.volume_id,
+				&Utc::now(),
+			)
+			.await?;
+		}
 	}
 
 	log::trace!("request_id: {} - Checking is any managed url is used by the deployment: {}", request_id, deployment_id);
@@ -1607,6 +1631,7 @@ async fn delete_deployment(
 		Some(&login_id),
 		&ip_address,
 		false,
+		true,
 		&config,
 		&request_id,
 	)
@@ -1663,18 +1688,24 @@ async fn update_deployment(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
+
+	// workspace_id in UpdateDeploymentRequest struct parsed as null uuid(0..0),
+	// hence taking the value here which will be same
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
 	.unwrap();
 
 	log::trace!(
-		"{} - Updating deployment with id: {}",
+		"request_id: {} - Updating deployment with id: {}",
 		request_id,
 		deployment_id
 	);
 	let UpdateDeploymentRequest {
-		workspace_id,
 		deployment_id: _,
 		name,
 		machine_type,
@@ -1686,17 +1717,13 @@ async fn update_deployment(
 		startup_probe,
 		liveness_probe,
 		config_mounts,
+		volumes,
+		..
 	} = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let name = name.as_ref().map(|name| name.trim());
-
-	let user_id = context.get_token_data().unwrap().user_id().clone();
-
-	let login_id = context.get_token_data().unwrap().login_id().clone();
-
-	let ip_address = routes::get_request_ip_address(&context);
 
 	// Is any one value present?
 	if name.is_none() &&
@@ -1708,7 +1735,8 @@ async fn update_deployment(
 		environment_variables.is_none() &&
 		startup_probe.is_none() &&
 		liveness_probe.is_none() &&
-		config_mounts.is_none()
+		config_mounts.is_none() &&
+		volumes.is_none()
 	{
 		return Err(Error::empty()
 			.status(400)
@@ -1716,18 +1744,6 @@ async fn update_deployment(
 	}
 
 	let config = context.get_state().config.clone();
-
-	let metadata = DeploymentMetadata::Update {
-		name: name.map(|n| n.to_string()),
-		machine_type: machine_type.clone(),
-		deploy_on_push,
-		min_horizontal_scale,
-		max_horizontal_scale,
-		ports: ports.clone(),
-		environment_variables: environment_variables.clone(),
-		startup_probe: startup_probe.clone(),
-		liveness_probe: liveness_probe.clone(),
-	};
 
 	service::update_deployment(
 		context.get_database_connection(),
@@ -1750,69 +1766,21 @@ async fn update_deployment(
 		startup_probe.as_ref(),
 		liveness_probe.as_ref(),
 		config_mounts.as_ref(),
+		volumes.as_ref(),
+		&config,
 		&request_id,
 	)
 	.await?;
 
 	context.commit_database_transaction().await?;
 
-	let (deployment, workspace_id, _, deployment_running_details) =
-		service::get_full_deployment_config(
-			context.get_database_connection(),
-			&deployment_id,
-			&request_id,
-		)
-		.await?;
-
-	match &deployment.status {
-		DeploymentStatus::Stopped |
-		DeploymentStatus::Deleted |
-		DeploymentStatus::Created => {
-			// Don't update deployments that are explicitly stopped or deleted
-		}
-		_ => {
-			let current_time = Utc::now();
-			if service::is_deployed_on_patr_cluster(
-				context.get_database_connection(),
-				&deployment.region,
-			)
-			.await?
-			{
-				db::stop_deployment_usage_history(
-					context.get_database_connection(),
-					&deployment_id,
-					&current_time,
-				)
-				.await?;
-			}
-
-			service::start_deployment(
-				context.get_database_connection(),
-				&workspace_id,
-				&deployment_id,
-				&deployment,
-				&deployment_running_details,
-				&user_id,
-				&login_id,
-				&ip_address,
-				&metadata,
-				&current_time,
-				&config,
-				&request_id,
-			)
-			.await?;
-
-			context.commit_database_transaction().await?;
-
-			service::queue_check_and_update_deployment_status(
-				&workspace_id,
-				&deployment_id,
-				&config,
-				&request_id,
-			)
-			.await?;
-		}
-	}
+	service::queue_check_and_update_deployment_status(
+		&workspace_id,
+		&deployment_id,
+		&config,
+		&request_id,
+	)
+	.await?;
 
 	context.success(UpdateDeploymentResponse {});
 	Ok(context)
@@ -1938,12 +1906,14 @@ async fn get_deployment_metrics(
 	.status(500)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	if !service::is_deployed_on_patr_cluster(
+	let region = db::get_region_by_id(
 		context.get_database_connection(),
 		&deployment.region,
 	)
 	.await?
-	{
+	.status(500)?;
+
+	if region.is_byoc_region() {
 		return Err(Error::empty().status(500).body(
 			error!(FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER).to_string(),
 		));

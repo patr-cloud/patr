@@ -839,6 +839,74 @@ pub async fn send_domain_verify_reminder_email(
 	Ok(())
 }
 
+pub async fn send_byoc_region_disconnected_reminder_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	region_id: &Uuid,
+	deadline_limit: u64,
+) -> Result<(), Error> {
+	let super_admin_id = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?
+		.super_admin_id;
+
+	let user = db::get_user_by_user_id(connection, &super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	let workspace = db::get_workspace_info(connection, workspace_id)
+		.await?
+		.status(500)?;
+
+	// parsing personal-workspace-(uuid)
+	let displayed_workspace_name = if let Some(Ok(user_id)) = workspace
+		.name
+		.strip_prefix("personal-workspace-")
+		.map(Uuid::parse_str)
+	{
+		let user = db::get_user_by_user_id(connection, &user_id).await?;
+		if let Some(user) = user {
+			format!(
+				"{} {}'s Personal Workspace",
+				user.first_name, user.last_name
+			)
+		} else {
+			workspace.name
+		}
+	} else {
+		workspace.name
+	};
+
+	let region = db::get_region_by_id(connection, region_id)
+		.await?
+		.status(500)?;
+
+	email::send_byoc_disconnected_reminder_email(
+		user.username,
+		displayed_workspace_name,
+		region.name,
+		region_id.to_string(),
+		deadline_limit,
+		user_email.parse()?,
+	)
+	.await?;
+
+	Ok(())
+}
+
 pub async fn send_repository_storage_limit_exceed_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,

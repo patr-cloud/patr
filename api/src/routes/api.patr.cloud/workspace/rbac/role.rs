@@ -5,6 +5,7 @@ use api_models::{
 		DeleteRoleResponse,
 		GetRoleDetailsResponse,
 		ListAllRolesResponse,
+		ListUsersForRoleResponse,
 		Role,
 		UpdateRoleRequest,
 		UpdateRoleResponse,
@@ -143,6 +144,40 @@ pub fn create_sub_app(
 				}),
 			},
 			EveMiddleware::CustomFunction(pin_fn!(get_role_details)),
+		],
+	);
+
+	// List all users with for a specific role in workspace
+	sub_app.get(
+		"/:roleId/users",
+		[
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::rbac::user::LIST,
+				resource: api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			},
+			EveMiddleware::CustomFunction(pin_fn!(
+				list_users_with_role_in_workspace
+			)),
 		],
 	);
 
@@ -480,6 +515,33 @@ async fn create_role(
 	.await?;
 
 	context.success(CreateNewRoleResponse { id: role_id });
+	Ok(context)
+}
+
+async fn list_users_with_role_in_workspace(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+	let role_id =
+		Uuid::parse_str(context.get_param(request_keys::ROLE_ID).unwrap())
+			.unwrap();
+
+	db::get_role_by_id(context.get_database_connection(), &role_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let users = db::list_all_users_for_role_in_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+		&role_id,
+	)
+	.await?;
+
+	context.success(ListUsersForRoleResponse { users });
 	Ok(context)
 }
 

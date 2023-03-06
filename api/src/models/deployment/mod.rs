@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use api_models::{
-	models::workspace::region::InfrastructureCloudProvider,
+	models::workspace::region::{InfrastructureCloudProvider, RegionStatus},
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
@@ -20,49 +20,49 @@ pub const DEFAULT_MACHINE_TYPES: [(i16, i32); 5] = [
 
 pub const DEFAULT_DEPLOYMENT_REGIONS: [DefaultDeploymentRegion; 9] = [
 	DefaultDeploymentRegion {
-		name: "Singapore",
-		cloud_provider: InfrastructureCloudProvider::Digitalocean,
-		is_ready: true,
-	},
-	DefaultDeploymentRegion {
 		name: "Bangalore",
 		cloud_provider: InfrastructureCloudProvider::Digitalocean,
-		is_ready: false,
+		status: RegionStatus::ComingSoon,
 	},
 	DefaultDeploymentRegion {
 		name: "London",
 		cloud_provider: InfrastructureCloudProvider::Digitalocean,
-		is_ready: false,
+		status: RegionStatus::ComingSoon,
 	},
 	DefaultDeploymentRegion {
 		name: "Amsterdam",
 		cloud_provider: InfrastructureCloudProvider::Digitalocean,
-		is_ready: false,
+		status: RegionStatus::ComingSoon,
 	},
 	DefaultDeploymentRegion {
 		name: "Frankfurt",
 		cloud_provider: InfrastructureCloudProvider::Digitalocean,
-		is_ready: false,
+		status: RegionStatus::ComingSoon,
 	},
 	DefaultDeploymentRegion {
 		name: "Toronto",
 		cloud_provider: InfrastructureCloudProvider::Digitalocean,
-		is_ready: false,
+		status: RegionStatus::ComingSoon,
 	},
 	DefaultDeploymentRegion {
 		name: "New-York 1",
 		cloud_provider: InfrastructureCloudProvider::Digitalocean,
-		is_ready: false,
+		status: RegionStatus::ComingSoon,
 	},
 	DefaultDeploymentRegion {
 		name: "New-York 2",
 		cloud_provider: InfrastructureCloudProvider::Digitalocean,
-		is_ready: false,
+		status: RegionStatus::ComingSoon,
 	},
 	DefaultDeploymentRegion {
 		name: "San Francisco",
 		cloud_provider: InfrastructureCloudProvider::Digitalocean,
-		is_ready: false,
+		status: RegionStatus::ComingSoon,
+	},
+	DefaultDeploymentRegion {
+		name: "Singapore",
+		cloud_provider: InfrastructureCloudProvider::Digitalocean,
+		status: RegionStatus::Active,
 	},
 ];
 
@@ -72,7 +72,7 @@ pub static MACHINE_TYPES: OnceCell<HashMap<Uuid, (i16, i32)>> = OnceCell::new();
 pub struct DefaultDeploymentRegion {
 	pub name: &'static str,
 	pub cloud_provider: InfrastructureCloudProvider,
-	pub is_ready: bool,
+	pub status: RegionStatus,
 }
 
 #[derive(Debug, Clone, Deserialize)]

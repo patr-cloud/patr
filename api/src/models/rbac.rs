@@ -126,7 +126,9 @@ pub mod permissions {
 
 		pub mod region {
 			pub const LIST: &str = "workspace::region::list";
+			pub const INFO: &str = "workspace::region::info";
 			pub const ADD: &str = "workspace::region::add";
+			pub const DELETE: &str = "workspace::region::delete";
 		}
 
 		pub mod ci {
@@ -182,7 +184,7 @@ pub mod permissions {
 				pub const DELETE: &str =
 					"workspace::billing::billing_address::delete";
 				pub const INFO: &str =
-					"workspace::billing::billing_address::info ";
+					"workspace::billing::billing_address::info";
 				pub const EDIT: &str =
 					"workspace::billing::billing_address::edit";
 			}
@@ -209,4 +211,5 @@ pub mod resource_types {
 	pub const STATIC_SITE_UPLOAD: &str = "staticSiteUpload";
 	pub const CI_REPO: &str = "ciRepo";
 	pub const DEPLOYMENT_REGION: &str = "deploymentRegion";
+	pub const DEPLOYMENT_VOLUME: &str = "deploymentVolume";
 }

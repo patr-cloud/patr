@@ -15,7 +15,7 @@ sample-data = []
 [dependencies]
 api_macros = { path = "../macros", package = "patr-macros" }
 api_models = { path = "../api-models", package = "patr-api-dto", features = [
-  "server",
+	"server",
 ] }
 argon2 = "0.4"
 async-stripe = { version = "0.15", features = ["runtime-tokio-hyper"] }
@@ -23,7 +23,7 @@ async-trait = "0.1"
 base32 = "0.4"
 base64 = "0.13"
 chrono = "0.4"
-cloudflare = { git = "https://github.com/vicara-hq/cloudflare-rs" }
+cloudflare = { git = "https://github.com/vicara-hq/cloudflare-rs", branch = "patr-must-haves" }
 config_rs = { version = "0.13", package = "config" }
 cron = "0.12"
 deadpool = "*"
@@ -36,20 +36,20 @@ handlebars = "4"
 hex = "0.4"
 hmac = "0.12"
 jsonwebtoken = "8"
-k8s-openapi = { version = "0.16", default-features = true, features = [
-  "v1_21",
+k8s-openapi = { version = "0.17", default-features = true, features = [
+	"v1_24",
 ] } # Kube-rs depends on k8s-openapi
-kube = { version = "0.76", default-features = true, features = [
-  "derive",
-  "runtime",
+kube = { version = "0.78", default-features = true, features = [
+	"derive",
+	"runtime",
 ] } # Library for talking to Kubernetes API
 lapin = "2"
 lazy_static = "1"
 lettre = { version = "0.10", default-features = false, features = [
-  "tokio1",
-  "builder",
-  "smtp-transport",
-  "tokio1-rustls-tls",
+	"tokio1",
+	"builder",
+	"smtp-transport",
+	"tokio1-rustls-tls",
 ] }
 log = "0.4"
 num-traits = "0.2"
@@ -68,32 +68,35 @@ serde_qs = "0.10"
 serde_yaml = "0.9"
 sha2 = "0.10"
 sqlx = { version = "0.6", features = [
-  "bigdecimal",
-  "chrono",
-  "ipnetwork",
-  "json",
-  "offline",
-  "postgres",
-  "runtime-tokio-rustls",
-  "time",
-  "uuid",
+	"bigdecimal",
+	"chrono",
+	"ipnetwork",
+	"json",
+	"offline",
+	"postgres",
+	"runtime-tokio-rustls",
+	"time",
+	"uuid",
 ] }
 tokio = { version = "1", features = ["full"] }
 trust-dns-client = "0.22"
 vaultrs = "0.6"
 zeroize = "1"
 zip = "0.6"
+rcgen = "0.10.0"
+url = "2.2"
+itertools = "0.10.5"
 
 [dependencies.log4rs]
 default-features = false
 features = [
-  "console_appender",
-  "rolling_file_appender",
-  "compound_policy",
-  "fixed_window_roller",
-  "size_trigger",
-  "background_rotation",
-  "threshold_filter",
-  "gzip",
+	"console_appender",
+	"rolling_file_appender",
+	"compound_policy",
+	"fixed_window_roller",
+	"size_trigger",
+	"background_rotation",
+	"threshold_filter",
+	"gzip",
 ]
 version = "1"
