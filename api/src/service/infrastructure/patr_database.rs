@@ -160,6 +160,50 @@ pub async fn create_patr_database_in_workspace(
 	Ok(database_id)
 }
 
+pub async fn modify_patr_database(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	database_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+	replica_numbers: i32,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Modifying patr database with id: {}",
+		request_id,
+		database_id
+	);
+
+	let database = db::get_patr_database_by_id(connection, database_id)
+		.await?
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let kubeconfig = service::get_kubernetes_config_for_region(
+		connection,
+		&database.region,
+		config,
+	)
+	.await?;
+
+	match database.engine {
+		PatrDatabaseEngine::Postgres => {
+			// not supported as of now
+			log::info!("Creating postgres database is not supported");
+			return Err(Error::empty().status(500));
+		}
+		PatrDatabaseEngine::Mysql => {
+			service::handle_scaling(
+				&database.workspace_id,
+				&database.id,
+				kubeconfig,
+				request_id,
+				replica_numbers,
+			)
+			.await?;
+		}
+	}
+	Ok(())
+}
+
 pub async fn delete_patr_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	database_id: &Uuid,

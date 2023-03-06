@@ -203,7 +203,6 @@ pub async fn create_kubernetes_mysql_database(
 
 	// To get number of replicas required
 	// To handle scale up and scale down
-	// To get sql image version
 
 	let db_pvc_template = PersistentVolumeClaim {
 		metadata: ObjectMeta {
@@ -211,8 +210,6 @@ pub async fn create_kubernetes_mysql_database(
 			..Default::default()
 		},
 		spec: Some(PersistentVolumeClaimSpec {
-			// todo: for patr region default storage class will take care,
-			// but for byoc user needs to set up a default storage class
 			access_modes: Some(vec!["ReadWriteOnce".to_owned()]),
 			resources: Some(ResourceRequirements {
 				requests: Some([("storage".to_owned(), db_volume)].into()),
@@ -529,6 +526,54 @@ pub async fn delete_kubernetes_mysql_database(
 		.delete_opt(&pvc, &DeleteParams::default())
 		.await?;
 	}
+
+	Ok(())
+}
+
+pub async fn handle_scaling(
+	workspace_id: &Uuid,
+	database_id: &Uuid,
+	kubeconfig: KubernetesConfigDetails,
+	request_id: &Uuid,
+	replica_numbers: i32,
+) -> Result<(), Error> {
+
+	log::trace!(
+		"request_id: {request_id} - Handling replica changes"
+	);
+	let kubernetes_client =
+		super::super::get_kubernetes_client(kubeconfig.auth_details).await?;
+	let namespace = workspace_id.as_str();
+	let sts_name_for_db = format!("db-{database_id}");
+
+	let mut config_label = BTreeMap::new();
+	config_label.insert("database".to_owned(), database_id.to_string());
+	config_label
+		.insert("app.kubernetes.io/name".to_owned(), "mysql".to_owned());
+
+	let statefulset_spec_for_db = StatefulSet {
+		metadata: ObjectMeta {
+			name: Some(sts_name_for_db.clone()),
+			..Default::default()
+		},
+		spec: Some(StatefulSetSpec {
+			replicas: Some(replica_numbers),
+			selector: LabelSelector {
+				match_labels: Some(config_label.clone()),
+				..Default::default()
+			},
+			..Default::default()
+		}),
+		..Default::default()
+	};
+
+	Api::<StatefulSet>::namespaced(kubernetes_client, namespace)
+		.patch(
+			&sts_name_for_db,
+			&PatchParams::apply(&sts_name_for_db),
+			&Patch::Apply(statefulset_spec_for_db),
+		)
+		.await?;
 
 	Ok(())
 }
