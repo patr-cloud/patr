@@ -80,7 +80,6 @@ pub(super) async fn migrate(
 	delete_deployment_with_invalid_image_name(connection, config).await?;
 	validate_image_name_for_deployment(connection, config).await?;
 	permission_change_for_rbac_v1(connection, config).await?;
-	add_permission_for_write_ci_file_to_repo(connection, config).await?;
 	reset_permission_order(connection, config).await?;
 	add_spam_table_columns(connection, config).await?;
 	// block_and_delete_all_spam_users(connection, config).await?;
@@ -538,53 +537,6 @@ pub async fn permission_change_for_rbac_v1(
 	Ok(())
 }
 
-// todo: move migrations to 13.2
-pub async fn add_permission_for_write_ci_file_to_repo(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
-) -> Result<(), Error> {
-	// add permissions for CI
-	let permission = "workspace::ci::git_provider::repo::write";
-
-	let uuid = loop {
-		let uuid = Uuid::new_v4();
-
-		let exists = query!(
-			r#"
-				SELECT
-					*
-				FROM
-					permission
-				WHERE
-					id = $1;
-				"#,
-			&uuid
-		)
-		.fetch_optional(&mut *connection)
-		.await?
-		.is_some();
-
-		if !exists {
-			break uuid;
-		}
-	};
-
-	query!(
-		r#"
-			INSERT INTO
-				permission
-			VALUES
-				($1, $2, '');
-			"#,
-		&uuid,
-		permission
-	)
-	.fetch_optional(&mut *connection)
-	.await?;
-
-	Ok(())
-}
-
 async fn reset_permission_order(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
@@ -661,7 +613,6 @@ async fn reset_permission_order(
 		"workspace::ci::git_provider::repo::deactivate",
 		"workspace::ci::git_provider::repo::list",
 		"workspace::ci::git_provider::repo::info",
-		"workspace::ci::git_provider::repo::write",
 		"workspace::ci::git_provider::repo::build::list",
 		"workspace::ci::git_provider::repo::build::cancel",
 		"workspace::ci::git_provider::repo::build::info",
