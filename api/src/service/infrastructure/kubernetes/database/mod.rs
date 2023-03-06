@@ -1,4 +1,5 @@
 mod mysql;
+mod psql;
 
 use api_models::{
 	models::workspace::infrastructure::database::{
@@ -13,6 +14,7 @@ use k8s_openapi::{
 };
 use kube::Api;
 pub use mysql::*;
+pub use psql::*;
 
 use crate::{service::KubernetesConfigDetails, utils::Error};
 
@@ -48,7 +50,7 @@ pub async fn get_kubernetes_database_status(
 	let namespace = workspace_id.as_str();
 	let sts_name_for_db = format!("db-{database_id}");
 
-	log::trace!("request_id: {request_id} - Getting statefulset statis for database {database_id}");
+	log::trace!("request_id: {request_id} - Getting statefulset status for database {database_id}");
 	let sts =
 		Api::<StatefulSet>::namespaced(kubernetes_client.clone(), namespace)
 			.get_opt(&sts_name_for_db)
