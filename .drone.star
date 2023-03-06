@@ -429,7 +429,7 @@ def build_code(step_name, release, sqlx_offline):
 
     return {
         "name": step_name,
-        "image": "rust:1.65",
+        "image": "rust:1.68",
         "commands": [
             "cargo build {}".format(release_flag)
         ],
@@ -464,17 +464,14 @@ def check_formatting(step_name):
         "image": "rustlang/rust:nightly",
         "commands": [
             "cargo fmt -- --check"
-        ],
-        "environment": {
-            "CARGO_UNSTABLE_SPARSE_REGISTRY": "true",
-        }
+        ]
     }
 
 
 def check_version(step_name):
     return {
         "name": step_name,
-        "image": "rust:1.65",
+        "image": "rust:1.68",
         "commands": [
             "cargo run --example check-api-version"
         ],
@@ -494,7 +491,7 @@ def check_clippy(step_name, release):
 
     return {
         "name": step_name,
-        "image": "rust:1.65",
+        "image": "rust:1.68",
         "commands": [
             "rustup component add clippy",
             "cargo clippy {} -- -D warnings".format(release_flag)
@@ -523,7 +520,7 @@ def check_clippy(step_name, release):
 def copy_config(step_name):
     return {
         "name": step_name,
-        "image": "rust:1.65",
+        "image": "rust:1.68",
         "commands": [
             "cp config/dev.sample.json config/dev.json",
             "cp config/dev.sample.json config/prod.json"
@@ -553,7 +550,7 @@ def init_database(step_name, release, env):
         bin_location = "./target/debug/api"
     return {
         "name": step_name,
-        "image": "rust:1.65",
+        "image": "rust:1.68",
         "commands": [
             "{} --db-only".format(bin_location)
         ],
@@ -564,7 +561,7 @@ def init_database(step_name, release, env):
 def clean_api_build(step_name, release):
     return {
         "name": step_name,
-        "image": "rust:1.65",
+        "image": "rust:1.68",
         "commands": [
             "cargo clean -p api"
         ],
@@ -602,7 +599,7 @@ def check_code(step_name, release, sqlx_offline):
 
     return {
         "name": step_name,
-        "image": "rust:1.65",
+        "image": "rust:1.68",
         "commands": [
             "cargo check {}".format(release_flag)
         ],
@@ -649,7 +646,7 @@ def create_gitea_release(step_name, staging):
         release_flag = ""
     return {
         "name": step_name,
-        "image": "rust:1.65",
+        "image": "rust:1.68",
         "commands": [
             "echo \"$GITEA_IP develop.vicara.co\" >> /etc/hosts",
             "cargo run {} --example create-gitea-release".format(release_flag)
@@ -691,7 +688,7 @@ def build_examples(step_name, release, sqlx_offline):
         release_flag = ""
     return {
         "name": step_name,
-        "image": "rust:1.65",
+        "image": "rust:1.68",
         "commands": [
             "cargo build {}".format(release_flag),
             "cargo build {} --examples".format(release_flag)
@@ -755,7 +752,7 @@ def run_tests(step_name, release):
 
     return {
         "name": step_name,
-        "image": "rust:1.65",
+        "image": "rust:1.68",
         "commands": [
             "cargo test {}".format(release_flag)
         ],
