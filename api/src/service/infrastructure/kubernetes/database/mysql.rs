@@ -537,10 +537,7 @@ pub async fn handle_scaling(
 	request_id: &Uuid,
 	replica_numbers: i32,
 ) -> Result<(), Error> {
-
-	log::trace!(
-		"request_id: {request_id} - Handling replica changes"
-	);
+	log::trace!("request_id: {request_id} - Handling replica changes");
 	let kubernetes_client =
 		super::super::get_kubernetes_client(kubeconfig.auth_details).await?;
 	let namespace = workspace_id.as_str();

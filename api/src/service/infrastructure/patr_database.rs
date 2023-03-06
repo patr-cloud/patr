@@ -151,7 +151,7 @@ pub async fn create_patr_database_in_workspace(
 				database_plan,
 				kubeconfig,
 				request_id,
-				replica_numbers
+				replica_numbers,
 			)
 			.await?;
 		}
