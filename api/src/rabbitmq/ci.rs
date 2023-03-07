@@ -13,13 +13,12 @@ use api_models::{
 use chrono::Utc;
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
-use sqlx::Acquire;
-use sqlx::types::Json;
+use sqlx::{types::Json, Acquire};
 
 use crate::{
 	db,
-	models::rabbitmq::CIData,
-	service::{self, CommitStatus, JobStatus},
+	models::{ci::github::CommitStatus, rabbitmq::CIData},
+	service::{self, JobStatus},
 	utils::{settings::Settings, Error},
 	Database,
 };
@@ -169,7 +168,6 @@ pub async fn process_request(
 			let kubeconfig = service::get_kubeconfig_for_ci_build(
 				connection,
 				&build_step.id.build_id,
-				config,
 			)
 			.await?;
 
@@ -457,33 +455,6 @@ pub async fn process_request(
 				}
 			}
 		}
-		CIData::CancelBuild {
-			build_id,
-			request_id,
-		} => {
-			log::info!("request_id: {request_id} - Build `{build_id}` stopped");
-			db::update_build_status(
-				&mut *connection,
-				&build_id.repo_id,
-				build_id.build_num,
-				BuildStatus::Cancelled,
-			)
-			.await?;
-			db::update_build_finished_time(
-				&mut *connection,
-				&build_id.repo_id,
-				build_id.build_num,
-				&Utc::now(),
-			)
-			.await?;
-			service::update_github_commit_status_for_build(
-				connection,
-				&build_id.repo_id,
-				build_id.build_num,
-				CommitStatus::Errored,
-			)
-			.await?;
-		}
 		CIData::CleanBuild {
 			build_id,
 			request_id,
@@ -496,11 +467,6 @@ pub async fn process_request(
 			.await?;
 			// for now sequential, so checking last status is enough
 			let status = steps.last().map(|step| step.status.clone());
-
-			let kubeconfig = service::get_kubeconfig_for_ci_build(
-				connection, &build_id, config,
-			)
-			.await?;
 
 			match status.unwrap_or(BuildStepStatus::Succeeded) {
 				BuildStepStatus::Errored | BuildStepStatus::SkippedDepError => {

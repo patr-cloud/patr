@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 
 use api_models::{
-	models::workspace::ci::git_provider::BuildStatus,
+	models::workspace::ci::git_provider::{Ref, RefType},
 	utils::Uuid,
 };
-use chrono::Utc;
 use eve_rs::AsError;
 use hmac::{Hmac, Mac};
 use octorust::{
@@ -20,7 +19,6 @@ use octorust::{
 		GitUpdateRefRequest,
 		Order,
 		ReposCreateCommitStatusRequest,
-		ReposCreateCommitStatusRequestState,
 		ReposListOrgSort,
 		ReposListVisibility,
 	},
@@ -28,7 +26,13 @@ use octorust::{
 use sha2::Sha256;
 
 use super::MutableRepoValues;
-use crate::{db, models::ci::EventType, service, utils::Error, Database};
+use crate::{
+	db,
+	models::ci::{github::CommitStatus, EventType},
+	service,
+	utils::Error,
+	Database,
+};
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -412,37 +416,6 @@ pub async fn sync_github_repos(
 	.await?;
 
 	Ok(())
-}
-
-pub enum CommitStatus {
-	// build is started and running
-	Running,
-	// build finished and success
-	Success,
-	// build finished and failure
-	Failed,
-	// build has been errored ie cancelled / internal error
-	Errored,
-}
-
-impl CommitStatus {
-	pub fn commit_state(&self) -> ReposCreateCommitStatusRequestState {
-		match self {
-			Self::Running => ReposCreateCommitStatusRequestState::Pending,
-			Self::Success => ReposCreateCommitStatusRequestState::Success,
-			Self::Failed => ReposCreateCommitStatusRequestState::Failure,
-			Self::Errored => ReposCreateCommitStatusRequestState::Error,
-		}
-	}
-
-	pub fn description(&self) -> &str {
-		match self {
-			Self::Running => "Build is running",
-			Self::Success => "Build succeeded",
-			Self::Failed => "Build failed",
-			Self::Errored => "Error occurred",
-		}
-	}
 }
 
 pub async fn update_github_commit_status_for_build(

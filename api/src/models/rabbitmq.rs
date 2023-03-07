@@ -3,12 +3,9 @@ use std::{fmt, slice::Iter};
 use api_models::{
 	models::{
 		ci::file_format::{Service, Work},
-		workspace::{
-			infrastructure::deployment::{
-				Deployment,
-				DeploymentRunningDetails,
-			},
-			region::DigitaloceanRegion,
+		workspace::infrastructure::deployment::{
+			Deployment,
+			DeploymentRunningDetails,
 		},
 	},
 	utils::{DateTime, Uuid},

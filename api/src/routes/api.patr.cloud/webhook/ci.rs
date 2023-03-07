@@ -13,6 +13,7 @@ use crate::{
 	db,
 	error,
 	models::ci::{
+		github::CommitStatus,
 		webhook_payload::github::Event,
 		Commit,
 		EventType,
@@ -21,7 +22,7 @@ use crate::{
 	},
 	pin_fn,
 	rabbitmq::BuildId,
-	service::{self, CommitStatus, ParseStatus},
+	service::{self, ParseStatus},
 	utils::{
 		constants::request_keys,
 		Error,
@@ -325,7 +326,6 @@ async fn handle_ci_hooks_for_repo(
 	)
 	.await?;
 
-	let config = context.get_state().config.clone();
 	service::queue_check_and_start_ci_build(
 		BuildId {
 			repo_workspace_id: git_provider.workspace_id,

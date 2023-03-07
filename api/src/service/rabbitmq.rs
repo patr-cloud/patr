@@ -25,7 +25,7 @@ use crate::{
 			DeploymentRequestData,
 			DockerRegistryData,
 			DockerWebhookData,
-		InfraRequestData,
+			InfraRequestData,
 			Queue,
 			StaticSiteData,
 		},

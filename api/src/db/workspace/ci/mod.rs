@@ -2,13 +2,16 @@ mod runner;
 
 use api_macros::query;
 use api_models::{
-	models::workspace::ci::git_provider::{
-		BuildDetails,
-		BuildStatus,
-		BuildStepStatus,
-		GitProviderType,
-		RepoStatus,
-		Step,
+	models::workspace::ci::{
+		git_provider::{
+			BuildDetails,
+			BuildStatus,
+			BuildStepStatus,
+			GitProviderType,
+			RepoStatus,
+			Step,
+		},
+		BuildMachineType,
 	},
 	utils::{self, Uuid},
 };
@@ -17,7 +20,7 @@ use futures::TryStreamExt;
 use sqlx::query_as;
 
 pub use self::runner::*;
-use crate::Database;
+use crate::{db, Database};
 
 pub struct GitProvider {
 	pub id: Uuid,
@@ -25,7 +28,6 @@ pub struct GitProvider {
 	pub domain_name: String,
 	pub git_provider_type: GitProviderType,
 	pub login_name: Option<String>,
-	// TODO: is it okay to store and use bare apiToken/password?
 	pub password: Option<String>,
 	pub is_syncing: bool,
 	pub last_synced: Option<DateTime<Utc>>,
@@ -73,6 +75,19 @@ pub async fn initialize_ci_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing ci tables");
+
+	query!(
+		r#"
+		CREATE TABLE ci_build_machine_type (
+			id 		UUID CONSTRAINT ci_machint_type_pk PRIMARY KEY,
+			cpu 	INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_cpu_positive CHECK (cpu > 0),   		/* Multiples of 1 vCPU */
+			ram 	INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_ram_positive CHECK (ram > 0),			/* Multiples of 0.25 GB RAM */
+			volume 	INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_volume_positive CHECK (volume > 0)	/* Multiples of 1 GB storage space */
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	runner::initialize_ci_runner_pre(connection).await?;
 
@@ -202,7 +217,7 @@ pub async fn initialize_ci_pre(
 			git_ref 			TEXT NOT NULL,
 			git_commit 			TEXT NOT NULL,
 			status 				CI_BUILD_STATUS NOT NULL,
-			created 			TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			created 			TIMESTAMPTZ NOT NULL,
 			finished 			TIMESTAMPTZ,
 			message				TEXT,
 			author				TEXT NOT NULL,
@@ -265,9 +280,61 @@ pub async fn initialize_ci_post(
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up ci tables initialization");
 
+	// machine types for ci builds
+	const CI_BUILD_MACHINE_TYPES: [(i32, i32, i32); 5] = [
+		(1, 2, 1),  // 1 vCPU, 0.5 GB RAM, 1GB storage
+		(1, 4, 1),  // 1 vCPU,   1 GB RAM, 1GB storage
+		(1, 6, 2),  // 1 vCPU,   2 GB RAM, 2GB storage
+		(2, 8, 4),  // 2 vCPU,   4 GB RAM, 4GB storage
+		(4, 32, 8), // 4 vCPU,   8 GB RAM, 8GB storage
+	];
+
+	for (cpu, ram, volume) in CI_BUILD_MACHINE_TYPES {
+		let machine_type_id =
+			db::generate_new_resource_id(&mut *connection).await?;
+		query!(
+			r#"
+			INSERT INTO
+				ci_build_machine_type(
+					id,
+					cpu,
+					ram,
+					volume
+				)
+			VALUES
+				($1, $2, $3, $4);
+			"#,
+			machine_type_id as _,
+			cpu,
+			ram,
+			volume
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
 	runner::initialize_ci_runner_post(connection).await?;
 
 	Ok(())
+}
+
+pub async fn get_all_build_machine_types(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<BuildMachineType>, sqlx::Error> {
+	query_as!(
+		BuildMachineType,
+		r#"
+		SELECT
+			id as "id: _",
+			cpu,
+			ram,
+			volume
+		FROM
+			ci_build_machine_type
+		"#,
+	)
+	.fetch_all(connection)
+	.await
 }
 
 pub async fn add_git_provider_to_workspace(
@@ -659,7 +726,8 @@ pub async fn generate_new_build_for_repo(
 				author,
 				git_commit_message,
 				git_pr_title,
-				runner_id
+				runner_id,
+				created
 			)
 		VALUES (
 			$1,
@@ -670,7 +738,8 @@ pub async fn generate_new_build_for_repo(
 			$5,
 			$6,
 			$7,
-			$8
+			$8,
+			$9
 		)
 		RETURNING build_num;
 		"#,
@@ -682,6 +751,7 @@ pub async fn generate_new_build_for_repo(
 		git_commit_message as _,
 		git_pr_title as _,
 		runner_id as _,
+		Utc::now()
 	)
 	.fetch_one(connection)
 	.await

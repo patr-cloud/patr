@@ -46,13 +46,13 @@ use crate::{
 	db,
 	error,
 	models::{
-		ci::{Commit, EventType, PullRequest, Tag},
+		ci::{github::CommitStatus, Commit, EventType, PullRequest, Tag},
 		deployment::Logs,
 		rbac::permissions,
 	},
 	pin_fn,
 	rabbitmq::{BuildId, BuildStepId},
-	service::{self, CommitStatus, ParseStatus},
+	service::{self, ParseStatus},
 	utils::{
 		constants::request_keys,
 		Error,
@@ -1367,6 +1367,14 @@ async fn cancel_build(
 			&Utc::now(),
 		)
 		.await?;
+
+		service::update_github_commit_status_for_build(
+			context.get_database_connection(),
+			&repo.id,
+			build_num,
+			CommitStatus::Errored,
+		)
+		.await?;
 	}
 
 	context.success(CancelBuildResponse {});
@@ -1597,8 +1605,6 @@ async fn restart_build(
 	)
 	.await?;
 
-	context.commit_database_transaction().await?;
-
 	service::update_github_commit_status_for_build(
 		context.get_database_connection(),
 		&repo.id,
@@ -1606,6 +1612,8 @@ async fn restart_build(
 		CommitStatus::Running,
 	)
 	.await?;
+
+	context.commit_database_transaction().await?;
 
 	service::queue_check_and_start_ci_build(
 		BuildId {
@@ -2074,9 +2082,6 @@ async fn sign_out(
 			}
 		}
 	}
-
-	// TODO: Now show a pop-up / github redirect in UI for deleting patr in
-	// the user's authorized github oauth apps
 
 	context.success(GithubSignOutResponse {});
 	Ok(context)

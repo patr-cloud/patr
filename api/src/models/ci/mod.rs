@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+pub mod github;
 pub mod webhook_payload;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -3,14 +3,13 @@ use api_models::{
 	models::workspace::ci::{
 		git_provider::BuildStatus,
 		runner::{Runner, RunnerBuildDetails},
-		BuildMachineType,
 	},
 	utils::{self, Uuid},
 };
 use futures::TryStreamExt;
 
 use super::Repository;
-use crate::{db, Database};
+use crate::Database;
 
 pub struct RunnerResource {
 	cpu: u32,
@@ -20,7 +19,7 @@ pub struct RunnerResource {
 
 impl RunnerResource {
 	pub fn cpu_in_milli(&self) -> u32 {
-		self.cpu as u32 * 250
+		self.cpu as u32 * 1000
 	}
 
 	pub fn ram_in_mb(&self) -> u32 {
@@ -28,7 +27,7 @@ impl RunnerResource {
 	}
 
 	pub fn volume_in_mb(&self) -> u32 {
-		self.volume as u32 * 250
+		self.volume as u32 * 1000
 	}
 }
 
@@ -36,28 +35,6 @@ pub async fn initialize_ci_runner_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing ci runner tables");
-
-	query!(
-		r#"
-		CREATE TABLE ci_build_machine_type (
-			id 		UUID 		NOT NULL,
-			cpu 	INTEGER 	NOT NULL, /* Multiples of ¼th vCPU */
-			ram 	INTEGER 	NOT NULL, /* Multiples of ¼th GB RAM */
-			volume 	INTEGER 	NOT NULL, /* Multiples of ¼th GB storage */
-
-			CONSTRAINT ci_machint_type_pk PRIMARY KEY (id),
-
-			CONSTRAINT ci_build_machine_type_chk_cpu_positive
-				CHECK (cpu > 0),
-			CONSTRAINT ci_build_machine_type_chk_ram_positive
-				CHECK (ram > 0),
-			CONSTRAINT ci_build_machine_type_chk_volume_positive
-				CHECK (volume > 0)
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
 
 	query!(
 		r#"
@@ -74,7 +51,7 @@ pub async fn initialize_ci_runner_pre(
 			CONSTRAINT ci_runner_fk_workspace_id
 				FOREIGN KEY (workspace_id) REFERENCES workspace(id),
 			CONSTRAINT ci_runner_fk_region_id
-				FOREIGN KEY (region_id) REFERENCES deployment_region(id),
+				FOREIGN KEY (region_id) REFERENCES region(id),
 			CONSTRAINT ci_runner_fk_build_machine_type_id
 				FOREIGN KEY (build_machine_type_id) REFERENCES ci_build_machine_type(id)
 		);
@@ -111,60 +88,7 @@ pub async fn initialize_ci_runner_post(
 	.execute(&mut *connection)
 	.await?;
 
-	// machine types for ci builds
-	const CI_BUILD_MACHINE_TYPES: [(i32, i32, i32); 5] = [
-		(4, 2, 4),    // 1 vCPU, 0.5 GB RAM, 1GB storage
-		(4, 4, 4),    // 1 vCPU,   1 GB RAM, 1GB storage
-		(4, 8, 8),    // 1 vCPU,   2 GB RAM, 2GB storage
-		(8, 16, 16),  // 2 vCPU,   4 GB RAM, 4GB storage
-		(16, 32, 32), // 4 vCPU,   8 GB RAM, 8GB storage
-	];
-
-	for (cpu, ram, volume) in CI_BUILD_MACHINE_TYPES {
-		let machine_type_id =
-			db::generate_new_resource_id(&mut *connection).await?;
-
-		query!(
-			r#"
-			INSERT INTO
-				ci_build_machine_type(
-					id,
-					cpu,
-					ram,
-					volume
-				)
-			VALUES
-				($1, $2, $3, $4);
-			"#,
-			machine_type_id as _,
-			cpu,
-			ram,
-			volume
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
 	Ok(())
-}
-
-pub async fn get_all_build_machine_types(
-	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<BuildMachineType>, sqlx::Error> {
-	query_as!(
-		BuildMachineType,
-		r#"
-		SELECT
-			id as "id: _",
-			cpu,
-			ram,
-			volume
-		FROM
-			ci_build_machine_type
-		"#,
-	)
-	.fetch_all(connection)
-	.await
 }
 
 pub async fn get_runners_for_workspace(
@@ -485,6 +409,6 @@ pub async fn is_runner_available_to_start_build(
 	.map(|optional_record| {
 		optional_record
 			.and_then(|record| record.available)
-			.unwrap_or_default()
+			.unwrap_or(false)
 	})
 }
