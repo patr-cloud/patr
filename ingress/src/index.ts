@@ -160,9 +160,12 @@ async function fetchDeployment(
             // see: https://fly.io/docs/reference/runtime-environment/#request-headers
             // see: https://developers.cloudflare.com/fundamentals/get-started/reference/http-request-headers/
 
+            let headers = new Headers(request.headers);
+            headers.set('Patr-Forwarded-For', new URL(request.url).hostname);
+
             let modified_request = new Request(destination_url, {
                 method: request.method,
-                headers: request.headers,
+                headers,
                 body: request.body,
                 cf: request.cf,
                 fetcher: request.fetcher,
