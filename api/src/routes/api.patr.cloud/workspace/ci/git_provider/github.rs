@@ -13,6 +13,7 @@ use api_models::{
 			GetBuildListResponse,
 			GetBuildLogResponse,
 			GetPatrCiFileResponse,
+			GetRepoInfoResponse,
 			GitProviderType,
 			GithubAuthCallbackRequest,
 			GithubAuthCallbackResponse,
@@ -195,6 +196,53 @@ pub fn create_sub_app(
 				}),
 			},
 			EveMiddleware::CustomFunction(pin_fn!(list_repositories)),
+		],
+	);
+
+	app.get(
+		"/repo/:repoId",
+		[
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission:
+					permissions::workspace::ci::git_provider::repo::ACTIVATE,
+				resource: closure_as_pinned_box!(|mut context| {
+					let workspace_id = Uuid::parse_str(
+						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
+					)
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?;
+					let repo_id = context
+						.get_param(request_keys::REPO_ID)
+						.unwrap()
+						.clone();
+					let repo =
+						db::get_repo_details_using_github_uid_for_workspace(
+							context.get_database_connection(),
+							&workspace_id,
+							&repo_id,
+						)
+						.await?;
+					let resource = if let Some(repo) = repo {
+						db::get_resource_by_id(
+							context.get_database_connection(),
+							&repo.id,
+						)
+						.await?
+					} else {
+						None
+					};
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			},
+			EveMiddleware::CustomFunction(pin_fn!(get_repo_info)),
 		],
 	);
 
@@ -961,6 +1009,39 @@ async fn list_repositories(
 	.collect();
 
 	context.success(ListReposResponse { repos });
+	Ok(context)
+}
+
+async fn get_repo_info(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
+
+	log::trace!("request_id: {request_id} - Activating CI for repo {repo_id}");
+
+	let repo = db::get_repo_details_using_github_uid_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+		&repo_id,
+	)
+	.await?
+	.status(500)?;
+
+	context.success(GetRepoInfoResponse {
+		repo: RepositoryDetails {
+			id: repo.git_provider_repo_uid,
+			name: repo.repo_name,
+			repo_owner: repo.repo_owner,
+			clone_url: repo.clone_url,
+			status: repo.status,
+			runner_id: repo.runner_id,
+		},
+	});
 	Ok(context)
 }
 
