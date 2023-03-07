@@ -1,4 +1,4 @@
-use api_models::utils::Uuid;
+use api_models::{models::workspace::region::RegionStatus, utils::Uuid};
 use chrono::Utc;
 use eve_rs::AsError;
 
@@ -27,14 +27,15 @@ pub async fn create_runner_for_workspace(
 	}
 
 	// check whether region is allowed for workspace
-	let region =
-		db::get_all_deployment_regions_for_workspace(connection, workspace_id)
-			.await?
-			.into_iter()
-			.find(|available_region| &available_region.id == region_id);
+	let region = db::get_all_regions_for_workspace(connection, workspace_id)
+		.await?
+		.into_iter()
+		.find(|available_region| &available_region.id == region_id);
 	if let Some(region_details) = region {
 		log::info!("request_id {} - Region not ready yet", request_id);
-		if !(region_details.ready || region_details.workspace_id.is_none()) {
+		if !(region_details.status == RegionStatus::Active ||
+			region_details.is_patr_region())
+		{
 			return Err(Error::empty()
 				.status(500)
 				.body(error!(REGION_NOT_READY_YET).to_string()));

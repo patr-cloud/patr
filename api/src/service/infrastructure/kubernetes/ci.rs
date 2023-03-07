@@ -29,13 +29,14 @@ use k8s_openapi::{
 };
 use kube::{
 	api::{DeleteParams, PropagationPolicy},
+	config::Kubeconfig,
 	core::ObjectMeta,
 	Api,
 };
 
 use crate::{
 	rabbitmq::BuildStep,
-	service::{ext_traits::DeleteOpt, KubernetesConfigDetails},
+	service::ext_traits::DeleteOpt,
 	utils::{settings::Settings, Error},
 };
 
@@ -44,11 +45,11 @@ pub async fn create_ci_job_in_kubernetes(
 	build_step: &BuildStep,
 	ram_in_mb: u32,
 	cpu_in_milli: u32,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_client(kubeconfig.auth_details).await?;
+	let client = super::get_kubernetes_client(kubeconfig).await?;
 	log::trace!(
 		"request_id: {} - creating ci job {} in namespace {}",
 		request_id,
@@ -179,10 +180,10 @@ pub enum JobStatus {
 pub async fn get_ci_job_status_in_kubernetes(
 	namespace_name: &str,
 	job_name: &str,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<Option<JobStatus>, Error> {
-	let client = super::get_kubernetes_client(kubeconfig.auth_details).await?;
+	let client = super::get_kubernetes_client(kubeconfig).await?;
 
 	let status = Api::<Job>::namespaced(client, namespace_name)
 		.get_opt(job_name)
@@ -218,10 +219,10 @@ pub async fn create_pvc_for_workspace(
 	namespace_name: &str,
 	pvc_name: &str,
 	volume_in_mb: u32,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_client(kubeconfig.auth_details).await?;
+	let client = super::get_kubernetes_client(kubeconfig).await?;
 
 	log::trace!(
 		"request_id: {} - creating pvc {} of size {} in namespace {}",
@@ -269,10 +270,10 @@ pub async fn create_pvc_for_workspace(
 pub async fn delete_kubernetes_job(
 	namespace_name: &str,
 	job_name: &str,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_client(kubeconfig.auth_details).await?;
+	let client = super::get_kubernetes_client(kubeconfig).await?;
 	log::trace!(
 		"request_id: {} - deleting job {} in namespace {}",
 		request_id,
@@ -299,11 +300,11 @@ pub async fn create_background_service_for_ci_in_kubernetes(
 	namespace_name: &str,
 	repo_workspace_name: &str,
 	service: api_models::models::ci::file_format::Service,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_client(kubeconfig.auth_details).await?;
+	let client = super::get_kubernetes_client(kubeconfig).await?;
 	log::trace!(
 		"request_id: {} - creating background ci service {} in namespace {}",
 		request_id,

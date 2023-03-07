@@ -15,10 +15,13 @@ use api_models::{
 			When,
 			Work,
 		},
-		workspace::ci::git_provider::{
-			BuildStatus,
 		workspace::{
-			ci::git_provider::{BuildStepStatus, GitProviderType, RepoStatus},
+			ci::git_provider::{
+				BuildStatus,
+				BuildStepStatus,
+				GitProviderType,
+				RepoStatus,
+			},
 			region::RegionStatus,
 		},
 	},
@@ -27,6 +30,7 @@ use api_models::{
 use chrono::Utc;
 use eve_rs::AsError;
 use globset::{Glob, GlobSetBuilder};
+use kube::config::Kubeconfig;
 use sqlx::types::Json;
 
 use crate::{
@@ -45,7 +49,6 @@ mod github;
 mod runner;
 
 pub use self::{github::*, runner::*};
-use super::KubernetesConfigDetails;
 
 pub struct Netrc {
 	pub machine: String,
@@ -402,8 +405,7 @@ pub async fn add_build_steps_in_k8s(
 		.status(500)?;
 
 	let kubeconfig =
-		service::get_kubeconfig_for_ci_build(connection, build_id, config)
-			.await?;
+		service::get_kubeconfig_for_ci_build(connection, build_id).await?;
 
 	service::infrastructure::create_kubernetes_namespace(
 		&build_id.get_build_namespace(),
@@ -744,8 +746,7 @@ pub async fn get_netrc_for_repo(
 pub async fn get_kubeconfig_for_ci_build(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	build_id: &BuildId,
-	config: &Settings,
-) -> Result<KubernetesConfigDetails, Error> {
+) -> Result<Kubeconfig, Error> {
 	let build = db::get_build_details_for_build(
 		connection,
 		&build_id.repo_id,
@@ -758,10 +759,9 @@ pub async fn get_kubeconfig_for_ci_build(
 		.await?
 		.status(500)?;
 
-	let kubeconfig = service::get_kubernetes_config_for_region(
+	let (kubeconfig, _) = service::get_kubernetes_config_for_region(
 		connection,
 		&runner.region_id,
-		config,
 	)
 	.await?;
 
