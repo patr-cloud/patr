@@ -186,7 +186,7 @@ pub async fn create_patr_database(
 		port,
 		username,
 		password,
-		replica_numbers,
+		replica_numbers as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -208,6 +208,28 @@ pub async fn update_patr_database_status(
 			id = $2;
 		"#,
 		status as _,
+		id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_replica_number(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+	replica_numbers: i32,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			patr_database
+		SET
+			replica_numbers = $1
+		WHERE
+			id = $2;
+		"#,
+		replica_numbers as _,
 		id as _,
 	)
 	.execute(&mut *connection)
