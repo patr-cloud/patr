@@ -133,6 +133,9 @@ pub mod permissions {
 
 		pub mod ci {
 			pub mod git_provider {
+				pub const LIST: &str = "workspace::ci::git_provider::LIST";
+				pub const LIST_BUILDS: &str =
+					"workspace::ci::git_provider::LIST_BUILDS";
 				pub const CONNECT: &str =
 					"workspace::ci::git_provider::connect";
 				pub const DISCONNECT: &str =
