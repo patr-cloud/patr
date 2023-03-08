@@ -11,7 +11,7 @@ pub(super) async fn migrate(
 	add_processed_to_static_site_uploads(connection, config).await?;
 
 	// ci-v3 migrations
-	add_permission_for_write_ci_file_to_repo(connection, config).await?;
+	add_permission_for_ci_routes(connection, config).await?;
 	add_ci_runner(connection, config).await?;
 
 	// common post-migrations
@@ -48,18 +48,22 @@ pub async fn add_processed_to_static_site_uploads(
 	Ok(())
 }
 
-pub async fn add_permission_for_write_ci_file_to_repo(
+pub async fn add_permission_for_ci_routes(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
-	// add permissions for CI
-	let permission = "workspace::ci::git_provider::repo::write";
+	let permissions = [
+		"workspace::ci::git_provider::repo::write",
+		"workspace::ci::git_provider::LIST",
+		"workspace::ci::git_provider::LIST_BUILDS",
+	];
 
-	let uuid = loop {
-		let uuid = Uuid::new_v4();
+	for permission in permissions {
+		let uuid = loop {
+			let uuid = Uuid::new_v4();
 
-		let exists = query!(
-			r#"
+			let exists = query!(
+				r#"
 				SELECT
 					*
 				FROM
@@ -67,29 +71,30 @@ pub async fn add_permission_for_write_ci_file_to_repo(
 				WHERE
 					id = $1;
 				"#,
-			&uuid
-		)
-		.fetch_optional(&mut *connection)
-		.await?
-		.is_some();
+				&uuid
+			)
+			.fetch_optional(&mut *connection)
+			.await?
+			.is_some();
 
-		if !exists {
-			break uuid;
-		}
-	};
+			if !exists {
+				break uuid;
+			}
+		};
 
-	query!(
-		r#"
+		query!(
+			r#"
 			INSERT INTO
 				permission
 			VALUES
 				($1, $2, '');
 			"#,
-		&uuid,
-		permission
-	)
-	.fetch_optional(&mut *connection)
-	.await?;
+			&uuid,
+			permission
+		)
+		.fetch_optional(&mut *connection)
+		.await?;
+	}
 
 	Ok(())
 }
@@ -360,6 +365,8 @@ async fn reset_permission_order(
 		"workspace::region::info",
 		"workspace::region::add",
 		"workspace::region::delete",
+		"workspace::ci::git_provider::LIST",
+		"workspace::ci::git_provider::LIST_BUILDS",
 		"workspace::ci::git_provider::connect",
 		"workspace::ci::git_provider::disconnect",
 		"workspace::ci::git_provider::repo::activate",
@@ -372,6 +379,11 @@ async fn reset_permission_order(
 		"workspace::ci::git_provider::repo::build::info",
 		"workspace::ci::git_provider::repo::build::start",
 		"workspace::ci::git_provider::repo::build::restart",
+		"workspace::ci::runner::list",
+		"workspace::ci::runner::create",
+		"workspace::ci::runner::info",
+		"workspace::ci::runner::update",
+		"workspace::ci::runner::delete",
 		"workspace::billing::info",
 		"workspace::billing::make_payment",
 		"workspace::billing::payment_method::add",

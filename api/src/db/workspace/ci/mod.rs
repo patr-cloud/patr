@@ -7,6 +7,7 @@ use api_models::{
 			BuildDetails,
 			BuildStatus,
 			BuildStepStatus,
+			GitProviderBuildDetails,
 			GitProviderType,
 			RepoStatus,
 			Step,
@@ -1282,4 +1283,53 @@ pub async fn set_syncing(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn list_builds_for_git_provider(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	git_provider_id: &Uuid,
+) -> Result<Vec<GitProviderBuildDetails>, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			ci_repos.git_provider_repo_uid as "github_repo_id",
+			ci_builds.build_num,
+			ci_builds.git_ref,
+			ci_builds.git_commit,
+			ci_builds.status as "status: BuildStatus",
+			ci_builds.created,
+			ci_builds.started,
+			ci_builds.finished,
+			ci_builds.message,
+			ci_builds.author,
+			ci_builds.git_pr_title,
+			ci_builds.git_commit_message
+		FROM
+			ci_builds
+		JOIN ci_repos
+			ON ci_repos.id = ci_builds.repo_id
+		WHERE
+			ci_repos.git_provider_id = $1
+		ORDER BY ci_builds.created ASC
+		LIMIT 500;
+		"#,
+		git_provider_id as _,
+	)
+	.fetch(&mut *connection)
+	.map_ok(|build| GitProviderBuildDetails {
+		github_repo_id: build.github_repo_id,
+		build_num: build.build_num as u64,
+		git_ref: build.git_ref,
+		git_commit: build.git_commit,
+		status: build.status,
+		created: utils::DateTime(build.created),
+		started: build.started.map(utils::DateTime),
+		finished: build.finished.map(utils::DateTime),
+		message: build.message,
+		author: build.author,
+		git_pr_title: build.git_pr_title,
+		git_commit_message: build.git_commit_message,
+	})
+	.try_collect()
+	.await
 }
