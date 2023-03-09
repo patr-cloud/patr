@@ -37,7 +37,6 @@ use k8s_openapi::{
 		apis::meta::v1::LabelSelector,
 		util::intstr::IntOrString,
 	},
-	ByteString,
 };
 use kube::{
 	api::{DeleteParams, ListParams, Patch, PatchParams},
@@ -71,7 +70,7 @@ pub async fn create_kubernetes_redis_database(
 	let secret_name_for_db_pwd = format!("db-pwd-{database_id}");
 	let svc_name_for_db = format!("db-{database_id}-service");
 	let sts_name_for_db = format!("db-{database_id}-sts");
-	let sts_port_name_for_db = format!("db-{database_id}-port");
+	let sts_port_name_for_db = format!("db-redis-port");
 	let pvc_prefix_for_db = "data";
 	let configmap_name_for_db = format!("db-{database_id}-config");
 
@@ -86,16 +85,14 @@ pub async fn create_kubernetes_redis_database(
 
 	log::trace!("request_id: {request_id} - Creating secret for database pwd");
 
-	let mut secret_data: BTreeMap<String, ByteString> = BTreeMap::new();
-	secret_data.insert(secret_key_for_db_pwd.to_owned(), db_pwd);
-
 	let secret_spec_for_db_pwd = Secret {
 		metadata: ObjectMeta {
 			name: Some(secret_name_for_db_pwd.clone()),
 			..Default::default()
 		},
-		type_: Some("Opaque".to_owned()),
-		data: Some(secret_data),
+		string_data: Some(
+			[(secret_key_for_db_pwd.to_owned(), db_pwd.into())].into(),
+		),
 		..Default::default()
 	};
 
@@ -259,10 +256,6 @@ pub async fn create_kubernetes_redis_database(
 							"ping".to_owned(),
 						]),
 					}),
-					tcp_socket: Some(TCPSocketAction {
-						port: IntOrString::Int(redis_port),
-						..Default::default()
-					}),
 					initial_delay_seconds: Some(30),
 					period_seconds: Some(10),
 					timeout_seconds: Some(5),
@@ -274,10 +267,6 @@ pub async fn create_kubernetes_redis_database(
 							"redis-cli".to_owned(),
 							"ping".to_owned(),
 						]),
-					}),
-					tcp_socket: Some(TCPSocketAction {
-						port: IntOrString::Int(redis_port),
-						..Default::default()
 					}),
 					initial_delay_seconds: Some(5),
 					failure_threshold: Some(10),
@@ -364,9 +353,6 @@ pub async fn delete_kubernetes_redis_database(
 	let secret_name_for_db_pwd = format!("db-pwd-{database_id}");
 	let svc_name_for_db = format!("db-{database_id}-service");
 	let sts_name_for_db = format!("db-{database_id}-sts");
-	let sts_port_name_for_db = format!("db-{database_id}-port");
-	let pvc_prefix_for_db = "data";
-	let configmap_name_for_db = format!("db-{database_id}-config");
 
 	let label = format!("database={}", database_id);
 

@@ -75,6 +75,7 @@ pub async fn create_patr_database_in_workspace(
 
 	let creation_time = Utc::now();
 
+	// PATR_DATABASE is none
 	db::create_resource(
 		connection,
 		&database_id,
@@ -108,6 +109,7 @@ pub async fn create_patr_database_in_workspace(
 	let (version, port, username) = match engine {
 		PatrDatabaseEngine::Postgres => ("12", 5432, "postgres"),
 		PatrDatabaseEngine::Mysql => ("8", 3306, "root"),
+		PatrDatabaseEngine::Mongo => ("8", 3306, "root"),
 		PatrDatabaseEngine::Redis => ("6", 6379, ""),
 	};
 
@@ -141,20 +143,13 @@ pub async fn create_patr_database_in_workspace(
 
 	match engine {
 		PatrDatabaseEngine::Postgres => {
-			// not supported as of now
-			return Err(Error::empty().status(500));
+			
 		}
 		PatrDatabaseEngine::Mysql => {
-			service::create_kubernetes_mysql_database(
-				workspace_id,
-				&database_id,
-				&password,
-				database_plan,
-				kubeconfig,
-				request_id,
-				replica_numbers,
-			)
-			.await?;
+			
+		}
+		PatrDatabaseEngine::Mongo => {
+			
 		}
 		PatrDatabaseEngine::Redis => {
 			service::create_kubernetes_redis_database(
@@ -204,6 +199,11 @@ pub async fn modify_patr_database(
 			return Err(Error::empty().status(500));
 		}
 		PatrDatabaseEngine::Mysql => {
+			// not supported as of now
+			log::info!("Creating postgres database is not supported");
+			return Err(Error::empty().status(500));
+		}
+		PatrDatabaseEngine::Mongo => {
 			// not supported as of now
 			log::info!("Creating postgres database is not supported");
 			return Err(Error::empty().status(500));
@@ -263,18 +263,13 @@ pub async fn delete_patr_database(
 	// now delete the database from k8s
 	match database.engine {
 		PatrDatabaseEngine::Postgres => {
-			// not supported as of now
-			log::info!("Creating postgres database is not supported");
-			return Err(Error::empty().status(500));
+			
 		}
 		PatrDatabaseEngine::Mysql => {
-			service::delete_kubernetes_mysql_database(
-				&database.workspace_id,
-				&database.id,
-				kubeconfig,
-				request_id,
-			)
-			.await?;
+			
+		}
+		PatrDatabaseEngine::Mongo => {
+			
 		}
 		PatrDatabaseEngine::Redis => {
 			service::delete_kubernetes_redis_database(
