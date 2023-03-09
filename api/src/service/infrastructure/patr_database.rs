@@ -108,6 +108,8 @@ pub async fn create_patr_database_in_workspace(
 	let (version, port, username) = match engine {
 		PatrDatabaseEngine::Postgres => ("12", 5432, "postgres"),
 		PatrDatabaseEngine::Mysql => ("5", 3306, "root"),
+		PatrDatabaseEngine::Mongo => ("5", 3306, "root"),
+		PatrDatabaseEngine::Redis => ("5", 3306, "root"),
 	};
 
 	log::trace!(
@@ -140,6 +142,14 @@ pub async fn create_patr_database_in_workspace(
 
 	match engine {
 		PatrDatabaseEngine::Postgres => {
+			// not supported as of now
+			return Err(Error::empty().status(500));
+		}
+		PatrDatabaseEngine::Mongo => {
+			// not supported as of now
+			return Err(Error::empty().status(500));
+		}
+		PatrDatabaseEngine::Redis => {
 			// not supported as of now
 			return Err(Error::empty().status(500));
 		}
@@ -185,11 +195,9 @@ pub async fn modify_patr_database(
 	.await?;
 
 	match database.engine {
-		PatrDatabaseEngine::Postgres => {
-			// not supported as of now
-			log::info!("Creating postgres database is not supported");
-			return Err(Error::empty().status(500));
-		}
+		PatrDatabaseEngine::Postgres => {}
+		PatrDatabaseEngine::Mongo => {}
+		PatrDatabaseEngine::Redis => {}
 		PatrDatabaseEngine::Mysql => {
 			service::handle_scaling(
 				&database.workspace_id,
@@ -244,11 +252,9 @@ pub async fn delete_patr_database(
 
 	// now delete the database from k8s
 	match database.engine {
-		PatrDatabaseEngine::Postgres => {
-			// not supported as of now
-			log::info!("Creating postgres database is not supported");
-			return Err(Error::empty().status(500));
-		}
+		PatrDatabaseEngine::Postgres => {}
+		PatrDatabaseEngine::Mongo => {}
+		PatrDatabaseEngine::Redis => {}
 		PatrDatabaseEngine::Mysql => {
 			service::delete_kubernetes_mysql_database(
 				&database.workspace_id,

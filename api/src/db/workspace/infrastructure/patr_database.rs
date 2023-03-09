@@ -215,6 +215,28 @@ pub async fn update_patr_database_status(
 	.map(|_| ())
 }
 
+pub async fn update_patr_database_replicas(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+	replica_numebers: i32,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			patr_database
+		SET
+			replica_numbers = $1
+		WHERE
+			id = $2;
+		"#,
+		replica_numebers as _,
+		id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn delete_patr_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	database_id: &Uuid,

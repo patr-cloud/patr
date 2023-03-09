@@ -66,8 +66,8 @@ pub async fn create_kubernetes_mysql_database(
 	// names
 	let namespace = workspace_id.as_str();
 	let secret_name_for_db_pwd = format!("db-pwd-{database_id}");
-	let master_svc_name_for_db = format!("db-{database_id}");
-	let slave_svc_name_for_db = format!("db-{database_id}-read");
+	let master_svc_name_for_db = format!("db-service");
+	let slave_svc_name_for_db = format!("db-slave-service");
 	let sts_name_for_db = format!("db-{database_id}");
 	let pvc_prefix_for_db = "pvc"; // actual name will be `pvc-{sts_name_for_db}-{sts_ordinal}`
 	let configmap_name_for_db = format!("db-{database_id}");
@@ -200,9 +200,6 @@ pub async fn create_kubernetes_mysql_database(
 		.await?;
 
 	log::trace!("request_id: {request_id} - Creating statefulset for database");
-
-	// To get number of replicas required
-	// To handle scale up and scale down
 
 	let db_pvc_template = PersistentVolumeClaim {
 		metadata: ObjectMeta {
@@ -478,7 +475,6 @@ pub async fn delete_kubernetes_mysql_database(
 	let master_svc_name_for_db = format!("db-{database_id}");
 	let slave_svc_name_for_db = format!("db-{database_id}-read");
 	let sts_name_for_db = format!("db-{database_id}");
-	let configmap_name_for_db = format!("db-{database_id}");
 
 	let label = format!("database={}", database_id);
 
