@@ -237,6 +237,7 @@ pub mod resource_types {
 	pub const SECRET: &str = "secret";
 	pub const STATIC_SITE_UPLOAD: &str = "staticSiteUpload";
 	pub const DEPLOYMENT_REGION: &str = "deploymentRegion";
+	pub const DEPLOYMENT_VOLUME: &str = "deploymentVolume";
 	pub const PATR_DATABASE: &str = "patrDatabase";
 
 	// ci

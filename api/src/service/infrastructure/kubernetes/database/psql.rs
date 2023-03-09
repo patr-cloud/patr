@@ -14,7 +14,6 @@ use k8s_openapi::{
 			ContainerPort,
 			EnvVar,
 			EnvVarSource,
-			ExecAction,
 			PersistentVolumeClaim,
 			PersistentVolumeClaimSpec,
 			PodSpec,
@@ -27,7 +26,7 @@ use k8s_openapi::{
 			ServicePort,
 			ServiceSpec,
 			Volume,
-			VolumeMount, TCPSocketAction,
+			VolumeMount, ExecAction,
 		},
 	},
 	apimachinery::pkg::{
@@ -65,10 +64,10 @@ pub async fn create_kubernetes_psql_database(
 	// names
 	let namespace = workspace_id.as_str();
 	let secret_name_for_db_pwd = format!("db-pwd-{database_id}");
-	let svc_name_for_db = format!("db-{database_id}");
+	let svc_name_for_db = format!("db-{database_id}-service");
 	let sts_name_for_db = format!("db-{database_id}");
-    let sts_port_name_for_db = format!("db-{database_id}");
-	let pvc_prefix_for_db = "pvc"; // actual name will be `pvc-{sts_name_for_db}-{sts_ordinal}`
+    let sts_port_name_for_db = format!("postgresql");
+	let pvc_prefix_for_db = "datadir"; // actual name will be `pvc-{sts_name_for_db}-{sts_ordinal}`
 	let configmap_name_for_db = format!("db-{database_id}-config");
 
 	// constants
@@ -135,7 +134,6 @@ pub async fn create_kubernetes_psql_database(
 	let service_for_db = Service {
 		metadata: ObjectMeta {
 			name: Some(svc_name_for_db.to_owned()),
-            labels: Some(labels.clone()),
 			..Default::default()
 		},
 		spec: Some(ServiceSpec {
@@ -164,7 +162,6 @@ pub async fn create_kubernetes_psql_database(
     let db_pvc_template = PersistentVolumeClaim {
 		metadata: ObjectMeta {
 			name: Some(pvc_prefix_for_db.to_owned()),
-            labels: Some(labels.clone()),
 			..Default::default()
 		},
 		spec: Some(PersistentVolumeClaimSpec {
@@ -186,8 +183,8 @@ pub async fn create_kubernetes_psql_database(
 		spec: Some(PodSpec {
 			containers: vec![
 				Container {
-					name: "psql".to_owned(),
-					image: Some("psql:latest".to_owned()),  // To change to a particular version
+					name: "pg-db".to_owned(),
+					image: Some("postgres:12".to_owned()),
 					env: Some(vec![EnvVar {
 						name: "POSTGRES_PASSWORD".to_owned(),
 						value_from: Some(EnvVarSource {
@@ -244,10 +241,6 @@ pub async fn create_kubernetes_psql_database(
 								"SELECT 1".to_owned(),
 							]),
 						}),
-                        tcp_socket: Some(TCPSocketAction {
-                            port: IntOrString::Int(psql_port),
-                            ..Default::default()
-                        }),
 						initial_delay_seconds: Some(30),
 						period_seconds: Some(10),
 						timeout_seconds: Some(5),
@@ -264,10 +257,6 @@ pub async fn create_kubernetes_psql_database(
                                 "-q".to_owned(),
 							]),
 						}),
-                        tcp_socket: Some(TCPSocketAction {
-                            port: IntOrString::Int(psql_port),
-                            ..Default::default()
-                        }),
 						initial_delay_seconds: Some(5),
 						failure_threshold: Some(10),
 						period_seconds: Some(2),
@@ -277,10 +266,6 @@ pub async fn create_kubernetes_psql_database(
                     volume_mounts: Some(vec![VolumeMount {
                         name: pvc_prefix_for_db.to_owned(),
                         mount_path: "/var/lib/postgresql/data".to_owned(),
-                        ..Default::default()
-                    }, VolumeMount {
-                        name: "init-scripts".to_owned(),
-                        mount_path: "/docker-entrypoint-initdb.d".to_owned(),
                         ..Default::default()
                     }]),
 					..Default::default()
@@ -303,7 +288,6 @@ pub async fn create_kubernetes_psql_database(
     let statefulset_spec_for_db = StatefulSet {
 		metadata: ObjectMeta {
 			name: Some(sts_name_for_db.clone()),
-            labels: Some(labels.clone()),
 			..Default::default()
 		},
 		spec: Some(StatefulSetSpec {
@@ -345,7 +329,6 @@ pub async fn delete_kubernetes_psql_database(
 	let secret_name_for_db_pwd = format!("db-pwd-{database_id}");
 	let svc_name_for_db = format!("db-{database_id}-read");
 	let sts_name_for_db = format!("db-{database_id}");
-	let configmap_name_for_db = format!("db-{database_id}");
 
 	let label = format!("database={}", database_id);
 

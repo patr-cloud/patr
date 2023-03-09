@@ -1524,6 +1524,15 @@ pub async fn get_total_resource_usage(
 		request_id,
 		total_charge
 	);
+	let volume_usage = calculate_volumes_bill_for_workspace_till(
+		connection,
+		workspace_id,
+		month_start_date,
+		till_date,
+	)
+	.await?;
+	let volume_charge =
+		volume_usage.iter().map(|bill| bill.amount).sum::<u64>();
 
 	let bill = WorkspaceBillBreakdown {
 		year,
@@ -1549,4 +1558,60 @@ pub async fn get_total_resource_usage(
 		patr_database_usage,
 	};
 	Ok(bill)
+}
+
+pub async fn calculate_volumes_bill_for_workspace_till(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	month_start_date: &chrono::DateTime<Utc>,
+	till_date: &chrono::DateTime<Utc>,
+) -> Result<Vec<VolumeUsage>, Error> {
+	let volume_usages = db::get_all_volume_usage(
+		&mut *connection,
+		workspace_id,
+		&DateTime::from(*month_start_date),
+		till_date,
+	)
+	.await?;
+
+	let mut volume_usage_bill = Vec::new();
+
+	for volume_usages in volume_usages {
+		let stop_time = volume_usages
+			.stop_time
+			.map(chrono::DateTime::from)
+			.unwrap_or_else(|| *till_date);
+		let start_time = max(volume_usages.start_time, *month_start_date);
+		let hours = min(
+			720,
+			((stop_time - start_time).num_seconds() as f64 / 3600f64).ceil()
+				as i64,
+		);
+
+		let storage_in_gb = (volume_usages.storage as f64 /
+			(1024 * 1024 * 1024) as f64)
+			.ceil() as i64;
+		let monthly_price = (storage_in_gb as f64 * 0.1f64).ceil();
+
+		let price_in_dollars = if hours > 720 {
+			monthly_price
+		} else {
+			(hours as f64 / 720f64) * monthly_price
+		};
+
+		let price_in_cents = (price_in_dollars * 100.0).round() as u64 *
+			volume_usages.number_of_volumes as u64;
+
+		volume_usage_bill.push(VolumeUsage {
+			start_time: DateTime(start_time),
+			stop_time: volume_usages.stop_time.map(DateTime),
+			storage: volume_usages.storage as u64,
+			number_of_volume: volume_usages.number_of_volumes as u32,
+			hours: hours as u64,
+			amount: price_in_cents,
+			monthly_charge: monthly_price as u64 * 100,
+		})
+	}
+
+	Ok(volume_usage_bill)
 }
