@@ -14,7 +14,7 @@ use k8s_openapi::{
 };
 use kube::Api;
 pub use mysql::*;
-pub use redis::*;
+pub use self::redis::*;
 
 pub use self::redis::*;
 use crate::{service::KubernetesConfigDetails, utils::Error};
