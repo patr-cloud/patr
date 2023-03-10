@@ -999,7 +999,7 @@ async fn upload_static_site(
 		context.get_database_connection(),
 		&workspace_id,
 		&static_site_id,
-		&file,
+		file,
 		&message,
 		&user_id,
 		&config,
