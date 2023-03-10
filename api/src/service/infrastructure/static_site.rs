@@ -407,7 +407,7 @@ pub async fn upload_static_site_files_to_s3(
 				}
 			}
 		})
-		.buffer_unordered(num_cpus::get() * 4)
+		.buffer_unordered(num_cpus::get() * 8)
 		.for_each(|task_result| async {
 			match task_result {
 				Ok(_) => {}
