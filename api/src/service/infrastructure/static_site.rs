@@ -6,6 +6,7 @@ use api_models::{
 };
 use chrono::{DateTime, Utc};
 use eve_rs::AsError;
+use futures::{stream, StreamExt};
 use s3::{creds::Credentials, Bucket, Region};
 use zip::ZipArchive;
 
@@ -361,33 +362,64 @@ pub async fn upload_static_site_files_to_s3(
 		));
 	}
 
-	for (file_name, file_content, mime_string) in files_vec {
-		let code = bucket
-			.put_object_with_content_type(
-				format!("{}/{}/{}", static_site_id, upload_id, file_name),
-				&file_content,
-				&mime_string,
-			)
-			.await
-			.map_err(|err| {
-				log::error!(
-					"request_id: {} - error pushing static site file to S3: {}",
+	let length = files_vec.len();
+	stream::iter(files_vec)
+		.enumerate()
+		.map(|(idx, (file_name, file_content, mime_string))| {
+			let bucket = bucket.clone();
+			{
+				log::trace!(
+					"request_id: {} uploading file : {}/{}",
 					request_id,
-					err
+					idx + 1,
+					length
 				);
-				Error::empty()
-			})?
-			.status_code();
-
-		if !(200..300).contains(&code) {
-			log::error!(
+				async move {
+					let code = bucket
+						.put_object_with_content_type(
+							format!(
+								"{}/{}/{}",
+								static_site_id, upload_id, file_name
+							),
+							&file_content,
+							&mime_string,
+						)
+						.await
+						.map_err(|err| {
+							log::error!(
 				"request_id: {} - error pushing static site file to S3: {}",
 				request_id,
-				code
+				err
 			);
-			return Err(Error::empty());
-		}
-	}
+							Error::empty()
+						})?
+						.status_code();
+
+					if !(200..300).contains(&code) {
+						log::error!(
+					"request_id: {} - error pushing static site file to S3: {}",
+					request_id,
+					code
+				);
+						return Err(Error::empty());
+					}
+					Ok(())
+				}
+			}
+		})
+		.buffer_unordered(num_cpus::get() * 4)
+		.for_each(|task_result| async {
+			match task_result {
+				Ok(_) => {}
+				Err(err) => {
+					log::info!(
+						"Error while uploading region resource {:?}",
+						err
+					)
+				}
+			}
+		})
+		.await;
 	log::trace!("request_id: {} - uploaded the files to s3", request_id);
 
 	Ok(())
