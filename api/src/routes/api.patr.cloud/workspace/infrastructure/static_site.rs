@@ -667,6 +667,7 @@ async fn list_static_sites_upload_history(
 		message: deploy_history.message,
 		uploaded_by: deploy_history.uploaded_by,
 		created: DateTime(deploy_history.created),
+		processed: deploy_history.processed.map(DateTime)
 	})
 	.collect();
 
