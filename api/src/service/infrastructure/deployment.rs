@@ -727,8 +727,8 @@ pub async fn update_deployment(
 					region_id: deployed_region_id,
 					ports: running_details
 						.ports
-						.iter()
-						.map(|(port, _type)| port.value())
+						.keys()
+						.map(|port| port.value())
 						.collect(),
 				},
 				config,
@@ -1616,8 +1616,8 @@ pub async fn start_deployment(
 			region_id: deployed_region_id,
 			ports: deployment_running_details
 				.ports
-				.iter()
-				.map(|(port, _type)| port.value())
+				.keys()
+				.map(|port| port.value())
 				.collect(),
 		},
 		config,
