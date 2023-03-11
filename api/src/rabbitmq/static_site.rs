@@ -240,7 +240,7 @@ pub(super) async fn process_request(
 					&mut *connection,
 					&static_site_id,
 					&upload_id,
-					&config,
+					config,
 					&request_id,
 				)
 				.await?;
