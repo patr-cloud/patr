@@ -69,6 +69,13 @@ pub(super) async fn process_request(
 			);
 			log::trace!("request_id: {} - got the s3 client", request_id);
 
+			db::update_current_live_upload_for_static_site(
+				connection,
+				&static_site_id,
+				&upload_id,
+			)
+			.await?;
+
 			let file_data = Cursor::new(base64::decode(file)?);
 
 			let mut archive = ZipArchive::new(file_data).map_err(|err| {
