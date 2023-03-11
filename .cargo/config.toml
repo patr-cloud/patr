@@ -1,2 +1,11 @@
 [alias]
-populate = ["run", "--features", "default,sample-data", "--", "--populate-sample-data"]
+populate = [
+    "run",
+    "--features",
+    "default,sample-data",
+    "--",
+    "--populate-sample-data",
+]
+
+[registries.crates-io]
+protocol = 'sparse'

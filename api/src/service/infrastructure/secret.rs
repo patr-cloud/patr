@@ -273,7 +273,6 @@ pub async fn delete_secret_in_workspace(
 			metadata?
 				.versions
 				.keys()
-				.into_iter()
 				.filter_map(|version| version.parse::<u64>().ok())
 				.collect(),
 		)
