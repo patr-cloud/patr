@@ -440,7 +440,7 @@ pub async fn set_static_site_upload_as_processed(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &Uuid,
 	upload_id: &Uuid,
-	processed_time: Option<&DateTime<Utc>>
+	processed_time: Option<&DateTime<Utc>>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
