@@ -3378,7 +3378,7 @@
         false,
         false,
         true,
-        false
+        true
       ],
       "parameters": {
         "Left": [
@@ -3997,7 +3997,7 @@
         false,
         false,
         true,
-        false
+        true
       ],
       "parameters": {
         "Left": [
@@ -5274,6 +5274,20 @@
       }
     },
     "query": "SELECT user_unverified_personal_email.local, user_unverified_personal_email.domain_id as \"domain_id: _\", user_unverified_personal_email.user_id as \"user_id: _\", user_unverified_personal_email.verification_token_hash, user_unverified_personal_email.verification_token_expiry FROM user_unverified_personal_email INNER JOIN domain ON domain.id = user_unverified_personal_email.domain_id WHERE user_id = $1 AND CONCAT(local, '@', domain.name, '.', domain.tld) = $2;"
+  },
+  "544af3e29e6173cfb4f2669c385b4e19f308086d0238b3edb185cc093b27a55b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Timestamptz",
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE static_site_upload_history SET processed = $1 WHERE static_site_id = $2 AND upload_id = $3;"
   },
   "54b50087f45e93b77cac99a328059d3ff47c9877b0996f6d74a155114feb4915": {
     "describe": {
@@ -7124,7 +7138,7 @@
         false,
         false,
         true,
-        false,
+        true,
         true
       ],
       "parameters": {
@@ -7341,8 +7355,7 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed",
-                  "pending"
+                  "failed"
                 ]
               },
               "name": "payment_status"
@@ -8493,6 +8506,22 @@
     },
     "query": "INSERT INTO business_email( user_id, local, domain_id ) VALUES ($1, $2, $3);"
   },
+  "84b0bbcc2b4fc601b61593609f6f86dea58dde9a9d7a51e84d6567a1e39a83e2": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Text",
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "INSERT INTO static_site_upload_history( upload_id, static_site_id, message, uploaded_by, created, processed ) VALUES ($1, $2, $3, $4, $5, NULL);"
+  },
   "84da01715178fc6e1220c65d3f7dbc65abf11284499d89bd7d97d32de3411428": {
     "describe": {
       "columns": [],
@@ -8796,8 +8825,7 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed",
-                  "pending"
+                  "failed"
                 ]
               },
               "name": "payment_status"
@@ -9087,8 +9115,7 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed",
-                  "pending"
+                  "failed"
                 ]
               },
               "name": "payment_status"
@@ -9174,16 +9201,6 @@
       }
     },
     "query": "CREATE TABLE managed_database( id UUID CONSTRAINT managed_database_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT managed_database_chk_name_is_trimmed CHECK( name = TRIM(name) ), db_name VARCHAR(255) NOT NULL CONSTRAINT managed_database_chk_db_name_is_trimmed CHECK( db_name = TRIM(db_name) ), engine MANAGED_DATABASE_ENGINE NOT NULL, version TEXT NOT NULL, num_nodes INTEGER NOT NULL, database_plan MANAGED_DATABASE_PLAN NOT NULL, region TEXT NOT NULL, status MANAGED_DATABASE_STATUS NOT NULL, host TEXT NOT NULL, port INTEGER NOT NULL, username TEXT NOT NULL, password TEXT NOT NULL, workspace_id UUID NOT NULL, digitalocean_db_id TEXT CONSTRAINT managed_database_uq_digitalocean_db_id UNIQUE, deleted TIMESTAMPTZ );"
-  },
-  "8dbbc56eaf00c56d73e71c025b963dc0ce7f63cbda606b34e32259e819480ff3": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE static_site_upload_history( upload_id UUID CONSTRAINT static_site_upload_history_pk PRIMARY KEY, static_site_id UUID NOT NULL CONSTRAINT static_site_upload_history_fk_static_site_id REFERENCES static_site(id), message TEXT NOT NULL, uploaded_by UUID NOT NULL CONSTRAINT static_site_upload_history_fk_uploaded_by REFERENCES \"user\"(id), created TIMESTAMPTZ NOT NULL, CONSTRAINT static_site_upload_history_uq_upload_id_static_site_id UNIQUE(upload_id, static_site_id) );"
   },
   "8dc4459ced1770b672748e0ecced9c880d352e4aaa4ad869b12c3c1ab93f640f": {
     "describe": {
@@ -10215,22 +10232,6 @@
     },
     "query": "INSERT INTO deployment_deploy_history( deployment_id, image_digest, repository_id, created ) VALUES ($1, $2, $3, $4) ON CONFLICT (deployment_id, image_digest) DO NOTHING;"
   },
-  "a26aaae9c578adae831230251acca207c63e94e7962a88ed7aa95c55a0769adc": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          "Text",
-          "Uuid",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "INSERT INTO static_site_upload_history( upload_id, static_site_id, message, uploaded_by, created ) VALUES ($1, $2, $3, $4, $5);"
-  },
   "a3383d5df7266cf5c1f2116b8d93df630ec6cfae3059445c0075fe502ff64c0e": {
     "describe": {
       "columns": [],
@@ -10547,6 +10548,50 @@
       }
     },
     "query": "CREATE EXTENSION IF NOT EXISTS citext;"
+  },
+  "ac254a5fbea5eab95663d9645c49a9245e3894533dbae30895f937054b186b6b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "message",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "uploaded_by: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "created: _",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "processed: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT upload_id as \"id: _\", message, uploaded_by as \"uploaded_by: _\", created as \"created: _\", processed as \"processed: _\" FROM static_site_upload_history WHERE static_site_id = $1;"
   },
   "ac597a4667137fc19b501d62de2f903bed427c7b36f963f80b3a1291c4560308": {
     "describe": {
@@ -11368,6 +11413,51 @@
     },
     "query": "CREATE TABLE IF NOT EXISTS static_sites_payment_history( workspace_id UUID NOT NULL, static_site_plan STATIC_SITE_PLAN NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
   },
+  "b6fb3d6eb9b3f8236de0837741513fc4d6946c5be44ead58c751ae8cdffdfe8a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "message",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "uploaded_by: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "created: _",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "processed: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT upload_id as \"id: _\", message, uploaded_by as \"uploaded_by: _\", created as \"created: _\", processed as \"processed: _\" FROM static_site_upload_history WHERE static_site_id = $1 AND upload_id = $2;"
+  },
   "b80c3e5c6e1620ccee068d08214bc0c787967400a6a10f45c6065ba22bea4369": {
     "describe": {
       "columns": [],
@@ -11763,44 +11853,6 @@
       }
     },
     "query": "UPDATE static_site SET status = $1 WHERE id = $2;"
-  },
-  "c440a9f8f932cc5e74e11bf9830cb51c4dba11c883cc7621a08db9fc2977742f": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "message",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "uploaded_by: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "created: _",
-          "ordinal": 3,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT upload_id as \"id: _\", message, uploaded_by as \"uploaded_by: _\", created as \"created: _\" FROM static_site_upload_history WHERE static_site_id = $1;"
   },
   "c4926f8d59dc7bc4e9ee1f2472a6362d47d65337c1644b6a0487cd9318d28d11": {
     "describe": {
@@ -12646,8 +12698,7 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed",
-                  "pending"
+                  "failed"
                 ]
               },
               "name": "payment_status"
@@ -12700,45 +12751,6 @@
       }
     },
     "query": "CREATE TABLE docker_registry_repository( id UUID CONSTRAINT docker_registry_repository_pk PRIMARY KEY, workspace_id UUID NOT NULL CONSTRAINT docker_registry_repository_fk_workspace_id REFERENCES workspace(id), name CITEXT NOT NULL, deleted TIMESTAMPTZ, CONSTRAINT docker_registry_repository_uq_id_workspace_id UNIQUE( id, workspace_id ) );"
-  },
-  "d09ad91d4dddfd2c60d821588041b59feb517af01266fe52980e0b4aca9b87ef": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "message",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "uploaded_by: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "created: _",
-          "ordinal": 3,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT upload_id as \"id: _\", message, uploaded_by as \"uploaded_by: _\", created as \"created: _\" FROM static_site_upload_history WHERE static_site_id = $1 AND upload_id = $2;"
   },
   "d0aafd0091565e0f02db21a5d350a8172e0af39292340bab956880d6eace713e": {
     "describe": {
@@ -13992,6 +14004,16 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tbuild_num,\n\t\t\tgit_ref,\n\t\t\tgit_commit,\n\t\t\tstatus as \"status: _\",\n\t\t\tcreated as \"created: _\",\n\t\t\tfinished as \"finished: _\",\n\t\t\tmessage,\n\t\t\tauthor,\n\t\t\tgit_pr_title,\n\t\t\tgit_commit_message\n\t\tFROM\n\t\t\tci_builds\n\t\tWHERE\n\t\t\t(repo_id = $1 AND build_num = $2);\n\t\t"
   },
+  "e3e5df5305f2f4f8363d750c83ab960c127587667bbf53d355dda740fa3da2fc": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE static_site_upload_history( upload_id UUID CONSTRAINT static_site_upload_history_pk PRIMARY KEY, static_site_id UUID NOT NULL CONSTRAINT static_site_upload_history_fk_static_site_id REFERENCES static_site(id), message TEXT NOT NULL, uploaded_by UUID NOT NULL CONSTRAINT static_site_upload_history_fk_uploaded_by REFERENCES \"user\"(id), created TIMESTAMPTZ NOT NULL, processed TIMESTAMPTZ, CONSTRAINT static_site_upload_history_uq_upload_id_static_site_id UNIQUE(upload_id, static_site_id) );"
+  },
   "e43cbb91a88870e7f60a36e520e8ff8af49e7b99dbf20c341eebd4bb1b2feb76": {
     "describe": {
       "columns": [],
@@ -14943,7 +14965,7 @@
         false,
         false,
         true,
-        false,
+        true,
         true
       ],
       "parameters": {

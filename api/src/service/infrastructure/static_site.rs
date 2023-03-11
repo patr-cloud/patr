@@ -317,19 +317,13 @@ pub async fn upload_static_site_files_to_s3(
 	Ok(())
 }
 
-pub async fn update_static_site_and_db_status(
+pub async fn update_cloudflare_running_upload(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &Uuid,
 	upload_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	log::trace!(
-		"updating static site: {} with upload id: {} in kubernetes",
-		static_site_id,
-		upload_id
-	);
-
 	let result = service::update_cloudflare_kv_for_static_site(
 		static_site_id,
 		cloudflare::static_site::Value::Serving(upload_id.clone()),
@@ -337,47 +331,27 @@ pub async fn update_static_site_and_db_status(
 	)
 	.await;
 
-	if let Err(err) = result {
+	let status = if let Err(err) = result {
 		log::error!(
-			"request_id: {} - Error occured while deploying site `{}`: {}",
+			"request_id: {} - Error while deploying site `{}`: {}",
 			request_id,
 			static_site_id,
 			err.get_error()
 		);
-		// TODO log in audit log that there was an error while
-		// deploying
-		db::update_static_site_status(
-			connection,
-			static_site_id,
-			&DeploymentStatus::Errored,
-		)
-		.await?;
-
-		db::update_current_live_upload_for_static_site(
-			connection,
-			static_site_id,
-			upload_id,
-		)
-		.await?;
-
-		Err(err)
+		DeploymentStatus::Errored
 	} else {
-		db::update_static_site_status(
-			connection,
-			static_site_id,
-			&DeploymentStatus::Running,
-		)
-		.await?;
-
 		db::update_current_live_upload_for_static_site(
 			connection,
 			static_site_id,
 			upload_id,
 		)
 		.await?;
+		DeploymentStatus::Running
+	};
 
-		Ok(())
-	}
+	db::update_static_site_status(connection, static_site_id, &status).await?;
+
+	Ok(())
 }
 
 async fn check_static_site_creation_limit(
@@ -479,23 +453,6 @@ async fn create_static_site_upload(
 	)
 	.await?;
 
-	db::update_current_live_upload_for_static_site(
-		connection,
-		static_site_id,
-		&upload_id,
-	)
-	.await?;
-
-	log::trace!(
-		"request_id: {} - Updating the static site and db status",
-		request_id
-	);
-
-	let static_site = db::get_static_site_by_id(connection, static_site_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
 	log::trace!(
 		"request_id: {} - Uploading static site files to S3",
 		request_id
@@ -510,18 +467,5 @@ async fn create_static_site_upload(
 	)
 	.await?;
 
-	if static_site.status == DeploymentStatus::Stopped {
-		log::trace!("Static site with ID: {} is stopped manully, skipping update static site k8s api call", static_site_id);
-		Ok(upload_id)
-	} else {
-		service::update_static_site_and_db_status(
-			connection,
-			static_site_id,
-			&upload_id,
-			config,
-			request_id,
-		)
-		.await?;
-		Ok(upload_id)
-	}
+	Ok(upload_id)
 }

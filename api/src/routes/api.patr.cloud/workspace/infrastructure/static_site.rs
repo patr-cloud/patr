@@ -667,7 +667,7 @@ async fn list_static_sites_upload_history(
 		message: deploy_history.message,
 		uploaded_by: deploy_history.uploaded_by,
 		created: DateTime(deploy_history.created),
-		processed: deploy_history.processed.map(DateTime)
+		processed: deploy_history.processed.map(DateTime),
 	})
 	.collect();
 
@@ -811,7 +811,7 @@ async fn revert_static_site(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	service::update_static_site_and_db_status(
+	service::update_cloudflare_running_upload(
 		context.get_database_connection(),
 		&static_site_id,
 		&upload_id,
@@ -878,7 +878,7 @@ async fn start_static_site(
 
 	// Check if upload_id is present or not
 	if let Some(upload_id) = static_site.current_live_upload {
-		service::update_static_site_and_db_status(
+		service::update_cloudflare_running_upload(
 			context.get_database_connection(),
 			&static_site_id,
 			&upload_id,

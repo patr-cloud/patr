@@ -42,6 +42,7 @@ impl fmt::Display for Queue {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "resource", rename_all = "camelCase")]
+#[allow(clippy::upper_case_acronyms)]
 pub enum InfraRequestData {
 	Deployment(DeploymentRequestData),
 	BYOC(BYOCData),
