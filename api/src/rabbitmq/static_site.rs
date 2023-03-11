@@ -189,7 +189,7 @@ pub(super) async fn process_request(
 						Ok(())
 					}
 				})
-				.buffer_unordered(num_cpus::get() * 8)
+				.buffer_unordered(num_cpus::get() * 4)
 				.collect::<Vec<Result<_, _>>>()
 				.await
 				.into_iter()
