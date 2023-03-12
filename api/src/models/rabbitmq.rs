@@ -42,11 +42,30 @@ impl fmt::Display for Queue {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "resource", rename_all = "camelCase")]
-#[allow(clippy::large_enum_variant, clippy::upper_case_acronyms)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum InfraRequestData {
 	Deployment(DeploymentRequestData),
 	BYOC(BYOCData),
 	DockerRegistry(DockerRegistryData),
+	StaticSite(StaticSiteData),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "action", rename_all = "camelCase")]
+#[allow(clippy::large_enum_variant)]
+pub enum DeploymentRequestData {
+	CheckAndUpdateStatus {
+		workspace_id: Uuid,
+		deployment_id: Uuid,
+	},
+	UpdateImage {
+		workspace_id: Uuid,
+		deployment: Deployment,
+		image_name: String,
+		digest: String,
+		running_details: DeploymentRunningDetails,
+		request_id: Uuid,
+	},
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -82,24 +101,6 @@ pub enum BYOCData {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", rename_all = "camelCase")]
-#[allow(clippy::large_enum_variant)]
-pub enum DeploymentRequestData {
-	CheckAndUpdateStatus {
-		workspace_id: Uuid,
-		deployment_id: Uuid,
-	},
-	UpdateImage {
-		workspace_id: Uuid,
-		deployment: Deployment,
-		image_name: String,
-		digest: String,
-		running_details: DeploymentRunningDetails,
-		request_id: Uuid,
-	},
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(tag = "action", rename_all = "camelCase")]
 pub enum DockerRegistryData {
 	DeleteDockerImage {
 		workspace_id: Uuid,
@@ -107,6 +108,18 @@ pub enum DockerRegistryData {
 		digest: String,
 		tag: String,
 		image_pushed_ip_addr: String,
+		request_id: Uuid,
+	},
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "action", rename_all = "camelCase")]
+pub enum StaticSiteData {
+	CreateStaticSiteUpload {
+		static_site_id: Uuid,
+		upload_id: Uuid,
+		file: String,
+		files_length: usize,
 		request_id: Uuid,
 	},
 }

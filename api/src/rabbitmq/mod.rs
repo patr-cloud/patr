@@ -29,6 +29,7 @@ mod ci;
 mod database;
 mod deployment;
 mod docker_registry;
+mod static_site;
 
 pub use ci::{BuildId, BuildStep, BuildStepId};
 
@@ -219,6 +220,21 @@ async fn process_infra_queue_payload(
 			docker_registry::process_request(
 				&mut connection,
 				docker_registry_data,
+				config,
+			)
+			.await
+			.map_err(|error| {
+				log::error!(
+					"Error processing infra RabbitMQ message: {}",
+					error.get_error()
+				);
+				error
+			})
+		}
+		InfraRequestData::StaticSite(static_site_data) => {
+			static_site::process_request(
+				&mut connection,
+				static_site_data,
 				config,
 			)
 			.await

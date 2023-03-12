@@ -22,6 +22,7 @@ use crate::{
 		DockerWebhookData,
 		InfraRequestData,
 		Queue,
+		StaticSiteData,
 	},
 	rabbitmq::{self, BuildId, BuildStep},
 	service,
@@ -494,6 +495,28 @@ pub async fn queue_delete_kubernetes_cluster(
 			region_id: region_id.clone(),
 			workspace_id: workspace_id.clone(),
 			kube_config,
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await
+}
+
+pub async fn queue_create_static_site_upload(
+	static_site_id: &Uuid,
+	upload_id: &Uuid,
+	file: String,
+	files_length: usize,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_infra_queue(
+		&InfraRequestData::StaticSite(StaticSiteData::CreateStaticSiteUpload {
+			static_site_id: static_site_id.clone(),
+			upload_id: upload_id.clone(),
+			file,
+			files_length,
 			request_id: request_id.clone(),
 		}),
 		config,
