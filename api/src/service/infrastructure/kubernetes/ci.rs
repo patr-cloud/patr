@@ -125,7 +125,7 @@ pub async fn create_ci_job_in_kubernetes(
 						image_pull_policy: Some("Always".to_string()),
 						name: "build-step".to_string(),
 						volume_mounts: Some(vec![VolumeMount {
-							mount_path: "/mnt/workdir".to_string(),
+							mount_path: "/workdir".to_string(),
 							name: "workdir".to_string(),
 							..Default::default()
 						}]),

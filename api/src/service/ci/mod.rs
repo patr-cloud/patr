@@ -439,7 +439,6 @@ pub async fn add_build_steps_in_k8s(
 		.await?;
 	}
 
-	let repo_name = repo.repo_name.as_str();
 	let clone_url = repo.clone_url.as_str();
 	let netrc =
 		service::get_netrc_for_repo(connection, &build_id.repo_id).await?;
@@ -450,10 +449,8 @@ pub async fn add_build_steps_in_k8s(
 			r#"echo "{}" > ~/.netrc"#,
 			netrc.map_or("".to_string(), |netrc| netrc.to_string())
 		),
-		r#"cd "/mnt/workdir/""#.to_string(),
+		r#"cd "/workdir""#.to_string(),
 		// "set -x".to_string(),
-		format!("mkdir {repo_name}"),
-		format!(r#"cd "/mnt/workdir/{repo_name}""#),
 		r#"export GIT_AUTHOR_NAME=patr-ci"#.to_string(),
 		r#"export GIT_AUTHOR_EMAIL=patr-ci@localhost"#.to_string(),
 		r#"export GIT_COMMITTER_NAME=patr-ci"#.to_string(),
@@ -504,7 +501,7 @@ pub async fn add_build_steps_in_k8s(
 				image,
 				env_vars: env,
 				commands: vec![
-					format!(r#"cd "/mnt/workdir/{repo_name}""#),
+					format!(r#"cd "/workdir""#),
 					// "set -x".to_owned(),
 					Vec::from(command).join("\n"),
 				],
