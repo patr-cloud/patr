@@ -365,8 +365,10 @@ pub async fn get_image_name_and_digest_for_deployment_image(
 			"hub.docker.com" |
 			"index.docker.io" |
 			"docker.io" |
-			"" => Ok((format!("docker.io/{}", image_name), None)),
-			_ => Ok((format!("{}/{}", registry, image_name), None)),
+			"" => Ok((format!("docker.io/{}:{}", image_name, image_tag), None)),
+			_ => {
+				Ok((format!("{}/{}:{}", registry, image_name, image_tag), None))
+			}
 		},
 	}
 }
