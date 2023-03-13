@@ -467,11 +467,35 @@ async fn delete_region(
 	let config = context.get_state().config.clone();
 
 	log::trace!(
-		"request_id: {} is getting all the deployment for region: {}",
+		"request_id: {} - check whether this region {} is associated with any ci-runner",
 		request_id,
 		region_id
 	);
+	let runners_in_region = db::get_runners_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.into_iter()
+	.filter(|runner| runner.region_id == region_id)
+	.collect::<Vec<_>>();
 
+	if !runners_in_region.is_empty() {
+		log::trace!(
+			"request_id: {} is getting all the deployment for region: {}",
+			request_id,
+			region_id
+		);
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(RESOURCE_IN_USE).to_string()));
+	}
+
+	log::trace!(
+		"request_id: {} - check whether this region {} is used by any deployments",
+		request_id,
+		region_id
+	);
 	let deployments = db::get_deployments_by_region_id(
 		context.get_database_connection(),
 		&workspace_id,
