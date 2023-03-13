@@ -3401,7 +3401,7 @@
         false,
         false,
         true,
-        true
+        false
       ],
       "parameters": {
         "Left": [
@@ -4220,7 +4220,7 @@
         false,
         false,
         true,
-        true
+        false
       ],
       "parameters": {
         "Left": [
@@ -7337,7 +7337,7 @@
         false,
         false,
         true,
-        true,
+        false,
         true
       ],
       "parameters": {
@@ -7573,7 +7573,8 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed"
+                  "failed",
+                  "pending"
                 ]
               },
               "name": "payment_status"
@@ -9061,7 +9062,8 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed"
+                  "failed",
+                  "pending"
                 ]
               },
               "name": "payment_status"
@@ -9351,7 +9353,8 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed"
+                  "failed",
+                  "pending"
                 ]
               },
               "name": "payment_status"
@@ -10615,21 +10618,6 @@
     },
     "query": "INSERT INTO deployment_deploy_history( deployment_id, image_digest, repository_id, created ) VALUES ($1, $2, $3, $4) ON CONFLICT (deployment_id, image_digest) DO NOTHING;"
   },
-  "a26aaae9c578adae831230251acca207c63e94e7962a88ed7aa95c55a0769adc": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          "Text",
-          "Uuid",
-          "Timestamptz"
-      }
-    },
-    "query": "INSERT INTO static_site_upload_history( upload_id, static_site_id, message, uploaded_by, created ) VALUES ($1, $2, $3, $4, $5);"
-  },
   "a3011066fa1c25c3f3b4170b3b8cf2c95d57ca1fc4ca00bc22df2182fd16abf2": {
     "describe": {
       "columns": [
@@ -10739,7 +10727,7 @@
         ]
       }
     },
-    "query": "INSERT INTO ci_runner ( id, name, workspace_id, region_id, cpu, ram, volume ) VALUES ($1, $2, $3, $4, $5, $6, $7);"
+    "query": "DELETE FROM user_api_token_resource_permission WHERE token_id = $1;"
   },
   "a3d44c2d7c66de013a3510d3f42bf75f60a71f34682522a2882471f9a1f4414e": {
     "describe": {
@@ -13261,7 +13249,8 @@
               "kind": {
                 "Enum": [
                   "success",
-                  "failed"
+                  "failed",
+                  "pending"
                 ]
               },
               "name": "payment_status"
@@ -14624,86 +14613,15 @@
     },
     "query": "SELECT DISTINCT workspace.id as \"id: Uuid\", workspace.name::TEXT as \"name!: String\", workspace.super_admin_id as \"super_admin_id: Uuid\", workspace.active, workspace.alert_emails as \"alert_emails: Vec<String>\", workspace.payment_type as \"payment_type: PaymentType\", workspace.default_payment_method_id as \"default_payment_method_id: String\", workspace.deployment_limit, workspace.static_site_limit, workspace.database_limit, workspace.managed_url_limit, workspace.secret_limit, workspace.domain_limit, workspace.docker_repository_storage_limit, workspace.volume_storage_limit, workspace.stripe_customer_id, workspace.address_id as \"address_id: Uuid\", workspace.amount_due_in_cents, workspace.is_spam FROM workspace LEFT JOIN workspace_user ON workspace.id = workspace_user.workspace_id WHERE ( workspace.super_admin_id = $1 OR workspace_user.user_id = $1 ) AND workspace.deleted IS NULL;"
   },
-  "e0d5e550f53660280dc4e797066d02f52d08df8defcc0a976a72534b9eed38f4": {
+  "e2f6a571d891caa72875902539f461c7c9ebcba77978a1f8207979ff601546f3": {
     "describe": {
-      "columns": [
-        {
-          "name": "build_num",
-          "ordinal": 0,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          "Text",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "waiting_to_start",
-                  "running",
-                  "succeeded",
-                  "cancelled",
-                  "errored"
-                ]
-              },
-              "name": "ci_build_status"
-            }
-          }
-        },
-        {
-          "name": "created: _",
-          "ordinal": 4,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "finished: _",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "message",
-          "ordinal": 6,
-          "type_info": "Text"
-        },
-        {
-          "name": "author",
-          "ordinal": 7,
-          "type_info": "Text"
-        },
-        {
-          "name": "git_pr_title",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "git_commit_message",
-          "ordinal": 9,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        false,
-        true,
-        true
-      ],
+      "columns": [],
+      "nullable": [],
       "parameters": {
         "Left": []
       }
     },
-    "query": "\n\t\tSELECT\n\t\t\tbuild_num,\n\t\t\tgit_ref,\n\t\t\tgit_commit,\n\t\t\tstatus as \"status: _\",\n\t\t\tcreated as \"created: _\",\n\t\t\tfinished as \"finished: _\",\n\t\t\tmessage,\n\t\t\tauthor,\n\t\t\tgit_pr_title,\n\t\t\tgit_commit_message\n\t\tFROM\n\t\t\tci_builds\n\t\tWHERE\n\t\t\t(repo_id = $1 AND build_num = $2);\n\t\t"
+    "query": "UPDATE user_api_token SET revoked = token_exp WHERE token_exp > NOW();"
   },
   "e3e5df5305f2f4f8363d750c83ab960c127587667bbf53d355dda740fa3da2fc": {
     "describe": {
@@ -15666,7 +15584,7 @@
         false,
         false,
         true,
-        true,
+        false,
         true
       ],
       "parameters": {

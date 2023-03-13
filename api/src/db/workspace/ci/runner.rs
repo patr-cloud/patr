@@ -19,15 +19,15 @@ pub struct RunnerResource {
 
 impl RunnerResource {
 	pub fn cpu_in_milli(&self) -> u32 {
-		self.cpu as u32 * 1000
+		self.cpu * 1000
 	}
 
 	pub fn ram_in_mb(&self) -> u32 {
-		self.ram as u32 * 250
+		self.ram * 250
 	}
 
 	pub fn volume_in_mb(&self) -> u32 {
-		self.volume as u32 * 1000
+		self.volume * 1000
 	}
 }
 
