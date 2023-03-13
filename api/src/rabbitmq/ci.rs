@@ -157,6 +157,7 @@ pub async fn process_request(
 		}
 		CIData::BuildStep {
 			build_step,
+			event_type,
 			request_id,
 		} => {
 			let build_namespace = build_step.id.build_id.get_build_namespace();
@@ -276,6 +277,7 @@ pub async fn process_request(
 						tokio::time::sleep(Duration::from_millis(1000)).await; // 1 secs
 						service::queue_create_ci_build_step(
 							build_step,
+							event_type,
 							config,
 							&request_id,
 						)
@@ -410,6 +412,7 @@ pub async fn process_request(
 							&build_step,
 							runner_resource.ram_in_mb(),
 							runner_resource.cpu_in_milli(),
+							&event_type,
 							kubeconfig,
 							config,
 							&request_id,
@@ -433,6 +436,7 @@ pub async fn process_request(
 						.await?;
 						service::queue_create_ci_build_step(
 							build_step,
+							event_type,
 							config,
 							&request_id,
 						)
@@ -444,6 +448,7 @@ pub async fn process_request(
 						tokio::time::sleep(Duration::from_millis(1000)).await; // 1 secs
 						service::queue_create_ci_build_step(
 							build_step,
+							event_type,
 							config,
 							&request_id,
 						)

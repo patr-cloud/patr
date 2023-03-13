@@ -35,6 +35,7 @@ use kube::{
 };
 
 use crate::{
+	models::ci::{Commit, EventType, PullRequest, Tag},
 	rabbitmq::BuildStep,
 	service::ext_traits::DeleteOpt,
 	utils::{settings::Settings, Error},
@@ -45,6 +46,7 @@ pub async fn create_ci_job_in_kubernetes(
 	build_step: &BuildStep,
 	ram_in_mb: u32,
 	cpu_in_milli: u32,
+	event_type: &EventType,
 	kubeconfig: Kubeconfig,
 	config: &Settings,
 	request_id: &Uuid,
@@ -56,24 +58,6 @@ pub async fn create_ci_job_in_kubernetes(
 		build_step.id.get_job_name(),
 		namespace_name,
 	);
-
-	let env = (!build_step.env_vars.is_empty()).then(|| {
-		build_step
-			.env_vars
-			.iter()
-			.map(|(name, value)| EnvVar {
-				name: name.clone(),
-				value: Some(match value {
-					EnvVarValue::Value(value) => value.clone(),
-					EnvVarValue::ValueFromSecret { from_secret } => format!(
-						"vault:secret/data/{}/{}#data",
-						build_step.id.build_id.repo_workspace_id, from_secret
-					),
-				}),
-				..Default::default()
-			})
-			.collect()
-	});
 
 	let annotations = [
 		(
@@ -129,7 +113,9 @@ pub async fn create_ci_job_in_kubernetes(
 							name: "workdir".to_string(),
 							..Default::default()
 						}]),
-						env,
+						env: Some(get_env_variables_for_build(
+							build_step, event_type,
+						)),
 						command: Some(vec![
 							"sh".to_string(),
 							"-ce".to_string(),
@@ -169,6 +155,119 @@ pub async fn create_ci_job_in_kubernetes(
 
 	log::trace!("request_id: {} - created job", request_id);
 	Ok(())
+}
+
+fn get_env_variables_for_build(
+	build_step: &BuildStep,
+	event_type: &EventType,
+) -> Vec<EnvVar> {
+	let patr_ci_default_envs = [
+		("CI", "true"),
+		("PATR", "true"),
+		("PATR_CI", "true"),
+		("PATR_CI_WORKDIR", "/workdir"),
+	]
+	.into_iter()
+	.map(|(name, value)| (name.to_string(), value.to_string()));
+
+	let build_number_env = [(
+		"PATR_CI_BUILD_NUMBER".to_string(),
+		build_step.id.build_id.build_num.to_string(),
+	)];
+
+	let event_type_envs = match event_type {
+		EventType::Commit(Commit {
+			commit_sha,
+			commit_message,
+			committed_branch_name,
+			..
+		}) => {
+			let mut envs = vec![
+				("PATR_CI_EVENT_TYPE".to_string(), "commit".to_string()),
+				("PATR_CI_COMMIT_SHA".to_string(), commit_sha.to_string()),
+				(
+					"PATR_CI_BRANCH".to_string(),
+					committed_branch_name.to_string(),
+				),
+			];
+
+			if let Some(commit_message) = commit_message {
+				envs.push((
+					"PATR_CI_COMMIT_MESSAGE".to_string(),
+					commit_message.to_string(),
+				))
+			}
+
+			envs
+		}
+		EventType::Tag(Tag {
+			commit_sha,
+			tag_name,
+			commit_message,
+			..
+		}) => {
+			let mut envs = vec![
+				("PATR_CI_EVENT_TYPE".to_string(), "tag".to_string()),
+				("PATR_CI_COMMIT_SHA".to_string(), commit_sha.to_string()),
+				("PATR_CI_TAG".to_string(), tag_name.to_string()),
+			];
+
+			if let Some(commit_message) = commit_message {
+				envs.push((
+					"PATR_CI_COMMIT_MESSAGE".to_string(),
+					commit_message.to_string(),
+				))
+			}
+
+			envs
+		}
+		EventType::PullRequest(PullRequest {
+			commit_sha,
+			pr_number,
+			pr_title,
+			to_be_committed_branch_name,
+			..
+		}) => vec![
+			("PATR_CI_EVENT_TYPE".to_string(), "pull_request".to_string()),
+			("PATR_CI_COMMIT_SHA".to_string(), commit_sha.to_string()),
+			(
+				"PATR_CI_BRANCH".to_string(),
+				to_be_committed_branch_name.to_string(),
+			),
+			(
+				"PATR_CI_PULL_REQUEST_TITLE".to_string(),
+				pr_title.to_string(),
+			),
+			(
+				"PATR_CI_PULL_REQUEST_NUMBER".to_string(),
+				pr_number.to_string(),
+			),
+		],
+	};
+
+	let user_envs = build_step.env_vars.iter().map(|(name, value)| {
+		(
+			name.clone(),
+			match value {
+				EnvVarValue::Value(value) => value.clone(),
+				EnvVarValue::ValueFromSecret { from_secret } => format!(
+					"vault:secret/data/{}/{}#data",
+					build_step.id.build_id.repo_workspace_id, from_secret
+				),
+			},
+		)
+	});
+
+	patr_ci_default_envs
+		.chain(build_number_env)
+		.chain(event_type_envs)
+		.chain(user_envs)
+		.map(|(name, value)| EnvVar {
+			name,
+			value: Some(value),
+			..Default::default()
+		})
+		.collect()
 }
 
 pub enum JobStatus {

@@ -171,6 +171,7 @@ pub enum CIData {
 	},
 	BuildStep {
 		build_step: BuildStep,
+		event_type: EventType,
 		request_id: Uuid,
 	},
 	CleanBuild {
