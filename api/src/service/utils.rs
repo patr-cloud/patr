@@ -3,6 +3,7 @@ use std::net::IpAddr;
 use api_models::{
 	models::workspace::infrastructure::deployment::DeploymentRegistry,
 	utils::Uuid,
+	ErrorType,
 };
 use argon2::{
 	password_hash::{PasswordVerifier, SaltString},
@@ -202,8 +203,7 @@ pub async fn split_email_with_domain_id(
 ) -> Result<(String, Uuid), Error> {
 	let (email_local, domain_name) = email_address
 		.split_once('@')
-		.status(400)
-		.body(error!(INVALID_EMAIL).to_string())?;
+		.ok_or(Error::from(ErrorType::InvalidEmail))?;
 
 	let domain_id =
 		service::ensure_personal_domain_exists(connection, domain_name).await?;

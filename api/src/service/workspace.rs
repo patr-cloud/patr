@@ -3,6 +3,7 @@ use std::str::FromStr;
 use api_models::{
 	models::workspace::{billing::Address, region::RegionStatus},
 	utils::Uuid,
+	ErrorType,
 };
 use chrono::Utc;
 use eve_rs::AsError;
@@ -94,9 +95,7 @@ pub async fn create_workspace(
 	)
 	.await?
 	{
-		Error::as_result()
-			.status(400)
-			.body(error!(WORKSPACE_EXISTS).to_string())?;
+		return Err(Error::from(ErrorType::WorkspaceExists));
 	}
 
 	let limit = db::get_user_by_user_id(connection, super_admin_id)
@@ -110,9 +109,7 @@ pub async fn create_workspace(
 			.len();
 
 	if super_admin_workspaces + 1 > limit {
-		return Err(Error::empty()
-			.status(400)
-			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string()));
+		return Err(Error::from(ErrorType::ResourceLimitExceeded));
 	}
 
 	let resource_id = db::generate_new_resource_id(connection).await?;

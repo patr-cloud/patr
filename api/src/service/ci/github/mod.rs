@@ -167,7 +167,7 @@ pub async fn sync_github_repos(
 	git_provider_id: &Uuid,
 	github_access_token: String,
 	request_id: &Uuid,
-) -> Result<(), eve_rs::Error<()>> {
+) -> Result<(), Error> {
 	let repos_in_db =
 		db::list_repos_for_git_provider(connection, git_provider_id)
 			.await?

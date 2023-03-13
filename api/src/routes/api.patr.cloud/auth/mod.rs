@@ -133,24 +133,22 @@ async fn sign_in(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let LoginRequest { user_id, password } = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let LoginRequest { user_id, password } =
+		context.get_body_as().map_err(|error| {
+			log::error!("Error with wrong parameteres: {:?}", error);
+			return Error::from(ErrorType::WrongParameters);
+		})?;
 
 	let user_data = db::get_user_by_username_email_or_phone_number(
 		context.get_database_connection(),
 		user_id.to_lowercase().trim(),
 	)
 	.await?
-	.status(200)
-	.body(error!(USER_NOT_FOUND).to_string())?;
+	.ok_or(Error::from(ErrorType::UserNotFound))?;
 
 	let success = service::validate_hash(&password, &user_data.password)?;
-
 	if !success {
-		context.error(ErrorType::InvalidPassword);
-		return Ok(context);
+		return Err(Error::from(ErrorType::InvalidPassword));
 	}
 
 	let config = context.get_state().config.clone();
@@ -167,7 +165,21 @@ async fn sign_in(
 			&user_agent,
 			&config,
 		)
-		.await?;
+		.await
+		.map_err(|err| {
+			log::error!(
+				"Error: {:?} while loggin in the user: {}",
+				err,
+				user_id
+			);
+
+			// TODO - If possible return better error message for this case
+			// rather than just internal server error. This is done now because
+			// the sign-in service layer function has multiple dependency on
+			// external api calls like getting ip address info, getting
+			// access_token etc which is not really user's problem.
+			return Error::from(ErrorType::InternalServerError);
+		})?;
 
 	context.success(LoginResponse {
 		access_token,
@@ -243,10 +255,10 @@ async fn sign_up(
 		recovery_method,
 		account_type,
 		coupon_code,
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	} = context.get_body_as().map_err(|error| {
+		log::error!("Error with wrong parameteres: {:?}", error);
+		return Error::from(ErrorType::WrongParameters);
+	})?;
 
 	let (user_to_sign_up, otp) = service::create_user_join_request(
 		context.get_database_connection(),
@@ -259,6 +271,7 @@ async fn sign_up(
 		coupon_code.as_deref(),
 	)
 	.await?;
+
 	// send otp
 	service::send_user_sign_up_otp(
 		context.get_database_connection(),
@@ -315,8 +328,7 @@ async fn sign_out(
 		&user_id,
 	)
 	.await?
-	.status(200)
-	.body(error!(TOKEN_NOT_FOUND).to_string())?;
+	.ok_or(Error::from(ErrorType::TokenNotFound))?;
 
 	db::delete_user_web_login_by_id(
 		context.get_database_connection(),
@@ -374,10 +386,10 @@ async fn join(
 	let CompleteSignUpRequest {
 		username,
 		verification_token,
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	} = context.get_body_as().map_err(|error| {
+		log::error!("Error while parsing the join request: {:?}", error);
+		return Error::from(ErrorType::WrongParameters);
+	})?;
 
 	let config = context.get_state().config.clone();
 
@@ -413,7 +425,7 @@ async fn join(
 	let user =
 		db::get_user_by_username(context.get_database_connection(), &username)
 			.await?
-			.status(500)?;
+			.ok_or(Error::from(ErrorType::default()))?;
 
 	if let Some((email_local, domain_id)) =
 		user.recovery_email_local.zip(user.recovery_email_domain_id)
@@ -423,7 +435,7 @@ async fn join(
 			&domain_id,
 		)
 		.await?
-		.status(500)?;
+		.ok_or(Error::from(ErrorType::default()))?;
 
 		let _ = service::include_user_to_mailchimp(
 			context.get_database_connection(),
@@ -480,15 +492,14 @@ async fn get_access_token(
 ) -> Result<EveContext, Error> {
 	let refresh_token = context
 		.get_header("Authorization")
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.ok_or(Error::from(ErrorType::WrongParameters))?;
+
 	let login_id = context
 		.get_request()
 		.get_query()
 		.get(request_keys::LOGIN_ID)
 		.and_then(|value| Uuid::parse_str(value).ok())
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.ok_or(Error::from(ErrorType::WrongParameters))?;
 
 	let ip_address = routes::get_request_ip_address(&context);
 	let user_agent = context.get_header("user-agent").unwrap_or_default();
@@ -580,8 +591,8 @@ async fn is_email_valid(
 ) -> Result<EveContext, Error> {
 	let IsEmailValidRequest { email } = context
 		.get_query_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.map_err(|error| return Error::from(ErrorType::WrongParameters))?;
+
 	let email_address = email.trim().to_lowercase();
 
 	let available = service::is_email_allowed(
@@ -628,8 +639,8 @@ async fn is_username_valid(
 ) -> Result<EveContext, Error> {
 	let IsUsernameValidRequest { username } = context
 		.get_query_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.map_err(|error| return Error::from(ErrorType::WrongParameters))?;
+
 	let username = username.trim().to_lowercase();
 
 	let available = service::is_username_allowed(
@@ -676,8 +687,7 @@ async fn is_coupon_valid(
 ) -> Result<EveContext, Error> {
 	let IsCouponValidRequest { coupon } = context
 		.get_query_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.map_err(|error| return Error::from(ErrorType::WrongParameters))?;
 
 	let valid = db::get_sign_up_coupon_by_code(
 		context.get_database_connection(),
@@ -729,8 +739,7 @@ async fn forgot_password(
 		preferred_recovery_option,
 	} = context
 		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.map_err(|error| return Error::from(ErrorType::WrongParameters))?;
 
 	// service function should take care of otp generation and delivering the
 	// otp to the preferred recovery option

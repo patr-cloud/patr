@@ -4,6 +4,7 @@ use api_models::{
 		workspace::billing::{Address, TotalAmount, WorkspaceBillBreakdown},
 	},
 	utils::Uuid,
+	ErrorType,
 };
 use eve_rs::AsError;
 
@@ -157,9 +158,7 @@ pub async fn send_user_sign_up_otp(
 				.await?;
 		sms::send_user_verification_otp(&phone_number, otp).await
 	} else {
-		Err(Error::empty()
-			.status(400)
-			.body(error!(NO_RECOVERY_OPTIONS).to_string()))
+		return Err(Error::from(ErrorType::NoRecoveryOptions));
 	}
 }
 
@@ -286,12 +285,10 @@ pub async fn send_forgot_password_otp(
 				connection,
 				user.recovery_email_domain_id
 					.as_ref()
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string())?,
+					.ok_or(Error::from(ErrorType::WrongParameters))?,
 				user.recovery_email_local
 					.as_ref()
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string())?,
+					.ok_or(Error::from(ErrorType::WrongParameters))?,
 			)
 			.await?;
 			// send email
@@ -303,12 +300,10 @@ pub async fn send_forgot_password_otp(
 				connection,
 				user.recovery_phone_country_code
 					.as_ref()
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string())?,
+					.ok_or(Error::from(ErrorType::WrongParameters))?,
 				user.recovery_phone_number
 					.as_ref()
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string())?,
+					.ok_or(Error::from(ErrorType::WrongParameters))?,
 			)
 			.await?;
 			// send SMS
@@ -366,8 +361,7 @@ async fn get_user_phone_number(
 	let country_code =
 		db::get_phone_country_by_country_code(connection, country_code)
 			.await?
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+			.ok_or(Error::from(ErrorType::default()))?;
 	let phone_number = format!("+{}{}", country_code.phone_code, phone_number);
 	Ok(phone_number)
 }

@@ -8,9 +8,10 @@ pub mod logger;
 pub mod settings;
 pub mod validator;
 
+use api_models::ErrorType;
 pub use eve_context::*;
 pub use eve_middlewares::*;
 use eve_rs::Error as EveError;
 
-pub type ErrorData = ();
+pub type ErrorData = ErrorType;
 pub type Error = EveError<ErrorData>;

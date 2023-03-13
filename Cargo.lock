@@ -2654,6 +2654,7 @@ version = "0.13.1"
 dependencies = [
  "base64 0.13.1",
  "chrono",
+ "eve-rs",
  "ipnetwork",
  "k8s-openapi",
  "kube",

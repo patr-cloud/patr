@@ -9,6 +9,7 @@ use api_models::{
 		},
 	},
 	utils::{DateTime, ResourceType, Uuid},
+	ErrorType,
 };
 use chrono::{Datelike, Duration, Utc};
 use eve_rs::AsError;
@@ -56,9 +57,7 @@ pub async fn is_username_allowed(
 	username: &str,
 ) -> Result<bool, Error> {
 	if !validator::is_username_valid(username) {
-		Error::as_result()
-			.status(200)
-			.body(error!(INVALID_USERNAME).to_string())?;
+		return Error::from(ErrorType::InvalidUsername);
 	}
 
 	let user = db::get_user_by_username(connection, username).await?;
@@ -98,9 +97,7 @@ pub async fn is_email_allowed(
 	email: &str,
 ) -> Result<bool, Error> {
 	if !validator::is_email_valid(email) {
-		Error::as_result()
-			.status(200)
-			.body(error!(INVALID_EMAIL).to_string())?;
+		return Err(Error::from(ErrorType::InvalidEmail));
 	}
 
 	let user = db::get_user_by_email(connection, email).await?;
@@ -240,16 +237,12 @@ pub async fn create_user_join_request(
 ) -> Result<(UserToSignUp, String), Error> {
 	// Check if the username is allowed
 	if !is_username_allowed(connection, username).await? {
-		Error::as_result()
-			.status(200)
-			.body(error!(USERNAME_TAKEN).to_string())?;
+		return Err(Error::from(ErrorType::UsernameAlreadyTaken));
 	}
 
 	// Check if the password passes standards
 	if !validator::is_password_valid(password) {
-		Error::as_result()
-			.status(200)
-			.body(error!(PASSWORD_TOO_WEAK).to_string())?;
+		return Err(Error::from(ErrorType::PasswordTooWeak));
 	}
 	// If recovery email is given, extract the local and domain id from it
 	let recovery_email_local;
@@ -270,9 +263,7 @@ pub async fn create_user_join_request(
 			)
 			.await?
 			{
-				Error::as_result()
-					.status(400)
-					.body(error!(PHONE_NUMBER_TAKEN).to_string())?;
+				return Err(Error::from(ErrorType::PhoneNumberTaken));
 			}
 			phone_country_code = Some(recovery_phone_country_code.clone());
 			phone_number = Some(recovery_phone_number.clone());
@@ -283,9 +274,7 @@ pub async fn create_user_join_request(
 		RecoveryMethod::Email { recovery_email } => {
 			// Check if recovery_email is allowed and valid
 			if !is_email_allowed(connection, recovery_email).await? {
-				Error::as_result()
-					.status(200)
-					.body(error!(EMAIL_TAKEN).to_string())?;
+				return Err(Error::from(ErrorType::EmailTaken));
 			}
 
 			if recovery_email.contains('+') {
@@ -293,10 +282,7 @@ pub async fn create_user_join_request(
 				"Invalid email address: {}, '+' not allowed in email address",
 				recovery_email
 			);
-
-				return Error::as_result()
-					.status(400)
-					.body(error!(INVALID_EMAIL).to_string())?;
+				return Err(Error::from(ErrorType::InvalidEmail));
 			}
 
 			// extract the email_local and domain name from it
@@ -327,23 +313,18 @@ pub async fn create_user_join_request(
 		} => {
 			let (domain_name, tld) = super::split_domain_and_tld(domain)
 				.await
-				.status(400)
-				.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+				.ok_or(Error::from(ErrorType::InvalidDomainName))?;
 			let (domain_name, tld) = (domain_name.as_str(), tld.as_str());
 
 			if !validator::is_workspace_name_valid(workspace_name) {
-				Error::as_result()
-					.status(200)
-					.body(error!(INVALID_WORKSPACE_NAME).to_string())?;
+				return Error::from(ErrorType::InvalidWorkspaceName);
 			}
 
 			if db::get_workspace_by_name(connection, workspace_name)
 				.await?
 				.is_some()
 			{
-				Error::as_result()
-					.status(200)
-					.body(error!(WORKSPACE_EXISTS).to_string())?;
+				return Error::from(ErrorType::WorkspaceExists);
 			}
 
 			let user_sign_up = db::get_user_to_sign_up_by_business_name(
@@ -353,9 +334,7 @@ pub async fn create_user_join_request(
 			.await?;
 			if let Some(user_sign_up) = user_sign_up {
 				if user_sign_up.otp_expiry < Utc::now() {
-					Error::as_result()
-						.status(200)
-						.body(error!(WORKSPACE_EXISTS).to_string())?;
+					return Error::from(ErrorType::WorkspaceExists);
 				}
 			}
 
@@ -363,18 +342,14 @@ pub async fn create_user_join_request(
 				"{}@{}",
 				business_email_local, domain
 			)) {
-				Error::as_result()
-					.status(200)
-					.body(error!(INVALID_EMAIL).to_string())?;
+				return Error::from(ErrorType::InvalidEmail);
 			}
 
 			// Check if there's already a user to sign up with that domain name
 			let is_domain_used_for_sign_up =
 				service::is_domain_used_for_sign_up(connection, domain).await?;
 			if is_domain_used_for_sign_up {
-				Error::as_result()
-					.status(400)
-					.body(error!(DOMAIN_EXISTS).to_string())?;
+				return Error::from(ErrorType::DomainExists);
 			}
 
 			db::set_business_user_to_be_signed_up(
@@ -620,14 +595,11 @@ pub async fn get_user_login_for_login_id(
 ) -> Result<UserWebLogin, Error> {
 	let user_login = db::get_user_web_login(connection, login_id)
 		.await?
-		.status(401)
-		.body(error!(UNAUTHORIZED).to_string())?;
+		.ok_or(Error::from(ErrorType::Unauthorized))?;
 
 	if user_login.token_expiry < Utc::now() {
 		// Token has expired
-		Error::as_result()
-			.status(200)
-			.body(error!(EXPIRED).to_string())?;
+		return Err(Error::from(ErrorType::Expired));
 	}
 
 	Ok(user_login)
@@ -670,8 +642,7 @@ pub async fn generate_access_token(
 		..
 	} = db::get_user_by_user_id(connection, &user_login.user_id)
 		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.ok_or(Error::from(ErrorType::UserNotFound))?;
 
 	db::set_web_login_expiry(
 		connection,
@@ -724,8 +695,7 @@ pub async fn forgot_password(
 	let user =
 		db::get_user_by_username_email_or_phone_number(connection, user_id)
 			.await?
-			.status(200)
-			.body(error!(USER_NOT_FOUND).to_string())?;
+			.ok_or(Error::from(ErrorType::UserNotFound))?;
 
 	let otp = service::generate_new_otp();
 
@@ -778,36 +748,28 @@ pub async fn reset_password(
 	let reset_request =
 		db::get_password_reset_request_for_user(connection, user_id)
 			.await?
-			.status(400)
-			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
+			.ok_or(Error::from(ErrorType::EmailTokenNotFound))?;
 
 	let user = db::get_user_by_user_id(connection, user_id)
 		.await?
-		.status(500)
-		.body(error!(USER_NOT_FOUND).to_string())?;
+		.ok_or(Error::from(ErrorType::UserNotFound))?;
 
 	// check password strength
 	if !validator::is_password_valid(new_password) {
-		Error::as_result()
-			.status(200)
-			.body(error!(PASSWORD_TOO_WEAK).to_string())?;
+		return Err(Error::from(ErrorType::PasswordTooWeak));
 	}
 
 	let success = service::validate_hash(token, &reset_request.token)?;
 
 	if !success {
-		Error::as_result()
-			.status(400)
-			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
+		return Err(Error::from(ErrorType::EmailTokenNotFound));
 	}
 
 	let is_password_same =
 		service::validate_hash(new_password, &user.password)?;
 
 	if is_password_same {
-		Error::as_result()
-			.status(400)
-			.body(error!(PASSWORD_UNCHANGED).to_string())?;
+		return Err(Error::from(ErrorType::PasswordUnchanged));
 	}
 
 	let new_password = service::hash(new_password.as_bytes())?;
@@ -855,8 +817,7 @@ pub async fn join_user(
 ) -> Result<JoinUser, Error> {
 	let user_data = db::get_user_to_sign_up_by_username(connection, username)
 		.await?
-		.status(200)
-		.body(error!(OTP_EXPIRED).to_string())?;
+		.ok_or(Error::from(ErrorType::OtpExpired))?;
 
 	let success = service::validate_hash(otp, &user_data.otp_hash)?;
 
@@ -867,9 +828,7 @@ pub async fn join_user(
 	}
 
 	if user_data.otp_expiry < Utc::now() {
-		Error::as_result()
-			.status(200)
-			.body(error!(OTP_EXPIRED).to_string())?;
+		return Err(Error::from(ErrorType::OtpExpired));
 	}
 
 	// First create user,
@@ -925,9 +884,7 @@ pub async fn join_user(
 			user_data.username
 		);
 
-		return Err(Error::empty()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string()));
+		return Err(Error::from(ErrorType::default()));
 	}
 
 	db::create_user(
@@ -956,8 +913,7 @@ pub async fn join_user(
 	{
 		let domain = db::get_personal_domain_by_id(connection, domain_id)
 			.await?
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+			.ok_or(Error::from(ErrorType::default()))?;
 
 		vec![format!("{}@{}", email_local, domain.name)]
 	} else {

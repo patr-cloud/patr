@@ -1,10 +1,11 @@
-use api_models::{models::user::BasicUserInfo, utils::Uuid};
+use api_models::{models::user::BasicUserInfo, utils::Uuid, ErrorType};
 use chrono::{DateTime, Utc};
 
 use crate::{
 	db::{PaymentType, Workspace},
 	query,
 	query_as,
+	utils::Error,
 	Database,
 };
 

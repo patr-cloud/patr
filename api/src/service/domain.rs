@@ -3,6 +3,7 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 use api_models::{
 	models::workspace::domain::{DnsRecordValue, DomainNameserverType},
 	utils::{DateTime, ResourceType, Uuid},
+	ErrorType,
 };
 use chrono::Utc;
 use cloudflare::endpoints::{
@@ -70,16 +71,14 @@ pub async fn ensure_personal_domain_exists(
 ) -> Result<Uuid, Error> {
 	let (domain_name, tld) = super::split_domain_and_tld(full_domain_name)
 		.await
-		.status(400)
-		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+		.ok_or(Error::from(ErrorType::InvalidDomainName))?;
+
 	let (domain_name, tld) = (domain_name.as_str(), tld.as_str());
 
 	let domain = db::get_domain_by_name(connection, full_domain_name).await?;
 	if let Some(domain) = domain {
 		if let ResourceType::Business = domain.r#type {
-			Error::as_result()
-				.status(500)
-				.body(error!(DOMAIN_BELONGS_TO_WORKSPACE).to_string())
+			return Error::from(ErrorType::DomainBelongsToWorkspace);
 		} else {
 			Ok(domain.id)
 		}
@@ -87,12 +86,11 @@ pub async fn ensure_personal_domain_exists(
 		// check if personal domain given by the user is registerd as a
 		// workspace domain
 		if is_domain_used_for_sign_up(connection, domain_name).await? {
-			Error::as_result()
-				.status(400)
-				.body(error!(DOMAIN_BELONGS_TO_WORKSPACE).to_string())?;
+			return Error::from(ErrorType::DomainBelongsToWorkspace);
 		}
 
 		let domain_id = db::generate_new_domain_id(connection).await?;
+
 		db::create_generic_domain(
 			connection,
 			&domain_id,
