@@ -343,12 +343,14 @@ pub async fn queue_check_and_start_ci_build(
 
 pub async fn queue_create_ci_build_step(
 	build_step: BuildStep,
+	event_type: EventType,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	send_message_to_ci_queue(
 		&CIData::BuildStep {
 			build_step,
+			event_type,
 			request_id: request_id.clone(),
 		},
 		config,

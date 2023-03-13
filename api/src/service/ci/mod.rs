@@ -472,6 +472,7 @@ pub async fn add_build_steps_in_k8s(
 			env_vars: BTreeMap::new(),
 			commands: git_clone_commands,
 		},
+		event_type.clone(),
 		config,
 		request_id,
 	)
@@ -506,6 +507,7 @@ pub async fn add_build_steps_in_k8s(
 					Vec::from(command).join("\n"),
 				],
 			},
+			event_type.clone(),
 			config,
 			request_id,
 		)
