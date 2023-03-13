@@ -3,17 +3,14 @@ use std::{collections::BTreeMap, fmt::Display, time::Duration};
 use api_models::{
 	models::{
 		ci::file_format::EnvVarValue,
-		workspace::{
-			ci::git_provider::{BuildStatus, BuildStepStatus},
-			region::RegionStatus,
-		},
+		workspace::ci::git_provider::{BuildStatus, BuildStepStatus},
 	},
 	utils::Uuid,
 };
 use chrono::Utc;
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
-use sqlx::{types::Json, Acquire};
+use sqlx::Acquire;
 
 use crate::{
 	db,
@@ -475,19 +472,10 @@ pub async fn process_request(
 					);
 					service::delete_kubernetes_namespace(
 						&build_id.get_build_namespace(),
-						db::get_all_default_regions(&mut *connection)
-							.await?
-							.into_iter()
-							.find_map(|region| {
-								if region.status == RegionStatus::Active {
-									region
-										.config_file
-										.map(|Json(config)| config)
-								} else {
-									None
-								}
-							})
-							.status(500)?,
+						service::get_kubeconfig_for_ci_build(
+							connection, &build_id,
+						)
+						.await?,
 						&request_id,
 					)
 					.await?;
@@ -519,19 +507,10 @@ pub async fn process_request(
 					);
 					service::delete_kubernetes_namespace(
 						&build_id.get_build_namespace(),
-						db::get_all_default_regions(&mut *connection)
-							.await?
-							.into_iter()
-							.find_map(|region| {
-								if region.status == RegionStatus::Active {
-									region
-										.config_file
-										.map(|Json(config)| config)
-								} else {
-									None
-								}
-							})
-							.status(500)?,
+						service::get_kubeconfig_for_ci_build(
+							connection, &build_id,
+						)
+						.await?,
 						&request_id,
 					)
 					.await?;
@@ -571,19 +550,10 @@ pub async fn process_request(
 					log::debug!("request_id: {request_id} - Cleaning stopped build `{build_id}`");
 					service::delete_kubernetes_namespace(
 						&build_id.get_build_namespace(),
-						db::get_all_default_regions(&mut *connection)
-							.await?
-							.into_iter()
-							.find_map(|region| {
-								if region.status == RegionStatus::Active {
-									region
-										.config_file
-										.map(|Json(config)| config)
-								} else {
-									None
-								}
-							})
-							.status(500)?,
+						service::get_kubeconfig_for_ci_build(
+							connection, &build_id,
+						)
+						.await?,
 						&request_id,
 					)
 					.await?;
