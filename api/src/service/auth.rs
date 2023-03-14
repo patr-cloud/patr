@@ -1196,7 +1196,14 @@ pub async fn join_user(
 			.send()
 			.await?
 			.json::<IpQualityScore>()
-			.await?;
+			.await
+			.map_err(|error| {
+				log::error!(
+					"Error while checking email validation from IPQS : {}",
+					error
+				);
+				Error::empty()
+			})?;
 
 		let disposable = email_spam_result.disposable;
 		let is_spam = email_spam_result.fraud_score > 75;
