@@ -1194,9 +1194,17 @@ pub async fn join_user(
 				config.ip_quality.host, config.ip_quality.token, recovery_email
 			))
 			.send()
-			.await?
+			.await
+			.map_err(|error| {
+				log::error!("IPQS api call error: {}", error);
+				Error::empty()
+			})?
 			.json::<IpQualityScore>()
-			.await?;
+			.await
+			.map_err(|error| {
+				log::error!("Error parsing IPQS response: {}", error);
+				Error::empty()
+			})?;
 
 		let disposable = email_spam_result.disposable;
 		let is_spam = email_spam_result.fraud_score > 75;
