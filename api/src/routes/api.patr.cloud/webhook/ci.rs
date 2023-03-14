@@ -320,6 +320,7 @@ async fn handle_ci_hooks_for_repo(
 
 	service::update_github_commit_status_for_build(
 		context.get_database_connection(),
+		&git_provider.workspace_id,
 		&repo_id,
 		build_num,
 		CommitStatus::Running,

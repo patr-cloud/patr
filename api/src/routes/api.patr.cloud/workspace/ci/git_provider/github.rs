@@ -1518,6 +1518,7 @@ async fn cancel_build(
 
 		service::update_github_commit_status_for_build(
 			context.get_database_connection(),
+			&workspace_id,
 			&repo.id,
 			build_num,
 			CommitStatus::Errored,
@@ -1755,6 +1756,7 @@ async fn restart_build(
 
 	service::update_github_commit_status_for_build(
 		context.get_database_connection(),
+		&git_provider.workspace_id,
 		&repo.id,
 		build_num,
 		CommitStatus::Running,
@@ -1964,6 +1966,7 @@ async fn start_build_for_branch(
 
 	service::update_github_commit_status_for_build(
 		context.get_database_connection(),
+		&git_provider.workspace_id,
 		&repo.id,
 		build_num,
 		CommitStatus::Running,
