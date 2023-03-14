@@ -56,8 +56,8 @@ pub async fn add_permission_for_ci_routes(
 ) -> Result<(), Error> {
 	let permissions = [
 		"workspace::ci::git_provider::repo::write",
-		"workspace::ci::git_provider::LIST",
-		"workspace::ci::git_provider::LIST_BUILDS",
+		"workspace::ci::git_provider::list",
+		"workspace::ci::git_provider::list_builds",
 	];
 
 	for permission in permissions {
@@ -367,8 +367,8 @@ async fn reset_permission_order(
 		"workspace::region::info",
 		"workspace::region::add",
 		"workspace::region::delete",
-		"workspace::ci::git_provider::LIST",
-		"workspace::ci::git_provider::LIST_BUILDS",
+		"workspace::ci::git_provider::list",
+		"workspace::ci::git_provider::list_builds",
 		"workspace::ci::git_provider::connect",
 		"workspace::ci::git_provider::disconnect",
 		"workspace::ci::git_provider::repo::activate",
