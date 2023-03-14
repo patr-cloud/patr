@@ -420,6 +420,7 @@ pub async fn sync_github_repos(
 
 pub async fn update_github_commit_status_for_build(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
 	repo_id: &Uuid,
 	build_num: i64,
 	status: CommitStatus,
@@ -469,10 +470,9 @@ pub async fn update_github_commit_status_for_build(
 				context: "patr-ci".to_owned(),
 				state: status.commit_state(),
 				description: status.description().to_owned(),
-				// todo: how it works across different workspace
 				target_url: format!(
-					"https://app.patr.cloud/ci/github/{}/{}/build/{}",
-					&repo.repo_owner, &repo.repo_name, build_num
+					"https://app.patr.cloud/ci/github/{}/{}/build/{}?workspaceId={}",
+					&repo.repo_owner, &repo.repo_name, build_num, workspace_id
 				),
 			},
 		)

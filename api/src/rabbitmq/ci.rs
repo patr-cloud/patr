@@ -500,6 +500,7 @@ pub async fn process_request(
 					.await?;
 					service::update_github_commit_status_for_build(
 						connection,
+						&build_id.repo_workspace_id,
 						&build_id.repo_id,
 						build_id.build_num,
 						CommitStatus::Failed,
@@ -535,6 +536,7 @@ pub async fn process_request(
 					.await?;
 					service::update_github_commit_status_for_build(
 						connection,
+						&build_id.repo_workspace_id,
 						&build_id.repo_id,
 						build_id.build_num,
 						CommitStatus::Success,
