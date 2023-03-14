@@ -79,11 +79,16 @@ pub async fn initialize_ci_pre(
 
 	query!(
 		r#"
-		CREATE TABLE ci_build_machine_type (
+		CREATE TABLE ci_build_machine_type(
 			id 		UUID CONSTRAINT ci_machint_type_pk PRIMARY KEY,
-			cpu 	INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_cpu_positive CHECK (cpu > 0),   		/* Multiples of 1 vCPU */
-			ram 	INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_ram_positive CHECK (ram > 0),			/* Multiples of 0.25 GB RAM */
-			volume 	INTEGER NOT NULL CONSTRAINT ci_build_machine_type_chk_volume_positive CHECK (volume > 0)	/* Multiples of 1 GB storage space */
+			cpu 	INTEGER NOT NULL, /* Multiples of 1 vCPU */
+			ram 	INTEGER NOT NULL, /* Multiples of 0.25 GB RAM */
+			volume 	INTEGER NOT NULL, /* Multiples of 1 GB storage space */
+
+			CONSTRAINT ci_build_machine_type_chk_cpu_positive CHECK(cpu > 0),
+			CONSTRAINT ci_build_machine_type_chk_ram_positive CHECK(ram > 0),
+			CONSTRAINT ci_build_machine_type_chk_volume_positive
+				CHECK(volume > 0)
 		);
 		"#
 	)
@@ -114,9 +119,11 @@ pub async fn initialize_ci_pre(
 	*/
 	query!(
 		r#"
-		CREATE TABLE ci_git_provider (
+		CREATE TABLE ci_git_provider(
 			id 					UUID CONSTRAINT ci_git_provider_pk PRIMARY KEY,
-			workspace_id 		UUID NOT NULL CONSTRAINT ci_git_provider_fk_workspace_id REFERENCES workspace(id),
+			workspace_id 		UUID NOT NULL
+				CONSTRAINT ci_git_provider_fk_workspace_id
+					REFERENCES workspace(id),
 			domain_name 		TEXT NOT NULL,
 			git_provider_type 	CI_GIT_PROVIDER_TYPE NOT NULL,
 			login_name 			TEXT,
@@ -126,14 +133,18 @@ pub async fn initialize_ci_pre(
 			last_synced			TIMESTAMPTZ DEFAULT NULL,
 
 			CONSTRAINT ci_git_provider_ch_login_name_password_is_deleted
-				CHECK (
-					(is_deleted = TRUE AND password IS NULL)
-					OR (
-						is_deleted = FALSE
-						AND (
-							(password IS NOT NULL AND login_name IS NOT NULL)
-							OR (password IS NULL)
-					))
+				CHECK(
+					(
+						is_deleted = TRUE AND
+						password IS NULL
+					) OR (
+						is_deleted = FALSE AND (
+							(
+								password IS NOT NULL AND
+								login_name IS NOT NULL
+							) OR password IS NULL
+						)
+					)
 				)
 		);
 		"#
@@ -156,7 +167,7 @@ pub async fn initialize_ci_pre(
 
 	query!(
 		r#"
-		CREATE TYPE CI_REPO_STATUS AS ENUM (
+		CREATE TYPE CI_REPO_STATUS AS ENUM(
 			'active',
 			'inactive',
 			'deleted'
@@ -168,27 +179,29 @@ pub async fn initialize_ci_pre(
 
 	query!(
 		r#"
-		CREATE TABLE ci_repos (
+		CREATE TABLE ci_repos(
 			id 						UUID CONSTRAINT ci_repos_pk PRIMARY KEY,
 			repo_owner 				TEXT NOT NULL,
 			repo_name 				TEXT NOT NULL,
 			clone_url 				TEXT NOT NULL,
 			webhook_secret 			TEXT CONSTRAINT ci_repos_uq_secret UNIQUE,
 			status 					CI_REPO_STATUS NOT NULL,
-			git_provider_id 		UUID NOT NULL CONSTRAINT ci_repos_fk_git_provider_id REFERENCES ci_git_provider(id),
+			git_provider_id 		UUID NOT NULL
+				CONSTRAINT ci_repos_fk_git_provider_id
+					REFERENCES ci_git_provider(id),
 			git_provider_repo_uid 	TEXT NOT NULL,
-			runner_id 				UUID CONSTRAINT ci_repos_fk_runner_id REFERENCES ci_runner(id),
+			runner_id 				UUID
+				CONSTRAINT ci_repos_fk_runner_id REFERENCES ci_runner(id),
 
 			CONSTRAINT ci_repos_uq_git_provider_id_repo_uid
 				UNIQUE(git_provider_id, git_provider_repo_uid),
 			CONSTRAINT ci_repos_chk_status_runner_id_webhook_secret
 				CHECK(
 					(
-						status = 'active'
-						AND runner_id IS NOT NULL
-						AND webhook_secret IS NOT NULL
-					) OR
-					status != 'active'
+						status = 'active' AND
+						runner_id IS NOT NULL AND
+						webhook_secret IS NOT NULL
+					) OR status != 'active'
 				)
 		);
 		"#
@@ -198,7 +211,7 @@ pub async fn initialize_ci_pre(
 
 	query!(
 		r#"
-		CREATE TYPE CI_BUILD_STATUS AS ENUM (
+		CREATE TYPE CI_BUILD_STATUS AS ENUM(
 			'waiting_to_start',
 			'running',
 			'succeeded',
@@ -212,9 +225,11 @@ pub async fn initialize_ci_pre(
 
 	query!(
 		r#"
-		CREATE TABLE ci_builds (
-			repo_id 			UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id),
-			build_num 			BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK (build_num > 0),
+		CREATE TABLE ci_builds(
+			repo_id 			UUID NOT NULL
+				CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id),
+			build_num 			BIGINT NOT NULL
+				CONSTRAINT ci_builds_chk_build_num_unsigned CHECK(build_num > 0),
 			git_ref 			TEXT NOT NULL,
 			git_commit 			TEXT NOT NULL,
 			status 				CI_BUILD_STATUS NOT NULL,
@@ -225,10 +240,11 @@ pub async fn initialize_ci_pre(
 			git_commit_message	TEXT,
 			git_pr_title		TEXT,
 			started 			TIMESTAMPTZ,
-			runner_id 			UUID NOT NULL CONSTRAINT ci_builds_fk_runner_id REFERENCES ci_runner(id),
+			runner_id 			UUID NOT NULL
+				CONSTRAINT ci_builds_fk_runner_id REFERENCES ci_runner(id),
 
 			CONSTRAINT ci_builds_pk_repo_id_build_num
-				PRIMARY KEY (repo_id, build_num)
+				PRIMARY KEY(repo_id, build_num)
 		);
 		"#
 	)
@@ -237,7 +253,7 @@ pub async fn initialize_ci_pre(
 
 	query!(
 		r#"
-		CREATE TYPE CI_BUILD_STEP_STATUS AS ENUM (
+		CREATE TYPE CI_BUILD_STEP_STATUS AS ENUM(
 			'waiting_to_start',
 			'running',
 			'succeeded',
@@ -252,10 +268,11 @@ pub async fn initialize_ci_pre(
 
 	query!(
 		r#"
-		CREATE TABLE ci_steps (
+		CREATE TABLE ci_steps(
 			repo_id 	UUID NOT NULL,
 			build_num 	BIGINT NOT NULL,
-			step_id 	INTEGER NOT NULL CONSTRAINT ci_steps_chk_step_id_unsigned CHECK (build_num >= 0),
+			step_id 	INTEGER NOT NULL
+				CONSTRAINT ci_steps_chk_step_id_unsigned CHECK(build_num >= 0),
 			step_name 	TEXT NOT NULL,
 			base_image 	TEXT NOT NULL,
 			commands 	TEXT NOT NULL,
@@ -264,9 +281,10 @@ pub async fn initialize_ci_pre(
 			finished 	TIMESTAMPTZ,
 
 			CONSTRAINT ci_steps_fk_repo_id_build_num
-				FOREIGN KEY (repo_id, build_num) REFERENCES ci_builds(repo_id, build_num),
+				FOREIGN KEY(repo_id, build_num)
+					REFERENCES ci_builds(repo_id, build_num),
 			CONSTRAINT ci_steps_pk_repo_id_build_num_step_id
-				PRIMARY KEY (repo_id, build_num, step_id)
+				PRIMARY KEY(repo_id, build_num, step_id)
 		);
 		"#
 	)
@@ -331,7 +349,7 @@ pub async fn get_all_build_machine_types(
 			ram,
 			volume
 		FROM
-			ci_build_machine_type
+			ci_build_machine_type;
 		"#,
 	)
 	.fetch_all(connection)
@@ -350,14 +368,15 @@ pub async fn add_git_provider_to_workspace(
 
 	query!(
 		r#"
-		INSERT INTO ci_git_provider (
-			id,
-			workspace_id,
-			domain_name,
-			git_provider_type,
-			login_name,
-			password
-		)
+		INSERT INTO
+			ci_git_provider(
+				id,
+				workspace_id,
+				domain_name,
+				git_provider_type,
+				login_name,
+				password
+			)
 		VALUES
 			($1, $2, $3, $4, $5, $6);
 		"#,
@@ -440,10 +459,9 @@ pub async fn list_connected_git_providers_for_workspace(
 			last_synced
 		FROM
 			ci_git_provider
-		WHERE (
-			workspace_id = $1
-			AND is_deleted = FALSE
-		);
+		WHERE
+			workspace_id = $1 AND
+			is_deleted = FALSE;
 		"#,
 		workspace_id as _,
 	)
@@ -470,11 +488,10 @@ pub async fn get_git_provider_details_for_workspace_using_domain(
 			last_synced
 		FROM
 			ci_git_provider
-		WHERE (
-			workspace_id = $1
-			AND domain_name = $2
-			AND is_deleted = FALSE
-		);
+		WHERE
+			workspace_id = $1 AND
+			domain_name = $2 AND
+			is_deleted = FALSE;
 		"#,
 		workspace_id as _,
 		domain_name,
@@ -494,19 +511,20 @@ pub async fn add_repo_for_git_provider(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		INSERT INTO ci_repos (
-			id,
-			repo_owner,
-			repo_name,
-			clone_url,
-			webhook_secret,
-			status,
-			git_provider_id,
-			git_provider_repo_uid,
-			runner_id
-		)
+		INSERT INTO
+			ci_repos(
+				id,
+				repo_owner,
+				repo_name,
+				clone_url,
+				webhook_secret,
+				status,
+				git_provider_id,
+				git_provider_repo_uid,
+				runner_id
+			)
 		VALUES
-			($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			($1, $2, $3, $4, $5, $6, $7, $8, $9);
 		"#,
 		repo_id as _,
 		repo_owner,
@@ -539,10 +557,9 @@ pub async fn update_repo_details_for_git_provider(
 			repo_owner = $3,
 			repo_name = $4,
 			clone_url = $5
-		WHERE (
-			git_provider_id = $1
-			AND git_provider_repo_uid = $2
-		);
+		WHERE
+			git_provider_id = $1 AND
+			git_provider_repo_uid = $2;
 		"#,
 		git_provider_id as _,
 		git_provider_repo_uid,
@@ -608,14 +625,13 @@ pub async fn get_repo_details_using_github_uid_for_workspace(
 			ci_repos
 		INNER JOIN
 			ci_git_provider
-			ON
-				ci_git_provider.id = ci_repos.git_provider_id
-		WHERE (
-			ci_git_provider.workspace_id = $1
-			AND ci_repos.git_provider_repo_uid = $2
-			AND ci_git_provider.domain_name = 'github.com'
-			AND ci_git_provider.is_deleted = FALSE
-		);
+		ON
+			ci_git_provider.id = ci_repos.git_provider_id
+		WHERE
+			ci_git_provider.workspace_id = $1 AND
+			ci_repos.git_provider_repo_uid = $2 AND
+			ci_git_provider.domain_name = 'github.com' AND
+			ci_git_provider.is_deleted = FALSE;
 		"#,
 		workspace_id as _,
 		git_provider_repo_uid
@@ -636,10 +652,9 @@ pub async fn update_repo_status(
 			ci_repos
 		SET
 			status = $3
-		WHERE (
-			git_provider_id = $1
-			AND git_provider_repo_uid = $2
-		);
+		WHERE
+			git_provider_id = $1 AND
+			git_provider_repo_uid = $2;
 		"#,
 		git_provider_id as _,
 		git_provider_repo_uid,
@@ -696,7 +711,7 @@ pub async fn get_repo_using_patr_repo_id(
 			runner_id as "runner_id: _"
 		FROM
 			ci_repos
-		WHERE 
+		WHERE
 			id = $1;
 		"#,
 		repo_id as _,
@@ -730,7 +745,7 @@ pub async fn generate_new_build_for_repo(
 				runner_id,
 				created
 			)
-		VALUES (
+		VALUES(
 			$1,
 			1 + (SELECT COUNT(*) FROM ci_builds WHERE repo_id = $1),
 			$2,
@@ -772,7 +787,8 @@ pub async fn update_build_status(
 		SET
 			status = $3
 		WHERE
-			(repo_id = $1 AND build_num = $2);
+			repo_id = $1 AND
+			build_num = $2;
 		"#,
 		repo_id as _,
 		build_num,
@@ -807,7 +823,8 @@ pub async fn get_build_status(
 		FROM
 			ci_builds
 		WHERE
-			(repo_id = $1 AND build_num = $2);
+			repo_id = $1 AND
+			build_num = $2;
 		"#,
 		repo_id as _,
 		build_num,
@@ -845,7 +862,8 @@ pub async fn get_build_status_for_update(
 		FROM
 			ci_builds
 		WHERE
-			(repo_id = $1 AND build_num = $2)
+			repo_id = $1 AND
+			build_num = $2
 		FOR UPDATE;
 		"#,
 		repo_id as _,
@@ -870,10 +888,9 @@ pub async fn update_build_started_time(
 			ci_builds
 		SET
 			started = $3
-		WHERE (
-			repo_id = $1
-			AND build_num = $2
-		);
+		WHERE
+			repo_id = $1 AND
+			build_num = $2;
 		"#,
 		repo_id as _,
 		build_num,
@@ -896,10 +913,9 @@ pub async fn update_build_finished_time(
 			ci_builds
 		SET
 			finished = $3
-		WHERE (
-			repo_id = $1
-			AND build_num = $2
-		);
+		WHERE
+			repo_id = $1 AND
+			build_num = $2;
 		"#,
 		repo_id as _,
 		build_num,
@@ -922,10 +938,9 @@ pub async fn update_build_message(
 			ci_builds
 		SET
 			message = $3
-		WHERE (
-			repo_id = $1
-			AND build_num = $2
-		);
+		WHERE
+			repo_id = $1 AND
+			build_num = $2;
 		"#,
 		repo_id as _,
 		build_num,
@@ -954,11 +969,11 @@ pub async fn list_build_steps_for_build(
 			finished as "finished: _"
 		FROM
 			ci_steps
-		WHERE (
-			repo_id = $1
-			AND build_num = $2
-		)
-		ORDER BY step_id ASC;
+		WHERE
+			repo_id = $1 AND
+			build_num = $2
+		ORDER BY
+			step_id ASC;
 		"#,
 		repo_id as _,
 		build_num
@@ -1001,7 +1016,8 @@ pub async fn list_build_details_for_repo(
 			ci_builds
 		WHERE
 			repo_id = $1
-		ORDER BY build_num DESC;
+		ORDER BY
+			build_num DESC;
 		"#,
 		repo_id as _,
 	)
@@ -1047,11 +1063,11 @@ pub async fn get_build_details_for_build(
 			runner_id as "runner_id: _"
 		FROM
 			ci_builds
-		WHERE (
-			repo_id = $1
-			AND build_num = $2
-		)
-		ORDER BY build_num DESC;
+		WHERE
+			repo_id = $1 AND
+			build_num = $2
+		ORDER BY
+			build_num DESC;
 		"#,
 		repo_id as _,
 		build_num
@@ -1088,15 +1104,16 @@ pub async fn add_ci_step_for_build(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		INSERT INTO ci_steps (
-			repo_id,
-			build_num,
-			step_id,
-			step_name,
-			base_image,
-			commands,
-			status
-		)
+		INSERT INTO
+			ci_steps(
+				repo_id,
+				build_num,
+				step_id,
+				step_name,
+				base_image,
+				commands,
+				status
+			)
 		VALUES
 			($1, $2, $3, $4, $5, $6, $7);
 		"#,
@@ -1127,11 +1144,10 @@ pub async fn update_build_step_status(
 			ci_steps
 		SET
 			status = $4
-		WHERE (
-			repo_id = $1
-			AND build_num = $2
-			AND step_id = $3
-		);
+		WHERE
+			repo_id = $1 AND
+			build_num = $2 AND
+			step_id = $3;
 		"#,
 		repo_id as _,
 		build_num,
@@ -1155,11 +1171,10 @@ pub async fn get_build_step_status(
 			status as "status: BuildStepStatus"
 		FROM
 			ci_steps
-		WHERE (
-			repo_id = $1
-			AND build_num = $2
-			AND step_id = $3
-		);
+		WHERE
+			repo_id = $1 AND
+			build_num = $2 AND
+			step_id = $3;
 		"#,
 		repo_id as _,
 		build_num,
@@ -1186,10 +1201,9 @@ pub async fn get_build_created_time(
 			created as "created: _"
 		FROM
 			ci_builds
-		WHERE (
-			repo_id = $1
-			AND build_num = $2
-		);
+		WHERE
+			repo_id = $1 AND
+			build_num = $2;
 		"#,
 		repo_id as _,
 		build_num,
@@ -1214,11 +1228,10 @@ pub async fn update_build_step_started_time(
 			ci_steps
 		SET
 			started = $4
-		WHERE (
-			repo_id = $1
-			AND build_num = $2
-			AND step_id = $3
-		);
+		WHERE
+			repo_id = $1 AND
+			build_num = $2 AND
+			step_id = $3;
 		"#,
 		repo_id as _,
 		build_num,
@@ -1243,11 +1256,10 @@ pub async fn update_build_step_finished_time(
 			ci_steps
 		SET
 			finished = $4
-		WHERE (
-			repo_id = $1
-			AND build_num = $2
-			AND step_id = $3
-		);
+		WHERE
+			repo_id = $1 AND
+			build_num = $2 AND
+			step_id = $3;
 		"#,
 		repo_id as _,
 		build_num,
@@ -1306,11 +1318,14 @@ pub async fn list_builds_for_git_provider(
 			ci_builds.git_commit_message
 		FROM
 			ci_builds
-		JOIN ci_repos
-			ON ci_repos.id = ci_builds.repo_id
+		JOIN
+			ci_repos
+		ON
+			ci_repos.id = ci_builds.repo_id
 		WHERE
 			ci_repos.git_provider_id = $1
-		ORDER BY ci_builds.created ASC
+		ORDER BY
+			ci_builds.created ASC
 		LIMIT 500;
 		"#,
 		git_provider_id as _,
