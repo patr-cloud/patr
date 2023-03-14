@@ -86,6 +86,8 @@ pub mod permissions {
 					"workspace::infrastructure::patrDatabase::delete";
 				pub const INFO: &str =
 					"workspace::infrastructure::patrDatabase::info";
+				pub const EDIT: &str =
+					"workspace::infrastructure::patrDatabase::edit";
 			}
 
 			pub mod static_site {

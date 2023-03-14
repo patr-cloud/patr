@@ -1,3 +1,4 @@
+mod mongo;
 mod mysql;
 
 use api_models::{
@@ -12,6 +13,7 @@ use k8s_openapi::{
 	apimachinery::pkg::api::resource::Quantity,
 };
 use kube::Api;
+pub use mongo::*;
 pub use mysql::*;
 
 use crate::{service::KubernetesConfigDetails, utils::Error};
