@@ -520,8 +520,36 @@ async fn delete_region(
 		.await?
 	}
 
+	// delete origin ca cert
 	if let Some(cert_id) = region.cloudflare_certificate_id {
 		service::revoke_origin_ca_certificate(&cert_id, &config).await?;
+	}
+
+	let onpatr_domain = db::get_domain_by_name(
+		context.get_database_connection(),
+		&config.cloudflare.onpatr_domain,
+	)
+	.await?
+	.status(500)?;
+
+	let byoc_dns_record_name = format!("*.{}", region_id);
+	let byoc_dns_record = db::get_dns_records_by_domain_id(
+		context.get_database_connection(),
+		&onpatr_domain.id,
+	)
+	.await?
+	.into_iter()
+	.find(|dns| dns.name == byoc_dns_record_name);
+
+	if let Some(byoc_dns_record) = byoc_dns_record {
+		service::delete_patr_domain_dns_record(
+			context.get_database_connection(),
+			&onpatr_domain.id,
+			&byoc_dns_record.id,
+			&config,
+			&request_id,
+		)
+		.await?;
 	}
 
 	if hard_delete {
