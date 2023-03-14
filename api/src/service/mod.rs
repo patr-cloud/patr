@@ -19,6 +19,8 @@ mod user;
 mod utils;
 mod workspace;
 
+use base64::prelude::*;
+
 pub use self::{
 	auth::*,
 	billing::*,
@@ -37,8 +39,6 @@ pub use self::{
 };
 use crate::{app::App, utils::settings::Settings};
 
-use base64::prelude::*;
-
 /// stores the configuration and database of the whole API
 static APP: once_cell::sync::OnceCell<App> = once_cell::sync::OnceCell::new();
 
@@ -52,7 +52,8 @@ static APP: once_cell::sync::OnceCell<App> = once_cell::sync::OnceCell::new();
 /// [`APP`]: APP
 pub fn initialize(app: &App) {
 	let mut app = app.clone();
-	app.config.password_pepper = BASE64_STANDARD.encode(&app.config.password_pepper);
+	app.config.password_pepper =
+		BASE64_STANDARD.encode(&app.config.password_pepper);
 	APP.set(app).expect("unable to set app settings");
 }
 
