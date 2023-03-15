@@ -1741,6 +1741,7 @@ async fn update_deployment(
 		liveness_probe,
 		config_mounts,
 		volumes,
+		container_commands,
 		..
 	} = context
 		.get_body_as()
@@ -1759,7 +1760,8 @@ async fn update_deployment(
 		startup_probe.is_none() &&
 		liveness_probe.is_none() &&
 		config_mounts.is_none() &&
-		volumes.is_none()
+		volumes.is_none() &&
+		container_commands.is_none()
 	{
 		return Err(Error::empty()
 			.status(400)
@@ -1790,6 +1792,7 @@ async fn update_deployment(
 		liveness_probe.as_ref(),
 		config_mounts.as_ref(),
 		volumes.as_ref(),
+		container_commands.as_ref(),
 		&config,
 		&request_id,
 	)

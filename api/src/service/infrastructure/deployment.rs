@@ -191,6 +191,7 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.max_horizontal_scale,
 				deployment_running_details.startup_probe.as_ref(),
 				deployment_running_details.liveness_probe.as_ref(),
+				deployment_running_details.container_commands.as_ref(),
 			)
 			.await?;
 		}
@@ -214,6 +215,7 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.max_horizontal_scale,
 				deployment_running_details.startup_probe.as_ref(),
 				deployment_running_details.liveness_probe.as_ref(),
+				deployment_running_details.container_commands.as_ref(),
 			)
 			.await?;
 		}
@@ -360,6 +362,7 @@ pub async fn update_deployment(
 	liveness_probe: Option<&DeploymentProbe>,
 	config_mounts: Option<&BTreeMap<String, Base64String>>,
 	volumes: Option<&BTreeMap<String, DeploymentVolume>>,
+	container_commands: Option<&Vec<String>>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -507,6 +510,7 @@ pub async fn update_deployment(
 		max_horizontal_scale,
 		startup_probe,
 		liveness_probe,
+		container_commands,
 	)
 	.await?;
 
@@ -776,6 +780,7 @@ pub async fn get_full_deployment_config(
 		startup_probe_path,
 		liveness_probe_port,
 		liveness_probe_path,
+		container_commands,
 	) = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.and_then(|deployment| {
@@ -809,6 +814,7 @@ pub async fn get_full_deployment_config(
 				deployment.startup_probe_path,
 				deployment.liveness_probe_port,
 				deployment.liveness_probe_path,
+				deployment.container_command,
 			))
 		})
 		.status(404)
@@ -907,6 +913,7 @@ pub async fn get_full_deployment_config(
 				.map(|(port, path)| DeploymentProbe { path, port }),
 			config_mounts,
 			volumes,
+			container_commands,
 		},
 	))
 }

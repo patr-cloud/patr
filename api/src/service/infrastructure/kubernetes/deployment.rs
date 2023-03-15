@@ -379,6 +379,7 @@ pub async fn update_kubernetes_deployment(
 		match_expressions: None,
 		match_labels: Some(labels.clone()),
 	};
+
 	let template = PodTemplateSpec {
 		spec: Some(PodSpec {
 			containers: vec![Container {
@@ -391,6 +392,7 @@ pub async fn update_kubernetes_deployment(
 					},
 					deployment.id
 				),
+				command: running_details.container_commands.clone(),
 				image: Some(image_name),
 				image_pull_policy: Some("Always".to_string()),
 				ports: Some(

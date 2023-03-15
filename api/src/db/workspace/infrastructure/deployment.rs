@@ -41,6 +41,7 @@ pub struct Deployment {
 	pub liveness_probe_port: Option<i32>,
 	pub liveness_probe_path: Option<String>,
 	pub current_live_digest: Option<String>,
+	pub container_command: Option<Vec<String>>,
 }
 
 pub struct DeploymentDeployHistory {
@@ -152,6 +153,7 @@ pub async fn initialize_deployment_pre(
 			liveness_probe_port_type EXPOSED_PORT_TYPE,
 			current_live_digest TEXT,
 			deleted TIMESTAMPTZ,
+			container_command TEXT[],
 			CONSTRAINT deployment_fk_repository_id_workspace_id
 				FOREIGN KEY(repository_id, workspace_id)
 					REFERENCES docker_registry_repository(id, workspace_id),
@@ -448,6 +450,7 @@ pub async fn create_deployment_with_internal_registry(
 	max_horizontal_scale: u16,
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
+	container_command: Option<&Vec<String>>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -471,7 +474,8 @@ pub async fn create_deployment_with_internal_registry(
 				startup_probe_port_type,
 				liveness_probe_port,
 				liveness_probe_path,
-				liveness_probe_port_type
+				liveness_probe_port_type,
+				container_command
 			)
 		VALUES
 			(
@@ -493,7 +497,8 @@ pub async fn create_deployment_with_internal_registry(
 				$13,
 				$14,
 				$15,
-				$16
+				$16,
+				$17
 			);
 		"#,
 		id as _,
@@ -512,6 +517,7 @@ pub async fn create_deployment_with_internal_registry(
 		liveness_probe.map(|probe| probe.port as i32),
 		liveness_probe.map(|probe| probe.path.as_str()),
 		liveness_probe.map(|_| ExposedPortType::Http) as _,
+		container_command as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -534,6 +540,7 @@ pub async fn create_deployment_with_external_registry(
 	max_horizontal_scale: u16,
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
+	container_command: Option<&Vec<String>>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -557,7 +564,8 @@ pub async fn create_deployment_with_external_registry(
 				startup_probe_port_type,
 				liveness_probe_port,
 				liveness_probe_path,
-				liveness_probe_port_type
+				liveness_probe_port_type,
+				container_command
 			)
 		VALUES
 			(
@@ -579,7 +587,8 @@ pub async fn create_deployment_with_external_registry(
 				$14,
 				$15,
 				$16,
-				$17
+				$17,
+				$18
 			);
 		"#,
 		id as _,
@@ -599,6 +608,7 @@ pub async fn create_deployment_with_external_registry(
 		liveness_probe.map(|probe| probe.port as i32),
 		liveness_probe.map(|probe| probe.path.as_str()),
 		liveness_probe.map(|_| ExposedPortType::Http) as _,
+		container_command as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -632,7 +642,8 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 			deployment.startup_probe_path,
 			deployment.liveness_probe_port,
 			deployment.liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			container_command
 		FROM
 			deployment
 		LEFT JOIN
@@ -687,7 +698,8 @@ pub async fn get_deployments_by_repository_id(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			container_command
 		FROM
 			deployment
 		WHERE
@@ -725,7 +737,8 @@ pub async fn get_deployments_for_workspace(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			container_command
 		FROM
 			deployment
 		WHERE
@@ -763,7 +776,8 @@ pub async fn get_deployment_by_id(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			container_command
 		FROM
 			deployment
 		WHERE
@@ -801,7 +815,8 @@ pub async fn get_deployment_by_id_including_deleted(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			container_command
 		FROM
 			deployment
 		WHERE
@@ -839,7 +854,8 @@ pub async fn get_deployment_by_name_in_workspace(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			container_command
 		FROM
 			deployment
 		WHERE
@@ -1078,6 +1094,7 @@ pub async fn update_deployment_details(
 	max_horizontal_scale: Option<u16>,
 	startup_probe: Option<&DeploymentProbe>,
 	liveness_probe: Option<&DeploymentProbe>,
+	container_commands: Option<&Vec<String>>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1140,9 +1157,10 @@ pub async fn update_deployment_details(
 					ELSE
 						'http'::EXPOSED_PORT_TYPE
 				END
-			)
+			),
+			container_command = COALESCE($10, container_command)
 		WHERE
-			id = $10;
+			id = $11;
 		"#,
 		name as _,
 		machine_type as _,
@@ -1153,6 +1171,7 @@ pub async fn update_deployment_details(
 		startup_probe.as_ref().map(|probe| probe.path.as_str()),
 		liveness_probe.map(|probe| probe.port as i32),
 		liveness_probe.as_ref().map(|probe| probe.path.as_str()),
+		container_commands as _,
 		deployment_id as _
 	)
 	.execute(&mut *connection)
@@ -1511,7 +1530,8 @@ pub async fn get_deployments_by_region_id(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			container_command
 		FROM
 			deployment
 		WHERE
