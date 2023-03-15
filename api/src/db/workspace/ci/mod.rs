@@ -3,13 +3,14 @@ mod runner;
 use api_macros::query;
 use api_models::{
 	models::workspace::ci::{
+		get_recent_activity::RecentActivity,
 		git_provider::{
 			BuildDetails,
 			BuildStatus,
 			BuildStepStatus,
-			GitProviderBuildDetails,
 			GitProviderType,
 			RepoStatus,
+			RepositoryDetails,
 			Step,
 		},
 		BuildMachineType,
@@ -1297,53 +1298,75 @@ pub async fn set_syncing(
 	.map(|_| ())
 }
 
-pub async fn list_builds_for_git_provider(
+pub async fn get_recent_activity_for_ci_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	git_provider_id: &Uuid,
-) -> Result<Vec<GitProviderBuildDetails>, sqlx::Error> {
+	workspace_id: &Uuid,
+) -> Result<Vec<RecentActivity>, sqlx::Error> {
 	query!(
 		r#"
 		SELECT
-			ci_repos.git_provider_repo_uid as "github_repo_id",
+			ci_git_provider.id as "git_provider_id: Uuid",
+			ci_repos.git_provider_repo_uid as "repo_id",
+			ci_repos.repo_name,
+			ci_repos.repo_owner,
+			ci_repos.clone_url as "repo_clone_url",
+			ci_repos.status as "repo_status: RepoStatus",
+			ci_repos.runner_id as "repo_runner_id: Uuid",
 			ci_builds.build_num,
-			ci_builds.git_ref,
-			ci_builds.git_commit,
-			ci_builds.status as "status: BuildStatus",
-			ci_builds.created,
-			ci_builds.started,
-			ci_builds.finished,
-			ci_builds.message,
-			ci_builds.author,
-			ci_builds.git_pr_title,
-			ci_builds.git_commit_message
+			ci_builds.git_ref as "build_git_ref",
+			ci_builds.git_commit as "build_git_commit",
+			ci_builds.status as "build_status: BuildStatus",
+			ci_builds.created as "build_created",
+			ci_builds.started as "build_started",
+			ci_builds.finished as "build_finished",
+			ci_builds.message as "build_message",
+			ci_builds.author as "build_author",
+			ci_builds.git_pr_title as "build_git_pr_title",
+			ci_builds.git_commit_message as "build_git_commit_message",
+			ci_builds.runner_id as "build_runner_id: Uuid"
 		FROM
 			ci_builds
 		JOIN
 			ci_repos
 		ON
 			ci_repos.id = ci_builds.repo_id
+		JOIN
+			ci_git_provider 
+		ON
+			ci_git_provider.id = ci_repos.git_provider_id
 		WHERE
-			ci_repos.git_provider_id = $1
+			ci_git_provider.workspace_id = $1
 		ORDER BY
 			ci_builds.created ASC
 		LIMIT 500;
 		"#,
-		git_provider_id as _,
+		workspace_id as _,
 	)
 	.fetch(&mut *connection)
-	.map_ok(|build| GitProviderBuildDetails {
-		github_repo_id: build.github_repo_id,
-		build_num: build.build_num as u64,
-		git_ref: build.git_ref,
-		git_commit: build.git_commit,
-		status: build.status,
-		created: utils::DateTime(build.created),
-		started: build.started.map(utils::DateTime),
-		finished: build.finished.map(utils::DateTime),
-		message: build.message,
-		author: build.author,
-		git_pr_title: build.git_pr_title,
-		git_commit_message: build.git_commit_message,
+	.map_ok(|activity| RecentActivity {
+		git_provider_id: activity.git_provider_id,
+		repo_details: RepositoryDetails {
+			id: activity.repo_id,
+			name: activity.repo_name,
+			repo_owner: activity.repo_owner,
+			clone_url: activity.repo_clone_url,
+			status: activity.repo_status,
+			runner_id: activity.repo_runner_id,
+		},
+		build_details: BuildDetails {
+			build_num: activity.build_num as u64,
+			git_ref: activity.build_git_ref,
+			git_commit: activity.build_git_commit,
+			git_commit_message: activity.build_git_commit_message,
+			git_pr_title: activity.build_git_pr_title,
+			author: activity.build_author,
+			status: activity.build_status,
+			created: api_models::utils::DateTime(activity.build_created),
+			started: activity.build_started.map(api_models::utils::DateTime),
+			finished: activity.build_finished.map(api_models::utils::DateTime),
+			message: activity.build_message,
+			runner_id: activity.build_runner_id,
+		},
 	})
 	.try_collect()
 	.await
