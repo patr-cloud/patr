@@ -33,6 +33,7 @@ pub struct GitProvider {
 	pub password: Option<String>,
 	pub is_syncing: bool,
 	pub last_synced: Option<DateTime<Utc>>,
+	pub is_deleted: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -408,7 +409,8 @@ pub async fn get_git_provider_details_by_id(
 			login_name,
 			password,
 			is_syncing,
-			last_synced
+			last_synced,
+			is_deleted
 		FROM
 			ci_git_provider
 		WHERE
@@ -457,7 +459,8 @@ pub async fn list_connected_git_providers_for_workspace(
 			login_name,
 			password,
 			is_syncing,
-			last_synced
+			last_synced,
+			is_deleted
 		FROM
 			ci_git_provider
 		WHERE
@@ -486,7 +489,8 @@ pub async fn get_git_provider_details_for_workspace_using_domain(
 			login_name,
 			password,
 			is_syncing,
-			last_synced
+			last_synced,
+			is_deleted
 		FROM
 			ci_git_provider
 		WHERE
@@ -1306,6 +1310,13 @@ pub async fn get_recent_activity_for_ci_in_workspace(
 		r#"
 		SELECT
 			ci_git_provider.id as "git_provider_id: Uuid",
+			ci_git_provider.workspace_id as "git_provider_workspace_id: Uuid",
+			ci_git_provider.domain_name as "git_provider_domain_name",
+			ci_git_provider.git_provider_type as "git_provider_type: GitProviderType",
+			ci_git_provider.login_name as "git_provider_login_name",
+			ci_git_provider.is_syncing as "git_provider_is_syncing",
+			ci_git_provider.last_synced as "git_provider_last_synced",
+			ci_git_provider.is_deleted as "git_provider_is_deleted",
 			ci_repos.git_provider_repo_uid as "repo_id",
 			ci_repos.repo_name,
 			ci_repos.repo_owner,
@@ -1344,7 +1355,18 @@ pub async fn get_recent_activity_for_ci_in_workspace(
 	)
 	.fetch(&mut *connection)
 	.map_ok(|activity| RecentActivity {
-		git_provider_id: activity.git_provider_id,
+		git_provider_details:
+			api_models::models::workspace::ci::git_provider::GitProvider {
+				id: activity.git_provider_id,
+				domain_name: activity.git_provider_domain_name,
+				git_provider_type: activity.git_provider_type,
+				login_name: activity.git_provider_login_name,
+				is_syncing: activity.git_provider_is_syncing,
+				last_synced: activity
+					.git_provider_last_synced
+					.map(api_models::utils::DateTime),
+				is_deleted: activity.git_provider_is_deleted,
+			},
 		repo_details: RepositoryDetails {
 			id: activity.repo_id,
 			name: activity.repo_name,

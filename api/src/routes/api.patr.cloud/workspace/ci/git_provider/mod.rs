@@ -88,6 +88,7 @@ async fn list_git_providers(
 		login_name: git_provider.login_name,
 		is_syncing: git_provider.is_syncing,
 		last_synced: git_provider.last_synced.map(DateTime),
+		is_deleted: git_provider.is_deleted
 	})
 	.collect();
 

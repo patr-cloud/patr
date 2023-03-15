@@ -1340,77 +1340,6 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tstatic_site_plan as \"static_site_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tstatic_sites_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3)\n\t\tORDER BY\n\t\t\tstart_time ASC;\n\t\t"
   },
-  "12a98e865ce0c31fd84ad312dcfcc486a7267063d99e4f06a6605bdac977a11f": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "domain_name",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "git_provider_type: _",
-          "ordinal": 3,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "github"
-                ]
-              },
-              "name": "ci_git_provider_type"
-            }
-          }
-        },
-        {
-          "name": "login_name",
-          "ordinal": 4,
-          "type_info": "Text"
-        },
-        {
-          "name": "password",
-          "ordinal": 5,
-          "type_info": "Text"
-        },
-        {
-          "name": "is_syncing",
-          "ordinal": 6,
-          "type_info": "Bool"
-        },
-        {
-          "name": "last_synced",
-          "ordinal": 7,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdomain_name,\n\t\t\tgit_provider_type as \"git_provider_type: _\",\n\t\t\tlogin_name,\n\t\t\tpassword,\n\t\t\tis_syncing,\n\t\t\tlast_synced\n\t\tFROM\n\t\t\tci_git_provider\n\t\tWHERE\n\t\t\tid = $1;\n\t\t"
-  },
   "1367b2c0bb8700daf488f62964c8c1396fb2a3a5a2f33577c4d0c1be8806507c": {
     "describe": {
       "columns": [
@@ -9020,6 +8949,84 @@
     },
     "query": "INSERT INTO user_to_sign_up( username, account_type, password, first_name, last_name, recovery_email_local, recovery_email_domain_id, recovery_phone_country_code, recovery_phone_number, business_email_local, business_domain_name, business_domain_tld, business_name, otp_hash, otp_expiry, coupon_code ) VALUES ( $1, 'business', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15 ) ON CONFLICT(username) DO UPDATE SET account_type = 'business', password = EXCLUDED.password, first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, recovery_email_local = EXCLUDED.recovery_email_local, recovery_email_domain_id = EXCLUDED.recovery_email_domain_id, recovery_phone_country_code = EXCLUDED.recovery_phone_country_code, recovery_phone_number = EXCLUDED.recovery_phone_number, business_email_local = EXCLUDED.business_email_local, business_domain_name = EXCLUDED.business_domain_name, business_domain_tld = EXCLUDED.business_domain_tld, business_name = EXCLUDED.business_name, otp_hash = EXCLUDED.otp_hash, otp_expiry = EXCLUDED.otp_expiry, coupon_code = EXCLUDED.coupon_code;"
   },
+  "88f6a3ed23e2e31cd8cf6967d2ee2e84cb9f789f5d51089295fba89b2b0987e2": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "domain_name",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_provider_type: _",
+          "ordinal": 3,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "github"
+                ]
+              },
+              "name": "ci_git_provider_type"
+            }
+          }
+        },
+        {
+          "name": "login_name",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "password",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "is_syncing",
+          "ordinal": 6,
+          "type_info": "Bool"
+        },
+        {
+          "name": "last_synced",
+          "ordinal": 7,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "is_deleted",
+          "ordinal": 8,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdomain_name,\n\t\t\tgit_provider_type as \"git_provider_type: _\",\n\t\t\tlogin_name,\n\t\t\tpassword,\n\t\t\tis_syncing,\n\t\t\tlast_synced,\n\t\t\tis_deleted\n\t\tFROM\n\t\t\tci_git_provider\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\tdomain_name = $2 AND\n\t\t\tis_deleted = FALSE;\n\t\t"
+  },
   "892f1e3fa1ee2946653f6550806072b81cf7bcb947c9c5fe0759e227f8a22aa6": {
     "describe": {
       "columns": [
@@ -10304,77 +10311,6 @@
       }
     },
     "query": "SELECT patr_domain_dns_record.id as \"id: _\", patr_domain_dns_record.record_identifier, patr_domain_dns_record.domain_id as \"domain_id: _\", patr_domain_dns_record.name, patr_domain_dns_record.type as \"type: _\", patr_domain_dns_record.value, patr_domain_dns_record.priority, patr_domain_dns_record.ttl, patr_domain_dns_record.proxied FROM patr_domain_dns_record INNER JOIN domain ON patr_domain_dns_record.domain_id = domain.id WHERE patr_domain_dns_record.domain_id = $1 AND domain.deleted IS NULL;"
-  },
-  "9e213ae4ea39ee73e4f43cd6a2178df9e6b939a787363fab8c7d54360753db84": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "domain_name",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "git_provider_type: _",
-          "ordinal": 3,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "github"
-                ]
-              },
-              "name": "ci_git_provider_type"
-            }
-          }
-        },
-        {
-          "name": "login_name",
-          "ordinal": 4,
-          "type_info": "Text"
-        },
-        {
-          "name": "password",
-          "ordinal": 5,
-          "type_info": "Text"
-        },
-        {
-          "name": "is_syncing",
-          "ordinal": 6,
-          "type_info": "Bool"
-        },
-        {
-          "name": "last_synced",
-          "ordinal": 7,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdomain_name,\n\t\t\tgit_provider_type as \"git_provider_type: _\",\n\t\t\tlogin_name,\n\t\t\tpassword,\n\t\t\tis_syncing,\n\t\t\tlast_synced\n\t\tFROM\n\t\t\tci_git_provider\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\tis_deleted = FALSE;\n\t\t"
   },
   "9e3736b6e5d9a9db4281d8ce42a2fa507275cbb428769ab441069341dc304212": {
     "describe": {
@@ -11939,6 +11875,83 @@
       }
     },
     "query": "SELECT workspace_id as \"workspace_id: Uuid\", role_id as \"role_id: Uuid\" FROM workspace_user WHERE user_id = $1 ORDER BY workspace_id;"
+  },
+  "b619a70da76dcc0c66dd8e1c654f8ef2502e84fea0979723e0f297722394a579": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "domain_name",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_provider_type: _",
+          "ordinal": 3,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "github"
+                ]
+              },
+              "name": "ci_git_provider_type"
+            }
+          }
+        },
+        {
+          "name": "login_name",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "password",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "is_syncing",
+          "ordinal": 6,
+          "type_info": "Bool"
+        },
+        {
+          "name": "last_synced",
+          "ordinal": 7,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "is_deleted",
+          "ordinal": 8,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdomain_name,\n\t\t\tgit_provider_type as \"git_provider_type: _\",\n\t\t\tlogin_name,\n\t\t\tpassword,\n\t\t\tis_syncing,\n\t\t\tlast_synced,\n\t\t\tis_deleted\n\t\tFROM\n\t\t\tci_git_provider\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\tis_deleted = FALSE;\n\t\t"
   },
   "b6e0dd1826475d91e9f7ce39f7c50b81cbc075084cd51a041fd223c80add6e06": {
     "describe": {
@@ -14014,78 +14027,6 @@
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", status as \"status: _\", workspace_id as \"workspace_id: _\", current_live_upload as \"current_live_upload: _\" FROM static_site WHERE name = $1 AND workspace_id = $2 AND status != 'deleted';"
   },
-  "dc65137991022adfe7f4b74c39fc5b4b1903bf773603f082484b40c20e226925": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "domain_name",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "git_provider_type: _",
-          "ordinal": 3,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "github"
-                ]
-              },
-              "name": "ci_git_provider_type"
-            }
-          }
-        },
-        {
-          "name": "login_name",
-          "ordinal": 4,
-          "type_info": "Text"
-        },
-        {
-          "name": "password",
-          "ordinal": 5,
-          "type_info": "Text"
-        },
-        {
-          "name": "is_syncing",
-          "ordinal": 6,
-          "type_info": "Bool"
-        },
-        {
-          "name": "last_synced",
-          "ordinal": 7,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdomain_name,\n\t\t\tgit_provider_type as \"git_provider_type: _\",\n\t\t\tlogin_name,\n\t\t\tpassword,\n\t\t\tis_syncing,\n\t\t\tlast_synced\n\t\tFROM\n\t\t\tci_git_provider\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\tdomain_name = $2 AND\n\t\t\tis_deleted = FALSE;\n\t\t"
-  },
   "dc7de568effee5ebaee539ded50b6d763d4d21bd5c2c29166e6c7be9bb23c2d9": {
     "describe": {
       "columns": [],
@@ -14705,158 +14646,6 @@
     },
     "query": "INSERT INTO deployment( id, name, registry, repository_id, image_name, image_tag, status, workspace_id, region, min_horizontal_scale, max_horizontal_scale, machine_type, deploy_on_push, startup_probe_port, startup_probe_path, startup_probe_port_type, liveness_probe_port, liveness_probe_path, liveness_probe_port_type ) VALUES ( $1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16 );"
   },
-  "e9ab8cd18985e2057953b220a5a40c0403c793510cb6bfcff14a7081329213ce": {
-    "describe": {
-      "columns": [
-        {
-          "name": "git_provider_id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "repo_id",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "repo_name",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "repo_owner",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "repo_clone_url",
-          "ordinal": 4,
-          "type_info": "Text"
-        },
-        {
-          "name": "repo_status: RepoStatus",
-          "ordinal": 5,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "active",
-                  "inactive",
-                  "deleted"
-                ]
-              },
-              "name": "ci_repo_status"
-            }
-          }
-        },
-        {
-          "name": "repo_runner_id: Uuid",
-          "ordinal": 6,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "build_num",
-          "ordinal": 7,
-          "type_info": "Int8"
-        },
-        {
-          "name": "build_git_ref",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "build_git_commit",
-          "ordinal": 9,
-          "type_info": "Text"
-        },
-        {
-          "name": "build_status: BuildStatus",
-          "ordinal": 10,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "waiting_to_start",
-                  "running",
-                  "succeeded",
-                  "cancelled",
-                  "errored"
-                ]
-              },
-              "name": "ci_build_status"
-            }
-          }
-        },
-        {
-          "name": "build_created",
-          "ordinal": 11,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "build_started",
-          "ordinal": 12,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "build_finished",
-          "ordinal": 13,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "build_message",
-          "ordinal": 14,
-          "type_info": "Text"
-        },
-        {
-          "name": "build_author",
-          "ordinal": 15,
-          "type_info": "Text"
-        },
-        {
-          "name": "build_git_pr_title",
-          "ordinal": 16,
-          "type_info": "Text"
-        },
-        {
-          "name": "build_git_commit_message",
-          "ordinal": 17,
-          "type_info": "Text"
-        },
-        {
-          "name": "build_runner_id: Uuid",
-          "ordinal": 18,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT ci_git_provider.id as \"git_provider_id: Uuid\", ci_repos.git_provider_repo_uid as \"repo_id\", ci_repos.repo_name, ci_repos.repo_owner, ci_repos.clone_url as \"repo_clone_url\", ci_repos.status as \"repo_status: RepoStatus\", ci_repos.runner_id as \"repo_runner_id: Uuid\", ci_builds.build_num, ci_builds.git_ref as \"build_git_ref\", ci_builds.git_commit as \"build_git_commit\", ci_builds.status as \"build_status: BuildStatus\", ci_builds.created as \"build_created\", ci_builds.started as \"build_started\", ci_builds.finished as \"build_finished\", ci_builds.message as \"build_message\", ci_builds.author as \"build_author\", ci_builds.git_pr_title as \"build_git_pr_title\", ci_builds.git_commit_message as \"build_git_commit_message\", ci_builds.runner_id as \"build_runner_id: Uuid\" FROM ci_builds JOIN ci_repos ON ci_repos.id = ci_builds.repo_id JOIN ci_git_provider ON ci_git_provider.id = ci_repos.git_provider_id WHERE ci_git_provider.workspace_id = $1 ORDER BY ci_builds.created ASC LIMIT 500;"
-  },
   "e9b8b529e42f683f9bf8afae0becd9cb42b09e11ad4558055736097e4f883a96": {
     "describe": {
       "columns": [
@@ -14949,6 +14738,209 @@
       }
     },
     "query": "UPDATE ci_builds SET message = $3 WHERE repo_id = $1 AND build_num = $2;"
+  },
+  "ea854b843d45f8a7d5d40c273e515deda6e56d6adb76670571925c8c03c2820c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "git_provider_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "git_provider_workspace_id: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "git_provider_domain_name",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_provider_type: GitProviderType",
+          "ordinal": 3,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "github"
+                ]
+              },
+              "name": "ci_git_provider_type"
+            }
+          }
+        },
+        {
+          "name": "git_provider_login_name",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_provider_is_syncing",
+          "ordinal": 5,
+          "type_info": "Bool"
+        },
+        {
+          "name": "git_provider_last_synced",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "git_provider_is_deleted",
+          "ordinal": 7,
+          "type_info": "Bool"
+        },
+        {
+          "name": "repo_id",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "repo_name",
+          "ordinal": 9,
+          "type_info": "Text"
+        },
+        {
+          "name": "repo_owner",
+          "ordinal": 10,
+          "type_info": "Text"
+        },
+        {
+          "name": "repo_clone_url",
+          "ordinal": 11,
+          "type_info": "Text"
+        },
+        {
+          "name": "repo_status: RepoStatus",
+          "ordinal": 12,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "active",
+                  "inactive",
+                  "deleted"
+                ]
+              },
+              "name": "ci_repo_status"
+            }
+          }
+        },
+        {
+          "name": "repo_runner_id: Uuid",
+          "ordinal": 13,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "build_num",
+          "ordinal": 14,
+          "type_info": "Int8"
+        },
+        {
+          "name": "build_git_ref",
+          "ordinal": 15,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_git_commit",
+          "ordinal": 16,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_status: BuildStatus",
+          "ordinal": 17,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "waiting_to_start",
+                  "running",
+                  "succeeded",
+                  "cancelled",
+                  "errored"
+                ]
+              },
+              "name": "ci_build_status"
+            }
+          }
+        },
+        {
+          "name": "build_created",
+          "ordinal": 18,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "build_started",
+          "ordinal": 19,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "build_finished",
+          "ordinal": 20,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "build_message",
+          "ordinal": 21,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_author",
+          "ordinal": 22,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_git_pr_title",
+          "ordinal": 23,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_git_commit_message",
+          "ordinal": 24,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_runner_id: Uuid",
+          "ordinal": 25,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT ci_git_provider.id as \"git_provider_id: Uuid\", ci_git_provider.workspace_id as \"git_provider_workspace_id: Uuid\", ci_git_provider.domain_name as \"git_provider_domain_name\", ci_git_provider.git_provider_type as \"git_provider_type: GitProviderType\", ci_git_provider.login_name as \"git_provider_login_name\", ci_git_provider.is_syncing as \"git_provider_is_syncing\", ci_git_provider.last_synced as \"git_provider_last_synced\", ci_git_provider.is_deleted as \"git_provider_is_deleted\", ci_repos.git_provider_repo_uid as \"repo_id\", ci_repos.repo_name, ci_repos.repo_owner, ci_repos.clone_url as \"repo_clone_url\", ci_repos.status as \"repo_status: RepoStatus\", ci_repos.runner_id as \"repo_runner_id: Uuid\", ci_builds.build_num, ci_builds.git_ref as \"build_git_ref\", ci_builds.git_commit as \"build_git_commit\", ci_builds.status as \"build_status: BuildStatus\", ci_builds.created as \"build_created\", ci_builds.started as \"build_started\", ci_builds.finished as \"build_finished\", ci_builds.message as \"build_message\", ci_builds.author as \"build_author\", ci_builds.git_pr_title as \"build_git_pr_title\", ci_builds.git_commit_message as \"build_git_commit_message\", ci_builds.runner_id as \"build_runner_id: Uuid\" FROM ci_builds JOIN ci_repos ON ci_repos.id = ci_builds.repo_id JOIN ci_git_provider ON ci_git_provider.id = ci_repos.git_provider_id WHERE ci_git_provider.workspace_id = $1 ORDER BY ci_builds.created ASC LIMIT 500;"
   },
   "ebb50db24a70648653710428f4bc4db0b5a33f683894476370d206816a85a557": {
     "describe": {
@@ -15209,6 +15201,83 @@
       }
     },
     "query": "UPDATE ci_steps SET status = $4 WHERE repo_id = $1 AND build_num = $2 AND step_id = $3;"
+  },
+  "ef53146f3d73a02ddaf909b8f2dc2402fcc9101c22190affeac0d7a5ff994f56": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "domain_name",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_provider_type: _",
+          "ordinal": 3,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "github"
+                ]
+              },
+              "name": "ci_git_provider_type"
+            }
+          }
+        },
+        {
+          "name": "login_name",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "password",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "is_syncing",
+          "ordinal": 6,
+          "type_info": "Bool"
+        },
+        {
+          "name": "last_synced",
+          "ordinal": 7,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "is_deleted",
+          "ordinal": 8,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdomain_name,\n\t\t\tgit_provider_type as \"git_provider_type: _\",\n\t\t\tlogin_name,\n\t\t\tpassword,\n\t\t\tis_syncing,\n\t\t\tlast_synced,\n\t\t\tis_deleted\n\t\tFROM\n\t\t\tci_git_provider\n\t\tWHERE\n\t\t\tid = $1;\n\t\t"
   },
   "efa0a6ff35f40c8f91021798d83cbff7e35471895783a4ca95ec64d173dbdddf": {
     "describe": {
