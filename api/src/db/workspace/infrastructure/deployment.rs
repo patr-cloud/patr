@@ -1525,3 +1525,369 @@ pub async fn get_deployments_by_region_id(
 	.fetch_all(&mut *connection)
 	.await
 }
+
+#[cfg(test)]
+mod tests {
+	use sqlx::PgPool;
+
+	use super::*;
+
+	#[sqlx::test]
+	async fn environment_variable_for_deployment_test(
+		pool: PgPool,
+	) -> sqlx::Result<()> {
+		let connection = pool.acquire().await?;
+
+		let expected_output = DeploymentEnvironmentVariable {
+			deployment_id: Uuid::new_v4(),
+			name: "TEST",
+			value: Some("value"),
+			secret_id: Some(Uuid::new_v4()),
+		};
+
+		add_environment_variable_for_deployment(
+			connection,
+			&expected_output.deployment_id,
+			&expected_output.name,
+			&expected_output.value,
+			&expected_output.secret_id,
+		)
+		.await?;
+
+		let output = get_environment_variables_for_deployment(
+			connection,
+			&expected_output.deployment_id,
+		)
+		.await?;
+
+		// Testing if values are added correctly
+		assert_eq!(output[0], expected_output[0]);
+
+		let output_with_secret =
+			get_deployments_with_secret_as_environment_variable(
+				connection,
+				expected_output.secret_id,
+			)
+			.await?;
+
+		// Deleting env variables
+		remove_all_environment_variables_for_deployment(
+			connection,
+			expected_output.deployment_id,
+		)
+		.await?;
+
+		let deleted_output = get_environment_variables_for_deployment(
+			connection,
+			&expected_output.deployment_id,
+		)
+		.await?;
+
+		assert_eq!([], deleted_output);
+
+		Ok(())
+	}
+
+	#[sqlx::test]
+	async fn create_deployment_with_internal_registry_test(
+		pool: PgPool,
+	) -> sqlx::Result<()> {
+		let connection = pool.acquire().await?;
+
+		let expected_output = Deployment {
+			id: Uuid::new_v4(),
+			name: "test".to_owned(),
+			registry: "registry.patr.cloud".to_owned(),
+			repository_id: Some(Uuid::new_v4()),
+			image_name: Some("test_image".to_owned()),
+			image_tag: "test_image".to_owned(),
+			status: "created".to_owned(),
+			workspace_id: Uuid::new_v4(),
+			region: Uuid::new_v4(),
+			min_horizontal_scale: 1,
+			max_horizontal_scale: 2,
+			machine_type: Uuid::new_v4(),
+			deploy_on_push: true,
+			startup_probe_path: "/data",
+			startup_probe_port: Some(2020),
+			liveness_probe_path: "/data",
+			liveness_probe_port: Some(2020),
+			current_live_digest: Some("test_digest".to_owned()),
+		};
+
+		create_deployment_with_internal_registry(
+			connection,
+			&expected_output.id,
+			&expected_output.name,
+			&expected_output.repository_id,
+			&expected_output.image_tag,
+			&expected_output.workspace_id,
+			&expected_output.region,
+			&expected_output.machine_type,
+			&expected_output.deploy_on_push,
+			expected_output.min_horizontal_scale,
+			expected_output.max_horizontal_scale,
+			Some(&DeploymentProbe {
+				port: expected_output.startup_probe_port,
+				path: expected_output.startup_probe_path,
+			}),
+			Some(&DeploymentProbe {
+				port: expected_output.liveness_probe_port,
+				path: expected_output.liveness_probe_path,
+			}),
+		)
+		.await?;
+
+		let repo_output = get_deployments_by_repository_id(
+			connection,
+			&expected_output.repository_id,
+		)
+		.await?;
+		let id_output = get_deployment_by_id(connection, &expected_output.id);
+
+		//Test cases
+		assert_eq!(expected_output, output[0]);
+
+		Ok(())
+	}
+
+	#[sqlx::test]
+	async fn create_deployment_with_external_registry_test(
+		pool: PgPool,
+	) -> sqlx::Result<()> {
+		let connection = pool.acquire().await?;
+
+		let expected_output = Deployment {
+			id: Uuid::new_v4(),
+			name: "test".to_owned(),
+			registry: "registry.patr.cloud".to_owned(),
+			repository_id: Some(Uuid::new_v4()),
+			image_name: Some("test_image".to_owned()),
+			image_tag: "test_image".to_owned(),
+			status: "created".to_owned(),
+			workspace_id: Uuid::new_v4(),
+			region: Uuid::new_v4(),
+			min_horizontal_scale: 1,
+			max_horizontal_scale: 2,
+			machine_type: Uuid::new_v4(),
+			deploy_on_push: true,
+			startup_probe_path: "/data",
+			startup_probe_port: Some(2020),
+			liveness_probe_path: "/data",
+			liveness_probe_port: Some(2020),
+			current_live_digest: Some("test_digest".to_owned()),
+		};
+
+		create_deployment_with_external_registry(
+			connection,
+			&expected_output.id,
+			&expected_output.name,
+			&expected_output.registry,
+			&expected_output.image_name,
+			&expected_output.image_tag,
+			&expected_output.workspace_id,
+			&expected_output.region,
+			&expected_output.machine_type,
+			expected_output.deploy_on_push,
+			expected_output.min_horizontal_scale,
+			expected_output.max_horizontal_scale,
+			Some(&DeploymentProbe {
+				port: expected_output.startup_probe_port,
+				path: expected_output.startup_probe_path,
+			}),
+			Some(&DeploymentProbe {
+				port: expected_output.liveness_probe_port,
+				path: expected_output.liveness_probe_path,
+			}),
+		)
+		.await?;
+
+		let image_output = get_deployments_by_image_name_and_tag_for_workspace(
+			connection,
+			&expected_output.image_name,
+			&expected_output.image_tag,
+			&expected_output.workspace_id,
+		)
+		.await?;
+		let workspace_output = get_deployments_for_workspace(
+			connection,
+			&expected_output.workspace_id,
+		)
+		.await?;
+
+		// Test cases
+		assert_eq!(expected_output, output[0]);
+
+		Ok(())
+	}
+
+	#[sqlx::test]
+	async fn get_deployment_by_id_including_deleted_test(
+		pool: PgPool,
+	) -> sqlx::Result<()> {
+		let connection = pool.acquire().await?;
+
+		let expected_output = Deployment {
+			id: Uuid::new_v4(),
+			name: "test".to_owned(),
+			registry: "registry.patr.cloud".to_owned(),
+			repository_id: Some(Uuid::new_v4()),
+			image_name: Some("test_image".to_owned()),
+			image_tag: "test_image".to_owned(),
+			status: "deleted".to_owned(),
+			workspace_id: Uuid::new_v4(),
+			region: Uuid::new_v4(),
+			min_horizontal_scale: 1,
+			max_horizontal_scale: 2,
+			machine_type: Uuid::new_v4(),
+			deploy_on_push: true,
+			startup_probe_path: "/data",
+			startup_probe_port: Some(2020),
+			liveness_probe_path: "/data",
+			liveness_probe_port: Some(2020),
+			current_live_digest: Some("test_digest".to_owned()),
+		};
+
+		create_deployment_with_internal_registry(
+			connection,
+			&expected_output.id,
+			&expected_output.name,
+			&expected_output.repository_id,
+			&expected_output.image_tag,
+			&expected_output.workspace_id,
+			&expected_output.region,
+			&expected_output.machine_type,
+			&expected_output.deploy_on_push,
+			expected_output.min_horizontal_scale,
+			expected_output.max_horizontal_scale,
+			Some(&DeploymentProbe {
+				port: expected_output.startup_probe_port,
+				path: expected_output.startup_probe_path,
+			}),
+			Some(&DeploymentProbe {
+				port: expected_output.liveness_probe_port,
+				path: expected_output.liveness_probe_path,
+			}),
+		)
+		.await?;
+
+		let output = get_deployment_by_id_including_deleted(
+			connection,
+			&expected_output.id,
+		)
+		.await?;
+
+		assert_eq!(expected_output, output.unwrap());
+
+		Ok(())
+	}
+
+	#[sqlx::test]
+	async fn update_deployment_status_test(pool: PgPool) -> sqlx::Result<()> {
+		let deployment = Deployment {
+			id: Uuid::new_v4(),
+			name: "test".to_owned(),
+			registry: "registry.patr.cloud".to_owned(),
+			repository_id: Some(Uuid::new_v4()),
+			image_name: Some("test_image".to_owned()),
+			image_tag: "test_image".to_owned(),
+			status: "created".to_owned(),
+			workspace_id: Uuid::new_v4(),
+			region: Uuid::new_v4(),
+			min_horizontal_scale: 1,
+			max_horizontal_scale: 2,
+			machine_type: Uuid::new_v4(),
+			deploy_on_push: true,
+			startup_probe_path: "/data",
+			startup_probe_port: Some(2020),
+			liveness_probe_path: "/data",
+			liveness_probe_port: Some(2020),
+			current_live_digest: Some("test_digest".to_owned()),
+		};
+
+		let expected_output_for_status_update = Deployment {
+			id: Uuid::new_v4(),
+			name: "test".to_owned(),
+			registry: "registry.patr.cloud".to_owned(),
+			repository_id: Some(Uuid::new_v4()),
+			image_name: Some("test_image".to_owned()),
+			image_tag: "test_image".to_owned(),
+			status: "running".to_owned(),
+			workspace_id: Uuid::new_v4(),
+			region: Uuid::new_v4(),
+			min_horizontal_scale: 1,
+			max_horizontal_scale: 2,
+			machine_type: Uuid::new_v4(),
+			deploy_on_push: true,
+			startup_probe_path: "/data",
+			startup_probe_port: Some(2020),
+			liveness_probe_path: "/data",
+			liveness_probe_port: Some(2020),
+			current_live_digest: Some("test_digest".to_owned()),
+		};
+
+		update_deployment_status(
+			connection,
+			&deployment.id,
+			&DeploymentStatus::Running,
+		)
+		.await?;
+		let output_for_status_update =
+			get_deployments_for_workspace(connection, &deployment.workspace_id)
+				.await?;
+
+		//Test for status update
+
+		let expected_output_for_status_delete = Deployment {
+			id: Uuid::new_v4(),
+			name: "test".to_owned(),
+			registry: "registry.patr.cloud".to_owned(),
+			repository_id: Some(Uuid::new_v4()),
+			image_name: Some("test_image".to_owned()),
+			image_tag: "test_image".to_owned(),
+			status: "deleted".to_owned(),
+			workspace_id: Uuid::new_v4(),
+			region: Uuid::new_v4(),
+			min_horizontal_scale: 1,
+			max_horizontal_scale: 2,
+			machine_type: Uuid::new_v4(),
+			deploy_on_push: true,
+			startup_probe_path: "/data",
+			startup_probe_port: Some(2020),
+			liveness_probe_path: "/data",
+			liveness_probe_port: Some(2020),
+			current_live_digest: Some("test_digest".to_owned()),
+		};
+
+		delete_deployment(connection, &deployment.id, &Utc::now()).await?;
+		let output_for_status_delete = get_deployment_by_id_including_deleted(
+			connection,
+			&expected_output.id,
+		)
+		.await?;
+
+		// Test
+
+		Ok(())
+	}
+
+	#[sqlx::test]
+	async fn deployment_port_test(pool: PgPool) -> sqlx::Result<()> {
+		Ok(())
+	}
+
+	#[sqlx::test]
+	async fn deployment_volume_test(pool: PgPool) -> sqlx::Result<()> {
+		Ok(())
+	}
+
+	#[sqlx::test]
+	async fn deployment_cofig_mount_test(pool: PgPool) -> sqlx::Result<()> {
+		Ok(())
+	}
+
+	#[sqlx::test]
+	async fn deployment_digest_test(pool: PgPool) -> sqlx::Result<()> {
+		Ok(())
+	}
+}
