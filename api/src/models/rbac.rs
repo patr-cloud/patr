@@ -132,10 +132,10 @@ pub mod permissions {
 		}
 
 		pub mod ci {
+			pub const RECENT_ACTIVITY: &str = "workspace::ci::recent_activity";
+
 			pub mod git_provider {
 				pub const LIST: &str = "workspace::ci::git_provider::list";
-				pub const LIST_BUILDS: &str =
-					"workspace::ci::git_provider::list_builds";
 				pub const CONNECT: &str =
 					"workspace::ci::git_provider::connect";
 				pub const DISCONNECT: &str =

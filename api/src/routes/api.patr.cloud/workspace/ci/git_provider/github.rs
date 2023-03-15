@@ -19,7 +19,6 @@ use api_models::{
 			GithubAuthCallbackResponse,
 			GithubAuthResponse,
 			GithubSignOutResponse,
-			ListBuildsForGitProviderResponse,
 			ListGitRefForRepoResponse,
 			ListReposResponse,
 			RepoStatus,
@@ -163,41 +162,6 @@ pub fn create_sub_app(
 				}),
 			},
 			EveMiddleware::CustomFunction(pin_fn!(sync_repositories)),
-		],
-	);
-
-	app.post(
-		"/builds",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::ci::git_provider::LIST_BUILDS,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(
-				list_builds_for_git_provider
-			)),
 		],
 	);
 
@@ -959,38 +923,6 @@ async fn github_oauth_callback(
 	.await?;
 
 	context.success(GithubAuthCallbackResponse {});
-	Ok(context)
-}
-
-async fn list_builds_for_git_provider(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-
-	let git_provider = db::get_git_provider_details_for_workspace_using_domain(
-		context.get_database_connection(),
-		&workspace_id,
-		"github.com",
-	)
-	.await?
-	.status(500)?;
-
-	log::trace!(
-		"request_id: {request_id} - Listing builds for git provider {}",
-		git_provider.id
-	);
-
-	let builds = db::list_builds_for_git_provider(
-		context.get_database_connection(),
-		&git_provider.id,
-	)
-	.await?;
-
-	context.success(ListBuildsForGitProviderResponse { builds });
 	Ok(context)
 }
 

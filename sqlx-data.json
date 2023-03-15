@@ -6063,105 +6063,6 @@
     },
     "query": "SELECT manifest_digest, size, created FROM docker_registry_repository_manifest WHERE repository_id = $1;"
   },
-  "5b2a1e10b8cdb70f5058f831330709b2b2ea303073ec0955679306c0d11f8cc6": {
-    "describe": {
-      "columns": [
-        {
-          "name": "github_repo_id",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "build_num",
-          "ordinal": 1,
-          "type_info": "Int8"
-        },
-        {
-          "name": "git_ref",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "git_commit",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "status: BuildStatus",
-          "ordinal": 4,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "waiting_to_start",
-                  "running",
-                  "succeeded",
-                  "cancelled",
-                  "errored"
-                ]
-              },
-              "name": "ci_build_status"
-            }
-          }
-        },
-        {
-          "name": "created",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "started",
-          "ordinal": 6,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "finished",
-          "ordinal": 7,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "message",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "author",
-          "ordinal": 9,
-          "type_info": "Text"
-        },
-        {
-          "name": "git_pr_title",
-          "ordinal": 10,
-          "type_info": "Text"
-        },
-        {
-          "name": "git_commit_message",
-          "ordinal": 11,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT ci_repos.git_provider_repo_uid as \"github_repo_id\", ci_builds.build_num, ci_builds.git_ref, ci_builds.git_commit, ci_builds.status as \"status: BuildStatus\", ci_builds.created, ci_builds.started, ci_builds.finished, ci_builds.message, ci_builds.author, ci_builds.git_pr_title, ci_builds.git_commit_message FROM ci_builds JOIN ci_repos ON ci_repos.id = ci_builds.repo_id WHERE ci_repos.git_provider_id = $1 ORDER BY ci_builds.created ASC LIMIT 500;"
-  },
   "5bda0e52a15bdaf032ab3d119e3322ef902b74b2eb9910441af0af7590bbfb09": {
     "describe": {
       "columns": [],
@@ -14803,6 +14704,158 @@
       }
     },
     "query": "INSERT INTO deployment( id, name, registry, repository_id, image_name, image_tag, status, workspace_id, region, min_horizontal_scale, max_horizontal_scale, machine_type, deploy_on_push, startup_probe_port, startup_probe_path, startup_probe_port_type, liveness_probe_port, liveness_probe_path, liveness_probe_port_type ) VALUES ( $1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16 );"
+  },
+  "e9ab8cd18985e2057953b220a5a40c0403c793510cb6bfcff14a7081329213ce": {
+    "describe": {
+      "columns": [
+        {
+          "name": "git_provider_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "repo_id",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "repo_name",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "repo_owner",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "repo_clone_url",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "repo_status: RepoStatus",
+          "ordinal": 5,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "active",
+                  "inactive",
+                  "deleted"
+                ]
+              },
+              "name": "ci_repo_status"
+            }
+          }
+        },
+        {
+          "name": "repo_runner_id: Uuid",
+          "ordinal": 6,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "build_num",
+          "ordinal": 7,
+          "type_info": "Int8"
+        },
+        {
+          "name": "build_git_ref",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_git_commit",
+          "ordinal": 9,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_status: BuildStatus",
+          "ordinal": 10,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "waiting_to_start",
+                  "running",
+                  "succeeded",
+                  "cancelled",
+                  "errored"
+                ]
+              },
+              "name": "ci_build_status"
+            }
+          }
+        },
+        {
+          "name": "build_created",
+          "ordinal": 11,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "build_started",
+          "ordinal": 12,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "build_finished",
+          "ordinal": 13,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "build_message",
+          "ordinal": 14,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_author",
+          "ordinal": 15,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_git_pr_title",
+          "ordinal": 16,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_git_commit_message",
+          "ordinal": 17,
+          "type_info": "Text"
+        },
+        {
+          "name": "build_runner_id: Uuid",
+          "ordinal": 18,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT ci_git_provider.id as \"git_provider_id: Uuid\", ci_repos.git_provider_repo_uid as \"repo_id\", ci_repos.repo_name, ci_repos.repo_owner, ci_repos.clone_url as \"repo_clone_url\", ci_repos.status as \"repo_status: RepoStatus\", ci_repos.runner_id as \"repo_runner_id: Uuid\", ci_builds.build_num, ci_builds.git_ref as \"build_git_ref\", ci_builds.git_commit as \"build_git_commit\", ci_builds.status as \"build_status: BuildStatus\", ci_builds.created as \"build_created\", ci_builds.started as \"build_started\", ci_builds.finished as \"build_finished\", ci_builds.message as \"build_message\", ci_builds.author as \"build_author\", ci_builds.git_pr_title as \"build_git_pr_title\", ci_builds.git_commit_message as \"build_git_commit_message\", ci_builds.runner_id as \"build_runner_id: Uuid\" FROM ci_builds JOIN ci_repos ON ci_repos.id = ci_builds.repo_id JOIN ci_git_provider ON ci_git_provider.id = ci_repos.git_provider_id WHERE ci_git_provider.workspace_id = $1 ORDER BY ci_builds.created ASC LIMIT 500;"
   },
   "e9b8b529e42f683f9bf8afae0becd9cb42b09e11ad4558055736097e4f883a96": {
     "describe": {

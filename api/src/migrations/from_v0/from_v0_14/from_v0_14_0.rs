@@ -57,7 +57,7 @@ pub async fn add_permission_for_ci_routes(
 	let permissions = [
 		"workspace::ci::git_provider::repo::write",
 		"workspace::ci::git_provider::list",
-		"workspace::ci::git_provider::list_builds",
+		"workspace::ci::recent_activity",
 	];
 
 	for permission in permissions {
@@ -367,8 +367,8 @@ async fn reset_permission_order(
 		"workspace::region::info",
 		"workspace::region::add",
 		"workspace::region::delete",
+		"workspace::ci::recent_activity",
 		"workspace::ci::git_provider::list",
-		"workspace::ci::git_provider::list_builds",
 		"workspace::ci::git_provider::connect",
 		"workspace::ci::git_provider::disconnect",
 		"workspace::ci::git_provider::repo::activate",
