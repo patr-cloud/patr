@@ -13,6 +13,7 @@ use crate::{
 	db,
 	error,
 	models::ci::{
+		github::CommitStatus,
 		webhook_payload::github::Event,
 		Commit,
 		EventType,
@@ -21,7 +22,7 @@ use crate::{
 	},
 	pin_fn,
 	rabbitmq::BuildId,
-	service::{self, Netrc, ParseStatus},
+	service::{self, ParseStatus},
 	utils::{
 		constants::request_keys,
 		Error,
@@ -159,8 +160,10 @@ async fn handle_ci_hooks_for_repo(
 		}
 		Event::PullRequestOpened(pull_opened) => {
 			EventType::PullRequest(PullRequest {
-				head_repo_owner: pull_opened.pull_request.head.repo.owner.login,
-				head_repo_name: pull_opened.pull_request.head.repo.name,
+				pr_repo_owner: pull_opened.pull_request.head.repo.owner.login,
+				pr_repo_name: pull_opened.pull_request.head.repo.name,
+				repo_owner: pull_opened.repository.owner.login,
+				repo_name: pull_opened.repository.name,
 				commit_sha: pull_opened.pull_request.head.sha,
 				to_be_committed_branch_name: pull_opened.pull_request.base.ref_,
 				pr_number: pull_opened.pull_request.number.to_string(),
@@ -175,8 +178,10 @@ async fn handle_ci_hooks_for_repo(
 		}
 		Event::PullRequestSynchronize(pull_synced) => {
 			EventType::PullRequest(PullRequest {
-				head_repo_owner: pull_synced.pull_request.head.repo.owner.login,
-				head_repo_name: pull_synced.pull_request.head.repo.name,
+				pr_repo_owner: pull_synced.pull_request.head.repo.owner.login,
+				pr_repo_name: pull_synced.pull_request.head.repo.name,
+				repo_owner: pull_synced.repository.owner.login,
+				repo_name: pull_synced.repository.name,
 				to_be_committed_branch_name: pull_synced.pull_request.base.ref_,
 				pr_number: pull_synced.pull_request.number.to_string(),
 				commit_sha: pull_synced.pull_request.head.sha,
@@ -198,17 +203,15 @@ async fn handle_ci_hooks_for_repo(
 	.await?
 	.status(500)?;
 
-	let (login_name, access_token) = git_provider
-		.login_name
-		.zip(git_provider.password)
-		.status(500)?;
+	let access_token = git_provider.password.status(500)?;
 
-	let ci_file_content =
-		service::fetch_ci_file_content_from_github_repo_based_on_event(
-			&event_type,
-			&access_token,
-		)
-		.await?;
+	let ci_file_content = service::fetch_ci_file_content_from_github_repo(
+		event_type.repo_owner(),
+		event_type.repo_name(),
+		event_type.commit_sha(),
+		&access_token,
+	)
+	.await?;
 
 	let build_num = service::create_build_for_repo(
 		context.get_database_connection(),
@@ -315,26 +318,25 @@ async fn handle_ci_hooks_for_repo(
 
 	context.commit_database_transaction().await?;
 
-	let config = context.get_state().config.clone();
-	service::add_build_steps_in_k8s(
+	service::update_github_commit_status_for_build(
 		context.get_database_connection(),
-		&config,
-		&repo.id,
-		&repo.repo_name,
-		&BuildId {
+		&git_provider.workspace_id,
+		&repo_id,
+		build_num,
+		CommitStatus::Running,
+	)
+	.await?;
+
+	service::queue_check_and_start_ci_build(
+		BuildId {
 			repo_workspace_id: git_provider.workspace_id,
 			repo_id: repo.id.clone(),
 			build_num,
 		},
 		pipeline.services,
 		works,
-		Some(Netrc {
-			machine: "github.com".to_owned(),
-			login: login_name,
-			password: access_token,
-		}),
 		event_type,
-		&repo.clone_url,
+		&context.get_state().config,
 		&request_id,
 	)
 	.await?;

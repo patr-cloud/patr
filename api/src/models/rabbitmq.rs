@@ -1,9 +1,12 @@
 use std::{fmt, slice::Iter};
 
 use api_models::{
-	models::workspace::infrastructure::deployment::{
-		Deployment,
-		DeploymentRunningDetails,
+	models::{
+		ci::file_format::{Service, Work},
+		workspace::infrastructure::deployment::{
+			Deployment,
+			DeploymentRunningDetails,
+		},
 	},
 	utils::{DateTime, Uuid},
 };
@@ -11,6 +14,7 @@ use chrono::Utc;
 use kube::config::Kubeconfig;
 use serde::{Deserialize, Serialize};
 
+use super::ci::EventType;
 use crate::{
 	db::Workspace,
 	rabbitmq::{BuildId, BuildStep},
@@ -158,12 +162,16 @@ pub enum BillingData {
 #[serde(tag = "action", rename_all = "camelCase")]
 #[allow(clippy::large_enum_variant)]
 pub enum CIData {
-	BuildStep {
-		build_step: BuildStep,
+	CheckAndStartBuild {
+		build_id: BuildId,
+		services: Vec<Service>,
+		work_steps: Vec<Work>,
+		event_type: EventType,
 		request_id: Uuid,
 	},
-	CancelBuild {
-		build_id: BuildId,
+	BuildStep {
+		build_step: BuildStep,
+		event_type: EventType,
 		request_id: Uuid,
 	},
 	CleanBuild {
