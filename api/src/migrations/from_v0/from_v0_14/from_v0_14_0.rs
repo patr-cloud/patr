@@ -16,6 +16,9 @@ pub(super) async fn migrate(
 	add_permission_for_ci_routes(connection, config).await?;
 	add_ci_runner(connection, config).await?;
 
+	// byoc migrations
+	add_permission_for_byoc_routes(connection, config).await?;
+
 	// common post-migrations
 	reset_permission_order(&mut *connection, config).await?;
 	reset_resource_type_order(&mut *connection, config).await?;
@@ -59,6 +62,53 @@ pub async fn add_permission_for_ci_routes(
 		"workspace::ci::git_provider::list",
 		"workspace::ci::recent_activity",
 	];
+
+	for permission in permissions {
+		let uuid = loop {
+			let uuid = Uuid::new_v4();
+
+			let exists = query!(
+				r#"
+				SELECT
+					*
+				FROM
+					permission
+				WHERE
+					id = $1;
+				"#,
+				&uuid
+			)
+			.fetch_optional(&mut *connection)
+			.await?
+			.is_some();
+
+			if !exists {
+				break uuid;
+			}
+		};
+
+		query!(
+			r#"
+			INSERT INTO
+				permission
+			VALUES
+				($1, $2, '');
+			"#,
+			&uuid,
+			permission
+		)
+		.fetch_optional(&mut *connection)
+		.await?;
+	}
+
+	Ok(())
+}
+
+pub async fn add_permission_for_byoc_routes(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	let permissions = ["workspace::region::check_status"];
 
 	for permission in permissions {
 		let uuid = loop {
@@ -365,6 +415,7 @@ async fn reset_permission_order(
 		"workspace::rbac::user::updateRoles",
 		"workspace::region::list",
 		"workspace::region::info",
+		"workspace::region::check_status",
 		"workspace::region::add",
 		"workspace::region::delete",
 		"workspace::ci::recent_activity",

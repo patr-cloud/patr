@@ -387,12 +387,28 @@ pub async fn update_deployment(
 		0
 	};
 
+	let deployment_details_from_db =
+		db::get_deployment_by_id(connection, deployment_id)
+			.await?
+			.status(400)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let region_details =
+		db::get_region_by_id(connection, &deployment_details_from_db.region)
+			.await?
+			.filter(|value| {
+				value.is_patr_region() ||
+					value.workspace_id.as_ref() == Some(workspace_id)
+			})
+			.status(400)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
 	// Check if card is added
 	let card_added =
 		db::get_default_payment_method_for_workspace(connection, workspace_id)
 			.await?
 			.is_some();
-	if !card_added {
+	if region_details.is_patr_region() && !card_added {
 		if let Some(machine_type) = machine_type {
 			// only basic machine type is allowed under free plan
 			let machine_type_to_be_deployed = MACHINE_TYPES

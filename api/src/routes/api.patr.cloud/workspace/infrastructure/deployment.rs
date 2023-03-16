@@ -8,6 +8,7 @@ use api_models::{
 				BuildLog,
 				CreateDeploymentRequest,
 				CreateDeploymentResponse,
+				DeleteDeploymentRequest,
 				DeleteDeploymentResponse,
 				Deployment,
 				DeploymentDeployHistory,
@@ -1553,6 +1554,15 @@ async fn delete_deployment(
 	)
 	.unwrap();
 
+	let DeleteDeploymentRequest {
+		workspace_id: _,
+		deployment_id: _,
+		hard_delete,
+	} = context
+		.get_query_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
 	let ip_address = routes::get_request_ip_address(&context);
 
 	let user_id = context.get_token_data().unwrap().user_id().clone();
@@ -1621,6 +1631,19 @@ async fn delete_deployment(
 			.body(error!(RESOURCE_IN_USE).to_string())?;
 	}
 
+	let region = db::get_region_by_id(
+		context.get_database_connection(),
+		&deployment.region,
+	)
+	.await?
+	.status(500)?;
+
+	let delete_k8s_resource = if region.is_patr_region() {
+		true
+	} else {
+		hard_delete
+	};
+
 	log::trace!("request_id: {} - Deleting deployment", request_id);
 	service::delete_deployment(
 		context.get_database_connection(),
@@ -1631,7 +1654,7 @@ async fn delete_deployment(
 		Some(&login_id),
 		&ip_address,
 		false,
-		true,
+		delete_k8s_resource,
 		&config,
 		&request_id,
 	)
