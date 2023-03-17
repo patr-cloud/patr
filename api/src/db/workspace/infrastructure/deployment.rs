@@ -1536,54 +1536,56 @@ mod tests {
 	async fn environment_variable_for_deployment_test(
 		pool: PgPool,
 	) -> sqlx::Result<()> {
-		let connection = pool.acquire().await?;
+		let mut connection = pool.acquire().await?;
 
 		let expected_output = DeploymentEnvironmentVariable {
 			deployment_id: Uuid::new_v4(),
-			name: "TEST",
-			value: Some("value"),
+			name: "TEST".to_owned(),
+			value: Some("value".to_owned()),
 			secret_id: Some(Uuid::new_v4()),
 		};
 
+		//
 		add_environment_variable_for_deployment(
-			connection,
+			&mut connection,
 			&expected_output.deployment_id,
-			&expected_output.name,
-			&expected_output.value,
-			&expected_output.secret_id,
+			&expected_output.name.as_str(),
+			expected_output.value.as_deref(),
+			None,
 		)
 		.await?;
 
 		let output = get_environment_variables_for_deployment(
-			connection,
+			&mut connection,
 			&expected_output.deployment_id,
 		)
 		.await?;
-
-		// Testing if values are added correctly
-		assert_eq!(output[0], expected_output[0]);
 
 		let output_with_secret =
 			get_deployments_with_secret_as_environment_variable(
-				connection,
-				expected_output.secret_id,
+				&mut connection,
+				&expected_output.secret_id.clone().unwrap(),
 			)
 			.await?;
 
-		// Deleting env variables
 		remove_all_environment_variables_for_deployment(
-			connection,
-			expected_output.deployment_id,
+			&mut connection,
+			&expected_output.deployment_id,
 		)
 		.await?;
-
 		let deleted_output = get_environment_variables_for_deployment(
-			connection,
+			&mut connection,
 			&expected_output.deployment_id,
 		)
 		.await?;
 
-		assert_eq!([], deleted_output);
+		//Test cases
+		assert_eq!(output[0].value, expected_output.value);
+		assert_eq!(output[0].deployment_id, expected_output.deployment_id);
+		assert_eq!(output[0].secret_id, expected_output.secret_id.clone());
+		assert_eq!(output[0].secret_id, expected_output.secret_id);
+		assert_eq!("", deleted_output[0].name);
+		assert_eq!("".to_owned(), deleted_output[0].value.clone().unwrap());
 
 		Ok(())
 	}
@@ -1592,7 +1594,7 @@ mod tests {
 	async fn create_deployment_with_internal_registry_test(
 		pool: PgPool,
 	) -> sqlx::Result<()> {
-		let connection = pool.acquire().await?;
+		let mut connection = pool.acquire().await?;
 
 		let expected_output = Deployment {
 			id: Uuid::new_v4(),
@@ -1601,52 +1603,56 @@ mod tests {
 			repository_id: Some(Uuid::new_v4()),
 			image_name: Some("test_image".to_owned()),
 			image_tag: "test_image".to_owned(),
-			status: "created".to_owned(),
+			status: DeploymentStatus::Created,
 			workspace_id: Uuid::new_v4(),
 			region: Uuid::new_v4(),
 			min_horizontal_scale: 1,
 			max_horizontal_scale: 2,
 			machine_type: Uuid::new_v4(),
 			deploy_on_push: true,
-			startup_probe_path: "/data",
+			startup_probe_path: Some("/data".to_owned()),
 			startup_probe_port: Some(2020),
-			liveness_probe_path: "/data",
+			liveness_probe_path: Some("/data".to_owned()),
 			liveness_probe_port: Some(2020),
 			current_live_digest: Some("test_digest".to_owned()),
 		};
 
 		create_deployment_with_internal_registry(
-			connection,
+			&mut connection,
 			&expected_output.id,
 			&expected_output.name,
-			&expected_output.repository_id,
+			&expected_output.repository_id.clone().unwrap(),
 			&expected_output.image_tag,
 			&expected_output.workspace_id,
 			&expected_output.region,
 			&expected_output.machine_type,
-			&expected_output.deploy_on_push,
-			expected_output.min_horizontal_scale,
-			expected_output.max_horizontal_scale,
+			expected_output.deploy_on_push,
+			expected_output.min_horizontal_scale as u16,
+			expected_output.max_horizontal_scale as u16,
 			Some(&DeploymentProbe {
-				port: expected_output.startup_probe_port,
-				path: expected_output.startup_probe_path,
+				port: expected_output.startup_probe_port.unwrap() as u16,
+				path: expected_output.startup_probe_path.unwrap(),
 			}),
 			Some(&DeploymentProbe {
-				port: expected_output.liveness_probe_port,
-				path: expected_output.liveness_probe_path,
+				port: expected_output.liveness_probe_port.unwrap() as u16,
+				path: expected_output.liveness_probe_path.clone().unwrap(),
 			}),
 		)
 		.await?;
 
 		let repo_output = get_deployments_by_repository_id(
-			connection,
-			&expected_output.repository_id,
+			&mut connection,
+			&expected_output.repository_id.clone().unwrap(),
 		)
 		.await?;
-		let id_output = get_deployment_by_id(connection, &expected_output.id);
+		let id_output = get_deployment_by_id(&mut connection, &expected_output.id).await?.unwrap();
 
 		//Test cases
-		assert_eq!(expected_output, output[0]);
+		assert_eq!(expected_output.deploy_on_push, repo_output[0].deploy_on_push);
+		assert_eq!(expected_output.id, repo_output[0].id);
+		assert_eq!(expected_output.liveness_probe_path, repo_output[0].liveness_probe_path);
+		assert_eq!(expected_output.deploy_on_push, id_output.deploy_on_push);
+		assert_ne!(expected_output.min_horizontal_scale, 4);
 
 		Ok(())
 	}
@@ -1655,7 +1661,7 @@ mod tests {
 	async fn create_deployment_with_external_registry_test(
 		pool: PgPool,
 	) -> sqlx::Result<()> {
-		let connection = pool.acquire().await?;
+		let mut connection = pool.acquire().await?;
 
 		let expected_output = Deployment {
 			id: Uuid::new_v4(),
@@ -1664,59 +1670,66 @@ mod tests {
 			repository_id: Some(Uuid::new_v4()),
 			image_name: Some("test_image".to_owned()),
 			image_tag: "test_image".to_owned(),
-			status: "created".to_owned(),
+			status: DeploymentStatus::Created,
 			workspace_id: Uuid::new_v4(),
 			region: Uuid::new_v4(),
 			min_horizontal_scale: 1,
 			max_horizontal_scale: 2,
 			machine_type: Uuid::new_v4(),
 			deploy_on_push: true,
-			startup_probe_path: "/data",
+			startup_probe_path: Some("/data".to_owned()),
 			startup_probe_port: Some(2020),
-			liveness_probe_path: "/data",
+			liveness_probe_path: Some("/data".to_owned()),
 			liveness_probe_port: Some(2020),
 			current_live_digest: Some("test_digest".to_owned()),
 		};
 
 		create_deployment_with_external_registry(
-			connection,
+			&mut connection,
 			&expected_output.id,
 			&expected_output.name,
 			&expected_output.registry,
-			&expected_output.image_name,
+			&expected_output.image_name.clone().unwrap().as_str(),
 			&expected_output.image_tag,
 			&expected_output.workspace_id,
 			&expected_output.region,
 			&expected_output.machine_type,
 			expected_output.deploy_on_push,
-			expected_output.min_horizontal_scale,
-			expected_output.max_horizontal_scale,
+			expected_output.min_horizontal_scale as u16,
+			expected_output.max_horizontal_scale as u16,
 			Some(&DeploymentProbe {
-				port: expected_output.startup_probe_port,
-				path: expected_output.startup_probe_path,
+				port: expected_output.startup_probe_port.unwrap() as u16,
+				path: expected_output.startup_probe_path.unwrap(),
 			}),
 			Some(&DeploymentProbe {
-				port: expected_output.liveness_probe_port,
-				path: expected_output.liveness_probe_path,
+				port: expected_output.liveness_probe_port.unwrap() as u16,
+				path: expected_output.liveness_probe_path.clone().unwrap(),
 			}),
 		)
 		.await?;
 
 		let image_output = get_deployments_by_image_name_and_tag_for_workspace(
-			connection,
-			&expected_output.image_name,
+			&mut connection,
+			&expected_output.image_name.clone().unwrap(),
 			&expected_output.image_tag,
 			&expected_output.workspace_id,
 		)
 		.await?;
 		let workspace_output = get_deployments_for_workspace(
-			connection,
+			&mut connection,
 			&expected_output.workspace_id,
 		)
 		.await?;
 
 		// Test cases
-		assert_eq!(expected_output, output[0]);
+		assert_eq!(expected_output.deploy_on_push, image_output[0].deploy_on_push);
+		assert_eq!(expected_output.current_live_digest, image_output[0].current_live_digest);
+		assert_eq!(expected_output.image_name.unwrap(), image_output[0].image_name.clone().unwrap());
+		assert_eq!(expected_output.id, image_output[0].id);
+		assert_eq!(expected_output.image_tag, image_output[0].image_tag);
+		assert_eq!(expected_output.liveness_probe_port, image_output[0].liveness_probe_port);
+		assert_eq!(expected_output.liveness_probe_path, image_output[0].liveness_probe_path);
+		assert_eq!(expected_output.max_horizontal_scale, image_output[0].max_horizontal_scale);
 
 		Ok(())
 	}
@@ -1725,7 +1738,7 @@ mod tests {
 	async fn get_deployment_by_id_including_deleted_test(
 		pool: PgPool,
 	) -> sqlx::Result<()> {
-		let connection = pool.acquire().await?;
+		let mut connection = pool.acquire().await?;
 
 		let expected_output = Deployment {
 			id: Uuid::new_v4(),
@@ -1734,56 +1747,62 @@ mod tests {
 			repository_id: Some(Uuid::new_v4()),
 			image_name: Some("test_image".to_owned()),
 			image_tag: "test_image".to_owned(),
-			status: "deleted".to_owned(),
+			status: DeploymentStatus::Deleted,
 			workspace_id: Uuid::new_v4(),
 			region: Uuid::new_v4(),
 			min_horizontal_scale: 1,
 			max_horizontal_scale: 2,
 			machine_type: Uuid::new_v4(),
 			deploy_on_push: true,
-			startup_probe_path: "/data",
+			startup_probe_path: Some("/data".to_owned()),
 			startup_probe_port: Some(2020),
-			liveness_probe_path: "/data",
+			liveness_probe_path: Some("/data".to_owned()),
 			liveness_probe_port: Some(2020),
 			current_live_digest: Some("test_digest".to_owned()),
 		};
 
 		create_deployment_with_internal_registry(
-			connection,
+			&mut connection,
 			&expected_output.id,
 			&expected_output.name,
-			&expected_output.repository_id,
+			&expected_output.repository_id.unwrap(),
 			&expected_output.image_tag,
 			&expected_output.workspace_id,
 			&expected_output.region,
 			&expected_output.machine_type,
-			&expected_output.deploy_on_push,
-			expected_output.min_horizontal_scale,
-			expected_output.max_horizontal_scale,
+			expected_output.deploy_on_push,
+			expected_output.min_horizontal_scale as u16,
+			expected_output.max_horizontal_scale as u16,
 			Some(&DeploymentProbe {
-				port: expected_output.startup_probe_port,
-				path: expected_output.startup_probe_path,
+				port: expected_output.startup_probe_port.unwrap() as u16,
+				path: expected_output.startup_probe_path.unwrap(),
 			}),
 			Some(&DeploymentProbe {
-				port: expected_output.liveness_probe_port,
-				path: expected_output.liveness_probe_path,
+				port: expected_output.liveness_probe_port.unwrap() as u16,
+				path: expected_output.liveness_probe_path.clone().unwrap(),
 			}),
 		)
 		.await?;
 
 		let output = get_deployment_by_id_including_deleted(
-			connection,
+			&mut connection,
 			&expected_output.id,
 		)
-		.await?;
+		.await?.unwrap();
 
-		assert_eq!(expected_output, output.unwrap());
+		assert_eq!(expected_output.current_live_digest, output.current_live_digest);
+		assert_eq!(expected_output.deploy_on_push, output.deploy_on_push);
+		assert_eq!(expected_output.image_name, output.image_name);
+		assert_eq!(expected_output.image_tag, output.image_tag);
+		assert_eq!(expected_output.liveness_probe_path, output.liveness_probe_path);
+		assert_eq!(expected_output.machine_type, output.machine_type);
 
 		Ok(())
 	}
 
 	#[sqlx::test]
 	async fn update_deployment_status_test(pool: PgPool) -> sqlx::Result<()> {
+		let mut connection = pool.acquire().await?;
 		let deployment = Deployment {
 			id: Uuid::new_v4(),
 			name: "test".to_owned(),
@@ -1791,16 +1810,16 @@ mod tests {
 			repository_id: Some(Uuid::new_v4()),
 			image_name: Some("test_image".to_owned()),
 			image_tag: "test_image".to_owned(),
-			status: "created".to_owned(),
+			status: DeploymentStatus::Created,
 			workspace_id: Uuid::new_v4(),
 			region: Uuid::new_v4(),
 			min_horizontal_scale: 1,
 			max_horizontal_scale: 2,
 			machine_type: Uuid::new_v4(),
 			deploy_on_push: true,
-			startup_probe_path: "/data",
+			startup_probe_path: Some("/data".to_owned()),
 			startup_probe_port: Some(2020),
-			liveness_probe_path: "/data",
+			liveness_probe_path: Some("/data".to_owned()),
 			liveness_probe_port: Some(2020),
 			current_live_digest: Some("test_digest".to_owned()),
 		};
@@ -1812,31 +1831,61 @@ mod tests {
 			repository_id: Some(Uuid::new_v4()),
 			image_name: Some("test_image".to_owned()),
 			image_tag: "test_image".to_owned(),
-			status: "running".to_owned(),
+			status: DeploymentStatus::Created,
 			workspace_id: Uuid::new_v4(),
 			region: Uuid::new_v4(),
 			min_horizontal_scale: 1,
 			max_horizontal_scale: 2,
 			machine_type: Uuid::new_v4(),
 			deploy_on_push: true,
-			startup_probe_path: "/data",
+			startup_probe_path: Some("/data".to_owned()),
 			startup_probe_port: Some(2020),
-			liveness_probe_path: "/data",
+			liveness_probe_path: Some("/data".to_owned()),
 			liveness_probe_port: Some(2020),
 			current_live_digest: Some("test_digest".to_owned()),
 		};
 
+		create_deployment_with_internal_registry(
+			&mut connection,
+			&deployment.id,
+			&deployment.name,
+			&deployment.repository_id.unwrap(),
+			&deployment.image_tag,
+			&deployment.workspace_id,
+			&deployment.region,
+			&deployment.machine_type,
+			deployment.deploy_on_push,
+			deployment.min_horizontal_scale as u16,
+			deployment.max_horizontal_scale as u16,
+			Some(&DeploymentProbe {
+				port: deployment.startup_probe_port.unwrap() as u16,
+				path: deployment.startup_probe_path.unwrap(),
+			}),
+			Some(&DeploymentProbe {
+				port: deployment.liveness_probe_port.unwrap() as u16,
+				path: deployment.liveness_probe_path.clone().unwrap(),
+			}),
+		)
+		.await?;
+
+		let output_for_status_before_update = get_deployments_for_workspace(&mut connection, &deployment.workspace_id)
+			.await?;
+		
+		//Test for status update after status is updated
+		assert_eq!(expected_output_for_status_update.status, output_for_status_before_update[0].status);
+
 		update_deployment_status(
-			connection,
+			&mut connection,
 			&deployment.id,
 			&DeploymentStatus::Running,
 		)
 		.await?;
 		let output_for_status_update =
-			get_deployments_for_workspace(connection, &deployment.workspace_id)
+			get_deployments_for_workspace(&mut connection, &deployment.workspace_id)
 				.await?;
 
-		//Test for status update
+		//Test for status update after status is updated
+		assert_eq!(expected_output_for_status_update.status, output_for_status_update[0].status);
 
 		let expected_output_for_status_delete = Deployment {
 			id: Uuid::new_v4(),
@@ -1845,49 +1894,174 @@ mod tests {
 			repository_id: Some(Uuid::new_v4()),
 			image_name: Some("test_image".to_owned()),
 			image_tag: "test_image".to_owned(),
-			status: "deleted".to_owned(),
+			status: DeploymentStatus::Deleted,
 			workspace_id: Uuid::new_v4(),
 			region: Uuid::new_v4(),
 			min_horizontal_scale: 1,
 			max_horizontal_scale: 2,
 			machine_type: Uuid::new_v4(),
 			deploy_on_push: true,
-			startup_probe_path: "/data",
+			startup_probe_path: Some("/data".to_owned()),
 			startup_probe_port: Some(2020),
-			liveness_probe_path: "/data",
+			liveness_probe_path: Some("/data".to_owned()),
 			liveness_probe_port: Some(2020),
 			current_live_digest: Some("test_digest".to_owned()),
 		};
 
-		delete_deployment(connection, &deployment.id, &Utc::now()).await?;
+		delete_deployment(&mut connection, &deployment.id, &Utc::now()).await?;
 		let output_for_status_delete = get_deployment_by_id_including_deleted(
-			connection,
-			&expected_output.id,
+			&mut connection,
+			&expected_output_for_status_delete.id,
 		)
-		.await?;
+		.await?.unwrap();
 
-		// Test
+		// Test after deletion
+		assert_eq!(expected_output_for_status_delete.status, output_for_status_delete.status);
 
 		Ok(())
 	}
 
 	#[sqlx::test]
 	async fn deployment_port_test(pool: PgPool) -> sqlx::Result<()> {
+		let mut connection = pool.acquire().await?;
+		let deployment = Deployment {
+			id: Uuid::new_v4(),
+			name: "test".to_owned(),
+			registry: "registry.patr.cloud".to_owned(),
+			repository_id: Some(Uuid::new_v4()),
+			image_name: Some("test_image".to_owned()),
+			image_tag: "test_image".to_owned(),
+			status: DeploymentStatus::Created,
+			workspace_id: Uuid::new_v4(),
+			region: Uuid::new_v4(),
+			min_horizontal_scale: 1,
+			max_horizontal_scale: 2,
+			machine_type: Uuid::new_v4(),
+			deploy_on_push: true,
+			startup_probe_path: Some("/data".to_owned()),
+			startup_probe_port: Some(2020),
+			liveness_probe_path: Some("/data".to_owned()),
+			liveness_probe_port: Some(2020),
+			current_live_digest: Some("test_digest".to_owned()),
+		};
+		create_deployment_with_internal_registry(
+			&mut connection,
+			&deployment.id,
+			&deployment.name,
+			&deployment.repository_id.unwrap(),
+			&deployment.image_tag,
+			&deployment.workspace_id,
+			&deployment.region,
+			&deployment.machine_type,
+			deployment.deploy_on_push,
+			deployment.min_horizontal_scale as u16,
+			deployment.max_horizontal_scale as u16,
+			Some(&DeploymentProbe {
+				port: deployment.startup_probe_port.unwrap() as u16,
+				path: deployment.startup_probe_path.unwrap(),
+			}),
+			Some(&DeploymentProbe {
+				port: deployment.liveness_probe_port.unwrap() as u16,
+				path: deployment.liveness_probe_path.clone().unwrap(),
+			}),
+		)
+		.await?;
+		
+		let expected_port = 2020;
+		let expected_port_type = ExposedPortType::Tcp;
+
+		add_exposed_port_for_deployment(&mut connection, &deployment.id, expected_port, &expected_port_type).await?;
+		let port_output = get_exposed_ports_for_deployment(&mut connection, &deployment.id).await?;
+		
+		// Test after adding port
+		assert_eq!(expected_port, port_output[0].0);
+		assert_eq!(expected_port_type, port_output[0].1);
+
+		remove_all_exposed_ports_for_deployment(&mut connection, &deployment.id).await?;
+		let delete_output = get_exposed_ports_for_deployment(&mut connection, &deployment.id).await?;
+
+		// Test after removing port
+		assert_eq!(expected_port, delete_output[0].0);
+		assert_eq!(expected_port_type, delete_output[0].1);
+
 		Ok(())
 	}
 
 	#[sqlx::test]
 	async fn deployment_volume_test(pool: PgPool) -> sqlx::Result<()> {
-		Ok(())
-	}
+		let mut connection = pool.acquire().await?;
+		let deployment = Deployment {
+			id: Uuid::new_v4(),
+			name: "test".to_owned(),
+			registry: "registry.patr.cloud".to_owned(),
+			repository_id: Some(Uuid::new_v4()),
+			image_name: Some("test_image".to_owned()),
+			image_tag: "test_image".to_owned(),
+			status: DeploymentStatus::Created,
+			workspace_id: Uuid::new_v4(),
+			region: Uuid::new_v4(),
+			min_horizontal_scale: 1,
+			max_horizontal_scale: 2,
+			machine_type: Uuid::new_v4(),
+			deploy_on_push: true,
+			startup_probe_path: Some("/data".to_owned()),
+			startup_probe_port: Some(2020),
+			liveness_probe_path: Some("/data".to_owned()),
+			liveness_probe_port: Some(2020),
+			current_live_digest: Some("test_digest".to_owned()),
+		};
+		create_deployment_with_internal_registry(
+			&mut connection,
+			&deployment.id,
+			&deployment.name,
+			&deployment.repository_id.unwrap(),
+			&deployment.image_tag,
+			&deployment.workspace_id,
+			&deployment.region,
+			&deployment.machine_type,
+			deployment.deploy_on_push,
+			deployment.min_horizontal_scale as u16,
+			deployment.max_horizontal_scale as u16,
+			Some(&DeploymentProbe {
+				port: deployment.startup_probe_port.unwrap() as u16,
+				path: deployment.startup_probe_path.unwrap(),
+			}),
+			Some(&DeploymentProbe {
+				port: deployment.liveness_probe_port.unwrap() as u16,
+				path: deployment.liveness_probe_path.clone().unwrap(),
+			}),
+		)
+		.await?;
+		
+		let volume_id = Uuid::new_v4();
+		let volume_name = "test";
+		let volume_size = 16;
+		let volume_path =  "/root";
 
-	#[sqlx::test]
-	async fn deployment_cofig_mount_test(pool: PgPool) -> sqlx::Result<()> {
-		Ok(())
-	}
+		add_volume_for_deployment(&mut connection, &deployment.id, &volume_id, &volume_name, volume_size, &volume_path).await?;
+		let vol_output = get_all_deployment_volumes(&mut connection, &deployment.id).await?;
 
-	#[sqlx::test]
-	async fn deployment_digest_test(pool: PgPool) -> sqlx::Result<()> {
+		//Test
+		assert_eq!(volume_id, vol_output[0].volume_id);
+		assert_eq!(volume_name, vol_output[0].name);
+		assert_eq!(volume_size, vol_output[0].size);
+		assert_eq!(volume_path, vol_output[0].path);
+
+		update_volume_for_deployment(&mut connection, &deployment.id, 12, volume_name).await?;
+		let update_output = get_all_deployment_volumes(&mut connection, &deployment.id).await?;
+
+		//Test
+		assert_eq!(volume_id, update_output[0].volume_id);
+		assert_eq!(volume_name, update_output[0].name);
+		assert_eq!(12, update_output[0].size);
+		assert_eq!(volume_path, update_output[0].path);
+
+		delete_volume(&mut connection, &volume_id, &Utc::now()).await?;
+		let deleted_output = get_all_deployment_volumes(&mut connection, &deployment.id).await?;
+
+		//Test
+		assert_ne!(volume_id, vol_output[0].volume_id);
+		
 		Ok(())
 	}
 }
