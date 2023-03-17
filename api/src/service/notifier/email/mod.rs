@@ -861,7 +861,7 @@ where
 		Ok(())
 	});
 
-	let _ = task::spawn(async {
+	task::spawn(async {
 		let result = join_handle.await;
 
 		if let Ok(Err(error)) = result {
