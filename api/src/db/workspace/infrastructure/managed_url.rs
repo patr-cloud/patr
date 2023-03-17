@@ -497,47 +497,7 @@ pub async fn get_all_managed_urls_for_deployment(
 	query_as!(
 		ManagedUrl,
 		r#"
-		WITH RECURSIVE managed_url_list AS (
-			SELECT
-				managed_url.*
-			FROM
-				managed_url
-			INNER JOIN
-				domain
-			ON
-				managed_url.domain_id = domain.id
-			WHERE
-				managed_url.deployment_id = $1 AND
-				managed_url.url_type = 'proxy_to_deployment'
-			UNION ALL
-			SELECT
-				managed_url.*
-			FROM
-				managed_url
-			INNER JOIN
-				domain
-			ON
-				managed_url.domain_id = domain.id
-			JOIN
-				managed_url_list
-			ON
-				managed_url.url LIKE CONCAT(
-					managed_url.sub_domain,
-					'.',
-					domain.name,
-					'.',
-					domain.tld,
-					CASE managed_url.path
-						WHEN '/' THEN
-							'%'
-						ELSE
-							CONCAT(managed_url.path, '%')
-					END
-				)
-			WHERE
-				managed_url.url_type = 'redirect' OR
-				managed_url.url_type = 'proxy_url'
-		) SELECT
+		SELECT
 			id as "id!: _",
 			sub_domain as "sub_domain!: _",
 			domain_id as "domain_id!: _",
@@ -553,10 +513,12 @@ pub async fn get_all_managed_urls_for_deployment(
 			http_only as "http_only!: _",
 			cloudflare_custom_hostname_id as "cloudflare_custom_hostname_id!: _"
 		FROM
-			managed_url_list
+			managed_url
 		WHERE
-			managed_url_list.workspace_id = $2 AND
-			managed_url_list.deleted IS NULL;
+			managed_url.deployment_id = $1 AND
+			managed_url.workspace_id = $2 AND
+			managed_url.url_type = 'proxy_to_deployment' AND
+			managed_url.deleted IS NULL;
 		"#,
 		deployment_id as _,
 		workspace_id as _
@@ -573,47 +535,7 @@ pub async fn get_all_managed_urls_for_static_site(
 	query_as!(
 		ManagedUrl,
 		r#"
-		WITH RECURSIVE managed_url_list AS (
-			SELECT
-				managed_url.*
-			FROM
-				managed_url
-			INNER JOIN
-				domain
-			ON
-				managed_url.domain_id = domain.id
-			WHERE
-				managed_url.static_site_id = $1 AND
-				managed_url.url_type = 'proxy_to_static_site'
-			UNION ALL
-			SELECT
-				managed_url.*
-			FROM
-				managed_url
-			INNER JOIN
-				domain
-			ON
-				managed_url.domain_id = domain.id
-			JOIN
-				managed_url_list
-			ON
-				managed_url.url LIKE CONCAT(
-					managed_url.sub_domain,
-					'.',
-					domain.name,
-					'.',
-					domain.tld,
-					CASE managed_url.path
-						WHEN '/' THEN
-							'%'
-						ELSE
-							CONCAT(managed_url.path, '%')
-					END
-				)
-			WHERE
-				managed_url.url_type = 'redirect' OR
-				managed_url.url_type = 'proxy_url'
-		) SELECT
+		SELECT
 			id as "id!: _",
 			sub_domain as "sub_domain!: _",
 			domain_id as "domain_id!: _",
@@ -629,10 +551,12 @@ pub async fn get_all_managed_urls_for_static_site(
 			http_only as "http_only!: _",
 			cloudflare_custom_hostname_id as "cloudflare_custom_hostname_id!: _"
 		FROM
-			managed_url_list
+			managed_url
 		WHERE
-			managed_url_list.workspace_id = $2 AND
-			managed_url_list.deleted IS NULL;
+			managed_url.static_site_id = $1 AND
+			managed_url.workspace_id = $2 AND
+			managed_url.url_type = 'proxy_to_static_site' AND
+			managed_url.deleted IS NULL;
 		"#,
 		static_site_id as _,
 		workspace_id as _
