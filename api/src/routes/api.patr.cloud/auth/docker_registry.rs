@@ -1,4 +1,5 @@
 use api_models::utils::Uuid;
+use base64::prelude::*;
 use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, HttpMethod, NextHandler};
 use serde_json::json;
@@ -13,7 +14,7 @@ use crate::{
 		RegistryTokenAccess,
 	},
 	pin_fn,
-	service::{self},
+	service,
 	utils::{
 		constants::request_keys,
 		validator,
@@ -209,7 +210,8 @@ async fn docker_registry_login(
 		.get_header("Authorization")
 		.map(|value| value.replace("Basic ", ""))
 		.map(|value| {
-			base64::decode(value)
+			BASE64_STANDARD
+				.decode(value)
 				.ok()
 				.and_then(|value| String::from_utf8(value).ok())
 				.status(400)
@@ -339,7 +341,8 @@ async fn docker_registry_authenticate(
 		.get_header("Authorization")
 		.map(|value| value.replace("Basic ", ""))
 		.map(|value| {
-			base64::decode(value)
+			BASE64_STANDARD
+				.decode(value)
 				.ok()
 				.and_then(|value| String::from_utf8(value).ok())
 				.status(400)

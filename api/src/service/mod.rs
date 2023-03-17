@@ -19,6 +19,8 @@ mod user;
 mod utils;
 mod workspace;
 
+use base64::prelude::*;
+
 pub use self::{
 	auth::*,
 	billing::*,
@@ -50,7 +52,8 @@ static APP: once_cell::sync::OnceCell<App> = once_cell::sync::OnceCell::new();
 /// [`APP`]: APP
 pub fn initialize(app: &App) {
 	let mut app = app.clone();
-	app.config.password_pepper = base64::encode(&app.config.password_pepper);
+	app.config.password_pepper =
+		BASE64_STANDARD.encode(&app.config.password_pepper);
 	APP.set(app).expect("unable to set app settings");
 }
 

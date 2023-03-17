@@ -4,6 +4,7 @@ use std::{
 };
 
 use api_models::models::workspace::infrastructure::deployment::DeploymentStatus;
+use base64::prelude::*;
 use chrono::Utc;
 use eve_rs::AsError;
 use futures::{stream, StreamExt};
@@ -76,7 +77,7 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
-			let file_data = Cursor::new(base64::decode(file)?);
+			let file_data = Cursor::new(BASE64_STANDARD.decode(file)?);
 
 			let mut archive = ZipArchive::new(file_data).map_err(|err| {
 				log::error!(
