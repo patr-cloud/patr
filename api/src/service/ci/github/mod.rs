@@ -471,7 +471,7 @@ pub async fn update_github_commit_status_for_build(
 				state: status.commit_state(),
 				description: status.description().to_owned(),
 				target_url: format!(
-					"https://app.patr.cloud/ci/github/{}/{}/build/{}?workspaceId={}",
+					"https://app.patr.cloud/ci/repository/github/{}/{}/build/{}?workspaceId={}",
 					&repo.repo_owner, &repo.repo_name, build_num, workspace_id
 				),
 			},
