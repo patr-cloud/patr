@@ -65,11 +65,12 @@ pub fn validate_hash(pwd: &str, hashed: &str) -> Result<bool, Error> {
 /// This function returns `Result<String, Error>` containing hashed password or
 /// an error
 pub fn hash(pwd: &[u8]) -> Result<String, Error> {
-	let salt = format!(
+	let salt = SaltString::from_b64(&format!(
 		"{}{}",
 		service::get_settings().password_pepper,
 		SaltString::generate(&mut rand::thread_rng()).as_str()
-	);
+	))
+	.expect("unable to generate salt");
 	ARGON
 		.hash_password(pwd, &salt)
 		.map(|hash| hash.to_string())
@@ -365,8 +366,10 @@ pub async fn get_image_name_and_digest_for_deployment_image(
 			"hub.docker.com" |
 			"index.docker.io" |
 			"docker.io" |
-			"" => Ok((format!("docker.io/{}", image_name), None)),
-			_ => Ok((format!("{}/{}", registry, image_name), None)),
+			"" => Ok((format!("docker.io/{}:{}", image_name, image_tag), None)),
+			_ => {
+				Ok((format!("{}/{}:{}", registry, image_name, image_tag), None))
+			}
 		},
 	}
 }

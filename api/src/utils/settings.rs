@@ -4,6 +4,7 @@ use std::{
 	net::IpAddr,
 };
 
+use base64::prelude::*;
 use config_rs::{Config, Environment, File};
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -236,7 +237,8 @@ where
 	D: Deserializer<'de>,
 {
 	let string = String::deserialize(value)?;
-	Ok(base64::decode(&string)
+	Ok(BASE64_STANDARD
+		.decode(&string)
 		.unwrap_or_else(|_| panic!("Unable to decode {} as base64", string)))
 }
 

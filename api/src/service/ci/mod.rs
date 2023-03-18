@@ -15,9 +15,11 @@ use api_models::{
 			When,
 			Work,
 		},
-		workspace::{
-			ci::git_provider::{BuildStepStatus, GitProviderType, RepoStatus},
-			region::RegionStatus,
+		workspace::ci::git_provider::{
+			BuildStatus,
+			BuildStepStatus,
+			GitProviderType,
+			RepoStatus,
 		},
 	},
 	utils::Uuid,
@@ -25,7 +27,7 @@ use api_models::{
 use chrono::Utc;
 use eve_rs::AsError;
 use globset::{Glob, GlobSetBuilder};
-use sqlx::types::Json;
+use kube::config::Kubeconfig;
 
 use crate::{
 	db::{self, GitProvider},
@@ -40,8 +42,9 @@ use crate::{
 };
 
 mod github;
+mod runner;
 
-pub use self::github::*;
+pub use self::{github::*, runner::*};
 
 pub struct Netrc {
 	pub machine: String,
@@ -369,45 +372,57 @@ pub async fn add_build_steps_in_db(
 pub async fn add_build_steps_in_k8s(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-	repo_id: &Uuid,
-	repo_name: &str,
 	build_id: &BuildId,
 	services: Vec<Service>,
 	work_steps: Vec<Work>,
-	netrc: Option<Netrc>,
 	event_type: EventType,
-	clone_url: &str,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {request_id} - Adding build steps in k8s");
 
-	let build_machine_type =
-		db::get_build_machine_type_for_repo(&mut *connection, repo_id)
-			.await?
-			.status(500)?;
+	// update the build status as started and update start time
+	db::update_build_status(
+		connection,
+		&build_id.repo_id,
+		build_id.build_num,
+		BuildStatus::Running,
+	)
+	.await?;
+	db::update_build_started_time(
+		connection,
+		&build_id.repo_id,
+		build_id.build_num,
+		&Utc::now(),
+	)
+	.await?;
+
+	let repo = db::get_repo_using_patr_repo_id(connection, &build_id.repo_id)
+		.await?
+		.status(500)?;
+
+	let kubeconfig =
+		service::get_kubeconfig_for_ci_build(connection, build_id).await?;
 
 	service::infrastructure::create_kubernetes_namespace(
 		&build_id.get_build_namespace(),
-		db::get_all_default_regions(&mut *connection)
-			.await?
-			.into_iter()
-			.find_map(|region| {
-				if region.status == RegionStatus::Active {
-					region.config_file.map(|Json(config)| config)
-				} else {
-					None
-				}
-			})
-			.status(500)?,
+		service::get_kubeconfig_for_ci_build(connection, build_id).await?,
 		request_id,
 	)
 	.await?;
 
+	let runner_resource = db::get_runner_resource_for_build(
+		connection,
+		&build_id.repo_id,
+		build_id.build_num,
+	)
+	.await?
+	.status(500)?;
+
 	service::infrastructure::create_pvc_for_workspace(
 		&build_id.get_build_namespace(),
 		&build_id.get_pvc_name(),
-		build_machine_type.volume as u32,
-		config,
+		runner_resource.volume_in_mb(),
+		kubeconfig.clone(),
 		request_id,
 	)
 	.await?;
@@ -417,11 +432,16 @@ pub async fn add_build_steps_in_k8s(
 			&build_id.get_build_namespace(),
 			build_id.repo_workspace_id.as_str(),
 			service,
+			kubeconfig.clone(),
 			config,
 			request_id,
 		)
 		.await?;
 	}
+
+	let clone_url = repo.clone_url.as_str();
+	let netrc =
+		service::get_netrc_for_repo(connection, &build_id.repo_id).await?;
 
 	// queue clone job
 	let git_clone_commands = [
@@ -429,10 +449,8 @@ pub async fn add_build_steps_in_k8s(
 			r#"echo "{}" > ~/.netrc"#,
 			netrc.map_or("".to_string(), |netrc| netrc.to_string())
 		),
-		r#"cd "/mnt/workdir/""#.to_string(),
+		r#"cd "/workdir""#.to_string(),
 		// "set -x".to_string(),
-		format!("mkdir {repo_name}"),
-		format!(r#"cd "/mnt/workdir/{repo_name}""#),
 		r#"export GIT_AUTHOR_NAME=patr-ci"#.to_string(),
 		r#"export GIT_AUTHOR_EMAIL=patr-ci@localhost"#.to_string(),
 		r#"export GIT_COMMITTER_NAME=patr-ci"#.to_string(),
@@ -454,6 +472,7 @@ pub async fn add_build_steps_in_k8s(
 			env_vars: BTreeMap::new(),
 			commands: git_clone_commands,
 		},
+		event_type.clone(),
 		config,
 		request_id,
 	)
@@ -483,11 +502,12 @@ pub async fn add_build_steps_in_k8s(
 				image,
 				env_vars: env,
 				commands: vec![
-					format!(r#"cd "/mnt/workdir/{repo_name}""#),
+					format!(r#"cd "/workdir""#),
 					// "set -x".to_owned(),
 					Vec::from(command).join("\n"),
 				],
 			},
+			event_type.clone(),
 			config,
 			request_id,
 		)
@@ -663,8 +683,10 @@ fn get_clone_command_based_on_event_type(
 			format!("git checkout -qf FETCH_HEAD"),
 		],
 		EventType::PullRequest(PullRequest {
-			head_repo_owner: _,
-			head_repo_name: _,
+			pr_repo_owner: _,
+			pr_repo_name: _,
+			repo_owner: _,
+			repo_name: _,
 			author: _,
 			pr_title: _,
 			commit_sha,
@@ -679,4 +701,54 @@ fn get_clone_command_based_on_event_type(
 			format!("git merge {commit_sha}"),
 		],
 	}
+}
+
+pub async fn get_netrc_for_repo(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &Uuid,
+) -> Result<Option<Netrc>, Error> {
+	let repo = db::get_repo_using_patr_repo_id(connection, repo_id)
+		.await?
+		.status(500)?;
+
+	let git_provider =
+		db::get_git_provider_details_by_id(connection, &repo.git_provider_id)
+			.await?
+			.status(500)?;
+
+	let netrc = match (git_provider.login_name, git_provider.password) {
+		(Some(login), Some(password)) => Some(Netrc {
+			machine: git_provider.domain_name,
+			login,
+			password,
+		}),
+		_ => None,
+	};
+
+	Ok(netrc)
+}
+
+pub async fn get_kubeconfig_for_ci_build(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	build_id: &BuildId,
+) -> Result<Kubeconfig, Error> {
+	let build = db::get_build_details_for_build(
+		connection,
+		&build_id.repo_id,
+		build_id.build_num,
+	)
+	.await?
+	.status(500)?;
+
+	let runner = db::get_runner_by_id(connection, &build.runner_id)
+		.await?
+		.status(500)?;
+
+	let (kubeconfig, _) = service::get_kubernetes_config_for_region(
+		connection,
+		&runner.region_id,
+	)
+	.await?;
+
+	Ok(kubeconfig)
 }

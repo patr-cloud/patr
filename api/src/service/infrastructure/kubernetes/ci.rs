@@ -29,11 +29,13 @@ use k8s_openapi::{
 };
 use kube::{
 	api::{DeleteParams, PropagationPolicy},
+	config::Kubeconfig,
 	core::ObjectMeta,
 	Api,
 };
 
 use crate::{
+	models::ci::{Commit, EventType, PullRequest, Tag},
 	rabbitmq::BuildStep,
 	service::ext_traits::DeleteOpt,
 	utils::{settings::Settings, Error},
@@ -42,36 +44,20 @@ use crate::{
 pub async fn create_ci_job_in_kubernetes(
 	namespace_name: &str,
 	build_step: &BuildStep,
-	ram: u32,
-	cpu: u32,
+	ram_in_mb: u32,
+	cpu_in_milli: u32,
+	event_type: &EventType,
+	kubeconfig: Kubeconfig,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_config(config).await?;
+	let client = super::get_kubernetes_client(kubeconfig).await?;
 	log::trace!(
 		"request_id: {} - creating ci job {} in namespace {}",
 		request_id,
 		build_step.id.get_job_name(),
 		namespace_name,
 	);
-
-	let env = (!build_step.env_vars.is_empty()).then(|| {
-		build_step
-			.env_vars
-			.iter()
-			.map(|(name, value)| EnvVar {
-				name: name.clone(),
-				value: Some(match value {
-					EnvVarValue::Value(value) => value.clone(),
-					EnvVarValue::ValueFromSecret { from_secret } => format!(
-						"vault:secret/data/{}/{}#data",
-						build_step.id.build_id.repo_workspace_id, from_secret
-					),
-				}),
-				..Default::default()
-			})
-			.collect()
-	});
 
 	let annotations = [
 		(
@@ -99,11 +85,8 @@ pub async fn create_ci_job_in_kubernetes(
 	.collect();
 
 	let build_machine_type = [
-		(
-			"memory".to_string(),
-			Quantity(format!("{:.1}G", (ram as f64) / 4f64)),
-		),
-		("cpu".to_string(), Quantity(format!("{:.1}", cpu as f64))),
+		("memory".to_string(), Quantity(format!("{}M", ram_in_mb))),
+		("cpu".to_string(), Quantity(format!("{}m", cpu_in_milli))),
 	]
 	.into_iter()
 	.collect::<BTreeMap<_, _>>();
@@ -126,11 +109,13 @@ pub async fn create_ci_job_in_kubernetes(
 						image_pull_policy: Some("Always".to_string()),
 						name: "build-step".to_string(),
 						volume_mounts: Some(vec![VolumeMount {
-							mount_path: "/mnt/workdir".to_string(),
+							mount_path: "/workdir".to_string(),
 							name: "workdir".to_string(),
 							..Default::default()
 						}]),
-						env,
+						env: Some(get_env_variables_for_build(
+							build_step, event_type,
+						)),
 						command: Some(vec![
 							"sh".to_string(),
 							"-ce".to_string(),
@@ -172,6 +157,119 @@ pub async fn create_ci_job_in_kubernetes(
 	Ok(())
 }
 
+fn get_env_variables_for_build(
+	build_step: &BuildStep,
+	event_type: &EventType,
+) -> Vec<EnvVar> {
+	let patr_ci_default_envs = [
+		("CI", "true"),
+		("PATR", "true"),
+		("PATR_CI", "true"),
+		("PATR_CI_WORKDIR", "/workdir"),
+	]
+	.into_iter()
+	.map(|(name, value)| (name.to_string(), value.to_string()));
+
+	let build_number_env = [(
+		"PATR_CI_BUILD_NUMBER".to_string(),
+		build_step.id.build_id.build_num.to_string(),
+	)];
+
+	let event_type_envs = match event_type {
+		EventType::Commit(Commit {
+			commit_sha,
+			commit_message,
+			committed_branch_name,
+			..
+		}) => {
+			let mut envs = vec![
+				("PATR_CI_EVENT_TYPE".to_string(), "commit".to_string()),
+				("PATR_CI_COMMIT_SHA".to_string(), commit_sha.to_string()),
+				(
+					"PATR_CI_BRANCH".to_string(),
+					committed_branch_name.to_string(),
+				),
+			];
+
+			if let Some(commit_message) = commit_message {
+				envs.push((
+					"PATR_CI_COMMIT_MESSAGE".to_string(),
+					commit_message.to_string(),
+				))
+			}
+
+			envs
+		}
+		EventType::Tag(Tag {
+			commit_sha,
+			tag_name,
+			commit_message,
+			..
+		}) => {
+			let mut envs = vec![
+				("PATR_CI_EVENT_TYPE".to_string(), "tag".to_string()),
+				("PATR_CI_COMMIT_SHA".to_string(), commit_sha.to_string()),
+				("PATR_CI_TAG".to_string(), tag_name.to_string()),
+			];
+
+			if let Some(commit_message) = commit_message {
+				envs.push((
+					"PATR_CI_COMMIT_MESSAGE".to_string(),
+					commit_message.to_string(),
+				))
+			}
+
+			envs
+		}
+		EventType::PullRequest(PullRequest {
+			commit_sha,
+			pr_number,
+			pr_title,
+			to_be_committed_branch_name,
+			..
+		}) => vec![
+			("PATR_CI_EVENT_TYPE".to_string(), "pull_request".to_string()),
+			("PATR_CI_COMMIT_SHA".to_string(), commit_sha.to_string()),
+			(
+				"PATR_CI_BRANCH".to_string(),
+				to_be_committed_branch_name.to_string(),
+			),
+			(
+				"PATR_CI_PULL_REQUEST_TITLE".to_string(),
+				pr_title.to_string(),
+			),
+			(
+				"PATR_CI_PULL_REQUEST_NUMBER".to_string(),
+				pr_number.to_string(),
+			),
+		],
+	};
+
+	let user_envs = build_step.env_vars.iter().map(|(name, value)| {
+		(
+			name.clone(),
+			match value {
+				EnvVarValue::Value(value) => value.clone(),
+				EnvVarValue::ValueFromSecret { from_secret } => format!(
+					"vault:secret/data/{}/{}#data",
+					build_step.id.build_id.repo_workspace_id, from_secret
+				),
+			},
+		)
+	});
+
+	patr_ci_default_envs
+		.chain(build_number_env)
+		.chain(event_type_envs)
+		.chain(user_envs)
+		.map(|(name, value)| EnvVar {
+			name,
+			value: Some(value),
+			..Default::default()
+		})
+		.collect()
+}
+
 pub enum JobStatus {
 	Errored,
 	Completed,
@@ -181,10 +279,10 @@ pub enum JobStatus {
 pub async fn get_ci_job_status_in_kubernetes(
 	namespace_name: &str,
 	job_name: &str,
-	config: &Settings,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<Option<JobStatus>, Error> {
-	let client = super::get_kubernetes_config(config).await?;
+	let client = super::get_kubernetes_client(kubeconfig).await?;
 
 	let status = Api::<Job>::namespaced(client, namespace_name)
 		.get_opt(job_name)
@@ -219,28 +317,27 @@ pub async fn get_ci_job_status_in_kubernetes(
 pub async fn create_pvc_for_workspace(
 	namespace_name: &str,
 	pvc_name: &str,
-	volume_size: u32,
-	config: &Settings,
+	volume_in_mb: u32,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_config(config).await?;
+	let client = super::get_kubernetes_client(kubeconfig).await?;
 
 	log::trace!(
 		"request_id: {} - creating pvc {} of size {} in namespace {}",
 		request_id,
-		volume_size,
 		pvc_name,
+		volume_in_mb,
 		namespace_name,
 	);
 
 	let pvc_spec = PersistentVolumeClaimSpec {
 		access_modes: Some(vec!["ReadWriteOnce".to_string()]),
-		storage_class_name: Some("do-block-storage".to_string()),
 		resources: Some(ResourceRequirements {
 			requests: Some(
 				[(
 					"storage".to_string(),
-					Quantity(format!("{}Gi", volume_size)),
+					Quantity(format!("{}M", volume_in_mb)),
 				)]
 				.into(),
 			),
@@ -272,10 +369,10 @@ pub async fn create_pvc_for_workspace(
 pub async fn delete_kubernetes_job(
 	namespace_name: &str,
 	job_name: &str,
-	config: &Settings,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_config(config).await?;
+	let client = super::get_kubernetes_client(kubeconfig).await?;
 	log::trace!(
 		"request_id: {} - deleting job {} in namespace {}",
 		request_id,
@@ -302,10 +399,11 @@ pub async fn create_background_service_for_ci_in_kubernetes(
 	namespace_name: &str,
 	repo_workspace_name: &str,
 	service: api_models::models::ci::file_format::Service,
+	kubeconfig: Kubeconfig,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let client = super::get_kubernetes_config(config).await?;
+	let client = super::get_kubernetes_client(kubeconfig).await?;
 	log::trace!(
 		"request_id: {} - creating background ci service {} in namespace {}",
 		request_id,

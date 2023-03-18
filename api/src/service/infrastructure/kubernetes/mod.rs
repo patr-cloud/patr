@@ -5,23 +5,11 @@ mod workspace;
 pub mod ext_traits;
 
 use k8s_openapi::api::core::v1::Service;
-use kube::{
-	config::{
-		AuthInfo,
-		Cluster,
-		Context,
-		Kubeconfig,
-		NamedAuthInfo,
-		NamedCluster,
-		NamedContext,
-	},
-	Api,
-	Config,
-};
+use kube::{config::Kubeconfig, Api, Config};
 use url::Host;
 
 pub use self::{ci::*, deployment::*, workspace::*};
-use crate::utils::{settings::Settings, Error};
+use crate::utils::Error;
 
 async fn get_kubernetes_client(
 	kube_config: Kubeconfig,
@@ -32,57 +20,6 @@ async fn get_kubernetes_client(
 
 	let kube_client = kube::Client::try_from(kubeconfig)?;
 	Ok(kube_client)
-}
-
-async fn get_kubernetes_config(
-	config: &Settings,
-) -> Result<kube::Client, Error> {
-	let config = Config::from_custom_kubeconfig(
-		Kubeconfig {
-			preferences: None,
-			clusters: vec![NamedCluster {
-				name: config.kubernetes.cluster_name.clone(),
-				cluster: Some(Cluster {
-					server: Some(config.kubernetes.cluster_url.clone()),
-					insecure_skip_tls_verify: None,
-					certificate_authority: None,
-					certificate_authority_data: Some(
-						config.kubernetes.certificate_authority_data.clone(),
-					),
-					proxy_url: None,
-					extensions: None,
-					..Default::default()
-				}),
-			}],
-			auth_infos: vec![NamedAuthInfo {
-				name: config.kubernetes.auth_name.clone(),
-				auth_info: Some(AuthInfo {
-					username: Some(config.kubernetes.auth_username.clone()),
-					token: Some(config.kubernetes.auth_token.clone().into()),
-					..Default::default()
-				}),
-			}],
-			contexts: vec![NamedContext {
-				name: config.kubernetes.context_name.clone(),
-				context: Some(Context {
-					cluster: config.kubernetes.cluster_name.clone(),
-					user: config.kubernetes.auth_username.clone(),
-					extensions: None,
-					namespace: None,
-				}),
-			}],
-			current_context: Some(config.kubernetes.context_name.clone()),
-			extensions: None,
-			kind: Some("Config".to_string()),
-			api_version: Some("v1".to_string()),
-		},
-		&Default::default(),
-	)
-	.await?;
-
-	let client = kube::Client::try_from(config)?;
-
-	Ok(client)
 }
 
 pub async fn get_patr_ingress_load_balancer_hostname(

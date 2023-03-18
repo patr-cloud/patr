@@ -247,7 +247,7 @@ pub(super) async fn process_request(
 						&resource.owner_id,
 						&onpatr_domain.id,
 						&format!("*.{}", region_id),
-						0,
+						1, // 1 means 'automatic'
 						&dns_record,
 						config,
 						&request_id,

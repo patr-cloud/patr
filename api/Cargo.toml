@@ -17,11 +17,11 @@ api_macros = { path = "../macros", package = "patr-macros" }
 api_models = { path = "../api-models", package = "patr-api-dto", features = [
 	"server",
 ] }
-argon2 = "0.4"
-async-stripe = { version = "0.15", features = ["runtime-tokio-hyper"] }
+argon2 = "0.5"
+async-stripe = { version = "0.18", features = ["runtime-tokio-hyper"] }
 async-trait = "0.1"
 base32 = "0.4"
-base64 = "0.13"
+base64 = "0.21"
 chrono = "0.4"
 cloudflare = { git = "https://github.com/vicara-hq/cloudflare-rs", branch = "patr-must-haves" }
 config_rs = { version = "0.13", package = "config" }
@@ -39,7 +39,7 @@ jsonwebtoken = "8"
 k8s-openapi = { version = "0.17", default-features = true, features = [
 	"v1_24",
 ] } # Kube-rs depends on k8s-openapi
-kube = { version = "0.78", default-features = true, features = [
+kube = { version = "0.80", default-features = true, features = [
 	"derive",
 	"runtime",
 ] } # Library for talking to Kubernetes API
@@ -64,7 +64,7 @@ rust-s3 = { version = "0.32", features = ["tokio-rustls-tls", "with-tokio"] }
 semver = "1"
 serde = { version = "1", features = ["serde_derive"] }
 serde_json = "1"
-serde_qs = "0.10"
+serde_qs = "0.12"
 serde_yaml = "0.9"
 sha2 = "0.10"
 sqlx = { version = "0.6", features = [

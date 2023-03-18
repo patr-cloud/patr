@@ -4,6 +4,7 @@ use api_models::{
 		AddRegionToWorkspaceData,
 		AddRegionToWorkspaceRequest,
 		AddRegionToWorkspaceResponse,
+		CheckRegionStatusResponse,
 		DeleteRegionFromWorkspaceRequest,
 		DeleteRegionFromWorkspaceResponse,
 		GetRegionInfoResponse,
@@ -17,6 +18,7 @@ use api_models::{
 };
 use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use sqlx::types::Json;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -110,6 +112,46 @@ pub fn create_sub_app(
 				}),
 			},
 			EveMiddleware::CustomFunction(pin_fn!(get_region)),
+		],
+	);
+
+	// Check region status
+	app.post(
+		"/:regionId/checkStatus",
+		[
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::region::CHECK_STATUS,
+				resource: closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let region_id =
+						context.get_param(request_keys::REGION_ID).unwrap();
+					let region_id = Uuid::parse_str(region_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&region_id,
+					)
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			},
+			EveMiddleware::CustomFunction(pin_fn!(check_region_status)),
 		],
 	);
 
@@ -244,6 +286,105 @@ async fn get_region(
 
 	log::trace!("request_id: {} - Returning region", request_id);
 	context.success(GetRegionInfoResponse {
+		region: Region {
+			r#type: if region.is_byoc_region() {
+				RegionType::BYOC
+			} else {
+				RegionType::PatrOwned
+			},
+			id: region.id,
+			name: region.name,
+			cloud_provider: region.cloud_provider,
+			status: region.status,
+		},
+		disconnected_at: region.disconnected_at.map(DateTime),
+		message_log: region.message_log,
+	});
+	Ok(context)
+}
+
+async fn check_region_status(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
+	log::trace!("request_id: {} - Check region status", request_id);
+
+	let region_id =
+		Uuid::parse_str(context.get_param(request_keys::REGION_ID).unwrap())
+			.unwrap();
+
+	let region =
+		db::get_region_by_id(context.get_database_connection(), &region_id)
+			.await?
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	match (
+		region.status.clone(),
+		region.config_file,
+		region.ingress_hostname,
+	) {
+		(
+			RegionStatus::Disconnected | RegionStatus::Active,
+			Some(Json(kubeconfig)),
+			Some(prev_ingress_hostname),
+		) => {
+			let curr_ingress_hostname =
+				service::get_patr_ingress_load_balancer_hostname(kubeconfig)
+					.await;
+			let is_connected = match curr_ingress_hostname {
+				Ok(Some(curr_ingress_hostname))
+					if curr_ingress_hostname.to_string() ==
+						prev_ingress_hostname =>
+				{
+					true
+				}
+				invalid_cases => {
+					log::info!(
+						"Invalid cases found while fetching status for region {} - {:?}",
+						region_id,
+						invalid_cases
+					);
+					false
+				}
+			};
+
+			if region.status == RegionStatus::Active && !is_connected {
+				log::info!("Marking the cluster {region_id} as disconnected");
+				db::set_region_as_disconnected(
+					context.get_database_connection(),
+					&region_id,
+					&Utc::now(),
+				)
+				.await?;
+			} else if region.status == RegionStatus::Disconnected &&
+				is_connected
+			{
+				log::info!(
+					"Region `{}` got connected again. So marking it as active",
+					region_id
+				);
+				db::set_region_as_connected(
+					context.get_database_connection(),
+					&region_id,
+				)
+				.await?;
+			}
+		}
+		_ => {
+			log::info!("The cluster {} is not in expected state, so skipping to check status", region_id);
+		}
+	}
+
+	let region =
+		db::get_region_by_id(context.get_database_connection(), &region_id)
+			.await?
+			.status(500)?;
+
+	log::trace!("request_id: {} - Returning check region status", request_id);
+	context.success(CheckRegionStatusResponse {
 		region: Region {
 			r#type: if region.is_byoc_region() {
 				RegionType::BYOC
@@ -467,11 +608,35 @@ async fn delete_region(
 	let config = context.get_state().config.clone();
 
 	log::trace!(
-		"request_id: {} is getting all the deployment for region: {}",
+		"request_id: {} - check whether this region {} is associated with any ci-runner",
 		request_id,
 		region_id
 	);
+	let runners_in_region = db::get_runners_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.into_iter()
+	.filter(|runner| runner.region_id == region_id)
+	.collect::<Vec<_>>();
 
+	if !runners_in_region.is_empty() {
+		log::trace!(
+			"request_id: {} is getting all the deployment for region: {}",
+			request_id,
+			region_id
+		);
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(RESOURCE_IN_USE).to_string()));
+	}
+
+	log::trace!(
+		"request_id: {} - check whether this region {} is used by any deployments",
+		request_id,
+		region_id
+	);
 	let deployments = db::get_deployments_by_region_id(
 		context.get_database_connection(),
 		&workspace_id,
@@ -496,8 +661,36 @@ async fn delete_region(
 		.await?
 	}
 
+	// delete origin ca cert
 	if let Some(cert_id) = region.cloudflare_certificate_id {
 		service::revoke_origin_ca_certificate(&cert_id, &config).await?;
+	}
+
+	let onpatr_domain = db::get_domain_by_name(
+		context.get_database_connection(),
+		&config.cloudflare.onpatr_domain,
+	)
+	.await?
+	.status(500)?;
+
+	let byoc_dns_record_name = format!("*.{}", region_id);
+	let byoc_dns_record = db::get_dns_records_by_domain_id(
+		context.get_database_connection(),
+		&onpatr_domain.id,
+	)
+	.await?
+	.into_iter()
+	.find(|dns| dns.name == byoc_dns_record_name);
+
+	if let Some(byoc_dns_record) = byoc_dns_record {
+		service::delete_patr_domain_dns_record(
+			context.get_database_connection(),
+			&onpatr_domain.id,
+			&byoc_dns_record.id,
+			&config,
+			&request_id,
+		)
+		.await?;
 	}
 
 	if hard_delete {

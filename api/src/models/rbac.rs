@@ -127,12 +127,16 @@ pub mod permissions {
 		pub mod region {
 			pub const LIST: &str = "workspace::region::list";
 			pub const INFO: &str = "workspace::region::info";
+			pub const CHECK_STATUS: &str = "workspace::region::check_status";
 			pub const ADD: &str = "workspace::region::add";
 			pub const DELETE: &str = "workspace::region::delete";
 		}
 
 		pub mod ci {
+			pub const RECENT_ACTIVITY: &str = "workspace::ci::recent_activity";
+
 			pub mod git_provider {
+				pub const LIST: &str = "workspace::ci::git_provider::list";
 				pub const CONNECT: &str =
 					"workspace::ci::git_provider::connect";
 				pub const DISCONNECT: &str =
@@ -147,6 +151,8 @@ pub mod permissions {
 						"workspace::ci::git_provider::repo::list";
 					pub const INFO: &str =
 						"workspace::ci::git_provider::repo::info";
+					pub const WRITE: &str =
+						"workspace::ci::git_provider::repo::write";
 
 					pub mod build {
 						pub const LIST: &str =
@@ -161,6 +167,14 @@ pub mod permissions {
 							"workspace::ci::git_provider::repo::build::restart";
 					}
 				}
+			}
+
+			pub mod runner {
+				pub const LIST: &str = "workspace::ci::runner::list";
+				pub const CREATE: &str = "workspace::ci::runner::create";
+				pub const INFO: &str = "workspace::ci::runner::info";
+				pub const UPDATE: &str = "workspace::ci::runner::update";
+				pub const DELETE: &str = "workspace::ci::runner::delete";
 			}
 		}
 
@@ -209,7 +223,10 @@ pub mod resource_types {
 	pub const MANAGED_URL: &str = "managedUrl";
 	pub const SECRET: &str = "secret";
 	pub const STATIC_SITE_UPLOAD: &str = "staticSiteUpload";
-	pub const CI_REPO: &str = "ciRepo";
 	pub const DEPLOYMENT_REGION: &str = "deploymentRegion";
 	pub const DEPLOYMENT_VOLUME: &str = "deploymentVolume";
+
+	// ci
+	pub const CI_REPO: &str = "ciRepo";
+	pub const CI_RUNNER: &str = "ciRunner";
 }

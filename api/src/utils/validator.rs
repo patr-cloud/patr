@@ -27,6 +27,8 @@ lazy_static! {
 	static ref STATIC_SITE_NAME_REGEX: Regex = Regex::new("^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$").unwrap();
 	// Validate the name of a dns record
 	static ref DNS_NAME_REGEX: Regex = Regex::new("^((\\*)|((\\*\\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])))$").unwrap();
+	// 2-64 characters long ([a-zA-Z0-9_- .]), cannot begin with a _, -, . or a space, cannot end with a space
+	static ref CI_RUNNER: Regex = Regex::new("^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$").unwrap();
 }
 
 pub fn is_username_valid(username: &str) -> bool {
@@ -101,4 +103,8 @@ pub fn is_dns_record_name_valid(name: &str) -> bool {
 		return true;
 	}
 	false
+}
+
+pub fn is_ci_runner_name_valid(name: &str) -> bool {
+	CI_RUNNER.is_match(name)
 }

@@ -19,6 +19,7 @@ pub struct StaticSiteUploadHistory {
 	pub message: String,
 	pub uploaded_by: Uuid,
 	pub created: DateTime<Utc>,
+	pub processed: Option<DateTime<Utc>>,
 }
 
 pub struct StaticSiteManagedUrl {
@@ -67,6 +68,7 @@ pub async fn initialize_static_site_pre(
 				static_site_upload_history_fk_uploaded_by
 					REFERENCES "user"(id),
 			created TIMESTAMPTZ NOT NULL,
+			processed TIMESTAMPTZ,
 			CONSTRAINT static_site_upload_history_uq_upload_id_static_site_id
 				UNIQUE(upload_id, static_site_id)
 		);
@@ -366,10 +368,11 @@ pub async fn create_static_site_upload_history(
 				static_site_id,
 				message,
 				uploaded_by,
-				created
+				created,
+				processed
 			)
 		VALUES
-			($1, $2, $3, $4, $5);
+			($1, $2, $3, $4, $5, NULL);
 		"#,
 		upload_id as _,
 		static_site_id as _,
@@ -393,7 +396,8 @@ pub async fn get_static_site_upload_history(
 			upload_id as "id: _",
 			message,
 			uploaded_by as "uploaded_by: _",
-			created as "created: _"
+			created as "created: _",
+			processed as "processed: _"
 		FROM
 			static_site_upload_history
 		WHERE
@@ -417,7 +421,8 @@ pub async fn get_static_site_upload_history_by_upload_id(
 			upload_id as "id: _",
 			message,
 			uploaded_by as "uploaded_by: _",
-			created as "created: _"
+			created as "created: _",
+			processed as "processed: _"
 		FROM
 			static_site_upload_history
 		WHERE
@@ -429,4 +434,29 @@ pub async fn get_static_site_upload_history_by_upload_id(
 	)
 	.fetch_optional(&mut *connection)
 	.await
+}
+
+pub async fn set_static_site_upload_as_processed(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &Uuid,
+	upload_id: &Uuid,
+	processed_time: Option<&DateTime<Utc>>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			static_site_upload_history
+		SET
+			processed = $1
+		WHERE
+			static_site_id = $2 AND
+			upload_id = $3;
+		"#,
+		processed_time as _,
+		static_site_id as _,
+		upload_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
