@@ -259,6 +259,22 @@ async fn add_ci_runner(
 
 	query!(
 		r#"
+		DELETE FROM ci_steps;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DELETE FROM ci_builds;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		ALTER TABLE ci_builds
 			ADD COLUMN started TIMESTAMPTZ,
 			ADD COLUMN runner_id UUID NOT NULL
