@@ -75,6 +75,9 @@ pub async fn migrate(
 		(0, 14, _) => {
 			from_v0_14::migrate(&mut *connection, version, config).await
 		}
+		(0, 15, _) => {
+			from_v0_15::migrate(&mut *connection, version, config).await
+		}
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
@@ -102,6 +105,7 @@ pub fn get_migrations() -> Vec<&'static str> {
 		from_v0_12::get_migrations(),
 		from_v0_13::get_migrations(),
 		from_v0_14::get_migrations(),
+		from_v0_15::get_migrations(),
 	]
 	.into_iter()
 	.flatten()
