@@ -67,9 +67,13 @@ pub async fn create_new_managed_url_in_workspace(
 		match existing_hostname {
 			Some(managed_url) => managed_url.cloudflare_custom_hostname_id,
 			None => {
+				let host_name = if sub_domain == "@" {
+					domain.name
+				} else {
+					format!("{}.{}", sub_domain, domain.name)
+				};
 				let (id, _status) = service::add_custom_hostname_to_cloudflare(
-					&format!("{}.{}", sub_domain, domain.name),
-					config,
+					&host_name, config,
 				)
 				.await?;
 
