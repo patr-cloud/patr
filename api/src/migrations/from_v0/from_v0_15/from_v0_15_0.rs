@@ -1,5 +1,3 @@
-use api_models::utils::Uuid;
-
 use crate::{
 	utils::{settings::Settings, Error},
 	Database,
