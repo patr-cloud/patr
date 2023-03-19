@@ -10,6 +10,7 @@ mod from_v0_11;
 mod from_v0_12;
 mod from_v0_13;
 mod from_v0_14;
+mod from_v0_15;
 mod from_v0_3;
 mod from_v0_4;
 mod from_v0_5;
