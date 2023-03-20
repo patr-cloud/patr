@@ -850,7 +850,7 @@
         true,
         true,
         true,
-        false,
+        true,
         true,
         true
       ],
@@ -2344,7 +2344,7 @@
         true,
         true,
         true,
-        false,
+        true,
         true,
         true,
         false
@@ -2565,7 +2565,7 @@
         true,
         true,
         true,
-        false,
+        true,
         true,
         true,
         false
@@ -2816,16 +2816,6 @@
       }
     },
     "query": "CREATE TYPE MANAGED_URL_TYPE AS ENUM( 'proxy_to_deployment', 'proxy_to_static_site', 'proxy_url', 'redirect' );"
-  },
-  "2b177b7f8aafe0fafe0d4dabfeabb1070d31b7efb361285b79e221ee600bc979": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE ci_builds( repo_id UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id), build_num BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK(build_num > 0), git_ref TEXT NOT NULL, git_commit TEXT NOT NULL, status CI_BUILD_STATUS NOT NULL, created TIMESTAMPTZ NOT NULL, finished TIMESTAMPTZ, message TEXT, author TEXT NOT NULL, git_commit_message TEXT, git_pr_title TEXT, started TIMESTAMPTZ, runner_id UUID NOT NULL CONSTRAINT ci_builds_fk_runner_id REFERENCES ci_runner(id), CONSTRAINT ci_builds_pk_repo_id_build_num PRIMARY KEY(repo_id, build_num) );"
   },
   "2b5dac96ab0151b4e1c51947df7a139b0220bfed8f412570dc2ed953e50e7d23": {
     "describe": {
@@ -4051,7 +4041,7 @@
         true,
         true,
         true,
-        false,
+        true,
         true,
         true,
         false
@@ -9610,6 +9600,16 @@
     },
     "query": "CREATE TABLE deployment_volume( id UUID CONSTRAINT deployment_volume_pk PRIMARY KEY, name TEXT NOT NULL, deployment_id UUID NOT NULL CONSTRAINT deployment_volume_fk_deployment_id REFERENCES deployment(id), volume_size INT NOT NULL CONSTRAINT deployment_volume_chk_size_unsigned CHECK(volume_size > 0), volume_mount_path TEXT NOT NULL, deleted TIMESTAMPTZ, CONSTRAINT deployment_volume_name_unique_deployment_id UNIQUE(deployment_id, name), CONSTRAINT deployment_volume_path_unique_deployment_id UNIQUE(deployment_id, volume_mount_path) );"
   },
+  "8c8d15a1fab2a2c568e8a078357c807188c37aecc7e7a45a9d45a101e5b2c37b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE ci_builds( repo_id UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id), build_num BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK(build_num > 0), git_ref TEXT NOT NULL, git_commit TEXT NOT NULL, status CI_BUILD_STATUS NOT NULL, created TIMESTAMPTZ NOT NULL, finished TIMESTAMPTZ, message TEXT, author TEXT, git_commit_message TEXT, git_pr_title TEXT, started TIMESTAMPTZ, runner_id UUID NOT NULL CONSTRAINT ci_builds_fk_runner_id REFERENCES ci_runner(id), CONSTRAINT ci_builds_pk_repo_id_build_num PRIMARY KEY(repo_id, build_num) );"
+  },
   "8d2c961f04458f116b2d9e7f00668a83febae5648c3c4774795ff2bbe6f6e364": {
     "describe": {
       "columns": [],
@@ -9772,7 +9772,7 @@
         true,
         true,
         true,
-        false,
+        true,
         true,
         true,
         false
@@ -10905,7 +10905,7 @@
         true,
         true,
         true,
-        false,
+        true,
         true,
         true
       ],
@@ -14929,7 +14929,7 @@
         true,
         true,
         true,
-        false,
+        true,
         true,
         true,
         false

@@ -77,7 +77,7 @@ pub async fn create_build_for_repo(
 				repo_id,
 				&format!("refs/heads/{}", commit.committed_branch_name),
 				&commit.commit_sha,
-				&commit.author,
+				commit.author.as_deref(),
 				commit.commit_message.as_deref(),
 				None,
 				&runner_id,
@@ -90,7 +90,7 @@ pub async fn create_build_for_repo(
 				repo_id,
 				&format!("refs/tags/{}", tag.tag_name),
 				&tag.commit_sha,
-				&tag.author,
+				tag.author.as_deref(),
 				tag.commit_message.as_deref(),
 				None,
 				&runner_id,
@@ -103,7 +103,7 @@ pub async fn create_build_for_repo(
 				repo_id,
 				&format!("refs/pull/{}", pull_request.pr_number),
 				&pull_request.commit_sha,
-				&pull_request.author,
+				pull_request.author.as_deref(),
 				None,
 				Some(&pull_request.pr_title),
 				&runner_id,
@@ -471,8 +471,8 @@ pub async fn update_github_commit_status_for_build(
 				state: status.commit_state(),
 				description: status.description().to_owned(),
 				target_url: format!(
-					"https://app.patr.cloud/ci/repository/github/{}/{}/build/{}?workspaceId={}",
-					&repo.repo_owner, &repo.repo_name, build_num, workspace_id
+					"https://app.patr.cloud/ci/repository/github/{}/builds/{}?workspaceId={}",
+					&repo.git_provider_repo_uid, build_num, workspace_id
 				),
 			},
 		)

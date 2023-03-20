@@ -1775,11 +1775,7 @@ async fn start_build_for_branch(
 		repo_name: repo.repo_name.clone(),
 		commit_sha: github_branch.commit.sha.clone(),
 		committed_branch_name: branch_name,
-		author: github_branch
-			.commit
-			.author
-			.map(|author| author.name)
-			.unwrap_or_default(),
+		author: github_branch.commit.author.map(|author| author.name),
 		commit_message: Some(github_branch.commit.commit.message),
 	});
 
