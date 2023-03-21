@@ -30,6 +30,7 @@ pub struct PasswordResetRequest {
 	pub user_id: Uuid,
 	pub token: String,
 	pub token_expiry: DateTime<Utc>,
+	pub attempts: i32,
 }
 
 pub async fn initialize_user_data_pre(
@@ -114,7 +115,10 @@ pub async fn initialize_user_data_pre(
 				CONSTRAINT password_reset_request_fk_user_id
 					REFERENCES "user"(id),
 			token TEXT NOT NULL,
-			token_expiry TIMESTAMPTZ NOT NULL
+			token_expiry TIMESTAMPTZ NOT NULL,
+			attempts INT NOT NULL
+				CONSTRAINT password_reset_request_attempts_non_negative
+					CHECK(attempts >= 0) 
 		);
 		"#
 	)
@@ -480,13 +484,15 @@ pub async fn add_password_reset_request(
 			password_reset_request(
 				user_id,
 				token,
-				token_expiry
+				token_expiry,
+				attempts
 			)
 		VALUES
-			($1, $2, $3)
+			($1, $2, $3, 0)
 		ON CONFLICT(user_id) DO UPDATE SET
 			token = EXCLUDED.token,
-			token_expiry = EXCLUDED.token_expiry;
+			token_expiry = EXCLUDED.token_expiry,
+			attempts = EXCLUDED.attempts;
 		"#,
 		user_id as _,
 		token_hash,
@@ -507,7 +513,8 @@ pub async fn get_password_reset_request_for_user(
 		SELECT
 			user_id as "user_id: _",
 			token,
-			token_expiry
+			token_expiry,
+			attempts
 		FROM
 			password_reset_request
 		WHERE
@@ -517,6 +524,28 @@ pub async fn get_password_reset_request_for_user(
 	)
 	.fetch_optional(&mut *connection)
 	.await
+}
+
+pub async fn update_password_reset_request_attempt_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+	attempts: i32,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			password_reset_request
+		SET
+			attempts = $2
+		WHERE
+			user_id = $1;
+		"#,
+		user_id as _,
+		attempts,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 pub async fn delete_password_reset_request_for_user(

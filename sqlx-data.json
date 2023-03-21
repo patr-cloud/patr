@@ -850,7 +850,7 @@
         true,
         true,
         true,
-        false,
+        true,
         true,
         true
       ],
@@ -861,20 +861,6 @@
       }
     },
     "query": "SELECT ci_repos.git_provider_repo_uid as \"github_repo_id\", ci_builds.build_num, ci_builds.git_ref, ci_builds.git_commit, ci_builds.status as \"status: BuildStatus\", ci_builds.created, ci_builds.started, ci_builds.finished, ci_builds.message, ci_builds.author, ci_builds.git_pr_title, ci_builds.git_commit_message FROM ci_builds JOIN ci_repos ON ci_repos.id = ci_builds.repo_id WHERE ci_builds.runner_id = $1 AND ( ci_builds.status = 'waiting_to_start' OR ci_builds.status = 'running' ) ORDER BY ci_builds.created ASC;"
-  },
-  "0d819c000a296c17387919adf035d46c4a8993c437324fecb8aad4c52bfa6fad": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "INSERT INTO password_reset_request( user_id, token, token_expiry ) VALUES ($1, $2, $3) ON CONFLICT(user_id) DO UPDATE SET token = EXCLUDED.token, token_expiry = EXCLUDED.token_expiry;"
   },
   "0d8eba5026a0a4a20c55ab36a06e67cb389a09234d9eb453883e33c74832a0e9": {
     "describe": {
@@ -2226,38 +2212,6 @@
     },
     "query": "CREATE TABLE user_to_sign_up( username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY CONSTRAINT user_to_sign_up_chk_username_is_valid CHECK( /* Username is a-z, 0-9, _, cannot begin or end with a . or - */ username ~ '^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$' AND username NOT LIKE '%..%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%' ), account_type RESOURCE_OWNER_TYPE NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, /* Personal email address OR recovery email */ recovery_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_recovery_email_is_lower_case CHECK( recovery_email_local = LOWER(recovery_email_local) ), recovery_email_domain_id UUID CONSTRAINT user_to_sign_up_fk_recovery_email_domain_id REFERENCES personal_domain(id), recovery_phone_country_code CHAR(2) CONSTRAINT user_to_sign_up_fk_recovery_phone_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_to_sign_up_chk_recovery_phone_country_code_upper_case CHECK( recovery_phone_country_code = UPPER(recovery_phone_country_code) ), recovery_phone_number VARCHAR(15) CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK( LENGTH(recovery_phone_number) >= 7 AND LENGTH(recovery_phone_number) <= 15 AND CAST(recovery_phone_number AS BIGINT) > 0 ), /* Workspace email address */ business_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_business_email_local_is_lower_case CHECK( business_email_local = LOWER(business_email_local) ), business_domain_name TEXT CONSTRAINT user_to_sign_up_chk_business_domain_name_is_valid CHECK( business_domain_name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' ), business_domain_tld TEXT CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_length_valid CHECK( LENGTH(business_domain_tld) >= 2 AND LENGTH(business_domain_tld) <= 6 ) CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_valid CHECK( business_domain_tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) CONSTRAINT user_to_sign_up_fk_business_domain_tld REFERENCES domain_tld(tld), business_name VARCHAR(100) CONSTRAINT user_to_sign_up_chk_business_name_is_lower_case CHECK(business_name = LOWER(business_name)), otp_hash TEXT NOT NULL, otp_expiry TIMESTAMPTZ NOT NULL, coupon_code TEXT CONSTRAINT user_to_sign_up_fk_coupon_code REFERENCES coupon_code(code), CONSTRAINT user_to_sign_up_chk_max_domain_name_length CHECK( (LENGTH(business_domain_name) + LENGTH(business_domain_tld)) < 255 ), CONSTRAINT user_to_sign_up_chk_business_details_valid CHECK( ( account_type = 'personal' AND ( business_email_local IS NULL AND business_domain_name IS NULL AND business_domain_tld IS NULL AND business_name IS NULL ) ) OR ( account_type = 'business' AND ( business_email_local IS NOT NULL AND business_domain_name IS NOT NULL AND business_domain_tld IS NOT NULL AND business_name IS NOT NULL ) ) ), CONSTRAINT user_to_sign_up_chk_recovery_details CHECK( ( recovery_email_local IS NOT NULL AND recovery_email_domain_id IS NOT NULL AND recovery_phone_country_code IS NULL AND recovery_phone_number IS NULL ) OR ( recovery_email_local IS NULL AND recovery_email_domain_id IS NULL AND recovery_phone_country_code IS NOT NULL AND recovery_phone_number IS NOT NULL ) ) );"
   },
-  "21a98357a9d8edad40ee49a009a38e9682f88583162327b7cbc45b110f28ff05": {
-    "describe": {
-      "columns": [
-        {
-          "name": "user_id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "token",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "token_expiry",
-          "ordinal": 2,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT user_id as \"user_id: _\", token, token_expiry FROM password_reset_request WHERE user_id = $1;"
-  },
   "22448e6945d85dd66c2692df3889346b957f4ffd988394682a5c99f814a11a22": {
     "describe": {
       "columns": [
@@ -2344,7 +2298,7 @@
         true,
         true,
         true,
-        false,
+        true,
         true,
         true,
         false
@@ -2416,6 +2370,20 @@
       }
     },
     "query": "UPDATE web_login SET last_activity = $1, last_activity_ip = $2, last_activity_location = ST_SetSRID(POINT($3, $4)::GEOMETRY, 4326), last_activity_country = $5, last_activity_region = $6, last_activity_city = $7, last_activity_timezone = $8, last_activity_user_agent = $9 WHERE login_id = $10;"
+  },
+  "22f1bb481db7913d747e1f1fd4b36aa8aa0215c0cfcbe8e0873279bda27948bf": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "INSERT INTO password_reset_request( user_id, token, token_expiry, attempts ) VALUES ($1, $2, $3, 0) ON CONFLICT(user_id) DO UPDATE SET token = EXCLUDED.token, token_expiry = EXCLUDED.token_expiry, attempts = EXCLUDED.attempts;"
   },
   "23355c58fcb9002394a8a3aa73cc091e236e8d563bc65cce849b263468115d99": {
     "describe": {
@@ -2565,7 +2533,7 @@
         true,
         true,
         true,
-        false,
+        true,
         true,
         true,
         false
@@ -2816,16 +2784,6 @@
       }
     },
     "query": "CREATE TYPE MANAGED_URL_TYPE AS ENUM( 'proxy_to_deployment', 'proxy_to_static_site', 'proxy_url', 'redirect' );"
-  },
-  "2b177b7f8aafe0fafe0d4dabfeabb1070d31b7efb361285b79e221ee600bc979": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE ci_builds( repo_id UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id), build_num BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK(build_num > 0), git_ref TEXT NOT NULL, git_commit TEXT NOT NULL, status CI_BUILD_STATUS NOT NULL, created TIMESTAMPTZ NOT NULL, finished TIMESTAMPTZ, message TEXT, author TEXT NOT NULL, git_commit_message TEXT, git_pr_title TEXT, started TIMESTAMPTZ, runner_id UUID NOT NULL CONSTRAINT ci_builds_fk_runner_id REFERENCES ci_runner(id), CONSTRAINT ci_builds_pk_repo_id_build_num PRIMARY KEY(repo_id, build_num) );"
   },
   "2b5dac96ab0151b4e1c51947df7a139b0220bfed8f412570dc2ed953e50e7d23": {
     "describe": {
@@ -4051,7 +4009,7 @@
         true,
         true,
         true,
-        false,
+        true,
         true,
         true,
         false
@@ -6972,6 +6930,44 @@
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE workspace_id = $1 AND status != 'deleted';"
   },
+  "68204d5fec7bcd72e6b0abf732c8dfeeccb71274d74d2725f4fcc4d15e4a0db7": {
+    "describe": {
+      "columns": [
+        {
+          "name": "user_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "token",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "token_expiry",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "attempts",
+          "ordinal": 3,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT user_id as \"user_id: _\", token, token_expiry, attempts FROM password_reset_request WHERE user_id = $1;"
+  },
   "696749fb5dd8e4bb7c3d80c5619417e05c78691505add6a7af389858cb3bf0d4": {
     "describe": {
       "columns": [],
@@ -9610,6 +9606,16 @@
     },
     "query": "CREATE TABLE deployment_volume( id UUID CONSTRAINT deployment_volume_pk PRIMARY KEY, name TEXT NOT NULL, deployment_id UUID NOT NULL CONSTRAINT deployment_volume_fk_deployment_id REFERENCES deployment(id), volume_size INT NOT NULL CONSTRAINT deployment_volume_chk_size_unsigned CHECK(volume_size > 0), volume_mount_path TEXT NOT NULL, deleted TIMESTAMPTZ, CONSTRAINT deployment_volume_name_unique_deployment_id UNIQUE(deployment_id, name), CONSTRAINT deployment_volume_path_unique_deployment_id UNIQUE(deployment_id, volume_mount_path) );"
   },
+  "8c8d15a1fab2a2c568e8a078357c807188c37aecc7e7a45a9d45a101e5b2c37b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE ci_builds( repo_id UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id), build_num BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK(build_num > 0), git_ref TEXT NOT NULL, git_commit TEXT NOT NULL, status CI_BUILD_STATUS NOT NULL, created TIMESTAMPTZ NOT NULL, finished TIMESTAMPTZ, message TEXT, author TEXT, git_commit_message TEXT, git_pr_title TEXT, started TIMESTAMPTZ, runner_id UUID NOT NULL CONSTRAINT ci_builds_fk_runner_id REFERENCES ci_runner(id), CONSTRAINT ci_builds_pk_repo_id_build_num PRIMARY KEY(repo_id, build_num) );"
+  },
   "8d2c961f04458f116b2d9e7f00668a83febae5648c3c4774795ff2bbe6f6e364": {
     "describe": {
       "columns": [],
@@ -9643,16 +9649,6 @@
       }
     },
     "query": "CREATE TABLE managed_database( id UUID CONSTRAINT managed_database_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT managed_database_chk_name_is_trimmed CHECK( name = TRIM(name) ), db_name VARCHAR(255) NOT NULL CONSTRAINT managed_database_chk_db_name_is_trimmed CHECK( db_name = TRIM(db_name) ), engine MANAGED_DATABASE_ENGINE NOT NULL, version TEXT NOT NULL, num_nodes INTEGER NOT NULL, database_plan MANAGED_DATABASE_PLAN NOT NULL, region TEXT NOT NULL, status MANAGED_DATABASE_STATUS NOT NULL, host TEXT NOT NULL, port INTEGER NOT NULL, username TEXT NOT NULL, password TEXT NOT NULL, workspace_id UUID NOT NULL, digitalocean_db_id TEXT CONSTRAINT managed_database_uq_digitalocean_db_id UNIQUE, deleted TIMESTAMPTZ );"
-  },
-  "8dd9ad32929ef5443c4e6f9f66062e31b9efc2a2bdd9d525c9d557b7a69c1187": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE password_reset_request( user_id UUID CONSTRAINT password_reset_request_pk PRIMARY KEY CONSTRAINT password_reset_request_fk_user_id REFERENCES \"user\"(id), token TEXT NOT NULL, token_expiry TIMESTAMPTZ NOT NULL );"
   },
   "8e7433b1af4c66de9bc7eba31cb2639190f235a410264641ba86b0cd6890c736": {
     "describe": {
@@ -9772,7 +9768,7 @@
         true,
         true,
         true,
-        false,
+        true,
         true,
         true,
         false
@@ -10905,7 +10901,7 @@
         true,
         true,
         true,
-        false,
+        true,
         true,
         true
       ],
@@ -11788,6 +11784,19 @@
       }
     },
     "query": "SELECT image_digest, created as \"created: _\" FROM deployment_deploy_history WHERE deployment_id = $1;"
+  },
+  "b20318352ed6022a580e4b93b0ee91cd7098eb700c0fc306a678bb0fc5bf18bd": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Int4"
+        ]
+      }
+    },
+    "query": "UPDATE password_reset_request SET attempts = $2 WHERE user_id = $1;"
   },
   "b2570af8ca7311aff26e71673f7b4a7e10881cc888e41a64b8b8dac482d0e992": {
     "describe": {
@@ -14929,7 +14938,7 @@
         true,
         true,
         true,
-        false,
+        true,
         true,
         true,
         false
@@ -15162,6 +15171,16 @@
       }
     },
     "query": "INSERT INTO user_controlled_domain( domain_id, nameserver_type ) VALUES ($1, 'external');"
+  },
+  "eed715b1f6c5b7d579fb6e9a5e6b6138ff11b42cd3d6e0b1ae5ca6f19abd9d55": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE password_reset_request( user_id UUID CONSTRAINT password_reset_request_pk PRIMARY KEY CONSTRAINT password_reset_request_fk_user_id REFERENCES \"user\"(id), token TEXT NOT NULL, token_expiry TIMESTAMPTZ NOT NULL, attempts INT NOT NULL CONSTRAINT password_reset_request_attempts_non_negative CHECK(attempts >= 0) );"
   },
   "eef30c66b6aa7ba7c27b428d302a21a46cb26224519e035325eb8d448fab0b1b": {
     "describe": {

@@ -43,7 +43,7 @@ pub struct PullRequest {
 	pub commit_sha: String,
 	pub pr_number: String,
 	pub pr_title: String,
-	pub author: String,
+	pub author: Option<String>,
 	pub to_be_committed_branch_name: String,
 }
 
@@ -53,7 +53,7 @@ pub struct Tag {
 	pub repo_name: String,
 	pub commit_sha: String,
 	pub tag_name: String,
-	pub author: String,
+	pub author: Option<String>,
 	pub commit_message: Option<String>,
 }
 
@@ -63,6 +63,6 @@ pub struct Commit {
 	pub repo_name: String,
 	pub commit_sha: String,
 	pub commit_message: Option<String>,
-	pub author: String,
+	pub author: Option<String>,
 	pub committed_branch_name: String,
 }
