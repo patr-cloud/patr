@@ -14,6 +14,7 @@ use crate::{
 	service::{self, get_access_token_expiry},
 	utils::{
 		constants::request_keys,
+		validator,
 		Error,
 		ErrorData,
 		EveContext,
@@ -795,10 +796,64 @@ async fn reset_password(
 	.status(400)
 	.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
 
-	service::reset_password(
+	let reset_request = db::get_password_reset_request_for_user(
 		context.get_database_connection(),
-		&password,
-		&verification_token,
+		&user.id,
+	)
+	.await?
+	.status(400)
+	.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
+
+	// check password strength
+	if !validator::is_password_valid(&password) {
+		Error::as_result()
+			.status(200)
+			.body(error!(PASSWORD_TOO_WEAK).to_string())?;
+	}
+
+	const ALLOWED_ATTEMPTS_FOR_AN_OTP: i32 = 3;
+	if reset_request.attempts >= ALLOWED_ATTEMPTS_FOR_AN_OTP {
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string()));
+	}
+
+	let success =
+		service::validate_hash(&verification_token, &reset_request.token)?;
+
+	db::update_password_reset_request_attempt_for_user(
+		context.get_database_connection(),
+		&user.id,
+		reset_request.attempts + 1,
+	)
+	.await?;
+	context.commit_database_transaction().await?;
+
+	if !success {
+		Error::as_result()
+			.status(400)
+			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
+	}
+
+	let is_password_same = service::validate_hash(&password, &user.password)?;
+
+	if is_password_same {
+		Error::as_result()
+			.status(400)
+			.body(error!(PASSWORD_UNCHANGED).to_string())?;
+	}
+
+	let new_password = service::hash(password.as_bytes())?;
+
+	db::update_user_password(
+		context.get_database_connection(),
+		&user.id,
+		&new_password,
+	)
+	.await?;
+
+	db::delete_password_reset_request_for_user(
+		context.get_database_connection(),
 		&user.id,
 	)
 	.await?;
