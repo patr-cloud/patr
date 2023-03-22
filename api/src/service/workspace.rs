@@ -300,7 +300,7 @@ pub async fn update_billing_address(
 	Ok(())
 }
 
-async fn create_stripe_customer(
+pub async fn create_stripe_customer(
 	workspace_id: &Uuid,
 	config: &Settings,
 ) -> Result<String, Error> {

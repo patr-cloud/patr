@@ -20,6 +20,7 @@ mod redis;
 mod routes;
 mod scheduler;
 mod service;
+mod test;
 mod utils;
 
 use api_macros::{migrate_query, query, query_as};
