@@ -8,7 +8,7 @@ use api_models::{
 			DeploymentMetrics,
 			DeploymentProbe,
 			DeploymentRegistry,
-		DeploymentRegistryInput,
+			DeploymentRegistryWithRegcred,
 			DeploymentRunningDetails,
 			DeploymentStatus,
 			DeploymentVolume,
@@ -16,6 +16,7 @@ use api_models::{
 			ExposedPortType,
 			Metric,
 			PatrRegistry,
+			RegistryCredentials,
 		},
 		region::RegionStatus,
 	},
@@ -70,7 +71,7 @@ pub async fn create_deployment_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	name: &str,
-	registry: &DeploymentRegistryInput,
+	registry: &DeploymentRegistryWithRegcred,
 	image_tag: &str,
 	region: &Uuid,
 	machine_type: &Uuid,
@@ -83,7 +84,10 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
-	if let DeploymentRegistry::ExternalRegistry { image_name, .. } = registry {
+	if let DeploymentRegistryWithRegcred::ExternalRegistry {
+		image_name, ..
+	} = registry
+	{
 		if !validator::is_docker_image_name_valid(image_name) {
 			log::trace!(
 				"request_id: {} invalid image_name cannot contain colon(:)",
@@ -173,7 +177,7 @@ pub async fn create_deployment_in_workspace(
 
 	db::begin_deferred_constraints(connection).await?;
 	match registry {
-		DeploymentRegistryInput::PatrRegistry {
+		DeploymentRegistryWithRegcred::PatrRegistry {
 			registry: _,
 			repository_id,
 		} => {
@@ -195,7 +199,7 @@ pub async fn create_deployment_in_workspace(
 			)
 			.await?;
 		}
-		DeploymentRegistryInput::ExternalRegistry {
+		DeploymentRegistryWithRegcred::ExternalRegistry {
 			registry,
 			image_name,
 			private_regcred,
@@ -363,7 +367,7 @@ pub async fn update_deployment(
 	liveness_probe: Option<&DeploymentProbe>,
 	config_mounts: Option<&BTreeMap<String, Base64String>>,
 	volumes: Option<&BTreeMap<String, DeploymentVolume>>,
-	use_private_regcred: Option<Option<RegistryCredentials>>,
+	private_regcred: Option<Option<&RegistryCredentials>>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -515,7 +519,7 @@ pub async fn update_deployment(
 		max_horizontal_scale,
 		startup_probe,
 		liveness_probe,
-		use_private_regcred,
+		private_regcred.map(|regcred| regcred.is_some()),
 	)
 	.await?;
 
@@ -694,22 +698,22 @@ pub async fn update_deployment(
 			Some(None) => {
 				// delete the existing registry credentials if any
 				service::delete_private_docker_registry_credentials(
-					&workspace_id,
-					&deployment_id,
-					kubeconfig,
-					&request_id,
+					workspace_id,
+					deployment_id,
+					kubeconfig.clone(),
+					request_id,
 				)
 				.await?
 			}
 			Some(Some(regcred)) => {
 				// update registry credentials
 				service::update_private_docker_registry_credentials(
-					&workspace_id,
-					&deployment_id,
+					workspace_id,
+					deployment_id,
 					registry,
-					&regcred,
-					kubeconfig,
-					&request_id,
+					regcred,
+					kubeconfig.clone(),
+					request_id,
 				)
 				.await?;
 			}

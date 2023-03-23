@@ -13,7 +13,7 @@ use api_models::{
 				Deployment,
 				DeploymentDeployHistory,
 				DeploymentRegistry,
-				DeploymentRegistryInput,
+				DeploymentRegistryWithRegcred,
 				DeploymentStatus,
 				GetDeploymentBuildLogsRequest,
 				GetDeploymentBuildLogsResponse,
@@ -865,8 +865,10 @@ async fn create_deployment(
 
 	let registry = {
 		// strip https protocol prefix from registry url
-		if let DeploymentRegistryInput::ExternalRegistry { registry, .. } =
-			&mut registry
+		if let DeploymentRegistryWithRegcred::ExternalRegistry {
+			registry,
+			..
+		} = &mut registry
 		{
 			if let Some(trimmed_registry) = registry.strip_prefix("https://") {
 				*registry = trimmed_registry.to_owned();
@@ -949,16 +951,15 @@ async fn create_deployment(
 	)
 	.await?;
 
-	if let DeploymentRegistryInput::ExternalRegistry {
+	if let DeploymentRegistryWithRegcred::ExternalRegistry {
 		registry,
 		image_name: _,
 		private_regcred: Some(regcred),
 	} = &registry
 	{
-		let kubeconfig = service::get_kubernetes_config_for_region(
+		let (kubeconfig, _) = service::get_kubernetes_config_for_region(
 			context.get_database_connection(),
 			&region,
-			&config,
 		)
 		.await?;
 
@@ -977,8 +978,10 @@ async fn create_deployment(
 
 	if deploy_on_create {
 		let mut is_deployed = false;
-		if let DeploymentRegistryInput::PatrRegistry { repository_id, .. } =
-			&registry
+		if let DeploymentRegistryWithRegcred::PatrRegistry {
+			repository_id,
+			..
+		} = &registry
 		{
 			let digest = db::get_latest_digest_for_docker_repository(
 				context.get_database_connection(),
@@ -1835,7 +1838,7 @@ async fn update_deployment(
 		liveness_probe.as_ref(),
 		config_mounts.as_ref(),
 		volumes.as_ref(),
-		private_regcred.map(|cred| cred.as_ref),
+		private_regcred.as_ref().map(|cred| cred.as_ref()),
 		&config,
 		&request_id,
 	)

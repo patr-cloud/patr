@@ -12,6 +12,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use base64::Engine;
 use eve_rs::AsError;
 use k8s_openapi::{
 	api::{
@@ -94,11 +95,10 @@ pub async fn update_private_docker_registry_credentials(
 	deployment_id: &Uuid,
 	registry_url: &str,
 	registry_credentials: &RegistryCredentials,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client =
-		super::get_kubernetes_client(kubeconfig.auth_details).await?;
+	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
 
 	let namespace = workspace_id.as_str();
 	let regcred_name = format!("regcred-{}", deployment_id);
@@ -106,7 +106,7 @@ pub async fn update_private_docker_registry_credentials(
 	let docker_config_json = json!({
 		"auths": {
 		  format!("https://{}", registry_url): {
-			"auth": base64::encode(format!(
+			"auth": base64::engine::general_purpose::STANDARD.encode(format!(
 				"{}:{}",
 				registry_credentials.username, registry_credentials.password
 			))
@@ -143,11 +143,10 @@ pub async fn update_private_docker_registry_credentials(
 pub async fn delete_private_docker_registry_credentials(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client =
-		super::get_kubernetes_client(kubeconfig.auth_details).await?;
+	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
 
 	log::trace!(
 		"request_id: {} - deleting external registry credential if present",
@@ -876,7 +875,6 @@ pub async fn stop_kubernetes_deployment(
 	)
 	.await?;
 
-
 	log::trace!("request_id: {} - deleting the stateful set", request_id);
 
 	Api::<StatefulSet>::namespaced(
@@ -887,6 +885,7 @@ pub async fn stop_kubernetes_deployment(
 	.await?;
 
 	log::trace!("request_id: {} - deleting the config map", request_id);
+
 	Api::<ConfigMap>::namespaced(
 		kubernetes_client.clone(),
 		workspace_id.as_str(),
@@ -909,6 +908,7 @@ pub async fn stop_kubernetes_deployment(
 	.await?;
 
 	log::trace!("request_id: {} - deleting the hpa", request_id);
+
 	Api::<HorizontalPodAutoscaler>::namespaced(
 		kubernetes_client.clone(),
 		workspace_id.as_str(),
@@ -935,7 +935,7 @@ pub async fn stop_kubernetes_deployment(
 pub async fn delete_kubernetes_deployment(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	stop_kubernetes_deployment(

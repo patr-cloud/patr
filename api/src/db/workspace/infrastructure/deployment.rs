@@ -153,7 +153,7 @@ pub async fn initialize_deployment_pre(
 			liveness_probe_port_type EXPOSED_PORT_TYPE,
 			current_live_digest TEXT,
 			deleted TIMESTAMPTZ,
-			use_private_regcred BOOL NOT NULL DEFAULT false,
+			use_private_regcred BOOL NOT NULL,
 			CONSTRAINT deployment_fk_repository_id_workspace_id
 				FOREIGN KEY(repository_id, workspace_id)
 					REFERENCES docker_registry_repository(id, workspace_id),
@@ -1529,7 +1529,8 @@ pub async fn get_deployments_by_region_id(
 			startup_probe_path,
 			liveness_probe_port,
 			liveness_probe_path,
-			current_live_digest
+			current_live_digest,
+			use_private_regcred
 		FROM
 			deployment
 		WHERE
