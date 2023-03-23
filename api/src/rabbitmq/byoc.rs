@@ -100,6 +100,9 @@ pub(super) async fn process_request(
 					connection, &region_id, &std_err,
 				)
 				.await?;
+
+				db::set_region_as_errored(connection, &region_id).await?;
+
 				// don't requeue
 				return Ok(());
 			}
