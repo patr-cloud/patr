@@ -628,7 +628,7 @@ pub async fn update_deployment(
 		request_id
 	);
 
-	let (deployment, _, full_image, running_details) =
+	let (deployment, _, _, running_details) =
 		get_full_deployment_config(connection, deployment_id, request_id)
 			.await?;
 
@@ -770,10 +770,20 @@ pub async fn update_deployment(
 				.await?;
 			}
 
+			let (image_name, _) =
+				service::get_image_name_and_digest_for_deployment_image(
+					connection,
+					&deployment.registry,
+					&deployment.image_tag,
+					config,
+					request_id,
+				)
+				.await?;
+
 			service::update_kubernetes_deployment(
 				workspace_id,
 				&deployment,
-				&full_image,
+				&image_name,
 				None,
 				&running_details,
 				&volumes,
