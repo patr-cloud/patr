@@ -1,4 +1,7 @@
 mod deployment;
+mod managedurl;
+mod staticsite;
+
 use api_models::utils::{ResourceType, Uuid};
 use chrono::Utc;
 

@@ -6,6 +6,7 @@ use chrono::{DateTime, Utc};
 
 use crate::{query, query_as, Database};
 
+#[derive(PartialEq, Debug)]
 pub struct StaticSite {
 	pub id: Uuid,
 	pub name: String,
