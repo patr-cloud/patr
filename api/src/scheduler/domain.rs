@@ -118,8 +118,12 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 				Ok(response) => {
 					matches!(response.result.status, Status::Active)
 				}
-				Err(ApiFailure::Error(status_code, _))
-					if status_code == 400 =>
+				Err(ApiFailure::Error(status_code, errors))
+					if status_code == 400 &&
+						errors
+							.errors
+							.iter()
+							.any(|error| error.code == 1001) =>
 				{
 					// The given domain does not exist in cloudflare. Something
 					// is wrong here
