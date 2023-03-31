@@ -10,6 +10,7 @@ pub(super) async fn migrate(
 ) -> Result<(), Error> {
 	migrate_ci_builds(connection, config).await?;
 	add_attempts_for_password_reset(connection, config).await?;
+	add_container_command_for_deployment(connection, config).await?;
 	Ok(())
 }
 
@@ -48,6 +49,22 @@ async fn add_attempts_for_password_reset(
 		r#"
 		ALTER TABLE password_reset_request
 		ALTER COLUMN attempts DROP DEFAULT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn add_container_command_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE deployment
+		ADD COLUMN container_command TEXT[];
 		"#
 	)
 	.execute(&mut *connection)
