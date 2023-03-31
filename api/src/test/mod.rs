@@ -1,5 +1,6 @@
 mod deployment;
 mod managedurl;
+mod secret;
 mod staticsite;
 
 use api_models::utils::{ResourceType, Uuid};
