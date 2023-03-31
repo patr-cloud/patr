@@ -1,11 +1,14 @@
 use api_models::utils::Uuid;
+use axum::{
+	routing::{get, post},
+	Router,
+};
 use base64::prelude::*;
 use chrono::Utc;
-use eve_rs::{App as EveApp, AsError, Context, HttpMethod, NextHandler};
 use serde_json::json;
 
 use crate::{
-	app::{create_eve_app, App},
+	app::App,
 	db::{self},
 	models::{
 		error::{id as ErrorId, message as ErrorMessage},
@@ -13,16 +16,8 @@ use crate::{
 		RegistryToken,
 		RegistryTokenAccess,
 	},
-	pin_fn,
 	service,
-	utils::{
-		constants::request_keys,
-		validator,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, validator, Error},
 };
 
 /// # Description
@@ -38,25 +33,19 @@ use crate::{
 /// containing context, middleware, object of [`App`] and Error
 ///
 /// [`App`]: App
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut app = create_eve_app(app);
+pub fn create_sub_route(app: &App) -> Router {
+	let router = Router::new();
 
-	app.post(
+	router.route(
 		"/docker-registry-token",
-		[EveMiddleware::CustomFunction(pin_fn!(
-			docker_registry_token_endpoint
-		))],
+		post(docker_registry_token_endpoint),
 	);
-	app.get(
+	router.route(
 		"/docker-registry-token",
-		[EveMiddleware::CustomFunction(pin_fn!(
-			docker_registry_token_endpoint
-		))],
+		get(docker_registry_token_endpoint),
 	);
 
-	app
+	router
 }
 
 /// # Description
@@ -85,8 +74,7 @@ pub fn create_sub_app(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn docker_registry_token_endpoint(
-	mut context: EveContext,
-	next: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let query = context.get_request().get_query();
 
@@ -136,8 +124,7 @@ async fn docker_registry_token_endpoint(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn docker_registry_login(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let query = context.get_request().get_query().clone();
 	let config = context.get_state().config.clone();
@@ -331,8 +318,7 @@ async fn docker_registry_login(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn docker_registry_authenticate(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let query = context.get_request().get_query().clone();
 	let config = context.get_state().config.clone();

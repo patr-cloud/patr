@@ -12,94 +12,39 @@ use api_models::{
 	},
 	utils::{DateTime, Uuid},
 };
+use axum::{
+	extract::State,
+	routing::{get, patch, post},
+	Router,
+};
 use chrono::{DateTime as ChronoDateTime, Utc};
-use eve_rs::{App as EveApp, AsError, NextHandler};
 
 use crate::{
-	app::{create_eve_app, App},
+	app::App,
 	db,
 	error,
-	pin_fn,
 	redis,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error},
 };
 
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut app = create_eve_app(app);
-
-	app.post(
-		"/api-token",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(create_api_token)),
-		],
-	);
-	app.get(
-		"/api-token",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(list_api_tokens_for_user)),
-		],
-	);
-	app.get(
+pub fn create_sub_route(app: &App) -> Router {
+	let router = Router::new();
+	// All routes have plainTokenAuthenticator
+	router.post("/api-token", post(create_api_token));
+	router.get("/api-token", get(list_api_tokens_for_user));
+	router.get(
 		"/api-token/:tokenId/permission",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(
-				list_permissions_for_api_token
-			)),
-		],
+		get(list_permissions_for_api_token),
 	);
-	app.post(
-		"/api-token/:tokenId/regenerate",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(regenerate_api_token)),
-		],
-	);
-	app.post(
-		"/api-token/:tokenId/revoke",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(revoke_api_token)),
-		],
-	);
-	app.patch(
-		"/api-token/:tokenId",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(update_api_token)),
-		],
-	);
+	router.post("/api-token/:tokenId/regenerate", post(regenerate_api_token));
+	router.post("/api-token/:tokenId/revoke", post(revoke_api_token));
+	router.patch("/api-token/:tokenId", patch(update_api_token));
 
-	app
+	router
 }
 
-async fn create_api_token(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+async fn create_api_token(State(app): State<App>) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
 	let user_id = context.get_token_data().unwrap().user_id().clone();
@@ -132,8 +77,7 @@ async fn create_api_token(
 }
 
 async fn list_api_tokens_for_user(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let user_id = context.get_token_data().unwrap().user_id().clone();
@@ -164,8 +108,7 @@ async fn list_api_tokens_for_user(
 }
 
 async fn list_permissions_for_api_token(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let token_id = context.get_param(request_keys::TOKEN_ID).unwrap();
@@ -270,8 +213,7 @@ async fn list_permissions_for_api_token(
 }
 
 async fn regenerate_api_token(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let token_id =
 		Uuid::parse_str(context.get_param(request_keys::TOKEN_ID).unwrap())?;
@@ -298,10 +240,7 @@ async fn regenerate_api_token(
 	Ok(context)
 }
 
-async fn revoke_api_token(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+async fn revoke_api_token(State(app): State<App>) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 
@@ -342,10 +281,7 @@ async fn revoke_api_token(
 	Ok(context)
 }
 
-async fn update_api_token(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+async fn update_api_token(State(app): State<App>) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 	let token_id =
 		Uuid::parse_str(context.get_param(request_keys::TOKEN_ID).unwrap())?;

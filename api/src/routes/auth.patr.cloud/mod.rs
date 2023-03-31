@@ -5,7 +5,7 @@ use crate::{
 	utils::{ErrorData, EveContext, EveMiddleware},
 };
 
-pub fn create_sub_app(
+pub fn create_sub_route(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
 	// TODO Populate auth sub-apps here

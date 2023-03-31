@@ -46,232 +46,29 @@ use crate::{
 /// containing context, middleware, object of [`App`] and Error
 ///
 /// [`App`]: App
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+pub fn create_sub_route(app: &App) -> Router {
 	let mut sub_app = create_eve_app(app);
+	let router = Router::new();
 
 	// List all roles
-	sub_app.get(
-		"/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::rbac::roles::LIST,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(list_all_roles)),
-		],
-	);
+	router.route("/", get(list_all_roles));
 
 	// Create new role
-	sub_app.post(
-		"/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission: permissions::workspace::rbac::roles::CREATE,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(create_role)),
-		],
-	);
+	router.route("/", post(create_role));
 
 	// Get information of a role
-	sub_app.get(
-		"/:roleId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::rbac::roles::LIST,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_role_details)),
-		],
-	);
+	router.route("/:roleId", get(get_role_details));
 
 	// List all users with for a specific role in workspace
-	sub_app.get(
-		"/:roleId/users",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::rbac::user::LIST,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(
-				list_users_with_role_in_workspace
-			)),
-		],
-	);
+	router.route("/:roleId/users", get(list_users_with_role_in_workspace));
 
 	// Update a role
-	sub_app.put(
-		"/:roleId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission: permissions::workspace::rbac::roles::EDIT,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let role_id =
-						context.get_param(request_keys::ROLE_ID).unwrap();
-					let role_id = Uuid::parse_str(role_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-					let role = db::get_role_by_id(
-						context.get_database_connection(),
-						&role_id,
-					)
-					.await?
-					.filter(|role| role.owner_id == workspace_id);
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if role.is_none() || resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(update_role)),
-		],
-	);
+	router.route("/:roleId", put(update_role));
 
 	// Delete a role
-	sub_app.delete(
-		"/:roleId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission: permissions::workspace::rbac::roles::DELETE,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+	router.route("/:roleId", delete(delete_role));
 
-					let role_id =
-						context.get_param(request_keys::ROLE_ID).unwrap();
-					let role_id = Uuid::parse_str(role_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-					let role = db::get_role_by_id(
-						context.get_database_connection(),
-						&role_id,
-					)
-					.await?
-					.filter(|role| role.owner_id == workspace_id);
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if role.is_none() || resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(delete_role)),
-		],
-	);
-
-	sub_app
+	router
 }
 
 /// # Description

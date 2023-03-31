@@ -86,6 +86,8 @@ zip = "0.6"
 rcgen = "0.10.0"
 url = "2.2"
 itertools = "0.10.5"
+axum = "0.6.12"
+anyhow = "1.0.70"
 
 [dependencies.log4rs]
 default-features = false

@@ -28,13 +28,13 @@ use app::App;
 use chrono::{Datelike, Utc};
 use futures::future;
 use tokio::runtime::Builder;
-use utils::{logger, Error as EveError};
+use utils::{logger, Error};
 
 use crate::{models::rabbitmq::BillingData, utils::handlebar_registry};
 
 type Database = sqlx::Postgres;
 
-fn main() -> Result<(), EveError> {
+fn main() -> Result<(), Error> {
 	Builder::new_multi_thread()
 		.enable_io()
 		.enable_time()
@@ -46,7 +46,7 @@ fn main() -> Result<(), EveError> {
 		.block_on(async_main())
 }
 
-async fn async_main() -> Result<(), EveError> {
+async fn async_main() -> Result<(), Error> {
 	let config = utils::settings::parse_config();
 	println!(
 		"[TRACE]: Configuration read. Running environment set to {}",

@@ -1,25 +1,21 @@
 use std::net::{IpAddr, Ipv4Addr};
 
 use api_models::{models::auth::*, utils::Uuid, ErrorType};
+use axum::{
+	extract::State,
+	routing::{get, post},
+	Router,
+};
 use chrono::{Duration, Utc};
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
-	app::{create_eve_app, App},
+	app::App,
 	db::{self, UserWebLogin},
 	error,
-	pin_fn,
 	redis,
 	routes,
 	service::{self, get_access_token_expiry},
-	utils::{
-		constants::request_keys,
-		validator,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, validator, Error},
 };
 
 mod docker_registry;
@@ -37,66 +33,27 @@ mod docker_registry;
 /// containing context, middleware, object of [`App`] and Error
 ///
 /// [`App`]: App
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut sub_app = create_eve_app(app);
+pub async fn create_sub_route(app: &App) -> Router {
+	let router = Router::new();
 
-	sub_app.post(
-		"/sign-in",
-		[EveMiddleware::CustomFunction(pin_fn!(sign_in))],
-	);
-	sub_app.post(
-		"/sign-up",
-		[EveMiddleware::CustomFunction(pin_fn!(sign_up))],
-	);
-	sub_app.post(
-		"/sign-out",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(sign_out)),
-		],
-	);
-	sub_app.post("/join", [EveMiddleware::CustomFunction(pin_fn!(join))]);
-	sub_app.get(
-		"/access-token",
-		[EveMiddleware::CustomFunction(pin_fn!(get_access_token))],
-	);
-	sub_app.get(
-		"/email-valid",
-		[EveMiddleware::CustomFunction(pin_fn!(is_email_valid))],
-	);
-	sub_app.get(
-		"/username-valid",
-		[EveMiddleware::CustomFunction(pin_fn!(is_username_valid))],
-	);
-	sub_app.get(
-		"/coupon-valid",
-		[EveMiddleware::CustomFunction(pin_fn!(is_coupon_valid))],
-	);
-	sub_app.post(
-		"/forgot-password",
-		[EveMiddleware::CustomFunction(pin_fn!(forgot_password))],
-	);
-	sub_app.post(
-		"/reset-password",
-		[EveMiddleware::CustomFunction(pin_fn!(reset_password))],
-	);
-	sub_app.post(
-		"/resend-otp",
-		[EveMiddleware::CustomFunction(pin_fn!(resend_otp))],
-	);
-	sub_app.post(
-		"/list-recovery-options",
-		[EveMiddleware::CustomFunction(pin_fn!(
-			list_recovery_options
-		))],
-	);
-	sub_app.use_sub_app("/", docker_registry::create_sub_app(app));
+	router.route("/sign-in", post(sign_in));
+	router.route("/sign-up", post(sign_up));
+	// Middleware routes
+	router.route("/sign-out", post(sign_out));
+	router.route("/join", post(join));
+	router.route("/access-token", get(get_access_token));
+	router.route("/email-valid", get(is_email_valid));
+	router.route("/username-valid", get(is_username_valid));
+	router.route("/coupon-valid", get(is_coupon_valid));
+	router.route("/forgot-password", post(forgot_password));
+	router.route("/reset-password", post(reset_password));
+	router.route("/resend-otp", post(resend_otp));
+	router.route("/list-recovery-options", post(list_recovery_options));
+	router.route("/", post(list_recovery_options));
 
-	sub_app
+	router.nest("/", docker_registry::create_sub_route);
+
+	router
 }
 
 /// # Description
@@ -130,10 +87,7 @@ pub fn create_sub_app(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn sign_in(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+async fn sign_in(State(app): State<App>) -> Result<EveContext, Error> {
 	let LoginRequest { user_id, password } = context
 		.get_body_as()
 		.status(400)
@@ -232,10 +186,7 @@ async fn sign_in(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn sign_up(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+async fn sign_up(State(app): State<App>) -> Result<EveContext, Error> {
 	let CreateAccountRequest {
 		username,
 		password,
@@ -303,10 +254,7 @@ async fn sign_up(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn sign_out(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+async fn sign_out(State(app): State<App>) -> Result<EveContext, Error> {
 	let login_id = context.get_token_data().unwrap().login_id().clone();
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 
@@ -368,10 +316,7 @@ async fn sign_out(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn join(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+async fn join(State(app): State<App>) -> Result<EveContext, Error> {
 	let CompleteSignUpRequest {
 		username,
 		verification_token,
@@ -475,10 +420,7 @@ async fn join(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn get_access_token(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+async fn get_access_token(State(app): State<App>) -> Result<EveContext, Error> {
 	let refresh_token = context
 		.get_header("Authorization")
 		.status(400)
@@ -575,10 +517,7 @@ async fn get_access_token(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn is_email_valid(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+async fn is_email_valid(State(app): State<App>) -> Result<EveContext, Error> {
 	let IsEmailValidRequest { email } = context
 		.get_query_as()
 		.status(400)
@@ -624,8 +563,7 @@ async fn is_email_valid(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn is_username_valid(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let IsUsernameValidRequest { username } = context
 		.get_query_as()
@@ -671,10 +609,7 @@ async fn is_username_valid(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn is_coupon_valid(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+async fn is_coupon_valid(State(app): State<App>) -> Result<EveContext, Error> {
 	let IsCouponValidRequest { coupon } = context
 		.get_query_as()
 		.status(400)
@@ -721,10 +656,7 @@ async fn is_coupon_valid(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn forgot_password(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+async fn forgot_password(State(app): State<App>) -> Result<EveContext, Error> {
 	let ForgotPasswordRequest {
 		user_id,
 		preferred_recovery_option,
@@ -775,10 +707,7 @@ async fn forgot_password(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn reset_password(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+async fn reset_password(State(app): State<App>) -> Result<EveContext, Error> {
 	let ResetPasswordRequest {
 		user_id,
 		password,
@@ -897,10 +826,7 @@ async fn reset_password(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn resend_otp(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+async fn resend_otp(State(app): State<App>) -> Result<EveContext, Error> {
 	let ResendOtpRequest { username, password } = context
 		.get_body_as()
 		.status(400)
@@ -946,8 +872,7 @@ async fn resend_otp(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn list_recovery_options(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let ListRecoveryOptionsRequest { user_id } = context
 		.get_body_as()

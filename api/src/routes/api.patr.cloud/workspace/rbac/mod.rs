@@ -6,6 +6,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use axum::Router;
 use eve_rs::{App as EveApp, AsError, NextHandler};
 
 use crate::{
@@ -40,43 +41,19 @@ mod user;
 /// containing context, middleware, object of [`App`] and Error
 ///
 /// [`App`]: App
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+pub fn create_sub_route(app: &App) -> Router {
 	let mut sub_app = create_eve_app(app);
+	let router = Router::new();
 
-	sub_app.use_sub_app("/user", user::create_sub_app(app));
-	sub_app.use_sub_app("/role", role::create_sub_app(app));
+	router.route("/user", user::create_sub_route(app));
+	router.route("/role", role::create_sub_route(app));
 
-	sub_app.get(
-		"/permission",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_all_permissions)),
-		],
-	);
-	sub_app.get(
-		"/resource-type",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_all_resource_types)),
-		],
-	);
-	sub_app.get(
-		"/current-permissions",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_current_permissions)),
-		],
-	);
+	// All routes have PlainTokenAuthenticator middleware
+	router.route("/permission", get(get_all_permissions));
+	router.route("/resource-type", get(get_all_resource_types));
+	router.route("/current-permissions", get(get_current_permissions));
 
-	sub_app
+	router
 }
 
 async fn get_all_permissions(

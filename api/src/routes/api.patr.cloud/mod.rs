@@ -1,11 +1,6 @@
-use api_models::models::GetVersionResponse;
-use eve_rs::{App as EveApp, NextHandler};
+use axum::Router;
 
-use crate::{
-	app::{create_eve_app, App},
-	pin_fn,
-	utils::{constants, Error, ErrorData, EveContext, EveMiddleware},
-};
+use crate::app::App;
 
 mod auth;
 mod user;
@@ -28,29 +23,22 @@ mod workspace;
 /// containing context, middleware, object of [`App`] and Error
 ///
 /// [`App`]: App
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut sub_app = create_eve_app(app);
+pub fn create_sub_route(app: &App) -> Router {
+	let router = Router::new()
+		.nest("/auth", auth::create_sub_route(app))
+		.nest("/user", user::create_sub_route(app))
+		.nest("/workspace", workspace::create_sub_route(app))
+		.nest("/webhook", webhook::create_sub_route(app));
+	// .route("/version", get(get_version_number));
 
-	sub_app.use_sub_app("/auth", auth::create_sub_app(app));
-	sub_app.use_sub_app("/user", user::create_sub_app(app));
-	sub_app.use_sub_app("/workspace", workspace::create_sub_app(app));
-	sub_app.use_sub_app("/webhook", webhook::create_sub_app(app));
-	sub_app.get(
-		"/version",
-		[EveMiddleware::CustomFunction(pin_fn!(get_version_number))],
-	);
-
-	sub_app
+	router
 }
 
-async fn get_version_number(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	context.success(GetVersionResponse {
-		version: constants::DATABASE_VERSION.to_string(),
-	});
-	Ok(context)
-}
+// async fn get_version_number(
+// State(state): State<App>,
+// ) -> Result<EveContext, Error> {
+// context.success(GetVersionResponse {
+// version: constants::DATABASE_VERSION.to_string(),
+// });
+// Ok(context)
+// }

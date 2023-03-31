@@ -5,6 +5,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use axum::{routing::post, Router};
 use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
@@ -32,19 +33,12 @@ use crate::{
 	},
 };
 
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut sub_app = create_eve_app(app);
+pub fn create_sub_route(app: &App) -> Router {
+	let router = Router::new();
 
-	sub_app.post(
-		"/repo/:repoId",
-		[EveMiddleware::CustomFunction(pin_fn!(
-			handle_ci_hooks_for_repo
-		))],
-	);
+	router.route("/repo/:repoId", post(handle_ci_hooks_for_repo));
 
-	sub_app
+	router
 }
 
 async fn handle_ci_hooks_for_repo(

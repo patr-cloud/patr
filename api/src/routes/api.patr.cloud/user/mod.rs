@@ -34,22 +34,18 @@ use api_models::{
 	},
 	utils::{DateTime, Uuid},
 };
+use axum::{
+	routing::{delete, get, post},
+	Router,
+};
 use chrono::{Datelike, Utc};
-use eve_rs::{App as EveApp, AsError, NextHandler};
 
 use crate::{
-	app::{create_eve_app, App},
+	app::App,
 	db::{self, User},
 	error,
-	pin_fn,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error},
 };
 
 mod api_token;
@@ -69,167 +65,38 @@ mod login;
 /// containing context, middleware, object of [`App`] and Error
 ///
 /// [`App`]: App
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut sub_app = create_eve_app(app);
+pub async fn create_sub_route(app: &App) -> Router {
+	let router = Router::new();
 
-	sub_app.get(
-		"/info",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_user_info)),
-		],
-	);
-	sub_app.post(
-		"/info",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(update_user_info)),
-		],
-	);
-	sub_app.post(
-		"/add-email-address",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(add_email_address)),
-		],
-	);
-	sub_app.get(
-		"/list-email-address",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(list_email_addresses)),
-		],
-	);
-	sub_app.get(
-		"/list-phone-numbers",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(list_phone_numbers)),
-		],
-	);
-	sub_app.post(
+	// All middleware routes are PlainTokenAuthenticator routes
+	router.route("/info", get(get_user_info));
+	router.route("/info", post(update_user_info));
+	router.route("/add-email-address", post(add_email_address));
+	router.route("/list-email-address", get(list_email_addresses));
+	router.route("/list-phone-numbers", get(list_phone_numbers));
+	router.route(
 		"/update-recovery-email",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(
-				update_recovery_email_address
-			)),
-		],
+		post(update_recovery_email_address),
 	);
-	sub_app.post(
-		"/update-recovery-phone",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(
-				update_recovery_phone_number
-			)),
-		],
-	);
-	sub_app.post(
-		"/add-phone-number",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(add_phone_number_for_user)),
-		],
-	);
-	sub_app.post(
-		"/verify-phone-number",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(verify_phone_number)),
-		],
-	);
-	sub_app.delete(
+	router.route("/update-recovery-phone", post(update_recovery_phone_number));
+	router.route("/add-phone-number", post(add_phone_number_for_user));
+	router.route("/verify-phone-number", post(verify_phone_number));
+	router.route(
 		"/delete-personal-email",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(
-				delete_personal_email_address
-			)),
-		],
+		delete(delete_personal_email_address),
 	);
-	sub_app.delete(
-		"/delete-phone-number",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(delete_phone_number)),
-		],
-	);
-	sub_app.post(
-		"/verify-email-address",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(verify_email_address)),
-		],
-	);
-	sub_app.get(
-		"/workspaces",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_workspaces_for_user)),
-		],
-	);
-	sub_app.post(
-		"/change-password",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(change_password)),
-		],
-	);
+	router.route("/delete-phone-number", delete(delete_phone_number));
+	router.route("/verify-email-address", post(verify_email_address));
+	router.route("/workspaces", get(get_workspaces_for_user));
+	router.route("/change-password", post(change_password));
 
-	sub_app.get(
-		"/:userId/info",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_user_id)),
-		],
-	);
-	sub_app.get(
-		"/search",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(search_for_user)),
-		],
-	);
+	router.route("/:userId/info", get(get_user_info_by_user_id));
+	router.route("/search", get(search_for_user));
 
-	sub_app.use_sub_app("/", login::create_sub_app(app));
-	sub_app.use_sub_app("/", api_token::create_sub_app(app));
+	router.nest("/", login::create_sub_route(app));
+	router.nest("/", api_token::create_sub_route(app));
 
-	sub_app
+	router
 }
 
 /// # Description
@@ -269,10 +136,7 @@ pub fn create_sub_app(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn get_user_info(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+async fn get_user_info(State(app): State<App>) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 	let User {
 		id,
@@ -388,8 +252,7 @@ async fn get_user_info(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn get_user_info_by_user_id(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let user_id = context
 		.get_param(request_keys::USER_ID)
@@ -456,10 +319,7 @@ async fn get_user_info_by_user_id(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn update_user_info(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+async fn update_user_info(State(app): State<App>) -> Result<EveContext, Error> {
 	let UpdateUserInfoRequest {
 		first_name,
 		last_name,
@@ -538,8 +398,7 @@ async fn update_user_info(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn add_email_address(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let AddPersonalEmailRequest { email } =
 		context
@@ -590,8 +449,7 @@ async fn add_email_address(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn list_email_addresses(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 
@@ -653,8 +511,7 @@ async fn list_email_addresses(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn list_phone_numbers(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 
@@ -716,8 +573,7 @@ async fn list_phone_numbers(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn update_recovery_email_address(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let UpdateRecoveryEmailRequest { recovery_email } = context
 		.get_body_as()
@@ -769,8 +625,7 @@ async fn update_recovery_email_address(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn update_recovery_phone_number(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let UpdateRecoveryPhoneNumberRequest {
 		recovery_phone_country_code,
@@ -825,8 +680,7 @@ async fn update_recovery_phone_number(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn delete_personal_email_address(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let DeletePersonalEmailRequest { email } = context
 		.get_body_as()
@@ -878,8 +732,7 @@ async fn delete_personal_email_address(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn add_phone_number_for_user(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let AddPhoneNumberRequest {
 		country_code,
@@ -944,8 +797,7 @@ async fn add_phone_number_for_user(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn verify_phone_number(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let VerifyPhoneNumberRequest {
 		country_code,
@@ -1004,8 +856,7 @@ async fn verify_phone_number(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn delete_phone_number(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let DeletePhoneNumberRequest {
 		country_code,
@@ -1062,8 +913,7 @@ async fn delete_phone_number(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn verify_email_address(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let VerifyPersonalEmailRequest {
 		email,
@@ -1124,8 +974,7 @@ async fn verify_email_address(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn get_workspaces_for_user(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 	let workspaces = db::get_all_workspaces_for_user(
@@ -1178,10 +1027,7 @@ async fn get_workspaces_for_user(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn change_password(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+async fn change_password(State(app): State<App>) -> Result<EveContext, Error> {
 	let ChangePasswordRequest {
 		current_password,
 		new_password,
@@ -1209,10 +1055,7 @@ async fn change_password(
 	Ok(context)
 }
 
-async fn search_for_user(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+async fn search_for_user(State(app): State<App>) -> Result<EveContext, Error> {
 	let SearchForUserRequest { query } = context
 		.get_query_as()
 		.status(400)

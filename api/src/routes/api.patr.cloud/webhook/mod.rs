@@ -4,6 +4,7 @@ use api_models::{
 	models::workspace::infrastructure::deployment::DeploymentStatus,
 	utils::{DateTime, Uuid},
 };
+use axum::{routing::post, Router};
 use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::json;
@@ -41,19 +42,14 @@ use crate::{
 /// containing context, middleware, object of [`App`] and Error
 ///
 /// [`App`]: App
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut sub_app = create_eve_app(app);
+pub fn create_sub_route(app: &App) -> Router {
+	let router = Router::new();
 
-	sub_app.post(
-		"/docker-registry/notification",
-		[EveMiddleware::CustomFunction(pin_fn!(notification_handler))],
-	);
+	router.route("/docker-registry/notification", post(notification_handler));
 
-	sub_app.use_sub_app("/ci", ci::create_sub_app(app));
+	router.nest("/ci", ci::create_sub_route(app));
 
-	sub_app
+	router
 }
 
 /// # Description

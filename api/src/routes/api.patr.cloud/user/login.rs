@@ -7,64 +7,31 @@ use api_models::{
 	},
 	utils::{DateTime, Location, Uuid},
 };
+use axum::{routing::get, Router};
 use chrono::{Duration, Utc};
-use eve_rs::{App as EveApp, AsError, NextHandler};
 
 use crate::{
-	app::{create_eve_app, App},
+	app::App,
 	db,
 	error,
-	pin_fn,
 	redis,
 	service::get_access_token_expiry,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error},
 };
 
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut sub_app = create_eve_app(app);
+pub fn create_sub_route(app: &App) -> Router {
+	let router = Router::new();
 
-	sub_app.get(
-		"/logins",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_all_logins_for_user)),
-		],
-	);
-	sub_app.get(
-		"/logins/:loginId/info",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_login_info)),
-		],
-	);
-	sub_app.delete(
-		"/logins/:loginId",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(delete_user_login)),
-		],
-	);
+	// All routes have PlainTokenAuthenticator
+	router.route("/logins", get(get_all_logins_for_user));
+	router.route("/logins/:loginId/info", get(get_login_info));
+	router.route("/logins/:loginId", get(delete_user_login));
 
-	sub_app
+	router
 }
 
 async fn get_all_logins_for_user(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 
@@ -106,10 +73,7 @@ async fn get_all_logins_for_user(
 	Ok(context)
 }
 
-async fn get_login_info(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+async fn get_login_info(State(app): State<App>) -> Result<EveContext, Error> {
 	let login_id = context
 		.get_param(request_keys::LOGIN_ID)
 		.and_then(|param| Uuid::parse_str(param).ok())
@@ -153,8 +117,7 @@ async fn get_login_info(
 }
 
 async fn delete_user_login(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let login_id = context
 		.get_param(request_keys::LOGIN_ID)

@@ -15,25 +15,22 @@ use api_models::{
 	},
 	utils::{DateTime, Uuid},
 };
+use axum::{
+	extract::State,
+	routing::{delete, get, post},
+	Router,
+};
 use chrono::{Duration, Utc};
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use sqlx::types::Json;
 
 use crate::{
-	app::{create_eve_app, App},
+	app::App,
 	db,
 	error,
-	models::rbac::{self, permissions},
-	pin_fn,
+	models::rbac::{self},
 	redis,
 	service::{self, get_access_token_expiry},
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error},
 };
 
 mod billing;
@@ -62,210 +59,45 @@ mod secret;
 /// containing context, middleware, object of [`App`] and Error
 ///
 /// [`App`]: App
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut sub_app = create_eve_app(app);
+pub fn create_sub_route(app: &App) -> Router {
+	let mut router = Router::new();
 
-	sub_app.get(
-		"/is-name-available",
-		[EveMiddleware::CustomFunction(pin_fn!(is_name_available))],
-	);
-	sub_app.post(
-		"/",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(create_new_workspace)),
-		],
-	);
-	sub_app.get(
-		"/:workspaceId/info",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(move |mut context, next| {
-				Box::pin(async move {
-					let workspace_id_str = context
-						.get_param(request_keys::WORKSPACE_ID)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let workspace_id = Uuid::parse_str(workspace_id_str)
-						.status(401)
-						.body(error!(UNAUTHORIZED).to_string())?;
-
-					// Using unwarp while getting token_data because
-					// AccessTokenData will never be empty
-					// as PlainTokenAuthenticator above won't allow it
-					let workspaces = &context
-						.get_token_data()
-						.unwrap()
-						.workspace_permissions();
-
-					if workspaces.get(&workspace_id).is_none() {
-						context.status(401).json(error!(UNAUTHORIZED));
-						return Ok(context);
-					}
-					next(context).await
-				})
-			}),
-			EveMiddleware::CustomFunction(pin_fn!(get_workspace_info)),
-		],
-	);
-	sub_app.post(
-		"/:workspaceId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission: permissions::workspace::EDIT,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(update_workspace_info)),
-		],
-	);
-	sub_app.use_sub_app(
+	router.route("/is-name-available", get(is_name_available));
+	//  Route with plainTokenAUthenticator middleware
+	router.route("/", post(create_new_workspace));
+	//  Route with plainTokenAuthenticator middleware with a custom function for
+	// check
+	router.route("/:workspaceId/info", get(get_workspace_info));
+	//  Route with resourceTokenAUthenticator middleware
+	router.route("/:workspaceId", post(update_workspace_info));
+	router.nest(
 		"/:workspaceId/infrastructure",
-		infrastructure::create_sub_app(app),
+		infrastructure::create_sub_route(app),
 	);
-	sub_app.use_sub_app(
+	router.route(
 		"/:workspaceId/docker-registry",
-		docker_registry::create_sub_app(app),
+		docker_registry::create_sub_route(app),
 	);
-	sub_app.use_sub_app("/:workspaceId/domain", domain::create_sub_app(app));
-	sub_app.use_sub_app("/:workspaceId/billing", billing::create_sub_app(app));
-	sub_app.use_sub_app("/:workspaceId/rbac", rbac_routes::create_sub_app(app));
-	sub_app.use_sub_app("/:workspaceId/secret", secret::create_sub_app(app));
-	sub_app.use_sub_app("/:workspaceId/ci", ci::create_sub_app(app));
-	sub_app.use_sub_app("/:workspaceId/region", region::create_sub_app(app));
+	router.nest("/:workspaceId/domain", domain::create_sub_route(app));
+	router.nest("/:workspaceId/billing", billing::create_sub_route(app));
+	router.nest("/:workspaceId/rbac", rbac_routes::create_sub_route(app));
+	router.nest("/:workspaceId/secret", secret::create_sub_route(app));
+	router.nest("/:workspaceId/ci", ci::create_sub_route(app));
+	router.nest("/:workspaceId/region", region::create_sub_route(app));
 
-	sub_app.delete(
-		"/:workspaceId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission: permissions::workspace::DELETE,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+	//  Route with resourceTokenAUthenticator middleware
+	router.route("/:workspaceId", delete(delete_workspace));
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+	//  Route with resourceTokenAUthenticator middleware
+	router.route("/:workspaceId/audit-log", get(get_workspace_audit_log));
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(delete_workspace)),
-		],
-	);
-
-	sub_app.get(
-		"/:workspaceId/audit-log",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::EDIT,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_workspace_audit_log)),
-		],
-	);
-
-	sub_app.get(
+	//  Route with resourceTokenAUthenticator middleware
+	router.route(
 		"/:workspaceId/audit-log/:resourceId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::EDIT,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource_id = context
-						.get_param(request_keys::MANAGED_URL_ID)
-						.unwrap();
-					let resource_id = Uuid::parse_str(resource_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&resource_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_resource_audit_log)),
-		],
+		get(get_resource_audit_log),
 	);
 
-	sub_app
+	router
 }
 
 /// # Description
@@ -297,8 +129,7 @@ pub fn create_sub_app(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn get_workspace_info(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let workspace_id_string = context
 		.get_param(request_keys::WORKSPACE_ID)
@@ -371,8 +202,7 @@ async fn get_workspace_info(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn is_name_available(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let IsWorkspaceNameAvailableRequest { name } = context
 		.get_query_as()
@@ -421,8 +251,7 @@ async fn is_name_available(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn create_new_workspace(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let CreateNewWorkspaceRequest { workspace_name } = context
 		.get_body_as()
@@ -499,8 +328,7 @@ async fn create_new_workspace(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn update_workspace_info(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let UpdateWorkspaceInfoRequest {
 		name,
@@ -552,10 +380,7 @@ async fn update_workspace_info(
 	Ok(context)
 }
 
-async fn delete_workspace(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+async fn delete_workspace(State(app): State<App>) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
 	log::trace!("request_id: {} - requested to delete workspace", request_id);
@@ -703,8 +528,7 @@ async fn delete_workspace(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn get_workspace_audit_log(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
@@ -763,8 +587,7 @@ async fn get_workspace_audit_log(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn get_resource_audit_log(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let resource_id = context.get_param(request_keys::RESOURCE_ID).unwrap();
 	let resource_id = Uuid::parse_str(resource_id).unwrap();

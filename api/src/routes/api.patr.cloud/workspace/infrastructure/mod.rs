@@ -5,21 +5,14 @@ use api_models::{
 	},
 	utils::Uuid,
 };
-use eve_rs::{App as EveApp, AsError, NextHandler};
+use axum::{extract::State, routing::get, Router};
 
 use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
 	models::rbac,
-	pin_fn,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error},
 };
 
 mod deployment;
@@ -27,37 +20,23 @@ mod managed_database;
 mod managed_url;
 mod static_site;
 
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+pub fn create_sub_route(app: &App) -> Router {
 	let mut sub_app = create_eve_app(app);
+	let mut router = Router::new();
 
-	sub_app.use_sub_app("/deployment", deployment::create_sub_app(app));
-	sub_app.use_sub_app(
-		"/managed-database",
-		managed_database::create_sub_app(app),
-	);
-	sub_app.use_sub_app("/managed-url", managed_url::create_sub_app(app));
-	sub_app.use_sub_app("/static-site", static_site::create_sub_app(app));
+	router.nest("/deployment", deployment::create_sub_route(app));
+	router.nest("/managed-database", managed_database::create_sub_route(app));
+	router.nest("/managed-url", managed_url::create_sub_route(app));
+	router.nest("/static-site", static_site::create_sub_route(app));
 
-	sub_app.get(
-		"/machine-type",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(
-				get_all_deployment_machine_types
-			)),
-		],
-	);
+	//  Route uses plainTokenAuthenticator
+	router.route("/machine-type", get(get_all_deployment_machine_types));
 
 	sub_app
 }
 
 async fn get_all_deployment_machine_types(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	State(app): State<App>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context
 		.get_param(request_keys::WORKSPACE_ID)
