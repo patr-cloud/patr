@@ -42,12 +42,14 @@ use crate::{
 /// containing context, middleware, object of [`App`] and Error
 ///
 /// [`App`]: App
-pub fn create_sub_route(app: &App) -> Router {
-	let router = Router::new();
-
-	router.route("/docker-registry/notification", post(notification_handler));
-
-	router.nest("/ci", ci::create_sub_route(app));
+pub fn create_sub_route(app: &App) -> Router<App> {
+	let router =
+		Router::new()
+			.merge(Router::new().route(
+				"/docker-registry/notification",
+				post(notification_handler),
+			))
+			.merge(Router::new().nest("/ci", ci::create_sub_route(app)));
 
 	router
 }

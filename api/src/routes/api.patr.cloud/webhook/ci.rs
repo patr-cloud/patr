@@ -34,9 +34,9 @@ use crate::{
 };
 
 pub fn create_sub_route(app: &App) -> Router {
-	let router = Router::new();
-
-	router.route("/repo/:repoId", post(handle_ci_hooks_for_repo));
+	let router = Router::new().merge(
+		Router::new().route("/repo/:repoId", post(handle_ci_hooks_for_repo)),
+	);
 
 	router
 }

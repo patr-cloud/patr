@@ -14,6 +14,7 @@ use api_models::{
 };
 use axum::{
 	extract::State,
+	middleware,
 	routing::{get, patch, post},
 	Router,
 };
@@ -24,22 +25,68 @@ use crate::{
 	db,
 	error,
 	redis,
+	routes::plain_token_authenticator_without_api_token,
 	service,
 	utils::{constants::request_keys, Error},
 };
 
-pub fn create_sub_route(app: &App) -> Router {
-	let router = Router::new();
+pub fn create_sub_route(app: &App) -> Router<App> {
 	// All routes have plainTokenAuthenticator
-	router.post("/api-token", post(create_api_token));
-	router.get("/api-token", get(list_api_tokens_for_user));
-	router.get(
-		"/api-token/:tokenId/permission",
-		get(list_permissions_for_api_token),
-	);
-	router.post("/api-token/:tokenId/regenerate", post(regenerate_api_token));
-	router.post("/api-token/:tokenId/revoke", post(revoke_api_token));
-	router.patch("/api-token/:tokenId", patch(update_api_token));
+	let router = Router::new()
+		.merge(
+			Router::new()
+				.route("/api-token", post(create_api_token))
+				.route_layer(middleware::from_fn_with_state(
+					app.clone(),
+					plain_token_authenticator_without_api_token,
+				)),
+		)
+		.merge(
+			Router::new()
+				.route("/api-token", get(list_api_tokens_for_user))
+				.route_layer(middleware::from_fn_with_state(
+					app.clone(),
+					plain_token_authenticator_without_api_token,
+				)),
+		)
+		.merge(
+			Router::new()
+				.route(
+					"/api-token/:tokenId/permission",
+					get(list_permissions_for_api_token),
+				)
+				.route_layer(middleware::from_fn_with_state(
+					app.clone(),
+					plain_token_authenticator_without_api_token,
+				)),
+		)
+		.merge(
+			Router::new()
+				.route(
+					"/api-token/:tokenId/regenerate",
+					post(regenerate_api_token),
+				)
+				.route_layer(middleware::from_fn_with_state(
+					app.clone(),
+					plain_token_authenticator_without_api_token,
+				)),
+		)
+		.merge(
+			Router::new()
+				.route("/api-token/:tokenId/revoke", post(revoke_api_token))
+				.route_layer(middleware::from_fn_with_state(
+					app.clone(),
+					plain_token_authenticator_without_api_token,
+				)),
+		)
+		.merge(
+			Router::new()
+				.route("/api-token/:tokenId", patch(update_api_token))
+				.route_layer(middleware::from_fn_with_state(
+					app.clone(),
+					plain_token_authenticator_without_api_token,
+				)),
+		);
 
 	router
 }

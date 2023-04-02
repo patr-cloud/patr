@@ -17,6 +17,7 @@ use api_models::{
 };
 use axum::{
 	extract::State,
+	middleware,
 	routing::{delete, get, post},
 	Router,
 };
@@ -29,6 +30,7 @@ use crate::{
 	error,
 	models::rbac::{self},
 	redis,
+	routes::plain_token_authenticator_without_api_token,
 	service::{self, get_access_token_expiry},
 	utils::{constants::request_keys, Error},
 };
@@ -59,43 +61,72 @@ mod secret;
 /// containing context, middleware, object of [`App`] and Error
 ///
 /// [`App`]: App
-pub fn create_sub_route(app: &App) -> Router {
-	let mut router = Router::new();
-
-	router.route("/is-name-available", get(is_name_available));
-	//  Route with plainTokenAUthenticator middleware
-	router.route("/", post(create_new_workspace));
-	//  Route with plainTokenAuthenticator middleware with a custom function for
-	// check
-	router.route("/:workspaceId/info", get(get_workspace_info));
-	//  Route with resourceTokenAUthenticator middleware
-	router.route("/:workspaceId", post(update_workspace_info));
-	router.nest(
-		"/:workspaceId/infrastructure",
-		infrastructure::create_sub_route(app),
-	);
-	router.route(
-		"/:workspaceId/docker-registry",
-		docker_registry::create_sub_route(app),
-	);
-	router.nest("/:workspaceId/domain", domain::create_sub_route(app));
-	router.nest("/:workspaceId/billing", billing::create_sub_route(app));
-	router.nest("/:workspaceId/rbac", rbac_routes::create_sub_route(app));
-	router.nest("/:workspaceId/secret", secret::create_sub_route(app));
-	router.nest("/:workspaceId/ci", ci::create_sub_route(app));
-	router.nest("/:workspaceId/region", region::create_sub_route(app));
-
-	//  Route with resourceTokenAUthenticator middleware
-	router.route("/:workspaceId", delete(delete_workspace));
-
-	//  Route with resourceTokenAUthenticator middleware
-	router.route("/:workspaceId/audit-log", get(get_workspace_audit_log));
-
-	//  Route with resourceTokenAUthenticator middleware
-	router.route(
-		"/:workspaceId/audit-log/:resourceId",
-		get(get_resource_audit_log),
-	);
+pub fn create_sub_route(app: &App) -> Router<App> {
+	let mut router = Router::new()
+		.merge(
+			Router::new().route("/is-name-available", get(is_name_available)),
+		)
+		//  Route with plainTokenAUthenticator middleware
+		.merge(
+			Router::new()
+				.route("/", post(create_new_workspace))
+				.route_layer(middleware::from_fn_with_state(
+					app.clone(),
+					plain_token_authenticator_without_api_token,
+				)),
+		)
+		//  Route with plainTokenAuthenticator middleware with a custom function
+		// for check
+		.merge(
+			Router::new().route("/:workspaceId/info", get(get_workspace_info)),
+		)
+		//  Route with resourceTokenAUthenticator middleware
+		.merge(
+			Router::new().route("/:workspaceId", post(update_workspace_info)),
+		)
+		.merge(Router::new().nest(
+			"/:workspaceId/infrastructure",
+			infrastructure::create_sub_route(app),
+		))
+		.merge(Router::new().route(
+			"/:workspaceId/docker-registry",
+			docker_registry::create_sub_route(app),
+		))
+		.merge(
+			Router::new()
+				.nest("/:workspaceId/domain", domain::create_sub_route(app)),
+		)
+		.merge(
+			Router::new()
+				.nest("/:workspaceId/billing", billing::create_sub_route(app)),
+		)
+		.merge(
+			Router::new()
+				.nest("/:workspaceId/rbac", rbac_routes::create_sub_route(app)),
+		)
+		.merge(
+			Router::new()
+				.nest("/:workspaceId/secret", secret::create_sub_route(app)),
+		)
+		.merge(
+			Router::new().nest("/:workspaceId/ci", ci::create_sub_route(app)),
+		)
+		.merge(
+			Router::new()
+				.nest("/:workspaceId/region", region::create_sub_route(app)),
+		)
+		//  Route with resourceTokenAUthenticator middleware
+		.merge(Router::new().route("/:workspaceId", delete(delete_workspace)))
+		//  Route with resourceTokenAUthenticator middleware
+		.merge(
+			Router::new()
+				.route("/:workspaceId/audit-log", get(get_workspace_audit_log)),
+		)
+		//  Route with resourceTokenAUthenticator middleware
+		.merge(Router::new().route(
+			"/:workspaceId/audit-log/:resourceId",
+			get(get_resource_audit_log),
+		));
 
 	router
 }

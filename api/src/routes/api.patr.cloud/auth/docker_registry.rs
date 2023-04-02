@@ -20,59 +20,20 @@ use crate::{
 	utils::{constants::request_keys, validator, Error},
 };
 
-/// # Description
-/// This function is used to create a sub app for every endpoint listed. It
-/// creates an eve app which binds the endpoint with functions.
-///
-/// # Arguments
-/// * `app` - an object of type [`App`] which contains all the configuration of
-/// api including the database connections.
-///
-/// # Returns
-/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
-/// containing context, middleware, object of [`App`] and Error
-///
-/// [`App`]: App
-pub fn create_sub_route(app: &App) -> Router {
-	let router = Router::new();
-
-	router.route(
-		"/docker-registry-token",
-		post(docker_registry_token_endpoint),
-	);
-	router.route(
-		"/docker-registry-token",
-		get(docker_registry_token_endpoint),
-	);
+pub fn create_sub_route(app: &App) -> Router<App> {
+	let router = Router::new()
+		.route(
+			"/docker-registry-token",
+			post(docker_registry_token_endpoint),
+		)
+		.route(
+			"/docker-registry-token",
+			get(docker_registry_token_endpoint),
+		);
 
 	router
 }
 
-/// # Description
-/// This function is used to authenticate and login into the docker registry
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-/// ```
-/// {
-///    scope:
-///    client_id:
-///    service:
-///    offline_token:
-/// }
-/// ```
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    token:
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn docker_registry_token_endpoint(
 	State(app): State<App>,
 ) -> Result<EveContext, Error> {
@@ -92,37 +53,6 @@ async fn docker_registry_token_endpoint(
 	}
 }
 
-/// # Description
-/// This function is used to login into the docker registry
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-/// ```
-/// {
-///    client_id: ,
-///    offline_token: ,
-///    service:
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    token:
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn docker_registry_login(
 	State(app): State<App>,
 ) -> Result<EveContext, Error> {
@@ -294,29 +224,6 @@ async fn docker_registry_login(
 	Ok(context)
 }
 
-/// # Description
-/// This function is used to authenticate the user for docker registry
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    token:
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn docker_registry_authenticate(
 	State(app): State<App>,
 ) -> Result<EveContext, Error> {

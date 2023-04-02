@@ -25,10 +25,9 @@ pub async fn start_server(app: &App) {
 	let port = app.config.port;
 	let bind_address = app.config.bind_address;
 
-	let state = app.clone();
 	let app = Router::new()
-		.nest("/", routes::create_sub_route(app))
-		.with_state(&state);
+		.nest("/", routes::create_sub_route(&app))
+		.with_state(app.clone());
 
 	let server = axum::Server::bind(
 		&format!("{}:{}", bind_address, port).parse().unwrap(),

@@ -7,7 +7,7 @@ use api_models::{
 	},
 	utils::{DateTime, Location, Uuid},
 };
-use axum::{routing::get, Router};
+use axum::{extract::State, middleware, routing::get, Router};
 use chrono::{Duration, Utc};
 
 use crate::{
@@ -15,17 +15,35 @@ use crate::{
 	db,
 	error,
 	redis,
+	routes::plain_token_authenticator_without_api_token,
 	service::get_access_token_expiry,
 	utils::{constants::request_keys, Error},
 };
 
-pub fn create_sub_route(app: &App) -> Router {
-	let router = Router::new();
-
+pub fn create_sub_route(app: &App) -> Router<App> {
 	// All routes have PlainTokenAuthenticator
-	router.route("/logins", get(get_all_logins_for_user));
-	router.route("/logins/:loginId/info", get(get_login_info));
-	router.route("/logins/:loginId", get(delete_user_login));
+	let router = Router::new()
+		.merge(
+			Router::new()
+				.route("/", get(get_all_logins_for_user))
+				.route_layer(middleware::from_fn_with_state(
+					app.clone(),
+					plain_token_authenticator_without_api_token,
+				)),
+		)
+		.merge(
+			Router::new()
+				.route("/loginId/info", get(get_login_info))
+				.route_layer(middleware::from_fn_with_state(
+					app.clone(),
+					plain_token_authenticator_without_api_token,
+				)),
+		)
+		.merge(Router::new().route("/:loginId", get(delete_user_login)))
+		.route_layer(middleware::from_fn_with_state(
+			app.clone(),
+			plain_token_authenticator_without_api_token,
+		));
 
 	router
 }
