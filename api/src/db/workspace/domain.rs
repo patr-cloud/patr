@@ -48,7 +48,7 @@ pub struct PatrControlledDomain {
 	pub zone_identifier: String,
 }
 
-#[derive(sqlx::Type, PartialEq, Eq)]
+#[derive(sqlx::Type, PartialEq, Eq, Debug)]
 #[sqlx(type_name = "DNS_RECORD_TYPE", rename_all = "UPPERCASE")]
 #[allow(clippy::upper_case_acronyms)]
 pub enum DnsRecordType {
@@ -407,7 +407,7 @@ pub async fn create_generic_domain(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		INSERT INTO
+		INSERT INTO`
 			domain(
 				id,
 				name,

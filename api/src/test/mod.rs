@@ -1,4 +1,5 @@
 mod deployment;
+mod domain;
 mod managedurl;
 mod secret;
 mod staticsite;
