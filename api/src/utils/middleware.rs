@@ -6,6 +6,8 @@ use axum::{
 	http::{HeaderMap, Request, StatusCode},
 	Error,
 };
+use axum_sqlx_tx::Tx;
+use sqlx::Postgres;
 
 use crate::{
 	app::App,
@@ -15,6 +17,7 @@ use crate::{
 };
 
 pub async fn plain_token_authenticator<T>(
+	connection: &mut Tx<Postgres>,
 	app: &App,
 	request: &Request<T>,
 	addr: &ConnectInfo<SocketAddr>,
@@ -35,7 +38,7 @@ pub async fn plain_token_authenticator<T>(
 	//  TODO DB connection and redis connection
 	let mut redis_conn = app.redis;
 	let token_data = match UserAuthenticationData::parse(
-		context.get_database_connection(),
+		connection,
 		&mut redis_conn,
 		&jwt_secret,
 		&token,
@@ -63,6 +66,7 @@ pub async fn plain_token_authenticator<T>(
 }
 
 pub async fn resource_token_authenticator<T>(
+	connection: &mut Tx<Postgres>,
 	app: &App,
 	request: &Request<T>,
 	addr: &ConnectInfo<SocketAddr>,
@@ -85,7 +89,7 @@ pub async fn resource_token_authenticator<T>(
 	//  TODO DB connection and redis connection
 	let mut redis_conn = app.redis;
 	let token_data = match UserAuthenticationData::parse(
-		context.get_database_connection(),
+		connection,
 		&mut redis_conn,
 		&jwt_secret,
 		&token,

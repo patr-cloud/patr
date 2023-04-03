@@ -124,6 +124,7 @@ dependencies = [
  "async-stripe",
  "async-trait",
  "axum",
+ "axum-sqlx-tx",
  "base32",
  "base64 0.21.0",
  "chrono",
@@ -506,6 +507,24 @@ dependencies = [
  "http-body",
  "mime",
  "rustversion",
+ "tower-layer",
+ "tower-service",
+]
+
+[[package]]
+name = "axum-sqlx-tx"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d08fbebc418e836066ebfddf3035f7277395700d769bf8fb596460febc8ff37"
+dependencies = [
+ "axum-core",
+ "bytes",
+ "futures-core",
+ "http",
+ "http-body",
+ "parking_lot 0.12.1",
+ "sqlx",
+ "thiserror",
  "tower-layer",
  "tower-service",
 ]

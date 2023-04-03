@@ -9,12 +9,14 @@ use std::net::SocketAddr;
 
 use axum::{
 	extract::{ConnectInfo, State},
-	http::{Request, StatusCode},
+	http::{request::Parts, Request, StatusCode},
 	middleware::Next,
 	response::Response,
 	Error,
 	Router,
 };
+use axum_sqlx_tx::Tx;
+use sqlx::Postgres;
 
 use crate::{app::App, utils::plain_token_authenticator};
 
@@ -23,6 +25,7 @@ pub fn create_sub_route(app: &App) -> Router<App> {
 }
 
 async fn plain_token_authenticator_with_api_token<B>(
+	mut connection: Tx<Postgres>,
 	State(app): State<App>,
 	ip_addr: ConnectInfo<SocketAddr>,
 	request: Request<B>,
@@ -31,6 +34,7 @@ async fn plain_token_authenticator_with_api_token<B>(
 	let is_api_token_allowed = true;
 	// TODO - call PlainTokenAuthenticator with is_api_token_allowed
 	let allowed = plain_token_authenticator(
+		&mut connection,
 		&app,
 		&request,
 		&ip_addr,
@@ -46,6 +50,7 @@ async fn plain_token_authenticator_with_api_token<B>(
 }
 
 async fn plain_token_authenticator_without_api_token<B>(
+	mut connection: Tx<Postgres>,
 	State(app): State<App>,
 	ip_addr: ConnectInfo<SocketAddr>,
 	request: Request<B>,
@@ -53,6 +58,7 @@ async fn plain_token_authenticator_without_api_token<B>(
 ) -> Result<Response, Error> {
 	let is_api_token_allowed = false;
 	let allowed = plain_token_authenticator(
+		&mut connection,
 		&app,
 		&request,
 		&ip_addr,
@@ -67,22 +73,21 @@ async fn plain_token_authenticator_without_api_token<B>(
 	}
 }
 
-pub fn get_request_ip_address<T>(
-	request: &Request<T>,
-	ip_addr: &ConnectInfo<SocketAddr>,
-) -> String {
-	let cf_connecting_ip = request
-		.headers()
+pub fn get_request_ip_address(request_parts: &Parts) -> String {
+	let cf_connecting_ip = request_parts
+		.headers
 		.get("CF-Connecting-IP")
 		.map(|value| value.to_str().unwrap().to_string()); // TODO - handle this better without unwrap()
 
-	let x_real_ip = request
-		.headers()
+	let x_real_ip = request_parts
+		.headers
 		.get("X-Real-IP")
 		.map(|value| value.to_str().unwrap().to_string()); // TODO - handle this better without unwrap()
 
-	let x_forwarded_for =
-		request.headers().get("X-Forwarded-For").and_then(|value| {
+	let x_forwarded_for = request_parts
+		.headers
+		.get("X-Forwarded-For")
+		.and_then(|value| {
 			value
 				.to_str()
 				.unwrap() // TODO - handle this better without unwrap()
@@ -91,8 +96,14 @@ pub fn get_request_ip_address<T>(
 				.map(|ip| ip.trim().to_string())
 		});
 
+	let ip_addr = request_parts
+		.extensions
+		.get::<ConnectInfo<SocketAddr>>()
+		.map(|ConnectInfo(addr)| addr.ip())
+		.unwrap(); // todo: remove unwrap in future
+
 	cf_connecting_ip
 		.or(x_real_ip)
 		.or(x_forwarded_for)
-		.unwrap_or(ip_addr.0.to_string()) // 0 represents IPv4 IP
+		.unwrap_or(ip_addr.to_string())
 }

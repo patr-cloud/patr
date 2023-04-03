@@ -5,7 +5,9 @@ mod user_api_token_data;
 use std::{collections::BTreeMap, net::IpAddr};
 
 use api_models::{models::workspace::WorkspacePermission, utils::Uuid};
+use axum_sqlx_tx::Tx;
 use redis::aio::MultiplexedConnection as RedisConnection;
+use sqlx::Postgres;
 
 pub use self::{
 	access_token_data::*,
@@ -13,7 +15,7 @@ pub use self::{
 	user_api_token_data::*,
 };
 use super::rbac::{self, GOD_USER_ID};
-use crate::{utils::Error, Database};
+use crate::utils::Error;
 
 #[derive(Clone, Debug)]
 pub enum UserAuthenticationData {
@@ -23,7 +25,7 @@ pub enum UserAuthenticationData {
 
 impl UserAuthenticationData {
 	pub async fn parse(
-		connection: &mut <Database as sqlx::Database>::Connection,
+		connection: &mut Tx<Postgres>,
 		redis_connection: &mut RedisConnection,
 		jwt_secret_key: &str,
 		token: &str,

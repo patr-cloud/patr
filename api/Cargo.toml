@@ -87,6 +87,7 @@ rcgen = "0.10.0"
 url = "2.2"
 itertools = "0.10.5"
 axum = "0.6.12"
+axum-sqlx-tx = "0.5.0"
 anyhow = "1.0.70"
 
 [dependencies.log4rs]

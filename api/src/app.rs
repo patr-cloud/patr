@@ -1,6 +1,10 @@
-use std::fmt::{Debug, Formatter};
+use std::{
+	fmt::{Debug, Formatter},
+	net::SocketAddr,
+};
 
 use axum::Router;
+use axum_sqlx_tx::Layer;
 use deadpool_lapin::Pool as RabbitmqPool;
 use redis::aio::MultiplexedConnection as RedisConnection;
 use sqlx::Pool;
@@ -27,12 +31,13 @@ pub async fn start_server(app: &App) {
 
 	let app = Router::new()
 		.nest("/", routes::create_sub_route(&app))
-		.with_state(app.clone());
+		.with_state(app.clone())
+		.layer(Layer::new(app.database.clone()));
 
 	let server = axum::Server::bind(
 		&format!("{}:{}", bind_address, port).parse().unwrap(),
 	)
-	.serve(app.into_make_service());
+	.serve(app.into_make_service_with_connect_info::<SocketAddr>());
 
 	log::info!(
 		"Server listening on address: http://{}:{}",

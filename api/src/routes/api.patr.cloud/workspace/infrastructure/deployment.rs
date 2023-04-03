@@ -163,6 +163,7 @@ pub fn create_sub_route(app: &App) -> Router {
 async fn list_deployments(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
+	mut connection: Tx<Postgres>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Listing deployments", request_id);
