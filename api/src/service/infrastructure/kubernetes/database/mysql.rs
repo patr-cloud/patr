@@ -66,14 +66,14 @@ pub async fn create_kubernetes_mysql_database(
 	// names
 	let namespace = workspace_id.as_str();
 	let secret_name_for_db_pwd = format!("db-pwd-{database_id}");
-	let master_svc_name_for_db = format!("db-service");
-	let slave_svc_name_for_db = format!("db-slave-service");
+	let master_svc_name_for_db = format!("db-{database_id}");
+	let slave_svc_name_for_db = format!("db-{database_id}-read");
 	let sts_name_for_db = format!("db-{database_id}");
 	let pvc_prefix_for_db = "pvc"; // actual name will be `pvc-{sts_name_for_db}-{sts_ordinal}`
 	let configmap_name_for_db = format!("db-{database_id}");
 
 	// constants
-	let secret_key_for_db_pwd = "password";
+	// let secret_key_for_db_pwd = "password";
 	let mysql_port = 3306;
 
 	// plan
@@ -83,24 +83,24 @@ pub async fn create_kubernetes_mysql_database(
 
 	log::trace!("request_id: {request_id} - Creating secret for database pwd");
 
-	let secret_spec_for_db_pwd = Secret {
-		metadata: ObjectMeta {
-			name: Some(secret_name_for_db_pwd.clone()),
-			..Default::default()
-		},
-		string_data: Some(
-			[(secret_key_for_db_pwd.to_owned(), db_pwd.into())].into(),
-		),
-		..Default::default()
-	};
+	// let secret_spec_for_db_pwd = Secret {
+	// 	metadata: ObjectMeta {
+	// 		name: Some(secret_name_for_db_pwd.clone()),
+	// 		..Default::default()
+	// 	},
+	// 	string_data: Some(
+	// 		[(secret_key_for_db_pwd.to_owned(), db_pwd.into())].into(),
+	// 	),
+	// 	..Default::default()
+	// };
 
-	Api::<Secret>::namespaced(kubernetes_client.clone(), namespace)
-		.patch(
-			&secret_name_for_db_pwd,
-			&PatchParams::apply(&secret_name_for_db_pwd),
-			&Patch::Apply(secret_spec_for_db_pwd),
-		)
-		.await?;
+	// Api::<Secret>::namespaced(kubernetes_client.clone(), namespace)
+	// 	.patch(
+	// 		&secret_name_for_db_pwd,
+	// 		&PatchParams::apply(&secret_name_for_db_pwd),
+	// 		&Patch::Apply(secret_spec_for_db_pwd),
+	// 	)
+	// 	.await?;
 
 	log::trace!("request_id: {request_id} - Creating configmap for database");
 
@@ -112,11 +112,13 @@ pub async fn create_kubernetes_mysql_database(
 	let mut config_data = BTreeMap::new();
 	config_data.insert(
 		"primary.cnf".to_owned(),
-		generate_config_data_template("primary.cnf"),
+		r#"| \ [mysqld] \ log-bin"#.to_owned()
+		// generate_config_data_template("primary.cnf"),
 	);
 	config_data.insert(
 		"replica.cnf".to_owned(),
-		generate_config_data_template("replica.cnf"),
+		r#"| \ [mysqld] \ super-read-only"#.to_owned()
+		// generate_config_data_template("replica.cnf"),
 	);
 
 	let config_for_db = ConfigMap {
@@ -217,6 +219,8 @@ pub async fn create_kubernetes_mysql_database(
 		..Default::default()
 	};
 
+
+
 	let db_pod_template = PodTemplateSpec {
 		metadata: Some(ObjectMeta {
 			labels: Some(config_label.clone()),
@@ -229,10 +233,25 @@ pub async fn create_kubernetes_mysql_database(
 					image: Some("mysql:5.7".to_owned()),
 					command: Some(vec![
 						"bash".to_owned(),
-						"\"-c\"".to_owned(),
-						"|".to_owned(),
-						generate_command_data_template("init_container"),
+						"-c".to_owned(),
+						vec![
+							"set -ex".to_owned(),
+							"[[ $HOSTNAME =~ -([0-9]+)$ ]] || exit 1".to_owned(),
+							"ordinal=${BASH_REMATCH[1]}".to_owned(),
+							"echo [mysqld] > /mnt/conf.d/server-id.cnf".to_owned(),
+							"echo server-id=$((100 + $ordinal)) >> /mnt/conf.d/server-id.cnf".to_owned(),
+							"if [[ $ordinal -eq 0 ]]; then".to_owned(),
+							"cp /mnt/config-map/primary.cnf /mnt/conf.d/".to_owned(),
+							"else".to_owned(),
+							"cp /mnt/config-map/replica.cnf /mnt/conf.d/".to_owned(),
+							"fi".to_owned()
+						].join("\n")
+						
+						// generate_command_data_template("init_container"),
 					]),
+					// args: Some(vec![
+						
+					// ]),
 					volume_mounts: Some(vec![
 						VolumeMount {
 							name: "conf".to_owned(),
@@ -254,10 +273,22 @@ pub async fn create_kubernetes_mysql_database(
 					),
 					command: Some(vec![
 						"bash".to_owned(),
-						"\"-c\"".to_owned(),
-						"|".to_owned(),
-						generate_command_data_template("init_clone_container"),
+						"-c".to_owned(),
+						vec![
+							"set -ex".to_owned(),
+							"[[ -d /var/lib/mysql/mysql ]] && exit 0".to_owned(),
+							"[[ `hostname` =~ -([0-9]+)$ ]] || exit 1".to_owned(),
+							"ordinal=${BASH_REMATCH[1]}".to_owned(),
+							"[[ $ordinal -eq 0 ]] && exit 0".to_owned(),
+							format!("ncat --recv-only {sts_name_for_db}-$(($ordinal-1)).mysql 3307 | xbstream -x -C /var/lib/mysql").to_owned(),
+							"xtrabackup --prepare --target-dir=/var/lib/mysql".to_owned()
+						].join("\n")
+						
+						// generate_command_data_template("init_clone_container"),
 					]),
+					// args: Some(vec![
+						
+					// ]),
 					volume_mounts: Some(vec![
 						VolumeMount {
 							name: pvc_prefix_for_db.to_owned(),
@@ -279,15 +310,16 @@ pub async fn create_kubernetes_mysql_database(
 					name: "mysql".to_owned(),
 					image: Some("mysql:5.7".to_owned()),
 					env: Some(vec![EnvVar {
-						name: "MYSQL_ROOT_PASSWORD".to_owned(),
-						value_from: Some(EnvVarSource {
-							secret_key_ref: Some(SecretKeySelector {
-								name: Some(secret_name_for_db_pwd),
-								key: secret_key_for_db_pwd.to_owned(),
-								..Default::default()
-							}),
-							..Default::default()
-						}),
+						name: "MYSQL_ALLOW_EMPTY_PASSWORD".to_owned(),
+						value: Some("1".to_owned()),
+						// value_from: Some(EnvVarSource {
+						// 	secret_key_ref: Some(SecretKeySelector {
+						// 		name: Some(secret_name_for_db_pwd),
+						// 		key: secret_key_for_db_pwd.to_owned(),
+						// 		..Default::default()
+						// 	}),
+						// 	..Default::default()
+						// }),
 						..Default::default()
 					}]),
 					ports: Some(vec![ContainerPort {
@@ -308,60 +340,60 @@ pub async fn create_kubernetes_mysql_database(
 							..Default::default()
 						},
 					]),
-					resources: Some(ResourceRequirements {
-						// https://blog.kubecost.com/blog/requests-and-limits/#the-tradeoffs
-						// using too low values for resource request will
-						// result in frequent pod restarts if memory usage
-						// increases and may result in starvation
-						//
-						// currently used 5% of the mininum deployment
-						// machine type as a request values
-						requests: Some(
-							[
-								(
-									"memory".to_string(),
-									Quantity("25M".to_owned()),
-								),
-								("cpu".to_string(), Quantity("50m".to_owned())),
-							]
-							.into(),
-						),
-						limits: Some(
-							[
-								("memory".to_string(), db_ram),
-								("cpu".to_string(), db_cpu),
-							]
-							.into(),
-						),
-					}),
-					liveness_probe: Some(Probe {
-						exec: Some(ExecAction {
-							command: Some(vec![
-								"mysqladmin".to_owned(),
-								"ping".to_owned(),
-							]),
-						}),
-						initial_delay_seconds: Some(30),
-						period_seconds: Some(10),
-						timeout_seconds: Some(5),
-						..Default::default()
-					}),
-					readiness_probe: Some(Probe {
-						exec: Some(ExecAction {
-							command: Some(vec![
-								"mysql".to_owned(),
-								"-h".to_owned(),
-								"127.0.0.1".to_owned(),
-								"-e".to_owned(),
-								"SELECT 1".to_owned(),
-							]),
-						}),
-						initial_delay_seconds: Some(5),
-						failure_threshold: Some(10),
-						period_seconds: Some(2),
-						timeout_seconds: Some(1),
-						..Default::default()
-					}),
+					// resources: Some(ResourceRequirements {
+					// 	// https://blog.kubecost.com/blog/requests-and-limits/#the-tradeoffs
+					// 	// using too low values for resource request will
+					// 	// result in frequent pod restarts if memory usage
+					// 	// increases and may result in starvation
+					// 	//
+					// 	// currently used 5% of the mininum deployment
+					// 	// machine type as a request values
+					// 	requests: Some(
+					// 		[
+					// 			(
+					// 				"memory".to_string(),
+					// 				Quantity("25M".to_owned()),
+					// 			),
+					// 			("cpu".to_string(), Quantity("50m".to_owned())),
+					// 		]
+					// 		.into(),
+					// 	),
+					// 	limits: Some(
+					// 		[
+					// 			("memory".to_string(), db_ram),
+					// 			("cpu".to_string(), db_cpu),
+					// 		]
+					// 		.into(),
+					// 	),
+					// }),
+					// liveness_probe: Some(Probe {
+					// 	exec: Some(ExecAction {
+					// 		command: Some(vec![
+					// 			"mysqladmin".to_owned(),
+					// 			"ping".to_owned(),
+					// 		]),
+					// 	}),
+					// 	initial_delay_seconds: Some(30),
+					// 	period_seconds: Some(10),
+					// 	timeout_seconds: Some(5),
+					// 	..Default::default()
+					// }),
+					// readiness_probe: Some(Probe {
+					// 	exec: Some(ExecAction {
+					// 		command: Some(vec![
+					// 			"mysql".to_owned(),
+					// 			"-h".to_owned(),
+					// 			"127.0.0.1".to_owned(),
+					// 			"-e".to_owned(),
+					// 			"SELECT 1".to_owned(),
+					// 		]),
+					// 	}),
+					// 	initial_delay_seconds: Some(5),
+					// 	failure_threshold: Some(10),
+					// 	period_seconds: Some(2),
+					// 	timeout_seconds: Some(1),
+					// 	..Default::default()
+					// }),
 					..Default::default()
 				},
 				Container {
@@ -376,10 +408,39 @@ pub async fn create_kubernetes_mysql_database(
 					}]),
 					command: Some(vec![
 						"bash".to_owned(),
-						"\"-c\"".to_owned(),
-						"|".to_owned(),
-						generate_command_data_template("container"),
+						"-c".to_owned(),
+						vec![
+							"set -ex".to_owned(),
+							"cd /var/lib/mysql".to_owned(),
+							r#"if [[ -f xtrabackup_slave_info && "x$(<xtrabackup_slave_info)" != "x" ]]; then"#.to_owned(),
+							"cat xtrabackup_slave_info | sed -E 's/;$//g' > change_master_to.sql.in".to_owned(),
+							"rm -f xtrabackup_slave_info xtrabackup_binlog_info".to_owned(),
+							"elif [[ -f xtrabackup_binlog_info ]]; then".to_owned(),
+							"[[ `cat xtrabackup_binlog_info` =~ ^(.*?)[[:space:]]+(.*?)$ ]] || exit 1".to_owned(),
+							"rm -f xtrabackup_binlog_info xtrabackup_slave_info".to_owned(),
+							r#"echo "CHANGE MASTER TO MASTER_LOG_FILE='${BASH_REMATCH[1]}',\"#.to_owned(),
+							r#"MASTER_LOG_POS=${BASH_REMATCH[2]}" > change_master_to.sql.in"#.to_owned(),
+							"fi".to_owned(),
+							"if [[ -f change_master_to.sql.in ]]; then".to_owned(),
+							r#"until mysql -h 127.0.0.1 -e "SELECT 1"; do sleep 1; done"#.to_owned(),
+							r#"mysql -h 127.0.0.1 \"#.to_owned(),
+							r#"-e "$(<change_master_to.sql.in), \"#.to_owned(),
+							format!(r#"MASTER_HOST='{sts_name_for_db}-0.mysql', \"#).to_owned(),//***************
+							r#"MASTER_USER='root', \"#.to_owned(),
+							r#"MASTER_PASSWORD='', \"#.to_owned(),
+							r#"MASTER_CONNECT_RETRY=10; \"#.to_owned(),
+							r#"START SLAVE;" || exit 1"#.to_owned(),
+							r#"mv change_master_to.sql.in change_master_to.sql.orig"#.to_owned(),
+							r#"fi"#.to_owned(),
+							r#"exec ncat --listen --keep-open --send-only --max-conns=1 3307 -c \"#.to_owned(),
+							r#""xtrabackup --backup --slave-info --stream=xbstream --host=127.0.0.1 --user=root" "#.to_owned()
+						].join("\n")
+						
+						// generate_command_data_template("container"),
 					]),
+					// args: Some(vec![
+						
+					// ]),
 					volume_mounts: Some(vec![
 						VolumeMount {
 							name: pvc_prefix_for_db.to_owned(),
@@ -575,15 +636,15 @@ fn generate_config_data_template(config: &str) -> String {
 	match config {
 		"primary.cnf" => format!(
 			r#"| 
-			# Apply this config only on the primary.
-			[mysqld]
-			log-bin"#
+# Apply this config only on the primary.
+[mysqld]
+log-bin"#
 		),
 		"replica.cnf" => format!(
 			r#"|
-			# Apply this config only on replicas.
-			[mysqld]
-			super-read-only"#
+# Apply this config only on replicas.
+[mysqld]
+super-read-only"#
 		),
 		_ => format!(r#"exit"#),
 	}
@@ -592,59 +653,57 @@ fn generate_config_data_template(config: &str) -> String {
 fn generate_command_data_template(container: &str) -> String {
 	match container {
 		"container" => format!(
-			r#"
-			set -ex
-			cd /var/lib/mysql
-			# Determine binlog position of cloned data, if any.
-			if [[ -f xtrabackup_slave_info && "x$(<xtrabackup_slave_info)" != "x" ]]; then
-			  # XtraBackup already generated a partial "CHANGE MASTER TO" query
-			  # because we're cloning from an existing replica. (Need to remove the tailing semicolon!)
-			  cat xtrabackup_slave_info | sed -E 's/;$//g' > change_master_to.sql.in
-			  # Ignore xtrabackup_binlog_info in this case (it's useless).
-			  rm -f xtrabackup_slave_info xtrabackup_binlog_info
-			elif [[ -f xtrabackup_binlog_info ]]; then
-			  # We're cloning directly from primary. Parse binlog position.
-			  [[ `cat xtrabackup_binlog_info` =~ ^(.*?)[[:space:]]+(.*?)$ ]] || exit 1
-			  rm -f xtrabackup_binlog_info xtrabackup_slave_info
-			  echo "CHANGE MASTER TO MASTER_LOG_FILE=${{BASH_REMATCH[1]}},\
-					MASTER_LOG_POS=${{BASH_REMATCH[2]}}" > change_master_to.sql.in
-			fi
-			# Check if we need to complete a clone by starting replication.
-			if [[ -f change_master_to.sql.in ]]; then
-			  echo "Waiting for mysqld to be ready (accepting connections)"
-			  until mysql -h 127.0.0.1 -e "SELECT 1"; do sleep 1; done
-			  echo "Initializing replication from clone position"
-			  mysql -h 127.0.0.1 \
-					-e "$(<change_master_to.sql.in), \
-							MASTER_HOST='mysql-0.mysql', \
-							MASTER_USER='root', \
-							MASTER_PASSWORD='', \
-							MASTER_CONNECT_RETRY=10; \
-						  START SLAVE;" || exit 1
-			  # In case of container restart, attempt this at-most-once.
-			  mv change_master_to.sql.in change_master_to.sql.orig
-			fi
-			# Start a server to send backups when requested by peers.
-			exec ncat --listen --keep-open --send-only --max-conns=1 3307 -c \
-			  "xtrabackup --backup --slave-info --stream=xbstream --host=127.0.0.1 --user=root"
-			"#
+			r#"set -ex;
+cd /var/lib/mysql;
+# Determine binlog position of cloned data, if any.
+if [[ -f xtrabackup_slave_info && "x$(<xtrabackup_slave_info)" != "x" ]]; then
+	# XtraBackup already generated a partial "CHANGE MASTER TO" query
+	# because we're cloning from an existing replica. (Need to remove the tailing semicolon!)
+	cat xtrabackup_slave_info | sed -E 's/;$//g' > change_master_to.sql.in;
+	# Ignore xtrabackup_binlog_info in this case (it's useless).
+	rm -f xtrabackup_slave_info xtrabackup_binlog_info;
+elif [[ -f xtrabackup_binlog_info ]]; then
+	# We're cloning directly from primary. Parse binlog position.
+	[[ `cat xtrabackup_binlog_info` =~ ^(.*?)[[:space:]]+(.*?)$ ]] || exit 1
+	rm -f xtrabackup_binlog_info xtrabackup_slave_info;
+	echo "CHANGE MASTER TO MASTER_LOG_FILE=${{BASH_REMATCH[1]}},\
+		MASTER_LOG_POS=${{BASH_REMATCH[2]}}" > change_master_to.sql.in;
+fi
+# Check if we need to complete a clone by starting replication.
+if [[ -f change_master_to.sql.in ]]; then
+	echo "Waiting for mysqld to be ready (accepting connections)" ;
+	until mysql -h 127.0.0.1 -e "SELECT 1"; do sleep 1; done
+	echo "Initializing replication from clone position";
+	mysql -h 127.0.0.1 \
+		-e "$(<change_master_to.sql.in), \
+				MASTER_HOST='mysql-0.mysql', \
+				MASTER_USER='root', \
+				MASTER_PASSWORD='', \
+				MASTER_CONNECT_RETRY=10; \
+				START SLAVE;" || exit 1
+	# In case of container restart, attempt this at-most-once.
+	mv change_master_to.sql.in change_master_to.sql.orig;
+fi
+# Start a server to send backups when requested by peers.
+exec ncat --listen --keep-open --send-only --max-conns=1 3307 -c \
+	"xtrabackup --backup --slave-info --stream=xbstream --host=127.0.0.1 --user=root";
+"#
 		),
 		"init_container" => format!(
-			r#"
-			set -ex
-			# Generate mysql server-id from pod ordinal index.
-			[[ $HOSTNAME =~ -([0-9]+)$ ]] || exit 1
-			ordinal=${{BASH_REMATCH[1]}}
-			echo [mysqld] > /mnt/conf.d/server-id.cnf
-			# Add an offset to avoid reserved server-id=0 value.
-			echo server-id=$((100 + $ordinal)) >> /mnt/conf.d/server-id.cnf
-			# Copy appropriate conf.d files from config-map to emptyDir.
-			if [[ $ordinal -eq 0 ]]; then
-				cp /mnt/config-map/primary.cnf /mnt/conf.d/
-			else
-				cp /mnt/config-map/replica.cnf /mnt/conf.d/
-			fi
-			"#
+			r#"set -ex;
+# Generate mysql server-id from pod ordinal index.
+[[ $HOSTNAME =~ -([0-9]+)$ ]] || exit 1
+ordinal=${{BASH_REMATCH[1]}};
+echo [mysqld] > /mnt/conf.d/server-id.cnf;
+# Add an offset to avoid reserved server-id=0 value.
+echo server-id=$((100 + $ordinal)) >> /mnt/conf.d/server-id.cnf;
+# Copy appropriate conf.d files from config-map to emptyDir.
+if [[ $ordinal -eq 0 ]]; then
+	cp /mnt/config-map/primary.cnf /mnt/conf.d/;
+else
+	cp /mnt/config-map/replica.cnf /mnt/conf.d/;
+fi
+"#
 		),
 		_ => format!(r#"exit"#),
 	}

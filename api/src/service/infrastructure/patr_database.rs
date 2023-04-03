@@ -64,14 +64,14 @@ pub async fn create_patr_database_in_workspace(
 			.body(error!(REGION_NOT_READY_YET).to_string()));
 	}
 
-	check_patr_database_creation_limit(
-		connection,
-		workspace_id,
-		region_details.is_byoc_region(),
-		database_plan,
-		request_id,
-	)
-	.await?;
+	// check_patr_database_creation_limit(
+	// 	connection,
+	// 	workspace_id,
+	// 	region_details.is_byoc_region(),
+	// 	database_plan,
+	// 	request_id,
+	// )
+	// .await?;
 
 	let creation_time = Utc::now();
 
