@@ -1732,7 +1732,6 @@ dependencies = [
  "core-foundation-sys",
  "iana-time-zone-haiku",
  "js-sys",
- "once_cell",
  "wasm-bindgen",
  "windows",
 ]
@@ -2129,9 +2128,9 @@ checksum = "ef53942eb7bf7ff43a617b3e2c1c4a5ecf5944a7c1bc12d7ee39bbb15e5c1519"
 
 [[package]]
 name = "lock_api"
-version = "0.4.8"
+version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f80bf5aacaf25cbfc8210d1cfb718f2bf3b11c4c54e5afe36c236853a8ec390"
+checksum = "435011366fe56583b16cf956f9df0095b405b82d76425bc8981c0e22e60ec4df"
 dependencies = [
  "autocfg",
  "scopeguard",
@@ -2265,7 +2264,6 @@ dependencies = [
 ]
 
 [[package]]
-<<<<<<< HEAD
 name = "monostate"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2287,8 +2285,6 @@ dependencies = [
 ]
 
 [[package]]
-=======
->>>>>>> 137445f4 (feature: login with github)
 name = "native-tls"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2609,6 +2605,7 @@ dependencies = [
  "kube",
  "lazy_static",
  "log",
+ "monostate",
  "regex",
  "reqwest",
  "serde",
