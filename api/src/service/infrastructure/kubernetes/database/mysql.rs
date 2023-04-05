@@ -64,6 +64,14 @@ pub async fn create_kubernetes_mysql_database(
 		super::super::get_kubernetes_client(kubeconfig.auth_details).await?;
 
 	// names
+	// let namespace = workspace_id.as_str();
+	// let secret_name_for_db_pwd = "mysql".to_owned();
+	// let master_svc_name_for_db = "mysql".to_owned();
+	// let slave_svc_name_for_db = "mysql-read".to_owned();
+	// let sts_name_for_db = "mysql".to_owned();
+	// let pvc_prefix_for_db = "pvc"; // actual name will be `pvc-{sts_name_for_db}-{sts_ordinal}`
+	// let configmap_name_for_db = "mysql".to_owned();
+
 	let namespace = workspace_id.as_str();
 	let secret_name_for_db_pwd = format!("db-pwd-{database_id}");
 	let master_svc_name_for_db = format!("db-{database_id}");
@@ -280,7 +288,7 @@ pub async fn create_kubernetes_mysql_database(
 							"[[ `hostname` =~ -([0-9]+)$ ]] || exit 1".to_owned(),
 							"ordinal=${BASH_REMATCH[1]}".to_owned(),
 							"[[ $ordinal -eq 0 ]] && exit 0".to_owned(),
-							format!("ncat --recv-only {sts_name_for_db}-$(($ordinal-1)).mysql 3307 | xbstream -x -C /var/lib/mysql").to_owned(),
+							format!("ncat --recv-only {sts_name_for_db}-$(($ordinal-1)).{sts_name_for_db}.{namespace}.svc.cluster.local 3307 | xbstream -x -C /var/lib/mysql").to_owned(),
 							"xtrabackup --prepare --target-dir=/var/lib/mysql".to_owned()
 						].join("\n")
 						
@@ -430,10 +438,10 @@ pub async fn create_kubernetes_mysql_database(
 							r#"MASTER_PASSWORD='', \"#.to_owned(),
 							r#"MASTER_CONNECT_RETRY=10; \"#.to_owned(),
 							r#"START SLAVE;" || exit 1"#.to_owned(),
-							r#"mv change_master_to.sql.in change_master_to.sql.orig"#.to_owned(),
-							r#"fi"#.to_owned(),
+							"mv change_master_to.sql.in change_master_to.sql.orig".to_owned(),
+							"fi".to_owned(),
 							r#"exec ncat --listen --keep-open --send-only --max-conns=1 3307 -c \"#.to_owned(),
-							r#""xtrabackup --backup --slave-info --stream=xbstream --host=127.0.0.1 --user=root" "#.to_owned()
+							r#""xtrabackup --backup --slave-info --stream=xbstream --host=127.0.0.1 --user=root""#.to_owned()
 						].join("\n")
 						
 						// generate_command_data_template("container"),
