@@ -12,7 +12,7 @@ use jsonwebtoken::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{error, redis, utils::Error};
+use crate::{db, error, redis, utils::Error, Database};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -32,19 +32,24 @@ pub struct AccessTokenData {
 
 impl AccessTokenData {
 	pub async fn decode(
+		connection: &mut <Database as sqlx::Database>::Connection,
 		redis_connection: &mut RedisConnection,
 		token: &str,
 		key: &str,
 	) -> Result<AccessTokenData, Error> {
 		let decode_key = DecodingKey::from_secret(key.as_ref());
-		let TokenData { header: _, claims } =
+		let TokenData { header: _, mut claims } =
 			jsonwebtoken::decode::<Self>(token, &decode_key, &{
 				let mut validation = Validation::new(Algorithm::HS256);
 				validation.validate_exp = false;
 				validation
 			})?;
 
-		if !claims.is_valid(redis_connection).await.unwrap_or(false) {
+		if !claims
+			.is_valid(connection, redis_connection)
+			.await
+			.unwrap_or(false)
+		{
 			return Err(Error::empty()
 				.status(401)
 				.body(error!(EXPIRED).to_string()));
@@ -54,7 +59,8 @@ impl AccessTokenData {
 	}
 
 	async fn is_valid(
-		&self,
+		&mut self,
+		connection: &mut <Database as sqlx::Database>::Connection,
 		redis_conn: &mut RedisConnection,
 	) -> Result<bool, Error> {
 		// check whether access token has expired
@@ -69,8 +75,13 @@ impl AccessTokenData {
 			&self.user.id,
 		)
 		.await?;
+
 		if matches!(revoked_timestamp, Some(revoked_timestamp) if self.iat < revoked_timestamp)
 		{
+			// delete data from redis
+			redis::delete_user_acess_token_data(redis_conn, &self.login_id)
+				.await?;
+
 			return Ok(false);
 		}
 
@@ -80,10 +91,48 @@ impl AccessTokenData {
 			&self.login_id,
 		)
 		.await?;
+
 		if matches!(revoked_timestamp, Some(revoked_timestamp) if self.iat < revoked_timestamp)
 		{
+			// delete data from redis
+			redis::delete_user_acess_token_data(redis_conn, &self.login_id)
+				.await?;
 			return Ok(false);
 		}
+
+		// get permissions from redis
+		let permissions =
+			redis::get_user_access_token_data(redis_conn, &self.login_id)
+				.await?
+				.and_then(|permission| {
+					serde_json::from_str::<BTreeMap<Uuid, WorkspacePermission>>(
+						&permission,
+					)
+					.ok()
+				});
+
+		self.permissions = if let Some(permissions) = permissions {
+			permissions
+		} else {
+			// If not present in the redis fetch from db
+			let all_workspace_permissions =
+				db::get_all_workspace_role_permissions_for_user(
+					connection,
+					&self.user.id,
+				)
+				.await?;
+
+			// add into redis
+			redis::set_user_access_token_data(
+				redis_conn,
+				&self.login_id,
+				&serde_json::to_string(&all_workspace_permissions)?,
+				None, // change this
+			)
+			.await?;
+
+			all_workspace_permissions
+		};
 
 		// check workspace revocation
 		for workspace_id in self.permissions.keys() {
@@ -95,6 +144,9 @@ impl AccessTokenData {
 				.await?;
 			if matches!(revoked_timestamp, Some(revoked_timestamp) if self.iat < revoked_timestamp)
 			{
+				// remove data from redis
+				redis::delete_user_acess_token_data(redis_conn, &self.login_id)
+					.await?;
 				return Ok(false);
 			}
 		}
@@ -104,6 +156,9 @@ impl AccessTokenData {
 			redis::get_global_token_revoked_timestamp(redis_conn).await?;
 		if matches!(revoked_timestamp, Some(revoked_timestamp) if self.iat < revoked_timestamp)
 		{
+			// remove data from redis
+			redis::delete_user_acess_token_data(redis_conn, &self.login_id)
+				.await?;
 			return Ok(false);
 		}
 
@@ -124,7 +179,6 @@ impl AccessTokenData {
 	pub fn new(
 		iat: DateTime<Utc>,
 		exp: DateTime<Utc>,
-		permissions: BTreeMap<Uuid, WorkspacePermission>,
 		login_id: Uuid,
 		user: ExposedUserData,
 	) -> Self {
@@ -134,7 +188,7 @@ impl AccessTokenData {
 			iat,
 			typ: String::from("accessToken"),
 			exp,
-			permissions,
+			permissions: BTreeMap::<Uuid, WorkspacePermission>::new(),
 			login_id,
 			user,
 		}
