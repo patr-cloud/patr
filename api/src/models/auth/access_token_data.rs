@@ -38,12 +38,14 @@ impl AccessTokenData {
 		key: &str,
 	) -> Result<AccessTokenData, Error> {
 		let decode_key = DecodingKey::from_secret(key.as_ref());
-		let TokenData { header: _, mut claims } =
-			jsonwebtoken::decode::<Self>(token, &decode_key, &{
-				let mut validation = Validation::new(Algorithm::HS256);
-				validation.validate_exp = false;
-				validation
-			})?;
+		let TokenData {
+			header: _,
+			mut claims,
+		} = jsonwebtoken::decode::<Self>(token, &decode_key, &{
+			let mut validation = Validation::new(Algorithm::HS256);
+			validation.validate_exp = false;
+			validation
+		})?;
 
 		if !claims
 			.is_valid(connection, redis_connection)

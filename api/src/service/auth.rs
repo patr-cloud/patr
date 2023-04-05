@@ -685,12 +685,8 @@ pub async fn generate_access_token(
 		created,
 	};
 
-	let token_data = AccessTokenData::new(
-		now,
-		exp,
-		user_login.login_id.clone(),
-		user,
-	);
+	let token_data =
+		AccessTokenData::new(now, exp, user_login.login_id.clone(), user);
 	let jwt = token_data.to_string(config.jwt_secret.as_str())?;
 
 	Ok(jwt)
