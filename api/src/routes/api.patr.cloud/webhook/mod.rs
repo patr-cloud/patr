@@ -241,8 +241,7 @@ async fn notification_handler(
 		db::update_docker_repo_usage_history(
 			context.get_database_connection(),
 			&workspace_id,
-			&(((total_storage as f64) / (1000f64 * 1000f64 * 1000f64)).ceil()
-				as i64),
+			&(total_storage as i64),
 			&current_time,
 		)
 		.await?;
