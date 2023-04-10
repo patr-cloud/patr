@@ -248,6 +248,7 @@ async fn sign_up(
 		recovery_method,
 		account_type,
 		coupon_code,
+		is_oauth,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -262,15 +263,18 @@ async fn sign_up(
 		&account_type,
 		&recovery_method,
 		coupon_code.as_deref(),
+		is_oauth,
 	)
 	.await?;
 	// send otp
-	service::send_user_sign_up_otp(
-		context.get_database_connection(),
-		&user_to_sign_up,
-		&otp,
-	)
-	.await?;
+	if !is_oauth{
+		service::send_user_sign_up_otp(
+			context.get_database_connection(),
+			&user_to_sign_up,
+			&otp,
+		)
+		.await?;
+	}
 
 	let _ = service::get_internal_metrics(
 		context.get_database_connection(),

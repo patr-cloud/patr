@@ -38,18 +38,22 @@ pub fn create_sub_app(
 	let mut app = create_eve_app(app);
 
 	app.post(
-		"/login",
-		[EveMiddleware::CustomFunction(pin_fn!(login_with_github))],
+		"/identify",
+		[EveMiddleware::CustomFunction(pin_fn!(identify_with_github))],
 	);
 	app.post(
 		"/callback",
 		[EveMiddleware::CustomFunction(pin_fn!(oauth_callback))],
 	);
+	app.post(
+		"/register",
+		[EveMiddleware::CustomFunction(pin_fn!(register_with_github))],
+	);
 
 	app
 }
 
-async fn login_with_github(
+async fn identify_with_github(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -81,7 +85,8 @@ async fn oauth_callback(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let GithubAuthCallbackRequest { code, state, .. } = context
+	// Register of type bool where if true then use for registering user else login
+	let GithubAuthCallbackRequest { code, state, register, .. } = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -142,49 +147,139 @@ async fn oauth_callback(
 		.error_for_status()?
 		.json::<Vec<GitHubUserEmailResponse>>()
 		.await?;
-
-	let primary_email = user_emails.into_iter().find(|email| email.primary);
-
-	let email = if let Some(email) = primary_email {
-		email.email
-	} else {
-		Error::as_result()
-			.status(404)
-			.body(error!(EMAIL_NOT_FOUND).to_string())?
-	};
-
-	let user_exists =
-		db::get_user_by_email(context.get_database_connection(), &email)
-			.await?;
-
-	if let Some(user) = user_exists {
-		db::update_user_oauth_info(
-			context.get_database_connection(),
-			&access_token,
-			&user.id,
-			true,
-		)
-		.await?;
-
-		let config = context.get_state().config.clone();
-		let (UserLogin { login_id, .. }, access_token, refresh_token) =
-			service::sign_in_user(
-				context.get_database_connection(),
-				&user.id,
-				&config,
-			)
-			.await?;
-
-		context.success(LoginResponse {
-			login_id,
-			access_token,
-			refresh_token,
-		});
-
-		Ok(context)
-	} else {
-		Error::as_result()
-			.status(404)
-			.body(error!(EMAIL_NOT_FOUND).to_string())?
+	
+	match register {
+		true => {
+			// Iterate and return email that is not yet associated with patr
+			let register_email = Vec::new();
+			for email in user_emails.iter(){
+				let user_exist = db::get_user_by_email(context.get_database_connection(), &email).await?;
+				let oauth_user_exit = db::get_oauth_user_by_email(context.get_database_connection(), &email).await?;
+				if user_exist.is_none() && oauth_user_exit.is_none(){
+					register_email.push(email);
+				}
+			}
+			//Send this to frontend and let user choose what email to register with.
+			context.success(GithubLoginResponse { register_email });
+			Ok(context)
+		}
+		false => {
+			// Iterate and return email that is associated with patr
+			let login_email = Vec::new();
+			for email in user_emails.iter(){
+				let user_exist = db::get_user_by_email(context.get_database_connection(), &email).await?;
+				let oauth_user_exit = db::get_oauth_user_by_email(context.get_database_connection(), &email).await?;
+				if user_exist.is_some() || oauth_user_exit.is_some(){
+					login_email.push(email);
+				}
+			}
+			//Send this to frontend and let user choose what email to login with. Once chosen, do normal sign-in
+			context.success(GithubLoginResponse { login_email });
+			Ok(context)
+		}
 	}
+}
+
+async fn register_with_github(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let GithubAuthRegisterRequest { 
+		username,
+		password,
+		first_name,
+		last_name,
+		recovery_method,
+		account_type,
+		coupon_code,
+		is_oauth,
+		emails 
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let (user_to_sign_up, verification_token) = service::create_user_join_request(
+		context.get_database_connection(),
+		username.to_lowercase().trim(),
+		&password,
+		&first_name,
+		&last_name,
+		&account_type,
+		&recovery_method,
+		coupon_code.as_deref(),
+		is_oauth,
+	)
+	.await?;
+
+	let _ = service::get_internal_metrics(
+		context.get_database_connection(),
+		"A new user has attempted to sign-up",
+	)
+	.await;
+
+	let config = context.get_state().config.clone();
+
+	let ip_address = routes::get_request_ip_address(&context);
+	let user_agent = context.get_header("user-agent").unwrap_or_default();
+
+	let join_user = service::join_user(
+		context.get_database_connection(),
+		&verification_token,
+		username.to_lowercase().trim(),
+		&ip_address
+			.parse()
+			.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+		&user_agent,
+		&config,
+	)
+	.await?;
+
+	// TODO: Add other emails in oauth_email table
+
+	service::send_sign_up_complete_notification(
+		join_user.welcome_email_to,
+		join_user.recovery_email_to,
+		join_user.recovery_phone_number_to,
+		&username,
+	)
+	.await?;
+
+	let _ = service::get_internal_metrics(
+		context.get_database_connection(),
+		"A new user has completed sign-up",
+	)
+	.await;
+
+	let user =
+		db::get_user_by_username(context.get_database_connection(), &username)
+			.await?
+			.status(500)?;
+
+	if let Some((email_local, domain_id)) =
+		user.recovery_email_local.zip(user.recovery_email_domain_id)
+	{
+		let domain = db::get_personal_domain_by_id(
+			context.get_database_connection(),
+			&domain_id,
+		)
+		.await?
+		.status(500)?;
+
+		let _ = service::include_user_to_mailchimp(
+			context.get_database_connection(),
+			&format!("{}@{}", email_local, domain.name),
+			&user.first_name,
+			&user.last_name,
+			&config,
+		)
+		.await;
+	}
+
+	context.success(CompleteSignUpResponse {
+		access_token: join_user.jwt,
+		login_id: join_user.login_id,
+		refresh_token: join_user.refresh_token,
+	});
+	Ok(context)
 }

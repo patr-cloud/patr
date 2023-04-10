@@ -237,6 +237,7 @@ pub async fn create_user_join_request(
 	account_type: &SignUpAccountType,
 	recovery_method: &RecoveryMethod,
 	coupon_code: Option<&str>,
+	is_oauth: bool
 ) -> Result<(UserToSignUp, String), Error> {
 	// Check if the username is allowed
 	if !is_username_allowed(connection, username).await? {
@@ -312,7 +313,11 @@ pub async fn create_user_join_request(
 		}
 	}
 
-	let otp = service::generate_new_otp();
+	if is_oauth {
+		let otp = "000-000".to_string();
+	} else {
+		let otp = service::generate_new_otp();
+	}
 	let token_expiry = Utc::now() + service::get_join_token_expiry();
 
 	let password = service::hash(password.as_bytes())?;
@@ -1224,4 +1229,28 @@ pub async fn resend_user_sign_up_otp(
 			.body(error!(USER_NOT_FOUND).to_string())?,
 		otp,
 	))
+}
+
+pub async fn oauth_join(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	otp: &str,
+	username: &str,
+	created_ip: &IpAddr,
+	user_agent: &str,
+	config: &Settings,
+) -> Result<JoinUser, Error> {
+	let CreateAccountRequest {
+		username,
+		password,
+		first_name,
+		last_name,
+		recovery_method,
+		account_type,
+		coupon_code,
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+
 }
