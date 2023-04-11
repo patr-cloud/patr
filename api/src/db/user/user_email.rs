@@ -115,6 +115,29 @@ pub async fn initialize_user_email_post(
 
 	query!(
 		r#"
+		CREATE TABLE oauth_email(
+			user_id UUID NOT NULL
+				CONSTRAINT oauth_email_fk_user_id REFERENCES "user"(id)
+					DEFERRABLE INITIALLY IMMEDIATE,
+			local VARCHAR(64) NOT NULL
+				CONSTRAINT oauth_email_chk_local_is_lower_case CHECK(
+					local = LOWER(local)
+					),
+			domain_id UUID NOT NULL
+				CONSTRAINT oauth_email_fk_domain_id
+					REFERENCES personal_domain(id),
+			oauth_type VARCHAR(20) NOT NULL,
+			CONSTRAINT oauth_email_pk PRIMARY KEY(local, domain_id),
+			CONSTRAINT oauth_email_uq_user_id_local_domain_id_oauth_type
+				UNIQUE(user_id, local, domain_id, oauth_type)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		ALTER TABLE "user"
 		ADD CONSTRAINT user_fk_id_recovery_email_local_recovery_email_domain_id
 		FOREIGN KEY(
@@ -479,6 +502,96 @@ pub async fn get_recovery_email_for_user(
 }
 
 pub async fn delete_personal_email_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+	email_local: &str,
+	domain_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			personal_email
+		WHERE
+			user_id = $1 AND
+			local = $2 AND
+			domain_id = $3;
+		"#,
+		user_id as _,
+		email_local,
+		domain_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_all_oauth_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+	oauth_type: &str,
+) -> Result<Vec<String>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT
+			CONCAT(
+				oauth_email.local,
+				'@',
+				domain.name,
+				'.',
+				domain.tld
+			) as "email!: String"
+		FROM
+			oauth_email
+		INNER JOIN
+			domain
+		ON
+			oauth_email.domain_id = domain.id
+		WHERE
+			oauth_email.user_id = $1 AND
+			oauth_type = $2;
+		"#,
+		user_id as _,
+		oauth_type as _,
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| row.email)
+	.collect();
+
+	Ok(rows)
+}
+
+pub async fn add_oauth_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+	email_local: &str,
+	domain_id: &Uuid,
+	oauth_type: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			oauth_email(
+				user_id,
+				local,
+				domain_id,
+				oauth_type,
+			)
+		VALUES
+			($1, $2, $3, $4);
+		"#,
+		user_id as _,
+		email_local,
+		domain_id as _,
+		oauth_type as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn delete_oauth_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 	email_local: &str,
