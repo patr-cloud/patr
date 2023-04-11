@@ -62,8 +62,9 @@ use crate::{
 pub async fn add_credits_to_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	credits: u64,
+	cents: u64,
 	payment_method_id: &str,
+	description: &str,
 	config: &Settings,
 ) -> Result<(Uuid, String), Error> {
 	let workspace = db::get_workspace_info(connection, workspace_id)
@@ -88,8 +89,6 @@ pub async fn add_credits_to_workspace(
 		.address_id
 		.status(400)
 		.body(error!(ADDRESS_REQUIRED).to_string())?;
-
-	let (cents, description) = (credits, "Patr charge: Additional credits");
 
 	let (currency, amount) = if db::get_billing_address(connection, &address_id)
 		.await?
@@ -137,7 +136,7 @@ pub async fn add_credits_to_workspace(
 		workspace_id,
 		&transaction_id,
 		date.month() as i32,
-		credits,
+		cents,
 		Some(&payment_intent.id),
 		&date,
 		&TransactionType::Credits,

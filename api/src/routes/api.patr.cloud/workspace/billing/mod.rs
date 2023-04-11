@@ -886,6 +886,8 @@ async fn confirm_payment_method(
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+	let config = context.get_state().config.clone();
+
 	let ConfirmPaymentMethodRequest {
 		payment_method_id, ..
 	} = context
@@ -912,6 +914,23 @@ async fn confirm_payment_method(
 		)
 		.await?;
 	}
+
+	let description = "Patr charge: Card verification charges";
+	service::add_credits_to_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+		1000, // $10 in cents
+		&payment_method_id,
+		description,
+		&config,
+	)
+	.await?;
+
+	// TODO - send back the transaction_id and client_secret back as this
+	// information will be needed to frontend for confirm payment route
+	// Hence instead of ConfirmPaymentMethodResponse as response send
+	// AddCreditsResponse as response
+
 	context.success(ConfirmPaymentMethodResponse {});
 	Ok(context)
 }
@@ -1007,11 +1026,14 @@ async fn add_credits(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
+
+	let description = "Patr charge: Additional credits";
 	let (transaction_id, client_secret) = service::add_credits_to_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 		credits,
 		&payment_method_id,
+		description,
 		&config,
 	)
 	.await?;
