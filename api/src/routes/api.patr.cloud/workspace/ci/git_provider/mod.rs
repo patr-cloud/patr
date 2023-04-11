@@ -9,7 +9,7 @@ use api_models::{
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
-	app::{create_eve_app, App},
+	app::{create_axum_router, App},
 	db,
 	error,
 	models::rbac::permissions,
@@ -25,10 +25,8 @@ use crate::{
 
 mod github;
 
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut sub_app = create_eve_app(app);
+pub fn create_sub_app() -> Router<App> {
+	let mut sub_app = create_axum_router(app);
 
 	sub_app.use_sub_app("/github", github::create_sub_app(app));
 

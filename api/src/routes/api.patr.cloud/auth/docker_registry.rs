@@ -5,7 +5,7 @@ use eve_rs::{App as EveApp, AsError, Context, HttpMethod, NextHandler};
 use serde_json::json;
 
 use crate::{
-	app::{create_eve_app, App},
+	app::{create_axum_router, App},
 	db::{self},
 	models::{
 		error::{id as ErrorId, message as ErrorMessage},
@@ -38,10 +38,8 @@ use crate::{
 /// containing context, middleware, object of [`App`] and Error
 ///
 /// [`App`]: App
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut app = create_eve_app(app);
+pub fn create_sub_app() -> Router<App> {
+	let mut app = create_axum_router(app);
 
 	app.post(
 		"/docker-registry-token",

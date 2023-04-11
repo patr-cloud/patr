@@ -1,4 +1,4 @@
-use log::LevelFilter;
+use log::{LevelFilter, SetLoggerError};
 use log4rs::{
 	append::{
 		console::ConsoleAppender,
@@ -17,12 +17,9 @@ use log4rs::{
 	Handle,
 };
 
-use crate::utils::{
-	settings::{RunningEnvironment, Settings},
-	Error,
-};
+use crate::utils::settings::{RunningEnvironment, Settings};
 
-pub async fn initialize(config: &Settings) -> Result<Handle, Error> {
+pub async fn initialize(config: &Settings) -> Result<Handle, SetLoggerError> {
 	println!("[TRACE]: Initializing logger...");
 	let config = match config.environment {
 		RunningEnvironment::Development => Config::builder()

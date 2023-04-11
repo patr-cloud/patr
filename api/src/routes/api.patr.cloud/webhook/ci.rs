@@ -9,7 +9,7 @@ use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
-	app::{create_eve_app, App},
+	app::{create_axum_router, App},
 	db,
 	error,
 	models::ci::{
@@ -32,10 +32,8 @@ use crate::{
 	},
 };
 
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut sub_app = create_eve_app(app);
+pub fn create_sub_app() -> Router<App> {
+	let mut sub_app = create_axum_router(app);
 
 	sub_app.post(
 		"/repo/:repoId",

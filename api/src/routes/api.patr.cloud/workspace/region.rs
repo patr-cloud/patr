@@ -21,7 +21,7 @@ use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use sqlx::types::Json;
 
 use crate::{
-	app::{create_eve_app, App},
+	app::{create_axum_router, App},
 	db,
 	error,
 	models::rbac::{self, permissions},
@@ -37,10 +37,8 @@ use crate::{
 	},
 };
 
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut app = create_eve_app(app);
+pub fn create_sub_app() -> Router<App> {
+	let mut app = create_axum_router(app);
 
 	// List all regions
 	app.get(

@@ -43,7 +43,7 @@ use redis::AsyncCommands;
 use serde::Deserialize;
 
 use crate::{
-	app::{create_eve_app, App},
+	app::{create_axum_router, App},
 	db,
 	error,
 	models::{
@@ -63,10 +63,8 @@ use crate::{
 	},
 };
 
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut app = create_eve_app(app);
+pub fn create_sub_app() -> Router<App> {
+	let mut app = create_axum_router(app);
 
 	app.get(
 		"/auth",

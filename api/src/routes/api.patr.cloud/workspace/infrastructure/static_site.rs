@@ -27,7 +27,7 @@ use api_models::{
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
-	app::{create_eve_app, App},
+	app::{create_axum_router, App},
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
 	models::{rbac::permissions, ResourceType},
@@ -56,10 +56,8 @@ use crate::{
 /// containing context, middleware, object of [`App`] and Error
 ///
 /// [`App`]: App
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut app = create_eve_app(app);
+pub fn create_sub_app() -> Router<App> {
+	let mut app = create_axum_router(app);
 
 	// List all static sites
 	app.get(

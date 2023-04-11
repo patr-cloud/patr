@@ -9,7 +9,7 @@ use api_models::{
 use eve_rs::{App as EveApp, AsError, NextHandler};
 
 use crate::{
-	app::{create_eve_app, App},
+	app::{create_axum_router, App},
 	db,
 	error,
 	models::rbac,
@@ -40,10 +40,8 @@ mod user;
 /// containing context, middleware, object of [`App`] and Error
 ///
 /// [`App`]: App
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut sub_app = create_eve_app(app);
+pub fn create_sub_app() -> Router<App> {
+	let mut sub_app = create_axum_router(app);
 
 	sub_app.use_sub_app("/user", user::create_sub_app(app));
 	sub_app.use_sub_app("/role", role::create_sub_app(app));

@@ -1,11 +1,11 @@
-use api_models::models::GetVersionResponse;
-use eve_rs::{App as EveApp, NextHandler};
-
-use crate::{
-	app::{create_eve_app, App},
-	pin_fn,
-	utils::{constants, Error, ErrorData, EveContext, EveMiddleware},
+use api_models::{
+	models::{GetVersionRequest, GetVersionResponse},
+	utils::{DecodedRequest, DtoRequestExt},
+	Error,
 };
+use axum::Router;
+
+use crate::{app::App, utils::constants};
 
 mod auth;
 mod user;
@@ -28,29 +28,19 @@ mod workspace;
 /// containing context, middleware, object of [`App`] and Error
 ///
 /// [`App`]: App
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut sub_app = create_eve_app(app);
-
-	sub_app.use_sub_app("/auth", auth::create_sub_app(app));
-	sub_app.use_sub_app("/user", user::create_sub_app(app));
-	sub_app.use_sub_app("/workspace", workspace::create_sub_app(app));
-	sub_app.use_sub_app("/webhook", webhook::create_sub_app(app));
-	sub_app.get(
-		"/version",
-		[EveMiddleware::CustomFunction(pin_fn!(get_version_number))],
-	);
-
-	sub_app
+pub fn create_sub_app() -> Router<App> {
+	Router::new()
+		.merge(auth::create_sub_app())
+		.merge(user::create_sub_app())
+		.merge(workspace::create_sub_app())
+		.merge(webhook::create_sub_app())
+		.mount_dto(get_version_number)
 }
 
 async fn get_version_number(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	context.success(GetVersionResponse {
+	_: DecodedRequest<GetVersionRequest>,
+) -> Result<GetVersionResponse, Error> {
+	Ok(GetVersionResponse {
 		version: constants::DATABASE_VERSION.to_string(),
-	});
-	Ok(context)
+	})
 }

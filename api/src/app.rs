@@ -1,22 +1,19 @@
 use std::{
 	fmt::{Debug, Formatter},
+	net::SocketAddr,
 	process,
 	time::{Duration, Instant},
 };
 
-use deadpool_lapin::Pool as RabbitmqPool;
-use eve_rs::{
-	listen,
-	App as EveApp,
-	AsError,
-	Context,
-	HttpMethod,
-	NextHandler,
-	Response,
+use axum::{
+	http::{header, HeaderName},
+	Router,
 };
+use deadpool_lapin::Pool as RabbitmqPool;
 use redis::aio::MultiplexedConnection as RedisConnection;
 use sqlx::Pool;
 use tokio::{signal, time};
+use tower_http::cors::{Any, CorsLayer};
 
 use crate::{
 	error,
@@ -43,25 +40,26 @@ impl Debug for App {
 pub async fn start_server(app: &App) {
 	let port = app.config.port;
 
-	let mut eve_app = create_eve_app(app);
+	let router = Router::<App>::new().layer(
+		CorsLayer::new()
+			.allow_methods(Any)
+			.allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
+			.allow_origin(Any),
+	);
 
-	eve_app.set_error_handler(eve_error_handler);
-	eve_app.use_middleware("/", get_basic_middlewares());
-	eve_app.use_sub_app(&app.config.base_path, routes::create_sub_app(app));
+	router.set_error_handler(eve_error_handler);
+	router.use_middleware("/", get_basic_middlewares());
+	router.use_sub_app(&app.config.base_path, routes::create_sub_app(app));
 
 	log::info!(
 		"Listening for connections on {}:{}",
 		app.config.bind_address,
 		port
 	);
-	let shutdown_signal = Some(get_shutdown_signal());
-	listen(eve_app, (app.config.bind_address, port), shutdown_signal).await;
-}
-
-pub fn create_eve_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	EveApp::create(EveContext::new, app.clone())
+	axum::Server::bind(&SocketAddr::new(app.config.bind_address, port))
+		.serve(router.with_state(app.clone()).into_make_service())
+		.with_graceful_shutdown(get_shutdown_signal())
+		.await;
 }
 
 #[cfg(debug_assertions)]

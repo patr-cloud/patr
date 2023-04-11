@@ -1,25 +1,21 @@
 use std::net::{IpAddr, Ipv4Addr};
 
-use api_models::{models::auth::*, utils::Uuid, ErrorType};
+use api_models::{
+	models::auth::{LoginRequest, LoginResponse},
+	prelude::*,
+	utils::DecodedRequest, Error,
+};
+use axum::Router;
 use chrono::{Duration, Utc};
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
-	app::{create_eve_app, App},
+	app::App,
 	db::{self, UserWebLogin},
 	error,
-	pin_fn,
 	redis,
 	routes,
 	service::{self, get_access_token_expiry},
-	utils::{
-		constants::request_keys,
-		validator,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, validator},
 };
 
 mod docker_registry;
@@ -37,19 +33,8 @@ mod docker_registry;
 /// containing context, middleware, object of [`App`] and Error
 ///
 /// [`App`]: App
-pub fn create_sub_app(
-	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut sub_app = create_eve_app(app);
-
-	sub_app.post(
-		"/sign-in",
-		[EveMiddleware::CustomFunction(pin_fn!(sign_in))],
-	);
-	sub_app.post(
-		"/sign-up",
-		[EveMiddleware::CustomFunction(pin_fn!(sign_up))],
-	);
+pub fn create_sub_app() -> Router<App> {
+	Router::new().mount_dto(sign_in).mount_dto(sign_up);
 	sub_app.post(
 		"/sign-out",
 		[
@@ -94,7 +79,7 @@ pub fn create_sub_app(
 			list_recovery_options
 		))],
 	);
-	sub_app.use_sub_app("/", docker_registry::create_sub_app(app));
+	sub_app.use_sub_app("/", docker_registry::create_sub_app());
 
 	sub_app
 }
@@ -131,14 +116,12 @@ pub fn create_sub_app(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn sign_in(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let LoginRequest { user_id, password } = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
+	DecodedRequest {
+		body: LoginRequest { user_id, password },
+		path: _,
+		query: _,
+	}: DecodedRequest<LoginRequest>,
+) -> Result<LoginResponse, Error> {
 	let user_data = db::get_user_by_username_email_or_phone_number(
 		context.get_database_connection(),
 		user_id.to_lowercase().trim(),
@@ -170,12 +153,11 @@ async fn sign_in(
 		)
 		.await?;
 
-	context.success(LoginResponse {
+	Ok(LoginResponse {
 		access_token,
 		login_id,
 		refresh_token,
-	});
-	Ok(context)
+	})
 }
 
 /// # Description

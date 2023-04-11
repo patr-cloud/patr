@@ -5,20 +5,6 @@ use std::{
 };
 
 use async_trait::async_trait;
-use eve_rs::{
-	default_middlewares::{
-		compression::CompressionHandler,
-		cookie_parser::parser as cookie_parser,
-		json::parser as json_parser,
-		static_file_server::StaticFileServer,
-		url_encoded::parser as url_encoded_parser,
-	},
-	App as EveApp,
-	AsError,
-	Context,
-	Middleware,
-	NextHandler,
-};
 
 use crate::{
 	app::App,
@@ -26,32 +12,12 @@ use crate::{
 	error,
 	models::UserAuthenticationData,
 	routes::get_request_ip_address,
-	utils::{Error, ErrorData, EveContext},
 };
-
-pub type MiddlewareHandlerFunction =
-	fn(
-		EveContext,
-		NextHandler<EveContext, ErrorData>,
-	) -> Pin<Box<dyn Future<Output = Result<EveContext, Error>> + Send>>;
-
-pub type ResourceRequiredFunction = fn(
-	EveContext,
-) -> Pin<
-	Box<
-		dyn Future<Output = Result<(EveContext, Option<Resource>), Error>>
-			+ Send,
-	>,
->;
 
 #[allow(dead_code)]
 #[derive(Clone)]
 pub enum EveMiddleware {
-	Compression(u32),
-	JsonParser,
 	UrlEncodedParser,
-	CookieParser,
-	StaticHandler(StaticFileServer),
 	PlainTokenAuthenticator {
 		is_api_token_allowed: bool,
 	},
@@ -61,10 +27,6 @@ pub enum EveMiddleware {
 		resource: ResourceRequiredFunction,
 	},
 	CustomFunction(MiddlewareHandlerFunction),
-	DomainRouter(
-		String,
-		Box<EveApp<EveContext, EveMiddleware, App, ErrorData>>,
-	),
 }
 
 #[async_trait]
