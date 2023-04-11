@@ -237,7 +237,7 @@ pub async fn create_user_join_request(
 	account_type: &SignUpAccountType,
 	recovery_method: &RecoveryMethod,
 	coupon_code: Option<&str>,
-	is_oauth: bool
+	is_oauth_user: bool,
 ) -> Result<(UserToSignUp, String), Error> {
 	// Check if the username is allowed
 	if !is_username_allowed(connection, username).await? {
@@ -313,11 +313,7 @@ pub async fn create_user_join_request(
 		}
 	}
 
-	if is_oauth {
-		let otp = "000-000".to_string();
-	} else {
-		let otp = service::generate_new_otp();
-	}
+	let otp = service::generate_new_otp();
 	let token_expiry = Utc::now() + service::get_join_token_expiry();
 
 	let password = service::hash(password.as_bytes())?;
@@ -398,6 +394,7 @@ pub async fn create_user_join_request(
 				&token_hash,
 				&token_expiry,
 				coupon_code,
+				is_oauth_user,
 			)
 			.await?;
 
@@ -417,6 +414,7 @@ pub async fn create_user_join_request(
 				otp_hash: token_hash,
 				otp_expiry: token_expiry,
 				coupon_code: coupon_code.map(|code| code.to_string()),
+				is_oauth_user,
 			}
 		}
 		SignUpAccountType::Personal { account_type: _ } => {
@@ -432,6 +430,7 @@ pub async fn create_user_join_request(
 				&token_hash,
 				&token_expiry,
 				coupon_code,
+				is_oauth_user,
 			)
 			.await?;
 
@@ -451,6 +450,7 @@ pub async fn create_user_join_request(
 				otp_hash: token_hash,
 				otp_expiry: token_expiry,
 				coupon_code: coupon_code.map(|code| code.to_string()),
+				is_oauth_user,
 			}
 		}
 	};
@@ -881,6 +881,7 @@ pub async fn join_user(
 		recovery_phone_number,
 		3,
 		user_data.coupon_code.as_deref(),
+		user_data.is_oauth_user,
 	)
 	.await?;
 	db::end_deferred_constraints(connection).await?;
@@ -1229,28 +1230,4 @@ pub async fn resend_user_sign_up_otp(
 			.body(error!(USER_NOT_FOUND).to_string())?,
 		otp,
 	))
-}
-
-pub async fn oauth_join(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	otp: &str,
-	username: &str,
-	created_ip: &IpAddr,
-	user_agent: &str,
-	config: &Settings,
-) -> Result<JoinUser, Error> {
-	let CreateAccountRequest {
-		username,
-		password,
-		first_name,
-		last_name,
-		recovery_method,
-		account_type,
-		coupon_code,
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-
 }

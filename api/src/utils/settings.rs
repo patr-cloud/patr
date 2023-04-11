@@ -297,7 +297,7 @@ pub struct GithubSettings {
 	#[serde(alias = "callbackurl")]
 	pub callback_url: String,
 	#[serde(alias = "useremailapi")]
-	pub user_email_api: String,
+	pub user_info_api: String,
 	#[serde(alias = "state")]
 	pub state: String,
 }

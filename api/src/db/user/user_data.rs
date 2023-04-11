@@ -24,6 +24,7 @@ pub struct User {
 	pub recovery_phone_number: Option<String>,
 	pub workspace_limit: i32,
 	pub sign_up_coupon: Option<String>,
+	pub is_oauth_user: bool,
 }
 
 pub struct PasswordResetRequest {
@@ -73,7 +74,6 @@ pub async fn initialize_user_data_pre(
 			workspace_limit INTEGER NOT NULL,
 			sign_up_coupon TEXT,
 			is_oauth_user BOOLEAN DEFAULT false,
-			oauth_access_token TEXT,
 
 			CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id
 				UNIQUE(recovery_email_local, recovery_email_domain_id),
@@ -168,7 +168,8 @@ pub async fn get_user_by_username_email_or_phone_number(
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
 			"user".workspace_limit,
-			"user".sign_up_coupon
+			"user".sign_up_coupon,
+			"user".is_oauth_user
 		FROM
 			"user"
 		LEFT JOIN
@@ -242,7 +243,8 @@ pub async fn get_user_by_username(
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
 			"user".workspace_limit,
-			"user".sign_up_coupon
+			"user".sign_up_coupon,
+			"user".is_oauth_user
 		FROM
 			"user"
 		WHERE
@@ -276,7 +278,8 @@ pub async fn get_user_by_user_id(
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
 			"user".workspace_limit,
-			"user".sign_up_coupon
+			"user".sign_up_coupon,
+			"user".is_oauth_user
 		FROM
 			"user"
 		WHERE
@@ -352,6 +355,7 @@ pub async fn create_user(
 
 	workspace_limit: i32,
 	sign_up_coupon: Option<&str>,
+	is_oauth_user: bool,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -375,7 +379,8 @@ pub async fn create_user(
 
 				workspace_limit,
 
-				sign_up_coupon
+				sign_up_coupon,
+				is_oauth_user
 			)
 		VALUES
 			(
@@ -397,7 +402,8 @@ pub async fn create_user(
 
 				$11,
 
-				$12
+				$12,
+				$13
 			);
 		"#,
 		user_id as _,
@@ -412,6 +418,7 @@ pub async fn create_user(
 		recovery_phone_number,
 		workspace_limit,
 		sign_up_coupon,
+		is_oauth_user,
 	)
 	.execute(&mut *connection)
 	.await
@@ -498,6 +505,30 @@ pub async fn update_user_oauth_info(
 	.await?;
 
 	Ok(())
+}
+
+pub async fn get_user_oauth_info(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	let token = query!(
+		r#"
+		SELECT
+			oauth_access_token
+		FROM
+			"user"
+		WHERE
+			id = $1;
+		AND
+			is_oauth_user = true
+		"#,
+		user_id as _
+	)
+	.fetch_optional(&mut *connection)
+	.await?
+	.map(|row| row.id);
+
+	Ok(token)
 }
 
 pub async fn add_password_reset_request(
