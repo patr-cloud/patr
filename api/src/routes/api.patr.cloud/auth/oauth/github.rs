@@ -6,11 +6,12 @@ use api_models::{
 		CreateAccountResponse,
 		GitHubAccessTokenResponse,
 		GitHubUserEmailResponse,
+		GitHubUserInfoResponse,
 		GithubAuthCallbackRequest,
 		GithubIdentifyResponse,
 		LoginResponse,
 		RecoveryMethod,
-		SignUpAccountType, GitHubUserInfoResponse,
+		SignUpAccountType,
 	},
 	utils::Personal,
 };
@@ -121,29 +122,29 @@ async fn oauth_callback(
 		.unwrap_or_else(|| "patr".to_string());
 
 	log::trace!("Getting access token");
-	let GitHubAccessTokenResponse { access_token} =
-		reqwest::Client::builder()
-			.build()?
-			.post(callback_url)
-			.query(&[
-				(
-					"client_id",
-					context.get_state().config.github.client_id.clone(),
-				),
-				(
-					"client_secret",
-					context.get_state().config.github.client_secret.clone(),
-				),
-				("code", code),
-			])
-			.header(ACCEPT, "application/json")
-			.send()
-			.await?
-			.json::<GitHubAccessTokenResponse>()
-			.await?;
-			
+	let GitHubAccessTokenResponse { access_token } = reqwest::Client::builder()
+		.build()?
+		.post(callback_url)
+		.query(&[
+			(
+				"client_id",
+				context.get_state().config.github.client_id.clone(),
+			),
+			(
+				"client_secret",
+				context.get_state().config.github.client_secret.clone(),
+			),
+			("code", code),
+		])
+		.header(ACCEPT, "application/json")
+		.send()
+		.await?
+		.json::<GitHubAccessTokenResponse>()
+		.await?;
+
 	let user_info_api = context.get_state().config.github.user_info_api.clone();
-	let user_email_api = context.get_state().config.github.user_email_api.clone();
+	let user_email_api =
+		context.get_state().config.github.user_email_api.clone();
 
 	log::trace!("Getting user information");
 	let user_info = reqwest::Client::builder()
@@ -156,7 +157,7 @@ async fn oauth_callback(
 		.error_for_status()?
 		.json::<GitHubUserInfoResponse>()
 		.await?;
-	
+
 	log::trace!("Getting user's primary email");
 	let user_email = reqwest::Client::builder()
 		.build()?
@@ -168,7 +169,7 @@ async fn oauth_callback(
 		.error_for_status()?
 		.json::<Vec<GitHubUserEmailResponse>>()
 		.await?;
-	
+
 	let primary_email = user_email.into_iter().find(|email| email.primary);
 	let email = if let Some(email) = primary_email {
 		email.email
@@ -197,7 +198,10 @@ async fn oauth_callback(
 				.await?;
 				let mut name = user_info.name.split(" ");
 				// TODO Better error message if first name not found
-				let first_name = name.next().status(500).body(error!(SERVER_ERROR).to_string())?;
+				let first_name = name
+					.next()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
 				let last_name = name.next().unwrap_or_default();
 				let password = "".to_string();
 				let account_type = SignUpAccountType::Personal {
@@ -219,7 +223,7 @@ async fn oauth_callback(
 					true,
 				)
 				.await?;
-				
+
 				log::trace!("Sending otp to user's primary mail");
 				service::send_user_sign_up_otp(
 					context.get_database_connection(),
@@ -245,7 +249,6 @@ async fn oauth_callback(
 			)
 			.await?;
 			if let Some(user) = user_exists {
-
 				let ip_address = routes::get_request_ip_address(&context);
 				let user_agent =
 					context.get_header("user-agent").unwrap_or_default();
