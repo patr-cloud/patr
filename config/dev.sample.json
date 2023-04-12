@@ -103,13 +103,13 @@
 		"clientSecret": "app-client-secret"
 	},
 	"google": {
-		"authUrl": "",
-		"redirectUrl": "",
-		"oauthCallbackUrl": "",
-		"scope": "",
-		"clientId": "",
-		"clientSecret": "",
-		"userInfoUrl": "",
+		"authUrl": "<google oauth url>",
+		"redirectUrl": "<patr url>",
+        "callbackUrl": "<google oauth token url>",
+		"scope": "<google scope>",
+		"clientId": "app-client-id",
+		"clientSecret": "app-client-secret",
+		"userInfoUrl": "<google oauth user info url>",
 		"state":""
 	},
 	"stripe": {

@@ -1,4 +1,3 @@
-mod github;
 mod google;
 
 use eve_rs::App as EveApp;
@@ -29,7 +28,6 @@ pub fn create_sub_app(
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
 	let mut sub_app = create_eve_app(app);
 
-	sub_app.use_sub_app("/github", github::create_sub_app(app));
 	sub_app.use_sub_app("/google", google::create_sub_app(app));
 
 	sub_app
