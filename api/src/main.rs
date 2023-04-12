@@ -30,7 +30,11 @@ use futures::future;
 use tokio::runtime::Builder;
 use utils::{logger, Error as EveError};
 
-use crate::{models::rabbitmq::BillingData, utils::handlebar_registry};
+use crate::{
+	app::Config,
+	models::rabbitmq::BillingData,
+	utils::handlebar_registry,
+};
 
 type Database = sqlx::Postgres;
 
@@ -66,7 +70,7 @@ async fn async_main() -> Result<(), EveError> {
 	log::debug!("Rabbitmq pool initialised");
 
 	let app = App {
-		config,
+		config: Config::new(config),
 		database,
 		redis,
 		rabbitmq,

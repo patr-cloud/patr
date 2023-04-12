@@ -119,11 +119,13 @@ checksum = "7de8ce5e0f9f8d88245311066a578d72b7af3e7088f32783804676302df237e4"
 name = "api"
 version = "0.15.2"
 dependencies = [
+ "anyhow",
  "argon2",
  "async-stripe",
  "async-trait",
  "axum",
  "axum-extra",
+ "axum-sqlx-tx",
  "base32",
  "base64 0.21.0",
  "chrono",
@@ -138,6 +140,7 @@ dependencies = [
  "handlebars",
  "hex",
  "hmac",
+ "http",
  "itertools",
  "jsonwebtoken",
  "k8s-openapi",
@@ -535,6 +538,24 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.13",
+]
+
+[[package]]
+name = "axum-sqlx-tx"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d08fbebc418e836066ebfddf3035f7277395700d769bf8fb596460febc8ff37"
+dependencies = [
+ "axum-core",
+ "bytes",
+ "futures-core",
+ "http",
+ "http-body",
+ "parking_lot 0.12.1",
+ "sqlx",
+ "thiserror",
+ "tower-layer",
+ "tower-service",
 ]
 
 [[package]]

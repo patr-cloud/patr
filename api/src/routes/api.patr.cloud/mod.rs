@@ -8,6 +8,7 @@ use axum::Router;
 use crate::{app::App, utils::constants};
 
 mod auth;
+mod middlewares;
 mod user;
 mod webhook;
 mod workspace;

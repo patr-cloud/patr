@@ -96,6 +96,9 @@ rcgen = "0.10.0"
 url = "2.2"
 itertools = "0.10.5"
 tower-http = { version = "0.4.0", features = ["cors", "sensitive-headers"] }
+axum-sqlx-tx = "0.5.0"
+anyhow = "1.0.70"
+http = "0.2.9"
 
 [dependencies.log4rs]
 default-features = false

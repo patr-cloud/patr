@@ -2,6 +2,7 @@ use std::{
 	fmt::{Debug, Formatter},
 	net::SocketAddr,
 	process,
+	sync::Arc,
 	time::{Duration, Instant},
 };
 
@@ -23,9 +24,12 @@ use crate::{
 	Database,
 };
 
-#[derive(Clone)]
+pub type DbTx = axum_sqlx_tx::Tx<sqlx::Postgres>;
+pub type Config = Arc<Settings>;
+
+#[derive(Clone, axum::extract::FromRef)]
 pub struct App {
-	pub config: Settings,
+	pub config: Config,
 	pub database: Pool<Database>,
 	pub redis: RedisConnection,
 	pub rabbitmq: RabbitmqPool,
@@ -40,16 +44,22 @@ impl Debug for App {
 pub async fn start_server(app: &App) {
 	let port = app.config.port;
 
-	let router = Router::<App>::new().layer(
-		CorsLayer::new()
-			.allow_methods(Any)
-			.allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
-			.allow_origin(Any),
-	);
+	let router = Router::<App>::new()
+		.layer(
+			CorsLayer::new()
+				.allow_methods(Any)
+				.allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
+				.allow_origin(Any),
+		)
+		.layer(
+			// todo: use custom error handling for errors
+			// which happen while committing transaction
+			axum_sqlx_tx::Layer::new(app.database.clone()),
+		);
 
-	router.set_error_handler(eve_error_handler);
-	router.use_middleware("/", get_basic_middlewares());
-	router.use_sub_app(&app.config.base_path, routes::create_sub_app(app));
+	// router.set_error_handler(eve_error_handler);
+	// router.use_middleware("/", get_basic_middlewares());
+	// router.use_sub_app(&app.config.base_path, routes::create_sub_app(app));
 
 	log::info!(
 		"Listening for connections on {}:{}",
@@ -57,33 +67,37 @@ pub async fn start_server(app: &App) {
 		port
 	);
 	axum::Server::bind(&SocketAddr::new(app.config.bind_address, port))
-		.serve(router.with_state(app.clone()).into_make_service())
+		.serve(
+			router
+				.with_state(app.clone())
+				.into_make_service_with_connect_info::<SocketAddr>(),
+		)
 		.with_graceful_shutdown(get_shutdown_signal())
 		.await;
 }
 
-#[cfg(debug_assertions)]
-fn get_basic_middlewares() -> [EveMiddleware; 4] {
-	[
-		EveMiddleware::CustomFunction(pin_fn!(init_states)),
-		EveMiddleware::CustomFunction(pin_fn!(add_cors_headers)),
-		EveMiddleware::JsonParser,
-		EveMiddleware::UrlEncodedParser,
-	]
-}
+// #[cfg(debug_assertions)]
+// fn get_basic_middlewares() -> [EveMiddleware; 4] {
+// 	[
+// 		EveMiddleware::CustomFunction(pin_fn!(init_states)),
+// 		EveMiddleware::CustomFunction(pin_fn!(add_cors_headers)),
+// 		EveMiddleware::JsonParser,
+// 		EveMiddleware::UrlEncodedParser,
+// 	]
+// }
 
-#[cfg(not(debug_assertions))]
-fn get_basic_middlewares() -> [EveMiddleware; 6] {
-	use eve_rs::default_middlewares::compression;
-	[
-		EveMiddleware::CustomFunction(pin_fn!(init_states)),
-		EveMiddleware::CustomFunction(pin_fn!(add_cors_headers)),
-		EveMiddleware::Compression(compression::DEFAULT_COMPRESSION_LEVEL),
-		EveMiddleware::JsonParser,
-		EveMiddleware::UrlEncodedParser,
-		EveMiddleware::CookieParser,
-	]
-}
+// #[cfg(not(debug_assertions))]
+// fn get_basic_middlewares() -> [EveMiddleware; 6] {
+// 	use eve_rs::default_middlewares::compression;
+// 	[
+// 		EveMiddleware::CustomFunction(pin_fn!(init_states)),
+// 		EveMiddleware::CustomFunction(pin_fn!(add_cors_headers)),
+// 		EveMiddleware::Compression(compression::DEFAULT_COMPRESSION_LEVEL),
+// 		EveMiddleware::JsonParser,
+// 		EveMiddleware::UrlEncodedParser,
+// 		EveMiddleware::CookieParser,
+// 	]
+// }
 
 async fn get_shutdown_signal() {
 	signal::ctrl_c()
