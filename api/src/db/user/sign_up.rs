@@ -245,7 +245,7 @@ pub async fn set_personal_user_to_be_signed_up(
 				otp_hash,
 				otp_expiry,
 				coupon_code,
-				is_oauth_user,
+				is_oauth_user
 			)
 		VALUES
 			(
@@ -270,7 +270,7 @@ pub async fn set_personal_user_to_be_signed_up(
 				$9,
 				$10,
 
-				$11
+				$11,
 				$12
 			)
 		ON CONFLICT(username) DO UPDATE SET
@@ -293,8 +293,8 @@ pub async fn set_personal_user_to_be_signed_up(
 			otp_hash = EXCLUDED.otp_hash,
 			otp_expiry = EXCLUDED.otp_expiry,
 			
-			coupon_code = EXCLUDED.coupon_code
-			is_oauth_user = EXLUDED.is_oauth_user;
+			coupon_code = EXCLUDED.coupon_code,
+			is_oauth_user = EXCLUDED.is_oauth_user;
 		"#,
 		username,
 		password,
@@ -381,7 +381,7 @@ pub async fn set_business_user_to_be_signed_up(
 				$13,
 				$14,
 
-				$15
+				$15,
 				$16
 			)
 		ON CONFLICT(username) DO UPDATE SET
@@ -458,7 +458,7 @@ pub async fn get_user_to_sign_up_by_username(
 			otp_hash,
 			otp_expiry,
 			coupon_code,
-			is_oauth_user
+			is_oauth_user as "is_oauth_user!: _"
 		FROM
 			user_to_sign_up
 		WHERE
@@ -499,7 +499,7 @@ pub async fn get_user_to_sign_up_by_phone_number(
 			otp_hash,
 			otp_expiry,
 			coupon_code,
-			is_oauth_user
+			is_oauth_user as "is_oauth_user!: _"
 		FROM
 			user_to_sign_up
 		WHERE
@@ -545,7 +545,7 @@ pub async fn get_user_to_sign_up_by_email(
 			user_to_sign_up.otp_hash,
 			user_to_sign_up.otp_expiry,
 			user_to_sign_up.coupon_code,
-			user_to_sign_up.is_oauth_user
+			user_to_sign_up.is_oauth_user as "is_oauth_user!: _"
 		FROM
 			user_to_sign_up
 		INNER JOIN
@@ -595,7 +595,7 @@ pub async fn get_user_to_sign_up_by_business_name(
 			otp_hash,
 			otp_expiry,
 			coupon_code,
-			is_oauth_user
+			is_oauth_user as "is_oauth_user!: _"
 		FROM
 			user_to_sign_up
 		WHERE
@@ -635,7 +635,7 @@ pub async fn get_user_to_sign_up_by_business_domain_name(
 			otp_hash,
 			otp_expiry,
 			coupon_code,
-			is_oauth_user
+			is_oauth_user as "is_oauth_user!: _"
 		FROM
 			user_to_sign_up
 		WHERE
