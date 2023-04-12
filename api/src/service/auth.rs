@@ -247,7 +247,7 @@ pub async fn create_user_join_request(
 	}
 
 	// Check if the password passes standards
-	if !validator::is_password_valid(password) {
+	if !validator::is_password_valid(password) && !is_oauth_user{
 		Error::as_result()
 			.status(200)
 			.body(error!(PASSWORD_TOO_WEAK).to_string())?;

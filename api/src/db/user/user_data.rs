@@ -169,7 +169,7 @@ pub async fn get_user_by_username_email_or_phone_number(
 			"user".recovery_phone_number,
 			"user".workspace_limit,
 			"user".sign_up_coupon,
-			"user".is_oauth_user
+			"user".is_oauth_user as "is_oauth_user!: _"
 		FROM
 			"user"
 		LEFT JOIN
@@ -244,7 +244,7 @@ pub async fn get_user_by_username(
 			"user".recovery_phone_number,
 			"user".workspace_limit,
 			"user".sign_up_coupon,
-			"user".is_oauth_user
+			"user".is_oauth_user as "is_oauth_user!: _"
 		FROM
 			"user"
 		WHERE
@@ -279,7 +279,7 @@ pub async fn get_user_by_user_id(
 			"user".recovery_phone_number,
 			"user".workspace_limit,
 			"user".sign_up_coupon,
-			"user".is_oauth_user
+			"user".is_oauth_user as "is_oauth_user!: _"
 		FROM
 			"user"
 		WHERE
@@ -479,56 +479,6 @@ pub async fn update_user_password(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
-}
-
-pub async fn update_user_oauth_info(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	access_token: &str,
-	user_id: &Uuid,
-	is_oauth_user: bool,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			"user"
-		SET
-			oauth_access_token = $1,
-			is_oauth_user = $2
-		WHERE
-			id = $3;
-		"#,
-		access_token,
-		is_oauth_user,
-		user_id as _,
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
-}
-
-pub async fn get_user_oauth_info(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	let token = query!(
-		r#"
-		SELECT
-			oauth_access_token
-		FROM
-			"user"
-		WHERE
-			id = $1;
-		AND
-			is_oauth_user = true
-		"#,
-		user_id as _
-	)
-	.fetch_optional(&mut *connection)
-	.await?
-	.map(|row| row.id);
-
-	Ok(token)
 }
 
 pub async fn add_password_reset_request(

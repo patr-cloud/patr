@@ -7,11 +7,10 @@ use api_models::{
 		GitHubAccessTokenResponse,
 		GitHubUserEmailResponse,
 		GithubAuthCallbackRequest,
-		GithubIdentifyRequest,
 		GithubIdentifyResponse,
 		LoginResponse,
 		RecoveryMethod,
-		SignUpAccountType,
+		SignUpAccountType, GitHubUserInfoResponse,
 	},
 	utils::Personal,
 };
@@ -121,7 +120,8 @@ async fn oauth_callback(
 		.get_header("User-Agent")
 		.unwrap_or_else(|| "patr".to_string());
 
-	let GitHubAccessTokenResponse { access_token, .. } =
+	log::trace!("Getting access token");
+	let GitHubAccessTokenResponse { access_token} =
 		reqwest::Client::builder()
 			.build()?
 			.post(callback_url)
@@ -139,24 +139,44 @@ async fn oauth_callback(
 			.header(ACCEPT, "application/json")
 			.send()
 			.await?
-			.error_for_status()?
 			.json::<GitHubAccessTokenResponse>()
 			.await?;
-
+			
 	let user_info_api = context.get_state().config.github.user_info_api.clone();
+	let user_email_api = context.get_state().config.github.user_email_api.clone();
 
+	log::trace!("Getting user information");
 	let user_info = reqwest::Client::builder()
 		.build()?
-		.get(user_info_api)
+		.get(user_info_api.clone())
+		.header(AUTHORIZATION, format!("token {}", access_token))
+		.header(USER_AGENT, user_agent.clone())
+		.send()
+		.await?
+		.error_for_status()?
+		.json::<GitHubUserInfoResponse>()
+		.await?;
+	
+	log::trace!("Getting user's primary email");
+	let user_email = reqwest::Client::builder()
+		.build()?
+		.get(user_email_api)
 		.header(AUTHORIZATION, format!("token {}", access_token))
 		.header(USER_AGENT, user_agent)
 		.send()
 		.await?
 		.error_for_status()?
-		.json::<GitHubUserEmailResponse>()
+		.json::<Vec<GitHubUserEmailResponse>>()
 		.await?;
-
-	let email = user_info.email;
+	
+	let primary_email = user_email.into_iter().find(|email| email.primary);
+	let email = if let Some(email) = primary_email {
+		email.email
+	} else {
+		Error::as_result()
+			.status(404)
+			.body(error!(EMAIL_NOT_FOUND).to_string())?
+	};
 
 	match register {
 		true => {
@@ -165,7 +185,7 @@ async fn oauth_callback(
 				&email,
 			)
 			.await?;
-			if let Some(user) = user_exist {
+			if let Some(_user) = user_exist {
 				Error::as_result()
 					.status(404)
 					.body(error!(EMAIL_TAKEN).to_string())?
@@ -175,8 +195,10 @@ async fn oauth_callback(
 					&email,
 				)
 				.await?;
-				let first_name = user_info.name.split(" ").next().unwrap_or("");
-				let last_name = user_info.name.split(" ").next().unwrap_or("");
+				let mut name = user_info.name.split(" ");
+				// TODO Better error message if first name not found
+				let first_name = name.next().status(500).body(error!(SERVER_ERROR).to_string())?;
+				let last_name = name.next().unwrap_or_default();
 				let password = "".to_string();
 				let account_type = SignUpAccountType::Personal {
 					account_type: Personal,
@@ -184,6 +206,7 @@ async fn oauth_callback(
 				let recovery_method = RecoveryMethod::Email {
 					recovery_email: email,
 				};
+				log::trace!("Creating join request for user");
 				let (user_to_sign_up, otp) = service::create_user_join_request(
 					context.get_database_connection(),
 					username.to_lowercase().trim(),
@@ -196,7 +219,8 @@ async fn oauth_callback(
 					true,
 				)
 				.await?;
-
+				
+				log::trace!("Sending otp to user's primary mail");
 				service::send_user_sign_up_otp(
 					context.get_database_connection(),
 					&user_to_sign_up,
@@ -209,7 +233,7 @@ async fn oauth_callback(
 					"A new user has attempted to sign-up",
 				)
 				.await;
-
+				log::trace!("Registration success");
 				context.success(CreateAccountResponse {});
 				Ok(context)
 			}
@@ -221,18 +245,12 @@ async fn oauth_callback(
 			)
 			.await?;
 			if let Some(user) = user_exists {
-				db::update_user_oauth_info(
-					context.get_database_connection(),
-					&access_token,
-					&user.id,
-					true,
-				)
-				.await?;
 
 				let ip_address = routes::get_request_ip_address(&context);
 				let user_agent =
 					context.get_header("user-agent").unwrap_or_default();
 				let config = context.get_state().config.clone();
+				log::trace!("Get access token for user sign in");
 				let (
 					UserWebLogin { login_id, .. },
 					access_token,
@@ -247,7 +265,7 @@ async fn oauth_callback(
 					&config,
 				)
 				.await?;
-
+				log::trace!("Login success");
 				context.success(LoginResponse {
 					login_id,
 					access_token,
