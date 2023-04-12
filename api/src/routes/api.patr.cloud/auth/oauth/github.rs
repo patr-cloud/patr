@@ -4,9 +4,6 @@ use ::redis::AsyncCommands;
 use api_models::{
 	models::auth::{
 		CreateAccountResponse,
-		GitHubAccessTokenResponse,
-		GitHubUserEmailResponse,
-		GitHubUserInfoResponse,
 		GithubAuthCallbackRequest,
 		GithubIdentifyResponse,
 		LoginResponse,
@@ -23,6 +20,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, UserWebLogin},
 	error,
+	models::github::{GitHubAccessToken, GitHubUserEmail, GitHubUserInfo},
 	pin_fn,
 	routes,
 	service,
@@ -122,7 +120,7 @@ async fn oauth_callback(
 		.unwrap_or_else(|| "patr".to_string());
 
 	log::trace!("Getting access token");
-	let GitHubAccessTokenResponse { access_token } = reqwest::Client::builder()
+	let GitHubAccessToken { access_token } = reqwest::Client::builder()
 		.build()?
 		.post(callback_url)
 		.query(&[
@@ -139,7 +137,7 @@ async fn oauth_callback(
 		.header(ACCEPT, "application/json")
 		.send()
 		.await?
-		.json::<GitHubAccessTokenResponse>()
+		.json::<GitHubAccessToken>()
 		.await?;
 
 	let user_info_api = context.get_state().config.github.user_info_api.clone();
@@ -155,7 +153,7 @@ async fn oauth_callback(
 		.send()
 		.await?
 		.error_for_status()?
-		.json::<GitHubUserInfoResponse>()
+		.json::<GitHubUserInfo>()
 		.await?;
 
 	log::trace!("Getting user's primary email");
@@ -167,7 +165,7 @@ async fn oauth_callback(
 		.send()
 		.await?
 		.error_for_status()?
-		.json::<Vec<GitHubUserEmailResponse>>()
+		.json::<Vec<GitHubUserEmail>>()
 		.await?;
 
 	let primary_email = user_email.into_iter().find(|email| email.primary);

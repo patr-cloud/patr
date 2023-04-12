@@ -1,5 +1,6 @@
 mod access_token_data;
 mod email_validate;
+mod oauth;
 mod user_api_token_data;
 
 use std::{collections::BTreeMap, net::IpAddr};
@@ -10,6 +11,7 @@ use redis::aio::MultiplexedConnection as RedisConnection;
 pub use self::{
 	access_token_data::*,
 	email_validate::*,
+	oauth::*,
 	user_api_token_data::*,
 };
 use super::rbac::{self, GOD_USER_ID};
