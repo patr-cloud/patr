@@ -838,15 +838,17 @@ async fn add_payment_method(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 	let config = context.get_state().config.clone();
-	let client_secret = service::add_card_details(
+	let (payment_intent_id, client_secret) = service::add_card_details(
 		context.get_database_connection(),
 		&workspace_id,
 		&config,
 	)
-	.await?
-	.client_secret
-	.status(500)?;
-	context.success(AddPaymentMethodResponse { client_secret });
+	.await?;
+
+	context.success(AddPaymentMethodResponse {
+		client_secret,
+		payment_intent_id: payment_intent_id.to_string(),
+	});
 	Ok(context)
 }
 
@@ -889,7 +891,9 @@ async fn confirm_payment_method(
 	let config = context.get_state().config.clone();
 
 	let ConfirmPaymentMethodRequest {
-		payment_method_id, ..
+		payment_intent_id,
+		payment_method_id,
+		..
 	} = context
 		.get_body_as()
 		.status(400)
@@ -900,36 +904,23 @@ async fn confirm_payment_method(
 		&payment_method_id,
 	)
 	.await?;
-	if db::get_workspace_info(context.get_database_connection(), &workspace_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?
-		.default_payment_method_id
-		.is_none()
-	{
-		db::set_default_payment_method_for_workspace(
-			context.get_database_connection(),
-			&workspace_id,
-			&payment_method_id,
-		)
-		.await?;
-	}
 
-	let description = "Patr charge: Card verification charges";
-	service::add_credits_to_workspace(
+	let workspace = db::get_workspace_info(
 		context.get_database_connection(),
 		&workspace_id,
-		1000, // $10 in cents
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
+
+	service::verify_card_with_charges(
+		context.get_database_connection(),
+		&workspace,
+		&payment_intent_id,
 		&payment_method_id,
-		description,
 		&config,
 	)
 	.await?;
-
-	// TODO - send back the transaction_id and client_secret back as this
-	// information will be needed to frontend for confirm payment route
-	// Hence instead of ConfirmPaymentMethodResponse as response send
-	// AddCreditsResponse as response
 
 	context.success(ConfirmPaymentMethodResponse {});
 	Ok(context)
@@ -1027,13 +1018,11 @@ async fn add_credits(
 
 	let config = context.get_state().config.clone();
 
-	let description = "Patr charge: Additional credits";
 	let (transaction_id, client_secret) = service::add_credits_to_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 		credits,
 		&payment_method_id,
-		description,
 		&config,
 	)
 	.await?;
