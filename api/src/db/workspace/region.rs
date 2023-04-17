@@ -3,6 +3,7 @@ use api_models::{
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
+use futures::TryStreamExt;
 use kube::config::{
 	AuthInfo,
 	Cluster,
@@ -387,6 +388,28 @@ pub async fn get_all_regions_for_workspace(
 		workspace_id as _,
 	)
 	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn get_all_byoc_region_ids_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Vec<Uuid>, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			id as "id: Uuid"
+		FROM
+			region
+		WHERE
+			status != 'deleted' AND
+			workspace_id = $1;
+		"#,
+		workspace_id as _,
+	)
+	.fetch(&mut *connection)
+	.map_ok(|row| row.id)
+	.try_collect()
 	.await
 }
 
