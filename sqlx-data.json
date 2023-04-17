@@ -7763,6 +7763,26 @@
     },
     "query": "ALTER TABLE docker_repo_payment_history ADD CONSTRAINT docker_repo_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id);"
   },
+  "76ec6d9991652025e95492c8018e1c58887ef4938b28b34773125b89b9844624": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: Uuid\" FROM region WHERE status != 'deleted' AND workspace_id = $1;"
+  },
   "775361d2f342bcaa78e130156b2b158f7970cffced22d8d276b7683b48f72bf1": {
     "describe": {
       "columns": [],

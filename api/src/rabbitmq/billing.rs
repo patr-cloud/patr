@@ -380,7 +380,7 @@ pub(super) async fn process_request(
 							"Error while creating payment indent: {err:#?}"
 						);
 						err
-					})?;
+					});
 
 					let transaction_id =
 						db::generate_new_transaction_id(connection).await?;
@@ -388,14 +388,17 @@ pub(super) async fn process_request(
 					// Payment will only have successful or failed state
 					// according to stripe docs. For more information.
 					// check - https://stripe.com/docs/payments/payment-intents/verifying-status
-					if let PaymentIntentStatus::Succeeded =
-						payment_intent.status
+					if let Ok(PaymentIntent {
+						id: payment_intent_id,
+						status: PaymentIntentStatus::Succeeded,
+						..
+					}) = &payment_intent
 					{
 						log::trace!(
 							"request_id: {} made success payment with
 					payment intent id {}",
 							request_id,
-							payment_intent.id
+							payment_intent_id
 						);
 						db::create_transaction(
 							connection,
@@ -403,7 +406,7 @@ pub(super) async fn process_request(
 							&transaction_id,
 							month as i32,
 							card_amount_to_be_charged_in_cents,
-							Some(&payment_intent.id),
+							Some(payment_intent_id),
 							&Utc::now(),
 							&TransactionType::Payment,
 							&PaymentStatus::Success,
@@ -431,13 +434,18 @@ pub(super) async fn process_request(
 							"request_id: {} payment failed",
 							request_id
 						);
+						let payment_intent_id = payment_intent
+							.as_ref()
+							.map(|pi| pi.id.as_str())
+							.ok();
+
 						db::create_transaction(
 							connection,
 							&workspace.id,
 							&transaction_id,
 							month as i32,
 							card_amount_to_be_charged_in_cents,
-							Some(&payment_intent.id),
+							payment_intent_id,
 							&Utc::now(),
 							&TransactionType::Payment,
 							&PaymentStatus::Failed,
@@ -744,7 +752,7 @@ pub(super) async fn process_request(
 				.map_err(|err| {
 					log::warn!("Error while creating payment indent: {err:#?}");
 					err
-				})?;
+				});
 
 				let transaction_id =
 					db::generate_new_transaction_id(connection).await?;
@@ -752,14 +760,19 @@ pub(super) async fn process_request(
 				// Payment will only have successful or failed state
 				// according to stripe docs. For more information.
 				// check - https://stripe.com/docs/payments/payment-intents/verifying-status
-				if let PaymentIntentStatus::Succeeded = payment_intent.status {
+				if let Ok(PaymentIntent {
+					id: payment_intent_id,
+					status: PaymentIntentStatus::Succeeded,
+					..
+				}) = &payment_intent
+				{
 					db::create_transaction(
 						connection,
 						&workspace.id,
 						&transaction_id,
 						month as i32,
 						card_amount_to_be_charged_in_cents,
-						Some(&payment_intent.id),
+						Some(payment_intent_id),
 						&Utc::now(),
 						&TransactionType::Payment,
 						&PaymentStatus::Success,
@@ -780,6 +793,9 @@ pub(super) async fn process_request(
 					return Ok(());
 				}
 
+				let payment_intent_id =
+					payment_intent.as_ref().map(|pi| pi.id.as_str()).ok();
+
 				// If not successfully charged, then this
 				db::create_transaction(
 					connection,
@@ -787,7 +803,7 @@ pub(super) async fn process_request(
 					&transaction_id,
 					month as i32,
 					card_amount_to_be_charged_in_cents,
-					Some(&payment_intent.id),
+					payment_intent_id,
 					&Utc::now(),
 					&TransactionType::Payment,
 					&PaymentStatus::Failed,
