@@ -83,3 +83,13 @@ pub mod github_oauth {
 	pub const USER_INFO_API: &str = "https://api.github.com/user";
 	pub const USER_EMAIL_API: &str = "https://api.github.com/user/emails";
 }
+
+pub mod google_oauth {
+	pub const AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
+	// To change depending on frontend
+	pub const REDIRECT_URL: &str = "http://localhost:5058";
+	pub const CALLBACK_URL: &str = "https://oauth2.googleapis.com/token";
+	pub const USER_INFO_URL: &str =
+		"https://www.googleapis.com/oauth2/v2/userinfo";
+	pub const SCOPE: &str = "https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/userinfo.profile";
+}

@@ -302,18 +302,6 @@ pub struct GoogleSettings {
 	pub client_id: String,
 	#[serde(alias = "clientsecret")]
 	pub client_secret: String,
-	#[serde(alias = "authurl")]
-	pub auth_url: String,
-	#[serde(alias = "callbackurl")]
-	pub callback_url: String,
-	#[serde(alias = "scope")]
-	pub scope: String,
-	#[serde(alias = "redirecturl")]
-	pub redirect_url: String,
-	#[serde(alias = "state")]
-	pub state: String,
-	#[serde(alias = "userinfourl")]
-	pub user_info_url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
