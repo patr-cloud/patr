@@ -1060,6 +1060,26 @@ pub async fn set_default_payment_method_for_workspace(
 	.map(|_| ())
 }
 
+pub async fn set_default_payment_method_for_workspace_to_null(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace
+		SET
+			default_payment_method_id = NULL
+		WHERE
+			id = $1
+		"#,
+		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn get_default_payment_method_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
@@ -1132,6 +1152,26 @@ pub async fn mark_workspace_as_spam(
 			workspace
 		SET
 			is_spam = TRUE
+		WHERE
+			id = $1;
+		"#,
+		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn unmark_workspace_as_spam(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace
+		SET
+			is_spam = FALSE
 		WHERE
 			id = $1;
 		"#,

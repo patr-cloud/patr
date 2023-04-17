@@ -35,14 +35,14 @@ use eve_rs::AsError;
 use stripe::{
 	Client,
 	CreatePaymentIntent,
-	CreateSetupIntent,
+	CreateRefund,
 	Currency,
 	CustomerId,
 	PaymentIntent,
 	PaymentIntentId,
 	PaymentIntentStatus,
 	PaymentMethodId,
-	SetupIntent,
+	Refund,
 };
 
 use crate::{
@@ -52,9 +52,10 @@ use crate::{
 		ManagedDatabasePlan,
 		ManagedDatabaseStatus,
 		StaticSitePlan as DbStaticSitePlan,
+		Workspace,
 	},
 	error,
-	models::deployment,
+	models::{deployment, IpQualityScore},
 	utils::{settings::Settings, Error},
 	Database,
 };
@@ -62,9 +63,8 @@ use crate::{
 pub async fn add_credits_to_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	cents: u64,
+	credits: u64,
 	payment_method_id: &str,
-	description: &str,
 	config: &Settings,
 ) -> Result<(Uuid, String), Error> {
 	let workspace = db::get_workspace_info(connection, workspace_id)
@@ -89,6 +89,8 @@ pub async fn add_credits_to_workspace(
 		.address_id
 		.status(400)
 		.body(error!(ADDRESS_REQUIRED).to_string())?;
+
+	let (cents, description) = (credits, "Patr charge: Additional credits");
 
 	let (currency, amount) = if db::get_billing_address(connection, &address_id)
 		.await?
@@ -136,7 +138,7 @@ pub async fn add_credits_to_workspace(
 		workspace_id,
 		&transaction_id,
 		date.month() as i32,
-		cents,
+		credits,
 		Some(&payment_intent.id),
 		&date,
 		&TransactionType::Credits,
@@ -153,6 +155,66 @@ pub async fn add_credits_to_workspace(
 	})?;
 
 	Ok((transaction_id, client_secret))
+}
+
+pub async fn verify_card_with_charges(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace: &Workspace,
+	payment_intent_id: &str,
+	payment_method_id: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let client = Client::new(&config.stripe.secret_key);
+	let payment_intent = PaymentIntent::retrieve(
+		&client,
+		&PaymentIntentId::from_str(payment_intent_id)?,
+		Default::default(),
+	)
+	.await?;
+
+	match payment_intent.status {
+		PaymentIntentStatus::Succeeded => {
+			if workspace.default_payment_method_id.is_none() {
+				db::set_default_payment_method_for_workspace(
+					connection,
+					&workspace.id,
+					payment_method_id,
+				)
+				.await?;
+			}
+
+			db::unmark_workspace_as_spam(connection, &workspace.id).await?;
+
+			Refund::create(&client, {
+				let mut refund = CreateRefund::new();
+
+				refund.payment_intent =
+					Some(PaymentIntentId::from_str(payment_intent_id)?);
+				refund
+			})
+			.await?;
+
+			Ok(())
+		}
+		PaymentIntentStatus::Canceled => {
+			db::set_default_payment_method_for_workspace_to_null(
+				connection,
+				&workspace.id,
+			)
+			.await?;
+
+			db::mark_workspace_as_spam(connection, &workspace.id).await?;
+
+			Error::as_result()
+				.status(500)
+				.body(error!(PAYMENT_FAILED).to_string())?
+		}
+		_ => {
+			log::info!("Payment is still in pending state, make the payment and then confirm again");
+			db::mark_workspace_as_spam(connection, &workspace.id).await?;
+			Ok(())
+		}
+	}
 }
 
 pub async fn make_payment(
@@ -984,28 +1046,114 @@ pub async fn add_card_details(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	config: &Settings,
-) -> Result<SetupIntent, Error> {
+) -> Result<(PaymentIntentId, String), Error> {
 	let workspace = db::get_workspace_info(connection, workspace_id)
 		.await?
 		.status(500)?;
 
-	if workspace.address_id.is_none() {
+	let address_id = if let Some(address_id) = workspace.address_id {
+		address_id
+	} else {
 		return Error::as_result()
 			.status(400)
 			.body(error!(ADDRESS_REQUIRED).to_string())?;
-	}
+	};
 
-	SetupIntent::create(&Client::new(&config.stripe.secret_key), {
-		let mut intent = CreateSetupIntent::new();
+	let user = db::get_user_by_user_id(connection, &workspace.super_admin_id)
+		.await?
+		.status(500)?;
 
+	let email_str = user
+		.recovery_email_local
+		.as_ref()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let domain = db::get_personal_domain_by_id(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?
+	.status(500)?;
+
+	let email = format!("{}@{}", email_str, domain.name);
+
+	let email_spam_result = reqwest::Client::new()
+		.get(format!(
+			"{}/{}/{}",
+			config.ip_quality.host, config.ip_quality.token, email
+		))
+		.send()
+		.await
+		.map_err(|error| {
+			log::error!("IPQS api call error: {}", error);
+			Error::empty()
+		})?
+		.json::<IpQualityScore>()
+		.await
+		.map_err(|error| {
+			log::error!("Error parsing IPQS response: {}", error);
+			Error::empty()
+		})?;
+
+	let amount_in_cents: u64 = if email_spam_result.fraud_score >= 75 {
+		1200 // $20 in cents
+	} else if email_spam_result.fraud_score < 75 &&
+		email_spam_result.fraud_score >= 50
+	{
+		800 // $10 in cents
+	} else {
+		500 // $5 in cents
+	};
+
+	let description = "Patr charge: Card verification charges";
+
+	let (currency, amount) = if db::get_billing_address(connection, &address_id)
+		.await?
+		.status(500)?
+		.country == *"IN"
+	{
+		(Currency::INR, amount_in_cents * 80)
+	} else {
+		(Currency::USD, amount_in_cents)
+	};
+
+	let client = Client::new(&config.stripe.secret_key);
+
+	let payment_intent = PaymentIntent::create(&client, {
+		let mut intent = CreatePaymentIntent::new(amount as i64, currency);
+
+		intent.confirm = Some(false);
+		intent.description = Some(description);
 		intent.customer =
-			Some(CustomerId::from_str(workspace.stripe_customer_id.as_str())?);
+			Some(CustomerId::from_str(&workspace.stripe_customer_id)?);
 		intent.payment_method_types = Some(vec!["card".to_string()]);
 
 		intent
 	})
-	.await
-	.map_err(|err| err.into())
+	.await;
+
+	// handling errors explicitely as `?` doesn't provide enough information
+	let payment_intent = match payment_intent {
+		Ok(payment) => payment,
+		Err(err) => {
+			log::error!("Error from stripe: {}", err);
+			return Error::as_result()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?;
+		}
+	};
+
+	let client_secret = payment_intent.client_secret.ok_or_else(|| {
+		log::error!("PaymentIntent does not have a client secret");
+		Error::empty()
+			.status(400)
+			.body(error!(INVALID_PAYMENT_METHOD).to_string())
+	})?;
+	Ok((payment_intent.id, client_secret))
 }
 
 pub async fn get_card_details(
