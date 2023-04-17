@@ -7763,26 +7763,6 @@
     },
     "query": "ALTER TABLE docker_repo_payment_history ADD CONSTRAINT docker_repo_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id);"
   },
-  "76ec6d9991652025e95492c8018e1c58887ef4938b28b34773125b89b9844624": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: Uuid\" FROM region WHERE status != 'deleted' AND workspace_id = $1;"
-  },
   "775361d2f342bcaa78e130156b2b158f7970cffced22d8d276b7683b48f72bf1": {
     "describe": {
       "columns": [],
@@ -10818,6 +10798,104 @@
       }
     },
     "query": "SELECT id as \"id: _\", cpu_count, memory_count FROM deployment_machine_type;"
+  },
+  "a2214a9f2d07a0fc4604db2d8ea8c435517a759c6e793402e54add528a523eb6": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "cloud_provider: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "digitalocean",
+                  "other"
+                ]
+              },
+              "name": "infrastructure_cloud_provider"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "ingress_hostname: _",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "message_log",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "cloudflare_certificate_id",
+          "ordinal": 6,
+          "type_info": "Text"
+        },
+        {
+          "name": "config_file: _",
+          "ordinal": 7,
+          "type_info": "Json"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 8,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "creating",
+                  "active",
+                  "errored",
+                  "deleted",
+                  "disconnected",
+                  "coming_soon"
+                ]
+              },
+              "name": "region_status"
+            }
+          }
+        },
+        {
+          "name": "disconnected_at: _",
+          "ordinal": 9,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", workspace_id as \"workspace_id: _\", ingress_hostname as \"ingress_hostname: _\", message_log, cloudflare_certificate_id, config_file as \"config_file: _\", status as \"status: _\", disconnected_at as \"disconnected_at: _\" FROM region WHERE status != 'deleted' AND workspace_id = $1;"
   },
   "a232f8a0ee2540ec14e4ec2784e0bc6164aa9bcce5850333499639eab83181a4": {
     "describe": {

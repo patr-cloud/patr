@@ -273,7 +273,7 @@ pub async fn delete_all_resources_in_workspace(
 		db::get_all_byoc_region_ids_for_workspace(connection, workspace_id)
 			.await?;
 	for region in regions {
-		db::delete_region(connection, &region, &Utc::now()).await?;
+		db::delete_region(connection, &region.id, &Utc::now()).await?;
 	}
 
 	log::trace!(
