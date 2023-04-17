@@ -15,6 +15,7 @@ use api_models::{
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use reqwest::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
+use url::Url;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -24,7 +25,13 @@ use crate::{
 	pin_fn,
 	routes,
 	service,
-	utils::{Error, ErrorData, EveContext, EveMiddleware},
+	utils::{
+		constants::github_oauth,
+		Error,
+		ErrorData,
+		EveContext,
+		EveMiddleware,
+	},
 };
 
 /// # Description
@@ -46,8 +53,10 @@ pub fn create_sub_app(
 	let mut app = create_eve_app(app);
 
 	app.post(
-		"/identify",
-		[EveMiddleware::CustomFunction(pin_fn!(identify_with_github))],
+		"/authorize",
+		[EveMiddleware::CustomFunction(pin_fn!(
+			authorize_with_github
+		))],
 	);
 	app.post(
 		"/callback",
@@ -57,29 +66,28 @@ pub fn create_sub_app(
 	app
 }
 
-async fn identify_with_github(
+async fn authorize_with_github(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let client_id = context.get_state().config.github.client_id.clone();
-	let auth_url = context.get_state().config.github.auth_url.clone();
+	let auth_url = github_oauth::AUTH_URL.to_owned();
+	let scope = github_oauth::SCOPE.to_owned();
 
-	let scope = context.get_state().config.github.scope.clone();
 	let state = thread_rng()
 		.sample_iter(&Alphanumeric)
 		.take(8)
 		.map(char::from)
 		.collect::<String>();
 
-	let state_value = context.get_state().config.github.state.clone();
-
 	context
 		.get_redis_connection()
-		.set(format!("githubOAuthState:{}", state), state_value)
+		.set("githubOAuthState", state.clone())
 		.await?;
 
-	let oauth_url =
-		format!("{auth_url}?client_id={client_id}&scope={scope}&state={state}"); //url
+	let oauth_url = Url::parse(&format!(
+		"{auth_url}?client_id={client_id}&scope={scope}&state={state}"
+	))?;
 	context.success(GithubIdentifyResponse { oauth_url });
 	Ok(context)
 }
@@ -97,15 +105,14 @@ async fn oauth_callback(
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-	let callback_url = context.get_state().config.github.callback_url.clone();
+	let callback_url = github_oauth::CALLBACK_URL.to_owned();
 
 	// Check if the state is correct and not forged
 	let redis_github_state: Option<String> = context
 		.get_redis_connection()
-		.get(format!("githubOAuthState:{}", state))
+		.get("githubOAuthState")
 		.await?;
 
-	let state = context.get_state().config.github.state.clone();
 	if !redis_github_state
 		.map(|value| value == state)
 		.unwrap_or(false)
@@ -136,11 +143,8 @@ async fn oauth_callback(
 		.json::<GitHubAccessToken>()
 		.await?;
 
-	let user_info_api = context.get_state().config.github.user_info_api.clone();
-	let user_email_api =
-		context.get_state().config.github.user_email_api.clone();
-
 	log::trace!("Getting user's primary email");
+	let user_email_api = github_oauth::USER_EMAIL_API.to_owned();
 	let user_email = reqwest::Client::builder()
 		.build()?
 		.get(user_email_api)
@@ -201,6 +205,7 @@ async fn oauth_callback(
 					.body(error!(USERNAME_TAKEN).to_string())?
 			}
 			log::trace!("Getting user information");
+			let user_info_api = github_oauth::USER_INFO_API.to_owned();
 			let user_info = reqwest::Client::builder()
 				.build()?
 				.get(user_info_api.clone())
