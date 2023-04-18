@@ -181,7 +181,8 @@ pub fn create_sub_app(
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
-				permission: permissions::workspace::infrastructure::patr_database::EDIT,
+				permission:
+					permissions::workspace::infrastructure::patr_database::EDIT,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -431,7 +432,7 @@ async fn modify_database_cluster(
 	let database_id =
 		Uuid::parse_str(context.get_param(request_keys::DATABASE_ID).unwrap())
 			.unwrap();
-		
+
 	let replica_numbers = context
 		.get_body_as()
 		.status(400)

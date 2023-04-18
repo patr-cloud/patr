@@ -149,7 +149,7 @@ pub async fn create_patr_database_in_workspace(
 				database_plan,
 				kubeconfig,
 				request_id,
-				replica_numbers
+				replica_numbers,
 			)
 			.await?;
 		}
@@ -163,13 +163,9 @@ pub async fn create_patr_database_in_workspace(
 				request_id,
 			)
 			.await?;
-		},
-		PatrDatabaseEngine::Mongo => {
-			
-		},
-		PatrDatabaseEngine::Redis => {
-			 
 		}
+		PatrDatabaseEngine::Mongo => {}
+		PatrDatabaseEngine::Redis => {}
 	}
 
 	Ok(database_id)
@@ -218,12 +214,8 @@ pub async fn modify_patr_database(
 			log::info!("Creating postgres database is not supported");
 			return Err(Error::empty().status(500));
 		}
-		PatrDatabaseEngine::Mongo => {
-			
-		}
-		PatrDatabaseEngine::Redis => {
-			
-		}
+		PatrDatabaseEngine::Mongo => {}
+		PatrDatabaseEngine::Redis => {}
 	}
 	Ok(())
 }
@@ -286,12 +278,8 @@ pub async fn delete_patr_database(
 			)
 			.await?;
 		}
-		PatrDatabaseEngine::Mongo => {
-			
-		}
-		PatrDatabaseEngine::Redis => {
-			
-		}
+		PatrDatabaseEngine::Mongo => {}
+		PatrDatabaseEngine::Redis => {}
 	}
 
 	Ok(())
