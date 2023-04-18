@@ -27,7 +27,6 @@ use k8s_openapi::{
 			Service,
 			ServicePort,
 			ServiceSpec,
-			TCPSocketAction,
 			Volume,
 			VolumeMount,
 		},
@@ -68,11 +67,11 @@ pub async fn create_kubernetes_redis_database(
 	// names
 	let namespace = workspace_id.as_str();
 	let secret_name_for_db_pwd = format!("db-pwd-{database_id}");
-	let svc_name_for_db = format!("db-{database_id}-service");
-	let sts_name_for_db = format!("db-{database_id}-sts");
+	let svc_name_for_db = format!("db-{database_id}");
+	let sts_name_for_db = format!("db-{database_id}");
 	let sts_port_name_for_db = format!("db-redis-port");
-	let pvc_prefix_for_db = "data";
-	let configmap_name_for_db = format!("db-{database_id}-config");
+	let pvc_prefix_for_db = "pvc";
+	let configmap_name_for_db = format!("db-{database_id}");
 
 	// constants
 	let secret_key_for_db_pwd = "password";
@@ -91,7 +90,7 @@ pub async fn create_kubernetes_redis_database(
 			..Default::default()
 		},
 		string_data: Some(
-			[(secret_key_for_db_pwd.to_owned(), db_pwd.into())].into(),
+			[(secret_key_for_db_pwd.to_owned(), "test".to_string())].into(),
 		),
 		..Default::default()
 	};
@@ -109,7 +108,7 @@ pub async fn create_kubernetes_redis_database(
 	let mut config_data = BTreeMap::new();
 	config_data.insert(
 		"redis.conf".to_owned(),
-		generate_config_data_template("redis.conf"),
+		r#"|\bind 0.0.0.0\port 6379\timeout 0\tcp-keepalive 300\save 900 1\save 300 10\save 60 10000"#.to_owned()
 	);
 
 	let config_for_db = ConfigMap {
@@ -197,11 +196,31 @@ pub async fn create_kubernetes_redis_database(
 					}),
 					..Default::default()
 				}]),
-				command: Some(vec!["sh".to_owned(), "-c".to_owned()]),
-				args: Some(vec![
-					"|".to_owned(),
-					generate_command_data_template("init_container"),
-				]),
+				command: Some(vec![
+					"sh".to_owned(), 
+					"-c".to_owned(),
+					vec![
+						"cp /tmp/redis/redis.conf /etc/redis/redis.conf".to_owned(),
+            			r#"echo "masterauth $USER_PASSWORD" >> /etc/redis/redis.conf"#.to_owned(),
+            			r#"echo "requirepass $USER_PASSWORD" >> /etc/redis/redis.conf"#.to_owned(),
+            			r#"echo "finding master...""#.to_owned(),
+            			format!(r#"MASTER_FDQN=`hostname  -f | sed -e 's/{sts_name_for_db}-[0-9]\./{sts_name_for_db}-0./'`"#),
+            			r#"if [ "$(redis-cli -h sentinel -p 5000 ping)" != "PONG" ]; then"#.to_owned(),
+              			format!(r#"echo "master not found, defaulting to {sts_name_for_db}-0""#),
+              			format!(r#"if [ "$(hostname)" == "{sts_name_for_db}-0" ]; then"#),
+                		format!(r#"echo "this is {sts_name_for_db}-0, not updating config...""#),
+              			"else".to_owned(),
+                		r#"echo "updating redis.conf...""#.to_owned(),
+                		r#"echo "slaveof $MASTER_FDQN 6379" >> /etc/redis/redis.conf"#.to_owned(),
+              			"fi".to_owned(),
+            			"else".to_owned(),
+              			r#"echo "sentinel found, finding master""#.to_owned(),
+              			format!(r#"MASTER="$(redis-cli -h sentinel -p 5000 sentinel get-master-addr-by-name mymaster | grep -E '(^{sts_name_for_db}-\d{{1,}})|([0-9]{{1,3}}\.[0-9]{{1,3}}\.[0-9]{{1,3}}\.[0-9]{{1,3}})')""#),
+             			r#"echo "master found : $MASTER, updating redis.conf""#.to_owned(),
+              			r#"echo "slaveof $MASTER 6379" >> /etc/redis/redis.conf"#.to_owned(),
+            			"fi".to_owned()
+					].join("\n")
+					]),
 				volume_mounts: Some(vec![
 					VolumeMount {
 						name: "redis-config".to_owned(),
@@ -437,51 +456,4 @@ pub async fn handle_redis_scaling(
 		.await?;
 
 	Ok(())
-}
-
-fn generate_config_data_template(config: &str) -> String {
-	match config {
-		"redis.conf" => format!(
-			r#" |
-			bind 0.0.0.0
-            port 6379
-            timeout 0
-            tcp-keepalive 300
-            save 900 1
-            save 300 10
-            save 60 10000
-            "#
-		),
-		_ => format!(r#"exit"#),
-	}
-}
-
-fn generate_command_data_template(container: &str) -> String {
-	match container {
-		"init_container" => format!(
-			r#"
-            cp /tmp/redis/redis.conf /etc/redis/redis.conf
-            echo "masterauth $USER_PASSWORD" >> /etc/redis/redis.conf
-            echo "requirepass $USER_PASSWORD" >> /etc/redis/redis.conf
-            echo "finding master..."
-            MASTER_FDQN=`hostname  -f | sed -e 's/redis-[0-9]\./redis-0./'`
-            if [ "$(redis-cli -h sentinel -p 5000 ping)" != "PONG" ]; then
-              echo "master not found, defaulting to redis-0"
-
-              if [ "$(hostname)" == "redis-0" ]; then
-                echo "this is redis-0, not updating config..."
-              else
-                echo "updating redis.conf..."
-                echo "slaveof $MASTER_FDQN 6379" >> /etc/redis/redis.conf
-              fi
-            else
-              echo "sentinel found, finding master"
-              MASTER="$(redis-cli -h sentinel -p 5000 sentinel get-master-addr-by-name mymaster | grep -E '(^redis-\d{{1,}})|([0-9]{{1,3}}\.[0-9]{{1,3}}\.[0-9]{{1,3}}\.[0-9]{{1,3}})')"
-              echo "master found : $MASTER, updating redis.conf"
-              echo "slaveof $MASTER 6379" >> /etc/redis/redis.conf
-            fi
-			"#
-		),
-		_ => format!(r#"exit 1"#),
-	}
 }

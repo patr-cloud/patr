@@ -142,15 +142,9 @@ pub async fn create_patr_database_in_workspace(
 	.await?;
 
 	match engine {
-		PatrDatabaseEngine::Postgres => {
-			
-		}
-		PatrDatabaseEngine::Mysql => {
-			
-		}
-		PatrDatabaseEngine::Mongo => {
-			
-		}
+		PatrDatabaseEngine::Postgres => {}
+		PatrDatabaseEngine::Mysql => {}
+		PatrDatabaseEngine::Mongo => {}
 		PatrDatabaseEngine::Redis => {
 			service::create_kubernetes_redis_database(
 				workspace_id,
@@ -262,15 +256,9 @@ pub async fn delete_patr_database(
 
 	// now delete the database from k8s
 	match database.engine {
-		PatrDatabaseEngine::Postgres => {
-			
-		}
-		PatrDatabaseEngine::Mysql => {
-			
-		}
-		PatrDatabaseEngine::Mongo => {
-			
-		}
+		PatrDatabaseEngine::Postgres => {}
+		PatrDatabaseEngine::Mysql => {}
+		PatrDatabaseEngine::Mongo => {}
 		PatrDatabaseEngine::Redis => {
 			service::delete_kubernetes_redis_database(
 				&database.workspace_id,
