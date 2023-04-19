@@ -234,6 +234,21 @@ pub async fn initialize_workspaces_pre(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		CREATE TABLE SURVEY(
+			user_id UUID NOT NULL
+				CONSTRAINT survey_fk_user_id
+					REFERENCES "user"(id),
+			version TEXT,
+			response JSON NOT NULL,
+			created TIMESTAMPTZ NOT NULL
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	domain::initialize_domain_pre(connection).await?;
 	docker_registry::initialize_docker_registry_pre(connection).await?;
 	secret::initialize_secret_pre(connection).await?;
@@ -1249,6 +1264,35 @@ pub async fn freeze_workspace(
 			id = $1;
 		"#,
 		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn submit_inapp_survey(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+	version: &str,
+	response: &serde_json::Value,
+	created: &DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			survey(
+				user_id,
+				version,
+				response,
+				created
+			)
+		VALUES
+			($1, $2, $3, $4);
+		"#,
+		user_id as _,
+		version,
+		response as _,
+		created as _,
 	)
 	.execute(&mut *connection)
 	.await
