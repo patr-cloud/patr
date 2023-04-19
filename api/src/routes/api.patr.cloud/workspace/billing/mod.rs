@@ -891,19 +891,11 @@ async fn confirm_payment_method(
 	let config = context.get_state().config.clone();
 
 	let ConfirmPaymentMethodRequest {
-		payment_intent_id,
-		payment_method_id,
-		..
+		payment_intent_id, ..
 	} = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-	db::add_payment_method_info(
-		context.get_database_connection(),
-		&workspace_id,
-		&payment_method_id,
-	)
-	.await?;
 
 	let workspace = db::get_workspace_info(
 		context.get_database_connection(),
@@ -917,7 +909,6 @@ async fn confirm_payment_method(
 		context.get_database_connection(),
 		&workspace,
 		&payment_intent_id,
-		&payment_method_id,
 		&config,
 	)
 	.await?;
@@ -933,7 +924,7 @@ async fn set_primary_card(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 	let ConfirmPaymentMethodRequest {
-		payment_method_id, ..
+		payment_intent_id, ..
 	} = context
 		.get_body_as()
 		.status(400)
@@ -942,7 +933,7 @@ async fn set_primary_card(
 	// Check if payment method that is requested to be default, exists or not
 	db::get_payment_method_info(
 		context.get_database_connection(),
-		&payment_method_id,
+		&payment_intent_id,
 	)
 	.await?
 	.status(404)
@@ -952,7 +943,7 @@ async fn set_primary_card(
 	db::set_default_payment_method_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		&payment_method_id,
+		&payment_intent_id,
 	)
 	.await?;
 	context.success(ConfirmPaymentMethodResponse {});
