@@ -35,11 +35,13 @@ use eve_rs::AsError;
 use stripe::{
 	Client,
 	CreatePaymentIntent,
+	CreatePaymentIntentAutomaticPaymentMethods,
 	CreateRefund,
 	Currency,
 	CustomerId,
 	PaymentIntent,
 	PaymentIntentId,
+	PaymentIntentSetupFutureUsage,
 	PaymentIntentStatus,
 	PaymentMethodId,
 	Refund,
@@ -161,7 +163,6 @@ pub async fn verify_card_with_charges(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace: &Workspace,
 	payment_intent_id: &str,
-	payment_method_id: &str,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let client = Client::new(&config.stripe.secret_key);
@@ -172,13 +173,27 @@ pub async fn verify_card_with_charges(
 	)
 	.await?;
 
+	let payment_method_id =
+		if let Some(payment_method) = payment_intent.payment_method {
+			payment_method.id()
+		} else {
+			return Error::as_result().status(500)?;
+		};
+
 	match payment_intent.status {
 		PaymentIntentStatus::Succeeded => {
+			db::add_payment_method_info(
+				connection,
+				&workspace.id,
+				&payment_method_id,
+			)
+			.await?;
+
 			if workspace.default_payment_method_id.is_none() {
 				db::set_default_payment_method_for_workspace(
 					connection,
 					&workspace.id,
-					payment_method_id,
+					&payment_method_id,
 				)
 				.await?;
 			}
@@ -1130,7 +1145,23 @@ pub async fn add_card_details(
 		intent.description = Some(description);
 		intent.customer =
 			Some(CustomerId::from_str(&workspace.stripe_customer_id)?);
-		intent.payment_method_types = Some(vec!["card".to_string()]);
+		// Since we are not doing SetupIntent anymore, Follow this url of the
+		// stripe documentation to know why are the below configuration the way they are done https://stripe.com/docs/api/payment_methods/attach
+
+		// Since we are not doing setup intent, we are using the
+		// setup_future_usage and automatic_payment_methods below, this will
+		// make sure the payment_method is attached to a customer
+		intent.setup_future_usage =
+			Some(PaymentIntentSetupFutureUsage::OffSession);
+		// Removing payment_method_types as we are using
+		// automatic_payment_methods, and according to stripe_error that we
+		// encountered we cannot use both togther. The error message goes like
+		// "You may only specify one of these parameters:
+		// automatic_payment_methods, payment_method_types." with a 400 error
+		// code
+
+		intent.automatic_payment_methods =
+			Some(CreatePaymentIntentAutomaticPaymentMethods { enabled: true });
 
 		intent
 	})
