@@ -968,6 +968,10 @@ async fn confirm_payment_method(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
+	log::trace!(
+		"Checking for referral coupon for user {}",
+		workspace_info.super_admin_id
+	);
 	if let Some(sign_up_coupon) = sign_up_coupon {
 		// check if it is a referral coupon is still valid. i.e, user who
 		// referred still exists
