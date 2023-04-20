@@ -2613,13 +2613,19 @@
           "name": "uses_remaining",
           "ordinal": 3,
           "type_info": "Int4"
+        },
+        {
+          "name": "is_referral",
+          "ordinal": 4,
+          "type_info": "Bool"
         }
       ],
       "nullable": [
         false,
         false,
         true,
-        true
+        true,
+        false
       ],
       "parameters": {
         "Left": [
@@ -12629,6 +12635,26 @@
     },
     "query": "SELECT COUNT(*) as \"count!\" FROM \"user\" WHERE id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );"
   },
+  "c527fa067acc5f74a0606cf5bbb163a7089a944a42fd3645d978a20c35209f0b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "username",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT username FROM \"user\" WHERE sign_up_coupon = $1;"
+  },
   "c5498a02511a83f16da02a0db768a4e5a6d41bacf83fa28557274c4cc10d05d8": {
     "describe": {
       "columns": [
@@ -14080,6 +14106,26 @@
       }
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", db_name, engine as \"engine: _\", version, num_nodes, database_plan as \"database_plan: _\", region, status as \"status: _\", host, port, username, password, workspace_id as \"workspace_id: _\", digitalocean_db_id FROM managed_database WHERE id = $1;"
+  },
+  "dc36bb8f8caa05ba5df29d1db24a33479242df065887cc43af08164deab520b5": {
+    "describe": {
+      "columns": [
+        {
+          "name": "count!: i64",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT COUNT(username) as \"count!: i64\" FROM \"user\" WHERE sign_up_coupon = $1;"
   },
   "dc532b30067cfee729672c5ddffe470971c2b69db1c60f3c883d2e34aa08808e": {
     "describe": {
@@ -15766,6 +15812,20 @@
       }
     },
     "query": "ALTER TABLE deployment_payment_history ADD CONSTRAINT deployment_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id);"
+  },
+  "f6542a051553504577deb2ff29566beba115e18a93765fd5c35a04caee91a3f9": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8",
+          "Bool"
+        ]
+      }
+    },
+    "query": "INSERT INTO coupon_code( code, credits_in_cents, is_referral ) VALUES ( $1, $2, $3 );"
   },
   "f677f0f49f5509a73a29aa93a7525c287fdc8601417c0b671f6a2848cdcc1265": {
     "describe": {

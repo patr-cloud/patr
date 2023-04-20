@@ -29,17 +29,18 @@ use api_models::{
 		SetPrimaryCardRequest,
 		TotalAmount,
 		Transaction,
+		TransactionType,
 		UpdateBillingAddressRequest,
 		UpdateBillingAddressResponse,
 	},
 	utils::{DateTime, Uuid},
 };
-use chrono::{Duration, TimeZone, Utc};
+use chrono::{Datelike, Duration, TimeZone, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
+	db::{self, User},
 	error,
 	models::rbac::permissions,
 	pin_fn,
@@ -943,6 +944,85 @@ async fn confirm_payment_method(
 		&config,
 	)
 	.await?;
+	let workspace_info = db::get_workspace_info(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
+	if workspace_info.default_payment_method_id.is_none() {
+		db::set_default_payment_method_for_workspace(
+			context.get_database_connection(),
+			&workspace_id,
+			&payment_method_id,
+		)
+		.await?;
+	}
+
+	let User { sign_up_coupon, .. } = db::get_user_by_user_id(
+		context.get_database_connection(),
+		&workspace_info.super_admin_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
+
+	if let Some(sign_up_coupon) = sign_up_coupon {
+		// check if it is a referral coupon is still valid. i.e, user who
+		// referred still exists
+		let is_valid = db::get_user_by_user_id(
+			context.get_database_connection(),
+			&Uuid::parse_str(&sign_up_coupon)?,
+		)
+		.await?
+		.is_some();
+		if is_valid {
+			let coupon = db::get_sign_up_coupon_by_code(
+				context.get_database_connection(),
+				&sign_up_coupon,
+			)
+			.await?;
+			if let Some(coupon) = coupon {
+				if coupon.is_referral {
+					log::trace!(
+						"Adding referral credits for user {}",
+						workspace_info.super_admin_id
+					);
+					let transaction_id = db::generate_new_transaction_id(
+						context.get_database_connection(),
+					)
+					.await?;
+					let now = Utc::now();
+					db::create_transaction(
+						context.get_database_connection(),
+						&workspace_id,
+						&transaction_id,
+						now.month() as i32,
+						coupon.credits_in_cents,
+						Some("coupon-credits"),
+						&DateTime::from(now),
+						&TransactionType::Credits,
+						&PaymentStatus::Success,
+						Some(&format!(
+							"{}'s referral coupon credits",
+							coupon.code
+						)),
+					)
+					.await?;
+					log::trace!(
+						"Referral credits added for user {}",
+						workspace_info.super_admin_id
+					);
+				}
+			} else {
+				log::trace!(
+					"Failed to credit referral coupon for user {}",
+					workspace_info.super_admin_id
+				);
+			}
+		}
+	}
 
 	context.success(ConfirmPaymentMethodResponse {});
 	Ok(context)

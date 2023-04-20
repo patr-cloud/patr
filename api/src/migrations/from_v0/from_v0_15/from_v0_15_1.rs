@@ -10,6 +10,7 @@ pub(super) async fn migrate(
 ) -> Result<(), Error> {
 	migrate_ci_builds(connection, config).await?;
 	add_attempts_for_password_reset(connection, config).await?;
+	add_is_referral_for_coupon(connection, config).await?;
 	Ok(())
 }
 
@@ -48,6 +49,22 @@ async fn add_attempts_for_password_reset(
 		r#"
 		ALTER TABLE password_reset_request
 		ALTER COLUMN attempts DROP DEFAULT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn add_is_referral_for_coupon(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE coupon_code 
+		ADD COLUMN is_referral BOOL NOT NULL DEFAULT false;
 		"#
 	)
 	.execute(&mut *connection)

@@ -342,8 +342,6 @@ async fn get_user_info(
 	})
 	.collect::<Vec<_>>();
 
-	let referral_code = service::hash(username.as_bytes())?;
-
 	context.success(GetUserInfoResponse {
 		basic_user_info: BasicUserInfo {
 			id,
@@ -360,7 +358,6 @@ async fn get_user_info(
 		secondary_emails,
 		recovery_phone_number,
 		secondary_phone_numbers,
-		referral_code,
 	});
 	Ok(context)
 }
@@ -1256,20 +1253,14 @@ async fn get_user_referral(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	// Query for username
-	let User { username, .. } =
-		db::get_user_by_user_id(context.get_database_connection(), &user_id)
-			.await?
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
-
-	// Hash the username
-	let user_hash = service::hash(username.as_bytes())?;
-
 	// call get_user_referrals
-	let users =
-		db::get_user_referrals(context.get_database_connection(), &user_hash)
-			.await?;
+	let users = db::get_user_referrals(
+		context.get_database_connection(),
+		&user_id.to_string(),
+	)
+	.await?;
+
+	println!("{:?}", users);
 
 	context.success(GetUserReferralResponse { users });
 	Ok(context)

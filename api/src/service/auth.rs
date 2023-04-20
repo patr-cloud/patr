@@ -879,6 +879,10 @@ pub async fn join_user(
 		user_data.coupon_code.as_deref(),
 	)
 	.await?;
+
+	db::create_user_coupon_code(connection, &user_id.to_string(), 2500, true)
+		.await?;
+
 	db::end_deferred_constraints(connection).await?;
 
 	let welcome_email_to; // Send the "welcome to patr" email here
@@ -943,7 +947,8 @@ pub async fn join_user(
 					.unwrap_or(true);
 
 				if is_not_expired &&
-					has_usage_remaining && coupon.credits_in_cents > 0
+					has_usage_remaining && coupon.credits_in_cents > 0 &&
+					!coupon.is_referral
 				{
 					// It's not expired, it has usage remaining, AND it has a
 					// non zero positive credit value. Give them some fucking
@@ -1086,7 +1091,8 @@ pub async fn join_user(
 					.unwrap_or(true);
 
 				if is_not_expired &&
-					has_usage_remaining && coupon.credits_in_cents > 0
+					has_usage_remaining && coupon.credits_in_cents > 0 &&
+					!coupon.is_referral
 				{
 					// It's not expired, it has usage remaining, AND it has a
 					// non zero positive credit value. Give them some fucking

@@ -32,6 +32,7 @@ pub struct CouponCode {
 	pub credits_in_cents: u64,
 	pub expiry: Option<DateTime<Utc>>,
 	pub uses_remaining: Option<u32>,
+	pub is_referral: bool,
 }
 
 pub async fn initialize_user_sign_up_pre(
@@ -694,6 +695,7 @@ pub async fn get_sign_up_coupon_by_code(
 		credits_in_cents: row.credits_in_cents as u64,
 		uses_remaining: row.uses_remaining.map(|uses| uses as u32),
 		expiry: row.expiry,
+		is_referral: row.is_referral as bool,
 	});
 
 	Ok(row)
@@ -715,6 +717,36 @@ pub async fn update_coupon_code_uses_remaining(
 		"#,
 		uses_remaining as i32,
 		coupon_code,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn create_user_coupon_code(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	referral_code: &str,
+	credits: u32,
+	is_referral: bool,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			coupon_code(
+				code,
+				credits_in_cents,
+				is_referral
+			)
+		VALUES
+		(
+			$1,
+			$2,
+			$3
+		);
+		"#,
+		referral_code,
+		credits as i32,
+		is_referral
 	)
 	.execute(&mut *connection)
 	.await
