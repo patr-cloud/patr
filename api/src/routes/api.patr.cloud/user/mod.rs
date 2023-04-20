@@ -14,6 +14,7 @@ use api_models::{
 			DeletePhoneNumberResponse,
 			GetUserInfoByUserIdResponse,
 			GetUserInfoResponse,
+			GetUserReferralResponse,
 			ListPersonalEmailsResponse,
 			ListPhoneNumbersResponse,
 			ListUserWorkspacesResponse,
@@ -225,6 +226,15 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(search_for_user)),
 		],
 	);
+	sub_app.get(
+		"/:userId/referral",
+		[
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
+			EveMiddleware::CustomFunction(pin_fn!(get_user_referral)),
+		],
+	);
 
 	sub_app.use_sub_app("/", login::create_sub_app(app));
 	sub_app.use_sub_app("/", api_token::create_sub_app(app));
@@ -332,6 +342,8 @@ async fn get_user_info(
 	})
 	.collect::<Vec<_>>();
 
+	let referral_code = service::hash(username.as_bytes())?;
+
 	context.success(GetUserInfoResponse {
 		basic_user_info: BasicUserInfo {
 			id,
@@ -348,6 +360,7 @@ async fn get_user_info(
 		secondary_emails,
 		recovery_phone_number,
 		secondary_phone_numbers,
+		referral_code,
 	});
 	Ok(context)
 }
@@ -1230,5 +1243,34 @@ async fn search_for_user(
 		db::search_for_users(context.get_database_connection(), &query).await?;
 
 	context.success(SearchForUserResponse { users });
+	Ok(context)
+}
+
+async fn get_user_referral(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let user_id = context
+		.get_param(request_keys::USER_ID)
+		.and_then(|user_id_str| Uuid::parse_str(user_id_str.trim()).ok())
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	// Query for username
+	let User { username, .. } =
+		db::get_user_by_user_id(context.get_database_connection(), &user_id)
+			.await?
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+	// Hash the username
+	let user_hash = service::hash(username.as_bytes())?;
+
+	// call get_user_referrals
+	let users =
+		db::get_user_referrals(context.get_database_connection(), &user_hash)
+			.await?;
+
+	context.success(GetUserReferralResponse { users });
 	Ok(context)
 }

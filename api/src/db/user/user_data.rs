@@ -831,3 +831,50 @@ pub async fn search_for_users(
 	.fetch_all(&mut *connection)
 	.await
 }
+
+// To get users that have a particular referral code
+pub async fn get_user_referrals(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_hash: &str,
+) -> Result<Vec<String>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT
+			username
+		FROM
+			"user"
+		WHERE
+			sign_up_coupon = $1;
+		"#,
+		user_hash as _,
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| row.username)
+	.collect();
+
+	Ok(rows)
+}
+
+pub async fn _get_user_referral_count(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_hash: &str,
+) -> Result<u64, sqlx::Error> {
+	let count = query!(
+		r#"
+		SELECT
+			COUNT(username) as "count!: i64"
+		FROM
+			"user"
+		WHERE
+			sign_up_coupon = $1;
+		"#,
+		user_hash as _,
+	)
+	.fetch_one(&mut *connection)
+	.await
+	.map(|row| row.count as u64)?;
+
+	Ok(count)
+}
