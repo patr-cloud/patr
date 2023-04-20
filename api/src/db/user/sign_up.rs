@@ -695,7 +695,7 @@ pub async fn get_sign_up_coupon_by_code(
 		credits_in_cents: row.credits_in_cents as u64,
 		uses_remaining: row.uses_remaining.map(|uses| uses as u32),
 		expiry: row.expiry,
-		is_referral: row.is_referral as bool,
+		is_referral: row.is_referral,
 	});
 
 	Ok(row)
