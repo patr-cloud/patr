@@ -90,7 +90,7 @@ async fn authorize_with_google(
 		&format!("{auth_url}?client_id={client_id}&scope={scope}&state={state}&response_type=code&redirect_uri={redirect_url}&access_type=offline")
 	)?;
 
-	context.success(GoogleAuthResponse { oauth_url });
+	context.success(GoogleAuthResponse { oauth_url: oauth_url.to_string() });
 	Ok(context)
 }
 
