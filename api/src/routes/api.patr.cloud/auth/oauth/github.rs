@@ -88,7 +88,7 @@ async fn authorize_with_github(
 	let oauth_url = Url::parse(&format!(
 		"{auth_url}?client_id={client_id}&scope={scope}&state={state}"
 	))?;
-	context.success(GithubIdentifyResponse { oauth_url });
+	context.success(GithubIdentifyResponse { oauth_url: oauth_url.to_string() });
 	Ok(context)
 }
 
