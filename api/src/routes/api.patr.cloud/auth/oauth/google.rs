@@ -90,7 +90,9 @@ async fn authorize_with_google(
 		&format!("{auth_url}?client_id={client_id}&scope={scope}&state={state}&response_type=code&redirect_uri={redirect_url}&access_type=offline")
 	)?;
 
-	context.success(GoogleAuthResponse { oauth_url: oauth_url.to_string() });
+	context.success(GoogleAuthResponse {
+		oauth_url: oauth_url.to_string(),
+	});
 	Ok(context)
 }
 
@@ -122,6 +124,106 @@ async fn oauth_callback(
 			.body(error!(SERVER_ERROR).to_string())?
 	}
 
+	if let Some(username) = username {
+		let username_exist = db::get_user_by_username(
+			context.get_database_connection(),
+			&username,
+		)
+		.await?;
+		if let Some(_username_exists) = username_exist {
+			Error::as_result()
+				.status(404)
+				.body(error!(USERNAME_TAKEN).to_string())?
+		}
+		let GoogleUserInfo { name, email } =
+			get_user_info(&context, code).await?;
+		let mut user_name = name.split(" ");
+		// TODO Better error message if first name not found
+		let first_name = user_name
+			.next()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+		let last_name = user_name.next().unwrap_or_default();
+		let password = "".to_string();
+		let account_type = SignUpAccountType::Personal {
+			account_type: Personal,
+		};
+		let recovery_method = RecoveryMethod::Email {
+			recovery_email: email,
+		};
+		log::trace!("Creating join request for user");
+		let (user_to_sign_up, otp) = service::create_user_join_request(
+			context.get_database_connection(),
+			username.to_lowercase().trim(),
+			&password,
+			first_name,
+			last_name,
+			&account_type,
+			&recovery_method,
+			None,
+			true,
+		)
+		.await?;
+
+		log::trace!("Sending otp to user's primary mail");
+		service::send_user_sign_up_otp(
+			context.get_database_connection(),
+			&user_to_sign_up,
+			&otp,
+		)
+		.await?;
+
+		let _ = service::get_internal_metrics(
+			context.get_database_connection(),
+			"A new user has attempted to sign-up",
+		)
+		.await;
+		log::trace!("Registration success");
+		context.success(CreateAccountResponse {});
+		Ok(context)
+	} else {
+		let GoogleUserInfo { email, .. } =
+			get_user_info(&context, code).await?;
+		let user_exist =
+			db::get_user_by_email(context.get_database_connection(), &email)
+				.await?;
+		if let Some(user) = user_exist {
+			let ip_address = routes::get_request_ip_address(&context);
+			let user_agent =
+				context.get_header("user-agent").unwrap_or_default();
+			let config = context.get_state().config.clone();
+			log::trace!("Get access token for user sign in");
+			let (UserWebLogin { login_id, .. }, access_token, refresh_token) =
+				service::sign_in_user(
+					context.get_database_connection(),
+					&user.id,
+					&ip_address
+						.parse()
+						.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+					&user_agent,
+					&config,
+				)
+				.await?;
+			log::trace!("Login success");
+			context.success(LoginResponse {
+				login_id,
+				access_token,
+				refresh_token,
+			});
+
+			Ok(context)
+		} else {
+			Error::as_result()
+				.status(404)
+				.body(error!(INVALID_USERNAME).to_string())?
+		}
+	}
+}
+
+async fn get_user_info(
+	context: &EveContext,
+	code: String,
+) -> Result<GoogleUserInfo, Error> {
 	let callback_url = google_oauth::CALLBACK_URL.to_owned();
 	log::trace!("Getting access token");
 	let access_token = reqwest::Client::builder()
@@ -136,10 +238,7 @@ async fn oauth_callback(
 				"client_secret",
 				context.get_state().config.google.client_secret.clone(),
 			),
-			(
-				"redirect_uri",
-				google_oauth::REDIRECT_URL.to_owned(),
-			),
+			("redirect_uri", google_oauth::REDIRECT_URL.to_owned()),
 			("grant_type", "authorization_code".to_string()),
 			("code", code),
 		])
@@ -152,7 +251,6 @@ async fn oauth_callback(
 		.error_for_status()?
 		.json::<GoogleAccessToken>()
 		.await?;
-
 	log::trace!("Getting user information");
 	let user_info_url = google_oauth::USER_INFO_URL.to_owned();
 	let GoogleUserInfo { name, email } = reqwest::Client::builder()
@@ -168,94 +266,5 @@ async fn oauth_callback(
 		.error_for_status()?
 		.json::<GoogleUserInfo>()
 		.await?;
-
-	let user_exist =
-		db::get_user_by_email(context.get_database_connection(), &email)
-			.await?;
-	if let Some(user) = user_exist {
-		let ip_address = routes::get_request_ip_address(&context);
-		let user_agent = context.get_header("user-agent").unwrap_or_default();
-		let config = context.get_state().config.clone();
-		log::trace!("Get access token for user sign in");
-		let (UserWebLogin { login_id, .. }, access_token, refresh_token) =
-			service::sign_in_user(
-				context.get_database_connection(),
-				&user.id,
-				&ip_address
-					.parse()
-					.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
-				&user_agent,
-				&config,
-			)
-			.await?;
-		log::trace!("Login success");
-		context.success(LoginResponse {
-			login_id,
-			access_token,
-			refresh_token,
-		});
-
-		Ok(context)
-	} else {
-		if let Some(username) = username {
-			let username_exist = db::get_user_by_username(
-				context.get_database_connection(),
-				&username,
-			)
-			.await?;
-			if let Some(_username_exists) = username_exist {
-				Error::as_result()
-					.status(404)
-					.body(error!(USERNAME_TAKEN).to_string())?
-			}
-			let mut user_name = name.split(" ");
-			// TODO Better error message if first name not found
-			let first_name = user_name
-				.next()
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string())?;
-			let last_name = user_name.next().unwrap_or_default();
-			let password = "".to_string();
-			let account_type = SignUpAccountType::Personal {
-				account_type: Personal,
-			};
-			let recovery_method = RecoveryMethod::Email {
-				recovery_email: email,
-			};
-			log::trace!("Creating join request for user");
-			let (user_to_sign_up, otp) = service::create_user_join_request(
-				context.get_database_connection(),
-				username.to_lowercase().trim(),
-				&password,
-				first_name,
-				last_name,
-				&account_type,
-				&recovery_method,
-				None,
-				true,
-			)
-			.await?;
-
-			log::trace!("Sending otp to user's primary mail");
-			service::send_user_sign_up_otp(
-				context.get_database_connection(),
-				&user_to_sign_up,
-				&otp,
-			)
-			.await?;
-
-			let _ = service::get_internal_metrics(
-				context.get_database_connection(),
-				"A new user has attempted to sign-up",
-			)
-			.await;
-			log::trace!("Registration success");
-			context.success(CreateAccountResponse {});
-			Ok(context)
-		} else {
-			Error::as_result()
-				.status(404)
-				.body(error!(INVALID_USERNAME).to_string())?
-		}
-	}
+	Ok(GoogleUserInfo { name, email })
 }

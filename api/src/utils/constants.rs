@@ -87,7 +87,7 @@ pub mod github_oauth {
 pub mod google_oauth {
 	pub const AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 	// To change depending on frontend
-	pub const REDIRECT_URL: &str = "http://localhost:5058";
+	pub const REDIRECT_URL: &str = "https://app.patr.cloud/login";
 	pub const CALLBACK_URL: &str = "https://oauth2.googleapis.com/token";
 	pub const USER_INFO_URL: &str =
 		"https://www.googleapis.com/oauth2/v2/userinfo";
