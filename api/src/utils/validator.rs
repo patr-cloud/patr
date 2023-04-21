@@ -76,17 +76,17 @@ pub fn is_phone_number_valid(phone_number: &str) -> bool {
 	PHONE_NUMBER_REGEX.is_match(phone_number)
 }
 
-/// Returns `false` if workspace name contains `personal-workspace` followed by an UUID
-/// 
+/// Returns `false` if workspace name contains `personal-workspace` followed by
+/// an UUID
+///
 /// # Arguments
 /// * `workspace_name` - name of the workspace
-/// 
+///
 /// # Examples
-/// 
+///
 /// `personal-workspace-02108910df9e11edb5ea0242ac120002` -> false
-/// 
+///
 /// `a-workspace` -> true
-/// 
 pub fn is_personal_workspace_name_valid(workspace_name: &str) -> bool {
 	!PERSONAL_WORKSPACE_NAME_REGEX.is_match(workspace_name)
 }
@@ -122,8 +122,9 @@ pub fn is_ci_runner_name_valid(name: &str) -> bool {
 	CI_RUNNER.is_match(name)
 }
 
-/// Returns `false` if workspace name contains anything other alphanumeric characters & hyphen (-)
-/// 
+/// Returns `false` if workspace name contains anything other alphanumeric
+/// characters & hyphen (-)
+///
 /// # Arguments
 /// * `workspace_name` - name of the workspace
 pub fn is_workspace_name_valid(workspace_name: &str) -> bool {
