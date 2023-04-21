@@ -39,7 +39,6 @@ pub async fn is_workspace_name_allowed(
 	// If personal workspaces are not allowed and the validator check fails,
 	// then throw an error
 	if !allow_personal_workspaces &&
-		!validator::is_personal_workspace_name_valid(workspace_name) ||
 		!validator::is_workspace_name_valid(workspace_name)
 	{
 		Error::as_result()
