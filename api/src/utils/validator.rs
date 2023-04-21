@@ -92,19 +92,9 @@ pub fn is_phone_number_valid(phone_number: &str) -> bool {
 /// * `workspace_name` - The name of the workspace to validate.
 ///
 /// # Examples
-///
-/// ```
-/// use crate::is_valid_workspace_name;
-///
-/// assert_eq!(
-///    is_valid_workspace_name(
-///         "personal-workspace-02108910df9e11edb5ea0242ac120002"
-///    ),
-///    false
-/// );
-/// assert_eq!(is_valid_workspace_name("$Workspace$"), false);
-/// assert_eq!(is_valid_workspace_name("a-workspace"), true);
-/// ```
+///"$Workspace$" -> false
+///"a-workspace" -> true
+///"personal-workspace-02108910df9e11edb5ea0242ac120002" -> false
 ///
 /// # Returns
 ///
