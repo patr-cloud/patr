@@ -29,6 +29,8 @@ lazy_static! {
 	static ref DNS_NAME_REGEX: Regex = Regex::new("^((\\*)|((\\*\\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])))$").unwrap();
 	// 2-64 characters long ([a-zA-Z0-9_- .]), cannot begin with a _, -, . or a space, cannot end with a space
 	static ref CI_RUNNER: Regex = Regex::new("^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$").unwrap();
+	// A Valid workspace name: Alphanumeric characters & Hyphens
+	static ref IS_WORKSPACE_NAME_VALID: Regex = Regex::new("^[a-z0-9-]{1,}$").unwrap();
 }
 
 pub fn is_username_valid(username: &str) -> bool {
@@ -74,7 +76,18 @@ pub fn is_phone_number_valid(phone_number: &str) -> bool {
 	PHONE_NUMBER_REGEX.is_match(phone_number)
 }
 
-pub fn is_workspace_name_valid(workspace_name: &str) -> bool {
+/// Returns `false` if workspace name contains `personal-workspace` followed by an UUID
+/// 
+/// # Arguments
+/// * `workspace_name` - name of the workspace
+/// 
+/// # Examples
+/// 
+/// `personal-workspace-02108910df9e11edb5ea0242ac120002` -> false
+/// 
+/// `a-workspace` -> true
+/// 
+pub fn is_personal_workspace_name_valid(workspace_name: &str) -> bool {
 	!PERSONAL_WORKSPACE_NAME_REGEX.is_match(workspace_name)
 }
 
@@ -107,4 +120,12 @@ pub fn is_dns_record_name_valid(name: &str) -> bool {
 
 pub fn is_ci_runner_name_valid(name: &str) -> bool {
 	CI_RUNNER.is_match(name)
+}
+
+/// Returns `false` if workspace name contains anything other alphanumeric characters & hyphen (-)
+/// 
+/// # Arguments
+/// * `workspace_name` - name of the workspace
+pub fn is_workspace_name_valid(workspace_name: &str) -> bool {
+	IS_WORKSPACE_NAME_VALID.is_match(workspace_name)
 }

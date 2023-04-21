@@ -331,7 +331,7 @@ pub async fn create_user_join_request(
 				.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 			let (domain_name, tld) = (domain_name.as_str(), tld.as_str());
 
-			if !validator::is_workspace_name_valid(workspace_name) {
+			if !validator::is_personal_workspace_name_valid(workspace_name) {
 				Error::as_result()
 					.status(200)
 					.body(error!(INVALID_WORKSPACE_NAME).to_string())?;
