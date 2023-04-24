@@ -10,6 +10,7 @@ pub(super) async fn migrate(
 ) -> Result<(), Error> {
 	migrate_ci_builds(connection, config).await?;
 	add_attempts_for_password_reset(connection, config).await?;
+
 	Ok(())
 }
 
