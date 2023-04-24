@@ -8,6 +8,7 @@ use std::{
 
 use ::redis::aio::MultiplexedConnection as RedisConnection;
 use axum::{
+	extract::FromRef,
 	headers::{self, Header},
 	http::header,
 	middleware::Next,
@@ -25,7 +26,7 @@ use crate::{prelude::*, routes, utils::settings::Settings};
 pub type DatabaseConnection = axum_sqlx_tx::Tx<sqlx::Postgres>;
 pub type Config = Arc<Settings>;
 
-#[derive(Clone)]
+#[derive(Clone, FromRef)]
 pub struct App {
 	pub config: Config,
 	pub database: Pool<Database>,

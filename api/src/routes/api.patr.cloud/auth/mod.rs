@@ -14,7 +14,6 @@ use chrono::{Duration, Utc};
 
 use crate::{
 	db::UserWebLogin,
-	error,
 	models::UserAuthenticationData,
 	prelude::*,
 	routes::ClientIp,
@@ -61,11 +60,12 @@ async fn sign_in(
 		&mut connection,
 		user_id.to_lowercase().trim(),
 	)
-	.await?;
+	.await?
+	.ok_or_else(|| ErrorType::NotFound)?;
 
 	let success = service::validate_hash(&password, &user_data.password)?;
 	if !success {
-		return Err(ErrorType::InvalidPassword);
+		return Err(ErrorType::InvalidPassword.into());
 	}
 
 	let user_agent = user_agent
@@ -159,8 +159,7 @@ async fn sign_out(
 		&Utc::now(),
 		Some(&ttl),
 	)
-	.await
-	.map_err(|err| anyhow::anyhow!(err))?;
+	.await?;
 
 	Ok(())
 }
@@ -211,14 +210,22 @@ async fn join(
 
 	let user = db::get_user_by_username(&mut connection, &username)
 		.await?
-		.ok_or_else(|| anyhow::anyhow!("user_id should be valid"))?;
+		.ok_or_else(|| {
+			ErrorType::InternalServerError(anyhow::anyhow!(
+				"user_id should be valid"
+			))
+		})?;
 
 	if let Some((email_local, domain_id)) =
 		user.recovery_email_local.zip(user.recovery_email_domain_id)
 	{
 		let domain = db::get_personal_domain_by_id(&mut connection, &domain_id)
 			.await?
-			.ok_or_else(|| anyhow::anyhow!("domain_id should be valid"))?;
+			.ok_or_else(|| {
+				ErrorType::InternalServerError(anyhow::anyhow!(
+					"domain_id should be valid"
+				))
+			})?;
 
 		let _ = service::include_user_to_mailchimp(
 			&mut connection,
@@ -250,11 +257,11 @@ async fn get_access_token(
 		body: (),
 	}: DecodedRequest<RenewAccessTokenRequest>,
 ) -> Result<RenewAccessTokenResponse, Error> {
-	let refresh_token = query
-		.extra_headers()
+	let headers = query.extra_headers();
+	let refresh_token = headers
 		.get(http::header::AUTHORIZATION)
 		.and_then(|hv| hv.to_str().ok())
-		.ok_or(|| {
+		.ok_or_else(|| {
 			ErrorType::InternalServerError(anyhow::anyhow!(
 				"Auth header should be present"
 			))
@@ -279,7 +286,10 @@ async fn get_access_token(
 	let ip_info =
 		service::get_ip_address_info(&client_ip, &config.ipinfo_token).await?;
 
-	let (lat, lng) = ip_info.loc.split_once(',').status(500)?;
+	let (lat, lng) = ip_info
+		.loc
+		.split_once(',')
+		.ok_or_else(|| ErrorType::internal_error())?;
 	let (lat, lng): (f64, f64) = (lat.parse()?, lng.parse()?);
 
 	db::update_user_web_login_last_activity_info(
@@ -391,6 +401,7 @@ async fn forgot_password(
 /// This function is used to reset the password of user
 async fn reset_password(
 	mut connection: Connection,
+	State(app): State<App>,
 	DecodedRequest {
 		query: _,
 		path: _,
@@ -407,27 +418,21 @@ async fn reset_password(
 		user_id.to_lowercase().trim(),
 	)
 	.await?
-	.status(400)
-	.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
+	.ok_or_else(|| ErrorType::EmailTokenNotFound)?;
 
 	let reset_request =
 		db::get_password_reset_request_for_user(&mut connection, &user.id)
 			.await?
-			.status(400)
-			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
+			.ok_or_else(|| ErrorType::EmailTokenNotFound)?;
 
 	// check password strength
 	if !validator::is_password_valid(&password) {
-		ErrorType::as_result()
-			.status(200)
-			.body(error!(PASSWORD_TOO_WEAK).to_string())?;
+		return Err(ErrorType::PasswordTooWeak.into());
 	}
 
 	const ALLOWED_ATTEMPTS_FOR_AN_OTP: i32 = 3;
 	if reset_request.attempts >= ALLOWED_ATTEMPTS_FOR_AN_OTP {
-		return Err(ErrorType::empty()
-			.status(400)
-			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string()));
+		return Err(ErrorType::EmailTokenNotFound.into());
 	}
 
 	let success =
@@ -444,20 +449,18 @@ async fn reset_password(
 	// todo: for further db conn, need to get from app state
 
 	if !success {
-		ErrorType::as_result()
-			.status(400)
-			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
+		return Err(ErrorType::EmailTokenNotFound.into());
 	}
 
 	let is_password_same = service::validate_hash(&password, &user.password)?;
 
 	if is_password_same {
-		ErrorType::as_result()
-			.status(400)
-			.body(error!(PASSWORD_UNCHANGED).to_string())?;
+		return Err(ErrorType::PasswordUnchanged.into());
 	}
 
 	let new_password = service::hash(password.as_bytes())?;
+
+	let mut connection = app.database.begin().await?;
 
 	db::update_user_password(&mut connection, &user.id, &new_password).await?;
 
@@ -466,6 +469,8 @@ async fn reset_password(
 
 	service::send_user_reset_password_notification(&mut connection, user)
 		.await?;
+
+	connection.commit().await?;
 
 	Ok(())
 }
@@ -501,14 +506,13 @@ async fn list_recovery_options(
 		path: _,
 		body: ListRecoveryOptionsRequest { user_id },
 	}: DecodedRequest<ListRecoveryOptionsRequest>,
-) -> Result<(), Error> {
+) -> Result<ListRecoveryOptionsResponse, Error> {
 	let user = db::get_user_by_username_email_or_phone_number(
 		&mut connection,
 		user_id.to_lowercase().trim(),
 	)
 	.await?
-	.status(404)
-	.body(error!(USER_NOT_FOUND).to_string())?;
+	.ok_or_else(|| ErrorType::UserNotFound)?;
 
 	let recovery_email =
 		if let (Some(recovery_email_local), Some(recovery_email_domain_id)) =
@@ -522,7 +526,7 @@ async fn list_recovery_options(
 					&recovery_email_domain_id
 				)
 				.await?
-				.status(500)?
+				.ok_or_else(|| ErrorType::internal_error())?
 				.name
 			))
 		} else {
@@ -538,8 +542,7 @@ async fn list_recovery_options(
 			&user.recovery_phone_country_code.unwrap(),
 		)
 		.await?
-		.status(500)
-		.body(error!(INVALID_PHONE_NUMBER).to_string())?;
+		.ok_or_else(|| ErrorType::InvalidPhoneNumber)?;
 
 		Some(format!("+{}{}", country_code.phone_code, phone_number))
 	} else {

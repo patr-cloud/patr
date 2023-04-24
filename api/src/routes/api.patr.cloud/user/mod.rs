@@ -7,10 +7,15 @@ use api_models::{
 			ChangePasswordRequest,
 			DeletePersonalEmailRequest,
 			DeletePhoneNumberRequest,
+			GetUserInfoByUserIdRequest,
 			GetUserInfoByUserIdResponse,
+			GetUserInfoRequest,
 			GetUserInfoResponse,
+			ListPersonalEmailsRequest,
 			ListPersonalEmailsResponse,
+			ListPhoneNumbersRequest,
 			ListPhoneNumbersResponse,
+			ListUserWorkspacesRequest,
 			ListUserWorkspacesResponse,
 			SearchForUserRequest,
 			SearchForUserResponse,
@@ -22,19 +27,19 @@ use api_models::{
 		},
 		workspace::Workspace,
 	},
-	utils::{DateTime, Uuid},
+	utils::{DateTime, DecodedRequest, Paginated},
 };
-use axum::Router;
+use axum::{extract::State, Extension, Router};
 use chrono::{Datelike, Utc};
 
-use crate::{db::User, prelude::*, utils::constants::request_keys};
+use crate::{db::User, models::UserAuthenticationData, prelude::*};
 
 mod api_token;
 mod login;
 
 /// This function is used to create a router for every endpoint in this file
 pub fn create_sub_app(app: &App) -> Router<App> {
-	Router::new()
+	Router::<App>::new()
 		.mount_protected_dto(
 			PlainTokenAuthenticator::new(),
 			app.clone(),
@@ -121,10 +126,15 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 
 /// This function is used to get the user's information.
 async fn get_user_info(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	mut connection: Connection,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: _,
+		query: _,
+		body,
+	}: DecodedRequest<GetUserInfoRequest>,
+) -> Result<GetUserInfoResponse, Error> {
+	let user_id = token_data.user_id();
 	let User {
 		id,
 		username,
@@ -135,54 +145,44 @@ async fn get_user_info(
 		bio,
 		created,
 		..
-	} = db::get_user_by_user_id(context.get_database_connection(), &user_id)
+	} = db::get_user_by_user_id(&mut connection, &user_id)
 		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.ok_or_else(|| ErrorType::internal_error())?;
 
-	let recovery_email = db::get_recovery_email_for_user(
-		context.get_database_connection(),
-		&user_id,
-	)
-	.await?;
+	let recovery_email =
+		db::get_recovery_email_for_user(&mut connection, &user_id).await?;
 
-	let secondary_emails = db::get_personal_emails_for_user(
-		context.get_database_connection(),
-		&user_id,
-	)
-	.await?
-	.into_iter()
-	.filter(|email| {
-		if let Some(recovery_email) = &recovery_email {
-			email != recovery_email
-		} else {
-			true
-		}
-	})
-	.collect::<Vec<_>>();
+	let secondary_emails =
+		db::get_personal_emails_for_user(&mut connection, &user_id)
+			.await?
+			.into_iter()
+			.filter(|email| {
+				if let Some(recovery_email) = &recovery_email {
+					email != recovery_email
+				} else {
+					true
+				}
+			})
+			.collect::<Vec<_>>();
 
-	let recovery_phone_number = db::get_recovery_phone_number_for_user(
-		context.get_database_connection(),
-		&user_id,
-	)
-	.await?;
+	let recovery_phone_number =
+		db::get_recovery_phone_number_for_user(&mut connection, &user_id)
+			.await?;
 
-	let secondary_phone_numbers = db::get_phone_numbers_for_user(
-		context.get_database_connection(),
-		&user_id,
-	)
-	.await?
-	.into_iter()
-	.filter(|phone_number| {
-		if let Some(recovery_phone_number) = &recovery_phone_number {
-			phone_number != recovery_phone_number
-		} else {
-			true
-		}
-	})
-	.collect::<Vec<_>>();
+	let secondary_phone_numbers =
+		db::get_phone_numbers_for_user(&mut connection, &user_id)
+			.await?
+			.into_iter()
+			.filter(|phone_number| {
+				if let Some(recovery_phone_number) = &recovery_phone_number {
+					phone_number != recovery_phone_number
+				} else {
+					true
+				}
+			})
+			.collect::<Vec<_>>();
 
-	context.success(GetUserInfoResponse {
+	Ok(GetUserInfoResponse {
 		basic_user_info: BasicUserInfo {
 			id,
 			username,
@@ -197,21 +197,19 @@ async fn get_user_info(
 		secondary_emails,
 		recovery_phone_number,
 		secondary_phone_numbers,
-	});
-	Ok(context)
+	})
 }
 
 /// This function is used to get user info through userId
 async fn get_user_info_by_user_id(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let user_id = context
-		.get_param(request_keys::USER_ID)
-		.and_then(|user_id_str| Uuid::parse_str(user_id_str.trim()).ok())
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: _,
+		query: _,
+		body: GetUserInfoByUserIdRequest { user_id },
+	}: DecodedRequest<GetUserInfoByUserIdRequest>,
+) -> Result<GetUserInfoByUserIdResponse, Error> {
 	let User {
 		id,
 		username,
@@ -220,12 +218,11 @@ async fn get_user_info_by_user_id(
 		location,
 		bio,
 		..
-	} = db::get_user_by_user_id(context.get_database_connection(), &user_id)
+	} = db::get_user_by_user_id(&mut connection, &user_id)
 		.await?
-		.status(400)
-		.body(error!(PROFILE_NOT_FOUND).to_string())?;
+		.ok_or_else(|| ErrorType::UserNotFound)?;
 
-	context.success(GetUserInfoByUserIdResponse {
+	Ok(GetUserInfoByUserIdResponse {
 		basic_user_info: BasicUserInfo {
 			id,
 			username,
@@ -234,26 +231,27 @@ async fn get_user_info_by_user_id(
 			location,
 			bio,
 		},
-	});
-	Ok(context)
+	})
 }
 
 /// This function is used to update the user's information
 async fn update_user_info(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let UpdateUserInfoRequest {
-		first_name,
-		last_name,
-		birthday,
-		bio,
-		location,
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: _,
+		query: _,
+		body:
+			UpdateUserInfoRequest {
+				first_name,
+				last_name,
+				birthday,
+				bio,
+				location,
+			},
+	}: DecodedRequest<UpdateUserInfoRequest>,
+) -> Result<(), Error> {
 	let dob_string = birthday.as_ref().map(|value| value.to_string());
 
 	// If no parameters to update
@@ -263,21 +261,18 @@ async fn update_user_info(
 		.or(dob_string.as_ref())
 		.or(bio.as_ref())
 		.or(location.as_ref())
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.ok_or_else(|| ErrorType::WrongParameters)?;
 
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	let user_id = token_data.user_id();
 
 	if let Some(dob) = birthday.as_ref() {
 		if (Utc::now().year() - dob.year()) < 13 {
-			Error::as_result()
-				.status(400)
-				.body(error!(INVALID_BIRTHDAY).to_string())?;
+			return Err(ErrorType::InvalidBirthday.into());
 		}
 	}
 
 	db::update_user_data(
-		context.get_database_connection(),
+		&mut connection,
 		&user_id,
 		first_name.as_deref(),
 		last_name.as_deref(),
@@ -287,240 +282,246 @@ async fn update_user_info(
 	)
 	.await?;
 
-	context.success(UpdateUserInfoResponse {});
-	Ok(context)
+	Ok(())
 }
 
 /// This function is used to add a new email address
 async fn add_email_address(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let AddPersonalEmailRequest { email } =
-		context
-			.get_body_as()
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: _,
+		query: _,
+		body: AddPersonalEmailRequest { email },
+	}: DecodedRequest<AddPersonalEmailRequest>,
+) -> Result<(), Error> {
 	let email_address = email.to_lowercase();
 
-	let config = context.get_state().config.clone();
-
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	let user_id = token_data.user_id();
 
 	service::add_personal_email_to_be_verified_for_user(
-		context.get_database_connection(),
+		&mut connection,
 		&email_address,
 		&user_id,
 		&config,
 	)
 	.await?;
 
-	context.success(AddPersonalEmailResponse {});
-	Ok(context)
+	Ok(())
 }
 
 /// This function is used to list the email addresses registered with user
 async fn list_email_addresses(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: _,
+		query: _,
+		body: _,
+	}: DecodedRequest<ListPersonalEmailsRequest>,
+) -> Result<ListPersonalEmailsResponse, Error> {
+	let user_id = token_data.user_id();
 
-	let recovery_email = db::get_recovery_email_for_user(
-		context.get_database_connection(),
-		&user_id,
-	)
-	.await?;
+	let recovery_email =
+		db::get_recovery_email_for_user(&mut connection, &user_id).await?;
 
-	let secondary_emails = db::get_personal_emails_for_user(
-		context.get_database_connection(),
-		&user_id,
-	)
-	.await?
-	.into_iter()
-	.filter(|email| {
-		if let Some(recovery_email) = &recovery_email {
-			email != recovery_email
-		} else {
-			true
-		}
-	})
-	.collect::<Vec<_>>();
+	let secondary_emails =
+		db::get_personal_emails_for_user(&mut connection, &user_id)
+			.await?
+			.into_iter()
+			.filter(|email| {
+				if let Some(recovery_email) = &recovery_email {
+					email != recovery_email
+				} else {
+					true
+				}
+			})
+			.collect::<Vec<_>>();
 
-	context.success(ListPersonalEmailsResponse {
+	Ok(ListPersonalEmailsResponse {
 		recovery_email,
 		secondary_emails,
-	});
-	Ok(context)
+	})
 }
 
 /// This function is used to list the phone numbers registered with the user
 async fn list_phone_numbers(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: _,
+		query: _,
+		body: _,
+	}: DecodedRequest<ListPhoneNumbersRequest>,
+) -> Result<ListPhoneNumbersResponse, Error> {
+	let user_id = token_data.user_id();
 
-	let recovery_phone_number = db::get_recovery_phone_number_for_user(
-		context.get_database_connection(),
-		&user_id,
-	)
-	.await?;
+	let recovery_phone_number =
+		db::get_recovery_phone_number_for_user(&mut connection, &user_id)
+			.await?;
 
-	let secondary_phone_numbers = db::get_phone_numbers_for_user(
-		context.get_database_connection(),
-		&user_id,
-	)
-	.await?
-	.into_iter()
-	.filter(|phone_number| {
-		if let Some(recovery_phone_number) = &recovery_phone_number {
-			phone_number != recovery_phone_number
-		} else {
-			true
-		}
-	})
-	.collect::<Vec<_>>();
+	let secondary_phone_numbers =
+		db::get_phone_numbers_for_user(&mut connection, &user_id)
+			.await?
+			.into_iter()
+			.filter(|phone_number| {
+				if let Some(recovery_phone_number) = &recovery_phone_number {
+					phone_number != recovery_phone_number
+				} else {
+					true
+				}
+			})
+			.collect::<Vec<_>>();
 
-	context.success(ListPhoneNumbersResponse {
+	Ok(ListPhoneNumbersResponse {
 		recovery_phone_number,
 		secondary_phone_numbers,
-	});
-	Ok(context)
+	})
 }
 
 /// This function is used to update the back up email address of the user
 async fn update_recovery_email_address(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let UpdateRecoveryEmailRequest { recovery_email } = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: _,
+		query: _,
+		body: UpdateRecoveryEmailRequest { recovery_email },
+	}: DecodedRequest<UpdateRecoveryEmailRequest>,
+) -> Result<(), Error> {
 	let email_address = recovery_email.to_lowercase();
 
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	let user_id = token_data.user_id();
 
 	service::update_user_recovery_email(
-		context.get_database_connection(),
+		&mut connection,
 		&user_id,
 		&email_address,
 	)
 	.await?;
 
-	context.success(UpdateRecoveryEmailResponse {});
-	Ok(context)
+	Ok(())
 }
 
 /// This function is used to update the recovery phone number of the user
 async fn update_recovery_phone_number(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let UpdateRecoveryPhoneNumberRequest {
-		recovery_phone_country_code,
-		recovery_phone_number: phone_number,
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: _,
+		query: _,
+		body:
+			UpdateRecoveryPhoneNumberRequest {
+				recovery_phone_country_code,
+				recovery_phone_number,
+			},
+	}: DecodedRequest<UpdateRecoveryPhoneNumberRequest>,
+) -> Result<(), Error> {
 	let country_code = recovery_phone_country_code.to_uppercase();
 
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	let user_id = token_data.user_id();
 
 	service::update_user_recovery_phone_number(
-		context.get_database_connection(),
+		&mut connection,
 		&user_id,
 		&country_code,
-		&phone_number,
+		&recovery_phone_number,
 	)
 	.await?;
 
-	context.success(UpdateRecoveryPhoneNumberResponse {});
-	Ok(context)
+	Ok(())
 }
 
 /// This function is used to delete a personal email address
 async fn delete_personal_email_address(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let DeletePersonalEmailRequest { email } = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: _,
+		query: _,
+		body: DeletePersonalEmailRequest { email },
+	}: DecodedRequest<DeletePersonalEmailRequest>,
+) -> Result<(), Error> {
 	let email_address = email.to_lowercase();
 
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	let user_id = token_data.user_id();
 
 	service::delete_personal_email_address(
-		context.get_database_connection(),
+		&mut connection,
 		&user_id,
 		&email_address,
 	)
 	.await?;
 
-	context.success(DeletePersonalEmailResponse {});
-	Ok(context)
+	Ok(())
 }
 
 /// This function is used to add phone number to the user's account
 async fn add_phone_number_for_user(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let AddPhoneNumberRequest {
-		country_code,
-		phone_number,
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: _,
+		query: _,
+		body: AddPhoneNumberRequest {
+			country_code,
+			phone_number,
+		},
+	}: DecodedRequest<AddPhoneNumberRequest>,
+) -> Result<(), Error> {
 	// two letter country code instead of the numeric one
 	let country_code = country_code.to_uppercase();
 
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	let user_id = token_data.user_id();
 
 	let otp = service::add_phone_number_to_be_verified_for_user(
-		context.get_database_connection(),
+		&mut connection,
 		&user_id,
 		&country_code,
 		&phone_number,
 	)
 	.await?;
 	service::send_phone_number_verification_otp(
-		context.get_database_connection(),
+		&mut connection,
 		&country_code,
 		&phone_number,
 		&otp,
 	)
 	.await?;
 
-	context.success(AddPhoneNumberResponse {});
-	Ok(context)
+	Ok(())
 }
 
 /// This function is used to verify user's phone number
 async fn verify_phone_number(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let VerifyPhoneNumberRequest {
-		country_code,
-		phone_number,
-		verification_token: otp,
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: _,
+		query: _,
+		body:
+			VerifyPhoneNumberRequest {
+				country_code,
+				phone_number,
+				verification_token: otp,
+			},
+	}: DecodedRequest<VerifyPhoneNumberRequest>,
+) -> Result<(), Error> {
 	// two letter country code instead of the numeric one
 	let country_code = country_code.to_uppercase();
 
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	let user_id = token_data.user_id();
 
 	service::verify_phone_number_for_user(
-		context.get_database_connection(),
+		&mut connection,
 		&user_id,
 		&country_code,
 		&phone_number,
@@ -528,145 +529,147 @@ async fn verify_phone_number(
 	)
 	.await?;
 
-	context.success(VerifyPhoneNumberResponse {});
-	Ok(context)
+	Ok(())
 }
 
 /// This function is used to delete user's phone number
 async fn delete_phone_number(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let DeletePhoneNumberRequest {
-		country_code,
-		phone_number,
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: _,
+		query: _,
+		body: DeletePhoneNumberRequest {
+			country_code,
+			phone_number,
+		},
+	}: DecodedRequest<DeletePhoneNumberRequest>,
+) -> Result<(), Error> {
 	// two letter country code instead of the numeric one
 	let country_code = country_code.to_uppercase();
 
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	let user_id = token_data.user_id();
 
 	service::delete_phone_number(
-		context.get_database_connection(),
+		&mut connection,
 		&user_id,
 		&country_code,
 		&phone_number,
 	)
 	.await?;
 
-	context.success(DeletePhoneNumberResponse {});
-	Ok(context)
+	Ok(())
 }
 
 /// This function is used to verify user's email address
 async fn verify_email_address(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let VerifyPersonalEmailRequest {
-		email,
-		verification_token: otp,
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: _,
+		query: _,
+		body:
+			VerifyPersonalEmailRequest {
+				email,
+				verification_token: otp,
+			},
+	}: DecodedRequest<VerifyPersonalEmailRequest>,
+) -> Result<(), Error> {
 	let email_address = email.to_lowercase();
 
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	let user_id = token_data.user_id();
 
 	service::verify_personal_email_address_for_user(
-		context.get_database_connection(),
+		&mut connection,
 		&user_id,
 		&email_address,
 		&otp,
 	)
 	.await?;
 
-	context.success(VerifyPersonalEmailResponse {});
-	Ok(context)
+	Ok(())
 }
 
 /// This function is used to get a list of all workspaces which the user is a
 /// member of
 async fn get_workspaces_for_user(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user_id().clone();
-	let workspaces = db::get_all_workspaces_for_user(
-		context.get_database_connection(),
-		&user_id,
-	)
-	.await?
-	.into_iter()
-	.map(|workspace| Workspace {
-		id: workspace.id,
-		name: workspace.name,
-		active: workspace.active,
-		super_admin_id: workspace.super_admin_id,
-		alert_emails: workspace.alert_emails,
-		default_payment_method_id: workspace.default_payment_method_id,
-		is_verified: !workspace.is_spam,
-	})
-	.collect::<Vec<_>>();
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: _,
+		query: _,
+		body: _,
+	}: DecodedRequest<ListUserWorkspacesRequest>,
+) -> Result<ListUserWorkspacesResponse, Error> {
+	let user_id = token_data.user_id();
+	let workspaces = db::get_all_workspaces_for_user(&mut connection, &user_id)
+		.await?
+		.into_iter()
+		.map(|workspace| Workspace {
+			id: workspace.id,
+			name: workspace.name,
+			active: workspace.active,
+			super_admin_id: workspace.super_admin_id,
+			alert_emails: workspace.alert_emails,
+			default_payment_method_id: workspace.default_payment_method_id,
+			is_verified: !workspace.is_spam,
+		})
+		.collect::<Vec<_>>();
 
-	context.success(ListUserWorkspacesResponse { workspaces });
-	Ok(context)
+	Ok(ListUserWorkspacesResponse { workspaces })
 }
 
 /// This function is used to change the password of user
 async fn change_password(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let ChangePasswordRequest {
-		current_password,
-		new_password,
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: _,
+		query: _,
+		body: ChangePasswordRequest {
+			current_password,
+			new_password,
+		},
+	}: DecodedRequest<ChangePasswordRequest>,
+) -> Result<(), Error> {
+	let user_id = token_data.user_id();
 
 	let user = service::change_password_for_user(
-		context.get_database_connection(),
+		&mut connection,
 		&user_id,
 		&current_password,
 		&new_password,
 	)
 	.await?;
-	service::send_password_changed_notification(
-		context.get_database_connection(),
-		user,
-	)
-	.await?;
+	service::send_password_changed_notification(&mut connection, user).await?;
 
-	context.success(ChangePasswordResponse {});
-	Ok(context)
+	Ok(())
 }
 
 async fn search_for_user(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let SearchForUserRequest { query } = context
-		.get_query_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: _,
+		query:
+			Paginated {
+				start: _,
+				count: _,
+				query: SearchForUserRequest { query },
+			},
+		body: _,
+	}: DecodedRequest<SearchForUserRequest>,
+) -> Result<SearchForUserResponse, Error> {
 	if query.is_empty() {
-		return Error::as_result()
-			.status(401)
-			.body(error!(WRONG_PARAMETERS).to_string());
+		return Err(ErrorType::WrongParameters.into());
 	}
 
-	let users =
-		db::search_for_users(context.get_database_connection(), &query).await?;
+	let users = db::search_for_users(&mut connection, &query).await?;
 
-	context.success(SearchForUserResponse { users });
-	Ok(context)
+	Ok(SearchForUserResponse { users })
 }
