@@ -115,29 +115,6 @@ pub async fn initialize_user_email_post(
 
 	query!(
 		r#"
-		CREATE TABLE oauth_email(
-			user_id UUID NOT NULL
-				CONSTRAINT oauth_email_fk_user_id REFERENCES "user"(id)
-					DEFERRABLE INITIALLY IMMEDIATE,
-			local VARCHAR(64) NOT NULL
-				CONSTRAINT oauth_email_chk_local_is_lower_case CHECK(
-					local = LOWER(local)
-					),
-			domain_id UUID NOT NULL
-				CONSTRAINT oauth_email_fk_domain_id
-					REFERENCES personal_domain(id),
-			oauth_type VARCHAR(20) NOT NULL,
-			CONSTRAINT oauth_email_pk PRIMARY KEY(local, domain_id),
-			CONSTRAINT oauth_email_uq_user_id_local_domain_id_oauth_type
-				UNIQUE(user_id, local, domain_id, oauth_type)
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
 		ALTER TABLE "user"
 		ADD CONSTRAINT user_fk_id_recovery_email_local_recovery_email_domain_id
 		FOREIGN KEY(
