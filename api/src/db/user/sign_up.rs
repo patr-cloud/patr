@@ -1,7 +1,7 @@
 use api_models::utils::{ResourceType, Uuid};
 use chrono::{DateTime, Utc};
 
-use crate::{query, query_as, Database};
+use crate::prelude::*;
 
 pub struct UserToSignUp {
 	pub username: String,
@@ -36,7 +36,7 @@ pub struct CouponCode {
 
 pub async fn initialize_user_sign_up_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		CREATE TABLE coupon_code(
@@ -60,7 +60,7 @@ pub async fn initialize_user_sign_up_pre(
 
 pub async fn initialize_user_sign_up_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		CREATE TABLE user_to_sign_up(
@@ -220,7 +220,7 @@ pub async fn set_personal_user_to_be_signed_up(
 	otp_expiry: &DateTime<Utc>,
 
 	coupon_code: Option<&str>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -326,7 +326,7 @@ pub async fn set_business_user_to_be_signed_up(
 	otp_expiry: &DateTime<Utc>,
 
 	coupon_code: Option<&str>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -420,7 +420,7 @@ pub async fn set_business_user_to_be_signed_up(
 pub async fn get_user_to_sign_up_by_username(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	username: &str,
-) -> Result<Option<UserToSignUp>, sqlx::Error> {
+) -> DatabaseResult<Option<UserToSignUp>> {
 	query_as!(
 		UserToSignUp,
 		r#"
@@ -460,7 +460,7 @@ pub async fn get_user_to_sign_up_by_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	country_code: &str,
 	phone_number: &str,
-) -> Result<Option<UserToSignUp>, sqlx::Error> {
+) -> DatabaseResult<Option<UserToSignUp>> {
 	query_as!(
 		UserToSignUp,
 		r#"
@@ -501,7 +501,7 @@ pub async fn get_user_to_sign_up_by_phone_number(
 pub async fn get_user_to_sign_up_by_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email: &str,
-) -> Result<Option<UserToSignUp>, sqlx::Error> {
+) -> DatabaseResult<Option<UserToSignUp>> {
 	query_as!(
 		UserToSignUp,
 		r#"
@@ -554,7 +554,7 @@ pub async fn get_user_to_sign_up_by_email(
 pub async fn get_user_to_sign_up_by_business_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	business_name: &str,
-) -> Result<Option<UserToSignUp>, sqlx::Error> {
+) -> DatabaseResult<Option<UserToSignUp>> {
 	query_as!(
 		UserToSignUp,
 		r#"
@@ -593,7 +593,7 @@ pub async fn get_user_to_sign_up_by_business_name(
 pub async fn get_user_to_sign_up_by_business_domain_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	business_domain_name: &str,
-) -> Result<Option<UserToSignUp>, sqlx::Error> {
+) -> DatabaseResult<Option<UserToSignUp>> {
 	query_as!(
 		UserToSignUp,
 		r#"
@@ -634,7 +634,7 @@ pub async fn update_user_to_sign_up_with_otp(
 	username: &str,
 	verification_token: &str,
 	token_expiry: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -657,7 +657,7 @@ pub async fn update_user_to_sign_up_with_otp(
 pub async fn delete_user_to_be_signed_up(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	username: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		DELETE FROM
@@ -675,7 +675,7 @@ pub async fn delete_user_to_be_signed_up(
 pub async fn get_sign_up_coupon_by_code(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	coupon_code: &str,
-) -> Result<Option<CouponCode>, sqlx::Error> {
+) -> DatabaseResult<Option<CouponCode>> {
 	let row = query!(
 		r#"
 		SELECT
@@ -703,7 +703,7 @@ pub async fn update_coupon_code_uses_remaining(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	coupon_code: &str,
 	uses_remaining: u32,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE

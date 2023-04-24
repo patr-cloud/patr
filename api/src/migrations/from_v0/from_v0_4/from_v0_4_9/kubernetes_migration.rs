@@ -361,7 +361,7 @@ async fn populate_region(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	parent_region_id: Option<&Uuid>,
 	region: &DefaultDeploymentRegion,
-) -> Result<Uuid, sqlx::Error> {
+) -> Result<Uuid, Error> {
 	let region_id = loop {
 		let region_id = Uuid::new_v4();
 

@@ -2,7 +2,7 @@ use api_models::utils::Uuid;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::{query, query_as, Database};
+use crate::prelude::*;
 
 mod billing;
 mod ci;
@@ -92,7 +92,7 @@ pub struct Address {
 
 pub async fn initialize_workspaces_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Initializing workspace tables");
 
 	query!(
@@ -245,7 +245,7 @@ pub async fn initialize_workspaces_pre(
 
 pub async fn initialize_workspaces_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Finishing up workspace tables initialization");
 	query!(
 		r#"
@@ -360,7 +360,7 @@ pub async fn create_workspace(
 	volume_storage_limit: i32,
 	stripe_customer_id: &str,
 	payment_type: &PaymentType,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -433,7 +433,7 @@ pub async fn create_workspace(
 pub async fn get_workspace_info(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<Option<Workspace>, sqlx::Error> {
+) -> DatabaseResult<Option<Workspace>> {
 	query!(
 		r#"
 		SELECT
@@ -495,7 +495,7 @@ pub async fn get_workspace_info(
 pub async fn get_workspace_by_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	name: &str,
-) -> Result<Option<Workspace>, sqlx::Error> {
+) -> DatabaseResult<Option<Workspace>> {
 	query!(
 		r#"
 		SELECT
@@ -557,7 +557,7 @@ pub async fn delete_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	deletion_time: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -581,7 +581,7 @@ pub async fn update_workspace_info(
 	name: Option<String>,
 	alert_emails: Option<Vec<String>>,
 	default_payment_method_id: Option<String>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -617,7 +617,7 @@ pub async fn create_workspace_audit_log(
 	metadata: &serde_json::Value,
 	patr_action: bool,
 	success: bool,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -658,7 +658,7 @@ pub async fn create_workspace_audit_log(
 
 pub async fn generate_new_workspace_audit_log_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Uuid, sqlx::Error> {
+) -> DatabaseResult<Uuid> {
 	loop {
 		let uuid = Uuid::new_v4();
 
@@ -686,7 +686,7 @@ pub async fn generate_new_workspace_audit_log_id(
 pub async fn get_workspace_audit_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<Vec<WorkspaceAuditLog>, sqlx::Error> {
+) -> DatabaseResult<Vec<WorkspaceAuditLog>> {
 	query_as!(
 		WorkspaceAuditLog,
 		r#"
@@ -721,7 +721,7 @@ pub async fn get_workspace_audit_logs(
 pub async fn get_resource_audit_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &Uuid,
-) -> Result<Vec<WorkspaceAuditLog>, sqlx::Error> {
+) -> DatabaseResult<Vec<WorkspaceAuditLog>> {
 	query_as!(
 		WorkspaceAuditLog,
 		r#"
@@ -755,7 +755,7 @@ pub async fn get_resource_audit_logs(
 
 pub async fn get_all_workspaces(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<Workspace>, sqlx::Error> {
+) -> DatabaseResult<Vec<Workspace>> {
 	let res = query!(
 		r#"
 		SELECT DISTINCT
@@ -816,7 +816,7 @@ pub async fn get_all_workspaces(
 pub async fn get_resource_limit_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<u32, sqlx::Error> {
+) -> DatabaseResult<u32> {
 	query!(
 		r#"
 		SELECT (
@@ -841,7 +841,7 @@ pub async fn get_resource_limit_for_workspace(
 
 pub async fn generate_new_address_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Uuid, sqlx::Error> {
+) -> DatabaseResult<Uuid> {
 	loop {
 		let uuid = Uuid::new_v4();
 		let exists = query!(
@@ -867,7 +867,7 @@ pub async fn generate_new_address_id(
 pub async fn add_billing_address(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	address_details: &Address,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -915,7 +915,7 @@ pub async fn add_billing_address(
 pub async fn update_billing_address(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	address_details: &Address,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -953,7 +953,7 @@ pub async fn add_billing_address_to_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	address_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -974,7 +974,7 @@ pub async fn add_billing_address_to_workspace(
 pub async fn delete_billing_address_from_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -994,7 +994,7 @@ pub async fn delete_billing_address_from_workspace(
 pub async fn delete_billing_address(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	address_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		DELETE FROM
@@ -1012,7 +1012,7 @@ pub async fn delete_billing_address(
 pub async fn get_billing_address(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	address_id: &Uuid,
-) -> Result<Option<Address>, sqlx::Error> {
+) -> DatabaseResult<Option<Address>> {
 	query_as!(
 		Address,
 		r#"
@@ -1042,7 +1042,7 @@ pub async fn set_default_payment_method_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	payment_method_id: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -1063,7 +1063,7 @@ pub async fn set_default_payment_method_for_workspace(
 pub async fn get_default_payment_method_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<Option<String>, sqlx::Error> {
+) -> DatabaseResult<Option<String>> {
 	query!(
 		r#"
 		SELECT
@@ -1092,7 +1092,7 @@ pub async fn set_resource_limit_for_workspace(
 	docker_repository_storage_limit: i32,
 	domain_limit: i32,
 	secret_limit: i32,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -1125,7 +1125,7 @@ pub async fn set_resource_limit_for_workspace(
 pub async fn mark_workspace_as_spam(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE

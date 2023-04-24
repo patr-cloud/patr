@@ -3,9 +3,8 @@ use std::{fmt::Display, str::FromStr};
 use api_macros::{query, query_as};
 use api_models::utils::Uuid;
 use chrono::{DateTime, Utc};
-use eve_rs::AsError;
 
-use crate::{error, utils::Error, Database};
+use crate::prelude::*;
 
 #[derive(sqlx::Type, Debug, PartialEq, Eq)]
 #[sqlx(type_name = "MANAGED_DATABASE_STATUS", rename_all = "lowercase")]
@@ -41,9 +40,7 @@ impl FromStr for ManagedDatabaseStatus {
 			"available" => Ok(Self::Running),
 			"errored" | "failed" => Ok(Self::Errored),
 			"deleted" => Ok(Self::Deleted),
-			_ => Error::as_result()
-				.status(500)
-				.body(error!(WRONG_PARAMETERS).to_string()),
+			_ => Err(Error::new(ErrorType::WrongParameters)),
 		}
 	}
 }
@@ -71,9 +68,7 @@ impl FromStr for ManagedDatabaseEngine {
 		match s.to_lowercase().as_str() {
 			"pg" | "postgres" | "postgresql" => Ok(Self::Postgres),
 			"mysql" => Ok(Self::Mysql),
-			_ => Error::as_result()
-				.status(500)
-				.body(error!(WRONG_PARAMETERS).to_string()),
+			_ => Err(Error::new(ErrorType::WrongParameters)),
 		}
 	}
 }
@@ -119,9 +114,7 @@ impl FromStr for ManagedDatabasePlan {
 			"do-xlarge" | "db-s-6vcpu-16gb" => Ok(Self::Xlarge),
 			"do-xxlarge" | "db-s-8vcpu-32gb" => Ok(Self::Xxlarge),
 			"do-mammoth" | "db-s-16vcpu-64gb" => Ok(Self::Mammoth),
-			_ => Error::as_result()
-				.status(500)
-				.body(error!(WRONG_PARAMETERS).to_string()),
+			_ => Err(Error::new(ErrorType::WrongParameters)),
 		}
 	}
 }
@@ -146,7 +139,7 @@ pub struct ManagedDatabase {
 
 pub async fn initialize_managed_database_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Initializing managed databases tables");
 	query!(
 		r#"
@@ -227,7 +220,7 @@ pub async fn initialize_managed_database_pre(
 
 pub async fn initialize_managed_database_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Finishing up managed databases tables initialization");
 	query!(
 		r#"
@@ -270,7 +263,7 @@ pub async fn create_managed_database(
 	username: &str,
 	password: &str,
 	workspace_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -333,7 +326,7 @@ pub async fn update_managed_database_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	id: &Uuid,
 	status: &ManagedDatabaseStatus,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -355,7 +348,7 @@ pub async fn delete_managed_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	database_id: &Uuid,
 	deletion_time: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -377,7 +370,7 @@ pub async fn delete_managed_database(
 pub async fn get_all_database_clusters_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<Vec<ManagedDatabase>, sqlx::Error> {
+) -> DatabaseResult<Vec<ManagedDatabase>> {
 	query_as!(
 		ManagedDatabase,
 		r#"
@@ -412,7 +405,7 @@ pub async fn get_all_database_clusters_for_workspace(
 pub async fn get_managed_database_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	id: &Uuid,
-) -> Result<Option<ManagedDatabase>, sqlx::Error> {
+) -> DatabaseResult<Option<ManagedDatabase>> {
 	query_as!(
 		ManagedDatabase,
 		r#"
@@ -447,7 +440,7 @@ pub async fn get_managed_database_by_id(
 pub async fn get_managed_database_by_id_including_deleted(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	id: &Uuid,
-) -> Result<Option<ManagedDatabase>, sqlx::Error> {
+) -> DatabaseResult<Option<ManagedDatabase>> {
 	query_as!(
 		ManagedDatabase,
 		r#"
@@ -482,7 +475,7 @@ pub async fn update_digitalocean_db_id_for_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	database_id: &Uuid,
 	digitalocean_db_id: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -507,7 +500,7 @@ pub async fn update_managed_database_credentials_for_database(
 	port: i32,
 	username: &str,
 	password: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE

@@ -3,11 +3,11 @@ use std::collections::{BTreeMap, HashMap};
 use api_models::utils::Uuid;
 
 use super::{Permission, Role};
-use crate::{db::User, query, query_as, Database};
+use crate::{db::User, prelude::*};
 
 pub async fn generate_new_role_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Uuid, sqlx::Error> {
+) -> DatabaseResult<Uuid> {
 	loop {
 		let uuid = Uuid::new_v4();
 
@@ -38,7 +38,7 @@ pub async fn create_role(
 	name: &str,
 	description: &str,
 	owner_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -64,7 +64,7 @@ pub async fn create_role(
 pub async fn get_all_roles_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<Vec<Role>, sqlx::Error> {
+) -> DatabaseResult<Vec<Role>> {
 	query_as!(
 		Role,
 		r#"
@@ -87,7 +87,7 @@ pub async fn get_all_roles_in_workspace(
 pub async fn get_role_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &Uuid,
-) -> Result<Option<Role>, sqlx::Error> {
+) -> DatabaseResult<Option<Role>> {
 	query_as!(
 		Role,
 		r#"
@@ -196,7 +196,7 @@ pub async fn get_permissions_on_resource_types_for_role(
 pub async fn remove_all_permissions_for_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		DELETE FROM
@@ -228,7 +228,7 @@ pub async fn insert_resource_permissions_for_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &Uuid,
 	resource_permissions: &BTreeMap<Uuid, Vec<Uuid>>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	for (resource_id, permissions) in resource_permissions {
 		for permission_id in permissions {
 			query!(
@@ -257,7 +257,7 @@ pub async fn insert_resource_type_permissions_for_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &Uuid,
 	resource_type_permissions: &BTreeMap<Uuid, Vec<Uuid>>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	for (resource_type_id, permissions) in resource_type_permissions {
 		for permission_id in permissions {
 			query!(
@@ -285,7 +285,7 @@ pub async fn insert_resource_type_permissions_for_role(
 pub async fn delete_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	remove_all_permissions_for_role(&mut *connection, role_id).await?;
 
 	query!(
@@ -306,7 +306,7 @@ pub async fn delete_role(
 pub async fn get_all_users_with_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &Uuid,
-) -> Result<Vec<User>, sqlx::Error> {
+) -> DatabaseResult<Vec<User>> {
 	query_as!(
 		User,
 		r#"
@@ -346,7 +346,7 @@ pub async fn update_role_name_and_description(
 	role_id: &Uuid,
 	name: Option<&str>,
 	description: Option<&str>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE

@@ -3,7 +3,6 @@ use std::{collections::BTreeMap, net::IpAddr};
 use ::redis::aio::MultiplexedConnection as RedisConnection;
 use api_models::{models::workspace::WorkspacePermission, utils::Uuid};
 use chrono::{DateTime, Duration, Utc};
-use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
 use sqlx::types::ipnetwork::IpNetwork;
 

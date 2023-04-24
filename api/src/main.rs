@@ -8,27 +8,26 @@
 // 	clippy::nursery,
 // 	clippy::cargo
 // )]
-// #![allow(clippy::module_name_repetitions)]
 
-mod app;
-mod db;
-mod macros;
-mod migrations;
-mod models;
-mod rabbitmq;
-mod redis;
-mod routes;
-mod scheduler;
-mod service;
-mod utils;
+pub mod app;
+pub mod db;
+pub mod macros;
+pub mod migrations;
+pub mod models;
+pub mod rabbitmq;
+pub mod redis;
+pub mod routes;
+pub mod scheduler;
+pub mod service;
+pub mod utils;
 
-use api_macros::{migrate_query, query, query_as};
-use api_models::utils::Uuid;
+use api_macros::{migrate_query, query};
+use api_models::prelude::*;
 use app::App;
 use chrono::{Datelike, Utc};
 use futures::future;
 use tokio::runtime::Builder;
-use utils::{logger, Error as EveError};
+use utils::logger;
 
 use crate::{
 	app::Config,
@@ -36,9 +35,24 @@ use crate::{
 	utils::handlebar_registry,
 };
 
-type Database = sqlx::Postgres;
+pub type Database = sqlx::Postgres;
 
-fn main() -> Result<(), EveError> {
+pub mod prelude {
+	pub use api_macros::{query, query_as};
+	pub use api_models::prelude::*;
+
+	pub use crate::{
+		app::{App, Config, DatabaseConnection as Connection},
+		db::{self, DatabaseError, DatabaseResult},
+		models::{self, rbac},
+		redis,
+		service,
+		utils::{constants, handlebar_registry, middlewares::*, validator},
+		Database,
+	};
+}
+
+fn main() -> Result<(), Error> {
 	Builder::new_multi_thread()
 		.enable_io()
 		.enable_time()
@@ -50,7 +64,7 @@ fn main() -> Result<(), EveError> {
 		.block_on(async_main())
 }
 
-async fn async_main() -> Result<(), EveError> {
+async fn async_main() -> Result<(), Error> {
 	let config = utils::settings::parse_config();
 	println!(
 		"[TRACE]: Configuration read. Running environment set to {}",

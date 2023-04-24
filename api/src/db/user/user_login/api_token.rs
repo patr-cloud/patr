@@ -2,7 +2,7 @@ use api_models::utils::Uuid;
 use chrono::{DateTime, TimeZone, Utc};
 use sqlx::types::ipnetwork::IpNetwork;
 
-use crate::{query, query_as, Database};
+use crate::prelude::*;
 
 pub struct UserApiToken {
 	pub token_id: Uuid,
@@ -18,14 +18,14 @@ pub struct UserApiToken {
 
 pub async fn initialize_api_token_pre(
 	_connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	// tables are initialized in post due to workspace dependency
 	Ok(())
 }
 
 pub async fn initialize_api_token_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		CREATE TABLE user_api_token(
@@ -140,7 +140,7 @@ pub async fn create_api_token_for_user(
 	token_exp: Option<&DateTime<Utc>>,
 	allowed_ips: Option<&[IpNetwork]>,
 	created: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -177,7 +177,7 @@ pub async fn add_super_admin_permission_for_api_token(
 	token_id: &Uuid,
 	workspace_id: &Uuid,
 	user_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -204,7 +204,7 @@ pub async fn add_resource_type_permission_for_api_token(
 	workspace_id: &Uuid,
 	resource_type_id: &Uuid,
 	permission_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -233,7 +233,7 @@ pub async fn add_resource_permission_for_api_token(
 	workspace_id: &Uuid,
 	resource_id: &Uuid,
 	permission_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 			INSERT INTO
@@ -259,7 +259,7 @@ pub async fn add_resource_permission_for_api_token(
 pub async fn list_active_api_tokens_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
-) -> Result<Vec<UserApiToken>, sqlx::Error> {
+) -> DatabaseResult<Vec<UserApiToken>> {
 	query_as!(
 		UserApiToken,
 		r#"
@@ -288,7 +288,7 @@ pub async fn list_active_api_tokens_for_user(
 pub async fn get_all_super_admin_workspace_ids_for_api_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	token_id: &Uuid,
-) -> Result<Vec<Uuid>, sqlx::Error> {
+) -> DatabaseResult<Vec<Uuid>> {
 	let rows = query!(
 		r#"
 		SELECT
@@ -364,7 +364,7 @@ pub async fn get_all_resource_permissions_for_api_token(
 pub async fn get_active_user_api_token_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	token_id: &Uuid,
-) -> Result<Option<UserApiToken>, sqlx::Error> {
+) -> DatabaseResult<Option<UserApiToken>> {
 	query_as!(
 		UserApiToken,
 		r#"
@@ -394,7 +394,7 @@ pub async fn revoke_user_api_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	token_id: &Uuid,
 	revoked_time: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -417,7 +417,7 @@ pub async fn update_token_hash_for_user_api_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	token_id: &Uuid,
 	token_hash: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -439,7 +439,7 @@ pub async fn update_token_hash_for_user_api_token(
 pub async fn remove_all_super_admin_permissions_for_api_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	token_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		DELETE FROM
@@ -457,7 +457,7 @@ pub async fn remove_all_super_admin_permissions_for_api_token(
 pub async fn remove_all_resource_type_permissions_for_api_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	token_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		DELETE FROM
@@ -475,7 +475,7 @@ pub async fn remove_all_resource_type_permissions_for_api_token(
 pub async fn remove_all_resource_permissions_for_api_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	token_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		DELETE FROM
@@ -497,7 +497,7 @@ pub async fn update_user_api_token(
 	token_nbf: Option<&DateTime<Utc>>,
 	token_exp: Option<&DateTime<Utc>>,
 	allowed_ips: Option<&[IpNetwork]>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -545,7 +545,7 @@ pub async fn update_user_api_token(
 
 pub async fn revoke_all_expired_user_tokens(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE

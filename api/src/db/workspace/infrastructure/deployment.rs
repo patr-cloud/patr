@@ -9,11 +9,9 @@ use api_models::{
 use chrono::{DateTime, Utc};
 
 use crate::{
-	db::{self, WorkspaceAuditLog},
+	db::WorkspaceAuditLog,
 	models::deployment::DEFAULT_MACHINE_TYPES,
-	query,
-	query_as,
-	Database,
+	prelude::*,
 };
 
 pub struct DeploymentMachineType {

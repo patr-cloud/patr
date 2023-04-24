@@ -1,7 +1,7 @@
 use api_models::utils::Uuid;
 use chrono::{DateTime, Utc};
 
-use crate::{query, query_as, Database};
+use crate::prelude::*;
 
 pub struct Secret {
 	pub id: Uuid,
@@ -12,7 +12,7 @@ pub struct Secret {
 
 pub async fn initialize_secret_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Initializing secret tables");
 	query!(
 		r#"
@@ -34,7 +34,7 @@ pub async fn initialize_secret_pre(
 
 pub async fn initialize_secret_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Finishing up secret tables initialization");
 	// TODO create all the necessary indexes
 
@@ -71,7 +71,7 @@ pub async fn initialize_secret_post(
 pub async fn get_secret_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	secret_id: &Uuid,
-) -> Result<Option<Secret>, sqlx::Error> {
+) -> DatabaseResult<Option<Secret>> {
 	query_as!(
 		Secret,
 		r#"
@@ -94,7 +94,7 @@ pub async fn get_secret_by_id(
 pub async fn get_all_secrets_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<Vec<Secret>, sqlx::Error> {
+) -> DatabaseResult<Vec<Secret>> {
 	query_as!(
 		Secret,
 		r#"
@@ -120,7 +120,7 @@ pub async fn create_new_secret_in_workspace(
 	secret_id: &Uuid,
 	name: &str,
 	workspace_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -149,7 +149,7 @@ pub async fn create_new_secret_for_deployment(
 	name: &str,
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -176,7 +176,7 @@ pub async fn update_secret_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	secret_id: &Uuid,
 	name: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -198,7 +198,7 @@ pub async fn delete_secret(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	secret_id: &Uuid,
 	deletion_time: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE

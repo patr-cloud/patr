@@ -9,11 +9,11 @@ pub use self::{
 	managed_url::*,
 	static_site::*,
 };
-use crate::Database;
+use crate::prelude::*;
 
 pub async fn initialize_infrastructure_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Initializing deployment tables");
 	deployment::initialize_deployment_pre(connection).await?;
 	managed_database::initialize_managed_database_pre(connection).await?;
@@ -25,7 +25,7 @@ pub async fn initialize_infrastructure_pre(
 
 pub async fn initialize_infrastructure_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Finishing up deployment tables initialization");
 	deployment::initialize_deployment_post(connection).await?;
 	managed_database::initialize_managed_database_post(connection).await?;

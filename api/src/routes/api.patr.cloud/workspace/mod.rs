@@ -62,7 +62,7 @@ mod secret;
 /// containing context, middleware, object of [`App`] and Error
 ///
 /// [`App`]: App
-pub fn create_sub_app() -> Router<App> {
+pub fn create_sub_app(app: &App) -> Router<App> {
 	let mut sub_app = create_axum_router(app);
 
 	sub_app.get(

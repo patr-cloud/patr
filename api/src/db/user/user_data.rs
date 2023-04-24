@@ -3,9 +3,7 @@ use chrono::{DateTime, Utc};
 
 use crate::{
 	db::{PaymentType, Workspace},
-	query,
-	query_as,
-	Database,
+	prelude::*,
 };
 
 pub struct User {
@@ -35,7 +33,7 @@ pub struct PasswordResetRequest {
 
 pub async fn initialize_user_data_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		CREATE TABLE "user"(
@@ -130,7 +128,7 @@ pub async fn initialize_user_data_pre(
 
 pub async fn initialize_user_data_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
         ALTER TABLE "user"
@@ -147,7 +145,7 @@ pub async fn initialize_user_data_post(
 pub async fn get_user_by_username_email_or_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &str,
-) -> Result<Option<User>, sqlx::Error> {
+) -> DatabaseResult<Option<User>> {
 	query_as!(
 		User,
 		r#"
@@ -221,7 +219,7 @@ pub async fn get_user_by_username_email_or_phone_number(
 pub async fn get_user_by_username(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	username: &str,
-) -> Result<Option<User>, sqlx::Error> {
+) -> DatabaseResult<Option<User>> {
 	query_as!(
 		User,
 		r#"
@@ -255,7 +253,7 @@ pub async fn get_user_by_username(
 pub async fn get_user_by_user_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
-) -> Result<Option<User>, sqlx::Error> {
+) -> DatabaseResult<Option<User>> {
 	query_as!(
 		User,
 		r#"
@@ -288,7 +286,7 @@ pub async fn get_user_by_user_id(
 
 pub async fn generate_new_user_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Uuid, sqlx::Error> {
+) -> DatabaseResult<Uuid> {
 	loop {
 		let uuid = Uuid::new_v4();
 
@@ -315,7 +313,7 @@ pub async fn generate_new_user_id(
 
 pub async fn get_god_user_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Option<Uuid>, sqlx::Error> {
+) -> DatabaseResult<Option<Uuid>> {
 	let uuid = query!(
 		r#"
 		SELECT
@@ -350,7 +348,7 @@ pub async fn create_user(
 
 	workspace_limit: i32,
 	sign_up_coupon: Option<&str>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -424,7 +422,7 @@ pub async fn update_user_data(
 	dob: Option<&DateTime<Utc>>,
 	bio: Option<&str>,
 	location: Option<&str>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -454,7 +452,7 @@ pub async fn update_user_password(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 	password: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -477,7 +475,7 @@ pub async fn add_password_reset_request(
 	user_id: &Uuid,
 	token_hash: &str,
 	token_expiry: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -506,7 +504,7 @@ pub async fn add_password_reset_request(
 pub async fn get_password_reset_request_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
-) -> Result<Option<PasswordResetRequest>, sqlx::Error> {
+) -> DatabaseResult<Option<PasswordResetRequest>> {
 	query_as!(
 		PasswordResetRequest,
 		r#"
@@ -530,7 +528,7 @@ pub async fn update_password_reset_request_attempt_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 	attempts: i32,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -551,7 +549,7 @@ pub async fn update_password_reset_request_attempt_for_user(
 pub async fn delete_password_reset_request_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		DELETE FROM
@@ -569,7 +567,7 @@ pub async fn delete_password_reset_request_for_user(
 pub async fn get_all_workspaces_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
-) -> Result<Vec<Workspace>, sqlx::Error> {
+) -> DatabaseResult<Vec<Workspace>> {
 	let res = query!(
 		r#"
 		SELECT DISTINCT
@@ -639,7 +637,7 @@ pub async fn get_all_workspaces_for_user(
 pub async fn get_all_workspaces_owned_by_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
-) -> Result<Vec<Workspace>, sqlx::Error> {
+) -> DatabaseResult<Vec<Workspace>> {
 	let res = query!(
 		r#"
 		SELECT
@@ -702,7 +700,7 @@ pub async fn get_all_workspaces_owned_by_user(
 pub async fn search_for_users(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	query: &str,
-) -> Result<Vec<BasicUserInfo>, sqlx::Error> {
+) -> DatabaseResult<Vec<BasicUserInfo>> {
 	query_as!(
 		BasicUserInfo,
 		r#"

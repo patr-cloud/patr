@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use api_models::{models::workspace::WorkspacePermission, utils::Uuid};
 use chrono::{DateTime, Utc};
 
-use crate::{models::rbac, query, query_as, Database};
+use crate::prelude::*;
 
 mod role;
 mod user;
@@ -45,7 +45,7 @@ pub struct WorkspaceUser {
 
 pub async fn initialize_rbac_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Initializing rbac tables");
 
 	// Resource types, like application, deployment, VM, etc
@@ -257,7 +257,7 @@ pub async fn initialize_rbac_pre(
 
 pub async fn initialize_rbac_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Finishing up rbac tables initialization");
 	for (_, permission) in rbac::permissions::consts_iter().iter() {
 		let uuid = generate_new_permission_id(&mut *connection).await?;
@@ -519,7 +519,7 @@ pub async fn get_all_workspace_role_permissions_for_user(
 
 pub async fn generate_new_permission_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Uuid, sqlx::Error> {
+) -> DatabaseResult<Uuid> {
 	loop {
 		let uuid = Uuid::new_v4();
 
@@ -546,7 +546,7 @@ pub async fn generate_new_permission_id(
 
 pub async fn generate_new_resource_type_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Uuid, sqlx::Error> {
+) -> DatabaseResult<Uuid> {
 	loop {
 		let uuid = Uuid::new_v4();
 
@@ -573,7 +573,7 @@ pub async fn generate_new_resource_type_id(
 
 pub async fn get_all_resource_types(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<ResourceType>, sqlx::Error> {
+) -> DatabaseResult<Vec<ResourceType>> {
 	query_as!(
 		ResourceType,
 		r#"
@@ -591,7 +591,7 @@ pub async fn get_all_resource_types(
 
 pub async fn get_all_permissions(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<Permission>, sqlx::Error> {
+) -> DatabaseResult<Vec<Permission>> {
 	query_as!(
 		Permission,
 		r#"
@@ -613,7 +613,7 @@ pub async fn create_resource(
 	resource_type_id: &Uuid,
 	owner_id: &Uuid,
 	created: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -639,7 +639,7 @@ pub async fn create_resource(
 
 pub async fn generate_new_resource_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Uuid, sqlx::Error> {
+) -> DatabaseResult<Uuid> {
 	loop {
 		let uuid = Uuid::new_v4();
 
@@ -667,7 +667,7 @@ pub async fn generate_new_resource_id(
 pub async fn get_resource_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &Uuid,
-) -> Result<Option<Resource>, sqlx::Error> {
+) -> DatabaseResult<Option<Resource>> {
 	query_as!(
 		Resource,
 		r#"
@@ -691,7 +691,7 @@ pub async fn get_resource_by_id(
 pub async fn delete_resource(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		DELETE FROM

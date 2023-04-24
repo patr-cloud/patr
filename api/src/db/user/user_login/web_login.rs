@@ -3,7 +3,7 @@ use std::net::IpAddr;
 use api_models::utils::Uuid;
 use chrono::{DateTime, Utc};
 
-use crate::{query, query_as, Database};
+use crate::prelude::*;
 
 pub struct UserWebLogin {
 	pub login_id: Uuid,
@@ -36,7 +36,7 @@ pub struct UserWebLogin {
 
 pub async fn initialize_web_login_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		CREATE TABLE web_login(
@@ -101,7 +101,7 @@ pub async fn initialize_web_login_pre(
 
 pub async fn initialize_web_login_post(
 	_connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	Ok(())
 }
 
@@ -133,7 +133,7 @@ pub async fn add_new_web_login(
 	last_activity_city: &str,
 	last_activity_timezone: &str,
 	last_activity_user_agent: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -220,7 +220,7 @@ pub async fn add_new_web_login(
 pub async fn get_user_web_login(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &Uuid,
-) -> Result<Option<UserWebLogin>, sqlx::Error> {
+) -> DatabaseResult<Option<UserWebLogin>> {
 	query_as!(
 		UserWebLogin,
 		r#"
@@ -262,7 +262,7 @@ pub async fn get_user_web_login_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &Uuid,
 	user_id: &Uuid,
-) -> Result<Option<UserWebLogin>, sqlx::Error> {
+) -> DatabaseResult<Option<UserWebLogin>> {
 	query_as!(
 		UserWebLogin,
 		r#"
@@ -314,7 +314,7 @@ pub async fn update_user_web_login_last_activity_info(
 	last_activity_city: &str,
 	last_activity_timezone: &str,
 	last_activity_user_agent: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -350,7 +350,7 @@ pub async fn update_user_web_login_last_activity_info(
 pub async fn get_all_web_logins_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
-) -> Result<Vec<UserWebLogin>, sqlx::Error> {
+) -> DatabaseResult<Vec<UserWebLogin>> {
 	query_as!(
 		UserWebLogin,
 		r#"
@@ -392,7 +392,7 @@ pub async fn get_web_login_for_user_with_refresh_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 	refresh_token: &str,
-) -> Result<Option<UserWebLogin>, sqlx::Error> {
+) -> DatabaseResult<Option<UserWebLogin>> {
 	query_as!(
 		UserWebLogin,
 		r#"
@@ -436,7 +436,7 @@ pub async fn delete_user_web_login_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &Uuid,
 	user_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -460,7 +460,7 @@ pub async fn set_web_login_expiry(
 	login_id: &Uuid,
 	last_activity: &DateTime<Utc>,
 	token_expiry: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE

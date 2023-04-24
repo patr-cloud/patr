@@ -12,8 +12,8 @@ use axum::{
 
 use crate::app::App;
 
-pub fn create_sub_app() -> Router<App> {
-	Router::new().merge(api_patr_cloud::create_sub_app())
+pub fn create_sub_app(app: &App) -> Router<App> {
+	Router::new().merge(api_patr_cloud::create_sub_app(app))
 }
 
 #[derive(Debug)]

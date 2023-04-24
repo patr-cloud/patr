@@ -25,7 +25,7 @@ use crate::{
 
 mod github;
 
-pub fn create_sub_app() -> Router<App> {
+pub fn create_sub_app(app: &App) -> Router<App> {
 	let mut sub_app = create_axum_router(app);
 
 	sub_app.use_sub_app("/github", github::create_sub_app(app));

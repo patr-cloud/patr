@@ -2,7 +2,7 @@ use api_models::{models::user::UserPhoneNumber, utils::Uuid};
 use chrono::{DateTime, Utc};
 
 use super::User;
-use crate::{query, query_as, Database};
+use crate::prelude::*;
 
 pub struct PhoneCountryCode {
 	pub country_code: String,
@@ -20,13 +20,13 @@ pub struct PhoneNumberToBeVerified {
 
 pub async fn initialize_user_phone_pre(
 	_connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	Ok(())
 }
 
 pub async fn initialize_user_phone_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		CREATE TABLE phone_number_country_code(
@@ -415,7 +415,7 @@ pub async fn get_user_by_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	country_code: &str,
 	phone_number: &str,
-) -> Result<Option<User>, sqlx::Error> {
+) -> DatabaseResult<Option<User>> {
 	query_as!(
 		User,
 		r#"
@@ -459,7 +459,7 @@ pub async fn add_phone_number_to_be_verified_for_user(
 	user_id: &Uuid,
 	verification_token: &str,
 	token_expiry: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -494,7 +494,7 @@ pub async fn get_phone_number_to_be_verified_for_user(
 	user_id: &Uuid,
 	country_code: &str,
 	phone_number: &str,
-) -> Result<Option<PhoneNumberToBeVerified>, sqlx::Error> {
+) -> DatabaseResult<Option<PhoneNumberToBeVerified>> {
 	query_as!(
 		PhoneNumberToBeVerified,
 		r#"
@@ -527,7 +527,7 @@ pub async fn get_phone_number_to_be_verified_by_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	country_code: &str,
 	phone_number: &str,
-) -> Result<Option<PhoneNumberToBeVerified>, sqlx::Error> {
+) -> DatabaseResult<Option<PhoneNumberToBeVerified>> {
 	query_as!(
 		PhoneNumberToBeVerified,
 		r#"
@@ -555,7 +555,7 @@ pub async fn delete_phone_number_to_be_verified_for_user(
 	user_id: &Uuid,
 	country_code: &str,
 	phone_number: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		DELETE FROM
@@ -579,7 +579,7 @@ pub async fn update_recovery_phone_number_for_user(
 	user_id: &Uuid,
 	country_code: &str,
 	phone_number: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -602,7 +602,7 @@ pub async fn update_recovery_phone_number_for_user(
 pub async fn get_phone_country_by_country_code(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	country_code: &str,
-) -> Result<Option<PhoneCountryCode>, sqlx::Error> {
+) -> DatabaseResult<Option<PhoneCountryCode>> {
 	query_as!(
 		PhoneCountryCode,
 		r#"
@@ -624,7 +624,7 @@ pub async fn add_phone_number_for_user(
 	user_id: &Uuid,
 	phone_country_code: &str,
 	phone_number: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -648,7 +648,7 @@ pub async fn add_phone_number_for_user(
 pub async fn get_phone_numbers_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
-) -> Result<Vec<UserPhoneNumber>, sqlx::Error> {
+) -> DatabaseResult<Vec<UserPhoneNumber>> {
 	query_as!(
 		UserPhoneNumber,
 		r#"
@@ -669,7 +669,7 @@ pub async fn get_phone_numbers_for_user(
 pub async fn get_recovery_phone_number_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
-) -> Result<Option<UserPhoneNumber>, sqlx::Error> {
+) -> DatabaseResult<Option<UserPhoneNumber>> {
 	query_as!(
 		UserPhoneNumber,
 		r#"
@@ -694,7 +694,7 @@ pub async fn delete_phone_number_for_user(
 	user_id: &Uuid,
 	country_code: &str,
 	phone_number: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		DELETE FROM

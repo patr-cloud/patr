@@ -2,7 +2,7 @@ use api_models::{self, utils::Uuid};
 use chrono::{DateTime, Utc};
 
 use super::User;
-use crate::{query, query_as, Database};
+use crate::prelude::*;
 
 pub struct PersonalEmailToBeVerified {
 	pub local: String,
@@ -14,13 +14,13 @@ pub struct PersonalEmailToBeVerified {
 
 pub async fn initialize_user_email_pre(
 	_connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	Ok(())
 }
 
 pub async fn initialize_user_email_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		CREATE TABLE personal_email(
@@ -139,7 +139,7 @@ pub async fn initialize_user_email_post(
 pub async fn get_user_by_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email: &str,
-) -> Result<Option<User>, sqlx::Error> {
+) -> DatabaseResult<Option<User>> {
 	query_as!(
 		User,
 		r#"
@@ -203,7 +203,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 	user_id: &Uuid,
 	verification_token: &str,
 	token_expiry: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -237,7 +237,7 @@ pub async fn get_personal_email_to_be_verified_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 	email: &str,
-) -> Result<Option<PersonalEmailToBeVerified>, sqlx::Error> {
+) -> DatabaseResult<Option<PersonalEmailToBeVerified>> {
 	query_as!(
 		PersonalEmailToBeVerified,
 		r#"
@@ -267,7 +267,7 @@ pub async fn get_personal_email_to_be_verified_for_user(
 pub async fn get_personal_email_to_be_verified_by_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email: &str,
-) -> Result<Option<PersonalEmailToBeVerified>, sqlx::Error> {
+) -> DatabaseResult<Option<PersonalEmailToBeVerified>> {
 	query_as!(
 		PersonalEmailToBeVerified,
 		r#"
@@ -297,7 +297,7 @@ pub async fn delete_personal_email_to_be_verified_for_user(
 	user_id: &Uuid,
 	email_local: &str,
 	domain_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		DELETE FROM
@@ -322,7 +322,7 @@ pub async fn add_personal_email_for_user(
 	user_id: &Uuid,
 	email_local: &str,
 	domain_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -348,7 +348,7 @@ pub async fn add_business_email_for_user(
 	user_id: &Uuid,
 	email_local: &str,
 	domain_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -374,7 +374,7 @@ pub async fn update_recovery_email_for_user(
 	user_id: &Uuid,
 	email_local: &str,
 	domain_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -397,7 +397,7 @@ pub async fn update_recovery_email_for_user(
 pub async fn get_personal_emails_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
-) -> Result<Vec<String>, sqlx::Error> {
+) -> DatabaseResult<Vec<String>> {
 	let rows = query!(
 		r#"
 		SELECT
@@ -431,7 +431,7 @@ pub async fn get_personal_emails_for_user(
 pub async fn get_personal_email_count_for_domain_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
-) -> Result<u64, sqlx::Error> {
+) -> DatabaseResult<u64> {
 	query!(
 		r#"
 		SELECT
@@ -451,7 +451,7 @@ pub async fn get_personal_email_count_for_domain_id(
 pub async fn get_recovery_email_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
-) -> Result<Option<String>, sqlx::Error> {
+) -> DatabaseResult<Option<String>> {
 	query!(
 		r#"
 		SELECT
@@ -483,7 +483,7 @@ pub async fn delete_personal_email_for_user(
 	user_id: &Uuid,
 	email_local: &str,
 	domain_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		DELETE FROM

@@ -6,7 +6,7 @@ use api_models::utils::Uuid;
 use chrono::{DateTime, Utc};
 
 pub use self::{api_token::*, web_login::*};
-use crate::Database;
+use crate::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, sqlx::Type)]
 #[sqlx(type_name = "USER_LOGIN_TYPE", rename_all = "snake_case")]
@@ -17,7 +17,7 @@ pub enum UserLoginType {
 
 pub async fn initialize_user_login_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		CREATE TYPE USER_LOGIN_TYPE AS ENUM(
@@ -55,7 +55,7 @@ pub async fn initialize_user_login_pre(
 
 pub async fn initialize_user_login_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	web_login::initialize_web_login_post(&mut *connection).await?;
 	api_token::initialize_api_token_post(&mut *connection).await?;
 
@@ -64,7 +64,7 @@ pub async fn initialize_user_login_post(
 
 pub async fn generate_new_login_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Uuid, sqlx::Error> {
+) -> DatabaseResult<Uuid> {
 	loop {
 		let uuid = Uuid::new_v4();
 
@@ -95,7 +95,7 @@ pub async fn add_new_user_login(
 	user_id: &Uuid,
 	login_type: &UserLoginType,
 	created: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO

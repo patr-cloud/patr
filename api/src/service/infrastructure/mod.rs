@@ -30,7 +30,7 @@ use crate::{
 async fn update_managed_database_status(
 	database_id: &Uuid,
 	status: &ManagedDatabaseStatus,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	let app = service::get_app();
 
 	db::update_managed_database_status(
@@ -49,7 +49,7 @@ async fn update_managed_database_credentials_for_database(
 	port: i32,
 	username: &str,
 	password: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	let app = service::get_app();
 
 	db::update_managed_database_credentials_for_database(
@@ -69,7 +69,7 @@ pub async fn resource_limit_crossed(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	request_id: &Uuid,
-) -> Result<bool, sqlx::Error> {
+) -> DatabaseResult<bool> {
 	log::trace!(
 		"request_id: {} - retreiving current deployments",
 		request_id

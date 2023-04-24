@@ -5,9 +5,8 @@ use api_models::{
 	utils::{ResourceType, Uuid},
 };
 use chrono::{DateTime, Utc};
-use eve_rs::AsError;
 
-use crate::{error, query, query_as, utils::Error, Database};
+use crate::prelude::*;
 
 pub struct Domain {
 	pub id: Uuid,
@@ -81,9 +80,7 @@ impl FromStr for DnsRecordType {
 			"CNAME" => Ok(Self::CNAME),
 			"MX" => Ok(Self::MX),
 			"TXT" => Ok(Self::TXT),
-			_ => Error::as_result()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string()),
+			_ => Err(Error::new(ErrorType::WrongParameters)),
 		}
 	}
 }
@@ -102,7 +99,7 @@ pub struct DnsRecord {
 
 pub async fn initialize_domain_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Initializing domain tables");
 
 	query!(
@@ -312,7 +309,7 @@ pub async fn initialize_domain_pre(
 
 pub async fn initialize_domain_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Finishing up domain tables initialization");
 	query!(
 		r#"
@@ -352,7 +349,7 @@ pub async fn initialize_domain_post(
 
 pub async fn generate_new_domain_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Uuid, sqlx::Error> {
+) -> DatabaseResult<Uuid> {
 	loop {
 		let uuid = Uuid::new_v4();
 
@@ -404,7 +401,7 @@ pub async fn create_generic_domain(
 	domain_name: &str,
 	tld: &str,
 	domain_type: &ResourceType,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -432,7 +429,7 @@ pub async fn add_to_workspace_domain(
 	domain_id: &Uuid,
 	nameserver_type: &DomainNameserverType,
 	cloudflare_worker_route_id: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -459,7 +456,7 @@ pub async fn add_to_workspace_domain(
 pub async fn add_to_personal_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -481,7 +478,7 @@ pub async fn add_patr_controlled_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	zone_identifier: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -504,7 +501,7 @@ pub async fn add_patr_controlled_domain(
 pub async fn add_user_controlled_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -525,7 +522,7 @@ pub async fn add_user_controlled_domain(
 pub async fn get_domains_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<Vec<WorkspaceDomain>, sqlx::Error> {
+) -> DatabaseResult<Vec<WorkspaceDomain>> {
 	query_as!(
 		WorkspaceDomain,
 		r#"
@@ -663,7 +660,7 @@ pub async fn get_all_verified_domains(
 pub async fn get_notification_email_for_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
-) -> Result<Option<String>, sqlx::Error> {
+) -> DatabaseResult<Option<String>> {
 	let email = query!(
 		r#"
 		SELECT
@@ -709,7 +706,7 @@ pub async fn get_notification_email_for_domain(
 pub async fn delete_personal_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		DELETE FROM
@@ -728,7 +725,7 @@ pub async fn mark_domain_as_deleted(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	deletion_time: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -749,7 +746,7 @@ pub async fn mark_domain_as_deleted(
 pub async fn get_workspace_domain_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
-) -> Result<Option<WorkspaceDomain>, sqlx::Error> {
+) -> DatabaseResult<Option<WorkspaceDomain>> {
 	query_as!(
 		WorkspaceDomain,
 		r#"
@@ -780,7 +777,7 @@ pub async fn get_workspace_domain_by_id(
 pub async fn get_personal_domain_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
-) -> Result<Option<PersonalDomain>, sqlx::Error> {
+) -> DatabaseResult<Option<PersonalDomain>> {
 	query_as!(
 		PersonalDomain,
 		r#"
@@ -806,7 +803,7 @@ pub async fn get_personal_domain_by_id(
 pub async fn get_domain_by_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,
-) -> Result<Option<Domain>, sqlx::Error> {
+) -> DatabaseResult<Option<Domain>> {
 	query_as!(
 		Domain,
 		r#"
@@ -829,7 +826,7 @@ pub async fn get_domain_by_name(
 pub async fn get_dns_records_by_domain_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
-) -> Result<Vec<DnsRecord>, sqlx::Error> {
+) -> DatabaseResult<Vec<DnsRecord>> {
 	query_as!(
 		DnsRecord,
 		r#"
@@ -862,7 +859,7 @@ pub async fn get_dns_records_by_domain_id(
 pub async fn get_patr_controlled_domain_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
-) -> Result<Option<PatrControlledDomain>, sqlx::Error> {
+) -> DatabaseResult<Option<PatrControlledDomain>> {
 	query_as!(
 		PatrControlledDomain,
 		r#"
@@ -884,7 +881,7 @@ pub async fn get_patr_controlled_domain_by_id(
 pub async fn get_dns_record_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	record_id: &Uuid,
-) -> Result<Option<DnsRecord>, sqlx::Error> {
+) -> DatabaseResult<Option<DnsRecord>> {
 	query_as!(
 		DnsRecord,
 		r#"
@@ -926,7 +923,7 @@ pub async fn create_patr_domain_dns_record(
 	priority: Option<i32>,
 	ttl: i64,
 	proxied: Option<bool>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -966,7 +963,7 @@ pub async fn update_patr_domain_dns_record(
 	priority: Option<i32>,
 	ttl: Option<i64>,
 	proxied: Option<bool>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -993,7 +990,7 @@ pub async fn update_patr_domain_dns_record(
 pub async fn delete_patr_controlled_dns_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	record_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		DELETE FROM
@@ -1013,7 +1010,7 @@ pub async fn update_workspace_domain_status(
 	domain_id: &Uuid,
 	is_verified: bool,
 	last_unverified: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -1036,7 +1033,7 @@ pub async fn update_workspace_domain_status(
 pub async fn update_top_level_domain_list(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	tlds: &[String],
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		WITH current_domains(tld) AS (
@@ -1084,7 +1081,7 @@ pub async fn update_top_level_domain_list(
 pub async fn remove_from_domain_tld_list(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	tlds: &[String],
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		DELETE FROM
@@ -1104,7 +1101,7 @@ pub async fn remove_from_domain_tld_list(
 pub async fn get_dns_record_count_for_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
-) -> Result<i64, sqlx::Error> {
+) -> DatabaseResult<i64> {
 	query!(
 		r#"
 		SELECT
@@ -1125,7 +1122,7 @@ pub async fn update_dns_record_identifier(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	record_id: &Uuid,
 	record_identifier: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -1146,7 +1143,7 @@ pub async fn update_dns_record_identifier(
 pub async fn get_users_with_domain_in_personal_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
-) -> Result<Vec<Uuid>, sqlx::Error> {
+) -> DatabaseResult<Vec<Uuid>> {
 	let rows = query!(
 		r#"
 		SELECT DISTINCT

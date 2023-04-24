@@ -30,7 +30,7 @@ use crate::{
 	},
 };
 
-pub fn create_sub_app() -> Router<App> {
+pub fn create_sub_app(app: &App) -> Router<App> {
 	let mut app = create_axum_router(app);
 
 	// List all secrets

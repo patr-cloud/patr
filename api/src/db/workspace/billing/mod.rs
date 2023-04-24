@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::query_as;
 
 use super::ManagedDatabasePlan;
-use crate::Database;
+use crate::prelude::*;
 
 pub struct DeploymentPaymentHistory {
 	pub workspace_id: Uuid,
@@ -129,7 +129,7 @@ impl fmt::Display for DomainPlan {
 
 pub async fn initialize_billing_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Initializing billing tables");
 
 	query!(
@@ -341,7 +341,7 @@ pub async fn initialize_billing_pre(
 
 pub async fn initialize_billing_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Finishing up billing tables initialization");
 
 	query!(
@@ -443,7 +443,7 @@ pub async fn get_all_deployment_usage(
 	workspace_id: &Uuid,
 	month_start_date: &DateTime<Utc>,
 	till_date: &DateTime<Utc>,
-) -> Result<Vec<DeploymentPaymentHistory>, sqlx::Error> {
+) -> DatabaseResult<Vec<DeploymentPaymentHistory>> {
 	query_as!(
 		DeploymentPaymentHistory,
 		r#"
@@ -475,7 +475,7 @@ pub async fn get_all_volume_usage(
 	workspace_id: &Uuid,
 	month_start_date: &DateTime<Utc>,
 	till_date: &DateTime<Utc>,
-) -> Result<Vec<VolumePaymentHistory>, sqlx::Error> {
+) -> DatabaseResult<Vec<VolumePaymentHistory>> {
 	query_as!(
 		VolumePaymentHistory,
 		r#"
@@ -509,7 +509,7 @@ pub async fn get_all_database_usage(
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
 	till_date: &DateTime<Utc>,
-) -> Result<Vec<ManagedDatabasePaymentHistory>, sqlx::Error> {
+) -> DatabaseResult<Vec<ManagedDatabasePaymentHistory>> {
 	query_as!(
 		ManagedDatabasePaymentHistory,
 		r#"
@@ -540,7 +540,7 @@ pub async fn get_all_static_site_usages(
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
 	till_date: &DateTime<Utc>,
-) -> Result<Vec<StaticSitesPaymentHistory>, sqlx::Error> {
+) -> DatabaseResult<Vec<StaticSitesPaymentHistory>> {
 	query_as!(
 		StaticSitesPaymentHistory,
 		r#"
@@ -570,7 +570,7 @@ pub async fn get_all_managed_url_usages(
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
 	till_date: &DateTime<Utc>,
-) -> Result<Vec<ManagedUrlPaymentHistory>, sqlx::Error> {
+) -> DatabaseResult<Vec<ManagedUrlPaymentHistory>> {
 	query_as!(
 		ManagedUrlPaymentHistory,
 		r#"
@@ -599,7 +599,7 @@ pub async fn get_all_docker_repository_usages(
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
 	till_date: &DateTime<Utc>,
-) -> Result<Vec<DockerRepoPaymentHistory>, sqlx::Error> {
+) -> DatabaseResult<Vec<DockerRepoPaymentHistory>> {
 	query_as!(
 		DockerRepoPaymentHistory,
 		r#"
@@ -628,7 +628,7 @@ pub async fn get_all_domains_usages(
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
 	till_date: &DateTime<Utc>,
-) -> Result<Vec<DomainPaymentHistory>, sqlx::Error> {
+) -> DatabaseResult<Vec<DomainPaymentHistory>> {
 	query_as!(
 		DomainPaymentHistory,
 		r#"
@@ -658,7 +658,7 @@ pub async fn get_all_secrets_usages(
 	workspace_id: &Uuid,
 	month_start_date: &DateTime<Utc>,
 	till_date: &DateTime<Utc>,
-) -> Result<Vec<SecretPaymentHistory>, sqlx::Error> {
+) -> DatabaseResult<Vec<SecretPaymentHistory>> {
 	query_as!(
 		SecretPaymentHistory,
 		r#"
@@ -694,7 +694,7 @@ pub async fn create_transaction(
 	transaction_type: &TransactionType,
 	payment_status: &PaymentStatus,
 	description: Option<&str>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -741,7 +741,7 @@ pub async fn update_transaction_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	transaction_id: &Uuid,
 	payment_status: &PaymentStatus,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -761,7 +761,7 @@ pub async fn update_transaction_status(
 
 pub async fn generate_new_transaction_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Uuid, sqlx::Error> {
+) -> DatabaseResult<Uuid> {
 	loop {
 		let uuid = Uuid::new_v4();
 
@@ -789,7 +789,7 @@ pub async fn generate_new_transaction_id(
 pub async fn get_payment_methods_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<Vec<PaymentMethod>, sqlx::Error> {
+) -> DatabaseResult<Vec<PaymentMethod>> {
 	query_as!(
 		PaymentMethod,
 		r#"
@@ -810,7 +810,7 @@ pub async fn get_payment_methods_for_workspace(
 pub async fn get_total_amount_in_cents_to_pay_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<TotalAmount, sqlx::Error> {
+) -> DatabaseResult<TotalAmount> {
 	query!(
 		r#"
 		SELECT
@@ -844,7 +844,7 @@ pub async fn get_transaction_by_transaction_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	transaction_id: &Uuid,
-) -> Result<Option<Transaction>, sqlx::Error> {
+) -> DatabaseResult<Option<Transaction>> {
 	query_as!(
 		Transaction,
 		r#"
@@ -878,7 +878,7 @@ pub async fn start_deployment_usage_history(
 	machine_type: &Uuid,
 	num_instance: i32,
 	start_time: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -915,7 +915,7 @@ pub async fn stop_deployment_usage_history(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	stop_time: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -941,7 +941,7 @@ pub async fn start_volume_usage_history(
 	storage: u64,
 	number_of_volume: u16,
 	start_time: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -978,7 +978,7 @@ pub async fn stop_volume_usage_history(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	volume_id: &Uuid,
 	stop_time: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -1000,7 +1000,7 @@ pub async fn stop_volume_usage_history(
 pub async fn get_volume_payment_history_by_volume_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	volume_id: &Uuid,
-) -> Result<Option<VolumePaymentHistory>, sqlx::Error> {
+) -> DatabaseResult<Option<VolumePaymentHistory>> {
 	query_as!(
 		VolumePaymentHistory,
 		r#"
@@ -1029,7 +1029,7 @@ pub async fn start_database_usage_history(
 	database_id: &Uuid,
 	db_plan: &ManagedDatabasePlan,
 	start_time: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -1063,7 +1063,7 @@ pub async fn stop_database_usage_history(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	database_id: &Uuid,
 	deletion_time: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE 
@@ -1087,7 +1087,7 @@ pub async fn update_static_site_usage_history(
 	workspace_id: &Uuid,
 	static_site_plan: &StaticSitePlan,
 	update_time: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -1135,7 +1135,7 @@ pub async fn update_managed_url_usage_history(
 	workspace_id: &Uuid,
 	url_count: &i32,
 	update_time: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -1183,7 +1183,7 @@ pub async fn update_docker_repo_usage_history(
 	workspace_id: &Uuid,
 	storage: &i64,
 	update_time: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -1231,7 +1231,7 @@ pub async fn update_secret_usage_history(
 	workspace_id: &Uuid,
 	secret_count: &i32,
 	update_time: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -1279,7 +1279,7 @@ pub async fn update_domain_usage_history(
 	workspace_id: &Uuid,
 	domain_plan: &DomainPlan,
 	update_time: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -1326,7 +1326,7 @@ pub async fn update_amount_due_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	amount_due_in_cents: u64,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -1347,7 +1347,7 @@ pub async fn update_amount_due_for_workspace(
 pub async fn get_payment_method_info(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	payment_method_id: &str,
-) -> Result<Option<PaymentMethod>, sqlx::Error> {
+) -> DatabaseResult<Option<PaymentMethod>> {
 	query_as!(
 		PaymentMethod,
 		r#"
@@ -1368,7 +1368,7 @@ pub async fn get_payment_method_info(
 pub async fn delete_payment_method(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	payment_method_id: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		DELETE FROM
@@ -1387,7 +1387,7 @@ pub async fn add_payment_method_info(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	payment_method_id: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO 
@@ -1411,7 +1411,7 @@ pub async fn add_payment_method_info(
 pub async fn get_transactions_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<Vec<Transaction>, sqlx::Error> {
+) -> DatabaseResult<Vec<Transaction>> {
 	query_as!(
 		Transaction,
 		r#"

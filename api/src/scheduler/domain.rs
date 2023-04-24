@@ -4,7 +4,6 @@ use cloudflare::{
 	endpoints::zone::{self, Status},
 	framework::response::ApiFailure,
 };
-use eve_rs::AsError;
 use sqlx::Connection;
 
 use crate::{

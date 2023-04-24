@@ -22,7 +22,7 @@ use futures::TryStreamExt;
 use sqlx::query_as;
 
 pub use self::runner::*;
-use crate::{db, Database};
+use crate::prelude::*;
 
 pub struct GitProvider {
 	pub id: Uuid,
@@ -76,7 +76,7 @@ pub struct StepRecord {
 
 pub async fn initialize_ci_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Initializing ci tables");
 
 	query!(
@@ -298,7 +298,7 @@ pub async fn initialize_ci_pre(
 
 pub async fn initialize_ci_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Finishing up ci tables initialization");
 
 	// machine types for ci builds
@@ -341,7 +341,7 @@ pub async fn initialize_ci_post(
 
 pub async fn get_all_build_machine_types(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<BuildMachineType>, sqlx::Error> {
+) -> DatabaseResult<Vec<BuildMachineType>> {
 	query_as!(
 		BuildMachineType,
 		r#"
@@ -365,7 +365,7 @@ pub async fn add_git_provider_to_workspace(
 	git_provider_type: GitProviderType,
 	login_name: Option<&str>,
 	password: Option<&str>,
-) -> Result<Uuid, sqlx::Error> {
+) -> DatabaseResult<Uuid> {
 	let id = Uuid::new_v4();
 
 	query!(
@@ -397,7 +397,7 @@ pub async fn add_git_provider_to_workspace(
 pub async fn get_git_provider_details_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	git_provider_id: &Uuid,
-) -> Result<Option<GitProvider>, sqlx::Error> {
+) -> DatabaseResult<Option<GitProvider>> {
 	query_as!(
 		GitProvider,
 		r#"
@@ -425,7 +425,7 @@ pub async fn get_git_provider_details_by_id(
 pub async fn remove_git_provider_credentials(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	git_provider_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query_as!(
 		GitProvider,
 		r#"
@@ -447,7 +447,7 @@ pub async fn remove_git_provider_credentials(
 pub async fn list_connected_git_providers_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<Vec<GitProvider>, sqlx::Error> {
+) -> DatabaseResult<Vec<GitProvider>> {
 	query_as!(
 		GitProvider,
 		r#"
@@ -477,7 +477,7 @@ pub async fn get_git_provider_details_for_workspace_using_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	domain_name: &str,
-) -> Result<Option<GitProvider>, sqlx::Error> {
+) -> DatabaseResult<Option<GitProvider>> {
 	query_as!(
 		GitProvider,
 		r#"
@@ -513,7 +513,7 @@ pub async fn add_repo_for_git_provider(
 	repo_owner: &str,
 	repo_name: &str,
 	clone_url: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -553,7 +553,7 @@ pub async fn update_repo_details_for_git_provider(
 	repo_owner: &str,
 	repo_name: &str,
 	clone_url: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -580,7 +580,7 @@ pub async fn update_repo_details_for_git_provider(
 pub async fn list_repos_for_git_provider(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	git_provider_id: &Uuid,
-) -> Result<Vec<Repository>, sqlx::Error> {
+) -> DatabaseResult<Vec<Repository>> {
 	query_as!(
 		Repository,
 		r#"
@@ -612,7 +612,7 @@ pub async fn get_repo_details_using_github_uid_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	git_provider_repo_uid: &str,
-) -> Result<Option<Repository>, sqlx::Error> {
+) -> DatabaseResult<Option<Repository>> {
 	query_as!(
 		Repository,
 		r#"
@@ -650,7 +650,7 @@ pub async fn update_repo_status(
 	git_provider_id: &Uuid,
 	git_provider_repo_uid: &str,
 	status: RepoStatus,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -674,7 +674,7 @@ pub async fn activate_ci_for_repo(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
 	runner_id: &Uuid,
-) -> Result<String, sqlx::Error> {
+) -> DatabaseResult<String> {
 	let secret = Uuid::new_v4().to_string();
 
 	query!(
@@ -700,7 +700,7 @@ pub async fn activate_ci_for_repo(
 pub async fn get_repo_using_patr_repo_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
-) -> Result<Option<Repository>, sqlx::Error> {
+) -> DatabaseResult<Option<Repository>> {
 	query_as!(
 		Repository,
 		r#"
@@ -734,7 +734,7 @@ pub async fn generate_new_build_for_repo(
 	git_commit_message: Option<&str>,
 	git_pr_title: Option<&str>,
 	runner_id: &Uuid,
-) -> Result<i64, sqlx::Error> {
+) -> DatabaseResult<i64> {
 	query!(
 		r#"
 		INSERT INTO
@@ -784,7 +784,7 @@ pub async fn update_build_status(
 	repo_id: &Uuid,
 	build_num: i64,
 	status: BuildStatus,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -808,7 +808,7 @@ pub async fn get_build_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
 	build_num: i64,
-) -> Result<Option<BuildStatus>, sqlx::Error> {
+) -> DatabaseResult<Option<BuildStatus>> {
 	let result = query_as!(
 		BuildRecord,
 		r#"
@@ -847,7 +847,7 @@ pub async fn get_build_status_for_update(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
 	build_num: i64,
-) -> Result<Option<BuildStatus>, sqlx::Error> {
+) -> DatabaseResult<Option<BuildStatus>> {
 	let result = query_as!(
 		BuildRecord,
 		r#"
@@ -886,7 +886,7 @@ pub async fn update_build_started_time(
 	repo_id: &Uuid,
 	build_num: i64,
 	started: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -911,7 +911,7 @@ pub async fn update_build_finished_time(
 	repo_id: &Uuid,
 	build_num: i64,
 	finished: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -936,7 +936,7 @@ pub async fn update_build_message(
 	repo_id: &Uuid,
 	build_num: i64,
 	message: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -960,7 +960,7 @@ pub async fn list_build_steps_for_build(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
 	build_num: i64,
-) -> Result<Vec<Step>, sqlx::Error> {
+) -> DatabaseResult<Vec<Step>> {
 	query_as!(
 		StepRecord,
 		r#"
@@ -1000,7 +1000,7 @@ pub async fn list_build_steps_for_build(
 pub async fn list_build_details_for_repo(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
-) -> Result<Vec<BuildDetails>, sqlx::Error> {
+) -> DatabaseResult<Vec<BuildDetails>> {
 	query_as!(
 		BuildRecord,
 		r#"
@@ -1049,7 +1049,7 @@ pub async fn get_build_details_for_build(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
 	build_num: i64,
-) -> Result<Option<BuildDetails>, sqlx::Error> {
+) -> DatabaseResult<Option<BuildDetails>> {
 	query_as!(
 		BuildRecord,
 		r#"
@@ -1106,7 +1106,7 @@ pub async fn add_ci_step_for_build(
 	base_image: &str,
 	commands: &str,
 	status: BuildStepStatus,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -1142,7 +1142,7 @@ pub async fn update_build_step_status(
 	build_num: i64,
 	step_id: i32,
 	status: BuildStepStatus,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -1169,7 +1169,7 @@ pub async fn get_build_step_status(
 	repo_id: &Uuid,
 	build_num: i64,
 	step_id: i32,
-) -> Result<Option<BuildStepStatus>, sqlx::Error> {
+) -> DatabaseResult<Option<BuildStepStatus>> {
 	query!(
 		r#"
 		SELECT
@@ -1194,7 +1194,7 @@ pub async fn get_build_created_time(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
 	build_num: i64,
-) -> Result<Option<DateTime<Utc>>, sqlx::Error> {
+) -> DatabaseResult<Option<DateTime<Utc>>> {
 	struct QueryResult {
 		created: Option<DateTime<Utc>>,
 	}
@@ -1226,7 +1226,7 @@ pub async fn update_build_step_started_time(
 	build_num: i64,
 	step_id: i32,
 	started: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -1254,7 +1254,7 @@ pub async fn update_build_step_finished_time(
 	build_num: i64,
 	step_id: i32,
 	finished: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -1281,7 +1281,7 @@ pub async fn set_syncing(
 	git_provider_id: &Uuid,
 	is_syncing: bool,
 	last_synced: Option<DateTime<Utc>>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query_as!(
 		GitProvider,
 		r#"
@@ -1305,7 +1305,7 @@ pub async fn set_syncing(
 pub async fn get_recent_activity_for_ci_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<Vec<RecentActivity>, sqlx::Error> {
+) -> DatabaseResult<Vec<RecentActivity>> {
 	query!(
 		r#"
 		SELECT

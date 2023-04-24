@@ -1,295 +1,165 @@
 use api_models::utils::Uuid;
+use axum::{
+	extract::{Query, State},
+	headers::{authorization::Basic, Authorization},
+	routing::get,
+	Json,
+	Router,
+	TypedHeader,
+};
 use base64::prelude::*;
 use chrono::Utc;
-use eve_rs::{App as EveApp, AsError, Context, HttpMethod, NextHandler};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::{
-	app::{create_axum_router, App},
-	db::{self},
 	models::{
-		error::{id as ErrorId, message as ErrorMessage},
-		rbac::{self, permissions, GOD_USER_ID},
+		rbac::{permissions, GOD_USER_ID},
 		RegistryToken,
 		RegistryTokenAccess,
 	},
-	pin_fn,
-	service,
-	utils::{
-		constants::request_keys,
-		validator,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	prelude::*,
+	utils::constants::request_keys,
 };
 
-/// # Description
-/// This function is used to create a sub app for every endpoint listed. It
-/// creates an eve app which binds the endpoint with functions.
-///
-/// # Arguments
-/// * `app` - an object of type [`App`] which contains all the configuration of
-/// api including the database connections.
-///
-/// # Returns
-/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
-/// containing context, middleware, object of [`App`] and Error
-///
-/// [`App`]: App
-pub fn create_sub_app() -> Router<App> {
-	let mut app = create_axum_router(app);
-
-	app.post(
+/// This function is used to create a router for every endpoint in this file
+pub fn create_sub_app(app: &App) -> Router<App> {
+	Router::new().route(
 		"/docker-registry-token",
-		[EveMiddleware::CustomFunction(pin_fn!(
-			docker_registry_token_endpoint
-		))],
-	);
-	app.get(
-		"/docker-registry-token",
-		[EveMiddleware::CustomFunction(pin_fn!(
-			docker_registry_token_endpoint
-		))],
-	);
-
-	app
+		get(docker_registry_token_endpoint)
+			.post(|| StatusCode::METHOD_NOT_ALLOWED),
+	)
 }
 
-/// # Description
-/// This function is used to authenticate and login into the docker registry
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-/// ```
-/// {
-///    scope:
-///    client_id:
-///    service:
-///    offline_token:
-/// }
-/// ```
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    token:
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum DockerRegistryTokenQuery {
+	#[serde(rename_all = "snake_case")]
+	Authorize { scope: String },
+	#[serde(rename_all = "snake_case")]
+	Login {
+		client_id: String,
+		service: String,
+		offline_token: bool,
+	},
+}
+
+fn docker_registry_error(error_code: &str, message: &str) -> serde_json::Value {
+	json!({
+		"errors": [{
+			"code": error_code,
+			"message": message,
+			"detail": []
+		}]
+	})
+}
+
+/// This function is used to authorize and login into the docker registry
 async fn docker_registry_token_endpoint(
-	mut context: EveContext,
-	next: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let query = context.get_request().get_query();
-
-	if context.get_method() == &HttpMethod::Post {
-		context.status(405);
-		return Ok(context);
-	}
-
-	if query.get(request_keys::SCOPE).is_some() {
-		// Authenticating an existing login
-		docker_registry_authenticate(context, next).await
-	} else {
-		// Logging in
-		docker_registry_login(context, next).await
+	mut connection: Connection,
+	Query(query): Query<DockerRegistryTokenQuery>,
+	typed_header: TypedHeader<Authorization<Basic>>,
+	state: State<App>,
+) -> (StatusCode, Json<serde_json::Value>) {
+	match query {
+		DockerRegistryTokenQuery::Authorize { scope } => todo!(),
+		DockerRegistryTokenQuery::Login {
+			client_id,
+			service,
+			offline_token,
+		} => {
+			docker_registry_login(
+				connection,
+				client_id,
+				service,
+				offline_token,
+				typed_header,
+				state,
+			)
+			.await
+		}
 	}
 }
 
-/// # Description
 /// This function is used to login into the docker registry
 /// required inputs:
 /// auth token in the authorization headers
 /// example: Authorization: <insert authToken>
-/// ```
-/// {
-///    client_id: ,
-///    offline_token: ,
-///    service:
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    token:
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn docker_registry_login(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let query = context.get_request().get_query().clone();
-	let config = context.get_state().config.clone();
-
-	let _client_id = query
-		.get(request_keys::SNAKE_CASE_CLIENT_ID)
-		.status(400)
-		.body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::UNAUTHORIZED,
-					request_keys::MESSAGE: ErrorMessage::INVALID_CLIENT_ID,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)?;
-
-	let _offline_token = query
-		.get(request_keys::SNAKE_CASE_OFFLINE_TOKEN)
-		.map(|value| {
-			value.parse::<bool>().status(400).body(
-				json!({
-					request_keys::ERRORS: [{
-						request_keys::CODE: ErrorId::UNAUTHORIZED,
-						request_keys::MESSAGE: ErrorMessage::INVALID_OFFLINE_TOKEN,
-						request_keys::DETAIL: []
-					}]
-				})
-				.to_string(),
-			)
-		})
-		.status(400)
-		.body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::UNAUTHORIZED,
-					request_keys::MESSAGE: ErrorMessage::OFFLINE_TOKEN_NOT_FOUND,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)??;
-
-	let service = query.get(request_keys::SERVICE).status(400).body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::UNAUTHORIZED,
-				request_keys::MESSAGE: ErrorMessage::SERVICE_NOT_FOUND,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
+	mut connection: Connection,
+	_client_id: String,
+	service: String,
+	_offline_token: bool,
+	TypedHeader(authorization): TypedHeader<Authorization<Basic>>,
+	State(app): State<App>,
+) -> (StatusCode, Json<serde_json::Value>) {
+	let config = app.config;
 
 	if service != &config.docker_registry.service_name {
-		Error::as_result().status(400).body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::UNAUTHORIZED,
-					request_keys::MESSAGE: ErrorMessage::INVALID_SERVICE,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)?;
+		return (
+			StatusCode::BAD_REQUEST,
+			Json(docker_registry_error(
+				"UNSUPPORTED",
+				"Invalid request sent by the client. Service is not valid",
+			)),
+		);
 	}
 
-	let authorization = context
-		.get_header("Authorization")
-		.map(|value| value.replace("Basic ", ""))
-		.map(|value| {
-			BASE64_STANDARD
-				.decode(value)
-				.ok()
-				.and_then(|value| String::from_utf8(value).ok())
-				.status(400)
-				.body(
-					json!({
-						request_keys::ERRORS: [{
-							request_keys::CODE: ErrorId::UNAUTHORIZED,
-							request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
-							request_keys::DETAIL: []
-						}]
-					})
-					.to_string(),
-				)
-		})
-		.status(400)
-		.body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::UNAUTHORIZED,
-					request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_NOT_FOUND,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)??;
-
-	let mut splitter = authorization.split(':');
-	let username = splitter.next().status(400).body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::UNAUTHORIZED,
-				request_keys::MESSAGE: ErrorMessage::USERNAME_NOT_FOUND,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
-	let password = splitter.next().status(400).body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::UNAUTHORIZED,
-				request_keys::MESSAGE: ErrorMessage::PASSWORD_NOT_FOUND,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
-	let user =
-		db::get_user_by_username(context.get_database_connection(), username)
-			.await?
-			.status(401)
-			.body(
-				json!({
-					request_keys::ERRORS: [{
-						request_keys::CODE: ErrorId::UNAUTHORIZED,
-						request_keys::MESSAGE: ErrorMessage::USER_NOT_FOUND,
-						request_keys::DETAIL: []
-					}]
-				})
-				.to_string(),
-			)?;
+	let username = authorization.username();
+	let password = authorization.password();
+	let user = match db::get_user_by_username(&mut connection, username).await {
+		Ok(Some(user)) => user,
+		Ok(None) => {
+			return (
+				StatusCode::UNAUTHORIZED,
+				Json(docker_registry_error(
+					"DENIED",
+					"No user found with that username",
+				)),
+			);
+		}
+		Err(_) => {
+			return (
+				StatusCode::BAD_REQUEST,
+				Json(docker_registry_error(
+					"UNSUPPORTED",
+					concat!(
+						"An internal server error has occured.",
+						" Please try again later"
+					),
+				)),
+			);
+		}
+	};
 
 	// TODO API token as password instead of password, for TFA.
-	// This will happen once the API token is merged in
-	let success = service::validate_hash(password, &user.password)?;
+	let success =
+		if let Ok(value) = service::validate_hash(password, &user.password) {
+			value
+		} else {
+			return (
+				StatusCode::BAD_REQUEST,
+				Json(docker_registry_error(
+					"UNSUPPORTED",
+					concat!(
+						"An internal server error has occured.",
+						" Please try again later"
+					),
+				)),
+			);
+		};
 
 	if !success {
-		Error::as_result().status(401).body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::UNAUTHORIZED,
-					request_keys::MESSAGE: ErrorMessage::INVALID_PASSWORD,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)?;
+		return (
+			StatusCode::UNAUTHORIZED,
+			Json(docker_registry_error(
+				"DENIED",
+				"Your password is incorrect",
+			)),
+		);
 	}
 
-	let token = RegistryToken::new(
+	RegistryToken::new(
 		config.docker_registry.issuer.clone(),
 		Utc::now(),
 		username.to_string(),
@@ -299,197 +169,118 @@ async fn docker_registry_login(
 	.to_string(
 		config.docker_registry.private_key.as_ref(),
 		config.docker_registry.public_key_der.as_ref(),
-	)?;
-
-	context.json(json!({ request_keys::TOKEN: token }));
-	Ok(context)
+	)
+	.map(|token| (StatusCode::OK, Json(json!({ request_keys::TOKEN: token }))))
+	.unwrap_or_else(|_| {
+		(
+			StatusCode::BAD_REQUEST,
+			Json(docker_registry_error(
+				"UNSUPPORTED",
+				concat!(
+					"An internal server error has occured.",
+					" Please try again later"
+				),
+			)),
+		)
+	})
 }
 
-/// # Description
-/// This function is used to authenticate the user for docker registry
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    token:
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
-async fn docker_registry_authenticate(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let query = context.get_request().get_query().clone();
-	let config = context.get_state().config.clone();
+/// This function is used to authorize a user's permissions for docker registry
+async fn docker_registry_authorize(
+	mut connection: Connection,
+	scope: String,
+	TypedHeader(authorization): TypedHeader<Authorization<Basic>>,
+	State(app): State<App>,
+) -> (StatusCode, Json<serde_json::Value>) {
+	let config = app.config;
 
-	let authorization = context
-		.get_header("Authorization")
-		.map(|value| value.replace("Basic ", ""))
-		.map(|value| {
-			BASE64_STANDARD
-				.decode(value)
-				.ok()
-				.and_then(|value| String::from_utf8(value).ok())
-				.status(400)
-				.body(
-					json!({
-						request_keys::ERRORS: [{
-							request_keys::CODE: ErrorId::UNAUTHORIZED,
-							request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
-							request_keys::DETAIL: []
-						}]
-					})
-					.to_string(),
-				)
-		})
-		.status(400)
-		.body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::UNAUTHORIZED,
-					request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_NOT_FOUND,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)??;
-
-	let mut splitter = authorization.split(':');
-	let username = splitter.next().status(400).body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::UNAUTHORIZED,
-				request_keys::MESSAGE: ErrorMessage::USERNAME_NOT_FOUND,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
-	let password = splitter.next().status(400).body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::UNAUTHORIZED,
-				request_keys::MESSAGE: ErrorMessage::PASSWORD_NOT_FOUND,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
-	let user =
-		db::get_user_by_username(context.get_database_connection(), username)
-			.await?
-			.status(401)
-			.body(
-				json!({
-					request_keys::ERRORS: [{
-						request_keys::CODE: ErrorId::UNAUTHORIZED,
-						request_keys::MESSAGE: ErrorMessage::USER_NOT_FOUND,
-						request_keys::DETAIL: []
-					}]
-				})
-				.to_string(),
-			)?;
-
-	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
-	let god_user =
-		db::get_user_by_user_id(context.get_database_connection(), god_user_id)
-			.await?
-			.unwrap();
-	// check if user is GOD_USER then return the token
-	if username == god_user.username {
-		// return token.
-		if RegistryToken::parse(
-			password,
-			context
-				.get_state()
-				.config
-				.docker_registry
-				.public_key
-				.as_bytes(),
-		)
-		.is_ok()
-		{
-			context.json(json!({ request_keys::TOKEN: password }));
-			return Ok(context);
+	let username = authorization.username();
+	let password = authorization.password();
+	let user = match db::get_user_by_username(&mut connection, username).await {
+		Ok(Some(user)) => user,
+		Ok(None) => {
+			return (
+				StatusCode::UNAUTHORIZED,
+				Json(docker_registry_error(
+					"DENIED",
+					"No user found with that username",
+				)),
+			);
 		}
-	}
+		Err(_) => {
+			return (
+				StatusCode::BAD_REQUEST,
+				Json(docker_registry_error(
+					"UNSUPPORTED",
+					concat!(
+						"An internal server error has occured.",
+						" Please try again later"
+					),
+				)),
+			);
+		}
+	};
 
-	let success = service::validate_hash(password, &user.password)?;
+	// TODO API token for password instead of password, for TFA.
+	let success =
+		if let Ok(value) = service::validate_hash(password, &user.password) {
+			value
+		} else {
+			return (
+				StatusCode::BAD_REQUEST,
+				Json(docker_registry_error(
+					"UNSUPPORTED",
+					concat!(
+						"An internal server error has occured.",
+						" Please try again later"
+					),
+				)),
+			);
+		};
 
 	if !success {
-		Error::as_result().status(401).body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::UNAUTHORIZED,
-					request_keys::MESSAGE: ErrorMessage::INVALID_PASSWORD,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)?;
+		return (
+			StatusCode::UNAUTHORIZED,
+			Json(docker_registry_error(
+				"DENIED",
+				"Your password is incorrect",
+			)),
+		);
 	}
 
-	let scope = query.get(request_keys::SCOPE).status(500)?;
-	let mut splitter = scope.split(':');
-	let access_type = splitter.next().status(401).body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::INVALID_REQUEST,
-				request_keys::MESSAGE: ErrorMessage::ACCESS_TYPE_NOT_PRESENT,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
+	let (access_type, remaining) = if let Some(value) = scope.split_once(':') {
+		value
+	} else {
+		return (
+			StatusCode::BAD_REQUEST,
+			Json(docker_registry_error(
+				"UNSUPPORTED",
+				"Access type not present in request",
+			)),
+		);
+	};
+	let (repo, action) = if let Some(value) = remaining.split_once(':') {
+		value
+	} else {
+		return (
+			StatusCode::BAD_REQUEST,
+			Json(docker_registry_error(
+				"UNSUPPORTED",
+				"Action not present in request",
+			)),
+		);
+	};
 
 	// check if access type is repository
-	if access_type != request_keys::REPOSITORY {
-		Error::as_result().status(400).body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::INVALID_REQUEST,
-					request_keys::MESSAGE: ErrorMessage::INVALID_ACCESS_TYPE,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)?;
+	if access_type != "repository" {
+		return (
+			StatusCode::BAD_REQUEST,
+			Json(docker_registry_error(
+				"UNSUPPORTED",
+				"Invalid access type sent by client",
+			)),
+		);
 	}
-
-	let repo = splitter.next().status(400).body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::INVALID_REQUEST,
-				request_keys::MESSAGE: ErrorMessage::REPOSITORY_NOT_PRESENT,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
-
-	let action = splitter.next().status(400).body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::INVALID_REQUEST,
-				request_keys::MESSAGE: ErrorMessage::ACTION_NOT_PRESENT,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
 
 	let required_permissions = action
 		.split(',')
@@ -503,136 +294,156 @@ async fn docker_registry_authenticate(
 		.map(String::from)
 		.collect::<Vec<_>>();
 
-	let split_array = repo.split('/').map(String::from).collect::<Vec<_>>();
-	// reject if split array size is not equal to 2
-	if split_array.len() != 2 {
-		Error::as_result().status(400).body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::INVALID_REQUEST,
-					request_keys::MESSAGE: ErrorMessage::NO_WORKSPACE_OR_REPOSITORY,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)?;
-	}
-
-	let workspace_id_str = split_array.get(0).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id_str)
-		.map_err(|err| {
-			log::trace!(
-				"Unable to parse workspace_id: {} - error - {}",
-				workspace_id_str,
-				err
+	let (workspace_id_str, repo_name) =
+		if let Some(value) = repo.split_once('/') {
+			value
+		} else {
+			return (
+				StatusCode::BAD_REQUEST,
+				Json(docker_registry_error(
+					"NAME_INVALID",
+					"Invalid workspace or repository name",
+				)),
 			);
-			err
-		})
-		.status(500)
-		.body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::INVALID_REQUEST,
-					request_keys::MESSAGE: ErrorMessage::NO_WORKSPACE_OR_REPOSITORY,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)?;
+		};
 
-	// get first index from the vector
-	let repo_name = split_array.get(1).unwrap();
+	let workspace_id = if let Ok(uuid) = Uuid::parse_str(workspace_id_str) {
+		uuid
+	} else {
+		return (
+			StatusCode::BAD_REQUEST,
+			Json(docker_registry_error(
+				"NAME_INVALID",
+				"Invalid workspace ID",
+			)),
+		);
+	};
 
 	// check if repo name is valid
 	let is_repo_name_valid = validator::is_docker_repo_name_valid(repo_name);
 	if !is_repo_name_valid {
-		Error::as_result().status(400).body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::INVALID_REQUEST,
-					request_keys::MESSAGE: ErrorMessage::INVALID_REPOSITORY_NAME,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)?;
+		return (
+			StatusCode::BAD_REQUEST,
+			Json(docker_registry_error(
+				"NAME_INVALID",
+				"Invalid repository name",
+			)),
+		);
 	}
-	db::get_workspace_info(context.get_database_connection(), &workspace_id)
-		.await?
-		.status(400)
-		.body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::INVALID_REQUEST,
-					request_keys::MESSAGE: ErrorMessage::RESOURCE_DOES_NOT_EXIST,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)?;
+	match db::get_workspace_info(&mut connection, &workspace_id).await {
+		Ok(Some(_)) => (),
+		Ok(None) => {
+			return (
+				StatusCode::BAD_REQUEST,
+				Json(docker_registry_error(
+					"NAME_UNKNOWN",
+					"Workspace does not exist",
+				)),
+			);
+		}
+		Err(_) => {
+			return (
+				StatusCode::BAD_REQUEST,
+				Json(docker_registry_error(
+					"UNSUPPORTED",
+					concat!(
+						"An internal server error has occured.",
+						" Please try again later"
+					),
+				)),
+			);
+		}
+	};
 
-	let repository = db::get_docker_repository_by_name(
-		context.get_database_connection(),
+	let repository = match db::get_docker_repository_by_name(
+		&mut connection,
 		repo_name,
 		&workspace_id,
 	)
-	.await?
-	// reject request if repository does not exist
-	.status(400)
-	.body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::INVALID_REQUEST,
-				request_keys::MESSAGE: ErrorMessage::RESOURCE_DOES_NOT_EXIST,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
+	.await
+	{
+		Ok(Some(repository)) => repository,
+		Ok(None) => {
+			return (
+				StatusCode::BAD_REQUEST,
+				Json(docker_registry_error(
+					"NAME_UNKNOWN",
+					"Repository does not exist",
+				)),
+			);
+		}
+		Err(_) => {
+			return (
+				StatusCode::BAD_REQUEST,
+				Json(docker_registry_error(
+					"UNSUPPORTED",
+					concat!(
+						"An internal server error has occured.",
+						" Please try again later"
+					),
+				)),
+			);
+		}
+	};
 
 	// get repo id inorder to get resource details
-	let resource = db::get_resource_by_id(
-		context.get_database_connection(),
-		&repository.id,
-	)
-	.await?
-	.status(500)
-	.body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::SERVER_ERROR,
-				request_keys::MESSAGE: ErrorMessage::SERVER_ERROR,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
+	let resource = if let Ok(Some(resource)) =
+		db::get_resource_by_id(&mut connection, &repository.id).await
+	{
+		resource
+	} else {
+		return (
+			StatusCode::BAD_REQUEST,
+			Json(docker_registry_error(
+				"UNSUPPORTED",
+				concat!(
+					"An internal server error has occured.",
+					" Please try again later"
+				),
+			)),
+		);
+	};
 
 	if resource.owner_id != workspace_id {
 		log::error!(
 			"Resource owner_id is not the same as workspace id. This is illegal"
 		);
-		Error::as_result().status(500).body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::SERVER_ERROR,
-					request_keys::MESSAGE: ErrorMessage::SERVER_ERROR,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)?;
+		return (
+			StatusCode::BAD_REQUEST,
+			Json(docker_registry_error(
+				"UNSUPPORTED",
+				concat!(
+					"An internal server error has occured.",
+					" Please try again later"
+				),
+			)),
+		);
 	}
 
 	let god_user_id = GOD_USER_ID.get().unwrap();
 
 	// get all workspace roles for the user using the id
 	let user_id = &user.id;
-	let user_roles = db::get_all_workspace_role_permissions_for_user(
-		context.get_database_connection(),
-		&user.id,
-	)
-	.await?;
+	let user_roles = if let Ok(user_roles) =
+		db::get_all_workspace_role_permissions_for_user(
+			&mut connection,
+			&user.id,
+		)
+		.await
+	{
+		user_roles
+	} else {
+		return (
+			StatusCode::BAD_REQUEST,
+			Json(docker_registry_error(
+				"UNSUPPORTED",
+				concat!(
+					"An internal server error has occured.",
+					" Please try again later"
+				),
+			)),
+		);
+	};
 
 	let required_role_for_user = user_roles.get(&workspace_id);
 	let mut approved_permissions = vec![];
@@ -696,7 +507,7 @@ async fn docker_registry_authenticate(
 		}
 	}
 
-	let token = RegistryToken::new(
+	RegistryToken::new(
 		config.docker_registry.issuer.clone(),
 		Utc::now(),
 		username.to_string(),
@@ -710,8 +521,18 @@ async fn docker_registry_authenticate(
 	.to_string(
 		config.docker_registry.private_key.as_ref(),
 		config.docker_registry.public_key_der.as_ref(),
-	)?;
-
-	context.json(json!({ request_keys::TOKEN: token }));
-	Ok(context)
+	)
+	.map(|token| (StatusCode::OK, Json(json!({ request_keys::TOKEN: token }))))
+	.unwrap_or_else(|_| {
+		(
+			StatusCode::BAD_REQUEST,
+			Json(docker_registry_error(
+				"UNSUPPORTED",
+				concat!(
+					"An internal server error has occured.",
+					" Please try again later"
+				),
+			)),
+		)
+	})
 }

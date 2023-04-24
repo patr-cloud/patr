@@ -2,16 +2,11 @@ use api_models::{
 	models::{
 		user::{
 			AddPersonalEmailRequest,
-			AddPersonalEmailResponse,
 			AddPhoneNumberRequest,
-			AddPhoneNumberResponse,
 			BasicUserInfo,
 			ChangePasswordRequest,
-			ChangePasswordResponse,
 			DeletePersonalEmailRequest,
-			DeletePersonalEmailResponse,
 			DeletePhoneNumberRequest,
-			DeletePhoneNumberResponse,
 			GetUserInfoByUserIdResponse,
 			GetUserInfoResponse,
 			ListPersonalEmailsResponse,
@@ -20,253 +15,111 @@ use api_models::{
 			SearchForUserRequest,
 			SearchForUserResponse,
 			UpdateRecoveryEmailRequest,
-			UpdateRecoveryEmailResponse,
 			UpdateRecoveryPhoneNumberRequest,
-			UpdateRecoveryPhoneNumberResponse,
 			UpdateUserInfoRequest,
-			UpdateUserInfoResponse,
 			VerifyPersonalEmailRequest,
-			VerifyPersonalEmailResponse,
 			VerifyPhoneNumberRequest,
-			VerifyPhoneNumberResponse,
 		},
 		workspace::Workspace,
 	},
 	utils::{DateTime, Uuid},
 };
+use axum::Router;
 use chrono::{Datelike, Utc};
-use eve_rs::{App as EveApp, AsError, NextHandler};
 
-use crate::{
-	app::{create_axum_router, App},
-	db::{self, User},
-	error,
-	pin_fn,
-	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
-};
+use crate::{db::User, prelude::*, utils::constants::request_keys};
 
 mod api_token;
 mod login;
 
-/// # Description
-/// This function is used to create a sub app for every endpoint listed. It
-/// creates an eve app which binds the endpoint with functions.
-///
-/// # Arguments
-/// * `app` - an object of type [`App`] which contains all the configuration of
-///   api including the
-/// database connections.
-///
-/// # Returns
-/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
-/// containing context, middleware, object of [`App`] and Error
-///
-/// [`App`]: App
-pub fn create_sub_app() -> Router<App> {
-	let mut sub_app = create_axum_router(app);
-
-	sub_app.get(
-		"/info",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_user_info)),
-		],
-	);
-	sub_app.post(
-		"/info",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(update_user_info)),
-		],
-	);
-	sub_app.post(
-		"/add-email-address",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(add_email_address)),
-		],
-	);
-	sub_app.get(
-		"/list-email-address",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(list_email_addresses)),
-		],
-	);
-	sub_app.get(
-		"/list-phone-numbers",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(list_phone_numbers)),
-		],
-	);
-	sub_app.post(
-		"/update-recovery-email",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(
-				update_recovery_email_address
-			)),
-		],
-	);
-	sub_app.post(
-		"/update-recovery-phone",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(
-				update_recovery_phone_number
-			)),
-		],
-	);
-	sub_app.post(
-		"/add-phone-number",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(add_phone_number_for_user)),
-		],
-	);
-	sub_app.post(
-		"/verify-phone-number",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(verify_phone_number)),
-		],
-	);
-	sub_app.delete(
-		"/delete-personal-email",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(
-				delete_personal_email_address
-			)),
-		],
-	);
-	sub_app.delete(
-		"/delete-phone-number",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(delete_phone_number)),
-		],
-	);
-	sub_app.post(
-		"/verify-email-address",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(verify_email_address)),
-		],
-	);
-	sub_app.get(
-		"/workspaces",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_workspaces_for_user)),
-		],
-	);
-	sub_app.post(
-		"/change-password",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(change_password)),
-		],
-	);
-
-	sub_app.get(
-		"/:userId/info",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_user_id)),
-		],
-	);
-	sub_app.get(
-		"/search",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: false,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(search_for_user)),
-		],
-	);
-
-	sub_app.use_sub_app("/", login::create_sub_app(app));
-	sub_app.use_sub_app("/", api_token::create_sub_app(app));
-
-	sub_app
+/// This function is used to create a router for every endpoint in this file
+pub fn create_sub_app(app: &App) -> Router<App> {
+	Router::new()
+		.mount_protected_dto(
+			PlainTokenAuthenticator::new(),
+			app.clone(),
+			get_user_info,
+		)
+		.mount_protected_dto(
+			PlainTokenAuthenticator::new(),
+			app.clone(),
+			update_user_info,
+		)
+		.mount_protected_dto(
+			PlainTokenAuthenticator::new(),
+			app.clone(),
+			list_email_addresses,
+		)
+		.mount_protected_dto(
+			PlainTokenAuthenticator::new().disallow_api_token(),
+			app.clone(),
+			add_email_address,
+		)
+		.mount_protected_dto(
+			PlainTokenAuthenticator::new().disallow_api_token(),
+			app.clone(),
+			verify_email_address,
+		)
+		.mount_protected_dto(
+			PlainTokenAuthenticator::new().disallow_api_token(),
+			app.clone(),
+			update_recovery_email_address,
+		)
+		.mount_protected_dto(
+			PlainTokenAuthenticator::new().disallow_api_token(),
+			app.clone(),
+			delete_personal_email_address,
+		)
+		.mount_protected_dto(
+			PlainTokenAuthenticator::new(),
+			app.clone(),
+			list_phone_numbers,
+		)
+		.mount_protected_dto(
+			PlainTokenAuthenticator::new().disallow_api_token(),
+			app.clone(),
+			add_phone_number_for_user,
+		)
+		.mount_protected_dto(
+			PlainTokenAuthenticator::new().disallow_api_token(),
+			app.clone(),
+			update_recovery_phone_number,
+		)
+		.mount_protected_dto(
+			PlainTokenAuthenticator::new().disallow_api_token(),
+			app.clone(),
+			verify_phone_number,
+		)
+		.mount_protected_dto(
+			PlainTokenAuthenticator::new().disallow_api_token(),
+			app.clone(),
+			delete_phone_number,
+		)
+		.mount_protected_dto(
+			PlainTokenAuthenticator::new(),
+			app.clone(),
+			get_workspaces_for_user,
+		)
+		.mount_protected_dto(
+			PlainTokenAuthenticator::new().disallow_api_token(),
+			app.clone(),
+			change_password,
+		)
+		.mount_protected_dto(
+			PlainTokenAuthenticator::new(),
+			app.clone(),
+			get_user_info_by_user_id,
+		)
+		.mount_protected_dto(
+			PlainTokenAuthenticator::new().disallow_api_token(),
+			app.clone(),
+			search_for_user,
+		)
+		.merge(login::create_sub_app(app))
+		.merge(api_token::create_sub_app(app))
 }
 
-/// # Description
 /// This function is used to get the user's information.
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-///    username:
-///    firstName:
-///    lastName:
-///    birthday:
-///    bio:
-///    location:
-///    created:
-///    emails:
-///    phoneNumbers:
-///    {
-///       countryCode:
-///       number:
-///    }
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn get_user_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -348,43 +201,7 @@ async fn get_user_info(
 	Ok(context)
 }
 
-/// # Description
 /// This function is used to get user info through userId
-/// required inputs:
-/// ```
-/// {
-///    userId:
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false,
-///    username:,
-///    firstName:,
-///    lastName:,
-///    birthday:,
-///    bio:,
-///    location:,
-///    created:,
-///    emails: [
-///    ],
-///    phoneNumbers: []
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn get_user_info_by_user_id(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -421,39 +238,7 @@ async fn get_user_info_by_user_id(
 	Ok(context)
 }
 
-/// # Description
 /// This function is used to update the user's information
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-/// ```
-/// {
-///    firstName:
-///    lastName:
-///    dob:
-///    bio:
-///    location:
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn update_user_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -506,35 +291,7 @@ async fn update_user_info(
 	Ok(context)
 }
 
-/// # Description
 /// This function is used to add a new email address
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-/// ```
-/// {
-///    email:
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn add_email_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -562,31 +319,7 @@ async fn add_email_address(
 	Ok(context)
 }
 
-/// # Description
 /// This function is used to list the email addresses registered with user
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-///    emails: []
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn list_email_addresses(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -621,35 +354,7 @@ async fn list_email_addresses(
 	Ok(context)
 }
 
-/// # Description
 /// This function is used to list the phone numbers registered with the user
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-///    phoneNumbers:
-///    {
-///       countryCode:
-///       phoneNumber:
-///    }
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn list_phone_numbers(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -684,35 +389,7 @@ async fn list_phone_numbers(
 	Ok(context)
 }
 
-/// # Description
 /// This function is used to update the back up email address of the user
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-/// ```
-/// {
-///    recoveryEMail: new recoveryEmail
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn update_recovery_email_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -736,36 +413,7 @@ async fn update_recovery_email_address(
 	Ok(context)
 }
 
-/// # Description
 /// This function is used to update the recovery phone number of the user
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-/// ```
-/// {
-///    recoveryPhoneCountryCode:
-///    recoveryPhoneNumber:
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn update_recovery_phone_number(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -793,35 +441,7 @@ async fn update_recovery_phone_number(
 	Ok(context)
 }
 
-/// # Description
 /// This function is used to delete a personal email address
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-/// ```
-/// {
-///    email:
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn delete_personal_email_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -845,36 +465,7 @@ async fn delete_personal_email_address(
 	Ok(context)
 }
 
-/// # Description
-/// This function is used to add phone number to  the user's account
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-/// ```
-/// {
-///    countryCode:
-///    phoneNumber:
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
+/// This function is used to add phone number to the user's account
 async fn add_phone_number_for_user(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -910,37 +501,7 @@ async fn add_phone_number_for_user(
 	Ok(context)
 }
 
-/// # Description
 /// This function is used to verify user's phone number
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-/// ```
-/// {
-///    countryCode:
-///    phoneNumber:
-///    verificationToken:
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn verify_phone_number(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -971,36 +532,7 @@ async fn verify_phone_number(
 	Ok(context)
 }
 
-/// # Description
 /// This function is used to delete user's phone number
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-/// ```
-/// {
-///    countryCode:
-///    phoneNumber:
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn delete_phone_number(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -1029,36 +561,7 @@ async fn delete_phone_number(
 	Ok(context)
 }
 
-/// # Description
 /// This function is used to verify user's email address
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-/// ```
-/// {
-///    email:
-///    verificationToken:
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn verify_email_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -1086,41 +589,8 @@ async fn verify_email_address(
 	Ok(context)
 }
 
-/// # Description
-/// This function is used to get a list of all workspaces in which the user
-/// is a member
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false,
-///    workspaces:
-///    [
-///       {
-///           id: ,
-///           name: ,
-///           acitve: ,
-///           created:         
-///    
-///       }
-///    ]
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
+/// This function is used to get a list of all workspaces which the user is a
+/// member of
 async fn get_workspaces_for_user(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -1147,35 +617,7 @@ async fn get_workspaces_for_user(
 	Ok(context)
 }
 
-/// # Description
 /// This function is used to change the password of user
-/// required inputs:
-/// auth token from headers
-/// ```
-/// {
-///    newPassword:
-///    password:
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn change_password(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,

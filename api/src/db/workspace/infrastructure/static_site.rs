@@ -4,7 +4,7 @@ use api_models::{
 };
 use chrono::{DateTime, Utc};
 
-use crate::{query, query_as, Database};
+use crate::prelude::*;
 
 pub struct StaticSite {
 	pub id: Uuid,
@@ -34,7 +34,7 @@ pub struct StaticSiteManagedUrl {
 
 pub async fn initialize_static_site_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Initializing static site tables");
 	query!(
 		r#"
@@ -82,7 +82,7 @@ pub async fn initialize_static_site_pre(
 
 pub async fn initialize_static_site_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Finishing up static site tables initialization");
 	query!(
 		r#"
@@ -136,7 +136,7 @@ pub async fn create_static_site(
 	static_site_id: &Uuid,
 	name: &str,
 	workspace_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -161,7 +161,7 @@ pub async fn create_static_site(
 pub async fn get_static_site_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &Uuid,
-) -> Result<Option<StaticSite>, sqlx::Error> {
+) -> DatabaseResult<Option<StaticSite>> {
 	query_as!(
 		StaticSite,
 		r#"
@@ -187,7 +187,7 @@ pub async fn get_static_site_by_name_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	name: &str,
 	workspace_id: &Uuid,
-) -> Result<Option<StaticSite>, sqlx::Error> {
+) -> DatabaseResult<Option<StaticSite>> {
 	query_as!(
 		StaticSite,
 		r#"
@@ -215,7 +215,7 @@ pub async fn update_static_site_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &Uuid,
 	status: &DeploymentStatus,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -237,7 +237,7 @@ pub async fn update_current_live_upload_for_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &Uuid,
 	upload_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -258,7 +258,7 @@ pub async fn update_current_live_upload_for_static_site(
 pub async fn get_managed_urls_for_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &Uuid,
-) -> Result<Vec<StaticSiteManagedUrl>, sqlx::Error> {
+) -> DatabaseResult<Vec<StaticSiteManagedUrl>> {
 	query_as!(
 		StaticSiteManagedUrl,
 		r#"
@@ -286,7 +286,7 @@ pub async fn update_static_site_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &Uuid,
 	name: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -308,7 +308,7 @@ pub async fn delete_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &Uuid,
 	deletion_time: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -330,7 +330,7 @@ pub async fn delete_static_site(
 pub async fn get_static_sites_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<Vec<StaticSite>, sqlx::Error> {
+) -> DatabaseResult<Vec<StaticSite>> {
 	query_as!(
 		StaticSite,
 		r#"
@@ -359,7 +359,7 @@ pub async fn create_static_site_upload_history(
 	message: &str,
 	uploaded_by: &Uuid,
 	created: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -388,7 +388,7 @@ pub async fn create_static_site_upload_history(
 pub async fn get_static_site_upload_history(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &Uuid,
-) -> Result<Vec<StaticSiteUploadHistory>, sqlx::Error> {
+) -> DatabaseResult<Vec<StaticSiteUploadHistory>> {
 	query_as!(
 		StaticSiteUploadHistory,
 		r#"
@@ -413,7 +413,7 @@ pub async fn get_static_site_upload_history_by_upload_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &Uuid,
 	upload_id: &Uuid,
-) -> Result<Option<StaticSiteUploadHistory>, sqlx::Error> {
+) -> DatabaseResult<Option<StaticSiteUploadHistory>> {
 	query_as!(
 		StaticSiteUploadHistory,
 		r#"
@@ -441,7 +441,7 @@ pub async fn set_static_site_upload_as_processed(
 	static_site_id: &Uuid,
 	upload_id: &Uuid,
 	processed_time: Option<&DateTime<Utc>>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE

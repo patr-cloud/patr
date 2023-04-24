@@ -2,5 +2,8 @@
     "rust-analyzer.checkOnSave.allTargets": false,
     "rust-analyzer.checkOnSave.command": "check",
     "rust-analyzer.checkOnSave.enable": true,
-    "rust-analyzer.rustfmt.extraArgs": ["+nightly"],
+    "rust-analyzer.rustfmt.extraArgs": [
+        "+nightly"
+    ],
+    "rust-analyzer.showUnlinkedFileNotification": false,
 }

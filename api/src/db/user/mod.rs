@@ -1,4 +1,4 @@
-use crate::Database;
+use crate::prelude::*;
 
 mod sign_up;
 mod user_data;
@@ -16,7 +16,7 @@ pub use self::{
 
 pub async fn initialize_users_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Initializing user tables");
 	user_data::initialize_user_data_pre(&mut *connection).await?;
 	user_email::initialize_user_email_pre(&mut *connection).await?;
@@ -29,7 +29,7 @@ pub async fn initialize_users_pre(
 
 pub async fn initialize_users_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Finishing up user tables initialization");
 	user_data::initialize_user_data_post(&mut *connection).await?;
 	user_email::initialize_user_email_post(&mut *connection).await?;

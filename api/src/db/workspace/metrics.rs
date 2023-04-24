@@ -1,8 +1,8 @@
-use crate::{query, Database};
+use crate::prelude::*;
 
 pub async fn get_sign_up_count(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<u64, sqlx::Error> {
+) -> DatabaseResult<u64> {
 	let count = query!(
 		r#"
 		SELECT
@@ -23,7 +23,7 @@ pub async fn get_sign_up_count(
 
 pub async fn get_join_count(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<u64, sqlx::Error> {
+) -> DatabaseResult<u64> {
 	let count = query!(
 		r#"
 		SELECT
@@ -49,7 +49,7 @@ pub async fn get_join_count(
 
 pub async fn get_created_deployment_count(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<u64, sqlx::Error> {
+) -> DatabaseResult<u64> {
 	let count = query!(
 		r#"
 		SELECT
@@ -80,7 +80,7 @@ pub async fn get_created_deployment_count(
 
 pub async fn get_deployment_domain_count(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<u64, sqlx::Error> {
+) -> DatabaseResult<u64> {
 	let count = query!(
 		r#"
 		SELECT
@@ -111,7 +111,7 @@ pub async fn get_deployment_domain_count(
 
 pub async fn get_deleted_deployment_count(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<u64, sqlx::Error> {
+) -> DatabaseResult<u64> {
 	let count = query!(
 		r#"
 		SELECT
@@ -142,7 +142,7 @@ pub async fn get_deleted_deployment_count(
 
 pub async fn get_created_database_count(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<u64, sqlx::Error> {
+) -> DatabaseResult<u64> {
 	let count = query!(
 		r#"
 		SELECT
@@ -173,7 +173,7 @@ pub async fn get_created_database_count(
 
 pub async fn get_deleted_database_count(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<u64, sqlx::Error> {
+) -> DatabaseResult<u64> {
 	let count = query!(
 		r#"
 		SELECT
@@ -204,7 +204,7 @@ pub async fn get_deleted_database_count(
 
 pub async fn get_created_static_site_count(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<u64, sqlx::Error> {
+) -> DatabaseResult<u64> {
 	let count = query!(
 		r#"
 		SELECT
@@ -235,7 +235,7 @@ pub async fn get_created_static_site_count(
 
 pub async fn get_static_site_domain_count(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<u64, sqlx::Error> {
+) -> DatabaseResult<u64> {
 	let count = query!(
 		r#"
 		SELECT 
@@ -266,7 +266,7 @@ pub async fn get_static_site_domain_count(
 
 pub async fn get_deleted_static_site_count(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<u64, sqlx::Error> {
+) -> DatabaseResult<u64> {
 	let count = query!(
 		r#"
 		SELECT

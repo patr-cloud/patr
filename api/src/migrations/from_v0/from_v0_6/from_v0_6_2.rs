@@ -446,7 +446,7 @@ async fn add_secret_id_column_to_deployment_environment_variable(
 async fn remove_resource_requests_from_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	let mut deployment_list = vec![];
 
 	let db_items = query!(

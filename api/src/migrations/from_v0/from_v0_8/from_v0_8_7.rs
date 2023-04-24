@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 
 use api_models::utils::Uuid;
 use chrono::Utc;
-use eve_rs::AsError;
 use k8s_openapi::api::networking::v1::{
 	HTTPIngressPath,
 	HTTPIngressRuleValue,
@@ -505,7 +504,7 @@ async fn add_upload_id_for_existing_users(
 		(
 			row.get::<Uuid, _>("id"),
 			row.get::<Option<Uuid>, _>("current_live_upload"),
-			row.get::<Option<Uuid>, _>("static_site_id"),
+			row.get::<Uuid, _>("static_site_id"),
 			row.get::<Uuid, _>("workspace_id"),
 			row.get::<String, _>("sub_domain"),
 			row.get::<String, _>("domain"),
@@ -526,7 +525,6 @@ async fn add_upload_id_for_existing_users(
 	) in managed_urls
 	{
 		let namespace = workspace_id.as_str();
-		let static_site_id = static_site_id.status(500)?;
 
 		let annotations: BTreeMap<String, String> = [
 			(

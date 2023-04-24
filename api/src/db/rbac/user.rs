@@ -2,14 +2,14 @@ use std::collections::HashMap;
 
 use api_models::utils::Uuid;
 
-use crate::{db::WorkspaceUser, query, query_as, Database};
+use crate::{db::WorkspaceUser, prelude::*};
 
 pub async fn add_user_to_workspace_with_roles(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 	roles: &[Uuid],
 	workspace_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	for role_id in roles {
 		query!(
 			r#"
@@ -37,7 +37,7 @@ pub async fn remove_user_roles_from_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 	workspace_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		DELETE FROM
@@ -93,7 +93,7 @@ pub async fn list_all_users_for_role_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	role_id: &Uuid,
-) -> Result<Vec<Uuid>, sqlx::Error> {
+) -> DatabaseResult<Vec<Uuid>> {
 	let user_ids = query_as!(
 		WorkspaceUser,
 		r#"

@@ -1,10 +1,10 @@
 use semver::Version;
 
-use crate::{app::App, query, Database};
+use crate::{db::DatabaseResult, prelude::*};
 
 pub async fn initialize_meta_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Initializing meta tables");
 	query!(
 		r#"
@@ -21,7 +21,7 @@ pub async fn initialize_meta_pre(
 
 pub async fn initialize_meta_post(
 	_connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Finishing up meta tables initialization");
 	Ok(())
 }
@@ -29,7 +29,7 @@ pub async fn initialize_meta_post(
 pub async fn set_database_version(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	version: &Version,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -53,7 +53,7 @@ pub async fn set_database_version(
 	.map(|_| ())
 }
 
-pub async fn get_database_version(app: &App) -> Result<Version, sqlx::Error> {
+pub async fn get_database_version(app: &App) -> DatabaseResult<Version> {
 	let rows = query!(
 		r#"
 		SELECT

@@ -15,12 +15,7 @@ use kube::config::{
 use sqlx::types::Json;
 use url::Host;
 
-use crate::{
-	models::deployment::DEFAULT_DEPLOYMENT_REGIONS,
-	query,
-	query_as,
-	Database,
-};
+use crate::{models::deployment::DEFAULT_DEPLOYMENT_REGIONS, prelude::*};
 
 #[derive(Debug)]
 pub struct Region {
@@ -48,7 +43,7 @@ impl Region {
 
 pub async fn initialize_region_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	log::info!("Initializing region tables");
 	query!(
 		r#"
@@ -140,7 +135,7 @@ pub async fn initialize_region_pre(
 
 pub async fn initialize_region_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		ALTER TABLE region
@@ -271,7 +266,7 @@ pub async fn initialize_region_post(
 pub async fn get_region_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
-) -> Result<Option<Region>, sqlx::Error> {
+) -> DatabaseResult<Option<Region>> {
 	query_as!(
 		Region,
 		r#"
@@ -299,7 +294,7 @@ pub async fn get_region_by_id(
 
 pub async fn get_all_default_regions(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<Region>, sqlx::Error> {
+) -> DatabaseResult<Vec<Region>> {
 	query_as!(
 		Region,
 		r#"
@@ -328,7 +323,7 @@ pub async fn get_region_by_name_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	name: &str,
 	workspace_id: &Uuid,
-) -> Result<Option<Region>, sqlx::Error> {
+) -> DatabaseResult<Option<Region>> {
 	query_as!(
 		Region,
 		r#"
@@ -360,7 +355,7 @@ pub async fn get_region_by_name_in_workspace(
 pub async fn get_all_regions_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<Vec<Region>, sqlx::Error> {
+) -> DatabaseResult<Vec<Region>> {
 	query_as!(
 		Region,
 		r#"
@@ -392,7 +387,7 @@ pub async fn get_all_regions_for_workspace(
 
 pub async fn get_all_active_byoc_region(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<Region>, sqlx::Error> {
+) -> DatabaseResult<Vec<Region>> {
 	query_as!(
 		Region,
 		r#"
@@ -420,7 +415,7 @@ pub async fn get_all_active_byoc_region(
 
 pub async fn get_all_disconnected_byoc_region(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<Region>, sqlx::Error> {
+) -> DatabaseResult<Vec<Region>> {
 	query_as!(
 		Region,
 		r#"
@@ -451,7 +446,7 @@ pub async fn get_all_disconnected_byoc_region(
 pub async fn set_region_as_connected(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -473,7 +468,7 @@ pub async fn set_region_as_disconnected(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
 	disconnected_at: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -499,7 +494,7 @@ pub async fn add_region_to_workspace(
 	cloud_provider: &InfrastructureCloudProvider,
 	workspace_id: &Uuid,
 	cloudflare_certificate_id: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		INSERT INTO
@@ -530,7 +525,7 @@ pub async fn set_region_as_active(
 	region_id: &Uuid,
 	kube_config: Kubeconfig,
 	ingress_hostname: &Host,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -555,7 +550,7 @@ pub async fn set_region_as_active(
 pub async fn set_region_as_errored(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -576,7 +571,7 @@ pub async fn append_messge_log_for_region(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
 	message: &str,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
@@ -598,7 +593,7 @@ pub async fn delete_region(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	region_id: &Uuid,
 	deletion_time: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> DatabaseResult<()> {
 	query!(
 		r#"
 		UPDATE
