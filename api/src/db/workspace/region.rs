@@ -390,7 +390,7 @@ pub async fn get_all_regions_for_workspace(
 	.await
 }
 
-pub async fn get_all_byoc_region_ids_for_workspace(
+pub async fn get_all_byoc_regions_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 ) -> Result<Vec<Region>, sqlx::Error> {
