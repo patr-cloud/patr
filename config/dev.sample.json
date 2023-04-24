@@ -103,14 +103,8 @@
 		"clientSecret": "app-client-secret"
 	},
 	"google": {
-		"authUrl": "<google oauth url>",
-		"redirectUrl": "<patr url>",
-        "callbackUrl": "<google oauth token url>",
-		"scope": "<google scope>",
 		"clientId": "app-client-id",
-		"clientSecret": "app-client-secret",
-		"userInfoUrl": "<google oauth user info url>",
-		"state":""
+		"clientSecret": "app-client-secret"
 	},
 	"stripe": {
 		"publishableKey": "pk_test_123",
