@@ -621,7 +621,7 @@ async fn delete_workspace(
 	)
 	.await?;
 
-	let regions = db::get_all_regions_for_workspace(
+	let regions = db::get_all_byoc_regions_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 	)
