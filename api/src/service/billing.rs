@@ -1142,17 +1142,7 @@ pub async fn add_card_details(
 		// make sure the payment_method is attached to a customer
 		intent.setup_future_usage =
 			Some(PaymentIntentSetupFutureUsage::OffSession);
-		// Removing payment_method_types as we are using
-		// automatic_payment_methods, and according to stripe_error that we
-		// encountered we cannot use both togther. The error message goes like
-		// "You may only specify one of these parameters:
-		// automatic_payment_methods, payment_method_types." with a 400 error
-		// code
-		intent.automatic_payment_methods =
-			Some(stripe::CreatePaymentIntentAutomaticPaymentMethods {
-				enabled: true,
-			});
-		// intent.payment_method_types = Some(vec!["card".to_string()]);
+		intent.payment_method_types = Some(vec!["card".to_string()]);
 
 		intent
 	})
