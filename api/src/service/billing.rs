@@ -1115,11 +1115,11 @@ pub async fn add_card_details(
 		})?;
 
 	let amount_in_cents: u64 = if email_spam_result.fraud_score >= 75 {
-		1200 // $20 in cents
+		1200 // $12 in cents
 	} else if email_spam_result.fraud_score < 75 &&
 		email_spam_result.fraud_score >= 50
 	{
-		800 // $10 in cents
+		800 // $8 in cents
 	} else {
 		500 // $5 in cents
 	};
