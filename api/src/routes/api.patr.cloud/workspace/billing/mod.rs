@@ -1,4 +1,4 @@
-use std::{cmp::min, ops::Sub, str::FromStr};
+use std::{cmp::min, ops::Sub};
 
 use api_models::{
 	models::workspace::billing::{
@@ -36,7 +36,6 @@ use api_models::{
 };
 use chrono::{Duration, TimeZone, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use stripe::{Client, CreateRefund, PaymentIntentId, Refund};
 
 use crate::{
 	app::{create_eve_app, App},
@@ -922,46 +921,28 @@ async fn confirm_payment_method(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
-	let db_conn = context.get_database_connection();
+	let intent_id = redis::get_add_card_payment_intent_id(
+		context.get_redis_connection(),
+		&workspace.id,
+	)
+	.await?
+	.status(500)
+	.body(error!(PAYMENT_FAILED).to_string())?;
+
+	if intent_id != payment_intent_id {
+		log::error!("Mismatch payment intent_ids, unable to create a refund");
+		Error::as_result()
+			.status(500)
+			.body(error!(PAYMENT_FAILED).to_string())?
+	}
+
 	service::verify_card_with_charges(
-		db_conn,
+		context.get_database_connection(),
 		&workspace,
 		&payment_intent_id,
 		&config,
 	)
 	.await?;
-
-	// Doing refund in this layer because of the following error "cannot borrow
-	// `context` as mutable more than once at a time". And it is safe to create
-	// refund here as the program will reach here only if the payment_status is
-	// success, otherwise it will return error for all other payment_statuses
-	let client = Client::new(&config.stripe.secret_key);
-
-	if let Some(intent_id) = redis::get_add_card_payment_intent_id(
-		context.get_redis_connection(),
-		&workspace.id,
-	)
-	.await?
-	{
-		if intent_id != payment_intent_id {
-			log::error!(
-				"Mismatch payment intent_ids, unable to create a refund"
-			);
-			Error::as_result()
-				.status(500)
-				.body(error!(PAYMENT_FAILED).to_string())?
-		}
-		Refund::create(&client, {
-			let mut refund = CreateRefund::new();
-
-			refund.payment_intent =
-				Some(PaymentIntentId::from_str(&payment_intent_id)?);
-			refund.refund_application_fee = Some(true);
-
-			refund
-		})
-		.await?;
-	}
 
 	context.success(ConfirmPaymentMethodResponse {});
 	Ok(context)

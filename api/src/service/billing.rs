@@ -35,6 +35,7 @@ use eve_rs::AsError;
 use stripe::{
 	Client,
 	CreatePaymentIntent,
+	CreateRefund,
 	Currency,
 	CustomerId,
 	PaymentIntent,
@@ -42,6 +43,7 @@ use stripe::{
 	PaymentIntentSetupFutureUsage,
 	PaymentIntentStatus,
 	PaymentMethodId,
+	Refund,
 };
 
 use crate::{
@@ -161,7 +163,7 @@ pub async fn verify_card_with_charges(
 	workspace: &Workspace,
 	payment_intent_id: &str,
 	config: &Settings,
-) -> Result<PaymentIntent, Error> {
+) -> Result<(), Error> {
 	let client = Client::new(&config.stripe.secret_key);
 	let payment_intent = PaymentIntent::retrieve(
 		&client,
@@ -197,7 +199,18 @@ pub async fn verify_card_with_charges(
 
 			db::unmark_workspace_as_spam(connection, &workspace.id).await?;
 
-			Ok(payment_intent)
+			Refund::create(&client, {
+				let mut refund = CreateRefund::new();
+
+				// https://stripe.com/docs/api/refunds#create_refund
+				refund.payment_intent =
+					Some(PaymentIntentId::from_str(payment_intent_id)?);
+
+				refund
+			})
+			.await?;
+
+			Ok(())
 		}
 		PaymentIntentStatus::Canceled => Error::as_result()
 			.status(500)
@@ -1138,8 +1151,11 @@ pub async fn add_card_details(
 		// "You may only specify one of these parameters:
 		// automatic_payment_methods, payment_method_types." with a 400 error
 		// code
-
-		intent.payment_method_types = Some(vec!["card".to_string()]);
+		intent.automatic_payment_methods =
+			Some(stripe::CreatePaymentIntentAutomaticPaymentMethods {
+				enabled: true,
+			});
+		// intent.payment_method_types = Some(vec!["card".to_string()]);
 
 		intent
 	})
