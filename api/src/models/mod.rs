@@ -16,6 +16,7 @@ mod twilio_sms;
 
 use std::fmt;
 
+use api_models::utils::Uuid;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "sample-data")]
@@ -59,4 +60,17 @@ impl fmt::Display for ResourceType {
 			ResourceType::Region => write!(f, "Deployment region"),
 		}
 	}
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserDeployment {
+	deployment_name: String,
+	deployment_id: Uuid,
+	hours: u64,
+	instances: u64,
+	estimated_cost: f32,
+	ram_count: u32,
+	cpu_count: u32,
+	plan: String,
 }
