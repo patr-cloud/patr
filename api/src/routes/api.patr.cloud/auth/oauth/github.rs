@@ -191,7 +191,7 @@ async fn oauth_callback(
 			.json::<GitHubUserInfo>()
 			.await?;
 
-		let mut name = user_info.name.split(" ");
+		let mut name = user_info.name.split(' ');
 		// TODO Better error message if first name not found
 		let first_name = name
 			.next()
