@@ -8,8 +8,42 @@ pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), Error> {
+	add_referred_from_for_user(connection, config).await?;
+	add_referred_from_for_user_to_sign_up(connection, config).await?;
 	add_is_referral_for_coupon(connection, config).await?;
 	add_last_referred_for_user(connection, config).await?;
+
+	Ok(())
+}
+
+async fn add_referred_from_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE "user" 
+		ADD COLUMN referred_from TEXT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn add_referred_from_for_user_to_sign_up(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up 
+		ADD COLUMN referred_from TEXT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }

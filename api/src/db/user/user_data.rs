@@ -73,6 +73,7 @@ pub async fn initialize_user_data_pre(
 			recovery_phone_number VARCHAR(15),
 			workspace_limit INTEGER NOT NULL,
 			sign_up_coupon TEXT,
+			referred_from TEXT,
 			last_referred TIMESTAMPTZ,
 
 			CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id
@@ -355,6 +356,7 @@ pub async fn create_user(
 
 	workspace_limit: i32,
 	sign_up_coupon: Option<&str>,
+	referred_from: Option<&str>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -378,7 +380,8 @@ pub async fn create_user(
 
 				workspace_limit,
 
-				sign_up_coupon
+				sign_up_coupon,
+				referred_from
 			)
 		VALUES
 			(
@@ -400,7 +403,8 @@ pub async fn create_user(
 
 				$11,
 
-				$12
+				$12,
+				$13
 			);
 		"#,
 		user_id as _,
@@ -415,6 +419,7 @@ pub async fn create_user(
 		recovery_phone_number,
 		workspace_limit,
 		sign_up_coupon,
+		referred_from
 	)
 	.execute(&mut *connection)
 	.await

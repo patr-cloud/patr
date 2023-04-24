@@ -25,6 +25,7 @@ pub struct UserToSignUp {
 	pub otp_expiry: DateTime<Utc>,
 
 	pub coupon_code: Option<String>,
+	pub referred_from: Option<String>,
 }
 
 pub struct CouponCode {
@@ -135,7 +136,10 @@ pub async fn initialize_user_sign_up_post(
 					CHECK(business_name = LOWER(business_name)),
 			otp_hash TEXT NOT NULL,
 			otp_expiry TIMESTAMPTZ NOT NULL,
-			coupon_code TEXT CONSTRAINT user_to_sign_up_fk_coupon_code
+			coupon_code TEXT,
+			referred_from TEXT
+
+			CONSTRAINT user_to_sign_up_fk_coupon_code
 				REFERENCES coupon_code(code),
 
 			CONSTRAINT user_to_sign_up_chk_max_domain_name_length CHECK(
@@ -223,6 +227,7 @@ pub async fn set_personal_user_to_be_signed_up(
 	otp_expiry: &DateTime<Utc>,
 
 	coupon_code: Option<&str>,
+	referred_from: Option<&str>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -243,7 +248,8 @@ pub async fn set_personal_user_to_be_signed_up(
 				business_name,
 				otp_hash,
 				otp_expiry,
-				coupon_code
+				coupon_code,
+				referred_from
 			)
 		VALUES
 			(
@@ -268,7 +274,8 @@ pub async fn set_personal_user_to_be_signed_up(
 				$9,
 				$10,
 
-				$11
+				$11,
+				$12
 			)
 		ON CONFLICT(username) DO UPDATE SET
 			account_type = 'personal',
@@ -290,7 +297,8 @@ pub async fn set_personal_user_to_be_signed_up(
 			otp_hash = EXCLUDED.otp_hash,
 			otp_expiry = EXCLUDED.otp_expiry,
 			
-			coupon_code = EXCLUDED.coupon_code;
+			coupon_code = EXCLUDED.coupon_code,
+			referred_from = EXCLUDED.referred_from;
 		"#,
 		username,
 		password,
@@ -303,6 +311,7 @@ pub async fn set_personal_user_to_be_signed_up(
 		otp_hash,
 		otp_expiry as _,
 		coupon_code,
+		referred_from,
 	)
 	.execute(&mut *connection)
 	.await
@@ -329,6 +338,7 @@ pub async fn set_business_user_to_be_signed_up(
 	otp_expiry: &DateTime<Utc>,
 
 	coupon_code: Option<&str>,
+	referred_from: Option<&str>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -349,7 +359,8 @@ pub async fn set_business_user_to_be_signed_up(
 				business_name,
 				otp_hash,
 				otp_expiry,
-				coupon_code
+				coupon_code,
+				referred_from
 			)
 		VALUES
 			(
@@ -374,7 +385,8 @@ pub async fn set_business_user_to_be_signed_up(
 				$13,
 				$14,
 
-				$15
+				$15,
+				$16
 			)
 		ON CONFLICT(username) DO UPDATE SET
 			account_type = 'business',
@@ -397,7 +409,8 @@ pub async fn set_business_user_to_be_signed_up(
 			otp_hash = EXCLUDED.otp_hash,
 			otp_expiry = EXCLUDED.otp_expiry,
 			
-			coupon_code = EXCLUDED.coupon_code;
+			coupon_code = EXCLUDED.coupon_code,
+			referred_from = EXCLUDED.referred_from;
 		"#,
 		username,
 		password,
@@ -414,6 +427,7 @@ pub async fn set_business_user_to_be_signed_up(
 		otp_hash,
 		otp_expiry as _,
 		coupon_code,
+		referred_from,
 	)
 	.execute(&mut *connection)
 	.await
@@ -447,7 +461,8 @@ pub async fn get_user_to_sign_up_by_username(
 			business_name,
 			otp_hash,
 			otp_expiry,
-			coupon_code
+			coupon_code,
+			referred_from
 		FROM
 			user_to_sign_up
 		WHERE
@@ -487,7 +502,8 @@ pub async fn get_user_to_sign_up_by_phone_number(
 			business_name,
 			otp_hash,
 			otp_expiry,
-			coupon_code
+			coupon_code,
+			referred_from
 		FROM
 			user_to_sign_up
 		WHERE
@@ -532,7 +548,8 @@ pub async fn get_user_to_sign_up_by_email(
 			user_to_sign_up.business_name,
 			user_to_sign_up.otp_hash,
 			user_to_sign_up.otp_expiry,
-			user_to_sign_up.coupon_code
+			user_to_sign_up.coupon_code,
+			user_to_sign_up.referred_from
 		FROM
 			user_to_sign_up
 		INNER JOIN
@@ -581,7 +598,8 @@ pub async fn get_user_to_sign_up_by_business_name(
 			business_name,
 			otp_hash,
 			otp_expiry,
-			coupon_code
+			coupon_code,
+			referred_from
 		FROM
 			user_to_sign_up
 		WHERE
@@ -620,7 +638,8 @@ pub async fn get_user_to_sign_up_by_business_domain_name(
 			business_name,
 			otp_hash,
 			otp_expiry,
-			coupon_code
+			coupon_code,
+			referred_from
 		FROM
 			user_to_sign_up
 		WHERE
