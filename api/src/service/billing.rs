@@ -1107,10 +1107,10 @@ pub async fn add_card_details(
 		})?;
 
 	let amount_in_cents = match email_spam_result.fraud_score {
-		(90..) => 1200u64,   // $12 in cents
-		(80..=90) => 800u64, // $8 in cents
-		(50..=80) => 500u64, // $5 in cents
-		(0..=50) => 200u64, // $2 in cents
+		(0..=50) => 200u64,  // $2 in cents
+		(51..=80) => 500u64, // $5 in cents
+		(81..=90) => 800u64, // $8 in cents
+		_ => 1200u64,        // $12 in cents
 	};
 
 	let description = "Patr charge: Card verification charges";
