@@ -137,7 +137,7 @@ async fn oauth_callback(
 		}
 		let GoogleUserInfo { name, email } =
 			get_user_info(&context, code).await?;
-		let mut user_name = name.split(" ");
+		let mut user_name = name.split(' ');
 		// TODO Better error message if first name not found
 		let first_name = user_name
 			.next()

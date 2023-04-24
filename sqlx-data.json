@@ -3503,16 +3503,6 @@
     },
     "query": "SELECT id as \"id: Uuid\" FROM region WHERE id = $1;"
   },
-  "28b3cf8fc15d71c8a4cbf614bc41f52065105fa73fa59cd8af559c6d58f69546": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE oauth_email( user_id UUID NOT NULL CONSTRAINT oauth_email_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, local VARCHAR(64) NOT NULL CONSTRAINT oauth_email_chk_local_is_lower_case CHECK( local = LOWER(local) ), domain_id UUID NOT NULL CONSTRAINT oauth_email_fk_domain_id REFERENCES personal_domain(id), oauth_type VARCHAR(20) NOT NULL, CONSTRAINT oauth_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT oauth_email_uq_user_id_local_domain_id_oauth_type UNIQUE(user_id, local, domain_id, oauth_type) );"
-  },
   "292b36a0ab84f6022c19fafc224ce4d2a090fa4a4df94a861480c5835ff6f864": {
     "describe": {
       "columns": [],
