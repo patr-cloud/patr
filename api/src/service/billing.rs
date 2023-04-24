@@ -35,14 +35,15 @@ use eve_rs::AsError;
 use stripe::{
 	Client,
 	CreatePaymentIntent,
-	CreateSetupIntent,
+	CreateRefund,
 	Currency,
 	CustomerId,
 	PaymentIntent,
 	PaymentIntentId,
+	PaymentIntentSetupFutureUsage,
 	PaymentIntentStatus,
 	PaymentMethodId,
-	SetupIntent,
+	Refund,
 };
 
 use crate::{
@@ -52,9 +53,10 @@ use crate::{
 		ManagedDatabasePlan,
 		ManagedDatabaseStatus,
 		StaticSitePlan as DbStaticSitePlan,
+		Workspace,
 	},
 	error,
-	models::deployment,
+	models::{deployment, IpQualityScore},
 	utils::{settings::Settings, Error},
 	Database,
 };
@@ -154,6 +156,72 @@ pub async fn add_credits_to_workspace(
 	})?;
 
 	Ok((transaction_id, client_secret))
+}
+
+pub async fn verify_card_with_charges(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace: &Workspace,
+	payment_intent_id: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let client = Client::new(&config.stripe.secret_key);
+	let payment_intent = PaymentIntent::retrieve(
+		&client,
+		&PaymentIntentId::from_str(payment_intent_id)?,
+		Default::default(),
+	)
+	.await?;
+
+	let payment_method_id =
+		if let Some(payment_method) = payment_intent.clone().payment_method {
+			payment_method.id()
+		} else {
+			return Error::as_result().status(500)?;
+		};
+
+	match payment_intent.status {
+		PaymentIntentStatus::Succeeded => {
+			db::add_payment_method_info(
+				connection,
+				&workspace.id,
+				&payment_method_id,
+			)
+			.await?;
+
+			if workspace.default_payment_method_id.is_none() {
+				db::set_default_payment_method_for_workspace(
+					connection,
+					&workspace.id,
+					&payment_method_id,
+				)
+				.await?;
+			}
+
+			db::unmark_workspace_as_spam(connection, &workspace.id).await?;
+
+			Refund::create(&client, {
+				let mut refund = CreateRefund::new();
+
+				// https://stripe.com/docs/api/refunds#create_refund
+				refund.payment_intent =
+					Some(PaymentIntentId::from_str(payment_intent_id)?);
+
+				refund
+			})
+			.await?;
+
+			Ok(())
+		}
+		PaymentIntentStatus::Canceled => Error::as_result()
+			.status(500)
+			.body(error!(PAYMENT_FAILED).to_string())?,
+		_ => {
+			log::info!("Payment is still in pending state, make the payment and then confirm again");
+			Error::as_result()
+				.status(500)
+				.body(error!(PAYMENT_PENDING).to_string())?
+		}
+	}
 }
 
 pub async fn make_payment(
@@ -985,28 +1053,106 @@ pub async fn add_card_details(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	config: &Settings,
-) -> Result<SetupIntent, Error> {
+) -> Result<PaymentIntent, Error> {
 	let workspace = db::get_workspace_info(connection, workspace_id)
 		.await?
 		.status(500)?;
 
-	if workspace.address_id.is_none() {
-		return Error::as_result()
+	let address_id = if let Some(address_id) = workspace.address_id {
+		address_id
+	} else {
+		return Err(Error::empty()
 			.status(400)
-			.body(error!(ADDRESS_REQUIRED).to_string())?;
-	}
+			.body(error!(ADDRESS_REQUIRED).to_string()));
+	};
 
-	SetupIntent::create(&Client::new(&config.stripe.secret_key), {
-		let mut intent = CreateSetupIntent::new();
+	let user = db::get_user_by_user_id(connection, &workspace.super_admin_id)
+		.await?
+		.status(500)?;
 
+	let email_str = user
+		.recovery_email_local
+		.as_ref()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let domain = db::get_personal_domain_by_id(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?
+	.status(500)?;
+
+	let email = format!("{}@{}", email_str, domain.name);
+
+	let email_spam_result = reqwest::Client::new()
+		.get(format!(
+			"{}/{}/{}",
+			config.ip_quality.host, config.ip_quality.token, email
+		))
+		.send()
+		.await
+		.map_err(|error| {
+			log::error!("IPQS api call error: {}", error);
+			Error::from(error)
+		})?
+		.json::<IpQualityScore>()
+		.await
+		.map_err(|error| {
+			log::error!("Error parsing IPQS response: {}", error);
+			Error::from(error)
+		})?;
+
+	let amount_in_cents = match email_spam_result.fraud_score {
+		(0..=50) => 200u64,  // $2 in cents
+		(51..=80) => 500u64, // $5 in cents
+		(81..=90) => 800u64, // $8 in cents
+		_ => 1200u64,        // $12 in cents
+	};
+
+	let description = "Patr charge: Card verification charges";
+
+	let (currency, amount) = if db::get_billing_address(connection, &address_id)
+		.await?
+		.status(500)?
+		.country == *"IN"
+	{
+		(Currency::INR, amount_in_cents * 80)
+	} else {
+		(Currency::USD, amount_in_cents)
+	};
+
+	let client = Client::new(&config.stripe.secret_key);
+
+	let payment_intent = PaymentIntent::create(&client, {
+		let mut intent = CreatePaymentIntent::new(amount as i64, currency);
+
+		intent.confirm = Some(false);
+		intent.description = Some(description);
 		intent.customer =
-			Some(CustomerId::from_str(workspace.stripe_customer_id.as_str())?);
+			Some(CustomerId::from_str(&workspace.stripe_customer_id)?);
+		// Since we are not doing SetupIntent anymore, Follow this url of the
+		// stripe documentation to know why are the below configuration the way they are done https://stripe.com/docs/api/payment_methods/attach
+
+		// Since we are not doing setup intent, we are using the
+		// setup_future_usage and automatic_payment_methods below, this will
+		// make sure the payment_method is attached to a customer
+		intent.setup_future_usage =
+			Some(PaymentIntentSetupFutureUsage::OffSession);
 		intent.payment_method_types = Some(vec!["card".to_string()]);
 
 		intent
 	})
 	.await
-	.map_err(|err| err.into())
+	.map_err(|error| {
+		log::error!("Error from stripe: {}", error);
+		Error::from(error)
+	})?;
+
+	Ok(payment_intent)
 }
 
 pub async fn get_card_details(

@@ -2547,6 +2547,18 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tbuild_num,\n\t\t\tgit_ref,\n\t\t\tgit_commit,\n\t\t\tstatus as \"status: _\",\n\t\t\tcreated as \"created: _\",\n\t\t\tstarted as \"started: _\",\n\t\t\tfinished as \"finished: _\",\n\t\t\tmessage,\n\t\t\tauthor,\n\t\t\tgit_pr_title,\n\t\t\tgit_commit_message,\n\t\t\trunner_id as \"runner_id: _\"\n\t\tFROM\n\t\t\tci_builds\n\t\tWHERE\n\t\t\trepo_id = $1 AND\n\t\t\tbuild_num = $2\n\t\tFOR UPDATE;\n\t\t"
   },
+  "264d9322d25bc993eef1da2e3a786aa5dacf30273bf468b2727f64655c367bc4": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE workspace SET is_spam = FALSE WHERE id = $1;"
+  },
   "265d098fb12a72689196f941ca78205cdf6d8d45bfcbacbd2cc1f637da0baa4e": {
     "describe": {
       "columns": [
