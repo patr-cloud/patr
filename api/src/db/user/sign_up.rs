@@ -318,6 +318,7 @@ pub async fn set_personal_user_to_be_signed_up(
 	.map(|_| ())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn set_business_user_to_be_signed_up(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	username: &str,
