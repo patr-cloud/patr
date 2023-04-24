@@ -21,7 +21,9 @@ fn get_key_for_global_revocation() -> String {
 fn get_key_for_user_api_token_data(token_id: &Uuid) -> String {
 	format!("api-token-data:{}", token_id)
 }
-
+fn get_key_for_add_card_payment_intent_id(workspace_id: &Uuid) -> String {
+	format!("workspace-add-card-payment-id:{}", workspace_id.as_str())
+}
 /// returns last set revocation timestamp (in millis) for the given user
 pub async fn get_token_revoked_timestamp_for_user(
 	redis_conn: &mut RedisConnection,
@@ -181,4 +183,23 @@ pub async fn delete_user_api_token_data(
 	redis_conn
 		.del(get_key_for_user_api_token_data(token_id))
 		.await
+}
+
+pub async fn set_add_card_payment_intent_id(
+	redis_conn: &mut RedisConnection,
+	workspace_id: &Uuid,
+	payment_intent_id: &str,
+) -> Result<(), RedisError> {
+	let key = get_key_for_add_card_payment_intent_id(workspace_id);
+	redis_conn.set(key, payment_intent_id).await
+}
+
+pub async fn get_add_card_payment_intent_id(
+	redis_conn: &mut RedisConnection,
+	workspace_id: &Uuid,
+) -> Result<Option<String>, RedisError> {
+	let payment_intent_id: Option<String> = redis_conn
+		.get(get_key_for_add_card_payment_intent_id(workspace_id))
+		.await?;
+	Ok(payment_intent_id)
 }
