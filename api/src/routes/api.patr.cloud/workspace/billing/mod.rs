@@ -944,14 +944,14 @@ async fn confirm_payment_method(
 		&config,
 	)
 	.await?;
-	let workspace_info = db::get_workspace_info(
+	let workspace = db::get_workspace_info(
 		context.get_database_connection(),
 		&workspace_id,
 	)
 	.await?
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
-	if workspace_info.default_payment_method_id.is_none() {
+	if workspace.default_payment_method_id.is_none() {
 		db::set_default_payment_method_for_workspace(
 			context.get_database_connection(),
 			&workspace_id,
@@ -962,7 +962,7 @@ async fn confirm_payment_method(
 
 	let User { sign_up_coupon, .. } = db::get_user_by_user_id(
 		context.get_database_connection(),
-		&workspace_info.super_admin_id,
+		&workspace.super_admin_id,
 	)
 	.await?
 	.status(500)
@@ -970,18 +970,18 @@ async fn confirm_payment_method(
 
 	log::trace!(
 		"Checking for referral coupon for user {}",
-		workspace_info.super_admin_id
+		workspace.super_admin_id
 	);
 	if let Some(sign_up_coupon) = sign_up_coupon {
 		// check if it is a referral coupon is still valid. i.e, user who
 		// referred still exists
-		let is_valid = db::get_user_by_user_id(
+		if db::get_user_by_user_id(
 			context.get_database_connection(),
 			&Uuid::parse_str(&sign_up_coupon)?,
 		)
 		.await?
-		.is_some();
-		if is_valid {
+		.is_some()
+		{
 			let coupon = db::get_sign_up_coupon_by_code(
 				context.get_database_connection(),
 				&sign_up_coupon,
@@ -991,7 +991,7 @@ async fn confirm_payment_method(
 				if coupon.is_referral {
 					log::trace!(
 						"Adding referral credits for user {}",
-						workspace_info.super_admin_id
+						workspace.super_admin_id
 					);
 					let transaction_id = db::generate_new_transaction_id(
 						context.get_database_connection(),
@@ -1016,14 +1016,21 @@ async fn confirm_payment_method(
 					.await?;
 					log::trace!(
 						"Referral credits added for user {}",
-						workspace_info.super_admin_id
+						workspace.super_admin_id
+					);
+					db::update_last_referred(
+						context.get_database_connection(),
+						&Uuid::parse_str(&coupon.code)?,
+						&now,
+					)
+					.await?;
+					log::trace!(
+						"Last referred updated for referring user {}",
+						coupon.code
 					);
 				}
 			} else {
-				log::trace!(
-					"Failed to credit referral coupon for user {}",
-					workspace_info.super_admin_id
-				);
+				log::trace!("Coupon does not exist");
 			}
 		}
 	}

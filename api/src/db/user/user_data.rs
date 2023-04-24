@@ -24,6 +24,7 @@ pub struct User {
 	pub recovery_phone_number: Option<String>,
 	pub workspace_limit: i32,
 	pub sign_up_coupon: Option<String>,
+	pub last_referred: Option<DateTime<Utc>>,
 }
 
 pub struct PasswordResetRequest {
@@ -72,6 +73,7 @@ pub async fn initialize_user_data_pre(
 			recovery_phone_number VARCHAR(15),
 			workspace_limit INTEGER NOT NULL,
 			sign_up_coupon TEXT,
+			last_referred TIMESTAMPTZ,
 
 			CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id
 				UNIQUE(recovery_email_local, recovery_email_domain_id),
@@ -166,7 +168,8 @@ pub async fn get_user_by_username_email_or_phone_number(
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
 			"user".workspace_limit,
-			"user".sign_up_coupon
+			"user".sign_up_coupon,
+			"user".last_referred
 		FROM
 			"user"
 		LEFT JOIN
@@ -240,7 +243,8 @@ pub async fn get_user_by_username(
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
 			"user".workspace_limit,
-			"user".sign_up_coupon
+			"user".sign_up_coupon,
+			"user".last_referred
 		FROM
 			"user"
 		WHERE
@@ -274,7 +278,8 @@ pub async fn get_user_by_user_id(
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
 			"user".workspace_limit,
-			"user".sign_up_coupon
+			"user".sign_up_coupon,
+			"user".last_referred
 		FROM
 			"user"
 		WHERE
@@ -857,24 +862,24 @@ pub async fn get_user_referrals(
 	Ok(rows)
 }
 
-pub async fn _get_user_referral_count(
+pub async fn update_last_referred(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_hash: &str,
-) -> Result<u64, sqlx::Error> {
-	let count = query!(
+	user_id: &Uuid,
+	timestamp: &DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query!(
 		r#"
-		SELECT
-			COUNT(username) as "count!: i64"
-		FROM
+		UPDATE
 			"user"
+		SET
+			last_referred = $2
 		WHERE
-			sign_up_coupon = $1;
+			id = $1;
 		"#,
-		user_hash as _,
+		user_id as _,
+		timestamp as _,
 	)
-	.fetch_one(&mut *connection)
+	.execute(&mut *connection)
 	.await
-	.map(|row| row.count as u64)?;
-
-	Ok(count)
+	.map(|_| ())
 }

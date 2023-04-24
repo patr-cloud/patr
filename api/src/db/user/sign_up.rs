@@ -46,7 +46,9 @@ pub async fn initialize_user_sign_up_pre(
 				CONSTRAINT coupon_code_chk_credits_in_cents_positive
 					CHECK (credits_in_cents >= 0),
 			expiry TIMESTAMPTZ,
-			uses_remaining INTEGER CONSTRAINT
+			uses_remaining INTEGER,
+			is_referral BOOL NOT NULL DEFAULT false
+			CONSTRAINT
 				coupon_code_chk_uses_remaining_positive CHECK(
 					uses_remaining IS NULL OR uses_remaining > 0
 				)

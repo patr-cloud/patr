@@ -944,7 +944,7 @@ pub async fn join_user(
 				let has_usage_remaining = coupon
 					.uses_remaining
 					.map(|uses_remaining| uses_remaining > 0)
-					.unwrap_or(true);
+					.unwrap_or(false);
 
 				if is_not_expired &&
 					has_usage_remaining && coupon.credits_in_cents > 0 &&
@@ -1088,7 +1088,7 @@ pub async fn join_user(
 				let has_usage_remaining = coupon
 					.uses_remaining
 					.map(|uses_remaining| uses_remaining > 0)
-					.unwrap_or(true);
+					.unwrap_or(false);
 
 				if is_not_expired &&
 					has_usage_remaining && coupon.credits_in_cents > 0 &&
