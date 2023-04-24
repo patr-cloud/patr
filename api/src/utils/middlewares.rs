@@ -12,7 +12,7 @@ use axum::{
 };
 use http::Request as HttpRequest;
 
-use crate::{models::UserAuthenticationData, prelude::*};
+use crate::{db::Resource, models::UserAuthenticationData, prelude::*};
 
 // #[derive(Clone)]
 // pub enum EveMiddleware {
@@ -150,7 +150,8 @@ where
 	Req: ApiRequest,
 	B: Send,
 {
-	type Future = Pin<Box<dyn Future<Output = Result<HttpRequest<B>, Error>>>>;
+	type Future =
+		Pin<Box<dyn Future<Output = Result<HttpRequest<B>, Error>> + Send>>;
 
 	fn run(
 		self,
@@ -184,6 +185,97 @@ where
 			if token_data.is_api_token() && !self.is_api_token_allowed {
 				return Err(Error::new(ErrorType::Unauthorized));
 			}
+
+			let req = req.set_token_data(token_data);
+			Ok(req)
+		})
+	}
+}
+
+#[derive(Debug, Clone)]
+pub struct ResourceTokenAuthenticator<F> {
+	is_api_token_allowed: bool,
+	permission: &'static str,
+	resource_in_question: F,
+}
+
+impl<TFunc, TRes, Req, B> ResourceTokenAuthenticator<TFunc>
+where
+	TFunc: Fn(
+		<Req as ApiRequest>::Path,
+		<Req as ApiRequest>::Query,
+		App,
+		&HttpRequest<B>,
+	) -> TRes,
+	TRes: Future<Output = Result<Option<Resource>, Error>>,
+	Req: ApiRequest,
+	B: Send,
+{
+	pub fn new(permission: &'static str, resource_in_question: TFunc) -> Self {
+		Self {
+			is_api_token_allowed: true,
+			permission,
+			resource_in_question,
+		}
+	}
+
+	pub fn disallow_api_token(mut self) -> Self {
+		self.is_api_token_allowed = false;
+		self
+	}
+}
+
+impl<TFunc, TRes, Req, B> DtoMiddleware<Req, App, B>
+	for ResourceTokenAuthenticator<TFunc>
+where
+	TFunc: Fn(
+		<Req as ApiRequest>::Path,
+		<Req as ApiRequest>::Query,
+		App,
+		&HttpRequest<B>,
+	) -> TRes,
+	TRes: Future<Output = Result<Option<Resource>, Error>>,
+	Req: ApiRequest,
+	B: Send,
+{
+	type Future =
+		Pin<Box<dyn Future<Output = Result<HttpRequest<B>, Error>> + Send>>;
+
+	fn run(
+		self,
+		path: <Req as ApiRequest>::Path,
+		query: <Req as ApiRequest>::Query,
+		state: App,
+		req: HttpRequest<B>,
+	) -> Self::Future {
+		Box::pin(async move {
+			let TypedHeader(token) = req
+				.extract_parts::<TypedHeader<Authorization<Bearer>>>()
+				.await
+				.map_err(|err| {
+					todo!("Decide on what error is thrown when tokens are invalid");
+					ErrorType::Unauthorized
+				})
+				.status(StatusCode::UNAUTHORIZED)?;
+			let ip_addr = get_request_ip_address(&req)
+				.parse()
+				.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
+
+			let token_data = UserAuthenticationData::parse(
+				&mut state.database,
+				&mut state.redis,
+				&state.config.jwt_secret,
+				&token,
+				&ip_addr,
+			)
+			.await?;
+
+			if token_data.is_api_token() && !self.is_api_token_allowed {
+				return Err(Error::new(ErrorType::Unauthorized));
+			}
+
+			let resource =
+				self.resource_in_question(path, query, state, &req).await?;
 
 			let req = req.set_token_data(token_data);
 			Ok(req)
