@@ -1,4 +1,4 @@
-use std::{cmp::min, ops::Sub};
+use std::{cmp::min, ops::Sub, str::FromStr};
 
 use api_models::{
 	models::workspace::billing::{
@@ -26,6 +26,7 @@ use api_models::{
 		MakePaymentResponse,
 		PaymentMethod,
 		PaymentStatus,
+		SetPrimaryCardRequest,
 		TotalAmount,
 		Transaction,
 		UpdateBillingAddressRequest,
@@ -35,6 +36,7 @@ use api_models::{
 };
 use chrono::{Duration, TimeZone, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use stripe::{Client, CreateRefund, PaymentIntentId, Refund};
 
 use crate::{
 	app::{create_eve_app, App},
@@ -42,6 +44,7 @@ use crate::{
 	error,
 	models::rbac::permissions,
 	pin_fn,
+	redis,
 	service,
 	utils::{
 		constants::request_keys,
@@ -838,16 +841,30 @@ async fn add_payment_method(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 	let config = context.get_state().config.clone();
-	let (payment_intent_id, client_secret) = service::add_card_details(
+	let payment_intent = service::add_card_details(
 		context.get_database_connection(),
 		&workspace_id,
 		&config,
 	)
 	.await?;
 
+	let client_secret = payment_intent.client_secret.ok_or_else(|| {
+		log::error!("PaymentIntent does not have a client secret");
+		Error::empty()
+			.status(400)
+			.body(error!(INVALID_PAYMENT_METHOD).to_string())
+	})?;
+
+	redis::set_add_card_payment_intent_id(
+		context.get_redis_connection(),
+		&workspace_id,
+		payment_intent.id.as_str(),
+	)
+	.await?;
+
 	context.success(AddPaymentMethodResponse {
 		client_secret,
-		payment_intent_id: payment_intent_id.to_string(),
+		payment_intent_id: payment_intent.id.to_string(),
 	});
 	Ok(context)
 }
@@ -905,13 +922,46 @@ async fn confirm_payment_method(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
+	let db_conn = context.get_database_connection();
 	service::verify_card_with_charges(
-		context.get_database_connection(),
+		db_conn,
 		&workspace,
 		&payment_intent_id,
 		&config,
 	)
 	.await?;
+
+	// Doing refund in this layer because of the following error "cannot borrow
+	// `context` as mutable more than once at a time". And it is safe to create
+	// refund here as the program will reach here only if the payment_status is
+	// success, otherwise it will return error for all other payment_statuses
+	let client = Client::new(&config.stripe.secret_key);
+
+	if let Some(intent_id) = redis::get_add_card_payment_intent_id(
+		context.get_redis_connection(),
+		&workspace.id,
+	)
+	.await?
+	{
+		if intent_id != payment_intent_id {
+			log::error!(
+				"Mismatch payment intent_ids, unable to create a refund"
+			);
+			Error::as_result()
+				.status(500)
+				.body(error!(PAYMENT_FAILED).to_string())?
+		}
+		Refund::create(&client, {
+			let mut refund = CreateRefund::new();
+
+			refund.payment_intent =
+				Some(PaymentIntentId::from_str(&payment_intent_id)?);
+			refund.refund_application_fee = Some(true);
+
+			refund
+		})
+		.await?;
+	}
 
 	context.success(ConfirmPaymentMethodResponse {});
 	Ok(context)
@@ -923,8 +973,8 @@ async fn set_primary_card(
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-	let ConfirmPaymentMethodRequest {
-		payment_intent_id, ..
+	let SetPrimaryCardRequest {
+		payment_method_id, ..
 	} = context
 		.get_body_as()
 		.status(400)
@@ -933,7 +983,7 @@ async fn set_primary_card(
 	// Check if payment method that is requested to be default, exists or not
 	db::get_payment_method_info(
 		context.get_database_connection(),
-		&payment_intent_id,
+		&payment_method_id,
 	)
 	.await?
 	.status(404)
@@ -943,7 +993,7 @@ async fn set_primary_card(
 	db::set_default_payment_method_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		&payment_intent_id,
+		&payment_method_id,
 	)
 	.await?;
 	context.success(ConfirmPaymentMethodResponse {});
@@ -1006,9 +1056,7 @@ async fn add_credits(
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-
 	let config = context.get_state().config.clone();
-
 	let (transaction_id, client_secret) = service::add_credits_to_workspace(
 		context.get_database_connection(),
 		&workspace_id,

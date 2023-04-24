@@ -14327,18 +14327,6 @@
     },
     "query": "SELECT id as \"id: _\", name, description, owner_id as \"owner_id: _\" FROM role WHERE owner_id = $1;"
   },
-  "e09e78b202404e5d275e763f0d4e751a45760352fb499fe3175707e2ca95860c": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE workspace SET default_payment_method_id = NULL WHERE id = $1"
-  },
   "e0b79f594dc1381af7ec01c721fe76206e4bc182d5b64ee63520813943d27827": {
     "describe": {
       "columns": [],
