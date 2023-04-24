@@ -7,7 +7,6 @@ use axum::{
 	Router,
 	TypedHeader,
 };
-use base64::prelude::*;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -27,7 +26,7 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 	Router::new().route(
 		"/docker-registry-token",
 		get(docker_registry_token_endpoint)
-			.post(|| StatusCode::METHOD_NOT_ALLOWED),
+			.post(|| async { StatusCode::METHOD_NOT_ALLOWED }),
 	)
 }
 
@@ -56,13 +55,16 @@ fn docker_registry_error(error_code: &str, message: &str) -> serde_json::Value {
 
 /// This function is used to authorize and login into the docker registry
 async fn docker_registry_token_endpoint(
-	mut connection: Connection,
+	connection: Connection,
 	Query(query): Query<DockerRegistryTokenQuery>,
 	typed_header: TypedHeader<Authorization<Basic>>,
 	state: State<App>,
 ) -> (StatusCode, Json<serde_json::Value>) {
 	match query {
-		DockerRegistryTokenQuery::Authorize { scope } => todo!(),
+		DockerRegistryTokenQuery::Authorize { scope } => {
+			docker_registry_authorize(connection, scope, typed_header, state)
+				.await
+		}
 		DockerRegistryTokenQuery::Login {
 			client_id,
 			service,
@@ -95,7 +97,7 @@ async fn docker_registry_login(
 ) -> (StatusCode, Json<serde_json::Value>) {
 	let config = app.config;
 
-	if service != &config.docker_registry.service_name {
+	if service != config.docker_registry.service_name {
 		return (
 			StatusCode::BAD_REQUEST,
 			Json(docker_registry_error(

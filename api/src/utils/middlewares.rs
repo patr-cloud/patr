@@ -12,7 +12,7 @@ use axum::{
 };
 use http::Request as HttpRequest;
 
-use crate::{prelude::*, models::UserAuthenticationData};
+use crate::{models::UserAuthenticationData, prelude::*};
 
 // #[derive(Clone)]
 // pub enum EveMiddleware {
@@ -127,6 +127,7 @@ use crate::{prelude::*, models::UserAuthenticationData};
 // 	}
 // }
 
+#[derive(Debug, Clone)]
 pub struct PlainTokenAuthenticator {
 	pub is_api_token_allowed: bool,
 }
@@ -144,18 +145,19 @@ impl PlainTokenAuthenticator {
 	}
 }
 
-impl<Req> DtoMiddleware<Req, App> for PlainTokenAuthenticator
+impl<Req, B> DtoMiddleware<Req, App, B> for PlainTokenAuthenticator
 where
 	Req: ApiRequest,
+	B: Send,
 {
-	type Future = Pin<Box<dyn Future<Output = Result<HttpRequest, Error>>>>;
+	type Future = Pin<Box<dyn Future<Output = Result<HttpRequest<B>, Error>>>>;
 
 	fn run(
 		self,
 		path: <Req as ApiRequest>::Path,
 		query: <Req as ApiRequest>::Query,
 		state: App,
-		req: HttpRequest,
+		req: HttpRequest<B>,
 	) -> Self::Future {
 		Box::pin(async move {
 			let TypedHeader(token) = req
@@ -180,9 +182,7 @@ where
 			.await?;
 
 			if token_data.is_api_token() && !self.is_api_token_allowed {
-				return Err(Error::empty()
-					.status(401)
-					.body(error!(UNAUTHORIZED).to_string()));
+				return Err(Error::new(ErrorType::Unauthorized));
 			}
 
 			let req = req.set_token_data(token_data);

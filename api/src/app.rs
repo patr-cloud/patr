@@ -8,7 +8,7 @@ use std::{
 
 use ::redis::aio::MultiplexedConnection as RedisConnection;
 use axum::{
-	headers,
+	headers::{self, Header},
 	http::header,
 	middleware::Next,
 	response::Response,
@@ -49,8 +49,7 @@ pub async fn start_server(app: &App) {
 			CorsLayer::new()
 				.allow_methods(Any)
 				.allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
-				.allow_origin(AllowOrigin::mirror_request())
-				.map_error(|e| Error::from(e)),
+				.allow_origin(AllowOrigin::mirror_request()),
 		)
 		.route_layer(axum::middleware::from_fn(logger_middleware));
 
@@ -93,8 +92,8 @@ async fn logger_middleware<B>(request: Request<B>, next: Next<B>) -> Response {
 	// Start measuring time to check how long a route takes to execute
 	let start_time = Instant::now();
 
-	let path = request.uri().path();
-	let method = request.method();
+	let path = request.uri().path().to_owned();
+	let method = request.method().clone();
 
 	// Execute the next route and handle the result
 	let response = next.run(request).await;
@@ -103,14 +102,15 @@ async fn logger_middleware<B>(request: Request<B>, next: Next<B>) -> Response {
 	let elapsed_time = start_time.elapsed();
 
 	log_request(
-		method,
+		&method,
 		elapsed_time,
 		&path,
 		&response.status(),
 		response
 			.headers()
-			.get(headers::ContentLength)
-			.map(|v| v.parse().ok())
+			.get(headers::ContentLength::name())
+			.and_then(|v| v.to_str().ok())
+			.and_then(|v| v.parse().ok())
 			.unwrap_or(0),
 	);
 

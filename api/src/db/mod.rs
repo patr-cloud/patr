@@ -9,7 +9,7 @@ use std::ops::{Deref, DerefMut};
 use sqlx::{pool::PoolOptions, Connection, Database as Db, Pool};
 
 pub use self::{initializer::*, meta_data::*, rbac::*, user::*, workspace::*};
-use crate::prelude::*;
+use crate::{prelude::*, utils::settings::Settings};
 
 pub struct DatabaseError(sqlx::Error);
 
@@ -38,7 +38,7 @@ impl From<DatabaseError> for Error {
 			sqlx::Error::WorkerCrashed => todo!(),
 			sqlx::Error::Migrate(_) => todo!(),
 			err => {
-				Self::new(ErrorType::InternalServerError(anyhow::anyhow!(err)))
+				Self::new(ErrorType::InternalServerError(anyhow::anyhow!(err)));
 			}
 		}
 		todo!("check constraints and convert error")
@@ -62,7 +62,7 @@ impl DerefMut for DatabaseError {
 pub type DatabaseResult<T> = Result<T, DatabaseError>;
 
 pub async fn create_database_connection(
-	config: &Config,
+	config: &Settings,
 ) -> DatabaseResult<Pool<Database>> {
 	log::trace!("Creating database connection pool...");
 	PoolOptions::<Database>::new()
@@ -76,6 +76,7 @@ pub async fn create_database_connection(
 				.database(&config.database.database),
 		)
 		.await
+		.map_err(DatabaseError)
 }
 
 pub async fn begin_deferred_constraints(
