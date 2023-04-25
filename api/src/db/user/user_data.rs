@@ -1,4 +1,7 @@
-use api_models::{models::user::BasicUserInfo, utils::Uuid};
+use api_models::{
+	models::user::{BasicUserInfo, ReferralUserInfo},
+	utils::Uuid,
+};
 use chrono::{DateTime, Utc};
 
 use crate::{
@@ -845,26 +848,29 @@ pub async fn search_for_users(
 // To get users that have a particular referral code
 pub async fn get_user_referrals(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_hash: &str,
-) -> Result<Vec<String>, sqlx::Error> {
-	let rows = query!(
+	user_code: &str,
+) -> Result<Vec<ReferralUserInfo>, sqlx::Error> {
+	query_as!(
+		ReferralUserInfo,
 		r#"
 		SELECT
-			username
+			"user".id as "user_id: _",
+			"user".username,
+			"user".first_name,
+			"user".last_name,
+			CONCAT("user".recovery_email_local, '@', domain.name, '.', domain.tld) AS "email!",
+			referred_from
 		FROM
 			"user"
+		JOIN
+			domain ON "user".recovery_email_domain_id = domain.id
 		WHERE
 			sign_up_coupon = $1;
 		"#,
-		user_hash as _,
+		user_code as _,
 	)
 	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| row.username)
-	.collect();
-
-	Ok(rows)
+	.await
 }
 
 pub async fn update_last_referred(

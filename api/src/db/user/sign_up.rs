@@ -136,11 +136,10 @@ pub async fn initialize_user_sign_up_post(
 					CHECK(business_name = LOWER(business_name)),
 			otp_hash TEXT NOT NULL,
 			otp_expiry TIMESTAMPTZ NOT NULL,
-			coupon_code TEXT,
-			referred_from TEXT
-
-			CONSTRAINT user_to_sign_up_fk_coupon_code
-				REFERENCES coupon_code(code),
+			coupon_code TEXT
+				CONSTRAINT user_to_sign_up_fk_coupon_code
+					REFERENCES coupon_code(code),
+			referred_from TEXT,
 
 			CONSTRAINT user_to_sign_up_chk_max_domain_name_length CHECK(
 				(LENGTH(business_domain_name) + LENGTH(business_domain_tld)) < 255

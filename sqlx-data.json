@@ -1092,14 +1092,14 @@
           "type_info": "Text"
         },
         {
-          "name": "last_referred",
+          "name": "referred_from",
           "ordinal": 15,
-          "type_info": "Timestamptz"
+          "type_info": "Text"
         },
         {
-          "name": "referred_from",
+          "name": "last_referred",
           "ordinal": 16,
-          "type_info": "Text"
+          "type_info": "Timestamptz"
         },
         {
           "name": "name!",
@@ -5328,6 +5328,16 @@
     },
     "query": "CREATE UNIQUE INDEX docker_registry_repository_uq_workspace_id_name ON docker_registry_repository(workspace_id, name) WHERE deleted IS NULL;"
   },
+  "53a2e8852cae1a091b8fbe2ba97af8f65867648b3539a53c18d1459d43132638": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE user_to_sign_up( username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY CONSTRAINT user_to_sign_up_chk_username_is_valid CHECK( /* Username is a-z, 0-9, _, cannot begin or end with a . or - */ username ~ '^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$' AND username NOT LIKE '%..%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%' ), account_type RESOURCE_OWNER_TYPE NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, /* Personal email address OR recovery email */ recovery_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_recovery_email_is_lower_case CHECK( recovery_email_local = LOWER(recovery_email_local) ), recovery_email_domain_id UUID CONSTRAINT user_to_sign_up_fk_recovery_email_domain_id REFERENCES personal_domain(id), recovery_phone_country_code CHAR(2) CONSTRAINT user_to_sign_up_fk_recovery_phone_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_to_sign_up_chk_recovery_phone_country_code_upper_case CHECK( recovery_phone_country_code = UPPER(recovery_phone_country_code) ), recovery_phone_number VARCHAR(15) CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK( LENGTH(recovery_phone_number) >= 7 AND LENGTH(recovery_phone_number) <= 15 AND CAST(recovery_phone_number AS BIGINT) > 0 ), /* Workspace email address */ business_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_business_email_local_is_lower_case CHECK( business_email_local = LOWER(business_email_local) ), business_domain_name TEXT CONSTRAINT user_to_sign_up_chk_business_domain_name_is_valid CHECK( business_domain_name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' ), business_domain_tld TEXT CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_length_valid CHECK( LENGTH(business_domain_tld) >= 2 AND LENGTH(business_domain_tld) <= 6 ) CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_valid CHECK( business_domain_tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) CONSTRAINT user_to_sign_up_fk_business_domain_tld REFERENCES domain_tld(tld), business_name VARCHAR(100) CONSTRAINT user_to_sign_up_chk_business_name_is_lower_case CHECK(business_name = LOWER(business_name)), otp_hash TEXT NOT NULL, otp_expiry TIMESTAMPTZ NOT NULL, coupon_code TEXT CONSTRAINT user_to_sign_up_fk_coupon_code REFERENCES coupon_code(code), referred_from TEXT, CONSTRAINT user_to_sign_up_chk_max_domain_name_length CHECK( (LENGTH(business_domain_name) + LENGTH(business_domain_tld)) < 255 ), CONSTRAINT user_to_sign_up_chk_business_details_valid CHECK( ( account_type = 'personal' AND ( business_email_local IS NULL AND business_domain_name IS NULL AND business_domain_tld IS NULL AND business_name IS NULL ) ) OR ( account_type = 'business' AND ( business_email_local IS NOT NULL AND business_domain_name IS NOT NULL AND business_domain_tld IS NOT NULL AND business_name IS NOT NULL ) ) ), CONSTRAINT user_to_sign_up_chk_recovery_details CHECK( ( recovery_email_local IS NOT NULL AND recovery_email_domain_id IS NOT NULL AND recovery_phone_country_code IS NULL AND recovery_phone_number IS NULL ) OR ( recovery_email_local IS NULL AND recovery_email_domain_id IS NULL AND recovery_phone_country_code IS NOT NULL AND recovery_phone_number IS NOT NULL ) ) );"
+  },
   "5443d8492257b3f1a81aea2c8b8995bc0b754d4df43d87fb305e442e914f2cc5": {
     "describe": {
       "columns": [
@@ -6370,14 +6380,14 @@
           "type_info": "Text"
         },
         {
-          "name": "last_referred",
+          "name": "referred_from",
           "ordinal": 15,
-          "type_info": "Timestamptz"
+          "type_info": "Text"
         },
         {
-          "name": "referred_from",
+          "name": "last_referred",
           "ordinal": 16,
-          "type_info": "Text"
+          "type_info": "Timestamptz"
         }
       ],
       "nullable": [
@@ -9766,6 +9776,56 @@
     },
     "query": "CREATE UNIQUE INDEX region_uq_workspace_id_name ON region(workspace_id, name) WHERE deleted IS NULL AND workspace_id IS NOT NULL;"
   },
+  "9367bdfab9a25145b61b4bcf9c9f655406a220a0aff31a7e50868a9b1f8629a0": {
+    "describe": {
+      "columns": [
+        {
+          "name": "user_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "first_name",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "last_name",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "email!",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "referred_from",
+          "ordinal": 5,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        null,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT \"user\".id as \"user_id: _\", \"user\".username, \"user\".first_name, \"user\".last_name, CONCAT(\"user\".recovery_email_local, '@', domain.name, '.', domain.tld) AS \"email!\", referred_from FROM \"user\" JOIN domain ON \"user\".recovery_email_domain_id = domain.id WHERE sign_up_coupon = $1;"
+  },
   "93aa2e4d62404512f28365aa710a14315437f373f5fde796c4ca7ef93a5c98aa": {
     "describe": {
       "columns": [
@@ -12384,16 +12444,6 @@
     },
     "query": "SELECT (repo_id = $1 AND build_num = $2) AS \"available\" FROM ci_builds WHERE ( runner_id = ( SELECT runner_id FROM ci_builds WHERE ( repo_id = $1 AND build_num = $2 ) ) AND ( status = 'waiting_to_start' OR status = 'running' ) ) ORDER BY created ASC LIMIT 1;"
   },
-  "bc71807f329f70b8d3deaa58f84e86f8d10366083895bfeffccc0cb07e0d5f5a": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE user_to_sign_up( username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY CONSTRAINT user_to_sign_up_chk_username_is_valid CHECK( /* Username is a-z, 0-9, _, cannot begin or end with a . or - */ username ~ '^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$' AND username NOT LIKE '%..%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%' ), account_type RESOURCE_OWNER_TYPE NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, /* Personal email address OR recovery email */ recovery_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_recovery_email_is_lower_case CHECK( recovery_email_local = LOWER(recovery_email_local) ), recovery_email_domain_id UUID CONSTRAINT user_to_sign_up_fk_recovery_email_domain_id REFERENCES personal_domain(id), recovery_phone_country_code CHAR(2) CONSTRAINT user_to_sign_up_fk_recovery_phone_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_to_sign_up_chk_recovery_phone_country_code_upper_case CHECK( recovery_phone_country_code = UPPER(recovery_phone_country_code) ), recovery_phone_number VARCHAR(15) CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK( LENGTH(recovery_phone_number) >= 7 AND LENGTH(recovery_phone_number) <= 15 AND CAST(recovery_phone_number AS BIGINT) > 0 ), /* Workspace email address */ business_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_business_email_local_is_lower_case CHECK( business_email_local = LOWER(business_email_local) ), business_domain_name TEXT CONSTRAINT user_to_sign_up_chk_business_domain_name_is_valid CHECK( business_domain_name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' ), business_domain_tld TEXT CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_length_valid CHECK( LENGTH(business_domain_tld) >= 2 AND LENGTH(business_domain_tld) <= 6 ) CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_valid CHECK( business_domain_tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) CONSTRAINT user_to_sign_up_fk_business_domain_tld REFERENCES domain_tld(tld), business_name VARCHAR(100) CONSTRAINT user_to_sign_up_chk_business_name_is_lower_case CHECK(business_name = LOWER(business_name)), otp_hash TEXT NOT NULL, otp_expiry TIMESTAMPTZ NOT NULL, coupon_code TEXT, referred_from TEXT CONSTRAINT user_to_sign_up_fk_coupon_code REFERENCES coupon_code(code), CONSTRAINT user_to_sign_up_chk_max_domain_name_length CHECK( (LENGTH(business_domain_name) + LENGTH(business_domain_tld)) < 255 ), CONSTRAINT user_to_sign_up_chk_business_details_valid CHECK( ( account_type = 'personal' AND ( business_email_local IS NULL AND business_domain_name IS NULL AND business_domain_tld IS NULL AND business_name IS NULL ) ) OR ( account_type = 'business' AND ( business_email_local IS NOT NULL AND business_domain_name IS NOT NULL AND business_domain_tld IS NOT NULL AND business_name IS NOT NULL ) ) ), CONSTRAINT user_to_sign_up_chk_recovery_details CHECK( ( recovery_email_local IS NOT NULL AND recovery_email_domain_id IS NOT NULL AND recovery_phone_country_code IS NULL AND recovery_phone_number IS NULL ) OR ( recovery_email_local IS NULL AND recovery_email_domain_id IS NULL AND recovery_phone_country_code IS NOT NULL AND recovery_phone_number IS NOT NULL ) ) );"
-  },
   "bc99fb8fb755978abf04e2db1da08b6236b07afd722505bd031cbc1e6a1f281e": {
     "describe": {
       "columns": [],
@@ -12735,26 +12785,6 @@
       }
     },
     "query": "SELECT COUNT(*) as \"count!\" FROM \"user\" WHERE id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );"
-  },
-  "c527fa067acc5f74a0606cf5bbb163a7089a944a42fd3645d978a20c35209f0b": {
-    "describe": {
-      "columns": [
-        {
-          "name": "username",
-          "ordinal": 0,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      }
-    },
-    "query": "SELECT username FROM \"user\" WHERE sign_up_coupon = $1;"
   },
   "c5498a02511a83f16da02a0db768a4e5a6d41bacf83fa28557274c4cc10d05d8": {
     "describe": {
