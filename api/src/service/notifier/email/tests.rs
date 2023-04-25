@@ -84,19 +84,18 @@ where
 	INIT.call_once(initialize_handlebar_registry);
 	let handlebar = get_handlebar_registry();
 
-	// let send_test_email = std::env::var("SEND_TEST_EMAIL")
-	// 	.unwrap_or_else(|_| "false".to_string())
-	// 	.parse()
-	// 	.unwrap_or_default();
-	let send_test_email = true;
+	let send_test_email = std::env::var("SEND_TEST_EMAIL")
+		.unwrap_or_else(|_| "false".to_string())
+		.parse()
+		.unwrap_or_default();
 
 	if send_test_email {
 		println!("sending real email for testing");
 
-		let username = std::env::var("ashish.oli@vicara.co")?;
-		let password = std::env::var("!6Vf%MdJZioSEkK6PqBDDVb%7i7k3ucu**y")?;
-		let from = std::env::var("ashish.oli@vicara.co")?;
-		let to = std::env::var("barnrichard1@gmail.com")?;
+		let username = std::env::var("EMAIL_CRED_USERNAME")?;
+		let password = std::env::var("EMAIL_CRED_PASSWORD")?;
+		let from = std::env::var("EMAIL_FROM")?;
+		let to = std::env::var("EMAIL_TO")?;
 
 		let message = Message::builder()
 			.from(from.parse()?)
@@ -603,7 +602,7 @@ async fn test_report_card_email() -> Result<(), Error> {
 			.unwrap(),
 			hours: 720,
 			instances: 1,
-			estimated_cost: 1000f32,
+			estimated_cost: 1000,
 			ram_count: 2,
 			cpu_count: 1,
 			plan: "10".to_owned(),

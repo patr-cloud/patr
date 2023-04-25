@@ -69,7 +69,7 @@ pub struct UserDeployment {
 	pub deployment_id: Uuid,
 	pub hours: u64,
 	pub instances: u32,
-	pub estimated_cost: f32,
+	pub estimated_cost: u32,
 	pub ram_count: u32,
 	pub cpu_count: u32,
 	pub plan: String,

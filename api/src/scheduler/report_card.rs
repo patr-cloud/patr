@@ -37,7 +37,7 @@ async fn generate_report_card() -> Result<(), Error> {
 				.await?;
 
 		let mut user_deployment = Vec::new();
-		for deployment in deployments {
+		for deployment in &deployments {
 			let deployment_usages = db::get_deployment_usage(
 				&mut connection,
 				&deployment.id,
@@ -47,71 +47,84 @@ async fn generate_report_card() -> Result<(), Error> {
 			.await?;
 
 			let mut hours = 0;
-			let mut monthly_price = 0.0_f32;
 			let mut cpu_count = 0;
 			let mut memory_count = 0;
-			let mut plan = "".to_string();
-			let mut estimated_cost = 0.0_f32;
+			let mut plan = "Free".to_string();
+			let mut estimated_cost = 0;
 			let mut instances = 1u32;
 
-			if let Some(deployment_usage) = deployment_usages.into_iter().next()
-			{
-				let stop_time = deployment_usage
-					.stop_time
-					.map(chrono::DateTime::from)
-					.unwrap_or_else(Utc::now);
-				let start_time =
-					max(deployment_usage.start_time, month_start_date);
-				hours = min(
-					720,
-					((stop_time - start_time).num_seconds() as f64 / 3600f64)
-						.ceil() as i64,
-				) as u64;
+			let deployment_report = deployment_usages
+				.into_iter()
+				.next()
+				.map(|deployment_usage| {
+					let stop_time = deployment_usage
+						.stop_time
+						.map(chrono::DateTime::from)
+						.unwrap_or_else(Utc::now);
+					let start_time =
+						max(deployment_usage.start_time, month_start_date);
+					hours = min(
+						720,
+						((stop_time - start_time).num_seconds() as f64 /
+							3600f64)
+							.ceil() as i64,
+					) as u64;
 
-				let (cpu, memory) = deployment::MACHINE_TYPES
-					.get()
-					.unwrap()
-					.get(&deployment_usage.machine_type)
-					.unwrap_or(&(1, 2));
+					let (cpu, memory) = deployment::MACHINE_TYPES
+						.get()
+						.unwrap()
+						.get(&deployment_usage.machine_type)
+						.unwrap_or(&(1, 2));
 
-				cpu_count = *cpu as u32;
-				memory_count = *memory as u32;
+					cpu_count = *cpu as u32;
+					memory_count = *memory as u32;
 
-				monthly_price = match (cpu_count, memory_count) {
-					(1, 2) => 5f32,
-					(1, 4) => 10f32,
-					(1, 8) => 20f32,
-					(2, 8) => 40f32,
-					(4, 32) => 80f32,
-					_ => 0f32,
-				};
+					let monthly_price = match (cpu_count, memory_count) {
+						(1, 2) => 5u32,
+						(1, 4) => 10u32,
+						(1, 8) => 20u32,
+						(2, 8) => 40u32,
+						(4, 32) => 80u32,
+						_ => 0u32,
+					};
 
-				if (cpu_count, memory_count) == (1, 2) &&
-					deployment_usage.num_instance == 1
-				{
-					// Free eligible
-					plan = "Free".to_string();
-					estimated_cost = 0.0_f32;
-				} else {
-					plan = monthly_price.to_string();
-					estimated_cost =
-						monthly_price * deployment_usage.num_instance as f32;
-				}
+					if (cpu_count, memory_count) == (1, 2) &&
+						deployment_usage.num_instance == 1
+					{
+						// Free eligible
+						plan = "Free".to_string();
+						estimated_cost = 0;
+					} else {
+						plan = monthly_price.to_string();
+						estimated_cost = monthly_price *
+							deployment_usage.num_instance as u32;
+					}
 
-				instances = deployment_usage.num_instance as u32;
-				break;
-			}
+					instances = deployment_usage.num_instance as u32;
 
-			user_deployment.push(UserDeployment {
-				deployment_id: deployment.id,
-				deployment_name: deployment.name,
-				hours,
-				instances,
-				estimated_cost: estimated_cost * 100.0_f32,
-				ram_count: memory_count,
-				cpu_count,
-				plan,
-			})
+					UserDeployment {
+						deployment_id: deployment.id.clone(),
+						deployment_name: deployment.name.clone(),
+						hours,
+						instances,
+						estimated_cost: estimated_cost * 100,
+						ram_count: memory_count,
+						cpu_count,
+						plan: plan.clone(),
+					}
+				})
+				.unwrap_or(UserDeployment {
+					deployment_id: deployment.id.clone(),
+					deployment_name: deployment.name.clone(),
+					hours,
+					instances,
+					estimated_cost: estimated_cost * 100,
+					ram_count: memory_count,
+					cpu_count,
+					plan: plan.clone(),
+				});
+
+			user_deployment.push(deployment_report)
 		}
 
 		service::send_report_card_email_notification(
