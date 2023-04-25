@@ -5,17 +5,19 @@ We've specially curated a sneak peek into the health of your {{resourceType}} on
 
 We're stoked to let you know that your {{resourceType}} is performing like a boss:
 
-Name: {{deploymentName}}
-Hours Running: {{hours}}
-No.of Instances: {{instances}}
-Est. Cost: {{estimatedCost}}
+{{#each userDeployment}}
+Name: {{this.deploymentName}}
+Hours Running: {{this.hours}}
+No.of Instances: {{this.instances}}
+Est. Cost: ${{cents-to-dollars this.estimatedCost}}
 
 Resources in Use:
-RAM: {{ramCount}} GB
-vCPU: {{cpuCount}}
-Plan: {{plan}}
+RAM: {{this.ramCount}} GB
+vCPU: {{this.cpuCount}}
+Plan: {{this.plan}}
 
-Access your deployment here: {{deploymentLink}}
+Access your deployment here: https://app.patr.cloud/deployment/{{this.deploymentId}}
+{{/each}}
 
 At Patr, we believe in continuously improving our services and features to provide you with the best infrastructure management experience. We would like to take this opportunity to remind you of some of the resources you can utilize to enhance your experience on Patr.
 
