@@ -70,7 +70,15 @@ pub async fn create_kubernetes_psql_database(
 	let sts_name_for_db = format!("db-{database_id}");
 	let sts_port_name_for_db = format!("postgresql");
 	let pvc_prefix_for_db = "pvc"; // actual name will be `pvc-{sts_name_for_db}-{sts_ordinal}`
-	let configmap_name_for_db = format!("db-{database_id}");
+	let configmap_name_for_db = format!("master-slave-config");
+
+	// let namespace = workspace_id.as_str();
+	// let secret_name_for_db_pwd = format!("db-pwd-{database_id}");
+	// let svc_name_for_db = format!("postgresql");
+	// let sts_name_for_db = format!("postgresql");
+	// let sts_port_name_for_db = format!("postgresql");
+	// let pvc_prefix_for_db = "pvc"; // actual name will be `pvc-{sts_name_for_db}-{sts_ordinal}`
+	// let configmap_name_for_db = format!("postgresql");
 
 	// constants
 	let secret_key_for_db_pwd = "password";
@@ -109,8 +117,8 @@ pub async fn create_kubernetes_psql_database(
 		"master-slave-config.sh".to_owned(),
 		vec![
 			"HOST=`hostname -s`".to_owned(),
-            "ORD=${{HOST##*-}}".to_owned(),
-            "HOST_TEMPLATE=${{HOST%-*}}".to_owned(),
+            "ORD=${HOST##*-}".to_owned(),
+            "HOST_TEMPLATE=${HOST%-*}".to_owned(),
             "case $ORD in".to_owned(),
                 "0)".to_owned(),
                 r#"echo "host    replication     all     all     md5" >> /var/lib/postgresql/data/pg_hba.conf"#.to_owned(),
@@ -127,7 +135,7 @@ pub async fn create_kubernetes_psql_database(
                 "pg_ctl -D /var/lib/postgresql/data/ -m fast -w stop".to_owned(),
                 "rm -rf /var/lib/postgresql/data/*".to_owned(),
                 "# add service name for DNS resolution".to_owned(),
-                "PGPASSWORD=k8s-postgres-ha pg_basebackup -h ${{HOST_TEMPLATE}}-0.postgresql-service -w -U replicator -p 5432 -D /var/lib/postgresql/data -Fp -Xs -P -R".to_owned(), //possible error
+                format!("PGPASSWORD=k8s-postgres-ha pg_basebackup -h ${{HOST_TEMPLATE}}-0.{svc_name_for_db} -w -U replicator -p 5432 -D /var/lib/postgresql/data -Fp -Xs -P -R").to_owned(), //possible error
                 "# start server to keep container's screep happy".to_owned(),
                 "pg_ctl -D /var/lib/postgresql/data/ -w start".to_owned(),
                 ";;".to_owned(),
@@ -215,14 +223,15 @@ pub async fn create_kubernetes_psql_database(
 				image: Some("postgres:12".to_owned()),
 				env: Some(vec![EnvVar {
 					name: "POSTGRES_PASSWORD".to_owned(),
-					value_from: Some(EnvVarSource {
-						secret_key_ref: Some(SecretKeySelector {
-							name: Some(secret_name_for_db_pwd),
-							key: secret_key_for_db_pwd.to_owned(),
-							..Default::default()
-						}),
-						..Default::default()
-					}),
+					value: Some("test".to_owned()),
+					// value_from: Some(EnvVarSource {
+					// 	secret_key_ref: Some(SecretKeySelector {
+					// 		name: Some(secret_name_for_db_pwd),
+					// 		key: secret_key_for_db_pwd.to_owned(),
+					// 		..Default::default()
+					// 	}),
+					// 	..Default::default()
+					// }),
 					..Default::default()
 				}]),
 				ports: Some(vec![ContainerPort {
@@ -288,9 +297,10 @@ pub async fn create_kubernetes_psql_database(
 					timeout_seconds: Some(5),
 					..Default::default()
 				}),
-				volume_mounts: Some(vec![VolumeMount {
-					name: pvc_prefix_for_db.to_owned(),
-					mount_path: "/var/lib/postgresql/data".to_owned(),
+				volume_mounts: Some(vec![
+				VolumeMount{
+					name: "init-scripts".to_owned(),
+					mount_path: "/docker-entrypoint-initdb.d".to_owned(),
 					..Default::default()
 				}]),
 				..Default::default()
