@@ -9,6 +9,7 @@ pub struct GitHubAccessToken {
 pub struct GitHubUserInfo {
 	pub name: String,
 }
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GitHubUserEmail {
 	pub email: String,
