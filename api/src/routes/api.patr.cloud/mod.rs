@@ -1,4 +1,7 @@
-use api_models::models::{survey::SubmitSurveyRequest, GetVersionResponse};
+use api_models::models::{
+	survey::{SubmitSurveyRequest, SubmitSurveyResponse},
+	GetVersionResponse,
+};
 use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, NextHandler};
 
@@ -90,5 +93,6 @@ async fn submit_inapp_survey(
 	)
 	.await?;
 
+	context.success(SubmitSurveyResponse {});
 	Ok(context)
 }
