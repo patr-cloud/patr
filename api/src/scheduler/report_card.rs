@@ -38,14 +38,8 @@ async fn generate_report_card() -> Result<(), Error> {
 
 		let mut user_deployment = Vec::new();
 		for deployment in deployments {
-			let machine_type = db::get_machine_type_id(
-				&mut connection,
-				&deployment.machine_type,
-			)
-			.await?;
-
 			let deployment_usages = db::get_deployment_usage(
-				&mut *connection,
+				&mut connection,
 				&deployment.id,
 				&DateTime::from(month_start_date),
 				&Utc::now(),
@@ -53,18 +47,19 @@ async fn generate_report_card() -> Result<(), Error> {
 			.await?;
 
 			let mut hours = 0;
-			let mut monthly_price = 0f32;
+			let mut monthly_price = 0.0_f32;
 			let mut cpu_count = 0;
 			let mut memory_count = 0;
-			let remaining_free_hours = 720;
-			let price_in_cents = 0;
-			let mut plan = String::new();
-			let mut estimated_cost = 0.0;
-			for deployment_usage in deployment_usages {
+			let mut plan = "".to_string();
+			let mut estimated_cost = 0.0_f32;
+			let mut instances = 1u32;
+
+			if let Some(deployment_usage) = deployment_usages.into_iter().next()
+			{
 				let stop_time = deployment_usage
 					.stop_time
 					.map(chrono::DateTime::from)
-					.unwrap_or_else(|| Utc::now());
+					.unwrap_or_else(Utc::now);
 				let start_time =
 					max(deployment_usage.start_time, month_start_date);
 				hours = min(
@@ -96,13 +91,14 @@ async fn generate_report_card() -> Result<(), Error> {
 				{
 					// Free eligible
 					plan = "Free".to_string();
-					estimated_cost = 0.0 as f32;
+					estimated_cost = 0.0_f32;
 				} else {
 					plan = monthly_price.to_string();
-					estimated_cost = monthly_price as f32 *
-						deployment_usage.num_instance as f32;
+					estimated_cost =
+						monthly_price * deployment_usage.num_instance as f32;
 				}
 
+				instances = deployment_usage.num_instance as u32;
 				break;
 			}
 
@@ -110,10 +106,10 @@ async fn generate_report_card() -> Result<(), Error> {
 				deployment_id: deployment.id,
 				deployment_name: deployment.name,
 				hours,
-				instances: deployment.max_horizontal_scale as u64,
-				estimated_cost,
-				ram_count: machine_type.memory_count as u32,
-				cpu_count: machine_type.cpu_count as u32,
+				instances,
+				estimated_cost: estimated_cost * 100.0_f32,
+				ram_count: memory_count,
+				cpu_count,
 				plan,
 			})
 		}

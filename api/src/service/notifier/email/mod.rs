@@ -801,13 +801,13 @@ pub async fn send_report_card_email(
 	email: Mailbox,
 	username: &str,
 	resource_type: &str,
-	user_deployment: &Vec<UserDeployment>,
+	user_deployment: &[UserDeployment],
 ) -> Result<(), Error> {
 	send_email(
 		ReportCardEmail {
 			username: username.to_string(),
 			resource_type: resource_type.to_string(),
-			user_deployment: user_deployment.clone(),
+			user_deployment: user_deployment.to_owned(),
 		},
 		email,
 		None,

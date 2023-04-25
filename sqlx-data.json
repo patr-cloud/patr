@@ -2494,6 +2494,143 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tbuild_num,\n\t\t\tgit_ref,\n\t\t\tgit_commit,\n\t\t\tstatus as \"status: _\",\n\t\t\tcreated as \"created: _\",\n\t\t\tstarted as \"started: _\",\n\t\t\tfinished as \"finished: _\",\n\t\t\tmessage,\n\t\t\tauthor,\n\t\t\tgit_pr_title,\n\t\t\tgit_commit_message,\n\t\t\trunner_id as \"runner_id: _\"\n\t\tFROM\n\t\t\tci_builds\n\t\tWHERE\n\t\t\trepo_id = $1 AND\n\t\t\tbuild_num = $2;\n\t\t"
   },
+  "22519fb6b6f9f5aea936f20934fcd69b3ec7480f439c6e2fcbd0461031608002": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "registry",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "repository_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "image_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "image_tag",
+          "ordinal": 5,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 6,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              },
+              "name": "deployment_status"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 7,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "region: _",
+          "ordinal": 8,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "min_horizontal_scale",
+          "ordinal": 9,
+          "type_info": "Int2"
+        },
+        {
+          "name": "max_horizontal_scale",
+          "ordinal": 10,
+          "type_info": "Int2"
+        },
+        {
+          "name": "machine_type: _",
+          "ordinal": 11,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "deploy_on_push",
+          "ordinal": 12,
+          "type_info": "Bool"
+        },
+        {
+          "name": "startup_probe_port",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "startup_probe_path",
+          "ordinal": 14,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "liveness_probe_port",
+          "ordinal": 15,
+          "type_info": "Int4"
+        },
+        {
+          "name": "liveness_probe_path",
+          "ordinal": 16,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "current_live_digest",
+          "ordinal": 17,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE workspace_id = $1 AND status != 'deleted' LIMIT 5;"
+  },
   "228e6bc3a8eb9c3113acda6e4fa32f347b99cf44fb9935e39461eaa8e8cef7e7": {
     "describe": {
       "columns": [
@@ -8540,6 +8677,58 @@
       }
     },
     "query": "CREATE TABLE secret( id UUID CONSTRAINT secret_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)), workspace_id UUID NOT NULL, deployment_id UUID, /* For deployment specific secrets */ deleted TIMESTAMPTZ );"
+  },
+  "800d62914728ade2506a37adb5f5032a5e410e4b13f365e623a6929b0e5fff85": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "deployment_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "machine_type: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "num_instance: _",
+          "ordinal": 3,
+          "type_info": "Int4"
+        },
+        {
+          "name": "start_time: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "stop_time: _",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdeployment_id as \"deployment_id: _\",\n\t\t\tmachine_type as \"machine_type: _\",\n\t\t\tnum_instance as \"num_instance: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tdeployment_payment_history\n\t\tWHERE\n\t\t\tdeployment_id = $1 AND\n\t\t\t(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3)\n\t\tORDER BY\n\t\t\tstart_time ASC;\n\t\t"
   },
   "80503e90773cd8d3decdd6fc06cdc64481eba8189bd2b66b6e8479875e429604": {
     "describe": {

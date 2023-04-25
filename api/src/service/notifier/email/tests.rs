@@ -52,10 +52,11 @@ use super::{
 	UserSignUpVerificationEmail,
 };
 use crate::{
-	models::EmailTemplate,
+	models::{EmailTemplate, UserDeployment},
 	service::notifier::email::{
 		ByocDisconnectedReminder,
 		DomainVerificationReminder,
+		ReportCardEmail,
 	},
 	utils::{
 		handlebar_registry::{
@@ -83,18 +84,19 @@ where
 	INIT.call_once(initialize_handlebar_registry);
 	let handlebar = get_handlebar_registry();
 
-	let send_test_email = std::env::var("SEND_TEST_EMAIL")
-		.unwrap_or_else(|_| "false".to_string())
-		.parse()
-		.unwrap_or_default();
+	// let send_test_email = std::env::var("SEND_TEST_EMAIL")
+	// 	.unwrap_or_else(|_| "false".to_string())
+	// 	.parse()
+	// 	.unwrap_or_default();
+	let send_test_email = true;
 
 	if send_test_email {
 		println!("sending real email for testing");
 
-		let username = std::env::var("EMAIL_CRED_USERNAME")?;
-		let password = std::env::var("EMAIL_CRED_PASSWORD")?;
-		let from = std::env::var("EMAIL_FROM")?;
-		let to = std::env::var("EMAIL_TO")?;
+		let username = std::env::var("ashish.oli@vicara.co")?;
+		let password = std::env::var("!6Vf%MdJZioSEkK6PqBDDVb%7i7k3ucu**y")?;
+		let from = std::env::var("ashish.oli@vicara.co")?;
+		let to = std::env::var("barnrichard1@gmail.com")?;
 
 		let message = Message::builder()
 			.from(from.parse()?)
@@ -584,6 +586,28 @@ async fn test_partial_payment_success_email() -> Result<(), Error> {
 		amount_paid: 499,
 		bill_remaining: 450,
 		credits_remaining: 0,
+	})
+	.await
+}
+
+#[tokio::test]
+async fn test_report_card_email() -> Result<(), Error> {
+	send_email(ReportCardEmail {
+		username: "username".to_owned(),
+		resource_type: "deployment".to_owned(),
+		user_deployment: vec![UserDeployment {
+			deployment_name: "my-deployment".to_owned(),
+			deployment_id: Uuid::parse_str(
+				"d5727fb4-9e6b-43df-8a46-0c698340fffb",
+			)
+			.unwrap(),
+			hours: 720,
+			instances: 1,
+			estimated_cost: 1000f32,
+			ram_count: 2,
+			cpu_count: 1,
+			plan: "10".to_owned(),
+		}],
 	})
 	.await
 }

@@ -65,12 +65,12 @@ impl fmt::Display for ResourceType {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserDeployment {
-	deployment_name: String,
-	deployment_id: Uuid,
-	hours: u64,
-	instances: u64,
-	estimated_cost: f32,
-	ram_count: u32,
-	cpu_count: u32,
-	plan: String,
+	pub deployment_name: String,
+	pub deployment_id: Uuid,
+	pub hours: u64,
+	pub instances: u32,
+	pub estimated_cost: f32,
+	pub ram_count: u32,
+	pub cpu_count: u32,
+	pub plan: String,
 }

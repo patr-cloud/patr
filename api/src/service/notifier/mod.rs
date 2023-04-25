@@ -1212,7 +1212,7 @@ pub async fn send_report_card_email_notification(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace: &Workspace,
 	resource_type: &str,
-	user_deployments: &Vec<UserDeployment>,
+	user_deployments: &[UserDeployment],
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, &workspace.super_admin_id)
 		.await?
