@@ -35,9 +35,9 @@
     </tr>
     {{#each userDeployment}}
       <tr>
-        <td style="padding-top: 1rem;">
+        <td style="padding-top: 1rem; text-align:center">
           <table
-            style="width: 100%; border-spacing: .5rem;"
+            style="width:80%; border-spacing: .5rem; max-width:400px;"
           >
             <tbody>
               <tr>
@@ -48,7 +48,7 @@
                   Name
                   <br />
                   <strong
-                    style="color: #f89b41; font-size: 1.3rem;"
+                    style="color: #f89b41; font-size: 1.1rem;"
                   >{{this.deploymentName}}</strong>
                 </td>
                 <td
@@ -58,7 +58,7 @@
                   Hours Running
                   <br />
                   <strong
-                    style="color: #f89b41; font-size: 1.3rem;"
+                    style="color: #f89b41; font-size: 1.1rem;"
                   >{{this.hours}}</strong>
                 </td>
               </tr>
@@ -67,9 +67,9 @@
         </td>
       </tr>
       <tr>
-        <td>
+        <td style="text-align:center;">
           <table
-            style="width: 100%; border-spacing: .5rem;"
+            style="width: 80%; border-spacing: .5rem; max-width:400px;"
           >
             <tbody>
               <tr>
@@ -80,7 +80,7 @@
                   No.of Instances
                   <br />
                   <strong
-                    style="color: #f89b41; font-size: 1.3rem;"
+                    style="color: #f89b41; font-size: 1.1rem;"
                   >{{this.instances}}</strong>
                 </td>
                 <td
@@ -90,7 +90,7 @@
                   Est. Cost
                   <br />
                   <strong
-                    style="color: #f89b41; font-size: 1.3rem;"
+                    style="color: #f89b41; font-size: 1.1rem;"
                   >${{cents-to-dollars this.estimatedCost}}</strong>
                 </td>
               </tr>
@@ -149,7 +149,7 @@
           <a
             href="https://app.patr.cloud/deployment/{{this.deploymentId}}"
             class="plain-link txt-primary txt-bold"
-            style="color: #f89b41; text-decoration: underline; font-weight: 600;"
+            style="color: #191131; text-decoration: underline; font-weight: 600;"
           >https://app.patr.cloud/deployment/{{this.deploymentId}}</a>
         </td>
       </tr>
