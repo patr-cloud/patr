@@ -76,18 +76,18 @@ pub async fn create_patr_database_in_workspace(
 	let creation_time = Utc::now();
 
 	// PATR_DATABASE is none
-	db::create_resource(
-		connection,
-		&database_id,
-		rbac::RESOURCE_TYPES
-			.get()
-			.unwrap()
-			.get(rbac::resource_types::PATR_DATABASE)
-			.unwrap(),
-		workspace_id,
-		&creation_time,
-	)
-	.await?;
+	// db::create_resource(
+	// 	connection,
+	// 	&database_id,
+	// 	rbac::RESOURCE_TYPES
+	// 		.get()
+	// 		.unwrap()
+	// 		.get(rbac::resource_types::PATR_DATABASE)
+	// 		.unwrap(),
+	// 	workspace_id,
+	// 	&creation_time,
+	// )
+	// .await?;
 
 	if !region_details.is_byoc_region() {
 		db::start_patr_database_usage_history(
@@ -117,23 +117,23 @@ pub async fn create_patr_database_in_workspace(
 		"request_id: {} - Creating entry for newly created patr database",
 		request_id
 	);
-	db::create_patr_database(
-		connection,
-		&database_id,
-		name,
-		workspace_id,
-		region_id,
-		db_name,
-		engine,
-		version,
-		database_plan,
-		&format!("db-{database_id}"),
-		port,
-		username,
-		&password,
-		replica_numbers,
-	)
-	.await?;
+	// db::create_patr_database(
+	// 	connection,
+	// 	&database_id,
+	// 	name,
+	// 	workspace_id,
+	// 	region_id,
+	// 	db_name,
+	// 	engine,
+	// 	version,
+	// 	database_plan,
+	// 	&format!("db-{database_id}"),
+	// 	port,
+	// 	username,
+	// 	&password,
+	// 	replica_numbers,
+	// )
+	// .await?;
 	log::trace!("request_id: {} - Resource generation complete", request_id);
 
 	let kubeconfig = service::get_kubernetes_config_for_region(
