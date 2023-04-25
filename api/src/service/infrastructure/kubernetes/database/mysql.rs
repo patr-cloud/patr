@@ -64,21 +64,21 @@ pub async fn create_kubernetes_mysql_database(
 		super::super::get_kubernetes_client(kubeconfig.auth_details).await?;
 
 	// names
-	// let namespace = workspace_id.as_str();
-	// let secret_name_for_db_pwd = "mysql".to_owned();
-	// let master_svc_name_for_db = "mysql".to_owned();
-	// let slave_svc_name_for_db = "mysql-read".to_owned();
-	// let sts_name_for_db = "mysql".to_owned();
-	// let pvc_prefix_for_db = "pvc"; // actual name will be `pvc-{sts_name_for_db}-{sts_ordinal}`
-	// let configmap_name_for_db = "mysql".to_owned();
-
 	let namespace = workspace_id.as_str();
-	let secret_name_for_db_pwd = format!("db-pwd-{database_id}");
-	let master_svc_name_for_db = format!("db-{database_id}");
-	let slave_svc_name_for_db = format!("db-{database_id}-read");
-	let sts_name_for_db = format!("db-{database_id}");
+	let secret_name_for_db_pwd = "mysql".to_owned();
+	let master_svc_name_for_db = "mysql".to_owned();
+	let slave_svc_name_for_db = "mysql-read".to_owned();
+	let sts_name_for_db = "mysql".to_owned();
 	let pvc_prefix_for_db = "pvc"; // actual name will be `pvc-{sts_name_for_db}-{sts_ordinal}`
-	let configmap_name_for_db = format!("db-{database_id}");
+	let configmap_name_for_db = "mysql".to_owned();
+
+	// let namespace = workspace_id.as_str();
+	// let secret_name_for_db_pwd = format!("db-pwd-{database_id}");
+	// let master_svc_name_for_db = format!("db-{database_id}");
+	// let slave_svc_name_for_db = format!("db-{database_id}-read");
+	// let sts_name_for_db = format!("db-{database_id}");
+	// let pvc_prefix_for_db = "pvc"; // actual name will be `pvc-{sts_name_for_db}-{sts_ordinal}`
+	// let configmap_name_for_db = format!("db-{database_id}");
 
 	// constants
 	// let secret_key_for_db_pwd = "password";
@@ -120,12 +120,12 @@ pub async fn create_kubernetes_mysql_database(
 	let mut config_data = BTreeMap::new();
 	config_data.insert(
 		"primary.cnf".to_owned(),
-		r#"| \ [mysqld] \ log-bin"#.to_owned()
+		vec!["[mysqld]", "log-bin"].join("\n")
 		// generate_config_data_template("primary.cnf"),
 	);
 	config_data.insert(
 		"replica.cnf".to_owned(),
-		r#"| \ [mysqld] \ super-read-only"#.to_owned()
+		vec!["[mysqld]", "super-read-only"].join("\n")
 		// generate_config_data_template("replica.cnf"),
 	);
 
@@ -247,6 +247,7 @@ pub async fn create_kubernetes_mysql_database(
 							"[[ $HOSTNAME =~ -([0-9]+)$ ]] || exit 1".to_owned(),
 							"ordinal=${BASH_REMATCH[1]}".to_owned(),
 							"echo [mysqld] > /mnt/conf.d/server-id.cnf".to_owned(),
+							r#"echo "" >> /mnt/conf.d/server-id.cnf"#.to_owned(),
 							"echo server-id=$((100 + $ordinal)) >> /mnt/conf.d/server-id.cnf".to_owned(),
 							"if [[ $ordinal -eq 0 ]]; then".to_owned(),
 							"cp /mnt/config-map/primary.cnf /mnt/conf.d/".to_owned(),
@@ -433,7 +434,7 @@ pub async fn create_kubernetes_mysql_database(
 							r#"until mysql -h 127.0.0.1 -e "SELECT 1"; do sleep 1; done"#.to_owned(),
 							r#"mysql -h 127.0.0.1 \"#.to_owned(),
 							r#"-e "$(<change_master_to.sql.in), \"#.to_owned(),
-							format!(r#"MASTER_HOST='{sts_name_for_db}-0.mysql', \"#).to_owned(),//***************
+							format!(r#"MASTER_HOST='{sts_name_for_db}-0.{sts_name_for_db}.{namespace}', \"#).to_owned(),//***************
 							r#"MASTER_USER='root', \"#.to_owned(),
 							r#"MASTER_PASSWORD='', \"#.to_owned(),
 							r#"MASTER_CONNECT_RETRY=10; \"#.to_owned(),
@@ -446,7 +447,7 @@ pub async fn create_kubernetes_mysql_database(
 						
 						// generate_command_data_template("container"),
 					]),
-					// args: Some(vec![
+					// Failing to make connection because name being cut
 						
 					// ]),
 					volume_mounts: Some(vec![
@@ -638,81 +639,4 @@ pub async fn handle_scaling(
 		.await?;
 
 	Ok(())
-}
-
-fn generate_config_data_template(config: &str) -> String {
-	match config {
-		"primary.cnf" => format!(
-			r#"| 
-# Apply this config only on the primary.
-[mysqld]
-log-bin"#
-		),
-		"replica.cnf" => format!(
-			r#"|
-# Apply this config only on replicas.
-[mysqld]
-super-read-only"#
-		),
-		_ => format!(r#"exit"#),
-	}
-}
-
-fn generate_command_data_template(container: &str) -> String {
-	match container {
-		"container" => format!(
-			r#"set -ex;
-cd /var/lib/mysql;
-# Determine binlog position of cloned data, if any.
-if [[ -f xtrabackup_slave_info && "x$(<xtrabackup_slave_info)" != "x" ]]; then
-	# XtraBackup already generated a partial "CHANGE MASTER TO" query
-	# because we're cloning from an existing replica. (Need to remove the tailing semicolon!)
-	cat xtrabackup_slave_info | sed -E 's/;$//g' > change_master_to.sql.in;
-	# Ignore xtrabackup_binlog_info in this case (it's useless).
-	rm -f xtrabackup_slave_info xtrabackup_binlog_info;
-elif [[ -f xtrabackup_binlog_info ]]; then
-	# We're cloning directly from primary. Parse binlog position.
-	[[ `cat xtrabackup_binlog_info` =~ ^(.*?)[[:space:]]+(.*?)$ ]] || exit 1
-	rm -f xtrabackup_binlog_info xtrabackup_slave_info;
-	echo "CHANGE MASTER TO MASTER_LOG_FILE=${{BASH_REMATCH[1]}},\
-		MASTER_LOG_POS=${{BASH_REMATCH[2]}}" > change_master_to.sql.in;
-fi
-# Check if we need to complete a clone by starting replication.
-if [[ -f change_master_to.sql.in ]]; then
-	echo "Waiting for mysqld to be ready (accepting connections)" ;
-	until mysql -h 127.0.0.1 -e "SELECT 1"; do sleep 1; done
-	echo "Initializing replication from clone position";
-	mysql -h 127.0.0.1 \
-		-e "$(<change_master_to.sql.in), \
-				MASTER_HOST='mysql-0.mysql', \
-				MASTER_USER='root', \
-				MASTER_PASSWORD='', \
-				MASTER_CONNECT_RETRY=10; \
-				START SLAVE;" || exit 1
-	# In case of container restart, attempt this at-most-once.
-	mv change_master_to.sql.in change_master_to.sql.orig;
-fi
-# Start a server to send backups when requested by peers.
-exec ncat --listen --keep-open --send-only --max-conns=1 3307 -c \
-	"xtrabackup --backup --slave-info --stream=xbstream --host=127.0.0.1 --user=root";
-"#
-		),
-		"init_container" => format!(
-			r#"set -ex;
-# Generate mysql server-id from pod ordinal index.
-[[ $HOSTNAME =~ -([0-9]+)$ ]] || exit 1
-ordinal=${{BASH_REMATCH[1]}};
-echo [mysqld] > /mnt/conf.d/server-id.cnf;
-# Add an offset to avoid reserved server-id=0 value.
-echo server-id=$((100 + $ordinal)) >> /mnt/conf.d/server-id.cnf;
-# Copy appropriate conf.d files from config-map to emptyDir.
-if [[ $ordinal -eq 0 ]]; then
-	cp /mnt/config-map/primary.cnf /mnt/conf.d/;
-else
-	cp /mnt/config-map/replica.cnf /mnt/conf.d/;
-fi
-"#
-		),
-		_ => format!(r#"exit"#),
-	}
 }
