@@ -394,7 +394,6 @@ pub async fn create_user_join_request(
 				&token_hash,
 				&token_expiry,
 				coupon_code,
-				is_oauth_user,
 			)
 			.await?;
 
@@ -414,7 +413,6 @@ pub async fn create_user_join_request(
 				otp_hash: token_hash,
 				otp_expiry: token_expiry,
 				coupon_code: coupon_code.map(|code| code.to_string()),
-				is_oauth_user,
 			}
 		}
 		SignUpAccountType::Personal { account_type: _ } => {
@@ -430,7 +428,6 @@ pub async fn create_user_join_request(
 				&token_hash,
 				&token_expiry,
 				coupon_code,
-				is_oauth_user,
 			)
 			.await?;
 
@@ -450,7 +447,6 @@ pub async fn create_user_join_request(
 				otp_hash: token_hash,
 				otp_expiry: token_expiry,
 				coupon_code: coupon_code.map(|code| code.to_string()),
-				is_oauth_user,
 			}
 		}
 	};
@@ -881,7 +877,6 @@ pub async fn join_user(
 		recovery_phone_number,
 		3,
 		user_data.coupon_code.as_deref(),
-		user_data.is_oauth_user,
 	)
 	.await?;
 	db::end_deferred_constraints(connection).await?;

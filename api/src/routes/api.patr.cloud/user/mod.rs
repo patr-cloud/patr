@@ -283,6 +283,7 @@ async fn get_user_info(
 		dob,
 		bio,
 		created,
+		password,
 		..
 	} = db::get_user_by_user_id(context.get_database_connection(), &user_id)
 		.await?
@@ -341,6 +342,7 @@ async fn get_user_info(
 			location,
 		},
 		birthday: dob.map(DateTime),
+		is_password_set: !password.is_empty(),
 		created: DateTime(created),
 		recovery_email,
 		secondary_emails,
