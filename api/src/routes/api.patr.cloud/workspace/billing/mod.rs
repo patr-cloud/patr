@@ -944,21 +944,6 @@ async fn confirm_payment_method(
 		&config,
 	)
 	.await?;
-	let workspace = db::get_workspace_info(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?
-	.status(500)
-	.body(error!(SERVER_ERROR).to_string())?;
-	if workspace.default_payment_method_id.is_none() {
-		db::set_default_payment_method_for_workspace(
-			context.get_database_connection(),
-			&workspace_id,
-			&payment_method_id,
-		)
-		.await?;
-	}
 
 	let User { sign_up_coupon, .. } = db::get_user_by_user_id(
 		context.get_database_connection(),
