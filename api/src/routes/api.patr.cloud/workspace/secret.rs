@@ -1,33 +1,19 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{
-	models::workspace::secret::{
-		CreateSecretInWorkspaceRequest,
-		CreateSecretInWorkspaceResponse,
-		DeleteSecretResponse,
-		ListSecretsResponse,
-		Secret,
-		UpdateWorkspaceSecretRequest,
-		UpdateWorkspaceSecretResponse,
-	},
-	utils::Uuid,
+	models::prelude::*,
+	utils::{DecodedRequest, Paginated, Uuid},
 };
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use axum::{extract::State, Extension};
 use zeroize::Zeroize;
 
 use crate::{
-	app::{create_axum_router, App},
+	app::App,
 	db,
 	error,
-	models::{rbac::permissions, ResourceType},
-	pin_fn,
+	models::{rbac::permissions, ResourceType, UserAuthenticationData},
+	prelude::*,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error},
 };
 
 pub fn create_sub_app(app: &App) -> Router<App> {
@@ -47,11 +33,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 
 					if resource.is_none() {
 						context
@@ -80,11 +64,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 
 					if resource.is_none() {
 						context
@@ -119,12 +101,12 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&secret_id,
-					)
-					.await?
-					.filter(|resource| resource.owner_id == workspace_id);
+					let resource =
+						db::get_resource_by_id(&mut connection, &secret_id)
+							.await?
+							.filter(|resource| {
+								resource.owner_id == workspace_id
+							});
 
 					if resource.is_none() {
 						context
@@ -159,12 +141,12 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&secret_id,
-					)
-					.await?
-					.filter(|resource| resource.owner_id == workspace_id);
+					let resource =
+						db::get_resource_by_id(&mut connection, &secret_id)
+							.await?
+							.filter(|resource| {
+								resource.owner_id == workspace_id
+							});
 
 					if resource.is_none() {
 						context
@@ -183,53 +165,52 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 }
 
 async fn list_secrets(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: ListSecretsPath { workspace_id },
+		query: Paginated {
+			count: _,
+			start: _,
+			query: (),
+		},
+		body: (),
+	}: DecodedRequest<ListSecretsRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 
 	log::trace!("request_id: {} - Listing all secrets", request_id);
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let secrets = db::get_all_secrets_in_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?
-	.into_iter()
-	.map(|secret| Secret {
-		id: secret.id,
-		name: secret.name,
-		deployment_id: secret.deployment_id,
-	})
-	.collect();
+	let secrets =
+		db::get_all_secrets_in_workspace(&mut connection, &workspace_id)
+			.await?
+			.into_iter()
+			.map(|secret| Secret {
+				id: secret.id,
+				name: secret.name,
+				deployment_id: secret.deployment_id,
+			})
+			.collect();
 
 	log::trace!("request_id: {} - Returning secrets", request_id);
-	context.success(ListSecretsResponse { secrets });
-	Ok(context)
+	Ok(ListSecretsResponse { secrets })
 }
 
 async fn create_secret(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: CreateSecretInWorkspacePath { workspace_id },
+		query: (),
+		body: CreateSecretInWorkspaceRequest { name, value },
+	}: DecodedRequest<CreateSecretInWorkspaceRequest>,
+) -> Result<CreateSecretInWorkspaceResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let CreateSecretInWorkspaceRequest {
-		name, mut value, ..
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let config = context.get_state().config.clone();
 
 	log::trace!("{} - Creating new secret {}", request_id, workspace_id,);
 	let id = service::create_new_secret_in_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&name,
 		&value,
@@ -241,33 +222,27 @@ async fn create_secret(
 	value.zeroize();
 
 	log::trace!("request_id: {} - Returning new secret", request_id);
-	context.success(CreateSecretInWorkspaceResponse { id });
-	Ok(context)
+	Ok(CreateSecretInWorkspaceResponse { id })
 }
 
 async fn update_secret(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: DeleteSecretPath {
+			workspace_id,
+			secret_id,
+		},
+		query: (),
+		body: UpdateWorkspaceSecretRequest { name, value },
+	}: DecodedRequest<UpdateWorkspaceSecretRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 
-	let secret_id =
-		Uuid::parse_str(context.get_param(request_keys::SECRET_ID).unwrap())
-			.unwrap();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-
-	let UpdateWorkspaceSecretRequest { name, value, .. } = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let config = context.get_state().config.clone();
-
-	log::trace!("request_id: {} - Deleting secret {}", request_id, secret_id);
+	log::trace!("request_id: {} - Updating secret {}", request_id, secret_id);
 	service::update_workspace_secret(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&secret_id,
 		name.as_deref(),
@@ -281,35 +256,32 @@ async fn update_secret(
 		value.zeroize();
 	}
 
-	context.success(UpdateWorkspaceSecretResponse {});
-	Ok(context)
+	Ok(())
 }
 
 async fn delete_secret(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: DeleteSecretPath {
+			workspace_id,
+			secret_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<DeleteSecretRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	let user_id = token_data.user_id();
 
-	let secret_id =
-		Uuid::parse_str(context.get_param(request_keys::SECRET_ID).unwrap())
-			.unwrap();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-
-	let secret =
-		db::get_secret_by_id(context.get_database_connection(), &secret_id)
-			.await?
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	let config = context.get_state().config.clone();
+	let secret = db::get_secret_by_id(&mut connection, &secret_id)
+		.await?
+		.ok_or_else(|| ErrorType::NotFound)?;
 
 	log::trace!("request_id: {} - Deleting secret {}", request_id, secret_id);
 	service::delete_secret_in_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&secret_id,
 		&config,
@@ -319,10 +291,10 @@ async fn delete_secret(
 
 	// Commiting transaction so that even if the mailing function fails the
 	// resource should be deleted
-	context.commit_database_transaction().await?;
+	connection.commit().await?;
 
 	service::resource_delete_action_email(
-		context.get_database_connection(),
+		&mut connection,
 		&secret.name,
 		&secret.workspace_id,
 		&ResourceType::Secret,
@@ -330,6 +302,5 @@ async fn delete_secret(
 	)
 	.await?;
 
-	context.success(DeleteSecretResponse {});
-	Ok(context)
+	Ok(())
 }
