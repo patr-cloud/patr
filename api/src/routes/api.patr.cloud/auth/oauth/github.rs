@@ -77,7 +77,7 @@ async fn authorize_with_github(
 
 	context
 		.get_redis_connection()
-		.set_ex("githubOAuthState", state.clone(), 60 * 5) // 5 minutes
+		.set_ex(format!("githubOAuthState:{}", state), "true".to_owned(), 60 * 5) // 5 minutes
 		.await?;
 
 	context.success(GithubAuthorizeResponse {
@@ -117,7 +117,7 @@ async fn oauth_callback(
 		.get(format!("githubOAuthState:{}", state))
 		.await?;
 
-	if !redis_github_state.is_none() {
+	if redis_github_state.is_none() {
 		return Err(Error::empty()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string()));
