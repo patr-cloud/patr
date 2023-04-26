@@ -3,6 +3,7 @@ mod api_patr_cloud;
 
 use std::net::{IpAddr, SocketAddr};
 
+use api_models::ErrorType;
 use async_trait::async_trait;
 use axum::{
 	extract::{ConnectInfo, FromRequestParts},
@@ -25,7 +26,7 @@ where
 	S: Sync,
 {
 	// todo: use custom error msg if no valid ip address is found
-	type Rejection = api_models::Error;
+	type Rejection = api_models::ErrorType;
 
 	async fn from_request_parts(
 		parts: &mut Parts,
@@ -64,8 +65,6 @@ where
 				.map(|ConnectInfo(addr)| addr.ip())
 		})
 		.map(Self)
-		.ok_or(api_models::Error::InternalServerError(anyhow::anyhow!(
-			"Unable to extract IP addr"
-		)))
+		.ok_or_else(|| ErrorType::internal_error())
 	}
 }
