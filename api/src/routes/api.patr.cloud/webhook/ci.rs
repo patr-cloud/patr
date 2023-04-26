@@ -5,13 +5,15 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use axum::{
+	extract::{Path, State},
+	response::Response,
+};
 use chrono::Utc;
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use http::HeaderMap;
 
 use crate::{
-	app::{create_axum_router, App},
 	db,
-	error,
 	models::ci::{
 		github::CommitStatus,
 		webhook_payload::github::Event,
@@ -20,40 +22,21 @@ use crate::{
 		PullRequest,
 		Tag,
 	},
-	pin_fn,
+	prelude::*,
 	rabbitmq::BuildId,
 	service::{self, ParseStatus},
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error},
 };
 
-pub fn create_sub_app(app: &App) -> Router<App> {
-	let mut sub_app = create_axum_router(app);
-
-	sub_app.post(
-		"/repo/:repoId",
-		[EveMiddleware::CustomFunction(pin_fn!(
-			handle_ci_hooks_for_repo
-		))],
-	);
-
-	sub_app
-}
-
-async fn handle_ci_hooks_for_repo(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+pub async fn handle_ci_hooks_for_repo(
+	Path(repo_id): Path<Uuid>,
+	mut connection: Connection,
+	State(config): State<Config>,
+	headers: HeaderMap,
+	body: String,
+) -> Response {
+	todo!("need to test registry webhook as compiler is not giving proper suggestions due to other errors");
 	let request_id = Uuid::new_v4();
-	let repo_id =
-		Uuid::parse_str(context.get_param(request_keys::REPO_ID).unwrap())
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	log::trace!(
 		"request_id: {request_id} - Processing ci webhook for repo {repo_id}"
@@ -62,60 +45,59 @@ async fn handle_ci_hooks_for_repo(
 	// TODO: github is giving timeout status in webhooks settings for our
 	// endpoint its better to process the payload in the message/event queue
 
-	let event = match context.get_header(request_keys::X_GITHUB_EVENT) {
+	let event = match headers
+		.get(request_keys::X_GITHUB_EVENT)
+		.and_then(|e| e.to_str().ok())
+	{
 		Some(event) => event,
 		None => {
 			// not a known webhook header, send error
-			return Err(Error::empty()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string()));
+			return (StatusCode::BAD_GATEWAY, "Wrong Parameters");
 		}
 	};
 
 	// handle github ping events
 	if event.eq_ignore_ascii_case("ping") {
-		return Ok(context);
+		return StatusCode::OK;
 	}
 
-	let repo = match db::get_repo_using_patr_repo_id(
-		context.get_database_connection(),
-		&repo_id,
-	)
-	.await?
+	let repo = match db::get_repo_using_patr_repo_id(&mut connection, &repo_id)
+		.await?
 	{
 		Some(repo) if repo.status == RepoStatus::Active => repo,
 		_ => {
 			log::trace!("request_id: {request_id} - ci not triggered, repo_id is either inactive or unknown");
-			return Err(Error::empty()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string()));
+			return (StatusCode::BAD_GATEWAY, "Wrong Parameters");
 		}
 	};
 
 	// validate the payload data signature
-	let signature_in_header = context
-		.get_header(request_keys::X_HUB_SIGNATURE_256)
-		.status(400)?;
+	let Some(signature_in_header) = headers
+	.get(request_keys::X_HUB_SIGNATURE_256)
+	.and_then(|e| e.to_str()) else {
+		return (StatusCode::BAD_GATEWAY, "Wrong Parameters");
+
+	};
 
 	repo.webhook_secret
 		.and_then(|secret| {
 			service::verify_github_payload_signature_256(
 				&signature_in_header,
-				&context.get_request().get_body_bytes(),
+				&body.bytes(),
 				&secret,
 			)
 			.ok()
 		})
 		.status(400)?;
 
-	let event = context.get_body_as::<Event>()?;
+	let event = serde_json::from_str(&body)?;
 
 	let event_type = match event {
 		Event::Push(pushed) => {
 			if pushed.after == "0000000000000000000000000000000000000000" {
 				// push event is triggered for delete branch and delete tag
 				// with empty commit sha, skip those events
-				return Ok(context);
+				return StatusCode::OK;
 			}
 
 			if let Some(branch_name) = pushed.ref_.strip_prefix("refs/heads/") {
@@ -187,7 +169,7 @@ async fn handle_ci_hooks_for_repo(
 	};
 
 	let git_provider = db::get_git_provider_details_by_id(
-		context.get_database_connection(),
+		&mut connection,
 		&repo.git_provider_id,
 	)
 	.await?
@@ -203,15 +185,12 @@ async fn handle_ci_hooks_for_repo(
 	)
 	.await?;
 
-	let build_num = service::create_build_for_repo(
-		context.get_database_connection(),
-		&repo.id,
-		&event_type,
-	)
-	.await?;
+	let build_num =
+		service::create_build_for_repo(&mut connection, &repo.id, &event_type)
+			.await?;
 
 	let ci_flow = match service::parse_ci_file_content(
-		context.get_database_connection(),
+		&mut connection,
 		&git_provider.workspace_id,
 		&ci_file_content,
 		&request_id,
@@ -221,27 +200,29 @@ async fn handle_ci_hooks_for_repo(
 		ParseStatus::Success(ci_file) => ci_file,
 		ParseStatus::Error(err) => {
 			db::update_build_status(
-				context.get_database_connection(),
+				&mut connection,
 				&repo.id,
 				build_num,
 				BuildStatus::Errored,
 			)
 			.await?;
 			db::update_build_message(
-				context.get_database_connection(),
+				&mut connection,
 				&repo.id,
 				build_num,
 				&err,
 			)
 			.await?;
 			db::update_build_finished_time(
-				context.get_database_connection(),
+				&mut connection,
 				&repo.id,
 				build_num,
 				&Utc::now(),
 			)
 			.await?;
-			return Ok(context);
+
+			// returning success so that webhook msg will be ignored
+			return StatusCode::OK;
 		}
 	};
 
@@ -254,51 +235,52 @@ async fn handle_ci_hooks_for_repo(
 			service::EvaluationStatus::Success(works) => works,
 			service::EvaluationStatus::Error(err) => {
 				db::update_build_status(
-					context.get_database_connection(),
+					&mut connection,
 					&repo.id,
 					build_num,
 					BuildStatus::Errored,
 				)
 				.await?;
 				db::update_build_message(
-					context.get_database_connection(),
+					&mut connection,
 					&repo.id,
 					build_num,
 					&err,
 				)
 				.await?;
 				db::update_build_finished_time(
-					context.get_database_connection(),
+					&mut connection,
 					&repo.id,
 					build_num,
 					&Utc::now(),
 				)
 				.await?;
-				return Ok(context);
+				return StatusCode::OK;
 			}
 		},
 		Err(err) => {
 			log::info!("request_id: {request_id} - Error while evaluating ci work steps {err:#?}");
 			db::update_build_status(
-				context.get_database_connection(),
+				&mut connection,
 				&repo.id,
 				build_num,
 				BuildStatus::Errored,
 			)
 			.await?;
 			db::update_build_finished_time(
-				context.get_database_connection(),
+				&mut connection,
 				&repo.id,
 				build_num,
 				&Utc::now(),
 			)
 			.await?;
-			return Ok(context);
+			// returning success so that webhook msg will be ignored
+			return StatusCode::OK;
 		}
 	};
 
 	service::add_build_steps_in_db(
-		context.get_database_connection(),
+		&mut connection,
 		&repo.id,
 		build_num,
 		&works,
@@ -306,10 +288,10 @@ async fn handle_ci_hooks_for_repo(
 	)
 	.await?;
 
-	context.commit_database_transaction().await?;
+	connection.commit().await?;
 
 	service::update_github_commit_status_for_build(
-		context.get_database_connection(),
+		&mut connection,
 		&git_provider.workspace_id,
 		&repo_id,
 		build_num,
@@ -326,10 +308,10 @@ async fn handle_ci_hooks_for_repo(
 		pipeline.services,
 		works,
 		event_type,
-		&context.get_state().config,
+		&config,
 		&request_id,
 	)
 	.await?;
 
-	Ok(context)
+	StatusCode::OK
 }

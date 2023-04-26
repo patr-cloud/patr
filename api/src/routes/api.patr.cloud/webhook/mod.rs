@@ -4,27 +4,20 @@ use api_models::{
 	models::workspace::infrastructure::deployment::DeploymentStatus,
 	utils::{DateTime, Uuid},
 };
+use axum::{extract::State, response::Response, routing::post, Json, Router};
 use chrono::Utc;
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use http::{
+	header::{AUTHORIZATION, CONTENT_TYPE},
+	HeaderMap,
+};
 use serde_json::json;
 
 use crate::{
-	app::{create_axum_router, App},
+	app::App,
 	db,
-	models::{
-		error::{id as ErrorId, message as ErrorMessage},
-		Action,
-		EventData,
-	},
-	pin_fn,
+	models::{Action, EventData},
+	prelude::*,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
 };
 
 /// # Description
@@ -42,41 +35,30 @@ use crate::{
 ///
 /// [`App`]: App
 pub fn create_sub_app(app: &App) -> Router<App> {
-	let mut sub_app = create_axum_router(app);
-
-	sub_app.post(
-		"/docker-registry/notification",
-		[EveMiddleware::CustomFunction(pin_fn!(notification_handler))],
-	);
-
-	sub_app.use_sub_app("/ci", ci::create_sub_app(app));
-
-	sub_app
+	Router::new()
+		.route("/docker-registry/notification", post(notification_handler))
+		.route("/ci/repo/:repo_id", post(ci::handle_ci_hooks_for_repo))
 }
 
-/// # Description
-/// This function will detect a push being made to a tag, and in case a
-/// deployment exists with the given tag, it will automatically update the
-/// `deployed_image` of the given [`Deployment`] in the database
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
-/// [`Deployment`]: Deployment
+fn docker_registry_error(
+	error_code: &str,
+	message: &str,
+) -> Json<serde_json::Value> {
+	Json(json!({
+		"errors": [{
+			"code": error_code,
+			"message": message,
+			"detail": []
+		}]
+	}))
+}
+
 async fn notification_handler(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	State(app): State<App>,
+	headers: HeaderMap,
+	body: String,
+) -> Response {
+	todo!("need to test registry webhook as compiler is not giving proper suggestions due to other errors");
 	let request_id = Uuid::new_v4();
 
 	log::trace!(
@@ -85,55 +67,54 @@ async fn notification_handler(
 	);
 
 	log::trace!("request_id: {} - Checking the content type", request_id);
-	if context.get_content_type().as_str() !=
+	let content_type_header = headers
+		.get(CONTENT_TYPE)
+		.and_then(|ct| ct.to_str().ok())
+		.unwrap_or_default();
+	if content_type_header !=
 		"application/vnd.docker.distribution.events.v1+json"
 	{
 		// Put the different "content-type" header and body in the queue and log
 		// the message there
 		service::queue_docker_notification_error(
-			&context.get_body()?,
-			context.get_content_type().as_str(),
+			&body,
+			content_type_header,
 			&request_id,
 		)
-		.await?;
+		.await
+		.map_err(|err| {
+			log::error!("Error while added docker msg to queue - {err:?}");
+			(
+				StatusCode::INTERNAL_SERVER_ERROR,
+				Json(serde_json::json!({})),
+			)
+		})?;
 
-		return Ok(context);
+		return Ok(StatusCode::ACCEPTED);
 	}
 
 	log::trace!(
 		"request_id: {} - Checking the Authorization header",
 		request_id
 	);
-	let custom_header = context.get_header("Authorization").status(400).body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::UNAUTHORIZED,
-				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_NOT_FOUND,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
+	let Some(authorization_header) = headers.get(AUTHORIZATION).and_then(|auth| auth.to_str().ok()) else {
+		return Err((StatusCode::UNAUTHORIZED, docker_registry_error(
+			"unauthorized",
+			"An error occured. If this persists, please contact the administrator"
+		)));
+	};
 
-	let config = context.get_state().config.clone();
 	log::trace!(
 		"request_id: {} - Parsing the Custom Authorization header",
 		request_id
 	);
-	if custom_header != config.docker_registry.authorization_header {
-		Error::as_result().status(400).body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::UNAUTHORIZED,
-					request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)?;
+	if authorization_header != app.config.docker_registry.authorization_header {
+		return Err((StatusCode::BAD_REQUEST, docker_registry_error(
+			"unauthorized",
+			"Invalid request sent by the client. Authorization data could not be parsed as expected"
+		)));
 	}
 
-	let body = context.get_body()?;
 	let events: EventData = serde_json::from_str(&body)?;
 
 	// check if the event is a push event
@@ -144,6 +125,7 @@ async fn notification_handler(
 			(event.target.media_type ==
 				"application/vnd.docker.distribution.manifest.v2+json")
 	}) {
+		let mut connection = app.database.begin().await?;
 		let target = event.target;
 
 		// Update the docker registry db with details on the image
@@ -168,7 +150,7 @@ async fn notification_handler(
 			request_id
 		);
 		let repository = db::get_docker_repository_by_name(
-			context.get_database_connection(),
+			&mut connection,
 			image_name,
 			&workspace_id,
 		)
@@ -197,7 +179,7 @@ async fn notification_handler(
 			.sum();
 
 		if service::docker_repo_storage_limit_crossed(
-			context.get_database_connection(),
+			&mut connection,
 			&workspace_id,
 			image_size_in_bytes as usize,
 		)
@@ -212,7 +194,7 @@ async fn notification_handler(
 				&target.digest,
 				&target.tag,
 				&event.request.addr,
-				&config,
+				&app.config,
 				&request_id,
 			)
 			.await?;
@@ -222,7 +204,7 @@ async fn notification_handler(
 		}
 
 		db::create_docker_repository_digest(
-			context.get_database_connection(),
+			&mut connection,
 			&repository.id,
 			&target.digest,
 			image_size_in_bytes,
@@ -232,12 +214,12 @@ async fn notification_handler(
 
 		let total_storage =
 			db::get_total_size_of_docker_repositories_for_workspace(
-				context.get_database_connection(),
+				&mut connection,
 				&workspace_id,
 			)
 			.await?;
 		db::update_docker_repo_usage_history(
-			context.get_database_connection(),
+			&mut connection,
 			&workspace_id,
 			&(((total_storage as f64) / (1000f64 * 1000f64 * 1000f64)).ceil()
 				as i64),
@@ -254,7 +236,7 @@ async fn notification_handler(
 			request_id
 		);
 		db::set_docker_repository_tag_details(
-			context.get_database_connection(),
+			&mut connection,
 			&repository.id,
 			&target.tag,
 			&target.digest,
@@ -268,22 +250,26 @@ async fn notification_handler(
 		);
 		let deployments =
 			db::get_deployments_by_image_name_and_tag_for_workspace(
-				context.get_database_connection(),
+				&mut connection,
 				image_name,
 				&target.tag,
 				&workspace_id,
 			)
 			.await?;
 
+		connection.commit().await?;
+
 		log::trace!("request_id: {} - Updating the deployments", request_id);
 		for db_deployment in deployments {
+			let mut connection = app.database.begin().await?;
+
 			if let DeploymentStatus::Stopped = db_deployment.status {
 				continue;
 			}
 
 			let (deployment, workspace_id, _, deployment_running_details) =
 				service::get_full_deployment_config(
-					context.get_database_connection(),
+					&mut connection,
 					&db_deployment.id,
 					&request_id,
 				)
@@ -299,7 +285,7 @@ async fn notification_handler(
 
 			if !repository_id.is_nil() {
 				db::add_digest_to_deployment_deploy_history(
-					context.get_database_connection(),
+					&mut connection,
 					&deployment.id,
 					&repository_id,
 					&target.digest,
@@ -308,7 +294,7 @@ async fn notification_handler(
 				.await?;
 
 				db::update_current_live_digest_for_deployment(
-					context.get_database_connection(),
+					&mut connection,
 					&deployment.id,
 					&target.digest,
 				)
@@ -323,22 +309,22 @@ async fn notification_handler(
 
 			let (image_name, _) =
 				service::get_image_name_and_digest_for_deployment_image(
-					context.get_database_connection(),
+					&mut connection,
 					&deployment.registry,
 					&deployment.image_tag,
-					&config,
+					&app.config,
 					&request_id,
 				)
 				.await?;
 
 			db::update_deployment_status(
-				context.get_database_connection(),
+				&mut connection,
 				&deployment.id,
 				&DeploymentStatus::Deploying,
 			)
 			.await?;
 
-			context.commit_database_transaction().await?;
+			connection.commit().await?;
 
 			service::queue_update_deployment_image(
 				&workspace_id,
@@ -351,12 +337,12 @@ async fn notification_handler(
 				&deployment.region,
 				&deployment.machine_type,
 				&deployment_running_details,
-				&config,
+				&app.config,
 				&request_id,
 			)
 			.await?;
 		}
 	}
 
-	Ok(context)
+	Ok(StatusCode::ACCEPTED)
 }
