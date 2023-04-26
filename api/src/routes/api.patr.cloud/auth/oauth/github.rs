@@ -77,7 +77,11 @@ async fn authorize_with_github(
 
 	context
 		.get_redis_connection()
-		.set_ex(format!("githubOAuthState:{}", state), "true".to_owned(), 60 * 5) // 5 minutes
+		.set_ex(
+			format!("githubOAuthState:{}", state),
+			"true".to_owned(),
+			60 * 5,
+		) // 5 minutes
 		.await?;
 
 	context.success(GithubAuthorizeResponse {
@@ -121,6 +125,19 @@ async fn oauth_callback(
 		return Err(Error::empty()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string()));
+	}
+
+	if let Some(username) = username.to_owned() {
+		let user_exist = db::get_user_by_username(
+			context.get_database_connection(),
+			&username,
+		)
+		.await?;
+		if user_exist.is_some() {
+			return Err(Error::empty()
+				.status(404)
+				.body(error!(USERNAME_TAKEN).to_string()));
+		}
 	}
 
 	let client = reqwest::Client::new();
@@ -195,16 +212,7 @@ async fn oauth_callback(
 		let username = username
 			.status(404)
 			.body(error!(INVALID_USERNAME).to_string())?;
-		let username_exist = db::get_user_by_username(
-			context.get_database_connection(),
-			&username,
-		)
-		.await?;
-		if username_exist.is_some() {
-			return Err(Error::empty()
-				.status(404)
-				.body(error!(USERNAME_TAKEN).to_string()));
-		}
+
 		log::trace!("Getting user information");
 		let user_info = client
 			.get(github_oauth::USER_INFO_API)
