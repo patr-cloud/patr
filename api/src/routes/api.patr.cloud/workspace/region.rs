@@ -1,40 +1,24 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{
-	models::workspace::region::{
-		AddRegionToWorkspaceData,
-		AddRegionToWorkspaceRequest,
-		AddRegionToWorkspaceResponse,
-		CheckRegionStatusResponse,
-		DeleteRegionFromWorkspaceRequest,
-		DeleteRegionFromWorkspaceResponse,
-		GetRegionInfoResponse,
-		InfrastructureCloudProvider,
-		ListRegionsForWorkspaceResponse,
-		Region,
-		RegionStatus,
-		RegionType,
-	},
-	utils::{DateTime, Uuid},
+	models::prelude::*,
+	utils::{DateTime, DecodedRequest, Paginated, Uuid},
 };
+use axum::{extract::State, Extension};
 use chrono::Utc;
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use sqlx::types::Json;
 
 use crate::{
-	app::{create_axum_router, App},
+	app::App,
 	db,
 	error,
-	models::rbac::{self, permissions},
-	pin_fn,
-	routes,
-	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
+	models::{
+		rbac::{self, permissions},
+		UserAuthenticationData,
 	},
+	prelude::*,
+	routes::ClientIp,
+	service,
+	utils::{constants::request_keys, Error},
 };
 
 pub fn create_sub_app(app: &App) -> Router<App> {
@@ -54,11 +38,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 
 					if resource.is_none() {
 						context
@@ -93,12 +75,10 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&region_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
+					let resource =
+						db::get_resource_by_id(&mut connection, &region_id)
+							.await?
+							.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -133,12 +113,10 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&region_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
+					let resource =
+						db::get_resource_by_id(&mut connection, &region_id)
+							.await?
+							.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -167,11 +145,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 
 					if resource.is_none() {
 						context
@@ -206,12 +182,10 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&region_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
+					let resource =
+						db::get_resource_by_id(&mut connection, &region_id)
+							.await?
+							.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -230,60 +204,67 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 }
 
 async fn list_regions(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: ListRegionsForWorkspacePath { workspace_id },
+		query: Paginated {
+			count: _,
+			start: _,
+			query: (),
+		},
+		body: (),
+	}: DecodedRequest<ListRegionsForWorkspaceRequest>,
+) -> Result<ListRegionsForWorkspaceResponse, Error> {
 	let request_id = Uuid::new_v4();
 
 	log::trace!("request_id: {} - Listing all regions", request_id);
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
 
-	let regions = db::get_all_regions_for_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?
-	.into_iter()
-	.map(|region| Region {
-		r#type: if region.is_byoc_region() {
-			RegionType::BYOC
-		} else {
-			RegionType::PatrOwned
-		},
-		id: region.id,
-		name: region.name,
-		cloud_provider: region.cloud_provider,
-		status: region.status,
-	})
-	.collect();
+	let regions =
+		db::get_all_regions_for_workspace(&mut connection, &workspace_id)
+			.await?
+			.into_iter()
+			.map(|region| Region {
+				r#type: if region.is_byoc_region() {
+					RegionType::BYOC
+				} else {
+					RegionType::PatrOwned
+				},
+				id: region.id,
+				name: region.name,
+				cloud_provider: region.cloud_provider,
+				status: region.status,
+			})
+			.collect();
 
 	log::trace!("request_id: {} - Returning regions", request_id);
-	context.success(ListRegionsForWorkspaceResponse { regions });
-	Ok(context)
+	Ok(ListRegionsForWorkspaceResponse { regions })
 }
 
 async fn get_region(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: GetRegionInfoPath {
+			workspace_id,
+			region_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<GetRegionInfoRequest>,
+) -> Result<GetRegionInfoResponse, Error> {
 	let request_id = Uuid::new_v4();
 
 	log::trace!("request_id: {} - Listing all regions", request_id);
 
-	let region_id =
-		Uuid::parse_str(context.get_param(request_keys::REGION_ID).unwrap())
-			.unwrap();
-
-	let region =
-		db::get_region_by_id(context.get_database_connection(), &region_id)
-			.await?
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let region = db::get_region_by_id(&mut connection, &region_id)
+		.await?
+		.ok_or_else(|| ErrorType::NotFound)?;
 
 	log::trace!("request_id: {} - Returning region", request_id);
-	context.success(GetRegionInfoResponse {
+	Ok(GetRegionInfoResponse {
 		region: Region {
 			r#type: if region.is_byoc_region() {
 				RegionType::BYOC
@@ -297,27 +278,29 @@ async fn get_region(
 		},
 		disconnected_at: region.disconnected_at.map(DateTime),
 		message_log: region.message_log,
-	});
-	Ok(context)
+	})
 }
 
 async fn check_region_status(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: CheckRegionStatusPath {
+			workspace_id,
+			region_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<CheckRegionStatusRequest>,
+) -> Result<CheckRegionStatusResponse, Error> {
 	let request_id = Uuid::new_v4();
 
 	log::trace!("request_id: {} - Check region status", request_id);
 
-	let region_id =
-		Uuid::parse_str(context.get_param(request_keys::REGION_ID).unwrap())
-			.unwrap();
-
-	let region =
-		db::get_region_by_id(context.get_database_connection(), &region_id)
-			.await?
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let region = db::get_region_by_id(&mut connection, &region_id)
+		.await?
+		.ok_or_else(|| ErrorType::NotFound)?;
 
 	match (
 		region.status.clone(),
@@ -352,7 +335,7 @@ async fn check_region_status(
 			if region.status == RegionStatus::Active && !is_connected {
 				log::info!("Marking the cluster {region_id} as disconnected");
 				db::set_region_as_disconnected(
-					context.get_database_connection(),
+					&mut connection,
 					&region_id,
 					&Utc::now(),
 				)
@@ -364,11 +347,8 @@ async fn check_region_status(
 					"Region `{}` got connected again. So marking it as active",
 					region_id
 				);
-				db::set_region_as_connected(
-					context.get_database_connection(),
-					&region_id,
-				)
-				.await?;
+				db::set_region_as_connected(&mut connection, &region_id)
+					.await?;
 			}
 		}
 		_ => {
@@ -376,13 +356,12 @@ async fn check_region_status(
 		}
 	}
 
-	let region =
-		db::get_region_by_id(context.get_database_connection(), &region_id)
-			.await?
-			.status(500)?;
+	let region = db::get_region_by_id(&mut connection, &region_id)
+		.await?
+		.status(500)?;
 
 	log::trace!("request_id: {} - Returning check region status", request_id);
-	context.success(CheckRegionStatusResponse {
+	Ok(CheckRegionStatusResponse {
 		region: Region {
 			r#type: if region.is_byoc_region() {
 				RegionType::BYOC
@@ -396,43 +375,33 @@ async fn check_region_status(
 		},
 		disconnected_at: region.disconnected_at.map(DateTime),
 		message_log: region.message_log,
-	});
-	Ok(context)
+	})
 }
 
 async fn add_region(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: AddRegionToWorkspacePath { workspace_id },
+		query: (),
+		body: AddRegionToWorkspaceRequest { name, data },
+	}: DecodedRequest<AddRegionToWorkspaceRequest>,
+) -> Result<AddRegionToWorkspaceResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let AddRegionToWorkspaceRequest {
-		data,
-		name,
-		workspace_id: _,
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let config = context.get_state().config.clone();
 
 	log::trace!(
 		"request_id: {} - Checking if the deployment name already exists",
 		request_id
 	);
 	let existing_region = db::get_region_by_name_in_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&name,
 		&workspace_id,
 	)
 	.await?;
 	if existing_region.is_some() {
-		return Err(Error::empty()
-			.status(400)
-			.body(error!(RESOURCE_EXISTS).to_string()));
+		return Err(ErrorType::ResourceExists.into());
 	}
 
 	log::trace!(
@@ -441,11 +410,10 @@ async fn add_region(
 		workspace_id,
 	);
 
-	let region_id =
-		db::generate_new_resource_id(context.get_database_connection()).await?;
+	let region_id = db::generate_new_resource_id(&mut connection).await?;
 
 	db::create_resource(
-		context.get_database_connection(),
+		&mut connection,
 		&region_id,
 		rbac::RESOURCE_TYPES
 			.get()
@@ -479,7 +447,7 @@ async fn add_region(
 			.await?;
 
 			db::add_region_to_workspace(
-				context.get_database_connection(),
+				&mut connection,
 				&region_id,
 				&name,
 				&InfrastructureCloudProvider::Digitalocean,
@@ -501,7 +469,7 @@ async fn add_region(
 			)
 			.await?;
 
-			context.commit_database_transaction().await?;
+			connection.commit().await?;
 
 			log::trace!(
 				"reqeust_id: {} successfully got k8s ID: {}",
@@ -527,7 +495,7 @@ async fn add_region(
 			.await?;
 
 			db::add_region_to_workspace(
-				context.get_database_connection(),
+				&mut connection,
 				&region_id,
 				&name,
 				&InfrastructureCloudProvider::Other,
@@ -536,7 +504,7 @@ async fn add_region(
 			)
 			.await?;
 
-			context.commit_database_transaction().await?;
+			connection.commit().await?;
 
 			service::queue_setup_kubernetes_cluster(
 				&region_id,
@@ -554,35 +522,27 @@ async fn add_region(
 		"request_id: {} - Successfully added region to workspace",
 		request_id
 	);
-	context.success(AddRegionToWorkspaceResponse { region_id });
-	Ok(context)
+	Ok(AddRegionToWorkspaceResponse { region_id })
 }
 
 async fn delete_region(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	ClientIp(ip_address): ClientIp,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: DeleteRegionFromWorkspacePath {
+			workspace_id,
+			region_id,
+		},
+		query: DeleteRegionFromWorkspaceRequest { hard_delete },
+		body: (),
+	}: DecodedRequest<DeleteRegionFromWorkspaceRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 
-	let ip_address = routes::get_request_ip_address(&context);
-	let user_id = context.get_token_data().unwrap().user_id().clone();
-	let login_id = context.get_token_data().unwrap().login_id().clone();
-
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let region_id =
-		Uuid::parse_str(context.get_param(request_keys::REGION_ID).unwrap())
-			.unwrap();
-
-	let DeleteRegionFromWorkspaceRequest {
-		workspace_id: _,
-		region_id: _,
-		hard_delete,
-	} = context
-		.get_query_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let user_id = token_data.user_id();
+	let login_id = token_data.login_id();
 
 	log::trace!(
 		"{} - requested to delete region: {} from workspace {}",
@@ -591,33 +551,25 @@ async fn delete_region(
 		workspace_id,
 	);
 
-	let region =
-		db::get_region_by_id(context.get_database_connection(), &region_id)
-			.await?
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let region = db::get_region_by_id(&mut connection, &region_id)
+		.await?
+		.ok_or_else(|| ErrorType::NotFound)?;
 
 	if region.status == RegionStatus::Deleted {
-		return Error::as_result()
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+		return Err(ErrorType::NotFound.into());
 	}
-
-	let config = context.get_state().config.clone();
 
 	log::trace!(
 		"request_id: {} - check whether this region {} is associated with any ci-runner",
 		request_id,
 		region_id
 	);
-	let runners_in_region = db::get_runners_for_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?
-	.into_iter()
-	.filter(|runner| runner.region_id == region_id)
-	.collect::<Vec<_>>();
+	let runners_in_region =
+		db::get_runners_for_workspace(&mut connection, &workspace_id)
+			.await?
+			.into_iter()
+			.filter(|runner| runner.region_id == region_id)
+			.collect::<Vec<_>>();
 
 	if !runners_in_region.is_empty() {
 		log::trace!(
@@ -625,9 +577,7 @@ async fn delete_region(
 			request_id,
 			region_id
 		);
-		return Err(Error::empty()
-			.status(400)
-			.body(error!(RESOURCE_IN_USE).to_string()));
+		return Err(ErrorType::ResourceInUse.into());
 	}
 
 	log::trace!(
@@ -636,7 +586,7 @@ async fn delete_region(
 		region_id
 	);
 	let deployments = db::get_deployments_by_region_id(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&region_id,
 	)
@@ -644,7 +594,7 @@ async fn delete_region(
 
 	for deployment in &deployments {
 		service::delete_deployment(
-			context.get_database_connection(),
+			&mut connection,
 			&deployment.workspace_id,
 			&deployment.id,
 			&region_id,
@@ -665,24 +615,22 @@ async fn delete_region(
 	}
 
 	let onpatr_domain = db::get_domain_by_name(
-		context.get_database_connection(),
+		&mut connection,
 		&config.cloudflare.onpatr_domain,
 	)
 	.await?
 	.status(500)?;
 
 	let byoc_dns_record_name = format!("*.{}", region_id);
-	let byoc_dns_record = db::get_dns_records_by_domain_id(
-		context.get_database_connection(),
-		&onpatr_domain.id,
-	)
-	.await?
-	.into_iter()
-	.find(|dns| dns.name == byoc_dns_record_name);
+	let byoc_dns_record =
+		db::get_dns_records_by_domain_id(&mut connection, &onpatr_domain.id)
+			.await?
+			.into_iter()
+			.find(|dns| dns.name == byoc_dns_record_name);
 
 	if let Some(byoc_dns_record) = byoc_dns_record {
 		service::delete_patr_domain_dns_record(
-			context.get_database_connection(),
+			&mut connection,
 			&onpatr_domain.id,
 			&byoc_dns_record.id,
 			&config,
@@ -702,13 +650,7 @@ async fn delete_region(
 		.await?;
 	}
 
-	db::delete_region(
-		context.get_database_connection(),
-		&region_id,
-		&Utc::now(),
-	)
-	.await?;
+	db::delete_region(&mut connection, &region_id, &Utc::now()).await?;
 
-	context.success(DeleteRegionFromWorkspaceResponse {});
-	Ok(context)
+	Ok(())
 }
