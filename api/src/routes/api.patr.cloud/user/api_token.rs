@@ -1,16 +1,5 @@
 use api_models::{
-	models::user::{
-		CreateApiTokenRequest,
-		CreateApiTokenResponse,
-		ListApiTokenPermissionsRequest,
-		ListApiTokenPermissionsResponse,
-		ListApiTokenResponse,
-		ListApiTokensRequest,
-		RegenerateApiTokenRequest,
-		RegenerateApiTokenResponse,
-		RevokeApiTokenRequest,
-		UserApiToken, UpdateApiTokenRequest,
-	},
+	models::prelude::*,
 	utils::{DateTime, DecodedRequest, Uuid},
 };
 use axum::{extract::State, Extension, Router};

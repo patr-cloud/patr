@@ -1,32 +1,5 @@
 use api_models::{
-	models::{
-		user::{
-			AddPersonalEmailRequest,
-			AddPhoneNumberRequest,
-			BasicUserInfo,
-			ChangePasswordRequest,
-			DeletePersonalEmailRequest,
-			DeletePhoneNumberRequest,
-			GetUserInfoByUserIdRequest,
-			GetUserInfoByUserIdResponse,
-			GetUserInfoRequest,
-			GetUserInfoResponse,
-			ListPersonalEmailsRequest,
-			ListPersonalEmailsResponse,
-			ListPhoneNumbersRequest,
-			ListPhoneNumbersResponse,
-			ListUserWorkspacesRequest,
-			ListUserWorkspacesResponse,
-			SearchForUserRequest,
-			SearchForUserResponse,
-			UpdateRecoveryEmailRequest,
-			UpdateRecoveryPhoneNumberRequest,
-			UpdateUserInfoRequest,
-			VerifyPersonalEmailRequest,
-			VerifyPhoneNumberRequest,
-		},
-		workspace::Workspace,
-	},
+	models::prelude::*,
 	utils::{DateTime, DecodedRequest, Paginated},
 };
 use axum::{extract::State, Extension, Router};

@@ -1,12 +1,5 @@
 use api_models::{
-	models::user::{
-		DeleteUserLoginRequest,
-		GetUserLoginInfoRequest,
-		GetUserLoginInfoResponse,
-		ListUserLoginsRequest,
-		ListUserLoginsResponse,
-		UserWebLogin,
-	},
+	models::prelude::*,
 	utils::{DateTime, DecodedRequest, Location},
 };
 use axum::{extract::State, Extension, Router};
