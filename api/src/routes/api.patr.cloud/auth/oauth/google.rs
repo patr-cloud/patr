@@ -3,18 +3,17 @@ use std::net::{IpAddr, Ipv4Addr};
 use ::redis::AsyncCommands;
 use api_models::{
 	models::auth::{
-		CreateAccountResponse,
-		GoogleAuthCallbackRequest,
-		GoogleAuthResponse,
-		LoginResponse,
+		GoogleAuthorizeResponse,
+		GoogleOAuthCallbackRequest,
+		GoogleOAuthCallbackResponse,
 		RecoveryMethod,
 		SignUpAccountType,
 	},
-	utils::Personal,
+	utils::{Personal, True},
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
-use reqwest::header::{ACCEPT, CONTENT_LENGTH, CONTENT_TYPE, USER_AGENT};
+use reqwest::header;
 use url::Url;
 
 use crate::{
@@ -70,11 +69,6 @@ async fn authorize_with_google(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let client_id = context.get_state().config.google.client_id.clone();
-	let auth_url = google_oauth::AUTH_URL.to_owned();
-	let scope = google_oauth::SCOPE.to_owned();
-	let redirect_url = google_oauth::REDIRECT_URL.to_owned();
-
 	let state = thread_rng()
 		.sample_iter(&Alphanumeric)
 		.take(8)
@@ -83,16 +77,31 @@ async fn authorize_with_google(
 
 	context
 		.get_redis_connection()
-		.set("googleOAuthState", state.clone())
+		.set_ex(
+			format!("googleOAuthState:{}", state),
+			"true".to_owned(),
+			60 * 5,
+		) // 5 minutes
 		.await?;
 
-	let oauth_url = Url::parse(
-		&format!("{auth_url}?client_id={client_id}&scope={scope}&state={state}&response_type=code&redirect_uri={redirect_url}&access_type=offline")
-	)?;
-
-	context.success(GoogleAuthResponse {
-		oauth_url: oauth_url.to_string(),
+	context.success(GoogleAuthorizeResponse {
+		oauth_url: Url::parse_with_params(
+			google_oauth::AUTH_URL,
+			&[
+				(
+					"client_id",
+					context.get_state().config.google.client_id.as_str(),
+				),
+				("scope", google_oauth::SCOPE),
+				("state", state.as_str()),
+				("response_type", "code"),
+				("redirect_uri", google_oauth::REDIRECT_URL),
+				("access_type", "offline"),
+			],
+		)?
+		.to_string(),
 	});
+
 	Ok(context)
 }
 
@@ -100,7 +109,7 @@ async fn oauth_callback(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let GoogleAuthCallbackRequest {
+	let GoogleOAuthCallbackRequest {
 		code,
 		state,
 		username,
@@ -112,55 +121,116 @@ async fn oauth_callback(
 	// Check if the state is correct and request is not forged
 	let redis_google_state: Option<String> = context
 		.get_redis_connection()
-		.get("googleOAuthState")
+		.get(format!("googleOAuthState:{}", state))
 		.await?;
 
-	if !redis_google_state
-		.map(|value| value == state)
-		.unwrap_or(false)
-	{
+	if redis_google_state.is_none() {
 		Error::as_result()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?
 	}
 
-	if let Some(username) = username {
-		let username_exist = db::get_user_by_username(
+	if let Some(username) = username.to_owned() {
+		let user_exist = db::get_user_by_username(
 			context.get_database_connection(),
 			&username,
 		)
 		.await?;
-		if let Some(_username_exists) = username_exist {
-			Error::as_result()
+		if user_exist.is_some() {
+			return Err(Error::empty()
 				.status(404)
-				.body(error!(USERNAME_TAKEN).to_string())?
+				.body(error!(USERNAME_TAKEN).to_string()));
 		}
-		let GoogleUserInfo { name, email } =
-			get_user_info(&context, code).await?;
-		let mut user_name = name.split(' ');
-		// TODO Better error message if first name not found
-		let first_name = user_name
-			.next()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
-		let last_name = user_name.next().unwrap_or_default();
-		let password = "".to_string();
-		let account_type = SignUpAccountType::Personal {
-			account_type: Personal,
-		};
-		let recovery_method = RecoveryMethod::Email {
-			recovery_email: email,
-		};
+	}
+
+	let client = reqwest::Client::new();
+
+	log::trace!("Getting access token");
+	let GoogleAccessToken { access_token } = client
+		.post(google_oauth::CALLBACK_URL)
+		.query(&[
+			(
+				"client_id",
+				context.get_state().config.google.client_id.clone(),
+			),
+			(
+				"client_secret",
+				context.get_state().config.google.client_secret.clone(),
+			),
+			("redirect_uri", google_oauth::REDIRECT_URL.to_owned()),
+			("grant_type", "authorization_code".to_string()),
+			("code", code),
+		])
+		.header(header::ACCEPT, "application/json")
+		.header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+		.header(header::USER_AGENT, "patr".to_string())
+		.header(header::CONTENT_LENGTH, "0")
+		.send()
+		.await?
+		.error_for_status()?
+		.json::<GoogleAccessToken>()
+		.await?;
+
+	log::trace!("Getting user information");
+	let GoogleUserInfo { name, email } = client
+		.get(google_oauth::USER_INFO_URL)
+		.header(header::AUTHORIZATION, format!("Bearer {}", access_token))
+		.header(header::ACCEPT, "application/json")
+		.send()
+		.await?
+		.error_for_status()?
+		.json::<GoogleUserInfo>()
+		.await?;
+
+	let existing_user =
+		db::get_user_by_email(context.get_database_connection(), &email)
+			.await?;
+
+	let response = if let Some(user) = existing_user {
+		let ip_address = routes::get_request_ip_address(&context);
+		let user_agent = context.get_header("user-agent").unwrap_or_default();
+		let config = context.get_state().config.clone();
+		log::trace!("Get access token for user sign in");
+		let (UserWebLogin { login_id, .. }, access_token, refresh_token) =
+			service::sign_in_user(
+				context.get_database_connection(),
+				&user.id,
+				&ip_address
+					.parse()
+					.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+				&user_agent,
+				&config,
+			)
+			.await?;
+		log::trace!("Login success");
+
+		GoogleOAuthCallbackResponse::Login {
+			login_id,
+			access_token,
+			refresh_token,
+		}
+	} else {
+		let username = username
+			.status(404)
+			.body(error!(INVALID_USERNAME).to_string())?;
+
+		let (first_name, last_name) =
+			name.split_once(' ').unwrap_or((name.as_str(), ""));
 		log::trace!("Creating join request for user");
 		let (user_to_sign_up, otp) = service::create_user_join_request(
 			context.get_database_connection(),
 			username.to_lowercase().trim(),
-			&password,
+			"",
 			first_name,
 			last_name,
-			&account_type,
-			&recovery_method,
+			&SignUpAccountType::Personal {
+				account_type: Personal,
+			},
+			&RecoveryMethod::Email {
+				recovery_email: email,
+			},
 			None,
+			true,
 		)
 		.await?;
 
@@ -178,92 +248,11 @@ async fn oauth_callback(
 		)
 		.await;
 		log::trace!("Registration success");
-		context.success(CreateAccountResponse {});
-		Ok(context)
-	} else {
-		let GoogleUserInfo { email, .. } =
-			get_user_info(&context, code).await?;
-		let user_exist =
-			db::get_user_by_email(context.get_database_connection(), &email)
-				.await?;
-		if let Some(user) = user_exist {
-			let ip_address = routes::get_request_ip_address(&context);
-			let user_agent =
-				context.get_header("user-agent").unwrap_or_default();
-			let config = context.get_state().config.clone();
-			log::trace!("Get access token for user sign in");
-			let (UserWebLogin { login_id, .. }, access_token, refresh_token) =
-				service::sign_in_user(
-					context.get_database_connection(),
-					&user.id,
-					&ip_address
-						.parse()
-						.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
-					&user_agent,
-					&config,
-				)
-				.await?;
-			log::trace!("Login success");
-			context.success(LoginResponse {
-				login_id,
-				access_token,
-				refresh_token,
-			});
-
-			Ok(context)
-		} else {
-			Error::as_result()
-				.status(404)
-				.body(error!(INVALID_USERNAME).to_string())?
+		GoogleOAuthCallbackResponse::SignUp {
+			verification_required: True,
 		}
-	}
-}
+	};
 
-async fn get_user_info(
-	context: &EveContext,
-	code: String,
-) -> Result<GoogleUserInfo, Error> {
-	let callback_url = google_oauth::CALLBACK_URL.to_owned();
-	log::trace!("Getting access token");
-	let access_token = reqwest::Client::builder()
-		.build()?
-		.post(callback_url)
-		.query(&[
-			(
-				"client_id",
-				context.get_state().config.google.client_id.clone(),
-			),
-			(
-				"client_secret",
-				context.get_state().config.google.client_secret.clone(),
-			),
-			("redirect_uri", google_oauth::REDIRECT_URL.to_owned()),
-			("grant_type", "authorization_code".to_string()),
-			("code", code),
-		])
-		.header(ACCEPT, "application/json")
-		.header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-		.header(USER_AGENT, "patr".to_string())
-		.header(CONTENT_LENGTH, "0")
-		.send()
-		.await?
-		.error_for_status()?
-		.json::<GoogleAccessToken>()
-		.await?;
-	log::trace!("Getting user information");
-	let user_info_url = google_oauth::USER_INFO_URL.to_owned();
-	let GoogleUserInfo { name, email } = reqwest::Client::builder()
-		.build()?
-		.get(user_info_url)
-		.header(
-			"Authorization",
-			format!("Bearer {}", access_token.access_token),
-		)
-		.header(ACCEPT, "application/json")
-		.send()
-		.await?
-		.error_for_status()?
-		.json::<GoogleUserInfo>()
-		.await?;
-	Ok(GoogleUserInfo { name, email })
+	context.success(response);
+	Ok(context)
 }

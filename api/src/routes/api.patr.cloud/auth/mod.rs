@@ -262,6 +262,7 @@ async fn sign_up(
 		&account_type,
 		&recovery_method,
 		coupon_code.as_deref(),
+		false,
 	)
 	.await?;
 	// send otp
