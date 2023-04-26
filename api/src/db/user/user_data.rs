@@ -24,7 +24,6 @@ pub struct User {
 	pub recovery_phone_number: Option<String>,
 	pub workspace_limit: i32,
 	pub sign_up_coupon: Option<String>,
-	pub is_oauth_user: bool,
 }
 
 pub struct PasswordResetRequest {
@@ -73,7 +72,6 @@ pub async fn initialize_user_data_pre(
 			recovery_phone_number VARCHAR(15),
 			workspace_limit INTEGER NOT NULL,
 			sign_up_coupon TEXT,
-			is_oauth_user BOOLEAN DEFAULT false,
 
 			CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id
 				UNIQUE(recovery_email_local, recovery_email_domain_id),
@@ -168,8 +166,7 @@ pub async fn get_user_by_username_email_or_phone_number(
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
 			"user".workspace_limit,
-			"user".sign_up_coupon,
-			"user".is_oauth_user as "is_oauth_user!: _"
+			"user".sign_up_coupon
 		FROM
 			"user"
 		LEFT JOIN
@@ -243,8 +240,7 @@ pub async fn get_user_by_username(
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
 			"user".workspace_limit,
-			"user".sign_up_coupon,
-			"user".is_oauth_user as "is_oauth_user!: _"
+			"user".sign_up_coupon
 		FROM
 			"user"
 		WHERE
@@ -278,8 +274,7 @@ pub async fn get_user_by_user_id(
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
 			"user".workspace_limit,
-			"user".sign_up_coupon,
-			"user".is_oauth_user as "is_oauth_user!: _"
+			"user".sign_up_coupon
 		FROM
 			"user"
 		WHERE
@@ -355,7 +350,6 @@ pub async fn create_user(
 
 	workspace_limit: i32,
 	sign_up_coupon: Option<&str>,
-	is_oauth_user: bool,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -379,8 +373,7 @@ pub async fn create_user(
 
 				workspace_limit,
 
-				sign_up_coupon,
-				is_oauth_user
+				sign_up_coupon
 			)
 		VALUES
 			(
@@ -402,8 +395,7 @@ pub async fn create_user(
 
 				$11,
 
-				$12,
-				$13
+				$12
 			);
 		"#,
 		user_id as _,
@@ -418,7 +410,6 @@ pub async fn create_user(
 		recovery_phone_number,
 		workspace_limit,
 		sign_up_coupon,
-		is_oauth_user,
 	)
 	.execute(&mut *connection)
 	.await

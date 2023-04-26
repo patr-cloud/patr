@@ -161,7 +161,6 @@ async fn oauth_callback(
 			&account_type,
 			&recovery_method,
 			None,
-			true,
 		)
 		.await?;
 

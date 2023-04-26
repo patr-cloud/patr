@@ -153,7 +153,7 @@ async fn sign_in(
 
 	let success = service::validate_hash(&password, &user_data.password)?;
 
-	if !success || user_data.is_oauth_user {
+	if !success {
 		context.error(ErrorType::InvalidPassword);
 		return Ok(context);
 	}
@@ -262,7 +262,6 @@ async fn sign_up(
 		&account_type,
 		&recovery_method,
 		coupon_code.as_deref(),
-		false,
 	)
 	.await?;
 	// send otp

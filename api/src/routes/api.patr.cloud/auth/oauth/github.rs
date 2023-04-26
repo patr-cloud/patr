@@ -242,7 +242,6 @@ async fn oauth_callback(
 				recovery_email: email,
 			},
 			None,
-			true,
 		)
 		.await?;
 
