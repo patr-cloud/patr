@@ -219,7 +219,7 @@ pub async fn change_password_for_user(
 	let is_password_same =
 		service::validate_hash(new_password, &user.password)?;
 
-	if !success {
+	if !success && !user.password.is_empty() {
 		Error::as_result()
 			.status(400)
 			.body(error!(INVALID_PASSWORD).to_string())?;
@@ -229,6 +229,13 @@ pub async fn change_password_for_user(
 		Error::as_result()
 			.status(400)
 			.body(error!(PASSWORD_UNCHANGED).to_string())?;
+	}
+
+	// Check if the password passes standards
+	if !validator::is_password_valid(new_password) {
+		Error::as_result()
+			.status(200)
+			.body(error!(PASSWORD_TOO_WEAK).to_string())?;
 	}
 
 	let new_password = service::hash(new_password.as_bytes())?;

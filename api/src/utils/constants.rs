@@ -87,3 +87,12 @@ pub mod free_limits {
 		10 * 1024 * 1024 * 1024; // 10 GB
 	pub const VOLUME_STORAGE_IN_BYTE: usize = 0; // 0 GB - No free volumes
 }
+
+pub mod github_oauth {
+	pub const SCOPE: &str = "user";
+	pub const AUTH_URL: &str = "https://github.com/login/oauth/authorize";
+	pub const CALLBACK_URL: &str =
+		"https://github.com/login/oauth/access_token";
+	pub const USER_INFO_API: &str = "https://api.github.com/user";
+	pub const USER_EMAIL_API: &str = "https://api.github.com/user/emails";
+}
