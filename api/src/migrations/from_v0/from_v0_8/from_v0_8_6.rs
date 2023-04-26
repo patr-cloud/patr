@@ -6,15 +6,6 @@ use crate::{
 
 pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	config: &Settings,
-) -> Result<(), Error> {
-	create_static_site_upload_history(&mut *connection, config).await?;
-
-	Ok(())
-}
-
-async fn create_static_site_upload_history(
-	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
 	query!(
