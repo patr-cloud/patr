@@ -71,7 +71,6 @@ pub struct Settings {
 	pub mailchimp: MailchimpSettings,
 	pub github: GithubSettings,
 	pub google: GoogleSettings,
-	pub drone: DroneSettings,
 	pub stripe: StripeSettings,
 	#[serde(alias = "ipinfotoken")]
 	pub ipinfo_token: String,

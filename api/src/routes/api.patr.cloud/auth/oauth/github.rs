@@ -7,7 +7,7 @@ use api_models::{
 		GithubOAuthCallbackRequest,
 		GithubOAuthCallbackResponse,
 		RecoveryMethod,
-		SignUpAccountType, GitHubUserInfoResponse,
+		SignUpAccountType,
 	},
 	utils::{Personal, True},
 };
