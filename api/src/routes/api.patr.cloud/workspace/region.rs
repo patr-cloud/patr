@@ -205,7 +205,6 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 
 async fn list_regions(
 	mut connection: Connection,
-	Extension(token_data): Extension<UserAuthenticationData>,
 	State(config): State<Config>,
 	DecodedRequest {
 		path: ListRegionsForWorkspacePath { workspace_id },
@@ -244,7 +243,6 @@ async fn list_regions(
 
 async fn get_region(
 	mut connection: Connection,
-	Extension(token_data): Extension<UserAuthenticationData>,
 	State(config): State<Config>,
 	DecodedRequest {
 		path: GetRegionInfoPath {
@@ -283,7 +281,6 @@ async fn get_region(
 
 async fn check_region_status(
 	mut connection: Connection,
-	Extension(token_data): Extension<UserAuthenticationData>,
 	State(config): State<Config>,
 	DecodedRequest {
 		path: CheckRegionStatusPath {
@@ -380,7 +377,6 @@ async fn check_region_status(
 
 async fn add_region(
 	mut connection: Connection,
-	Extension(token_data): Extension<UserAuthenticationData>,
 	State(config): State<Config>,
 	DecodedRequest {
 		path: AddRegionToWorkspacePath { workspace_id },
