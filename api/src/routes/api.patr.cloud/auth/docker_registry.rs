@@ -84,9 +84,6 @@ async fn docker_registry_token_endpoint(
 }
 
 /// This function is used to login into the docker registry
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
 async fn docker_registry_login(
 	mut connection: Connection,
 	_client_id: String,

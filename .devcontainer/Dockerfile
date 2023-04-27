@@ -35,16 +35,15 @@ RUN source "$HOME/.cargo/env" && rustup toolchain install nightly
 # Setup bashrc
 RUN cat /etc/container-init-data/bashrc >> /home/vscode/.bashrc
 
-# Install kubectl, helm and yq
-RUN sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
-RUN curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
-RUN sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys CC86BB64
-RUN sudo add-apt-repository ppa:rmescandon/yq
-RUN echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
-RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
-RUN sudo apt update
-RUN sudo apt install -y kubectl helm yq
+# Install homebrew
+RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+RUN (echo; echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"') >> /home/vscode/.bashrc
+RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+# Install kubectl, helm, yq and k3d
+RUN brew install kubectl helm yq k3d
 RUN echo 'source <(kubectl completion bash)' >> /home/vscode/.bashrc
+RUN echo 'source <(k3d completion bash)' >> /home/vscode/.bashrc
 
 # Create a bash_history file
 RUN touch /home/vscode/.bash_history

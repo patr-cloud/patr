@@ -1,25 +1,5 @@
 use api_models::{
-	models::auth::{
-		CompleteSignUpRequest,
-		CompleteSignUpResponse,
-		CreateAccountRequest,
-		ForgotPasswordRequest,
-		IsCouponValidRequest,
-		IsCouponValidResponse,
-		IsEmailValidRequest,
-		IsEmailValidResponse,
-		IsUsernameValidRequest,
-		IsUsernameValidResponse,
-		ListRecoveryOptionsRequest,
-		ListRecoveryOptionsResponse,
-		LoginRequest,
-		LoginResponse,
-		LogoutRequest,
-		RenewAccessTokenRequest,
-		RenewAccessTokenResponse,
-		ResendOtpRequest,
-		ResetPasswordRequest,
-	},
+	models::prelude::*,
 	prelude::*,
 	utils::DecodedRequest,
 	Error,
@@ -73,8 +53,8 @@ async fn sign_in(
 	user_agent: Option<TypedHeader<UserAgent>>,
 	DecodedRequest {
 		body: LoginRequest { user_id, password },
-		path: _,
-		query: _,
+		path: LoginPath,
+		query: (),
 	}: DecodedRequest<LoginRequest>,
 ) -> Result<LoginResponse, Error> {
 	let user_data = db::get_user_by_username_email_or_phone_number(
@@ -265,9 +245,9 @@ async fn get_access_token(
 	ClientIp(client_ip): ClientIp,
 	user_agent: Option<TypedHeader<UserAgent>>,
 	DecodedRequest {
-		path: _,
+		path: RenewAccessTokenPath,
 		query,
-		body: _,
+		body: (),
 	}: DecodedRequest<RenewAccessTokenRequest>,
 ) -> Result<RenewAccessTokenResponse, Error> {
 	let refresh_token = query
