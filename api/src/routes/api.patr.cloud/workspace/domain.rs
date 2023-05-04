@@ -1,42 +1,16 @@
 use api_models::{
-	models::workspace::domain::{
-		AddDnsRecordRequest,
-		AddDnsRecordResponse,
-		AddDomainRequest,
-		AddDomainResponse,
-		DeleteDnsRecordResponse,
-		DeleteDomainResponse,
-		DnsRecordValue,
-		Domain,
-		GetDomainDnsRecordsResponse,
-		GetDomainInfoResponse,
-		GetDomainsForWorkspaceResponse,
-		IsDomainPersonalRequest,
-		IsDomainPersonalResponse,
-		PatrDomainDnsRecord,
-		UpdateDomainDnsRecordRequest,
-		UpdateDomainDnsRecordResponse,
-		VerifyDomainResponse,
-		WorkspaceDomain,
-	},
-	utils::{DateTime, Uuid},
+	models::prelude::*,
+	utils::{DateTime, Paginated, Uuid},
 };
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use axum::{extract::State, Extension, Router};
 
 use crate::{
-	app::{create_axum_router, App},
+	app::App,
 	db::{self, DnsRecordType},
-	error,
-	models::{rbac::permissions, ResourceType},
-	pin_fn,
+	models::{rbac::permissions, ResourceType, UserAuthenticationData},
+	prelude::*,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::Error,
 };
 
 /// # Description
@@ -54,382 +28,228 @@ use crate::{
 ///
 /// [`App`]: App
 pub fn create_sub_app(app: &App) -> Router<App> {
-	let mut app = create_axum_router(app);
+	Router::new()
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::domain::LIST,
+				|GetDomainsForWorkspacePath { workspace_id },
+				 Paginated {
+				     start,
+				     count,
+				     query: (),
+				 },
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	// Get all domains
-	app.get(
-		"/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::domain::LIST,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					db::get_resource_by_id(&mut connection, &workspace_id)
+						.await?;
+				},
+			),
+			app.clone(),
+			get_domains_for_workspace,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::domain::ADD,
+				|AddDomainPath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					db::get_resource_by_id(&mut connection, &workspace_id)
+						.await?;
+				},
+			),
+			app.clone(),
+			add_domain_to_workspace,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::domain::VERIFY,
+				|VerifyDomainPath {
+				     workspace_id,
+				     domain_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &domain_id)
+						.await?
+						.filter(|value| value.owner_id == workspace_id);
+				},
+			),
+			app.clone(),
+			verify_domain_in_workspace,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::domain::VIEW_DETAILS,
+				|GetDomainInfoPath {
+				     workspace_id,
+				     domain_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_domains_for_workspace)),
-		],
-	);
+					db::get_resource_by_id(&mut connection, &domain_id)
+						.await?
+						.filter(|value| value.owner_id == workspace_id);
+				},
+			),
+			app.clone(),
+			get_domain_info_in_workspace,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::domain::DELETE,
+				|DeleteDomainPath {
+				     workspace_id,
+				     domain_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	// Add a domain
-	app.post(
-		"/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::domain::ADD,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					db::get_resource_by_id(&mut connection, &domain_id)
+						.await?
+						.filter(|value| value.owner_id == workspace_id);
+				},
+			),
+			app.clone(),
+			delete_domain_in_workspace,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::domain::dns_record::LIST,
+				|GetDomainDnsRecordsPath {
+				     workspace_id,
+				     domain_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &domain_id)
+						.await?
+						.filter(|value| value.owner_id == workspace_id);
+				},
+			),
+			app.clone(),
+			get_domain_dns_record,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::domain::dns_record::ADD,
+				|AddDnsRecordPath {
+				     workspace_id,
+				     domain_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(add_domain_to_workspace)),
-		],
-	);
+					db::get_resource_by_id(&mut connection, &domain_id)
+						.await?
+						.filter(|value| value.owner_id == workspace_id);
+				},
+			),
+			app.clone(),
+			add_dns_record,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::domain::dns_record::EDIT,
+				|UpdateDomainDnsRecordPath {
+				     workspace_id,
+				     domain_id,
+				     record_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	// Verify a domain
-	app.post(
-		"/:domainId/verify",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::domain::VERIFY,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					db::get_resource_by_id(&mut connection, &record_id)
+						.await?
+						.filter(|value| value.owner_id == workspace_id);
+				},
+			),
+			app.clone(),
+			update_dns_record,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::domain::dns_record::DELETE,
+				|DeleteDnsRecordPath {
+				     workspace_id,
+				     domain_id,
+				     record_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					let domain_id_string =
-						context.get_param(request_keys::DOMAIN_ID).unwrap();
-					let domain_id = Uuid::parse_str(domain_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					db::get_resource_by_id(&mut connection, &record_id)
+						.await?
+						.filter(|value| value.owner_id == workspace_id);
+				},
+			),
+			app.clone(),
+			delete_dns_record,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::domain::ADD,
+				|IsDomainPersonalPath { workspace_id },
+				 IsDomainPersonalRequest { domain },
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&domain_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(verify_domain_in_workspace)),
-		],
-	);
-
-	// Get details of a domain
-	app.get(
-		"/:domainId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::domain::VIEW_DETAILS,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let domain_id_string =
-						context.get_param(request_keys::DOMAIN_ID).unwrap();
-					let domain_id = Uuid::parse_str(domain_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&domain_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(
-				get_domain_info_in_workspace
-			)),
-		],
-	);
-
-	// Delete a domain
-	app.delete(
-		"/:domainId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::domain::DELETE,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let domain_id_string =
-						context.get_param(request_keys::DOMAIN_ID).unwrap();
-					let domain_id = Uuid::parse_str(domain_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&domain_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(delete_domain_in_workspace)),
-		],
-	);
-
-	// Get list of records for a domain
-	app.get(
-		"/:domainId/dns-record",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::domain::dns_record::LIST,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let domain_id_string =
-						context.get_param(request_keys::DOMAIN_ID).unwrap();
-					let domain_id = Uuid::parse_str(domain_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&domain_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_domain_dns_record)),
-		],
-	);
-
-	//  add dns record
-	app.post(
-		"/:domainId/dns-record",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::domain::dns_record::ADD,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let domain_id_string =
-						context.get_param(request_keys::DOMAIN_ID).unwrap();
-					let domain_id = Uuid::parse_str(domain_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&domain_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(add_dns_record)),
-		],
-	);
-
-	// update dns record
-	app.patch(
-		"/:domainId/dns-record/:recordId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::domain::dns_record::EDIT,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let domain_id_string =
-						context.get_param(request_keys::RECORD_ID).unwrap();
-					let domain_id = Uuid::parse_str(domain_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&domain_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(update_dns_record)),
-		],
-	);
-
-	app.delete(
-		"/:domainId/dns-record/:recordId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::domain::dns_record::DELETE,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let domain_id_string =
-						context.get_param(request_keys::RECORD_ID).unwrap();
-					let domain_id = Uuid::parse_str(domain_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&domain_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(delete_dns_record)),
-		],
-	);
-
-	app.get(
-		"/is-domain-personal",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::domain::ADD,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(is_domain_personal)),
-		],
-	);
-
-	// Do something with the domains, etc, maybe?
-
-	app
+					db::get_resource_by_id(&mut connection, &workspace_id)
+						.await?;
+				},
+			),
+			app.clone(),
+			is_domain_personal,
+		)
 }
 
 /// # Description
@@ -467,38 +287,46 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn get_domains_for_workspace(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path:
+			GetDomainsForWorkspacePath {
+				workspace_id,
+				domain_id,
+				record_id,
+			},
+		query: Paginated {
+			start,
+			count,
+			query: (),
+		},
+		body: (),
+	}: DecodedRequest<GetDomainsForWorkspaceRequest>,
+) -> Result<GetDomainsForWorkspaceResponse, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Getting domains for workspace", request_id);
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
 
-	let domains = db::get_domains_for_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?
-	.into_iter()
-	.map(|domain| WorkspaceDomain {
-		domain: Domain {
-			id: domain.id,
-			name: domain.name,
-			last_unverified: domain.last_unverified.map(DateTime),
-		},
-		is_verified: domain.is_verified,
-		nameserver_type: domain.nameserver_type,
-	})
-	.collect();
+	let domains = db::get_domains_for_workspace(&mut connection, &workspace_id)
+		.await?
+		.into_iter()
+		.map(|domain| WorkspaceDomain {
+			domain: Domain {
+				id: domain.id,
+				name: domain.name,
+				last_unverified: domain.last_unverified.map(DateTime),
+			},
+			is_verified: domain.is_verified,
+			nameserver_type: domain.nameserver_type,
+		})
+		.collect();
 
 	log::trace!(
 		"request_id: {} - Returning domains for workspace",
 		request_id
 	);
-	context.success(GetDomainsForWorkspaceResponse { domains });
-	Ok(context)
+	Ok(GetDomainsForWorkspaceResponse { domains })
 }
 
 /// # Description
@@ -533,28 +361,23 @@ async fn get_domains_for_workspace(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn add_domain_to_workspace(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: AddDomainPath { workspace_id },
+		query: (),
+		body: AddDomainRequest {
+			domain,
+			nameserver_type,
+		},
+	}: DecodedRequest<AddDomainRequest>,
+) -> Result<AddDomainResponse, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Adding domain to workspace", request_id);
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
 
-	let AddDomainRequest {
-		workspace_id: _,
-		domain,
-		nameserver_type,
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	// move this to service layer
-	let config = context.get_state().config.clone();
 	let domain_id = service::add_domain_to_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&domain,
 		&nameserver_type,
 		&workspace_id,
@@ -567,9 +390,8 @@ async fn add_domain_to_workspace(
 		"request_id: {} - Added the domain to the workspace",
 		request_id
 	);
-	context.success(AddDomainResponse { id: domain_id });
 
-	Ok(context)
+	Ok(AddDomainResponse { id: domain_id })
 }
 
 /// # Description
@@ -604,39 +426,27 @@ async fn add_domain_to_workspace(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn verify_domain_in_workspace(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: VerifyDomainPath {
+			workspace_id,
+			domain_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<VerifyDomainRequest>,
+) -> Result<VerifyDomainResponse, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Verifying domain in workspace", request_id);
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id)?;
 
-	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
-	// Uuid::parse_str throws an error for a wrong string
-	// This error is handled by the resource authenticator middleware
-	// So it's safe to call unwrap() here without crashing the system
-	// This won't be executed unless Uuid::parse_str(domain_id) returns Ok
-	let domain_id = Uuid::parse_str(domain_id).unwrap();
-
-	let domain = db::get_workspace_domain_by_id(
-		context.get_database_connection(),
-		&domain_id,
-	)
-	.await?
-	// Domain cannot be null.
-	// This function wouldn't run unless the resource middleware
-	// executes successfully The resource middleware checks if a
-	// resource with that name exists. If the domain is null but the
-	// resource exists, then you have a dangling resource. This is a big
-	// problem. Make sure it's logged and investigated into
-	.status(500)
-	.body(error!(SERVER_ERROR).to_string())?;
-
-	let config = context.get_state().config.clone();
+	let domain = db::get_workspace_domain_by_id(&mut connection, &domain_id)
+		.await?
+		.ok_or_else(|| ErrorType::internal_error())?;
 
 	let verified = service::is_domain_verified(
-		context.get_database_connection(),
+		&mut connection,
 		&domain.id,
 		&workspace_id,
 		&config,
@@ -644,8 +454,7 @@ async fn verify_domain_in_workspace(
 	)
 	.await?;
 
-	context.success(VerifyDomainResponse { verified });
-	Ok(context)
+	Ok(VerifyDomainResponse { verified })
 }
 
 /// # Description
@@ -691,31 +500,30 @@ async fn verify_domain_in_workspace(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn get_domain_info_in_workspace(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: GetDomainInfoPath {
+			workspace_id,
+			domain_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<GetDomainInfoRequest>,
+) -> Result<GetDomainInfoResponse, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"request_id: {} - Getting domain info in workspace",
 		request_id
 	);
-	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 
-	// Uuid::parse_str throws an error for a wrong string
-	// This error is handled by the resource authenticator middleware
-	// So it's safe to call unwrap() here without crashing the system
-	// This won't be executed unless Uuid::parse_str(domain_id) returns Ok
-	let domain_id = Uuid::parse_str(domain_id).unwrap();
+	let domain = db::get_workspace_domain_by_id(&mut connection, &domain_id)
+		.await?
+		.ok_or_else(|| ErrorType::NotFound)?;
 
-	let domain = db::get_workspace_domain_by_id(
-		context.get_database_connection(),
-		&domain_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	context.success(GetDomainInfoResponse {
+	log::trace!("request_id: {} - Got domain info in workspace", request_id);
+	Ok(GetDomainInfoResponse {
 		workspace_domain: WorkspaceDomain {
 			domain: Domain {
 				id: domain.id,
@@ -725,10 +533,7 @@ async fn get_domain_info_in_workspace(
 			is_verified: domain.is_verified,
 			nameserver_type: domain.nameserver_type,
 		},
-	});
-
-	log::trace!("request_id: {} - Got domain info in workspace", request_id);
-	Ok(context)
+	})
 }
 
 /// # Description
@@ -762,37 +567,31 @@ async fn get_domain_info_in_workspace(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn delete_domain_in_workspace(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: DeleteDomainPath {
+			workspace_id,
+			domain_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<DeleteDomainRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Deleting domain in workspace", request_id);
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id)?;
 
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	let user_id = token_data.user_id();
 
-	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
-	// Uuid::parse_str throws an error for a wrong string
-	// This error is handled by the resource authenticator middleware
-	// So it's safe to call unwrap() here without crashing the system
-	// This won't be executed unless Uuid::parse_str(domain_id) returns Ok
-	let domain_id = Uuid::parse_str(domain_id).unwrap();
-
-	let domain = db::get_workspace_domain_by_id(
-		context.get_database_connection(),
-		&domain_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let domain = db::get_workspace_domain_by_id(&mut connection, &domain_id)
+		.await?
+		.ok_or_else(|| ErrorType::NotFound)?;
 
 	// TODO make sure all associated resources to this domain are removed first
 
-	let config = context.get_state().config.clone();
-
 	service::delete_domain_in_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&domain_id,
 		&config,
@@ -802,10 +601,10 @@ async fn delete_domain_in_workspace(
 
 	// Commiting transaction so that even if the mailing function fails the
 	// resource should be deleted
-	context.commit_database_transaction().await?;
+	connection.commit().await?;
 
 	service::resource_delete_action_email(
-		context.get_database_connection(),
+		&mut connection,
 		&domain.name,
 		&workspace_id,
 		&ResourceType::Domain,
@@ -815,103 +614,93 @@ async fn delete_domain_in_workspace(
 
 	log::trace!("request_id: {} - Deleted domain in workspace", request_id);
 	// TODO: add the info to patr metrics
-	context.success(DeleteDomainResponse {});
-	Ok(context)
+	Ok(())
 }
 
 async fn get_domain_dns_record(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: GetDomainDnsRecordsPath {
+			workspace_id,
+			domain_id,
+		},
+		query: Paginated {
+			start,
+			count,
+			query: (),
+		},
+		body: (),
+	}: DecodedRequest<GetDomainDnsRecordsRequest>,
+) -> Result<GetDomainDnsRecordsResponse, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Getting domain dns record", request_id);
-	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
-
-	// Uuid::parse_str throws an error for a wrong string
-	// This error is handled by the resource authenticator middleware
-	// So it's safe to call unwrap() here without crashing the system
-	// This won't be executed unless Uuid::parse_str(domain_id) returns Ok
-	let domain_id = Uuid::parse_str(domain_id).unwrap();
 
 	// get dns records from database
-	let records = db::get_dns_records_by_domain_id(
-		context.get_database_connection(),
-		&domain_id,
-	)
-	.await?
-	.into_iter()
-	.filter_map(|record| {
-		let proxied = if let Some(proxied) = record.proxied {
-			proxied
-		} else {
-			false
-		};
-		let record_value = match record.r#type {
-			DnsRecordType::A => DnsRecordValue::A {
-				target: record.value.parse().ok()?,
-				proxied,
-			},
-			DnsRecordType::AAAA => DnsRecordValue::AAAA {
-				target: record.value.parse().ok()?,
-				proxied,
-			},
-			DnsRecordType::CNAME => DnsRecordValue::CNAME {
-				target: record.value,
-				proxied,
-			},
-			DnsRecordType::MX => DnsRecordValue::MX {
-				target: record.value,
-				priority: record.priority.map(|p| p as u16)?,
-			},
-			DnsRecordType::TXT => DnsRecordValue::TXT {
-				target: record.value,
-			},
-		};
-		Some(PatrDomainDnsRecord {
-			id: record.id,
-			domain_id: record.domain_id,
-			name: record.name,
-			r#type: record_value,
-			ttl: record.ttl as u32,
+	let records = db::get_dns_records_by_domain_id(&mut connection, &domain_id)
+		.await?
+		.into_iter()
+		.filter_map(|record| {
+			let proxied = if let Some(proxied) = record.proxied {
+				proxied
+			} else {
+				false
+			};
+			let record_value = match record.r#type {
+				DnsRecordType::A => DnsRecordValue::A {
+					target: record.value.parse().ok()?,
+					proxied,
+				},
+				DnsRecordType::AAAA => DnsRecordValue::AAAA {
+					target: record.value.parse().ok()?,
+					proxied,
+				},
+				DnsRecordType::CNAME => DnsRecordValue::CNAME {
+					target: record.value,
+					proxied,
+				},
+				DnsRecordType::MX => DnsRecordValue::MX {
+					target: record.value,
+					priority: record.priority.map(|p| p as u16)?,
+				},
+				DnsRecordType::TXT => DnsRecordValue::TXT {
+					target: record.value,
+				},
+			};
+			Some(PatrDomainDnsRecord {
+				id: record.id,
+				domain_id: record.domain_id,
+				name: record.name,
+				r#type: record_value,
+				ttl: record.ttl as u32,
+			})
 		})
-	})
-	.collect();
+		.collect();
 
 	log::trace!("request_id: {} - Got domain dns record", request_id);
-	context.success(GetDomainDnsRecordsResponse { records });
-	Ok(context)
+	Ok(GetDomainDnsRecordsResponse { records })
 }
 
 async fn add_dns_record(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: AddDnsRecordPath {
+			workspace_id,
+			domain_id,
+		},
+		query: (),
+		body: AddDnsRecordRequest { name, r#type, ttl },
+	}: DecodedRequest<AddDnsRecordRequest>,
+) -> Result<AddDnsRecordResponse, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Adding dns record", request_id);
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-
-	let domain_id =
-		Uuid::parse_str(context.get_param(request_keys::DOMAIN_ID).unwrap())
-			.status(400)?;
-
-	let AddDnsRecordRequest {
-		workspace_id: _,
-		domain_id: _,
-		name,
-		r#type,
-		ttl,
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let config = context.get_state().config.clone();
 
 	// add a record to cloudflare
 	let record_id = service::create_patr_domain_dns_record(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&domain_id,
 		&name.to_lowercase(),
@@ -923,39 +712,35 @@ async fn add_dns_record(
 	.await?;
 
 	log::trace!("request_id: {} - Added dns record", request_id);
-	context.success(AddDnsRecordResponse { id: record_id });
-	Ok(context)
+	Ok(AddDnsRecordResponse { id: record_id })
 }
 
 async fn update_dns_record(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path:
+			UpdateDomainDnsRecordPath {
+				workspace_id,
+				domain_id,
+				record_id,
+			},
+		query: (),
+		body:
+			UpdateDomainDnsRecordRequest {
+				ttl,
+				target,
+				priority,
+				proxied,
+			},
+	}: DecodedRequest<UpdateDomainDnsRecordRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Updating dns record", request_id);
-	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
-	let domain_id = Uuid::parse_str(domain_id)?;
-
-	let record_id = context.get_param(request_keys::RECORD_ID).unwrap();
-	let record_id = Uuid::parse_str(record_id)?;
-
-	let UpdateDomainDnsRecordRequest {
-		workspace_id: _,
-		domain_id: _,
-		record_id: _,
-		ttl,
-		proxied,
-		target,
-		priority,
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let config = context.get_state().config.clone();
 
 	service::update_patr_domain_dns_record(
-		context.get_database_connection(),
+		&mut connection,
 		&domain_id,
 		&record_id,
 		target.as_deref(),
@@ -968,32 +753,34 @@ async fn update_dns_record(
 	.await?;
 
 	log::trace!("request_id: {} - Updated dns record", request_id);
-	context.success(UpdateDomainDnsRecordResponse {});
-	Ok(context)
+	Ok(())
 }
 
 async fn delete_dns_record(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path:
+			DeleteDnsRecordPath {
+				workspace_id,
+				domain_id,
+				record_id,
+			},
+		query: (),
+		body: (),
+	}: DecodedRequest<DeleteDnsRecordRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 
 	log::trace!("request_id: {} - Deleting dns record", request_id);
-	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
-	let domain_id = Uuid::parse_str(domain_id)?;
 
-	let record_id = context.get_param(request_keys::RECORD_ID).unwrap();
-	let record_id = Uuid::parse_str(record_id)?;
-
-	db::get_dns_record_by_id(context.get_database_connection(), &record_id)
+	db::get_dns_record_by_id(&mut connection, &record_id)
 		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	let config = context.get_state().config.clone();
+		.ok_or_else(|| ErrorType::NotFound)?;
 
 	service::delete_patr_domain_dns_record(
-		context.get_database_connection(),
+		&mut connection,
 		&domain_id,
 		&record_id,
 		&config,
@@ -1002,36 +789,36 @@ async fn delete_dns_record(
 	.await?;
 
 	log::trace!("request_id: {} - Deleted dns record", request_id);
-	context.success(DeleteDnsRecordResponse {});
-	Ok(context)
+	Ok(())
 }
 
 async fn is_domain_personal(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: IsDomainPersonalPath { workspace_id },
+		query: IsDomainPersonalRequest { domain },
+		body: (),
+	}: DecodedRequest<IsDomainPersonalRequest>,
+) -> Result<IsDomainPersonalResponse, Error> {
 	let request_id = Uuid::new_v4();
 
 	log::trace!(
 		"request_id: {} - Checking if a domain is personal",
 		request_id
 	);
-	let IsDomainPersonalRequest { domain, .. } = context
-		.get_query_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	let user_id = token_data.user_id();
 
 	let (personal, is_used_by_others) = if let Some(domain) =
-		db::get_domain_by_name(context.get_database_connection(), &domain)
-			.await?
+		db::get_domain_by_name(&mut connection, &domain).await?
 	{
 		if domain.r#type.is_personal() {
 			(
 				true,
 				db::get_users_with_domain_in_personal_email(
-					context.get_database_connection(),
+					&mut connection,
 					&domain.id,
 				)
 				.await?
@@ -1051,9 +838,8 @@ async fn is_domain_personal(
 		personal,
 		is_used_by_others
 	);
-	context.success(IsDomainPersonalResponse {
+	Ok(IsDomainPersonalResponse {
 		personal,
 		is_used_by_others,
-	});
-	Ok(context)
+	})
 }

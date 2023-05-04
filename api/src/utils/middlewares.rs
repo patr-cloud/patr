@@ -205,7 +205,7 @@ where
 		<Req as ApiRequest>::Path,
 		<Req as ApiRequest>::Query,
 		App,
-		&HttpRequest<B>,
+		&mut HttpRequest<B>,
 	) -> TRes,
 	TRes: Future<Output = Result<Option<Resource>, Error>>,
 	Req: ApiRequest,
@@ -232,7 +232,7 @@ where
 		<Req as ApiRequest>::Path,
 		<Req as ApiRequest>::Query,
 		App,
-		&HttpRequest<B>,
+		&mut HttpRequest<B>,
 	) -> TRes,
 	TRes: Future<Output = Result<Option<Resource>, Error>>,
 	Req: ApiRequest,
@@ -246,7 +246,7 @@ where
 		path: <Req as ApiRequest>::Path,
 		query: <Req as ApiRequest>::Query,
 		state: App,
-		req: HttpRequest<B>,
+		mut req: HttpRequest<B>,
 	) -> Self::Future {
 		Box::pin(async move {
 			let TypedHeader(token) = req
@@ -274,8 +274,9 @@ where
 				return Err(Error::new(ErrorType::Unauthorized));
 			}
 
-			let resource =
-				self.resource_in_question(path, query, state, &req).await?;
+			let resource = self
+				.resource_in_question(path, query, state, &mut req)
+				.await?;
 
 			let req = req.set_token_data(token_data);
 			Ok(req)
