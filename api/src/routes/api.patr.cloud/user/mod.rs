@@ -12,6 +12,7 @@ use api_models::{
 			DeletePersonalEmailResponse,
 			DeletePhoneNumberRequest,
 			DeletePhoneNumberResponse,
+			GetReferralCountResponse,
 			GetUserInfoByUserIdResponse,
 			GetUserInfoResponse,
 			GetUserReferralResponse,
@@ -24,6 +25,7 @@ use api_models::{
 			UpdateRecoveryEmailResponse,
 			UpdateRecoveryPhoneNumberRequest,
 			UpdateRecoveryPhoneNumberResponse,
+			UpdateReferralCountResponse,
 			UpdateUserInfoRequest,
 			UpdateUserInfoResponse,
 			VerifyPersonalEmailRequest,
@@ -232,8 +234,14 @@ pub fn create_sub_app(
 			EveMiddleware::PlainTokenAuthenticator {
 				is_api_token_allowed: true,
 			},
-			EveMiddleware::CustomFunction(pin_fn!(get_user_referral)),
+			EveMiddleware::CustomFunction(pin_fn!(get_user_referral_count)),
 		],
+	);
+	sub_app.post(
+		"/:userId/referral",
+		[EveMiddleware::CustomFunction(pin_fn!(
+			update_referral_count
+		))],
 	);
 
 	sub_app.use_sub_app("/", login::create_sub_app(app));
@@ -1245,7 +1253,7 @@ async fn search_for_user(
 	Ok(context)
 }
 
-async fn get_user_referral(
+async fn _get_user_referral(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -1256,12 +1264,66 @@ async fn get_user_referral(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	// call get_user_referrals
-	let users = db::get_user_referrals(
+	let users = db::_get_user_referrals(
 		context.get_database_connection(),
 		&user_id.to_string(),
 	)
 	.await?;
 
 	context.success(GetUserReferralResponse { users });
+	Ok(context)
+}
+
+async fn get_user_referral_count(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let user_id = context
+		.get_param(request_keys::USER_ID)
+		.and_then(|user_id_str| Uuid::parse_str(user_id_str.trim()).ok())
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	// get referral link clicks
+	let clicks =
+		db::get_referral_click(context.get_database_connection(), &user_id)
+			.await?;
+
+	// get pending referrals
+	let pending_referrals = db::get_pending_referral(
+		context.get_database_connection(),
+		&user_id.to_string(),
+	)
+	.await?;
+
+	// get total referrals
+	let total_referrals = db::get_total_referral_count(
+		context.get_database_connection(),
+		&user_id.to_string(),
+	)
+	.await?;
+
+	context.success(GetReferralCountResponse {
+		clicks,
+		pending_referrals,
+		total_referrals,
+	});
+	Ok(context)
+}
+
+async fn update_referral_count(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let user_id = context
+		.get_param(request_keys::USER_ID)
+		.and_then(|user_id_str| Uuid::parse_str(user_id_str.trim()).ok())
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	db::update_referral_click(context.get_database_connection(), &user_id)
+		.await?;
+
+	context.success(UpdateReferralCountResponse {});
 	Ok(context)
 }

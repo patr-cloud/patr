@@ -883,6 +883,7 @@ pub async fn join_user(
 		3,
 		user_data.coupon_code.as_deref(),
 		user_data.referred_from.as_deref(),
+		0,
 	)
 	.await?;
 

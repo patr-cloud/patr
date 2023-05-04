@@ -326,7 +326,8 @@ pub async fn get_all_users_with_role(
 			"user".recovery_phone_number,
 			"user".workspace_limit,
 			"user".sign_up_coupon,
-			"user".last_referred
+			"user".last_referred,
+			"user".referral_click
 		FROM
 			"user"
 		INNER JOIN

@@ -159,7 +159,8 @@ pub async fn get_user_by_email(
 			"user".recovery_phone_number,
 			"user".workspace_limit,
 			"user".sign_up_coupon,
-			"user".last_referred
+			"user".last_referred,
+			"user".referral_click
 		FROM
 			"user"
 		LEFT JOIN
