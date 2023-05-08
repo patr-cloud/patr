@@ -108,7 +108,9 @@ async fn add_tables_for_k8s_database(
 		r#"
 		CREATE TYPE PATR_DATABASE_ENGINE AS ENUM(
 			'postgres',
-			'mysql'
+			'mysql',
+			'mongo',
+			'redis'
 		);
 		"#
 	)
@@ -155,6 +157,7 @@ async fn add_tables_for_k8s_database(
 			port 			INTEGER 				NOT NULL,
 			username 		TEXT 					NOT NULL,
 			password 		TEXT 					NOT NULL,
+			replica_numbers INTEGER					NOT NULL DEFAULT 1,
 			deleted 		TIMESTAMPTZ,
 
 			CONSTRAINT patr_database_pk
@@ -166,7 +169,7 @@ async fn add_tables_for_k8s_database(
 				CHECK(db_name = TRIM(db_name)),
 		
 			CONSTRAINT patr_database_fk_region
-				FOREIGN KEY (region) REFERENCES deployment_region(id)
+				FOREIGN KEY (region) REFERENCES region(id)
 		);
 		"#
 	)

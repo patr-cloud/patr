@@ -59,7 +59,7 @@ pub async fn create_kubernetes_redis_database(
 	replica_numbers: i32,
 ) -> Result<(), Error> {
 	let kubernetes_client =
-		super::super::get_kubernetes_client(kubeconfig.auth_details).await?;
+		super::super::get_kubernetes_client(kubeconfig).await?;
 
 	// names
 	let namespace = workspace_id.as_str();
@@ -79,8 +79,10 @@ pub async fn create_kubernetes_redis_database(
 	let labels =
 		BTreeMap::from([("database".to_owned(), database_id.to_string())]);
 
-	log::trace!("request_id: {request_id} - Creating secret for database
-	pwd");
+	log::trace!(
+		"request_id: {request_id} - Creating secret for database
+	pwd"
+	);
 
 	let secret_spec_for_db_pwd = Secret {
 		metadata: ObjectMeta {
@@ -88,7 +90,7 @@ pub async fn create_kubernetes_redis_database(
 			..Default::default()
 		},
 		string_data: Some(
-			[(secret_key_for_db_pwd.to_owned(), "test".to_string())].into(),
+			[(secret_key_for_db_pwd.to_owned(), db_pwd.to_string())].into(),
 		),
 		..Default::default()
 	};
@@ -374,7 +376,7 @@ pub async fn delete_kubernetes_redis_database(
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let kubernetes_client =
-		super::super::get_kubernetes_client(kubeconfig.auth_details).await?;
+		super::super::get_kubernetes_client(kubeconfig).await?;
 
 	// names
 	let namespace = workspace_id.as_str();
@@ -431,7 +433,7 @@ pub async fn handle_redis_scaling(
 	replica_numbers: i32,
 ) -> Result<(), Error> {
 	let kubernetes_client =
-		super::super::get_kubernetes_client(kubeconfig.auth_details).await?;
+		super::super::get_kubernetes_client(kubeconfig).await?;
 	let namespace = workspace_id.as_str();
 	let sts_name_for_db = format!("db-{database_id}-sts");
 	let labels =

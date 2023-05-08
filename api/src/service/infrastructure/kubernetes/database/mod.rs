@@ -1,4 +1,3 @@
-mod mysql;
 mod redis;
 
 use api_models::{
@@ -13,7 +12,6 @@ use k8s_openapi::{
 	apimachinery::pkg::api::resource::Quantity,
 };
 use kube::{config::Kubeconfig, Api};
-pub use mysql::*;
 
 pub use self::redis::*;
 use crate::utils::Error;
@@ -44,8 +42,7 @@ pub async fn get_kubernetes_database_status(
 	request_id: &Uuid,
 	replica_numbers: i32,
 ) -> Result<PatrDatabaseStatus, Error> {
-	let kubernetes_client =
-		super::get_kubernetes_client(kubeconfig.auth_details).await?;
+	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
 
 	// names
 	let namespace = workspace_id.as_str();

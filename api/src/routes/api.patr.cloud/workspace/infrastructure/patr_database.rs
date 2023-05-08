@@ -301,7 +301,6 @@ async fn create_database_cluster(
 		&database_plan,
 		&region,
 		&workspace_id,
-		&config,
 		&request_id,
 		replica_numbers,
 	)
@@ -389,13 +388,10 @@ async fn delete_patr_database(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let config = context.get_state().config.clone();
-
 	log::trace!("request_id: {} - Deleting database cluster", request_id);
 	service::delete_patr_database(
 		context.get_database_connection(),
 		&database_id,
-		&config,
 		&request_id,
 	)
 	.await?;
@@ -438,12 +434,10 @@ async fn modify_database_cluster(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let config = context.get_state().config.clone();
 	log::trace!("request_id: {} - Modifying database cluster", request_id);
 	service::modify_patr_database(
 		context.get_database_connection(),
 		&database_id,
-		&config,
 		&request_id,
 		replica_numbers,
 	)

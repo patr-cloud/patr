@@ -8,14 +8,13 @@ use crate::{
 	db,
 	models::rabbitmq::DatabaseRequestData,
 	service,
-	utils::{settings::Settings, Error},
+	utils::Error,
 	Database,
 };
 
 pub(super) async fn process_request(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	request_data: DatabaseRequestData,
-	config: &Settings,
 ) -> Result<(), Error> {
 	match request_data {
 		DatabaseRequestData::CheckAndUpdateStatus {
@@ -50,7 +49,6 @@ pub(super) async fn process_request(
 					connection,
 					&workspace_id,
 					&database_id,
-					config,
 					&request_id,
 					database.replica_numbers,
 				)
