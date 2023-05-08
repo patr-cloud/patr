@@ -12,11 +12,11 @@ use k8s_openapi::{
 	api::apps::v1::StatefulSet,
 	apimachinery::pkg::api::resource::Quantity,
 };
-use kube::Api;
+use kube::{config::Kubeconfig, Api};
 pub use mysql::*;
 
 pub use self::redis::*;
-use crate::{service::KubernetesConfigDetails, utils::Error};
+use crate::utils::Error;
 
 pub trait ResourceLimitsForPlan {
 	fn get_resource_limits(&self) -> (Quantity, Quantity, Quantity);
@@ -40,7 +40,7 @@ impl ResourceLimitsForPlan for PatrDatabasePlan {
 pub async fn get_kubernetes_database_status(
 	workspace_id: &Uuid,
 	database_id: &Uuid,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 	replica_numbers: i32,
 ) -> Result<PatrDatabaseStatus, Error> {

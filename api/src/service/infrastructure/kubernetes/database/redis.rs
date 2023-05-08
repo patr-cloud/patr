@@ -39,16 +39,13 @@ use k8s_openapi::{
 };
 use kube::{
 	api::{DeleteParams, ListParams, Patch, PatchParams},
+	config::Kubeconfig,
 	core::ObjectMeta,
 	Api,
 };
 
 use crate::{
-	service::{
-		ext_traits::DeleteOpt,
-		KubernetesConfigDetails,
-		ResourceLimitsForPlan,
-	},
+	service::{ext_traits::DeleteOpt, ResourceLimitsForPlan},
 	utils::Error,
 };
 
@@ -57,7 +54,7 @@ pub async fn create_kubernetes_redis_database(
 	database_id: &Uuid,
 	db_pwd: &String,
 	db_plan: &PatrDatabasePlan,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 	replica_numbers: i32,
 ) -> Result<(), Error> {
@@ -82,33 +79,43 @@ pub async fn create_kubernetes_redis_database(
 	let labels =
 		BTreeMap::from([("database".to_owned(), database_id.to_string())]);
 
-	// log::trace!("request_id: {request_id} - Creating secret for database pwd");
+	log::trace!("request_id: {request_id} - Creating secret for database
+	pwd");
 
-	// let secret_spec_for_db_pwd = Secret {
-	// 	metadata: ObjectMeta {
-	// 		name: Some(secret_name_for_db_pwd.clone()),
-	// 		..Default::default()
-	// 	},
-	// 	string_data: Some(
-	// 		[(secret_key_for_db_pwd.to_owned(), "test".to_string())].into(),
-	// 	),
-	// 	..Default::default()
-	// };
+	let secret_spec_for_db_pwd = Secret {
+		metadata: ObjectMeta {
+			name: Some(secret_name_for_db_pwd.clone()),
+			..Default::default()
+		},
+		string_data: Some(
+			[(secret_key_for_db_pwd.to_owned(), "test".to_string())].into(),
+		),
+		..Default::default()
+	};
 
-	// Api::<Secret>::namespaced(kubernetes_client.clone(), namespace)
-	// 	.patch(
-	// 		&secret_name_for_db_pwd,
-	// 		&PatchParams::apply(&secret_name_for_db_pwd),
-	// 		&Patch::Apply(secret_spec_for_db_pwd),
-	// 	)
-	// 	.await?;
+	Api::<Secret>::namespaced(kubernetes_client.clone(), namespace)
+		.patch(
+			&secret_name_for_db_pwd,
+			&PatchParams::apply(&secret_name_for_db_pwd),
+			&Patch::Apply(secret_spec_for_db_pwd),
+		)
+		.await?;
 
 	log::trace!("request_id: {request_id} - Creating configmap for database");
 
 	let mut config_data = BTreeMap::new();
 	config_data.insert(
 		"redis.conf".to_owned(),
-		vec!["bind 0.0.0.0", "port 6379", "timeout 0", "tcp-keepalive 300", "save 900 1", "save 300 10", "save 60 10000"].join("\n")
+		vec![
+			"bind 0.0.0.0",
+			"port 6379",
+			"timeout 0",
+			"tcp-keepalive 300",
+			"save 900 1",
+			"save 300 10",
+			"save 60 10000",
+		]
+		.join("\n"),
 	);
 
 	let config_for_db = ConfigMap {
@@ -187,14 +194,14 @@ pub async fn create_kubernetes_redis_database(
 				env: Some(vec![EnvVar {
 					name: "USER_PASSWORD".to_owned(),
 					value: Some("test".to_owned()),
-					// value_from: Some(EnvVarSource {
-					// 	secret_key_ref: Some(SecretKeySelector {
-					// 		name: Some(secret_name_for_db_pwd),
-					// 		key: secret_key_for_db_pwd.to_owned(),
-					// 		..Default::default()
-					// 	}),
-					// 	..Default::default()
-					// }),
+					value_from: Some(EnvVarSource {
+						secret_key_ref: Some(SecretKeySelector {
+							name: Some(secret_name_for_db_pwd),
+							key: secret_key_for_db_pwd.to_owned(),
+							..Default::default()
+						}),
+						..Default::default()
+					}),
 					..Default::default()
 				}]),
 				command: Some(vec![
@@ -203,8 +210,6 @@ pub async fn create_kubernetes_redis_database(
 					]),
 				args: Some(vec![vec![
 					"cp /tmp/redis/redis.conf /etc/redis/redis.conf".to_owned(),
-					// r#"echo "masterauth $USER_PASSWORD" >> /etc/redis/redis.conf"#.to_owned(),
-					// r#"echo "requirepass $USER_PASSWORD" >> /etc/redis/redis.conf"#.to_owned(),
 					r#"echo "finding master...""#.to_owned(),
 					format!(r#"MASTER_FDQN=`hostname  -f | sed -e 's/{sts_name_for_db}-[0-9]\./{sts_name_for_db}-0./'`"#),
 					format!(r#"if [ "$(redis-cli -h sentinel -p 5000)" != "PONG" ]; then"#),
@@ -272,31 +277,31 @@ pub async fn create_kubernetes_redis_database(
 						.into(),
 					),
 				}),
-				// liveness_probe: Some(Probe {
-				// 	exec: Some(ExecAction {
-				// 		command: Some(vec![
-				// 			"redis-cli".to_owned(),
-				// 			"ping".to_owned(),
-				// 		]),
-				// 	}),
-				// 	initial_delay_seconds: Some(30),
-				// 	period_seconds: Some(10),
-				// 	timeout_seconds: Some(5),
-				// 	..Default::default()
-				// }),
-				// readiness_probe: Some(Probe {
-				// 	exec: Some(ExecAction {
-				// 		command: Some(vec![
-				// 			"redis-cli".to_owned(),
-				// 			"ping".to_owned(),
-				// 		]),
-				// 	}),
-				// 	initial_delay_seconds: Some(5),
-				// 	failure_threshold: Some(10),
-				// 	period_seconds: Some(2),
-				// 	timeout_seconds: Some(5),
-				// 	..Default::default()
-				// }),
+				liveness_probe: Some(Probe {
+					exec: Some(ExecAction {
+						command: Some(vec![
+							"redis-cli".to_owned(),
+							"ping".to_owned(),
+						]),
+					}),
+					initial_delay_seconds: Some(30),
+					period_seconds: Some(10),
+					timeout_seconds: Some(5),
+					..Default::default()
+				}),
+				readiness_probe: Some(Probe {
+					exec: Some(ExecAction {
+						command: Some(vec![
+							"redis-cli".to_owned(),
+							"ping".to_owned(),
+						]),
+					}),
+					initial_delay_seconds: Some(5),
+					failure_threshold: Some(10),
+					period_seconds: Some(2),
+					timeout_seconds: Some(5),
+					..Default::default()
+				}),
 				volume_mounts: Some(vec![
 					VolumeMount {
 						name: pvc_prefix_for_db.to_owned(),
@@ -365,7 +370,7 @@ pub async fn create_kubernetes_redis_database(
 pub async fn delete_kubernetes_redis_database(
 	workspace_id: &Uuid,
 	database_id: &Uuid,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let kubernetes_client =
@@ -421,7 +426,7 @@ pub async fn delete_kubernetes_redis_database(
 pub async fn handle_redis_scaling(
 	workspace_id: &Uuid,
 	database_id: &Uuid,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 	replica_numbers: i32,
 ) -> Result<(), Error> {

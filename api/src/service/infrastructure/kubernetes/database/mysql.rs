@@ -34,16 +34,13 @@ use k8s_openapi::{
 };
 use kube::{
 	api::{DeleteParams, ListParams, Patch, PatchParams},
+	config::Kubeconfig,
 	core::ObjectMeta,
 	Api,
 };
 
 use crate::{
-	service::{
-		ext_traits::DeleteOpt,
-		KubernetesConfigDetails,
-		ResourceLimitsForPlan,
-	},
+	service::{ext_traits::DeleteOpt, ResourceLimitsForPlan},
 	utils::Error,
 };
 
@@ -52,7 +49,7 @@ pub async fn create_kubernetes_mysql_database(
 	database_id: &Uuid,
 	db_pwd: impl Into<String>,
 	db_plan: &PatrDatabasePlan,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let kubernetes_client =
@@ -257,7 +254,7 @@ pub async fn create_kubernetes_mysql_database(
 pub async fn delete_kubernetes_mysql_database(
 	workspace_id: &Uuid,
 	database_id: &Uuid,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let kubernetes_client =
