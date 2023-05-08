@@ -465,7 +465,7 @@ pub async fn get_all_workspace_role_permissions_for_user(
 			address_id as "address_id: Uuid",
 			amount_due_in_cents,
 			is_spam,
-			is_freezed
+			is_frozen
 		FROM
 			workspace
 		WHERE
@@ -496,7 +496,7 @@ pub async fn get_all_workspace_role_permissions_for_user(
 		address_id: row.address_id,
 		amount_due_in_cents: row.amount_due_in_cents as u64,
 		is_spam: row.is_spam,
-		is_freezed: row.is_freezed,
+		is_frozen: row.is_frozen,
 	})
 	.collect::<Vec<_>>();
 
