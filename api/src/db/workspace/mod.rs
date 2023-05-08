@@ -45,7 +45,7 @@ pub struct Workspace {
 	pub address_id: Option<Uuid>,
 	pub amount_due_in_cents: u64,
 	pub is_spam: bool,
-	pub is_freezed: bool,
+	pub is_frozen: bool,
 }
 
 pub struct WorkspaceAuditLog {
@@ -134,7 +134,7 @@ pub async fn initialize_workspaces_pre(
 					CHECK (amount_due_in_cents >= 0),
 			deleted TIMESTAMPTZ,
 			is_spam BOOLEAN NOT NULL,
-			is_freezed BOOLEAN NOT NULL,
+			is_frozen BOOLEAN NOT NULL,
 			volume_storage_limit INTEGER NOT NULL,
 			CONSTRAINT workspace_uq_id_super_admin_id
 				UNIQUE(id, super_admin_id)
@@ -386,7 +386,7 @@ pub async fn create_workspace(
 				address_id,
 				amount_due_in_cents,
 				is_spam,
-				is_freezed
+				is_frozen
 			)
 		VALUES
 			(
@@ -460,7 +460,7 @@ pub async fn get_workspace_info(
 			address_id as "address_id: Uuid",
 			amount_due_in_cents,
 			is_spam,
-			is_freezed
+			is_frozen
 		FROM
 			workspace
 		WHERE
@@ -493,7 +493,7 @@ pub async fn get_workspace_info(
 			address_id: row.address_id,
 			amount_due_in_cents: row.amount_due_in_cents as u64,
 			is_spam: row.is_spam,
-			is_freezed: row.is_freezed,
+			is_frozen: row.is_frozen,
 		})
 	})
 }
@@ -524,7 +524,7 @@ pub async fn get_workspace_by_name(
 			address_id as "address_id: Uuid",
 			amount_due_in_cents,
 			is_spam,
-			is_freezed
+			is_frozen
 		FROM
 			workspace
 		WHERE
@@ -556,7 +556,7 @@ pub async fn get_workspace_by_name(
 			address_id: row.address_id,
 			amount_due_in_cents: row.amount_due_in_cents as u64,
 			is_spam: row.is_spam,
-			is_freezed: row.is_freezed,
+			is_frozen: row.is_frozen,
 		})
 	})
 }
@@ -786,7 +786,7 @@ pub async fn get_all_workspaces(
 			address_id as "address_id: Uuid",
 			amount_due_in_cents,
 			is_spam,
-			is_freezed
+			is_frozen
 		FROM
 			workspace
 		WHERE
@@ -816,7 +816,7 @@ pub async fn get_all_workspaces(
 		address_id: row.address_id,
 		amount_due_in_cents: row.amount_due_in_cents as u64,
 		is_spam: row.is_spam,
-		is_freezed: row.is_freezed,
+		is_frozen: row.is_frozen,
 	})
 	.collect();
 
@@ -848,12 +848,12 @@ pub async fn get_all_active_workspaces_for_billing(
 			address_id as "address_id: Uuid",
 			amount_due_in_cents,
 			is_spam,
-			is_freezed
+			is_frozen
 		FROM
 			workspace
 		WHERE
 			deleted IS NULL AND
-			is_freezed =  FALSE;
+			is_frozen =  FALSE;
 		"#,
 	)
 	.fetch_all(&mut *connection)
@@ -879,7 +879,7 @@ pub async fn get_all_active_workspaces_for_billing(
 		address_id: row.address_id,
 		amount_due_in_cents: row.amount_due_in_cents as u64,
 		is_spam: row.is_spam,
-		is_freezed: row.is_freezed,
+		is_frozen: row.is_frozen,
 	})
 	.collect();
 
@@ -1244,7 +1244,7 @@ pub async fn freeze_workspace(
 		UPDATE
 			workspace
 		SET
-			is_freezed = TRUE
+			is_frozen = TRUE
 		WHERE
 			id = $1;
 		"#,
