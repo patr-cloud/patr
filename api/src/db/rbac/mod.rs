@@ -464,7 +464,8 @@ pub async fn get_all_workspace_role_permissions_for_user(
 			stripe_customer_id,
 			address_id as "address_id: Uuid",
 			amount_due_in_cents,
-			is_spam
+			is_spam,
+			is_freezed
 		FROM
 			workspace
 		WHERE
@@ -495,6 +496,7 @@ pub async fn get_all_workspace_role_permissions_for_user(
 		address_id: row.address_id,
 		amount_due_in_cents: row.amount_due_in_cents as u64,
 		is_spam: row.is_spam,
+		is_freezed: row.is_freezed,
 	})
 	.collect::<Vec<_>>();
 
