@@ -66,7 +66,7 @@ pub async fn create_kubernetes_redis_database(
 	let secret_name_for_db_pwd = format!("db-pwd-{database_id}");
 	let svc_name_for_db = format!("db-{database_id}");
 	let sts_name_for_db = format!("db-{database_id}");
-	let sts_port_name_for_db = format!("db-redis-port");
+	let sts_port_name_for_db = "db-redis-port".to_string();
 	let pvc_prefix_for_db = "pvc";
 	let configmap_name_for_db = format!("db-{database_id}");
 
@@ -204,7 +204,6 @@ pub async fn create_kubernetes_redis_database(
 						}),
 						..Default::default()
 					}),
-					..Default::default()
 				}]),
 				command: Some(vec![
 					"sh".to_owned(), 
