@@ -1,167 +1,107 @@
-use api_macros::closure_as_pinned_box;
 use api_models::{
 	models::prelude::*,
 	utils::{DecodedRequest, Paginated, Uuid},
 };
-use axum::{extract::State, Extension};
+use axum::{extract::State, Extension, Router};
 use zeroize::Zeroize;
 
 use crate::{
 	app::App,
 	db,
-	error,
 	models::{rbac::permissions, ResourceType, UserAuthenticationData},
 	prelude::*,
 	service,
-	utils::{constants::request_keys, Error},
+	utils::Error,
 };
 
 pub fn create_sub_app(app: &App) -> Router<App> {
-	let mut app = create_axum_router(app);
+	Router::new()
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::secret::LIST,
+				|ListSecretsPath { workspace_id },
+				 Paginated {
+				     count: _,
+				     start: _,
+				     query: (),
+				 },
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	// List all secrets
-	app.get(
-		"/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::secret::LIST,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			list_secrets,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::secret::CREATE,
+				|CreateSecretInWorkspacePath { workspace_id },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			create_secret,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::secret::EDIT,
+				|DeleteSecretPath {
+				     workspace_id,
+				     secret_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &secret_id)
+						.await?
+						.filter(|resource| resource.owner_id == workspace_id)
+				},
+			),
+			app.clone(),
+			update_secret,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::secret::DELETE,
+				|DeleteSecretPath {
+				     workspace_id,
+				     secret_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(list_secrets)),
-		],
-	);
-
-	// Create a new secret
-	app.post(
-		"/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::secret::CREATE,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(create_secret)),
-		],
-	);
-
-	// update secret
-	app.patch(
-		"/:secretId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::secret::EDIT,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let secret_id =
-						context.get_param(request_keys::SECRET_ID).unwrap();
-					let secret_id = Uuid::parse_str(secret_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource =
-						db::get_resource_by_id(&mut connection, &secret_id)
-							.await?
-							.filter(|resource| {
-								resource.owner_id == workspace_id
-							});
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(update_secret)),
-		],
-	);
-
-	// delete secret
-	app.delete(
-		"/:secretId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::secret::DELETE,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let secret_id =
-						context.get_param(request_keys::SECRET_ID).unwrap();
-					let secret_id = Uuid::parse_str(secret_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource =
-						db::get_resource_by_id(&mut connection, &secret_id)
-							.await?
-							.filter(|resource| {
-								resource.owner_id == workspace_id
-							});
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(delete_secret)),
-		],
-	);
-
-	app
+					db::get_resource_by_id(&mut connection, &secret_id)
+						.await?
+						.filter(|resource| resource.owner_id == workspace_id)
+				},
+			),
+			app.clone(),
+			delete_secret,
+		)
 }
 
 async fn list_secrets(
@@ -230,7 +170,7 @@ async fn update_secret(
 	Extension(token_data): Extension<UserAuthenticationData>,
 	State(config): State<Config>,
 	DecodedRequest {
-		path: DeleteSecretPath {
+		path: UpdateWorkspaceSecretPath {
 			workspace_id,
 			secret_id,
 		},
