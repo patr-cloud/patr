@@ -1,16 +1,14 @@
-use api_macros::closure_as_pinned_box;
 use api_models::{
 	models::prelude::*,
 	utils::{DateTime, DecodedRequest, Paginated, Uuid},
 };
-use axum::{extract::State, Extension};
+use axum::{extract::State, Extension, Router};
 use chrono::Utc;
 use sqlx::types::Json;
 
 use crate::{
 	app::App,
 	db,
-	error,
 	models::{
 		rbac::{self, permissions},
 		UserAuthenticationData,
@@ -18,189 +16,120 @@ use crate::{
 	prelude::*,
 	routes::ClientIp,
 	service,
-	utils::{constants::request_keys, Error},
+	utils::Error,
 };
 
 pub fn create_sub_app(app: &App) -> Router<App> {
-	let mut app = create_axum_router(app);
+	Router::new()
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::region::LIST,
+				|ListRegionsForWorkspacePath { workspace_id },
+				 Paginated {
+				     count: _,
+				     start: _,
+				     query: (),
+				 },
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	// List all regions
-	app.get(
-		"/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::region::LIST,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			list_regions,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::region::INFO,
+				|GetRegionInfoPath {
+				     workspace_id,
+				     region_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
+					db::get_resource_by_id(&mut connection, &region_id)
+						.await
+						.filter(|value| value.owner_id == workspace_id);
+				},
+			),
+			app.clone(),
+			get_region,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::region::CHECK_STATUS,
+				|CheckRegionStatusPath {
+				     workspace_id,
+				     region_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &region_id)
+						.await
+						.filter(|value| value.owner_id == workspace_id);
+				},
+			),
+			app.clone(),
+			check_region_status,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::region::ADD,
+				|AddRegionToWorkspacePath { workspace_id },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(list_regions)),
-		],
-	);
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			add_region,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::region::DELETE,
+				|DeleteRegionFromWorkspacePath {
+				     workspace_id,
+				     region_id,
+				 },
+				 DeleteRegionFromWorkspaceRequest { hard_delete },
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	// Get region
-	app.get(
-		"/:regionId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::region::INFO,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let region_id =
-						context.get_param(request_keys::REGION_ID).unwrap();
-					let region_id = Uuid::parse_str(region_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource =
-						db::get_resource_by_id(&mut connection, &region_id)
-							.await?
-							.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_region)),
-		],
-	);
-
-	// Check region status
-	app.post(
-		"/:regionId/checkStatus",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::region::CHECK_STATUS,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let region_id =
-						context.get_param(request_keys::REGION_ID).unwrap();
-					let region_id = Uuid::parse_str(region_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource =
-						db::get_resource_by_id(&mut connection, &region_id)
-							.await?
-							.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(check_region_status)),
-		],
-	);
-
-	// Add a new region
-	app.post(
-		"/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::region::ADD,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(add_region)),
-		],
-	);
-
-	// Delete a new region
-	app.delete(
-		"/:regionId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::region::DELETE,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let region_id =
-						context.get_param(request_keys::REGION_ID).unwrap();
-					let region_id = Uuid::parse_str(region_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource =
-						db::get_resource_by_id(&mut connection, &region_id)
-							.await?
-							.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(delete_region)),
-		],
-	);
-
-	app
+					db::get_resource_by_id(&mut connection, &workspace_id)
+						.await
+						.filter(|value| value.owner_id == workspace_id)
+				},
+			),
+			app.clone(),
+			delete_region,
+		)
 }
 
 async fn list_regions(
