@@ -65,9 +65,9 @@ pub async fn create_kubernetes_psql_database(
 	let secret_name_for_db_pwd = format!("db-pwd-{database_id}");
 	let svc_name_for_db = format!("db-{database_id}");
 	let sts_name_for_db = format!("db-{database_id}");
-	let sts_port_name_for_db = format!("postgresql");
+	let sts_port_name_for_db = "postgresql".to_string();
 	let pvc_prefix_for_db = "pvc"; // actual name will be `pvc-{sts_name_for_db}-{sts_ordinal}`
-	let configmap_name_for_db = format!("master-slave-config");
+	let configmap_name_for_db = "master-slave-config".to_string();
 
 	// constants
 	let secret_key_for_db_pwd = "password";
@@ -124,7 +124,7 @@ pub async fn create_kubernetes_psql_database(
                 "pg_ctl -D /var/lib/postgresql/data/ -m fast -w stop".to_owned(),
                 "rm -rf /var/lib/postgresql/data/*".to_owned(),
                 "# add service name for DNS resolution".to_owned(),
-                format!("PGPASSWORD=k8s-postgres-ha pg_basebackup -h ${{HOST_TEMPLATE}}-0.{svc_name_for_db} -w -U replicator -p 5432 -D /var/lib/postgresql/data -Fp -Xs -P -R").to_owned(), //possible error
+                format!("PGPASSWORD=k8s-postgres-ha pg_basebackup -h ${{HOST_TEMPLATE}}-0.{svc_name_for_db} -w -U replicator -p 5432 -D /var/lib/postgresql/data -Fp -Xs -P -R"),
                 "# start server to keep container's screep happy".to_owned(),
                 "pg_ctl -D /var/lib/postgresql/data/ -w start".to_owned(),
                 ";;".to_owned(),
@@ -221,7 +221,6 @@ pub async fn create_kubernetes_psql_database(
 						}),
 						..Default::default()
 					}),
-					..Default::default()
 				}]),
 				ports: Some(vec![ContainerPort {
 					name: Some(sts_port_name_for_db.to_owned()),
