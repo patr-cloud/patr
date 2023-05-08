@@ -152,7 +152,6 @@ pub async fn create_kubernetes_mongo_database(
 			containers: vec![Container {
 				name: "mongodb".to_owned(),
 				image: Some("docker.io/mongo:4.2".to_owned()),
-				image_pull_policy: Some("Always".to_string()),
 				env: Some(vec![EnvVar {
 					name: "MONGO_ROOT_PASSWORD".to_owned(),
 					value_from: Some(EnvVarSource {
@@ -165,10 +164,13 @@ pub async fn create_kubernetes_mongo_database(
 					}),
 					..Default::default()
 				}]),
-                command: Some(vec!["/bin/sh".to_owned()]),
-                args: Some(vec!["-c".to_owned(),"mongod".to_owned(), "--replSet=rs0".to_owned(), "--bind_ip_all".to_owned()]),
+				command: Some(vec![
+					"bash".to_owned(),
+					"-c".to_owned(),
+					vec!["mongod --replSet=rs0 --bind_ip_all"].join("\n"),
+				]),
 				ports: Some(vec![ContainerPort {
-                    name: Some("mongo-port".to_owned()),
+					name: Some("mongo-port".to_owned()),
 					container_port: mongo_port,
 					..Default::default()
 				}]),
@@ -204,32 +206,32 @@ pub async fn create_kubernetes_mongo_database(
 				// https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#when-should-you-use-a-startup-probe
 				readiness_probe: Some(Probe {
 					exec: Some(ExecAction {
-						command: Some(
-							["sh", "-c", "mongo --host mongodb-replica-0 --port 27017", "rs.initiate()", "var cfg = rs.conf()", "cfg.members[0].host='mongodb-replica-0.mongo:27017'","rs.reconfig(cfg)","rs.add('mongodb-replica-1.mongo:27017')"]
-								.into_iter()
-								.map(ToOwned::to_owned)
-								.collect(),
-						),
+						command: Some(vec![
+							"bash".to_owned(),
+							"-c".to_owned(),
+							vec![r#"mongo --eval "db.adminCommand('ping')"#]
+								.join("\n"),
+						]),
 					}),
 					initial_delay_seconds: Some(10),
 					success_threshold: Some(1),
 					..Default::default()
 				}),
-                liveness_probe: Some(Probe {
-                    exec: Some(ExecAction {
-						command: Some(
-							["mongo", "--eval", "db.adminCommand('ping')"]
-								.into_iter()
-								.map(ToOwned::to_owned)
-								.collect(),
-						),
+				liveness_probe: Some(Probe {
+					exec: Some(ExecAction {
+						command: Some(vec![
+							"bash".to_owned(),
+							"-c".to_owned(),
+							vec![r#"mongo --eval "db.adminCommand('ping')"#]
+								.join("\n"),
+						]),
 					}),
 					initial_delay_seconds: Some(10),
 					failure_threshold: Some(10),
 					period_seconds: Some(10),
 					timeout_seconds: Some(2),
 					..Default::default()
-                }),
+				}),
 				..Default::default()
 			}],
 			..Default::default()
