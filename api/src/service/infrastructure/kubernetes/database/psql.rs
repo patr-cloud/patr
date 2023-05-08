@@ -38,16 +38,13 @@ use k8s_openapi::{
 };
 use kube::{
 	api::{DeleteParams, ListParams, Patch, PatchParams},
+	config::Kubeconfig,
 	core::ObjectMeta,
 	Api,
-	config::Kubeconfig,
 };
 
 use crate::{
-	service::{
-		ext_traits::DeleteOpt,
-		ResourceLimitsForPlan,
-	},
+	service::{ext_traits::DeleteOpt, ResourceLimitsForPlan},
 	utils::Error,
 };
 
@@ -71,14 +68,6 @@ pub async fn create_kubernetes_psql_database(
 	let sts_port_name_for_db = format!("postgresql");
 	let pvc_prefix_for_db = "pvc"; // actual name will be `pvc-{sts_name_for_db}-{sts_ordinal}`
 	let configmap_name_for_db = format!("master-slave-config");
-
-	// let namespace = workspace_id.as_str();
-	// let secret_name_for_db_pwd = format!("db-pwd-{database_id}");
-	// let svc_name_for_db = format!("postgresql");
-	// let sts_name_for_db = format!("postgresql");
-	// let sts_port_name_for_db = format!("postgresql");
-	// let pvc_prefix_for_db = "pvc"; // actual name will be `pvc-{sts_name_for_db}-{sts_ordinal}`
-	// let configmap_name_for_db = format!("postgresql");
 
 	// constants
 	let secret_key_for_db_pwd = "password";
@@ -224,14 +213,14 @@ pub async fn create_kubernetes_psql_database(
 				env: Some(vec![EnvVar {
 					name: "POSTGRES_PASSWORD".to_owned(),
 					value: Some("test".to_owned()),
-					// value_from: Some(EnvVarSource {
-					// 	secret_key_ref: Some(SecretKeySelector {
-					// 		name: Some(secret_name_for_db_pwd),
-					// 		key: secret_key_for_db_pwd.to_owned(),
-					// 		..Default::default()
-					// 	}),
-					// 	..Default::default()
-					// }),
+					value_from: Some(EnvVarSource {
+						secret_key_ref: Some(SecretKeySelector {
+							name: Some(secret_name_for_db_pwd),
+							key: secret_key_for_db_pwd.to_owned(),
+							..Default::default()
+						}),
+						..Default::default()
+					}),
 					..Default::default()
 				}]),
 				ports: Some(vec![ContainerPort {
@@ -297,8 +286,7 @@ pub async fn create_kubernetes_psql_database(
 					timeout_seconds: Some(5),
 					..Default::default()
 				}),
-				volume_mounts: Some(vec![
-				VolumeMount{
+				volume_mounts: Some(vec![VolumeMount {
 					name: "init-scripts".to_owned(),
 					mount_path: "/docker-entrypoint-initdb.d".to_owned(),
 					..Default::default()

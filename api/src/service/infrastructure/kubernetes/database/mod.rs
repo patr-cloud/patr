@@ -11,10 +11,10 @@ use k8s_openapi::{
 	api::apps::v1::StatefulSet,
 	apimachinery::pkg::api::resource::Quantity,
 };
-use kube::{Api, config::Kubeconfig};
+use kube::{config::Kubeconfig, Api};
 pub use psql::*;
 
-use crate:: utils::Error;
+use crate::utils::Error;
 
 pub trait ResourceLimitsForPlan {
 	fn get_resource_limits(&self) -> (Quantity, Quantity, Quantity);
@@ -41,8 +41,7 @@ pub async fn get_kubernetes_database_status(
 	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<PatrDatabaseStatus, Error> {
-	let kubernetes_client =
-		super::get_kubernetes_client(kubeconfig).await?;
+	let kubernetes_client = super::get_kubernetes_client(kubeconfig).await?;
 
 	// names
 	let namespace = workspace_id.as_str();
