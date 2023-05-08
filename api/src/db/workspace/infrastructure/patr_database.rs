@@ -37,7 +37,9 @@ pub async fn initialize_patr_database_pre(
 		r#"
 		CREATE TYPE PATR_DATABASE_ENGINE AS ENUM(
 			'postgres',
-			'mysql'
+			'mysql',
+			'mongo',
+			'redis'
 		);
 		"#
 	)
@@ -99,7 +101,7 @@ pub async fn initialize_patr_database_pre(
 				CHECK(db_name = TRIM(db_name)),
 		
 			CONSTRAINT patr_database_fk_region
-				FOREIGN KEY (region) REFERENCES deployment_region(id)
+				FOREIGN KEY (region) REFERENCES region(id)
 		);
 		"#
 	)

@@ -16,15 +16,20 @@ use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
 	db::Workspace,
-	models::rabbitmq::{
-		BYOCData,
-		BillingData,
-		CIData,
-		DatabaseRequestData,
-		DeploymentRequestData,
-		DockerRegistryData,
-		InfraRequestData,
-		Queue,
+	models::{
+		ci::EventType,
+		rabbitmq::{
+			BYOCData,
+			BillingData,
+			CIData,
+			DatabaseRequestData,
+			DeploymentRequestData,
+			DockerRegistryData,
+			DockerWebhookData,
+			InfraRequestData,
+			Queue,
+			StaticSiteData,
+		},
 	},
 	rabbitmq::{self, BuildId, BuildStep},
 	service,

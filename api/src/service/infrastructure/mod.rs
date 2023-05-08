@@ -200,13 +200,8 @@ pub async fn delete_all_resources_in_workspace(
 			.await?;
 
 	for database in patr_databases {
-		service::delete_patr_database(
-			connection,
-			&database.id,
-			config,
-			request_id,
-		)
-		.await?;
+		service::delete_patr_database(connection, &database.id, request_id)
+			.await?;
 	}
 
 	// Get deployments and delete all the deployment for a workspace

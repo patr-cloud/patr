@@ -45,12 +45,8 @@ impl Region {
 		!self.is_byoc_region()
 	}
 
-	pub fn is_patr_region(&self) -> bool {
-		self.workspace_id.is_none()
-	}
-
 	pub fn is_ready(&self) -> bool {
-		self.ready || self.is_patr_region()
+		self.status == RegionStatus::Active || self.is_patr_region()
 	}
 }
 
