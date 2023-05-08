@@ -75,18 +75,18 @@ pub async fn create_patr_database_in_workspace(
 
 	let creation_time = Utc::now();
 
-	// db::create_resource(
-	// 	connection,
-	// 	&database_id,
-	// 	rbac::RESOURCE_TYPES
-	// 		.get()
-	// 		.unwrap()
-	// 		.get(rbac::resource_types::PATR_DATABASE)
-	// 		.unwrap(),
-	// 	workspace_id,
-	// 	&creation_time,
-	// )
-	// .await?;
+	db::create_resource(
+		connection,
+		&database_id,
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::PATR_DATABASE)
+			.unwrap(),
+		workspace_id,
+		&creation_time,
+	)
+	.await?;
 
 	if !region_details.is_byoc_region() {
 		db::start_patr_database_usage_history(
@@ -116,29 +116,29 @@ pub async fn create_patr_database_in_workspace(
 		"request_id: {} - Creating entry for newly created patr database",
 		request_id
 	);
-	// db::create_patr_database(
-	// 	connection,
-	// 	&database_id,
-	// 	name,
-	// 	workspace_id,
-	// 	region_id,
-	// 	db_name,
-	// 	engine,
-	// 	version,
-	// 	database_plan,
-	// 	&format!("db-{database_id}"),
-	// 	port,
-	// 	username,
-	// 	&password,
-	// 	replica_numbers,
-	// )
-	// .await?;
-	// log::trace!("request_id: {} - Resource generation complete", request_id);
-
-	let kubeconfig = service::get_kubernetes_config_for_region(
-		connection, region_id, config,
+	db::create_patr_database(
+		connection,
+		&database_id,
+		name,
+		workspace_id,
+		region_id,
+		db_name,
+		engine,
+		version,
+		database_plan,
+		&format!("db-{database_id}"),
+		port,
+		username,
+		&password,
+		replica_numbers,
 	)
 	.await?;
+	log::trace!("request_id: {} - Resource generation complete", request_id);
+
+	let kubeconfig = service::get_kubernetes_config_for_region(
+		connection, region_id,
+	)
+	.await?.0;
 
 	match engine {
 		PatrDatabaseEngine::Postgres => {
@@ -153,17 +153,7 @@ pub async fn create_patr_database_in_workspace(
 			)
 			.await?;
 		}
-		PatrDatabaseEngine::Mysql => {
-			service::create_kubernetes_mysql_database(
-				workspace_id,
-				&database_id,
-				&password,
-				database_plan,
-				kubeconfig,
-				request_id,
-			)
-			.await?;
-		}
+		PatrDatabaseEngine::Mysql => {}
 		PatrDatabaseEngine::Mongo => {}
 		PatrDatabaseEngine::Redis => {}
 	}
@@ -192,9 +182,8 @@ pub async fn modify_patr_database(
 	let kubeconfig = service::get_kubernetes_config_for_region(
 		connection,
 		&database.region,
-		config,
 	)
-	.await?;
+	.await?.0;
 
 	db::update_replica_number(connection, database_id, replica_numbers).await?;
 
@@ -209,11 +198,7 @@ pub async fn modify_patr_database(
 			)
 			.await?;
 		}
-		PatrDatabaseEngine::Mysql => {
-			// not supported as of now
-			log::info!("Creating postgres database is not supported");
-			return Err(Error::empty().status(500));
-		}
+		PatrDatabaseEngine::Mysql => {}
 		PatrDatabaseEngine::Mongo => {}
 		PatrDatabaseEngine::Redis => {}
 	}
@@ -254,9 +239,8 @@ pub async fn delete_patr_database(
 	let kubeconfig = service::get_kubernetes_config_for_region(
 		connection,
 		&database.region,
-		config,
 	)
-	.await?;
+	.await?.0;
 
 	// now delete the database from k8s
 	match database.engine {
@@ -269,15 +253,7 @@ pub async fn delete_patr_database(
 			)
 			.await?;
 		}
-		PatrDatabaseEngine::Mysql => {
-			service::delete_kubernetes_mysql_database(
-				&database.workspace_id,
-				&database.id,
-				kubeconfig,
-				request_id,
-			)
-			.await?;
-		}
+		PatrDatabaseEngine::Mysql => {}
 		PatrDatabaseEngine::Mongo => {}
 		PatrDatabaseEngine::Redis => {}
 	}
@@ -300,9 +276,8 @@ pub async fn get_patr_database_status(
 	let kubeconfig = service::get_kubernetes_config_for_region(
 		connection,
 		&database.region,
-		config,
 	)
-	.await?;
+	.await?.0;
 
 	let status = service::get_kubernetes_database_status(
 		workspace_id,

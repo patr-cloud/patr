@@ -40,12 +40,12 @@ use kube::{
 	api::{DeleteParams, ListParams, Patch, PatchParams},
 	core::ObjectMeta,
 	Api,
+	config::Kubeconfig,
 };
 
 use crate::{
 	service::{
 		ext_traits::DeleteOpt,
-		KubernetesConfigDetails,
 		ResourceLimitsForPlan,
 	},
 	utils::Error,
@@ -56,12 +56,12 @@ pub async fn create_kubernetes_psql_database(
 	database_id: &Uuid,
 	db_pwd: impl Into<String>,
 	db_plan: &PatrDatabasePlan,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 	replica_numbers: i32,
 ) -> Result<(), Error> {
 	let kubernetes_client =
-		super::super::get_kubernetes_client(kubeconfig.auth_details).await?;
+		super::super::get_kubernetes_client(kubeconfig).await?;
 
 	// names
 	let namespace = workspace_id.as_str();
@@ -350,11 +350,11 @@ pub async fn create_kubernetes_psql_database(
 pub async fn delete_kubernetes_psql_database(
 	workspace_id: &Uuid,
 	database_id: &Uuid,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let kubernetes_client =
-		super::super::get_kubernetes_client(kubeconfig.auth_details).await?;
+		super::super::get_kubernetes_client(kubeconfig).await?;
 
 	// names
 	let namespace = workspace_id.as_str();
@@ -406,12 +406,12 @@ pub async fn delete_kubernetes_psql_database(
 pub async fn handle_psql_scaling(
 	workspace_id: &Uuid,
 	database_id: &Uuid,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 	replica_numbers: i32,
 ) -> Result<(), Error> {
 	let kubernetes_client =
-		super::super::get_kubernetes_client(kubeconfig.auth_details).await?;
+		super::super::get_kubernetes_client(kubeconfig).await?;
 	let namespace = workspace_id.as_str();
 	let sts_name_for_db = format!("db-{database_id}");
 	let labels =

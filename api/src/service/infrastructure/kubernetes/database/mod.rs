@@ -1,4 +1,3 @@
-mod mysql;
 mod psql;
 
 use api_models::{
@@ -12,11 +11,10 @@ use k8s_openapi::{
 	api::apps::v1::StatefulSet,
 	apimachinery::pkg::api::resource::Quantity,
 };
-use kube::Api;
-pub use mysql::*;
+use kube::{Api, config::Kubeconfig};
 pub use psql::*;
 
-use crate::{service::KubernetesConfigDetails, utils::Error};
+use crate:: utils::Error;
 
 pub trait ResourceLimitsForPlan {
 	fn get_resource_limits(&self) -> (Quantity, Quantity, Quantity);
@@ -40,11 +38,11 @@ impl ResourceLimitsForPlan for PatrDatabasePlan {
 pub async fn get_kubernetes_database_status(
 	workspace_id: &Uuid,
 	database_id: &Uuid,
-	kubeconfig: KubernetesConfigDetails,
+	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<PatrDatabaseStatus, Error> {
 	let kubernetes_client =
-		super::get_kubernetes_client(kubeconfig.auth_details).await?;
+		super::get_kubernetes_client(kubeconfig).await?;
 
 	// names
 	let namespace = workspace_id.as_str();
