@@ -60,7 +60,8 @@ pub(super) async fn process_request(
 				.await;
 				return Err(Error::empty());
 			}
-			let workspaces = db::get_all_workspaces(connection).await?;
+			let workspaces =
+				db::get_all_active_workspaces_for_billing(connection).await?;
 			log::trace!(
 				"request_id: {} - Processing workspace for {} {}",
 				request_id,
@@ -858,6 +859,8 @@ pub(super) async fn process_request(
 					0,
 				)
 				.await?;
+
+				db::freeze_workspace(connection, &workspace.id).await?;
 
 				// send an mail
 				service::send_bill_not_paid_delete_resources_email(

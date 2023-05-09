@@ -45,6 +45,7 @@ pub struct Workspace {
 	pub address_id: Option<Uuid>,
 	pub amount_due_in_cents: u64,
 	pub is_spam: bool,
+	pub is_frozen: bool,
 }
 
 pub struct WorkspaceAuditLog {
@@ -134,6 +135,7 @@ pub async fn initialize_workspaces_pre(
 			deleted TIMESTAMPTZ,
 			is_spam BOOLEAN NOT NULL,
 			volume_storage_limit INTEGER NOT NULL,
+			is_frozen BOOLEAN NOT NULL,
 			CONSTRAINT workspace_uq_id_super_admin_id
 				UNIQUE(id, super_admin_id)
 		);
@@ -383,7 +385,8 @@ pub async fn create_workspace(
 				stripe_customer_id,
 				address_id,
 				amount_due_in_cents,
-				is_spam
+				is_spam,
+				is_frozen
 			)
 		VALUES
 			(
@@ -405,6 +408,7 @@ pub async fn create_workspace(
 				$15,
 				NULL,
 				$16,
+				FALSE,
 				FALSE
 			);
 		"#,
@@ -455,7 +459,8 @@ pub async fn get_workspace_info(
 			stripe_customer_id,
 			address_id as "address_id: Uuid",
 			amount_due_in_cents,
-			is_spam
+			is_spam,
+			is_frozen
 		FROM
 			workspace
 		WHERE
@@ -488,6 +493,7 @@ pub async fn get_workspace_info(
 			address_id: row.address_id,
 			amount_due_in_cents: row.amount_due_in_cents as u64,
 			is_spam: row.is_spam,
+			is_frozen: row.is_frozen,
 		})
 	})
 }
@@ -517,7 +523,8 @@ pub async fn get_workspace_by_name(
 			stripe_customer_id,
 			address_id as "address_id: Uuid",
 			amount_due_in_cents,
-			is_spam
+			is_spam,
+			is_frozen
 		FROM
 			workspace
 		WHERE
@@ -549,6 +556,7 @@ pub async fn get_workspace_by_name(
 			address_id: row.address_id,
 			amount_due_in_cents: row.amount_due_in_cents as u64,
 			is_spam: row.is_spam,
+			is_frozen: row.is_frozen,
 		})
 	})
 }
@@ -777,7 +785,8 @@ pub async fn get_all_workspaces(
 			stripe_customer_id,
 			address_id as "address_id: Uuid",
 			amount_due_in_cents,
-			is_spam
+			is_spam,
+			is_frozen
 		FROM
 			workspace
 		WHERE
@@ -807,6 +816,70 @@ pub async fn get_all_workspaces(
 		address_id: row.address_id,
 		amount_due_in_cents: row.amount_due_in_cents as u64,
 		is_spam: row.is_spam,
+		is_frozen: row.is_frozen,
+	})
+	.collect();
+
+	Ok(res)
+}
+
+pub async fn get_all_active_workspaces_for_billing(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<Workspace>, sqlx::Error> {
+	let res = query!(
+		r#"
+		SELECT DISTINCT
+			id as "id: Uuid",
+			name::TEXT as "name!: String",
+			super_admin_id as "super_admin_id: Uuid",
+			active,
+			alert_emails as "alert_emails: Vec<String>",
+			payment_type as "payment_type: PaymentType",
+			default_payment_method_id as "default_payment_method_id: String",
+			deployment_limit,
+			static_site_limit,
+			database_limit,
+			managed_url_limit,
+			secret_limit,
+			domain_limit,
+			docker_repository_storage_limit,
+			volume_storage_limit,
+			stripe_customer_id,
+			address_id as "address_id: Uuid",
+			amount_due_in_cents,
+			is_spam,
+			is_frozen
+		FROM
+			workspace
+		WHERE
+			deleted IS NULL AND
+			is_frozen =  FALSE;
+		"#,
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| Workspace {
+		id: row.id,
+		name: row.name,
+		super_admin_id: row.super_admin_id,
+		active: row.active,
+		alert_emails: row.alert_emails,
+		payment_type: row.payment_type,
+		default_payment_method_id: row.default_payment_method_id,
+		deployment_limit: row.deployment_limit,
+		static_site_limit: row.static_site_limit,
+		database_limit: row.database_limit,
+		managed_url_limit: row.managed_url_limit,
+		secret_limit: row.secret_limit,
+		domain_limit: row.domain_limit,
+		docker_repository_storage_limit: row.docker_repository_storage_limit,
+		volume_storage_limit: row.volume_storage_limit,
+		stripe_customer_id: row.stripe_customer_id,
+		address_id: row.address_id,
+		amount_due_in_cents: row.amount_due_in_cents as u64,
+		is_spam: row.is_spam,
+		is_frozen: row.is_frozen,
 	})
 	.collect();
 
@@ -1152,6 +1225,26 @@ pub async fn unmark_workspace_as_spam(
 			workspace
 		SET
 			is_spam = FALSE
+		WHERE
+			id = $1;
+		"#,
+		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn freeze_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace
+		SET
+			is_frozen = TRUE
 		WHERE
 			id = $1;
 		"#,
