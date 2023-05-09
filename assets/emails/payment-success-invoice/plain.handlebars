@@ -1,164 +1,125 @@
+Hello {{username}}, 
 
-Hello
-{{username}}, Your invoice for
-{{stringify-month billBreakdown.month}}
-{{billBreakdown.year}}
-is now available for the workspace
-{{workspaceName}}
+Your invoice for {{stringify-month billBreakdown.month}} {{billBreakdown.year}} is now available for the workspace {{workspaceName}}
 
 Total usage charges: ${{cents-to-dollars billBreakdown.totalCharge}}
 
-Detailed Charges Deployment Usage:
+Detailed Charges 
+
+Deployment Usage:
 {{#each billBreakdown.deploymentUsage}}
-  Name:
-  {{this.name}}
+  Name: {{this.name}}
   {{#each this.deploymentBill}}
-    Machine Type:
-    {{this.machineType.cpuCount}}vCPU
-    {{this.machineType.memoryCount}}GB RAM Number of Instances:
-    {{this.numInstances}}
+    Machine Type: {{this.machineType.cpuCount}}vCPU {{this.machineType.memoryCount}}GB RAM 
+    Number of Instances: {{this.numInstances}}
     Monthly Charge: ${{cents-to-dollars this.monthlyCharge}}
-    From:
-    {{format-date this.startTime}}
+    From: {{format-date this.startTime}}
     {{#if this.stopTime}}
-      Till:
-      {{format-date this.stopTime}}
+    Till: {{format-date this.stopTime}}
     {{else}}
-      Till: Present
+    Till: Present
     {{/if}}
-    Hours used:
-    {{this.hours}}
+    Hours used: {{this.hours}}
     Bill Amount: ${{cents-to-dollars this.amount}}
   {{/each}}
 {{/each}}
 Volume Usage:
 {{#each billBreakdown.volumeUsage}}
-  No.of Volumes:
-  {{this.numberOfVolume}}
-  Storage:
-  {{this.storage}}
+  No.of Volumes: {{this.numberOfVolume}}
+  Storage: {{this.storage}}
   Monthly Charge: ${{cents-to-dollars this.monthlyCharge}}
-  From:
-  {{format-date this.startTime}}
+  From: {{format-date this.startTime}}
   {{#if this.stopTime}}
-    Till:
-    {{format-date this.stopTime}}
+  Till: {{format-date this.stopTime}}
   {{else}}
-    Till: Present
+  Till: Present
   {{/if}}
-  Hours used:
-  {{this.hours}}
+  Hours used: {{this.hours}}
   Bill Amount: ${{cents-to-dollars this.amount}}
 {{/each}}
 Database Usage:
 {{#each billBreakdown.databaseUsage}}
-  Name:
-  {{this.name}}
+  Name: {{this.name}}
   Monthly Charge: ${{cents-to-dollars this.monthlyCharge}}
-  From:
-  {{format-date this.startTime}}
+  From: {{format-date this.startTime}}
   {{#if this.deletionTime}}
-    Till:
-    {{format-date this.deletionTime}}
+  Till: {{format-date this.deletionTime}}
   {{else}}
-    Till: Present
+  Till: Present
   {{/if}}
-  Hours used:
-  {{this.hours}}
+  Hours used: {{this.hours}}
   Bill Amount: ${{cents-to-dollars this.amount}}
 {{/each}}
 Static Site Usage:
 {{#each billBreakdown.staticSiteUsage}}
-  Plan:
-  {{this.plan}}
+  Plan: {{this.plan}}
   Monthly Charge: ${{cents-to-dollars this.monthlyCharge}}
-  From:
-  {{format-date this.startTime}}
+  From: {{format-date this.startTime}}
   {{#if this.stopTime}}
-    Till:
-    {{format-date this.stopTime}}
+  Till: {{format-date this.stopTime}}
   {{else}}
-    Till: Present
+  Till: Present
   {{/if}}
-  Hours used:
-  {{this.hours}}
+  Hours used: {{this.hours}}
   Bill Amount: ${{cents-to-dollars this.amount}}
 {{/each}}
 Managed URL Usage:
 {{#each billBreakdown.managedUrlUsage}}
-  Plan:
-  {{this.plan}}
+  Plan: {{this.plan}}
   Monthly Charge: ${{cents-to-dollars this.monthlyCharge}}
-  From:
-  {{format-date this.startTime}}
+  From: {{format-date this.startTime}}
   {{#if this.stopTime}}
-    Till:
-    {{format-date this.stopTime}}
+  Till: {{format-date this.stopTime}}
   {{else}}
-    Till: Present
+  Till: Present
   {{/if}}
-  Hours used:
-  {{this.hours}}
+  Hours used: {{this.hours}}
   Bill Amount: ${{cents-to-dollars this.amount}}
 {{/each}}
 Docker Repository Usage:
 {{#each billBreakdown.dockerRepositoryUsage}}
-  Plan:
-  {{this.plan}}
+  Plan: {{this.plan}}
   Monthly Charge: ${{cents-to-dollars this.monthlyCharge}}
-  From:
-  {{format-date this.startTime}}
+  From: {{format-date this.startTime}}
   {{#if this.stopTime}}
-    Till:
-    {{format-date this.stopTime}}
+  Till: {{format-date this.stopTime}}
   {{else}}
-    Till: Present
+  Till: Present
   {{/if}}
-  Hours used:
-  {{this.hours}}
+  Hours used: {{this.hours}}
   Bill Amount: ${{cents-to-dollars this.amount}}
 {{/each}}
 Domain Usage:
 {{#each billBreakdown.domainUsage}}
-  Plan:
-  {{this.plan}}
+  Plan: {{this.plan}}
   Monthly Charge: ${{cents-to-dollars this.monthlyCharge}}
-  From:
-  {{format-date this.startTime}}
+  From: {{format-date this.startTime}}
   {{#if this.stopTime}}
-    Till:
-    {{format-date this.stopTime}}
+  Till: {{format-date this.stopTime}}
   {{else}}
-    Till: Present
+  Till: Present
   {{/if}}
-  Hours used:
-  {{this.hours}}
+  Hours used: {{this.hours}}
   Bill Amount: ${{cents-to-dollars this.amount}}
 {{/each}}
 Secret Usage:
 {{#each billBreakdown.secretUsage}}
-  Plan:
-  {{this.plan}}
+  Plan: {{this.plan}}
   Monthly Charge: ${{cents-to-dollars this.monthlyCharge}}
-  From:
-  {{format-date this.startTime}}
+  From: {{format-date this.startTime}}
   {{#if this.stopTime}}
-    Till:
-    {{format-date this.stopTime}}
+  Till: {{format-date this.stopTime}}
   {{else}}
-    Till: Present
+  Till: Present
   {{/if}}
-  Hours used:
-  {{this.hours}}
+  Hours used: {{this.hours}}
   Bill Amount: ${{cents-to-dollars this.amount}}
 {{/each}}
 
 {{#if creditsDeducted}}
   {{#if cardAmountDeducted}}
     The amount was automatically deducted using your card and Patr credits, so
-    no further action is required. Amount paid using card: ${{cents-to-dollars
-      cardAmountDeducted
-    }}
+    no further action is required. Amount paid using card: ${{cents-to-dollars cardAmountDeducted}}
     Amount paid using credits: ${{cents-to-dollars creditsDeducted}}
   {{/if}}
 {{/if}}
@@ -172,14 +133,11 @@ Secret Usage:
 {{#if creditsDeducted}}
   {{#unless cardAmountDeducted}}
     The amount was automatically charged from your Patr credits, so no action is
-    required from your end. Credits consumed: ${{cents-to-dollars
-      creditsDeducted
-    }}
+    required from your end. Credits consumed: ${{cents-to-dollars creditsDeducted}}
     Credits remaining: ${{cents-to-dollars creditsRemaining}}
   {{/unless}}
 {{/if}}
 
-If you're unable to find what you're looking for, you can reach us at
-support@patr.cloud Join our Discord community (https://patr.cloud/discord) for
-the latest updates and chat with us here (https://app.patr.cloud?openDrift=true)
-for instant technical support.
+If you're unable to find what you're looking for, you can reach us at support@patr.cloud 
+
+Join our Discord community (https://patr.cloud/discord) for the latest updates and chat with us here (https://app.patr.cloud?openDrift=true) for instant technical support.

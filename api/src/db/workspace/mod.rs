@@ -853,7 +853,7 @@ pub async fn get_all_active_workspaces_for_billing(
 			workspace
 		WHERE
 			deleted IS NULL AND
-			is_frozen =  FALSE;
+			is_frozen = FALSE;
 		"#,
 	)
 	.fetch_all(&mut *connection)

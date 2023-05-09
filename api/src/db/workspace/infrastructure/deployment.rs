@@ -1562,25 +1562,5 @@ pub async fn get_deployments_for_report_card(
 		workspace_id as _
 	)
 	.fetch_all(&mut *connection)
-}
-
-pub async fn get_machine_type_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	machine_type_id: &Uuid,
-) -> Result<DeploymentMachineType, sqlx::Error> {
-	query_as!(
-		DeploymentMachineType,
-		r#"
-		SELECT
-			id as "id: _",
-			cpu_count,
-			memory_count
-		FROM
-			deployment_machine_type
-		WHERE
-			id = $1;
-		"#,
-		machine_type_id as _,
-	.fetch_one(&mut *connection)
 	.await
 }
