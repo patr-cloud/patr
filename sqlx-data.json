@@ -12274,16 +12274,6 @@
     },
     "query": "INSERT INTO docker_registry_repository( id, workspace_id, name ) VALUES ($1, $2, $3);"
   },
-  "b00c040a4fdfd68ed524b0c1a6f1db80befcaefbdc98085390202ecef3754256": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, alert_emails VARCHAR(320) [] NOT NULL, payment_type PAYMENT_TYPE NOT NULL, default_payment_method_id TEXT, deployment_limit INTEGER NOT NULL, database_limit INTEGER NOT NULL, static_site_limit INTEGER NOT NULL, managed_url_limit INTEGER NOT NULL, docker_repository_storage_limit INTEGER NOT NULL, domain_limit INTEGER NOT NULL, secret_limit INTEGER NOT NULL, stripe_customer_id TEXT NOT NULL, address_id UUID, amount_due_in_cents BIGINT NOT NULL CONSTRAINT workspace_chk_amount_due_in_cents_positive CHECK (amount_due_in_cents >= 0), deleted TIMESTAMPTZ, is_spam BOOLEAN NOT NULL, is_frozen BOOLEAN NOT NULL, volume_storage_limit INTEGER NOT NULL, CONSTRAINT workspace_uq_id_super_admin_id UNIQUE(id, super_admin_id) );"
-  },
   "b0c443b846e70014265a8d3badb55e6be43cef6437934f3ff5e1ae9cd8383c92": {
     "describe": {
       "columns": [
@@ -15250,6 +15240,16 @@
       }
     },
     "query": "SELECT ci_git_provider.id as \"git_provider_id: Uuid\", ci_git_provider.workspace_id as \"git_provider_workspace_id: Uuid\", ci_git_provider.domain_name as \"git_provider_domain_name\", ci_git_provider.git_provider_type as \"git_provider_type: GitProviderType\", ci_git_provider.login_name as \"git_provider_login_name\", ci_git_provider.is_syncing as \"git_provider_is_syncing\", ci_git_provider.last_synced as \"git_provider_last_synced\", ci_git_provider.is_deleted as \"git_provider_is_deleted\", ci_repos.git_provider_repo_uid as \"repo_id\", ci_repos.repo_name, ci_repos.repo_owner, ci_repos.clone_url as \"repo_clone_url\", ci_repos.status as \"repo_status: RepoStatus\", ci_repos.runner_id as \"repo_runner_id: Uuid\", ci_builds.build_num, ci_builds.git_ref as \"build_git_ref\", ci_builds.git_commit as \"build_git_commit\", ci_builds.status as \"build_status: BuildStatus\", ci_builds.created as \"build_created\", ci_builds.started as \"build_started\", ci_builds.finished as \"build_finished\", ci_builds.message as \"build_message\", ci_builds.author as \"build_author\", ci_builds.git_pr_title as \"build_git_pr_title\", ci_builds.git_commit_message as \"build_git_commit_message\", ci_builds.runner_id as \"build_runner_id: Uuid\" FROM ci_builds JOIN ci_repos ON ci_repos.id = ci_builds.repo_id JOIN ci_git_provider ON ci_git_provider.id = ci_repos.git_provider_id WHERE ci_git_provider.workspace_id = $1 ORDER BY ci_builds.created ASC LIMIT 500;"
+  },
+  "ead2efe8bf440e3dd062383cbd5810076cbbdc810e9ae6ce5f692220b560fc69": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, alert_emails VARCHAR(320) [] NOT NULL, payment_type PAYMENT_TYPE NOT NULL, default_payment_method_id TEXT, deployment_limit INTEGER NOT NULL, database_limit INTEGER NOT NULL, static_site_limit INTEGER NOT NULL, managed_url_limit INTEGER NOT NULL, docker_repository_storage_limit INTEGER NOT NULL, domain_limit INTEGER NOT NULL, secret_limit INTEGER NOT NULL, stripe_customer_id TEXT NOT NULL, address_id UUID, amount_due_in_cents BIGINT NOT NULL CONSTRAINT workspace_chk_amount_due_in_cents_positive CHECK (amount_due_in_cents >= 0), deleted TIMESTAMPTZ, is_spam BOOLEAN NOT NULL, volume_storage_limit INTEGER NOT NULL, is_frozen BOOLEAN NOT NULL, CONSTRAINT workspace_uq_id_super_admin_id UNIQUE(id, super_admin_id) );"
   },
   "ebb50db24a70648653710428f4bc4db0b5a33f683894476370d206816a85a557": {
     "describe": {

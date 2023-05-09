@@ -134,8 +134,8 @@ pub async fn initialize_workspaces_pre(
 					CHECK (amount_due_in_cents >= 0),
 			deleted TIMESTAMPTZ,
 			is_spam BOOLEAN NOT NULL,
-			is_frozen BOOLEAN NOT NULL,
 			volume_storage_limit INTEGER NOT NULL,
+			is_frozen BOOLEAN NOT NULL,
 			CONSTRAINT workspace_uq_id_super_admin_id
 				UNIQUE(id, super_admin_id)
 		);
