@@ -1,55 +1,20 @@
 use std::{cmp::min, ops::Sub};
 
 use api_models::{
-	models::workspace::billing::{
-		AddBillingAddressRequest,
-		AddBillingAddressResponse,
-		AddCreditsRequest,
-		AddCreditsResponse,
-		AddPaymentMethodResponse,
-		Address,
-		ConfirmCreditsRequest,
-		ConfirmCreditsResponse,
-		ConfirmPaymentMethodRequest,
-		ConfirmPaymentMethodResponse,
-		ConfirmPaymentRequest,
-		ConfirmPaymentResponse,
-		DeleteBillingAddressResponse,
-		DeletePaymentMethodResponse,
-		GetBillBreakdownRequest,
-		GetBillBreakdownResponse,
-		GetBillingAddressResponse,
-		GetCurrentUsageResponse,
-		GetPaymentMethodResponse,
-		GetTransactionHistoryResponse,
-		MakePaymentRequest,
-		MakePaymentResponse,
-		PaymentMethod,
-		PaymentStatus,
-		TotalAmount,
-		Transaction,
-		UpdateBillingAddressRequest,
-		UpdateBillingAddressResponse,
-	},
+	models::prelude::*,
 	utils::{DateTime, Uuid},
 };
+use axum::{extract::State, Router};
 use chrono::{Duration, TimeZone, Utc};
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
-	app::{create_axum_router, App},
+	app::App,
 	db,
 	error,
 	models::rbac::permissions,
-	pin_fn,
+	prelude::*,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error},
 };
 
 /// # Description
@@ -84,11 +49,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 					if resource.is_none() {
 						context
 							.status(404)
@@ -115,11 +78,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 
 					if resource.is_none() {
 						context
@@ -148,11 +109,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 
 					if resource.is_none() {
 						context
@@ -181,11 +140,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 
 					if resource.is_none() {
 						context
@@ -214,11 +171,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 
 					if resource.is_none() {
 						context
@@ -247,11 +202,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 
 					if resource.is_none() {
 						context
@@ -280,11 +233,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 
 					if resource.is_none() {
 						context
@@ -313,11 +264,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 
 					if resource.is_none() {
 						context
@@ -346,11 +295,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 
 					if resource.is_none() {
 						context
@@ -378,11 +325,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 
 					if resource.is_none() {
 						context
@@ -410,11 +355,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 
 					if resource.is_none() {
 						context
@@ -442,11 +385,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 
 					if resource.is_none() {
 						context
@@ -474,11 +415,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 
 					if resource.is_none() {
 						context
@@ -506,11 +445,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 
 					if resource.is_none() {
 						context
@@ -538,11 +475,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 
 					if resource.is_none() {
 						context
@@ -570,11 +505,9 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					let resource =
+						db::get_resource_by_id(&mut connection, &workspace_id)
+							.await?;
 
 					if resource.is_none() {
 						context
@@ -593,31 +526,23 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 }
 
 async fn add_billing_address(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let AddBillingAddressRequest {
-		address_details, ..
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-
-	let config = context.get_state().config.clone();
-
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: AddBillingAddressPath { workspace_id },
+		query: (),
+		body: AddBillingAddressRequest { address_details },
+	}: DecodedRequest<AddBillingAddressRequest>,
+) -> Result<(), Error> {
 	service::add_billing_address(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		address_details,
 		&config,
 	)
 	.await?;
 
-	context.success(AddBillingAddressResponse {});
-	Ok(context)
+	Ok(())
 }
 
 /// # Description
@@ -661,61 +586,46 @@ async fn add_billing_address(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn update_billing_address(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let UpdateBillingAddressRequest {
-		address_details, ..
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: UpdateBillingAddressPath { workspace_id },
+		query: (),
+		body: UpdateBillingAddressRequest { address_details },
+	}: DecodedRequest<UpdateBillingAddressRequest>,
+) -> Result<(), Error> {
 	if let Some(address_info) = address_details {
 		service::update_billing_address(
-			context.get_database_connection(),
+			&mut connection,
 			&workspace_id,
 			address_info,
 		)
 		.await?;
 	}
 
-	context.success(UpdateBillingAddressResponse {});
-	Ok(context)
+	Ok(())
 }
 
 async fn delete_billing_address(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-	let billing_address_id = db::get_workspace_info(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?
-	.status(500)
-	.body(error!(SERVER_ERROR).to_string())?
-	.address_id
-	.status(404)
-	.body(error!(ADDRESS_NOT_FOUND).to_string())?;
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: DeleteBillingAddressPath { workspace_id },
+		query: (),
+		body: (),
+	}: DecodedRequest<DeleteBillingAddressRequest>,
+) -> Result<(), Error> {
+	let billing_address_id =
+		db::get_workspace_info(&mut connection, &workspace_id)
+			.await?
+			.ok_or_else(|| ErrorType::internal_error())?
+			.address_id
+			.ok_or_else(|| ErrorType::NotFound)?;
 
-	db::delete_billing_address_from_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?;
-	db::delete_billing_address(
-		context.get_database_connection(),
-		&billing_address_id,
-	)
-	.await?;
-	context.success(DeleteBillingAddressResponse {});
-	Ok(context)
+	db::delete_billing_address_from_workspace(&mut connection, &workspace_id)
+		.await?;
+	db::delete_billing_address(&mut connection, &billing_address_id).await?;
+	Ok(())
 }
 
 /// # Description
@@ -777,31 +687,27 @@ async fn delete_billing_address(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn get_payment_method(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: GetPaymentMethodPath { workspace_id },
+		query: (),
+		body: (),
+	}: DecodedRequest<GetPaymentMethodRequest>,
+) -> Result<GetPaymentMethodResponse, Error> {
+	let card_details =
+		service::get_card_details(&mut connection, &workspace_id, &config)
+			.await?
+			.into_iter()
+			.map(|payment_source| PaymentMethod {
+				id: payment_source.id,
+				customer: payment_source.customer,
+				card: payment_source.card,
+				created: payment_source.created,
+			})
+			.collect();
 
-	let config = context.get_state().config.clone();
-
-	let card_details = service::get_card_details(
-		context.get_database_connection(),
-		&workspace_id,
-		&config,
-	)
-	.await?
-	.into_iter()
-	.map(|payment_source| PaymentMethod {
-		id: payment_source.id,
-		customer: payment_source.customer,
-		card: payment_source.card,
-		created: payment_source.created,
-	})
-	.collect();
-
-	context.success(GetPaymentMethodResponse { list: card_details });
-	Ok(context)
+	Ok(GetPaymentMethodResponse { list: card_details })
 }
 
 /// # Description
@@ -830,145 +736,124 @@ async fn get_payment_method(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn add_payment_method(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-	let config = context.get_state().config.clone();
-	let client_secret = service::add_card_details(
-		context.get_database_connection(),
-		&workspace_id,
-		&config,
-	)
-	.await?
-	.client_secret
-	.status(500)?;
-	context.success(AddPaymentMethodResponse { client_secret });
-	Ok(context)
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: AddPaymentMethodPath { workspace_id },
+		query: (),
+		body: (),
+	}: DecodedRequest<AddPaymentMethodRequest>,
+) -> Result<AddPaymentMethodResponse, Error> {
+	let client_secret =
+		service::add_card_details(&mut connection, &workspace_id, &config)
+			.await?
+			.client_secret
+			.ok_or_else(|| ErrorType::internal_error())?;
+	Ok(AddPaymentMethodResponse { client_secret })
 }
 
 async fn delete_payment_method(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-	let payment_method_id = context
-		.get_param(request_keys::PAYMENT_METHOD_ID)
-		.unwrap()
-		.parse::<String>()?;
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path:
+			DeletePaymentMethodPath {
+				workspace_id,
+				payment_method_id,
+			},
+		query: (),
+		body: (),
+	}: DecodedRequest<DeletePaymentMethodRequest>,
+) -> Result<(), Error> {
+	let _ = db::get_payment_method_info(&mut connection, &payment_method_id)
+		.await?
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let _ = db::get_payment_method_info(
-		context.get_database_connection(),
-		&payment_method_id,
-	)
-	.await?
-	.status(400)
-	.body(error!(WRONG_PARAMETERS).to_string())?;
-	let config = context.get_state().config.clone();
 	service::delete_payment_method(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&payment_method_id,
 		&config,
 	)
 	.await?;
-	context.success(DeletePaymentMethodResponse {});
-	Ok(context)
+
+	Ok(())
 }
 
 async fn confirm_payment_method(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-	let ConfirmPaymentMethodRequest {
-		payment_method_id, ..
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: ConfirmPaymentMethodPath { workspace_id },
+		query: (),
+		body: ConfirmPaymentMethodRequest { payment_method_id },
+	}: DecodedRequest<ConfirmPaymentMethodRequest>,
+) -> Result<(), Error> {
 	db::add_payment_method_info(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&payment_method_id,
 	)
 	.await?;
-	if db::get_workspace_info(context.get_database_connection(), &workspace_id)
+	if db::get_workspace_info(&mut connection, &workspace_id)
 		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?
+		.ok_or_else(|| ErrorType::internal_error())?
 		.default_payment_method_id
 		.is_none()
 	{
 		db::set_default_payment_method_for_workspace(
-			context.get_database_connection(),
+			&mut connection,
 			&workspace_id,
 			&payment_method_id,
 		)
 		.await?;
 	}
-	context.success(ConfirmPaymentMethodResponse {});
-	Ok(context)
+	Ok(())
 }
 
 async fn set_primary_card(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-	let ConfirmPaymentMethodRequest {
-		payment_method_id, ..
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: SetPrimaryCardPath { workspace_id },
+		query: (),
+		body: SetPrimaryCardRequest { payment_method_id },
+	}: DecodedRequest<SetPrimaryCardRequest>,
+) -> Result<(), Error> {
 	// Check if payment method that is requested to be default, exists or not
-	db::get_payment_method_info(
-		context.get_database_connection(),
-		&payment_method_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	db::get_payment_method_info(&mut connection, &payment_method_id)
+		.await?
+		.ok_or_else(|| ErrorType::internal_error())?;
 
 	// Set payment method to default in workspace
 	db::set_default_payment_method_for_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&payment_method_id,
 	)
 	.await?;
-	context.success(ConfirmPaymentMethodResponse {});
-	Ok(context)
+	Ok(())
 }
 
 async fn get_billing_address(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-
-	let user_address = db::get_workspace_info(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?
-	.status(500)?
-	.address_id;
-	let address = if let Some(addr_id) = user_address {
-		let billing_address = db::get_billing_address(
-			context.get_database_connection(),
-			&addr_id,
-		)
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: GetBillingAddressPath { workspace_id },
+		query: (),
+		body: (),
+	}: DecodedRequest<GetBillingAddressRequest>,
+) -> Result<GetBillingAddressResponse, Error> {
+	let user_address = db::get_workspace_info(&mut connection, &workspace_id)
 		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.ok_or_else(|| ErrorType::internal_error())?
+		.address_id;
+	let address = if let Some(addr_id) = user_address {
+		let billing_address =
+			db::get_billing_address(&mut connection, &addr_id)
+				.await?
+				.ok_or_else(|| ErrorType::internal_error())?;
 
 		Some(Address {
 			first_name: billing_address.first_name,
@@ -984,29 +869,23 @@ async fn get_billing_address(
 	} else {
 		None
 	};
-	context.success(GetBillingAddressResponse { address });
-	Ok(context)
+	Ok(GetBillingAddressResponse { address })
 }
 
 async fn add_credits(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-
-	let AddCreditsRequest {
-		credits,
-		payment_method_id,
-		..
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let config = context.get_state().config.clone();
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: AddCreditsPath { workspace_id },
+		query: (),
+		body: AddCreditsRequest {
+			credits,
+			payment_method_id,
+		},
+	}: DecodedRequest<AddCreditsRequest>,
+) -> Result<AddCreditsResponse, Error> {
 	let (transaction_id, client_secret) = service::add_credits_to_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		credits,
 		&payment_method_id,
@@ -1014,44 +893,35 @@ async fn add_credits(
 	)
 	.await?;
 
-	context.success(AddCreditsResponse {
+	Ok(AddCreditsResponse {
 		transaction_id,
 		client_secret,
-	});
-	Ok(context)
+	})
 }
 
 async fn confirm_credits(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-
-	let ConfirmCreditsRequest { transaction_id, .. } = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let config = context.get_state().config.clone();
-
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: ConfirmCreditsPath { workspace_id },
+		query: (),
+		body: ConfirmCreditsRequest { transaction_id },
+	}: DecodedRequest<ConfirmCreditsRequest>,
+) -> Result<(), Error> {
 	let transaction = db::get_transaction_by_transaction_id(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&transaction_id,
 	)
 	.await?
-	.status(400)
-	.body(error!(WRONG_PARAMETERS).to_string())?;
+	.ok_or_else(|| ErrorType::WrongParameters)?;
 
 	match transaction.payment_status {
 		PaymentStatus::Success => {
-			context.success(ConfirmCreditsResponse {});
-			return Ok(context);
+			return Ok(());
 		}
 		PaymentStatus::Failed => {
-			context.json(error!(PAYMENT_FAILED));
-			return Ok(context);
+			return Err(ErrorType::PaymentFailed.into());
 		}
 		PaymentStatus::Pending => {
 			// in pending state so need to confirm it
@@ -1059,7 +929,7 @@ async fn confirm_credits(
 	}
 
 	let success = service::confirm_payment(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&transaction_id,
 		&config,
@@ -1068,62 +938,53 @@ async fn confirm_credits(
 
 	if success {
 		service::send_purchase_credits_success_email(
-			context.get_database_connection(),
+			&mut connection,
 			&workspace_id,
 			&transaction_id,
 		)
 		.await?;
 
-		let current_amount_due = db::get_workspace_info(
-			context.get_database_connection(),
-			&workspace_id,
-		)
-		.await?
-		.status(500)?
-		.amount_due_in_cents;
+		let current_amount_due =
+			db::get_workspace_info(&mut connection, &workspace_id)
+				.await?
+				.ok_or_else(|| ErrorType::internal_error())?
+				.amount_due_in_cents;
 		let bill_after_payment = TotalAmount::NeedToPay(current_amount_due) +
 			db::get_total_amount_in_cents_to_pay_for_workspace(
-				context.get_database_connection(),
+				&mut connection,
 				&workspace_id,
 			)
 			.await?;
 
 		if let TotalAmount::NeedToPay(_bill) = bill_after_payment {
 			service::send_bill_paid_using_credits_email(
-				context.get_database_connection(),
+				&mut connection,
 				&workspace_id,
 				&transaction_id,
 			)
 			.await?;
 		}
 
-		context.success(ConfirmCreditsResponse {});
+		Ok(())
 	} else {
-		context.json(error!(PAYMENT_FAILED));
+		Err(ErrorType::PaymentFailed.into())
 	}
-
-	Ok(context)
 }
 
 async fn make_payment(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-
-	let MakePaymentRequest {
-		amount,
-		payment_method_id,
-		..
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let config = context.get_state().config.clone();
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: MakePaymentPath { workspace_id },
+		query: (),
+		body: MakePaymentRequest {
+			amount,
+			payment_method_id,
+		},
+	}: DecodedRequest<MakePaymentRequest>,
+) -> Result<MakePaymentResponse, Error> {
 	let (transaction_id, client_secret) = service::make_payment(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		amount,
 		&payment_method_id,
@@ -1131,44 +992,33 @@ async fn make_payment(
 	)
 	.await?;
 
-	context.success(MakePaymentResponse {
+	Ok(MakePaymentResponse {
 		transaction_id,
 		client_secret,
-	});
-	Ok(context)
+	})
 }
 
 async fn confirm_payment(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-
-	let ConfirmPaymentRequest { transaction_id, .. } = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let config = context.get_state().config.clone();
-
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: ConfirmPaymentPath { workspace_id },
+		query: (),
+		body: ConfirmPaymentRequest { transaction_id },
+	}: DecodedRequest<ConfirmPaymentRequest>,
+) -> Result<(), Error> {
 	let transaction = db::get_transaction_by_transaction_id(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&transaction_id,
 	)
 	.await?
-	.status(400)
-	.body(error!(WRONG_PARAMETERS).to_string())?;
+	.ok_or_else(|| ErrorType::WrongParameters)?;
 
 	match transaction.payment_status {
-		PaymentStatus::Success => {
-			context.success(ConfirmPaymentResponse {});
-			return Ok(context);
-		}
+		PaymentStatus::Success => return Ok(()),
 		PaymentStatus::Failed => {
-			context.json(error!(PAYMENT_FAILED));
-			return Ok(context);
+			return Err(ErrorType::PaymentFailed.into());
 		}
 		PaymentStatus::Pending => {
 			// in pending state so need to confirm it
@@ -1176,7 +1026,7 @@ async fn confirm_payment(
 	}
 
 	let success = service::confirm_payment(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&transaction_id,
 		&config,
@@ -1185,40 +1035,41 @@ async fn confirm_payment(
 
 	if success {
 		service::send_partial_payment_success_email(
-			context.get_database_connection(),
+			&mut connection,
 			&workspace_id,
 			&transaction_id,
 		)
 		.await?;
-		context.success(ConfirmPaymentResponse {});
+		Ok(())
 	} else {
-		context.json(error!(PAYMENT_FAILED));
+		Err(ErrorType::PaymentFailed.into())
 	}
-
-	Ok(context)
 }
 
 async fn get_current_bill(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: GetDockerRepositoryImageDetailsPath { workspace_id },
+		query: (),
+		body: (),
+	}: DecodedRequest<GetDockerRepositoryImageDetailsRequest>,
+) -> Result<GetDockerRepositoryImageDetailsResponse, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let current_month_bill_so_far = db::get_workspace_info(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?
-	.status(500)
-	.body(error!(SERVER_ERROR).to_string())?
-	.amount_due_in_cents;
+	let current_month_bill_so_far =
+		db::get_workspace_info(&mut connection, &workspace_id)
+			.await?
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?
+			.amount_due_in_cents;
 	let current_month_bill_so_far =
 		TotalAmount::NeedToPay(current_month_bill_so_far);
 
 	let leftover_credits_or_due =
 		db::get_total_amount_in_cents_to_pay_for_workspace(
-			context.get_database_connection(),
+			&mut connection,
 			&workspace_id,
 		)
 		.await?;
@@ -1230,9 +1081,14 @@ async fn get_current_bill(
 }
 
 async fn get_bill_breakdown(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: GetDockerRepositoryImageDetailsPath { workspace_id },
+		query: (),
+		body: (),
+	}: DecodedRequest<GetDockerRepositoryImageDetailsRequest>,
+) -> Result<GetDockerRepositoryImageDetailsResponse, Error> {
 	let request_id = Uuid::new_v4();
 
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -1267,7 +1123,7 @@ async fn get_bill_breakdown(
 	let month_end_date = min(month_end_date, Utc::now());
 
 	let bill = service::get_total_resource_usage(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&month_start_date,
 		&month_end_date,
@@ -1282,30 +1138,33 @@ async fn get_bill_breakdown(
 }
 
 async fn get_transaction_history(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: GetDockerRepositoryImageDetailsPath { workspace_id },
+		query: (),
+		body: (),
+	}: DecodedRequest<GetDockerRepositoryImageDetailsRequest>,
+) -> Result<GetDockerRepositoryImageDetailsResponse, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let transactions = db::get_transactions_in_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?
-	.into_iter()
-	.map(|transaction| Transaction {
-		id: transaction.id,
-		month: transaction.month,
-		amount: transaction.amount_in_cents as u64,
-		payment_intent_id: transaction.payment_intent_id,
-		date: DateTime(transaction.date),
-		workspace_id: transaction.workspace_id,
-		payment_status: transaction.payment_status,
-		description: transaction.description,
-		transaction_type: transaction.transaction_type,
-	})
-	.collect();
+	let transactions =
+		db::get_transactions_in_workspace(&mut connection, &workspace_id)
+			.await?
+			.into_iter()
+			.map(|transaction| Transaction {
+				id: transaction.id,
+				month: transaction.month,
+				amount: transaction.amount_in_cents as u64,
+				payment_intent_id: transaction.payment_intent_id,
+				date: DateTime(transaction.date),
+				workspace_id: transaction.workspace_id,
+				payment_status: transaction.payment_status,
+				description: transaction.description,
+				transaction_type: transaction.transaction_type,
+			})
+			.collect();
 
 	context.success(GetTransactionHistoryResponse { transactions });
 
