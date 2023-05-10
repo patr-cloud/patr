@@ -1,207 +1,128 @@
-use api_macros::closure_as_pinned_box;
-use api_models::utils::Uuid;
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use serde_json::json;
+use api_models::{
+	models::prelude::{
+		CreateManagedDatabasePath,
+		CreateManagedDatabaseRequest,
+		CreateManagedDatabaseResponse,
+		DeleteManagedDatabasePath,
+		DeleteManagedDatabaseRequest,
+		GetManagedDatabasePath,
+		GetManagedDatabaseRequest,
+		GetManagedDatabaseResponse,
+		ListAllManagedDatabasePath,
+		ListAllManagedDatabaseRequest,
+		ListAllManagedDatabaseResponse,
+		ManagedDatabase,
+		ManagedDatabaseConnection,
+	},
+	prelude::*,
+	utils::Uuid,
+};
+use axum::{extract::State, Extension, Router};
 
 use crate::{
-	app::{create_axum_router, App},
-	db::{self, ManagedDatabasePlan},
-	error,
-	models::{rbac::permissions, ResourceType},
-	pin_fn,
+	app::App,
+	db,
+	models::{rbac::permissions, ResourceType, UserAuthenticationData},
+	prelude::*,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::Error,
 };
 
 pub fn create_sub_app(app: &App) -> Router<App> {
-	let mut app = create_axum_router(app);
-	app.get(
-		"/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::infrastructure::managed_database::LIST,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+	Router::new()
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::infrastructure::managed_database::LIST,
+				|ListAllManagedDatabasePath { workspace_id },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					db::get_resource_by_id(&mut connection, &workspace_id)
+						.await
+						.filter(|value| value.owner_id == workspace_id);
+				},
+			),
+			app.clone(),
+			list_all_database_clusters,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::infrastructure::managed_database::CREATE,
+				|CreateManagedDatabasePath { workspace_id },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &workspace_id)
+						.await
+						.filter(|value| value.owner_id == workspace_id);
+				},
+			), app.clone(), create_database_cluster)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::infrastructure::managed_database::LIST,
+				|GetManagedDatabasePath { workspace_id, database_id },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(list_all_database_clusters)),
-		],
-	);
-
-	app.post(
-		"/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::infrastructure::managed_database::CREATE,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(create_database_cluster)),
-		],
-	);
-
-	app.get(
-		"/:databaseId/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::infrastructure::managed_database::INFO,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let database_id =
-						context.get_param(request_keys::DATABASE_ID).unwrap();
-					let database_id_string = Uuid::parse_str(database_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&database_id_string,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_managed_database_info)),
-		],
-	);
-
-	app.delete(
-		"/:databaseId/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::infrastructure::managed_database::DELETE,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let database_id =
-						context.get_param(request_keys::DATABASE_ID).unwrap();
-					let database_id_string = Uuid::parse_str(database_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&database_id_string,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(delete_managed_database)),
-		],
-	);
-	app
+					db::get_resource_by_id(&mut connection, &database_id)
+						.await
+						.filter(|value| value.owner_id == workspace_id);
+				},
+			), app.clone(), get_managed_database_info)
 }
 
 async fn list_all_database_clusters(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: ListAllManagedDatabasePath { workspace_id },
+		query: (),
+		body: (),
+	}: DecodedRequest<ListAllManagedDatabaseRequest>,
+) -> Result<ListAllManagedDatabaseResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
 
 	log::trace!(
 		"request_id: {} - Getting all database cluster info from db",
 		request_id
 	);
 	let database_clusters = db::get_all_database_clusters_for_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 	)
 	.await?
 	.into_iter()
-	.map(|database| {
-		json!({
-			request_keys::ID: database.id,
-			request_keys::NAME: database.name,
-			request_keys::DATABASE_NAME: database.db_name,
-			request_keys::ENGINE: database.engine.to_string(),
-			request_keys::VERSION: database.version,
-			request_keys::NUM_NODES: database.num_nodes,
-			request_keys::DATABASE_PLAN: database.database_plan.to_string(),
-			request_keys::REGION: database.region,
-			request_keys::STATUS: database.status.to_string(),
-			request_keys::PUBLIC_CONNECTION: {
-				request_keys::HOST: database.host,
-				request_keys::PORT: database.port,
-				request_keys::USERNAME: database.username,
-				request_keys::PASSWORD: database.password,
-			}
-		})
+	.map(|database| ManagedDatabase {
+		id: database.id,
+		name: database.name,
+		database_name: database.db_name,
+		engine: database.engine.to_string(),
+		version: database.version,
+		num_nodes: database.num_nodes,
+		database_plan: database.database_plan.to_string(),
+		region: database.region,
+		status: database.status.to_string(),
+		public_connection: ManagedDatabaseConnection {
+			host: database.host,
+			port: database.port,
+			username: database.username,
+			password: database.password,
+		},
 	})
 	.collect::<Vec<_>>();
 
@@ -210,90 +131,42 @@ async fn list_all_database_clusters(
 		request_id
 	);
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::DATABASES: database_clusters
-	}));
-
-	Ok(context)
+	Ok(ListAllManagedDatabaseResponse {
+		databases: database_clusters,
+	})
 }
 
 async fn create_database_cluster(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: CreateManagedDatabasePath { workspace_id },
+		query: (),
+		body:
+			CreateManagedDatabaseRequest {
+				name,
+				db_name,
+				version,
+				engine,
+				num_nodes,
+				database_plan,
+				region,
+			},
+	}: DecodedRequest<CreateManagedDatabaseRequest>,
+) -> Result<CreateManagedDatabaseResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let body = context.get_body_object().clone();
-	let config = context.get_state().config.clone();
 
 	log::trace!("request_id: {} - Creating database cluster", request_id);
-	let name = body
-		.get(request_keys::NAME)
-		.and_then(|value| value.as_str())
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.trim();
-
-	let db_name = body
-		.get(request_keys::DATABASE_NAME)
-		.and_then(|value| value.as_str())
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.trim();
-
-	let engine = body
-		.get(request_keys::ENGINE)
-		.and_then(|value| value.as_str())
-		.and_then(|engine| engine.parse().ok())
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let version = body
-		.get(request_keys::VERSION)
-		.map(|value| {
-			value
-				.as_str()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?;
-
-	// only compulsory for digital ocean
-	let num_nodes = body
-		.get(request_keys::NUM_NODES)
-		.map(|value| {
-			value
-				.as_u64()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?;
-
-	let database_plan = body
-		.get(request_keys::DATABASE_PLAN)
-		.and_then(|value| value.as_str())
-		.and_then(|c| c.parse::<ManagedDatabasePlan>().ok())
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let region = body
-		.get(request_keys::REGION)
-		.and_then(|value| value.as_str())
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let database_id = service::create_managed_database_in_workspace(
-		context.get_database_connection(),
-		name,
-		db_name,
+		&mut connection,
+		&name,
+		&db_name,
 		&engine,
 		version,
 		num_nodes,
 		&database_plan,
-		region,
+		&region,
 		&workspace_id,
 		&config,
 		&request_id,
@@ -301,85 +174,81 @@ async fn create_database_cluster(
 	.await?;
 
 	let _ = service::get_internal_metrics(
-		context.get_database_connection(),
+		&mut connection,
 		"A database instance has been created",
 	)
 	.await;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::DATABASE_ID: database_id.as_str()
-	}));
-	Ok(context)
+	Ok(CreateManagedDatabaseResponse { id: database_id })
 }
 
 async fn get_managed_database_info(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: GetManagedDatabasePath {
+			workspace_id,
+			database_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<GetManagedDatabaseRequest>,
+) -> Result<GetManagedDatabaseResponse, Error> {
 	let request_id = Uuid::new_v4();
 
-	let database_id =
-		Uuid::parse_str(context.get_param(request_keys::DATABASE_ID).unwrap())
-			.unwrap();
-
 	log::trace!("request_id: {} - Getting database info", request_id);
-	let database = db::get_managed_database_by_id(
-		context.get_database_connection(),
-		&database_id,
-	)
-	.await?
-	.status(400)
-	.body(error!(WRONG_PARAMETERS).to_string())?;
+	let database =
+		db::get_managed_database_by_id(&mut connection, &database_id)
+			.await?
+			.map(|database| ManagedDatabase {
+				id: database.id,
+				name: database.name,
+				database_name: database.db_name,
+				engine: database.engine.to_string(),
+				version: database.version,
+				num_nodes: database.num_nodes,
+				database_plan: database.database_plan.to_string(),
+				region: database.region,
+				status: database.status.to_string(),
+				public_connection: ManagedDatabaseConnection {
+					host: database.host,
+					port: database.port,
+					username: database.username,
+					password: database.password,
+				},
+			})
+			.ok_or_else(|| ErrorType::WrongParameters)?;
+
 	log::trace!("request_id: {} - Returning database info", request_id);
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::DATABASE_ID: database.id,
-		request_keys::NAME: database.name,
-		request_keys::DATABASE_NAME: database.db_name,
-		request_keys::ENGINE: database.engine.to_string(),
-		request_keys::VERSION: database.version,
-		request_keys::NUM_NODES: database.num_nodes,
-		request_keys::DATABASE_PLAN: database.database_plan.to_string(),
-		request_keys::REGION: database.region,
-		request_keys::STATUS: database.status.to_string(),
-		request_keys::PUBLIC_CONNECTION: {
-			request_keys::HOST: database.host,
-			request_keys::PORT: database.port,
-			request_keys::USERNAME: database.username,
-			request_keys::PASSWORD: database.password,
-		}
-	}));
-
-	Ok(context)
+	Ok(GetManagedDatabaseResponse { database })
 }
 
 async fn delete_managed_database(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: DeleteManagedDatabasePath {
+			workspace_id,
+			database_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<DeleteManagedDatabaseRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	let user_id = token_data.user_id().clone();
 
-	let database_id =
-		Uuid::parse_str(context.get_param(request_keys::DATABASE_ID).unwrap())
-			.unwrap();
-
-	let database = db::get_managed_database_by_id(
-		context.get_database_connection(),
-		&database_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	let config = context.get_state().config.clone();
+	let database =
+		db::get_managed_database_by_id(&mut connection, &database_id)
+			.await?
+			.ok_or_else(|| ErrorType::NotFound)?;
 
 	log::trace!("request_id: {} - Deleting database cluster", request_id);
 	service::delete_managed_database(
-		context.get_database_connection(),
+		&mut connection,
 		&database_id,
 		&config,
 		&request_id,
@@ -388,10 +257,10 @@ async fn delete_managed_database(
 
 	// Commiting transaction so that even if the mailing function fails the
 	// resource should be deleted
-	context.commit_database_transaction().await?;
+	connection.commit().await?;
 
 	service::resource_delete_action_email(
-		context.get_database_connection(),
+		&mut connection,
 		&database.name,
 		&database.workspace_id,
 		&ResourceType::ManagedDatabase,
@@ -399,14 +268,11 @@ async fn delete_managed_database(
 	)
 	.await?;
 
-	let _ = service::get_internal_metrics(
-		context.get_database_connection(),
+	service::get_internal_metrics(
+		&mut connection,
 		"A database instance has been deleted",
 	)
 	.await;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
-	Ok(context)
+	Ok(())
 }

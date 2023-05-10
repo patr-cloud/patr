@@ -1,38 +1,9 @@
-use api_macros::closure_as_pinned_box;
 use api_models::{
-	models::{
-		ci::file_format::CiFlow,
-		workspace::ci::git_provider::{
-			ActivateRepoRequest,
-			ActivateRepoResponse,
-			BuildLogs,
-			BuildStatus,
-			CancelBuildResponse,
-			DeactivateRepoResponse,
-			GetBuildInfoResponse,
-			GetBuildListResponse,
-			GetBuildLogResponse,
-			GetPatrCiFileResponse,
-			GetRepoInfoResponse,
-			GitProviderType,
-			GithubAuthCallbackRequest,
-			GithubAuthCallbackResponse,
-			GithubAuthResponse,
-			GithubSignOutResponse,
-			ListGitRefForRepoResponse,
-			ListReposResponse,
-			RepoStatus,
-			RepositoryDetails,
-			RestartBuildResponse,
-			SyncReposResponse,
-			WritePatrCiFileRequest,
-			WritePatrCiFileResponse,
-		},
-	},
+	models::{ci::file_format::CiFlow, prelude::*},
 	utils::{Base64String, Uuid},
 };
+use axum::{extract::State, Router};
 use chrono::Utc;
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use octorust::{
 	self,
 	auth::Credentials,
@@ -43,7 +14,7 @@ use redis::AsyncCommands;
 use serde::Deserialize;
 
 use crate::{
-	app::{create_axum_router, App},
+	app::App,
 	db,
 	error,
 	models::{
@@ -51,759 +22,437 @@ use crate::{
 		deployment::Logs,
 		rbac::permissions,
 	},
-	pin_fn,
+	prelude::*,
 	rabbitmq::{BuildId, BuildStepId},
 	service::{self, ParseStatus},
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error},
 };
 
 pub fn create_sub_app(app: &App) -> Router<App> {
-	let mut app = create_axum_router(app);
+	Router::new()
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::git_provider::CONNECT,
+				|GithubAuthPath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	app.get(
-		"/auth",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission: permissions::workspace::ci::git_provider::CONNECT,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			connect_to_github,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::git_provider::CONNECT,
+				|GithubAuthCallbackPath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			github_oauth_callback,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::git_provider::LIST,
+				|SyncReposPath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			sync_repositories,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::git_provider::repo::LIST,
+				|ListReposPath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(connect_to_github)),
-		],
-	);
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			list_repositories,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::git_provider::repo::ACTIVATE,
+				|GetRepoInfoPath {
+				     workspace_id,
+				     repo_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	app.post(
-		"/auth-callback",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission: permissions::workspace::ci::git_provider::CONNECT,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(github_oauth_callback)),
-		],
-	);
-
-	app.post(
-		"/repo/sync",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::ci::git_provider::repo::LIST,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(sync_repositories)),
-		],
-	);
-
-	app.get(
-		"/repo",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::ci::git_provider::repo::LIST,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(list_repositories)),
-		],
-	);
-
-	app.get(
-		"/repo/:repoId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::ci::git_provider::repo::ACTIVATE,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id = Uuid::parse_str(
-						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
-					)
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string())?;
-					let repo_id = context
-						.get_param(request_keys::REPO_ID)
-						.unwrap()
-						.clone();
 					let repo =
 						db::get_repo_details_using_github_uid_for_workspace(
-							context.get_database_connection(),
+							&mut connection,
 							&workspace_id,
 							&repo_id,
 						)
-						.await?;
-					let resource = if let Some(repo) = repo {
-						db::get_resource_by_id(
-							context.get_database_connection(),
-							&repo.id,
-						)
 						.await?
-					} else {
-						None
-					};
+						.ok_or_else(|| ErrorType::internal_error())?;
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &repo.id).await
+				},
+			),
+			app.clone(),
+			get_repo_info,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::git_provider::repo::ACTIVATE,
+				|ActivateRepoPath {
+				     workspace_id,
+				     repo_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_repo_info)),
-		],
-	);
-
-	app.post(
-		"/repo/:repoId/activate",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::ci::git_provider::repo::ACTIVATE,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id = Uuid::parse_str(
-						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
-					)
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string())?;
-					let repo_id = context
-						.get_param(request_keys::REPO_ID)
-						.unwrap()
-						.clone();
 					let repo =
 						db::get_repo_details_using_github_uid_for_workspace(
-							context.get_database_connection(),
+							&mut connection,
 							&workspace_id,
 							&repo_id,
 						)
-						.await?;
-					let resource = if let Some(repo) = repo {
-						db::get_resource_by_id(
-							context.get_database_connection(),
-							&repo.id,
-						)
 						.await?
-					} else {
-						None
-					};
+						.ok_or_else(|| ErrorType::internal_error())?;
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &repo.id).await
+				},
+			),
+			app.clone(),
+			activate_repo,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::git_provider::repo::build::LIST,
+				|GetBuildListPath {
+				     workspace_id,
+				     repo_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(activate_repo)),
-		],
-	);
-
-	app.post(
-		"/repo/:repoId/deactivate",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::ci::git_provider::repo::DEACTIVATE,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id = Uuid::parse_str(
-						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
-					)
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string())?;
-					let repo_id = context
-						.get_param(request_keys::REPO_ID)
-						.unwrap()
-						.clone();
 					let repo =
 						db::get_repo_details_using_github_uid_for_workspace(
-							context.get_database_connection(),
+							&mut connection,
 							&workspace_id,
 							&repo_id,
 						)
-						.await?;
-					let resource = if let Some(repo) = repo {
-						db::get_resource_by_id(
-							context.get_database_connection(),
-							&repo.id,
-						)
 						.await?
-					} else {
-						None
-					};
+						.ok_or_else(|| ErrorType::internal_error())?;
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &repo.id).await
+				},
+			),
+			app.clone(),
+			get_build_list,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::git_provider::repo::build::INFO,
+				|GetBuildInfoPath {
+				     workspace_id,
+				     repo_id,
+				     ..
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(deactivate_repo)),
-		],
-	);
-
-	app.get(
-		"/repo/:repoId/build",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::ci::git_provider::repo::build::LIST,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id = Uuid::parse_str(
-						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
-					)
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string())?;
-					let repo_id = context
-						.get_param(request_keys::REPO_ID)
-						.unwrap()
-						.clone();
 					let repo =
 						db::get_repo_details_using_github_uid_for_workspace(
-							context.get_database_connection(),
+							&mut connection,
 							&workspace_id,
 							&repo_id,
 						)
-						.await?;
-					let resource = if let Some(repo) = repo {
-						db::get_resource_by_id(
-							context.get_database_connection(),
-							&repo.id,
-						)
 						.await?
-					} else {
-						None
-					};
+						.ok_or_else(|| ErrorType::internal_error())?;
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &repo.id).await
+				},
+			),
+			app.clone(),
+			get_build_info,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::git_provider::repo::build::INFO,
+				|GetBuildLogPath {
+				     workspace_id,
+				     repo_id,
+				     ..
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_build_list)),
-		],
-	);
-
-	app.get(
-		"/repo/:repoId/build/:buildNum",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::ci::git_provider::repo::build::INFO,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id = Uuid::parse_str(
-						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
-					)
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string())?;
-					let repo_id = context
-						.get_param(request_keys::REPO_ID)
-						.unwrap()
-						.clone();
 					let repo =
 						db::get_repo_details_using_github_uid_for_workspace(
-							context.get_database_connection(),
+							&mut connection,
 							&workspace_id,
 							&repo_id,
 						)
-						.await?;
-					let resource = if let Some(repo) = repo {
-						db::get_resource_by_id(
-							context.get_database_connection(),
-							&repo.id,
-						)
 						.await?
-					} else {
-						None
-					};
+						.ok_or_else(|| ErrorType::internal_error())?;
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &repo.id).await
+				},
+			),
+			app.clone(),
+			get_build_logs,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::git_provider::repo::build::CANCEL,
+				|CancelBuildPath {
+				     workspace_id,
+				     repo_id,
+				     ..
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_build_info)),
-		],
-	);
-
-	app.get(
-		"/repo/:repoId/build/:buildNum/log/:step",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::ci::git_provider::repo::build::INFO,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id = Uuid::parse_str(
-						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
-					)
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string())?;
-					let repo_id = context
-						.get_param(request_keys::REPO_ID)
-						.unwrap()
-						.clone();
 					let repo =
 						db::get_repo_details_using_github_uid_for_workspace(
-							context.get_database_connection(),
+							&mut connection,
 							&workspace_id,
 							&repo_id,
 						)
-						.await?;
-					let resource = if let Some(repo) = repo {
-						db::get_resource_by_id(
-							context.get_database_connection(),
-							&repo.id,
-						)
 						.await?
-					} else {
-						None
-					};
+						.ok_or_else(|| ErrorType::internal_error())?;
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &repo.id).await
+				},
+			),
+			app.clone(),
+			cancel_build,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::git_provider::repo::build::RESTART,
+				|RestartBuildPath {
+				     workspace_id,
+				     repo_id,
+				     ..
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_build_logs)),
-		],
-	);
-
-	app.post(
-		"/repo/:repoId/build/:buildNum/cancel",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::ci::git_provider::repo::build::CANCEL,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id = Uuid::parse_str(
-						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
-					)
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string())?;
-					let repo_id = context
-						.get_param(request_keys::REPO_ID)
-						.unwrap()
-						.clone();
 					let repo =
 						db::get_repo_details_using_github_uid_for_workspace(
-							context.get_database_connection(),
+							&mut connection,
 							&workspace_id,
 							&repo_id,
 						)
-						.await?;
-					let resource = if let Some(repo) = repo {
-						db::get_resource_by_id(
-							context.get_database_connection(),
-							&repo.id,
-						)
 						.await?
-					} else {
-						None
-					};
+						.ok_or_else(|| ErrorType::internal_error())?;
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &repo.id).await
+				},
+			),
+			app.clone(),
+			restart_build,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::git_provider::repo::build::START,
+				|StartBuildPath {
+				     workspace_id,
+				     repo_id,
+				     ..
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(cancel_build)),
-		],
-	);
-
-	app.post(
-		"/repo/:repoId/build/:buildNum/restart",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::ci::git_provider::repo::build::RESTART,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id = Uuid::parse_str(
-						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
-					)
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string())?;
-					let repo_id = context
-						.get_param(request_keys::REPO_ID)
-						.unwrap()
-						.clone();
 					let repo =
 						db::get_repo_details_using_github_uid_for_workspace(
-							context.get_database_connection(),
+							&mut connection,
 							&workspace_id,
 							&repo_id,
 						)
-						.await?;
-					let resource = if let Some(repo) = repo {
-						db::get_resource_by_id(
-							context.get_database_connection(),
-							&repo.id,
-						)
 						.await?
-					} else {
-						None
-					};
+						.ok_or_else(|| ErrorType::internal_error())?;
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &repo.id).await
+				},
+			),
+			app.clone(),
+			start_build_for_branch,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::git_provider::repo::LIST,
+				|ListGitRefForRepoPath {
+				     workspace_id,
+				     repo_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(restart_build)),
-		],
-	);
-
-	app.post(
-		"/repo/:repoId/branch/:branchName/start",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::ci::git_provider::repo::build::START,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id = Uuid::parse_str(
-						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
-					)
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string())?;
-					let repo_id = context
-						.get_param(request_keys::REPO_ID)
-						.unwrap()
-						.clone();
 					let repo =
 						db::get_repo_details_using_github_uid_for_workspace(
-							context.get_database_connection(),
+							&mut connection,
 							&workspace_id,
 							&repo_id,
 						)
-						.await?;
-					let resource = if let Some(repo) = repo {
-						db::get_resource_by_id(
-							context.get_database_connection(),
-							&repo.id,
-						)
 						.await?
-					} else {
-						None
-					};
+						.ok_or_else(|| ErrorType::internal_error())?;
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &repo.id).await
+				},
+			),
+			app.clone(),
+			list_git_ref_for_repo,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::git_provider::repo::INFO,
+				|GetPatrCiFilePath {
+				     workspace_id,
+				     repo_id,
+				     ..
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(start_build_for_branch)),
-		],
-	);
-
-	app.get(
-		"/repo/:repoId/ref",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::ci::git_provider::repo::LIST,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id = Uuid::parse_str(
-						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
-					)
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string())?;
-					let repo_id = context
-						.get_param(request_keys::REPO_ID)
-						.unwrap()
-						.clone();
 					let repo =
 						db::get_repo_details_using_github_uid_for_workspace(
-							context.get_database_connection(),
+							&mut connection,
 							&workspace_id,
 							&repo_id,
 						)
-						.await?;
-					let resource = if let Some(repo) = repo {
-						db::get_resource_by_id(
-							context.get_database_connection(),
-							&repo.id,
-						)
 						.await?
-					} else {
-						None
-					};
+						.ok_or_else(|| ErrorType::internal_error())?;
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &repo.id).await
+				},
+			),
+			app.clone(),
+			get_patr_ci_file,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::git_provider::LIST,
+				|WritePatrCiFilePath {
+				     workspace_id,
+				     repo_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(list_git_ref_for_repo)),
-		],
-	);
-
-	app.get(
-		"/repo/:repoId/patr-ci-file/:gitRef",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::ci::git_provider::repo::INFO,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id = Uuid::parse_str(
-						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
-					)
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string())?;
-					let repo_id = context
-						.get_param(request_keys::REPO_ID)
-						.unwrap()
-						.clone();
 					let repo =
 						db::get_repo_details_using_github_uid_for_workspace(
-							context.get_database_connection(),
+							&mut connection,
 							&workspace_id,
 							&repo_id,
 						)
-						.await?;
-					let resource = if let Some(repo) = repo {
-						db::get_resource_by_id(
-							context.get_database_connection(),
-							&repo.id,
-						)
 						.await?
-					} else {
-						None
-					};
+						.ok_or_else(|| ErrorType::internal_error())?;
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &repo.id).await
+				},
+			),
+			app.clone(),
+			write_patr_ci_file,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::git_provider::DISCONNECT,
+				|GithubSignOutPath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_patr_ci_file)),
-		],
-	);
-
-	app.post(
-		"/repo/:repoId/patr-ci-file",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::ci::git_provider::repo::WRITE,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id = Uuid::parse_str(
-						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
-					)
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string())?;
-					let repo_id = context
-						.get_param(request_keys::REPO_ID)
-						.unwrap()
-						.clone();
-					let repo =
-						db::get_repo_details_using_github_uid_for_workspace(
-							context.get_database_connection(),
-							&workspace_id,
-							&repo_id,
-						)
-						.await?;
-					let resource = if let Some(repo) = repo {
-						db::get_resource_by_id(
-							context.get_database_connection(),
-							&repo.id,
-						)
-						.await?
-					} else {
-						None
-					};
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(write_patr_ci_file)),
-		],
-	);
-
-	app.delete(
-		"/sign-out",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission:
-					permissions::workspace::ci::git_provider::DISCONNECT,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(sign_out)),
-		],
-	);
-
-	app
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			sign_out,
+		)
 }
 
 async fn connect_to_github(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-
-	let client_id = context.get_state().config.github.client_id.to_owned();
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: GithubAuthPath { workspace_id },
+		query: (),
+		body: (),
+	}: DecodedRequest<GithubAuthRequest>,
+) -> Result<GithubAuthResponse, Error> {
+	let client_id = config.github.client_id.to_owned();
 
 	// https://docs.github.com/en/developers/apps/building-oauth-apps/scopes-for-oauth-apps
 	let scope = "repo";
@@ -819,42 +468,33 @@ async fn connect_to_github(
 	// so we are using extra 5 mins as buffer time for now
 	let ttl_in_secs = 15 * 60; // 15 mins
 	let value = workspace_id.as_str();
-	context
-		.get_redis_connection()
+	config
+		.redis
 		.set_ex(format!("githubAuthState:{state}"), value, ttl_in_secs)
 		.await?;
 
 	let oauth_url = format!("https://github.com/login/oauth/authorize?client_id={client_id}&scope={scope}&state={state}");
-	context.success(GithubAuthResponse { oauth_url });
-	Ok(context)
+	Ok(GithubAuthResponse { oauth_url })
 }
 
 async fn github_oauth_callback(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-
-	let GithubAuthCallbackRequest { code, state, .. } = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: GithubAuthCallbackPath { workspace_id },
+		query: (),
+		body: GithubAuthCallbackRequest { code, state },
+	}: DecodedRequest<GithubAuthCallbackRequest>,
+) -> Result<(), Error> {
 	// validate the state value
 	let expected_value = workspace_id.as_str();
-	let value_from_redis: Option<String> = context
-		.get_redis_connection()
-		.get(format!("githubAuthState:{state}"))
-		.await?;
+	let value_from_redis: Option<String> =
+		config.redis.get(format!("githubAuthState:{state}")).await?;
 	if !value_from_redis
 		.map(|value| value == expected_value)
 		.unwrap_or(false)
 	{
-		Error::as_result()
-			.status(400)
-			.body(error!(INVALID_STATE_VALUE).to_string())?
+		return Err(ErrorType::InvalidStateValue);
 	}
 
 	#[derive(Deserialize)]
@@ -872,14 +512,8 @@ async fn github_oauth_callback(
 		.build()?
 		.post("https://github.com/login/oauth/access_token")
 		.query(&[
-			(
-				"client_id",
-				context.get_state().config.github.client_id.clone(),
-			),
-			(
-				"client_secret",
-				context.get_state().config.github.client_secret.clone(),
-			),
+			("client_id", config.github.client_id.clone()),
+			("client_secret", config.github.client_secret.clone()),
 			("code", code),
 		])
 		.header("accept", "application/json")
@@ -896,7 +530,7 @@ async fn github_oauth_callback(
 				err
 			})
 			.ok()
-			.status(500)?;
+			.ok_or_else(|| ErrorType::internal_error())?;
 
 	let login_name = github_client
 		.users()
@@ -907,11 +541,11 @@ async fn github_oauth_callback(
 			err
 		})
 		.ok()
-		.status(500)?
+		.ok_or_else(|| ErrorType::internal_error())?
 		.login;
 
 	db::add_git_provider_to_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		"github.com",
 		GitProviderType::Github,
@@ -920,42 +554,37 @@ async fn github_oauth_callback(
 	)
 	.await?;
 
-	context.success(GithubAuthCallbackResponse {});
-	Ok(context)
+	Ok(())
 }
 
 async fn sync_repositories(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: SyncReposPath { workspace_id },
+		query: (),
+		body: (),
+	}: DecodedRequest<SyncReposRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
 
-	let config = context.get_state().config.clone();
 	log::trace!("request_id: {request_id} - Syncing github repos for workspace {workspace_id}");
 
 	let git_provider = db::get_git_provider_details_for_workspace_using_domain(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		"github.com",
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
+
 	let (_login_name, access_token) = git_provider
 		.login_name
 		.zip(git_provider.password)
-		.status(500)?;
+		.ok_or_else(|| ErrorType::internal_error())?;
 
 	if !git_provider.is_syncing {
-		db::set_syncing(
-			context.get_database_connection(),
-			&git_provider.id,
-			true,
-			None,
-		)
-		.await?;
+		db::set_syncing(&mut connection, &git_provider.id, true, None).await?;
 		service::queue_sync_github_repo(
 			&git_provider.workspace_id,
 			&git_provider.id,
@@ -966,70 +595,72 @@ async fn sync_repositories(
 		.await?;
 	}
 
-	context.success(SyncReposResponse {});
-	Ok(context)
+	Ok(());
 }
 
 async fn list_repositories(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: ListReposPath { workspace_id },
+		query: (),
+		body: (),
+	}: DecodedRequest<ListReposRequest>,
+) -> Result<ListReposResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
 
 	log::trace!("request_id: {request_id} - Listing github repos for workspace {workspace_id}");
 
 	let git_provider = db::get_git_provider_details_for_workspace_using_domain(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		"github.com",
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 
-	let repos = db::list_repos_for_git_provider(
-		context.get_database_connection(),
-		&git_provider.id,
-	)
-	.await?
-	.into_iter()
-	.map(|repo| RepositoryDetails {
-		id: repo.git_provider_repo_uid,
-		name: repo.repo_name,
-		repo_owner: repo.repo_owner,
-		clone_url: repo.clone_url,
-		status: repo.status,
-		runner_id: repo.runner_id,
-	})
-	.collect();
+	let repos =
+		db::list_repos_for_git_provider(&mut connection, &git_provider.id)
+			.await?
+			.into_iter()
+			.map(|repo| RepositoryDetails {
+				id: repo.git_provider_repo_uid,
+				name: repo.repo_name,
+				repo_owner: repo.repo_owner,
+				clone_url: repo.clone_url,
+				status: repo.status,
+				runner_id: repo.runner_id,
+			})
+			.collect();
 
-	context.success(ListReposResponse { repos });
-	Ok(context)
+	Ok(ListReposResponse { repos })
 }
 
 async fn get_repo_info(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: GetRepoInfoPath {
+			workspace_id,
+			repo_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<GetRepoInfoRequest>,
+) -> Result<GetRepoInfoResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
 
 	log::trace!("request_id: {request_id} - Activating CI for repo {repo_id}");
 
 	let repo = db::get_repo_details_using_github_uid_for_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&repo_id,
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 
-	context.success(GetRepoInfoResponse {
+	Ok(GetRepoInfoResponse {
 		repo: RepositoryDetails {
 			id: repo.git_provider_repo_uid,
 			name: repo.repo_name,
@@ -1038,62 +669,53 @@ async fn get_repo_info(
 			status: repo.status,
 			runner_id: repo.runner_id,
 		},
-	});
-	Ok(context)
+	})
 }
 
 async fn activate_repo(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: ActivateRepoPath {
+			workspace_id,
+			repo_id,
+		},
+		query: (),
+		body: ActivateRepoRequest { runner_id },
+	}: DecodedRequest<ActivateRepoRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
 
 	log::trace!("request_id: {request_id} - Activating CI for repo {repo_id}");
 
 	let repo = db::get_repo_details_using_github_uid_for_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&repo_id,
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 
 	let git_provider = db::get_git_provider_details_by_id(
-		context.get_database_connection(),
+		&mut connection,
 		&repo.git_provider_id,
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
+
 	let (_login_name, access_token) = git_provider
 		.login_name
 		.zip(git_provider.password)
-		.status(500)?;
+		.ok_or_else(|| ErrorType::internal_error())?;
 
-	let ActivateRepoRequest {
-		workspace_id: _,
-		repo_id: _,
-		runner_id,
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let is_valid_runner = db::get_runners_for_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?
-	.into_iter()
-	.any(|runner| runner.id == runner_id);
+	let is_valid_runner =
+		db::get_runners_for_workspace(&mut connection, &workspace_id)
+			.await?
+			.into_iter()
+			.any(|runner| runner.id == runner_id);
 
 	if !is_valid_runner {
-		return Err(Error::empty()
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string()));
+		return Err(ErrorType::WrongParameters);
 	}
 
 	let github_client =
@@ -1103,14 +725,10 @@ async fn activate_repo(
 				err
 			})
 			.ok()
-			.status(500)?;
+			.ok_or_else(|| ErrorType::internal_error())?;
 
-	let webhook_secret = db::activate_ci_for_repo(
-		context.get_database_connection(),
-		&repo.id,
-		&runner_id,
-	)
-	.await?;
+	let webhook_secret =
+		db::activate_ci_for_repo(&mut connection, &repo.id, &runner_id).await?;
 
 	let _configured_webhook = github_client
 		.repos()
@@ -1126,7 +744,7 @@ async fn activate_repo(
 					secret: webhook_secret,
 					token: "".to_string(),
 					url: service::get_webhook_url_for_repo(
-						&context.get_state().config.api_url,
+						&config.api_url,
 						&repo.id,
 					),
 				}),
@@ -1140,44 +758,47 @@ async fn activate_repo(
 			err
 		})
 		.ok()
-		.status(500)?;
+		.ok_or_else(|| ErrorType::internal_error())?;
 
-	context.success(ActivateRepoResponse {});
-	Ok(context)
+	Ok(())
 }
 
 async fn deactivate_repo(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: DeactivateRepoPath {
+			workspace_id,
+			repo_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<DeactivateRepoRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
 
 	log::trace!(
 		"request_id: {request_id} - Deactivating CI for repo {repo_id}"
 	);
 
 	let repo = db::get_repo_details_using_github_uid_for_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&repo_id,
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 
 	let git_provider = db::get_git_provider_details_by_id(
-		context.get_database_connection(),
+		&mut connection,
 		&repo.git_provider_id,
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 	let (_login_name, access_token) = git_provider
 		.login_name
 		.zip(git_provider.password)
-		.status(500)?;
+		.ok_or_else(|| ErrorType::internal_error())?;
 
 	let github_client =
 		octorust::Client::new("patr", Credentials::Token(access_token))
@@ -1186,10 +807,10 @@ async fn deactivate_repo(
 				err
 			})
 			.ok()
-			.status(500)?;
+			.ok_or_else(|| ErrorType::internal_error())?;
 
 	db::update_repo_status(
-		context.get_database_connection(),
+		&mut connection,
 		&repo.git_provider_id,
 		&repo.git_provider_repo_uid,
 		RepoStatus::Inactive,
@@ -1205,12 +826,10 @@ async fn deactivate_repo(
 			err
 		})
 		.ok()
-		.status(500)?;
+		.ok_or_else(|| ErrorType::internal_error())?;
 
-	let github_webhook_url = service::get_webhook_url_for_repo(
-		&context.get_state().config.api_url,
-		&repo.id,
-	);
+	let github_webhook_url =
+		service::get_webhook_url_for_repo(&config.api_url, &repo.id);
 
 	for webhook in all_webhooks {
 		if webhook.config.url == github_webhook_url {
@@ -1223,126 +842,113 @@ async fn deactivate_repo(
 					err
 				})
 				.ok()
-				.status(500)?;
+				.ok_or_else(|| ErrorType::internal_error())?;
 		}
 	}
 
-	context.success(DeactivateRepoResponse {});
-	Ok(context)
+	Ok(())
 }
 
 async fn get_build_list(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: GetBuildListPath {
+			workspace_id,
+			repo_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<GetBuildListRequest>,
+) -> Result<GetBuildListResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
 
 	log::trace!(
 		"request_id: {request_id} - Getting build list for repo {repo_id}"
 	);
 
 	let repo = db::get_repo_details_using_github_uid_for_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&repo_id,
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 
-	let builds = db::list_build_details_for_repo(
-		context.get_database_connection(),
-		&repo.id,
-	)
-	.await?;
+	let builds =
+		db::list_build_details_for_repo(&mut connection, &repo.id).await?;
 
-	context.success(GetBuildListResponse { builds });
-	Ok(context)
+	Ok(GetBuildListResponse { builds });
 }
 
 async fn get_build_info(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: GetBuildInfoPath {
+			workspace_id,
+			repo_id,
+			build_num,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<GetBuildInfoRequest>,
+) -> Result<GetBuildInfoResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
-	let build_num = context
-		.get_param(request_keys::BUILD_NUM)
-		.unwrap()
-		.parse::<i64>()?;
 
 	log::trace!("request_id: {request_id} - Getting build info for repo {repo_id} - {build_num}");
 
 	let repo = db::get_repo_details_using_github_uid_for_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&repo_id,
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 
-	let build_info = db::get_build_details_for_build(
-		context.get_database_connection(),
-		&repo.id,
-		build_num,
-	)
-	.await?
-	.status(400)
-	.body("build not found")?;
+	let build_info =
+		db::get_build_details_for_build(&mut connection, &repo.id, build_num)
+			.await?
+			.ok_or_else(|| ErrorType::NotFound)?;
 
-	let steps = db::list_build_steps_for_build(
-		context.get_database_connection(),
-		&repo.id,
-		build_num,
-	)
-	.await?;
+	let steps =
+		db::list_build_steps_for_build(&mut connection, &repo.id, build_num)
+			.await?;
 
-	context.success(GetBuildInfoResponse { build_info, steps });
-	Ok(context)
+	Ok(GetBuildInfoResponse { build_info, steps });
 }
 
 async fn get_build_logs(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path:
+			GetBuildLogPath {
+				workspace_id,
+				repo_id,
+				build_num,
+				step,
+			},
+		query: (),
+		body: (),
+	}: DecodedRequest<GetBuildLogRequest>,
+) -> Result<GetBuildLogResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
-	let build_num = context
-		.get_param(request_keys::BUILD_NUM)
-		.unwrap()
-		.parse::<i64>()?;
-	let step = context
-		.get_param(request_keys::STEP)
-		.unwrap()
-		.parse::<i32>()?;
 
 	log::trace!("request_id: {request_id} - Getting build logs for repo {repo_id} - {build_num} - {step}");
 
 	let repo = db::get_repo_details_using_github_uid_for_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&repo_id,
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 
-	let build_created_time = db::get_build_created_time(
-		context.get_database_connection(),
-		&repo.id,
-		build_num,
-	)
-	.await?
-	.status(500)
-	.body(error!(SERVER_ERROR).to_string())?;
+	let build_created_time =
+		db::get_build_created_time(&mut connection, &repo.id, build_num)
+			.await?
+			.ok_or_else(|| ErrorType::internal_error())?;
 
 	let build_step_id = BuildStepId {
 		build_id: BuildId {
@@ -1353,7 +959,7 @@ async fn get_build_logs(
 		step_id: step,
 	};
 
-	let loki = context.get_state().config.loki.clone();
+	let loki = config.loki.clone();
 	let response = reqwest::Client::new()
 		.get(format!(
 			"https://{}/loki/api/v1/query_range?query={{namespace=\"{}\",job=\"{}/{}\"}}&start={}",
@@ -1389,57 +995,53 @@ async fn get_build_logs(
 		})
 		.collect();
 
-	context.success(GetBuildLogResponse { logs });
-	Ok(context)
+	Ok(GetBuildLogResponse { logs });
 }
 
 async fn cancel_build(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: CancelBuildPath {
+			workspace_id,
+			repo_id,
+			build_num,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<CancelBuildRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
-	let build_num = context
-		.get_param(request_keys::BUILD_NUM)
-		.unwrap()
-		.parse::<i64>()?;
 
 	log::trace!("request_id: {request_id} - Stopping build for repo {repo_id} - {build_num}");
 
 	let repo = db::get_repo_details_using_github_uid_for_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&repo_id,
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 
 	// get the build status with lock, so that it won't be updated in rabbitmq
 	// until this route ends.
-	let build_status = db::get_build_status_for_update(
-		context.get_database_connection(),
-		&repo.id,
-		build_num,
-	)
-	.await?
-	.status(400)
-	.body("Build does not exists")?;
+	let build_status =
+		db::get_build_status_for_update(&mut connection, &repo.id, build_num)
+			.await?
+			.ok_or_else(|| ErrorType::NotFound)?;
 
 	if build_status == BuildStatus::Running ||
 		build_status == BuildStatus::WaitingToStart
 	{
 		db::update_build_status(
-			context.get_database_connection(),
+			&mut connection,
 			&repo.id,
 			build_num,
 			BuildStatus::Cancelled,
 		)
 		.await?;
 		db::update_build_finished_time(
-			context.get_database_connection(),
+			&mut connection,
 			&repo.id,
 			build_num,
 			&Utc::now(),
@@ -1447,7 +1049,7 @@ async fn cancel_build(
 		.await?;
 
 		service::update_github_commit_status_for_build(
-			context.get_database_connection(),
+			&mut connection,
 			&workspace_id,
 			&repo.id,
 			build_num,
@@ -1456,49 +1058,49 @@ async fn cancel_build(
 		.await?;
 	}
 
-	context.success(CancelBuildResponse {});
-	Ok(context)
+	Ok(());
 }
 
 async fn restart_build(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: RestartBuildPath {
+			workspace_id,
+			repo_id,
+			build_num,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<RestartBuildRequest>,
+) -> Result<RestartBuildResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
-	let build_num = context
-		.get_param(request_keys::BUILD_NUM)
-		.unwrap()
-		.parse::<i64>()?;
 
 	log::trace!("request_id: {request_id} - Restarting build for repo {repo_id} - {build_num}");
 
 	let repo = db::get_repo_details_using_github_uid_for_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&repo_id,
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 
 	let git_provider = db::get_git_provider_details_by_id(
-		context.get_database_connection(),
+		&mut connection,
 		&repo.git_provider_id,
 	)
 	.await?
-	.status(500)?;
-	let access_token = git_provider.password.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 
-	let previous_build = db::get_build_details_for_build(
-		context.get_database_connection(),
-		&repo.id,
-		build_num,
-	)
-	.await?
-	.status(500)?;
+	let access_token = git_provider
+		.password
+		.ok_or_else(|| ErrorType::internal_error())?;
+
+	let previous_build =
+		db::get_build_details_for_build(&mut connection, &repo.id, build_num)
+			.await?
+			.ok_or_else(|| ErrorType::internal_error())?;
 
 	let event_type = if let Some(branch_name) =
 		previous_build.git_ref.strip_prefix("refs/heads/")
@@ -1536,7 +1138,7 @@ async fn restart_build(
 			err
 		})
 		.ok()
-		.status(500)?;
+		.ok_or_else(|| ErrorType::internal_error())?;
 
 		let pr_details = github_client
 			.pulls()
@@ -1547,7 +1149,7 @@ async fn restart_build(
 				err
 			})
 			.ok()
-			.status(500)?;
+			.ok_or_else(|| ErrorType::internal_error())?;
 
 		EventType::PullRequest(PullRequest {
 			pr_repo_owner: pr_details
@@ -1570,7 +1172,8 @@ async fn restart_build(
 			to_be_committed_branch_name: pr_details.base.ref_,
 		})
 	} else {
-		return Error::as_result().status(500)?;
+		return Error::as_result()
+			.ok_or_else(|| ErrorType::internal_error())?;
 	};
 
 	let ci_file_content = service::fetch_ci_file_content_from_github_repo(
@@ -1581,15 +1184,12 @@ async fn restart_build(
 	)
 	.await?;
 
-	let build_num = service::create_build_for_repo(
-		context.get_database_connection(),
-		&repo.id,
-		&event_type,
-	)
-	.await?;
+	let build_num =
+		service::create_build_for_repo(&mut connection, &repo.id, &event_type)
+			.await?;
 
 	let ci_flow = match service::parse_ci_file_content(
-		context.get_database_connection(),
+		&mut connection,
 		&git_provider.workspace_id,
 		&ci_file_content,
 		&request_id,
@@ -1599,27 +1199,27 @@ async fn restart_build(
 		ParseStatus::Success(ci_file) => ci_file,
 		ParseStatus::Error(err) => {
 			db::update_build_status(
-				context.get_database_connection(),
+				&mut connection,
 				&repo.id,
 				build_num,
 				BuildStatus::Errored,
 			)
 			.await?;
 			db::update_build_message(
-				context.get_database_connection(),
+				&mut connection,
 				&repo.id,
 				build_num,
 				&err,
 			)
 			.await?;
 			db::update_build_finished_time(
-				context.get_database_connection(),
+				&mut connection,
 				&repo.id,
 				build_num,
 				&Utc::now(),
 			)
 			.await?;
-			return Ok(context);
+			return;
 		}
 	};
 
@@ -1632,51 +1232,51 @@ async fn restart_build(
 			service::EvaluationStatus::Success(works) => works,
 			service::EvaluationStatus::Error(err) => {
 				db::update_build_status(
-					context.get_database_connection(),
+					&mut connection,
 					&repo.id,
 					build_num,
 					BuildStatus::Errored,
 				)
 				.await?;
 				db::update_build_message(
-					context.get_database_connection(),
+					&mut connection,
 					&repo.id,
 					build_num,
 					&err,
 				)
 				.await?;
 				db::update_build_finished_time(
-					context.get_database_connection(),
+					&mut connection,
 					&repo.id,
 					build_num,
 					&Utc::now(),
 				)
 				.await?;
-				return Ok(context);
+				return;
 			}
 		},
 		Err(err) => {
 			log::info!("request_id: {request_id} - Error while evaluating ci work steps {err:#?}");
 			db::update_build_status(
-				context.get_database_connection(),
+				&mut connection,
 				&repo.id,
 				build_num,
 				BuildStatus::Errored,
 			)
 			.await?;
 			db::update_build_finished_time(
-				context.get_database_connection(),
+				&mut connection,
 				&repo.id,
 				build_num,
 				&Utc::now(),
 			)
 			.await?;
-			return Ok(context);
+			return;
 		}
 	};
 
 	service::add_build_steps_in_db(
-		context.get_database_connection(),
+		&mut connection,
 		&repo.id,
 		build_num,
 		&works,
@@ -1685,7 +1285,7 @@ async fn restart_build(
 	.await?;
 
 	service::update_github_commit_status_for_build(
-		context.get_database_connection(),
+		&mut connection,
 		&git_provider.workspace_id,
 		&repo.id,
 		build_num,
@@ -1693,7 +1293,7 @@ async fn restart_build(
 	)
 	.await?;
 
-	context.commit_database_transaction().await?;
+	connection.commit().await?;
 
 	service::queue_check_and_start_ci_build(
 		BuildId {
@@ -1704,49 +1304,51 @@ async fn restart_build(
 		pipeline.services,
 		works,
 		event_type,
-		&context.get_state().config,
+		&config,
 		&request_id,
 	)
 	.await?;
 
-	context.success(RestartBuildResponse {
+	Ok(RestartBuildResponse {
 		build_num: build_num as u64,
 	});
-	Ok(context)
 }
 
 async fn start_build_for_branch(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: StartBuildPath {
+			workspace_id,
+			repo_id,
+			branch_name,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<StartBuildRequest>,
+) -> Result<StartBuildResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
-	let branch_name = context
-		.get_param(request_keys::BRANCH_NAME)
-		.unwrap()
-		.clone();
 
 	log::trace!("request_id: {request_id} - Starting build for repo {repo_id} at branch {branch_name}");
 
 	let repo = db::get_repo_details_using_github_uid_for_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&repo_id,
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 
 	let git_provider = db::get_git_provider_details_by_id(
-		context.get_database_connection(),
+		&mut connection,
 		&repo.git_provider_id,
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 
-	let access_token = git_provider.password.status(500)?;
+	let access_token = git_provider
+		.password
+		.ok_or_else(|| ErrorType::internal_error())?;
 
 	let github_client =
 		octorust::Client::new("patr", Credentials::Token(access_token.clone()))
@@ -1755,7 +1357,7 @@ async fn start_build_for_branch(
 				err
 			})
 			.ok()
-			.status(500)?;
+			.ok_or_else(|| ErrorType::internal_error())?;
 
 	let github_branch = github_client
 		.repos()
@@ -1766,7 +1368,7 @@ async fn start_build_for_branch(
 			err
 		})
 		.ok()
-		.status(500)?;
+		.ok_or_else(|| ErrorType::internal_error())?;
 
 	let event_type = EventType::Commit(Commit {
 		repo_owner: repo.repo_owner.clone(),
@@ -1785,15 +1387,12 @@ async fn start_build_for_branch(
 	)
 	.await?;
 
-	let build_num = service::create_build_for_repo(
-		context.get_database_connection(),
-		&repo.id,
-		&event_type,
-	)
-	.await?;
+	let build_num =
+		service::create_build_for_repo(&mut connection, &repo.id, &event_type)
+			.await?;
 
 	let ci_flow = match service::parse_ci_file_content(
-		context.get_database_connection(),
+		&mut connection,
 		&git_provider.workspace_id,
 		&ci_file_content,
 		&request_id,
@@ -1803,27 +1402,27 @@ async fn start_build_for_branch(
 		ParseStatus::Success(ci_file) => ci_file,
 		ParseStatus::Error(err) => {
 			db::update_build_status(
-				context.get_database_connection(),
+				&mut connection,
 				&repo.id,
 				build_num,
 				BuildStatus::Errored,
 			)
 			.await?;
 			db::update_build_message(
-				context.get_database_connection(),
+				&mut connection,
 				&repo.id,
 				build_num,
 				&err,
 			)
 			.await?;
 			db::update_build_finished_time(
-				context.get_database_connection(),
+				&mut connection,
 				&repo.id,
 				build_num,
 				&Utc::now(),
 			)
 			.await?;
-			return Ok(context);
+			return;
 		}
 	};
 
@@ -1836,51 +1435,51 @@ async fn start_build_for_branch(
 			service::EvaluationStatus::Success(works) => works,
 			service::EvaluationStatus::Error(err) => {
 				db::update_build_status(
-					context.get_database_connection(),
+					&mut connection,
 					&repo.id,
 					build_num,
 					BuildStatus::Errored,
 				)
 				.await?;
 				db::update_build_message(
-					context.get_database_connection(),
+					&mut connection,
 					&repo.id,
 					build_num,
 					&err,
 				)
 				.await?;
 				db::update_build_finished_time(
-					context.get_database_connection(),
+					&mut connection,
 					&repo.id,
 					build_num,
 					&Utc::now(),
 				)
 				.await?;
-				return Ok(context);
+				return;
 			}
 		},
 		Err(err) => {
 			log::info!("request_id: {request_id} - Error while evaluating ci work steps {err:#?}");
 			db::update_build_status(
-				context.get_database_connection(),
+				&mut connection,
 				&repo.id,
 				build_num,
 				BuildStatus::Errored,
 			)
 			.await?;
 			db::update_build_finished_time(
-				context.get_database_connection(),
+				&mut connection,
 				&repo.id,
 				build_num,
 				&Utc::now(),
 			)
 			.await?;
-			return Ok(context);
+			return;
 		}
 	};
 
 	service::add_build_steps_in_db(
-		context.get_database_connection(),
+		&mut connection,
 		&repo.id,
 		build_num,
 		&works,
@@ -1888,10 +1487,10 @@ async fn start_build_for_branch(
 	)
 	.await?;
 
-	context.commit_database_transaction().await?;
+	connection.commit().await?;
 
 	service::update_github_commit_status_for_build(
-		context.get_database_connection(),
+		&mut connection,
 		&git_provider.workspace_id,
 		&repo.id,
 		build_num,
@@ -1908,49 +1507,52 @@ async fn start_build_for_branch(
 		pipeline.services,
 		works,
 		event_type,
-		&context.get_state().config,
+		&config,
 		&request_id,
 	)
 	.await?;
 
-	context.success(RestartBuildResponse {
+	Ok(StartBuildResponse {
 		build_num: build_num as u64,
 	});
-	Ok(context)
 }
 
 async fn list_git_ref_for_repo(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: ListGitRefForRepoPath {
+			workspace_id,
+			repo_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<ListGitRefForRepoRequest>,
+) -> Result<ListGitRefForRepoResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
 
 	log::trace!(
 		"request_id: {request_id} - Fetching all git ref for {repo_id}"
 	);
 
 	let repo = db::get_repo_details_using_github_uid_for_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&repo_id,
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 
 	let git_provider = db::get_git_provider_details_by_id(
-		context.get_database_connection(),
+		&mut connection,
 		&repo.git_provider_id,
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 	let (_login_name, access_token) = git_provider
 		.login_name
 		.zip(git_provider.password)
-		.status(500)?;
+		.ok_or_else(|| ErrorType::internal_error())?;
 
 	let refs = service::list_git_ref_for_repo(
 		&repo.repo_owner,
@@ -1959,41 +1561,44 @@ async fn list_git_ref_for_repo(
 	)
 	.await?;
 
-	context.success(ListGitRefForRepoResponse { refs });
-	Ok(context)
+	Ok(ListGitRefForRepoResponse { refs });
 }
 
 async fn get_patr_ci_file(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: GetPatrCiFilePath {
+			workspace_id,
+			repo_id,
+			git_ref,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<GetPatrCiFileRequest>,
+) -> Result<GetPatrCiFileResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
-	let git_ref = context.get_param(request_keys::GIT_REF).unwrap().clone();
 
 	log::trace!("request_id: {request_id} - Fetching CI file for {repo_id} at ref {git_ref}");
 
 	let repo = db::get_repo_details_using_github_uid_for_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&repo_id,
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 
 	let git_provider = db::get_git_provider_details_by_id(
-		context.get_database_connection(),
+		&mut connection,
 		&repo.git_provider_id,
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 	let (_login_name, access_token) = git_provider
 		.login_name
 		.zip(git_provider.password)
-		.status(500)?;
+		.ok_or_else(|| ErrorType::internal_error())?;
 
 	let ci_file_content = service::fetch_ci_file_content_from_github_repo(
 		&repo.repo_owner,
@@ -2003,56 +1608,54 @@ async fn get_patr_ci_file(
 	)
 	.await?;
 
-	context.success(GetPatrCiFileResponse {
+	Ok(GetPatrCiFileResponse {
 		file_content: Base64String::from(ci_file_content),
 	});
-	Ok(context)
 }
 
 async fn write_patr_ci_file(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: WritePatrCiFilePath {
+			workspace_id,
+			repo_id,
+		},
+		query: (),
+		body:
+			WritePatrCiFileRequest {
+				commit_message,
+				parent_commit_sha,
+				branch_name,
+				ci_file_content,
+			},
+	}: DecodedRequest<WritePatrCiFileRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
 
 	log::trace!(
 		"request_id: {request_id} - Writing patr ci fiile to repo {repo_id}"
 	);
 
-	let WritePatrCiFileRequest {
-		commit_message,
-		parent_commit_sha,
-		branch_name,
-		ci_file_content,
-		..
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
 	let repo = db::get_repo_details_using_github_uid_for_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&repo_id,
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 
 	let git_provider = db::get_git_provider_details_by_id(
-		context.get_database_connection(),
+		&mut connection,
 		&repo.git_provider_id,
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 
 	let (_login_name, access_token) = git_provider
 		.login_name
 		.zip(git_provider.password)
-		.status(500)?;
+		.ok_or_else(|| ErrorType::internal_error())?;
 
 	service::write_ci_file_content_to_github_repo(
 		&repo.repo_owner,
@@ -2065,38 +1668,36 @@ async fn write_patr_ci_file(
 	)
 	.await?;
 
-	context.success(WritePatrCiFileResponse {});
-	Ok(context)
+	Ok(());
 }
 
 async fn sign_out(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: GithubSignOutPath { workspace_id },
+		query: (),
+		body: (),
+	}: DecodedRequest<GithubSignOutRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
 
 	log::trace!("request_id: {request_id} - Signout github from patr for workspace {workspace_id}");
 
 	let git_provider = db::get_git_provider_details_for_workspace_using_domain(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		"github.com",
 	)
 	.await?
-	.status(500)?;
+	.ok_or_else(|| ErrorType::internal_error())?;
 	let (_login_name, access_token) = git_provider
 		.login_name
 		.zip(git_provider.password)
-		.status(500)?;
+		.ok_or_else(|| ErrorType::internal_error())?;
 
-	db::remove_git_provider_credentials(
-		context.get_database_connection(),
-		&git_provider.id,
-	)
-	.await?;
+	db::remove_git_provider_credentials(&mut connection, &git_provider.id)
+		.await?;
 
 	let github_client =
 		octorust::Client::new("patr", Credentials::Token(access_token))
@@ -2105,20 +1706,18 @@ async fn sign_out(
 				err
 			})
 			.ok()
-			.status(500)?;
+			.ok_or_else(|| ErrorType::internal_error())?;
 
-	let repos = db::list_repos_for_git_provider(
-		context.get_database_connection(),
-		&git_provider.id,
-	)
-	.await?
-	.into_iter()
-	.filter(|repo| repo.status == RepoStatus::Active)
-	.collect::<Vec<_>>();
+	let repos =
+		db::list_repos_for_git_provider(&mut connection, &git_provider.id)
+			.await?
+			.into_iter()
+			.filter(|repo| repo.status == RepoStatus::Active)
+			.collect::<Vec<_>>();
 
 	for repo in repos {
 		db::update_repo_status(
-			context.get_database_connection(),
+			&mut connection,
 			&repo.git_provider_id,
 			&repo.git_provider_repo_uid,
 			RepoStatus::Inactive,
@@ -2134,12 +1733,10 @@ async fn sign_out(
 				err
 			})
 			.ok()
-			.status(500)?;
+			.ok_or_else(|| ErrorType::internal_error())?;
 
-		let github_webhook_url = service::get_webhook_url_for_repo(
-			&context.get_state().config.api_url,
-			&repo.id,
-		);
+		let github_webhook_url =
+			service::get_webhook_url_for_repo(&config.api_url, &repo.id);
 		for webhook in webhooks {
 			if webhook.config.url == github_webhook_url {
 				github_client
@@ -2155,11 +1752,10 @@ async fn sign_out(
 						err
 					})
 					.ok()
-					.status(500)?;
+					.ok_or_else(|| ErrorType::internal_error())?;
 			}
 		}
 	}
 
-	context.success(GithubSignOutResponse {});
-	Ok(context)
+	Ok(());
 }

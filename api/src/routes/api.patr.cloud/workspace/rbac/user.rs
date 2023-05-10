@@ -1,222 +1,143 @@
 use api_models::{
-	models::workspace::rbac::user::{
-		AddUserToWorkspaceRequest,
-		AddUserToWorkspaceResponse,
-		ListUsersWithRolesInWorkspaceResponse,
-		RemoveUserFromWorkspaceResponse,
-		UpdateUserRolesInWorkspaceRequest,
-	},
-	utils::Uuid,
+	models::prelude::*,
+	utils::{DecodedRequest, DtoRequestExt, Uuid},
+	ErrorType,
 };
+use axum::{extract::State, Extension, Router};
 use chrono::{Duration, Utc};
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use sqlx::Connection;
 
 use crate::{
-	app::{create_axum_router, App},
+	app::App,
 	db,
-	error,
-	models::rbac::permissions,
-	pin_fn,
+	models::{rbac::permissions, UserAuthenticationData},
+	prelude::*,
 	redis::revoke_user_tokens_created_before_timestamp,
 	service::get_access_token_expiry,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::Error,
 };
 
-/// # Description
-/// This function is used to create a sub app for every endpoint listed. It
-/// creates an eve app which binds the endpoint with functions.
-///
-/// # Arguments
-/// * `app` - an object of type [`App`] which contains all the configuration of
-///   api including the
-/// database connections.
-///
-/// # Returns
-/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
-/// containing context, middleware, object of [`App`] and Error
-///
-/// [`App`]: App
 pub fn create_sub_app(app: &App) -> Router<App> {
-	let mut sub_app = create_axum_router(app);
+	Router::new()
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::rbac::user::LIST,
+				|ListUsersWithRolesInWorkspacePath { workspace_id },
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	// List all users with their roles in this workspace
-	sub_app.get(
-		"/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::rbac::user::LIST,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					db::get_resource_by_id(&mut connection, &workspace_id)
+						.await?;
+				},
+			),
+			app.clone(),
+			list_users_with_roles_in_workspace,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::rbac::user::ADD,
+				|AddUserToWorkspacePath {
+				     workspace_id,
+				     user_id,
+				 },
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &workspace_id)
+						.await?;
+				},
+			),
+			app.clone(),
+			add_user_to_workspace,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::rbac::user::UPDATE_ROLES,
+				|UpdateUserRolesInWorkspacePath {
+				     workspace_id,
+				     user_id,
+				 },
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(
-				list_users_with_roles_in_workspace
-			)),
-		],
-	);
+					db::get_resource_by_id(&mut connection, &workspace_id)
+						.await?;
+				},
+			),
+			app.clone(),
+			update_user_roles_for_workspace,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::rbac::user::REMOVE,
+				|RemoveUserFromWorkspacePath {
+				     workspace_id,
+				     user_id,
+				 },
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	// Add a user to a workspace
-	sub_app.post(
-		"/:userId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::rbac::user::ADD,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(add_user_to_workspace)),
-		],
-	);
-
-	sub_app.put(
-		"/:userId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::rbac::user::UPDATE_ROLES,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(
-				update_user_roles_for_workspace
-			)),
-		],
-	);
-
-	sub_app.delete(
-		"/:userId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::rbac::user::REMOVE,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(remove_user_from_workspace)),
-		],
-	);
-
-	sub_app
+					db::get_resource_by_id(&mut connection, &workspace_id)
+						.await?;
+				},
+			),
+			app.clone(),
+			remove_user_from_workspace,
+		)
 }
 
 async fn list_users_with_roles_in_workspace(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id)?;
-
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(access_token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: ListUsersWithRolesInWorkspacePath { workspace_id },
+		query: (),
+		body: (),
+	}: DecodedRequest<ListUsersWithRolesInWorkspaceRequest>,
+) -> Result<ListUsersWithRolesInWorkspaceResponse, Error> {
 	let users = db::list_all_users_with_roles_in_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 	)
 	.await?
 	.into_iter()
 	.collect();
 
-	context.success(ListUsersWithRolesInWorkspaceResponse { users });
-	Ok(context)
+	Ok(ListUsersWithRolesInWorkspaceResponse { users })
 }
 
 async fn add_user_to_workspace(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id)?;
-
-	let user_id = context.get_param(request_keys::USER_ID).unwrap();
-	let user_id = Uuid::parse_str(user_id)?;
-
-	let AddUserToWorkspaceRequest { roles, .. } = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(access_token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: AddUserToWorkspacePath {
+			workspace_id,
+			user_id,
+		},
+		query: (),
+		body: AddUserToWorkspaceRequest { roles },
+	}: DecodedRequest<AddUserToWorkspaceRequest>,
+) -> Result<(), Error> {
 	db::add_user_to_workspace_with_roles(
-		context.get_database_connection(),
+		&mut connection,
 		&user_id,
 		&roles,
 		&workspace_id,
@@ -225,47 +146,44 @@ async fn add_user_to_workspace(
 
 	let ttl = get_access_token_expiry() + Duration::hours(2); // 2 hrs buffer time
 	revoke_user_tokens_created_before_timestamp(
-		context.get_redis_connection(),
+		config.redis,
 		&user_id,
 		&Utc::now(),
 		Some(&ttl),
 	)
 	.await?;
 
-	context.success(AddUserToWorkspaceResponse {});
-	Ok(context)
+	Ok(())
 }
 
 async fn update_user_roles_for_workspace(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(access_token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: UpdateUserRolesInWorkspacePath {
+			workspace_id,
+			user_id,
+		},
+		query: (),
+		body: UpdateUserRolesInWorkspaceRequest { roles },
+	}: DecodedRequest<UpdateUserRolesInWorkspaceRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id)?;
-
-	let user_id = context.get_param(request_keys::USER_ID).unwrap();
-	let user_id = Uuid::parse_str(user_id)?;
 
 	log::trace!(
 		"request_id: {} - requested to update user for workspace",
 		request_id,
 	);
 
-	let UpdateUserRolesInWorkspaceRequest { roles, .. } = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
 	db::remove_user_roles_from_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&user_id,
 		&workspace_id,
 	)
 	.await?;
 	db::add_user_to_workspace_with_roles(
-		context.get_database_connection(),
+		&mut connection,
 		&user_id,
 		&roles,
 		&workspace_id,
@@ -274,28 +192,30 @@ async fn update_user_roles_for_workspace(
 
 	let ttl = get_access_token_expiry() + Duration::hours(2); // 2 hrs buffer time
 	revoke_user_tokens_created_before_timestamp(
-		context.get_redis_connection(),
+		config.redis,
 		&user_id,
 		&Utc::now(),
 		Some(&ttl),
 	)
 	.await?;
 
-	context.success(AddUserToWorkspaceResponse {});
-	Ok(context)
+	Ok(())
 }
 
 async fn remove_user_from_workspace(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(access_token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: RemoveUserFromWorkspacePath {
+			workspace_id,
+			user_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<RemoveUserFromWorkspaceRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id)?;
-
-	let user_id = context.get_param(request_keys::USER_ID).unwrap();
-	let user_id = Uuid::parse_str(user_id)?;
 
 	log::trace!(
 		"request_id: {} - requested to remove user - {} from workspace",
@@ -304,7 +224,7 @@ async fn remove_user_from_workspace(
 	);
 
 	db::remove_user_roles_from_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&user_id,
 		&workspace_id,
 	)
@@ -318,13 +238,12 @@ async fn remove_user_from_workspace(
 
 	let ttl = get_access_token_expiry() + Duration::hours(2); // 2 hrs buffer time
 	revoke_user_tokens_created_before_timestamp(
-		context.get_redis_connection(),
+		config.redis,
 		&user_id,
 		&Utc::now(),
 		Some(&ttl),
 	)
 	.await?;
 
-	context.success(RemoveUserFromWorkspaceResponse {});
-	Ok(context)
+	Ok(())
 }

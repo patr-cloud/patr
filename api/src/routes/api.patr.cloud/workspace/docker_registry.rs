@@ -8,7 +8,6 @@ use chrono::Utc;
 use crate::{
 	app::App,
 	db,
-	error,
 	models::{
 		rbac::{self, permissions},
 		ResourceType,
@@ -19,20 +18,6 @@ use crate::{
 	utils::{validator, Error},
 };
 
-/// # Description
-/// This function is used to create a sub app for every endpoint listed. It
-/// creates an eve app which binds the endpoint with functions.
-///
-/// # Arguments
-/// * `app` - an object of type [`App`] which contains all the configuration of
-///   api including the
-/// database connections.
-///
-/// # Returns
-/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
-/// containing context, middleware, object of [`App`] and Error
-///
-/// [`App`]: App
 pub fn create_sub_app(app: &App) -> Router<App> {
 	Router::new()
 		.mount_protected_dto(
@@ -253,41 +238,6 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 		)
 }
 
-// middleware to create a new docker repository
-// possible request body to create repository
-// {
-// 	"repoName"
-// }
-/// # Description
-/// This middleware creates a new docker repository
-/// required inputs:
-/// auth token in the authorization headers
-/// workspace id in url
-/// ```
-/// {
-///    repository: ,
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false,
-///    id:
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn create_docker_repository(
 	mut connection: Connection,
 	State(config): State<Config>,
@@ -367,38 +317,6 @@ async fn create_docker_repository(
 	Ok(CreateDockerRepositoryResponse { id: resource_id })
 }
 
-/// # Description
-/// This function is used to list the docker repositories registered under
-/// workspace
-/// required inputs:
-/// auth token in the authorization headers
-/// workspace id in url
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false,
-///    repository:
-///    [
-///       {
-///          id: ,
-///          name:
-///       }
-///    ]
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn list_docker_repositories(
 	mut connection: Connection,
 	State(config): State<Config>,
@@ -435,25 +353,6 @@ async fn list_docker_repositories(
 	Ok(ListDockerRepositoriesResponse { repositories })
 }
 
-/// # Description
-/// This function is used to get information about a docker repository
-/// required inputs:
-/// auth token in the authorization headers
-/// repository id in url
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn get_docker_repository_info(
 	mut connection: Connection,
 	State(config): State<Config>,
@@ -515,26 +414,6 @@ async fn get_docker_repository_info(
 	})
 }
 
-/// # Description
-/// This function is used to get information about a docker repository's image
-/// required inputs:
-/// auth token in the authorization headers
-/// repositoryId in the URL
-/// image digest in the URL
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn get_repository_image_details(
 	mut connection: Connection,
 	State(config): State<Config>,
@@ -620,26 +499,6 @@ async fn get_repository_image_exposed_port(
 	Ok(GetDockerRepositoryExposedPortResponse { ports })
 }
 
-/// # Description
-/// This function is used to get information about a docker repository's tag
-/// required inputs:
-/// auth token in the authorization headers
-/// repositoryId in the URL
-/// tag in the URL
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn get_list_of_repository_tags(
 	mut connection: Connection,
 	State(config): State<Config>,
@@ -682,26 +541,6 @@ async fn get_list_of_repository_tags(
 	Ok(ListDockerRepositoryTagsResponse { tags })
 }
 
-/// # Description
-/// This function is used to get information about a docker repository's tag
-/// required inputs:
-/// auth token in the authorization headers
-/// repositoryId in the URL
-/// tag in the URL
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn get_repository_tag_details(
 	mut connection: Connection,
 	State(config): State<Config>,

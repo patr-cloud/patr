@@ -14,515 +14,272 @@ use crate::{
 	models::rbac::permissions,
 	prelude::*,
 	service,
-	utils::{constants::request_keys, Error},
+	utils::Error,
 };
 
-/// # Description
-/// This function is used to create a sub app for every endpoint listed. It
-/// creates an eve app which binds the endpoint with functions. This file
-/// contains major enpoints which are meant for the workspaces, and all other
-/// endpoints will come uder these
-///
-/// # Arguments
-/// * `app` - an object of type [`App`] which contains all the configuration of
-///   api including the
-/// database connections.
-///
-/// # Returns
-/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
-/// containing context, middleware, object of [`App`] and Error
-///
-/// [`App`]: App
 pub fn create_sub_app(app: &App) -> Router<App> {
-	let mut sub_app = create_axum_router(app);
+	Router::new()
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::billing::billing_address::ADD,
+				|AddBillingAddressPath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	sub_app.post(
-		"/billing-address",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission:
-					permissions::workspace::billing::billing_address::ADD,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(add_billing_address)),
-		],
-	);
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			add_billing_address,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::billing::billing_address::EDIT,
+				|UpdateBillingAddressPath { workspace_id },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	sub_app.patch(
-		"/billing-address",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission:
-					permissions::workspace::billing::billing_address::EDIT,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			update_billing_address,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::billing::billing_address::DELETE,
+				|DeleteBillingAddressPath { workspace_id },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			delete_billing_address,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::billing::payment_method::ADD,
+				|AddPaymentMethodPath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			add_payment_method,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::billing::payment_method::LIST,
+				|GetPaymentMethodPath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(update_billing_address)),
-		],
-	);
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			get_payment_method,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::billing::payment_method::DELETE,
+				|DeletePaymentMethodPath { workspace_id, .. },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	sub_app.delete(
-		"/billing-address",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission:
-					permissions::workspace::billing::billing_address::DELETE,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			delete_payment_method,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::billing::payment_method::ADD,
+				|ConfirmPaymentMethodPath { workspace_id, .. },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			confirm_payment_method,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::billing::payment_method::ADD,
+				|ConfirmPaymentMethodPath { workspace_id, .. },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			confirm_payment_method,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::billing::payment_method::EDIT,
+				|SetPrimaryCardPath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(delete_billing_address)),
-		],
-	);
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			set_primary_card,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::billing::billing_address::INFO,
+				|GetBillingAddressPath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	sub_app.post(
-		"/payment-method",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission:
-					permissions::workspace::billing::payment_method::ADD,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			get_billing_address,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::billing::MAKE_PAYMENT,
+				|ConfirmPaymentMethodPath { workspace_id, .. },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			add_credits,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::billing::MAKE_PAYMENT,
+				|ConfirmCreditsPath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			confirm_credits,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::billing::MAKE_PAYMENT,
+				|MakePaymentPath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(add_payment_method)),
-		],
-	);
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			make_payment,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::billing::INFO,
+				|GetCurrentUsagePath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	sub_app.get(
-		"/payment-method",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission:
-					permissions::workspace::billing::payment_method::LIST,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			get_current_bill,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::billing::INFO,
+				|GetBillBreakdownPath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			get_bill_breakdown,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::billing::INFO,
+				|GetTransactionHistoryPath { workspace_id },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_payment_method)),
-		],
-	);
-
-	sub_app.delete(
-		"/payment-method/:paymentMethodId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission:
-					permissions::workspace::billing::payment_method::DELETE,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(delete_payment_method)),
-		],
-	);
-
-	sub_app.post(
-		"/confirm-payment-method",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission:
-					permissions::workspace::billing::payment_method::ADD,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(confirm_payment_method)),
-		],
-	);
-
-	sub_app.post(
-		"/set-primary-card",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission:
-					permissions::workspace::billing::payment_method::EDIT,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(set_primary_card)),
-		],
-	);
-
-	sub_app.get(
-		"/billing-address",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::billing::billing_address::INFO,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_billing_address)),
-		],
-	);
-
-	sub_app.post(
-		"/add-credits",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission: permissions::workspace::billing::MAKE_PAYMENT,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(add_credits)),
-		],
-	);
-
-	sub_app.post(
-		"/confirm-credits",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission: permissions::workspace::billing::MAKE_PAYMENT,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(confirm_credits)),
-		],
-	);
-
-	sub_app.post(
-		"/make-payment",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission: permissions::workspace::billing::MAKE_PAYMENT,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(make_payment)),
-		],
-	);
-
-	sub_app.post(
-		"/confirm-payment",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission: permissions::workspace::billing::MAKE_PAYMENT,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(confirm_payment)),
-		],
-	);
-
-	sub_app.get(
-		"/get-current-usage",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::billing::INFO,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_current_bill)),
-		],
-	);
-
-	sub_app.get(
-		"/bill-breakdown",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::billing::INFO,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_bill_breakdown)),
-		],
-	);
-
-	sub_app.get(
-		"/transaction-history",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission: permissions::workspace::billing::INFO,
-				resource: api_macros::closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource =
-						db::get_resource_by_id(&mut connection, &workspace_id)
-							.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_transaction_history)),
-		],
-	);
-
-	sub_app
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			get_transaction_history,
+		)
 }
 
 async fn add_billing_address(
@@ -545,46 +302,6 @@ async fn add_billing_address(
 	Ok(())
 }
 
-/// # Description
-/// This function is used to update the workspace details
-/// required inputs:
-/// auth token in the authorization headers
-/// workspace id in the url
-/// ```
-/// {
-///   firstName: "",
-///   lastName: "",
-///   email: "",
-///   phone: "",
-///   addressDetails: {
-///                         addressLine1: "",
-///                         addressLine2: "",
-///                         city: "",
-///                         state: "",
-///                         country: "",
-///                         zip: ""
-///                     },
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn update_billing_address(
 	mut connection: Connection,
 	State(config): State<Config>,
@@ -628,64 +345,6 @@ async fn delete_billing_address(
 	Ok(())
 }
 
-/// # Description
-/// This function is used to fetch the card details of the workspace
-/// required inputs:
-/// auth token in the authorization headers
-/// workspace id in the url
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///
-///    success: true or false
-///    list: [
-///            {
-///                id:,
-///                updatedAt:,
-///                deleted:,
-///                object:,
-///                customerId:,
-///                type:,
-///                referenceId:,
-///                status:,
-///                gateway:,
-///                gatewayAccountId:,
-///                createdAt:,
-///                card:
-///                {
-///                    firstName:,
-///                    lastName:,
-///                    iin:,
-///                    last4:,
-///                    fundingType:,
-///                    expiryMonth:,
-///                    expiryYear:,
-///                    billingAddr1:,
-///                    billingAddre2:,
-///                    billingCity:,
-///                    billingState:,
-///                    billingZip:,
-///                    maskedNumber:,
-///                    object:,
-///                    brand:
-///                }
-///             }
-///           ]
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn get_payment_method(
 	mut connection: Connection,
 	State(config): State<Config>,
@@ -710,31 +369,6 @@ async fn get_payment_method(
 	Ok(GetPaymentMethodResponse { list: card_details })
 }
 
-/// # Description
-/// This function is used to add the card details to the workspace
-/// required inputs:
-/// auth token in the authorization headers
-/// workspace id in the url
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn add_payment_method(
 	mut connection: Connection,
 	State(config): State<Config>,
@@ -1050,20 +684,17 @@ async fn get_current_bill(
 	mut connection: Connection,
 	State(config): State<Config>,
 	DecodedRequest {
-		path: GetDockerRepositoryImageDetailsPath { workspace_id },
+		path: GetCurrentUsagePath { workspace_id },
 		query: (),
 		body: (),
-	}: DecodedRequest<GetDockerRepositoryImageDetailsRequest>,
-) -> Result<GetDockerRepositoryImageDetailsResponse, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-
+	}: DecodedRequest<GetCurrentUsageRequest>,
+) -> Result<GetCurrentUsageResponse, Error> {
 	let current_month_bill_so_far =
 		db::get_workspace_info(&mut connection, &workspace_id)
 			.await?
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?
+			.ok_or_else(|| ErrorType::WrongParameters)?
 			.amount_due_in_cents;
+
 	let current_month_bill_so_far =
 		TotalAmount::NeedToPay(current_month_bill_so_far);
 
@@ -1074,30 +705,21 @@ async fn get_current_bill(
 		)
 		.await?;
 
-	context.success(GetCurrentUsageResponse {
+	Ok(GetCurrentUsageResponse {
 		current_usage: current_month_bill_so_far + leftover_credits_or_due,
 	});
-	Ok(context)
 }
 
 async fn get_bill_breakdown(
 	mut connection: Connection,
 	State(config): State<Config>,
 	DecodedRequest {
-		path: GetDockerRepositoryImageDetailsPath { workspace_id },
+		path: GetBillBreakdownPath { workspace_id },
 		query: (),
-		body: (),
-	}: DecodedRequest<GetDockerRepositoryImageDetailsRequest>,
-) -> Result<GetDockerRepositoryImageDetailsResponse, Error> {
+		body: GetBillBreakdownRequest { month, year },
+	}: DecodedRequest<GetBillBreakdownRequest>,
+) -> Result<GetBillBreakdownResponse, Error> {
 	let request_id = Uuid::new_v4();
-
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-
-	let GetBillBreakdownRequest { month, year, .. } = context
-		.get_query_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	log::trace!(
 		"request_id: {} getting bill breakdown for month: {} and year: {}",
@@ -1133,22 +755,18 @@ async fn get_bill_breakdown(
 	)
 	.await?;
 
-	context.success(GetBillBreakdownResponse { bill });
-	Ok(context)
+	Ok(GetBillBreakdownResponse { bill });
 }
 
 async fn get_transaction_history(
 	mut connection: Connection,
 	State(config): State<Config>,
 	DecodedRequest {
-		path: GetDockerRepositoryImageDetailsPath { workspace_id },
+		path: GetTransactionHistoryPath { workspace_id },
 		query: (),
 		body: (),
-	}: DecodedRequest<GetDockerRepositoryImageDetailsRequest>,
-) -> Result<GetDockerRepositoryImageDetailsResponse, Error> {
-	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-
+	}: DecodedRequest<GetTransactionHistoryRequest>,
+) -> Result<GetTransactionHistoryResponse, Error> {
 	let transactions =
 		db::get_transactions_in_workspace(&mut connection, &workspace_id)
 			.await?
@@ -1166,7 +784,5 @@ async fn get_transaction_history(
 			})
 			.collect();
 
-	context.success(GetTransactionHistoryResponse { transactions });
-
-	Ok(context)
+	Ok(GetTransactionHistoryResponse { transactions });
 }

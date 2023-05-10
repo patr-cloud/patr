@@ -1,93 +1,48 @@
-use api_models::{
-	models::workspace::rbac::{
-		list_all_permissions::{ListAllPermissionsResponse, Permission},
-		list_all_resource_types::{ListAllResourceTypesResponse, ResourceType},
-		GetCurrentPermissionsResponse,
-	},
-	utils::Uuid,
-};
-use eve_rs::{App as EveApp, AsError, NextHandler};
+use api_models::{models::prelude::*, utils::DecodedRequest, ErrorType};
+use axum::{extract::State, Extension, Router};
 
 use crate::{
-	app::{create_axum_router, App},
+	app::App,
 	db,
-	error,
-	models::rbac,
-	pin_fn,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	models::{rbac, UserAuthenticationData},
+	prelude::*,
+	utils::Error,
 };
 
 mod role;
 mod user;
 
-/// # Description
-/// This function is used to create a sub app for every endpoint listed. It
-/// creates an eve app which binds the endpoint with functions.
-///
-/// # Arguments
-/// * `app` - an object of type [`App`] which contains all the configuration of
-///   api including the
-/// database connections.
-///
-/// # Returns
-/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
-/// containing context, middleware, object of [`App`] and Error
-///
-/// [`App`]: App
 pub fn create_sub_app(app: &App) -> Router<App> {
-	let mut sub_app = create_axum_router(app);
-
-	sub_app.use_sub_app("/user", user::create_sub_app(app));
-	sub_app.use_sub_app("/role", role::create_sub_app(app));
-
-	sub_app.get(
-		"/permission",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_all_permissions)),
-		],
-	);
-	sub_app.get(
-		"/resource-type",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_all_resource_types)),
-		],
-	);
-	sub_app.get(
-		"/current-permissions",
-		[
-			EveMiddleware::PlainTokenAuthenticator {
-				is_api_token_allowed: true,
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_current_permissions)),
-		],
-	);
-
-	sub_app
+	Router::new()
+		.mount_protected_dto(
+			PlainTokenAuthenticator::new(),
+			app.clone(),
+			get_all_permissions,
+		)
+		.mount_protected_dto(
+			PlainTokenAuthenticator::new(),
+			app.clone(),
+			get_all_resource_types,
+		)
+		.mount_protected_dto(
+			PlainTokenAuthenticator::new(),
+			app.clone(),
+			get_current_permissions,
+		)
+		.merge(user::create_sub_app(app))
+		.merge(role::create_sub_app(app))
 }
 
 async fn get_all_permissions(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id = context
-		.get_param(request_keys::WORKSPACE_ID)
-		.and_then(|workspace_id| Uuid::parse_str(workspace_id).ok())
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let access_token_data = context.get_token_data().unwrap();
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(access_token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: ListAllPermissionsPath { workspace_id },
+		query: (),
+		body: (),
+	}: DecodedRequest<ListAllPermissionsRequest>,
+) -> Result<ListAllPermissionsResponse, Error> {
 	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
 
 	if !access_token_data
@@ -95,37 +50,32 @@ async fn get_all_permissions(
 		.contains_key(&workspace_id) &&
 		access_token_data.user_id() != god_user_id
 	{
-		Error::as_result()
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+		return Err(ErrorType::NotFound);
 	}
 
-	let permissions =
-		db::get_all_permissions(context.get_database_connection())
-			.await?
-			.into_iter()
-			.map(|permission| Permission {
-				id: permission.id,
-				name: permission.name,
-				description: permission.description,
-			})
-			.collect();
+	let permissions = db::get_all_permissions(&mut connection)
+		.await?
+		.into_iter()
+		.map(|permission| Permission {
+			id: permission.id,
+			name: permission.name,
+			description: permission.description,
+		})
+		.collect();
 
-	context.success(ListAllPermissionsResponse { permissions });
-	Ok(context)
+	Ok(ListAllPermissionsResponse { permissions })
 }
 
 async fn get_all_resource_types(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id = context
-		.get_param(request_keys::WORKSPACE_ID)
-		.and_then(|workspace_id| Uuid::parse_str(workspace_id).ok())
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let access_token_data = context.get_token_data().unwrap();
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(access_token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: ListAllResourceTypesPath { workspace_id },
+		query: (),
+		body: (),
+	}: DecodedRequest<ListAllResourceTypesRequest>,
+) -> Result<ListAllResourceTypesResponse, Error> {
 	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
 
 	if !access_token_data
@@ -133,44 +83,37 @@ async fn get_all_resource_types(
 		.contains_key(&workspace_id) &&
 		access_token_data.user_id() != god_user_id
 	{
-		Error::as_result()
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+		return Err(ErrorType::NotFound);
 	}
 
-	let resource_types =
-		db::get_all_resource_types(context.get_database_connection())
-			.await?
-			.into_iter()
-			.map(|resource_type| ResourceType {
-				id: resource_type.id,
-				name: resource_type.name,
-				description: resource_type.description,
-			})
-			.collect();
+	let resource_types = db::get_all_resource_types(&mut connection)
+		.await?
+		.into_iter()
+		.map(|resource_type| ResourceType {
+			id: resource_type.id,
+			name: resource_type.name,
+			description: resource_type.description,
+		})
+		.collect();
 
-	context.success(ListAllResourceTypesResponse { resource_types });
-	Ok(context)
+	Ok(ListAllResourceTypesResponse { resource_types })
 }
 
 async fn get_current_permissions(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	let permissions = context
-		.get_token_data()
-		.unwrap()
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(access_token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: GetCurrentPermissionsPath { workspace_id },
+		query: (),
+		body: (),
+	}: DecodedRequest<GetCurrentPermissionsRequest>,
+) -> Result<GetCurrentPermissionsResponse, Error> {
+	let permissions = access_token_data
 		.workspace_permissions()
 		.get(&workspace_id)
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?
+		.ok_or_else(|| ErrorType::NotFound)?
 		.clone();
 
-	context.success(GetCurrentPermissionsResponse { permissions });
-	Ok(context)
+	Ok(GetCurrentPermissionsResponse { permissions })
 }

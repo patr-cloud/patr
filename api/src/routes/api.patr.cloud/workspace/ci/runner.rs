@@ -1,25 +1,12 @@
-use api_macros::closure_as_pinned_box;
-use api_models::{
-	models::workspace::ci::runner::{
-		CreateRunnerRequest,
-		CreateRunnerResponse,
-		DeleteRunnerResponse,
-		GetRunnerInfoResponse,
-		ListCiRunnerBuildHistoryResponse,
-		ListCiRunnerResponse,
-		UpdateRunnerRequest,
-		UpdateRunnerResponse,
-	},
-	utils::Uuid,
-};
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use api_models::{models::prelude::*, utils::Uuid};
+use axum::{extract::State, Router};
 
 use crate::{
 	app::{create_axum_router, App},
 	db,
 	error,
 	models::rbac::permissions,
-	pin_fn,
+	prelude::*,
 	service,
 	utils::{
 		constants::request_keys,
@@ -31,241 +18,133 @@ use crate::{
 };
 
 pub fn create_sub_app(app: &App) -> Router<App> {
-	let mut sub_app = create_axum_router(app);
+	Router::new()
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::runner::LIST,
+				|ListCiRunnerPath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	sub_app.get(
-		"/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission: permissions::workspace::ci::runner::LIST,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			list_runner,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::runner::CREATE,
+				|ListCiRunnerPath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			create_runner,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::runner::CREATE,
+				|GetRunnerInfoPath {
+				     workspace_id,
+				     runner_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &runner_id).await
+				},
+			),
+			app.clone(),
+			get_runner_info,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::runner::LIST,
+				|ListCiRunnerBuildHistoryPath {
+				     workspace_id,
+				     runner_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(list_runner)),
-		],
-	);
+					db::get_resource_by_id(&mut connection, &runner_id).await
+				},
+			),
+			app.clone(),
+			list_build_details_for_runner,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::runner::UPDATE,
+				|UpdateRunnerPath {
+				     workspace_id,
+				     runner_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	sub_app.post(
-		"/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission: permissions::workspace::ci::runner::CREATE,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					db::get_resource_by_id(&mut connection, &runner_id).await
+				},
+			),
+			app.clone(),
+			update_runner,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::runner::DELETE,
+				|DeleteRunnerPath {
+				     workspace_id,
+				     runner_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(create_runner)),
-		],
-	);
-
-	sub_app.get(
-		"/:runnerId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission: permissions::workspace::ci::runner::INFO,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let runner_id =
-						context.get_param(request_keys::RUNNER_ID).unwrap();
-					let runner_id = Uuid::parse_str(runner_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&runner_id,
-					)
-					.await?
-					.filter(|resource| resource.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_runner_info)),
-		],
-	);
-
-	sub_app.get(
-		"/:runnerId/history",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission: permissions::workspace::ci::runner::INFO,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let runner_id =
-						context.get_param(request_keys::RUNNER_ID).unwrap();
-					let runner_id = Uuid::parse_str(runner_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&runner_id,
-					)
-					.await?
-					.filter(|resource| resource.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(
-				list_build_details_for_runner
-			)),
-		],
-	);
-
-	sub_app.patch(
-		"/:runnerId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission: permissions::workspace::ci::runner::UPDATE,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let runner_id =
-						context.get_param(request_keys::RUNNER_ID).unwrap();
-					let runner_id = Uuid::parse_str(runner_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&runner_id,
-					)
-					.await?
-					.filter(|resource| resource.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(update_runner)),
-		],
-	);
-
-	sub_app.delete(
-		"/:runnerId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission: permissions::workspace::ci::runner::DELETE,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let runner_id =
-						context.get_param(request_keys::RUNNER_ID).unwrap();
-					let runner_id = Uuid::parse_str(runner_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&runner_id,
-					)
-					.await?
-					.filter(|resource| resource.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(delete_runner)),
-		],
-	);
-
-	sub_app
+					db::get_resource_by_id(&mut connection, &runner_id).await
+				},
+			),
+			app.clone(),
+			delete_runner,
+		)
 }
 
 async fn list_runner(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: ListCiRunnerPath { workspace_id },
+		query: (),
+		body: (),
+	}: DecodedRequest<ListCiRunnerRequest>,
+) -> Result<ListCiRunnerResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
 
 	log::trace!(
 		"request_id: {} - Getting list of ci runner for workspace {}",
@@ -273,14 +152,11 @@ async fn list_runner(
 		workspace_id
 	);
 
-	let runners = db::get_runners_for_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?
-	.into_iter()
-	.map(Into::into)
-	.collect();
+	let runners = db::get_runners_for_workspace(&mut connection, &workspace_id)
+		.await?
+		.into_iter()
+		.map(Into::into)
+		.collect();
 
 	log::trace!(
 		"request_id: {} - Returning list of ci runner for workspace {}",
@@ -288,28 +164,24 @@ async fn list_runner(
 		workspace_id
 	);
 
-	context.success(ListCiRunnerResponse { runners });
-	Ok(context)
+	Ok(ListCiRunnerResponse { runners })
 }
 
 async fn create_runner(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: CreateRunnerPath { workspace_id },
+		query: (),
+		body:
+			CreateRunnerRequest {
+				name,
+				region_id,
+				build_machine_type_id,
+			},
+	}: DecodedRequest<CreateRunnerRequest>,
+) -> Result<CreateRunnerResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-
-	let CreateRunnerRequest {
-		workspace_id: _,
-		name,
-		region_id,
-		build_machine_type_id,
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	log::trace!(
 		"request_id: {} - Creating ci runner for workspace {}",
@@ -318,7 +190,7 @@ async fn create_runner(
 	);
 
 	let id = service::create_runner_for_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&name,
 		&region_id,
@@ -333,21 +205,22 @@ async fn create_runner(
 		workspace_id
 	);
 
-	context.success(CreateRunnerResponse { id });
-	Ok(context)
+	Ok(CreateRunnerResponse { id });
 }
 
 async fn get_runner_info(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: GetRunnerInfoPath {
+			workspace_id,
+			runner_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<GetRunnerInfoRequest>,
+) -> Result<GetRunnerInfoResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let runner_id =
-		Uuid::parse_str(context.get_param(request_keys::RUNNER_ID).unwrap())
-			.unwrap();
 
 	log::trace!(
 		"request_id: {} - Getting info of ci runner for workspace {}",
@@ -355,12 +228,10 @@ async fn get_runner_info(
 		workspace_id
 	);
 
-	let runner =
-		db::get_runner_by_id(context.get_database_connection(), &runner_id)
-			.await?
-			.map(Into::into)
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let runner = db::get_runner_by_id(&mut connection, &runner_id)
+		.await?
+		.map(Into::into)
+		.ok_or_else(|| ErrorType::NotFound)?;
 
 	log::trace!(
 		"request_id: {} - Returning info of ci runner for workspace {}",
@@ -368,21 +239,22 @@ async fn get_runner_info(
 		workspace_id
 	);
 
-	context.success(GetRunnerInfoResponse(runner));
-	Ok(context)
+	Ok(GetRunnerInfoResponse(runner));
 }
 
 async fn list_build_details_for_runner(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: ListCiRunnerBuildHistoryPath {
+			workspace_id,
+			runner_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<ListCiRunnerBuildHistoryRequest>,
+) -> Result<ListCiRunnerBuildHistoryResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let runner_id =
-		Uuid::parse_str(context.get_param(request_keys::RUNNER_ID).unwrap())
-			.unwrap();
 
 	log::trace!(
 		"request_id: {} - Getting history of ci runner for workspace {}",
@@ -390,11 +262,8 @@ async fn list_build_details_for_runner(
 		workspace_id
 	);
 
-	let builds = db::list_build_details_for_runner(
-		context.get_database_connection(),
-		&runner_id,
-	)
-	.await?;
+	let builds =
+		db::list_build_details_for_runner(&mut connection, &runner_id).await?;
 
 	log::trace!(
 		"request_id: {} - Returning history of ci runner for workspace {}",
@@ -402,30 +271,22 @@ async fn list_build_details_for_runner(
 		workspace_id
 	);
 
-	context.success(ListCiRunnerBuildHistoryResponse { builds });
-	Ok(context)
+	Ok(ListCiRunnerBuildHistoryResponse { builds });
 }
 
 async fn update_runner(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: UpdateRunnerPath {
+			workspace_id,
+			runner_id,
+		},
+		query: (),
+		body: UpdateRunnerRequest { name },
+	}: DecodedRequest<UpdateRunnerRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let runner_id =
-		Uuid::parse_str(context.get_param(request_keys::RUNNER_ID).unwrap())
-			.unwrap();
-
-	let UpdateRunnerRequest {
-		workspace_id: _,
-		runner_id: _,
-		name,
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	log::trace!(
 		"request_id: {} - Update ci runner for workspace {}",
@@ -433,13 +294,8 @@ async fn update_runner(
 		workspace_id
 	);
 
-	service::update_runner(
-		context.get_database_connection(),
-		&runner_id,
-		&name,
-		&request_id,
-	)
-	.await?;
+	service::update_runner(&mut connection, &runner_id, &name, &request_id)
+		.await?;
 
 	log::trace!(
 		"request_id: {} - Updated ci runner for workspace {}",
@@ -447,21 +303,22 @@ async fn update_runner(
 		workspace_id
 	);
 
-	context.success(UpdateRunnerResponse {});
-	Ok(context)
+	Ok(());
 }
 
 async fn delete_runner(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: DeleteRunnerPath {
+			workspace_id,
+			runner_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<DeleteRunnerRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let runner_id =
-		Uuid::parse_str(context.get_param(request_keys::RUNNER_ID).unwrap())
-			.unwrap();
 
 	log::trace!(
 		"request_id: {} - Delete ci runner for workspace {}",
@@ -469,12 +326,7 @@ async fn delete_runner(
 		workspace_id
 	);
 
-	service::delete_runner(
-		context.get_database_connection(),
-		&runner_id,
-		&request_id,
-	)
-	.await?;
+	service::delete_runner(&mut connection, &runner_id, &request_id).await?;
 
 	log::trace!(
 		"request_id: {} - Deleted ci runner for workspace {}",
@@ -482,6 +334,5 @@ async fn delete_runner(
 		workspace_id
 	);
 
-	context.success(DeleteRunnerResponse {});
-	Ok(context)
+	Ok(());
 }

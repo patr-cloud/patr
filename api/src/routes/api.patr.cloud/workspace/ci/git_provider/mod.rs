@@ -1,80 +1,47 @@
-use api_macros::closure_as_pinned_box;
-use api_models::{
-	models::workspace::ci::git_provider::{
-		GitProvider,
-		ListGitProvidersResponse,
-	},
-	utils::{DateTime, Uuid},
-};
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use api_models::{models::prelude::*, utils::DateTime};
+use axum::{extract::State, Router};
 
 use crate::{
-	app::{create_axum_router, App},
+	app::App,
 	db,
-	error,
 	models::rbac::permissions,
-	pin_fn,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	prelude::*,
+	utils::Error,
 };
 
 mod github;
 
 pub fn create_sub_app(app: &App) -> Router<App> {
-	let mut sub_app = create_axum_router(app);
+	Router::new()
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::ci::git_provider::LIST,
+				|ListGitProvidersPath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	sub_app.use_sub_app("/github", github::create_sub_app(app));
-
-	sub_app.get(
-		"/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: false,
-				permission: permissions::workspace::ci::git_provider::LIST,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(list_git_providers)),
-		],
-	);
-
-	sub_app
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			list_git_providers,
+		)
+		.merge(github::create_sub_app(app))
 }
 
 async fn list_git_providers(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: ListGitProvidersPath { workspace_id },
+		query: (),
+		body: (),
+	}: DecodedRequest<ListGitProvidersRequest>,
+) -> Result<ListGitProvidersResponse, Error> {
 	let git_providers = db::list_connected_git_providers_for_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 	)
 	.await?
@@ -90,6 +57,5 @@ async fn list_git_providers(
 	})
 	.collect();
 
-	context.success(ListGitProvidersResponse { git_providers });
-	Ok(context)
+	Ok(ListGitProvidersResponse { git_providers });
 }

@@ -1,554 +1,278 @@
-use api_macros::closure_as_pinned_box;
 use api_models::{
-	models::workspace::infrastructure::{
-		managed_urls::{ManagedUrl, ManagedUrlType},
-		static_site::{
-			CreateStaticSiteRequest,
-			CreateStaticSiteResponse,
-			DeleteStaticSiteResponse,
-			GetStaticSiteInfoResponse,
-			ListLinkedURLsResponse,
-			ListStaticSiteUploadHistoryResponse,
-			ListStaticSitesResponse,
-			RevertStaticSiteResponse,
-			StartStaticSiteResponse,
-			StaticSite,
-			StaticSiteDetails,
-			StaticSiteUploadHistory,
-			StopStaticSiteResponse,
-			UpdateStaticSiteRequest,
-			UpdateStaticSiteResponse,
-			UploadStaticSiteRequest,
-			UploadStaticSiteResponse,
-		},
-	},
+	models::prelude::{static_site::ListLinkedURLsPath, *},
 	utils::{DateTime, Uuid},
 };
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use axum::{extract::State, Extension, Router};
 
 use crate::{
-	app::{create_axum_router, App},
+	app::App,
 	db::{self, ManagedUrlType as DbManagedUrlType},
-	error,
-	models::{rbac::permissions, ResourceType},
-	pin_fn,
+	models::{rbac::permissions, ResourceType, UserAuthenticationData},
+	prelude::*,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::Error,
 };
 
-/// # Description
-/// This function is used to create a sub app for every endpoint listed. It
-/// creates an eve app which binds the endpoint with functions.
-///
-/// # Arguments
-/// * `app` - an object of type [`App`] which contains all the configuration of
-///   api including the
-/// database connections.
-///
-/// # Returns
-/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
-/// containing context, middleware, object of [`App`] and Error
-///
-/// [`App`]: App
 pub fn create_sub_app(app: &App) -> Router<App> {
-	let mut app = create_axum_router(app);
+	Router::new()
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::infrastructure::static_site::LIST,
+				|ListStaticSitesPath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	// List all static sites
-	app.get(
-		"/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::infrastructure::static_site::LIST,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			list_static_sites,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::infrastructure::static_site::LIST,
+				|ListStaticSiteUploadHistoryPath {
+				     workspace_id,
+				     static_site_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					db::get_resource_by_id(&mut connection, &static_site_id)
+						.await?
+						.map(|resource| resource.owner_id == workspace_id)
+				},
+			),
+			app.clone(),
+			list_static_sites_upload_history,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::infrastructure::static_site::INFO,
+				|GetStaticSiteInfoPath {
+				     workspace_id,
+				     static_site_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &static_site_id)
+						.await?
+						.map(|resource| resource.owner_id == workspace_id)
+				},
+			),
+			app.clone(),
+			get_static_site_info,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::infrastructure::static_site::EDIT,
+				|StartStaticSitePath {
+				     workspace_id,
+				     static_site_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(list_static_sites)),
-		],
-	);
+					db::get_resource_by_id(&mut connection, &static_site_id)
+						.await?
+						.map(|resource| resource.owner_id == workspace_id)
+				},
+			),
+			app.clone(),
+			start_static_site,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::infrastructure::static_site::EDIT,
+				|UpdateStaticSitePath {
+				     workspace_id,
+				     static_site_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	// List all uploads for static site
-	app.get(
-		"/:staticSiteId/upload",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::infrastructure::static_site::LIST,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					db::get_resource_by_id(&mut connection, &static_site_id)
+						.await?
+						.map(|resource| resource.owner_id == workspace_id)
+				},
+			),
+			app.clone(),
+			update_static_site,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::infrastructure::static_site::LIST,
+				|UploadStaticSitePath {
+				     workspace_id,
+				     static_site_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
+					db::get_resource_by_id(&mut connection, &static_site_id)
+						.await?
+						.map(|resource| resource.owner_id == workspace_id)
+				},
+			),
+			app.clone(),
+			upload_static_site,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::infrastructure::static_site::LIST,
+				|RevertStaticSitePath {
+				     workspace_id,
+				     static_site_id,
+				     upload_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
+					db::get_resource_by_id(&mut connection, &static_site_id)
+						.await?
+						.map(|resource| resource.owner_id == workspace_id)
+				},
+			),
+			app.clone(),
+			revert_static_site,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::infrastructure::static_site::LIST,
+				|StopStaticSitePath {
+				     workspace_id,
+				     static_site_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(
-				list_static_sites_upload_history
-			)),
-		],
-	);
+					db::get_resource_by_id(&mut connection, &static_site_id)
+						.await?
+						.map(|resource| resource.owner_id == workspace_id)
+				},
+			),
+			app.clone(),
+			stop_static_site,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::infrastructure::static_site::LIST,
+				|CreateStaticSitePath { workspace_id }, (), app, request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-	// Get info about a static sites
-	app.get(
-		"/:staticSiteId/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::infrastructure::static_site::INFO,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					db::get_resource_by_id(&mut connection, &workspace_id).await
+				},
+			),
+			app.clone(),
+			create_static_site,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::infrastructure::static_site::LIST,
+				|DeleteStaticSitePath {
+				     workspace_id,
+				     static_site_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					let static_site_id_string = context
-						.get_param(request_keys::STATIC_SITE_ID)
-						.unwrap();
-					let static_site_id = Uuid::parse_str(static_site_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					db::get_resource_by_id(&mut connection, &static_site_id)
+						.await?
+						.map(|resource| resource.owner_id == workspace_id)
+				},
+			),
+			app.clone(),
+			delete_static_site,
+		)
+		.mount_protected_dto(
+			ResourceTokenAuthenticator::new(
+				permissions::workspace::infrastructure::static_site::LIST,
+				|ListLinkedURLsPath {
+				     workspace_id,
+				     static_site_id,
+				 },
+				 (),
+				 app,
+				 request| async {
+					let mut connection = request
+						.extensions_mut()
+						.get_mut::<Connection>()
+						.ok_or_else(|| ErrorType::internal_error());
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&static_site_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(get_static_site_info)),
-		],
-	);
-
-	// start a static site
-	app.post(
-		"/:staticSiteId/start",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::infrastructure::static_site::EDIT,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let static_site_id_string = context
-						.get_param(request_keys::STATIC_SITE_ID)
-						.unwrap();
-					let static_site_id = Uuid::parse_str(static_site_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&static_site_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(start_static_site)),
-		],
-	);
-
-	// Update static site
-	app.patch(
-		"/:staticSiteId/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::infrastructure::static_site::EDIT,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let static_site_id_string = context
-						.get_param(request_keys::STATIC_SITE_ID)
-						.unwrap();
-					let static_site_id = Uuid::parse_str(static_site_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&static_site_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(update_static_site)),
-		],
-	);
-
-	// Upload static site
-	app.post(
-		"/:staticSiteId/upload",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::infrastructure::static_site::EDIT,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let static_site_id_string = context
-						.get_param(request_keys::STATIC_SITE_ID)
-						.unwrap();
-					let static_site_id = Uuid::parse_str(static_site_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&static_site_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(upload_static_site)),
-		],
-	);
-
-	// Revert static site
-	app.post(
-		"/:staticSiteId/upload/:uploadId/revert",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::infrastructure::static_site::EDIT,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let static_site_id_string = context
-						.get_param(request_keys::STATIC_SITE_ID)
-						.unwrap();
-					let static_site_id = Uuid::parse_str(static_site_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&static_site_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(revert_static_site)),
-		],
-	);
-
-	// stop the static site
-	app.post(
-		"/:staticSiteId/stop",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::infrastructure::static_site::EDIT,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let static_site_id_string = context
-						.get_param(request_keys::STATIC_SITE_ID)
-						.unwrap();
-					let static_site_id = Uuid::parse_str(static_site_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&static_site_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(stop_static_site)),
-		],
-	);
-
-	// create static sites
-	app.post(
-		"/",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::infrastructure::static_site::CREATE,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(create_static_site)),
-		],
-	);
-
-	// Delete a static_site
-	app.delete(
-		"/:staticSiteId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::infrastructure::static_site::DELETE,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let static_site_id_string = context
-						.get_param(request_keys::STATIC_SITE_ID)
-						.unwrap();
-					let static_site_id = Uuid::parse_str(static_site_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&static_site_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(delete_static_site)),
-		],
-	);
-
-	// List all linked URLs of a static site
-	app.get(
-		"/:staticSiteId/managed-urls",
-		[
-			EveMiddleware::ResourceTokenAuthenticator {
-				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::infrastructure::static_site::INFO,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let static_site_id_string = context
-						.get_param(request_keys::STATIC_SITE_ID)
-						.unwrap();
-					let static_site_id = Uuid::parse_str(static_site_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&static_site_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			},
-			EveMiddleware::CustomFunction(pin_fn!(list_linked_urls)),
-		],
-	);
-
-	app
+					db::get_resource_by_id(&mut connection, &static_site_id)
+						.await?
+						.map(|resource| resource.owner_id == workspace_id)
+				},
+			),
+			app.clone(),
+			list_linked_urls,
+		)
 }
 
-/// # Description
-/// This function is used to get the information about a specific static_site
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-/// staticSiteId in url
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///     success: true or false,
-///     staticSites:
-///     {
-///         id: ,
-///         name: ,
-///         domainName: ,
-///     }
-/// }
-/// ```
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn get_static_site_info(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let static_site_id = Uuid::parse_str(
-		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
-	)
-	.unwrap();
-	let static_site = db::get_static_site_by_id(
-		context.get_database_connection(),
-		&static_site_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: GetStaticSiteInfoPath {
+			workspace_id,
+			static_site_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<GetStaticSiteInfoRequest>,
+) -> Result<GetStaticSiteInfoResponse, Error> {
+	let static_site =
+		db::get_static_site_by_id(&mut connection, &static_site_id)
+			.await?
+			.ok_or_else(|| ErrorType::NotFound)?;
 
-	context.success(GetStaticSiteInfoResponse {
+	Ok(GetStaticSiteInfoResponse {
 		static_site: StaticSite {
 			id: static_site.id,
 			name: static_site.name,
@@ -556,182 +280,96 @@ async fn get_static_site_info(
 			current_live_upload: static_site.current_live_upload,
 		},
 		static_site_details: StaticSiteDetails {},
-	});
-	Ok(context)
+	})
 }
 
-/// # Description
-/// This function is used to list of all the static sites present with the user
-/// required inputs:
-/// WorkspaceId in url
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success:
-///    staticSites: []
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn list_static_sites(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: ListStaticSitesPath { workspace_id },
+		query: (),
+		body: (),
+	}: DecodedRequest<ListStaticSitesRequest>,
+) -> Result<ListStaticSitesResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
 
 	log::trace!("request_id: {} - Getting the list of all static sites for the workspace", request_id);
-	let static_sites = db::get_static_sites_for_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?
-	.into_iter()
-	.map(|static_site| StaticSite {
-		id: static_site.id,
-		name: static_site.name,
-		status: static_site.status,
-		current_live_upload: static_site.current_live_upload,
-	})
-	.collect::<Vec<_>>();
+	let static_sites =
+		db::get_static_sites_for_workspace(&mut connection, &workspace_id)
+			.await?
+			.into_iter()
+			.map(|static_site| StaticSite {
+				id: static_site.id,
+				name: static_site.name,
+				status: static_site.status,
+				current_live_upload: static_site.current_live_upload,
+			})
+			.collect::<Vec<_>>();
 	log::trace!("request_id: {} - Returning the list of all static sites for the workspace", request_id);
 
-	context.success(ListStaticSitesResponse { static_sites });
-	Ok(context)
+	Ok(ListStaticSitesResponse { static_sites })
 }
 
-/// # Description
-/// This function is used to list of all the static sites upload history
-/// required inputs:
-/// staticSiteId in url
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success:
-///    uploads: []
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn list_static_sites_upload_history(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let static_site_id = Uuid::parse_str(
-		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
-	)
-	.unwrap();
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path:
+			ListStaticSiteUploadHistoryPath {
+				workspace_id,
+				static_site_id,
+			},
+		query: (),
+		body: (),
+	}: DecodedRequest<ListStaticSiteUploadHistoryRequest>,
+) -> Result<ListStaticSiteUploadHistoryResponse, Error> {
+	db::get_static_site_by_id(&mut connection, &static_site_id)
+		.await?
+		.ok_or_else(|| ErrorType::NotFound)?;
 
-	db::get_static_site_by_id(
-		context.get_database_connection(),
-		&static_site_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let uploads =
+		db::get_static_site_upload_history(&mut connection, &static_site_id)
+			.await?
+			.into_iter()
+			.map(|deploy_history| StaticSiteUploadHistory {
+				upload_id: deploy_history.id,
+				message: deploy_history.message,
+				uploaded_by: deploy_history.uploaded_by,
+				created: DateTime(deploy_history.created),
+				processed: deploy_history.processed.map(DateTime),
+			})
+			.collect();
 
-	let uploads = db::get_static_site_upload_history(
-		context.get_database_connection(),
-		&static_site_id,
-	)
-	.await?
-	.into_iter()
-	.map(|deploy_history| StaticSiteUploadHistory {
-		upload_id: deploy_history.id,
-		message: deploy_history.message,
-		uploaded_by: deploy_history.uploaded_by,
-		created: DateTime(deploy_history.created),
-		processed: deploy_history.processed.map(DateTime),
-	})
-	.collect();
-
-	context.success(ListStaticSiteUploadHistoryResponse { uploads });
-	Ok(context)
+	Ok(ListStaticSiteUploadHistoryResponse { uploads });
 }
 
-/// # Description
-/// This function is used to create a new static site
-/// required inputs
-/// auth token in the header
-/// workspace id in parameter
-/// ```
-/// {
-///    name: ,
-/// }
-/// ```
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success:
-///    staticSiteId:
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn create_static_site(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: CreateStaticSitePath { workspace_id },
+		query: (),
+		body:
+			CreateStaticSiteRequest {
+				name,
+				message,
+				file,
+				static_site_details,
+			},
+	}: DecodedRequest<CreateStaticSiteRequest>,
+) -> Result<CreateStaticSiteResponse, Error> {
 	let request_id = Uuid::new_v4();
 
 	log::trace!("request_id: {} - Creating a static site", request_id);
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let user_id = context.get_token_data().unwrap().user_id().clone();
 
-	let CreateStaticSiteRequest {
-		workspace_id: _,
-		name,
-		message,
-		file,
-		static_site_details: _,
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let name = name.trim();
-	let config = context.get_state().config.clone();
+	let user_id = token_data.user_id().clone();
 
 	let id = service::create_static_site_in_workspace(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
-		name,
+		&name.trim(),
 		file,
 		&message,
 		&user_id,
@@ -742,75 +380,47 @@ async fn create_static_site(
 
 	log::trace!("request_id: {} - Static-site created", request_id);
 
-	let _ = service::get_internal_metrics(
-		context.get_database_connection(),
+	service::get_internal_metrics(
+		&mut connection,
 		"A static site has been created",
 	)
 	.await;
-	context.success(CreateStaticSiteResponse { id });
-	Ok(context)
+	Ok(CreateStaticSiteResponse { id })
 }
 
-/// # Description
-/// This function is used to create a new static site
-/// required inputs
-/// auth token in the header
-/// workspace_id,static_site_id and upload_id in parameter
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success:
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn revert_static_site(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path:
+			RevertStaticSitePath {
+				workspace_id,
+				static_site_id,
+				upload_id,
+			},
+		query: (),
+		body: (),
+	}: DecodedRequest<RevertStaticSiteRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-	let static_site_id = Uuid::parse_str(
-		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
-	)
-	.unwrap();
-	let upload_id =
-		Uuid::parse_str(context.get_param(request_keys::UPLOAD_ID).unwrap())
-			.unwrap();
 
 	// check if upload_id is present in the deploy history
 	db::get_static_site_upload_history_by_upload_id(
-		context.get_database_connection(),
+		&mut connection,
 		&static_site_id,
 		&upload_id,
 	)
 	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	.ok_or_else(|| ErrorType::NotFound)?;
 
 	log::trace!("request_id: {} - Reverting static site", request_id);
 
-	let config = context.get_state().config.clone();
-
-	db::get_static_site_by_id(
-		context.get_database_connection(),
-		&static_site_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	db::get_static_site_by_id(&mut connection, &static_site_id)
+		.await?
+		.ok_or_else(|| ErrorType::NotFound)?;
 
 	service::update_cloudflare_running_upload(
-		context.get_database_connection(),
+		&mut connection,
 		&static_site_id,
 		&upload_id,
 		&config,
@@ -818,66 +428,42 @@ async fn revert_static_site(
 	)
 	.await?;
 
-	context.commit_database_transaction().await?;
+	connection.commit().await?;
 
-	context.success(RevertStaticSiteResponse {});
-	Ok(context)
+	Ok(());
 }
 
-/// # Description
-/// This function is used to start a static site
-/// required inputs:
-/// staticSiteId in the url
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the next
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn start_static_site(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: StartStaticSitePath {
+			workspace_id,
+			static_site_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<StartStaticSiteRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-
-	let static_site_id = Uuid::parse_str(
-		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
-	)
-	.unwrap();
 
 	log::trace!(
 		"request_id: {} - Starting a static site with id: {}",
 		request_id,
 		static_site_id
 	);
-	let config = context.get_state().config.clone();
 
 	// Get current_live_upload from static_site
-	let static_site = db::get_static_site_by_id(
-		context.get_database_connection(),
-		&static_site_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let static_site =
+		db::get_static_site_by_id(&mut connection, &static_site_id)
+			.await?
+			.ok_or_else(|| ErrorType::NotFound)?;
 
 	// Check if upload_id is present or not
 	if let Some(upload_id) = static_site.current_live_upload {
 		service::update_cloudflare_running_upload(
-			context.get_database_connection(),
+			&mut connection,
 			&static_site_id,
 			&upload_id,
 			&config,
@@ -885,117 +471,72 @@ async fn start_static_site(
 		)
 		.await?;
 	} else {
-		return Error::as_result()
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+		return Err(ErrorType::NotFound);
 	};
 
-	context.success(StartStaticSiteResponse {});
-	Ok(context)
+	Ok(())
 }
 
-/// # Description
-/// This function is used to get the status of domain set for static site
-/// required inputs:
-/// staticSiteId in the url
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn update_static_site(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	DecodedRequest {
+		path: UpdateStaticSitePath {
+			workspace_id,
+			static_site_id,
+		},
+		query: (),
+		body: UpdateStaticSiteRequest { name },
+	}: DecodedRequest<UpdateStaticSiteRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-
-	let static_site_id = Uuid::parse_str(
-		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
-	)
-	.unwrap();
 
 	log::trace!(
 		"Updating static site with id: {} and request_id: {}",
 		static_site_id,
 		request_id
 	);
-	let UpdateStaticSiteRequest { name, .. } = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-	let name = name.trim();
 
 	// Check if resource(static site exists)
-	db::get_static_site_by_id(
-		context.get_database_connection(),
-		&static_site_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	db::get_static_site_by_id(&mut connection, &static_site_id)
+		.await?
+		.ok_or_else(|| ErrorType::NotFound)?;
 
-	db::update_static_site_name(
-		context.get_database_connection(),
-		&static_site_id,
-		name,
-	)
-	.await?;
+	db::update_static_site_name(&mut connection, &static_site_id, &name.trim())
+		.await?;
 
-	context.success(UpdateStaticSiteResponse {});
-	Ok(context)
+	Ok(())
 }
 
 async fn upload_static_site(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let static_site_id = Uuid::parse_str(
-		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
-	)
-	.unwrap();
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: UploadStaticSitePath {
+			workspace_id,
+			static_site_id,
+		},
+		query: (),
+		body: UploadStaticSiteRequest { message, file },
+	}: DecodedRequest<UploadStaticSiteRequest>,
+) -> Result<UploadStaticSiteResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	let user_id = token_data.user_id().clone();
 
 	log::trace!(
 		"Uploading the file for static site with id: {} and request_id: {}",
 		static_site_id,
 		request_id
 	);
-	let UploadStaticSiteRequest { file, message, .. } = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let config = context.get_state().config.clone();
 
 	// Check if resource(static site exists)
-	db::get_static_site_by_id(
-		context.get_database_connection(),
-		&static_site_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	db::get_static_site_by_id(&mut connection, &static_site_id)
+		.await?
+		.ok_or_else(|| ErrorType::NotFound)?;
 
 	let upload_id = service::upload_static_site(
-		context.get_database_connection(),
+		&mut connection,
 		&workspace_id,
 		&static_site_id,
 		file,
@@ -1006,7 +547,7 @@ async fn upload_static_site(
 	)
 	.await?;
 
-	context.commit_database_transaction().await?;
+	connection.commit().await?;
 
 	log::trace!(
 		"request_id: {} checking managed url for static_site with ID: {}",
@@ -1014,42 +555,22 @@ async fn upload_static_site(
 		static_site_id
 	);
 
-	context.success(UploadStaticSiteResponse { upload_id });
-	Ok(context)
+	Ok(UploadStaticSiteResponse { upload_id })
 }
 
-/// # Description
-/// This function is used to stop a static site
-/// required inputs:
-/// staticSiteId in the url
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the next
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn stop_static_site(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let static_site_id = Uuid::parse_str(
-		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
-	)
-	.unwrap();
-
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: StopStaticSitePath {
+			workspace_id,
+			static_site_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<StopStaticSiteRequest>,
+) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"request_id: {} - Stopping a static site with id: {}",
@@ -1058,78 +579,49 @@ async fn stop_static_site(
 	);
 
 	// stop the running site, if it exists
-	let config = context.get_state().config.clone();
 	service::stop_static_site(
-		context.get_database_connection(),
+		&mut connection,
 		&static_site_id,
 		&config,
 		&request_id,
 	)
 	.await?;
 
-	context.success(StopStaticSiteResponse {});
-	Ok(context)
+	Ok(())
 }
 
-/// # Description
-/// This function is used to stop a static site
-/// required inputs:
-/// staticSiteId in the url
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the next
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
 async fn delete_static_site(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: DeleteStaticSitePath {
+			workspace_id,
+			static_site_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<DeleteStaticSiteRequest>,
+) -> Result<(), Error> {
+	let user_id = token_data.user_id().clone();
 
 	let request_id = Uuid::new_v4();
 
-	let static_site_id = Uuid::parse_str(
-		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
-	)
-	.unwrap();
-
-	let site = db::get_static_site_by_id(
-		context.get_database_connection(),
-		&static_site_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let site = db::get_static_site_by_id(&mut connection, &static_site_id)
+		.await?
+		.ok_or_else(|| ErrorType::NotFound)?;
 
 	log::trace!("request_id: {} - Checking is any managed url is used by the deployment: {}", request_id, static_site_id);
-	let managed_url = db::get_managed_urls_for_static_site(
-		context.get_database_connection(),
-		&static_site_id,
-	)
-	.await?;
+	let managed_url =
+		db::get_managed_urls_for_static_site(&mut connection, &static_site_id)
+			.await?;
 
 	if !managed_url.is_empty() {
 		log::trace!(
 			"static site: {} - is using managed_url. Cannot delete it",
 			static_site_id
 		);
-		return Error::as_result()
-			.status(400)
-			.body(error!(RESOURCE_IN_USE).to_string())?;
+		return Err(ErrorType::NotFound);
 	}
 
 	log::trace!(
@@ -1139,26 +631,21 @@ async fn delete_static_site(
 	);
 
 	// stop and delete the container running the image, if it exists
-	let config = context.get_state().config.clone();
-	service::delete_static_site(
-		context.get_database_connection(),
-		&static_site_id,
-		&config,
-	)
-	.await?;
+	service::delete_static_site(&mut connection, &static_site_id, &config)
+		.await?;
 
-	let _ = service::get_internal_metrics(
-		context.get_database_connection(),
+	service::get_internal_metrics(
+		&mut connection,
 		"A static site has been deleted",
 	)
 	.await;
 
 	// Commiting transaction so that even if the mailing function fails the
 	// resource should be deleted
-	context.commit_database_transaction().await?;
+	connection.commit().await?;
 
 	service::resource_delete_action_email(
-		context.get_database_connection(),
+		&mut connection,
 		&site.name,
 		&site.workspace_id,
 		&ResourceType::StaticSite,
@@ -1166,31 +653,30 @@ async fn delete_static_site(
 	)
 	.await?;
 
-	context.success(DeleteStaticSiteResponse {});
-	Ok(context)
+	Ok(())
 }
 
 async fn list_linked_urls(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
+	mut connection: Connection,
+	State(config): State<Config>,
+	Extension(token_data): Extension<UserAuthenticationData>,
+	DecodedRequest {
+		path: ListLinkedURLsPath {
+			workspace_id,
+			static_site_id,
+		},
+		query: (),
+		body: (),
+	}: DecodedRequest<ListManagedUrlsRequest>,
+) -> Result<ListManagedUrlsResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let static_site_id = Uuid::parse_str(
-		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
-	)
-	.unwrap();
-
-	let workspace_id = Uuid::parse_str(
-		context.get_param(request_keys::WORKSPACE_ID).unwrap(),
-	)?;
-
 	log::trace!(
 		"request_id: {} - Listing the linked urls for static site with id: {}",
 		request_id,
 		static_site_id
 	);
 	let urls = db::get_all_managed_urls_for_static_site(
-		context.get_database_connection(),
+		&mut connection,
 		&static_site_id,
 		&workspace_id,
 	)
@@ -1229,6 +715,5 @@ async fn list_linked_urls(
 	})
 	.collect();
 
-	context.success(ListLinkedURLsResponse { urls });
-	Ok(context)
+	Ok(())
 }
