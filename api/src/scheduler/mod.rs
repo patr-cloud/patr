@@ -14,6 +14,7 @@ pub mod byoc;
 pub mod ci;
 pub mod domain;
 pub mod managed_url;
+pub mod report_card;
 pub mod user;
 
 pub fn initialize_jobs(app: &App) {
@@ -69,6 +70,7 @@ fn get_scheduled_jobs() -> Vec<Job> {
 		// byoc jobs
 		byoc::check_status_of_active_byoc_regions_job(),
 		byoc::handle_disconnected_byoc_regions_job(),
+		report_card::generate_report_card_job(),
 	]
 }
 
