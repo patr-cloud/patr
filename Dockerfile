@@ -1,4 +1,4 @@
-FROM rust:1 as build
+FROM rust:1.69 as build
 
 RUN rustup target add x86_64-unknown-linux-gnu
 
@@ -9,7 +9,7 @@ COPY . .
 ENV SQLX_OFFLINE=true
 RUN cargo build --release --target=x86_64-unknown-linux-gnu
 
-FROM ubuntu:latest
+FROM ubuntu:jammy
 
 WORKDIR /app
 

@@ -1,5 +1,5 @@
 # Note: You can use any Debian/Ubuntu based image you want. 
-FROM ubuntu:22.04
+FROM ubuntu:jammy
 
 SHELL ["/bin/bash", "-c"]
 
@@ -41,9 +41,9 @@ RUN (echo; echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"') >> /ho
 RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
 # Install kubectl, helm, yq and k3d
-RUN brew install kubectl helm yq k3d
-RUN echo 'source <(kubectl completion bash)' >> /home/vscode/.bashrc
-RUN echo 'source <(k3d completion bash)' >> /home/vscode/.bashrc
+RUN /home/linuxbrew/.linuxbrew/bin/brew install kubectl helm yq k3d
+RUN echo 'source <(/home/linuxbrew/.linuxbrew/bin/kubectl completion bash)' >> /home/vscode/.bashrc
+RUN echo 'source <(/home/linuxbrew/.linuxbrew/bin/k3d completion bash)' >> /home/vscode/.bashrc
 
 # Create a bash_history file
 RUN touch /home/vscode/.bash_history
