@@ -24,7 +24,8 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 
 					db::get_resource_by_id(&mut connection, &workspace_id).await
 				},
-			),
+			)
+			.disallow_api_token(),
 			app.clone(),
 			list_git_providers,
 		)

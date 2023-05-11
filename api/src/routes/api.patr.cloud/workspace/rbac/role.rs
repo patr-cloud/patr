@@ -42,7 +42,8 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 					db::get_resource_by_id(&mut connection, &workspace_id)
 						.await?;
 				},
-			),
+			)
+			.disallow_api_token(),
 			app.clone(),
 			create_role,
 		)
@@ -103,7 +104,8 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.await?
 						.filter(|value| value.owner_id == workspace_id)
 				},
-			),
+			)
+			.disallow_api_token(),
 			app.clone(),
 			update_role,
 		)
@@ -125,7 +127,8 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 						.await?
 						.filter(|value| value.owner_id == workspace_id)
 				},
-			),
+			)
+			.disallow_api_token(),
 			app.clone(),
 			delete_role,
 		)

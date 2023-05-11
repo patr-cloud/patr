@@ -2,19 +2,12 @@ use api_models::{models::prelude::*, utils::Uuid};
 use axum::{extract::State, Router};
 
 use crate::{
-	app::{create_axum_router, App},
+	app::App,
 	db,
-	error,
 	models::rbac::permissions,
 	prelude::*,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::Error,
 };
 
 pub fn create_sub_app(app: &App) -> Router<App> {
@@ -30,14 +23,15 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 
 					db::get_resource_by_id(&mut connection, &workspace_id).await
 				},
-			),
+			)
+			.disallow_api_token(),
 			app.clone(),
 			list_runner,
 		)
 		.mount_protected_dto(
 			ResourceTokenAuthenticator::new(
 				permissions::workspace::ci::runner::CREATE,
-				|ListCiRunnerPath { workspace_id }, (), app, request| async {
+				|CreateRunnerPath { workspace_id }, (), app, request| async {
 					let mut connection = request
 						.extensions_mut()
 						.get_mut::<Connection>()
@@ -51,7 +45,7 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 		)
 		.mount_protected_dto(
 			ResourceTokenAuthenticator::new(
-				permissions::workspace::ci::runner::CREATE,
+				permissions::workspace::ci::runner::INFO,
 				|GetRunnerInfoPath {
 				     workspace_id,
 				     runner_id,
@@ -66,7 +60,8 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 
 					db::get_resource_by_id(&mut connection, &runner_id).await
 				},
-			),
+			)
+			.disallow_api_token(),
 			app.clone(),
 			get_runner_info,
 		)
@@ -87,7 +82,8 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 
 					db::get_resource_by_id(&mut connection, &runner_id).await
 				},
-			),
+			)
+			.disallow_api_token(),
 			app.clone(),
 			list_build_details_for_runner,
 		)
@@ -108,7 +104,8 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 
 					db::get_resource_by_id(&mut connection, &runner_id).await
 				},
-			),
+			)
+			.disallow_api_token(),
 			app.clone(),
 			update_runner,
 		)
@@ -129,7 +126,8 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 
 					db::get_resource_by_id(&mut connection, &runner_id).await
 				},
-			),
+			)
+			.disallow_api_token(),
 			app.clone(),
 			delete_runner,
 		)

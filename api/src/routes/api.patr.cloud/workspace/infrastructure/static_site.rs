@@ -124,7 +124,7 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 		)
 		.mount_protected_dto(
 			ResourceTokenAuthenticator::new(
-				permissions::workspace::infrastructure::static_site::LIST,
+				permissions::workspace::infrastructure::static_site::EDIT,
 				|UploadStaticSitePath {
 				     workspace_id,
 				     static_site_id,
@@ -147,7 +147,7 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 		)
 		.mount_protected_dto(
 			ResourceTokenAuthenticator::new(
-				permissions::workspace::infrastructure::static_site::LIST,
+				permissions::workspace::infrastructure::static_site::EDIT,
 				|RevertStaticSitePath {
 				     workspace_id,
 				     static_site_id,
@@ -171,7 +171,7 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 		)
 		.mount_protected_dto(
 			ResourceTokenAuthenticator::new(
-				permissions::workspace::infrastructure::static_site::LIST,
+				permissions::workspace::infrastructure::static_site::EDIT,
 				|StopStaticSitePath {
 				     workspace_id,
 				     static_site_id,
@@ -194,7 +194,7 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 		)
 		.mount_protected_dto(
 			ResourceTokenAuthenticator::new(
-				permissions::workspace::infrastructure::static_site::LIST,
+				permissions::workspace::infrastructure::static_site::CREATE,
 				|CreateStaticSitePath { workspace_id }, (), app, request| async {
 					let mut connection = request
 						.extensions_mut()
@@ -209,7 +209,7 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 		)
 		.mount_protected_dto(
 			ResourceTokenAuthenticator::new(
-				permissions::workspace::infrastructure::static_site::LIST,
+				permissions::workspace::infrastructure::static_site::DELETE,
 				|DeleteStaticSitePath {
 				     workspace_id,
 				     static_site_id,

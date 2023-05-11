@@ -30,7 +30,8 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 
 					db::get_resource_by_id(&mut connection, &workspace_id).await
 				},
-			),
+			)
+			.disallow_api_token(),
 			app.clone(),
 			add_billing_address,
 		)
@@ -66,7 +67,8 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 
 					db::get_resource_by_id(&mut connection, &workspace_id).await
 				},
-			),
+			)
+			.disallow_api_token(),
 			app.clone(),
 			delete_billing_address,
 		)
@@ -96,7 +98,8 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 
 					db::get_resource_by_id(&mut connection, &workspace_id).await
 				},
-			),
+			)
+			.disallow_api_token(),
 			app.clone(),
 			get_payment_method,
 		)
@@ -132,7 +135,8 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 
 					db::get_resource_by_id(&mut connection, &workspace_id).await
 				},
-			),
+			)
+			.disallow_api_token(),
 			app.clone(),
 			confirm_payment_method,
 		)
@@ -165,7 +169,8 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 
 					db::get_resource_by_id(&mut connection, &workspace_id).await
 				},
-			),
+			)
+			.disallow_api_token(),
 			app.clone(),
 			set_primary_card,
 		)
@@ -198,7 +203,8 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 
 					db::get_resource_by_id(&mut connection, &workspace_id).await
 				},
-			),
+			)
+			.disallow_api_token(),
 			app.clone(),
 			add_credits,
 		)
@@ -228,7 +234,8 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 
 					db::get_resource_by_id(&mut connection, &workspace_id).await
 				},
-			),
+			)
+			.disallow_api_token(),
 			app.clone(),
 			make_payment,
 		)
@@ -243,7 +250,8 @@ pub fn create_sub_app(app: &App) -> Router<App> {
 
 					db::get_resource_by_id(&mut connection, &workspace_id).await
 				},
-			),
+			)
+			.disallow_api_token(),
 			app.clone(),
 			get_current_bill,
 		)
