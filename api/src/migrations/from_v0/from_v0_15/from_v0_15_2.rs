@@ -92,6 +92,7 @@ async fn add_tables_for_k8s_database(
 		"workspace::infrastructure::patrDatabase::list",
 		"workspace::infrastructure::patrDatabase::delete",
 		"workspace::infrastructure::patrDatabase::info",
+		"workspace::infrastructure::patrDatabase::edit",
 	] {
 		let uuid = loop {
 			let uuid = Uuid::new_v4();
@@ -288,6 +289,7 @@ async fn reset_permission_order(
 		"workspace::infrastructure::patrDatabase::list",
 		"workspace::infrastructure::patrDatabase::delete",
 		"workspace::infrastructure::patrDatabase::info",
+		"workspace::infrastructure::patrDatabase::edit",
 		"workspace::infrastructure::staticSite::list",
 		"workspace::infrastructure::staticSite::create",
 		"workspace::infrastructure::staticSite::info",
