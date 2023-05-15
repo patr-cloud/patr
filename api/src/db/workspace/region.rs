@@ -46,10 +46,6 @@ impl Region {
 	}
 
 	pub fn is_ready(&self) -> bool {
-		self.ready || self.is_patr_region()
-	}
-
-	pub fn is_ready(&self) -> bool {
 		self.status == RegionStatus::Active || self.is_patr_region()
 	}
 }

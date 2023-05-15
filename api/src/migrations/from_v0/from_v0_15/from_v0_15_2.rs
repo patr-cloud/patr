@@ -2,7 +2,6 @@ use api_models::utils::Uuid;
 
 use crate::{
 	migrate_query as query,
-	migrate_query as query,
 	utils::{settings::Settings, Error},
 	Database,
 };
@@ -13,6 +12,33 @@ pub(super) async fn migrate(
 ) -> Result<(), Error> {
 	add_tables_for_k8s_database(connection, config).await?;
 	reset_permission_order(connection, config).await?;
+	add_is_frozen_column_to_workspace(connection, config).await?;
+
+	Ok(())
+}
+
+async fn add_is_frozen_column_to_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE workspace
+		ADD COLUMN is_frozen BOOLEAN NOT NULL DEFAULT FALSE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace
+		ALTER COLUMN is_frozen DROP DEFAULT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
@@ -66,6 +92,7 @@ async fn add_tables_for_k8s_database(
 		"workspace::infrastructure::patrDatabase::list",
 		"workspace::infrastructure::patrDatabase::delete",
 		"workspace::infrastructure::patrDatabase::info",
+		"workspace::infrastructure::patrDatabase::edit",
 	] {
 		let uuid = loop {
 			let uuid = Uuid::new_v4();
@@ -262,6 +289,7 @@ async fn reset_permission_order(
 		"workspace::infrastructure::patrDatabase::list",
 		"workspace::infrastructure::patrDatabase::delete",
 		"workspace::infrastructure::patrDatabase::info",
+		"workspace::infrastructure::patrDatabase::edit",
 		"workspace::infrastructure::staticSite::list",
 		"workspace::infrastructure::staticSite::create",
 		"workspace::infrastructure::staticSite::info",
@@ -286,14 +314,39 @@ async fn reset_permission_order(
 		"workspace::rbac::user::remove",
 		"workspace::rbac::user::updateRoles",
 		"workspace::region::list",
+		"workspace::region::info",
+		"workspace::region::check_status",
 		"workspace::region::add",
+		"workspace::region::delete",
+		"workspace::ci::recent_activity",
+		"workspace::ci::git_provider::list",
 		"workspace::ci::git_provider::connect",
 		"workspace::ci::git_provider::disconnect",
 		"workspace::ci::git_provider::repo::activate",
 		"workspace::ci::git_provider::repo::deactivate",
 		"workspace::ci::git_provider::repo::list",
-		"workspace::ci::git_provider::repo::build::view",
+		"workspace::ci::git_provider::repo::info",
+		"workspace::ci::git_provider::repo::write",
+		"workspace::ci::git_provider::repo::build::list",
+		"workspace::ci::git_provider::repo::build::cancel",
+		"workspace::ci::git_provider::repo::build::info",
+		"workspace::ci::git_provider::repo::build::start",
 		"workspace::ci::git_provider::repo::build::restart",
+		"workspace::ci::runner::list",
+		"workspace::ci::runner::create",
+		"workspace::ci::runner::info",
+		"workspace::ci::runner::update",
+		"workspace::ci::runner::delete",
+		"workspace::billing::info",
+		"workspace::billing::make_payment",
+		"workspace::billing::payment_method::add",
+		"workspace::billing::payment_method::delete",
+		"workspace::billing::payment_method::list",
+		"workspace::billing::payment_method::edit",
+		"workspace::billing::billing_address::add",
+		"workspace::billing::billing_address::delete",
+		"workspace::billing::billing_address::info",
+		"workspace::billing::billing_address::edit",
 		"workspace::edit",
 		"workspace::delete",
 	] {
