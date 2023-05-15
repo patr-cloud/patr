@@ -638,7 +638,7 @@ async fn set_permissions_for_user_api_token(
 			// Chech if the user has the resource type permissions that they're
 			// requesting
 			for (requested_resource_type_id, requested_permissions) in
-				&requested_permissions.resource_type_permissions
+				&requested_permissions.allowed_resource_type_permissions
 			{
 				// For every permission they're requesting on a resource type,
 				// check against their allowed permissions
@@ -648,7 +648,7 @@ async fn set_permissions_for_user_api_token(
 							.get(workspace_id)
 							.and_then(|permission| {
 								permission
-									.resource_type_permissions
+									.allowed_resource_type_permissions
 									.get(requested_resource_type_id)
 							})
 							.map(|permissions| {
@@ -679,7 +679,7 @@ async fn set_permissions_for_user_api_token(
 			// against their allowed permissions for either the resource or the
 			// resource type
 			for (requested_resource_id, requested_permissions) in
-				&requested_permissions.resource_permissions
+				&requested_permissions.allowed_resource_permissions
 			{
 				let requested_resource =
 					db::get_resource_by_id(connection, requested_resource_id)
@@ -695,7 +695,7 @@ async fn set_permissions_for_user_api_token(
 							.get(workspace_id)
 							.and_then(|permission| {
 								permission
-									.resource_type_permissions
+									.allowed_resource_type_permissions
 									.get(&requested_resource.resource_type_id)
 							})
 							.map(|permissions| {
@@ -706,7 +706,7 @@ async fn set_permissions_for_user_api_token(
 							.get(workspace_id)
 							.and_then(|permission| {
 								permission
-									.resource_permissions
+									.allowed_resource_permissions
 									.get(&requested_resource.id)
 							})
 							.map(|permissions| {
@@ -762,7 +762,7 @@ pub async fn get_permissions_for_user_api_token(
 		permissions
 			.entry(workspace_id)
 			.or_default()
-			.resource_type_permissions
+			.allowed_resource_type_permissions
 			.entry(resource_type_id)
 			.or_default()
 			.insert(permission_id);
@@ -775,7 +775,7 @@ pub async fn get_permissions_for_user_api_token(
 		permissions
 			.entry(workspace_id)
 			.or_default()
-			.resource_permissions
+			.allowed_resource_permissions
 			.entry(resource_id)
 			.or_default()
 			.insert(permission_id);
@@ -817,24 +817,26 @@ pub async fn get_revalidated_permissions_for_user_api_token(
 			// of this workspace. Don't bother checking any other
 			// permissions. Just directly add them to the db
 			for (resource_type_id, permissions) in
-				&permission.resource_type_permissions
+				&permission.allowed_resource_type_permissions
 			{
 				for permission_id in permissions {
 					new_permissions
 						.entry(workspace_id.clone())
 						.or_default()
-						.resource_type_permissions
+						.allowed_resource_type_permissions
 						.entry(resource_type_id.clone())
 						.or_default()
 						.insert(permission_id.clone());
 				}
 			}
-			for (resource_id, permissions) in &permission.resource_permissions {
+			for (resource_id, permissions) in
+				&permission.allowed_resource_permissions
+			{
 				for permission_id in permissions {
 					new_permissions
 						.entry(workspace_id.clone())
 						.or_default()
-						.resource_permissions
+						.allowed_resource_permissions
 						.entry(resource_id.clone())
 						.or_default()
 						.insert(permission_id.clone());
@@ -854,7 +856,7 @@ pub async fn get_revalidated_permissions_for_user_api_token(
 			// Chech if the user has the resource type permissions that
 			// they're requesting
 			for (requested_resource_type_id, requested_permissions) in
-				&permission.resource_type_permissions
+				&permission.allowed_resource_type_permissions
 			{
 				// For every permission they're requesting on a resource
 				// type, check against their allowed permissions
@@ -863,7 +865,7 @@ pub async fn get_revalidated_permissions_for_user_api_token(
 						.get(workspace_id)
 						.and_then(|permission| {
 							permission
-								.resource_type_permissions
+								.allowed_resource_type_permissions
 								.get(requested_resource_type_id)
 						})
 						.map(|permissions| {
@@ -875,7 +877,7 @@ pub async fn get_revalidated_permissions_for_user_api_token(
 						new_permissions
 							.entry(workspace_id.clone())
 							.or_default()
-							.resource_type_permissions
+							.allowed_resource_type_permissions
 							.entry(requested_resource_type_id.clone())
 							.or_default()
 							.insert(requested_permission_id.clone());
@@ -890,7 +892,7 @@ pub async fn get_revalidated_permissions_for_user_api_token(
 			// against their allowed permissions for either the resource or
 			// the resource type
 			for (requested_resource_id, requested_permissions) in
-				&permission.resource_permissions
+				&permission.allowed_resource_permissions
 			{
 				let requested_resource =
 					db::get_resource_by_id(connection, requested_resource_id)
@@ -911,7 +913,7 @@ pub async fn get_revalidated_permissions_for_user_api_token(
 						.get(workspace_id)
 						.and_then(|permission| {
 							permission
-								.resource_type_permissions
+								.allowed_resource_type_permissions
 								.get(&requested_resource.resource_type_id)
 						})
 						.map(|permissions| {
@@ -922,7 +924,7 @@ pub async fn get_revalidated_permissions_for_user_api_token(
 							.get(workspace_id)
 							.and_then(|permission| {
 								permission
-									.resource_permissions
+									.allowed_resource_permissions
 									.get(&requested_resource.id)
 							})
 							.map(|permissions| {
@@ -935,7 +937,7 @@ pub async fn get_revalidated_permissions_for_user_api_token(
 						new_permissions
 							.entry(workspace_id.clone())
 							.or_default()
-							.resource_permissions
+							.allowed_resource_permissions
 							.entry(requested_resource_id.clone())
 							.or_default()
 							.insert(requested_permission_id.clone());

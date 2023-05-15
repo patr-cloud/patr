@@ -350,375 +350,6 @@ pub async fn initialize_rbac_post(
 		.set(resource_types)
 		.expect("RESOURCE_TYPES is already set");
 
-	add_validation_for_permissions_on_resource(&mut *connection).await?;
-
-	Ok(())
-}
-
-async fn add_validation_for_permissions_on_resource(
-	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
-	// create permission to resource mapping function
-	query!(
-		r#"
-		CREATE OR REPLACE FUNCTION validate_permission_to_resource_mapping(
-			permission_name TEXT,
-			resource_type_name TEXT
-		) RETURNS BOOLEAN AS $$
-		SELECT CASE
-			resource_type_name
-			WHEN 'workspace' THEN (
-				CASE
-					WHEN permission_name = ANY (
-						ARRAY [
-							'workspace::domain::list',
-							'workspace::domain::add',
-
-							'workspace::infrastructure::deployment::list',
-							'workspace::infrastructure::deployment::create',
-
-							'workspace::infrastructure::managedUrl::list',
-							'workspace::infrastructure::managedUrl::create',
-
-							'workspace::infrastructure::managedDatabase::create',
-							'workspace::infrastructure::managedDatabase::list',
-
-							'workspace::dockerRegistry::create',
-							'workspace::dockerRegistry::list',
-
-							'workspace::secret::list',
-							'workspace::secret::create',
-
-							'workspace::infrastructure::staticSite::list',
-							'workspace::infrastructure::staticSite::create',
-
-							'workspace::infrastructure::upgradePath::list',
-							'workspace::infrastructure::upgradePath::create',
-
-							'workspace::rbac::role::list',
-							'workspace::rbac::role::create',
-							'workspace::rbac::role::edit',
-							'workspace::rbac::role::delete',
-
-							'workspace::rbac::user::list',
-							'workspace::rbac::user::add',
-							'workspace::rbac::user::remove',
-							'workspace::rbac::user::updateRoles',
-
-							'workspace::edit',
-							'workspace::delete',
-
-							'workspace::ci::github::connect',
-							'workspace::ci::github::activate',
-							'workspace::ci::github::deactivate',
-							'workspace::ci::github::viewBuilds',
-							'workspace::ci::github::restartBuilds',
-							'workspace::ci::github::disconnect'
-						]
-					) THEN TRUE
-					ELSE FALSE
-				END
-			)
-			WHEN 'domain' THEN (
-				CASE
-					WHEN permission_name = ANY (
-						ARRAY [
-							'workspace::domain::viewDetails',
-							'workspace::domain::verify',
-							'workspace::domain::delete',
-
-							'workspace::domain::dnsRecord::list',
-							'workspace::domain::dnsRecord::add'
-						]
-					) THEN TRUE
-					ELSE FALSE
-				END
-			)
-			WHEN 'dnsRecord' THEN (
-				CASE
-					WHEN permission_name = ANY (
-						ARRAY [
-							'workspace::domain::dnsRecord::edit',
-							'workspace::domain::dnsRecord::delete'
-						]
-					) THEN TRUE
-					ELSE FALSE
-				END
-			)
-			WHEN 'dockerRepository' THEN (
-				CASE
-					WHEN permission_name = ANY (
-						ARRAY [
-							'workspace::dockerRegistry::delete',
-							'workspace::dockerRegistry::info',
-							'workspace::dockerRegistry::push',
-							'workspace::dockerRegistry::pull'
-						]
-					) THEN TRUE
-					ELSE FALSE
-				END
-			)
-			WHEN 'managedDatabase' THEN (
-				CASE
-					WHEN permission_name = ANY (
-						ARRAY [
-							'workspace::infrastructure::managedDatabase::delete',
-							'workspace::infrastructure::managedDatabase::info'
-						]
-					) THEN TRUE
-					ELSE FALSE
-				END
-			)
-			WHEN 'deployment' THEN (
-				CASE
-					WHEN permission_name = ANY (
-						ARRAY [
-							'workspace::infrastructure::deployment::info',
-							'workspace::infrastructure::deployment::delete',
-							'workspace::infrastructure::deployment::edit'
-						]
-					) THEN TRUE
-					ELSE FALSE
-				END
-			)
-			WHEN 'staticSite' THEN (
-				CASE
-					WHEN permission_name = ANY (
-						ARRAY [
-							'workspace::infrastructure::staticSite::info',
-							'workspace::infrastructure::staticSite::delete',
-							'workspace::infrastructure::staticSite::edit'
-						]
-					) THEN TRUE
-					ELSE FALSE
-				END
-			)
-			WHEN 'deploymentUpgradePath' THEN (
-				CASE
-					WHEN permission_name = ANY (
-						ARRAY [
-							'workspace::infrastructure::upgradePath::info',
-							'workspace::infrastructure::upgradePath::delete',
-							'workspace::infrastructure::upgradePath::edit'
-						]
-					) THEN TRUE
-					ELSE FALSE
-				END
-			)
-			WHEN 'managedUrl' THEN (
-				CASE
-					WHEN permission_name = ANY (
-						ARRAY [
-							'workspace::infrastructure::managedUrl::edit',
-							'workspace::infrastructure::managedUrl::delete'
-						]
-					) THEN TRUE
-					ELSE FALSE
-				END
-			)
-			WHEN 'secret' THEN (
-				CASE
-					WHEN permission_name = ANY (
-						ARRAY [
-							'workspace::secret::edit',
-							'workspace::secret::delete'
-						]
-					) THEN TRUE
-					ELSE FALSE
-				END
-			)
-			ELSE FALSE
-		END;
-		$$ LANGUAGE SQL IMMUTABLE STRICT;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	// create triggers for role_allow_permissions_resource
-	query!(
-		r#"
-		CREATE OR REPLACE FUNCTION
-			role_allow_permissions_resource_check()
-		RETURNS TRIGGER AS $$
-		DECLARE
-			permission_name TEXT;
-			resource_type_name TEXT;
-		BEGIN
-			SELECT
-				permission.name INTO permission_name
-			FROM
-				permission
-			WHERE
-				permission.id = NEW.permission_id;
-
-			SELECT
-				resource_type.name INTO resource_type_name
-			FROM
-				resource_type
-			JOIN
-				resource ON resource.resource_type_id = resource_type.id
-			WHERE
-				resource.id = NEW.resource_id;
-
-			IF validate_permission_to_resource_mapping(permission_name, resource_type_name) THEN
-				RETURN NEW;
-			END IF;
-
-			RAISE EXCEPTION 'Invalid permission is provided for resource';
-		END
-		$$ LANGUAGE PLPGSQL;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		DROP TRIGGER IF EXISTS
-			role_allow_permissions_resource_check_trigger
-		ON
-			role_allow_permissions_resource;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TRIGGER
-			role_allow_permissions_resource_check_trigger
-		BEFORE INSERT OR UPDATE ON
-			role_allow_permissions_resource
-		FOR EACH ROW EXECUTE FUNCTION
-			role_allow_permissions_resource_check();
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	// create triggers for role_block_permissions_resource
-	query!(
-		r#"
-		CREATE OR REPLACE FUNCTION
-			role_block_permissions_resource_check()
-		RETURNS TRIGGER AS $$
-		DECLARE
-			permission_name TEXT;
-			resource_type_name TEXT;
-		BEGIN
-			SELECT
-				permission.name INTO permission_name
-			FROM
-				permission
-			WHERE
-				permission.id = NEW.permission_id;
-
-			SELECT
-				resource_type.name INTO resource_type_name
-			FROM
-				resource_type
-			JOIN
-				resource ON resource.resource_type_id = resource_type.id
-			WHERE
-				resource.id = NEW.resource_id;
-
-			IF validate_permission_to_resource_mapping(permission_name, resource_type_name) THEN
-				RETURN NEW;
-			END IF;
-
-			RAISE EXCEPTION 'Invalid permission is provided for resource';
-		END
-		$$ LANGUAGE PLPGSQL;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		DROP TRIGGER IF EXISTS
-			role_block_permissions_resource_check_trigger
-		ON
-			role_block_permissions_resource;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TRIGGER
-			role_block_permissions_resource_check_trigger
-		BEFORE INSERT OR UPDATE ON
-			role_block_permissions_resource
-		FOR EACH ROW EXECUTE FUNCTION
-			role_block_permissions_resource_check();
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	// create triggers for role_allow_permissions_resource_type
-	query!(
-		r#"
-		CREATE OR REPLACE FUNCTION
-			role_allow_permissions_resource_type_check()
-		RETURNS TRIGGER AS $$
-		DECLARE
-			permission_name TEXT;
-			resource_type_name TEXT;
-		BEGIN
-			SELECT
-				permission.name INTO permission_name
-			FROM
-				permission
-			WHERE
-				permission.id = NEW.permission_id;
-
-			SELECT
-				resource_type.name INTO resource_type_name
-			FROM
-				resource_type
-			WHERE
-				resource_type.id = NEW.resource_type_id;
-
-			IF validate_permission_to_resource_mapping(permission_name, resource_type_name) THEN
-				RETURN NEW;
-			END IF;
-
-			RAISE EXCEPTION 'Invalid permission is provided for resource';
-		END
-		$$ LANGUAGE PLPGSQL;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		DROP TRIGGER IF EXISTS
-			role_allow_permissions_resource_type_check_trigger
-		ON
-			role_allow_permissions_resource_type;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TRIGGER
-			role_allow_permissions_resource_type_check_trigger
-		BEFORE INSERT OR UPDATE ON
-			role_allow_permissions_resource_type
-		FOR EACH ROW EXECUTE FUNCTION
-			role_allow_permissions_resource_type_check();
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	Ok(())
 }
 
@@ -797,31 +428,33 @@ pub async fn get_all_workspace_role_permissions_for_user(
 			for blocked_resource in blocked_resources {
 				let permission_id = blocked_resource.permission_id;
 				if let Some(permissions) = workspace_permissions
-					.blocked_resources
+					.blocked_resource_permissions
 					.get_mut(&blocked_resource.resource_id)
-				{
-					if !permissions.contains(&permission_id) {
-						permissions.push(permission_id);
-					}
-				} else {
-					workspace_permissions.blocked_resources.insert(
-						blocked_resource.resource_id,
-						vec![permission_id],
-					);
-				}
-			}
-			for resource in resources {
-				let permission_id = resource.permission_id;
-				if let Some(permissions) =
-					workspace_permission.allowed_resource_permissions.get_mut(&resource.resource_id)
 				{
 					if !permissions.contains(&permission_id) {
 						permissions.insert(permission_id);
 					}
 				} else {
-					workspace_permission
-						.allowed_resource_permissions
-						.insert(resource.resource_id, vec![permission_id]);
+					workspace_permissions.blocked_resource_permissions.insert(
+						blocked_resource.resource_id,
+						BTreeSet::from([permission_id]),
+					);
+				}
+			}
+			for resource in resources {
+				let permission_id = resource.permission_id;
+				if let Some(permissions) = workspace_permissions
+					.allowed_resource_permissions
+					.get_mut(&resource.resource_id)
+				{
+					if !permissions.contains(&permission_id) {
+						permissions.insert(permission_id);
+					}
+				} else {
+					workspace_permissions.allowed_resource_permissions.insert(
+						resource.resource_id,
+						BTreeSet::from([permission_id]),
+					);
 				}
 			}
 			for resource_type in resource_types {
@@ -834,39 +467,42 @@ pub async fn get_all_workspace_role_permissions_for_user(
 						permissions.insert(permission_id);
 					}
 				} else {
-					workspace_permissions.allowed_resource_type_permissions.insert(
-						resource_type.resource_type_id,
-						BTreeSet::from([permission_id]),
-					);
+					workspace_permissions
+						.allowed_resource_type_permissions
+						.insert(
+							resource_type.resource_type_id,
+							BTreeSet::from([permission_id]),
+						);
 				}
 			}
 		} else {
 			let mut permission = WorkspacePermission {
 				is_super_admin: false,
-				blocked_resources: HashMap::new(),
+				blocked_resource_permissions: BTreeMap::new(),
 				allowed_resource_permissions: BTreeMap::new(),
 				allowed_resource_type_permissions: BTreeMap::new(),
 			};
 			for blocked_resource in blocked_resources {
 				let permission_id = blocked_resource.permission_id;
 				if let Some(permissions) = permission
-					.blocked_resources
+					.blocked_resource_permissions
 					.get_mut(&blocked_resource.resource_id)
 				{
 					if !permissions.contains(&permission_id) {
-						permissions.push(permission_id);
+						permissions.insert(permission_id);
 					}
 				} else {
-					permission.blocked_resources.insert(
+					permission.blocked_resource_permissions.insert(
 						blocked_resource.resource_id,
-						vec![permission_id],
+						BTreeSet::from([permission_id]),
 					);
 				}
 			}
 			for resource in resources {
 				let permission_id = resource.permission_id;
-				if let Some(permissions) =
-					permission.allowed_resource_permissions.get_mut(&resource.resource_id)
+				if let Some(permissions) = permission
+					.allowed_resource_permissions
+					.get_mut(&resource.resource_id)
 				{
 					if !permissions.contains(&permission_id) {
 						permissions.insert(permission_id);
@@ -965,7 +601,7 @@ pub async fn get_all_workspace_role_permissions_for_user(
 				workspace_id,
 				WorkspacePermission {
 					is_super_admin: true,
-					blocked_resources: HashMap::new(),
+					blocked_resource_permissions: BTreeMap::new(),
 					allowed_resource_permissions: BTreeMap::new(),
 					allowed_resource_type_permissions: BTreeMap::new(),
 				},

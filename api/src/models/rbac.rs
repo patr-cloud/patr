@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use api_models::utils::Uuid;
 use once_cell::sync::OnceCell;
+use serde::{Deserialize, Serialize};
 
 pub static GOD_USER_ID: OnceCell<Uuid> = OnceCell::new();
 // A mapping of resource type name -> resource type IDs

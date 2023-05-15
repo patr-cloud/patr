@@ -95,18 +95,18 @@ impl UserAuthenticationData {
 		resource_type_id: &Uuid,
 		permission_required: &str,
 	) -> bool {
-		let god_user_id = GOD_USER_ID.get().unwrap();
-		if god_user_id == self.user_id() {
+		if self.user_id() == GOD_USER_ID.get().unwrap() {
 			// For god user allow all operations on all workspace
 			return true;
 		}
 
-		let workspace_permission =
-			if let Some(permission) = self.workspace_permissions().get(workspace_id) {
-				permission
-			} else {
-				return false;
-			};
+		let workspace_permission = if let Some(permission) =
+			self.workspace_permissions().get(workspace_id)
+		{
+			permission
+		} else {
+			return false;
+		};
 
 		if workspace_permission.is_super_admin {
 			// For super admin allow all operations on given workspace
@@ -114,8 +114,8 @@ impl UserAuthenticationData {
 		}
 
 		let is_permission_blocked = workspace_permission
-			.blocked_resources
-			.get(&resource.id)
+			.blocked_resource_permissions
+			.get(resource_id)
 			.map_or(false, |blocked_permissions| {
 				blocked_permissions.contains(
 					rbac::PERMISSIONS
@@ -147,8 +147,9 @@ impl UserAuthenticationData {
 			}
 		} || {
 			// Check if that specific resource is allowed
-			if let Some(permissions) =
-				workspace_permission.allowed_resource_permissions.get(resource_id)
+			if let Some(permissions) = workspace_permission
+				.allowed_resource_permissions
+				.get(resource_id)
 			{
 				permissions.contains(
 					rbac::PERMISSIONS

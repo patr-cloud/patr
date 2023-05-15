@@ -228,7 +228,7 @@ async fn list_permissions_for_api_token(
 			}
 
 			for (resource_type_id, permissions) in
-				&permission.resource_type_permissions
+				&permission.allowed_resource_type_permissions
 			{
 				for permission_id in permissions {
 					db::add_resource_type_permission_for_api_token(
@@ -242,7 +242,9 @@ async fn list_permissions_for_api_token(
 				}
 			}
 
-			for (resource_id, permissions) in &permission.resource_permissions {
+			for (resource_id, permissions) in
+				&permission.allowed_resource_permissions
+			{
 				for permission_id in permissions {
 					db::add_resource_permission_for_api_token(
 						context.get_database_connection(),
