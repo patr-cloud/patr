@@ -162,6 +162,8 @@ impl ApiTokenData {
 			permissions.entry(workspace_id).or_default().is_super_admin = true;
 		}
 
+		// todo: check for block permission too
+
 		for (workspace_id, resource_type_id, permission_id) in
 			db::get_all_resource_type_permissions_for_api_token(
 				connection, token_id,
@@ -171,7 +173,7 @@ impl ApiTokenData {
 			permissions
 				.entry(workspace_id)
 				.or_default()
-				.resource_type_permissions
+				.allowed_resource_type_permissions
 				.entry(resource_type_id)
 				.or_default()
 				.insert(permission_id);
@@ -184,7 +186,7 @@ impl ApiTokenData {
 			permissions
 				.entry(workspace_id)
 				.or_default()
-				.resource_permissions
+				.allowed_resource_permissions
 				.entry(resource_id)
 				.or_default()
 				.insert(permission_id);
@@ -301,8 +303,10 @@ impl ApiTokenData {
 					.await?;
 				}
 
+				// todo: check for block permission too
+
 				for (resource_type_id, permissions) in
-					&permission.resource_type_permissions
+					&permission.allowed_resource_type_permissions
 				{
 					for permission_id in permissions {
 						db::add_resource_type_permission_for_api_token(
@@ -317,7 +321,7 @@ impl ApiTokenData {
 				}
 
 				for (resource_id, permissions) in
-					&permission.resource_permissions
+					&permission.allowed_resource_permissions
 				{
 					for permission_id in permissions {
 						db::add_resource_permission_for_api_token(

@@ -644,7 +644,7 @@ async fn docker_registry_authenticate(
 			if let Some(required_role_for_user) = required_role_for_user {
 				let resource_type_allowed = {
 					if let Some(permissions) = required_role_for_user
-						.resource_type_permissions
+						.allowed_resource_type_permissions
 						.get(&resource.resource_type_id)
 					{
 						permissions.contains(
@@ -660,7 +660,7 @@ async fn docker_registry_authenticate(
 				};
 				let resource_allowed = {
 					if let Some(permissions) = required_role_for_user
-						.resource_permissions
+						.allowed_resource_permissions
 						.get(&resource.id)
 					{
 						permissions.contains(
