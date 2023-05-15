@@ -10369,16 +10369,6 @@
     },
     "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", workspace_id as \"workspace_id: _\", ingress_hostname as \"ingress_hostname: _\", message_log, cloudflare_certificate_id, config_file as \"config_file: _\", status as \"status: _\", disconnected_at as \"disconnected_at: _\" FROM region WHERE id = $1;"
   },
-  "8a362ef06766c1043fb206adb671097044b6e7f99f6ba82294be75777356960c": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE patr_database( id UUID NOT NULL, name CITEXT NOT NULL, workspace_id UUID NOT NULL, region UUID NOT NULL, db_name VARCHAR(255) NOT NULL, engine PATR_DATABASE_ENGINE NOT NULL, version TEXT NOT NULL, database_plan PATR_DATABASE_PLAN NOT NULL, status PATR_DATABASE_STATUS NOT NULL DEFAULT 'creating', host TEXT NOT NULL, port INTEGER NOT NULL, username TEXT NOT NULL, password TEXT NOT NULL, replica_numbers INTEGER NOT NULL DEFAULT 1, deleted TIMESTAMPTZ, CONSTRAINT patr_database_pk PRIMARY KEY (id), CONSTRAINT patr_database_chk_name_is_trimmed CHECK(name = TRIM(name)), CONSTRAINT patr_database_chk_db_name_is_trimmed CHECK(db_name = TRIM(db_name)), CONSTRAINT patr_database_fk_region FOREIGN KEY (region) REFERENCES deployment_region(id) );"
-  },
   "8a4b9a75e071d336d5e60746498b29e4cb564fe25a9ecdc198da8f24a1fbc5ae": {
     "describe": {
       "columns": [
@@ -13570,6 +13560,16 @@
       }
     },
     "query": "CREATE INDEX user_to_sign_up_idx_username_otp_expiry ON user_to_sign_up (username, otp_expiry);"
+  },
+  "bd481aa963f465864b4efc4d0fc7310e03930d7744ef07d893e3914b0038bed8": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE patr_database( id UUID NOT NULL, name CITEXT NOT NULL, workspace_id UUID NOT NULL, region UUID NOT NULL, db_name VARCHAR(255) NOT NULL, engine PATR_DATABASE_ENGINE NOT NULL, version TEXT NOT NULL, database_plan PATR_DATABASE_PLAN NOT NULL, status PATR_DATABASE_STATUS NOT NULL DEFAULT 'creating', host TEXT NOT NULL, port INTEGER NOT NULL, username TEXT NOT NULL, password TEXT NOT NULL, replica_numbers INTEGER NOT NULL DEFAULT 1, deleted TIMESTAMPTZ, CONSTRAINT patr_database_pk PRIMARY KEY (id), CONSTRAINT patr_database_chk_name_is_trimmed CHECK(name = TRIM(name)), CONSTRAINT patr_database_chk_db_name_is_trimmed CHECK(db_name = TRIM(db_name)), CONSTRAINT patr_database_fk_region FOREIGN KEY (region) REFERENCES region(id) );"
   },
   "bd587eb77417104191d600bee26bcebeefbb4b8686b14e226285479196d04cfc": {
     "describe": {
