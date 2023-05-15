@@ -250,7 +250,7 @@ async fn process_infra_queue_payload(
 			})
 		}
 		InfraRequestData::Database(database_data) => {
-			database::process_request(&mut connection, database_data, config)
+			database::process_request(&mut connection, database_data)
 				.await
 				.map_err(|error| {
 					log::error!(

@@ -15,7 +15,7 @@ use crate::{
 	error,
 	models::rbac,
 	service,
-	utils::{constants::free_limits, settings::Settings, validator, Error},
+	utils::{constants::free_limits, validator, Error},
 	Database,
 };
 
@@ -27,7 +27,6 @@ pub async fn create_patr_database_in_workspace(
 	database_plan: &PatrDatabasePlan,
 	region_id: &Uuid,
 	workspace_id: &Uuid,
-	config: &Settings,
 	request_id: &Uuid,
 	replica_numbers: i32,
 ) -> Result<Uuid, Error> {
@@ -64,29 +63,29 @@ pub async fn create_patr_database_in_workspace(
 			.body(error!(REGION_NOT_READY_YET).to_string()));
 	}
 
-	// check_patr_database_creation_limit(
-	// 	connection,
-	// 	workspace_id,
-	// 	region_details.is_byoc_region(),
-	// 	database_plan,
-	// 	request_id,
-	// )
-	// .await?;
+	check_patr_database_creation_limit(
+		connection,
+		workspace_id,
+		region_details.is_byoc_region(),
+		database_plan,
+		request_id,
+	)
+	.await?;
 
 	let creation_time = Utc::now();
 
-	// db::create_resource(
-	// 	connection,
-	// 	&database_id,
-	// 	rbac::RESOURCE_TYPES
-	// 		.get()
-	// 		.unwrap()
-	// 		.get(rbac::resource_types::PATR_DATABASE)
-	// 		.unwrap(),
-	// 	workspace_id,
-	// 	&creation_time,
-	// )
-	// .await?;
+	db::create_resource(
+		connection,
+		&database_id,
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::PATR_DATABASE)
+			.unwrap(),
+		workspace_id,
+		&creation_time,
+	)
+	.await?;
 
 	if !region_details.is_byoc_region() {
 		db::start_patr_database_usage_history(
@@ -116,29 +115,29 @@ pub async fn create_patr_database_in_workspace(
 		"request_id: {} - Creating entry for newly created patr database",
 		request_id
 	);
-	// db::create_patr_database(
-	// 	connection,
-	// 	&database_id,
-	// 	name,
-	// 	workspace_id,
-	// 	region_id,
-	// 	db_name,
-	// 	engine,
-	// 	version,
-	// 	database_plan,
-	// 	&format!("db-{database_id}"),
-	// 	port,
-	// 	username,
-	// 	&password,
-	// 	replica_numbers,
-	// )
-	// .await?;
-	// log::trace!("request_id: {} - Resource generation complete", request_id);
-
-	let kubeconfig = service::get_kubernetes_config_for_region(
-		connection, region_id, config,
+	db::create_patr_database(
+		connection,
+		&database_id,
+		name,
+		workspace_id,
+		region_id,
+		db_name,
+		engine,
+		version,
+		database_plan,
+		&format!("db-{database_id}"),
+		port,
+		username,
+		&password,
+		replica_numbers,
 	)
 	.await?;
+	log::trace!("request_id: {} - Resource generation complete", request_id);
+
+	let kubeconfig =
+		service::get_kubernetes_config_for_region(connection, region_id)
+			.await?
+			.0;
 
 	match engine {
 		PatrDatabaseEngine::Postgres => {
@@ -173,7 +172,6 @@ pub async fn create_patr_database_in_workspace(
 pub async fn modify_patr_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	database_id: &Uuid,
-	config: &Settings,
 	request_id: &Uuid,
 	replica_numbers: i32,
 ) -> Result<(), Error> {
@@ -187,12 +185,10 @@ pub async fn modify_patr_database(
 		.await?
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-	let kubeconfig = service::get_kubernetes_config_for_region(
-		connection,
-		&database.region,
-		config,
-	)
-	.await?;
+	let kubeconfig =
+		service::get_kubernetes_config_for_region(connection, &database.region)
+			.await?
+			.0;
 
 	match database.engine {
 		PatrDatabaseEngine::Postgres => {}
@@ -215,7 +211,6 @@ pub async fn modify_patr_database(
 pub async fn delete_patr_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	database_id: &Uuid,
-	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
@@ -243,12 +238,10 @@ pub async fn delete_patr_database(
 		.await?;
 	}
 
-	let kubeconfig = service::get_kubernetes_config_for_region(
-		connection,
-		&database.region,
-		config,
-	)
-	.await?;
+	let kubeconfig =
+		service::get_kubernetes_config_for_region(connection, &database.region)
+			.await?
+			.0;
 
 	// now delete the database from k8s
 	match database.engine {
@@ -273,7 +266,6 @@ pub async fn get_patr_database_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	database_id: &Uuid,
-	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<PatrDatabaseStatus, Error> {
 	log::trace!("Check patr database status: {database_id}");
@@ -281,12 +273,10 @@ pub async fn get_patr_database_status(
 		.await?
 		.status(500)?;
 
-	let kubeconfig = service::get_kubernetes_config_for_region(
-		connection,
-		&database.region,
-		config,
-	)
-	.await?;
+	let kubeconfig =
+		service::get_kubernetes_config_for_region(connection, &database.region)
+			.await?
+			.0;
 
 	let status = service::get_kubernetes_database_status(
 		workspace_id,
