@@ -67,185 +67,10 @@ async fn rbac_related_migrations(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), Error> {
-	rename_role_permissions_resource_tables(&mut *connection, config).await?;
 	create_role_block_permissions_resource_table(&mut *connection, config)
 		.await?;
-
-	Ok(())
-}
-
-async fn rename_role_permissions_resource_tables(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
-) -> Result<(), Error> {
-	query!(
-		r#"
-		ALTER TABLE
-			role_permissions_resource
-		RENAME TO
-			role_allow_permissions_resource;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE
-			role_permissions_resource_type
-		RENAME TO
-			role_allow_permissions_resource_type;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE
-			role_allow_permissions_resource_type
-		RENAME CONSTRAINT
-			role_permissions_resource_type_fk_role_id
-		TO
-			role_allow_permissions_resource_type_fk_role_id;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE
-			role_allow_permissions_resource_type
-		RENAME CONSTRAINT
-			role_permissions_resource_type_fk_permission_id
-		TO
-			role_allow_permissions_resource_type_fk_permission_id;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE
-			role_allow_permissions_resource_type
-		RENAME CONSTRAINT
-			role_permissions_resource_type_fk_resource_type_id
-		TO
-			role_allow_permissions_resource_type_fk_resource_type_id;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE
-			role_allow_permissions_resource_type
-		RENAME CONSTRAINT
-			role_permissions_resource_type_pk
-		TO
-			role_allow_permissions_resource_type_pk;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE
-			role_allow_permissions_resource
-		RENAME CONSTRAINT
-			role_permissions_resource_fk_role_id
-		TO
-			role_allow_permissions_resource_fk_role_id;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-	query!(
-		r#"
-		ALTER TABLE
-			role_allow_permissions_resource
-		RENAME CONSTRAINT
-			role_permissions_resource_fk_permission_id
-		TO
-			role_allow_permissions_resource_fk_permission_id;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE
-			role_allow_permissions_resource
-		RENAME CONSTRAINT
-			role_permissions_resource_fk_resource_id
-		TO
-			role_allow_permissions_resource_fk_resource_id;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE
-			role_allow_permissions_resource
-		RENAME CONSTRAINT
-			role_permissions_resource_pk
-		TO
-			role_allow_permissions_resource_pk;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER INDEX
-			role_permissions_resource_type_idx_role_id
-		RENAME TO
-			role_allow_permissions_resource_type_idx_role_id;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER INDEX
-			role_permissions_resource_type_idx_role_id_resource_type_id
-		RENAME TO
-			role_allow_permissions_resource_type_idx_roleid_resourcetypeid;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER INDEX
-			role_permissions_resource_idx_role_id
-		RENAME TO
-			role_allow_permissions_resource_idx_role_id;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER INDEX
-			role_permissions_resource_idx_role_id_resource_id
-		RENAME TO
-			role_allow_permissions_resource_idx_role_id_resource_id;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
+	create_api_token_block_permissions_resource_table(&mut *connection, config)
+		.await?;
 
 	Ok(())
 }
@@ -291,6 +116,35 @@ async fn create_role_block_permissions_resource_table(
 			role_block_permissions_resource_idx_role_id_resource_id
 		ON
 			role_block_permissions_resource(role_id, resource_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn create_api_token_block_permissions_resource_table(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		CREATE TABLE user_api_token_block_resource_permission(
+			token_id UUID NOT NULL
+				CONSTRAINT user_api_token_block_resource_permission_fk_token_id
+					REFERENCES user_api_token(token_id),
+			workspace_id UUID NOT NULL,
+			resource_id UUID NOT NULL,
+			permission_id UUID NOT NULL
+				CONSTRAINT user_api_token_block_resource_permission_fk_permission_id
+					REFERENCES permission(id),
+			CONSTRAINT user_api_token_block_resource_permission_workspace_id_resource_id
+				FOREIGN KEY (workspace_id, resource_id)
+					REFERENCES resource(owner_id, id),
+			CONSTRAINT user_api_token_block_resource_permission_pk 
+				PRIMARY KEY(token_id, permission_id, resource_id, workspace_id)
+		);
 		"#
 	)
 	.execute(&mut *connection)

@@ -165,17 +165,17 @@ pub async fn initialize_rbac_pre(
 	// Roles that have permissions on a resource type
 	query!(
 		r#"
-		CREATE TABLE role_allow_permissions_resource_type(
+		CREATE TABLE role_permissions_resource_type(
 			role_id UUID
-				CONSTRAINT role_allow_permissions_resource_type_fk_role_id
+				CONSTRAINT role_permissions_resource_type_fk_role_id
 					REFERENCES role(id),
 			permission_id UUID
-				CONSTRAINT role_allow_permissions_resource_type_fk_permission_id
+				CONSTRAINT role_permissions_resource_type_fk_permission_id
 					REFERENCES permission(id),
 			resource_type_id UUID
-				CONSTRAINT role_allow_permissions_resource_type_fk_resource_type_id
+				CONSTRAINT role_permissions_resource_type_fk_resource_type_id
 					REFERENCES resource_type(id),
-			CONSTRAINT role_allow_permissions_resource_type_pk
+			CONSTRAINT role_permissions_resource_type_pk
 				PRIMARY KEY(role_id, permission_id, resource_type_id)
 		);
 		"#
@@ -186,9 +186,9 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE INDEX
-			role_allow_permissions_resource_type_idx_role_id
+			role_permissions_resource_type_idx_role_id
 		ON
-			role_allow_permissions_resource_type
+			role_permissions_resource_type
 		(role_id);
 		"#
 	)
@@ -198,9 +198,9 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE INDEX
-			role_allow_permissions_resource_type_idx_roleid_resourcetypeid
+			role_permissions_resource_type_idx_role_id_resource_type_id
 		ON
-			role_allow_permissions_resource_type
+			role_permissions_resource_type
 		(role_id, resource_type_id);
 		"#
 	)
@@ -210,17 +210,17 @@ pub async fn initialize_rbac_pre(
 	// Roles that have permissions on a specific resource
 	query!(
 		r#"
-		CREATE TABLE role_allow_permissions_resource(
+		CREATE TABLE role_permissions_resource(
 			role_id UUID
-				CONSTRAINT role_allow_permissions_resource_fk_role_id
+				CONSTRAINT role_permissions_resource_fk_role_id
 					REFERENCES role(id),
 			permission_id UUID
-				CONSTRAINT role_allow_permissions_resource_fk_permission_id
+				CONSTRAINT role_permissions_resource_fk_permission_id
 					REFERENCES permission(id),
 			resource_id UUID
-				CONSTRAINT role_allow_permissions_resource_fk_resource_id
+				CONSTRAINT role_permissions_resource_fk_resource_id
 					REFERENCES resource(id),
-			CONSTRAINT role_allow_permissions_resource_pk
+			CONSTRAINT role_permissions_resource_pk
 				PRIMARY KEY(role_id, permission_id, resource_id)
 		);
 		"#
@@ -231,9 +231,9 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE INDEX
-			role_allow_permissions_resource_idx_role_id
+			role_permissions_resource_idx_role_id
 		ON
-			role_allow_permissions_resource
+			role_permissions_resource
 		(role_id);
 		"#
 	)
@@ -243,9 +243,9 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE INDEX
-			role_allow_permissions_resource_idx_role_id_resource_id
+			role_permissions_resource_idx_role_id_resource_id
 		ON
-			role_allow_permissions_resource
+			role_permissions_resource
 		(role_id, resource_id);
 		"#
 	)
@@ -394,13 +394,13 @@ pub async fn get_all_workspace_role_permissions_for_user(
 		.fetch_all(&mut *connection)
 		.await?;
 
-		let resources = query!(
+		let allowed_resources = query!(
 			r#"
 			SELECT
 				permission_id as "permission_id: Uuid",
 				resource_id as "resource_id: Uuid"
 			FROM
-				role_allow_permissions_resource
+				role_permissions_resource
 			WHERE
 				role_id = $1;
 			"#,
@@ -409,13 +409,13 @@ pub async fn get_all_workspace_role_permissions_for_user(
 		.fetch_all(&mut *connection)
 		.await?;
 
-		let resource_types = query!(
+		let allowed_resource_types = query!(
 			r#"
 			SELECT
 				permission_id as "permission_id: Uuid",
 				resource_type_id as "resource_type_id: Uuid"
 			FROM
-				role_allow_permissions_resource_type
+				role_permissions_resource_type
 			WHERE
 				role_id = $1;
 			"#,
@@ -441,27 +441,27 @@ pub async fn get_all_workspace_role_permissions_for_user(
 					);
 				}
 			}
-			for resource in resources {
-				let permission_id = resource.permission_id;
+			for allowed_resource in allowed_resources {
+				let permission_id = allowed_resource.permission_id;
 				if let Some(permissions) = workspace_permissions
 					.allowed_resource_permissions
-					.get_mut(&resource.resource_id)
+					.get_mut(&allowed_resource.resource_id)
 				{
 					if !permissions.contains(&permission_id) {
 						permissions.insert(permission_id);
 					}
 				} else {
 					workspace_permissions.allowed_resource_permissions.insert(
-						resource.resource_id,
+						allowed_resource.resource_id,
 						BTreeSet::from([permission_id]),
 					);
 				}
 			}
-			for resource_type in resource_types {
-				let permission_id = resource_type.permission_id;
+			for allowed_resource_type in allowed_resource_types {
+				let permission_id = allowed_resource_type.permission_id;
 				if let Some(permissions) = workspace_permissions
 					.allowed_resource_type_permissions
-					.get_mut(&resource_type.resource_type_id)
+					.get_mut(&allowed_resource_type.resource_type_id)
 				{
 					if !permissions.contains(&permission_id) {
 						permissions.insert(permission_id);
@@ -470,7 +470,7 @@ pub async fn get_all_workspace_role_permissions_for_user(
 					workspace_permissions
 						.allowed_resource_type_permissions
 						.insert(
-							resource_type.resource_type_id,
+							allowed_resource_type.resource_type_id,
 							BTreeSet::from([permission_id]),
 						);
 				}
@@ -498,34 +498,34 @@ pub async fn get_all_workspace_role_permissions_for_user(
 					);
 				}
 			}
-			for resource in resources {
-				let permission_id = resource.permission_id;
+			for allowed_resource in allowed_resources {
+				let permission_id = allowed_resource.permission_id;
 				if let Some(permissions) = permission
 					.allowed_resource_permissions
-					.get_mut(&resource.resource_id)
+					.get_mut(&allowed_resource.resource_id)
 				{
 					if !permissions.contains(&permission_id) {
 						permissions.insert(permission_id);
 					}
 				} else {
 					permission.allowed_resource_permissions.insert(
-						resource.resource_id,
+						allowed_resource.resource_id,
 						BTreeSet::from([permission_id]),
 					);
 				}
 			}
-			for resource_type in resource_types {
-				let permission_id = resource_type.permission_id;
+			for allowed_resource_type in allowed_resource_types {
+				let permission_id = allowed_resource_type.permission_id;
 				if let Some(permissions) = permission
 					.allowed_resource_type_permissions
-					.get_mut(&resource_type.resource_type_id)
+					.get_mut(&allowed_resource_type.resource_type_id)
 				{
 					if !permissions.contains(&permission_id) {
 						permissions.insert(permission_id);
 					}
 				} else {
 					permission.allowed_resource_type_permissions.insert(
-						resource_type.resource_type_id,
+						allowed_resource_type.resource_type_id,
 						BTreeSet::from([permission_id]),
 					);
 				}
