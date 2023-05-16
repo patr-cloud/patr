@@ -84,6 +84,28 @@ pub async fn initialize_api_token_post(
 
 	query!(
 		r#"
+		CREATE TABLE user_api_token_block_resource_permission(
+			token_id UUID NOT NULL
+				CONSTRAINT user_api_token_block_resource_permission_fk_token_id
+					REFERENCES user_api_token(token_id),
+			workspace_id UUID NOT NULL,
+			resource_id UUID NOT NULL,
+			permission_id UUID NOT NULL
+				CONSTRAINT user_api_token_block_resource_permission_fk_permission_id
+					REFERENCES permission(id),
+			CONSTRAINT user_api_token_block_resource_permission_workspace_id_resource_id
+				FOREIGN KEY (workspace_id, resource_id)
+					REFERENCES resource(owner_id, id),
+			CONSTRAINT user_api_token_block_resource_permission_pk 
+				PRIMARY KEY(token_id, permission_id, resource_id, workspace_id)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE user_api_token_resource_permission(
 			token_id UUID NOT NULL
 				CONSTRAINT user_api_token_resource_permission_fk_token_id
