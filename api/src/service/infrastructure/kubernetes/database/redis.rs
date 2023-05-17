@@ -49,7 +49,7 @@ use crate::{
 	utils::Error,
 };
 
-pub async fn create_kubernetes_redis_database(
+pub async fn patch_kubernetes_redis_database(
 	workspace_id: &Uuid,
 	database_id: &Uuid,
 	db_pwd: &String,
@@ -195,7 +195,6 @@ pub async fn create_kubernetes_redis_database(
 				image: Some("redis:6.2.3-alpine".to_owned()),
 				env: Some(vec![EnvVar {
 					name: "USER_PASSWORD".to_owned(),
-					value: Some("test".to_owned()),
 					value_from: Some(EnvVarSource {
 						secret_key_ref: Some(SecretKeySelector {
 							name: Some(secret_name_for_db_pwd),
@@ -204,6 +203,7 @@ pub async fn create_kubernetes_redis_database(
 						}),
 						..Default::default()
 					}),
+					..Default::default()
 				}]),
 				command: Some(vec![
 					"sh".to_owned(), 
@@ -420,50 +420,6 @@ pub async fn delete_kubernetes_redis_database(
 		.delete_opt(&pvc, &DeleteParams::default())
 		.await?;
 	}
-
-	Ok(())
-}
-
-pub async fn handle_redis_scaling(
-	workspace_id: &Uuid,
-	database_id: &Uuid,
-	kubeconfig: Kubeconfig,
-	request_id: &Uuid,
-	replica_numbers: i32,
-) -> Result<(), Error> {
-	let kubernetes_client =
-		super::super::get_kubernetes_client(kubeconfig).await?;
-	let namespace = workspace_id.as_str();
-	let sts_name_for_db = format!("db-{database_id}-sts");
-	let labels =
-		BTreeMap::from([("database".to_owned(), database_id.to_string())]);
-
-	log::trace!("request_id: {request_id} - Scaling replica for database");
-
-	let statefulset_spec_for_db = StatefulSet {
-		metadata: ObjectMeta {
-			name: Some(sts_name_for_db.clone()),
-			labels: Some(labels.clone()),
-			..Default::default()
-		},
-		spec: Some(StatefulSetSpec {
-			replicas: Some(replica_numbers),
-			selector: LabelSelector {
-				match_labels: Some(labels.clone()),
-				..Default::default()
-			},
-			..Default::default()
-		}),
-		..Default::default()
-	};
-
-	Api::<StatefulSet>::namespaced(kubernetes_client, namespace)
-		.patch(
-			&sts_name_for_db,
-			&PatchParams::apply(&sts_name_for_db),
-			&Patch::Apply(statefulset_spec_for_db),
-		)
-		.await?;
 
 	Ok(())
 }

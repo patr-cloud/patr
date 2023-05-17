@@ -108,7 +108,7 @@ pub async fn create_patr_database_in_workspace(
 		PatrDatabaseEngine::Postgres => ("12", 5432, "postgres"),
 		PatrDatabaseEngine::Mysql => ("8", 3306, "root"),
 		PatrDatabaseEngine::Mongo => ("8", 3306, "root"),
-		PatrDatabaseEngine::Redis => ("6", 6379, ""),
+		PatrDatabaseEngine::Redis => ("6", 6379, "root"),
 	};
 
 	log::trace!(
@@ -144,7 +144,7 @@ pub async fn create_patr_database_in_workspace(
 		PatrDatabaseEngine::Mysql => {}
 		PatrDatabaseEngine::Mongo => {}
 		PatrDatabaseEngine::Redis => {
-			service::create_kubernetes_redis_database(
+			service::patch_kubernetes_redis_database(
 				workspace_id,
 				&database_id,
 				&password,
@@ -198,9 +198,11 @@ pub async fn modify_patr_database(
 			return Err(Error::empty().status(500));
 		}
 		PatrDatabaseEngine::Redis => {
-			service::handle_redis_scaling(
+			service::patch_kubernetes_redis_database(
 				&database.workspace_id,
 				&database.id,
+				&database.password,
+				&database.database_plan,
 				kubeconfig,
 				request_id,
 				replica_numbers,
