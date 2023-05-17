@@ -94,8 +94,8 @@ async fn sign_in(
 async fn sign_up(
 	mut connection: Connection,
 	DecodedRequest {
-		path: _,
-		query: _,
+		path: CreateAccountPath,
+		query: (),
 		body:
 			CreateAccountRequest {
 				username,
@@ -138,9 +138,9 @@ async fn sign_out(
 	State(mut app): State<App>,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path: _,
-		query: _,
-		body: _,
+		path: LogoutPath,
+		query: (),
+		body: (),
 	}: DecodedRequest<LogoutRequest>,
 ) -> Result<(), Error> {
 	let login_id = token_data.login_id();
@@ -171,8 +171,8 @@ async fn join(
 	ClientIp(client_ip): ClientIp,
 	user_agent: Option<TypedHeader<UserAgent>>,
 	DecodedRequest {
-		path: _,
-		query: _,
+		path: CompleteSignUpPath,
+		query: (),
 		body: CompleteSignUpRequest {
 			username,
 			verification_token,
@@ -325,8 +325,8 @@ async fn get_access_token(
 async fn is_email_valid(
 	mut connection: Connection,
 	DecodedRequest {
-		body: _,
-		path: _,
+		path: IsEmailValidPath,
+		body: (),
 		query: IsEmailValidRequest { email },
 	}: DecodedRequest<IsEmailValidRequest>,
 ) -> Result<IsEmailValidResponse, Error> {
@@ -342,8 +342,8 @@ async fn is_email_valid(
 async fn is_username_valid(
 	mut connection: Connection,
 	DecodedRequest {
-		body: _,
-		path: _,
+		body: (),
+		path: IsUsernameValidPath,
 		query: IsUsernameValidRequest { username },
 	}: DecodedRequest<IsUsernameValidRequest>,
 ) -> Result<IsUsernameValidResponse, Error> {
@@ -359,8 +359,8 @@ async fn is_username_valid(
 async fn is_coupon_valid(
 	mut connection: Connection,
 	DecodedRequest {
-		body: _,
-		path: _,
+		body: (),
+		path: IsCouponValidPath,
 		query: IsCouponValidRequest { coupon },
 	}: DecodedRequest<IsCouponValidRequest>,
 ) -> Result<IsCouponValidResponse, Error> {
@@ -377,8 +377,8 @@ async fn is_coupon_valid(
 async fn forgot_password(
 	mut connection: Connection,
 	DecodedRequest {
-		query: _,
-		path: _,
+		query: (),
+		path: ForgotPasswordPath,
 		body:
 			ForgotPasswordRequest {
 				user_id,
@@ -403,8 +403,8 @@ async fn reset_password(
 	mut connection: Connection,
 	State(app): State<App>,
 	DecodedRequest {
-		query: _,
-		path: _,
+		query: (),
+		path: ResetPasswordPath,
 		body:
 			ResetPasswordRequest {
 				user_id,
@@ -479,8 +479,8 @@ async fn reset_password(
 async fn resend_otp(
 	mut connection: Connection,
 	DecodedRequest {
-		query: _,
-		path: _,
+		query: (),
+		path: ResendOtpPath,
 		body: ResendOtpRequest { username, password },
 	}: DecodedRequest<ResendOtpRequest>,
 ) -> Result<(), Error> {
@@ -502,8 +502,8 @@ async fn resend_otp(
 async fn list_recovery_options(
 	mut connection: Connection,
 	DecodedRequest {
-		query: _,
-		path: _,
+		query: (),
+		path: ListRecoveryOptionsPath,
 		body: ListRecoveryOptionsRequest { user_id },
 	}: DecodedRequest<ListRecoveryOptionsRequest>,
 ) -> Result<ListRecoveryOptionsResponse, Error> {

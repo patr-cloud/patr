@@ -53,8 +53,8 @@ async fn create_api_token(
 	mut connection: Connection,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path: _,
-		query: _,
+		path: CreateApiTokenPath,
+		query: (),
 		body:
 			CreateApiTokenRequest {
 				name,
@@ -88,9 +88,9 @@ async fn list_api_tokens_for_user(
 	mut connection: Connection,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path: _,
-		query: _,
-		body: _,
+		path: ListApiTokensPath,
+		query: (),
+		body: (),
 	}: DecodedRequest<ListApiTokensRequest>,
 ) -> Result<ListApiTokenResponse, Error> {
 	let request_id = Uuid::new_v4();
@@ -121,13 +121,12 @@ async fn list_permissions_for_api_token(
 	mut connection: Connection,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path,
-		query: _,
-		body: _,
+		path: ListApiTokenPermissionsPath { token_id },
+		query: (),
+		body: (),
 	}: DecodedRequest<ListApiTokenPermissionsRequest>,
 ) -> Result<ListApiTokenPermissionsResponse, Error> {
 	let request_id = Uuid::new_v4();
-	let token_id = &path.token_id;
 	let user_id = token_data.user_id();
 
 	// Check if token exists
@@ -223,13 +222,11 @@ async fn regenerate_api_token(
 	Extension(token_data): Extension<UserAuthenticationData>,
 	State(mut app): State<App>,
 	DecodedRequest {
-		path,
-		query: _,
-		body: _,
+		path: RegenerateApiTokenPath { token_id },
+		query: (),
+		body: (),
 	}: DecodedRequest<RegenerateApiTokenRequest>,
 ) -> Result<RegenerateApiTokenResponse, Error> {
-	let token_id = &path.token_id;
-
 	let token = Uuid::new_v4().to_string();
 	let user_facing_token = format!("patrv1.{}.{}", token, token_id);
 	let token_hash = service::hash(token.as_bytes())?;
@@ -252,15 +249,13 @@ async fn revoke_api_token(
 	Extension(token_data): Extension<UserAuthenticationData>,
 	State(mut app): State<App>,
 	DecodedRequest {
-		path,
-		query: _,
-		body: _,
+		path: RevokeApiTokenPath { token_id },
+		query: (),
+		body: (),
 	}: DecodedRequest<RevokeApiTokenRequest>,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	let user_id = token_data.user_id();
-
-	let token_id = &path.token_id;
 
 	db::get_active_user_api_token_by_id(&mut connection, &token_id)
 		.await?
@@ -285,11 +280,10 @@ async fn update_api_token(
 	Extension(token_data): Extension<UserAuthenticationData>,
 	State(mut app): State<App>,
 	DecodedRequest {
-		path,
-		query: _,
+		path: UpdateApiTokenPath { token_id },
+		query: (),
 		body:
 			UpdateApiTokenRequest {
-				token_id: _,
 				name,
 				permissions,
 				token_nbf,
@@ -299,7 +293,6 @@ async fn update_api_token(
 	}: DecodedRequest<UpdateApiTokenRequest>,
 ) -> Result<(), Error> {
 	let user_id = token_data.user_id();
-	let token_id = &path.token_id;
 
 	service::update_user_api_token(
 		&mut connection,

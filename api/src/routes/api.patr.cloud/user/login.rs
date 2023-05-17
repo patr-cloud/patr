@@ -38,9 +38,9 @@ async fn get_all_logins_for_user(
 	mut connection: Connection,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path: _,
-		query: _,
-		body: _,
+		path: ListUserLoginsPath,
+		query: (),
+		body: (),
 	}: DecodedRequest<ListUserLoginsRequest>,
 ) -> Result<ListUserLoginsResponse, Error> {
 	let user_id = token_data.user_id();
@@ -83,12 +83,12 @@ async fn get_login_info(
 	mut connection: Connection,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path,
-		query: _,
-		body: _,
+		path: GetUserLoginInfoPath { login_id },
+		query: (),
+		body: (),
 	}: DecodedRequest<GetUserLoginInfoRequest>,
 ) -> Result<GetUserLoginInfoResponse, Error> {
-	let login = db::get_user_web_login(&mut connection, &path.login_id)
+	let login = db::get_user_web_login(&mut connection, &login_id)
 		.await?
 		.map(|login| UserWebLogin {
 			login_id: login.login_id,
@@ -126,20 +126,20 @@ async fn delete_user_login(
 	Extension(token_data): Extension<UserAuthenticationData>,
 	State(mut app): State<App>,
 	DecodedRequest {
-		path,
-		query: _,
-		body: _,
+		path: DeleteUserLoginPath { login_id },
+		query: (),
+		body: (),
 	}: DecodedRequest<DeleteUserLoginRequest>,
 ) -> Result<(), Error> {
 	let user_id = token_data.user_id();
 
-	db::delete_user_web_login_by_id(&mut connection, &path.login_id, &user_id)
+	db::delete_user_web_login_by_id(&mut connection, &login_id, &user_id)
 		.await?;
 
 	let ttl = get_access_token_expiry() + Duration::hours(2); // 2 hrs buffer time
 	redis::revoke_login_tokens_created_before_timestamp(
 		&mut app.redis,
-		&path.login_id,
+		&login_id,
 		&Utc::now(),
 		Some(&ttl),
 	)

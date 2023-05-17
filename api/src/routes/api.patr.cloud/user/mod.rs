@@ -102,8 +102,8 @@ async fn get_user_info(
 	mut connection: Connection,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path: _,
-		query: _,
+		path: GetUserInfoPath,
+		query: (),
 		body,
 	}: DecodedRequest<GetUserInfoRequest>,
 ) -> Result<GetUserInfoResponse, Error> {
@@ -178,8 +178,8 @@ async fn get_user_info_by_user_id(
 	mut connection: Connection,
 	State(config): State<Config>,
 	DecodedRequest {
-		path: _,
-		query: _,
+		path: GetUserInfoByUserIdPath,
+		query: (),
 		body: GetUserInfoByUserIdRequest { user_id },
 	}: DecodedRequest<GetUserInfoByUserIdRequest>,
 ) -> Result<GetUserInfoByUserIdResponse, Error> {
@@ -213,8 +213,8 @@ async fn update_user_info(
 	State(config): State<Config>,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path: _,
-		query: _,
+		path: UpdateUserInfoPath,
+		query: (),
 		body:
 			UpdateUserInfoRequest {
 				first_name,
@@ -264,8 +264,8 @@ async fn add_email_address(
 	State(config): State<Config>,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path: _,
-		query: _,
+		path: AddPersonalEmailPath,
+		query: (),
 		body: AddPersonalEmailRequest { email },
 	}: DecodedRequest<AddPersonalEmailRequest>,
 ) -> Result<(), Error> {
@@ -290,9 +290,9 @@ async fn list_email_addresses(
 	State(config): State<Config>,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path: _,
-		query: _,
-		body: _,
+		path: ListPersonalEmailsPath,
+		query: (),
+		body: (),
 	}: DecodedRequest<ListPersonalEmailsRequest>,
 ) -> Result<ListPersonalEmailsResponse, Error> {
 	let user_id = token_data.user_id();
@@ -325,9 +325,9 @@ async fn list_phone_numbers(
 	State(config): State<Config>,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path: _,
-		query: _,
-		body: _,
+		path: ListPhoneNumbersPath,
+		query: (),
+		body: (),
 	}: DecodedRequest<ListPhoneNumbersRequest>,
 ) -> Result<ListPhoneNumbersResponse, Error> {
 	let user_id = token_data.user_id();
@@ -361,8 +361,8 @@ async fn update_recovery_email_address(
 	State(config): State<Config>,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path: _,
-		query: _,
+		path: UpdateRecoveryEmailPath,
+		query: (),
 		body: UpdateRecoveryEmailRequest { recovery_email },
 	}: DecodedRequest<UpdateRecoveryEmailRequest>,
 ) -> Result<(), Error> {
@@ -386,8 +386,8 @@ async fn update_recovery_phone_number(
 	State(config): State<Config>,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path: _,
-		query: _,
+		path: UpdateRecoveryPhoneNumberPath,
+		query: (),
 		body:
 			UpdateRecoveryPhoneNumberRequest {
 				recovery_phone_country_code,
@@ -416,8 +416,8 @@ async fn delete_personal_email_address(
 	State(config): State<Config>,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path: _,
-		query: _,
+		path: DeletePersonalEmailPath,
+		query: (),
 		body: DeletePersonalEmailRequest { email },
 	}: DecodedRequest<DeletePersonalEmailRequest>,
 ) -> Result<(), Error> {
@@ -441,8 +441,8 @@ async fn add_phone_number_for_user(
 	State(config): State<Config>,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path: _,
-		query: _,
+		path: AddPhoneNumberPath,
+		query: (),
 		body: AddPhoneNumberRequest {
 			country_code,
 			phone_number,
@@ -478,8 +478,8 @@ async fn verify_phone_number(
 	State(config): State<Config>,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path: _,
-		query: _,
+		path: VerifyPhoneNumberPath,
+		query: (),
 		body:
 			VerifyPhoneNumberRequest {
 				country_code,
@@ -511,8 +511,8 @@ async fn delete_phone_number(
 	State(config): State<Config>,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path: _,
-		query: _,
+		path: DeletePhoneNumberPath,
+		query: (),
 		body: DeletePhoneNumberRequest {
 			country_code,
 			phone_number,
@@ -541,8 +541,8 @@ async fn verify_email_address(
 	State(config): State<Config>,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path: _,
-		query: _,
+		path: VerifyPersonalEmailPath,
+		query: (),
 		body:
 			VerifyPersonalEmailRequest {
 				email,
@@ -572,9 +572,9 @@ async fn get_workspaces_for_user(
 	State(config): State<Config>,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path: _,
-		query: _,
-		body: _,
+		path: ListUserWorkspacesPath,
+		query: (),
+		body: (),
 	}: DecodedRequest<ListUserWorkspacesRequest>,
 ) -> Result<ListUserWorkspacesResponse, Error> {
 	let user_id = token_data.user_id();
@@ -601,8 +601,8 @@ async fn change_password(
 	State(config): State<Config>,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path: _,
-		query: _,
+		path: ChangePasswordPath,
+		query: (),
 		body: ChangePasswordRequest {
 			current_password,
 			new_password,
@@ -628,14 +628,14 @@ async fn search_for_user(
 	State(config): State<Config>,
 	Extension(token_data): Extension<UserAuthenticationData>,
 	DecodedRequest {
-		path: _,
+		path: SearchForUserPath,
 		query:
 			Paginated {
 				start: _,
 				count: _,
 				query: SearchForUserRequest { query },
 			},
-		body: _,
+		body: (),
 	}: DecodedRequest<SearchForUserRequest>,
 ) -> Result<SearchForUserResponse, Error> {
 	if query.is_empty() {
