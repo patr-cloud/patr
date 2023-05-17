@@ -61,7 +61,7 @@ async fn sign_in(
 		user_id.to_lowercase().trim(),
 	)
 	.await?
-	.ok_or_else(|| ErrorType::NotFound)?;
+	.ok_or_else(|| ErrorType::UserNotFound)?;
 
 	let success = service::validate_hash(&password, &user_data.password)?;
 	if !success {
@@ -211,9 +211,7 @@ async fn join(
 	let user = db::get_user_by_username(&mut connection, &username)
 		.await?
 		.ok_or_else(|| {
-			ErrorType::InternalServerError(anyhow::anyhow!(
-				"user_id should be valid"
-			))
+			ErrorType::internal_error_with_context("user_id should be valid")
 		})?;
 
 	if let Some((email_local, domain_id)) =
@@ -222,9 +220,9 @@ async fn join(
 		let domain = db::get_personal_domain_by_id(&mut connection, &domain_id)
 			.await?
 			.ok_or_else(|| {
-				ErrorType::InternalServerError(anyhow::anyhow!(
-					"domain_id should be valid"
-				))
+				ErrorType::internal_error_with_context(
+					"domain_id should be valid",
+				)
 			})?;
 
 		let _ = service::include_user_to_mailchimp(
@@ -445,9 +443,6 @@ async fn reset_password(
 	)
 	.await?;
 
-	connection.commit().await?;
-	// todo: for further db conn, need to get from app state
-
 	if !success {
 		return Err(ErrorType::EmailTokenNotFound.into());
 	}
@@ -460,16 +455,18 @@ async fn reset_password(
 
 	let new_password = service::hash(password.as_bytes())?;
 
-	let mut connection = app.database.begin().await?;
-
 	db::update_user_password(&mut connection, &user.id, &new_password).await?;
 
 	db::delete_password_reset_request_for_user(&mut connection, &user.id)
 		.await?;
 
+	connection.commit().await?;
+
+	// sending user notification needs a db connection. so commit the tx before
+	// giving connection to notification service
+	let mut connection = app.database.begin().await?;
 	service::send_user_reset_password_notification(&mut connection, user)
 		.await?;
-
 	connection.commit().await?;
 
 	Ok(())

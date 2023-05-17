@@ -260,7 +260,7 @@ async fn revoke_api_token(
 	db::get_active_user_api_token_by_id(&mut connection, &token_id)
 		.await?
 		.filter(|token| &token.user_id == user_id)
-		.ok_or_else(|| ErrorType::NotFound)?;
+		.ok_or_else(|| ErrorType::TokenNotFound)?;
 
 	log::trace!(
 		"request_id: {} with user_id: {} revoking api_token: {}",

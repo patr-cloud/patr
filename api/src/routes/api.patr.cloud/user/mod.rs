@@ -12,7 +12,7 @@ mod login;
 
 /// This function is used to create a router for every endpoint in this file
 pub fn create_sub_app(app: &App) -> Router<App> {
-	Router::<App>::new()
+	Router::new()
 		.mount_protected_dto(
 			PlainTokenAuthenticator::new(),
 			app.clone(),

@@ -43,7 +43,7 @@ impl Debug for App {
 pub async fn start_server(app: &App) {
 	let port = app.config.port;
 
-	let router = Router::<App>::new()
+	let router = Router::new()
 		.merge(routes::create_sub_app(app))
 		.layer(axum_sqlx_tx::Layer::new(app.database.clone()))
 		.layer(
