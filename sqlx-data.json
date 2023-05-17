@@ -729,7 +729,9 @@
               "kind": {
                 "Enum": [
                   "postgres",
-                  "mysql"
+                  "mysql",
+                  "mongo",
+                  "redis"
                 ]
               },
               "name": "patr_database_engine"
@@ -4873,7 +4875,9 @@
               "kind": {
                 "Enum": [
                   "postgres",
-                  "mysql"
+                  "mysql",
+                  "mongo",
+                  "redis"
                 ]
               },
               "name": "patr_database_engine"
@@ -5745,16 +5749,6 @@
       }
     },
     "query": "SELECT country_code, phone_number, user_id as \"user_id: _\", verification_token_hash, verification_token_expiry FROM user_unverified_phone_number WHERE country_code = $1 AND phone_number = $2;"
-  },
-  "50d634c0ab8f71ba813085f353f7002d9c8e375c4cbd569bbc2cdc904b60df43": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TYPE PATR_DATABASE_ENGINE AS ENUM( 'postgres', 'mysql', 'redis' );"
   },
   "51b48c931af24c0048305a577d2d0c1203f4bbfe08d39fec8106d6fec8fcb13b": {
     "describe": {
@@ -7691,7 +7685,9 @@
               "kind": {
                 "Enum": [
                   "postgres",
-                  "mysql"
+                  "mysql",
+                  "mongo",
+                  "redis"
                 ]
               },
               "name": "patr_database_engine"
@@ -11446,7 +11442,9 @@
               "kind": {
                 "Enum": [
                   "postgres",
-                  "mysql"
+                  "mysql",
+                  "mongo",
+                  "redis"
                 ]
               },
               "name": "patr_database_engine"
@@ -14102,6 +14100,16 @@
       }
     },
     "query": "UPDATE role SET name = COALESCE($1, name), description = COALESCE($2, description) WHERE id = $3;"
+  },
+  "cb74abae2a7369e0ed27637409b444de156ee52011bc4904d6e71e14a039b5a6": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TYPE PATR_DATABASE_ENGINE AS ENUM( 'postgres', 'mysql', 'mongo', 'redis' );"
   },
   "cc9e8b6528c4a5470becba2c5496e37acd8681d8749c240b85e02ffc04ef624f": {
     "describe": {
