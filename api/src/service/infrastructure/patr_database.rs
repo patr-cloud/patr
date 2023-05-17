@@ -153,7 +153,7 @@ pub async fn create_patr_database_in_workspace(
 			return Err(Error::empty().status(500));
 		}
 		PatrDatabaseEngine::Mysql => {
-			service::create_kubernetes_mysql_database(
+			service::patch_kubernetes_mysql_database(
 				workspace_id,
 				&database_id,
 				&password,
@@ -195,9 +195,11 @@ pub async fn modify_patr_database(
 		PatrDatabaseEngine::Mongo => {}
 		PatrDatabaseEngine::Redis => {}
 		PatrDatabaseEngine::Mysql => {
-			service::handle_scaling(
+			service::patch_kubernetes_mysql_database(
 				&database.workspace_id,
 				&database.id,
+				&database.password,
+				&database.database_plan,
 				kubeconfig,
 				request_id,
 				replica_numbers,
