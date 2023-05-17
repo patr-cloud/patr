@@ -267,7 +267,7 @@ pub async fn create_kubernetes_mysql_database(
 							"[[ `hostname` =~ -([0-9]+)$ ]] || exit 1".to_owned(),
 							"ordinal=${BASH_REMATCH[1]}".to_owned(),
 							"[[ $ordinal -eq 0 ]] && exit 0".to_owned(),
-							format!("ncat --recv-only {sts_name_for_db}-$(($ordinal-1)).{sts_name_for_db}.{namespace}.svc.cluster.local 3307 | xbstream -x -C /var/lib/mysql").to_owned(),
+							format!("ncat --recv-only {sts_name_for_db}-$(($ordinal-1)).{sts_name_for_db}.{namespace}.svc.cluster.local 3307 | xbstream -x -C /var/lib/mysql"),
 							"xtrabackup --prepare --target-dir=/var/lib/mysql".to_owned()
 						].join("\n")
 					]),
@@ -399,7 +399,7 @@ pub async fn create_kubernetes_mysql_database(
 							r#"until mysql -h 127.0.0.1 -e "SELECT 1"; do sleep 1; done"#.to_owned(),
 							r#"mysql -h 127.0.0.1 \"#.to_owned(),
 							r#"-e "$(<change_master_to.sql.in), \"#.to_owned(),
-							format!(r#"MASTER_HOST='{sts_name_for_db}-0.{sts_name_for_db}.{namespace}', \"#).to_owned(),
+							format!(r#"MASTER_HOST='{sts_name_for_db}-0.{sts_name_for_db}.{namespace}', \"#),
 							r#"MASTER_USER='root', \"#.to_owned(),
 							r#"MASTER_PASSWORD='', \"#.to_owned(),
 							r#"MASTER_CONNECT_RETRY=10; \"#.to_owned(),
