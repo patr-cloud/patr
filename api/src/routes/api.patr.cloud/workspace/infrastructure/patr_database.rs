@@ -8,6 +8,8 @@ use api_models::{
 		DeleteDatabaseResponse,
 		GetDatabaseInfoResponse,
 		ListDatabasesResponse,
+		ModifyDatabaseRequest,
+		ModifyDatabaseResponse,
 	},
 	utils::Uuid,
 };
@@ -378,7 +380,9 @@ async fn modify_database_cluster(
 		Uuid::parse_str(context.get_param(request_keys::DATABASE_ID).unwrap())
 			.unwrap();
 
-	let replica_numbers = context
+	let ModifyDatabaseRequest {
+		replica_numbers, ..
+	} = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -399,6 +403,7 @@ async fn modify_database_cluster(
 	)
 	.await?;
 
+	context.success(ModifyDatabaseResponse { id: database_id });
 	Ok(context)
 }
 

@@ -143,7 +143,7 @@ pub async fn create_patr_database_in_workspace(
 		PatrDatabaseEngine::Postgres => {}
 		PatrDatabaseEngine::Mysql => {}
 		PatrDatabaseEngine::Mongo => {
-			service::create_kubernetes_mongo_database(
+			service::patch_kubernetes_mongo_database(
 				workspace_id,
 				&database_id,
 				&password,
@@ -184,9 +184,11 @@ pub async fn modify_patr_database(
 		PatrDatabaseEngine::Postgres => {}
 		PatrDatabaseEngine::Mysql => {}
 		PatrDatabaseEngine::Mongo => {
-			service::handle_mongo_scaling(
+			service::patch_kubernetes_mongo_database(
 				&database.workspace_id,
 				&database.id,
+				&database.password,
+				&database.database_plan,
 				kubeconfig,
 				request_id,
 				replica_numbers,
