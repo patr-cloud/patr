@@ -37,7 +37,9 @@ pub async fn initialize_patr_database_pre(
 		r#"
 		CREATE TYPE PATR_DATABASE_ENGINE AS ENUM(
 			'postgres',
-			'mysql'
+			'mysql',
+			'mongo',
+			'redis'
 		);
 		"#
 	)
