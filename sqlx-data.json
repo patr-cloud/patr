@@ -1339,16 +1339,6 @@
     },
     "query": "SELECT workspace_id as \"workspace_id: Uuid\", resource_id as \"resource_id: Uuid\", permission_id as \"permission_id: Uuid\" FROM user_api_token_resource_permission WHERE token_id = $1;"
   },
-  "0fdfb611486767466259f83aead62c9e47e25261490d71519a1225f6c26116bf": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TYPE PATR_DATABASE_ENGINE AS ENUM( 'postgres', 'mysql' );"
-  },
   "10d6af47121b65f003d6986eba47253453fff2560401e8c77acbcc6ba02c799c": {
     "describe": {
       "columns": [],
@@ -14110,6 +14100,16 @@
       }
     },
     "query": "UPDATE role SET name = COALESCE($1, name), description = COALESCE($2, description) WHERE id = $3;"
+  },
+  "cb74abae2a7369e0ed27637409b444de156ee52011bc4904d6e71e14a039b5a6": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TYPE PATR_DATABASE_ENGINE AS ENUM( 'postgres', 'mysql', 'mongo', 'redis' );"
   },
   "cc9e8b6528c4a5470becba2c5496e37acd8681d8749c240b85e02ffc04ef624f": {
     "describe": {
