@@ -12,6 +12,7 @@ pub(super) async fn migrate(
 ) -> Result<(), Error> {
 	add_tables_for_k8s_database(connection, config).await?;
 	reset_permission_order(connection, config).await?;
+	reset_resource_order(connection, config).await?;
 	add_is_frozen_column_to_workspace(connection, config).await?;
 
 	Ok(())
@@ -374,6 +375,60 @@ async fn reset_permission_order(
 				name = CONCAT('test::', $1);
 			"#,
 			&permission,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	Ok(())
+}
+
+async fn reset_resource_order(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	for resource_type in [
+		"workspace",
+		"domain",
+		"dnsRecord",
+		"dockerRepository",
+		"managedDatabase",
+		"deployment",
+		"staticSite",
+		"deploymentUpgradePath",
+		"managedUrl",
+		"secret",
+		"staticSiteUpload",
+		"deploymentRegion",
+		"deploymentVolume",
+		"patrDatabase",
+		"ciRepo",
+		"ciRunner",
+	] {
+		query!(
+			r#"
+			UPDATE
+				resource_type
+			SET
+				name = CONCAT('test::', name)
+			WHERE
+				name = $1;
+			"#,
+			resource_type,
+		)
+		.execute(&mut *connection)
+		.await?;
+
+		query!(
+			r#"
+			UPDATE
+				resource_type
+			SET
+				name = $1
+			WHERE
+				name = CONCAT('test::', $1);
+			"#,
+			&resource_type,
 		)
 		.execute(&mut *connection)
 		.await?;
