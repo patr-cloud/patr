@@ -1,8 +1,8 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 
-use api_models::utils::Uuid;
+use api_models::{models::workspace::ResourcePermissionType, utils::Uuid};
 
-use super::{Permission, Role};
+use super::{PermissionType, Role};
 use crate::{db::User, query, query_as, Database};
 
 pub async fn generate_new_role_id(
@@ -107,133 +107,104 @@ pub async fn get_role_by_id(
 	.await
 }
 
-/// For a given role, what permissions are allowed on what resources?
-/// Returns a HashMap of Resource -> Permission[]
-pub async fn get_allowed_permissions_on_resources_for_role(
+pub async fn get_permissions_for_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &Uuid,
-) -> Result<HashMap<Uuid, Vec<Permission>>, sqlx::Error> {
-	let mut permissions = HashMap::<Uuid, Vec<Permission>>::new();
-	let rows = query!(
+) -> Result<BTreeMap<Uuid, ResourcePermissionType>, sqlx::Error> {
+	let mut permission_set = BTreeMap::new();
+
+	query!(
 		r#"
 		SELECT
 			permission_id as "permission_id: Uuid",
-			resource_id as "resource_id: Uuid",
-			name,
-			description
+			resource_id as "resource_id: Uuid"
 		FROM
-			role_permissions_resource
-		INNER JOIN
-			permission
-		ON
-			role_permissions_resource.permission_id = permission.id
+			role_resource_permissions_include
 		WHERE
-			role_permissions_resource.role_id = $1;
+			role_id = $1;
 		"#,
 		role_id as _
 	)
 	.fetch_all(&mut *connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| (row.permission_id, row.resource_id))
+	.fold(
+		BTreeMap::<Uuid, BTreeSet<Uuid>>::new(),
+		|mut accu, (permission_id, resource_id)| {
+			accu.entry(permission_id).or_default().insert(resource_id);
+			accu
+		},
+	)
+	.into_iter()
+	.for_each(|(permission_id, resource_ids)| {
+		permission_set.insert(
+			permission_id,
+			ResourcePermissionType::Include(resource_ids),
+		);
+	});
 
-	for row in rows {
-		let permission = Permission {
-			id: row.permission_id,
-			name: row.name,
-			description: row.description,
-		};
-		permissions
-			.entry(row.resource_id)
-			.or_insert_with(Vec::new)
-			.push(permission);
-	}
-
-	Ok(permissions)
-}
-
-/// For a given role, what permissions are blocked on what resources?
-/// Returns a HashMap of Resource -> Permission[]
-pub async fn get_blocked_permissions_on_resources_for_role(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &Uuid,
-) -> Result<HashMap<Uuid, Vec<Permission>>, sqlx::Error> {
-	let mut permissions = HashMap::<Uuid, Vec<Permission>>::new();
-	let rows = query!(
+	query!(
 		r#"
 		SELECT
 			permission_id as "permission_id: Uuid",
-			resource_id as "resource_id: Uuid",
-			name,
-			description
+			resource_id as "resource_id: Uuid"
 		FROM
-			role_block_permissions_resource
-		INNER JOIN
-			permission
-		ON
-			role_block_permissions_resource.permission_id = permission.id
+			role_resource_permissions_exclude
 		WHERE
-			role_block_permissions_resource.role_id = $1;
+			role_id = $1;
 		"#,
 		role_id as _
 	)
 	.fetch_all(&mut *connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| (row.permission_id, row.resource_id))
+	.fold(
+		BTreeMap::<Uuid, BTreeSet<Uuid>>::new(),
+		|mut accu, (permission_id, resource_id)| {
+			accu.entry(permission_id).or_default().insert(resource_id);
+			accu
+		},
+	)
+	.into_iter()
+	.for_each(|(permission_id, resource_ids)| {
+		permission_set.insert(
+			permission_id,
+			ResourcePermissionType::Exclude(resource_ids),
+		);
+	});
 
-	for row in rows {
-		let permission = Permission {
-			id: row.permission_id,
-			name: row.name,
-			description: row.description,
-		};
-		permissions
-			.entry(row.resource_id)
-			.or_insert_with(Vec::new)
-			.push(permission);
-	}
-
-	Ok(permissions)
-}
-
-/// For a given role, what permissions are allowed on what resources types?
-/// Returns a HashMap of ResourceType -> Permission[]
-pub async fn get_allowed_permissions_on_resource_types_for_role(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &Uuid,
-) -> Result<HashMap<Uuid, Vec<Permission>>, sqlx::Error> {
-	let mut permissions = HashMap::<Uuid, Vec<Permission>>::new();
-	let rows = query!(
+	query!(
 		r#"
 		SELECT
 			permission_id as "permission_id: Uuid",
-			resource_type_id as "resource_type_id: Uuid",
-			name,
-			description
+			permission_type as "permission_type: PermissionType"
 		FROM
-			role_permissions_resource_type
-		INNER JOIN
-			permission
-		ON
-			role_permissions_resource_type.permission_id = permission.id
+			role_resource_permissions_type
 		WHERE
-			role_permissions_resource_type.role_id = $1;
+			role_id = $1;
 		"#,
 		role_id as _
 	)
 	.fetch_all(&mut *connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| (row.permission_id, row.permission_type))
+	.for_each(|(permission_id, permission_type)| {
+		permission_set.entry(permission_id).or_insert_with(|| {
+			match permission_type {
+				PermissionType::Include => {
+					ResourcePermissionType::Include(BTreeSet::new())
+				}
+				PermissionType::Exclude => {
+					ResourcePermissionType::Exclude(BTreeSet::new())
+				}
+			}
+		});
+	});
 
-	for row in rows {
-		let permission = Permission {
-			id: row.permission_id,
-			name: row.name,
-			description: row.description,
-		};
-		permissions
-			.entry(row.resource_type_id)
-			.or_insert_with(Vec::new)
-			.push(permission);
-	}
-
-	Ok(permissions)
+	Ok(permission_set)
 }
 
 pub async fn remove_all_permissions_for_role(
@@ -243,7 +214,7 @@ pub async fn remove_all_permissions_for_role(
 	query!(
 		r#"
 		DELETE FROM
-			role_block_permissions_resource
+			role_resource_permissions_include
 		WHERE
 			role_id = $1;
 		"#,
@@ -255,7 +226,7 @@ pub async fn remove_all_permissions_for_role(
 	query!(
 		r#"
 		DELETE FROM
-			role_permissions_resource
+			role_resource_permissions_exclude
 		WHERE
 			role_id = $1;
 		"#,
@@ -267,7 +238,7 @@ pub async fn remove_all_permissions_for_role(
 	query!(
 		r#"
 		DELETE FROM
-			role_permissions_resource_type
+			role_resource_permissions_type
 		WHERE
 			role_id = $1;
 		"#,
@@ -279,90 +250,94 @@ pub async fn remove_all_permissions_for_role(
 	Ok(())
 }
 
-pub async fn insert_blocked_resource_permissions_for_role(
+pub async fn insert_permissions_for_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &Uuid,
-	resource_permissions: &BTreeMap<Uuid, Vec<Uuid>>,
+	permissions: &BTreeMap<Uuid, ResourcePermissionType>,
 ) -> Result<(), sqlx::Error> {
-	for (resource_id, permissions) in resource_permissions {
-		for permission_id in permissions {
-			query!(
-				r#"
-				INSERT INTO
-					role_block_permissions_resource(
-						role_id,
-						permission_id,
-						resource_id
-					)
-				VALUES
-					($1, $2, $3);
-				"#,
-				role_id as _,
-				permission_id as _,
-				resource_id as _,
-			)
-			.execute(&mut *connection)
-			.await?;
-		}
-	}
-	Ok(())
-}
+	for (permission_id, resource_permission_type) in permissions {
+		match resource_permission_type {
+			ResourcePermissionType::Include(resource_ids) => {
+				query!(
+					r#"
+					INSERT INTO
+						role_resource_permissions_type(
+							role_id,
+							permission_id,
+							permission_type
+						)
+					VALUES
+						($1, $2, $3);
+					"#,
+					role_id as _,
+					permission_id as _,
+					PermissionType::Include as _,
+				)
+				.execute(&mut *connection)
+				.await?;
 
-pub async fn insert_allowed_resource_permissions_for_role(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &Uuid,
-	resource_permissions: &BTreeMap<Uuid, Vec<Uuid>>,
-) -> Result<(), sqlx::Error> {
-	for (resource_id, permissions) in resource_permissions {
-		for permission_id in permissions {
-			query!(
-				r#"
-				INSERT INTO
-					role_permissions_resource(
-						role_id,
-						permission_id,
-						resource_id
+				for resource_id in resource_ids {
+					query!(
+						r#"
+						INSERT INTO
+							role_resource_permissions_include(
+								role_id,
+								permission_id,
+								resource_id
+							)
+						VALUES
+							($1, $2, $3);
+						"#,
+						role_id as _,
+						permission_id as _,
+						resource_id as _,
 					)
-				VALUES
-					($1, $2, $3);
-				"#,
-				role_id as _,
-				permission_id as _,
-				resource_id as _,
-			)
-			.execute(&mut *connection)
-			.await?;
-		}
-	}
-	Ok(())
-}
+					.execute(&mut *connection)
+					.await?;
+				}
+			}
+			ResourcePermissionType::Exclude(resource_ids) => {
+				query!(
+					r#"
+					INSERT INTO
+						role_resource_permissions_type(
+							role_id,
+							permission_id,
+							permission_type
+						)
+					VALUES
+						($1, $2, $3);
+					"#,
+					role_id as _,
+					permission_id as _,
+					PermissionType::Exclude as _,
+				)
+				.execute(&mut *connection)
+				.await?;
 
-pub async fn insert_allowed_resource_type_permissions_for_role(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &Uuid,
-	resource_type_permissions: &BTreeMap<Uuid, Vec<Uuid>>,
-) -> Result<(), sqlx::Error> {
-	for (resource_type_id, permissions) in resource_type_permissions {
-		for permission_id in permissions {
-			query!(
-				r#"
-				INSERT INTO
-					role_permissions_resource_type(
-						role_id,
-						permission_id,
-						resource_type_id
+				for resource_id in resource_ids {
+					query!(
+						r#"
+						INSERT INTO
+							role_resource_permissions_exclude(
+								role_id,
+								permission_id,
+								resource_id
+							)
+						VALUES
+							($1, $2, $3);
+						"#,
+						role_id as _,
+						permission_id as _,
+						resource_id as _,
 					)
-				VALUES
-					($1, $2, $3);
-				"#,
-				role_id as _,
-				permission_id as _,
-				resource_type_id as _,
-			)
-			.execute(&mut *connection)
-			.await?;
+					.execute(&mut *connection)
+					.await?;
+				}
+			}
 		}
 	}
+
 	Ok(())
 }
 

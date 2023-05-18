@@ -1,6 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-use api_models::{models::workspace::WorkspacePermission, utils::Uuid};
+use api_models::{
+	models::workspace::{ResourcePermissionType, WorkspacePermission},
+	utils::Uuid,
+};
 use chrono::{DateTime, Utc};
 
 use crate::{models::rbac, query, query_as, Database};
@@ -9,7 +12,6 @@ mod role;
 mod user;
 
 pub use self::{role::*, user::*};
-use super::{PaymentType, Workspace};
 
 pub struct ResourceType {
 	pub id: Uuid,
@@ -41,6 +43,13 @@ pub struct WorkspaceUser {
 	pub user_id: Uuid,
 	pub workspace_id: Uuid,
 	pub role_id: Uuid,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, sqlx::Type)]
+#[sqlx(type_name = "PERMISSION_TYPE", rename_all = "snake_case")]
+pub enum PermissionType {
+	Include,
+	Exclude,
 }
 
 pub async fn initialize_rbac_pre(
@@ -162,21 +171,11 @@ pub async fn initialize_rbac_pre(
 	.execute(&mut *connection)
 	.await?;
 
-	// Roles that have permissions on a resource type
 	query!(
 		r#"
-		CREATE TABLE role_permissions_resource_type(
-			role_id UUID
-				CONSTRAINT role_permissions_resource_type_fk_role_id
-					REFERENCES role(id),
-			permission_id UUID
-				CONSTRAINT role_permissions_resource_type_fk_permission_id
-					REFERENCES permission(id),
-			resource_type_id UUID
-				CONSTRAINT role_permissions_resource_type_fk_resource_type_id
-					REFERENCES resource_type(id),
-			CONSTRAINT role_permissions_resource_type_pk
-				PRIMARY KEY(role_id, permission_id, resource_type_id)
+		CREATE TYPE PERMISSION_TYPE AS ENUM(
+			'include',
+			'exclude'
 		);
 		"#
 	)
@@ -185,43 +184,21 @@ pub async fn initialize_rbac_pre(
 
 	query!(
 		r#"
-		CREATE INDEX
-			role_permissions_resource_type_idx_role_id
-		ON
-			role_permissions_resource_type
-		(role_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
+		CREATE TABLE role_resource_permissions_type(
+			role_id 		UUID 			NOT NULL,
+			permission_id 	UUID 			NOT NULL,
+			permission_type PERMISSION_TYPE NOT NULL,
 
-	query!(
-		r#"
-		CREATE INDEX
-			role_permissions_resource_type_idx_role_id_resource_type_id
-		ON
-			role_permissions_resource_type
-		(role_id, resource_type_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
+			CONSTRAINT role_resource_permissions_type_pk
+				PRIMARY KEY(role_id, permission_id),
 
-	// Roles that have permissions on a specific resource
-	query!(
-		r#"
-		CREATE TABLE role_permissions_resource(
-			role_id UUID
-				CONSTRAINT role_permissions_resource_fk_role_id
-					REFERENCES role(id),
-			permission_id UUID
-				CONSTRAINT role_permissions_resource_fk_permission_id
-					REFERENCES permission(id),
-			resource_id UUID
-				CONSTRAINT role_permissions_resource_fk_resource_id
-					REFERENCES resource(id),
-			CONSTRAINT role_permissions_resource_pk
-				PRIMARY KEY(role_id, permission_id, resource_id)
+			CONSTRAINT role_resource_permissions_type_uq
+				UNIQUE (role_id, permission_id, permission_type),
+
+			CONSTRAINT role_resource_permissions_type_fk_role_id
+				FOREIGN KEY (role_id) REFERENCES role(id),
+			CONSTRAINT role_resource_permissions_type_fk_permission_id
+				FOREIGN KEY (permission_id) REFERENCES permission(id)
 		);
 		"#
 	)
@@ -230,42 +207,20 @@ pub async fn initialize_rbac_pre(
 
 	query!(
 		r#"
-		CREATE INDEX
-			role_permissions_resource_idx_role_id
-		ON
-			role_permissions_resource
-		(role_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
+		CREATE TABLE role_resource_permissions_include(
+			role_id 		UUID 			NOT NULL,
+			permission_id 	UUID 			NOT NULL,
+			resource_id		UUID			NOT NULL,
 
-	query!(
-		r#"
-		CREATE INDEX
-			role_permissions_resource_idx_role_id_resource_id
-		ON
-			role_permissions_resource
-		(role_id, resource_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
+			permission_type PERMISSION_TYPE NOT NULL
+				GENERATED ALWAYS AS ('include') STORED,
 
-	query!(
-		r#"
-		CREATE TABLE role_block_permissions_resource(
-			role_id UUID
-				CONSTRAINT role_block_permissions_resource_fk_role_id
-					REFERENCES role(id),
-			permission_id UUID
-				CONSTRAINT role_block_permissions_resource_fk_permission_id
-					REFERENCES permission(id),
-			resource_id UUID
-				CONSTRAINT role_block_permissions_resource_fk_resource_id
-					REFERENCES resource(id),
-			CONSTRAINT role_block_permissions_resource_pk
-				PRIMARY KEY(role_id, permission_id, resource_id)
+			CONSTRAINT role_resource_permissions_include_pk
+				PRIMARY KEY(role_id, permission_id, resource_id),
+
+			CONSTRAINT role_resource_permissions_include_fk_parent
+				FOREIGN KEY (role_id, permission_id, permission_type)
+					REFERENCES role_resource_permissions_type(role_id, permission_id, permission_type)
 		);
 		"#
 	)
@@ -274,25 +229,27 @@ pub async fn initialize_rbac_pre(
 
 	query!(
 		r#"
-		CREATE INDEX
-			role_block_permissions_resource_idx_role_id
-		ON
-			role_block_permissions_resource(role_id);
+		CREATE TABLE role_resource_permissions_exclude(
+			role_id 		UUID 			NOT NULL,
+			permission_id 	UUID 			NOT NULL,
+			resource_id		UUID			NOT NULL,
+
+			permission_type PERMISSION_TYPE NOT NULL
+				GENERATED ALWAYS AS ('exclude') STORED,
+
+			CONSTRAINT role_resource_permissions_exclude_pk
+				PRIMARY KEY(role_id, permission_id, resource_id),
+
+			CONSTRAINT role_resource_permissions_exclude_fk_parent
+				FOREIGN KEY (role_id, permission_id, permission_type)
+					REFERENCES role_resource_permissions_type(role_id, permission_id, permission_type)
+		);
 		"#
 	)
 	.execute(&mut *connection)
 	.await?;
 
-	query!(
-		r#"
-		CREATE INDEX
-			role_block_permissions_resource_idx_role_id_resource_id
-		ON
-			role_block_permissions_resource(role_id, resource_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
+	// TODO: index for rbac tables
 
 	Ok(())
 }
@@ -357,207 +314,136 @@ pub async fn get_all_workspace_role_permissions_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 ) -> Result<BTreeMap<Uuid, WorkspacePermission>, sqlx::Error> {
-	let mut workspaces: BTreeMap<Uuid, WorkspacePermission> = BTreeMap::new();
+	let mut workspace_member_permissions =
+		BTreeMap::<Uuid, BTreeMap<Uuid, ResourcePermissionType>>::new();
 
-	let workspace_roles = query!(
+	query!(
 		r#"
 		SELECT
-			workspace_id as "workspace_id: Uuid",
-			role_id as "role_id: Uuid"
+			workspace_user.workspace_id as "workspace_id: Uuid",
+			role_resource_permissions_include.permission_id as "permission_id: Uuid",
+			role_resource_permissions_include.resource_id as "resource_id: Uuid"
 		FROM
+			role_resource_permissions_include
+		JOIN
 			workspace_user
+			ON workspace_user.role_id = role_resource_permissions_include.role_id
 		WHERE
-			user_id = $1
-		ORDER BY
-			workspace_id;
+			workspace_user.user_id = $1;
 		"#,
 		user_id as _
 	)
 	.fetch_all(&mut *connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| (row.workspace_id, row.permission_id, row.resource_id))
+	.fold(
+		BTreeMap::<(Uuid, Uuid), BTreeSet<Uuid>>::new(),
+		|mut accu, (workspace_id, permission_id, resource_id)| {
+			accu.entry((workspace_id, permission_id))
+				.or_default()
+				.insert(resource_id);
+			accu
+		},
+	)
+	.into_iter()
+	.for_each(|((workspace_id, permission_id), resource_ids)| {
+		workspace_member_permissions
+			.entry(workspace_id)
+			.or_default()
+			.insert(
+				permission_id,
+				ResourcePermissionType::Include(resource_ids),
+			);
+	});
 
-	for workspace_role in workspace_roles {
-		let workspace_id = workspace_role.workspace_id;
-
-		let blocked_resources = query!(
-			r#"
-			SELECT
-				permission_id as "permission_id: Uuid",
-				resource_id as "resource_id: Uuid"
-			FROM
-				role_block_permissions_resource
-			WHERE
-				role_id = $1;
-			"#,
-			workspace_role.role_id as _
-		)
-		.fetch_all(&mut *connection)
-		.await?;
-
-		let allowed_resources = query!(
-			r#"
-			SELECT
-				permission_id as "permission_id: Uuid",
-				resource_id as "resource_id: Uuid"
-			FROM
-				role_permissions_resource
-			WHERE
-				role_id = $1;
-			"#,
-			workspace_role.role_id as _
-		)
-		.fetch_all(&mut *connection)
-		.await?;
-
-		let allowed_resource_types = query!(
-			r#"
-			SELECT
-				permission_id as "permission_id: Uuid",
-				resource_type_id as "resource_type_id: Uuid"
-			FROM
-				role_permissions_resource_type
-			WHERE
-				role_id = $1;
-			"#,
-			workspace_role.role_id as _
-		)
-		.fetch_all(&mut *connection)
-		.await?;
-
-		if let Some(workspace_permissions) = workspaces.get_mut(&workspace_id) {
-			for blocked_resource in blocked_resources {
-				let permission_id = blocked_resource.permission_id;
-				if let Some(permissions) = workspace_permissions
-					.blocked_resource_permissions
-					.get_mut(&blocked_resource.resource_id)
-				{
-					if !permissions.contains(&permission_id) {
-						permissions.insert(permission_id);
-					}
-				} else {
-					workspace_permissions.blocked_resource_permissions.insert(
-						blocked_resource.resource_id,
-						BTreeSet::from([permission_id]),
-					);
-				}
-			}
-			for allowed_resource in allowed_resources {
-				let permission_id = allowed_resource.permission_id;
-				if let Some(permissions) = workspace_permissions
-					.allowed_resource_permissions
-					.get_mut(&allowed_resource.resource_id)
-				{
-					if !permissions.contains(&permission_id) {
-						permissions.insert(permission_id);
-					}
-				} else {
-					workspace_permissions.allowed_resource_permissions.insert(
-						allowed_resource.resource_id,
-						BTreeSet::from([permission_id]),
-					);
-				}
-			}
-			for allowed_resource_type in allowed_resource_types {
-				let permission_id = allowed_resource_type.permission_id;
-				if let Some(permissions) = workspace_permissions
-					.allowed_resource_type_permissions
-					.get_mut(&allowed_resource_type.resource_type_id)
-				{
-					if !permissions.contains(&permission_id) {
-						permissions.insert(permission_id);
-					}
-				} else {
-					workspace_permissions
-						.allowed_resource_type_permissions
-						.insert(
-							allowed_resource_type.resource_type_id,
-							BTreeSet::from([permission_id]),
-						);
-				}
-			}
-		} else {
-			let mut permission = WorkspacePermission {
-				is_super_admin: false,
-				blocked_resource_permissions: BTreeMap::new(),
-				allowed_resource_permissions: BTreeMap::new(),
-				allowed_resource_type_permissions: BTreeMap::new(),
-			};
-			for blocked_resource in blocked_resources {
-				let permission_id = blocked_resource.permission_id;
-				if let Some(permissions) = permission
-					.blocked_resource_permissions
-					.get_mut(&blocked_resource.resource_id)
-				{
-					if !permissions.contains(&permission_id) {
-						permissions.insert(permission_id);
-					}
-				} else {
-					permission.blocked_resource_permissions.insert(
-						blocked_resource.resource_id,
-						BTreeSet::from([permission_id]),
-					);
-				}
-			}
-			for allowed_resource in allowed_resources {
-				let permission_id = allowed_resource.permission_id;
-				if let Some(permissions) = permission
-					.allowed_resource_permissions
-					.get_mut(&allowed_resource.resource_id)
-				{
-					if !permissions.contains(&permission_id) {
-						permissions.insert(permission_id);
-					}
-				} else {
-					permission.allowed_resource_permissions.insert(
-						allowed_resource.resource_id,
-						BTreeSet::from([permission_id]),
-					);
-				}
-			}
-			for allowed_resource_type in allowed_resource_types {
-				let permission_id = allowed_resource_type.permission_id;
-				if let Some(permissions) = permission
-					.allowed_resource_type_permissions
-					.get_mut(&allowed_resource_type.resource_type_id)
-				{
-					if !permissions.contains(&permission_id) {
-						permissions.insert(permission_id);
-					}
-				} else {
-					permission.allowed_resource_type_permissions.insert(
-						allowed_resource_type.resource_type_id,
-						BTreeSet::from([permission_id]),
-					);
-				}
-			}
-			workspaces.insert(workspace_id, permission);
-		}
-	}
-
-	// add superadmins to the data-structure too
-	let workspaces_details = query!(
+	query!(
 		r#"
 		SELECT
-			id as "id: Uuid",
-			name::TEXT as "name!: String",
-			super_admin_id as "super_admin_id: Uuid",
-			active,
-			alert_emails as "alert_emails: Vec<String>",
-			payment_type as "payment_type: PaymentType",
-			default_payment_method_id as "default_payment_method_id: String",
-			deployment_limit,
-			static_site_limit,
-			database_limit,
-			managed_url_limit,
-			secret_limit,
-			domain_limit,
-			docker_repository_storage_limit,
-			volume_storage_limit,
-			stripe_customer_id,
-			address_id as "address_id: Uuid",
-			amount_due_in_cents,
-			is_spam,
-			is_frozen
+			workspace_user.workspace_id as "workspace_id: Uuid",
+			role_resource_permissions_exclude.permission_id as "permission_id: Uuid",
+			role_resource_permissions_exclude.resource_id as "resource_id: Uuid"
+		FROM
+			role_resource_permissions_exclude
+		JOIN
+			workspace_user
+			ON workspace_user.role_id = role_resource_permissions_exclude.role_id
+		WHERE
+			workspace_user.user_id = $1;
+		"#,
+		user_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| (row.workspace_id, row.permission_id, row.resource_id))
+	.fold(
+		BTreeMap::<(Uuid, Uuid), BTreeSet<Uuid>>::new(),
+		|mut accu, (workspace_id, permission_id, resource_id)| {
+			accu.entry((workspace_id, permission_id))
+				.or_default()
+				.insert(resource_id);
+			accu
+		},
+	)
+	.into_iter()
+	.for_each(|((workspace_id, permission_id), resource_ids)| {
+		workspace_member_permissions
+			.entry(workspace_id)
+			.or_default()
+			.insert(
+				permission_id,
+				ResourcePermissionType::Exclude(resource_ids),
+			);
+	});
+
+	query!(
+		r#"
+		SELECT
+			workspace_user.workspace_id as "workspace_id: Uuid",
+			role_resource_permissions_type.permission_id as "permission_id: Uuid",
+			role_resource_permissions_type.permission_type as "permission_type: PermissionType"
+		FROM
+			role_resource_permissions_type
+		JOIN
+			workspace_user
+			ON workspace_user.role_id = role_resource_permissions_type.role_id
+		WHERE
+			workspace_user.user_id = $1;
+		"#,
+		user_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| (row.workspace_id, row.permission_id, row.permission_type))
+	.for_each(|(workspace_id, permission_id, permission_type)| {
+		workspace_member_permissions
+			.entry(workspace_id)
+			.or_default()
+			.entry(permission_id)
+			.or_insert_with(|| {
+				match permission_type {
+					PermissionType::Include => ResourcePermissionType::Include(BTreeSet::new()),
+					PermissionType::Exclude => ResourcePermissionType::Exclude(BTreeSet::new())
+				}
+			});
+	});
+
+	let mut workspace_permissions = workspace_member_permissions
+		.into_iter()
+		.map(|(workspace_id, member_permissions)| {
+			(
+				workspace_id,
+				WorkspacePermission::Member(member_permissions),
+			)
+		})
+		.collect::<BTreeMap<_, _>>();
+
+	query!(
+		r#"
+		SELECT
+			id as "workspace_id: Uuid"
 		FROM
 			workspace
 		WHERE
@@ -568,48 +454,15 @@ pub async fn get_all_workspace_role_permissions_for_user(
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
-	.map(|row| Workspace {
-		id: row.id,
-		name: row.name,
-		super_admin_id: row.super_admin_id,
-		active: row.active,
-		alert_emails: row.alert_emails,
-		payment_type: row.payment_type,
-		default_payment_method_id: row.default_payment_method_id,
-		deployment_limit: row.deployment_limit,
-		static_site_limit: row.static_site_limit,
-		database_limit: row.database_limit,
-		managed_url_limit: row.managed_url_limit,
-		secret_limit: row.secret_limit,
-		domain_limit: row.domain_limit,
-		docker_repository_storage_limit: row.docker_repository_storage_limit,
-		volume_storage_limit: row.volume_storage_limit,
-		stripe_customer_id: row.stripe_customer_id,
-		address_id: row.address_id,
-		amount_due_in_cents: row.amount_due_in_cents as u64,
-		is_spam: row.is_spam,
-		is_frozen: row.is_frozen,
-	})
-	.collect::<Vec<_>>();
+	.map(|row| row.workspace_id)
+	.for_each(|workspace_id| {
+		// override the member roles for workspace with super admin
+		// as superadmin has high privilege than member permissions
+		workspace_permissions
+			.insert(workspace_id, WorkspacePermission::SuperAdmin);
+	});
 
-	for workspace_details in workspaces_details {
-		let workspace_id = workspace_details.id;
-		if let Some(workspace) = workspaces.get_mut(&workspace_id) {
-			workspace.is_super_admin = true;
-		} else {
-			workspaces.insert(
-				workspace_id,
-				WorkspacePermission {
-					is_super_admin: true,
-					blocked_resource_permissions: BTreeMap::new(),
-					allowed_resource_permissions: BTreeMap::new(),
-					allowed_resource_type_permissions: BTreeMap::new(),
-				},
-			);
-		}
-	}
-
-	Ok(workspaces)
+	Ok(workspace_permissions)
 }
 
 pub async fn generate_new_permission_id(

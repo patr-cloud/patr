@@ -179,7 +179,6 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				if !token_data.has_access_for_requested_action(
 					&resource.owner_id,
 					&resource.id,
-					&resource.resource_type_id,
 					permission,
 				) {
 					return Err(Error::empty()
