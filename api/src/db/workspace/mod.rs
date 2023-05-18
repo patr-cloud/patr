@@ -238,8 +238,7 @@ pub async fn initialize_workspaces_pre(
 		r#"
 		CREATE TABLE SURVEY(
 			user_id UUID NOT NULL
-				CONSTRAINT survey_fk_user_id
-					REFERENCES "user"(id),
+				CONSTRAINT survey_fk_user_id REFERENCES "user"(id),
 			version TEXT,
 			response JSON NOT NULL,
 			created TIMESTAMPTZ NOT NULL
