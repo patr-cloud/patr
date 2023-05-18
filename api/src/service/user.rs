@@ -781,6 +781,21 @@ pub async fn get_permissions_for_user_api_token(
 			.insert(permission_id);
 	}
 
+	for (workspace_id, resource_id, permission_id) in
+		db::get_all_blocked_resource_permissions_for_api_token(
+			connection, token_id,
+		)
+		.await?
+	{
+		permissions
+			.entry(workspace_id)
+			.or_default()
+			.blocked_resource_permissions
+			.entry(resource_id)
+			.or_default()
+			.insert(permission_id);
+	}
+
 	Ok(permissions)
 }
 

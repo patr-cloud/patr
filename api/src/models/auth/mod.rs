@@ -5,7 +5,10 @@ mod user_api_token_data;
 
 use std::{collections::BTreeMap, net::IpAddr};
 
-use api_models::{models::workspace::WorkspacePermission, utils::Uuid};
+use api_models::{
+	models::workspace::{ResourcePermissionType, WorkspacePermission},
+	utils::Uuid,
+};
 use redis::aio::MultiplexedConnection as RedisConnection;
 
 pub use self::{
@@ -93,77 +96,62 @@ impl UserAuthenticationData {
 		&self,
 		workspace_id: &Uuid,
 		resource_id: &Uuid,
-		resource_type_id: &Uuid,
 		permission_required: &str,
 	) -> bool {
-		if self.user_id() == GOD_USER_ID.get().unwrap() {
-			// For god user allow all operations on all workspace
-			return true;
+		is_user_action_authorized(
+			self.workspace_permissions(),
+			self.user_id(),
+			workspace_id,
+			permission_required,
+			resource_id,
+		)
+	}
+}
+
+pub fn is_user_action_authorized(
+	user_permissions: &BTreeMap<Uuid, WorkspacePermission>,
+	user_id: &Uuid,
+	requested_workspace: &Uuid,
+	requested_permission: &str,
+	requested_resource: &Uuid,
+) -> bool {
+	if user_id == GOD_USER_ID.get().unwrap() {
+		// allow all operations on all workspace for god user
+		return true;
+	}
+
+	let Some(workspace_permission) =
+		user_permissions.get(requested_workspace)
+	else {
+		// user don't have any permission on given workspace
+		return false;
+	};
+
+	match workspace_permission {
+		WorkspacePermission::SuperAdmin => {
+			// allow all operations on given workspace for super admin
+			true
 		}
+		WorkspacePermission::Member(workspace_member_permissions) => {
+			let permission_required = rbac::PERMISSIONS
+				.get()
+				.unwrap()
+				.get(&(*requested_permission).to_string())
+				.unwrap();
 
-		let workspace_permission = if let Some(permission) =
-			self.workspace_permissions().get(workspace_id)
-		{
-			permission
-		} else {
-			return false;
-		};
+			let Some(resource_permission_type) = workspace_member_permissions.get(permission_required) else {
+				// user don't have required permission 
+				return false;
+			};
 
-		if workspace_permission.is_super_admin {
-			// For super admin allow all operations on given workspace
-			return true;
-		}
-
-		let is_permission_blocked = workspace_permission
-			.blocked_resource_permissions
-			.get(resource_id)
-			.map_or(false, |blocked_permissions| {
-				blocked_permissions.contains(
-					rbac::PERMISSIONS
-						.get()
-						.unwrap()
-						.get(&(*permission_required).to_string())
-						.unwrap(),
-				)
-			});
-		if is_permission_blocked {
-			return false;
-		}
-
-		let allowed = {
-			// Check if the resource type is allowed
-			if let Some(permissions) = workspace_permission
-				.allowed_resource_type_permissions
-				.get(resource_type_id)
-			{
-				permissions.contains(
-					rbac::PERMISSIONS
-						.get()
-						.unwrap()
-						.get(&(*permission_required).to_string())
-						.unwrap(),
-				)
-			} else {
-				false
+			match resource_permission_type {
+				ResourcePermissionType::Include(resource_ids) => {
+					resource_ids.contains(requested_resource)
+				}
+				ResourcePermissionType::Exclude(resource_ids) => {
+					!resource_ids.contains(requested_resource)
+				}
 			}
-		} || {
-			// Check if that specific resource is allowed
-			if let Some(permissions) = workspace_permission
-				.allowed_resource_permissions
-				.get(resource_id)
-			{
-				permissions.contains(
-					rbac::PERMISSIONS
-						.get()
-						.unwrap()
-						.get(&(*permission_required).to_string())
-						.unwrap(),
-				)
-			} else {
-				false
-			}
-		};
-
-		allowed
+		}
 	}
 }

@@ -2,26 +2,12 @@ use std::collections::HashMap;
 
 use api_models::utils::Uuid;
 use once_cell::sync::OnceCell;
-use serde::{Deserialize, Serialize};
 
 pub static GOD_USER_ID: OnceCell<Uuid> = OnceCell::new();
 // A mapping of resource type name -> resource type IDs
 pub static RESOURCE_TYPES: OnceCell<HashMap<String, Uuid>> = OnceCell::new();
 // A mapping of permission names -> permission IDs
 pub static PERMISSIONS: OnceCell<HashMap<String, Uuid>> = OnceCell::new();
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct WorkspacePermissions {
-	pub is_super_admin: bool,
-	/// Given a resource, what and all permissions restricted on it
-	pub blocked_resources: HashMap<Uuid, Vec<Uuid>>,
-	/// Given a resource, what and all allowed permissions do you have on it
-	pub allowed_resources: HashMap<Uuid, Vec<Uuid>>,
-	/// Given a resource type, what and all allowed permissions do you have on
-	/// it
-	pub allowed_resource_types: HashMap<Uuid, Vec<Uuid>>,
-}
 
 #[api_macros::iterable_module(consts, recursive = true)]
 pub mod permissions {
@@ -244,6 +230,3 @@ pub mod resource_types {
 	pub const CI_REPO: &str = "ciRepo";
 	pub const CI_RUNNER: &str = "ciRunner";
 }
-
-// TODO: add hint or comment that if any resource_type name or permission name
-// is updated, it should also be updated in role validation triggers in db

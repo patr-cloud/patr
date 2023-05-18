@@ -9,6 +9,7 @@ use crate::{
 	db::{self},
 	models::{
 		error::{id as ErrorId, message as ErrorMessage},
+		is_user_action_authorized,
 		rbac::{self, permissions, GOD_USER_ID},
 		RegistryToken,
 		RegistryTokenAccess,
@@ -640,49 +641,13 @@ async fn docker_registry_authenticate(
 	let mut approved_permissions = vec![];
 
 	for permission in required_permissions {
-		let allowed =
-			if let Some(required_role_for_user) = required_role_for_user {
-				let resource_type_allowed = {
-					if let Some(permissions) = required_role_for_user
-						.allowed_resource_type_permissions
-						.get(&resource.resource_type_id)
-					{
-						permissions.contains(
-							rbac::PERMISSIONS
-								.get()
-								.unwrap()
-								.get(&(*permission).to_string())
-								.unwrap(),
-						)
-					} else {
-						false
-					}
-				};
-				let resource_allowed = {
-					if let Some(permissions) = required_role_for_user
-						.allowed_resource_permissions
-						.get(&resource.id)
-					{
-						permissions.contains(
-							rbac::PERMISSIONS
-								.get()
-								.unwrap()
-								.get(&(*permission).to_string())
-								.unwrap(),
-						)
-					} else {
-						false
-					}
-				};
-				let is_super_admin = {
-					required_role_for_user.is_super_admin || {
-						user_id == god_user_id
-					}
-				};
-				resource_type_allowed || resource_allowed || is_super_admin
-			} else {
-				user_id == god_user_id
-			};
+		let allowed = is_user_action_authorized(
+			&user_roles,
+			user_id,
+			&workspace_id,
+			&permission,
+			&resource.id,
+		);
 		if !allowed {
 			continue;
 		}

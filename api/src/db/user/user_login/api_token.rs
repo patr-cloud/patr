@@ -278,6 +278,35 @@ pub async fn add_resource_permission_for_api_token(
 	.map(|_| ())
 }
 
+pub async fn add_block_resource_permission_for_api_token(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	token_id: &Uuid,
+	workspace_id: &Uuid,
+	resource_id: &Uuid,
+	permission_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+			INSERT INTO
+				user_api_token_block_resource_permission(
+					token_id,
+					workspace_id,
+					resource_id,
+					permission_id
+				)
+			VALUES
+				($1, $2, $3, $4);
+			"#,
+		token_id as _,
+		workspace_id as _,
+		resource_id as _,
+		permission_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn list_active_api_tokens_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
@@ -369,6 +398,32 @@ pub async fn get_all_resource_permissions_for_api_token(
 			permission_id as "permission_id: Uuid"
 		FROM
 			user_api_token_resource_permission
+		WHERE
+			token_id = $1;
+		"#,
+		token_id as _,
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| (row.workspace_id, row.resource_id, row.permission_id))
+	.collect();
+
+	Ok(rows)
+}
+
+pub async fn get_all_blocked_resource_permissions_for_api_token(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	token_id: &Uuid,
+) -> Result<Vec<(Uuid, Uuid, Uuid)>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT
+			workspace_id as "workspace_id: Uuid",
+			resource_id as "resource_id: Uuid",
+			permission_id as "permission_id: Uuid"
+		FROM
+			user_api_token_block_resource_permission
 		WHERE
 			token_id = $1;
 		"#,
@@ -502,6 +557,24 @@ pub async fn remove_all_resource_permissions_for_api_token(
 		r#"
 		DELETE FROM
 			user_api_token_resource_permission
+		WHERE
+			token_id = $1;
+		"#,
+		token_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn remove_all_block_resource_permissions_for_api_token(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	token_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			user_api_token_block_resource_permission
 		WHERE
 			token_id = $1;
 		"#,
