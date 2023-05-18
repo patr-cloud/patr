@@ -141,7 +141,7 @@ pub async fn create_patr_database_in_workspace(
 
 	match engine {
 		PatrDatabaseEngine::Postgres => {
-			service::create_kubernetes_psql_database(
+			service::patch_kubernetes_psql_database(
 				workspace_id,
 				&database_id,
 				&password,
@@ -186,9 +186,11 @@ pub async fn modify_patr_database(
 
 	match database.engine {
 		PatrDatabaseEngine::Postgres => {
-			service::handle_psql_scaling(
+			service::patch_kubernetes_psql_database(
 				&database.workspace_id,
 				&database.id,
+				&database.password,
+				&database.database_plan,
 				kubeconfig,
 				request_id,
 				replica_numbers,
