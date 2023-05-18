@@ -3625,6 +3625,21 @@
     },
     "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, permanent_redirect as \"permanent_redirect: _\", http_only as \"http_only: _\", cloudflare_custom_hostname_id FROM managed_url WHERE is_configured = FALSE AND deleted IS NULL;"
   },
+  "32aa81dada9d2cf045ebc17dfa3588b8d1499c7f8f9caa09789ebaa9d2196e32": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Json",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "INSERT INTO survey( user_id, version, response, created ) VALUES ($1, $2, $3, $4);"
+  },
   "330ddbabbca6730316fe39aaf9e3e10f49c36858935fbbee0a0f4fe4055adc01": {
     "describe": {
       "columns": [
@@ -13104,6 +13119,16 @@
       }
     },
     "query": "INSERT INTO secrets_payment_history( workspace_id, secret_count, start_time, stop_time ) VALUES ( $1, $2, $3, NULL );"
+  },
+  "c0decfa23ebbdf40a753811f8ec809f2975f9d0682490a318ed1de435363379b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE SURVEY( user_id UUID NOT NULL CONSTRAINT survey_fk_user_id REFERENCES \"user\"(id), version TEXT, response JSON NOT NULL, created TIMESTAMPTZ NOT NULL );"
   },
   "c11c984eef758ea3dd2561beb13168540f9617288363669dd887ce98945210de": {
     "describe": {
