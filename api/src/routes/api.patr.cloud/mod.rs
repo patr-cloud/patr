@@ -75,13 +75,14 @@ async fn submit_inapp_survey(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let SubmitSurveyRequest {
-		user_id,
 		survey_response,
 		version,
 	} = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let submitted_time = Utc::now();
 	db::submit_inapp_survey(
