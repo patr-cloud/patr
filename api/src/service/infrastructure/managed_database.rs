@@ -138,8 +138,15 @@ pub async fn create_managed_database_in_workspace(
 			return Err(Error::empty().status(500));
 		}
 		ManagedDatabaseEngine::Redis => {
-			// not supported as of now
-			return Err(Error::empty().status(500));
+			service::patch_kubernetes_redis_database(
+				workspace_id,
+				&database_id,
+				&password,
+				&database_plan,
+				kubeconfig,
+				request_id,
+			)
+			.await?;
 		}
 		ManagedDatabaseEngine::Mysql => {
 			service::patch_kubernetes_mysql_database(
