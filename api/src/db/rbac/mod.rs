@@ -220,7 +220,10 @@ pub async fn initialize_rbac_pre(
 
 			CONSTRAINT role_resource_permissions_include_fk_parent
 				FOREIGN KEY (role_id, permission_id, permission_type)
-					REFERENCES role_resource_permissions_type(role_id, permission_id, permission_type)
+					REFERENCES role_resource_permissions_type(role_id, permission_id, permission_type),
+			CONSTRAINT role_resource_permissions_include_fk_resource
+				FOREIGN KEY (resource_id)
+					REFERENCES resource(id)			
 		);
 		"#
 	)
@@ -242,7 +245,10 @@ pub async fn initialize_rbac_pre(
 
 			CONSTRAINT role_resource_permissions_exclude_fk_parent
 				FOREIGN KEY (role_id, permission_id, permission_type)
-					REFERENCES role_resource_permissions_type(role_id, permission_id, permission_type)
+					REFERENCES role_resource_permissions_type(role_id, permission_id, permission_type),
+			CONSTRAINT role_resource_permissions_exclude_fk_resource
+				FOREIGN KEY (resource_id)
+					REFERENCES resource(id)	
 		);
 		"#
 	)

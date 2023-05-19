@@ -10,7 +10,7 @@ use crate::{
 	models::{
 		error::{id as ErrorId, message as ErrorMessage},
 		is_user_action_authorized,
-		rbac::{self, permissions, GOD_USER_ID},
+		rbac::{self, permissions},
 		RegistryToken,
 		RegistryTokenAccess,
 	},
@@ -627,8 +627,6 @@ async fn docker_registry_authenticate(
 		)?;
 	}
 
-	let god_user_id = GOD_USER_ID.get().unwrap();
-
 	// get all workspace roles for the user using the id
 	let user_id = &user.id;
 	let user_roles = db::get_all_workspace_role_permissions_for_user(
@@ -637,7 +635,6 @@ async fn docker_registry_authenticate(
 	)
 	.await?;
 
-	let required_role_for_user = user_roles.get(&workspace_id);
 	let mut approved_permissions = vec![];
 
 	for permission in required_permissions {
