@@ -184,80 +184,11 @@ async fn list_permissions_for_api_token(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let old_permissions = service::get_permissions_for_user_api_token(
+	let permissions = db::get_raw_permissions_for_api_token(
 		context.get_database_connection(),
 		&token_id,
 	)
 	.await?;
-
-	let new_permissions =
-		service::get_revalidated_permissions_for_user_api_token(
-			context.get_database_connection(),
-			&token_id,
-			&user_id,
-		)
-		.await?;
-
-	if old_permissions != new_permissions {
-		// Write the new config to the db
-		db::remove_all_super_admin_permissions_for_api_token(
-			context.get_database_connection(),
-			&token_id,
-		)
-		.await?;
-		db::remove_all_resource_type_permissions_for_api_token(
-			context.get_database_connection(),
-			&token_id,
-		)
-		.await?;
-		db::remove_all_resource_permissions_for_api_token(
-			context.get_database_connection(),
-			&token_id,
-		)
-		.await?;
-
-		for (workspace_id, permission) in &new_permissions {
-			if permission.is_super_admin {
-				db::add_super_admin_permission_for_api_token(
-					context.get_database_connection(),
-					&token_id,
-					workspace_id,
-					&user_id,
-				)
-				.await?;
-			}
-
-			for (resource_type_id, permissions) in
-				&permission.allowed_resource_type_permissions
-			{
-				for permission_id in permissions {
-					db::add_resource_type_permission_for_api_token(
-						context.get_database_connection(),
-						&token_id,
-						workspace_id,
-						resource_type_id,
-						permission_id,
-					)
-					.await?;
-				}
-			}
-
-			for (resource_id, permissions) in
-				&permission.allowed_resource_permissions
-			{
-				for permission_id in permissions {
-					db::add_resource_permission_for_api_token(
-						context.get_database_connection(),
-						&token_id,
-						workspace_id,
-						resource_id,
-						permission_id,
-					)
-					.await?;
-				}
-			}
-		}
-	}
 
 	log::trace!(
 		"request_id: {} listing permissions for api_token: {}",
@@ -265,9 +196,7 @@ async fn list_permissions_for_api_token(
 		token_id
 	);
 
-	context.success(ListApiTokenPermissionsResponse {
-		permissions: new_permissions,
-	});
+	context.success(ListApiTokenPermissionsResponse { permissions });
 	Ok(context)
 }
 

@@ -1,7 +1,10 @@
 use std::collections::BTreeMap;
 
 use ::redis::aio::MultiplexedConnection as RedisConnection;
-use api_models::{models::workspace::WorkspacePermission, utils::Uuid};
+use api_models::{
+	models::workspace::{ResourcePermissionType, WorkspacePermission},
+	utils::Uuid,
+};
 use chrono::{DateTime, Utc};
 use eve_rs::AsError;
 use reqwest::Client;
@@ -527,7 +530,7 @@ pub async fn create_api_token_for_user(
 	)
 	.await?;
 
-	set_permissions_for_user_api_token(
+	db::insert_raw_permissions_for_api_token(
 		connection,
 		&token_id,
 		user_id,
@@ -577,18 +580,8 @@ pub async fn update_user_api_token(
 	.await?;
 
 	if let Some(permissions) = permissions {
-		db::remove_all_super_admin_permissions_for_api_token(
-			connection, token_id,
-		)
-		.await?;
-		db::remove_all_resource_type_permissions_for_api_token(
-			connection, token_id,
-		)
-		.await?;
-		db::remove_all_resource_permissions_for_api_token(connection, token_id)
-			.await?;
-
-		set_permissions_for_user_api_token(
+		db::remove_all_permissions_for_api_token(connection, token_id).await?;
+		db::insert_raw_permissions_for_api_token(
 			connection,
 			token_id,
 			&token.user_id,
@@ -602,368 +595,145 @@ pub async fn update_user_api_token(
 	Ok(())
 }
 
-async fn set_permissions_for_user_api_token(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	token_id: &Uuid,
-	user_id: &Uuid,
-	permissions: &BTreeMap<Uuid, WorkspacePermission>,
-) -> Result<(), Error> {
-	let user_permissions =
-		db::get_all_workspace_role_permissions_for_user(connection, user_id)
-			.await?;
-
-	for (workspace_id, requested_permissions) in permissions {
-		let workspace = db::get_workspace_info(connection, workspace_id)
-			.await?
-			.status(403)
-			.body(error!(UNPRIVILEGED).to_string())?;
-		let is_super_admin = &workspace.super_admin_id == user_id;
-		if requested_permissions.is_super_admin {
-			// Check if the workspace has this current user as the super admin
-			if !is_super_admin {
-				return Err(Error::empty()
-					.status(403)
-					.body(error!(UNPRIVILEGED).to_string()));
-			}
-			db::add_super_admin_permission_for_api_token(
-				connection,
-				token_id,
-				workspace_id,
-				user_id,
-			)
-			.await?;
-		} else {
-			// Check if the user has adequate permission on the given resource
-
-			// Chech if the user has the resource type permissions that they're
-			// requesting
-			for (requested_resource_type_id, requested_permissions) in
-				&requested_permissions.allowed_resource_type_permissions
-			{
-				// For every permission they're requesting on a resource type,
-				// check against their allowed permissions
-				for requested_permission_id in requested_permissions {
-					let permission_allowed = is_super_admin ||
-						user_permissions
-							.get(workspace_id)
-							.and_then(|permission| {
-								permission
-									.allowed_resource_type_permissions
-									.get(requested_resource_type_id)
-							})
-							.map(|permissions| {
-								permissions.contains(requested_permission_id)
-							})
-							.unwrap_or(false);
-					if !permission_allowed {
-						// That specific permission is not there for the
-						// given resource_type
-						return Err(Error::empty()
-							.status(403)
-							.body(error!(UNPRIVILEGED).to_string()));
-					}
-
-					// They have the permission. Add it
-					db::add_resource_type_permission_for_api_token(
-						connection,
-						token_id,
-						workspace_id,
-						requested_resource_type_id,
-						requested_permission_id,
-					)
-					.await?;
-				}
-			}
-
-			// For every permission they're requesting on a resource, check
-			// against their allowed permissions for either the resource or the
-			// resource type
-			for (requested_resource_id, requested_permissions) in
-				&requested_permissions.allowed_resource_permissions
-			{
-				let requested_resource =
-					db::get_resource_by_id(connection, requested_resource_id)
-						.await?
-						.status(404)
-						.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-				// Check if they have the requested permissions on the given
-				// resource type or on the given resource
-				for requested_permission_id in requested_permissions {
-					let permission_allowed = is_super_admin ||
-						user_permissions
-							.get(workspace_id)
-							.and_then(|permission| {
-								permission
-									.allowed_resource_type_permissions
-									.get(&requested_resource.resource_type_id)
-							})
-							.map(|permissions| {
-								permissions.contains(requested_permission_id)
-							})
-							.unwrap_or(false) ||
-						user_permissions
-							.get(workspace_id)
-							.and_then(|permission| {
-								permission
-									.allowed_resource_permissions
-									.get(&requested_resource.id)
-							})
-							.map(|permissions| {
-								permissions.contains(requested_permission_id)
-							})
-							.unwrap_or(false);
-
-					if !permission_allowed {
-						// That specific permission is not there for the
-						// given resource_type or on the resource
-						return Err(Error::empty()
-							.status(403)
-							.body(error!(UNPRIVILEGED).to_string()));
-					}
-
-					// They have the permission. Add it
-					db::add_resource_permission_for_api_token(
-						connection,
-						token_id,
-						workspace_id,
-						requested_resource_id,
-						requested_permission_id,
-					)
-					.await?;
-				}
-			}
-		}
-	}
-
-	Ok(())
-}
-
-pub async fn get_permissions_for_user_api_token(
+pub async fn get_derived_permissions_for_api_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	token_id: &Uuid,
 ) -> Result<BTreeMap<Uuid, WorkspacePermission>, Error> {
-	let mut permissions = BTreeMap::<_, WorkspacePermission>::new();
+	let raw_token_permissions =
+		db::get_raw_permissions_for_api_token(connection, token_id).await?;
 
-	for workspace_id in db::get_all_super_admin_workspace_ids_for_api_token(
-		connection, token_id,
-	)
-	.await?
-	{
-		permissions.entry(workspace_id).or_default().is_super_admin = true;
-	}
-
-	for (workspace_id, resource_type_id, permission_id) in
-		db::get_all_resource_type_permissions_for_api_token(
-			connection, token_id,
-		)
+	let user_id = db::get_active_user_api_token_by_id(connection, token_id)
 		.await?
-	{
-		permissions
-			.entry(workspace_id)
-			.or_default()
-			.allowed_resource_type_permissions
-			.entry(resource_type_id)
-			.or_default()
-			.insert(permission_id);
-	}
+		.status(404)
+		.body(error!(TOKEN_NOT_FOUND).to_string())?
+		.user_id;
 
-	for (workspace_id, resource_id, permission_id) in
-		db::get_all_resource_permissions_for_api_token(connection, token_id)
-			.await?
-	{
-		permissions
-			.entry(workspace_id)
-			.or_default()
-			.allowed_resource_permissions
-			.entry(resource_id)
-			.or_default()
-			.insert(permission_id);
-	}
-
-	for (workspace_id, resource_id, permission_id) in
-		db::get_all_blocked_resource_permissions_for_api_token(
-			connection, token_id,
-		)
-		.await?
-	{
-		permissions
-			.entry(workspace_id)
-			.or_default()
-			.blocked_resource_permissions
-			.entry(resource_id)
-			.or_default()
-			.insert(permission_id);
-	}
-
-	Ok(permissions)
-}
-
-pub async fn get_revalidated_permissions_for_user_api_token(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	token_id: &Uuid,
-	user_id: &Uuid,
-) -> Result<BTreeMap<Uuid, WorkspacePermission>, Error> {
-	let existing_permissions =
-		service::get_permissions_for_user_api_token(connection, token_id)
+	let mut user_permissions =
+		db::get_all_workspace_role_permissions_for_user(connection, &user_id)
 			.await?;
-	let mut new_permissions = BTreeMap::<Uuid, WorkspacePermission>::new();
 
-	for (workspace_id, permission) in &existing_permissions {
-		let is_really_super_admin =
-			db::get_workspace_info(connection, workspace_id)
-				.await?
-				.map(|workspace| &workspace.super_admin_id == user_id)
-				.unwrap_or(false);
+	let mut derived_token_permissions = BTreeMap::new();
 
-		if is_really_super_admin {
-			// check super_admin_permission
-			if permission.is_super_admin {
-				new_permissions
-					.entry(workspace_id.clone())
-					.or_default()
-					.is_super_admin = true;
-				// If you have super admin permission, you don't really need
-				// anything else
-				continue;
+	for (workspace_id, token_workspace_permission) in raw_token_permissions {
+		let Some(user_workspace_permission) = user_permissions.remove(&workspace_id) else {
+			continue;
+		};
+
+		match (user_workspace_permission, token_workspace_permission) {
+			(
+				WorkspacePermission::SuperAdmin,
+				WorkspacePermission::SuperAdmin,
+			) => {
+				derived_token_permissions
+					.insert(workspace_id, WorkspacePermission::SuperAdmin);
 			}
-
-			// Since we know that the user is definitely a super admin
-			// of this workspace. Don't bother checking any other
-			// permissions. Just directly add them to the db
-			for (resource_type_id, permissions) in
-				&permission.allowed_resource_type_permissions
-			{
-				for permission_id in permissions {
-					new_permissions
-						.entry(workspace_id.clone())
-						.or_default()
-						.allowed_resource_type_permissions
-						.entry(resource_type_id.clone())
-						.or_default()
-						.insert(permission_id.clone());
-				}
+			(
+				WorkspacePermission::SuperAdmin,
+				WorkspacePermission::Member(member_permission),
+			) => {
+				derived_token_permissions.insert(
+					workspace_id,
+					WorkspacePermission::Member(member_permission),
+				);
 			}
-			for (resource_id, permissions) in
-				&permission.allowed_resource_permissions
-			{
-				for permission_id in permissions {
-					new_permissions
-						.entry(workspace_id.clone())
-						.or_default()
-						.allowed_resource_permissions
-						.entry(resource_id.clone())
-						.or_default()
-						.insert(permission_id.clone());
-				}
-			}
-		} else {
-			// The user is not a super admin of this workspace. Check their
-			// actual permissions and only add the ones that they have the
-			// permissions on
-
-			let user_permissions =
-				db::get_all_workspace_role_permissions_for_user(
-					connection, user_id,
-				)
-				.await?;
-
-			// Chech if the user has the resource type permissions that
-			// they're requesting
-			for (requested_resource_type_id, requested_permissions) in
-				&permission.allowed_resource_type_permissions
-			{
-				// For every permission they're requesting on a resource
-				// type, check against their allowed permissions
-				for requested_permission_id in requested_permissions {
-					let permission_allowed = user_permissions
-						.get(workspace_id)
-						.and_then(|permission| {
-							permission
-								.allowed_resource_type_permissions
-								.get(requested_resource_type_id)
-						})
-						.map(|permissions| {
-							permissions.contains(requested_permission_id)
-						})
-						.unwrap_or(false);
-					if permission_allowed {
-						// They have the permission. Add it
-						new_permissions
-							.entry(workspace_id.clone())
-							.or_default()
-							.allowed_resource_type_permissions
-							.entry(requested_resource_type_id.clone())
-							.or_default()
-							.insert(requested_permission_id.clone());
-					}
-
-					// That specific permission is not there for the
-					// given resource_type. Don't add it back
-				}
-			}
-
-			// For every permission they're requesting on a resource, check
-			// against their allowed permissions for either the resource or
-			// the resource type
-			for (requested_resource_id, requested_permissions) in
-				&permission.allowed_resource_permissions
-			{
-				let requested_resource =
-					db::get_resource_by_id(connection, requested_resource_id)
-						.await?;
-				let requested_resource =
-					if let Some(resource) = requested_resource {
-						resource
-					} else {
-						// If the resource doesn't exist anymore, don't add
-						// the resource again.
+			(
+				WorkspacePermission::Member(mut user_member_permissions),
+				WorkspacePermission::Member(token_member_permissions),
+			) => {
+				let mut derived_member_permissions = BTreeMap::new();
+				for (permission_id, token_resource_permission_type) in
+					token_member_permissions
+				{
+					let Some(user_resource_permission_type) = user_member_permissions.remove(&permission_id) else {
 						continue;
 					};
 
-				// Check if they have the requested permissions on the given
-				// resource type or on the given resource
-				for requested_permission_id in requested_permissions {
-					let permission_allowed = user_permissions
-						.get(workspace_id)
-						.and_then(|permission| {
-							permission
-								.allowed_resource_type_permissions
-								.get(&requested_resource.resource_type_id)
-						})
-						.map(|permissions| {
-							permissions.contains(requested_permission_id)
-						})
-						.unwrap_or(false) ||
-						user_permissions
-							.get(workspace_id)
-							.and_then(|permission| {
-								permission
-									.allowed_resource_permissions
-									.get(&requested_resource.id)
-							})
-							.map(|permissions| {
-								permissions.contains(requested_permission_id)
-							})
-							.unwrap_or(false);
-
-					if permission_allowed {
-						// They have the permission. Add it
-						new_permissions
-							.entry(workspace_id.clone())
-							.or_default()
-							.allowed_resource_permissions
-							.entry(requested_resource_id.clone())
-							.or_default()
-							.insert(requested_permission_id.clone());
+					match (
+						user_resource_permission_type,
+						token_resource_permission_type,
+					) {
+						(
+							ResourcePermissionType::Include(user_includes),
+							ResourcePermissionType::Include(token_includes),
+						) => {
+							derived_member_permissions.insert(
+								permission_id,
+								ResourcePermissionType::Include(
+									token_includes
+										.into_iter()
+										.filter(|token_resource_id| {
+											user_includes
+												.contains(token_resource_id)
+										})
+										.collect(),
+								),
+							);
+						}
+						(
+							ResourcePermissionType::Include(user_includes),
+							ResourcePermissionType::Exclude(token_excludes),
+						) => {
+							derived_member_permissions.insert(
+								permission_id,
+								ResourcePermissionType::Include(
+									user_includes
+										.into_iter()
+										.filter(|user_resource_id| {
+											!token_excludes
+												.contains(user_resource_id)
+										})
+										.collect(),
+								),
+							);
+						}
+						(
+							ResourcePermissionType::Exclude(user_excludes),
+							ResourcePermissionType::Include(token_include),
+						) => {
+							derived_member_permissions.insert(
+								permission_id,
+								ResourcePermissionType::Include(
+									token_include
+										.into_iter()
+										.filter(|token_resource_id| {
+											!user_excludes
+												.contains(token_resource_id)
+										})
+										.collect(),
+								),
+							);
+						}
+						(
+							ResourcePermissionType::Exclude(user_excludes),
+							ResourcePermissionType::Exclude(token_excludes),
+						) => {
+							derived_member_permissions.insert(
+								permission_id,
+								ResourcePermissionType::Exclude(
+									user_excludes
+										.into_iter()
+										.chain(token_excludes.into_iter())
+										.collect(),
+								),
+							);
+						}
 					}
-
-					// That specific permission is not there for the
-					// given resource. Don't add it back
 				}
+				derived_token_permissions.insert(
+					workspace_id,
+					WorkspacePermission::Member(derived_member_permissions),
+				);
+			}
+			(
+				WorkspacePermission::Member(_),
+				WorkspacePermission::SuperAdmin,
+			) => {
+				// ideally user being a member and his token as super_admin
+				// won't be preset as it will be restricted by DB constraints
+				// itself. So skipping these won't cause any problem
 			}
 		}
 	}
 
-	Ok(new_permissions)
+	Ok(derived_token_permissions)
 }
