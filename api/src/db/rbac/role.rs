@@ -2,8 +2,13 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use api_models::{models::workspace::ResourcePermissionType, utils::Uuid};
 
-use super::{PermissionType, Role};
-use crate::{db::User, query, query_as, Database};
+use super::Role;
+use crate::{
+	db::{PermissionType, User},
+	query,
+	query_as,
+	Database,
+};
 
 pub async fn generate_new_role_id(
 	connection: &mut <Database as sqlx::Database>::Connection,

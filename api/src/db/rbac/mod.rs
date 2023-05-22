@@ -12,6 +12,7 @@ mod role;
 mod user;
 
 pub use self::{role::*, user::*};
+use super::PermissionType;
 
 pub struct ResourceType {
 	pub id: Uuid,
@@ -43,13 +44,6 @@ pub struct WorkspaceUser {
 	pub user_id: Uuid,
 	pub workspace_id: Uuid,
 	pub role_id: Uuid,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, sqlx::Type)]
-#[sqlx(type_name = "PERMISSION_TYPE", rename_all = "snake_case")]
-pub enum PermissionType {
-	Include,
-	Exclude,
 }
 
 pub async fn initialize_rbac_pre(
@@ -173,17 +167,6 @@ pub async fn initialize_rbac_pre(
 
 	query!(
 		r#"
-		CREATE TYPE PERMISSION_TYPE AS ENUM(
-			'include',
-			'exclude'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
 		CREATE TABLE role_resource_permissions_type(
 			role_id 		UUID 			NOT NULL,
 			permission_id 	UUID 			NOT NULL,
@@ -254,8 +237,6 @@ pub async fn initialize_rbac_pre(
 	)
 	.execute(&mut *connection)
 	.await?;
-
-	// TODO: index for rbac tables
 
 	Ok(())
 }
@@ -358,6 +339,8 @@ pub async fn get_all_workspace_role_permissions_for_user(
 			.entry(workspace_id)
 			.or_default()
 			.insert(
+				// insert is file as every include resource has been
+				// accumulated already
 				permission_id,
 				ResourcePermissionType::Include(resource_ids),
 			);
@@ -393,14 +376,30 @@ pub async fn get_all_workspace_role_permissions_for_user(
 		},
 	)
 	.into_iter()
-	.for_each(|((workspace_id, permission_id), resource_ids)| {
-		workspace_member_permissions
+	.for_each(|((workspace_id, permission_id), mut resource_ids)| {
+		let resource_permissions = workspace_member_permissions
 			.entry(workspace_id)
 			.or_default()
-			.insert(
-				permission_id,
-				ResourcePermissionType::Exclude(resource_ids),
+			.entry(permission_id)
+			.or_insert_with(
+				|| ResourcePermissionType::Include(BTreeSet::new()),
 			);
+
+		match resource_permissions {
+			ResourcePermissionType::Include(includes) => {
+				includes.iter().for_each(|resource_id| {
+					resource_ids.remove(resource_id);
+				})
+			}
+			ResourcePermissionType::Exclude(excludes) => {
+				// ideally this case won't happen
+				excludes.iter().cloned().for_each(|resource_id| {
+					resource_ids.insert(resource_id);
+				})
+			}
+		}
+
+		*resource_permissions = ResourcePermissionType::Exclude(resource_ids);
 	});
 
 	query!(
