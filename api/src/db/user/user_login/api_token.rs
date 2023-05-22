@@ -7,7 +7,7 @@ use api_models::{
 use chrono::{DateTime, TimeZone, Utc};
 use sqlx::types::ipnetwork::IpNetwork;
 
-use crate::{db::PermissionType, query, query_as, Database};
+use crate::{query, query_as, Database};
 
 pub struct UserApiToken {
 	pub token_id: Uuid,
@@ -22,6 +22,13 @@ pub struct UserApiToken {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, sqlx::Type)]
+#[sqlx(type_name = "PERMISSION_TYPE", rename_all = "snake_case")]
+pub enum PermissionType {
+	Include,
+	Exclude,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, sqlx::Type)]
 #[sqlx(type_name = "TOKEN_PERMISSION_TYPE", rename_all = "snake_case")]
 pub enum TokenPermissionType {
 	SuperAdmin,
@@ -29,9 +36,32 @@ pub enum TokenPermissionType {
 }
 
 pub async fn initialize_api_token_pre(
-	_connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	// tables are initialized in post due to workspace dependency
+
+	query!(
+		r#"
+		CREATE TYPE PERMISSION_TYPE AS ENUM(
+			'include',
+			'exclude'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE TOKEN_PERMISSION_TYPE AS ENUM(
+			'super_admin',
+			'member'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
@@ -71,17 +101,6 @@ pub async fn initialize_api_token_post(
 			user_api_token(name, user_id)
 		WHERE
 			revoked IS NULL;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TYPE TOKEN_PERMISSION_TYPE AS ENUM(
-			'super_admin',
-			'member'
-		);
 		"#
 	)
 	.execute(&mut *connection)
