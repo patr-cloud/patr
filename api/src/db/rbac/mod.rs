@@ -440,7 +440,9 @@ pub async fn get_all_workspace_role_permissions_for_user(
 		.map(|(workspace_id, member_permissions)| {
 			(
 				workspace_id,
-				WorkspacePermission::Member(member_permissions),
+				WorkspacePermission::Member {
+					permissions: member_permissions,
+				},
 			)
 		})
 		.collect::<BTreeMap<_, _>>();
