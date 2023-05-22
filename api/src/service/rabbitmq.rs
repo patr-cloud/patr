@@ -115,6 +115,28 @@ pub async fn queue_check_and_update_database_status(
 	.await
 }
 
+pub async fn queue_status_check_update_and_change_mongo_database_password(
+	workspace_id: &Uuid,
+	database_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+	password: &String,
+) -> Result<(), Error> {
+	send_message_to_infra_queue(
+		&InfraRequestData::Database(
+			DatabaseRequestData::MongoStatefulUpdateStatus {
+				workspace_id: workspace_id.clone(),
+				database_id: database_id.clone(),
+				request_id: request_id.clone(),
+				password: password.to_owned(),
+			},
+		),
+		config,
+		request_id,
+	)
+	.await
+}
+
 pub async fn queue_delete_docker_registry_image(
 	workspace_id: &Uuid,
 	repository_name: &str,
