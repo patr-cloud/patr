@@ -324,7 +324,9 @@ pub async fn insert_raw_permissions_for_api_token(
 				.execute(&mut *connection)
 				.await?;
 			}
-			WorkspacePermission::Member(member_permissions) => {
+			WorkspacePermission::Member {
+				permissions: member_permissions,
+			} => {
 				query!(
 					r#"
 					INSERT INTO
@@ -560,7 +562,9 @@ pub async fn get_raw_permissions_for_api_token(
 		.map(|(workspace_id, member_permissions)| {
 			(
 				workspace_id,
-				WorkspacePermission::Member(member_permissions),
+				WorkspacePermission::Member {
+					permissions: member_permissions,
+				},
 			)
 		})
 		.collect::<BTreeMap<_, _>>();
@@ -585,7 +589,9 @@ pub async fn get_raw_permissions_for_api_token(
 		// add workspace member permissions which may be empty
 		workspace_permissions
 			.entry(workspace_id)
-			.or_insert_with(|| WorkspacePermission::Member(BTreeMap::new()));
+			.or_insert_with(|| WorkspacePermission::Member {
+				permissions: BTreeMap::new(),
+			});
 	});
 
 	query!(

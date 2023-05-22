@@ -131,7 +131,9 @@ pub fn is_user_action_authorized(
 			// allow all operations on given workspace for super admin
 			true
 		}
-		WorkspacePermission::Member(workspace_member_permissions) => {
+		WorkspacePermission::Member {
+			permissions: workspace_member_permissions,
+		} => {
 			let permission_required = rbac::PERMISSIONS
 				.get()
 				.unwrap()

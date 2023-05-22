@@ -629,16 +629,24 @@ pub async fn get_derived_permissions_for_api_token(
 			}
 			(
 				WorkspacePermission::SuperAdmin,
-				WorkspacePermission::Member(member_permission),
+				WorkspacePermission::Member {
+					permissions: member_permission,
+				},
 			) => {
 				derived_token_permissions.insert(
 					workspace_id,
-					WorkspacePermission::Member(member_permission),
+					WorkspacePermission::Member {
+						permissions: member_permission,
+					},
 				);
 			}
 			(
-				WorkspacePermission::Member(mut user_member_permissions),
-				WorkspacePermission::Member(token_member_permissions),
+				WorkspacePermission::Member {
+					permissions: mut user_member_permissions,
+				},
+				WorkspacePermission::Member {
+					permissions: token_member_permissions,
+				},
 			) => {
 				let mut derived_member_permissions = BTreeMap::new();
 				for (permission_id, token_resource_permission_type) in
@@ -721,11 +729,13 @@ pub async fn get_derived_permissions_for_api_token(
 				}
 				derived_token_permissions.insert(
 					workspace_id,
-					WorkspacePermission::Member(derived_member_permissions),
+					WorkspacePermission::Member {
+						permissions: derived_member_permissions,
+					},
 				);
 			}
 			(
-				WorkspacePermission::Member(_),
+				WorkspacePermission::Member { .. },
 				WorkspacePermission::SuperAdmin,
 			) => {
 				// ideally user being a member and his token as super_admin
