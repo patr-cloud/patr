@@ -85,14 +85,9 @@ pub async fn initialize_managed_database_pre(
 			deleted 			TIMESTAMPTZ,
 
 			CONSTRAINT managed_database_pk PRIMARY KEY(id),
-		
 			CONSTRAINT managed_database_chk_name_is_trimmed CHECK(
 				name = TRIM(name)
 			),
-			CONSTRAINT managed_database_chk_db_name_is_trimmed CHECK(
-				db_name = TRIM(db_name)
-			),
-			
 			CONSTRAINT managed_database_fk_workspace_id
 				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
 			CONSTRAINT managed_database_fk_region

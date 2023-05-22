@@ -124,7 +124,7 @@ pub async fn create_managed_database_in_workspace(
 			.0;
 
 	let database_plan =
-		db::get_database_plan_by_id(connection, &database_plan_id).await?;
+		db::get_database_plan_by_id(connection, database_plan_id).await?;
 
 	match engine {
 		ManagedDatabaseEngine::Postgres => {
