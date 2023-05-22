@@ -11554,6 +11554,41 @@
     },
     "query": "CREATE TYPE DOMAIN_PLAN AS ENUM( 'free', 'unlimited' );"
   },
+  "9993fba44c0652a57609d0ed13acd7ad52075ba9ab7d8871b3cab0bd97583865": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          },
+          "Uuid",
+          "Uuid",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "postgres",
+                  "mysql",
+                  "mongo",
+                  "redis"
+                ]
+              },
+              "name": "managed_database_engine"
+            }
+          },
+          "Uuid",
+          "Text"
+        ]
+      }
+    },
+    "query": "INSERT INTO managed_database( id, name, workspace_id, region, status, engine, database_plan_id, username ) VALUES ($1, $2, $3, $4, 'creating', $5, $6, $7);"
+  },
   "99aa3fab0d93a31d339b94fe2c0916cb159988c87123650a0686ca167ec0c4f7": {
     "describe": {
       "columns": [],
@@ -14875,41 +14910,6 @@
       }
     },
     "query": "SELECT id as \"id: Uuid\", workspace_id as \"workspace_id: Uuid\", name::TEXT as \"name!: String\", COALESCE(size, 0) as \"size!\", ( SELECT GREATEST( resource.created, ( SELECT COALESCE(created, TO_TIMESTAMP(0)) FROM docker_registry_repository_manifest WHERE repository_id = docker_registry_repository.id ORDER BY created DESC LIMIT 1 ), ( SELECT COALESCE(last_updated, TO_TIMESTAMP(0)) FROM docker_registry_repository_tag WHERE repository_id = docker_registry_repository.id ORDER BY created DESC LIMIT 1 ) ) FROM resource WHERE resource.id = docker_registry_repository.id ) as \"last_updated!\" FROM docker_registry_repository LEFT JOIN ( SELECT SUM(size) as size, repository_id FROM docker_registry_repository_manifest GROUP BY repository_id ) docker_registry_repository_manifest ON docker_registry_repository_manifest.repository_id = docker_registry_repository.id WHERE workspace_id = $1 AND deleted IS NULL;"
-  },
-  "dc3ff8ddcb7e32d1c99582bf0bbbe60c31385494f7b0058297cb11d06d9dea7f": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Uuid",
-          "Uuid",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "postgres",
-                  "mysql",
-                  "mongo",
-                  "redis"
-                ]
-              },
-              "name": "managed_database_engine"
-            }
-          },
-          "Uuid",
-          "Text"
-        ]
-      }
-    },
-    "query": "INSERT INTO managed_database( id, name, workspace_id, region, engine, database_plan_id, username ) VALUES ($1, $2, $3, $4, $5, $6, $7);"
   },
   "dc532b30067cfee729672c5ddffe470971c2b69db1c60f3c883d2e34aa08808e": {
     "describe": {

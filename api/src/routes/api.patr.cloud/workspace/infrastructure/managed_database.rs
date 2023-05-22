@@ -229,7 +229,7 @@ async fn list_all_database_clusters(
 		region: database.region,
 		status: database.status,
 		connection: Connection {
-			host: database.id.to_string(),
+			host: format!("db-{0}.svc.local", database.id),
 			port: match database.engine {
 				ManagedDatabaseEngine::Postgres => 5432,
 				ManagedDatabaseEngine::Mysql => 3306,
@@ -341,7 +341,7 @@ async fn get_managed_database_info(
 		region: database.region,
 		status: database.status,
 		connection: Connection {
-			host: database.id.to_string(), //db-{database_id}
+			host: format!("db-{0}.svc.local", database.id),
 			port: match database.engine {
 				ManagedDatabaseEngine::Postgres => 5432,
 				ManagedDatabaseEngine::Mysql => 3306,

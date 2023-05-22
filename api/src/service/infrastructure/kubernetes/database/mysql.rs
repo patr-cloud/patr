@@ -65,6 +65,7 @@ pub async fn patch_kubernetes_mysql_database(
 	// constants
 	let secret_key_for_db_pwd = "password";
 	let mysql_port = 3306;
+	let mysql_version = "mysql:8.0";
 
 	let labels =
 		BTreeMap::from([("database".to_owned(), database_id.to_string())]);
@@ -132,7 +133,7 @@ pub async fn patch_kubernetes_mysql_database(
 				requests: Some(
 					[(
 						"storage".to_owned(),
-						Quantity(db_plan.volume.to_string()),
+						Quantity(format! {"{0}Gi", db_plan.volume}),
 					)]
 					.into(),
 				),
@@ -151,7 +152,7 @@ pub async fn patch_kubernetes_mysql_database(
 		spec: Some(PodSpec {
 			containers: vec![Container {
 				name: "mysql".to_owned(),
-				image: Some("mysql:8.0".to_owned()),
+				image: Some(mysql_version.to_owned()),
 				env: Some(vec![EnvVar {
 					name: "MYSQL_ROOT_PASSWORD".to_owned(),
 					value_from: Some(EnvVarSource {
@@ -195,7 +196,9 @@ pub async fn patch_kubernetes_mysql_database(
 						[
 							(
 								"memory".to_string(),
-								Quantity(db_plan.memory_count.to_string()),
+								Quantity(
+									format! {"{0}Gi", db_plan.memory_count},
+								),
 							),
 							(
 								"cpu".to_string(),

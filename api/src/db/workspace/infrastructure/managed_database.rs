@@ -182,12 +182,13 @@ pub async fn create_managed_database(
 				name,
 				workspace_id,
 				region,
+				status,
 				engine,
 				database_plan_id,
 				username
 			)
 		VALUES
-			($1, $2, $3, $4, $5, $6, $7);
+			($1, $2, $3, $4, 'creating', $5, $6, $7);
 		"#,
 		id as _,
 		name as _,
