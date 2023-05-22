@@ -1525,3 +1525,42 @@ pub async fn get_deployments_by_region_id(
 	.fetch_all(&mut *connection)
 	.await
 }
+
+pub async fn get_deployments_for_report_card(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Vec<Deployment>, sqlx::Error> {
+	query_as!(
+		Deployment,
+		r#"
+		SELECT
+			id as "id: _",
+			name::TEXT as "name!: _",
+			registry,
+			repository_id as "repository_id: _",
+			image_name,
+			image_tag,
+			status as "status: _",
+			workspace_id as "workspace_id: _",
+			region as "region: _",
+			min_horizontal_scale,
+			max_horizontal_scale,
+			machine_type as "machine_type: _",
+			deploy_on_push,
+			startup_probe_port,
+			startup_probe_path,
+			liveness_probe_port,
+			liveness_probe_path,
+			current_live_digest
+		FROM
+			deployment
+		WHERE
+			workspace_id = $1 AND
+			status != 'deleted'
+		LIMIT 5;
+		"#,
+		workspace_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await
+}

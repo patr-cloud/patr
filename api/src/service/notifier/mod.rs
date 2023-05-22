@@ -8,9 +8,9 @@ use api_models::{
 use eve_rs::AsError;
 
 use crate::{
-	db::{self, User, UserToSignUp},
+	db::{self, User, UserToSignUp, Workspace},
 	error,
-	models::ResourceType,
+	models::{ResourceType, UserDeployment},
 	utils::Error,
 	Database,
 };
@@ -1202,6 +1202,40 @@ pub async fn send_partial_payment_success_email(
 		transaction.amount_in_cents as u64,
 		bill_remaining,
 		credits_remaining,
+	)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn send_report_card_email_notification(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace: &Workspace,
+	resource_type: &str,
+	user_deployments: &[UserDeployment],
+) -> Result<(), Error> {
+	let user = db::get_user_by_user_id(connection, &workspace.super_admin_id)
+		.await?
+		.status(500)?;
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	email::send_report_card_email(
+		user_email.parse()?,
+		&user.username,
+		resource_type,
+		user_deployments,
 	)
 	.await?;
 

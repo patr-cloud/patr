@@ -29,6 +29,8 @@ lazy_static! {
 	static ref DNS_NAME_REGEX: Regex = Regex::new("^((\\*)|((\\*\\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])))$").unwrap();
 	// 2-64 characters long ([a-zA-Z0-9_- .]), cannot begin with a _, -, . or a space, cannot end with a space
 	static ref CI_RUNNER: Regex = Regex::new("^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$").unwrap();
+	// A Valid workspace name: Alphanumeric characters & Hyphens
+	static ref WORKSPACE_NAME_REGEX: Regex = Regex::new("^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}[a-zA-Z0-9]$").unwrap();
 }
 
 pub fn is_username_valid(username: &str) -> bool {
@@ -74,8 +76,33 @@ pub fn is_phone_number_valid(phone_number: &str) -> bool {
 	PHONE_NUMBER_REGEX.is_match(phone_number)
 }
 
+/// Determines if a given workspace name is valid or not.
+///
+/// A workspace name is considered invalid if it meets any of the following
+/// conditions:
+///
+/// - It contains the string "personal-workspace-" followed by a UUID of length
+///   32.
+/// - It contains any characters that are not alphanumeric or hyphen (-).
+/// - It starts or ends with a hyphen (-).
+/// - It exceeds a maximum length of 64 characters.
+///
+/// # Arguments
+///
+/// * `workspace_name` - The name of the workspace to validate.
+///
+/// # Examples
+///"$Workspace$" -> false
+///"a-workspace" -> true
+///"personal-workspace-02108910df9e11edb5ea0242ac120002" -> false
+///
+/// # Returns
+///
+/// A boolean value indicating whether the workspace name is valid (`true`) or
+/// not (`false`).
 pub fn is_workspace_name_valid(workspace_name: &str) -> bool {
-	!PERSONAL_WORKSPACE_NAME_REGEX.is_match(workspace_name)
+	!PERSONAL_WORKSPACE_NAME_REGEX.is_match(workspace_name) &&
+		WORKSPACE_NAME_REGEX.is_match(workspace_name)
 }
 
 pub fn is_docker_repo_name_valid(repo_name: &str) -> bool {

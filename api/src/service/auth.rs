@@ -237,6 +237,7 @@ pub async fn create_user_join_request(
 	account_type: &SignUpAccountType,
 	recovery_method: &RecoveryMethod,
 	coupon_code: Option<&str>,
+	is_oauth_user: bool,
 ) -> Result<(UserToSignUp, String), Error> {
 	// Check if the username is allowed
 	if !is_username_allowed(connection, username).await? {
@@ -246,7 +247,7 @@ pub async fn create_user_join_request(
 	}
 
 	// Check if the password passes standards
-	if !validator::is_password_valid(password) {
+	if !validator::is_password_valid(password) && !is_oauth_user {
 		Error::as_result()
 			.status(200)
 			.body(error!(PASSWORD_TOO_WEAK).to_string())?;

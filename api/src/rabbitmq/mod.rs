@@ -45,7 +45,10 @@ pub async fn start_consumer(app: &App) {
 			channel
 				.queue_declare(
 					&queue.to_string(),
-					QueueDeclareOptions::default(),
+					QueueDeclareOptions {
+						durable: true,
+						..QueueDeclareOptions::default()
+					},
 					FieldTable::default(),
 				)
 				.await

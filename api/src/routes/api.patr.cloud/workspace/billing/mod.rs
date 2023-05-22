@@ -26,6 +26,7 @@ use api_models::{
 		MakePaymentResponse,
 		PaymentMethod,
 		PaymentStatus,
+		SetPrimaryCardRequest,
 		TotalAmount,
 		Transaction,
 		UpdateBillingAddressRequest,
@@ -42,6 +43,7 @@ use crate::{
 	error,
 	models::rbac::permissions,
 	pin_fn,
+	redis,
 	service,
 	utils::{
 		constants::request_keys,
@@ -838,15 +840,31 @@ async fn add_payment_method(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 	let config = context.get_state().config.clone();
-	let client_secret = service::add_card_details(
+	let payment_intent = service::add_card_details(
 		context.get_database_connection(),
 		&workspace_id,
 		&config,
 	)
-	.await?
-	.client_secret
-	.status(500)?;
-	context.success(AddPaymentMethodResponse { client_secret });
+	.await?;
+
+	let client_secret = payment_intent.client_secret.ok_or_else(|| {
+		log::error!("PaymentIntent does not have a client secret");
+		Error::empty()
+			.status(400)
+			.body(error!(INVALID_PAYMENT_METHOD).to_string())
+	})?;
+
+	redis::set_add_card_payment_intent_id(
+		context.get_redis_connection(),
+		&workspace_id,
+		payment_intent.id.as_str(),
+	)
+	.await?;
+
+	context.success(AddPaymentMethodResponse {
+		client_secret,
+		payment_intent_id: payment_intent.id.to_string(),
+	});
 	Ok(context)
 }
 
@@ -886,32 +904,46 @@ async fn confirm_payment_method(
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+	let config = context.get_state().config.clone();
+
 	let ConfirmPaymentMethodRequest {
-		payment_method_id, ..
+		payment_intent_id, ..
 	} = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-	db::add_payment_method_info(
+
+	let workspace = db::get_workspace_info(
 		context.get_database_connection(),
 		&workspace_id,
-		&payment_method_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
+
+	let intent_id = redis::get_add_card_payment_intent_id(
+		context.get_redis_connection(),
+		&workspace.id,
+	)
+	.await?
+	.status(500)
+	.body(error!(PAYMENT_FAILED).to_string())?;
+
+	if intent_id != payment_intent_id {
+		log::error!("Mismatch payment intent_ids, unable to create a refund");
+		Error::as_result()
+			.status(500)
+			.body(error!(PAYMENT_FAILED).to_string())?
+	}
+
+	service::verify_card_with_charges(
+		context.get_database_connection(),
+		&workspace,
+		&payment_intent_id,
+		&config,
 	)
 	.await?;
-	if db::get_workspace_info(context.get_database_connection(), &workspace_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?
-		.default_payment_method_id
-		.is_none()
-	{
-		db::set_default_payment_method_for_workspace(
-			context.get_database_connection(),
-			&workspace_id,
-			&payment_method_id,
-		)
-		.await?;
-	}
+
 	context.success(ConfirmPaymentMethodResponse {});
 	Ok(context)
 }
@@ -922,7 +954,7 @@ async fn set_primary_card(
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-	let ConfirmPaymentMethodRequest {
+	let SetPrimaryCardRequest {
 		payment_method_id, ..
 	} = context
 		.get_body_as()
@@ -1005,7 +1037,6 @@ async fn add_credits(
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-
 	let config = context.get_state().config.clone();
 	let (transaction_id, client_secret) = service::add_credits_to_workspace(
 		context.get_database_connection(),

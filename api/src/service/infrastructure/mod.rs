@@ -270,7 +270,8 @@ pub async fn delete_all_resources_in_workspace(
 	// so only need to delete the region alone from db
 	log::trace!("deleting all regions for workspace: {}", workspace_id);
 	let regions =
-		db::get_all_regions_for_workspace(connection, workspace_id).await?;
+		db::get_all_byoc_regions_for_workspace(connection, workspace_id)
+			.await?;
 	for region in regions {
 		db::delete_region(connection, &region.id, &Utc::now()).await?;
 	}

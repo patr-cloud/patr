@@ -5,7 +5,10 @@ use api_models::models::workspace::billing::{Address, WorkspaceBillBreakdown};
 use lettre::message::Mailbox;
 use serde::Serialize;
 
-use crate::{models::EmailTemplate, utils::Error};
+use crate::{
+	models::{EmailTemplate, UserDeployment},
+	utils::Error,
+};
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/user-sign-up/template.json"]
@@ -781,6 +784,34 @@ pub async fn send_partial_payment_success_email(
 		email,
 		None,
 		"Patr payment successful",
+	)
+	.await
+}
+
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/report-card/template.json"]
+#[serde(rename_all = "camelCase")]
+struct ReportCardEmail {
+	username: String,
+	resource_type: String,
+	user_deployment: Vec<UserDeployment>,
+}
+
+pub async fn send_report_card_email(
+	email: Mailbox,
+	username: &str,
+	resource_type: &str,
+	user_deployment: &[UserDeployment],
+) -> Result<(), Error> {
+	send_email(
+		ReportCardEmail {
+			username: username.to_string(),
+			resource_type: resource_type.to_string(),
+			user_deployment: user_deployment.to_owned(),
+		},
+		email,
+		None,
+		"Patr: Report Card",
 	)
 	.await
 }

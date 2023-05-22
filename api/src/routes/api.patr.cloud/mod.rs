@@ -1,8 +1,14 @@
-use api_models::models::GetVersionResponse;
-use eve_rs::{App as EveApp, NextHandler};
+use api_models::models::{
+	survey::{SubmitSurveyRequest, SubmitSurveyResponse},
+	GetVersionResponse,
+};
+use chrono::Utc;
+use eve_rs::{App as EveApp, AsError, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
+	db,
+	error,
 	pin_fn,
 	utils::{constants, Error, ErrorData, EveContext, EveMiddleware},
 };
@@ -41,6 +47,15 @@ pub fn create_sub_app(
 		"/version",
 		[EveMiddleware::CustomFunction(pin_fn!(get_version_number))],
 	);
+	sub_app.post(
+		"/survey",
+		[
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
+			EveMiddleware::CustomFunction(pin_fn!(submit_inapp_survey)),
+		],
+	);
 
 	sub_app
 }
@@ -52,5 +67,33 @@ async fn get_version_number(
 	context.success(GetVersionResponse {
 		version: constants::DATABASE_VERSION.to_string(),
 	});
+	Ok(context)
+}
+
+async fn submit_inapp_survey(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let SubmitSurveyRequest {
+		survey_response,
+		version,
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let user_id = context.get_token_data().unwrap().user_id().clone();
+
+	let submitted_time = Utc::now();
+	db::submit_inapp_survey(
+		context.get_database_connection(),
+		&user_id,
+		&version,
+		&survey_response,
+		&submitted_time,
+	)
+	.await?;
+
+	context.success(SubmitSurveyResponse {});
 	Ok(context)
 }

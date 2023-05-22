@@ -390,6 +390,36 @@ pub async fn get_all_regions_for_workspace(
 	.await
 }
 
+pub async fn get_all_byoc_regions_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Vec<Region>, sqlx::Error> {
+	query_as!(
+		Region,
+		r#"
+		SELECT
+			id as "id: _",
+			name,
+			provider as "cloud_provider: _",
+			workspace_id as "workspace_id: _",
+			ingress_hostname as "ingress_hostname: _",
+			message_log,
+			cloudflare_certificate_id,
+			config_file as "config_file: _",
+			status as "status: _",
+			disconnected_at as "disconnected_at: _"
+		FROM
+			region
+		WHERE
+			status != 'deleted' AND
+			workspace_id = $1;
+		"#,
+		workspace_id as _,
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
 pub async fn get_all_active_byoc_region(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Vec<Region>, sqlx::Error> {

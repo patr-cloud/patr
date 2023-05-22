@@ -26,6 +26,7 @@ use cloudflare::{
 	framework::{
 		async_api::Client as CloudflareClient,
 		auth::Credentials,
+		response::ApiFailure,
 		Environment,
 		HttpApiClientConfig,
 	},
@@ -250,12 +251,21 @@ pub async fn delete_domain_from_cloudflare_worker_routes(
 ) -> Result<(), Error> {
 	let cf_client = get_cloudflare_client(config).await?;
 
-	cf_client
+	let response = cf_client
 		.request(&workers::DeleteRoute {
 			zone_identifier: &config.cloudflare.patr_zone_identifier,
 			identifier: route_id,
 		})
-		.await?;
+		.await;
+	match response {
+		// Do nothing
+		Ok(_) => (),
+		// Do nothing
+		Err(ApiFailure::Error(code, errors))
+			if code == 404 &&
+				errors.errors.iter().any(|error| error.code == 10009) => {}
+		Err(error) => return Err(error.into()),
+	}
 
 	Ok(())
 }

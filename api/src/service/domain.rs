@@ -5,26 +5,29 @@ use api_models::{
 	utils::{DateTime, ResourceType, Uuid},
 };
 use chrono::Utc;
-use cloudflare::endpoints::{
-	dns::{
-		CreateDnsRecord,
-		CreateDnsRecordParams,
-		DeleteDnsRecord,
-		DnsContent,
-		UpdateDnsRecord,
-		UpdateDnsRecordParams,
+use cloudflare::{
+	endpoints::{
+		dns::{
+			CreateDnsRecord,
+			CreateDnsRecordParams,
+			DeleteDnsRecord,
+			DnsContent,
+			UpdateDnsRecord,
+			UpdateDnsRecordParams,
+		},
+		zone::{
+			AccountId,
+			CreateZone,
+			CreateZoneParams,
+			DeleteZone,
+			ListZones,
+			ListZonesParams,
+			Status,
+			Type,
+			ZoneDetails,
+		},
 	},
-	zone::{
-		AccountId,
-		CreateZone,
-		CreateZoneParams,
-		DeleteZone,
-		ListZones,
-		ListZonesParams,
-		Status,
-		Type,
-		ZoneDetails,
-	},
+	framework::response::ApiFailure,
 };
 use eve_rs::AsError;
 use tokio::{net::UdpSocket, task};
@@ -894,11 +897,20 @@ pub async fn delete_domain_in_workspace(
 			request_id
 		);
 		let client = service::get_cloudflare_client(config).await?;
-		client
+		let response = client
 			.request(&DeleteZone {
 				identifier: &domain.zone_identifier,
 			})
-			.await?;
+			.await;
+		match response {
+			// Do nothing
+			Ok(_) => (),
+			// Do nothing
+			Err(ApiFailure::Error(code, errors))
+				if code == 400 &&
+					errors.errors.iter().any(|error| error.code == 1001) => {}
+			Err(error) => return Err(error.into()),
+		}
 	}
 
 	service::delete_domain_from_cloudflare_worker_routes(

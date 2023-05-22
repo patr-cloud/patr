@@ -836,7 +836,7 @@ pub async fn get_full_deployment_config(
 			registry,
 			image_name,
 		} => {
-			format!("{}/{}", registry, image_name)
+			format!("{}/{}:{}", registry, image_name, deployment.image_tag)
 		}
 	};
 
