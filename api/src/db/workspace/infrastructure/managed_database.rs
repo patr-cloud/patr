@@ -1,25 +1,24 @@
 use api_macros::{query, query_as};
 use api_models::{
 	models::workspace::infrastructure::database::{
+		DatabasePlanType,
 		ManagedDatabaseEngine,
-		ManagedDatabasePlan,
 		ManagedDatabaseStatus,
 	},
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
 
-use crate::Database;
+use crate::{db, Database};
 
 pub struct ManagedDatabase {
 	pub id: Uuid,
 	pub name: String,
 	pub workspace_id: Uuid,
 	pub region: Uuid,
-	pub db_name: String,
 	pub engine: ManagedDatabaseEngine,
 	pub version: String,
-	pub database_plan: ManagedDatabasePlan,
+	pub database_plan_id: Uuid,
 	pub status: ManagedDatabaseStatus,
 	pub host: String,
 	pub port: i32,
@@ -45,14 +44,18 @@ pub async fn initialize_managed_database_pre(
 	.execute(&mut *connection)
 	.await?;
 
-	// 1r == 1GB ram
-	// 1c == 1v cpu
-	// 1v == 1GB volume
 	query!(
 		r#"
-		CREATE TYPE MANAGED_DATABASE_PLAN AS ENUM(
-			'db_1r_1c_10v',
-			'db_2r_2c_25v'
+		CREATE TABLE managed_database_plan(
+			id 		UUID CONSTRAINT managed_database_plan_pk PRIMARY KEY,
+			cpu 	INTEGER NOT NULL, /* Multiples of 1 vCPU */
+			ram 	INTEGER NOT NULL, /* Multiples of 1 GB RAM */
+			volume 	INTEGER NOT NULL, /* Multiples of 1 GB storage space */
+
+			CONSTRAINT managed_database_plan_chk_cpu_positive CHECK(cpu > 0),
+			CONSTRAINT managed_database_plan_chk_ram_positive CHECK(ram > 0),
+			CONSTRAINT managed_database_plan_chk_volume_positive
+				CHECK(volume > 0)
 		);
 		"#
 	)
@@ -75,31 +78,36 @@ pub async fn initialize_managed_database_pre(
 	query!(
 		r#"
 		CREATE TABLE managed_database(
-			id 				UUID					NOT NULL,
-			name 			CITEXT 					NOT NULL,
-			workspace_id 	UUID 					NOT NULL,
-			region 			UUID 					NOT NULL,
-			db_name 		VARCHAR(255) 			NOT NULL,
-			engine 			MANAGED_DATABASE_ENGINE 	NOT NULL,
-			version 		TEXT 					NOT NULL,
-			database_plan 	MANAGED_DATABASE_PLAN 		NOT NULL,
-			status 			MANAGED_DATABASE_STATUS 	NOT NULL DEFAULT 'creating',
-			host 			TEXT 					NOT NULL,
-			port 			INTEGER 				NOT NULL,
-			username 		TEXT 					NOT NULL,
-			password 		TEXT 					NOT NULL,
-			deleted 		TIMESTAMPTZ,
+			id 					UUID						NOT NULL,
+			name 				CITEXT 						NOT NULL,
+			workspace_id 		UUID 						NOT NULL,
+			region 				UUID 						NOT NULL,
+			engine 				MANAGED_DATABASE_ENGINE 	NOT NULL,
+			version 			TEXT 						NOT NULL,
+			database_plan_id 	UUID 						NOT NULL,
+			status 				MANAGED_DATABASE_STATUS 	NOT NULL,
+			host 				TEXT 						NOT NULL,
+			port 				INTEGER 					NOT NULL,
+			username 			TEXT 						NOT NULL,
+			password 			TEXT 						NOT NULL,
+			deleted 			TIMESTAMPTZ,
 
-			CONSTRAINT managed_database_pk
-				PRIMARY KEY (id),
+			CONSTRAINT managed_database_pk PRIMARY KEY(id),
 		
-			CONSTRAINT managed_database_chk_name_is_trimmed
-				CHECK(name = TRIM(name)),
-			CONSTRAINT managed_database_chk_db_name_is_trimmed
-				CHECK(db_name = TRIM(db_name)),
-		
+			CONSTRAINT managed_database_chk_name_is_trimmed CHECK(
+				name = TRIM(name)
+			),
+			CONSTRAINT managed_database_chk_db_name_is_trimmed CHECK(
+				db_name = TRIM(db_name)
+			),
+			
+			CONSTRAINT managed_database_fk_workspace_id
+				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
 			CONSTRAINT managed_database_fk_region
-				FOREIGN KEY (region) REFERENCES region(id)
+				FOREIGN KEY(region) REFERENCES region(id),
+			CONSTRAINT managed_database_fk_managed_database_plan_id
+				FOREIGN KEY(database_plan_id)
+					REFERENCES managed_database_plan(id)
 		);
 		"#
 	)
@@ -126,11 +134,41 @@ pub async fn initialize_managed_database_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up patr databases tables initialization");
+
+	const MANAGED_DATABASE_MACHINE_TYPE: [(i32, i32, i32); 2] = [
+		(1, 1, 10), // 1 vCPU, 1 GB RAM, 10GB storage
+		(2, 2, 25), // 2 vCPU, 2 GB RAM, 25GB storage
+	];
+
+	for (cpu, ram, volume) in MANAGED_DATABASE_MACHINE_TYPE {
+		let machine_type_id =
+			db::generate_new_resource_id(&mut *connection).await?;
+		query!(
+			r#"
+			INSERT INTO
+				managed_database_plan(
+					id,
+					cpu,
+					ram,
+					volume
+				)
+			VALUES
+				($1, $2, $3, $4);
+			"#,
+			machine_type_id as _,
+			cpu,
+			ram,
+			volume
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
 	query!(
 		r#"
 		ALTER TABLE managed_database
-			ADD CONSTRAINT managed_database_fk_id_workspace_id
-				FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
+		ADD CONSTRAINT managed_database_fk_id_workspace_id
+		FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -145,10 +183,9 @@ pub async fn create_managed_database(
 	name: &str,
 	workspace_id: &Uuid,
 	region: &Uuid,
-	db_name: &str,
 	engine: &ManagedDatabaseEngine,
 	version: &str,
-	database_plan: &ManagedDatabasePlan,
+	database_plan_id: &Uuid,
 	host: &str,
 	port: i32,
 	username: &str,
@@ -156,30 +193,30 @@ pub async fn create_managed_database(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		INSERT INTO managed_database (
-			id,
-			name,
-			workspace_id,
-			region,
-			db_name,
-			engine,
-			version,
-			database_plan,
-			host,
-			port,
-			username,
-			password
-		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
+		INSERT INTO
+			managed_database(
+				id,
+				name,
+				workspace_id,
+				region,
+				engine,
+				version,
+				database_plan_id,
+				host,
+				port,
+				username,
+				password
+			)
+		VALUES
+			($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
 		"#,
 		id as _,
 		name as _,
 		workspace_id as _,
 		region as _,
-		db_name,
 		engine as _,
 		version,
-		database_plan as _,
+		database_plan_id as _,
 		host,
 		port,
 		username,
@@ -247,10 +284,9 @@ pub async fn get_all_managed_database_for_workspace(
 			name::TEXT as "name!: _",
 			workspace_id as "workspace_id: _",
 			region as "region: _",
-			db_name,
 			engine as "engine: _",
 			version,
-			database_plan as "database_plan: _",
+			database_plan_id as "database_plan_id: _",
 			status as "status: _",
 			host,
 			port,
@@ -280,10 +316,9 @@ pub async fn get_managed_database_by_id(
 			name::TEXT as "name!: _",
 			workspace_id as "workspace_id: _",
 			region as "region: _",
-			db_name,
 			engine as "engine: _",
 			version,
-			database_plan as "database_plan: _",
+			database_plan_id as "database_plan_id: _",
 			status as "status: _",
 			host,
 			port,
@@ -313,10 +348,9 @@ pub async fn get_managed_database_by_id_including_deleted(
 			name::TEXT as "name!: _",
 			workspace_id as "workspace_id: _",
 			region as "region: _",
-			db_name,
 			engine as "engine: _",
 			version,
-			database_plan as "database_plan: _",
+			database_plan_id as "database_plan_id: _",
 			status as "status: _",
 			host,
 			port,
@@ -330,5 +364,47 @@ pub async fn get_managed_database_by_id_including_deleted(
 		id as _,
 	)
 	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn get_all_database_plans(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<DatabasePlanType>, sqlx::Error> {
+	query_as!(
+		DatabasePlanType,
+		r#"
+		SELECT
+			id as "id: _",
+			cpu as "cpu_count: _",
+			ram as "memory_count: _",
+			volume
+		FROM
+			managed_database_plan;
+		"#,
+	)
+	.fetch_all(connection)
+	.await
+}
+
+pub async fn get_database_plan_by_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+) -> Result<DatabasePlanType, sqlx::Error> {
+	query_as!(
+		DatabasePlanType,
+		r#"
+		SELECT
+			id as "id: _",
+			cpu as "cpu_count: _",
+			ram as "memory_count: _",
+			volume
+		FROM
+			managed_database_plan
+		WHERE
+			id = $1;
+		"#,
+		id as _,
+	)
+	.fetch_one(&mut *connection)
 	.await
 }

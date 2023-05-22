@@ -1,39 +1,14 @@
 mod mysql;
 
 use api_models::{
-	models::workspace::infrastructure::database::{
-		ManagedDatabasePlan,
-		ManagedDatabaseStatus,
-	},
+	models::workspace::infrastructure::database::ManagedDatabaseStatus,
 	utils::Uuid,
 };
-use k8s_openapi::{
-	api::apps::v1::StatefulSet,
-	apimachinery::pkg::api::resource::Quantity,
-};
+use k8s_openapi::api::apps::v1::StatefulSet;
 use kube::{config::Kubeconfig, Api};
 pub use mysql::*;
 
 use crate::utils::Error;
-
-pub trait ResourceLimitsForPlan {
-	fn get_resource_limits(&self) -> (Quantity, Quantity, Quantity);
-}
-
-impl ResourceLimitsForPlan for ManagedDatabasePlan {
-	fn get_resource_limits(&self) -> (Quantity, Quantity, Quantity) {
-		let (ram, cpu, volume) = match self {
-			ManagedDatabasePlan::db_1r_1c_10v => ("1Gi", "1", "10Gi"),
-			ManagedDatabasePlan::db_2r_2c_25v => ("2Gi", "2", "25Gi"),
-		};
-
-		(
-			Quantity(ram.to_owned()),
-			Quantity(cpu.to_owned()),
-			Quantity(volume.to_owned()),
-		)
-	}
-}
 
 pub async fn get_kubernetes_database_status(
 	workspace_id: &Uuid,

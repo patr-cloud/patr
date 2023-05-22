@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use api_models::{
-	models::workspace::infrastructure::database::ManagedDatabasePlan,
+	models::workspace::infrastructure::database::DatabasePlanType,
 	utils::Uuid,
 };
 use k8s_openapi::{
@@ -41,16 +41,13 @@ use kube::{
 	Api,
 };
 
-use crate::{
-	service::{ext_traits::DeleteOpt, ResourceLimitsForPlan},
-	utils::Error,
-};
+use crate::{service::ext_traits::DeleteOpt, utils::Error};
 
 pub async fn patch_kubernetes_mysql_database(
 	workspace_id: &Uuid,
 	database_id: &Uuid,
 	db_pwd: impl Into<String>,
-	db_plan: &ManagedDatabasePlan,
+	db_plan: &DatabasePlanType,
 	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -60,7 +57,7 @@ pub async fn patch_kubernetes_mysql_database(
 	// names
 	let namespace = workspace_id.as_str();
 	let secret_name_for_db_pwd = format!("db-pwd-{database_id}");
-	let svc_name_for_db = format!("db-svc-{database_id}");
+	let svc_name_for_db = format!("service-{database_id}");
 	let sts_name_for_db = format!("db-{database_id}");
 	let pvc_claim_for_db = format!("db-pvc-{database_id}");
 
@@ -68,8 +65,6 @@ pub async fn patch_kubernetes_mysql_database(
 	let secret_key_for_db_pwd = "password";
 	let mysql_port = 3306;
 
-	// plan
-	let (db_ram, db_cpu, db_volume) = db_plan.get_resource_limits();
 	let labels =
 		BTreeMap::from([("database".to_owned(), database_id.to_string())]);
 
@@ -133,7 +128,13 @@ pub async fn patch_kubernetes_mysql_database(
 		spec: Some(PersistentVolumeClaimSpec {
 			access_modes: Some(vec!["ReadWriteOnce".to_owned()]),
 			resources: Some(ResourceRequirements {
-				requests: Some([("storage".to_owned(), db_volume)].into()),
+				requests: Some(
+					[(
+						"storage".to_owned(),
+						Quantity(db_plan.volume.to_string()),
+					)]
+					.into(),
+				),
 				..Default::default()
 			}),
 			..Default::default()
@@ -189,12 +190,22 @@ pub async fn patch_kubernetes_mysql_database(
 					),
 					limits: Some(
 						[
-							("memory".to_string(), db_ram),
-							("cpu".to_string(), db_cpu),
+							(
+								"memory".to_string(),
+								Quantity(db_plan.memory_count.to_string()),
+							),
+							(
+								"cpu".to_string(),
+								Quantity(db_plan.cpu_count.to_string()),
+							),
 						]
 						.into(),
 					),
 				}),
+				// https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#when-should-you-use-a-startup-probe
+				// startup probe are required when the containers take a long
+				// time to spin up according to docs it is recommended to use a
+				// startup probe instead of liveness probe in such instances
 				liveness_probe: Some(Probe {
 					exec: Some(ExecAction {
 						command: Some(vec![
@@ -280,7 +291,7 @@ pub async fn delete_kubernetes_mysql_database(
 	// names
 	let namespace = workspace_id.as_str();
 	let secret_name_for_db_pwd = format!("db-pwd-{database_id}");
-	let svc_name_for_db = format!("db-svc-{database_id}");
+	let svc_name_for_db = format!("service-{database_id}");
 	let sts_name_for_db = format!("db-{database_id}");
 
 	let label = format!("database={}", database_id);

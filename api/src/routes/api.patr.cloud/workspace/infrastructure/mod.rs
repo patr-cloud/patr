@@ -33,8 +33,10 @@ pub fn create_sub_app(
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.use_sub_app("/deployment", deployment::create_sub_app(app));
-	sub_app
-		.use_sub_app("/patr-database", managed_database::create_sub_app(app));
+	sub_app.use_sub_app(
+		"/managed-database",
+		managed_database::create_sub_app(app),
+	);
 	sub_app.use_sub_app("/managed-url", managed_url::create_sub_app(app));
 	sub_app.use_sub_app("/static-site", static_site::create_sub_app(app));
 

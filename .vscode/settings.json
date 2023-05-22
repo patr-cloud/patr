@@ -3,4 +3,5 @@
     "rust-analyzer.checkOnSave.command": "check",
     "rust-analyzer.checkOnSave.enable": true,
     "rust-analyzer.rustfmt.extraArgs": ["+nightly"],
+    "editor.rulers": [80]
 }

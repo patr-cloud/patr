@@ -24,7 +24,7 @@ use api_models::{
 			WorkspaceBillBreakdown,
 		},
 		infrastructure::{
-			database::{ManagedDatabasePlan, ManagedDatabaseStatus},
+			database::ManagedDatabaseStatus,
 			deployment::DeploymentStatus,
 			list_all_deployment_machine_type::DeploymentMachineType,
 		},
@@ -50,6 +50,7 @@ use stripe::{
 use crate::{
 	db::{
 		self,
+		get_database_plan_by_id,
 		DomainPlan as DbDomainPlan,
 		StaticSitePlan as DbStaticSitePlan,
 		Workspace,
@@ -565,10 +566,15 @@ pub async fn calculate_managed_database_bill_for_workspace_till(
 		);
 
 		// todo: revisit patr db pricing
-		let monthly_price = match database_usage.db_plan {
-			ManagedDatabasePlan::db_1r_1c_10v => 5f64,
-			ManagedDatabasePlan::db_2r_2c_25v => 10f64,
-		};
+		let plan =
+			get_database_plan_by_id(connection, &database_usage.db_plan_id)
+				.await?;
+		let monthly_price =
+			match (plan.cpu_count, plan.memory_count, plan.volume) {
+				(1, 1, 10) => 5f64,
+				(2, 2, 25) => 10f64,
+				_ => 0f64,
+			};
 
 		let price_in_dollars = if hours >= 720 {
 			monthly_price
@@ -598,7 +604,7 @@ pub async fn calculate_managed_database_bill_for_workspace_till(
 				is_deleted: managed_database.status ==
 					ManagedDatabaseStatus::Deleted,
 				monthly_charge: monthly_price as u64 * 100,
-				plan: database_usage.db_plan.to_string(),
+				plan: database_usage.db_plan_id.to_string(),
 			});
 	}
 

@@ -5,8 +5,10 @@ use api_models::{
 		CreateDatabaseRequest,
 		CreateDatabaseResponse,
 		Database,
+		DatabasePlanType,
 		DeleteDatabaseResponse,
 		GetDatabaseInfoResponse,
+		ListAllDatabasePlanResponse,
 		ListDatabasesResponse,
 	},
 	utils::Uuid,
@@ -17,7 +19,10 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::{rbac::permissions, ResourceType},
+	models::{
+		rbac::{self, permissions},
+		ResourceType,
+	},
 	pin_fn,
 	service,
 	utils::{
@@ -177,6 +182,16 @@ pub fn create_sub_app(
 		],
 	);
 
+	app.get(
+		"/database-plan",
+		[
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
+			EveMiddleware::CustomFunction(pin_fn!(get_all_database_plans)),
+		],
+	);
+
 	app
 }
 
@@ -202,10 +217,9 @@ async fn list_all_database_clusters(
 	.map(|database| Database {
 		id: database.id,
 		name: database.name,
-		database_name: database.db_name,
 		engine: database.engine,
 		version: database.version,
-		database_plan: database.database_plan,
+		database_plan_id: database.database_plan_id,
 		region: database.region,
 		status: database.status,
 		connection: Connection {
@@ -244,9 +258,8 @@ async fn create_database_cluster(
 		// use workspace_id from query param as this value will be default
 		workspace_id: _,
 		name,
-		database_name,
 		engine,
-		database_plan,
+		database_plan_id,
 		region,
 	} = context
 		.get_body_as()
@@ -256,9 +269,8 @@ async fn create_database_cluster(
 	let database_id = service::create_managed_database_in_workspace(
 		context.get_database_connection(),
 		&name,
-		&database_name,
 		&engine,
-		&database_plan,
+		&database_plan_id,
 		&region,
 		&workspace_id,
 		&request_id,
@@ -304,10 +316,9 @@ async fn get_managed_database_info(
 	.map(|database| Database {
 		id: database.id,
 		name: database.name,
-		database_name: database.db_name,
 		engine: database.engine,
 		version: database.version,
-		database_plan: database.database_plan,
+		database_plan_id: database.database_plan_id,
 		region: database.region,
 		status: database.status,
 		connection: Connection {
@@ -374,5 +385,44 @@ async fn delete_managed_database(
 	.await;
 
 	context.success(DeleteDatabaseResponse {});
+	Ok(context)
+}
+
+async fn get_all_database_plans(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context
+		.get_param(request_keys::WORKSPACE_ID)
+		.and_then(|workspace_id| Uuid::parse_str(workspace_id).ok())
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let access_token_data = context.get_token_data().unwrap();
+	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
+
+	if !access_token_data
+		.workspace_permissions()
+		.contains_key(&workspace_id) &&
+		access_token_data.user_id() != god_user_id
+	{
+		Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	}
+
+	let database_plans =
+		db::get_all_database_plans(context.get_database_connection())
+			.await?
+			.into_iter()
+			.map(|plan| DatabasePlanType {
+				id: plan.id,
+				cpu_count: plan.cpu_count,
+				memory_count: plan.memory_count,
+				volume: plan.volume,
+			})
+			.collect();
+
+	context.success(ListAllDatabasePlanResponse { database_plans });
 	Ok(context)
 }

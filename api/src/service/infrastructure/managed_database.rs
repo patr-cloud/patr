@@ -1,7 +1,6 @@
 use api_models::{
 	models::workspace::infrastructure::database::{
 		ManagedDatabaseEngine,
-		ManagedDatabasePlan,
 		ManagedDatabaseStatus,
 	},
 	utils::Uuid,
@@ -22,25 +21,23 @@ use crate::{
 pub async fn create_managed_database_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	name: &str,
-	db_name: &str,
 	engine: &ManagedDatabaseEngine,
-	database_plan: &ManagedDatabasePlan,
+	database_plan_id: &Uuid,
 	region_id: &Uuid,
 	workspace_id: &Uuid,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
-	log::trace!("request_id: {} - Creating a patr database with name: {} and db_name: {} on DigitalOcean App platform with request_id: {}",
+	log::trace!(
+		"request_id: {} - Creating a patr database with name: {}",
 		request_id,
 		name,
-		db_name,
-		request_id
 	);
 
 	log::trace!(
 		"request_id: {} - Validating the patr database name",
 		request_id
 	);
-	if !validator::is_database_name_valid(db_name) {
+	if !validator::is_database_name_valid(name) {
 		log::trace!("request_id: {} - Database name is invalid. Rejecting create request", request_id);
 		return Err(Error::empty()
 			.status(400)
@@ -56,17 +53,11 @@ pub async fn create_managed_database_in_workspace(
 		.status(400)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	if !region_details.is_ready() {
-		return Err(Error::empty()
-			.status(500)
-			.body(error!(REGION_NOT_READY_YET).to_string()));
-	}
-
 	check_managed_database_creation_limit(
 		connection,
 		workspace_id,
 		region_details.is_byoc_region(),
-		database_plan,
+		database_plan_id,
 		request_id,
 	)
 	.await?;
@@ -91,7 +82,7 @@ pub async fn create_managed_database_in_workspace(
 			connection,
 			workspace_id,
 			&database_id,
-			database_plan,
+			database_plan_id,
 			&creation_time,
 		)
 		.await?;
@@ -106,7 +97,7 @@ pub async fn create_managed_database_in_workspace(
 	let (version, port, username) = match engine {
 		ManagedDatabaseEngine::Postgres => ("12", 5432, "postgres"),
 		ManagedDatabaseEngine::Mysql => ("8", 3306, "root"),
-		ManagedDatabaseEngine::Mongo => ("5", 3306, "root"),
+		ManagedDatabaseEngine::Mongo => ("4", 3306, "root"),
 		ManagedDatabaseEngine::Redis => ("5", 3306, "root"),
 	};
 
@@ -120,10 +111,9 @@ pub async fn create_managed_database_in_workspace(
 		name,
 		workspace_id,
 		region_id,
-		db_name,
 		engine,
 		version,
-		database_plan,
+		database_plan_id,
 		&format!("db-{database_id}"),
 		port,
 		username,
@@ -136,6 +126,9 @@ pub async fn create_managed_database_in_workspace(
 		service::get_kubernetes_config_for_region(connection, region_id)
 			.await?
 			.0;
+
+	let database_plan =
+		db::get_database_plan_by_id(connection, &database_plan_id).await?;
 
 	match engine {
 		ManagedDatabaseEngine::Postgres => {
@@ -155,7 +148,7 @@ pub async fn create_managed_database_in_workspace(
 				workspace_id,
 				&database_id,
 				&password,
-				database_plan,
+				&database_plan,
 				kubeconfig,
 				request_id,
 			)
@@ -202,20 +195,13 @@ pub async fn delete_managed_database(
 			.0;
 
 	// now delete the database from k8s
-	match database.engine {
-		ManagedDatabaseEngine::Postgres => {}
-		ManagedDatabaseEngine::Mongo => {}
-		ManagedDatabaseEngine::Redis => {}
-		ManagedDatabaseEngine::Mysql => {
-			service::delete_kubernetes_mysql_database(
-				&database.workspace_id,
-				&database.id,
-				kubeconfig,
-				request_id,
-			)
-			.await?;
-		}
-	}
+	service::delete_kubernetes_mysql_database(
+		&database.workspace_id,
+		&database.id,
+		kubeconfig,
+		request_id,
+	)
+	.await?;
 
 	Ok(())
 }
@@ -251,7 +237,7 @@ async fn check_managed_database_creation_limit(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	is_byoc_region: bool,
-	database_plan: &ManagedDatabasePlan,
+	database_plan_id: &Uuid,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {request_id} - Checking whether new database creation is limited");
@@ -271,9 +257,15 @@ async fn check_managed_database_creation_limit(
 		db::get_default_payment_method_for_workspace(connection, workspace_id)
 			.await?
 			.is_some();
+
+	let database_plan =
+		db::get_database_plan_by_id(connection, database_plan_id).await?;
+
 	if !card_added &&
 		(current_database_count >= free_limits::MANAGED_DATABASE_COUNT ||
-			database_plan != &ManagedDatabasePlan::db_1r_1c_10v)
+			(database_plan.memory_count != 1 ||
+				database_plan.cpu_count != 1 ||
+				database_plan.volume != 10))
 	{
 		log::info!("request_id: {request_id} - Free database limit reached and card is not added");
 		return Error::as_result()
