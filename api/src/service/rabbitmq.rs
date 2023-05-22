@@ -214,7 +214,7 @@ pub async fn send_message_to_infra_queue(
 			&Queue::Infrastructure.to_string(),
 			BasicPublishOptions::default(),
 			serde_json::to_string(&message)?.as_bytes(),
-			BasicProperties::default(),
+			BasicProperties::default().with_delivery_mode(2),
 		)
 		.await?
 		.await?;
@@ -254,7 +254,7 @@ pub async fn send_message_to_ci_queue(
 			&Queue::Ci.to_string(),
 			BasicPublishOptions::default(),
 			serde_json::to_string(&message)?.as_bytes(),
-			BasicProperties::default(),
+			BasicProperties::default().with_delivery_mode(2),
 		)
 		.await?
 		.await?;
@@ -294,7 +294,7 @@ pub async fn send_message_to_billing_queue(
 			&Queue::Billing.to_string(),
 			BasicPublishOptions::default(),
 			serde_json::to_string(&message)?.as_bytes(),
-			BasicProperties::default(),
+			BasicProperties::default().with_delivery_mode(2),
 		)
 		.await?
 		.await?;
@@ -448,7 +448,7 @@ pub async fn send_message_to_docker_webhook_queue(
 			                       * don't want this handle/consume */
 			BasicPublishOptions::default(),
 			serde_json::to_string(&message)?.as_bytes(),
-			BasicProperties::default(),
+			BasicProperties::default().with_delivery_mode(2),
 		)
 		.await?
 		.await?;

@@ -2,8 +2,8 @@
 members = ["api", "macros", "api-models"]
 
 [workspace.package]
-version = "0.16.0"
-rust-version = "1.68"
+version = "0.16.1"
+rust-version = "1.69"
 
 [profile.release]
 codegen-units = 1
