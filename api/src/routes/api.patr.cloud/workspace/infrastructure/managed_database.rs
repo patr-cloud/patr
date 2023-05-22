@@ -438,6 +438,8 @@ async fn change_database_password(
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
+	let config = context.get_state().config.clone();
+
 	let ChangeDatabasePasswordRequest { new_password, .. } = context
 		.get_body_as()
 		.status(400)
@@ -452,6 +454,7 @@ async fn change_database_password(
 		&database_id,
 		&request_id,
 		&new_password,
+		&config,
 	)
 	.await?;
 

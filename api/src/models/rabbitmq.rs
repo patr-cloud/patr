@@ -114,6 +114,12 @@ pub enum DatabaseRequestData {
 		request_id: Uuid,
 		password: String,
 	},
+	MongoStatefulUpdateStatus {
+		workspace_id: Uuid,
+		database_id: Uuid,
+		request_id: Uuid,
+		password: String,
+	},
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

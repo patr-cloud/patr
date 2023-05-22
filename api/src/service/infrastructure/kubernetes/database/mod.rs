@@ -1,3 +1,4 @@
+mod mongo;
 mod mysql;
 mod psql;
 mod redis;
@@ -16,7 +17,7 @@ use kube::{
 	Api,
 };
 
-pub use self::{mysql::*, psql::*, redis::*};
+pub use self::{mongo::*, mysql::*, psql::*, redis::*};
 use crate::{
 	service::{
 		ext_traits::DeleteOpt,
