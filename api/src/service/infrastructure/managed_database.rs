@@ -26,7 +26,7 @@ pub async fn create_managed_database_in_workspace(
 	region_id: &Uuid,
 	workspace_id: &Uuid,
 	request_id: &Uuid,
-) -> Result<Uuid, Error> {
+) -> Result<(Uuid, String), Error> {
 	log::trace!(
 		"request_id: {} - Creating a patr database with name: {}",
 		request_id,
@@ -117,7 +117,6 @@ pub async fn create_managed_database_in_workspace(
 		&format!("db-{database_id}"),
 		port,
 		username,
-		&password,
 	)
 	.await?;
 	log::trace!("request_id: {} - Resource generation complete", request_id);
@@ -156,7 +155,7 @@ pub async fn create_managed_database_in_workspace(
 		}
 	}
 
-	Ok(database_id)
+	Ok((database_id, password))
 }
 
 pub async fn delete_managed_database(

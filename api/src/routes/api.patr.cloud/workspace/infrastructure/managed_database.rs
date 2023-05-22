@@ -226,7 +226,6 @@ async fn list_all_database_clusters(
 			host: database.host,
 			port: database.port,
 			username: database.username,
-			password: database.password,
 		},
 	})
 	.collect::<Vec<_>>();
@@ -266,16 +265,17 @@ async fn create_database_cluster(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let database_id = service::create_managed_database_in_workspace(
-		context.get_database_connection(),
-		&name,
-		&engine,
-		&database_plan_id,
-		&region,
-		&workspace_id,
-		&request_id,
-	)
-	.await?;
+	let (database_id, password) =
+		service::create_managed_database_in_workspace(
+			context.get_database_connection(),
+			&name,
+			&engine,
+			&database_plan_id,
+			&region,
+			&workspace_id,
+			&request_id,
+		)
+		.await?;
 
 	context.commit_database_transaction().await?;
 
@@ -293,7 +293,10 @@ async fn create_database_cluster(
 	)
 	.await;
 
-	context.success(CreateDatabaseResponse { id: database_id });
+	context.success(CreateDatabaseResponse {
+		id: database_id,
+		password,
+	});
 	Ok(context)
 }
 
@@ -325,7 +328,6 @@ async fn get_managed_database_info(
 			host: database.host,
 			port: database.port,
 			username: database.username,
-			password: database.password,
 		},
 	})
 	.status(400)

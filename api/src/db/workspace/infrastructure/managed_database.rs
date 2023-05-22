@@ -23,7 +23,6 @@ pub struct ManagedDatabase {
 	pub host: String,
 	pub port: i32,
 	pub username: String,
-	pub password: String,
 }
 
 pub async fn initialize_managed_database_pre(
@@ -89,7 +88,6 @@ pub async fn initialize_managed_database_pre(
 			host 				TEXT 						NOT NULL,
 			port 				INTEGER 					NOT NULL,
 			username 			TEXT 						NOT NULL,
-			password 			TEXT 						NOT NULL,
 			deleted 			TIMESTAMPTZ,
 
 			CONSTRAINT managed_database_pk PRIMARY KEY(id),
@@ -189,7 +187,6 @@ pub async fn create_managed_database(
 	host: &str,
 	port: i32,
 	username: &str,
-	password: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -204,11 +201,10 @@ pub async fn create_managed_database(
 				database_plan_id,
 				host,
 				port,
-				username,
-				password
+				username
 			)
 		VALUES
-			($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
+			($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
 		"#,
 		id as _,
 		name as _,
@@ -220,7 +216,6 @@ pub async fn create_managed_database(
 		host,
 		port,
 		username,
-		password,
 	)
 	.execute(&mut *connection)
 	.await
@@ -290,8 +285,7 @@ pub async fn get_all_managed_database_for_workspace(
 			status as "status: _",
 			host,
 			port,
-			username,
-			password
+			username
 		FROM
 			managed_database
 		WHERE
@@ -322,8 +316,7 @@ pub async fn get_managed_database_by_id(
 			status as "status: _",
 			host,
 			port,
-			username,
-			password
+			username
 		FROM
 			managed_database
 		WHERE
@@ -354,8 +347,7 @@ pub async fn get_managed_database_by_id_including_deleted(
 			status as "status: _",
 			host,
 			port,
-			username,
-			password
+			username
 		FROM
 			managed_database
 		WHERE
