@@ -17,11 +17,8 @@ pub struct ManagedDatabase {
 	pub workspace_id: Uuid,
 	pub region: Uuid,
 	pub engine: ManagedDatabaseEngine,
-	pub version: String,
 	pub database_plan_id: Uuid,
 	pub status: ManagedDatabaseStatus,
-	pub host: String,
-	pub port: i32,
 	pub username: String,
 }
 
@@ -82,11 +79,8 @@ pub async fn initialize_managed_database_pre(
 			workspace_id 		UUID 						NOT NULL,
 			region 				UUID 						NOT NULL,
 			engine 				MANAGED_DATABASE_ENGINE 	NOT NULL,
-			version 			TEXT 						NOT NULL,
 			database_plan_id 	UUID 						NOT NULL,
 			status 				MANAGED_DATABASE_STATUS 	NOT NULL,
-			host 				TEXT 						NOT NULL,
-			port 				INTEGER 					NOT NULL,
 			username 			TEXT 						NOT NULL,
 			deleted 			TIMESTAMPTZ,
 
@@ -182,10 +176,7 @@ pub async fn create_managed_database(
 	workspace_id: &Uuid,
 	region: &Uuid,
 	engine: &ManagedDatabaseEngine,
-	version: &str,
 	database_plan_id: &Uuid,
-	host: &str,
-	port: i32,
 	username: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -197,24 +188,18 @@ pub async fn create_managed_database(
 				workspace_id,
 				region,
 				engine,
-				version,
 				database_plan_id,
-				host,
-				port,
 				username
 			)
 		VALUES
-			($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
+			($1, $2, $3, $4, $5, $6, $7);
 		"#,
 		id as _,
 		name as _,
 		workspace_id as _,
 		region as _,
 		engine as _,
-		version,
 		database_plan_id as _,
-		host,
-		port,
 		username,
 	)
 	.execute(&mut *connection)
@@ -280,11 +265,8 @@ pub async fn get_all_managed_database_for_workspace(
 			workspace_id as "workspace_id: _",
 			region as "region: _",
 			engine as "engine: _",
-			version,
 			database_plan_id as "database_plan_id: _",
 			status as "status: _",
-			host,
-			port,
 			username
 		FROM
 			managed_database
@@ -311,11 +293,8 @@ pub async fn get_managed_database_by_id(
 			workspace_id as "workspace_id: _",
 			region as "region: _",
 			engine as "engine: _",
-			version,
 			database_plan_id as "database_plan_id: _",
 			status as "status: _",
-			host,
-			port,
 			username
 		FROM
 			managed_database
@@ -342,11 +321,8 @@ pub async fn get_managed_database_by_id_including_deleted(
 			workspace_id as "workspace_id: _",
 			region as "region: _",
 			engine as "engine: _",
-			version,
 			database_plan_id as "database_plan_id: _",
 			status as "status: _",
-			host,
-			port,
 			username
 		FROM
 			managed_database

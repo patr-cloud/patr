@@ -94,11 +94,11 @@ pub async fn create_managed_database_in_workspace(
 		.map(char::from)
 		.collect::<String>();
 
-	let (version, port, username) = match engine {
-		ManagedDatabaseEngine::Postgres => ("12", 5432, "postgres"),
-		ManagedDatabaseEngine::Mysql => ("8", 3306, "root"),
-		ManagedDatabaseEngine::Mongo => ("4", 3306, "root"),
-		ManagedDatabaseEngine::Redis => ("5", 3306, "root"),
+	let username = match engine {
+		ManagedDatabaseEngine::Postgres => "postgres",
+		ManagedDatabaseEngine::Mysql => "root",
+		ManagedDatabaseEngine::Mongo => "root",
+		ManagedDatabaseEngine::Redis => "root",
 	};
 
 	log::trace!(
@@ -112,10 +112,7 @@ pub async fn create_managed_database_in_workspace(
 		workspace_id,
 		region_id,
 		engine,
-		version,
 		database_plan_id,
-		&format!("db-{database_id}"),
-		port,
 		username,
 	)
 	.await?;

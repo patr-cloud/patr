@@ -10,6 +10,7 @@ use api_models::{
 		GetDatabaseInfoResponse,
 		ListAllDatabasePlanResponse,
 		ListDatabasesResponse,
+		ManagedDatabaseEngine,
 	},
 	utils::Uuid,
 };
@@ -215,16 +216,26 @@ async fn list_all_database_clusters(
 	.await?
 	.into_iter()
 	.map(|database| Database {
-		id: database.id,
+		id: database.id.to_owned(),
 		name: database.name,
-		engine: database.engine,
-		version: database.version,
+		engine: database.engine.to_owned(),
+		version: match database.engine {
+			ManagedDatabaseEngine::Postgres => "12".to_string(),
+			ManagedDatabaseEngine::Mysql => "8".to_string(),
+			ManagedDatabaseEngine::Mongo => "4".to_string(),
+			ManagedDatabaseEngine::Redis => "6".to_string(),
+		},
 		database_plan_id: database.database_plan_id,
 		region: database.region,
 		status: database.status,
 		connection: Connection {
-			host: database.host,
-			port: database.port,
+			host: database.id.to_string(),
+			port: match database.engine {
+				ManagedDatabaseEngine::Postgres => 5432,
+				ManagedDatabaseEngine::Mysql => 3306,
+				ManagedDatabaseEngine::Mongo => 27017,
+				ManagedDatabaseEngine::Redis => 6379,
+			},
 			username: database.username,
 		},
 	})
@@ -317,16 +328,26 @@ async fn get_managed_database_info(
 	)
 	.await?
 	.map(|database| Database {
-		id: database.id,
+		id: database.id.to_owned(),
 		name: database.name,
-		engine: database.engine,
-		version: database.version,
+		engine: database.engine.to_owned(),
+		version: match database.engine {
+			ManagedDatabaseEngine::Postgres => "12".to_string(),
+			ManagedDatabaseEngine::Mysql => "8".to_string(),
+			ManagedDatabaseEngine::Mongo => "4".to_string(),
+			ManagedDatabaseEngine::Redis => "6".to_string(),
+		},
 		database_plan_id: database.database_plan_id,
 		region: database.region,
 		status: database.status,
 		connection: Connection {
-			host: database.host,
-			port: database.port,
+			host: database.id.to_string(), //db-{database_id}
+			port: match database.engine {
+				ManagedDatabaseEngine::Postgres => 5432,
+				ManagedDatabaseEngine::Mysql => 3306,
+				ManagedDatabaseEngine::Mongo => 27017,
+				ManagedDatabaseEngine::Redis => 6379,
+			},
 			username: database.username,
 		},
 	})
