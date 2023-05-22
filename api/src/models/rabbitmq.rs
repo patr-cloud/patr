@@ -51,6 +51,7 @@ pub enum InfraRequestData {
 	Deployment(DeploymentRequestData),
 	BYOC(BYOCData),
 	DockerRegistry(DockerRegistryData),
+	Database(DatabaseRequestData),
 	StaticSite(StaticSiteData),
 }
 
@@ -99,6 +100,17 @@ pub enum BYOCData {
 		region_id: Uuid,
 		workspace_id: Uuid,
 		kube_config: Kubeconfig,
+		request_id: Uuid,
+	},
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "action", rename_all = "camelCase")]
+#[allow(clippy::large_enum_variant)]
+pub enum DatabaseRequestData {
+	CheckAndUpdateStatus {
+		workspace_id: Uuid,
+		database_id: Uuid,
 		request_id: Uuid,
 	},
 }

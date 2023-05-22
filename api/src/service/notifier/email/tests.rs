@@ -4,12 +4,12 @@ use api_models::{
 	models::workspace::{
 		billing::{
 			Address,
-			DatabaseUsage,
 			DeploymentBill,
 			DeploymentUsage,
 			DockerRepositoryUsage,
 			DomainPlan,
 			DomainUsage,
+			ManagedDatabaseUsage,
 			ManagedUrlUsage,
 			SecretUsage,
 			StaticSitePlan,
@@ -280,8 +280,8 @@ async fn test_payment_failure_invoice_email() -> Result<(), Error> {
 				amount: 3200,
 				monthly_charge: 3200,
 			}],
-			database_charge: 3200,
-			database_usage: vec![DatabaseUsage {
+			managed_database_charge: 3200,
+			managed_database_usage: vec![ManagedDatabaseUsage {
 				start_time: DateTime::default(),
 				deletion_time: Some(DateTime::default()),
 				database_id: Uuid::parse_str(
@@ -400,8 +400,8 @@ async fn test_payment_success_invoice_email() -> Result<(), Error> {
 				amount: 3200,
 				monthly_charge: 3200,
 			}],
-			database_charge: 3200,
-			database_usage: vec![DatabaseUsage {
+			managed_database_charge: 3200,
+			managed_database_usage: vec![ManagedDatabaseUsage {
 				start_time: DateTime::default(),
 				deletion_time: Some(DateTime::default()),
 				database_id: Uuid::parse_str(

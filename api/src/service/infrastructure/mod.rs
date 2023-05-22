@@ -1,12 +1,9 @@
 mod deployment;
-mod digitalocean;
 mod kubernetes;
 mod managed_database;
 mod managed_url;
 mod secret;
 mod static_site;
-
-use std::ops::DerefMut;
 
 use api_models::utils::Uuid;
 use chrono::Utc;
@@ -21,49 +18,11 @@ pub use self::{
 	static_site::*,
 };
 use crate::{
-	db::{self, ManagedDatabaseStatus},
+	db,
 	service,
 	utils::{settings::Settings, Error},
 	Database,
 };
-
-async fn update_managed_database_status(
-	database_id: &Uuid,
-	status: &ManagedDatabaseStatus,
-) -> Result<(), sqlx::Error> {
-	let app = service::get_app();
-
-	db::update_managed_database_status(
-		app.database.acquire().await?.deref_mut(),
-		database_id,
-		status,
-	)
-	.await?;
-
-	Ok(())
-}
-
-async fn update_managed_database_credentials_for_database(
-	database_id: &Uuid,
-	host: &str,
-	port: i32,
-	username: &str,
-	password: &str,
-) -> Result<(), sqlx::Error> {
-	let app = service::get_app();
-
-	db::update_managed_database_credentials_for_database(
-		app.database.acquire().await?.deref_mut(),
-		database_id,
-		host,
-		port,
-		username,
-		password,
-	)
-	.await?;
-
-	Ok(())
-}
 
 pub async fn resource_limit_crossed(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -88,9 +47,12 @@ pub async fn resource_limit_crossed(
 			.await?
 			.len();
 
-	log::trace!("request_id: {} - retreiving current databases", request_id);
+	log::trace!(
+		"request_id: {} - retreiving current patr databases",
+		request_id
+	);
 	let current_resource = current_resource +
-		db::get_all_database_clusters_for_workspace(connection, workspace_id)
+		db::get_all_managed_database_for_workspace(connection, workspace_id)
 			.await?
 			.len();
 
@@ -167,20 +129,13 @@ pub async fn delete_all_resources_in_workspace(
 	}
 
 	log::trace!("deleting all databases for workspace: {}", workspace_id);
-	let managed_database =
-		db::get_all_database_clusters_for_workspace(connection, workspace_id)
+	let managed_databases =
+		db::get_all_managed_database_for_workspace(connection, workspace_id)
 			.await?;
 
-	// Get managed databases and delete all the managed databases for a
-	// workspace
-	for database in managed_database {
-		service::delete_managed_database(
-			connection,
-			&database.id,
-			config,
-			request_id,
-		)
-		.await?;
+	for database in managed_databases {
+		service::delete_managed_database(connection, &database.id, request_id)
+			.await?;
 	}
 
 	// Get deployments and delete all the deployment for a workspace

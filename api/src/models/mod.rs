@@ -52,7 +52,7 @@ impl fmt::Display for ResourceType {
 			ResourceType::Deployment => write!(f, "Deployment"),
 			ResourceType::DockerRepository => write!(f, "Docker repository"),
 			ResourceType::StaticSite => write!(f, "Static site"),
-			ResourceType::ManagedDatabase => write!(f, "Managed database"),
+			ResourceType::ManagedDatabase => write!(f, "Patr database"),
 			ResourceType::ManagedUrl => write!(f, "Managed url"),
 			ResourceType::Secret => write!(f, "Secret"),
 			ResourceType::Domain => write!(f, "Domain"),

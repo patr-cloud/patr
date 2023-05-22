@@ -1,13 +1,21 @@
-use api_models::utils::{DateTime, Uuid};
+use api_models::{
+	models::workspace::infrastructure::database::{
+		ManagedDatabaseEngine,
+		ManagedDatabasePlan,
+		ManagedDatabaseStatus,
+	},
+	utils::Uuid,
+};
 use chrono::Utc;
 use eve_rs::AsError;
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
 use crate::{
-	db::{self, ManagedDatabaseEngine, ManagedDatabasePlan},
+	db,
 	error,
 	models::rbac,
-	service::infrastructure::digitalocean,
-	utils::{constants::free_limits, settings::Settings, validator, Error},
+	service,
+	utils::{constants::free_limits, validator, Error},
 	Database,
 };
 
@@ -16,25 +24,12 @@ pub async fn create_managed_database_in_workspace(
 	name: &str,
 	db_name: &str,
 	engine: &ManagedDatabaseEngine,
-	version: Option<&str>,
-	num_nodes: Option<u64>,
 	database_plan: &ManagedDatabasePlan,
-	region: &str,
+	region_id: &Uuid,
 	workspace_id: &Uuid,
-	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
-	let databases =
-		db::get_all_database_clusters_for_workspace(connection, workspace_id)
-			.await?;
-
-	if databases.len() > 3 {
-		return Error::as_result()
-			.status(400)
-			.body(error!(MAX_LIMIT_REACHED).to_string())?;
-	}
-
-	log::trace!("request_id: {} - Creating a managed database on digitalocean with name: {} and db_name: {} on DigitalOcean App platform with request_id: {}",
+	log::trace!("request_id: {} - Creating a patr database with name: {} and db_name: {} on DigitalOcean App platform with request_id: {}",
 		request_id,
 		name,
 		db_name,
@@ -42,7 +37,7 @@ pub async fn create_managed_database_in_workspace(
 	);
 
 	log::trace!(
-		"request_id: {} - Validating the managed database name",
+		"request_id: {} - Validating the patr database name",
 		request_id
 	);
 	if !validator::is_database_name_valid(db_name) {
@@ -52,21 +47,29 @@ pub async fn create_managed_database_in_workspace(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
-	let (provider, region) = region
-		.split_once('-')
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
 	log::trace!("request_id: {} - Generating new resource", request_id);
 	let database_id = db::generate_new_resource_id(connection).await?;
 
-	let version = match engine {
-		ManagedDatabaseEngine::Postgres => version.unwrap_or("12"),
-		ManagedDatabaseEngine::Mysql => version.unwrap_or("8"),
-	};
-	let num_nodes = num_nodes.unwrap_or(1);
+	// validate whether the deployment region is ready
+	let region_details = db::get_region_by_id(connection, region_id)
+		.await?
+		.status(400)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	check_database_creation_limit(connection, workspace_id, request_id).await?;
+	if !region_details.is_ready() {
+		return Err(Error::empty()
+			.status(500)
+			.body(error!(REGION_NOT_READY_YET).to_string()));
+	}
+
+	check_managed_database_creation_limit(
+		connection,
+		workspace_id,
+		region_details.is_byoc_region(),
+		database_plan,
+		request_id,
+	)
+	.await?;
 
 	let creation_time = Utc::now();
 
@@ -83,58 +86,80 @@ pub async fn create_managed_database_in_workspace(
 	)
 	.await?;
 
-	db::start_database_usage_history(
-		connection,
-		workspace_id,
-		&database_id,
-		database_plan,
-		&DateTime::from(creation_time),
-	)
-	.await?;
+	if !region_details.is_byoc_region() {
+		db::start_managed_database_usage_history(
+			connection,
+			workspace_id,
+			&database_id,
+			database_plan,
+			&creation_time,
+		)
+		.await?;
+	}
+
+	let password = thread_rng()
+		.sample_iter(&Alphanumeric)
+		.take(8)
+		.map(char::from)
+		.collect::<String>();
+
+	let (version, port, username) = match engine {
+		ManagedDatabaseEngine::Postgres => ("12", 5432, "postgres"),
+		ManagedDatabaseEngine::Mysql => ("8", 3306, "root"),
+		ManagedDatabaseEngine::Mongo => ("5", 3306, "root"),
+		ManagedDatabaseEngine::Redis => ("5", 3306, "root"),
+	};
 
 	log::trace!(
-		"request_id: {} - Creating entry for newly created managed database",
+		"request_id: {} - Creating entry for newly created patr database",
 		request_id
 	);
 	db::create_managed_database(
 		connection,
 		&database_id,
 		name,
+		workspace_id,
+		region_id,
 		db_name,
 		engine,
 		version,
-		num_nodes,
 		database_plan,
-		&format!("{}-{}", provider, region),
-		"",
-		0,
-		"",
-		"",
-		workspace_id,
+		&format!("db-{database_id}"),
+		port,
+		username,
+		&password,
 	)
 	.await?;
 	log::trace!("request_id: {} - Resource generation complete", request_id);
 
-	match provider {
-		"do" => {
-			digitalocean::create_managed_database_cluster(
-				connection,
+	let kubeconfig =
+		service::get_kubernetes_config_for_region(connection, region_id)
+			.await?
+			.0;
+
+	match engine {
+		ManagedDatabaseEngine::Postgres => {
+			// not supported as of now
+			return Err(Error::empty().status(500));
+		}
+		ManagedDatabaseEngine::Mongo => {
+			// not supported as of now
+			return Err(Error::empty().status(500));
+		}
+		ManagedDatabaseEngine::Redis => {
+			// not supported as of now
+			return Err(Error::empty().status(500));
+		}
+		ManagedDatabaseEngine::Mysql => {
+			service::patch_kubernetes_mysql_database(
+				workspace_id,
 				&database_id,
-				db_name,
-				engine,
-				version,
-				num_nodes,
+				&password,
 				database_plan,
-				region,
-				config,
+				kubeconfig,
 				request_id,
 			)
 			.await?;
-		}
-		_ => {
-			return Err(Error::empty()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string()));
 		}
 	}
 
@@ -144,11 +169,10 @@ pub async fn create_managed_database_in_workspace(
 pub async fn delete_managed_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	database_id: &Uuid,
-	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
-		"request_id: {} - Deleting managed database with id: {}",
+		"request_id: {} - Deleting patr database with id: {}",
 		request_id,
 		database_id
 	);
@@ -157,66 +181,101 @@ pub async fn delete_managed_database(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let (provider, _) = database
-		.region
-		.split_once('-')
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+	db::delete_managed_database(connection, database_id, &Utc::now()).await?;
 
-	match provider {
-		"do" => {
-			log::trace!(
-				"request_id: {} - Deleting the database from digitalocean",
-				request_id
-			);
-			if let Some(digitalocean_db_id) = database.digitalocean_db_id {
-				digitalocean::delete_database(
-					&digitalocean_db_id,
-					config,
-					request_id,
-				)
-				.await?;
-			}
-		}
-		_ => {
-			return Err(Error::empty()
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string()));
+	if db::get_region_by_id(connection, &database.region)
+		.await?
+		.status(500)?
+		.is_patr_region()
+	{
+		db::stop_managed_database_usage_history(
+			connection,
+			database_id,
+			&Utc::now(),
+		)
+		.await?;
+	}
+
+	let kubeconfig =
+		service::get_kubernetes_config_for_region(connection, &database.region)
+			.await?
+			.0;
+
+	// now delete the database from k8s
+	match database.engine {
+		ManagedDatabaseEngine::Postgres => {}
+		ManagedDatabaseEngine::Mongo => {}
+		ManagedDatabaseEngine::Redis => {}
+		ManagedDatabaseEngine::Mysql => {
+			service::delete_kubernetes_mysql_database(
+				&database.workspace_id,
+				&database.id,
+				kubeconfig,
+				request_id,
+			)
+			.await?;
 		}
 	}
 
-	db::delete_managed_database(connection, database_id, &Utc::now()).await?;
-
-	db::stop_database_usage_history(connection, database_id, &Utc::now())
-		.await?;
 	Ok(())
 }
 
-async fn check_database_creation_limit(
+pub async fn get_managed_database_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
+	database_id: &Uuid,
+	request_id: &Uuid,
+) -> Result<ManagedDatabaseStatus, Error> {
+	log::trace!("Check patr database status: {database_id}");
+	let database = db::get_managed_database_by_id(connection, database_id)
+		.await?
+		.status(500)?;
+
+	let kubeconfig =
+		service::get_kubernetes_config_for_region(connection, &database.region)
+			.await?
+			.0;
+
+	let status = service::get_kubernetes_database_status(
+		workspace_id,
+		database_id,
+		kubeconfig,
+		request_id,
+	)
+	.await?;
+
+	Ok(status)
+}
+
+async fn check_managed_database_creation_limit(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	is_byoc_region: bool,
+	database_plan: &ManagedDatabasePlan,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {request_id} - Checking whether new database creation is limited");
 
+	if is_byoc_region {
+		// if byoc, then don't need to check free/paid/total limits
+		// as this database is going to be deployed on their cluster
+		return Ok(());
+	}
+
 	let current_database_count =
-		db::get_all_database_clusters_for_workspace(connection, workspace_id)
+		db::get_all_managed_database_for_workspace(connection, workspace_id)
 			.await?
 			.len();
 
-	// check whether free limit is exceeded
-	#[allow(clippy::absurd_extreme_comparisons)]
-	if current_database_count >= free_limits::DATABASE_COUNT &&
-		db::get_default_payment_method_for_workspace(
-			connection,
-			workspace_id,
-		)
-		.await?
-		.is_none()
+	let card_added =
+		db::get_default_payment_method_for_workspace(connection, workspace_id)
+			.await?
+			.is_some();
+	if !card_added &&
+		(current_database_count >= free_limits::MANAGED_DATABASE_COUNT ||
+			database_plan != &ManagedDatabasePlan::db_1r_1c_10v)
 	{
-		log::info!(
-			"request_id: {request_id} - Free database limit reached and card is not added"
-		);
+		log::info!("request_id: {request_id} - Free database limit reached and card is not added");
 		return Error::as_result()
 			.status(400)
 			.body(error!(CARDLESS_FREE_LIMIT_EXCEEDED).to_string())?;

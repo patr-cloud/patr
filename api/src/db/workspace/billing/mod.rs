@@ -2,14 +2,16 @@ use std::fmt;
 
 use api_macros::query;
 use api_models::{
-	models::workspace::billing::{PaymentStatus, TotalAmount, TransactionType},
+	models::workspace::{
+		billing::{PaymentStatus, TotalAmount, TransactionType},
+		infrastructure::database::ManagedDatabasePlan,
+	},
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::query_as;
 
-use super::ManagedDatabasePlan;
 use crate::Database;
 
 pub struct DeploymentPaymentHistory {
@@ -536,7 +538,7 @@ pub async fn get_all_volume_usage(
 	.await
 }
 
-pub async fn get_all_database_usage(
+pub async fn get_all_managed_database_usage(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
@@ -1055,7 +1057,7 @@ pub async fn get_volume_payment_history_by_volume_id(
 	.await
 }
 
-pub async fn start_database_usage_history(
+pub async fn start_managed_database_usage_history(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	database_id: &Uuid,
@@ -1091,7 +1093,7 @@ pub async fn start_database_usage_history(
 	.map(|_| ())
 }
 
-pub async fn stop_database_usage_history(
+pub async fn stop_managed_database_usage_history(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	database_id: &Uuid,
 	deletion_time: &DateTime<Utc>,

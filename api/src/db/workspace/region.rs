@@ -44,6 +44,10 @@ impl Region {
 	pub fn is_patr_region(&self) -> bool {
 		!self.is_byoc_region()
 	}
+
+	pub fn is_ready(&self) -> bool {
+		self.status == RegionStatus::Active || self.is_patr_region()
+	}
 }
 
 pub async fn initialize_region_pre(
