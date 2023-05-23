@@ -1,11 +1,12 @@
 use crate::{
+	migrate_query as query,
 	utils::{settings::Settings, Error},
 	Database,
 };
 
 pub(super) async fn migrate(
-	_connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
 ) -> Result<(), Error> {
 	add_tables_for_k8s_database(connection, config).await?;
 
