@@ -401,7 +401,7 @@
         <table class="full-width" style="width: 100%">
           <tr>
             <td class="pb-xs" style="padding-top: .25rem">
-              {{#unless billBreakdown.databaseUsage}}
+              {{#unless billBreakdown.managedDatabaseUsage}}
                 <table>
                   <tbody>
                     <tr>
@@ -412,7 +412,7 @@
                   </tbody>
                 </table>
               {{/unless}}
-              {{#if billBreakdown.databaseUsage}}
+              {{#if billBreakdown.managedDatabaseUsage}}
                 <table
                   class="full-width bd-collapse br-xs of-hidden bg-secondary-light"
                   style="background-color: #23203e; width: 100%; border-radius: 1rem; border-collapse: collapse; border-spacing: 0; overflow-y: hidden; overflow-x: hidden;"
@@ -454,7 +454,7 @@
                     </th>
                   </thead>
                   <tbody>
-                    {{#each billBreakdown.databaseUsage}}
+                    {{#each billBreakdown.managedDatabaseUsage}}
                       <tr>
                         <td
                           class="txt-light px-md py-xs txt-center"
@@ -512,7 +512,7 @@
                         class="txt-primary px-md py-xs txt-center"
                         style="padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem; text-align: center; color: #f89b41"
                         align="center"
-                      >${{cents-to-dollars billBreakdown.databaseCharge}}</td>
+                      >${{cents-to-dollars billBreakdown.managedDatabaseCharge}}</td>
                     </tr>
                   </tbody>
                 </table>

@@ -38,7 +38,7 @@ Volume Usage:
   Bill Amount: ${{cents-to-dollars this.amount}}
 {{/each}}
 Database Usage:
-{{#each billBreakdown.databaseUsage}}
+{{#each billBreakdown.managedDatabaseUsage}}
   Name: {{this.name}}
   Monthly Charge: ${{cents-to-dollars this.monthlyCharge}}
   From: {{format-date this.startTime}}
