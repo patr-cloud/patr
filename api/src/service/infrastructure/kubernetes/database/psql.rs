@@ -243,6 +243,8 @@ pub async fn patch_kubernetes_psql_database(
 				liveness_probe: Some(Probe {
 					exec: Some(ExecAction {
 						command: Some(vec![
+							"bash".to_owned(),
+							"-c".to_owned(),
 							"psql -w -U postgres -d postgresdb -c \"SELECT 1\""
 								.to_owned(),
 						]),
@@ -255,6 +257,8 @@ pub async fn patch_kubernetes_psql_database(
 				readiness_probe: Some(Probe {
 					exec: Some(ExecAction {
 						command: Some(vec![
+							"bash".to_owned(),
+							"-c".to_owned(),
 							"pg_isready -U postgres -d postgresdb -q"
 								.to_owned(),
 						]),
