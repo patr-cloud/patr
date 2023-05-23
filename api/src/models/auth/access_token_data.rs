@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use ::redis::aio::MultiplexedConnection as RedisConnection;
 use api_models::{models::workspace::WorkspacePermission, utils::Uuid};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use jsonwebtoken::{
 	Algorithm,
 	DecodingKey,
@@ -12,7 +12,7 @@ use jsonwebtoken::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{db, error, redis, utils::Error, Database};
+use crate::{db, error, redis, service, utils::Error, Database};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -26,8 +26,8 @@ pub struct AccessTokenData {
 	pub exp: DateTime<Utc>,
 	pub login_id: Uuid,
 	pub user: ExposedUserData,
+	#[serde(skip)]
 	pub permissions: BTreeMap<Uuid, WorkspacePermission>,
-	// Do we need to add more?
 }
 
 impl AccessTokenData {
@@ -77,13 +77,8 @@ impl AccessTokenData {
 			&self.user.id,
 		)
 		.await?;
-
 		if matches!(revoked_timestamp, Some(revoked_timestamp) if self.iat < revoked_timestamp)
 		{
-			// delete data from redis
-			redis::delete_user_acess_token_data(redis_conn, &self.login_id)
-				.await?;
-
 			return Ok(false);
 		}
 
@@ -93,25 +88,23 @@ impl AccessTokenData {
 			&self.login_id,
 		)
 		.await?;
-
 		if matches!(revoked_timestamp, Some(revoked_timestamp) if self.iat < revoked_timestamp)
 		{
-			// delete data from redis
-			redis::delete_user_acess_token_data(redis_conn, &self.login_id)
-				.await?;
 			return Ok(false);
 		}
 
 		// get permissions from redis
-		let permissions =
-			redis::get_user_access_token_data(redis_conn, &self.login_id)
-				.await?
-				.and_then(|permission| {
-					serde_json::from_str::<BTreeMap<Uuid, WorkspacePermission>>(
-						&permission,
-					)
-					.ok()
-				});
+		let permissions = redis::get_user_access_token_permissions(
+			redis_conn,
+			&self.login_id,
+		)
+		.await?
+		.and_then(|permission| {
+			serde_json::from_str::<BTreeMap<Uuid, WorkspacePermission>>(
+				&permission,
+			)
+			.ok()
+		});
 
 		self.permissions = if let Some(permissions) = permissions {
 			permissions
@@ -125,11 +118,13 @@ impl AccessTokenData {
 				.await?;
 
 			// add into redis
-			redis::set_user_access_token_data(
+			let access_token_ttl =
+				service::get_access_token_expiry() + Duration::seconds(60);
+			redis::set_user_access_token_permissions(
 				redis_conn,
 				&self.login_id,
 				&serde_json::to_string(&all_workspace_permissions)?,
-				None, // change this
+				Some(&access_token_ttl),
 			)
 			.await?;
 
@@ -146,9 +141,6 @@ impl AccessTokenData {
 				.await?;
 			if matches!(revoked_timestamp, Some(revoked_timestamp) if self.iat < revoked_timestamp)
 			{
-				// remove data from redis
-				redis::delete_user_acess_token_data(redis_conn, &self.login_id)
-					.await?;
 				return Ok(false);
 			}
 		}
@@ -158,9 +150,6 @@ impl AccessTokenData {
 			redis::get_global_token_revoked_timestamp(redis_conn).await?;
 		if matches!(revoked_timestamp, Some(revoked_timestamp) if self.iat < revoked_timestamp)
 		{
-			// remove data from redis
-			redis::delete_user_acess_token_data(redis_conn, &self.login_id)
-				.await?;
 			return Ok(false);
 		}
 
@@ -190,7 +179,7 @@ impl AccessTokenData {
 			iat,
 			typ: String::from("accessToken"),
 			exp,
-			permissions: BTreeMap::<Uuid, WorkspacePermission>::new(),
+			permissions: BTreeMap::new(),
 			login_id,
 			user,
 		}

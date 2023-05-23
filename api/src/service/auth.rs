@@ -655,7 +655,7 @@ pub async fn generate_access_token(
 	// use that info to populate the data in the token_data
 	let now = Utc::now();
 	let exp = now + service::get_access_token_expiry(); // 3 days
-	let refresh_token_expiry = now + service::get_refresh_token_expiry();
+	let refresh_token_expiry = now + service::get_refresh_token_expiry(); // 30 days
 
 	let User {
 		username,

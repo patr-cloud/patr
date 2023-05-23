@@ -25,7 +25,7 @@ fn get_key_for_add_card_payment_intent_id(workspace_id: &Uuid) -> String {
 	format!("workspace-add-card-payment-id:{}", workspace_id.as_str())
 }
 fn get_key_for_user_access_token_data(login_id: &Uuid) -> String {
-	format!("{}.permission", login_id)
+	format!("access-token-permissions:{}", login_id)
 }
 
 /// returns last set revocation timestamp (in millis) for the given user
@@ -208,7 +208,7 @@ pub async fn get_add_card_payment_intent_id(
 	Ok(payment_intent_id)
 }
 
-pub async fn get_user_access_token_data(
+pub async fn get_user_access_token_permissions(
 	redis_conn: &mut RedisConnection,
 	login_id: &Uuid,
 ) -> Result<Option<String>, RedisError> {
@@ -218,7 +218,7 @@ pub async fn get_user_access_token_data(
 	Ok(token_data)
 }
 
-pub async fn set_user_access_token_data(
+pub async fn set_user_access_token_permissions(
 	redis_conn: &mut RedisConnection,
 	login_id: &Uuid,
 	token_data: &str,
@@ -232,13 +232,4 @@ pub async fn set_user_access_token_data(
 	} else {
 		redis_conn.set(key, token_data).await
 	}
-}
-
-pub async fn delete_user_acess_token_data(
-	redis_conn: &mut RedisConnection,
-	login_id: &Uuid,
-) -> Result<(), RedisError> {
-	redis_conn
-		.del(get_key_for_user_access_token_data(login_id))
-		.await
 }
