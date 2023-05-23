@@ -1,7 +1,7 @@
 use api_models::{
 	models::{
 		ci::file_format::CiFlow,
-		workspace::ci::git_provider::{BuildStatus, RepoStatus},
+		workspace::ci::git_provider::BuildStatus,
 	},
 	utils::Uuid,
 };
@@ -85,7 +85,7 @@ async fn handle_ci_hooks_for_repo(
 	)
 	.await?
 	{
-		Some(repo) if repo.status == RepoStatus::Active => repo,
+		Some(repo) if repo.activated => repo,
 		_ => {
 			log::trace!("request_id: {request_id} - ci not triggered, repo_id is either inactive or unknown");
 			return Err(Error::empty()
@@ -93,22 +93,6 @@ async fn handle_ci_hooks_for_repo(
 				.body(error!(WRONG_PARAMETERS).to_string()));
 		}
 	};
-
-	// validate the payload data signature
-	let signature_in_header = context
-		.get_header(request_keys::X_HUB_SIGNATURE_256)
-		.status(400)?;
-
-	repo.webhook_secret
-		.and_then(|secret| {
-			service::verify_github_payload_signature_256(
-				&signature_in_header,
-				&context.get_request().get_body_bytes(),
-				&secret,
-			)
-			.ok()
-		})
-		.status(400)?;
 
 	let event = context.get_body_as::<Event>()?;
 
@@ -207,7 +191,7 @@ async fn handle_ci_hooks_for_repo(
 
 	let build_num = service::create_build_for_repo(
 		context.get_database_connection(),
-		&repo.id,
+		&repo.resource_id,
 		&event_type,
 	)
 	.await?;
@@ -224,21 +208,21 @@ async fn handle_ci_hooks_for_repo(
 		ParseStatus::Error(err) => {
 			db::update_build_status(
 				context.get_database_connection(),
-				&repo.id,
+				&repo.resource_id,
 				build_num,
 				BuildStatus::Errored,
 			)
 			.await?;
 			db::update_build_message(
 				context.get_database_connection(),
-				&repo.id,
+				&repo.resource_id,
 				build_num,
 				&err,
 			)
 			.await?;
 			db::update_build_finished_time(
 				context.get_database_connection(),
-				&repo.id,
+				&repo.resource_id,
 				build_num,
 				&Utc::now(),
 			)
@@ -257,21 +241,21 @@ async fn handle_ci_hooks_for_repo(
 			service::EvaluationStatus::Error(err) => {
 				db::update_build_status(
 					context.get_database_connection(),
-					&repo.id,
+					&repo.resource_id,
 					build_num,
 					BuildStatus::Errored,
 				)
 				.await?;
 				db::update_build_message(
 					context.get_database_connection(),
-					&repo.id,
+					&repo.resource_id,
 					build_num,
 					&err,
 				)
 				.await?;
 				db::update_build_finished_time(
 					context.get_database_connection(),
-					&repo.id,
+					&repo.resource_id,
 					build_num,
 					&Utc::now(),
 				)
@@ -283,14 +267,14 @@ async fn handle_ci_hooks_for_repo(
 			log::info!("request_id: {request_id} - Error while evaluating ci work steps {err:#?}");
 			db::update_build_status(
 				context.get_database_connection(),
-				&repo.id,
+				&repo.resource_id,
 				build_num,
 				BuildStatus::Errored,
 			)
 			.await?;
 			db::update_build_finished_time(
 				context.get_database_connection(),
-				&repo.id,
+				&repo.resource_id,
 				build_num,
 				&Utc::now(),
 			)
@@ -301,7 +285,7 @@ async fn handle_ci_hooks_for_repo(
 
 	service::add_build_steps_in_db(
 		context.get_database_connection(),
-		&repo.id,
+		&repo.resource_id,
 		build_num,
 		&works,
 		&request_id,
@@ -322,7 +306,7 @@ async fn handle_ci_hooks_for_repo(
 	service::queue_check_and_start_ci_build(
 		BuildId {
 			repo_workspace_id: git_provider.workspace_id,
-			repo_id: repo.id.clone(),
+			repo_id: repo.resource_id.clone(),
 			build_num,
 		},
 		pipeline.services,

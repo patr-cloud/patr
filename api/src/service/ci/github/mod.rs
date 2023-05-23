@@ -5,7 +5,6 @@ use api_models::{
 	utils::Uuid,
 };
 use eve_rs::AsError;
-use hmac::{Hmac, Mac};
 use octorust::{
 	auth::Credentials,
 	types::{
@@ -17,13 +16,9 @@ use octorust::{
 		GitCreateTreeRequestData,
 		GitCreateTreeRequestMode,
 		GitUpdateRefRequest,
-		Order,
 		ReposCreateCommitStatusRequest,
-		ReposListOrgSort,
-		ReposListVisibility,
 	},
 };
-use sha2::Sha256;
 
 use super::MutableRepoValues;
 use crate::{
@@ -34,32 +29,6 @@ use crate::{
 	Database,
 };
 
-type HmacSha256 = Hmac<Sha256>;
-
-/// Returns error if payload signature is different from header signature
-pub fn verify_github_payload_signature_256(
-	signature_from_header: &str,
-	payload: &impl AsRef<[u8]>,
-	configured_secret: &impl AsRef<[u8]>,
-) -> Result<(), Error> {
-	// strip the sha info in header prefix
-	let x_hub_signature = match signature_from_header.strip_prefix("sha256=") {
-		Some(sign) => sign,
-		None => signature_from_header,
-	};
-	let x_hub_signature = hex::decode(x_hub_signature)?;
-
-	// calculate the sha for payload data
-	let mut payload_signature =
-		HmacSha256::new_from_slice(configured_secret.as_ref())?;
-	payload_signature.update(payload.as_ref());
-
-	// verify the payload sign with header sign
-	payload_signature.verify_slice(&x_hub_signature)?;
-
-	Ok(())
-}
-
 pub async fn create_build_for_repo(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
@@ -67,8 +36,8 @@ pub async fn create_build_for_repo(
 ) -> Result<i64, Error> {
 	let runner_id = db::get_repo_using_patr_repo_id(connection, repo_id)
 		.await?
-		.and_then(|repo| repo.runner_id)
-		.status(500)?;
+		.status(500)?
+		.runner_id;
 
 	let build_num = match &event_type {
 		EventType::Commit(commit) => {
@@ -338,13 +307,14 @@ pub async fn write_ci_file_content_to_github_repo(
 
 pub async fn sync_github_repos(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
+	user_id: &Uuid,
 	git_provider_id: &Uuid,
 	github_access_token: String,
+	installation_id: String,
 	request_id: &Uuid,
 ) -> Result<(), eve_rs::Error<()>> {
 	let repos_in_db =
-		db::list_repos_for_git_provider(connection, git_provider_id)
+		db::list_ci_repos_for_user(connection, git_provider_id, user_id)
 			.await?
 			.into_iter()
 			.map(|repo| {
@@ -368,17 +338,8 @@ pub async fn sync_github_repos(
 			.ok()
 			.status(500)?;
 
-	let repos_in_github = github_client
-		    .repos()
-		    .list_all_for_authenticated_user(
-			    Some(ReposListVisibility::All),
-			    "",
-			    None,
-			    ReposListOrgSort::Created,
-			    Order::Desc,
-			    None,
-			    None,
-		    )
+	let repos_in_github = github_client.apps()
+			.list_installation_repos_for_authenticated_user(installation_id.parse::<i64>()?, 0, 0)
 		    .await
 		    .map_err(|err| {
 			    log::info!("error while getting repo list: {err:#}");
@@ -386,7 +347,7 @@ pub async fn sync_github_repos(
 		    })
 		    .ok()
 		    .status(500)?
-		    .into_iter()
+			.repositories.into_iter()
 		    .filter_map(|repo| {
 			    let splitted_name = repo.full_name.rsplit_once('/');
 			    if let Some((repo_owner, repo_name)) =  splitted_name {
@@ -404,10 +365,9 @@ pub async fn sync_github_repos(
 			    }
 		    })
 		    .collect::<HashMap<_, _>>();
-
 	service::sync_repos_in_db(
 		connection,
-		workspace_id,
+		user_id,
 		git_provider_id,
 		repos_in_github,
 		repos_in_db,

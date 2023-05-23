@@ -19,7 +19,6 @@ use api_models::{
 			BuildStatus,
 			BuildStepStatus,
 			GitProviderType,
-			RepoStatus,
 		},
 	},
 	utils::Uuid,
@@ -31,10 +30,7 @@ use kube::config::Kubeconfig;
 
 use crate::{
 	db::{self, GitProvider},
-	models::{
-		ci::{Commit, EventType, PullRequest, Tag},
-		rbac,
-	},
+	models::ci::{Commit, EventType, PullRequest, Tag},
 	rabbitmq::{BuildId, BuildStep, BuildStepId},
 	service,
 	utils::{settings::Settings, Error},
@@ -65,10 +61,6 @@ impl Display for Netrc {
 pub enum ParseStatus {
 	Success(CiFlow),
 	Error(String),
-}
-
-pub fn get_webhook_url_for_repo(api_url: &str, repo_id: &Uuid) -> String {
-	format!("{api_url}/webhook/ci/repo/{repo_id}")
 }
 
 pub async fn parse_ci_file_content(
@@ -543,9 +535,10 @@ pub async fn sync_repos_for_git_provider(
 			if let Some(access_token) = git_provider.password.clone() {
 				sync_github_repos(
 					connection,
-					&git_provider.workspace_id,
+					&git_provider.user_id,
 					&git_provider.id,
 					access_token,
+					git_provider.installation_id.to_string(),
 					request_id,
 				)
 				.await?
@@ -558,7 +551,7 @@ pub async fn sync_repos_for_git_provider(
 
 pub async fn sync_repos_in_db(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
+	user_id: &Uuid,
 	git_provider_id: &Uuid,
 	repos_in_git_provider: HashMap<String, MutableRepoValues>,
 	mut repos_in_db: HashMap<String, MutableRepoValues>,
@@ -568,6 +561,7 @@ pub async fn sync_repos_in_db(
 		if let Some(db_values) = repos_in_db.remove(&gp_repo_id) {
 			if gp_values != db_values {
 				// values differing in db and git-provider, update it now
+				// No need to change ci_user_repo as repo_id won't change
 				db::update_repo_details_for_git_provider(
 					connection,
 					git_provider_id,
@@ -587,7 +581,7 @@ pub async fn sync_repos_in_db(
 				&gp_values.repo_owner,
 				&gp_values.repo_name,
 				&gp_values.repo_clone_url,
-				workspace_id,
+				user_id,
 				reqeust_id,
 			)
 			.await?;
@@ -596,11 +590,11 @@ pub async fn sync_repos_in_db(
 
 	// missing repos from git-provider, mark as deleted
 	for (repo_uid, _) in repos_in_db {
-		db::update_repo_status(
+		db::delete_repo_from_users_list(
 			connection,
 			git_provider_id,
 			&repo_uid,
-			RepoStatus::Deleted,
+			user_id,
 		)
 		.await?;
 	}
@@ -615,39 +609,28 @@ pub async fn add_repo_for_git_provider(
 	repo_owner: &str,
 	repo_name: &str,
 	clone_url: &str,
-	workspace_id: &Uuid,
+	user_id: &Uuid,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {} - Creating a new repo for CI", request_id);
-
-	// get a unique repo id
-	let repo_id = db::generate_new_resource_id(connection).await?;
-
-	// add a resource entry for repo
-	let created_time = Utc::now();
-	db::create_resource(
-		connection,
-		&repo_id,
-		rbac::RESOURCE_TYPES
-			.get()
-			.unwrap()
-			.get(rbac::resource_types::CI_REPO)
-			.unwrap(),
-		workspace_id,
-		&created_time,
-	)
-	.await?;
 
 	db::begin_deferred_constraints(connection).await?;
 
 	db::add_repo_for_git_provider(
 		connection,
-		&repo_id,
 		git_provider_id,
 		git_provider_repo_uid,
 		repo_owner,
 		repo_name,
 		clone_url,
+	)
+	.await?;
+
+	db::add_repo_for_user(
+		connection,
+		git_provider_id,
+		git_provider_repo_uid,
+		user_id,
 	)
 	.await?;
 

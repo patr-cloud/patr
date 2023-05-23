@@ -60,7 +60,6 @@ pub mod request_keys {
 	pub const PAYMENT_METHOD_ID: &str = "paymentMethodId";
 	pub const TOKEN_ID: &str = "tokenId";
 	// github constants for CI
-	pub const X_HUB_SIGNATURE_256: &str = "x-hub-signature-256";
 	pub const X_GITHUB_EVENT: &str = "x-github-event";
 	pub const RUNNER_ID: &str = "runnerId";
 }

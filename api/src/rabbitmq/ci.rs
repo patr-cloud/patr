@@ -568,16 +568,18 @@ pub async fn process_request(
 			}
 		}
 		CIData::SyncRepo {
-			workspace_id,
+			user_id,
 			git_provider_id,
 			request_id,
 			github_access_token,
+			installation_id,
 		} => {
 			service::sync_github_repos(
 				connection,
-				&workspace_id,
+				&user_id,
 				&git_provider_id,
 				github_access_token,
+				installation_id,
 				&request_id,
 			)
 			.await?;

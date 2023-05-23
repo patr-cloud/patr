@@ -8,7 +8,7 @@ use api_models::{
 };
 use futures::TryStreamExt;
 
-use super::Repository;
+use super::WorkspaceRepository;
 use crate::Database;
 
 pub struct RunnerResource {
@@ -191,25 +191,28 @@ pub async fn update_runner(
 pub async fn list_active_repos_for_runner(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	runner_id: &Uuid,
-) -> Result<Vec<Repository>, sqlx::Error> {
+) -> Result<Vec<WorkspaceRepository>, sqlx::Error> {
 	query_as!(
-		Repository,
+		WorkspaceRepository,
 		r#"
 		SELECT
-			id as "id: _",
 			repo_owner,
 			repo_name,
 			clone_url,
-			webhook_secret,
-			status as "status: _",
-			git_provider_id as "git_provider_id: _",
+			ci_repos.git_provider_id as "git_provider_id: _",
 			git_provider_repo_uid,
-			runner_id as "runner_id: _"
+			runner_id as "runner_id: _",
+			resource_id as "resource_id: _",
+			activated
 		FROM
 			ci_repos
+		LEFT JOIN
+			ci_workspace_repos
+		ON
+			ci_workspace_repos.git_repo_id = ci_repos.git_provider_repo_uid
 		WHERE
 			runner_id = $1 AND
-			status = 'active';
+			ci_workspace_repos.activated = true;
 		"#,
 		runner_id as _,
 	)
@@ -244,7 +247,7 @@ pub async fn list_build_details_for_runner(
 	query!(
 		r#"
 		SELECT
-			ci_repos.git_provider_repo_uid as "github_repo_id",
+			ci_workspace_repos.git_repo_id as "github_repo_id",
 			ci_builds.build_num,
 			ci_builds.git_ref,
 			ci_builds.git_commit,
@@ -258,8 +261,8 @@ pub async fn list_build_details_for_runner(
 			ci_builds.git_commit_message
 		FROM
 			ci_builds
-		JOIN ci_repos
-			ON ci_repos.id = ci_builds.repo_id
+		JOIN ci_workspace_repos
+			ON ci_workspace_repos.resource_id = ci_builds.repo_id
 		WHERE
 			ci_builds.runner_id = $1
 		ORDER BY ci_builds.created DESC;
@@ -292,7 +295,7 @@ pub async fn list_queued_builds_for_runner(
 	query!(
 		r#"
 		SELECT
-			ci_repos.git_provider_repo_uid as "github_repo_id",
+			ci_workspace_repos.git_repo_id as "github_repo_id",
 			ci_builds.build_num,
 			ci_builds.git_ref,
 			ci_builds.git_commit,
@@ -306,8 +309,8 @@ pub async fn list_queued_builds_for_runner(
 			ci_builds.git_commit_message
 		FROM
 			ci_builds
-		JOIN ci_repos
-			ON ci_repos.id = ci_builds.repo_id
+		JOIN ci_workspace_repos
+			ON ci_workspace_repos.resource_id = ci_builds.repo_id
 		WHERE
 			ci_builds.runner_id = $1 AND
 			(

@@ -179,10 +179,11 @@ pub enum CIData {
 		request_id: Uuid,
 	},
 	SyncRepo {
-		workspace_id: Uuid,
+		user_id: Uuid,
 		git_provider_id: Uuid,
 		request_id: Uuid,
 		github_access_token: String,
+		installation_id: String,
 	},
 }
 
