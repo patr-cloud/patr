@@ -20,13 +20,12 @@ pub async fn get_kubernetes_database_status(
 
 	// names
 	let namespace = workspace_id.as_str();
-	let sts_name_for_db = format!("db-{database_id}");
+	let sts_name_for_db = get_database_sts_name(database_id);
 
 	log::trace!("request_id: {request_id} - Getting statefulset statis for database {database_id}");
-	let sts =
-		Api::<StatefulSet>::namespaced(kubernetes_client.clone(), namespace)
-			.get_opt(&sts_name_for_db)
-			.await?;
+	let sts = Api::<StatefulSet>::namespaced(kubernetes_client, namespace)
+		.get_opt(&sts_name_for_db)
+		.await?;
 
 	let ready_replicas = match sts
 		.and_then(|sts| sts.status)
@@ -42,4 +41,8 @@ pub async fn get_kubernetes_database_status(
 	} else {
 		Ok(ManagedDatabaseStatus::Creating)
 	}
+}
+
+pub fn get_database_sts_name(database_id: &Uuid) -> String {
+	format!("db-{database_id}")
 }

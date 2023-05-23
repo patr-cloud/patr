@@ -2,7 +2,6 @@ pub mod ci;
 pub mod cloudflare;
 pub mod deployment;
 pub mod error;
-pub mod managed_database;
 pub mod rabbitmq;
 pub mod rbac;
 pub mod region;
@@ -53,7 +52,7 @@ impl fmt::Display for ResourceType {
 			ResourceType::Deployment => write!(f, "Deployment"),
 			ResourceType::DockerRepository => write!(f, "Docker repository"),
 			ResourceType::StaticSite => write!(f, "Static site"),
-			ResourceType::ManagedDatabase => write!(f, "Patr database"),
+			ResourceType::ManagedDatabase => write!(f, "Managed database"),
 			ResourceType::ManagedUrl => write!(f, "Managed url"),
 			ResourceType::Secret => write!(f, "Secret"),
 			ResourceType::Domain => write!(f, "Domain"),

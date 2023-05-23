@@ -74,17 +74,16 @@ pub async fn initialize_managed_database_pre(
 	query!(
 		r#"
 		CREATE TABLE managed_database(
-			id 					UUID						NOT NULL,
-			name 				CITEXT 						NOT NULL,
-			workspace_id 		UUID 						NOT NULL,
-			region 				UUID 						NOT NULL,
-			engine 				MANAGED_DATABASE_ENGINE 	NOT NULL,
-			database_plan_id 	UUID 						NOT NULL,
-			status 				MANAGED_DATABASE_STATUS 	NOT NULL,
-			username 			TEXT 						NOT NULL,
-			deleted 			TIMESTAMPTZ,
+			id UUID CONSTRAINT managed_database_pk PRIMARY KEY,
+			name CITEXT NOT NULL,
+			workspace_id UUID NOT NULL,
+			region UUID NOT NULL,
+			engine MANAGED_DATABASE_ENGINE NOT NULL,
+			database_plan_id UUID NOT NULL,
+			status MANAGED_DATABASE_STATUS NOT NULL,
+			username TEXT NOT NULL,
+			deleted TIMESTAMPTZ,
 
-			CONSTRAINT managed_database_pk PRIMARY KEY(id),
 			CONSTRAINT managed_database_chk_name_is_trimmed CHECK(
 				name = TRIM(name)
 			),
@@ -122,9 +121,11 @@ pub async fn initialize_managed_database_post(
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up patr databases tables initialization");
 
-	const MANAGED_DATABASE_MACHINE_TYPE: [(i32, i32, i32); 2] = [
-		(1, 1, 10), // 1 vCPU, 1 GB RAM, 10GB storage
-		(2, 2, 25), // 2 vCPU, 2 GB RAM, 25GB storage
+	const MANAGED_DATABASE_MACHINE_TYPE: [(i32, i32, i32); 4] = [
+		(1, 2, 25),  // 1 vCPU, 2 GB RAM, 25GB storage
+		(2, 4, 50),  // 2 vCPU, 4 GB RAM, 50GB storage
+		(2, 4, 100), // 2 vCPU, 4 GB RAM, 100GB storage
+		(4, 8, 200), // 4 vCPU, 8 GB RAM, 200GB storage
 	];
 
 	for (cpu, ram, volume) in MANAGED_DATABASE_MACHINE_TYPE {

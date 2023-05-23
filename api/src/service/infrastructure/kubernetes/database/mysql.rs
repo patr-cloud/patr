@@ -42,8 +42,11 @@ use kube::{
 };
 
 use crate::{
-	models::managed_database::StatefulSetConfig,
-	service::ext_traits::DeleteOpt,
+	service::{
+		ext_traits::DeleteOpt,
+		get_database_sts_name,
+		infrastructure::kubernetes::get_kubernetes_client,
+	},
 	utils::Error,
 };
 
@@ -55,12 +58,14 @@ pub async fn patch_kubernetes_mysql_database(
 	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client =
-		super::super::get_kubernetes_client(kubeconfig).await?;
+	let kubernetes_client = get_kubernetes_client(kubeconfig).await?;
 
 	// names
 	let namespace = workspace_id.as_str();
-	let statefulset_config = get_sts_config(database_id);
+	let sts_name_for_db = get_database_sts_name(database_id);
+	let svc_name_for_db = get_database_service_name(database_id);
+	let pvc_claim_for_db = get_database_pvc_name(database_id);
+	let secret_name_for_db_pwd = get_database_secret_name(database_id);
 
 	// constants
 	let secret_key_for_db_pwd = "password";
@@ -74,10 +79,9 @@ pub async fn patch_kubernetes_mysql_database(
 
 	let secret_spec_for_db_pwd = Secret {
 		metadata: ObjectMeta {
-			name: Some(statefulset_config.secret_name_for_db_pwd.clone()),
+			name: Some(secret_name_for_db_pwd.clone()),
 			..Default::default()
 		},
-		type_: Some("kubernetes.io/basic-auth".to_owned()),
 		string_data: Some(
 			[(secret_key_for_db_pwd.to_owned(), db_pwd.into())].into(),
 		),
@@ -86,8 +90,8 @@ pub async fn patch_kubernetes_mysql_database(
 
 	Api::<Secret>::namespaced(kubernetes_client.clone(), namespace)
 		.patch(
-			&statefulset_config.secret_name_for_db_pwd,
-			&PatchParams::apply(&statefulset_config.secret_name_for_db_pwd),
+			&secret_name_for_db_pwd,
+			&PatchParams::apply(&secret_name_for_db_pwd),
 			&Patch::Apply(secret_spec_for_db_pwd),
 		)
 		.await?;
@@ -96,7 +100,7 @@ pub async fn patch_kubernetes_mysql_database(
 
 	let service_for_db = Service {
 		metadata: ObjectMeta {
-			name: Some(statefulset_config.svc_name_for_db.to_owned()),
+			name: Some(svc_name_for_db.to_owned()),
 			labels: Some(labels.clone()),
 			..Default::default()
 		},
@@ -114,8 +118,8 @@ pub async fn patch_kubernetes_mysql_database(
 
 	Api::<Service>::namespaced(kubernetes_client.clone(), namespace)
 		.patch(
-			&statefulset_config.svc_name_for_db,
-			&PatchParams::apply(&statefulset_config.svc_name_for_db),
+			&svc_name_for_db,
+			&PatchParams::apply(&svc_name_for_db),
 			&Patch::Apply(service_for_db),
 		)
 		.await?;
@@ -124,7 +128,7 @@ pub async fn patch_kubernetes_mysql_database(
 
 	let db_pvc_template = PersistentVolumeClaim {
 		metadata: ObjectMeta {
-			name: Some(statefulset_config.pvc_claim_for_db.to_owned()),
+			name: Some(pvc_claim_for_db.to_owned()),
 			..Default::default()
 		},
 		spec: Some(PersistentVolumeClaimSpec {
@@ -157,9 +161,7 @@ pub async fn patch_kubernetes_mysql_database(
 					name: "MYSQL_ROOT_PASSWORD".to_owned(),
 					value_from: Some(EnvVarSource {
 						secret_key_ref: Some(SecretKeySelector {
-							name: Some(
-								statefulset_config.secret_name_for_db_pwd,
-							),
+							name: Some(secret_name_for_db_pwd),
 							key: secret_key_for_db_pwd.to_owned(),
 							..Default::default()
 						}),
@@ -173,7 +175,7 @@ pub async fn patch_kubernetes_mysql_database(
 					..Default::default()
 				}]),
 				volume_mounts: Some(vec![VolumeMount {
-					name: statefulset_config.pvc_claim_for_db.to_owned(),
+					name: pvc_claim_for_db.to_owned(),
 					mount_path: "/var/lib/mysql".to_owned(),
 					..Default::default()
 				}]),
@@ -242,12 +244,10 @@ pub async fn patch_kubernetes_mysql_database(
 				..Default::default()
 			}],
 			volumes: Some(vec![Volume {
-				name: statefulset_config.pvc_claim_for_db.to_owned(),
+				name: pvc_claim_for_db.to_owned(),
 				persistent_volume_claim: Some(
 					PersistentVolumeClaimVolumeSource {
-						claim_name: statefulset_config
-							.pvc_claim_for_db
-							.to_owned(),
+						claim_name: pvc_claim_for_db.to_owned(),
 						..Default::default()
 					},
 				),
@@ -259,11 +259,11 @@ pub async fn patch_kubernetes_mysql_database(
 
 	let statefulset_spec_for_db = StatefulSet {
 		metadata: ObjectMeta {
-			name: Some(statefulset_config.sts_name_for_db.clone()),
+			name: Some(sts_name_for_db.clone()),
 			..Default::default()
 		},
 		spec: Some(StatefulSetSpec {
-			service_name: statefulset_config.svc_name_for_db,
+			service_name: svc_name_for_db,
 			replicas: Some(1),
 			selector: LabelSelector {
 				match_labels: Some(labels.clone()),
@@ -278,8 +278,8 @@ pub async fn patch_kubernetes_mysql_database(
 
 	Api::<StatefulSet>::namespaced(kubernetes_client, namespace)
 		.patch(
-			&statefulset_config.sts_name_for_db,
-			&PatchParams::apply(&statefulset_config.sts_name_for_db),
+			&sts_name_for_db,
+			&PatchParams::apply(&sts_name_for_db),
 			&Patch::Apply(statefulset_spec_for_db),
 		)
 		.await?;
@@ -293,37 +293,29 @@ pub async fn delete_kubernetes_mysql_database(
 	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client =
-		super::super::get_kubernetes_client(kubeconfig).await?;
+	let kubernetes_client = get_kubernetes_client(kubeconfig).await?;
 
 	// names
 	let namespace = workspace_id.as_str();
-	let statefulset_config = get_sts_config(database_id);
+	let sts_name_for_db = get_database_sts_name(database_id);
+	let svc_name_for_db = get_database_service_name(database_id);
+	let secret_name_for_db_pwd = get_database_secret_name(database_id);
 
 	let label = format!("database={}", database_id);
 
 	log::trace!("request_id: {request_id} - Deleting statefulset for database");
 	Api::<StatefulSet>::namespaced(kubernetes_client.clone(), namespace)
-		.delete_opt(
-			&statefulset_config.sts_name_for_db,
-			&DeleteParams::default(),
-		)
+		.delete_opt(&sts_name_for_db, &DeleteParams::default())
 		.await?;
 
 	log::trace!("request_id: {request_id} - Deleting service for database");
 	Api::<Service>::namespaced(kubernetes_client.clone(), namespace)
-		.delete_opt(
-			&statefulset_config.svc_name_for_db,
-			&DeleteParams::default(),
-		)
+		.delete_opt(&svc_name_for_db, &DeleteParams::default())
 		.await?;
 
 	log::trace!("request_id: {request_id} - Deleting secret for database");
 	Api::<Secret>::namespaced(kubernetes_client.clone(), namespace)
-		.delete_opt(
-			&statefulset_config.secret_name_for_db_pwd,
-			&DeleteParams::default(),
-		)
+		.delete_opt(&secret_name_for_db_pwd, &DeleteParams::default())
 		.await?;
 
 	log::trace!("request_id: {request_id} - Deleting volume for database");
@@ -353,11 +345,14 @@ pub async fn delete_kubernetes_mysql_database(
 	Ok(())
 }
 
-pub fn get_sts_config(database_id: &Uuid) -> StatefulSetConfig {
-	StatefulSetConfig {
-		secret_name_for_db_pwd: format!("db-pwd-{database_id}"),
-		svc_name_for_db: format!("service-{database_id}"),
-		sts_name_for_db: format!("db-{database_id}"),
-		pvc_claim_for_db: format!("db-pvc-{database_id}"),
-	}
+pub fn get_database_service_name(database_id: &Uuid) -> String {
+	format!("service-{database_id}")
+}
+
+pub fn get_database_secret_name(database_id: &Uuid) -> String {
+	format!("db-pwd-{database_id}")
+}
+
+pub fn get_database_pvc_name(database_id: &Uuid) -> String {
+	format!("db-pvc-{database_id}")
 }

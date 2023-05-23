@@ -571,8 +571,10 @@ pub async fn calculate_managed_database_bill_for_workspace_till(
 				.await?;
 		let monthly_price =
 			match (plan.cpu_count, plan.memory_count, plan.volume) {
-				(1, 1, 10) => 5f64,
-				(2, 2, 25) => 10f64,
+				(1, 2, 25) => 10f64,
+				(2, 4, 50) => 20f64,
+				(2, 4, 100) => 25f64,
+				(4, 8, 200) => 50f64,
 				_ => 0f64,
 			};
 
@@ -1409,7 +1411,7 @@ pub async fn get_total_resource_usage(
 		volume_usage.iter().map(|bill| bill.amount).sum::<u64>();
 
 	log::trace!(
-		"request_id: {} getting bill for all patr databases",
+		"request_id: {} getting bill for all managed databases",
 		request_id
 	);
 	let managed_database_usage =

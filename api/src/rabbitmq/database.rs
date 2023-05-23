@@ -45,10 +45,18 @@ pub(super) async fn process_request(
 			let start_time = Utc::now();
 
 			loop {
-				let status = service::get_managed_database_status(
+				log::trace!("Check patr database status: {database_id}");
+				let kubeconfig = service::get_kubernetes_config_for_region(
 					connection,
+					&database.region,
+				)
+				.await?
+				.0;
+
+				let status = service::get_kubernetes_database_status(
 					&workspace_id,
 					&database_id,
+					kubeconfig,
 					&request_id,
 				)
 				.await?;

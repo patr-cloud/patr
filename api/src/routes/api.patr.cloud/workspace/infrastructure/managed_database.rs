@@ -424,6 +424,7 @@ async fn get_all_database_plans(
 	let access_token_data = context.get_token_data().unwrap();
 	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
 
+	// Validate if the user belongs to the workspace or not
 	if !access_token_data
 		.workspace_permissions()
 		.contains_key(&workspace_id) &&

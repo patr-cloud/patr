@@ -1,8 +1,5 @@
 use api_models::{
-	models::workspace::infrastructure::database::{
-		ManagedDatabaseEngine,
-		ManagedDatabaseStatus,
-	},
+	models::workspace::infrastructure::database::ManagedDatabaseEngine,
 	utils::Uuid,
 };
 use chrono::Utc;
@@ -57,7 +54,6 @@ pub async fn create_managed_database_in_workspace(
 		connection,
 		workspace_id,
 		region_details.is_byoc_region(),
-		database_plan_id,
 		request_id,
 	)
 	.await?;
@@ -202,38 +198,10 @@ pub async fn delete_managed_database(
 	Ok(())
 }
 
-pub async fn get_managed_database_status(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	database_id: &Uuid,
-	request_id: &Uuid,
-) -> Result<ManagedDatabaseStatus, Error> {
-	log::trace!("Check patr database status: {database_id}");
-	let database = db::get_managed_database_by_id(connection, database_id)
-		.await?
-		.status(500)?;
-
-	let kubeconfig =
-		service::get_kubernetes_config_for_region(connection, &database.region)
-			.await?
-			.0;
-
-	let status = service::get_kubernetes_database_status(
-		workspace_id,
-		database_id,
-		kubeconfig,
-		request_id,
-	)
-	.await?;
-
-	Ok(status)
-}
-
 async fn check_managed_database_creation_limit(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	is_byoc_region: bool,
-	database_plan_id: &Uuid,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {request_id} - Checking whether new database creation is limited");
@@ -254,14 +222,8 @@ async fn check_managed_database_creation_limit(
 			.await?
 			.is_some();
 
-	let database_plan =
-		db::get_database_plan_by_id(connection, database_plan_id).await?;
-
 	if !card_added &&
-		(current_database_count >= free_limits::MANAGED_DATABASE_COUNT ||
-			(database_plan.memory_count != 1 ||
-				database_plan.cpu_count != 1 ||
-				database_plan.volume != 10))
+		(current_database_count > free_limits::MANAGED_DATABASE_COUNT)
 	{
 		log::info!("request_id: {request_id} - Free database limit reached and card is not added");
 		return Error::as_result()
