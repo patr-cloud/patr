@@ -2502,16 +2502,6 @@
     },
     "query": "SELECT image_digest, created as \"created: _\" FROM deployment_deploy_history WHERE image_digest = $1;"
   },
-  "1f19c9e7060fc9ee54baac2e563294c1b63257c62e4dbf1404c7284e9c986f29": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE managed_database( id UUID NOT NULL, name CITEXT NOT NULL, workspace_id UUID NOT NULL, region UUID NOT NULL, engine MANAGED_DATABASE_ENGINE NOT NULL, database_plan_id UUID NOT NULL, status MANAGED_DATABASE_STATUS NOT NULL, username TEXT NOT NULL, deleted TIMESTAMPTZ, CONSTRAINT managed_database_pk PRIMARY KEY(id), CONSTRAINT managed_database_chk_name_is_trimmed CHECK( name = TRIM(name) ), CONSTRAINT managed_database_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id), CONSTRAINT managed_database_fk_region FOREIGN KEY(region) REFERENCES region(id), CONSTRAINT managed_database_fk_managed_database_plan_id FOREIGN KEY(database_plan_id) REFERENCES managed_database_plan(id) );"
-  },
   "1f5096c1f8b5ce6a0c7413b5c075458a1e258ec87f4102b82d8dd2c097cf9196": {
     "describe": {
       "columns": [],
@@ -8891,6 +8881,16 @@
       }
     },
     "query": "INSERT INTO transaction( id, month, amount_in_cents, payment_intent_id, date, workspace_id, transaction_type, payment_status, description ) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9 );"
+  },
+  "7632792e02dab3670ad12323de10fdf9da567bc4f59654ceed0d8f70aebe530c": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE managed_database( id UUID CONSTRAINT managed_database_pk PRIMARY KEY, name CITEXT NOT NULL, workspace_id UUID NOT NULL, region UUID NOT NULL, engine MANAGED_DATABASE_ENGINE NOT NULL, database_plan_id UUID NOT NULL, status MANAGED_DATABASE_STATUS NOT NULL, username TEXT NOT NULL, deleted TIMESTAMPTZ, CONSTRAINT managed_database_chk_name_is_trimmed CHECK( name = TRIM(name) ), CONSTRAINT managed_database_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id), CONSTRAINT managed_database_fk_region FOREIGN KEY(region) REFERENCES region(id), CONSTRAINT managed_database_fk_managed_database_plan_id FOREIGN KEY(database_plan_id) REFERENCES managed_database_plan(id) );"
   },
   "76bc542a8b4d4d866a7688aa48dd929d2756904cf8f0a699bc8befb800721a9a": {
     "describe": {
