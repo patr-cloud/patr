@@ -1,4 +1,5 @@
 use crate::{
+	db,
 	migrate_query as query,
 	utils::{settings::Settings, Error},
 	Database,
@@ -9,6 +10,7 @@ pub(super) async fn migrate(
 	config: &Settings,
 ) -> Result<(), Error> {
 	add_tables_for_k8s_database(connection, config).await?;
+	add_machine_type_for_k8s_database(connection, config).await?;
 	update_permissions(connection, config).await?;
 	add_rbac_blocklist_tables(connection, config).await?;
 	reset_permission_order(connection, config).await?;
@@ -179,6 +181,44 @@ async fn add_tables_for_k8s_database(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	Ok(())
+}
+
+async fn add_machine_type_for_k8s_database(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	const MANAGED_DATABASE_MACHINE_TYPE: [(i32, i32, i32); 4] = [
+		(1, 2, 25),  // 1 vCPU, 2 GB RAM, 25GB storage
+		(2, 4, 50),  // 2 vCPU, 4 GB RAM, 50GB storage
+		(2, 4, 100), // 2 vCPU, 4 GB RAM, 100GB storage
+		(4, 8, 200), // 4 vCPU, 8 GB RAM, 200GB storage
+	];
+
+	for (cpu, ram, volume) in MANAGED_DATABASE_MACHINE_TYPE {
+		let machine_type_id =
+			db::generate_new_resource_id(&mut *connection).await?;
+		query!(
+			r#"
+			INSERT INTO
+				managed_database_plan(
+					id,
+					cpu,
+					ram,
+					volume
+				)
+			VALUES
+				($1, $2, $3, $4);
+			"#,
+			machine_type_id,
+			cpu,
+			ram,
+			volume
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
 
 	Ok(())
 }
