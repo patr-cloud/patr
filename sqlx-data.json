@@ -168,6 +168,26 @@
     },
     "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id LEFT JOIN user_phone_number ON user_phone_number.user_id = \"user\".id LEFT JOIN phone_number_country_code ON phone_number_country_code.country_code = user_phone_number.country_code WHERE \"user\".username = $1 OR CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( business_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( '+', phone_number_country_code.phone_code, user_phone_number.number ) = $1;"
   },
+  "01e6d07b478e87f5dc58bb569c13bacafb9bbd6cbb32f9cc3d2a39976ac10464": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT workspace_id as \"workspace_id: Uuid\" FROM user_api_token_workspace_permission_type WHERE token_permission_type = 'member' AND token_id = $1;"
+  },
   "01fe497f00dc8157a50bf14531ea0aa14d14f8e361ceea753137c2ba5a955242": {
     "describe": {
       "columns": [],
@@ -752,6 +772,30 @@
     },
     "query": "SELECT CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) as \"email!: String\" FROM personal_email INNER JOIN domain ON personal_email.domain_id = domain.id WHERE personal_email.user_id = $1;"
   },
+  "08197393efa75ea3956c7e3868fcbb01765451c2c4602f0067cc1a100adf7fb3": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "super_admin",
+                  "member"
+                ]
+              },
+              "name": "token_permission_type"
+            }
+          }
+        ]
+      }
+    },
+    "query": "INSERT INTO user_api_token_workspace_permission_type( token_id, workspace_id, token_permission_type ) VALUES ($1, $2, $3);"
+  },
   "08ef2fd52eb3904957a929e714d54f703b24f785d52aecebe5bc50deed2c0ab6": {
     "describe": {
       "columns": [],
@@ -1099,6 +1143,18 @@
       }
     },
     "query": "SELECT username, account_type as \"account_type: _\", password, first_name, last_name, recovery_email_local, recovery_email_domain_id as \"recovery_email_domain_id: _\", recovery_phone_country_code, recovery_phone_number, business_email_local, CASE WHEN business_domain_name IS NULL THEN NULL ELSE CONCAT(business_domain_name, '.', business_domain_tld) END as \"business_domain_name: _\", business_name, otp_hash, otp_expiry, coupon_code FROM user_to_sign_up WHERE username = $1;"
+  },
+  "0c89a27e56e5a3601a88a7d19d5e0f0ae5bac9c857a572505b19f093e9fef76b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "DELETE FROM user_api_token_workspace_permission_type WHERE token_id = $1;"
   },
   "0d262a2cdb70f0c2af1b7b788df13c6d6da8ce31fd6172023a0490f6cbda6d94": {
     "describe": {
@@ -1756,6 +1812,16 @@
     },
     "query": "CREATE INDEX user_phone_number_idx_user_id ON user_phone_number (user_id);"
   },
+  "18a5efd8150250c4d3ea56d83f3c19a9cfc8cc078762637de0e0746318b3940a": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE user_api_token_resource_permissions_type( token_id UUID NOT NULL, workspace_id UUID NOT NULL, permission_id UUID NOT NULL, resource_permission_type PERMISSION_TYPE NOT NULL, token_permission_type TOKEN_PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('member') STORED, CONSTRAINT user_api_token_resource_permissions_type_pk PRIMARY KEY( token_id, workspace_id, permission_id ), CONSTRAINT user_api_token_resource_permissions_type_uq UNIQUE( token_id, workspace_id, permission_id, resource_permission_type ), CONSTRAINT user_api_token_resource_permisssions_type_fk_type FOREIGN KEY(token_id, workspace_id, token_permission_type) REFERENCES user_api_token_workspace_permission_type( token_id, workspace_id, token_permission_type ), CONSTRAINT user_api_token_resource_permisssions_type_fk_permission_id FOREIGN KEY(permission_id) REFERENCES permission(id) );"
+  },
   "1990483ba5f3420ccdef6d5dccb62ffbd132e10a473c9f99efe25a3f8bc5f1e0": {
     "describe": {
       "columns": [],
@@ -2366,16 +2432,6 @@
       }
     },
     "query": "CREATE TABLE user_to_sign_up( username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY CONSTRAINT user_to_sign_up_chk_username_is_valid CHECK( /* Username is a-z, 0-9, _, cannot begin or end with a . or - */ username ~ '^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$' AND username NOT LIKE '%..%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%' ), account_type RESOURCE_OWNER_TYPE NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, /* Personal email address OR recovery email */ recovery_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_recovery_email_is_lower_case CHECK( recovery_email_local = LOWER(recovery_email_local) ), recovery_email_domain_id UUID CONSTRAINT user_to_sign_up_fk_recovery_email_domain_id REFERENCES personal_domain(id), recovery_phone_country_code CHAR(2) CONSTRAINT user_to_sign_up_fk_recovery_phone_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_to_sign_up_chk_recovery_phone_country_code_upper_case CHECK( recovery_phone_country_code = UPPER(recovery_phone_country_code) ), recovery_phone_number VARCHAR(15) CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK( LENGTH(recovery_phone_number) >= 7 AND LENGTH(recovery_phone_number) <= 15 AND CAST(recovery_phone_number AS BIGINT) > 0 ), /* Workspace email address */ business_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_business_email_local_is_lower_case CHECK( business_email_local = LOWER(business_email_local) ), business_domain_name TEXT CONSTRAINT user_to_sign_up_chk_business_domain_name_is_valid CHECK( business_domain_name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' ), business_domain_tld TEXT CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_length_valid CHECK( LENGTH(business_domain_tld) >= 2 AND LENGTH(business_domain_tld) <= 6 ) CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_valid CHECK( business_domain_tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) CONSTRAINT user_to_sign_up_fk_business_domain_tld REFERENCES domain_tld(tld), business_name VARCHAR(100) CONSTRAINT user_to_sign_up_chk_business_name_is_lower_case CHECK(business_name = LOWER(business_name)), otp_hash TEXT NOT NULL, otp_expiry TIMESTAMPTZ NOT NULL, coupon_code TEXT CONSTRAINT user_to_sign_up_fk_coupon_code REFERENCES coupon_code(code), CONSTRAINT user_to_sign_up_chk_max_domain_name_length CHECK( (LENGTH(business_domain_name) + LENGTH(business_domain_tld)) < 255 ), CONSTRAINT user_to_sign_up_chk_business_details_valid CHECK( ( account_type = 'personal' AND ( business_email_local IS NULL AND business_domain_name IS NULL AND business_domain_tld IS NULL AND business_name IS NULL ) ) OR ( account_type = 'business' AND ( business_email_local IS NOT NULL AND business_domain_name IS NOT NULL AND business_domain_tld IS NOT NULL AND business_name IS NOT NULL ) ) ), CONSTRAINT user_to_sign_up_chk_recovery_details CHECK( ( recovery_email_local IS NOT NULL AND recovery_email_domain_id IS NOT NULL AND recovery_phone_country_code IS NULL AND recovery_phone_number IS NULL ) OR ( recovery_email_local IS NULL AND recovery_email_domain_id IS NULL AND recovery_phone_country_code IS NOT NULL AND recovery_phone_number IS NOT NULL ) ) );"
-  },
-  "21f436faa5e1593ed6df057c9e0d3ef71589cf4b911062ab2102bc93c25999bf": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE user_api_token_permission_type( token_id UUID NOT NULL, workspace_id UUID NOT NULL, token_permission_type TOKEN_PERMISSION_TYPE NOT NULL, CONSTRAINT user_api_token_permission_type_pk PRIMARY KEY (token_id, workspace_id), CONSTRAINT user_api_token_permission_type_uq UNIQUE (token_id, workspace_id, token_permission_type), CONSTRAINT user_api_token_permission_type_fk_token FOREIGN KEY(token_id) REFERENCES user_api_token(token_id) );"
   },
   "22448e6945d85dd66c2692df3889346b957f4ffd988394682a5c99f814a11a22": {
     "describe": {
@@ -3515,16 +3571,6 @@
     },
     "query": "DELETE FROM resource WHERE id = $1;"
   },
-  "30bc03887e622d9c570b36f37555397119ce681c98c3de488f22baf6370ec062": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE user_api_token_resource_permissions_type( token_id UUID NOT NULL, workspace_id UUID NOT NULL, permission_id UUID NOT NULL, resource_permission_type PERMISSION_TYPE NOT NULL, token_permission_type TOKEN_PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('member') STORED, CONSTRAINT user_api_token_resource_permissions_type_pk PRIMARY KEY(token_id, workspace_id, permission_id), CONSTRAINT user_api_token_resource_permissions_type_uq UNIQUE (token_id, workspace_id, permission_id, resource_permission_type), CONSTRAINT user_api_token_resource_permisssions_type_fk_type FOREIGN KEY (token_id, workspace_id, token_permission_type) REFERENCES user_api_token_permission_type(token_id, workspace_id, token_permission_type), CONSTRAINT user_api_token_resource_permisssions_type_fk_permission_id FOREIGN KEY (permission_id) REFERENCES permission(id) );"
-  },
   "31fa3365a18b7cdbb3532ea5559f8a6fafda313ec59e82c3d790c31ac45fb452": {
     "describe": {
       "columns": [],
@@ -3728,16 +3774,6 @@
       }
     },
     "query": "SELECT id as \"id: _\", workspace_id as \"workspace_id: _\", name::TEXT as \"name!: _\" FROM docker_registry_repository WHERE id = $1 AND deleted IS NULL;"
-  },
-  "334c210627a1b9527890e3dbc9e378de342d0837b04b9e9438da189c733dfa7b": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE user_api_token_resource_permissions_exclude( token_id UUID NOT NULL, workspace_id UUID NOT NULL, permission_id UUID NOT NULL, resource_id UUID NOT NULL, permission_type PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('exclude') STORED, CONSTRAINT user_api_token_resource_permissions_exclude_pk PRIMARY KEY(token_id, workspace_id, permission_id, resource_id), CONSTRAINT user_api_token_resource_permissions_exclude_fk_parent FOREIGN KEY (token_id, workspace_id, permission_id, permission_type) REFERENCES user_api_token_resource_permissions_type(token_id, workspace_id, permission_id, resource_permission_type), CONSTRAINT user_api_token_resource_permissions_exclude_fk_resource FOREIGN KEY (resource_id, workspace_id) REFERENCES resource(id, owner_id) );"
   },
   "33846eaf8014085364f0ee8032337df4c4d8c4c7fe4df6df74c76049dd3a43f8": {
     "describe": {
@@ -4064,16 +4100,6 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdatabase_id as \"database_id: _\",\n\t\t\tdb_plan as \"db_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tdeletion_time as \"deletion_time: _\"\n\t\tFROM\n\t\t\tmanaged_database_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(start_time, COALESCE(deletion_time, NOW())) OVERLAPS ($2, $3)\n\t\tORDER BY\n\t\t\tstart_time ASC;\n\t\t"
   },
-  "35fa6f30bb9cef584ff57be11d0089eccacfe7466597e8294dcc6aac51a05452": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE role_resource_permissions_exclude( role_id UUID NOT NULL, permission_id UUID NOT NULL, resource_id UUID NOT NULL, permission_type PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('exclude') STORED, CONSTRAINT role_resource_permissions_exclude_pk PRIMARY KEY(role_id, permission_id, resource_id), CONSTRAINT role_resource_permissions_exclude_fk_parent FOREIGN KEY (role_id, permission_id, permission_type) REFERENCES role_resource_permissions_type(role_id, permission_id, permission_type), CONSTRAINT role_resource_permissions_exclude_fk_resource FOREIGN KEY (resource_id) REFERENCES resource(id) );"
-  },
   "35fd341424f5499d7f0c076cd4a99dd5953db90ad7bb92694d82416d6ddb5134": {
     "describe": {
       "columns": [],
@@ -4306,26 +4332,6 @@
       }
     },
     "query": "SELECT COUNT(*) as \"count\" FROM patr_domain_dns_record WHERE domain_id = $1;"
-  },
-  "3c9d22cdc7bfadc45709a30bc3df4ac1cd8f6d2b917504b0adc2abeffcc31f10": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT workspace_id as \"workspace_id: Uuid\" FROM user_api_token_permission_type WHERE token_permission_type = 'member' AND token_id = $1;"
   },
   "3d35d51e05918fc8487340ae15e57f5905b090f05c07c7e77067008b761e845e": {
     "describe": {
@@ -5000,6 +5006,16 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdeployment_id as \"deployment_id: _\",\n\t\t\tmachine_type as \"machine_type: _\",\n\t\t\tnum_instance as \"num_instance: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tdeployment_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3)\n\t\tORDER BY\n\t\t\tstart_time ASC;\n\t\t"
   },
+  "4985a3f5f6a48ead19060cbf84340c4608756db43c1e9bed96f3d524f26d22f5": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE user_api_token_workspace_super_admin( token_id UUID NOT NULL, workspace_id UUID NOT NULL, token_permission_type TOKEN_PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('super_admin') STORED, CONSTRAINT user_api_token_workspace_super_admin_pk PRIMARY KEY( token_id, user_id, workspace_id ), CONSTRAINT user_api_token_workspace_super_admin_fk_type FOREIGN KEY( token_id, workspace_id, token_permission_type ) REFERENCES user_api_token_workspace_permission_type( token_id, workspace_id, token_permission_type ), CONSTRAINT user_api_token_workspace_super_admin_fk_workspace FOREIGN KEY(workspace_id, user_id) REFERENCES workspace( id, super_admin_id ) );"
+  },
   "49c42a9cd5c05447c21f555fbaee502dddd7255718a0fcef452df78ac902e930": {
     "describe": {
       "columns": [],
@@ -5025,6 +5041,16 @@
       }
     },
     "query": "INSERT INTO ci_git_provider( id, workspace_id, domain_name, git_provider_type, login_name, password ) VALUES ($1, $2, $3, $4, $5, $6);"
+  },
+  "4a3ae444ef361568be47911a0d7265e9c76e511871e070331b39f1a19571026d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE role_resource_permissions_include( role_id UUID NOT NULL, permission_id UUID NOT NULL, resource_id UUID NOT NULL, permission_type PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS('include') STORED, CONSTRAINT role_resource_permissions_include_pk PRIMARY KEY( role_id, permission_id, resource_id ), CONSTRAINT role_resource_permissions_include_fk_parent FOREIGN KEY( role_id, permission_id, permission_type ) REFERENCES role_resource_permissions_type( role_id, permission_id, permission_type ), CONSTRAINT role_resource_permissions_include_fk_resource FOREIGN KEY(resource_id) REFERENCES resource(id) );"
   },
   "4a59dfecc6411d998b7f8b8b4a8d32a9f565197e1cc4ef5518b2290c243ffddf": {
     "describe": {
@@ -6578,30 +6604,6 @@
     },
     "query": "UPDATE address SET first_name = $2, last_name = $3, address_line_1 = $4, address_line_2 = $5, address_line_3 = $6, city = $7, state = $8, zip = $9, country = $10 WHERE id = $1;"
   },
-  "5d55c0b828ed4950da378acc71b573726bf731be7198a9f6a0644fbfba07f586": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "super_admin",
-                  "member"
-                ]
-              },
-              "name": "token_permission_type"
-            }
-          }
-        ]
-      }
-    },
-    "query": "INSERT INTO user_api_token_permission_type( token_id, workspace_id, token_permission_type ) VALUES ($1, $2, $3);"
-  },
   "5dc79c54f863d3da0fcf0dd730fad1cbfa9df08e77b72a3a4ebc360e50618511": {
     "describe": {
       "columns": [
@@ -7437,6 +7439,16 @@
       }
     },
     "query": "SELECT user_id as \"user_id: _\", token, token_expiry, attempts FROM password_reset_request WHERE user_id = $1;"
+  },
+  "695c8db6f216737ae5bc6e2a419f1137e7a4c921cd6d7fa576e32a896c9d37e1": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE user_api_token_resource_permissions_exclude( token_id UUID NOT NULL, workspace_id UUID NOT NULL, permission_id UUID NOT NULL, resource_id UUID NOT NULL, permission_type PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('exclude') STORED, CONSTRAINT user_api_token_resource_permissions_exclude_pk PRIMARY KEY(token_id, workspace_id, permission_id, resource_id), CONSTRAINT user_api_token_resource_permissions_exclude_fk_parent FOREIGN KEY( token_id, workspace_id, permission_id, permission_type ) REFERENCES user_api_token_resource_permissions_type( token_id, workspace_id, permission_id, resource_permission_type ), CONSTRAINT user_api_token_resource_permissions_exclude_fk_resource FOREIGN KEY(resource_id, workspace_id) REFERENCES resource( id, owner_id ) );"
   },
   "696749fb5dd8e4bb7c3d80c5619417e05c78691505add6a7af389858cb3bf0d4": {
     "describe": {
@@ -9593,16 +9605,6 @@
     },
     "query": "UPDATE volume_payment_history SET stop_time = $1 WHERE volume_id = $2 AND stop_time IS NULL;"
   },
-  "84dc64ffae5d3f24a5dc6d0ad426bf8feb2a15ecd844967ce63a637d18a8bc44": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE user_api_token_workspace_super_admin( token_id UUID NOT NULL, user_id UUID NOT NULL, workspace_id UUID NOT NULL, token_permission_type TOKEN_PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('super_admin') STORED, CONSTRAINT user_api_token_workspace_super_admin_pk PRIMARY KEY (token_id, user_id, workspace_id), CONSTRAINT user_api_token_workspace_super_admin_fk_type FOREIGN KEY(token_id, workspace_id, token_permission_type) REFERENCES user_api_token_permission_type(token_id, workspace_id, token_permission_type), CONSTRAINT user_api_token_workspace_super_admin_fk_workspace FOREIGN KEY(workspace_id, user_id) REFERENCES workspace(id, super_admin_id) );"
-  },
   "8521029f50f05db59f5fabf5a5651a2bb0072010cefbf96f946184d01be8639c": {
     "describe": {
       "columns": [],
@@ -10902,16 +10904,6 @@
     },
     "query": "CREATE INDEX deployment_idx_image_name_image_tag ON deployment (image_name, image_tag);"
   },
-  "95e75566b9bc3a262845d36e75da9af981e929836f4a2f897a0e32076175fbb6": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE role_resource_permissions_type( role_id UUID NOT NULL, permission_id UUID NOT NULL, permission_type PERMISSION_TYPE NOT NULL, CONSTRAINT role_resource_permissions_type_pk PRIMARY KEY(role_id, permission_id), CONSTRAINT role_resource_permissions_type_uq UNIQUE (role_id, permission_id, permission_type), CONSTRAINT role_resource_permissions_type_fk_role_id FOREIGN KEY (role_id) REFERENCES role(id), CONSTRAINT role_resource_permissions_type_fk_permission_id FOREIGN KEY (permission_id) REFERENCES permission(id) );"
-  },
   "9619d6b989536b51299ed94b0c88316ac91290cd6bfcee615f9f252699f77add": {
     "describe": {
       "columns": [],
@@ -11028,16 +11020,6 @@
     },
     "query": "CREATE TABLE address( id UUID NOT NULL CONSTRAINT address_pk PRIMARY KEY, first_name TEXT NOT NULL, last_name TEXT NOT NULL, address_line_1 TEXT NOT NULL, address_line_2 TEXT, address_line_3 TEXT, city TEXT NOT NULL, state TEXT NOT NULL, zip TEXT NOT NULL, country TEXT NOT NULL );"
   },
-  "96b3517ef88f76e14a7f25c2ee6c94502f52a8e72314b6ba8e5e2010e9c06965": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE workspace_user( user_id UUID NOT NULL CONSTRAINT workspace_user_fk_user_id REFERENCES \"user\"(id), workspace_id UUID NOT NULL CONSTRAINT workspace_user_fk_workspace_id REFERENCES workspace(id), role_id UUID NOT NULL CONSTRAINT workspace_user_fk_role_id REFERENCES role(id), CONSTRAINT workspace_user_pk PRIMARY KEY(user_id, workspace_id, role_id) );"
-  },
   "96e525b047f0838a7c25a1277bae273d2ce2aaf541f0b2aad82404728baecc42": {
     "describe": {
       "columns": [],
@@ -11136,6 +11118,16 @@
       }
     },
     "query": "SELECT COALESCE(SUM(size), 0)::BIGINT as \"size!\" FROM docker_registry_repository_manifest WHERE repository_id = $1;"
+  },
+  "9c0c7e00602c6af1a5943e5e4f696fa27ea83f1fc43b34caa66eaf26b987aa8e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE role_resource_permissions_type( role_id UUID NOT NULL, permission_id UUID NOT NULL, permission_type PERMISSION_TYPE NOT NULL, CONSTRAINT role_resource_permissions_type_pk PRIMARY KEY( role_id, permission_id ), CONSTRAINT role_resource_permissions_type_uq UNIQUE( role_id, permission_id, permission_type ), CONSTRAINT role_resource_permissions_type_fk_role_id FOREIGN KEY(role_id) REFERENCES role(id), CONSTRAINT role_resource_permissions_type_fk_permission_id FOREIGN KEY(permission_id) REFERENCES permission(id) );"
   },
   "9cf0a9094118925bd1079644c538862c90d31b9ec0ad9c0dc8c5711c58c27b3a": {
     "describe": {
@@ -12442,16 +12434,6 @@
       }
     },
     "query": "INSERT INTO static_site( id, name, status, workspace_id ) VALUES ($1, $2, 'created', $3);"
-  },
-  "ae8a2959c6e266a2eab088e7c086c43d0cd8726463debb3a12e17246367d623c": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE role_resource_permissions_include( role_id UUID NOT NULL, permission_id UUID NOT NULL, resource_id UUID NOT NULL, permission_type PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('include') STORED, CONSTRAINT role_resource_permissions_include_pk PRIMARY KEY(role_id, permission_id, resource_id), CONSTRAINT role_resource_permissions_include_fk_parent FOREIGN KEY (role_id, permission_id, permission_type) REFERENCES role_resource_permissions_type(role_id, permission_id, permission_type), CONSTRAINT role_resource_permissions_include_fk_resource FOREIGN KEY (resource_id) REFERENCES resource(id) );"
   },
   "aec6e34747f88716757f9bda17cfea7cef75d08125220026cbea614587c05706": {
     "describe": {
@@ -14455,6 +14437,16 @@
     },
     "query": "UPDATE workspace SET name = COALESCE($1, name), alert_emails = COALESCE($2, alert_emails), default_payment_method_id = COALESCE($3, default_payment_method_id) WHERE id = $4;"
   },
+  "da289e6340b9dd160a1c58dbcb59c8bb4506469319c9f07169e59a288fe1f5e5": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE user_api_token_workspace_permission_type( token_id UUID NOT NULL, workspace_id UUID NOT NULL, token_permission_type TOKEN_PERMISSION_TYPE NOT NULL, CONSTRAINT user_api_token_workspace_permission_type_pk PRIMARY KEY( token_id, workspace_id ), CONSTRAINT user_api_token_workspace_permission_type_uq UNIQUE( token_id, workspace_id, token_permission_type ), CONSTRAINT user_api_token_workspace_permission_type_fk_token FOREIGN KEY(token_id) REFERENCES user_api_token(token_id) );"
+  },
   "da3901cb1079f58c9b722ee678e97e05baa99e5ee5747e51b084a3c1a60063d7": {
     "describe": {
       "columns": [],
@@ -14924,6 +14916,16 @@
     },
     "query": "CREATE UNIQUE INDEX ci_runner_uq_workspace_id_name ON ci_runner (workspace_id, name) WHERE deleted IS NULL;"
   },
+  "de44ac55d7ada23b6c0560ff839a1d394fa3ddb9ea3964480824877e7a46de71": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE workspace_user( user_id UUID NOT NULL CONSTRAINT workspace_user_fk_user_id REFERENCES \"user\"(id), workspace_id UUID NOT NULL CONSTRAINT workspace_user_fk_workspace_id REFERENCES workspace(id), role_id UUID NOT NULL CONSTRAINT workspace_user_fk_role_id REFERENCES role(id), CONSTRAINT workspace_user_pk PRIMARY KEY( user_id, workspace_id, role_id ) );"
+  },
   "de6fb017822253924727b17e21c4d18169e9b6e2cb68e0f08fb7032fb478be9b": {
     "describe": {
       "columns": [],
@@ -15035,18 +15037,6 @@
     },
     "query": "CREATE UNIQUE INDEX user_api_token_uq_name_user_id ON user_api_token(name, user_id) WHERE revoked IS NULL;"
   },
-  "e0cc9c74e377a40524fb41c3c3fcafd0c1276c5539e3175abb09f3b96b01cad0": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "DELETE FROM user_api_token_permission_type WHERE token_id = $1;"
-  },
   "e3e5df5305f2f4f8363d750c83ab960c127587667bbf53d355dda740fa3da2fc": {
     "describe": {
       "columns": [],
@@ -15056,6 +15046,16 @@
       }
     },
     "query": "CREATE TABLE static_site_upload_history( upload_id UUID CONSTRAINT static_site_upload_history_pk PRIMARY KEY, static_site_id UUID NOT NULL CONSTRAINT static_site_upload_history_fk_static_site_id REFERENCES static_site(id), message TEXT NOT NULL, uploaded_by UUID NOT NULL CONSTRAINT static_site_upload_history_fk_uploaded_by REFERENCES \"user\"(id), created TIMESTAMPTZ NOT NULL, processed TIMESTAMPTZ, CONSTRAINT static_site_upload_history_uq_upload_id_static_site_id UNIQUE(upload_id, static_site_id) );"
+  },
+  "e448228ff79a8bf6aa2d4214937f7eae5f3309cff038edcc6e5b68fbd575f784": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE role_resource_permissions_exclude( role_id UUID NOT NULL, permission_id UUID NOT NULL, resource_id UUID NOT NULL, permission_type PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('exclude') STORED, CONSTRAINT role_resource_permissions_exclude_pk PRIMARY KEY( role_id, permission_id, resource_id ), CONSTRAINT role_resource_permissions_exclude_fk_parent FOREIGN KEY(role_id, permission_id, permission_type) REFERENCES role_resource_permissions_type( role_id, permission_id, permission_type ), CONSTRAINT role_resource_permissions_exclude_fk_resource FOREIGN KEY(resource_id) REFERENCES resource(id) );"
   },
   "e4bde43b0c682fac1c3d75723e1d9a9f133ff21525cec4fcdbea36908407284a": {
     "describe": {
@@ -15515,16 +15515,6 @@
     },
     "query": "SELECT ci_git_provider.id as \"git_provider_id: Uuid\", ci_git_provider.workspace_id as \"git_provider_workspace_id: Uuid\", ci_git_provider.domain_name as \"git_provider_domain_name\", ci_git_provider.git_provider_type as \"git_provider_type: GitProviderType\", ci_git_provider.login_name as \"git_provider_login_name\", ci_git_provider.is_syncing as \"git_provider_is_syncing\", ci_git_provider.last_synced as \"git_provider_last_synced\", ci_git_provider.is_deleted as \"git_provider_is_deleted\", ci_repos.git_provider_repo_uid as \"repo_id\", ci_repos.repo_name, ci_repos.repo_owner, ci_repos.clone_url as \"repo_clone_url\", ci_repos.status as \"repo_status: RepoStatus\", ci_repos.runner_id as \"repo_runner_id: Uuid\", ci_builds.build_num, ci_builds.git_ref as \"build_git_ref\", ci_builds.git_commit as \"build_git_commit\", ci_builds.status as \"build_status: BuildStatus\", ci_builds.created as \"build_created\", ci_builds.started as \"build_started\", ci_builds.finished as \"build_finished\", ci_builds.message as \"build_message\", ci_builds.author as \"build_author\", ci_builds.git_pr_title as \"build_git_pr_title\", ci_builds.git_commit_message as \"build_git_commit_message\", ci_builds.runner_id as \"build_runner_id: Uuid\" FROM ci_builds JOIN ci_repos ON ci_repos.id = ci_builds.repo_id JOIN ci_git_provider ON ci_git_provider.id = ci_repos.git_provider_id WHERE ci_git_provider.workspace_id = $1 ORDER BY ci_builds.created ASC LIMIT 500;"
   },
-  "eacab761df0e7968e4122c73cec4c2d72bd2406d91ee43a3b630d022f6bb9c59": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE user_api_token_resource_permissions_include( token_id UUID NOT NULL, workspace_id UUID NOT NULL, permission_id UUID NOT NULL, resource_id UUID NOT NULL, permission_type PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('include') STORED, CONSTRAINT user_api_token_resource_permissions_include_pk PRIMARY KEY(token_id, workspace_id, permission_id, resource_id), CONSTRAINT user_api_token_resource_permissions_include_fk_parent FOREIGN KEY (token_id, workspace_id, permission_id, permission_type) REFERENCES user_api_token_resource_permissions_type(token_id, workspace_id, permission_id, resource_permission_type), CONSTRAINT user_api_token_resource_permissions_include_fk_resource FOREIGN KEY (resource_id, workspace_id) REFERENCES resource(id, owner_id) );"
-  },
   "ead2efe8bf440e3dd062383cbd5810076cbbdc810e9ae6ce5f692220b560fc69": {
     "describe": {
       "columns": [],
@@ -15935,6 +15925,16 @@
       }
     },
     "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdomain_name,\n\t\t\tgit_provider_type as \"git_provider_type: _\",\n\t\t\tlogin_name,\n\t\t\tpassword,\n\t\t\tis_syncing,\n\t\t\tlast_synced,\n\t\t\tis_deleted\n\t\tFROM\n\t\t\tci_git_provider\n\t\tWHERE\n\t\t\tid = $1;\n\t\t"
+  },
+  "ef66ca75a2c8ec2b1c9a4c5defa0ce01ab4eca3c84c0da5f5b92cbde85c3499d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE user_api_token_resource_permissions_include( token_id UUID NOT NULL, workspace_id UUID NOT NULL, permission_id UUID NOT NULL, resource_id UUID NOT NULL, permission_type PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('include') STORED, CONSTRAINT user_api_token_resource_permissions_include_pk PRIMARY KEY(token_id, workspace_id, permission_id, resource_id), CONSTRAINT user_api_token_resource_permissions_include_fk_parent FOREIGN KEY( token_id, workspace_id, permission_id, permission_type ) REFERENCES user_api_token_resource_permissions_type( token_id, workspace_id, permission_id, resource_permission_type ), CONSTRAINT user_api_token_resource_permissions_include_fk_resource FOREIGN KEY(resource_id, workspace_id) REFERENCES resource( id, owner_id ) );"
   },
   "efa0a6ff35f40c8f91021798d83cbff7e35471895783a4ca95ec64d173dbdddf": {
     "describe": {
