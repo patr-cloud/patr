@@ -71,8 +71,8 @@ pub async fn initialize_rbac_pre(
 			resource_type_id UUID NOT NULL
 				CONSTRAINT resource_fk_resource_type_id
 					REFERENCES resource_type(id),
-			owner_id UUID NOT NULL
-				CONSTRAINT resource_fk_owner_id REFERENCES workspace(id)
+			owner_id UUID NOT NULL CONSTRAINT resource_fk_owner_id
+				REFERENCES workspace(id)
 					DEFERRABLE INITIALLY IMMEDIATE,
 			created TIMESTAMPTZ NOT NULL,
 			CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id)
@@ -101,8 +101,8 @@ pub async fn initialize_rbac_pre(
 			id UUID CONSTRAINT role_pk PRIMARY KEY,
 			name VARCHAR(100) NOT NULL,
 			description VARCHAR(500) NOT NULL,
-			owner_id UUID NOT NULL
-				CONSTRAINT role_fk_owner_id REFERENCES workspace(id),
+			owner_id UUID NOT NULL CONSTRAINT role_fk_owner_id
+				REFERENCES workspace(id),
 			CONSTRAINT role_uq_name_owner_id UNIQUE(name, owner_id)
 		);
 		"#
@@ -126,15 +126,17 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE TABLE workspace_user(
-			user_id UUID NOT NULL
-				CONSTRAINT workspace_user_fk_user_id REFERENCES "user"(id),
-			workspace_id UUID NOT NULL
-				CONSTRAINT workspace_user_fk_workspace_id
-					REFERENCES workspace(id),
-			role_id UUID NOT NULL
-				CONSTRAINT workspace_user_fk_role_id REFERENCES role(id),
-			CONSTRAINT workspace_user_pk
-				PRIMARY KEY(user_id, workspace_id, role_id)
+			user_id UUID NOT NULL CONSTRAINT workspace_user_fk_user_id
+				REFERENCES "user"(id),
+			workspace_id UUID NOT NULL CONSTRAINT workspace_user_fk_workspace_id
+				REFERENCES workspace(id),
+			role_id UUID NOT NULL CONSTRAINT workspace_user_fk_role_id
+				REFERENCES role(id),
+			CONSTRAINT workspace_user_pk PRIMARY KEY(
+				user_id,
+				workspace_id,
+				role_id
+			)
 		);
 		"#
 	)
@@ -167,21 +169,34 @@ pub async fn initialize_rbac_pre(
 
 	query!(
 		r#"
+		CREATE TYPE PERMISSION_TYPE AS ENUM(
+			'include',
+			'exclude'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE role_resource_permissions_type(
 			role_id 		UUID 			NOT NULL,
 			permission_id 	UUID 			NOT NULL,
 			permission_type PERMISSION_TYPE NOT NULL,
-
-			CONSTRAINT role_resource_permissions_type_pk
-				PRIMARY KEY(role_id, permission_id),
-
-			CONSTRAINT role_resource_permissions_type_uq
-				UNIQUE (role_id, permission_id, permission_type),
-
+			CONSTRAINT role_resource_permissions_type_pk PRIMARY KEY(
+				role_id,
+				permission_id
+			),
+			CONSTRAINT role_resource_permissions_type_uq UNIQUE(
+				role_id,
+				permission_id,
+				permission_type
+			),
 			CONSTRAINT role_resource_permissions_type_fk_role_id
-				FOREIGN KEY (role_id) REFERENCES role(id),
+				FOREIGN KEY(role_id) REFERENCES role(id),
 			CONSTRAINT role_resource_permissions_type_fk_permission_id
-				FOREIGN KEY (permission_id) REFERENCES permission(id)
+				FOREIGN KEY(permission_id) REFERENCES permission(id)
 		);
 		"#
 	)
@@ -194,19 +209,25 @@ pub async fn initialize_rbac_pre(
 			role_id 		UUID 			NOT NULL,
 			permission_id 	UUID 			NOT NULL,
 			resource_id		UUID			NOT NULL,
-
 			permission_type PERMISSION_TYPE NOT NULL
-				GENERATED ALWAYS AS ('include') STORED,
+				GENERATED ALWAYS AS('include') STORED,
 
-			CONSTRAINT role_resource_permissions_include_pk
-				PRIMARY KEY(role_id, permission_id, resource_id),
-
-			CONSTRAINT role_resource_permissions_include_fk_parent
-				FOREIGN KEY (role_id, permission_id, permission_type)
-					REFERENCES role_resource_permissions_type(role_id, permission_id, permission_type),
+			CONSTRAINT role_resource_permissions_include_pk PRIMARY KEY(
+				role_id,
+				permission_id,
+				resource_id
+			),
+			CONSTRAINT role_resource_permissions_include_fk_parent FOREIGN KEY(
+				role_id,
+				permission_id,
+				permission_type
+			) REFERENCES role_resource_permissions_type(
+				role_id,
+				permission_id,
+				permission_type
+			),
 			CONSTRAINT role_resource_permissions_include_fk_resource
-				FOREIGN KEY (resource_id)
-					REFERENCES resource(id)			
+				FOREIGN KEY(resource_id) REFERENCES resource(id)
 		);
 		"#
 	)
@@ -219,19 +240,23 @@ pub async fn initialize_rbac_pre(
 			role_id 		UUID 			NOT NULL,
 			permission_id 	UUID 			NOT NULL,
 			resource_id		UUID			NOT NULL,
-
 			permission_type PERMISSION_TYPE NOT NULL
 				GENERATED ALWAYS AS ('exclude') STORED,
 
-			CONSTRAINT role_resource_permissions_exclude_pk
-				PRIMARY KEY(role_id, permission_id, resource_id),
-
+			CONSTRAINT role_resource_permissions_exclude_pk PRIMARY KEY(
+				role_id,
+				permission_id,
+				resource_id
+			),
 			CONSTRAINT role_resource_permissions_exclude_fk_parent
-				FOREIGN KEY (role_id, permission_id, permission_type)
-					REFERENCES role_resource_permissions_type(role_id, permission_id, permission_type),
+				FOREIGN KEY(role_id, permission_id, permission_type)
+					REFERENCES role_resource_permissions_type(
+						role_id,
+						permission_id,
+						permission_type
+					),
 			CONSTRAINT role_resource_permissions_exclude_fk_resource
-				FOREIGN KEY (resource_id)
-					REFERENCES resource(id)	
+				FOREIGN KEY(resource_id) REFERENCES resource(id)
 		);
 		"#
 	)
