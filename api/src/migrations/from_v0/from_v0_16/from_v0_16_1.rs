@@ -318,7 +318,7 @@ async fn add_rbac_blocklist_tables(
 			),
 			CONSTRAINT user_api_token_resource_permisssions_type_fk_type
 				FOREIGN KEY(token_id, workspace_id, token_permission_type)
-					REFERENCES user_api_token_permission_type(
+					REFERENCES user_api_token_workspace_permission_type(
 						token_id,
 						workspace_id,
 						token_permission_type
