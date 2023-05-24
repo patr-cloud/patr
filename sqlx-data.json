@@ -10894,16 +10894,6 @@
     },
     "query": "CREATE INDEX deployment_idx_image_name_image_tag ON deployment (image_name, image_tag);"
   },
-  "961929f67ccd5351c29fb0bd99ed8b3fe39fed92b54b38adf74749c0ff6fc0e0": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE user_api_token_workspace_super_admin( token_id UUID NOT NULL, user_id UUID NOT NULL, workspace_id UUID NOT NULL, token_permission_type TOKEN_PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('super_admin') STORED, CONSTRAINT user_api_token_workspace_super_admin_pk PRIMARY KEY( token_id, user_id, workspace_id ), CONSTRAINT user_api_token_workspace_super_admin_fk_type FOREIGN KEY( token_id, workspace_id, token_permission_type ) REFERENCES user_api_token_workspace_permission_type( token_id, workspace_id, token_permission_type ), CONSTRAINT user_api_token_workspace_super_admin_fk_workspace FOREIGN KEY(workspace_id, user_id) REFERENCES workspace( id, super_admin_id ) );"
-  },
   "9619d6b989536b51299ed94b0c88316ac91290cd6bfcee615f9f252699f77add": {
     "describe": {
       "columns": [],
@@ -12682,6 +12672,16 @@
       }
     },
     "query": "SELECT image_digest, created as \"created: _\" FROM deployment_deploy_history WHERE deployment_id = $1;"
+  },
+  "b19d1f23e232df2c8eccc8db9523f91afe59f2eada755262c57de71e37889772": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE user_api_token_workspace_super_admin( token_id UUID NOT NULL, user_id UUID NOT NULL, workspace_id UUID NOT NULL, token_permission_type TOKEN_PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('super_admin') STORED, CONSTRAINT user_api_token_workspace_super_admin_pk PRIMARY KEY( token_id, user_id, workspace_id ), CONSTRAINT user_api_token_workspace_super_admin_fk_type FOREIGN KEY( token_id, workspace_id, token_permission_type ) REFERENCES user_api_token_workspace_permission_type( token_id, workspace_id, token_permission_type ), CONSTRAINT user_api_token_workspace_super_admin_fk_token FOREIGN KEY(token_id, user_id) REFERENCES user_api_token( token_id, user_id ), CONSTRAINT user_api_token_workspace_super_admin_fk_workspace FOREIGN KEY(workspace_id, user_id) REFERENCES workspace( id, super_admin_id ) );"
   },
   "b20318352ed6022a580e4b93b0ee91cd7098eb700c0fc306a678bb0fc5bf18bd": {
     "describe": {

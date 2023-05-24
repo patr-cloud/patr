@@ -235,11 +235,9 @@ async fn add_rbac_blocklist_tables(
 
 	query!(
 		r#"
-		ALTER TABLE user_api_token_workspace_super_admin
-			DROP CONSTRAINT user_api_token_workspace_super_admin_pk,
-			ADD CONSTRAINT user_api_token_workspace_super_admin_pk PRIMARY KEY(
-				token_id, user_id, workspace_id
-			);
+		ALTER TABLE user_api_token_workspace_super_admi
+		ADD CONSTRAINT user_api_token_workspace_super_admin_pk
+		PRIMARY KEY(token_id, user_id, workspace_id);
 		"#
 	)
 	.execute(&mut *connection)
