@@ -121,6 +121,7 @@ pub async fn initialize_api_token_post(
 		r#"
 		CREATE TABLE user_api_token_workspace_super_admin(
 			token_id 		UUID NOT NULL,
+			user_id 		UUID NOT NULL,
 			workspace_id	UUID NOT NULL,
 			token_permission_type TOKEN_PERMISSION_TYPE NOT NULL
 				GENERATED ALWAYS AS ('super_admin') STORED,

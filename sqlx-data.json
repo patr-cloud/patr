@@ -5006,16 +5006,6 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdeployment_id as \"deployment_id: _\",\n\t\t\tmachine_type as \"machine_type: _\",\n\t\t\tnum_instance as \"num_instance: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tdeployment_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3)\n\t\tORDER BY\n\t\t\tstart_time ASC;\n\t\t"
   },
-  "4985a3f5f6a48ead19060cbf84340c4608756db43c1e9bed96f3d524f26d22f5": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE user_api_token_workspace_super_admin( token_id UUID NOT NULL, workspace_id UUID NOT NULL, token_permission_type TOKEN_PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('super_admin') STORED, CONSTRAINT user_api_token_workspace_super_admin_pk PRIMARY KEY( token_id, user_id, workspace_id ), CONSTRAINT user_api_token_workspace_super_admin_fk_type FOREIGN KEY( token_id, workspace_id, token_permission_type ) REFERENCES user_api_token_workspace_permission_type( token_id, workspace_id, token_permission_type ), CONSTRAINT user_api_token_workspace_super_admin_fk_workspace FOREIGN KEY(workspace_id, user_id) REFERENCES workspace( id, super_admin_id ) );"
-  },
   "49c42a9cd5c05447c21f555fbaee502dddd7255718a0fcef452df78ac902e930": {
     "describe": {
       "columns": [],
@@ -10903,6 +10893,16 @@
       }
     },
     "query": "CREATE INDEX deployment_idx_image_name_image_tag ON deployment (image_name, image_tag);"
+  },
+  "961929f67ccd5351c29fb0bd99ed8b3fe39fed92b54b38adf74749c0ff6fc0e0": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE user_api_token_workspace_super_admin( token_id UUID NOT NULL, user_id UUID NOT NULL, workspace_id UUID NOT NULL, token_permission_type TOKEN_PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('super_admin') STORED, CONSTRAINT user_api_token_workspace_super_admin_pk PRIMARY KEY( token_id, user_id, workspace_id ), CONSTRAINT user_api_token_workspace_super_admin_fk_type FOREIGN KEY( token_id, workspace_id, token_permission_type ) REFERENCES user_api_token_workspace_permission_type( token_id, workspace_id, token_permission_type ), CONSTRAINT user_api_token_workspace_super_admin_fk_workspace FOREIGN KEY(workspace_id, user_id) REFERENCES workspace( id, super_admin_id ) );"
   },
   "9619d6b989536b51299ed94b0c88316ac91290cd6bfcee615f9f252699f77add": {
     "describe": {
