@@ -39,18 +39,6 @@ pub async fn initialize_api_token_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	// tables are initialized in post due to workspace dependency
-
-	query!(
-		r#"
-		CREATE TYPE PERMISSION_TYPE AS ENUM(
-			'include',
-			'exclude'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	query!(
 		r#"
 		CREATE TYPE TOKEN_PERMISSION_TYPE AS ENUM(
@@ -108,20 +96,21 @@ pub async fn initialize_api_token_post(
 
 	query!(
 		r#"
-		CREATE TABLE user_api_token_permission_type(
+		CREATE TABLE user_api_token_workspace_permission_type(
 			token_id 				UUID 					NOT NULL,
 			workspace_id			UUID 					NOT NULL,
 			token_permission_type 	TOKEN_PERMISSION_TYPE 	NOT NULL,
-
-			CONSTRAINT user_api_token_permission_type_pk
-				PRIMARY KEY (token_id, workspace_id),
-
-			CONSTRAINT user_api_token_permission_type_uq
-				UNIQUE (token_id, workspace_id, token_permission_type),
-			
-			CONSTRAINT user_api_token_permission_type_fk_token
-				FOREIGN KEY(token_id)
-					REFERENCES user_api_token(token_id)
+			CONSTRAINT user_api_token_workspace_permission_type_pk PRIMARY KEY(
+				token_id,
+				workspace_id
+			),
+			CONSTRAINT user_api_token_workspace_permission_type_uq UNIQUE(
+				token_id,
+				workspace_id,
+				token_permission_type
+			),
+			CONSTRAINT user_api_token_workspace_permission_type_fk_token
+				FOREIGN KEY(token_id) REFERENCES user_api_token(token_id)
 		);
 		"#
 	)
@@ -132,21 +121,28 @@ pub async fn initialize_api_token_post(
 		r#"
 		CREATE TABLE user_api_token_workspace_super_admin(
 			token_id 		UUID NOT NULL,
-			user_id 		UUID NOT NULL,
 			workspace_id	UUID NOT NULL,
-
 			token_permission_type TOKEN_PERMISSION_TYPE NOT NULL
 				GENERATED ALWAYS AS ('super_admin') STORED,
-
-			CONSTRAINT user_api_token_workspace_super_admin_pk
-				PRIMARY KEY (token_id, user_id, workspace_id),
-
-			CONSTRAINT user_api_token_workspace_super_admin_fk_type
-				FOREIGN KEY(token_id, workspace_id, token_permission_type)
-					REFERENCES user_api_token_permission_type(token_id, workspace_id, token_permission_type),
+			CONSTRAINT user_api_token_workspace_super_admin_pk PRIMARY KEY(
+				token_id,
+				user_id,
+				workspace_id
+			),
+			CONSTRAINT user_api_token_workspace_super_admin_fk_type FOREIGN KEY(
+				token_id,
+				workspace_id,
+				token_permission_type
+			) REFERENCES user_api_token_workspace_permission_type(
+				token_id,
+				workspace_id,
+				token_permission_type
+			),
 			CONSTRAINT user_api_token_workspace_super_admin_fk_workspace
-				FOREIGN KEY(workspace_id, user_id)
-					REFERENCES workspace(id, super_admin_id)
+				FOREIGN KEY(workspace_id, user_id) REFERENCES workspace(
+					id,
+					super_admin_id
+				)
 		);
 		"#
 	)
@@ -160,22 +156,29 @@ pub async fn initialize_api_token_post(
 			workspace_id 				UUID 			NOT NULL,
 			permission_id 				UUID 			NOT NULL,
 			resource_permission_type	PERMISSION_TYPE NOT NULL,
-
 			token_permission_type TOKEN_PERMISSION_TYPE NOT NULL
 				GENERATED ALWAYS AS ('member') STORED,
-
-			CONSTRAINT user_api_token_resource_permissions_type_pk 
-				PRIMARY KEY(token_id, workspace_id, permission_id),
-
-			CONSTRAINT user_api_token_resource_permissions_type_uq
-				UNIQUE (token_id, workspace_id, permission_id, resource_permission_type),
-
+			CONSTRAINT user_api_token_resource_permissions_type_pk PRIMARY KEY(
+				token_id,
+				workspace_id,
+				permission_id
+			),
+			CONSTRAINT user_api_token_resource_permissions_type_uq UNIQUE(
+				token_id,
+				workspace_id,
+				permission_id,
+				resource_permission_type
+			),
 			CONSTRAINT user_api_token_resource_permisssions_type_fk_type
-				FOREIGN KEY (token_id, workspace_id, token_permission_type)
-					REFERENCES user_api_token_permission_type(token_id, workspace_id, token_permission_type),
-			CONSTRAINT user_api_token_resource_permisssions_type_fk_permission_id
-				FOREIGN KEY (permission_id)
-					REFERENCES permission(id)
+				FOREIGN KEY(token_id, workspace_id, token_permission_type)
+					REFERENCES user_api_token_workspace_permission_type(
+						token_id,
+						workspace_id,
+						token_permission_type
+					),
+			CONSTRAINT
+				user_api_token_resource_permisssions_type_fk_permission_id
+					FOREIGN KEY(permission_id) REFERENCES permission(id)
 		);
 		"#
 	)
@@ -189,19 +192,27 @@ pub async fn initialize_api_token_post(
 			workspace_id 	UUID 			NOT NULL,
 			permission_id 	UUID 			NOT NULL,
 			resource_id		UUID			NOT NULL,
-
 			permission_type PERMISSION_TYPE NOT NULL
 				GENERATED ALWAYS AS ('include') STORED,
-
 			CONSTRAINT user_api_token_resource_permissions_include_pk
 				PRIMARY KEY(token_id, workspace_id, permission_id, resource_id),
-
 			CONSTRAINT user_api_token_resource_permissions_include_fk_parent
-				FOREIGN KEY (token_id, workspace_id, permission_id, permission_type)
-					REFERENCES user_api_token_resource_permissions_type(token_id, workspace_id, permission_id, resource_permission_type),
+				FOREIGN KEY(
+					token_id,
+					workspace_id,
+					permission_id,
+					permission_type
+				) REFERENCES user_api_token_resource_permissions_type(
+					token_id,
+					workspace_id,
+					permission_id,
+					resource_permission_type
+				),
 			CONSTRAINT user_api_token_resource_permissions_include_fk_resource
-				FOREIGN KEY (resource_id, workspace_id)
-					REFERENCES resource(id, owner_id)			
+				FOREIGN KEY(resource_id, workspace_id) REFERENCES resource(
+					id,
+					owner_id
+				)
 		);
 		"#
 	)
@@ -215,19 +226,27 @@ pub async fn initialize_api_token_post(
 			workspace_id 	UUID 			NOT NULL,
 			permission_id 	UUID 			NOT NULL,
 			resource_id		UUID			NOT NULL,
-
 			permission_type PERMISSION_TYPE NOT NULL
 				GENERATED ALWAYS AS ('exclude') STORED,
-
 			CONSTRAINT user_api_token_resource_permissions_exclude_pk
 				PRIMARY KEY(token_id, workspace_id, permission_id, resource_id),
-
 			CONSTRAINT user_api_token_resource_permissions_exclude_fk_parent
-				FOREIGN KEY (token_id, workspace_id, permission_id, permission_type)
-					REFERENCES user_api_token_resource_permissions_type(token_id, workspace_id, permission_id, resource_permission_type),
+				FOREIGN KEY(
+					token_id,
+					workspace_id,
+					permission_id,
+					permission_type
+				) REFERENCES user_api_token_resource_permissions_type(
+					token_id,
+					workspace_id,
+					permission_id,
+					resource_permission_type
+				),
 			CONSTRAINT user_api_token_resource_permissions_exclude_fk_resource
-				FOREIGN KEY (resource_id, workspace_id)
-					REFERENCES resource(id, owner_id)			
+				FOREIGN KEY(resource_id, workspace_id) REFERENCES resource(
+					id,
+					owner_id
+				)
 		);
 		"#
 	)
@@ -291,7 +310,7 @@ pub async fn insert_raw_permissions_for_api_token(
 				query!(
 					r#"
 					INSERT INTO
-						user_api_token_permission_type(
+						user_api_token_workspace_permission_type(
 							token_id,
 							workspace_id,
 							token_permission_type
@@ -330,7 +349,7 @@ pub async fn insert_raw_permissions_for_api_token(
 				query!(
 					r#"
 					INSERT INTO
-						user_api_token_permission_type(
+						user_api_token_workspace_permission_type(
 							token_id,
 							workspace_id,
 							token_permission_type
@@ -574,7 +593,7 @@ pub async fn get_raw_permissions_for_api_token(
 		SELECT
 			workspace_id as "workspace_id: Uuid"
 		FROM
-			user_api_token_permission_type
+			user_api_token_workspace_permission_type
 		WHERE
 			token_permission_type = 'member' AND
 			token_id = $1;
@@ -674,7 +693,7 @@ pub async fn remove_all_permissions_for_api_token(
 	query!(
 		r#"
 		DELETE FROM
-			user_api_token_permission_type
+			user_api_token_workspace_permission_type
 		WHERE
 			token_id = $1;
 		"#,
