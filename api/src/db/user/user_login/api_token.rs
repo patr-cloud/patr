@@ -139,10 +139,14 @@ pub async fn initialize_api_token_post(
 				workspace_id,
 				token_permission_type
 			),
+			CONSTRAINT user_api_token_workspace_super_admin_fk_token
+				FOREIGN KEY(token_id, user_id) REFERENCES user_api_token(
+					token_id,
+					user_id
+				),
 			CONSTRAINT user_api_token_workspace_super_admin_fk_workspace
 				FOREIGN KEY(workspace_id, user_id) REFERENCES workspace(
-					id,
-					super_admin_id
+					id, super_admin_id
 				)
 		);
 		"#
