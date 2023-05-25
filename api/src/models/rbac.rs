@@ -41,20 +41,6 @@ pub mod permissions {
 					"workspace::infrastructure::deployment::edit";
 			}
 
-			#[allow(dead_code)]
-			pub mod upgrade_path {
-				pub const LIST: &str =
-					"workspace::infrastructure::upgradePath::list";
-				pub const CREATE: &str =
-					"workspace::infrastructure::upgradePath::create";
-				pub const INFO: &str =
-					"workspace::infrastructure::upgradePath::info";
-				pub const DELETE: &str =
-					"workspace::infrastructure::upgradePath::delete";
-				pub const EDIT: &str =
-					"workspace::infrastructure::upgradePath::edit";
-			}
-
 			pub mod managed_url {
 				pub const LIST: &str =
 					"workspace::infrastructure::managedUrl::list";
@@ -92,12 +78,12 @@ pub mod permissions {
 		}
 
 		pub mod docker_registry {
-			pub const CREATE: &str = "workspace::dockerRegistry::create";
-			pub const LIST: &str = "workspace::dockerRegistry::list";
-			pub const DELETE: &str = "workspace::dockerRegistry::delete";
-			pub const INFO: &str = "workspace::dockerRegistry::info";
-			pub const PUSH: &str = "workspace::dockerRegistry::push";
-			pub const PULL: &str = "workspace::dockerRegistry::pull";
+			pub const CREATE: &str = "workspace::containerRegistry::create";
+			pub const LIST: &str = "workspace::containerRegistry::list";
+			pub const DELETE: &str = "workspace::containerRegistry::delete";
+			pub const INFO: &str = "workspace::containerRegistry::info";
+			pub const PUSH: &str = "workspace::containerRegistry::push";
+			pub const PULL: &str = "workspace::containerRegistry::pull";
 		}
 
 		pub mod secret {
@@ -127,44 +113,43 @@ pub mod permissions {
 		pub mod region {
 			pub const LIST: &str = "workspace::region::list";
 			pub const INFO: &str = "workspace::region::info";
-			pub const CHECK_STATUS: &str = "workspace::region::check_status";
+			pub const CHECK_STATUS: &str = "workspace::region::checkStatus";
 			pub const ADD: &str = "workspace::region::add";
 			pub const DELETE: &str = "workspace::region::delete";
 		}
 
 		pub mod ci {
-			pub const RECENT_ACTIVITY: &str = "workspace::ci::recent_activity";
+			pub const RECENT_ACTIVITY: &str = "workspace::ci::recentActivity";
 
 			pub mod git_provider {
-				pub const LIST: &str = "workspace::ci::git_provider::list";
-				pub const CONNECT: &str =
-					"workspace::ci::git_provider::connect";
+				pub const LIST: &str = "workspace::ci::gitProvider::list";
+				pub const CONNECT: &str = "workspace::ci::gitProvider::connect";
 				pub const DISCONNECT: &str =
-					"workspace::ci::git_provider::disconnect";
+					"workspace::ci::gitProvider::disconnect";
 
 				pub mod repo {
 					pub const ACTIVATE: &str =
-						"workspace::ci::git_provider::repo::activate";
+						"workspace::ci::gitProvider::repo::activate";
 					pub const DEACTIVATE: &str =
-						"workspace::ci::git_provider::repo::deactivate";
+						"workspace::ci::gitProvider::repo::deactivate";
 					pub const LIST: &str =
-						"workspace::ci::git_provider::repo::list";
+						"workspace::ci::gitProvider::repo::list";
 					pub const INFO: &str =
-						"workspace::ci::git_provider::repo::info";
+						"workspace::ci::gitProvider::repo::info";
 					pub const WRITE: &str =
-						"workspace::ci::git_provider::repo::write";
+						"workspace::ci::gitProvider::repo::write";
 
 					pub mod build {
 						pub const LIST: &str =
-							"workspace::ci::git_provider::repo::build::list";
+							"workspace::ci::gitProvider::repo::build::list";
 						pub const CANCEL: &str =
-							"workspace::ci::git_provider::repo::build::cancel";
+							"workspace::ci::gitProvider::repo::build::cancel";
 						pub const INFO: &str =
-							"workspace::ci::git_provider::repo::build::info";
+							"workspace::ci::gitProvider::repo::build::info";
 						pub const START: &str =
-							"workspace::ci::git_provider::repo::build::start";
+							"workspace::ci::gitProvider::repo::build::start";
 						pub const RESTART: &str =
-							"workspace::ci::git_provider::repo::build::restart";
+							"workspace::ci::gitProvider::repo::build::restart";
 					}
 				}
 			}
@@ -180,27 +165,26 @@ pub mod permissions {
 
 		pub mod billing {
 			pub const INFO: &str = "workspace::billing::info";
-			pub const MAKE_PAYMENT: &str = "workspace::billing::make_payment";
+			pub const MAKE_PAYMENT: &str = "workspace::billing::makePayment";
 
 			pub mod payment_method {
-				pub const ADD: &str = "workspace::billing::payment_method::add";
+				pub const ADD: &str = "workspace::billing::paymentMethod::add";
 				pub const DELETE: &str =
-					"workspace::billing::payment_method::delete";
+					"workspace::billing::paymentMethod::delete";
 				pub const LIST: &str =
-					"workspace::billing::payment_method::list";
+					"workspace::billing::paymentMethod::list";
 				pub const EDIT: &str =
-					"workspace::billing::payment_method::edit";
+					"workspace::billing::paymentMethod::edit";
 			}
 
 			pub mod billing_address {
-				pub const ADD: &str =
-					"workspace::billing::billing_address::add";
+				pub const ADD: &str = "workspace::billing::billingAddress::add";
 				pub const DELETE: &str =
-					"workspace::billing::billing_address::delete";
+					"workspace::billing::billingAddress::delete";
 				pub const INFO: &str =
-					"workspace::billing::billing_address::info";
+					"workspace::billing::billingAddress::info";
 				pub const EDIT: &str =
-					"workspace::billing::billing_address::edit";
+					"workspace::billing::billingAddress::edit";
 			}
 		}
 
@@ -215,15 +199,14 @@ pub mod resource_types {
 	pub const WORKSPACE: &str = "workspace";
 	pub const DOMAIN: &str = "domain";
 	pub const DNS_RECORD: &str = "dnsRecord";
-	pub const DOCKER_REPOSITORY: &str = "dockerRepository";
+	pub const CONTAINER_REGISTRY: &str = "containerRegistry";
 	pub const MANAGED_DATABASE: &str = "managedDatabase";
 	pub const DEPLOYMENT: &str = "deployment";
 	pub const STATIC_SITE: &str = "staticSite";
-	pub const DEPLOYMENT_UPGRADE_PATH: &str = "deploymentUpgradePath";
 	pub const MANAGED_URL: &str = "managedUrl";
 	pub const SECRET: &str = "secret";
 	pub const STATIC_SITE_UPLOAD: &str = "staticSiteUpload";
-	pub const DEPLOYMENT_REGION: &str = "deploymentRegion";
+	pub const REGION: &str = "region";
 	pub const DEPLOYMENT_VOLUME: &str = "deploymentVolume";
 
 	// ci

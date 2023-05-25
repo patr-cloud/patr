@@ -452,7 +452,7 @@ async fn add_region(
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
-			.get(crate::models::rbac::resource_types::DEPLOYMENT_REGION)
+			.get(crate::models::rbac::resource_types::REGION)
 			.unwrap(),
 		&workspace_id,
 		&Utc::now(),
