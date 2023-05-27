@@ -43,6 +43,7 @@ impl UserAuthenticationData {
 			Ok(Self::ApiToken(api_token))
 		} else {
 			let access_token = AccessTokenData::decode(
+				connection,
 				redis_connection,
 				token,
 				jwt_secret_key,

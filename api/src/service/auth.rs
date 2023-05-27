@@ -655,12 +655,7 @@ pub async fn generate_access_token(
 	// use that info to populate the data in the token_data
 	let now = Utc::now();
 	let exp = now + service::get_access_token_expiry(); // 3 days
-	let refresh_token_expiry = now + service::get_refresh_token_expiry();
-	let permissions = db::get_all_workspace_role_permissions_for_user(
-		connection,
-		&user_login.user_id,
-	)
-	.await?;
+	let refresh_token_expiry = now + service::get_refresh_token_expiry(); // 30 days
 
 	let User {
 		username,
@@ -690,13 +685,8 @@ pub async fn generate_access_token(
 		created,
 	};
 
-	let token_data = AccessTokenData::new(
-		now,
-		exp,
-		permissions,
-		user_login.login_id.clone(),
-		user,
-	);
+	let token_data =
+		AccessTokenData::new(now, exp, user_login.login_id.clone(), user);
 	let jwt = token_data.to_string(config.jwt_secret.as_str())?;
 
 	Ok(jwt)
