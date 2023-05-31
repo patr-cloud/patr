@@ -30,7 +30,7 @@ pub struct GitProvider {
 	pub domain_name: String,
 	pub git_provider_type: GitProviderType,
 	pub login_name: Option<String>,
-	pub password: Option<String>,
+	pub access_token: Option<String>,
 	pub installation_id: String,
 	pub is_syncing: bool,
 	pub last_synced: Option<DateTime<Utc>>,
@@ -123,7 +123,7 @@ pub async fn initialize_ci_pre(
 	client_id TEXT,
 	client_secret TEXT,
 
-	CONSTRAINT ci_git_provider_ch_login_name_password
+	CONSTRAINT ci_git_provider_ch_login_name_access_token
 		CHECK (
 			(client_id IS NULL AND client_secret IS NULL)
 			OR (client_id IS NOT NULL AND client_secret IS NOT NULL)
@@ -149,17 +149,17 @@ pub async fn initialize_ci_pre(
 			CONSTRAINT ci_git_provider_unq_workspace_id_user_id
 				UNIQUE(id, workspace_id, user_id),
 
-			CONSTRAINT ci_git_provider_ch_login_name_password_is_deleted
+			CONSTRAINT ci_git_provider_ch_login_name_access_token_is_deleted
 				CHECK(
 					(
 						is_deleted = TRUE AND
-						password IS NULL
+						access_token IS NULL
 					) OR (
 						is_deleted = FALSE AND (
 							(
-								password IS NOT NULL AND
+								access_token IS NOT NULL AND
 								login_name IS NOT NULL
-							) OR password IS NULL
+							) OR access_token IS NULL
 						)
 					)
 				)
@@ -227,13 +227,24 @@ pub async fn initialize_ci_pre(
 			activated				BOOLEAN NOT NULL,
 			deleted					TIMESTAMPTZ,
 
-			CONSTRAINT ci_workspace_repos_unq_repo_id_ws_id_provider_id_res_id
-				UNIQUE(
+			CONSTRAINT ci_workspace_repos_pk_repo_id_ws_id_provider_id_res_id
+				PRIMARY KEY(
 						resource_id,
 						github_repo_id,
 						workspace_id,
 						git_provider_id
+					),
+
+			CONSTRAINT ci_workspace_repos_ch_activated_runner_id
+				CHECK(
+					(
+						activated = TRUE AND
+						runner_id IS NOT NULL
+					) OR (
+						activated = false AND
+						runner_id IS NULL
 					)
+				)
 		);
 		"#
 	)
@@ -409,7 +420,7 @@ pub async fn add_git_provider_to_workspace(
 	git_provider_domain: &str,
 	git_provider_type: GitProviderType,
 	login_name: Option<&str>,
-	password: Option<&str>,
+	access_token: Option<&str>,
 	user_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -421,7 +432,7 @@ pub async fn add_git_provider_to_workspace(
 				domain_name,
 				git_provider_type,
 				login_name,
-				password,
+				access_token,
 				user_id
 			)
 		VALUES
@@ -432,7 +443,7 @@ pub async fn add_git_provider_to_workspace(
 		git_provider_domain,
 		git_provider_type as _,
 		login_name,
-		password,
+		access_token,
 		user_id as _,
 	)
 	.execute(&mut *connection)
@@ -500,7 +511,7 @@ pub async fn get_git_provider_details_by_id(
 			domain_name,
 			git_provider_type as "git_provider_type: _",
 			login_name,
-			password,
+			access_token,
 			installation_id as "installation_id!: _",
 			is_syncing,
 			last_synced,
@@ -527,7 +538,7 @@ pub async fn remove_git_provider_credentials(
 			ci_git_provider
 		SET
 			is_deleted = TRUE,
-			password = NULL
+			access_token = NULL
 		WHERE
 			id = $1;
 		"#,
@@ -552,7 +563,7 @@ pub async fn list_connected_git_providers_for_workspace(
 			domain_name,
 			git_provider_type as "git_provider_type: _",
 			login_name,
-			password,
+			access_token,
 			installation_id as "installation_id!: _",
 			is_syncing,
 			last_synced,
@@ -585,7 +596,7 @@ pub async fn get_git_provider_details_for_workspace_using_domain(
 			domain_name,
 			git_provider_type as "git_provider_type: _",
 			login_name,
-			password,
+			access_token,
 			installation_id as "installation_id!: _",
 			is_syncing,
 			last_synced,

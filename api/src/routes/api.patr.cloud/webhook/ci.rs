@@ -211,7 +211,7 @@ async fn handle_ci_hooks_for_repo(
 	.await?
 	.status(500)?;
 
-	let access_token = git_provider.password.status(500)?;
+	let access_token = git_provider.access_token.status(500)?;
 
 	let ci_file_content = service::fetch_ci_file_content_from_github_repo(
 		event_type.repo_owner(),

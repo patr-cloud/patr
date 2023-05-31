@@ -942,7 +942,7 @@ async fn sync_repositories(
 	.await?
 	.status(500)?;
 
-	let access_token = git_provider.password.status(500)?;
+	let access_token = git_provider.access_token.status(500)?;
 
 	if !git_provider.is_syncing {
 		db::set_syncing(
@@ -1539,7 +1539,7 @@ async fn restart_build(
 	)
 	.await?
 	.status(500)?;
-	let access_token = git_provider.password.status(500)?;
+	let access_token = git_provider.access_token.status(500)?;
 
 	let previous_build = db::get_build_details_for_build(
 		context.get_database_connection(),
@@ -1795,7 +1795,7 @@ async fn start_build_for_branch(
 	.await?
 	.status(500)?;
 
-	let access_token = git_provider.password.status(500)?;
+	let access_token = git_provider.access_token.status(500)?;
 
 	let github_client =
 		octorust::Client::new("patr", Credentials::Token(access_token.clone()))
@@ -1998,7 +1998,7 @@ async fn list_git_ref_for_repo(
 	.status(500)?;
 	let (_login_name, access_token) = git_provider
 		.login_name
-		.zip(git_provider.password)
+		.zip(git_provider.access_token)
 		.status(500)?;
 
 	let refs = service::list_git_ref_for_repo(
@@ -2041,7 +2041,7 @@ async fn get_patr_ci_file(
 	.status(500)?;
 	let (_login_name, access_token) = git_provider
 		.login_name
-		.zip(git_provider.password)
+		.zip(git_provider.access_token)
 		.status(500)?;
 
 	let ci_file_content = service::fetch_ci_file_content_from_github_repo(
@@ -2100,7 +2100,7 @@ async fn write_patr_ci_file(
 
 	let (_login_name, access_token) = git_provider
 		.login_name
-		.zip(git_provider.password)
+		.zip(git_provider.access_token)
 		.status(500)?;
 
 	service::write_ci_file_content_to_github_repo(

@@ -532,7 +532,7 @@ pub async fn sync_repos_for_git_provider(
 ) -> Result<(), Error> {
 	match git_provider.git_provider_type {
 		GitProviderType::Github => {
-			if let Some(access_token) = git_provider.password.clone() {
+			if let Some(access_token) = git_provider.access_token.clone() {
 				sync_github_repos(
 					connection,
 					&git_provider.user_id,
@@ -699,7 +699,7 @@ pub async fn get_netrc_for_repo(
 			.await?
 			.status(500)?;
 
-	let netrc = match (git_provider.login_name, git_provider.password) {
+	let netrc = match (git_provider.login_name, git_provider.access_token) {
 		(Some(login), Some(password)) => Some(Netrc {
 			machine: git_provider.domain_name,
 			login,

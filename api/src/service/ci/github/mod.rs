@@ -420,7 +420,7 @@ pub async fn update_github_commit_status_for_build(
 		db::get_git_provider_details_by_id(connection, &repo.git_provider_id)
 			.await?
 			.and_then(|git_provider| {
-				git_provider.login_name.zip(git_provider.password)
+				git_provider.login_name.zip(git_provider.access_token)
 			})
 			.status(500)?;
 
