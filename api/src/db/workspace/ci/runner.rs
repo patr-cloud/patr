@@ -201,7 +201,7 @@ pub async fn list_active_repos_for_runner(
 			clone_url,
 			ci_repos.git_provider_id as "git_provider_id: _",
 			git_provider_repo_uid,
-			runner_id as "runner_id: _",
+			ci_workspace_repos.runner_id as "runner_id: _",
 			ci_workspace_repos.workspace_id as "workspace_id: _",
 			resource_id as "resource_id: _",
 			activated
@@ -212,7 +212,7 @@ pub async fn list_active_repos_for_runner(
 		ON
 			ci_workspace_repos.git_repo_id = ci_repos.git_provider_repo_uid
 		WHERE
-			runner_id = $1 AND
+			ci_workspace_repos.runner_id = $1 AND
 			ci_workspace_repos.activated = true;
 		"#,
 		runner_id as _,
