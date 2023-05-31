@@ -5,6 +5,7 @@ use api_models::{
 	utils::Uuid,
 };
 use eve_rs::AsError;
+use hmac::{Hmac, Mac};
 use octorust::{
 	auth::Credentials,
 	types::{
@@ -19,6 +20,7 @@ use octorust::{
 		ReposCreateCommitStatusRequest,
 	},
 };
+use sha2::Sha256;
 
 use super::MutableRepoValues;
 use crate::{
@@ -28,6 +30,32 @@ use crate::{
 	utils::Error,
 	Database,
 };
+
+type HmacSha256 = Hmac<Sha256>;
+
+/// Returns error if payload signature is different from header signature
+pub fn verify_github_payload_signature_256(
+	signature_from_header: &str,
+	payload: &impl AsRef<[u8]>,
+	configured_secret: &impl AsRef<[u8]>,
+) -> Result<(), Error> {
+	// strip the sha info in header prefix
+	let x_hub_signature = match signature_from_header.strip_prefix("sha256=") {
+		Some(sign) => sign,
+		None => signature_from_header,
+	};
+	let x_hub_signature = hex::decode(x_hub_signature)?;
+
+	// calculate the sha for payload data
+	let mut payload_signature =
+		HmacSha256::new_from_slice(configured_secret.as_ref())?;
+	payload_signature.update(payload.as_ref());
+
+	// verify the payload sign with header sign
+	payload_signature.verify_slice(&x_hub_signature)?;
+
+	Ok(())
+}
 
 pub async fn create_build_for_repo(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -313,21 +341,20 @@ pub async fn sync_github_repos(
 	installation_id: String,
 	request_id: &Uuid,
 ) -> Result<(), eve_rs::Error<()>> {
-	let repos_in_db =
-		db::list_ci_repos_for_user(connection, git_provider_id, user_id)
-			.await?
-			.into_iter()
-			.map(|repo| {
-				(
-					repo.git_provider_repo_uid,
-					MutableRepoValues {
-						repo_owner: repo.repo_owner,
-						repo_name: repo.repo_name,
-						repo_clone_url: repo.clone_url,
-					},
-				)
-			})
-			.collect::<HashMap<_, _>>();
+	let repos_in_db = db::list_ci_repos_for_user(connection, user_id)
+		.await?
+		.into_iter()
+		.map(|repo| {
+			(
+				repo.git_provider_repo_uid,
+				MutableRepoValues {
+					repo_owner: repo.repo_owner,
+					repo_name: repo.repo_name,
+					repo_clone_url: repo.clone_url,
+				},
+			)
+		})
+		.collect::<HashMap<_, _>>();
 
 	let github_client =
 		octorust::Client::new("patr", Credentials::Token(github_access_token))

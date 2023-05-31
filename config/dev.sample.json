@@ -100,7 +100,8 @@
 	},
 	"github": {
 		"clientId": "app-client-id",
-		"clientSecret": "app-client-secret"
+		"clientSecret": "app-client-secret",
+		"webhookSecret": "github-app-webhook-secret"
 	},
 	"stripe": {
 		"publishableKey": "pk_test_123",

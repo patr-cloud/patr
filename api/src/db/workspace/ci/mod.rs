@@ -49,12 +49,13 @@ pub struct Repository {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WorkspaceRepository {
 	pub resource_id: Uuid,
+	pub workspace_id: Uuid,
 	pub repo_owner: String,
 	pub repo_name: String,
 	pub clone_url: String,
 	pub git_provider_id: Uuid,
 	pub git_provider_repo_uid: String,
-	pub runner_id: Uuid,
+	pub runner_id: Option<Uuid>,
 	pub activated: bool,
 }
 
@@ -696,29 +697,27 @@ pub async fn update_repo_details_for_git_provider(
 
 pub async fn list_ci_repos_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	git_provider_id: &Uuid,
 	user_id: &Uuid,
 ) -> Result<Vec<Repository>, sqlx::Error> {
 	query_as!(
 		Repository,
 		r#"
 		SELECT
-			repo_owner,
-			repo_name,
-			clone_url,
-			ci_repos.git_provider_id as "git_provider_id: _",
-			git_provider_repo_uid
+			ci_repos.repo_owner,
+			ci_repos.repo_name,
+			ci_repos.clone_url,
+			ci_user_repos.git_provider_id as "git_provider_id: _",
+			ci_user_repos.git_repo_id as "git_provider_repo_uid: _"
 		FROM
-			ci_repos
-		LEFT JOIN
 			ci_user_repos
+		LEFT JOIN
+			ci_repos
 		ON
-			ci_user_repos.git_provider_id = ci_repos.git_provider_id
+			ci_user_repos.git_provider_id = ci_repos.git_provider_id AND
+			ci_repos.git_provider_repo_uid = ci_user_repos.git_repo_id
 		WHERE
-			ci_repos.git_provider_id = $1 AND
-			user_id = $2;
+			user_id = $1;
 		"#,
-		git_provider_id as _,
 		user_id as _,
 	)
 	.fetch_all(connection)
@@ -728,7 +727,6 @@ pub async fn list_ci_repos_for_user(
 pub async fn list_ci_repos_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	git_provider_id: &Uuid,
 ) -> Result<Vec<WorkspaceRepository>, sqlx::Error> {
 	query_as!(
 		WorkspaceRepository,
@@ -740,19 +738,19 @@ pub async fn list_ci_repos_for_workspace(
 			ci_repos.git_provider_id as "git_provider_id: _",
 			git_provider_repo_uid,
 			ci_workspace_repos.runner_id as "runner_id: _",
+			ci_workspace_repos.workspace_id as "workspace_id: _",
 			ci_workspace_repos.activated,
 			ci_workspace_repos.resource_id as "resource_id: _"
 		FROM
-			ci_repos
-		LEFT JOIN
 			ci_workspace_repos
+		LEFT JOIN
+			ci_repos
 		ON
-			ci_workspace_repos.git_provider_id = ci_repos.git_provider_id
+			ci_workspace_repos.git_provider_id = ci_repos.git_provider_id AND
+			ci_repos.git_provider_repo_uid = ci_workspace_repos.git_repo_id
 		WHERE
-			ci_repos.git_provider_id = $1 AND
-			workspace_id = $2;
+			workspace_id = $1;
 		"#,
-		git_provider_id as _,
 		workspace_id as _,
 	)
 	.fetch_all(connection)
@@ -771,14 +769,15 @@ pub async fn get_repo_details_using_github_uid_for_workspace(
 		WorkspaceRepository,
 		r#"
 		SELECT
-			repo_owner,
-			repo_name,
-			clone_url,
+			ci_repos.repo_owner,
+			ci_repos.repo_name,
+			ci_repos.clone_url,
 			ci_workspace_repos.git_provider_id as "git_provider_id: _",
-			ci_repos.git_provider_repo_uid as "git_provider_repo_uid: _",
+			ci_workspace_repos.git_repo_id as "git_provider_repo_uid: _",
 			ci_workspace_repos.activated,
 			ci_workspace_repos.resource_id as "resource_id: _",
-			ci_workspace_repos.runner_id as "runner_id: _"
+			ci_workspace_repos.runner_id as "runner_id: _",
+			ci_workspace_repos.workspace_id as "workspace_id: _"
 		FROM
 			ci_repos
 		LEFT JOIN
@@ -795,6 +794,39 @@ pub async fn get_repo_details_using_github_uid_for_workspace(
 			ci_git_provider.domain_name = 'github.com' AND
 			ci_git_provider.is_deleted = FALSE AND
 			ci_workspace_repos.deleted IS NULL;
+		"#,
+		workspace_id as _,
+		git_provider_repo_uid
+	)
+	.fetch_optional(connection)
+	.await
+}
+
+pub async fn get_repo_details_using_github_uid(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	git_provider_repo_uid: &str,
+) -> Result<Option<Repository>, sqlx::Error> {
+	query_as!(
+		Repository,
+		r#"
+		SELECT
+			repo_owner,
+			repo_name,
+			clone_url,
+			git_provider_id as "git_provider_id: _",
+			git_provider_repo_uid
+		FROM
+			ci_repos
+		INNER JOIN
+			ci_git_provider
+		ON
+			ci_git_provider.id = ci_repos.git_provider_id
+		WHERE
+			ci_git_provider.workspace_id = $1 AND
+			ci_repos.git_provider_repo_uid = $2 AND
+			ci_git_provider.domain_name = 'github.com' AND
+			ci_git_provider.is_deleted = FALSE;
 		"#,
 		workspace_id as _,
 		git_provider_repo_uid
@@ -852,6 +884,7 @@ pub async fn get_ci_repos_for_workspace(
 			git_provider_repo_uid,
 			runner_id as "runner_id: _",
 			ci_workspace_repos.activated,
+			ci_workspace_repos.workspace_id as "workspace_id: _",
 			ci_workspace_repos.resource_id as "resource_id: _"
 		FROM
 			ci_repos
@@ -985,6 +1018,7 @@ pub async fn get_repo_using_patr_repo_id(
 			ci_repos.git_provider_id as "git_provider_id: _",
 			ci_repos.git_provider_repo_uid,
 			runner_id as "runner_id: _",
+			ci_workspace_repos.workspace_id as "workspace_id: _",
 			resource_id as "resource_id: _",
 			activated
 		FROM
@@ -1002,6 +1036,38 @@ pub async fn get_repo_using_patr_repo_id(
 	.await
 }
 
+pub async fn get_repo_using_git_repo_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_id: &str,
+) -> Result<Option<WorkspaceRepository>, sqlx::Error> {
+	query_as!(
+		WorkspaceRepository,
+		r#"
+		SELECT
+			repo_owner,
+			repo_name,
+			clone_url,
+			ci_repos.git_provider_id as "git_provider_id: _",
+			ci_repos.git_provider_repo_uid,
+			runner_id as "runner_id: _",
+			ci_workspace_repos.workspace_id as "workspace_id: _",
+			resource_id as "resource_id: _",
+			activated
+		FROM
+			ci_repos
+		LEFT JOIN
+			ci_workspace_repos
+		ON
+			ci_workspace_repos.git_repo_id = ci_repos.git_provider_repo_uid
+		WHERE
+			git_repo_id = $1;
+		"#,
+		repo_id as _,
+	)
+	.fetch_optional(connection)
+	.await
+}
+
 pub async fn generate_new_build_for_repo(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repo_id: &Uuid,
@@ -1010,7 +1076,7 @@ pub async fn generate_new_build_for_repo(
 	author: Option<&str>,
 	git_commit_message: Option<&str>,
 	git_pr_title: Option<&str>,
-	runner_id: &Uuid,
+	runner_id: &Option<Uuid>,
 ) -> Result<i64, sqlx::Error> {
 	query!(
 		r#"

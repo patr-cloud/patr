@@ -202,6 +202,7 @@ pub async fn list_active_repos_for_runner(
 			ci_repos.git_provider_id as "git_provider_id: _",
 			git_provider_repo_uid,
 			runner_id as "runner_id: _",
+			ci_workspace_repos.workspace_id as "workspace_id: _",
 			resource_id as "resource_id: _",
 			activated
 		FROM

@@ -989,20 +989,17 @@ async fn list_user_repositories(
 	.await?
 	.status(500)?;
 
-	let repos = db::list_ci_repos_for_user(
-		context.get_database_connection(),
-		&git_provider.id,
-		&user_id,
-	)
-	.await?
-	.into_iter()
-	.map(|repo| RepositoryDetails {
-		id: repo.git_provider_repo_uid,
-		name: repo.repo_name,
-		repo_owner: repo.repo_owner,
-		clone_url: repo.clone_url,
-	})
-	.collect();
+	let repos =
+		db::list_ci_repos_for_user(context.get_database_connection(), &user_id)
+			.await?
+			.into_iter()
+			.map(|repo| RepositoryDetails {
+				id: repo.git_provider_repo_uid,
+				name: repo.repo_name,
+				repo_owner: repo.repo_owner,
+				clone_url: repo.clone_url,
+			})
+			.collect::<Vec<_>>();
 
 	context.success(ListUserReposResponse { repos });
 	Ok(context)
@@ -1021,19 +1018,9 @@ async fn list_workspace_repositories(
 
 	log::trace!("request_id: {request_id} - Listing github repos for workspace {workspace_id}");
 
-	let git_provider = db::get_git_provider_details_for_workspace_using_domain(
-		context.get_database_connection(),
-		&workspace_id,
-		&user_id,
-		"github.com",
-	)
-	.await?
-	.status(500)?;
-
 	let repos = db::list_ci_repos_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		&git_provider.id,
 	)
 	.await?
 	.into_iter()
@@ -1151,9 +1138,9 @@ async fn add_repo_to_workspace(
 			.unwrap();
 	let repo_id = context.get_param(request_keys::REPO_ID).unwrap().clone();
 
-	log::trace!("request_id: {request_id} - Activating CI for repo {repo_id}");
+	log::trace!("request_id: {request_id} - Adding CI repo {repo_id} to workspace {workspace_id}");
 
-	let repo = db::get_repo_details_using_github_uid_for_workspace(
+	let repo = db::get_repo_details_using_github_uid(
 		context.get_database_connection(),
 		&workspace_id,
 		&repo_id,
@@ -1161,12 +1148,16 @@ async fn add_repo_to_workspace(
 	.await?
 	.status(500)?;
 
+	log::trace!("test 1");
+
 	db::get_git_provider_details_by_id(
 		context.get_database_connection(),
 		&repo.git_provider_id,
 	)
 	.await?
 	.status(500)?;
+
+	log::trace!("test 2");
 
 	let resource_id =
 		db::generate_new_resource_id(context.get_database_connection()).await?;

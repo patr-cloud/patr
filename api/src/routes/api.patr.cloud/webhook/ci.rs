@@ -38,7 +38,7 @@ pub fn create_sub_app(
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.post(
-		"/repo/:repoId",
+		"/repo",
 		[EveMiddleware::CustomFunction(pin_fn!(
 			handle_ci_hooks_for_repo
 		))],
@@ -51,15 +51,12 @@ async fn handle_ci_hooks_for_repo(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	println!("\n\n*********************************webhook triggered*********************************\n\n");
 	let request_id = Uuid::new_v4();
-	let repo_id =
-		Uuid::parse_str(context.get_param(request_keys::REPO_ID).unwrap())
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	log::trace!(
-		"request_id: {request_id} - Processing ci webhook for repo {repo_id}"
-	);
+	let config = context.get_state().config.clone();
+
+	log::trace!("request_id: {request_id} - Got github event webhook");
 
 	// TODO: github is giving timeout status in webhooks settings for our
 	// endpoint its better to process the payload in the message/event queue
@@ -74,14 +71,43 @@ async fn handle_ci_hooks_for_repo(
 		}
 	};
 
+	// validate the payload data signature
+	let signature_in_header = context
+		.get_header(request_keys::X_HUB_SIGNATURE_256)
+		.status(400)?;
+
+	service::verify_github_payload_signature_256(
+		&signature_in_header,
+		&context.get_request().get_body_bytes(),
+		&config.github.webhook_secret,
+	)
+	.ok()
+	.status(400)?;
+
 	// handle github ping events
 	if event.eq_ignore_ascii_case("ping") {
 		return Ok(context);
 	}
 
-	let repo = match db::get_repo_using_patr_repo_id(
+	let event = context.get_body_as::<Event>()?;
+
+	let repo_id = match &event {
+		Event::Push(push) => push.repository.id.clone(),
+		Event::PullRequestOpened(pull_req_opened) => {
+			pull_req_opened.repository.id.clone()
+		}
+		Event::PullRequestSynchronize(pull_req_sync) => {
+			pull_req_sync.repository.id.clone()
+		}
+	};
+
+	log::trace!(
+		"request_id: {request_id} - Processing ci webhook for repo {repo_id}"
+	);
+
+	let repo = match db::get_repo_using_git_repo_id(
 		context.get_database_connection(),
-		&repo_id,
+		&repo_id.to_string(),
 	)
 	.await?
 	{
@@ -94,10 +120,16 @@ async fn handle_ci_hooks_for_repo(
 		}
 	};
 
-	let event = context.get_body_as::<Event>()?;
+	println!(
+		"repo with id = {} and workspace = {}",
+		repo.git_provider_repo_uid, repo.workspace_id
+	);
 
 	let event_type = match event {
 		Event::Push(pushed) => {
+			println!(
+				"\n\n******************push event triggered*****************"
+			);
 			if pushed.after == "0000000000000000000000000000000000000000" {
 				// push event is triggered for delete branch and delete tag
 				// with empty commit sha, skip those events
@@ -297,7 +329,7 @@ async fn handle_ci_hooks_for_repo(
 	service::update_github_commit_status_for_build(
 		context.get_database_connection(),
 		&git_provider.workspace_id,
-		&repo_id,
+		&repo.resource_id,
 		build_num,
 		CommitStatus::Running,
 	)

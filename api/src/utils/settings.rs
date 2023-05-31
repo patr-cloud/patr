@@ -291,6 +291,8 @@ pub struct GithubSettings {
 	pub client_id: String,
 	#[serde(alias = "clientsecret")]
 	pub client_secret: String,
+	#[serde(alias = "webhooksecret")]
+	pub webhook_secret: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
