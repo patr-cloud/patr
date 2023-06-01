@@ -77,7 +77,7 @@ pub mod permissions {
 			}
 		}
 
-		pub mod docker_registry {
+		pub mod container_registry {
 			pub const CREATE: &str = "workspace::containerRegistry::create";
 			pub const LIST: &str = "workspace::containerRegistry::list";
 			pub const DELETE: &str = "workspace::containerRegistry::delete";
