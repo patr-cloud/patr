@@ -107,6 +107,8 @@ pub mod permissions {
 			pub const CHECK_STATUS: &str = "workspace::region::checkStatus";
 			pub const ADD: &str = "workspace::region::add";
 			pub const DELETE: &str = "workspace::region::delete";
+
+			pub const LOKI_PUSH: &str = "workspace::region::loki_push";
 		}
 
 		pub mod ci {

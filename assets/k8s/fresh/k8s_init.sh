@@ -8,6 +8,7 @@ PARENT_WORKSPACE_ID=${2:?"Missing parameter: PARENT_WORKSPACE_ID"}
 KUBECONFIG_PATH=${3:?"Missing parameter: KUBECONFIG_PATH"}
 TLS_CERT_PATH=${4:?"Missing parameter: TLS_CERT_PATH"}
 TLS_KEY_PATH=${5:?"Missing parameter: TLS_KEY_PATH"}
+LOKI_API_TOKEN=${6:?"Missing parameter: LOKI_API_TOKEN, provide '-' if don't want to enable logs"}
 
 # validate input values
 if [ ! -f $KUBECONFIG_PATH ]; then
@@ -45,6 +46,8 @@ kubectl create secret tls $DEFAULT_CERT_NAME \
     --namespace ingress-nginx \
     --dry-run=client -o yaml | kubectl apply -f -
 
+# TODO: check whether helm upgrade changes nginx IP or not,
+# else it will cause problems
 echo "Installing nginx as ingress for cluster"
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
     --namespace ingress-nginx --create-namespace \
@@ -57,6 +60,26 @@ kubectl wait --namespace ingress-nginx --for=condition=ready pod \
     --selector=app.kubernetes.io/component=controller --timeout=-1s > /dev/null
 
 echo "Ingress controller is ready"
+
+if [ $LOKI_API_TOKEN != '-' ]; then
+    echo "Installing promtail for logs"
+    helm upgrade --install promtail grafana/promtail --namespace promtail --create-namespace -f - <<EOF
+config:
+  clients:
+    - url: http://loki.patr.cloud/loki/api/v1/push
+      basic_auth:
+        username: $CLUSTER_ID
+        password: $LOKI_API_TOKEN
+  snippets:
+    extraRelabelConfigs:
+      - source_labels: [namespace]
+        regex: "[a-f0-9]{32}"
+        action: keep
+      - action: drop
+EOF
+else
+    echo "Skipped promtail installation"
+fi
 
 echo "Creating parent workspace in new cluster"
 kubectl create namespace "$PARENT_WORKSPACE_ID" \
