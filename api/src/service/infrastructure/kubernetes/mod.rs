@@ -5,6 +5,7 @@ mod workspace;
 
 pub mod ext_traits;
 
+use eve_rs::Error as _;
 use k8s_openapi::api::core::v1::Service;
 use kube::{config::Kubeconfig, Api, Config};
 use url::Host;

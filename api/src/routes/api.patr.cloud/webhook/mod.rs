@@ -6,6 +6,7 @@ use api_models::{
 };
 use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use reqwest::header::HeaderName;
 use serde_json::json;
 
 use crate::{
@@ -18,13 +19,7 @@ use crate::{
 	},
 	pin_fn,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 /// # Description
@@ -43,7 +38,7 @@ use crate::{
 /// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.post(
@@ -77,7 +72,7 @@ pub fn create_sub_app(
 /// [`Deployment`]: Deployment
 async fn notification_handler(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -93,7 +88,7 @@ async fn notification_handler(
 		// Put the different "content-type" header and body in the queue and log
 		// the message there
 		service::queue_docker_notification_error(
-			&context.get_body()?,
+			&context.get_body().await?,
 			context.get_content_type().as_str(),
 			&request_id,
 		)
@@ -106,16 +101,19 @@ async fn notification_handler(
 		"request_id: {} - Checking the Authorization header",
 		request_id
 	);
-	let custom_header = context.get_header("Authorization").status(400).body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::UNAUTHORIZED,
-				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_NOT_FOUND,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
+	let custom_header = context
+		.get_header(HeaderName::from_static("Authorization"))
+		.status(400)
+		.body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_NOT_FOUND,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)?;
 
 	let config = context.get_state().config.clone();
 	log::trace!(
@@ -135,7 +133,7 @@ async fn notification_handler(
 		)?;
 	}
 
-	let body = context.get_body()?;
+	let body = context.get_body().await?;
 	let events: EventData = serde_json::from_str(&body)?;
 
 	// check if the event is a push event

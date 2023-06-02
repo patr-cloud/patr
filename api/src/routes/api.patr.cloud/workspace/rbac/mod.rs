@@ -14,13 +14,7 @@ use crate::{
 	error,
 	models::rbac,
 	pin_fn,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 mod role;
@@ -42,7 +36,7 @@ mod user;
 /// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.use_sub_app("/user", user::create_sub_app(app));
@@ -81,7 +75,7 @@ pub fn create_sub_app(
 
 async fn get_all_permissions(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context
 		.get_param(request_keys::WORKSPACE_ID)
@@ -113,13 +107,15 @@ async fn get_all_permissions(
 			})
 			.collect();
 
-	context.success(ListAllPermissionsResponse { permissions });
+	context
+		.success(ListAllPermissionsResponse { permissions })
+		.await?;
 	Ok(context)
 }
 
 async fn get_all_resource_types(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context
 		.get_param(request_keys::WORKSPACE_ID)
@@ -151,13 +147,15 @@ async fn get_all_resource_types(
 			})
 			.collect();
 
-	context.success(ListAllResourceTypesResponse { resource_types });
+	context
+		.success(ListAllResourceTypesResponse { resource_types })
+		.await?;
 	Ok(context)
 }
 
 async fn get_current_permissions(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
@@ -173,6 +171,8 @@ async fn get_current_permissions(
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?
 		.clone();
 
-	context.success(GetCurrentPermissionsResponse { permissions });
+	context
+		.success(GetCurrentPermissionsResponse { permissions })
+		.await?;
 	Ok(context)
 }

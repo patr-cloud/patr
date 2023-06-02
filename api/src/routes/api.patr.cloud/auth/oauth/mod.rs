@@ -4,7 +4,7 @@ use eve_rs::App as EveApp;
 
 use crate::{
 	app::{create_eve_app, App},
-	utils::{ErrorData, EveContext, EveMiddleware},
+	utils::{Error, EveContext, EveMiddleware},
 };
 
 /// # Description
@@ -25,7 +25,7 @@ use crate::{
 /// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.use_sub_app("/github", github::create_sub_app(app));

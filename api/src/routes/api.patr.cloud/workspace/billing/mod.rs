@@ -35,7 +35,7 @@ use api_models::{
 	utils::{DateTime, Uuid},
 };
 use chrono::{Duration, TimeZone, Utc};
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, Error as _, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
@@ -45,13 +45,7 @@ use crate::{
 	pin_fn,
 	redis,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 /// # Description
@@ -72,7 +66,7 @@ use crate::{
 /// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.post(
@@ -95,8 +89,9 @@ pub fn create_sub_app(
 					.await?;
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 					Ok((context, resource))
 				}),
@@ -127,8 +122,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -160,8 +156,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -193,8 +190,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -226,8 +224,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -259,8 +258,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -292,8 +292,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -325,8 +326,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -358,8 +360,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -390,8 +393,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -422,8 +426,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -454,8 +459,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -486,8 +492,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -518,8 +525,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -550,8 +558,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -582,8 +591,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -598,7 +608,7 @@ pub fn create_sub_app(
 
 async fn add_billing_address(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let AddBillingAddressRequest {
 		address_details, ..
@@ -620,7 +630,7 @@ async fn add_billing_address(
 	)
 	.await?;
 
-	context.success(AddBillingAddressResponse {});
+	context.success(AddBillingAddressResponse {}).await?;
 	Ok(context)
 }
 
@@ -666,7 +676,7 @@ async fn add_billing_address(
 /// [`NextHandler`]: NextHandler
 async fn update_billing_address(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let UpdateBillingAddressRequest {
 		address_details, ..
@@ -687,13 +697,13 @@ async fn update_billing_address(
 		.await?;
 	}
 
-	context.success(UpdateBillingAddressResponse {});
+	context.success(UpdateBillingAddressResponse {}).await?;
 	Ok(context)
 }
 
 async fn delete_billing_address(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
@@ -718,7 +728,7 @@ async fn delete_billing_address(
 		&billing_address_id,
 	)
 	.await?;
-	context.success(DeleteBillingAddressResponse {});
+	context.success(DeleteBillingAddressResponse {}).await?;
 	Ok(context)
 }
 
@@ -782,7 +792,7 @@ async fn delete_billing_address(
 /// [`NextHandler`]: NextHandler
 async fn get_payment_method(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
@@ -804,7 +814,9 @@ async fn get_payment_method(
 	})
 	.collect();
 
-	context.success(GetPaymentMethodResponse { list: card_details });
+	context
+		.success(GetPaymentMethodResponse { list: card_details })
+		.await?;
 	Ok(context)
 }
 
@@ -835,7 +847,7 @@ async fn get_payment_method(
 /// [`NextHandler`]: NextHandler
 async fn add_payment_method(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
@@ -861,16 +873,18 @@ async fn add_payment_method(
 	)
 	.await?;
 
-	context.success(AddPaymentMethodResponse {
-		client_secret,
-		payment_intent_id: payment_intent.id.to_string(),
-	});
+	context
+		.success(AddPaymentMethodResponse {
+			client_secret,
+			payment_intent_id: payment_intent.id.to_string(),
+		})
+		.await?;
 	Ok(context)
 }
 
 async fn delete_payment_method(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
@@ -894,13 +908,13 @@ async fn delete_payment_method(
 		&config,
 	)
 	.await?;
-	context.success(DeletePaymentMethodResponse {});
+	context.success(DeletePaymentMethodResponse {}).await?;
 	Ok(context)
 }
 
 async fn confirm_payment_method(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
@@ -944,13 +958,13 @@ async fn confirm_payment_method(
 	)
 	.await?;
 
-	context.success(ConfirmPaymentMethodResponse {});
+	context.success(ConfirmPaymentMethodResponse {}).await?;
 	Ok(context)
 }
 
 async fn set_primary_card(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
@@ -977,13 +991,13 @@ async fn set_primary_card(
 		&payment_method_id,
 	)
 	.await?;
-	context.success(ConfirmPaymentMethodResponse {});
+	context.success(ConfirmPaymentMethodResponse {}).await?;
 	Ok(context)
 }
 
 async fn get_billing_address(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
@@ -1018,13 +1032,15 @@ async fn get_billing_address(
 	} else {
 		None
 	};
-	context.success(GetBillingAddressResponse { address });
+	context
+		.success(GetBillingAddressResponse { address })
+		.await?;
 	Ok(context)
 }
 
 async fn add_credits(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
@@ -1047,16 +1063,18 @@ async fn add_credits(
 	)
 	.await?;
 
-	context.success(AddCreditsResponse {
-		transaction_id,
-		client_secret,
-	});
+	context
+		.success(AddCreditsResponse {
+			transaction_id,
+			client_secret,
+		})
+		.await?;
 	Ok(context)
 }
 
 async fn confirm_credits(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
@@ -1079,11 +1097,11 @@ async fn confirm_credits(
 
 	match transaction.payment_status {
 		PaymentStatus::Success => {
-			context.success(ConfirmCreditsResponse {});
+			context.success(ConfirmCreditsResponse {}).await?;
 			return Ok(context);
 		}
 		PaymentStatus::Failed => {
-			context.json(error!(PAYMENT_FAILED));
+			context.json(error!(PAYMENT_FAILED)).await?;
 			return Ok(context);
 		}
 		PaymentStatus::Pending => {
@@ -1130,9 +1148,9 @@ async fn confirm_credits(
 			.await?;
 		}
 
-		context.success(ConfirmCreditsResponse {});
+		context.success(ConfirmCreditsResponse {}).await?;
 	} else {
-		context.json(error!(PAYMENT_FAILED));
+		context.json(error!(PAYMENT_FAILED)).await?;
 	}
 
 	Ok(context)
@@ -1140,7 +1158,7 @@ async fn confirm_credits(
 
 async fn make_payment(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
@@ -1164,16 +1182,18 @@ async fn make_payment(
 	)
 	.await?;
 
-	context.success(MakePaymentResponse {
-		transaction_id,
-		client_secret,
-	});
+	context
+		.success(MakePaymentResponse {
+			transaction_id,
+			client_secret,
+		})
+		.await?;
 	Ok(context)
 }
 
 async fn confirm_payment(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
@@ -1196,11 +1216,11 @@ async fn confirm_payment(
 
 	match transaction.payment_status {
 		PaymentStatus::Success => {
-			context.success(ConfirmPaymentResponse {});
+			context.success(ConfirmPaymentResponse {}).await?;
 			return Ok(context);
 		}
 		PaymentStatus::Failed => {
-			context.json(error!(PAYMENT_FAILED));
+			context.json(error!(PAYMENT_FAILED)).await?;
 			return Ok(context);
 		}
 		PaymentStatus::Pending => {
@@ -1223,9 +1243,9 @@ async fn confirm_payment(
 			&transaction_id,
 		)
 		.await?;
-		context.success(ConfirmPaymentResponse {});
+		context.success(ConfirmPaymentResponse {}).await?;
 	} else {
-		context.json(error!(PAYMENT_FAILED));
+		context.json(error!(PAYMENT_FAILED)).await?;
 	}
 
 	Ok(context)
@@ -1233,7 +1253,7 @@ async fn confirm_payment(
 
 async fn get_current_bill(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
@@ -1256,15 +1276,17 @@ async fn get_current_bill(
 		)
 		.await?;
 
-	context.success(GetCurrentUsageResponse {
-		current_usage: current_month_bill_so_far + leftover_credits_or_due,
-	});
+	context
+		.success(GetCurrentUsageResponse {
+			current_usage: current_month_bill_so_far + leftover_credits_or_due,
+		})
+		.await?;
 	Ok(context)
 }
 
 async fn get_bill_breakdown(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -1310,13 +1332,13 @@ async fn get_bill_breakdown(
 	)
 	.await?;
 
-	context.success(GetBillBreakdownResponse { bill });
+	context.success(GetBillBreakdownResponse { bill }).await?;
 	Ok(context)
 }
 
 async fn get_transaction_history(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
@@ -1340,7 +1362,9 @@ async fn get_transaction_history(
 	})
 	.collect();
 
-	context.success(GetTransactionHistoryResponse { transactions });
+	context
+		.success(GetTransactionHistoryResponse { transactions })
+		.await?;
 
 	Ok(context)
 }

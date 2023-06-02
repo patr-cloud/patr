@@ -17,18 +17,12 @@ use crate::{
 	error,
 	models::rbac::{self, permissions},
 	pin_fn,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.use_sub_app("/git-provider", git_provider::create_sub_app(app));
@@ -65,8 +59,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -81,7 +76,7 @@ pub fn create_sub_app(
 
 async fn get_all_build_machine_types(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context
 		.get_param(request_keys::WORKSPACE_ID)
@@ -106,15 +101,17 @@ async fn get_all_build_machine_types(
 		db::get_all_build_machine_types(context.get_database_connection())
 			.await?;
 
-	context.success(ListAllBuildMachineTypesResponse {
-		build_machine_types,
-	});
+	context
+		.success(ListAllBuildMachineTypesResponse {
+			build_machine_types,
+		})
+		.await?;
 	Ok(context)
 }
 
 async fn get_recent_activity_for_ci(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -128,8 +125,10 @@ async fn get_recent_activity_for_ci(
 	)
 	.await?;
 
-	context.success(GetRecentActivityResponse {
-		activities: activity,
-	});
+	context
+		.success(GetRecentActivityResponse {
+			activities: activity,
+		})
+		.await?;
 	Ok(context)
 }

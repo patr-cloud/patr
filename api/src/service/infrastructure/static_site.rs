@@ -337,7 +337,7 @@ pub async fn update_cloudflare_running_upload(
 			"request_id: {} - Error while deploying site `{}`: {}",
 			request_id,
 			static_site_id,
-			err.get_error()
+			err
 		);
 		DeploymentStatus::Errored
 	} else {

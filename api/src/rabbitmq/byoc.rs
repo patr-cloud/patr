@@ -192,7 +192,7 @@ pub(super) async fn process_request(
 				Err(err) => {
 					log::info!(
 						"Error while getting hostname for ingress - {}",
-						err.get_error()
+						err
 					);
 					log::info!("So marking the cluster {region_id} as errored");
 					db::set_region_as_errored(connection, &region_id).await?;

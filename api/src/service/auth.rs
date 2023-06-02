@@ -11,7 +11,7 @@ use api_models::{
 	utils::{DateTime, ResourceType, Uuid},
 };
 use chrono::{Datelike, Duration, Utc};
-use eve_rs::AsError;
+use eve_rs::{AsError, Error as _};
 use reqwest::Client;
 
 use super::get_ip_address_info;

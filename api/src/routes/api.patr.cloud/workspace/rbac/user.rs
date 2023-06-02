@@ -19,13 +19,7 @@ use crate::{
 	pin_fn,
 	redis::revoke_user_tokens_created_before_timestamp,
 	service::get_access_token_expiry,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 /// # Description
@@ -44,7 +38,7 @@ use crate::{
 /// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut sub_app = create_eve_app(app);
 
 	// List all users with their roles in this workspace
@@ -68,8 +62,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -103,8 +98,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -135,8 +131,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -169,8 +166,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -185,7 +183,7 @@ pub fn create_sub_app(
 
 async fn list_users_with_roles_in_workspace(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id)?;
@@ -198,13 +196,15 @@ async fn list_users_with_roles_in_workspace(
 	.into_iter()
 	.collect();
 
-	context.success(ListUsersWithRolesInWorkspaceResponse { users });
+	context
+		.success(ListUsersWithRolesInWorkspaceResponse { users })
+		.await?;
 	Ok(context)
 }
 
 async fn add_user_to_workspace(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id)?;
@@ -234,13 +234,13 @@ async fn add_user_to_workspace(
 	)
 	.await?;
 
-	context.success(AddUserToWorkspaceResponse {});
+	context.success(AddUserToWorkspaceResponse {}).await?;
 	Ok(context)
 }
 
 async fn update_user_roles_for_workspace(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -283,13 +283,13 @@ async fn update_user_roles_for_workspace(
 	)
 	.await?;
 
-	context.success(AddUserToWorkspaceResponse {});
+	context.success(AddUserToWorkspaceResponse {}).await?;
 	Ok(context)
 }
 
 async fn remove_user_from_workspace(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -327,6 +327,6 @@ async fn remove_user_from_workspace(
 	)
 	.await?;
 
-	context.success(RemoveUserFromWorkspaceResponse {});
+	context.success(RemoveUserFromWorkspaceResponse {}).await?;
 	Ok(context)
 }

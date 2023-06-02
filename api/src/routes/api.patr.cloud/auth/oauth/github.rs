@@ -11,9 +11,9 @@ use api_models::{
 	},
 	utils::{Personal, True},
 };
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, Error as _, NextHandler};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
-use reqwest::header;
+use reqwest::header::{self, HeaderName};
 use url::Url;
 
 use crate::{
@@ -24,13 +24,7 @@ use crate::{
 	pin_fn,
 	routes,
 	service,
-	utils::{
-		constants::github_oauth,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::github_oauth, Error, EveContext, EveMiddleware},
 };
 
 /// # Description
@@ -48,7 +42,7 @@ use crate::{
 /// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut app = create_eve_app(app);
 
 	app.post(
@@ -67,7 +61,7 @@ pub fn create_sub_app(
 
 async fn authorize_with_github(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let state = thread_rng()
 		.sample_iter(&Alphanumeric)
@@ -84,26 +78,28 @@ async fn authorize_with_github(
 		) // 5 minutes
 		.await?;
 
-	context.success(GithubAuthorizeResponse {
-		oauth_url: Url::parse_with_params(
-			github_oauth::AUTH_URL,
-			&[
-				(
-					"client_id",
-					context.get_state().config.github.client_id.as_str(),
-				),
-				("scope", github_oauth::SCOPE),
-				("state", state.as_str()),
-			],
-		)?
-		.to_string(),
-	});
+	context
+		.success(GithubAuthorizeResponse {
+			oauth_url: Url::parse_with_params(
+				github_oauth::AUTH_URL,
+				&[
+					(
+						"client_id",
+						context.get_state().config.github.client_id.as_str(),
+					),
+					("scope", github_oauth::SCOPE),
+					("state", state.as_str()),
+				],
+			)?
+			.to_string(),
+		})
+		.await?;
 	Ok(context)
 }
 
 async fn oauth_callback(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let GithubOAuthCallbackRequest {
 		code,
@@ -187,7 +183,9 @@ async fn oauth_callback(
 
 	let response = if let Some(user) = existing_user {
 		let ip_address = routes::get_request_ip_address(&context);
-		let user_agent = context.get_header("user-agent").unwrap_or_default();
+		let user_agent = context
+			.get_header(HeaderName::from_static("user-agent"))
+			.unwrap_or_default();
 		let config = context.get_state().config.clone();
 		log::trace!("Get access token for user sign in");
 		let (UserWebLogin { login_id, .. }, access_token, refresh_token) =
@@ -265,6 +263,6 @@ async fn oauth_callback(
 		}
 	};
 
-	context.success(response);
+	context.success(response).await?;
 	Ok(context)
 }

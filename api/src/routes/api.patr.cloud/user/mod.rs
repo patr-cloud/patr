@@ -43,13 +43,7 @@ use crate::{
 	error,
 	pin_fn,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 mod api_token;
@@ -71,7 +65,7 @@ mod login;
 /// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.get(
@@ -271,7 +265,7 @@ pub fn create_sub_app(
 /// [`NextHandler`]: NextHandler
 async fn get_user_info(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 	let User {
@@ -332,23 +326,25 @@ async fn get_user_info(
 	})
 	.collect::<Vec<_>>();
 
-	context.success(GetUserInfoResponse {
-		basic_user_info: BasicUserInfo {
-			id,
-			username,
-			first_name,
-			last_name,
-			bio,
-			location,
-		},
-		birthday: dob.map(DateTime),
-		is_password_set: !password.is_empty(),
-		created: DateTime(created),
-		recovery_email,
-		secondary_emails,
-		recovery_phone_number,
-		secondary_phone_numbers,
-	});
+	context
+		.success(GetUserInfoResponse {
+			basic_user_info: BasicUserInfo {
+				id,
+				username,
+				first_name,
+				last_name,
+				bio,
+				location,
+			},
+			birthday: dob.map(DateTime),
+			is_password_set: !password.is_empty(),
+			created: DateTime(created),
+			recovery_email,
+			secondary_emails,
+			recovery_phone_number,
+			secondary_phone_numbers,
+		})
+		.await?;
 	Ok(context)
 }
 
@@ -391,7 +387,7 @@ async fn get_user_info(
 /// [`NextHandler`]: NextHandler
 async fn get_user_info_by_user_id(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let user_id = context
 		.get_param(request_keys::USER_ID)
@@ -412,16 +408,18 @@ async fn get_user_info_by_user_id(
 		.status(400)
 		.body(error!(PROFILE_NOT_FOUND).to_string())?;
 
-	context.success(GetUserInfoByUserIdResponse {
-		basic_user_info: BasicUserInfo {
-			id,
-			username,
-			first_name,
-			last_name,
-			location,
-			bio,
-		},
-	});
+	context
+		.success(GetUserInfoByUserIdResponse {
+			basic_user_info: BasicUserInfo {
+				id,
+				username,
+				first_name,
+				last_name,
+				location,
+				bio,
+			},
+		})
+		.await?;
 	Ok(context)
 }
 
@@ -460,7 +458,7 @@ async fn get_user_info_by_user_id(
 /// [`NextHandler`]: NextHandler
 async fn update_user_info(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let UpdateUserInfoRequest {
 		first_name,
@@ -506,7 +504,7 @@ async fn update_user_info(
 	)
 	.await?;
 
-	context.success(UpdateUserInfoResponse {});
+	context.success(UpdateUserInfoResponse {}).await?;
 	Ok(context)
 }
 
@@ -541,7 +539,7 @@ async fn update_user_info(
 /// [`NextHandler`]: NextHandler
 async fn add_email_address(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let AddPersonalEmailRequest { email } =
 		context
@@ -562,7 +560,7 @@ async fn add_email_address(
 	)
 	.await?;
 
-	context.success(AddPersonalEmailResponse {});
+	context.success(AddPersonalEmailResponse {}).await?;
 	Ok(context)
 }
 
@@ -593,7 +591,7 @@ async fn add_email_address(
 /// [`NextHandler`]: NextHandler
 async fn list_email_addresses(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 
@@ -618,10 +616,12 @@ async fn list_email_addresses(
 	})
 	.collect::<Vec<_>>();
 
-	context.success(ListPersonalEmailsResponse {
-		recovery_email,
-		secondary_emails,
-	});
+	context
+		.success(ListPersonalEmailsResponse {
+			recovery_email,
+			secondary_emails,
+		})
+		.await?;
 	Ok(context)
 }
 
@@ -656,7 +656,7 @@ async fn list_email_addresses(
 /// [`NextHandler`]: NextHandler
 async fn list_phone_numbers(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 
@@ -681,10 +681,12 @@ async fn list_phone_numbers(
 	})
 	.collect::<Vec<_>>();
 
-	context.success(ListPhoneNumbersResponse {
-		recovery_phone_number,
-		secondary_phone_numbers,
-	});
+	context
+		.success(ListPhoneNumbersResponse {
+			recovery_phone_number,
+			secondary_phone_numbers,
+		})
+		.await?;
 	Ok(context)
 }
 
@@ -719,7 +721,7 @@ async fn list_phone_numbers(
 /// [`NextHandler`]: NextHandler
 async fn update_recovery_email_address(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let UpdateRecoveryEmailRequest { recovery_email } = context
 		.get_body_as()
@@ -736,7 +738,7 @@ async fn update_recovery_email_address(
 	)
 	.await?;
 
-	context.success(UpdateRecoveryEmailResponse {});
+	context.success(UpdateRecoveryEmailResponse {}).await?;
 	Ok(context)
 }
 
@@ -772,7 +774,7 @@ async fn update_recovery_email_address(
 /// [`NextHandler`]: NextHandler
 async fn update_recovery_phone_number(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let UpdateRecoveryPhoneNumberRequest {
 		recovery_phone_country_code,
@@ -793,7 +795,9 @@ async fn update_recovery_phone_number(
 	)
 	.await?;
 
-	context.success(UpdateRecoveryPhoneNumberResponse {});
+	context
+		.success(UpdateRecoveryPhoneNumberResponse {})
+		.await?;
 	Ok(context)
 }
 
@@ -828,7 +832,7 @@ async fn update_recovery_phone_number(
 /// [`NextHandler`]: NextHandler
 async fn delete_personal_email_address(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let DeletePersonalEmailRequest { email } = context
 		.get_body_as()
@@ -845,7 +849,7 @@ async fn delete_personal_email_address(
 	)
 	.await?;
 
-	context.success(DeletePersonalEmailResponse {});
+	context.success(DeletePersonalEmailResponse {}).await?;
 	Ok(context)
 }
 
@@ -881,7 +885,7 @@ async fn delete_personal_email_address(
 /// [`NextHandler`]: NextHandler
 async fn add_phone_number_for_user(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let AddPhoneNumberRequest {
 		country_code,
@@ -910,7 +914,7 @@ async fn add_phone_number_for_user(
 	)
 	.await?;
 
-	context.success(AddPhoneNumberResponse {});
+	context.success(AddPhoneNumberResponse {}).await?;
 	Ok(context)
 }
 
@@ -947,7 +951,7 @@ async fn add_phone_number_for_user(
 /// [`NextHandler`]: NextHandler
 async fn verify_phone_number(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let VerifyPhoneNumberRequest {
 		country_code,
@@ -971,7 +975,7 @@ async fn verify_phone_number(
 	)
 	.await?;
 
-	context.success(VerifyPhoneNumberResponse {});
+	context.success(VerifyPhoneNumberResponse {}).await?;
 	Ok(context)
 }
 
@@ -1007,7 +1011,7 @@ async fn verify_phone_number(
 /// [`NextHandler`]: NextHandler
 async fn delete_phone_number(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let DeletePhoneNumberRequest {
 		country_code,
@@ -1029,7 +1033,7 @@ async fn delete_phone_number(
 	)
 	.await?;
 
-	context.success(DeletePhoneNumberResponse {});
+	context.success(DeletePhoneNumberResponse {}).await?;
 	Ok(context)
 }
 
@@ -1065,7 +1069,7 @@ async fn delete_phone_number(
 /// [`NextHandler`]: NextHandler
 async fn verify_email_address(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let VerifyPersonalEmailRequest {
 		email,
@@ -1086,7 +1090,7 @@ async fn verify_email_address(
 	)
 	.await?;
 
-	context.success(VerifyPersonalEmailResponse {});
+	context.success(VerifyPersonalEmailResponse {}).await?;
 	Ok(context)
 }
 
@@ -1127,7 +1131,7 @@ async fn verify_email_address(
 /// [`NextHandler`]: NextHandler
 async fn get_workspaces_for_user(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 	let workspaces = db::get_all_workspaces_for_user(
@@ -1147,7 +1151,9 @@ async fn get_workspaces_for_user(
 	})
 	.collect::<Vec<_>>();
 
-	context.success(ListUserWorkspacesResponse { workspaces });
+	context
+		.success(ListUserWorkspacesResponse { workspaces })
+		.await?;
 	Ok(context)
 }
 
@@ -1182,7 +1188,7 @@ async fn get_workspaces_for_user(
 /// [`NextHandler`]: NextHandler
 async fn change_password(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let ChangePasswordRequest {
 		current_password,
@@ -1207,13 +1213,13 @@ async fn change_password(
 	)
 	.await?;
 
-	context.success(ChangePasswordResponse {});
+	context.success(ChangePasswordResponse {}).await?;
 	Ok(context)
 }
 
 async fn search_for_user(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let SearchForUserRequest { query } = context
 		.get_query_as()
@@ -1229,6 +1235,6 @@ async fn search_for_user(
 	let users =
 		db::search_for_users(context.get_database_connection(), &query).await?;
 
-	context.success(SearchForUserResponse { users });
+	context.success(SearchForUserResponse { users }).await?;
 	Ok(context)
 }

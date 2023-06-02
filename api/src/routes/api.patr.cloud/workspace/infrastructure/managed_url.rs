@@ -22,18 +22,12 @@ use crate::{
 	models::rbac::permissions,
 	pin_fn,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut app = create_eve_app(app);
 
 	// List all managed URLs
@@ -79,8 +73,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -121,8 +116,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -165,8 +161,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -207,8 +204,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -223,7 +221,7 @@ pub fn create_sub_app(
 
 async fn list_all_managed_urls(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -280,13 +278,13 @@ async fn list_all_managed_urls(
 	.collect();
 
 	log::trace!("request_id: {} - Returning managed URLs", request_id);
-	context.success(ListManagedUrlsResponse { urls });
+	context.success(ListManagedUrlsResponse { urls }).await?;
 	Ok(context)
 }
 
 async fn create_managed_url(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -323,13 +321,13 @@ async fn create_managed_url(
 	.await?;
 
 	log::trace!("request_id: {} - Returning new managed URL", request_id);
-	context.success(CreateNewManagedUrlResponse { id });
+	context.success(CreateNewManagedUrlResponse { id }).await?;
 	Ok(context)
 }
 
 async fn update_managed_url(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let managed_url_id = Uuid::parse_str(
@@ -364,13 +362,13 @@ async fn update_managed_url(
 	)
 	.await?;
 
-	context.success(UpdateManagedUrlResponse {});
+	context.success(UpdateManagedUrlResponse {}).await?;
 	Ok(context)
 }
 
 async fn verify_managed_url_configuration(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -396,13 +394,15 @@ async fn verify_managed_url_configuration(
 	)
 	.await?;
 
-	context.success(VerifyManagedUrlConfigurationResponse { configured });
+	context
+		.success(VerifyManagedUrlConfigurationResponse { configured })
+		.await?;
 	Ok(context)
 }
 
 async fn delete_managed_url(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -438,6 +438,6 @@ async fn delete_managed_url(
 	)
 	.await?;
 
-	context.success(DeleteManagedUrlResponse {});
+	context.success(DeleteManagedUrlResponse {}).await?;
 	Ok(context)
 }

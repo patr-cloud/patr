@@ -5,7 +5,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
-use eve_rs::AsError;
+use eve_rs::{AsError, Error as _};
 
 use crate::{
 	db::{self, User, UserToSignUp, Workspace},

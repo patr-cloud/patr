@@ -325,7 +325,7 @@ pub async fn add_build_steps_in_db(
 	build_num: i64,
 	works: &[Work],
 	request_id: &Uuid,
-) -> Result<(), eve_rs::Error<()>> {
+) -> Result<(), Error> {
 	log::trace!("request_id: {request_id} - Adding build steps in db");
 
 	// add cloning as a step

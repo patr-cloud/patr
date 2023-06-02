@@ -13,7 +13,7 @@ use api_models::{
 	utils::Uuid,
 };
 use chrono::{Duration, Utc};
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, Error as _, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
@@ -23,13 +23,7 @@ use crate::{
 	pin_fn,
 	redis::revoke_user_tokens_created_before_timestamp,
 	service::get_access_token_expiry,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 /// # Description
@@ -48,7 +42,7 @@ use crate::{
 /// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut sub_app = create_eve_app(app);
 
 	// List all roles
@@ -72,8 +66,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -104,8 +99,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -136,8 +132,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -168,8 +165,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -215,8 +213,9 @@ pub fn create_sub_app(
 
 					if role.is_none() || resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -260,8 +259,9 @@ pub fn create_sub_app(
 
 					if role.is_none() || resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -309,7 +309,7 @@ pub fn create_sub_app(
 /// [`NextHandler`]: NextHandler
 async fn list_all_roles(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
@@ -326,7 +326,7 @@ async fn list_all_roles(
 	})
 	.collect::<Vec<_>>();
 
-	context.success(ListAllRolesResponse { roles });
+	context.success(ListAllRolesResponse { roles }).await?;
 	Ok(context)
 }
 
@@ -379,7 +379,7 @@ async fn list_all_roles(
 /// [`NextHandler`]: NextHandler
 async fn get_role_details(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id)
@@ -401,16 +401,19 @@ async fn get_role_details(
 		context.get_database_connection(),
 		&role_id,
 	)
+	.await?
 	.await?;
 
-	context.success(GetRoleDetailsResponse {
-		role: Role {
-			id: role.id,
-			name: role.name,
-			description: role.description,
-		},
-		permissions,
-	});
+	context
+		.success(GetRoleDetailsResponse {
+			role: Role {
+				id: role.id,
+				name: role.name,
+				description: role.description,
+			},
+			permissions,
+		})
+		.await?;
 	Ok(context)
 }
 
@@ -447,7 +450,7 @@ async fn get_role_details(
 /// [`NextHandler`]: NextHandler
 async fn create_role(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
@@ -484,13 +487,15 @@ async fn create_role(
 	)
 	.await?;
 
-	context.success(CreateNewRoleResponse { id: role_id });
+	context
+		.success(CreateNewRoleResponse { id: role_id })
+		.await?;
 	Ok(context)
 }
 
 async fn list_users_with_role_in_workspace(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
@@ -511,7 +516,7 @@ async fn list_users_with_role_in_workspace(
 	)
 	.await?;
 
-	context.success(ListUsersForRoleResponse { users });
+	context.success(ListUsersForRoleResponse { users }).await?;
 	Ok(context)
 }
 
@@ -548,7 +553,7 @@ async fn list_users_with_role_in_workspace(
 /// [`NextHandler`]: NextHandler
 async fn update_role(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let role_id = context.get_param(request_keys::ROLE_ID).unwrap();
 	let role_id = Uuid::parse_str(role_id)
@@ -606,7 +611,7 @@ async fn update_role(
 		.await?;
 	}
 
-	context.success(UpdateRoleResponse {});
+	context.success(UpdateRoleResponse {}).await?;
 	Ok(context)
 }
 
@@ -637,7 +642,7 @@ async fn update_role(
 /// [`NextHandler`]: NextHandler
 async fn delete_role(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let role_id = context.get_param(request_keys::ROLE_ID).unwrap();
 	let role_id = Uuid::parse_str(role_id)
@@ -659,6 +664,6 @@ async fn delete_role(
 	// Delete role
 	db::delete_role(context.get_database_connection(), &role_id).await?;
 
-	context.success(DeleteRoleResponse {});
+	context.success(DeleteRoleResponse {}).await?;
 	Ok(context)
 }

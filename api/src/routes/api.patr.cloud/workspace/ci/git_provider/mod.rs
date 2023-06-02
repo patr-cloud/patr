@@ -14,20 +14,14 @@ use crate::{
 	error,
 	models::rbac::permissions,
 	pin_fn,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 mod github;
 
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.use_sub_app("/github", github::create_sub_app(app));
@@ -53,8 +47,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -69,7 +64,7 @@ pub fn create_sub_app(
 
 async fn list_git_providers(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
@@ -92,6 +87,8 @@ async fn list_git_providers(
 	})
 	.collect();
 
-	context.success(ListGitProvidersResponse { git_providers });
+	context
+		.success(ListGitProvidersResponse { git_providers })
+		.await?;
 	Ok(context)
 }

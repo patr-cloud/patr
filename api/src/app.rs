@@ -10,6 +10,7 @@ use eve_rs::{
 	App as EveApp,
 	AsError,
 	Context,
+	Error as _,
 	HttpMethod,
 	NextHandler,
 	Response,
@@ -19,10 +20,9 @@ use sqlx::Pool;
 use tokio::{signal, time};
 
 use crate::{
-	error,
 	pin_fn,
 	routes,
-	utils::{settings::Settings, Error, ErrorData, EveContext, EveMiddleware},
+	utils::{settings::Settings, Error, EveContext, EveMiddleware},
 	Database,
 };
 
@@ -45,7 +45,9 @@ pub async fn start_server(app: &App) {
 
 	let mut eve_app = create_eve_app(app);
 
-	eve_app.set_error_handler(eve_error_handler);
+	eve_app.set_error_handler(|response, error| {
+		Box::pin(async move { eve_error_handler(response, error).await })
+	});
 	eve_app.use_middleware("/", get_basic_middlewares());
 	eve_app.use_sub_app(&app.config.base_path, routes::create_sub_app(app));
 
@@ -60,30 +62,15 @@ pub async fn start_server(app: &App) {
 
 pub fn create_eve_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	EveApp::create(EveContext::new, app.clone())
 }
 
-#[cfg(debug_assertions)]
-fn get_basic_middlewares() -> [EveMiddleware; 4] {
+fn get_basic_middlewares() -> [EveMiddleware; 3] {
 	[
 		EveMiddleware::CustomFunction(pin_fn!(init_states)),
 		EveMiddleware::CustomFunction(pin_fn!(add_cors_headers)),
 		EveMiddleware::JsonParser,
-		EveMiddleware::UrlEncodedParser,
-	]
-}
-
-#[cfg(not(debug_assertions))]
-fn get_basic_middlewares() -> [EveMiddleware; 6] {
-	use eve_rs::default_middlewares::compression;
-	[
-		EveMiddleware::CustomFunction(pin_fn!(init_states)),
-		EveMiddleware::CustomFunction(pin_fn!(add_cors_headers)),
-		EveMiddleware::Compression(compression::DEFAULT_COMPRESSION_LEVEL),
-		EveMiddleware::JsonParser,
-		EveMiddleware::UrlEncodedParser,
-		EveMiddleware::CookieParser,
 	]
 }
 
@@ -107,34 +94,31 @@ async fn get_shutdown_signal() {
 	});
 }
 
-fn eve_error_handler(mut response: Response, error: Error) -> Response {
-	let error_string = error.get_error().to_string();
+async fn eve_error_handler(
+	mut response: Response,
+	error: Error,
+) -> Result<(), Error> {
+	let error_string = error.to_string();
 	if error_string != "entity not found" {
-		log::error!(
-			"Error occured while processing request: {}",
-			error.get_error().to_string()
-		);
+		log::error!("Error occured while processing request: {}", error);
 	}
-	response.set_content_type("application/json");
-	response.set_status(error.get_status().unwrap_or(500));
+	response.set_content_type("application/json")?;
+	response.set_status(error.status_code())?;
 
-	response.set_header("Access-Control-Allow-Origin", "*");
-	response.set_header("Access-Control-Allow-Methods", "*");
+	response.set_header("Access-Control-Allow-Origin", "*")?;
+	response.set_header("Access-Control-Allow-Methods", "*")?;
 	response.set_header(
 		"Access-Control-Allow-Headers",
 		"Content-Type,Authorization",
-	);
+	)?;
 
-	let default_error = error!(SERVER_ERROR).to_string();
-	response.set_body_bytes(
-		error.get_body_bytes().unwrap_or(default_error.as_bytes()),
-	);
-	response
+	response.set_body_bytes(error.body_bytes()).await?;
+	Ok(())
 }
 
 async fn init_states(
 	mut context: EveContext,
-	next: NextHandler<EveContext, ErrorData>,
+	next: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	// Start measuring time to check how long a route takes to execute
 	let start_time = Instant::now();
@@ -161,13 +145,18 @@ async fn init_states(
 				.take_database_connection()
 				.commit()
 				.await
-				.body("Unable to commit transaction")?;
+				.body::<&str>("Unable to commit transaction")?;
 			log_request(
 				&method,
 				elapsed_time,
 				&path,
 				&context.get_status(),
-				&context.get_response().get_body().len(),
+				&context
+					.get_response()
+					.get_header("Content-Length")
+					.unwrap_or_default()
+					.parse::<usize>()
+					.unwrap_or(0),
 			);
 
 			Ok(context)
@@ -177,8 +166,8 @@ async fn init_states(
 				&method,
 				elapsed_time,
 				&path,
-				&err.get_status().unwrap_or(500),
-				&err.get_body_bytes().unwrap_or(&[]).len(),
+				&err.status_code(),
+				&err.body_bytes().len(),
 			);
 			Err(err)
 		}
@@ -209,12 +198,12 @@ fn log_request(
 
 async fn add_cors_headers(
 	mut context: EveContext,
-	next: NextHandler<EveContext, ErrorData>,
+	next: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	context
-		.header("Access-Control-Allow-Origin", "*")
-		.header("Access-Control-Allow-Methods", "*")
-		.header("Access-Control-Allow-Headers", "Content-Type,Authorization");
+		.header("Access-Control-Allow-Origin", "*")?
+		.header("Access-Control-Allow-Methods", "*")?
+		.header("Access-Control-Allow-Headers", "Content-Type,Authorization")?;
 
 	if context.get_method() == &HttpMethod::Options {
 		return Ok(context);

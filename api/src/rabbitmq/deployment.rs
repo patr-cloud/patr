@@ -111,7 +111,7 @@ pub(super) async fn process_request(
 					request_id,
 					deployment.id,
 					digest,
-					err.get_error()
+					err
 				);
 				// TODO log in audit log that there was an error while deploying
 				db::update_deployment_status(

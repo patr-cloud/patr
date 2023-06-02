@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use api_models::utils::{DateTime, Uuid};
 use chrono::Utc;
-use eve_rs::AsError;
+use eve_rs::{AsError, Error as _};
 use vaultrs::{
 	client::{VaultClient, VaultClientSettingsBuilder},
 	error::ClientError,

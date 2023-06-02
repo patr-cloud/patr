@@ -23,18 +23,12 @@ use crate::{
 	models::{rbac::permissions, ResourceType},
 	pin_fn,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut app = create_eve_app(app);
 	app.get(
 		"/",
@@ -76,8 +70,8 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST)).await?;
 					}
 
 					Ok((context, resource))
@@ -116,8 +110,8 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST)).await?;
 					}
 
 					Ok((context, resource))
@@ -155,8 +149,8 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST)).await?;
 					}
 
 					Ok((context, resource))
@@ -210,7 +204,7 @@ pub fn create_sub_app(
 
 async fn list_all_database_clusters(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -266,16 +260,17 @@ async fn list_all_database_clusters(
 		request_id
 	);
 
-	context.success(ListDatabasesResponse {
-		databases: database_clusters,
-	});
-
+	context
+		.success(ListDatabasesResponse {
+			databases: database_clusters,
+		})
+		.await?;
 	Ok(context)
 }
 
 async fn create_database_cluster(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -325,16 +320,18 @@ async fn create_database_cluster(
 	)
 	.await;
 
-	context.success(CreateDatabaseResponse {
-		id: database_id,
-		password,
-	});
+	context
+		.success(CreateDatabaseResponse {
+			id: database_id,
+			password,
+		})
+		.await?;
 	Ok(context)
 }
 
 async fn get_managed_database_info(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -376,14 +373,16 @@ async fn get_managed_database_info(
 	.body(error!(WRONG_PARAMETERS).to_string())?;
 	log::trace!("request_id: {} - Returning database info", request_id);
 
-	context.success(GetDatabaseInfoResponse { database });
+	context
+		.success(GetDatabaseInfoResponse { database })
+		.await?;
 
 	Ok(context)
 }
 
 async fn delete_managed_database(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -428,7 +427,7 @@ async fn delete_managed_database(
 	)
 	.await;
 
-	context.success(DeleteDatabaseResponse {});
+	context.success(DeleteDatabaseResponse {}).await?;
 	Ok(context)
 }
 
@@ -458,6 +457,6 @@ async fn change_database_password(
 	)
 	.await?;
 
-	context.success(ChangeDatabasePasswordResponse {});
+	context.success(ChangeDatabasePasswordResponse {}).await?;
 	Ok(context)
 }

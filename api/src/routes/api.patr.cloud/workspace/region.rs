@@ -22,7 +22,7 @@ use api_models::{
 	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, Error as _, NextHandler};
 use sqlx::types::Json;
 
 use crate::{
@@ -37,18 +37,12 @@ use crate::{
 	pin_fn,
 	routes,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut app = create_eve_app(app);
 
 	// List all regions
@@ -103,8 +97,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -143,8 +138,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -176,8 +172,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -216,8 +213,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -232,7 +230,7 @@ pub fn create_sub_app(
 
 async fn list_regions(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -269,13 +267,15 @@ async fn list_regions(
 	.collect();
 
 	log::trace!("request_id: {} - Returning regions", request_id);
-	context.success(ListRegionsForWorkspaceResponse { regions });
+	context
+		.success(ListRegionsForWorkspaceResponse { regions })
+		.await?;
 	Ok(context)
 }
 
 async fn get_region(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -292,27 +292,29 @@ async fn get_region(
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	log::trace!("request_id: {} - Returning region", request_id);
-	context.success(GetRegionInfoResponse {
-		region: Region {
-			r#type: if region.is_byoc_region() {
-				RegionType::BYOC
-			} else {
-				RegionType::PatrOwned
+	context
+		.success(GetRegionInfoResponse {
+			region: Region {
+				r#type: if region.is_byoc_region() {
+					RegionType::BYOC
+				} else {
+					RegionType::PatrOwned
+				},
+				id: region.id,
+				name: region.name,
+				cloud_provider: region.cloud_provider,
+				status: region.status,
 			},
-			id: region.id,
-			name: region.name,
-			cloud_provider: region.cloud_provider,
-			status: region.status,
-		},
-		disconnected_at: region.disconnected_at.map(DateTime),
-		message_log: region.message_log,
-	});
+			disconnected_at: region.disconnected_at.map(DateTime),
+			message_log: region.message_log,
+		})
+		.await?;
 	Ok(context)
 }
 
 async fn check_region_status(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -391,27 +393,29 @@ async fn check_region_status(
 			.status(500)?;
 
 	log::trace!("request_id: {} - Returning check region status", request_id);
-	context.success(CheckRegionStatusResponse {
-		region: Region {
-			r#type: if region.is_byoc_region() {
-				RegionType::BYOC
-			} else {
-				RegionType::PatrOwned
+	context
+		.success(CheckRegionStatusResponse {
+			region: Region {
+				r#type: if region.is_byoc_region() {
+					RegionType::BYOC
+				} else {
+					RegionType::PatrOwned
+				},
+				id: region.id,
+				name: region.name,
+				cloud_provider: region.cloud_provider,
+				status: region.status,
 			},
-			id: region.id,
-			name: region.name,
-			cloud_provider: region.cloud_provider,
-			status: region.status,
-		},
-		disconnected_at: region.disconnected_at.map(DateTime),
-		message_log: region.message_log,
-	});
+			disconnected_at: region.disconnected_at.map(DateTime),
+			message_log: region.message_log,
+		})
+		.await?;
 	Ok(context)
 }
 
 async fn add_region(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -638,13 +642,15 @@ async fn add_region(
 		"request_id: {} - Successfully added region to workspace",
 		request_id
 	);
-	context.success(AddRegionToWorkspaceResponse { region_id });
+	context
+		.success(AddRegionToWorkspaceResponse { region_id })
+		.await?;
 	Ok(context)
 }
 
 async fn delete_region(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -793,6 +799,8 @@ async fn delete_region(
 	)
 	.await?;
 
-	context.success(DeleteRegionFromWorkspaceResponse {});
+	context
+		.success(DeleteRegionFromWorkspaceResponse {})
+		.await?;
 	Ok(context)
 }

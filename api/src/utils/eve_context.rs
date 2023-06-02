@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Formatter};
 
 use api_models::{ApiResponse, ErrorType};
-use eve_rs::{Context, Request, Response};
+use eve_rs::{Context, Error as _, EveError, Request, Response};
 use redis::aio::MultiplexedConnection as RedisConnection;
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
@@ -20,10 +20,10 @@ pub struct EveContext {
 }
 
 impl EveContext {
-	pub fn new(request: Request, state: &App) -> Self {
+	pub fn new(request: Request, response: Response, state: &App) -> Self {
 		EveContext {
 			request,
-			response: Response::new(),
+			response,
 			body_object: Value::Null,
 			state: state.clone(),
 			db_connection: None,
@@ -77,27 +77,34 @@ impl EveContext {
 		TBody: DeserializeOwned,
 	{
 		serde_json::from_value(self.body_object.clone())
-			.map_err(|err| Error::new(Box::new(err)))
+			.map_err(Error::from_error)
 	}
 
-	pub fn success<TBody>(&mut self, data: TBody) -> &mut Self
+	pub async fn success<TBody>(
+		&mut self,
+		data: TBody,
+	) -> Result<&mut Self, EveError>
 	where
-		TBody: Serialize + Debug,
+		TBody: Serialize + Debug + Send + Sync,
 	{
-		self.json(ApiResponse::success(data))
+		self.json(ApiResponse::success(data)).await
 	}
 
-	pub fn error(&mut self, error: ErrorType) -> &mut Self {
-		self.json(ApiResponse::error(error))
+	pub async fn error(
+		&mut self,
+		error: ErrorType,
+	) -> Result<&mut Self, EveError> {
+		self.json(ApiResponse::error(error)).await
 	}
 
 	#[allow(dead_code)]
-	pub fn error_with_message(
+	pub async fn error_with_message(
 		&mut self,
 		error: ErrorType,
 		message: impl Into<String>,
-	) -> &mut Self {
+	) -> Result<&mut Self, EveError> {
 		self.json(ApiResponse::error_with_message(error, message))
+			.await
 	}
 
 	pub fn set_body_object(&mut self, body: Value) {
@@ -120,8 +127,7 @@ impl EveContext {
 	where
 		TBody: DeserializeOwned,
 	{
-		serde_qs::from_str(&self.get_query_string())
-			.map_err(|err| Error::new(Box::new(err)))
+		serde_qs::from_str(self.get_query_string()).map_err(Error::from_error)
 	}
 }
 
@@ -142,10 +148,6 @@ impl Context for EveContext {
 
 	fn get_response(&self) -> &Response {
 		&self.response
-	}
-
-	fn take_response(self) -> Response {
-		self.response
 	}
 
 	fn get_response_mut(&mut self) -> &mut Response {

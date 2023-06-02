@@ -1,5 +1,5 @@
 use api_models::{models::workspace::region::RegionStatus, utils::Uuid};
-use eve_rs::AsError;
+use eve_rs::{AsError, Error as _};
 use kube::config::Kubeconfig;
 use reqwest::Client;
 use serde_json::json;

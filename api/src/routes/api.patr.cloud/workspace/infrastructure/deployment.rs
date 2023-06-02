@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use api_macros::closure_as_pinned_box;
 use api_models::{
@@ -40,7 +40,7 @@ use api_models::{
 	utils::{constants, DateTime, Uuid},
 };
 use chrono::{Duration, Utc};
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, Error as _, NextHandler};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 
 use crate::{
@@ -59,7 +59,6 @@ use crate::{
 	utils::{
 		constants::{logs::PATR_CLUSTER_TENANT_ID, request_keys},
 		Error,
-		ErrorData,
 		EveContext,
 		EveMiddleware,
 	},
@@ -81,7 +80,7 @@ use crate::{
 /// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut app = create_eve_app(app);
 
 	// List all deployments
@@ -133,8 +132,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -167,8 +167,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -208,8 +209,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -249,8 +251,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -290,8 +293,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -331,8 +335,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -372,8 +377,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -413,8 +419,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -454,8 +461,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -495,8 +503,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -536,8 +545,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -576,8 +586,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -616,8 +627,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -656,7 +668,7 @@ pub fn create_sub_app(
 /// [`NextHandler`]: NextHandler
 async fn list_deployments(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Listing deployments", request_id);
@@ -712,7 +724,9 @@ async fn list_deployments(
 		request_id
 	);
 
-	context.success(ListDeploymentsResponse { deployments });
+	context
+		.success(ListDeploymentsResponse { deployments })
+		.await?;
 	Ok(context)
 }
 
@@ -742,7 +756,7 @@ async fn list_deployments(
 /// [`NextHandler`]: NextHandler
 async fn list_deployment_history(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Listing deployments", request_id);
@@ -784,7 +798,9 @@ async fn list_deployment_history(
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	}
 
-	context.success(ListDeploymentHistoryResponse { deploys });
+	context
+		.success(ListDeploymentHistoryResponse { deploys })
+		.await?;
 	Ok(context)
 }
 
@@ -827,7 +843,7 @@ async fn list_deployment_history(
 /// [`NextHandler`]: NextHandler
 async fn create_deployment(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Creating deployment", request_id);
@@ -1038,7 +1054,7 @@ async fn create_deployment(
 	)
 	.await;
 
-	context.success(CreateDeploymentResponse { id });
+	context.success(CreateDeploymentResponse { id }).await?;
 	Ok(context)
 }
 
@@ -1079,7 +1095,7 @@ async fn create_deployment(
 /// [`NextHandler`]: NextHandler
 async fn get_deployment_info(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let deployment_id = Uuid::parse_str(
@@ -1100,10 +1116,12 @@ async fn get_deployment_info(
 		)
 		.await?;
 
-	context.success(GetDeploymentInfoResponse {
-		deployment,
-		running_details,
-	});
+	context
+		.success(GetDeploymentInfoResponse {
+			deployment,
+			running_details,
+		})
+		.await?;
 	Ok(context)
 }
 
@@ -1132,7 +1150,7 @@ async fn get_deployment_info(
 /// [`NextHandler`]: NextHandler
 async fn start_deployment(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Start deployment", request_id);
@@ -1223,7 +1241,7 @@ async fn start_deployment(
 	)
 	.await?;
 
-	context.success(StartDeploymentResponse {});
+	context.success(StartDeploymentResponse {}).await?;
 	Ok(context)
 }
 
@@ -1252,7 +1270,7 @@ async fn start_deployment(
 /// [`NextHandler`]: NextHandler
 async fn stop_deployment(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let deployment_id = Uuid::parse_str(
@@ -1295,7 +1313,7 @@ async fn stop_deployment(
 	)
 	.await?;
 
-	context.success(StopDeploymentResponse {});
+	context.success(StopDeploymentResponse {}).await?;
 	Ok(context)
 }
 
@@ -1324,7 +1342,7 @@ async fn stop_deployment(
 /// [`NextHandler`]: NextHandler
 async fn revert_deployment(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let deployment_id = Uuid::parse_str(
@@ -1423,7 +1441,7 @@ async fn revert_deployment(
 	)
 	.await?;
 
-	context.success(RevertDeploymentResponse {});
+	context.success(RevertDeploymentResponse {}).await?;
 	Ok(context)
 }
 
@@ -1452,7 +1470,7 @@ async fn revert_deployment(
 /// [`NextHandler`]: NextHandler
 async fn get_logs(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let GetDeploymentLogsRequest {
 		limit,
@@ -1498,7 +1516,7 @@ async fn get_logs(
 	)
 	.await?;
 
-	context.success(GetDeploymentLogsResponse { logs });
+	context.success(GetDeploymentLogsResponse { logs }).await?;
 	Ok(context)
 }
 
@@ -1527,7 +1545,7 @@ async fn get_logs(
 /// [`NextHandler`]: NextHandler
 async fn delete_deployment(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -1664,7 +1682,7 @@ async fn delete_deployment(
 	)
 	.await?;
 
-	context.success(DeleteDeploymentResponse {});
+	context.success(DeleteDeploymentResponse {}).await?;
 	Ok(context)
 }
 
@@ -1693,7 +1711,7 @@ async fn delete_deployment(
 /// [`NextHandler`]: NextHandler
 async fn update_deployment(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -1790,7 +1808,7 @@ async fn update_deployment(
 	)
 	.await?;
 
-	context.success(UpdateDeploymentResponse {});
+	context.success(UpdateDeploymentResponse {}).await?;
 	Ok(context)
 }
 
@@ -1819,7 +1837,7 @@ async fn update_deployment(
 /// [`NextHandler`]: NextHandler
 async fn list_linked_urls(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
@@ -1869,7 +1887,7 @@ async fn list_linked_urls(
 	})
 	.collect();
 
-	context.success(ListLinkedURLsResponse { urls });
+	context.success(ListLinkedURLsResponse { urls }).await?;
 	Ok(context)
 }
 
@@ -1898,13 +1916,14 @@ async fn list_linked_urls(
 /// [`NextHandler`]: NextHandler
 async fn get_deployment_metrics(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
 	.unwrap();
+	let query = context.get_query_as::<HashMap<String, String>>()?;
 
 	let deployment = db::get_deployment_by_id(
 		context.get_database_connection(),
@@ -1933,9 +1952,7 @@ async fn get_deployment_metrics(
 		deployment_id
 	);
 	let start_time = Utc::now() -
-		match context
-			.get_request()
-			.get_query()
+		match query
 			.get(request_keys::START_TIME)
 			.and_then(|value| value.parse::<Interval>().ok())
 			.unwrap_or(Interval::Hour)
@@ -1947,9 +1964,7 @@ async fn get_deployment_metrics(
 			Interval::Year => Duration::days(365),
 		};
 
-	let step = context
-		.get_request()
-		.get_query()
+	let step = query
 		.get(request_keys::INTERVAL)
 		.and_then(|value| value.parse::<Step>().ok())
 		.unwrap_or(Step::TenMinutes);
@@ -1967,9 +1982,11 @@ async fn get_deployment_metrics(
 	)
 	.await?;
 
-	context.success(GetDeploymentMetricsResponse {
-		metrics: deployment_metrics,
-	});
+	context
+		.success(GetDeploymentMetricsResponse {
+			metrics: deployment_metrics,
+		})
+		.await?;
 	Ok(context)
 }
 
@@ -1998,7 +2015,7 @@ async fn get_deployment_metrics(
 /// [`NextHandler`]: NextHandler
 async fn get_build_logs(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let deployment_id = Uuid::parse_str(
@@ -2045,7 +2062,9 @@ async fn get_build_logs(
 		message: build_log.message,
 	})
 	.collect();
-	context.success(GetDeploymentBuildLogsResponse { logs });
+	context
+		.success(GetDeploymentBuildLogsResponse { logs })
+		.await?;
 	Ok(context)
 }
 
@@ -2074,7 +2093,7 @@ async fn get_build_logs(
 /// [`NextHandler`]: NextHandler
 async fn get_build_events(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -2125,6 +2144,8 @@ async fn get_build_events(
 		"request_id: {} - Build events successfully retreived",
 		request_id
 	);
-	context.success(GetDeploymentEventsResponse { logs: build_events });
+	context
+		.success(GetDeploymentEventsResponse { logs: build_events })
+		.await?;
 	Ok(context)
 }

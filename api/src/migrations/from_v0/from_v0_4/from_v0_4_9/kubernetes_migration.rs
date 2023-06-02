@@ -4,6 +4,7 @@ use std::{
 };
 
 use api_models::utils::Uuid;
+use eve_rs::AsError;
 use k8s_openapi::{
 	api::{
 		core::v1::{Namespace, Service, ServicePort, ServiceSpec},
@@ -1611,7 +1612,7 @@ async fn migrate_static_sites(
 			)
 			.await?
 			.status
-			.ok_or_else(Error::empty)?;
+			.status(500)?;
 
 		let mut annotations: BTreeMap<String, String> = BTreeMap::new();
 		annotations.insert(
@@ -1676,7 +1677,7 @@ async fn migrate_static_sites(
 			)
 			.await?
 			.status
-			.ok_or_else(Error::empty)?;
+			.status(500)?;
 	}
 	Ok(())
 }

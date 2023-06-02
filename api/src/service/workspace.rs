@@ -5,7 +5,7 @@ use api_models::{
 	utils::Uuid,
 };
 use chrono::Utc;
-use eve_rs::AsError;
+use eve_rs::{AsError, Error as _};
 use sqlx::types::Json;
 use stripe::{Client, CreateCustomer, Customer, CustomerId, UpdateCustomer};
 
@@ -41,9 +41,9 @@ pub async fn is_workspace_name_allowed(
 	if !allow_personal_workspaces &&
 		!validator::is_workspace_name_valid(workspace_name)
 	{
-		Error::as_result()
+		return Err(Error::from_msg("Invalid workspace name")
 			.status(200)
-			.body(error!(INVALID_WORKSPACE_NAME).to_string())?;
+			.body(error!(INVALID_WORKSPACE_NAME).to_string()));
 	}
 
 	let workspace =
@@ -94,9 +94,9 @@ pub async fn create_workspace(
 	)
 	.await?
 	{
-		Error::as_result()
+		return Err(Error::from_msg("Workspace name already exists")
 			.status(400)
-			.body(error!(WORKSPACE_EXISTS).to_string())?;
+			.body(error!(WORKSPACE_EXISTS).to_string()));
 	}
 
 	let limit = db::get_user_by_user_id(connection, super_admin_id)
@@ -110,7 +110,7 @@ pub async fn create_workspace(
 			.len();
 
 	if super_admin_workspaces + 1 > limit {
-		return Err(Error::empty()
+		return Err(Error::from_msg("Workspace limit exceeded")
 			.status(400)
 			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string()));
 	}
@@ -197,9 +197,9 @@ pub async fn add_billing_address(
 	if address_details.address_line_2.is_none() &&
 		address_details.address_line_3.is_some()
 	{
-		return Error::as_result()
+		return Err(Error::from_msg("Address line 3 is not allowed")
 			.status(400)
-			.body(error!(ADDRESS_LINE_3_NOT_ALLOWED).to_string())?;
+			.body(error!(ADDRESS_LINE_3_NOT_ALLOWED).to_string()));
 	}
 
 	let workspace = db::get_workspace_info(connection, workspace_id)
@@ -207,9 +207,9 @@ pub async fn add_billing_address(
 		.status(500)?;
 
 	if workspace.address_id.is_some() {
-		return Error::as_result()
+		return Err(Error::from_msg("Address already exists")
 			.status(400)
-			.body(error!(ADDRESS_ALREADY_EXISTS).to_string())?;
+			.body(error!(ADDRESS_ALREADY_EXISTS).to_string()));
 	}
 	let address_id = db::generate_new_address_id(connection).await?;
 	let address_details = db::Address {
@@ -271,9 +271,9 @@ pub async fn update_billing_address(
 	if address_details.address_line_2.is_none() &&
 		address_details.address_line_3.is_some()
 	{
-		return Error::as_result()
+		return Err(Error::from_msg("Address line 3 is not allowed")
 			.status(400)
-			.body(error!(ADDRESS_LINE_3_NOT_ALLOWED).to_string())?;
+			.body(error!(ADDRESS_LINE_3_NOT_ALLOWED).to_string()));
 	}
 	let workspace_data = db::get_workspace_info(connection, workspace_id)
 		.await?
@@ -293,9 +293,9 @@ pub async fn update_billing_address(
 		};
 		db::update_billing_address(connection, address_details).await?;
 	} else {
-		return Error::as_result()
+		return Err(Error::from_msg("Address does not exist")
 			.status(400)
-			.body(error!(ADDRESS_NOT_FOUND).to_string())?;
+			.body(error!(ADDRESS_NOT_FOUND).to_string()));
 	}
 	Ok(())
 }

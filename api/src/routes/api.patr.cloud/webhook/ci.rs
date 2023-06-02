@@ -6,7 +6,8 @@ use api_models::{
 	utils::Uuid,
 };
 use chrono::Utc;
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, Error as _, NextHandler};
+use reqwest::header::HeaderName;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -23,18 +24,12 @@ use crate::{
 	pin_fn,
 	rabbitmq::BuildId,
 	service::{self, ParseStatus},
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.post(
@@ -49,7 +44,7 @@ pub fn create_sub_app(
 
 async fn handle_ci_hooks_for_repo(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let repo_id =
@@ -64,7 +59,9 @@ async fn handle_ci_hooks_for_repo(
 	// TODO: github is giving timeout status in webhooks settings for our
 	// endpoint its better to process the payload in the message/event queue
 
-	let event = match context.get_header(request_keys::X_GITHUB_EVENT) {
+	let event = match context
+		.get_header(HeaderName::from_static(request_keys::X_GITHUB_EVENT))
+	{
 		Some(event) => event,
 		None => {
 			// not a known webhook header, send error
@@ -96,19 +93,15 @@ async fn handle_ci_hooks_for_repo(
 
 	// validate the payload data signature
 	let signature_in_header = context
-		.get_header(request_keys::X_HUB_SIGNATURE_256)
+		.get_header(HeaderName::from_static(request_keys::X_HUB_SIGNATURE_256))
 		.status(400)?;
 
-	repo.webhook_secret
-		.and_then(|secret| {
-			service::verify_github_payload_signature_256(
-				&signature_in_header,
-				&context.get_request().get_body_bytes(),
-				&secret,
-			)
-			.ok()
-		})
-		.status(400)?;
+	let secret = repo.webhook_secret.status(400)?;
+	service::verify_github_payload_signature_256(
+		&signature_in_header,
+		context.get_request_mut().get_body_bytes().await?,
+		&secret,
+	)?;
 
 	let event = context.get_body_as::<Event>()?;
 

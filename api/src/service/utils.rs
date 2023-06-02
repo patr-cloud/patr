@@ -417,8 +417,7 @@ pub async fn get_ip_address_info(
 		))
 		.await?
 		.json::<IpInfo>()
-		.await
-		.map_err(|err| Error::new(Box::new(err)))?;
+		.await?;
 
 		match response {
 			IpInfo::Bogon(bogon_ip) => {

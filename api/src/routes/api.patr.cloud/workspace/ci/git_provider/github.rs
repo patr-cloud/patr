@@ -32,7 +32,7 @@ use api_models::{
 	utils::{Base64String, Uuid},
 };
 use chrono::Utc;
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, Error as _, NextHandler};
 use octorust::{
 	self,
 	auth::Credentials,
@@ -58,7 +58,6 @@ use crate::{
 	utils::{
 		constants::{logs::PATR_CLUSTER_TENANT_ID, request_keys},
 		Error,
-		ErrorData,
 		EveContext,
 		EveMiddleware,
 	},
@@ -66,7 +65,7 @@ use crate::{
 
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut app = create_eve_app(app);
 
 	app.get(
@@ -90,8 +89,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -122,8 +122,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -155,8 +156,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -224,8 +226,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -271,8 +274,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -318,8 +322,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -365,8 +370,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -412,8 +418,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -459,8 +466,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -506,8 +514,8 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST)).await?;
 					}
 
 					Ok((context, resource))
@@ -552,8 +560,8 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST)).await?;
 					}
 
 					Ok((context, resource))
@@ -599,8 +607,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -646,8 +655,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -693,8 +703,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -740,8 +751,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -773,8 +785,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -789,7 +802,7 @@ pub fn create_sub_app(
 
 async fn connect_to_github(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
@@ -817,13 +830,13 @@ async fn connect_to_github(
 		.await?;
 
 	let oauth_url = format!("https://github.com/login/oauth/authorize?client_id={client_id}&scope={scope}&state={state}");
-	context.success(GithubAuthResponse { oauth_url });
+	context.success(GithubAuthResponse { oauth_url }).await?;
 	Ok(context)
 }
 
 async fn github_oauth_callback(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
@@ -912,13 +925,13 @@ async fn github_oauth_callback(
 	)
 	.await?;
 
-	context.success(GithubAuthCallbackResponse {});
+	context.success(GithubAuthCallbackResponse {}).await?;
 	Ok(context)
 }
 
 async fn sync_repositories(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -958,13 +971,13 @@ async fn sync_repositories(
 		.await?;
 	}
 
-	context.success(SyncReposResponse {});
+	context.success(SyncReposResponse {}).await?;
 	Ok(context)
 }
 
 async fn list_repositories(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -1005,13 +1018,13 @@ async fn list_repositories(
 	})
 	.collect();
 
-	context.success(ListReposResponse { repos });
+	context.success(ListReposResponse { repos }).await?;
 	Ok(context)
 }
 
 async fn get_repo_info(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -1029,22 +1042,24 @@ async fn get_repo_info(
 	.await?
 	.status(500)?;
 
-	context.success(GetRepoInfoResponse {
-		repo: RepositoryDetails {
-			id: repo.git_provider_repo_uid,
-			name: repo.repo_name,
-			repo_owner: repo.repo_owner,
-			clone_url: repo.clone_url,
-			status: repo.status,
-			runner_id: repo.runner_id,
-		},
-	});
+	context
+		.success(GetRepoInfoResponse {
+			repo: RepositoryDetails {
+				id: repo.git_provider_repo_uid,
+				name: repo.repo_name,
+				repo_owner: repo.repo_owner,
+				clone_url: repo.clone_url,
+				status: repo.status,
+				runner_id: repo.runner_id,
+			},
+		})
+		.await?;
 	Ok(context)
 }
 
 async fn activate_repo(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -1142,13 +1157,13 @@ async fn activate_repo(
 		.ok()
 		.status(500)?;
 
-	context.success(ActivateRepoResponse {});
+	context.success(ActivateRepoResponse {}).await?;
 	Ok(context)
 }
 
 async fn deactivate_repo(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -1227,13 +1242,13 @@ async fn deactivate_repo(
 		}
 	}
 
-	context.success(DeactivateRepoResponse {});
+	context.success(DeactivateRepoResponse {}).await?;
 	Ok(context)
 }
 
 async fn get_build_list(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -1259,13 +1274,13 @@ async fn get_build_list(
 	)
 	.await?;
 
-	context.success(GetBuildListResponse { builds });
+	context.success(GetBuildListResponse { builds }).await?;
 	Ok(context)
 }
 
 async fn get_build_info(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -1303,13 +1318,15 @@ async fn get_build_info(
 	)
 	.await?;
 
-	context.success(GetBuildInfoResponse { build_info, steps });
+	context
+		.success(GetBuildInfoResponse { build_info, steps })
+		.await?;
 	Ok(context)
 }
 
 async fn get_build_logs(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -1422,13 +1439,13 @@ async fn get_build_logs(
 		})
 		.collect();
 
-	context.success(GetBuildLogResponse { logs });
+	context.success(GetBuildLogResponse { logs }).await?;
 	Ok(context)
 }
 
 async fn cancel_build(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -1489,13 +1506,13 @@ async fn cancel_build(
 		.await?;
 	}
 
-	context.success(CancelBuildResponse {});
+	context.success(CancelBuildResponse {}).await?;
 	Ok(context)
 }
 
 async fn restart_build(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -1742,15 +1759,17 @@ async fn restart_build(
 	)
 	.await?;
 
-	context.success(RestartBuildResponse {
-		build_num: build_num as u64,
-	});
+	context
+		.success(RestartBuildResponse {
+			build_num: build_num as u64,
+		})
+		.await?;
 	Ok(context)
 }
 
 async fn start_build_for_branch(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -1946,15 +1965,17 @@ async fn start_build_for_branch(
 	)
 	.await?;
 
-	context.success(RestartBuildResponse {
-		build_num: build_num as u64,
-	});
+	context
+		.success(RestartBuildResponse {
+			build_num: build_num as u64,
+		})
+		.await?;
 	Ok(context)
 }
 
 async fn list_git_ref_for_repo(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -1992,13 +2013,13 @@ async fn list_git_ref_for_repo(
 	)
 	.await?;
 
-	context.success(ListGitRefForRepoResponse { refs });
+	context.success(ListGitRefForRepoResponse { refs }).await?;
 	Ok(context)
 }
 
 async fn get_patr_ci_file(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -2036,15 +2057,17 @@ async fn get_patr_ci_file(
 	)
 	.await?;
 
-	context.success(GetPatrCiFileResponse {
-		file_content: Base64String::from(ci_file_content),
-	});
+	context
+		.success(GetPatrCiFileResponse {
+			file_content: Base64String::from(ci_file_content),
+		})
+		.await?;
 	Ok(context)
 }
 
 async fn write_patr_ci_file(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -2098,13 +2121,13 @@ async fn write_patr_ci_file(
 	)
 	.await?;
 
-	context.success(WritePatrCiFileResponse {});
+	context.success(WritePatrCiFileResponse {}).await?;
 	Ok(context)
 }
 
 async fn sign_out(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -2193,6 +2216,6 @@ async fn sign_out(
 		}
 	}
 
-	context.success(GithubSignOutResponse {});
+	context.success(GithubSignOutResponse {}).await?;
 	Ok(context)
 }

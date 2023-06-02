@@ -10,7 +10,7 @@ use crate::{
 	db,
 	error,
 	pin_fn,
-	utils::{constants, Error, ErrorData, EveContext, EveMiddleware},
+	utils::{constants, Error, EveContext, EveMiddleware},
 };
 
 mod auth;
@@ -36,7 +36,7 @@ mod workspace;
 /// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.use_sub_app("/auth", auth::create_sub_app(app));
@@ -62,17 +62,19 @@ pub fn create_sub_app(
 
 async fn get_version_number(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
-	context.success(GetVersionResponse {
-		version: constants::DATABASE_VERSION.to_string(),
-	});
+	context
+		.success(GetVersionResponse {
+			version: constants::DATABASE_VERSION.to_string(),
+		})
+		.await?;
 	Ok(context)
 }
 
 async fn submit_inapp_survey(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let SubmitSurveyRequest {
 		survey_response,
@@ -94,6 +96,6 @@ async fn submit_inapp_survey(
 	)
 	.await?;
 
-	context.success(SubmitSurveyResponse {});
+	context.success(SubmitSurveyResponse {}).await?;
 	Ok(context)
 }

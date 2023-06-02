@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use ::redis::aio::MultiplexedConnection as RedisConnection;
 use api_models::{models::workspace::WorkspacePermission, utils::Uuid};
 use chrono::{DateTime, Duration, Utc};
+use eve_rs::Error as _;
 use jsonwebtoken::{
 	Algorithm,
 	DecodingKey,

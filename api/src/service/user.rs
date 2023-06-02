@@ -6,7 +6,7 @@ use api_models::{
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
-use eve_rs::AsError;
+use eve_rs::{AsError, Error as _};
 use reqwest::Client;
 use sqlx::types::ipnetwork::IpNetwork;
 
@@ -54,7 +54,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 
 		return Error::as_result()
 			.status(400)
-			.body(error!(INVALID_EMAIL).to_string())?;
+			.body(error!(INVALID_EMAIL).to_string());
 	}
 
 	if db::get_user_by_email(connection, email_address)
@@ -87,7 +87,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 		);
 		return Error::as_result()
 			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+			.body(error!(SERVER_ERROR).to_string());
 	}
 
 	let user = match db::get_user_by_user_id(connection, user_id).await? {
@@ -334,7 +334,7 @@ pub async fn delete_personal_email_address(
 		{
 			return Error::as_result()
 				.status(400)
-				.body(error!(CANNOT_DELETE_RECOVERY_EMAIL).to_string())?;
+				.body(error!(CANNOT_DELETE_RECOVERY_EMAIL).to_string());
 		}
 	}
 
@@ -384,9 +384,9 @@ pub async fn delete_phone_number(
 		if recovery_country_code == country_code &&
 			recovery_phone_number == phone_number
 		{
-			return Error::as_result().status(400).body(
-				error!(CANNOT_DELETE_RECOVERY_PHONE_NUMBER).to_string(),
-			)?;
+			return Error::as_result()
+				.status(400)
+				.body(error!(CANNOT_DELETE_RECOVERY_PHONE_NUMBER).to_string());
 		}
 	}
 

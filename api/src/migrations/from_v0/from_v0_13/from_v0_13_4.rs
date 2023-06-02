@@ -2,6 +2,7 @@ use std::{fmt::Debug, net::IpAddr};
 
 use api_models::utils::Uuid;
 use either::Either;
+use eve_rs::Error as _;
 use k8s_openapi::api::{
 	apps::v1::Deployment,
 	autoscaling::v1::HorizontalPodAutoscaler,

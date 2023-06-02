@@ -234,7 +234,7 @@ pub(super) async fn process_request(
 							"Error while uploading file to S3: {}"
 						),
 						request_id,
-						err.get_error()
+						err
 					);
 					err
 				})?;

@@ -18,7 +18,7 @@ use api_models::{
 	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, Error as _, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
@@ -34,7 +34,6 @@ use crate::{
 		constants::request_keys,
 		validator,
 		Error,
-		ErrorData,
 		EveContext,
 		EveMiddleware,
 	},
@@ -56,7 +55,7 @@ use crate::{
 /// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut app = create_eve_app(app);
 
 	// create new repository
@@ -81,8 +80,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -141,8 +141,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -181,8 +182,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -223,8 +225,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -265,8 +268,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -305,8 +309,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -345,8 +350,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -387,8 +393,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -438,7 +445,7 @@ pub fn create_sub_app(
 /// [`NextHandler`]: NextHandler
 async fn create_docker_repository(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
@@ -462,7 +469,10 @@ async fn create_docker_repository(
 	// check if repo name is valid
 	let is_repo_name_valid = validator::is_docker_repo_name_valid(&repository);
 	if !is_repo_name_valid {
-		context.status(400).json(error!(INVALID_REPOSITORY_NAME));
+		context
+			.status(400)?
+			.json(error!(INVALID_REPOSITORY_NAME))
+			.await?;
 		return Ok(context);
 	}
 
@@ -520,7 +530,9 @@ async fn create_docker_repository(
 	.await?;
 
 	log::trace!("request_id: {} - Docker repository created", request_id);
-	context.success(CreateDockerRepositoryResponse { id: resource_id });
+	context
+		.success(CreateDockerRepositoryResponse { id: resource_id })
+		.await?;
 	Ok(context)
 }
 
@@ -558,7 +570,7 @@ async fn create_docker_repository(
 /// [`NextHandler`]: NextHandler
 async fn list_docker_repositories(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id_string =
@@ -591,7 +603,9 @@ async fn list_docker_repositories(
 
 	log::trace!("request_id: {} - Docker repositories listed", request_id);
 
-	context.success(ListDockerRepositoriesResponse { repositories });
+	context
+		.success(ListDockerRepositoriesResponse { repositories })
+		.await?;
 	Ok(context)
 }
 
@@ -616,7 +630,7 @@ async fn list_docker_repositories(
 /// [`NextHandler`]: NextHandler
 async fn get_docker_repository_info(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
@@ -659,15 +673,17 @@ async fn get_docker_repository_info(
 		request_id
 	);
 
-	context.success(GetDockerRepositoryInfoResponse {
-		repository: DockerRepository {
-			id: repository_id,
-			name: repository.name,
-			size,
-			last_updated: DateTime(last_updated),
-		},
-		images,
-	});
+	context
+		.success(GetDockerRepositoryInfoResponse {
+			repository: DockerRepository {
+				id: repository_id,
+				name: repository.name,
+				size,
+				last_updated: DateTime(last_updated),
+			},
+			images,
+		})
+		.await?;
 	Ok(context)
 }
 
@@ -693,7 +709,7 @@ async fn get_docker_repository_info(
 /// [`NextHandler`]: NextHandler
 async fn get_repository_image_details(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
@@ -728,13 +744,15 @@ async fn get_repository_image_details(
 		"request_id: {} - Docker repository image details fetched",
 		request_id
 	);
-	context.success(GetDockerRepositoryImageDetailsResponse { image, tags });
+	context
+		.success(GetDockerRepositoryImageDetailsResponse { image, tags })
+		.await?;
 	Ok(context)
 }
 
 async fn get_repository_image_exposed_port(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let config = context.get_state().config.to_owned();
 	let repository_id = Uuid::parse_str(
@@ -774,7 +792,9 @@ async fn get_repository_image_exposed_port(
 	)
 	.await?;
 
-	context.success(GetDockerRepositoryExposedPortResponse { ports });
+	context
+		.success(GetDockerRepositoryExposedPortResponse { ports })
+		.await?;
 	Ok(context)
 }
 
@@ -800,7 +820,7 @@ async fn get_repository_image_exposed_port(
 /// [`NextHandler`]: NextHandler
 async fn get_list_of_repository_tags(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
@@ -829,7 +849,9 @@ async fn get_list_of_repository_tags(
 		"request_id: {} - Docker repository tags fetched",
 		request_id
 	);
-	context.success(ListDockerRepositoryTagsResponse { tags });
+	context
+		.success(ListDockerRepositoryTagsResponse { tags })
+		.await?;
 	Ok(context)
 }
 
@@ -855,7 +877,7 @@ async fn get_list_of_repository_tags(
 /// [`NextHandler`]: NextHandler
 async fn get_repository_tag_details(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
@@ -883,7 +905,9 @@ async fn get_repository_tag_details(
 		"request_id: {} - Docker repository tag details fetched",
 		request_id
 	);
-	context.success(GetDockerRepositoryTagDetailsResponse { tag_info, digest });
+	context
+		.success(GetDockerRepositoryTagDetailsResponse { tag_info, digest })
+		.await?;
 	Ok(context)
 }
 
@@ -919,7 +943,7 @@ async fn get_repository_tag_details(
 /// [`NextHandler`]: NextHandler
 async fn delete_docker_repository_image(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
@@ -947,7 +971,9 @@ async fn delete_docker_repository_image(
 		"request_id: {} - Docker repository image deleted",
 		request_id
 	);
-	context.success(DeleteDockerRepositoryImageResponse {});
+	context
+		.success(DeleteDockerRepositoryImageResponse {})
+		.await?;
 	Ok(context)
 }
 
@@ -983,7 +1009,7 @@ async fn delete_docker_repository_image(
 /// [`NextHandler`]: NextHandler
 async fn delete_docker_repository(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Deleting docker repository", request_id);
@@ -1037,6 +1063,6 @@ async fn delete_docker_repository(
 	.await?;
 
 	log::trace!("request_id: {} - Docker repository deleted", request_id);
-	context.success(DeleteDockerRepositoryResponse {});
+	context.success(DeleteDockerRepositoryResponse {}).await?;
 	Ok(context)
 }

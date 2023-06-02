@@ -21,18 +21,12 @@ use crate::{
 	models::rbac::permissions,
 	pin_fn,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.get(
@@ -78,8 +72,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -117,8 +112,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -156,8 +152,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -197,8 +194,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -236,8 +234,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -252,7 +251,7 @@ pub fn create_sub_app(
 
 async fn list_runner(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -288,13 +287,13 @@ async fn list_runner(
 		workspace_id
 	);
 
-	context.success(ListCiRunnerResponse { runners });
+	context.success(ListCiRunnerResponse { runners }).await?;
 	Ok(context)
 }
 
 async fn create_runner(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -333,13 +332,13 @@ async fn create_runner(
 		workspace_id
 	);
 
-	context.success(CreateRunnerResponse { id });
+	context.success(CreateRunnerResponse { id }).await?;
 	Ok(context)
 }
 
 async fn get_runner_info(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -368,13 +367,13 @@ async fn get_runner_info(
 		workspace_id
 	);
 
-	context.success(GetRunnerInfoResponse(runner));
+	context.success(GetRunnerInfoResponse(runner)).await?;
 	Ok(context)
 }
 
 async fn list_build_details_for_runner(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -402,13 +401,15 @@ async fn list_build_details_for_runner(
 		workspace_id
 	);
 
-	context.success(ListCiRunnerBuildHistoryResponse { builds });
+	context
+		.success(ListCiRunnerBuildHistoryResponse { builds })
+		.await?;
 	Ok(context)
 }
 
 async fn update_runner(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -447,13 +448,13 @@ async fn update_runner(
 		workspace_id
 	);
 
-	context.success(UpdateRunnerResponse {});
+	context.success(UpdateRunnerResponse {}).await?;
 	Ok(context)
 }
 
 async fn delete_runner(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -482,6 +483,6 @@ async fn delete_runner(
 		workspace_id
 	);
 
-	context.success(DeleteRunnerResponse {});
+	context.success(DeleteRunnerResponse {}).await?;
 	Ok(context)
 }

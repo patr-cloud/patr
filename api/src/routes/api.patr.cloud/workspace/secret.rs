@@ -21,18 +21,12 @@ use crate::{
 	models::{rbac::permissions, ResourceType},
 	pin_fn,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut app = create_eve_app(app);
 
 	// List all secrets
@@ -77,8 +71,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -117,8 +112,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -157,8 +153,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -173,7 +170,7 @@ pub fn create_sub_app(
 
 async fn list_secrets(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -204,13 +201,13 @@ async fn list_secrets(
 	.collect();
 
 	log::trace!("request_id: {} - Returning secrets", request_id);
-	context.success(ListSecretsResponse { secrets });
+	context.success(ListSecretsResponse { secrets }).await?;
 	Ok(context)
 }
 
 async fn create_secret(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -239,13 +236,15 @@ async fn create_secret(
 	value.zeroize();
 
 	log::trace!("request_id: {} - Returning new secret", request_id);
-	context.success(CreateSecretInWorkspaceResponse { id });
+	context
+		.success(CreateSecretInWorkspaceResponse { id })
+		.await?;
 	Ok(context)
 }
 
 async fn update_secret(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -279,13 +278,13 @@ async fn update_secret(
 		value.zeroize();
 	}
 
-	context.success(UpdateWorkspaceSecretResponse {});
+	context.success(UpdateWorkspaceSecretResponse {}).await?;
 	Ok(context)
 }
 
 async fn delete_secret(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let user_id = context.get_token_data().unwrap().user_id().clone();
@@ -328,6 +327,6 @@ async fn delete_secret(
 	)
 	.await?;
 
-	context.success(DeleteSecretResponse {});
+	context.success(DeleteSecretResponse {}).await?;
 	Ok(context)
 }

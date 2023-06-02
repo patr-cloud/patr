@@ -29,7 +29,7 @@ use cloudflare::{
 	},
 	framework::response::ApiFailure,
 };
-use eve_rs::AsError;
+use eve_rs::{AsError, Error as _};
 use tokio::{net::UdpSocket, task};
 use trust_dns_client::{
 	client::{AsyncClient, ClientHandle},
@@ -949,7 +949,7 @@ async fn check_domain_creation_limit(
 		);
 		return Error::as_result()
 			.status(400)
-			.body(error!(CARDLESS_FREE_LIMIT_EXCEEDED).to_string())?;
+			.body(error!(CARDLESS_FREE_LIMIT_EXCEEDED).to_string());
 	}
 
 	// check whether max domain limit is exceeded
@@ -964,7 +964,7 @@ async fn check_domain_creation_limit(
 		);
 		return Error::as_result()
 			.status(400)
-			.body(error!(DOMAIN_LIMIT_EXCEEDED).to_string())?;
+			.body(error!(DOMAIN_LIMIT_EXCEEDED).to_string());
 	}
 
 	// check whether total resource limit is exceeded
@@ -974,7 +974,7 @@ async fn check_domain_creation_limit(
 		log::info!("request_id: {request_id} - Total resource limit exceeded");
 		return Error::as_result()
 			.status(400)
-			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
+			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string());
 	}
 
 	Ok(())

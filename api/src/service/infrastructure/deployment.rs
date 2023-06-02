@@ -27,7 +27,7 @@ use api_models::{
 	},
 };
 use chrono::{DateTime, TimeZone, Utc};
-use eve_rs::AsError;
+use eve_rs::{AsError, Error as _};
 use k8s_openapi::api::core::v1::Event;
 use reqwest::{header::HeaderValue, Client};
 

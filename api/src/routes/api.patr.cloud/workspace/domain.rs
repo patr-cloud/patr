@@ -30,13 +30,7 @@ use crate::{
 	models::{rbac::permissions, ResourceType},
 	pin_fn,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 /// # Description
@@ -55,7 +49,7 @@ use crate::{
 /// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut app = create_eve_app(app);
 
 	app.get(
@@ -78,8 +72,9 @@ pub fn create_sub_app(
 					.await?;
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -133,8 +128,9 @@ pub fn create_sub_app(
 					.await?;
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -173,8 +169,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -212,8 +209,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -253,8 +251,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -292,8 +291,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -331,8 +331,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -370,8 +371,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -408,8 +410,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -460,7 +463,7 @@ pub fn create_sub_app(
 /// [`NextHandler`]: NextHandler
 async fn get_domains_for_workspace(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Getting domains for workspace", request_id);
@@ -498,7 +501,9 @@ async fn get_domains_for_workspace(
 		"request_id: {} - Returning domains for workspace",
 		request_id
 	);
-	context.success(GetDomainsForWorkspaceResponse { domains });
+	context
+		.success(GetDomainsForWorkspaceResponse { domains })
+		.await?;
 	Ok(context)
 }
 
@@ -535,7 +540,7 @@ async fn get_domains_for_workspace(
 /// [`NextHandler`]: NextHandler
 async fn add_domain_to_workspace(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Adding domain to workspace", request_id);
@@ -568,7 +573,7 @@ async fn add_domain_to_workspace(
 		"request_id: {} - Added the domain to the workspace",
 		request_id
 	);
-	context.success(AddDomainResponse { id: domain_id });
+	context.success(AddDomainResponse { id: domain_id }).await?;
 
 	Ok(context)
 }
@@ -606,7 +611,7 @@ async fn add_domain_to_workspace(
 /// [`NextHandler`]: NextHandler
 async fn verify_domain_in_workspace(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Verifying domain in workspace", request_id);
@@ -645,7 +650,7 @@ async fn verify_domain_in_workspace(
 	)
 	.await?;
 
-	context.success(VerifyDomainResponse { verified });
+	context.success(VerifyDomainResponse { verified }).await?;
 	Ok(context)
 }
 
@@ -693,7 +698,7 @@ async fn verify_domain_in_workspace(
 /// [`NextHandler`]: NextHandler
 async fn get_domain_info_in_workspace(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
@@ -716,19 +721,20 @@ async fn get_domain_info_in_workspace(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	context.success(GetDomainInfoResponse {
-		workspace_domain: WorkspaceDomain {
-			domain: Domain {
-				id: domain.id,
-				name: domain.name,
-				last_unverified: domain.last_unverified.map(DateTime),
-			},
-			is_verified: domain.is_verified,
-			nameserver_type: domain.nameserver_type,
-		},
-	});
-
 	log::trace!("request_id: {} - Got domain info in workspace", request_id);
+	context
+		.success(GetDomainInfoResponse {
+			workspace_domain: WorkspaceDomain {
+				domain: Domain {
+					id: domain.id,
+					name: domain.name,
+					last_unverified: domain.last_unverified.map(DateTime),
+				},
+				is_verified: domain.is_verified,
+				nameserver_type: domain.nameserver_type,
+			},
+		})
+		.await?;
 	Ok(context)
 }
 
@@ -764,7 +770,7 @@ async fn get_domain_info_in_workspace(
 /// [`NextHandler`]: NextHandler
 async fn delete_domain_in_workspace(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Deleting domain in workspace", request_id);
@@ -816,13 +822,13 @@ async fn delete_domain_in_workspace(
 
 	log::trace!("request_id: {} - Deleted domain in workspace", request_id);
 	// TODO: add the info to patr metrics
-	context.success(DeleteDomainResponse {});
+	context.success(DeleteDomainResponse {}).await?;
 	Ok(context)
 }
 
 async fn get_domain_dns_record(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Getting domain dns record", request_id);
@@ -879,13 +885,15 @@ async fn get_domain_dns_record(
 	.collect();
 
 	log::trace!("request_id: {} - Got domain dns record", request_id);
-	context.success(GetDomainDnsRecordsResponse { records });
+	context
+		.success(GetDomainDnsRecordsResponse { records })
+		.await?;
 	Ok(context)
 }
 
 async fn add_dns_record(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Adding dns record", request_id);
@@ -924,13 +932,15 @@ async fn add_dns_record(
 	.await?;
 
 	log::trace!("request_id: {} - Added dns record", request_id);
-	context.success(AddDnsRecordResponse { id: record_id });
+	context
+		.success(AddDnsRecordResponse { id: record_id })
+		.await?;
 	Ok(context)
 }
 
 async fn update_dns_record(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Updating dns record", request_id);
@@ -969,13 +979,13 @@ async fn update_dns_record(
 	.await?;
 
 	log::trace!("request_id: {} - Updated dns record", request_id);
-	context.success(UpdateDomainDnsRecordResponse {});
+	context.success(UpdateDomainDnsRecordResponse {}).await?;
 	Ok(context)
 }
 
 async fn delete_dns_record(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -1003,13 +1013,13 @@ async fn delete_dns_record(
 	.await?;
 
 	log::trace!("request_id: {} - Deleted dns record", request_id);
-	context.success(DeleteDnsRecordResponse {});
+	context.success(DeleteDnsRecordResponse {}).await?;
 	Ok(context)
 }
 
 async fn is_domain_personal(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -1052,9 +1062,11 @@ async fn is_domain_personal(
 		personal,
 		is_used_by_others
 	);
-	context.success(IsDomainPersonalResponse {
-		personal,
-		is_used_by_others,
-	});
+	context
+		.success(IsDomainPersonalResponse {
+			personal,
+			is_used_by_others,
+		})
+		.await?;
 	Ok(context)
 }

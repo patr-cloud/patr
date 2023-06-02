@@ -1,8 +1,12 @@
-use std::net::{IpAddr, Ipv4Addr};
+use std::{
+	collections::HashMap,
+	net::{IpAddr, Ipv4Addr},
+};
 
 use api_models::{models::auth::*, utils::Uuid, ErrorType};
 use chrono::{Duration, Utc};
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, Error as _, NextHandler};
+use reqwest::header::HeaderName;
 
 mod oauth;
 
@@ -18,7 +22,6 @@ use crate::{
 		constants::request_keys,
 		validator,
 		Error,
-		ErrorData,
 		EveContext,
 		EveMiddleware,
 	},
@@ -41,7 +44,7 @@ mod docker_registry;
 /// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.post(
@@ -136,7 +139,7 @@ pub fn create_sub_app(
 /// [`NextHandler`]: NextHandler
 async fn sign_in(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let LoginRequest { user_id, password } = context
 		.get_body_as()
@@ -154,13 +157,15 @@ async fn sign_in(
 	let success = service::validate_hash(&password, &user_data.password)?;
 
 	if !success {
-		context.error(ErrorType::InvalidPassword);
+		context.error(ErrorType::InvalidPassword).await?;
 		return Ok(context);
 	}
 
 	let config = context.get_state().config.clone();
 	let ip_address = routes::get_request_ip_address(&context);
-	let user_agent = context.get_header("user-agent").unwrap_or_default();
+	let user_agent = context
+		.get_header(HeaderName::from_static("user-agent"))
+		.unwrap_or_default();
 
 	let (UserWebLogin { login_id, .. }, access_token, refresh_token) =
 		service::sign_in_user(
@@ -174,11 +179,13 @@ async fn sign_in(
 		)
 		.await?;
 
-	context.success(LoginResponse {
-		access_token,
-		login_id,
-		refresh_token,
-	});
+	context
+		.success(LoginResponse {
+			access_token,
+			login_id,
+			refresh_token,
+		})
+		.await?;
 	Ok(context)
 }
 
@@ -238,7 +245,7 @@ async fn sign_in(
 /// [`NextHandler`]: NextHandler
 async fn sign_up(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let CreateAccountRequest {
 		username,
@@ -279,7 +286,7 @@ async fn sign_up(
 	)
 	.await;
 
-	context.success(CreateAccountResponse {});
+	context.success(CreateAccountResponse {}).await?;
 	Ok(context)
 }
 
@@ -310,7 +317,7 @@ async fn sign_up(
 /// [`NextHandler`]: NextHandler
 async fn sign_out(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let login_id = context.get_token_data().unwrap().login_id().clone();
 	let user_id = context.get_token_data().unwrap().user_id().clone();
@@ -340,7 +347,7 @@ async fn sign_out(
 	)
 	.await?;
 
-	context.success(LogoutResponse {});
+	context.success(LogoutResponse {}).await?;
 	Ok(context)
 }
 
@@ -375,7 +382,7 @@ async fn sign_out(
 /// [`NextHandler`]: NextHandler
 async fn join(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let CompleteSignUpRequest {
 		username,
@@ -388,7 +395,9 @@ async fn join(
 	let config = context.get_state().config.clone();
 
 	let ip_address = routes::get_request_ip_address(&context);
-	let user_agent = context.get_header("user-agent").unwrap_or_default();
+	let user_agent = context
+		.get_header(HeaderName::from_static("user-agent"))
+		.unwrap_or_default();
 
 	let join_user = service::join_user(
 		context.get_database_connection(),
@@ -441,11 +450,13 @@ async fn join(
 		.await;
 	}
 
-	context.success(CompleteSignUpResponse {
-		access_token: join_user.jwt,
-		login_id: join_user.login_id,
-		refresh_token: join_user.refresh_token,
-	});
+	context
+		.success(CompleteSignUpResponse {
+			access_token: join_user.jwt,
+			login_id: join_user.login_id,
+			refresh_token: join_user.refresh_token,
+		})
+		.await?;
 	Ok(context)
 }
 
@@ -482,22 +493,24 @@ async fn join(
 /// [`NextHandler`]: NextHandler
 async fn get_access_token(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let refresh_token = context
-		.get_header("Authorization")
+		.get_header(HeaderName::from_static("Authorization"))
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let login_id = context
 		.get_request()
-		.get_query()
+		.get_query_as::<HashMap<String, String>>()?
 		.get(request_keys::LOGIN_ID)
 		.and_then(|value| Uuid::parse_str(value).ok())
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let ip_address = routes::get_request_ip_address(&context);
-	let user_agent = context.get_header("user-agent").unwrap_or_default();
+	let user_agent = context
+		.get_header(HeaderName::from_static("user-agent"))
+		.unwrap_or_default();
 
 	let config = context.get_state().config.clone();
 	let user_login = service::get_user_login_for_login_id(
@@ -548,7 +561,9 @@ async fn get_access_token(
 	)
 	.await?;
 
-	context.success(RenewAccessTokenResponse { access_token });
+	context
+		.success(RenewAccessTokenResponse { access_token })
+		.await?;
 	Ok(context)
 }
 
@@ -582,7 +597,7 @@ async fn get_access_token(
 /// [`NextHandler`]: NextHandler
 async fn is_email_valid(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let IsEmailValidRequest { email } = context
 		.get_query_as()
@@ -596,7 +611,7 @@ async fn is_email_valid(
 	)
 	.await?;
 
-	context.success(IsEmailValidResponse { available });
+	context.success(IsEmailValidResponse { available }).await?;
 	Ok(context)
 }
 
@@ -630,7 +645,7 @@ async fn is_email_valid(
 /// [`NextHandler`]: NextHandler
 async fn is_username_valid(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let IsUsernameValidRequest { username } = context
 		.get_query_as()
@@ -644,7 +659,9 @@ async fn is_username_valid(
 	)
 	.await?;
 
-	context.success(IsUsernameValidResponse { available });
+	context
+		.success(IsUsernameValidResponse { available })
+		.await?;
 	Ok(context)
 }
 
@@ -678,7 +695,7 @@ async fn is_username_valid(
 /// [`NextHandler`]: NextHandler
 async fn is_coupon_valid(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let IsCouponValidRequest { coupon } = context
 		.get_query_as()
@@ -692,7 +709,7 @@ async fn is_coupon_valid(
 	.await?
 	.is_some();
 
-	context.success(IsCouponValidResponse { valid });
+	context.success(IsCouponValidResponse { valid }).await?;
 	Ok(context)
 }
 
@@ -728,7 +745,7 @@ async fn is_coupon_valid(
 /// [`NextHandler`]: NextHandler
 async fn forgot_password(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let ForgotPasswordRequest {
 		user_id,
@@ -747,7 +764,7 @@ async fn forgot_password(
 	)
 	.await?;
 
-	context.success(ForgotPasswordResponse {});
+	context.success(ForgotPasswordResponse {}).await?;
 	Ok(context)
 }
 
@@ -782,7 +799,7 @@ async fn forgot_password(
 /// [`NextHandler`]: NextHandler
 async fn reset_password(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let ResetPasswordRequest {
 		user_id,
@@ -869,7 +886,7 @@ async fn reset_password(
 	)
 	.await?;
 
-	context.success(ResetPasswordResponse {});
+	context.success(ResetPasswordResponse {}).await?;
 	Ok(context)
 }
 
@@ -904,7 +921,7 @@ async fn reset_password(
 /// [`NextHandler`]: NextHandler
 async fn resend_otp(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let ResendOtpRequest { username, password } = context
 		.get_body_as()
@@ -926,7 +943,7 @@ async fn resend_otp(
 	)
 	.await?;
 
-	context.success(ResendOtpResponse {});
+	context.success(ResendOtpResponse {}).await?;
 	Ok(context)
 }
 
@@ -952,7 +969,7 @@ async fn resend_otp(
 /// [`NextHandler`]: NextHandler
 async fn list_recovery_options(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let ListRecoveryOptionsRequest { user_id } = context
 		.get_body_as()
@@ -1003,9 +1020,11 @@ async fn list_recovery_options(
 		None
 	};
 
-	context.success(ListRecoveryOptionsResponse {
-		recovery_email,
-		recovery_phone_number,
-	});
+	context
+		.success(ListRecoveryOptionsResponse {
+			recovery_email,
+			recovery_phone_number,
+		})
+		.await?;
 	Ok(context)
 }

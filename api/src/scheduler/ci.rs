@@ -58,7 +58,7 @@ async fn sync_repos() -> Result<(), Error> {
 						"request_id - {} : Error while syncing git provider {} => {}",
 						request_id,
 						git_provider.id,
-						err.get_error()
+						err
 					);
 				}
 			}

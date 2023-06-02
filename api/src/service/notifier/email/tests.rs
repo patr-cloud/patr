@@ -21,6 +21,7 @@ use api_models::{
 	},
 	utils::{DateTime, Uuid},
 };
+use eve_rs::Error as _;
 use lettre::{
 	transport::smtp::authentication::Credentials,
 	AsyncSmtpTransport,

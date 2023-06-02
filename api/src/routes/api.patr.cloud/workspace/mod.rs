@@ -16,7 +16,7 @@ use api_models::{
 	utils::{DateTime, Uuid},
 };
 use chrono::{Duration, Utc};
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, Error as _, NextHandler};
 use sqlx::types::Json;
 
 use crate::{
@@ -27,13 +27,7 @@ use crate::{
 	pin_fn,
 	redis,
 	service::{self, get_access_token_expiry},
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 mod billing;
@@ -64,7 +58,7 @@ mod secret;
 /// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.get(
@@ -106,7 +100,7 @@ pub fn create_sub_app(
 						.workspace_permissions();
 
 					if workspaces.get(&workspace_id).is_none() {
-						context.status(401).json(error!(UNAUTHORIZED));
+						context.status(401)?.json(error!(UNAUTHORIZED)).await?;
 						return Ok(context);
 					}
 					next(context).await
@@ -136,8 +130,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -182,8 +177,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -214,8 +210,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -254,8 +251,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -298,7 +296,7 @@ pub fn create_sub_app(
 /// [`NextHandler`]: NextHandler
 async fn get_workspace_info(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id_string = context
 		.get_param(request_keys::WORKSPACE_ID)
@@ -337,7 +335,9 @@ async fn get_workspace_info(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
-	context.success(GetWorkspaceInfoResponse { workspace });
+	context
+		.success(GetWorkspaceInfoResponse { workspace })
+		.await?;
 	Ok(context)
 }
 
@@ -372,7 +372,7 @@ async fn get_workspace_info(
 /// [`NextHandler`]: NextHandler
 async fn is_name_available(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let IsWorkspaceNameAvailableRequest { name } = context
 		.get_query_as()
@@ -387,7 +387,9 @@ async fn is_name_available(
 	)
 	.await?;
 
-	context.success(IsWorkspaceNameAvailableResponse { available });
+	context
+		.success(IsWorkspaceNameAvailableResponse { available })
+		.await?;
 	Ok(context)
 }
 
@@ -422,7 +424,7 @@ async fn is_name_available(
 /// [`NextHandler`]: NextHandler
 async fn create_new_workspace(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let CreateNewWorkspaceRequest { workspace_name } = context
 		.get_body_as()
@@ -465,7 +467,9 @@ async fn create_new_workspace(
 	)
 	.await?;
 
-	context.success(CreateNewWorkspaceResponse { workspace_id });
+	context
+		.success(CreateNewWorkspaceResponse { workspace_id })
+		.await?;
 	Ok(context)
 }
 
@@ -500,7 +504,7 @@ async fn create_new_workspace(
 /// [`NextHandler`]: NextHandler
 async fn update_workspace_info(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let UpdateWorkspaceInfoRequest {
 		name,
@@ -548,13 +552,13 @@ async fn update_workspace_info(
 	)
 	.await?;
 
-	context.success(UpdateWorkspaceInfoResponse {});
+	context.success(UpdateWorkspaceInfoResponse {}).await?;
 	Ok(context)
 }
 
 async fn delete_workspace(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -673,7 +677,7 @@ async fn delete_workspace(
 	.await?;
 
 	log::trace!("request_id: {} - deleted the workspace", request_id);
-	context.success(DeleteWorkspaceResponse {});
+	context.success(DeleteWorkspaceResponse {}).await?;
 	Ok(context)
 }
 
@@ -704,7 +708,7 @@ async fn delete_workspace(
 /// [`NextHandler`]: NextHandler
 async fn get_workspace_audit_log(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
@@ -731,9 +735,11 @@ async fn get_workspace_audit_log(
 	})
 	.collect();
 
-	context.success(GetWorkspaceAuditLogResponse {
-		audit_logs: workspace_audit_logs,
-	});
+	context
+		.success(GetWorkspaceAuditLogResponse {
+			audit_logs: workspace_audit_logs,
+		})
+		.await?;
 	Ok(context)
 }
 
@@ -764,7 +770,7 @@ async fn get_workspace_audit_log(
 /// [`NextHandler`]: NextHandler
 async fn get_resource_audit_log(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let resource_id = context.get_param(request_keys::RESOURCE_ID).unwrap();
 	let resource_id = Uuid::parse_str(resource_id).unwrap();
@@ -791,8 +797,10 @@ async fn get_resource_audit_log(
 	})
 	.collect();
 
-	context.success(GetWorkspaceAuditLogResponse {
-		audit_logs: workspace_audit_logs,
-	});
+	context
+		.success(GetWorkspaceAuditLogResponse {
+			audit_logs: workspace_audit_logs,
+		})
+		.await?;
 	Ok(context)
 }

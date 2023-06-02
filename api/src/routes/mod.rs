@@ -12,15 +12,16 @@ mod mimir_patr_cloud;
 mod vault_patr_cloud;
 
 use eve_rs::{App as EveApp, Context};
+use reqwest::header::HeaderName;
 
 use crate::{
 	app::{create_eve_app, App},
-	utils::{ErrorData, EveContext, EveMiddleware},
+	utils::{Error, EveContext, EveMiddleware},
 };
 
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut sub_app = create_eve_app(app);
 
 	if cfg!(debug_assertions) {
@@ -65,10 +66,12 @@ pub fn create_sub_app(
 }
 
 pub fn get_request_ip_address(context: &EveContext) -> String {
-	let cf_connecting_ip = context.get_header("CF-Connecting-IP");
-	let x_real_ip = context.get_header("X-Real-IP");
-	let x_forwarded_for =
-		context.get_header("X-Forwarded-For").and_then(|value| {
+	let cf_connecting_ip =
+		context.get_header(HeaderName::from_static("CF-Connecting-IP"));
+	let x_real_ip = context.get_header(HeaderName::from_static("X-Real-IP"));
+	let x_forwarded_for = context
+		.get_header(HeaderName::from_static("X-Forwarded-For"))
+		.and_then(|value| {
 			value.split(',').next().map(|ip| ip.trim().to_string())
 		});
 	let ip = context.get_ip().to_string();

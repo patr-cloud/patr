@@ -17,18 +17,12 @@ use crate::{
 	pin_fn,
 	redis,
 	service::get_access_token_expiry,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.get(
@@ -64,7 +58,7 @@ pub fn create_sub_app(
 
 async fn get_all_logins_for_user(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 
@@ -102,13 +96,13 @@ async fn get_all_logins_for_user(
 	})
 	.collect::<Vec<_>>();
 
-	context.success(ListUserLoginsResponse { logins });
+	context.success(ListUserLoginsResponse { logins }).await?;
 	Ok(context)
 }
 
 async fn get_login_info(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let login_id = context
 		.get_param(request_keys::LOGIN_ID)
@@ -148,13 +142,13 @@ async fn get_login_info(
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	context.success(GetUserLoginInfoResponse { login });
+	context.success(GetUserLoginInfoResponse { login }).await?;
 	Ok(context)
 }
 
 async fn delete_user_login(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let login_id = context
 		.get_param(request_keys::LOGIN_ID)
@@ -180,6 +174,6 @@ async fn delete_user_login(
 	)
 	.await?;
 
-	context.success(DeleteUserLoginResponse {});
+	context.success(DeleteUserLoginResponse {}).await?;
 	Ok(context)
 }

@@ -37,7 +37,7 @@ pub async fn configure_all_unconfigured_managed_urls() -> Result<(), Error> {
 		)
 		.await
 		.map_err(|err| {
-			log::error!("Error verifying managed URL: {}", err.get_error());
+			log::error!("Error verifying managed URL: {}", err);
 			err
 		}) else {
 			continue;
@@ -75,7 +75,7 @@ async fn reverify_all_configured_managed_urls() -> Result<(), Error> {
 		)
 		.await
 		.map_err(|err| {
-			log::error!("Error verifying managed URL: {}", err.get_error());
+			log::error!("Error verifying managed URL: {}", err);
 			err
 		}) else {
 			continue;

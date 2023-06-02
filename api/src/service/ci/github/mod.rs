@@ -4,7 +4,7 @@ use api_models::{
 	models::workspace::ci::git_provider::{Ref, RefType},
 	utils::Uuid,
 };
-use eve_rs::AsError;
+use eve_rs::{AsError, Error as _};
 use hmac::{Hmac, Mac};
 use octorust::{
 	auth::Credentials,
@@ -39,7 +39,7 @@ type HmacSha256 = Hmac<Sha256>;
 /// Returns error if payload signature is different from header signature
 pub fn verify_github_payload_signature_256(
 	signature_from_header: &str,
-	payload: &impl AsRef<[u8]>,
+	payload: &[u8],
 	configured_secret: &impl AsRef<[u8]>,
 ) -> Result<(), Error> {
 	// strip the sha info in header prefix
@@ -342,7 +342,7 @@ pub async fn sync_github_repos(
 	git_provider_id: &Uuid,
 	github_access_token: String,
 	request_id: &Uuid,
-) -> Result<(), eve_rs::Error<()>> {
+) -> Result<(), Error> {
 	let repos_in_db =
 		db::list_repos_for_git_provider(connection, git_provider_id)
 			.await?

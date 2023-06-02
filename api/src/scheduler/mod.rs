@@ -45,7 +45,7 @@ async fn run_job(job: Job) {
 				log::error!(
 					"Error while trying to run job `{}`: {}",
 					job.name,
-					err.get_error()
+					err
 				);
 			}
 		}

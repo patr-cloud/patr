@@ -158,10 +158,7 @@ pub async fn start_consumer(app: &App) {
 					}
 				};
 				let ack_result = if let Err(error) = result {
-					log::error!(
-						"Error processing payload: {}",
-						error.get_error()
-					);
+					log::error!("Error processing payload: {}", error);
 					delivery
 						.nack(BasicNackOptions {
 							multiple: false,
@@ -212,7 +209,7 @@ async fn process_infra_queue_payload(
 			.map_err(|error| {
 				log::error!(
 					"Error processing infra RabbitMQ message: {}",
-					error.get_error()
+					error
 				);
 				error
 			})
@@ -223,7 +220,7 @@ async fn process_infra_queue_payload(
 				.map_err(|error| {
 					log::error!(
 						"Error processing infra RabbitMQ message: {}",
-						error.get_error()
+						error
 					);
 					error
 				})
@@ -238,7 +235,7 @@ async fn process_infra_queue_payload(
 			.map_err(|error| {
 				log::error!(
 					"Error processing infra RabbitMQ message: {}",
-					error.get_error()
+					error
 				);
 				error
 			})
@@ -253,7 +250,7 @@ async fn process_infra_queue_payload(
 			.map_err(|error| {
 				log::error!(
 					"Error processing infra RabbitMQ message: {}",
-					error.get_error()
+					error
 				);
 				error
 			})
@@ -281,10 +278,7 @@ async fn process_ci_queue_payload(
 	ci::process_request(&mut connection, data, config)
 		.await
 		.map_err(|error| {
-			log::error!(
-				"Error processing CI RabbitMQ message: {}",
-				error.get_error()
-			);
+			log::error!("Error processing CI RabbitMQ message: {}", error);
 			error
 		})
 }
@@ -298,10 +292,7 @@ async fn process_billing_queue_payload(
 	billing::process_request(&mut connection, data, config)
 		.await
 		.map_err(|error| {
-			log::error!(
-				"Error processing bills RabbitMQ message: {}",
-				error.get_error()
-			);
+			log::error!("Error processing bills RabbitMQ message: {}", error);
 			error
 		})
 }

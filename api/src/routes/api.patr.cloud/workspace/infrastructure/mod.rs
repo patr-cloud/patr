@@ -16,13 +16,7 @@ use crate::{
 	error,
 	models::rbac,
 	pin_fn,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 mod deployment;
@@ -32,7 +26,7 @@ mod static_site;
 
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.use_sub_app("/deployment", deployment::create_sub_app(app));
@@ -70,7 +64,7 @@ pub fn create_sub_app(
 
 async fn get_all_deployment_machine_types(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context
 		.get_param(request_keys::WORKSPACE_ID)
@@ -102,7 +96,9 @@ async fn get_all_deployment_machine_types(
 			})
 			.collect();
 
-	context.success(ListAllDeploymentMachineTypesResponse { machine_types });
+	context
+		.success(ListAllDeploymentMachineTypesResponse { machine_types })
+		.await?;
 	Ok(context)
 }
 

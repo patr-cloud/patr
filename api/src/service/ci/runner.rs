@@ -1,6 +1,6 @@
 use api_models::{models::workspace::region::RegionStatus, utils::Uuid};
 use chrono::Utc;
-use eve_rs::AsError;
+use eve_rs::{AsError, Error as _};
 
 use crate::{
 	db,

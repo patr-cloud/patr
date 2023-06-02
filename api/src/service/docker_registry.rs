@@ -92,7 +92,7 @@ pub async fn delete_docker_repository_image_in_registry(
 	digest: &str,
 	config: &Settings,
 	request_id: &Uuid,
-) -> Result<(), eve_rs::Error<()>> {
+) -> Result<(), Error> {
 	let god_user =
 		db::get_user_by_user_id(connection, rbac::GOD_USER_ID.get().unwrap())
 			.await?

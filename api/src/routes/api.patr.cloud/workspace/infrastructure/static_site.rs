@@ -33,13 +33,7 @@ use crate::{
 	models::{rbac::permissions, ResourceType},
 	pin_fn,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 /// # Description
@@ -58,7 +52,7 @@ use crate::{
 /// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut app = create_eve_app(app);
 
 	// List all static sites
@@ -104,8 +98,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -148,8 +143,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -190,8 +186,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -232,8 +229,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -274,8 +272,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -316,8 +315,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -358,8 +358,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -392,8 +393,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -434,8 +436,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -476,8 +479,9 @@ pub fn create_sub_app(
 
 					if resource.is_none() {
 						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.status(404)?
+							.json(error!(RESOURCE_DOES_NOT_EXIST))
+							.await?;
 					}
 
 					Ok((context, resource))
@@ -522,7 +526,7 @@ pub fn create_sub_app(
 /// [`NextHandler`]: NextHandler
 async fn get_static_site_info(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let static_site_id = Uuid::parse_str(
 		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
@@ -536,15 +540,17 @@ async fn get_static_site_info(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	context.success(GetStaticSiteInfoResponse {
-		static_site: StaticSite {
-			id: static_site.id,
-			name: static_site.name,
-			status: static_site.status,
-			current_live_upload: static_site.current_live_upload,
-		},
-		static_site_details: StaticSiteDetails {},
-	});
+	context
+		.success(GetStaticSiteInfoResponse {
+			static_site: StaticSite {
+				id: static_site.id,
+				name: static_site.name,
+				status: static_site.status,
+				current_live_upload: static_site.current_live_upload,
+			},
+			static_site_details: StaticSiteDetails {},
+		})
+		.await?;
 	Ok(context)
 }
 
@@ -574,7 +580,7 @@ async fn get_static_site_info(
 /// [`NextHandler`]: NextHandler
 async fn list_static_sites(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let workspace_id =
@@ -605,7 +611,9 @@ async fn list_static_sites(
 	.collect::<Vec<_>>();
 	log::trace!("request_id: {} - Returning the list of all static sites for the workspace", request_id);
 
-	context.success(ListStaticSitesResponse { static_sites });
+	context
+		.success(ListStaticSitesResponse { static_sites })
+		.await?;
 	Ok(context)
 }
 
@@ -635,7 +643,7 @@ async fn list_static_sites(
 /// [`NextHandler`]: NextHandler
 async fn list_static_sites_upload_history(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let static_site_id = Uuid::parse_str(
 		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
@@ -665,7 +673,9 @@ async fn list_static_sites_upload_history(
 	})
 	.collect();
 
-	context.success(ListStaticSiteUploadHistoryResponse { uploads });
+	context
+		.success(ListStaticSiteUploadHistoryResponse { uploads })
+		.await?;
 	Ok(context)
 }
 
@@ -700,7 +710,7 @@ async fn list_static_sites_upload_history(
 /// [`NextHandler`]: NextHandler
 async fn create_static_site(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -743,7 +753,7 @@ async fn create_static_site(
 		"A static site has been created",
 	)
 	.await;
-	context.success(CreateStaticSiteResponse { id });
+	context.success(CreateStaticSiteResponse { id }).await?;
 	Ok(context)
 }
 
@@ -772,7 +782,7 @@ async fn create_static_site(
 /// [`NextHandler`]: NextHandler
 async fn revert_static_site(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let static_site_id = Uuid::parse_str(
@@ -816,7 +826,7 @@ async fn revert_static_site(
 
 	context.commit_database_transaction().await?;
 
-	context.success(RevertStaticSiteResponse {});
+	context.success(RevertStaticSiteResponse {}).await?;
 	Ok(context)
 }
 
@@ -845,7 +855,7 @@ async fn revert_static_site(
 /// [`NextHandler`]: NextHandler
 async fn start_static_site(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -886,7 +896,7 @@ async fn start_static_site(
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	};
 
-	context.success(StartStaticSiteResponse {});
+	context.success(StartStaticSiteResponse {}).await?;
 	Ok(context)
 }
 
@@ -915,7 +925,7 @@ async fn start_static_site(
 /// [`NextHandler`]: NextHandler
 async fn update_static_site(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -951,13 +961,13 @@ async fn update_static_site(
 	)
 	.await?;
 
-	context.success(UpdateStaticSiteResponse {});
+	context.success(UpdateStaticSiteResponse {}).await?;
 	Ok(context)
 }
 
 async fn upload_static_site(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
@@ -1010,7 +1020,9 @@ async fn upload_static_site(
 		static_site_id
 	);
 
-	context.success(UploadStaticSiteResponse { upload_id });
+	context
+		.success(UploadStaticSiteResponse { upload_id })
+		.await?;
 	Ok(context)
 }
 
@@ -1039,7 +1051,7 @@ async fn upload_static_site(
 /// [`NextHandler`]: NextHandler
 async fn stop_static_site(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let static_site_id = Uuid::parse_str(
 		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
@@ -1063,7 +1075,7 @@ async fn stop_static_site(
 	)
 	.await?;
 
-	context.success(StopStaticSiteResponse {});
+	context.success(StopStaticSiteResponse {}).await?;
 	Ok(context)
 }
 
@@ -1092,7 +1104,7 @@ async fn stop_static_site(
 /// [`NextHandler`]: NextHandler
 async fn delete_static_site(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 
@@ -1162,13 +1174,13 @@ async fn delete_static_site(
 	)
 	.await?;
 
-	context.success(DeleteStaticSiteResponse {});
+	context.success(DeleteStaticSiteResponse {}).await?;
 	Ok(context)
 }
 
 async fn list_linked_urls(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let static_site_id = Uuid::parse_str(
@@ -1225,6 +1237,6 @@ async fn list_linked_urls(
 	})
 	.collect();
 
-	context.success(ListLinkedURLsResponse { urls });
+	context.success(ListLinkedURLsResponse { urls }).await?;
 	Ok(context)
 }

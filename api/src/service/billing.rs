@@ -32,7 +32,7 @@ use api_models::{
 	utils::{DateTime, Uuid},
 };
 use chrono::{Datelike, TimeZone, Utc};
-use eve_rs::AsError;
+use eve_rs::{AsError, Error as _};
 use stripe::{
 	Client,
 	CreatePaymentIntent,

@@ -1,9 +1,13 @@
-use std::net::{IpAddr, Ipv4Addr};
+use std::{
+	collections::HashMap,
+	net::{IpAddr, Ipv4Addr},
+};
 
 use api_models::utils::Uuid;
 use base64::prelude::*;
 use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, HttpMethod, NextHandler};
+use reqwest::header::HeaderName;
 use serde_json::json;
 
 use crate::{
@@ -24,7 +28,6 @@ use crate::{
 		constants::request_keys,
 		validator,
 		Error,
-		ErrorData,
 		EveContext,
 		EveMiddleware,
 	},
@@ -45,7 +48,7 @@ use crate::{
 /// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut app = create_eve_app(app);
 
 	app.post(
@@ -91,12 +94,12 @@ pub fn create_sub_app(
 /// [`NextHandler`]: NextHandler
 async fn docker_registry_token_endpoint(
 	mut context: EveContext,
-	next: NextHandler<EveContext, ErrorData>,
+	next: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
-	let query = context.get_request().get_query();
+	let query = context.get_query_as::<HashMap<String, String>>()?;
 
 	if context.get_method() == &HttpMethod::Post {
-		context.status(405);
+		context.status(405)?;
 		return Ok(context);
 	}
 
@@ -142,9 +145,11 @@ async fn docker_registry_token_endpoint(
 /// [`NextHandler`]: NextHandler
 async fn docker_registry_login(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
-	let query = context.get_request().get_query().clone();
+	let query = context
+		.get_request()
+		.get_query_as::<HashMap<String, String>>()?;
 	let config = context.get_state().config.clone();
 
 	let _client_id = query
@@ -212,7 +217,7 @@ async fn docker_registry_login(
 	}
 
 	let authorization = context
-		.get_header("Authorization")
+		.get_header(HeaderName::from_static("Authorization"))
 		.map(|value| value.replace("Basic ", ""))
 		.map(|value| {
 			BASE64_STANDARD
@@ -342,7 +347,7 @@ async fn docker_registry_login(
 		config.docker_registry.public_key_der.as_ref(),
 	)?;
 
-	context.json(json!({ request_keys::TOKEN: token }));
+	context.json(json!({ request_keys::TOKEN: token })).await?;
 	Ok(context)
 }
 
@@ -371,13 +376,15 @@ async fn docker_registry_login(
 /// [`NextHandler`]: NextHandler
 async fn docker_registry_authenticate(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
-	let query = context.get_request().get_query().clone();
+	let query = context
+		.get_request()
+		.get_query_as::<HashMap<String, String>>()?;
 	let config = context.get_state().config.clone();
 
 	let authorization = context
-		.get_header("Authorization")
+		.get_header(HeaderName::from_static("Authorization"))
 		.map(|value| value.replace("Basic ", ""))
 		.map(|value| {
 			BASE64_STANDARD
@@ -459,7 +466,9 @@ async fn docker_registry_authenticate(
 		)
 		.is_ok()
 		{
-			context.json(json!({ request_keys::TOKEN: password }));
+			context
+				.json(json!({ request_keys::TOKEN: password }))
+				.await?;
 			return Ok(context);
 		}
 	}
@@ -754,6 +763,6 @@ async fn docker_registry_authenticate(
 		config.docker_registry.public_key_der.as_ref(),
 	)?;
 
-	context.json(json!({ request_keys::TOKEN: token }));
+	context.json(json!({ request_keys::TOKEN: token })).await?;
 	Ok(context)
 }

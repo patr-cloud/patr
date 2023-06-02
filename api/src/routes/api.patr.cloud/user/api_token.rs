@@ -22,18 +22,12 @@ use crate::{
 	pin_fn,
 	redis,
 	service,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut app = create_eve_app(app);
 
 	app.post(
@@ -98,7 +92,7 @@ pub fn create_sub_app(
 
 async fn create_api_token(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
@@ -127,13 +121,15 @@ async fn create_api_token(
 	)
 	.await?;
 
-	context.success(CreateApiTokenResponse { id, token });
+	context
+		.success(CreateApiTokenResponse { id, token })
+		.await?;
 	Ok(context)
 }
 
 async fn list_api_tokens_for_user(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let user_id = context.get_token_data().unwrap().user_id().clone();
@@ -159,13 +155,13 @@ async fn list_api_tokens_for_user(
 	})
 	.collect::<Vec<_>>();
 
-	context.success(ListApiTokenResponse { tokens });
+	context.success(ListApiTokenResponse { tokens }).await?;
 	Ok(context)
 }
 
 async fn list_permissions_for_api_token(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let token_id = context.get_param(request_keys::TOKEN_ID).unwrap();
@@ -196,13 +192,15 @@ async fn list_permissions_for_api_token(
 		token_id
 	);
 
-	context.success(ListApiTokenPermissionsResponse { permissions });
+	context
+		.success(ListApiTokenPermissionsResponse { permissions })
+		.await?;
 	Ok(context)
 }
 
 async fn regenerate_api_token(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let token_id =
 		Uuid::parse_str(context.get_param(request_keys::TOKEN_ID).unwrap())?;
@@ -223,15 +221,17 @@ async fn regenerate_api_token(
 	)
 	.await?;
 
-	context.success(RegenerateApiTokenResponse {
-		token: user_facing_token,
-	});
+	context
+		.success(RegenerateApiTokenResponse {
+			token: user_facing_token,
+		})
+		.await?;
 	Ok(context)
 }
 
 async fn revoke_api_token(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	let user_id = context.get_token_data().unwrap().user_id().clone();
@@ -269,13 +269,13 @@ async fn revoke_api_token(
 	)
 	.await?;
 
-	context.success(RevokeApiTokenResponse {});
+	context.success(RevokeApiTokenResponse {}).await?;
 	Ok(context)
 }
 
 async fn update_api_token(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 	let token_id =
@@ -308,6 +308,6 @@ async fn update_api_token(
 	)
 	.await?;
 
-	context.success(UpdateApiTokenResponse {});
+	context.success(UpdateApiTokenResponse {}).await?;
 	Ok(context)
 }
