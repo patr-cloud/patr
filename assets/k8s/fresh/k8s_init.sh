@@ -46,8 +46,6 @@ kubectl create secret tls $DEFAULT_CERT_NAME \
     --namespace ingress-nginx \
     --dry-run=client -o yaml | kubectl apply -f -
 
-# TODO: check whether helm upgrade changes nginx IP or not,
-# else it will cause problems
 echo "Installing nginx as ingress for cluster"
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
     --namespace ingress-nginx --create-namespace \
@@ -71,11 +69,10 @@ config:
         username: $CLUSTER_ID
         password: $LOKI_API_TOKEN
   snippets:
-    extraRelabelConfigs:
-      - source_labels: [namespace]
-        regex: "[a-f0-9]{32}"
-        action: keep
-      - action: drop
+    pipelineStages:
+      - match:
+          selector: '{namespace!~"[a-f0-9]{32}"}'
+          action: drop
 EOF
 else
     echo "Skipped promtail installation"

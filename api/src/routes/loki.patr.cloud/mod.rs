@@ -90,9 +90,6 @@ async fn push_loki_logs(
 	}
 
 	let config = &context.get_state().config;
-	let loki_url = context
-		.get_full_url()
-		.replace(&config.loki.log_push_host, &config.loki.host);
 
 	let mut request_headers = context
 		.get_request()
@@ -115,7 +112,7 @@ async fn push_loki_logs(
 	);
 
 	let response = reqwest::Client::new()
-		.post(loki_url)
+		.post(format!("https://{}/loki/api/v1/push", config.loki.host))
 		.basic_auth(&config.loki.username, Some(&config.loki.password))
 		.headers(request_headers)
 		.body(context.get_request().get_body_bytes().to_owned())
