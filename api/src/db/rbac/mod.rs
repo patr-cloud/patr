@@ -12,7 +12,6 @@ mod role;
 mod user;
 
 pub use self::{role::*, user::*};
-use super::PermissionType;
 
 pub struct ResourceType {
 	pub id: Uuid,
@@ -364,7 +363,7 @@ pub async fn get_all_workspace_role_permissions_for_user(
 			.entry(workspace_id)
 			.or_default()
 			.insert(
-				// insert is file as every include resource has been
+				// insert is fine as every include resource has been
 				// accumulated already
 				permission_id,
 				ResourcePermissionType::Include(resource_ids),
@@ -375,6 +374,7 @@ pub async fn get_all_workspace_role_permissions_for_user(
 		r#"
 		SELECT
 			workspace_user.workspace_id as "workspace_id: Uuid",
+			workspace_user.role_id as "role_id: Uuid",
 			role_resource_permissions_exclude.permission_id as "permission_id: Uuid",
 			role_resource_permissions_exclude.resource_id as "resource_id: Uuid"
 		FROM
@@ -390,13 +390,35 @@ pub async fn get_all_workspace_role_permissions_for_user(
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
-	.map(|row| (row.workspace_id, row.permission_id, row.resource_id))
+	.map(|row| {
+		(
+			row.workspace_id,
+			row.role_id,
+			row.permission_id,
+			row.resource_id,
+		)
+	})
 	.fold(
-		BTreeMap::<(Uuid, Uuid), BTreeSet<Uuid>>::new(),
-		|mut accu, (workspace_id, permission_id, resource_id)| {
-			accu.entry((workspace_id, permission_id))
+		BTreeMap::<(Uuid, Uuid, Uuid), BTreeSet<Uuid>>::new(),
+		|mut accu, (workspace_id, role_id, permission_id, resource_id)| {
+			accu.entry((workspace_id, role_id, permission_id))
 				.or_default()
 				.insert(resource_id);
+			accu
+		},
+	)
+	.into_iter()
+	.fold(
+		BTreeMap::<(Uuid, Uuid), BTreeSet<Uuid>>::new(),
+		|mut accu, ((workspace_id, _role_id, permission_id), resource_ids)| {
+			accu.entry((workspace_id, permission_id))
+				.and_modify(|existing_excludes| {
+					*existing_excludes = existing_excludes
+						.intersection(&resource_ids)
+						.cloned()
+						.collect();
+				})
+				.or_insert_with(|| resource_ids);
 			accu
 		},
 	)
@@ -417,7 +439,8 @@ pub async fn get_all_workspace_role_permissions_for_user(
 				})
 			}
 			ResourcePermissionType::Exclude(excludes) => {
-				// ideally this case won't happen
+				// ideally this case won't happen, as excludes are accumulated
+				// and then inserted
 				excludes.iter().cloned().for_each(|resource_id| {
 					resource_ids.insert(resource_id);
 				})
@@ -431,33 +454,38 @@ pub async fn get_all_workspace_role_permissions_for_user(
 		r#"
 		SELECT
 			workspace_user.workspace_id as "workspace_id: Uuid",
-			role_resource_permissions_type.permission_id as "permission_id: Uuid",
-			role_resource_permissions_type.permission_type as "permission_type: PermissionType"
+			role_resource_permissions_type.permission_id as "permission_id: Uuid"
 		FROM
 			role_resource_permissions_type
 		JOIN
 			workspace_user
 			ON workspace_user.role_id = role_resource_permissions_type.role_id
 		WHERE
-			workspace_user.user_id = $1;
+			workspace_user.user_id = $1
+			AND role_resource_permissions_type.permission_type = 'exclude'
+			AND NOT EXISTS (
+				SELECT 1
+				FROM
+					role_resource_permissions_exclude
+				WHERE
+					role_resource_permissions_exclude.role_id = role_resource_permissions_type.role_id
+					AND role_resource_permissions_exclude.permission_id = role_resource_permissions_type.permission_id
+		);
 		"#,
 		user_id as _
 	)
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
-	.map(|row| (row.workspace_id, row.permission_id, row.permission_type))
-	.for_each(|(workspace_id, permission_id, permission_type)| {
+	.map(|row| (row.workspace_id, row.permission_id))
+	.for_each(|(workspace_id, permission_id)| {
 		workspace_member_permissions
 			.entry(workspace_id)
 			.or_default()
-			.entry(permission_id)
-			.or_insert_with(|| {
-				match permission_type {
-					PermissionType::Include => ResourcePermissionType::Include(BTreeSet::new()),
-					PermissionType::Exclude => ResourcePermissionType::Exclude(BTreeSet::new())
-				}
-			});
+			.insert(
+				permission_id,
+				ResourcePermissionType::Exclude(BTreeSet::new()),
+			);
 	});
 
 	let mut workspace_permissions = workspace_member_permissions
