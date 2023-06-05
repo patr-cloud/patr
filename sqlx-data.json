@@ -3549,6 +3549,44 @@
     },
     "query": "CREATE TABLE IF NOT EXISTS docker_repo_payment_history( workspace_id UUID NOT NULL, storage BIGINT NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
   },
+  "2f15c7c4c4c069aca1c77d52ef40d55c6e580b727e691225b13442967eb5154f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "role_id: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "permission_id: Uuid",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "resource_id: Uuid",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT workspace_user.workspace_id as \"workspace_id: Uuid\", workspace_user.role_id as \"role_id: Uuid\", role_resource_permissions_exclude.permission_id as \"permission_id: Uuid\", role_resource_permissions_exclude.resource_id as \"resource_id: Uuid\" FROM role_resource_permissions_exclude JOIN workspace_user ON workspace_user.role_id = role_resource_permissions_exclude.role_id WHERE workspace_user.user_id = $1;"
+  },
   "30653640dbfdeb1e2caa666a9b85be290220813278ce2acad9cc3590b7198d18": {
     "describe": {
       "columns": [],
@@ -12996,38 +13034,6 @@
     },
     "query": "CREATE TABLE ci_runner ( id UUID NOT NULL, name CITEXT NOT NULL, workspace_id UUID NOT NULL, region_id UUID NOT NULL, build_machine_type_id UUID NOT NULL, deleted TIMESTAMPTZ, CONSTRAINT ci_runner_pk PRIMARY KEY (id), CONSTRAINT ci_runner_fk_workspace_id FOREIGN KEY (workspace_id) REFERENCES workspace(id), CONSTRAINT ci_runner_fk_region_id FOREIGN KEY (region_id) REFERENCES region(id), CONSTRAINT ci_runner_fk_build_machine_type_id FOREIGN KEY (build_machine_type_id) REFERENCES ci_build_machine_type(id) );"
   },
-  "bc3518596270e9c00a481550dc4065bb10731b88f9e70f0c377b8e48d3a898ad": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "permission_id: Uuid",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "resource_id: Uuid",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT workspace_user.workspace_id as \"workspace_id: Uuid\", role_resource_permissions_exclude.permission_id as \"permission_id: Uuid\", role_resource_permissions_exclude.resource_id as \"resource_id: Uuid\" FROM role_resource_permissions_exclude JOIN workspace_user ON workspace_user.role_id = role_resource_permissions_exclude.role_id WHERE workspace_user.user_id = $1;"
-  },
   "bc5711f63271cba67f3e02fe5e8c9791b2b73d1c63828d356581e222db9b0e15": {
     "describe": {
       "columns": [
@@ -15703,48 +15709,6 @@
     },
     "query": "ALTER TABLE workspace ADD CONSTRAINT workspace_fk_address_id FOREIGN KEY(address_id) REFERENCES address(id);"
   },
-  "eceb39bfc51173b33018ed82f6211daa167cbdf388979fdbdc4b2d5bd6ec64a6": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "permission_id: Uuid",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "permission_type: PermissionType",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "include",
-                  "exclude"
-                ]
-              },
-              "name": "permission_type"
-            }
-          }
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT workspace_user.workspace_id as \"workspace_id: Uuid\", role_resource_permissions_type.permission_id as \"permission_id: Uuid\", role_resource_permissions_type.permission_type as \"permission_type: PermissionType\" FROM role_resource_permissions_type JOIN workspace_user ON workspace_user.role_id = role_resource_permissions_type.role_id WHERE workspace_user.user_id = $1;"
-  },
   "ed964d5972036bd49e17512f2588da16a94a81f63db84cdd4a5713b9adeca9be": {
     "describe": {
       "columns": [],
@@ -16230,6 +16194,32 @@
       }
     },
     "query": "INSERT INTO role_resource_permissions_include( role_id, permission_id, resource_id ) VALUES ($1, $2, $3);"
+  },
+  "f542fb018e204e89986a28a0702fd56692ec02a0f9ff5de0a74c7d7abbe10e20": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "permission_id: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT workspace_user.workspace_id as \"workspace_id: Uuid\", role_resource_permissions_type.permission_id as \"permission_id: Uuid\" FROM role_resource_permissions_type JOIN workspace_user ON workspace_user.role_id = role_resource_permissions_type.role_id WHERE workspace_user.user_id = $1 AND role_resource_permissions_type.permission_type = 'exclude' AND NOT EXISTS ( SELECT 1 FROM role_resource_permissions_exclude WHERE role_resource_permissions_exclude.role_id = role_resource_permissions_type.role_id AND role_resource_permissions_exclude.permission_id = role_resource_permissions_type.permission_id );"
   },
   "f586863518a7bc2ad7980aa354656d0373289758bc9de1605b1123fffe485f12": {
     "describe": {
