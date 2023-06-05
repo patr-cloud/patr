@@ -21,6 +21,7 @@ pub fn create_sub_app(
 
 	if cfg!(debug_assertions) {
 		sub_app.use_sub_app("/", api_patr_cloud::create_sub_app(app));
+		sub_app.use_sub_app("/v1", vault_patr_cloud::create_sub_app(app));
 	} else {
 		sub_app.use_middleware(
 			"/",
