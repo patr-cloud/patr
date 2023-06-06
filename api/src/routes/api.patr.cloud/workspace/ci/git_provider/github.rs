@@ -40,6 +40,7 @@ use octorust::{
 };
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use redis::AsyncCommands;
+use reqwest::header::HeaderValue;
 use serde::Deserialize;
 
 use crate::{
@@ -1345,7 +1346,7 @@ async fn get_build_logs(
 
 	let build_step_id = BuildStepId {
 		build_id: BuildId {
-			repo_workspace_id: workspace_id,
+			repo_workspace_id: workspace_id.clone(),
 			repo_id: repo.id,
 			build_num,
 		},
@@ -1363,6 +1364,11 @@ async fn get_build_logs(
 			build_created_time.timestamp_nanos()
 		))
 		.basic_auth(&loki.username, Some(&loki.password))
+		.header(
+			"X-Scope-OrgID",
+			HeaderValue::from_str(workspace_id.as_str())
+					.expect("workpsace_id to headervalue should not panic")
+		)
 		.send()
 		.await?
 		.json::<Logs>()

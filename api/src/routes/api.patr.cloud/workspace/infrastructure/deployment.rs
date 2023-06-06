@@ -1468,25 +1468,6 @@ async fn get_logs(
 	)
 	.unwrap();
 
-	let deployment = db::get_deployment_by_id(
-		context.get_database_connection(),
-		&deployment_id,
-	)
-	.await?
-	.status(500)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	if !service::is_deployed_on_patr_cluster(
-		context.get_database_connection(),
-		&deployment.region,
-	)
-	.await?
-	{
-		return Err(Error::empty().status(500).body(
-			error!(FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER).to_string(),
-		));
-	}
-
 	let config = context.get_state().config.clone();
 
 	let end_time = end_time

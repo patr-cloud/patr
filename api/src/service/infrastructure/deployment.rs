@@ -29,7 +29,7 @@ use api_models::{
 use chrono::{DateTime, TimeZone, Utc};
 use eve_rs::AsError;
 use k8s_openapi::api::core::v1::Event;
-use reqwest::Client;
+use reqwest::{header::HeaderValue, Client};
 
 use crate::{
 	db,
@@ -1294,6 +1294,11 @@ async fn get_container_logs(
 			limit
 		))
 		.basic_auth(&config.loki.username, Some(&config.loki.password))
+		.header(
+			"X-Scope-OrgID",
+			HeaderValue::from_str(workspace_id.as_str())
+				.expect("workpsace_id to headervalue should not panic"),
+		)
 		.send()
 		.await?
 		.json::<Logs>()
