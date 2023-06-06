@@ -18,6 +18,7 @@ pub(super) async fn migrate(
 	re_add_constraints(connection, config).await?;
 	remove_list_permissions(connection, config).await?;
 	add_rbac_blocklist_tables(connection, config).await?;
+	add_loki_push_permission(connection, config).await?;
 	reset_permission_order(connection, config).await?;
 
 	Ok(())
@@ -1271,6 +1272,7 @@ async fn reset_permission_order(
 		"workspace::region::checkStatus",
 		"workspace::region::add",
 		"workspace::region::delete",
+		"workspace::region::loki_push",
 		"workspace::ci::recentActivity",
 		"workspace::ci::gitProvider::list",
 		"workspace::ci::gitProvider::connect",
@@ -1439,6 +1441,51 @@ async fn re_add_constraints(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	Ok(())
+}
+
+async fn add_loki_push_permission(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	for &permission in ["workspace::region::loki_push"].iter() {
+		let uuid = loop {
+			let uuid = Uuid::new_v4();
+
+			let exists = query!(
+				r#"
+				SELECT
+					*
+				FROM
+					permission
+				WHERE
+					id = $1;
+				"#,
+				&uuid
+			)
+			.fetch_optional(&mut *connection)
+			.await?
+			.is_some();
+
+			if !exists {
+				break uuid;
+			}
+		};
+
+		query!(
+			r#"
+			INSERT INTO
+				permission
+			VALUES
+				($1, $2, '');
+			"#,
+			&uuid,
+			permission
+		)
+		.fetch_optional(&mut *connection)
+		.await?;
+	}
 
 	Ok(())
 }
