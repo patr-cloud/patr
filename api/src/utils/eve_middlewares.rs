@@ -88,7 +88,7 @@ impl Middleware<EveContext, Error> for EveMiddleware {
 				is_api_token_allowed,
 			} => {
 				let token = context
-					.get_header(HeaderName::from_static("Authorization"))
+					.get_header(HeaderName::from_static("authorization"))
 					.status(401)
 					.body(error!(UNAUTHORIZED).to_string())?;
 
@@ -121,7 +121,7 @@ impl Middleware<EveContext, Error> for EveMiddleware {
 				requested_workspace,
 			} => {
 				let token = context
-					.get_header("Authorization")
+					.get_header(HeaderName::from_static("Authorization"))
 					.status(401)
 					.body(error!(UNAUTHORIZED).to_string())?;
 
@@ -166,7 +166,7 @@ impl Middleware<EveContext, Error> for EveMiddleware {
 				is_api_token_allowed,
 			} => {
 				let token = context
-					.get_header(HeaderName::from_static("Authorization"))
+					.get_header(HeaderName::from_static("authorization"))
 					.status(401)
 					.body(error!(UNAUTHORIZED).to_string())?;
 

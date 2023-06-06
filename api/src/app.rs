@@ -98,20 +98,9 @@ async fn eve_error_handler(
 	mut response: Response,
 	error: Error,
 ) -> Result<(), Error> {
-	let error_string = error.to_string();
-	if error_string != "entity not found" {
-		log::error!("Error occured while processing request: {}", error);
-	}
+	log::error!("Error occured while processing request: {}", error);
 	response.set_content_type("application/json")?;
 	response.set_status(error.status_code())?;
-
-	response.set_header("Access-Control-Allow-Origin", "*")?;
-	response.set_header("Access-Control-Allow-Methods", "*")?;
-	response.set_header(
-		"Access-Control-Allow-Headers",
-		"Content-Type,Authorization",
-	)?;
-
 	response.set_body_bytes(error.body_bytes()).await?;
 	Ok(())
 }
@@ -206,6 +195,7 @@ async fn add_cors_headers(
 		.header("Access-Control-Allow-Headers", "Content-Type,Authorization")?;
 
 	if context.get_method() == &HttpMethod::Options {
+		context.status(200)?;
 		return Ok(context);
 	}
 

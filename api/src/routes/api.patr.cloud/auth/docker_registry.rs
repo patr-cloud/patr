@@ -217,7 +217,7 @@ async fn docker_registry_login(
 	}
 
 	let authorization = context
-		.get_header(HeaderName::from_static("Authorization"))
+		.get_header(HeaderName::from_static("authorization"))
 		.map(|value| value.replace("Basic ", ""))
 		.map(|value| {
 			BASE64_STANDARD
@@ -384,7 +384,7 @@ async fn docker_registry_authenticate(
 	let config = context.get_state().config.clone();
 
 	let authorization = context
-		.get_header(HeaderName::from_static("Authorization"))
+		.get_header(HeaderName::from_static("authorization"))
 		.map(|value| value.replace("Basic ", ""))
 		.map(|value| {
 			BASE64_STANDARD

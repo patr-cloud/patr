@@ -496,7 +496,7 @@ async fn get_access_token(
 	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let refresh_token = context
-		.get_header(HeaderName::from_static("Authorization"))
+		.get_header(HeaderName::from_static("authorization"))
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let login_id = context

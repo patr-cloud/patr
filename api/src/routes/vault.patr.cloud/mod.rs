@@ -1,7 +1,8 @@
 use std::net::{IpAddr, Ipv4Addr};
 
 use api_models::utils::Uuid;
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, Error as _, NextHandler};
+use reqwest::header::HeaderName;
 use vaultrs::{
 	client::{VaultClient, VaultClientSettingsBuilder},
 	kv1,
@@ -23,18 +24,12 @@ use crate::{
 	},
 	pin_fn,
 	routes::get_request_ip_address,
-	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{constants::request_keys, Error, EveContext, EveMiddleware},
 };
 
 pub fn create_sub_app(
 	app: &App,
-) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
+) -> EveApp<EveContext, EveMiddleware, App, Error> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.get(
@@ -47,7 +42,7 @@ pub fn create_sub_app(
 
 async fn middle_man_fn(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
@@ -69,7 +64,7 @@ async fn middle_man_fn(
 			.status(401)?;
 
 	let token = context
-		.get_header("x-vault-token")
+		.get_header(HeaderName::from_static("x-vault-token"))
 		.status(401)
 		.body(error!(UNAUTHORIZED).to_string())?;
 
@@ -121,26 +116,28 @@ async fn middle_man_fn(
 	let vault_secret =
 		serde_json::from_value::<VaultResponse>(vault_response.data)?;
 
-	context.json(VaultSecretResponse {
-		data: serde_json::to_value(VaultResponse {
-			data: VaultResponseData {
-				data: vault_secret.data.data,
-			},
-			metadata: {
-				VaultResponseMetadata {
-					created_time: vault_secret.metadata.created_time,
-					custom_metadata: None,
-					deletion_time: String::from(""),
-					destroyed: false,
-					version: vault_secret.metadata.version,
-				}
-			},
-		})?,
-		auth: None,
-		lease_duration: 0,
-		lease_id: String::from(""),
-		renewable: false,
-		request_id: vault_response.request_id,
-	});
+	context
+		.json(VaultSecretResponse {
+			data: serde_json::to_value(VaultResponse {
+				data: VaultResponseData {
+					data: vault_secret.data.data,
+				},
+				metadata: {
+					VaultResponseMetadata {
+						created_time: vault_secret.metadata.created_time,
+						custom_metadata: None,
+						deletion_time: String::from(""),
+						destroyed: false,
+						version: vault_secret.metadata.version,
+					}
+				},
+			})?,
+			auth: None,
+			lease_duration: 0,
+			lease_id: String::from(""),
+			renewable: false,
+			request_id: vault_response.request_id,
+		})
+		.await?;
 	Ok(context)
 }

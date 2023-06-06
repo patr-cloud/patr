@@ -67,10 +67,10 @@ pub fn create_sub_app(
 
 pub fn get_request_ip_address(context: &EveContext) -> String {
 	let cf_connecting_ip =
-		context.get_header(HeaderName::from_static("CF-Connecting-IP"));
-	let x_real_ip = context.get_header(HeaderName::from_static("X-Real-IP"));
+		context.get_header(HeaderName::from_static("cf-connecting-ip"));
+	let x_real_ip = context.get_header(HeaderName::from_static("x-real-ip"));
 	let x_forwarded_for = context
-		.get_header(HeaderName::from_static("X-Forwarded-For"))
+		.get_header(HeaderName::from_static("x-forwarded-for"))
 		.and_then(|value| {
 			value.split(',').next().map(|ip| ip.trim().to_string())
 		});

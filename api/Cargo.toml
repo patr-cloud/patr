@@ -63,7 +63,7 @@ regex = "1"
 reqwest = { version = "0.11", features = ["json", "multipart", "cookies"] }
 rust-s3 = { version = "0.33", features = ["tokio-rustls-tls", "with-tokio"] }
 semver = "1"
-serde = { version = "1", features = ["serde_derive"] }
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_qs = "0.12"
 serde_yaml = "0.9"

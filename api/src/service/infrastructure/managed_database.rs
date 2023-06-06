@@ -6,7 +6,7 @@ use api_models::{
 	utils::Uuid,
 };
 use chrono::Utc;
-use eve_rs::AsError;
+use eve_rs::{AsError, Error as _};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
 use crate::{

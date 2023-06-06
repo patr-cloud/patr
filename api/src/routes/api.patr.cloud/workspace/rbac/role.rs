@@ -401,7 +401,6 @@ async fn get_role_details(
 		context.get_database_connection(),
 		&role_id,
 	)
-	.await?
 	.await?;
 
 	context

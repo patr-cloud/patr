@@ -104,7 +104,7 @@ async fn get_all_deployment_machine_types(
 
 async fn get_all_database_plans(
 	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
+	_: NextHandler<EveContext, Error>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context
 		.get_param(request_keys::WORKSPACE_ID)
@@ -138,6 +138,8 @@ async fn get_all_database_plans(
 			})
 			.collect();
 
-	context.success(ListAllDatabasePlanResponse { database_plans });
+	context
+		.success(ListAllDatabasePlanResponse { database_plans })
+		.await?;
 	Ok(context)
 }

@@ -261,7 +261,7 @@ async fn process_infra_queue_payload(
 				.map_err(|error| {
 					log::error!(
 						"Error processing infra RabbitMQ message: {}",
-						error.get_error()
+						error
 					);
 					error
 				})

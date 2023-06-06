@@ -102,7 +102,7 @@ async fn notification_handler(
 		request_id
 	);
 	let custom_header = context
-		.get_header(HeaderName::from_static("Authorization"))
+		.get_header(HeaderName::from_static("authorization"))
 		.status(400)
 		.body(
 			json!({
