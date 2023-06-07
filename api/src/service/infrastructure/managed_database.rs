@@ -139,7 +139,6 @@ pub async fn create_managed_database_in_workspace(
 			service::patch_kubernetes_mysql_database(
 				workspace_id,
 				&database_id,
-				&password,
 				&database_plan,
 				kubeconfig,
 				request_id,
@@ -255,6 +254,34 @@ async fn check_managed_database_creation_limit(
 			.status(400)
 			.body(error!(RESOURCE_LIMIT_EXCEEDED).to_string())?;
 	}
+
+	Ok(())
+}
+
+pub async fn change_database_password(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	database_id: &Uuid,
+	request_id: &Uuid,
+	new_password: &String,
+) -> Result<(), Error> {
+	let database = db::get_managed_database_by_id(connection, database_id)
+		.await?
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let kubeconfig =
+		service::get_kubernetes_config_for_region(connection, &database.region)
+			.await?
+			.0;
+
+	service::change_mysql_database_password(
+		&database.workspace_id,
+		&database.id,
+		kubeconfig,
+		request_id,
+		new_password,
+	)
+	.await?;
 
 	Ok(())
 }

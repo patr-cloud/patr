@@ -10,18 +10,16 @@ use k8s_openapi::{
 		core::v1::{
 			Container,
 			ContainerPort,
-			EnvVar,
-			EnvVarSource,
 			ExecAction,
 			PersistentVolumeClaim,
 			PersistentVolumeClaimSpec,
 			PersistentVolumeClaimVolumeSource,
+			Pod,
 			PodSpec,
 			PodTemplateSpec,
 			Probe,
 			ResourceRequirements,
 			Secret,
-			SecretKeySelector,
 			Service,
 			ServicePort,
 			ServiceSpec,
@@ -35,7 +33,7 @@ use k8s_openapi::{
 	},
 };
 use kube::{
-	api::{DeleteParams, ListParams, Patch, PatchParams},
+	api::{AttachParams, DeleteParams, ListParams, Patch, PatchParams},
 	config::Kubeconfig,
 	core::ObjectMeta,
 	Api,
@@ -53,7 +51,6 @@ use crate::{
 pub async fn patch_kubernetes_mysql_database(
 	workspace_id: &Uuid,
 	database_id: &Uuid,
-	db_pwd: impl Into<String>,
 	db_plan: &DatabasePlanType,
 	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
@@ -65,36 +62,13 @@ pub async fn patch_kubernetes_mysql_database(
 	let sts_name_for_db = get_database_sts_name(database_id);
 	let svc_name_for_db = get_database_service_name(database_id);
 	let pvc_claim_for_db = get_database_pvc_name(database_id);
-	let secret_name_for_db_pwd = get_database_secret_name(database_id);
 
 	// constants
-	let secret_key_for_db_pwd = "password";
 	let mysql_port = 3306;
-	let mysql_version = "mysql:8.0";
+	let mysql_version = "patrcloud/mysql:8.0";
 
 	let labels =
 		BTreeMap::from([("database".to_owned(), database_id.to_string())]);
-
-	log::trace!("request_id: {request_id} - Creating secret for database pwd");
-
-	let secret_spec_for_db_pwd = Secret {
-		metadata: ObjectMeta {
-			name: Some(secret_name_for_db_pwd.clone()),
-			..Default::default()
-		},
-		string_data: Some(
-			[(secret_key_for_db_pwd.to_owned(), db_pwd.into())].into(),
-		),
-		..Default::default()
-	};
-
-	Api::<Secret>::namespaced(kubernetes_client.clone(), namespace)
-		.patch(
-			&secret_name_for_db_pwd,
-			&PatchParams::apply(&secret_name_for_db_pwd),
-			&Patch::Apply(secret_spec_for_db_pwd),
-		)
-		.await?;
 
 	log::trace!("request_id: {request_id} - Creating service for database");
 
@@ -157,18 +131,7 @@ pub async fn patch_kubernetes_mysql_database(
 			containers: vec![Container {
 				name: "mysql".to_owned(),
 				image: Some(mysql_version.to_owned()),
-				env: Some(vec![EnvVar {
-					name: "MYSQL_ROOT_PASSWORD".to_owned(),
-					value_from: Some(EnvVarSource {
-						secret_key_ref: Some(SecretKeySelector {
-							name: Some(secret_name_for_db_pwd),
-							key: secret_key_for_db_pwd.to_owned(),
-							..Default::default()
-						}),
-						..Default::default()
-					}),
-					..Default::default()
-				}]),
+				image_pull_policy: Some("Always".to_owned()),
 				ports: Some(vec![ContainerPort {
 					name: Some("mysql".to_owned()),
 					container_port: mysql_port,
@@ -219,7 +182,7 @@ pub async fn patch_kubernetes_mysql_database(
 						command: Some(vec![
 							"bash".to_owned(),
 							"-c".to_owned(),
-							"mysqladmin ping -p$MYSQL_ROOT_PASSWORD".to_owned(),
+							vec!["mysqladmin ping".to_owned()].join("\n"),
 						]),
 					}),
 					initial_delay_seconds: Some(30),
@@ -232,7 +195,8 @@ pub async fn patch_kubernetes_mysql_database(
 						command: Some(vec![
 							"bash".to_owned(),
 							"-c".to_owned(),
-							"mysql -h 127.0.0.1 -u root -p$MYSQL_ROOT_PASSWORD -e \"SELECT 1\"".to_owned()
+							vec!["mysql -u root -e \"SELECT 1\"".to_owned()]
+								.join("\n"),
 						]),
 					}),
 					initial_delay_seconds: Some(5),
@@ -342,6 +306,37 @@ pub async fn delete_kubernetes_mysql_database(
 		.await?;
 	}
 
+	Ok(())
+}
+
+pub async fn change_mysql_database_password(
+	workspace_id: &Uuid,
+	database_id: &Uuid,
+	kubeconfig: Kubeconfig,
+	request_id: &Uuid,
+	new_password: &String,
+) -> Result<(), Error> {
+	log::trace!("request_id: {request_id} - Connecting to MySQL server and changing password");
+
+	let sts_name_for_db = get_database_sts_name(database_id);
+	let namespace = workspace_id.as_str();
+	let kubernetes_client = get_kubernetes_client(kubeconfig).await?;
+
+	Api::<Pod>::namespaced(kubernetes_client.clone(), namespace)
+		.exec(
+			&format!("{sts_name_for_db}-0"),
+			[
+				"bash".to_owned(),
+				"-c".to_owned(),
+				vec![format!("mysql -e \"ALTER USER 'root'@'%' IDENTIFIED BY '{new_password}'; FLUSH PRIVILEGES;\"")].join("\n")
+			],
+			&AttachParams {
+				..Default::default()
+			},
+		)
+		.await?;
+
+	log::trace!("request_id: {request_id} - Password changed successfully");
 	Ok(())
 }
 

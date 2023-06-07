@@ -112,6 +112,7 @@ pub enum DatabaseRequestData {
 		workspace_id: Uuid,
 		database_id: Uuid,
 		request_id: Uuid,
+		password: String,
 	},
 }
 

@@ -21,6 +21,7 @@ pub(super) async fn process_request(
 			workspace_id,
 			database_id,
 			request_id,
+			password,
 		} => {
 			let database = db::get_managed_database_by_id_including_deleted(
 				connection,
@@ -68,16 +69,31 @@ pub(super) async fn process_request(
 						&status,
 					)
 					.await?;
+
+					time::sleep(Duration::from_secs(15)).await;
+
+					if status == ManagedDatabaseStatus::Running {
+						log::trace!(
+							"Setting root password for database: {database_id}"
+						);
+						service::change_database_password(
+							connection,
+							&database_id,
+							&request_id,
+							&password,
+						)
+						.await?;
+					}
 					return Ok(());
 				}
-				time::sleep(Duration::from_millis(500)).await;
+				time::sleep(Duration::from_millis(1000)).await;
 
 				if Utc::now() - start_time > chrono::Duration::seconds(30) {
 					break;
 				}
 			}
 
-			time::sleep(Duration::from_secs(2)).await;
+			time::sleep(Duration::from_secs(5)).await;
 
 			// requeue it again
 			Err(Error::empty())

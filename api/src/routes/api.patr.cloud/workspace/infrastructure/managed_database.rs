@@ -1,6 +1,8 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{
 	models::workspace::infrastructure::database::{
+		ChangeDatabasePasswordRequest,
+		ChangeDatabasePasswordResponse,
 		Connection,
 		CreateDatabaseRequest,
 		CreateDatabaseResponse,
@@ -193,6 +195,45 @@ pub fn create_sub_app(
 		],
 	);
 
+	app.post(
+		"change-password/:databaseId",
+		[
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::infrastructure::managed_database::INFO,
+				resource: closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let database_id =
+						context.get_param(request_keys::DATABASE_ID).unwrap();
+					let database_id_string = Uuid::parse_str(database_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&database_id_string,
+					)
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			},
+			EveMiddleware::CustomFunction(pin_fn!(change_database_password)),
+		],
+	);
+
 	app
 }
 
@@ -295,6 +336,7 @@ async fn create_database_cluster(
 		&database_id,
 		&config,
 		&request_id,
+		&password,
 	)
 	.await?;
 
@@ -448,5 +490,32 @@ async fn get_all_database_plans(
 			.collect();
 
 	context.success(ListAllDatabasePlanResponse { database_plans });
+	Ok(context)
+}
+
+async fn change_database_password(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
+	let ChangeDatabasePasswordRequest { new_password, .. } = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let database_id =
+		Uuid::parse_str(context.get_param(request_keys::DATABASE_ID).unwrap())
+			.unwrap();
+
+	service::change_database_password(
+		context.get_database_connection(),
+		&database_id,
+		&request_id,
+		&new_password,
+	)
+	.await?;
+
+	context.success(ChangeDatabasePasswordResponse {});
 	Ok(context)
 }

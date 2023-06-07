@@ -98,6 +98,7 @@ pub async fn queue_check_and_update_database_status(
 	database_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
+	password: &String,
 ) -> Result<(), Error> {
 	send_message_to_infra_queue(
 		&InfraRequestData::Database(
@@ -105,6 +106,7 @@ pub async fn queue_check_and_update_database_status(
 				workspace_id: workspace_id.clone(),
 				database_id: database_id.clone(),
 				request_id: request_id.clone(),
+				password: password.to_owned(),
 			},
 		),
 		config,
