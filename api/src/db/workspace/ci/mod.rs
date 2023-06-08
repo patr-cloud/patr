@@ -9,8 +9,8 @@ use api_models::{
 			BuildStatus,
 			BuildStepStatus,
 			GitProviderType,
-			RepositoryDetails,
 			Step,
+			WorkspaceRepositoryDetails,
 		},
 		BuildMachineType,
 	},
@@ -25,24 +25,47 @@ use crate::{db, Database};
 
 pub struct GitProvider {
 	pub id: Uuid,
-	pub workspace_id: Uuid,
-	pub user_id: Uuid,
+	pub workspace_id: Option<Uuid>,
 	pub domain_name: String,
 	pub git_provider_type: GitProviderType,
+	pub client_id: String,
+	pub client_secret: String,
+	pub is_deleted: Option<DateTime<Utc>>,
+}
+
+pub struct GitProviderUser {
+	pub id: Uuid,
+	pub git_provider_id: Uuid,
+	pub user_id: Uuid,
+	pub workspace_id: Uuid,
 	pub login_name: Option<String>,
 	pub access_token: Option<String>,
-	pub installation_id: String,
+	pub installation_id: Option<String>,
+	pub is_deleted: bool,
 	pub is_syncing: bool,
 	pub last_synced: Option<DateTime<Utc>>,
-	pub is_deleted: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Repository {
+	pub resource_id: Option<Uuid>,
+	pub workspace_id: Option<Uuid>,
 	pub repo_owner: String,
 	pub repo_name: String,
 	pub clone_url: String,
 	pub git_provider_id: Uuid,
+	pub git_provider_repo_uid: String,
+	pub runner_id: Option<Uuid>,
+	pub activated: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct UserRepository {
+	pub repo_owner: String,
+	pub repo_name: String,
+	pub clone_url: String,
+	pub git_provider_id: Uuid,
+	pub git_provider_info_id: Uuid,
 	pub git_provider_repo_uid: String,
 }
 
@@ -54,6 +77,7 @@ pub struct WorkspaceRepository {
 	pub repo_name: String,
 	pub clone_url: String,
 	pub git_provider_id: Uuid,
+	pub git_provider_info_id: Uuid,
 	pub git_provider_repo_uid: String,
 	pub runner_id: Option<Uuid>,
 	pub activated: bool,
@@ -129,25 +153,48 @@ pub async fn initialize_ci_pre(
 			OR (client_id IS NOT NULL AND client_secret IS NOT NULL)
 		),
 	*/
+
 	query!(
 		r#"
 		CREATE TABLE ci_git_provider(
 			id 					UUID CONSTRAINT ci_git_provider_pk PRIMARY KEY,
-			workspace_id 		UUID NOT NULL
+			workspace_id 		UUID
 				CONSTRAINT ci_git_provider_fk_workspace_id
 					REFERENCES workspace(id),
 			domain_name 		TEXT NOT NULL,
 			git_provider_type 	CI_GIT_PROVIDER_TYPE NOT NULL,
+			client_id			TEXT NOT NULL,
+			client_secret		TEXT NOT NULL,
+			is_deleted			TIMESTAMPTZ
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// TODO - verify if we need workspace_id column here, we have a route named
+	// "list_git_providers" in mod.rs for ci which list the git provider for a
+	// workspace, hence I'm adding workspaceId here. Another reason is since
+	// "id" column is unique for each installation, hence workspace_id shouldn't
+	// be a problem.
+	query!(
+		r#"
+		CREATE TABLE ci_git_provider_info(
+			id					UUID
+				CONSTRAINT ci_git_provider_users_pk PRIMARY KEY,
+			workspace_id		UUID NOT NULL
+				CONSTRAINT ci_git_provider_info_fk_workspace
+					REFERENCES workspace(id),
+			user_id		UUID NOT NULL
+			CONSTRAINT ci_git_provider_info_fk_user
+				REFERENCES "user"(id),
+			git_provider_id 	UUID NOT NULL,
 			login_name 			TEXT,
 			access_token		TEXT,
+			installation_id		TEXT,
 			is_deleted			BOOL NOT NULL DEFAULT FALSE,
 			is_syncing			BOOL NOT NULL DEFAULT FALSE,
-			last_synced			TIMESTAMPTZ DEFAULT NULL,
-			installation_id		TEXT,
-			user_id				UUID NOT NULL,
-
-			CONSTRAINT ci_git_provider_unq_workspace_id_user_id
-				UNIQUE(id, workspace_id, user_id),
+			last_synced			TIMESTAMPTZ,
 
 			CONSTRAINT ci_git_provider_ch_login_name_access_token_is_deleted
 				CHECK(
@@ -197,18 +244,19 @@ pub async fn initialize_ci_pre(
 	query!(
 		r#"
 		CREATE TABLE ci_repos(
-			git_provider_repo_uid 	TEXT CONSTRAINT ci_repos_pk PRIMARY KEY,
+			git_provider_repo_uid 	TEXT NOT NULL,
+			git_provider_info_id	UUID NOT NULL
+				CONSTRAINT ci_workspace_repos_fk_ci_git_provider_user_info
+					REFERENCES ci_git_provider_info(id),
 			repo_owner 				TEXT NOT NULL,
 			repo_name 				TEXT NOT NULL,
 			clone_url 				TEXT NOT NULL,
 			git_provider_id 		UUID NOT NULL
 				CONSTRAINT ci_repos_fk_git_provider_id
 					REFERENCES ci_git_provider(id),
-			runner_id 				UUID
-				CONSTRAINT ci_repos_fk_runner_id REFERENCES ci_runner(id),
 
-			CONSTRAINT ci_repos_uq_git_provider_id_repo_uid
-				UNIQUE(git_provider_id, git_provider_repo_uid)
+			CONSTRAINT ci_repos_pk_git_provider_id_repo_uid
+				PRIMARY KEY(git_provider_id, git_provider_repo_uid)
 		);
 		"#
 	)
@@ -217,35 +265,37 @@ pub async fn initialize_ci_pre(
 
 	query!(
 		r#"
-		CREATE TABLE ci_workspace_repos(
-			resource_id 			UUID NOT NULL,
-			github_repo_id 			TEXT NOT NULL,
-			workspace_id 			UUID NOT NULL,
-			git_provider_id 		UUID NOT NULL,
-			runner_id 				UUID
-				CONSTRAINT ci_repos_fk_runner_id REFERENCES ci_runner(id),
-			activated				BOOLEAN NOT NULL,
-			deleted					TIMESTAMPTZ,
+			CREATE TABLE ci_workspace_repos(
+				resource_id 			UUID NOT NULL,
+				git_provider_info_id	UUID NOT NULL
+					CONSTRAINT ci_workspace_repos_fk_ci_git_provider_user_info
+						REFERENCES ci_git_provider_info(id),
+				git_repo_id 			TEXT NOT NULL,
+				workspace_id 			UUID NOT NULL,
+				git_provider_id 		UUID NOT NULL,
+				runner_id 				UUID
+					CONSTRAINT ci_repos_fk_runner_id REFERENCES ci_runner(id),
+				activated				BOOLEAN NOT NULL,
+				deleted					TIMESTAMPTZ,
 
-			CONSTRAINT ci_workspace_repos_pk_repo_id_ws_id_provider_id_res_id
-				PRIMARY KEY(
-						resource_id,
-						github_repo_id,
-						workspace_id,
-						git_provider_id
-					),
+				CONSTRAINT ci_workspace_repos_unq_git_repo_id_git_provider_id
+					PRIMARY KEY(
+							resource_id,
+							git_repo_id,
+							git_provider_id
+						),
 
-			CONSTRAINT ci_workspace_repos_ch_activated_runner_id
-				CHECK(
-					(
-						activated = TRUE AND
-						runner_id IS NOT NULL
-					) OR (
-						activated = false AND
-						runner_id IS NULL
+				CONSTRAINT ci_workspace_repos_ch_activated_runner_id
+					CHECK(
+						(
+							activated = TRUE AND
+							runner_id IS NOT NULL
+						) OR (
+							activated = false AND
+							runner_id IS NULL
+						)
 					)
-				)
-		);
+			);
 		"#
 	)
 	.execute(&mut *connection)
@@ -255,11 +305,15 @@ pub async fn initialize_ci_pre(
 		r#"
 		CREATE TABLE ci_user_repos(
 			git_provider_id 		UUID NOT NULL,
-			github_repo_id 			TEXT NOT NULL,
+			git_repo_id 			TEXT NOT NULL,
+			git_provider_info_id	UUID NOT NULL
+				CONSTRAINT ci_workspace_repos_fk_ci_git_provider_user_info
+					REFERENCES ci_git_provider_info(id),
 			user_id 				UUID NOT NULL,
+			access					TEXT DEFAULT 'read',
 
-			CONSTRAINT ci_user_repos_unq_provider_id_repo_id_user_id
-				UNIQUE(git_provider_id, github_repo_id, user_id)
+			CONSTRAINT ci_user_repos_pk_provider_id_repo_id_user_id
+				PRIMARY KEY(git_provider_id, git_repo_id, user_id)
 		);
 		"#
 	)
@@ -413,60 +467,70 @@ pub async fn get_all_build_machine_types(
 	.await
 }
 
-pub async fn add_git_provider_to_workspace(
+pub async fn get_git_provider_info_by_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_name: &str,
+	git_provider: GitProviderType,
+) -> Result<Option<GitProvider>, sqlx::Error> {
+	query_as!(
+		GitProvider,
+		r#"
+		SELECT
+			id as "id: _",
+			workspace_id as "workspace_id: _",
+			domain_name,
+			git_provider_type as "git_provider_type: _",
+			client_id,
+			client_secret,
+			is_deleted
+		FROM
+			ci_git_provider
+		WHERE
+			domain_name = $1 AND
+			git_provider_type = $2;
+		"#,
+		domain_name,
+		git_provider as _
+	)
+	.fetch_optional(connection)
+	.await
+}
+
+pub async fn add_git_provider_user_info(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	github_provider_id: &Uuid,
 	workspace_id: &Uuid,
-	git_provider_domain: &str,
-	git_provider_type: GitProviderType,
-	login_name: Option<&str>,
-	access_token: Option<&str>,
 	user_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			ci_git_provider(
-				id,
-				workspace_id,
-				domain_name,
-				git_provider_type,
-				login_name,
-				access_token,
-				user_id
-			)
-		VALUES
-			($1, $2, $3, $4, $5, $6, $7);
-		"#,
-		github_provider_id as _,
-		workspace_id as _,
-		git_provider_domain,
-		git_provider_type as _,
-		login_name,
-		access_token,
-		user_id as _,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn update_installation_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	git_provider_id: &Uuid,
+	id: &Uuid,
+	login_name: &str,
+	access_token: &str,
 	installation_id: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		UPDATE
-			ci_git_provider
-		SET
-			installation_id = $1
-		WHERE
-			id = $2;
+		INSERT INTO
+			ci_git_provider_info(
+				id,
+				git_provider_id,
+				workspace_id,
+				user_id,
+				login_name,
+				access_token,
+				installation_id,
+				is_deleted,
+				is_syncing,
+				last_synced
+			)
+		VALUES
+			($1, $2, $3, $4, $5, $6, $7, FALSE, FALSE, NULL);
 		"#,
-		installation_id,
-		git_provider_id as _,
+		id as _,
+		github_provider_id as _,
+		workspace_id as _,
+		user_id as _,
+		login_name,
+		access_token,
+		installation_id as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -490,7 +554,7 @@ pub async fn delete_repo_from_users_list(
 		"#,
 		git_provider_id as _,
 		repo_uid,
-		user_id as _,
+		user_id as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -500,27 +564,29 @@ pub async fn delete_repo_from_users_list(
 pub async fn get_git_provider_details_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	git_provider_id: &Uuid,
-) -> Result<Option<GitProvider>, sqlx::Error> {
+	git_provider_info_id: &Uuid,
+) -> Result<Option<GitProviderUser>, sqlx::Error> {
 	query_as!(
-		GitProvider,
+		GitProviderUser,
 		r#"
 		SELECT
 			id as "id: _",
+			git_provider_id as "git_provider_id: _",
 			workspace_id as "workspace_id: _",
 			user_id as "user_id: _",
-			domain_name,
-			git_provider_type as "git_provider_type: _",
 			login_name,
 			access_token,
-			installation_id as "installation_id!: _",
+			installation_id,
 			is_syncing,
-			last_synced,
+			last_synced, 
 			is_deleted
 		FROM
-			ci_git_provider
+			ci_git_provider_info
 		WHERE
-			id = $1;
+			id = $1 AND
+			git_provider_id = $2;
 		"#,
+		git_provider_info_id as _,
 		git_provider_id as _,
 	)
 	.fetch_optional(&mut *connection)
@@ -530,19 +596,22 @@ pub async fn get_git_provider_details_by_id(
 pub async fn remove_git_provider_credentials(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	git_provider_id: &Uuid,
+	id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query_as!(
 		GitProvider,
 		r#"
 		UPDATE
-			ci_git_provider
+			ci_git_provider_info
 		SET
 			is_deleted = TRUE,
 			access_token = NULL
 		WHERE
-			id = $1;
+			git_provider_id = $1 AND
+			id = $2;
 		"#,
 		git_provider_id as _,
+		id as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -552,27 +621,30 @@ pub async fn remove_git_provider_credentials(
 pub async fn list_connected_git_providers_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<Vec<GitProvider>, sqlx::Error> {
+) -> Result<Vec<GitProviderUser>, sqlx::Error> {
 	query_as!(
-		GitProvider,
+		GitProviderUser,
 		r#"
 		SELECT
-			id as "id: _",
-			workspace_id as "workspace_id: _",
+			ci_git_provider_info.id as "id: _",
+			git_provider_id as "git_provider_id: _",
+			ci_git_provider_info.workspace_id as "workspace_id: _",
 			user_id as "user_id: _",
-			domain_name,
-			git_provider_type as "git_provider_type: _",
 			login_name,
 			access_token,
-			installation_id as "installation_id!: _",
+			installation_id,
+			ci_git_provider_info.is_deleted,
 			is_syncing,
-			last_synced,
-			is_deleted
+			last_synced
 		FROM
+			ci_git_provider_info
+		LEFT JOIN
 			ci_git_provider
+		ON
+			ci_git_provider.id = ci_git_provider_info.git_provider_id
 		WHERE
-			workspace_id = $1 AND
-			is_deleted = FALSE;
+			ci_git_provider_info.workspace_id = $1 AND
+			ci_git_provider_info.is_deleted = NULL;
 		"#,
 		workspace_id as _,
 	)
@@ -580,21 +652,19 @@ pub async fn list_connected_git_providers_for_workspace(
 	.await
 }
 
-pub async fn get_git_provider_details_for_workspace_using_domain(
+pub async fn get_git_provider_account_details_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	user_id: &Uuid,
-	domain_name: &str,
-) -> Result<Option<GitProvider>, sqlx::Error> {
+	git_provider_id: &Uuid,
+	id: &Uuid,
+) -> Result<Option<GitProviderUser>, sqlx::Error> {
 	query_as!(
-		GitProvider,
+		GitProviderUser,
 		r#"
 		SELECT
-			id as "id: _",
+			git_provider_id as "git_provider_id: _",
 			workspace_id as "workspace_id: _",
 			user_id as "user_id: _",
-			domain_name,
-			git_provider_type as "git_provider_type: _",
+			id as "id: _",
 			login_name,
 			access_token,
 			installation_id as "installation_id!: _",
@@ -602,16 +672,14 @@ pub async fn get_git_provider_details_for_workspace_using_domain(
 			last_synced,
 			is_deleted
 		FROM
-			ci_git_provider
+			ci_git_provider_info
 		WHERE
-			workspace_id = $1 AND
-			user_id = $2 AND
-			domain_name = $3 AND
+			id = $1 AND
+			git_provider_id = $2 AND
 			is_deleted = FALSE;
 		"#,
-		workspace_id as _,
-		user_id as _,
-		domain_name,
+		id as _,
+		git_provider_id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -620,6 +688,7 @@ pub async fn get_git_provider_details_for_workspace_using_domain(
 pub async fn add_repo_for_git_provider(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	git_provider_id: &Uuid,
+	git_provider_info_id: &Uuid,
 	git_provider_repo_uid: &str,
 	repo_owner: &str,
 	repo_name: &str,
@@ -633,16 +702,29 @@ pub async fn add_repo_for_git_provider(
 				repo_name,
 				clone_url,
 				git_provider_id,
-				git_provider_repo_uid
+				git_provider_repo_uid,
+				git_provider_info_id
 			)
 		VALUES
-			($1, $2, $3, $4, $5);
+			($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (git_provider_id, git_provider_repo_uid)
+			DO UPDATE SET(
+				repo_name,
+				repo_owner,
+				clone_url
+			) = (
+				EXCLUDED.repo_name,
+				EXCLUDED.repo_owner,
+				EXCLUDED.clone_url
+				
+			);
 		"#,
 		repo_owner,
 		repo_name,
 		clone_url,
 		git_provider_id as _,
 		git_provider_repo_uid,
+		git_provider_info_id as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -653,6 +735,7 @@ pub async fn add_repo_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	git_provider_id: &Uuid,
 	git_provider_repo_uid: &str,
+	git_provider_info_id: &Uuid,
 	user_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -661,13 +744,15 @@ pub async fn add_repo_for_user(
 			ci_user_repos(
 				git_provider_id,
 				git_repo_id,
+				git_provider_info_id,
 				user_id
 			)
 		VALUES
-			($1, $2, $3);
+			($1, $2, $3, $4);
 		"#,
 		git_provider_id as _,
 		git_provider_repo_uid,
+		git_provider_info_id as _,
 		user_id as _
 	)
 	.execute(&mut *connection)
@@ -709,27 +794,30 @@ pub async fn update_repo_details_for_git_provider(
 pub async fn list_ci_repos_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
-) -> Result<Vec<Repository>, sqlx::Error> {
+	git_provider_id: &Uuid,
+) -> Result<Vec<UserRepository>, sqlx::Error> {
 	query_as!(
-		Repository,
+		UserRepository,
 		r#"
 		SELECT
 			ci_repos.repo_owner,
 			ci_repos.repo_name,
 			ci_repos.clone_url,
 			ci_user_repos.git_provider_id as "git_provider_id: _",
+			ci_user_repos.git_provider_info_id as "git_provider_info_id: _",
 			ci_user_repos.git_repo_id as "git_provider_repo_uid: _"
 		FROM
-			ci_user_repos
-		LEFT JOIN
 			ci_repos
+		LEFT JOIN
+			ci_user_repos
 		ON
-			ci_user_repos.git_provider_id = ci_repos.git_provider_id AND
 			ci_repos.git_provider_repo_uid = ci_user_repos.git_repo_id
 		WHERE
-			user_id = $1;
+			ci_user_repos.user_id = $1 AND
+			ci_user_repos.git_provider_id = $2;
 		"#,
 		user_id as _,
+		git_provider_id as _,
 	)
 	.fetch_all(connection)
 	.await
@@ -738,6 +826,7 @@ pub async fn list_ci_repos_for_user(
 pub async fn list_ci_repos_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
+	git_provider_id: &Uuid,
 ) -> Result<Vec<WorkspaceRepository>, sqlx::Error> {
 	query_as!(
 		WorkspaceRepository,
@@ -750,6 +839,7 @@ pub async fn list_ci_repos_for_workspace(
 			git_provider_repo_uid,
 			ci_workspace_repos.runner_id as "runner_id: _",
 			ci_workspace_repos.workspace_id as "workspace_id: _",
+			ci_workspace_repos.git_provider_info_id as "git_provider_info_id: _",
 			ci_workspace_repos.activated,
 			ci_workspace_repos.resource_id as "resource_id: _"
 		FROM
@@ -760,9 +850,11 @@ pub async fn list_ci_repos_for_workspace(
 			ci_workspace_repos.git_provider_id = ci_repos.git_provider_id AND
 			ci_repos.git_provider_repo_uid = ci_workspace_repos.git_repo_id
 		WHERE
-			workspace_id = $1;
+			workspace_id = $1 AND
+			ci_workspace_repos.git_provider_id = $2;
 		"#,
 		workspace_id as _,
+		git_provider_id as _,
 	)
 	.fetch_all(connection)
 	.await
@@ -786,6 +878,7 @@ pub async fn get_repo_details_using_github_uid_for_workspace(
 			ci_workspace_repos.git_provider_id as "git_provider_id: _",
 			ci_workspace_repos.git_repo_id as "git_provider_repo_uid: _",
 			ci_workspace_repos.activated,
+			ci_workspace_repos.git_provider_info_id as "git_provider_info_id: _",
 			ci_workspace_repos.resource_id as "resource_id: _",
 			ci_workspace_repos.runner_id as "runner_id: _",
 			ci_workspace_repos.workspace_id as "workspace_id: _"
@@ -803,7 +896,6 @@ pub async fn get_repo_details_using_github_uid_for_workspace(
 			ci_git_provider.workspace_id = $1 AND
 			ci_repos.git_provider_repo_uid = $2 AND
 			ci_git_provider.domain_name = 'github.com' AND
-			ci_git_provider.is_deleted = FALSE AND
 			ci_workspace_repos.deleted IS NULL;
 		"#,
 		workspace_id as _,
@@ -811,45 +903,50 @@ pub async fn get_repo_details_using_github_uid_for_workspace(
 	)
 	.fetch_optional(connection)
 	.await
+	// TODO - fix, for some reason on where condition ci_git_provider = false as
+	// third AND condition is not working. It gives empty response
 }
 
 pub async fn get_repo_details_using_github_uid(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
 	git_provider_repo_uid: &str,
-) -> Result<Option<Repository>, sqlx::Error> {
+	git_provider_id: &Uuid,
+) -> Result<Option<UserRepository>, sqlx::Error> {
 	query_as!(
-		Repository,
+		UserRepository,
 		r#"
 		SELECT
-			repo_owner,
-			repo_name,
-			clone_url,
-			git_provider_id as "git_provider_id: _",
-			git_provider_repo_uid
+			ci_repos.repo_owner,
+			ci_repos.repo_name,
+			ci_repos.clone_url,
+			ci_repos.git_provider_id as "git_provider_id: _",
+			ci_repos.git_provider_info_id as "git_provider_info_id: _",
+			ci_repos.git_provider_repo_uid
 		FROM
 			ci_repos
-		INNER JOIN
+		LEFT JOIN
 			ci_git_provider
 		ON
 			ci_git_provider.id = ci_repos.git_provider_id
 		WHERE
-			ci_git_provider.workspace_id = $1 AND
-			ci_repos.git_provider_repo_uid = $2 AND
+			ci_repos.git_provider_repo_uid = $1 AND
 			ci_git_provider.domain_name = 'github.com' AND
-			ci_git_provider.is_deleted = FALSE;
+			ci_repos.git_provider_id = $2;
 		"#,
-		workspace_id as _,
-		git_provider_repo_uid
+		git_provider_repo_uid,
+		git_provider_id as _,
 	)
 	.fetch_optional(connection)
 	.await
+	// TODO - fix, for some reason on where condition ci_git_provider = false as
+	// third AND condition is not working. It gives empty response
 }
 
 pub async fn add_repo_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	repo_id: &Uuid, // patr resource_id
+	git_provider_info_id: &Uuid,
 	git_provider_repo_uid: &str,
 	git_provider_id: &Uuid,
 	activated: bool,
@@ -862,16 +959,18 @@ pub async fn add_repo_for_workspace(
 				git_repo_id,
 				workspace_id,
 				git_provider_id,
-				activated
+				activated,
+				git_provider_info_id
 			)
 		VALUES
-			($1, $2, $3, $4, $5);
+			($1, $2, $3, $4, $5, $6);
 		"#,
 		repo_id as _,
 		git_provider_repo_uid as _,
 		workspace_id as _,
 		git_provider_id as _,
 		activated as _,
+		git_provider_info_id as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -896,6 +995,7 @@ pub async fn get_ci_repos_for_workspace(
 			runner_id as "runner_id: _",
 			ci_workspace_repos.activated,
 			ci_workspace_repos.workspace_id as "workspace_id: _",
+			ci_workspace_repos.git_provider_info_id as "git_provider_info_id: _",
 			ci_workspace_repos.resource_id as "resource_id: _"
 		FROM
 			ci_repos
@@ -953,7 +1053,8 @@ pub async fn deactivate_workspace_repo(
 		UPDATE
 			ci_workspace_repos
 		SET
-			activated = FALSE
+			activated = FALSE,
+			runner_id = NULL
 		WHERE
 			workspace_id = $1 AND
 			git_repo_id = $2 AND
@@ -1030,6 +1131,7 @@ pub async fn get_repo_using_patr_repo_id(
 			ci_repos.git_provider_repo_uid,
 			runner_id as "runner_id: _",
 			ci_workspace_repos.workspace_id as "workspace_id: _",
+			ci_workspace_repos.git_provider_info_id as "git_provider_info_id: _",
 			resource_id as "resource_id: _",
 			activated
 		FROM
@@ -1062,6 +1164,7 @@ pub async fn get_repo_using_git_repo_id(
 			ci_repos.git_provider_repo_uid,
 			runner_id as "runner_id: _",
 			ci_workspace_repos.workspace_id as "workspace_id: _",
+			ci_workspace_repos.git_provider_info_id as "git_provider_info_id: _",
 			resource_id as "resource_id: _",
 			activated
 		FROM
@@ -1633,6 +1736,7 @@ pub async fn update_build_step_finished_time(
 pub async fn set_syncing(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	git_provider_id: &Uuid,
+	id: &Uuid,
 	is_syncing: bool,
 	last_synced: Option<DateTime<Utc>>,
 ) -> Result<(), sqlx::Error> {
@@ -1640,110 +1744,122 @@ pub async fn set_syncing(
 		GitProvider,
 		r#"
 		UPDATE
-			ci_git_provider
+			ci_git_provider_info
 		SET
 			is_syncing = $1,
 			last_synced = COALESCE($2, last_synced)
 		WHERE
-			id = $3;
+			git_provider_id = $3 AND
+			id = $4;
 		"#,
 		is_syncing,
 		last_synced as _,
 		git_provider_id as _,
+		id as _,
 	)
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
-// pub async fn get_recent_activity_for_ci_in_workspace(
-// 	connection: &mut <Database as sqlx::Database>::Connection,
-// 	workspace_id: &Uuid,
-// ) -> Result<Vec<RecentActivity>, sqlx::Error> {
-// 	query!(
-// 		r#"
-// 		SELECT
-// 			ci_git_provider.id as "git_provider_id: Uuid",
-// 			ci_git_provider.workspace_id as "git_provider_workspace_id: Uuid",
-// 			ci_git_provider.domain_name as "git_provider_domain_name",
-// 			ci_git_provider.git_provider_type as "git_provider_type: GitProviderType",
-// 			ci_git_provider.login_name as "git_provider_login_name",
-// 			ci_git_provider.is_syncing as "git_provider_is_syncing",
-// 			ci_git_provider.last_synced as "git_provider_last_synced",
-// 			ci_git_provider.is_deleted as "git_provider_is_deleted",
-// 			ci_repos.git_provider_repo_uid as "repo_id",
-// 			ci_repos.repo_name,
-// 			ci_repos.repo_owner,
-// 			ci_repos.clone_url as "repo_clone_url",
-// 			ci_repos.status as "repo_status: RepoStatus",
-// 			ci_repos.runner_id as "repo_runner_id: Uuid",
-// 			ci_builds.build_num,
-// 			ci_builds.git_ref as "build_git_ref",
-// 			ci_builds.git_commit as "build_git_commit",
-// 			ci_builds.status as "build_status: BuildStatus",
-// 			ci_builds.created as "build_created",
-// 			ci_builds.started as "build_started",
-// 			ci_builds.finished as "build_finished",
-// 			ci_builds.message as "build_message",
-// 			ci_builds.author as "build_author",
-// 			ci_builds.git_pr_title as "build_git_pr_title",
-// 			ci_builds.git_commit_message as "build_git_commit_message",
-// 			ci_builds.runner_id as "build_runner_id: Uuid"
-// 		FROM
-// 			ci_builds
-// 		JOIN
-// 			ci_repos
-// 		ON
-// 			ci_repos.id = ci_builds.repo_id
-// 		JOIN
-// 			ci_git_provider
-// 		ON
-// 			ci_git_provider.id = ci_repos.git_provider_id
-// 		WHERE
-// 			ci_git_provider.workspace_id = $1
-// 		ORDER BY
-// 			ci_builds.created ASC
-// 		LIMIT 500;
-// 		"#,
-// 		workspace_id as _,
-// 	)
-// 	.fetch(&mut *connection)
-// 	.map_ok(|activity| RecentActivity {
-// 		git_provider_details:
-// 			api_models::models::workspace::ci::git_provider::GitProvider {
-// 				id: activity.git_provider_id,
-// 				domain_name: activity.git_provider_domain_name,
-// 				git_provider_type: activity.git_provider_type,
-// 				login_name: activity.git_provider_login_name,
-// 				is_syncing: activity.git_provider_is_syncing,
-// 				last_synced: activity
-// 					.git_provider_last_synced
-// 					.map(api_models::utils::DateTime),
-// 				is_deleted: activity.git_provider_is_deleted,
-// 			},
-// 		repo_details: RepositoryDetails {
-// 			id: activity.repo_id,
-// 			name: activity.repo_name,
-// 			repo_owner: activity.repo_owner,
-// 			clone_url: activity.repo_clone_url,
-// 			status: activity.repo_status,
-// 			runner_id: activity.repo_runner_id,
-// 		},
-// 		build_details: BuildDetails {
-// 			build_num: activity.build_num as u64,
-// 			git_ref: activity.build_git_ref,
-// 			git_commit: activity.build_git_commit,
-// 			git_commit_message: activity.build_git_commit_message,
-// 			git_pr_title: activity.build_git_pr_title,
-// 			author: activity.build_author,
-// 			status: activity.build_status,
-// 			created: api_models::utils::DateTime(activity.build_created),
-// 			started: activity.build_started.map(api_models::utils::DateTime),
-// 			finished: activity.build_finished.map(api_models::utils::DateTime),
-// 			message: activity.build_message,
-// 			runner_id: activity.build_runner_id,
-// 		},
-// 	})
-// 	.try_collect()
-// 	.await
-// }
+pub async fn get_recent_activity_for_ci_in_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Vec<RecentActivity>, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			ci_git_provider_info.id as "git_provider_id: Uuid",
+			ci_git_provider_info.workspace_id as "git_provider_workspace_id: Uuid",
+			ci_git_provider.domain_name as "git_provider_domain_name",
+			ci_git_provider.git_provider_type as "git_provider_type: GitProviderType",
+			ci_git_provider_info.login_name as "git_provider_login_name",
+			ci_git_provider_info.is_syncing as "git_provider_is_syncing",
+			ci_git_provider_info.last_synced as "git_provider_last_synced",
+			ci_git_provider_info.is_deleted as "git_provider_is_deleted",
+			ci_repos.git_provider_repo_uid as "repo_id",
+			ci_repos.repo_name,
+			ci_repos.repo_owner,
+			ci_repos.clone_url as "repo_clone_url",
+			ci_workspace_repos.runner_id as "repo_runner_id: Uuid",
+			ci_workspace_repos.git_provider_info_id as "git_provider_info_id: Uuid",
+			ci_workspace_repos.activated,
+			ci_builds.build_num,
+			ci_builds.git_ref as "build_git_ref",
+			ci_builds.git_commit as "build_git_commit",
+			ci_builds.status as "build_status: BuildStatus",
+			ci_builds.created as "build_created",
+			ci_builds.started as "build_started",
+			ci_builds.finished as "build_finished",
+			ci_builds.message as "build_message",
+			ci_builds.author as "build_author",
+			ci_builds.git_pr_title as "build_git_pr_title",
+			ci_builds.git_commit_message as "build_git_commit_message",
+			ci_builds.runner_id as "build_runner_id: Uuid"
+		FROM
+			ci_builds
+		JOIN
+			ci_workspace_repos
+		ON
+			ci_workspace_repos.resource_id = ci_builds.repo_id
+		JOIN
+			ci_repos
+		ON
+			ci_repos.git_provider_repo_uid = ci_workspace_repos.git_repo_id
+		JOIN
+			ci_git_provider
+		ON
+			ci_git_provider.id = ci_repos.git_provider_id
+		JOIN
+			ci_git_provider_info
+		ON
+			ci_git_provider_info.id = ci_repos.git_provider_info_id
+		WHERE
+			ci_git_provider_info.workspace_id = $1
+		ORDER BY
+			ci_builds.created ASC
+		LIMIT 500;
+		"#,
+		workspace_id as _,
+	)
+	.fetch(&mut *connection)
+	.map_ok(|activity| RecentActivity {
+		git_provider_details:
+			api_models::models::workspace::ci::git_provider::GitProvider {
+				id: activity.git_provider_id,
+				domain_name: activity.git_provider_domain_name,
+				git_provider_type: activity.git_provider_type,
+				login_name: activity.git_provider_login_name,
+				is_syncing: activity.git_provider_is_syncing,
+				last_synced: activity
+					.git_provider_last_synced
+					.map(api_models::utils::DateTime),
+				is_deleted: activity.git_provider_is_deleted,
+			},
+		repo_details: WorkspaceRepositoryDetails {
+			id: activity.repo_id,
+			name: activity.repo_name,
+			repo_owner: activity.repo_owner,
+			clone_url: activity.repo_clone_url,
+			runner_id: activity.repo_runner_id,
+			git_provider_info_id: activity.git_provider_info_id,
+			activated: activity.activated,
+		},
+		build_details: BuildDetails {
+			build_num: activity.build_num as u64,
+			git_ref: activity.build_git_ref,
+			git_commit: activity.build_git_commit,
+			git_commit_message: activity.build_git_commit_message,
+			git_pr_title: activity.build_git_pr_title,
+			author: activity.build_author,
+			status: activity.build_status,
+			created: api_models::utils::DateTime(activity.build_created),
+			started: activity.build_started.map(api_models::utils::DateTime),
+			finished: activity.build_finished.map(api_models::utils::DateTime),
+			message: activity.build_message,
+			runner_id: activity.build_runner_id,
+		},
+	})
+	.try_collect()
+	.await
+}

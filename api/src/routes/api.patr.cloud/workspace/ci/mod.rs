@@ -122,14 +122,14 @@ async fn get_recent_activity_for_ci(
 			.unwrap();
 	log::trace!("request_id: {request_id} - Listing recent activity for ci",);
 
-	// let activity = db::get_recent_activity_for_ci_in_workspace(
-	// 	context.get_database_connection(),
-	// 	&workspace_id,
-	// )
-	// .await?;
+	let activity = db::get_recent_activity_for_ci_in_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?;
 
-	// context.success(GetRecentActivityResponse {
-	// 	activities: activity,
-	// });
+	context.success(GetRecentActivityResponse {
+		activities: activity,
+	});
 	Ok(context)
 }

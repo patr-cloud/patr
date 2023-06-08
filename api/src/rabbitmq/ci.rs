@@ -568,6 +568,7 @@ pub async fn process_request(
 			}
 		}
 		CIData::SyncRepo {
+			id,
 			user_id,
 			git_provider_id,
 			request_id,
@@ -576,6 +577,7 @@ pub async fn process_request(
 		} => {
 			service::sync_github_repos(
 				connection,
+				&id,
 				&user_id,
 				&git_provider_id,
 				github_access_token,
@@ -586,6 +588,7 @@ pub async fn process_request(
 			db::set_syncing(
 				connection,
 				&git_provider_id,
+				&id,
 				false,
 				Some(Utc::now()),
 			)

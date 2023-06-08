@@ -51,7 +51,6 @@ async fn handle_ci_hooks_for_repo(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	println!("\n\n*********************************webhook triggered*********************************\n\n");
 	let request_id = Uuid::new_v4();
 
 	let config = context.get_state().config.clone();
@@ -92,12 +91,12 @@ async fn handle_ci_hooks_for_repo(
 	let event = context.get_body_as::<Event>()?;
 
 	let repo_id = match &event {
-		Event::Push(push) => push.repository.id.clone(),
+		Event::Push(push) => push.repository.id,
 		Event::PullRequestOpened(pull_req_opened) => {
-			pull_req_opened.repository.id.clone()
+			pull_req_opened.repository.id
 		}
 		Event::PullRequestSynchronize(pull_req_sync) => {
-			pull_req_sync.repository.id.clone()
+			pull_req_sync.repository.id
 		}
 	};
 
@@ -120,16 +119,8 @@ async fn handle_ci_hooks_for_repo(
 		}
 	};
 
-	println!(
-		"repo with id = {} and workspace = {}",
-		repo.git_provider_repo_uid, repo.workspace_id
-	);
-
 	let event_type = match event {
 		Event::Push(pushed) => {
-			println!(
-				"\n\n******************push event triggered*****************"
-			);
 			if pushed.after == "0000000000000000000000000000000000000000" {
 				// push event is triggered for delete branch and delete tag
 				// with empty commit sha, skip those events
@@ -207,6 +198,7 @@ async fn handle_ci_hooks_for_repo(
 	let git_provider = db::get_git_provider_details_by_id(
 		context.get_database_connection(),
 		&repo.git_provider_id,
+		&repo.git_provider_info_id,
 	)
 	.await?
 	.status(500)?;
@@ -230,7 +222,7 @@ async fn handle_ci_hooks_for_repo(
 
 	let ci_flow = match service::parse_ci_file_content(
 		context.get_database_connection(),
-		&git_provider.workspace_id,
+		&repo.workspace_id,
 		&ci_file_content,
 		&request_id,
 	)
@@ -328,7 +320,7 @@ async fn handle_ci_hooks_for_repo(
 
 	service::update_github_commit_status_for_build(
 		context.get_database_connection(),
-		&git_provider.workspace_id,
+		&repo.workspace_id,
 		&repo.resource_id,
 		build_num,
 		CommitStatus::Running,
@@ -337,7 +329,7 @@ async fn handle_ci_hooks_for_repo(
 
 	service::queue_check_and_start_ci_build(
 		BuildId {
-			repo_workspace_id: git_provider.workspace_id,
+			repo_workspace_id: repo.workspace_id,
 			repo_id: repo.resource_id.clone(),
 			build_num,
 		},

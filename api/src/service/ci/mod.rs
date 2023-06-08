@@ -15,11 +15,7 @@ use api_models::{
 			When,
 			Work,
 		},
-		workspace::ci::git_provider::{
-			BuildStatus,
-			BuildStepStatus,
-			GitProviderType,
-		},
+		workspace::ci::git_provider::{BuildStatus, BuildStepStatus},
 	},
 	utils::Uuid,
 };
@@ -29,7 +25,7 @@ use globset::{Glob, GlobSetBuilder};
 use kube::config::Kubeconfig;
 
 use crate::{
-	db::{self, GitProvider},
+	db::{self, GitProviderUser},
 	models::ci::{Commit, EventType, PullRequest, Tag},
 	rabbitmq::{BuildId, BuildStep, BuildStepId},
 	service,
@@ -527,23 +523,27 @@ pub struct MutableRepoValues {
 
 pub async fn sync_repos_for_git_provider(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	git_provider: &GitProvider,
+	git_provider: &GitProviderUser,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	match git_provider.git_provider_type {
-		GitProviderType::Github => {
-			if let Some(access_token) = git_provider.access_token.clone() {
-				sync_github_repos(
-					connection,
-					&git_provider.user_id,
-					&git_provider.id,
-					access_token,
-					git_provider.installation_id.to_string(),
-					request_id,
-				)
-				.await?
-			}
-		}
+	// TODO - removing github check from git_provider_type, till introduce it
+	// back once we have other git_providers as well
+	if let Some(access_token) = git_provider.access_token.clone() {
+		sync_github_repos(
+			connection,
+			&git_provider.id,
+			&git_provider.user_id,
+			&git_provider.id,
+			access_token,
+			/* Cannot sync it without
+			 * installation id is
+			 * None, hence
+			 * throwing error
+			 */
+			git_provider.installation_id.clone().status(500)?,
+			request_id,
+		)
+		.await?
 	}
 
 	Ok(())
@@ -551,6 +551,7 @@ pub async fn sync_repos_for_git_provider(
 
 pub async fn sync_repos_in_db(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
 	user_id: &Uuid,
 	git_provider_id: &Uuid,
 	repos_in_git_provider: HashMap<String, MutableRepoValues>,
@@ -581,6 +582,7 @@ pub async fn sync_repos_in_db(
 				&gp_values.repo_owner,
 				&gp_values.repo_name,
 				&gp_values.repo_clone_url,
+				id,
 				user_id,
 				reqeust_id,
 			)
@@ -609,6 +611,7 @@ pub async fn add_repo_for_git_provider(
 	repo_owner: &str,
 	repo_name: &str,
 	clone_url: &str,
+	id: &Uuid,
 	user_id: &Uuid,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -619,6 +622,7 @@ pub async fn add_repo_for_git_provider(
 	db::add_repo_for_git_provider(
 		connection,
 		git_provider_id,
+		id,
 		git_provider_repo_uid,
 		repo_owner,
 		repo_name,
@@ -630,6 +634,7 @@ pub async fn add_repo_for_git_provider(
 		connection,
 		git_provider_id,
 		git_provider_repo_uid,
+		id,
 		user_id,
 	)
 	.await?;
@@ -694,14 +699,18 @@ pub async fn get_netrc_for_repo(
 		.await?
 		.status(500)?;
 
-	let git_provider =
-		db::get_git_provider_details_by_id(connection, &repo.git_provider_id)
-			.await?
-			.status(500)?;
+	let git_provider = db::get_git_provider_details_by_id(
+		connection,
+		&repo.git_provider_id,
+		&repo.git_provider_info_id,
+	)
+	.await?
+	.status(500)?;
 
 	let netrc = match (git_provider.login_name, git_provider.access_token) {
 		(Some(login), Some(password)) => Some(Netrc {
-			machine: git_provider.domain_name,
+			machine: "github.com".to_owned(), /* Hard-coding github for now,
+			                                   * will change later */
 			login,
 			password,
 		}),

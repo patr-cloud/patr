@@ -398,6 +398,7 @@ pub async fn queue_setup_kubernetes_cluster(
 }
 
 pub async fn queue_sync_github_repo(
+	id: &Uuid,
 	user_id: &Uuid,
 	git_provider_id: &Uuid,
 	request_id: &Uuid,
@@ -407,6 +408,7 @@ pub async fn queue_sync_github_repo(
 ) -> Result<(), Error> {
 	send_message_to_ci_queue(
 		&CIData::SyncRepo {
+			id: id.clone(),
 			user_id: user_id.clone(),
 			git_provider_id: git_provider_id.clone(),
 			request_id: request_id.clone(),

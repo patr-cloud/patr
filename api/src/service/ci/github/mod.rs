@@ -335,26 +335,28 @@ pub async fn write_ci_file_content_to_github_repo(
 
 pub async fn sync_github_repos(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
 	user_id: &Uuid,
 	git_provider_id: &Uuid,
 	github_access_token: String,
 	installation_id: String,
 	request_id: &Uuid,
 ) -> Result<(), eve_rs::Error<()>> {
-	let repos_in_db = db::list_ci_repos_for_user(connection, user_id)
-		.await?
-		.into_iter()
-		.map(|repo| {
-			(
-				repo.git_provider_repo_uid,
-				MutableRepoValues {
-					repo_owner: repo.repo_owner,
-					repo_name: repo.repo_name,
-					repo_clone_url: repo.clone_url,
-				},
-			)
-		})
-		.collect::<HashMap<_, _>>();
+	let repos_in_db =
+		db::list_ci_repos_for_user(connection, user_id, git_provider_id)
+			.await?
+			.into_iter()
+			.map(|repo| {
+				(
+					repo.git_provider_repo_uid,
+					MutableRepoValues {
+						repo_owner: repo.repo_owner,
+						repo_name: repo.repo_name,
+						repo_clone_url: repo.clone_url,
+					},
+				)
+			})
+			.collect::<HashMap<_, _>>();
 
 	let github_client =
 		octorust::Client::new("patr", Credentials::Token(github_access_token))
@@ -394,6 +396,7 @@ pub async fn sync_github_repos(
 		    .collect::<HashMap<_, _>>();
 	service::sync_repos_in_db(
 		connection,
+		id,
 		user_id,
 		git_provider_id,
 		repos_in_github,
@@ -416,13 +419,16 @@ pub async fn update_github_commit_status_for_build(
 		.await?
 		.status(500)?;
 
-	let (_login_name, access_token) =
-		db::get_git_provider_details_by_id(connection, &repo.git_provider_id)
-			.await?
-			.and_then(|git_provider| {
-				git_provider.login_name.zip(git_provider.access_token)
-			})
-			.status(500)?;
+	let (_login_name, access_token) = db::get_git_provider_details_by_id(
+		connection,
+		&repo.git_provider_id,
+		&repo.git_provider_info_id,
+	)
+	.await?
+	.and_then(|git_provider| {
+		git_provider.login_name.zip(git_provider.access_token)
+	})
+	.status(500)?;
 
 	let commit_sha =
 		db::get_build_details_for_build(connection, repo_id, build_num)

@@ -67,6 +67,8 @@ pub fn create_sub_app(
 	sub_app
 }
 
+// TODO do we need this route anymore if we have no concept of workspace for
+// github app, it is about user?
 async fn list_git_providers(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -83,7 +85,8 @@ async fn list_git_providers(
 	.into_iter()
 	.map(|git_provider| GitProvider {
 		id: git_provider.id,
-		domain_name: git_provider.domain_name,
+		// hard-coding this value now, have to make it dynamic once other ci_providers are introduced
+		domain_name: "github.com".to_owned(),
 		git_provider_type: api_models::models::workspace::ci::git_provider::GitProviderType::Github,
 		login_name: git_provider.login_name,
 		is_syncing: git_provider.is_syncing,

@@ -179,6 +179,7 @@ pub enum CIData {
 		request_id: Uuid,
 	},
 	SyncRepo {
+		id: Uuid,
 		user_id: Uuid,
 		git_provider_id: Uuid,
 		request_id: Uuid,

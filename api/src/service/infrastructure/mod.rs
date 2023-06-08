@@ -247,8 +247,12 @@ pub async fn delete_all_resources_in_workspace(
 		.await?;
 
 	for git_provider in connected_git_providers {
-		db::remove_git_provider_credentials(connection, &git_provider.id)
-			.await?;
+		db::remove_git_provider_credentials(
+			connection,
+			&git_provider.git_provider_id,
+			&git_provider.id,
+		)
+		.await?;
 	}
 
 	log::trace!("deleting all secrets for workspace: {}", workspace_id);
