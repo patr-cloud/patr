@@ -1,7 +1,10 @@
 use api_models::{
-	models::workspace::infrastructure::list_all_deployment_machine_type::{
-		DeploymentMachineType,
-		ListAllDeploymentMachineTypesResponse,
+	models::workspace::infrastructure::{
+		database::{DatabasePlanType, ListAllDatabasePlanResponse},
+		list_all_deployment_machine_type::{
+			DeploymentMachineType,
+			ListAllDeploymentMachineTypesResponse,
+		},
 	},
 	utils::Uuid,
 };
@@ -52,6 +55,16 @@ pub fn create_sub_app(
 		],
 	);
 
+	sub_app.get(
+		"/database-plan",
+		[
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: true,
+			},
+			EveMiddleware::CustomFunction(pin_fn!(get_all_database_plans)),
+		],
+	);
+
 	sub_app
 }
 
@@ -90,5 +103,45 @@ async fn get_all_deployment_machine_types(
 			.collect();
 
 	context.success(ListAllDeploymentMachineTypesResponse { machine_types });
+	Ok(context)
+}
+
+async fn get_all_database_plans(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context
+		.get_param(request_keys::WORKSPACE_ID)
+		.and_then(|workspace_id| Uuid::parse_str(workspace_id).ok())
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let access_token_data = context.get_token_data().unwrap();
+	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
+
+	// Validate if the user belongs to the workspace or not
+	if !access_token_data
+		.workspace_permissions()
+		.contains_key(&workspace_id) &&
+		access_token_data.user_id() != god_user_id
+	{
+		Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	}
+
+	let database_plans =
+		db::get_all_database_plans(context.get_database_connection())
+			.await?
+			.into_iter()
+			.map(|plan| DatabasePlanType {
+				id: plan.id,
+				cpu_count: plan.cpu_count,
+				memory_count: plan.memory_count,
+				volume: plan.volume,
+			})
+			.collect();
+
+	context.success(ListAllDatabasePlanResponse { database_plans });
 	Ok(context)
 }
