@@ -67,6 +67,7 @@ pub struct UserRepository {
 	pub git_provider_id: Uuid,
 	pub git_provider_info_id: Uuid,
 	pub git_provider_repo_uid: String,
+	pub workspace_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -644,7 +645,8 @@ pub async fn list_connected_git_providers_for_workspace(
 			ci_git_provider.id = ci_git_provider_info.git_provider_id
 		WHERE
 			ci_git_provider_info.workspace_id = $1 AND
-			ci_git_provider_info.is_deleted = NULL;
+			ci_git_provider_info.is_deleted = FALSE AND
+			ci_git_provider_info.access_token IS NOT NULL;
 		"#,
 		workspace_id as _,
 	)
@@ -805,13 +807,18 @@ pub async fn list_ci_repos_for_user(
 			ci_repos.clone_url,
 			ci_user_repos.git_provider_id as "git_provider_id: _",
 			ci_user_repos.git_provider_info_id as "git_provider_info_id: _",
-			ci_user_repos.git_repo_id as "git_provider_repo_uid: _"
+			ci_user_repos.git_repo_id as "git_provider_repo_uid: _",
+			ci_workspace_repos.workspace_id as "workspace_id: _"
 		FROM
 			ci_repos
 		LEFT JOIN
 			ci_user_repos
 		ON
 			ci_repos.git_provider_repo_uid = ci_user_repos.git_repo_id
+		LEFT JOIN
+			ci_workspace_repos
+		ON
+			ci_repos.git_provider_repo_uid = ci_workspace_repos.git_repo_id
 		WHERE
 			ci_user_repos.user_id = $1 AND
 			ci_user_repos.git_provider_id = $2;
@@ -893,8 +900,8 @@ pub async fn get_repo_details_using_github_uid_for_workspace(
 		ON
 			ci_workspace_repos.git_repo_id = ci_repos.git_provider_repo_uid
 		WHERE
-			ci_git_provider.workspace_id = $1 AND
-			ci_repos.git_provider_repo_uid = $2 AND
+			ci_workspace_repos.workspace_id = $1 AND
+			ci_workspace_repos.git_repo_id = $2 AND
 			ci_git_provider.domain_name = 'github.com' AND
 			ci_workspace_repos.deleted IS NULL;
 		"#,
@@ -921,13 +928,18 @@ pub async fn get_repo_details_using_github_uid(
 			ci_repos.clone_url,
 			ci_repos.git_provider_id as "git_provider_id: _",
 			ci_repos.git_provider_info_id as "git_provider_info_id: _",
-			ci_repos.git_provider_repo_uid
+			ci_repos.git_provider_repo_uid,
+			ci_workspace_repos.workspace_id as "workspace_id: _"
 		FROM
 			ci_repos
 		LEFT JOIN
 			ci_git_provider
 		ON
 			ci_git_provider.id = ci_repos.git_provider_id
+		LEFT JOIN
+			ci_workspace_repos
+		ON
+			ci_repos.git_provider_repo_uid = ci_workspace_repos.git_repo_id
 		WHERE
 			ci_repos.git_provider_repo_uid = $1 AND
 			ci_git_provider.domain_name = 'github.com' AND

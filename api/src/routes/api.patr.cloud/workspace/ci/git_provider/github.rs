@@ -20,6 +20,7 @@ use api_models::{
 			GithubAuthCallbackRequest,
 			GithubAuthCallbackResponse,
 			GithubAuthResponse,
+			GithubSignOutRequest,
 			GithubSignOutResponse,
 			ListGitRefForRepoResponse,
 			ListUserReposResponse,
@@ -953,7 +954,9 @@ async fn list_user_repositories(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	// let user_id = context.get_token_data().unwrap().user_id().clone();
+	let user_id =
+		Uuid::parse_str("e4849a02-8b81-4fa0-b991-d48326cb5a8c").unwrap();
 
 	log::trace!("request_id: {request_id} - Listing github repos for workspace {workspace_id}");
 
@@ -966,6 +969,8 @@ async fn list_user_repositories(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
+	// TODO - add new field workspaceId so that it can be used to let frontend
+	// know if the repo is part of any workspace or not
 	let repos = db::list_ci_repos_for_user(
 		context.get_database_connection(),
 		&user_id,
@@ -979,6 +984,7 @@ async fn list_user_repositories(
 		repo_owner: repo.repo_owner,
 		clone_url: repo.clone_url,
 		git_provider_info_id: repo.git_provider_info_id,
+		workspace_id: repo.workspace_id,
 	})
 	.collect::<Vec<_>>();
 
@@ -1053,6 +1059,7 @@ async fn get_repo_info(
 			repo_owner: repo.repo_owner,
 			clone_url: repo.clone_url,
 			git_provider_info_id: repo.git_provider_info_id,
+			workspace_id: Some(repo.workspace_id),
 		},
 	});
 
@@ -2114,7 +2121,10 @@ async fn sign_out(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let user_id = context.get_token_data().unwrap().user_id().clone();
+	let GithubSignOutRequest { id, .. } = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	log::trace!("request_id: {request_id} - Signout github from patr for workspace {workspace_id}");
 
@@ -2126,20 +2136,14 @@ async fn sign_out(
 	.await?
 	.status(404)?;
 
-	let git_provider_user = db::get_git_provider_account_details_by_id(
-		context.get_database_connection(),
-		&git_provider.id,
-		&user_id,
-	)
-	.await?
-	.status(500)?;
-
 	db::remove_git_provider_credentials(
 		context.get_database_connection(),
-		&git_provider_user.git_provider_id,
-		&user_id,
+		&git_provider.id,
+		&id,
 	)
 	.await?;
+
+	log::trace!("**3**");
 
 	context.success(GithubSignOutResponse {});
 	Ok(context)
