@@ -127,7 +127,6 @@ pub async fn create_managed_database_in_workspace(
 			service::patch_kubernetes_psql_database(
 				workspace_id,
 				&database_id,
-				&password,
 				&database_plan,
 				kubeconfig,
 				request_id,
@@ -281,14 +280,36 @@ pub async fn change_database_password(
 			.await?
 			.0;
 
-	service::change_mysql_database_password(
-		&database.workspace_id,
-		&database.id,
-		kubeconfig,
-		request_id,
-		new_password,
-	)
-	.await?;
+	match database.engine {
+		ManagedDatabaseEngine::Postgres => {
+			service::change_psql_database_password(
+				&database.workspace_id,
+				&database.id,
+				kubeconfig,
+				request_id,
+				new_password,
+			)
+			.await?
+		}
+		ManagedDatabaseEngine::Mysql => {
+			service::change_mysql_database_password(
+				&database.workspace_id,
+				&database.id,
+				kubeconfig,
+				request_id,
+				new_password,
+			)
+			.await?
+		}
+		ManagedDatabaseEngine::Mongo => {
+			log::warn!("request_id: {request_id} - To be implemented");
+			return Err(Error::empty().status(500));
+		}
+		ManagedDatabaseEngine::Redis => {
+			log::warn!("request_id: {request_id} - To be implemented");
+			return Err(Error::empty().status(500));
+		}
+	}
 
 	Ok(())
 }

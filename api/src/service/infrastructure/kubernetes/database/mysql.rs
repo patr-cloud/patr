@@ -32,7 +32,7 @@ use k8s_openapi::{
 	},
 };
 use kube::{
-	api::{AttachParams, DeleteParams, ListParams, Patch, PatchParams},
+	api::{AttachParams, DeleteParams, Patch, PatchParams},
 	config::Kubeconfig,
 	core::ObjectMeta,
 	Api,
@@ -41,7 +41,6 @@ use kube::{
 use crate::{
 	service::{
 		get_database_pvc_name,
-		get_database_secret_name,
 		get_database_service_name,
 		get_database_sts_name,
 		infrastructure::kubernetes::get_kubernetes_client,
@@ -332,12 +331,4 @@ pub async fn change_mysql_database_password(
 
 	log::trace!("request_id: {request_id} - Password changed successfully");
 	Ok(())
-}
-
-pub fn get_database_service_name(database_id: &Uuid) -> String {
-	format!("service-{database_id}")
-}
-
-pub fn get_database_pvc_name(database_id: &Uuid) -> String {
-	format!("db-pvc-{database_id}")
 }

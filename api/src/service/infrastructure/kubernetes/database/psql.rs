@@ -13,18 +13,15 @@ use k8s_openapi::{
 			Container,
 			ContainerPort,
 			EnvFromSource,
-			EnvVar,
-			EnvVarSource,
 			ExecAction,
 			PersistentVolumeClaim,
 			PersistentVolumeClaimSpec,
 			PersistentVolumeClaimVolumeSource,
+			Pod,
 			PodSpec,
 			PodTemplateSpec,
 			Probe,
 			ResourceRequirements,
-			Secret,
-			SecretKeySelector,
 			Service,
 			ServicePort,
 			ServiceSpec,
@@ -38,7 +35,7 @@ use k8s_openapi::{
 	},
 };
 use kube::{
-	api::{Patch, PatchParams},
+	api::{AttachParams, Patch, PatchParams},
 	config::Kubeconfig,
 	core::ObjectMeta,
 	Api,
@@ -47,9 +44,9 @@ use kube::{
 use crate::{
 	service::{
 		get_database_pvc_name,
-		get_database_secret_name,
 		get_database_service_name,
 		get_database_sts_name,
+		infrastructure::kubernetes::get_kubernetes_client,
 	},
 	utils::Error,
 };
@@ -57,7 +54,6 @@ use crate::{
 pub async fn patch_kubernetes_psql_database(
 	workspace_id: &Uuid,
 	database_id: &Uuid,
-	db_pwd: &str,
 	db_plan: &DatabasePlanType,
 	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
@@ -70,44 +66,21 @@ pub async fn patch_kubernetes_psql_database(
 	let sts_name_for_db = get_database_sts_name(database_id);
 	let svc_name_for_db = get_database_service_name(database_id);
 	let pvc_claim_for_db = get_database_pvc_name(database_id);
-	let secret_name_for_db_pwd = get_database_secret_name(database_id);
 	let configmap_name_for_db = "postgres-config".to_string();
 
 	// constants
-	let secret_key_for_db_pwd = "password";
 	let psql_port = 5432;
 	let psql_version = "postgres:12";
 
 	let labels =
 		BTreeMap::from([("database".to_owned(), database_id.to_string())]);
 
-	log::trace!("request_id: {request_id} - Creating secret for database pwd");
-
-	let secret_spec_for_db_pwd = Secret {
-		metadata: ObjectMeta {
-			name: Some(secret_name_for_db_pwd.clone()),
-			..Default::default()
-		},
-		string_data: Some(
-			[(secret_key_for_db_pwd.to_owned(), db_pwd.to_owned())].into(),
-		),
-		..Default::default()
-	};
-
-	Api::<Secret>::namespaced(kubernetes_client.clone(), namespace)
-		.patch(
-			&secret_name_for_db_pwd,
-			&PatchParams::apply(&secret_name_for_db_pwd),
-			&Patch::Apply(secret_spec_for_db_pwd),
-		)
-		.await?;
-
 	log::trace!("request_id: {request_id} - Creating configmap for database");
 
 	let mut config_data = BTreeMap::new();
 	config_data.insert("POSTGRES_DB".to_owned(), "postgresdb".to_owned());
 	config_data.insert("POSTGRES_USER".to_owned(), "postgres".to_owned());
-	config_data.insert("POSTGRES_PASSWORD".to_owned(), db_pwd.to_owned());
+	config_data.insert("POSTGRES_PASSWORD".to_owned(), "patr".to_owned());
 
 	let config_for_db = ConfigMap {
 		metadata: ObjectMeta {
@@ -186,18 +159,6 @@ pub async fn patch_kubernetes_psql_database(
 			containers: vec![Container {
 				name: "postgres".to_owned(),
 				image: Some(psql_version.to_owned()),
-				env: Some(vec![EnvVar {
-					name: "POSTGRES_PASSWORD".to_owned(),
-					value_from: Some(EnvVarSource {
-						secret_key_ref: Some(SecretKeySelector {
-							name: Some(secret_name_for_db_pwd),
-							key: secret_key_for_db_pwd.to_owned(),
-							..Default::default()
-						}),
-						..Default::default()
-					}),
-					..Default::default()
-				}]),
 				env_from: Some(vec![EnvFromSource {
 					config_map_ref: Some(ConfigMapEnvSource {
 						name: Some(configmap_name_for_db),
@@ -245,8 +206,8 @@ pub async fn patch_kubernetes_psql_database(
 						command: Some(vec![
 							"bash".to_owned(),
 							"-c".to_owned(),
-							"psql -w -U postgres -d postgresdb -c \"SELECT 1\""
-								.to_owned(),
+							vec!["psql -w -U postgres -d postgresdb -c \"SELECT 1\""]
+								.join("\n")
 						]),
 					}),
 					initial_delay_seconds: Some(30),
@@ -259,8 +220,8 @@ pub async fn patch_kubernetes_psql_database(
 						command: Some(vec![
 							"bash".to_owned(),
 							"-c".to_owned(),
-							"pg_isready -U postgres -d postgresdb -q"
-								.to_owned(),
+							vec!["pg_isready -U postgres -d postgresdb -q"]
+								.join("\n"),
 						]),
 					}),
 					initial_delay_seconds: Some(5),
@@ -318,5 +279,36 @@ pub async fn patch_kubernetes_psql_database(
 		)
 		.await?;
 
+	Ok(())
+}
+
+pub async fn change_psql_database_password(
+	workspace_id: &Uuid,
+	database_id: &Uuid,
+	kubeconfig: Kubeconfig,
+	request_id: &Uuid,
+	new_password: &String,
+) -> Result<(), Error> {
+	log::trace!("request_id: {request_id} - Connecting to Postgres server and changing password");
+
+	let sts_name_for_db = get_database_sts_name(database_id);
+	let namespace = workspace_id.as_str();
+	let kubernetes_client = get_kubernetes_client(kubeconfig).await?;
+
+	Api::<Pod>::namespaced(kubernetes_client.clone(), namespace)
+		.exec(
+			&format!("{sts_name_for_db}-0"),
+			[
+				"bash".to_owned(),
+				"-c".to_owned(),
+				vec![format!("psql -U postgres -c \"ALTER USER postgres WITH PASSWORD '{new_password}'\"")].join("\n")
+			],
+			&AttachParams {
+				..Default::default()
+			},
+		)
+		.await?;
+
+	log::trace!("request_id: {request_id} - Password changed successfully");
 	Ok(())
 }
