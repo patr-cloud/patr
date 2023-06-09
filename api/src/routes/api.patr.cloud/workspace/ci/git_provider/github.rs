@@ -167,7 +167,7 @@ pub fn create_sub_app(
 	);
 
 	app.get(
-		"/repo",
+		"/repo/user",
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
@@ -954,9 +954,7 @@ async fn list_user_repositories(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	// let user_id = context.get_token_data().unwrap().user_id().clone();
-	let user_id =
-		Uuid::parse_str("e4849a02-8b81-4fa0-b991-d48326cb5a8c").unwrap();
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	log::trace!("request_id: {request_id} - Listing github repos for workspace {workspace_id}");
 

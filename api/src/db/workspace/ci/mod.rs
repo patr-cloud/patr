@@ -47,19 +47,6 @@ pub struct GitProviderUser {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Repository {
-	pub resource_id: Option<Uuid>,
-	pub workspace_id: Option<Uuid>,
-	pub repo_owner: String,
-	pub repo_name: String,
-	pub clone_url: String,
-	pub git_provider_id: Uuid,
-	pub git_provider_repo_uid: String,
-	pub runner_id: Option<Uuid>,
-	pub activated: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UserRepository {
 	pub repo_owner: String,
 	pub repo_name: String,
@@ -802,26 +789,37 @@ pub async fn list_ci_repos_for_user(
 		UserRepository,
 		r#"
 		SELECT
+			DISTINCT ON (
+				ci_user_repos.git_provider_id,
+				ci_user_repos.git_repo_id
+			) ci_user_repos.git_repo_id as "git_provider_repo_uid: _",
 			ci_repos.repo_owner,
 			ci_repos.repo_name,
 			ci_repos.clone_url,
 			ci_user_repos.git_provider_id as "git_provider_id: _",
 			ci_user_repos.git_provider_info_id as "git_provider_info_id: _",
-			ci_user_repos.git_repo_id as "git_provider_repo_uid: _",
-			ci_workspace_repos.workspace_id as "workspace_id: _"
+			CASE
+				WHEN ci_workspace_repos.deleted IS NOT NULL THEN NULL
+				ELSE ci_workspace_repos.workspace_id
+			END "workspace_id: _"
 		FROM
 			ci_repos
-		LEFT JOIN
+		JOIN
 			ci_user_repos
 		ON
 			ci_repos.git_provider_repo_uid = ci_user_repos.git_repo_id
 		LEFT JOIN
 			ci_workspace_repos
 		ON
-			ci_repos.git_provider_repo_uid = ci_workspace_repos.git_repo_id
+			ci_repos.git_provider_repo_uid = ci_workspace_repos.git_repo_id AND
+			ci_repos.git_provider_id = ci_workspace_repos.git_provider_id
 		WHERE
 			ci_user_repos.user_id = $1 AND
-			ci_user_repos.git_provider_id = $2;
+			ci_user_repos.git_provider_id = $2
+		ORDER BY
+			ci_user_repos.git_provider_id,
+			ci_user_repos.git_repo_id,
+			ci_workspace_repos.deleted NULLS FIRST;
 		"#,
 		user_id as _,
 		git_provider_id as _,
@@ -839,11 +837,11 @@ pub async fn list_ci_repos_for_workspace(
 		WorkspaceRepository,
 		r#"
 		SELECT
+			DISTINCT git_provider_repo_uid,
 			repo_owner,
 			repo_name,
 			clone_url,
 			ci_repos.git_provider_id as "git_provider_id: _",
-			git_provider_repo_uid,
 			ci_workspace_repos.runner_id as "runner_id: _",
 			ci_workspace_repos.workspace_id as "workspace_id: _",
 			ci_workspace_repos.git_provider_info_id as "git_provider_info_id: _",
@@ -858,7 +856,8 @@ pub async fn list_ci_repos_for_workspace(
 			ci_repos.git_provider_repo_uid = ci_workspace_repos.git_repo_id
 		WHERE
 			workspace_id = $1 AND
-			ci_workspace_repos.git_provider_id = $2;
+			ci_workspace_repos.git_provider_id = $2 AND
+			ci_workspace_repos.deleted IS NULL;
 		"#,
 		workspace_id as _,
 		git_provider_id as _,
@@ -1094,6 +1093,7 @@ pub async fn delete_workspace_repo(
 			ci_workspace_repos
 		SET
 			activated = FALSE,
+			runner_id = NULL,
 			deleted = $4
 		WHERE
 			workspace_id = $1 AND
