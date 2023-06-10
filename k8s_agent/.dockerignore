@@ -1,0 +1,12 @@
+/target
+/log
+
+/temp
+.[Dd][Ss]_[Ss]tore
+
+/config/*
+.env
+Dockerfile
+.dockerignore
+
+/.devcontainer

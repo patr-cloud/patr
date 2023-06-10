@@ -1,5 +1,5 @@
 [workspace]
-members = ["api", "macros", "api-models"]
+members = ["api", "macros", "api-models", "k8s_agent"]
 
 [workspace.package]
 version = "0.16.1"

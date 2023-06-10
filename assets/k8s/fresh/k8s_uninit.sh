@@ -21,6 +21,12 @@ echo "Deleting patr workspace from cluster"
 kubectl delete namespace "$PARENT_WORKSPACE_ID" \
     --ignore-not-found=true
 
+echo "Deleting patr agent workspace from cluster"
+kubectl delete namespace patr-agent-ns \
+    --ignore-not-found=true
+kubectl delete clusterrolebinding patr-agent-crb \
+    --ignore-not-found=true
+
 echo "Deleting ingress from cluster"
 helm uninstall ingress-nginx -n=ingress-nginx || true
 kubectl delete namespace ingress-nginx \

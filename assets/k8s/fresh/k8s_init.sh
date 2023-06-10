@@ -62,6 +62,102 @@ echo "Creating parent workspace in new cluster"
 kubectl create namespace "$PARENT_WORKSPACE_ID" \
     --dry-run=client -o yaml | kubectl apply -f -
 
+echo "Installing patr agent in new cluster"
+
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: patr-agent-ns
+EOF
+
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: patr-agent-sa
+  namespace: patr-agent-ns
+EOF
+
+# TODO: need to restrict the cluster role scope
+kubectl apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: patr-agent-cr
+  namespace: patr-agent-ns
+rules:
+  - apiGroups:
+        - ""
+        - apps
+        - autoscaling
+        - batch
+        - extensions
+        - policy
+        - rbac.authorization.k8s.io
+    resources:
+      - pods
+      - componentstatuses
+      - configmaps
+      - daemonsets
+      - deployments
+      - events
+      - endpoints
+      - horizontalpodautoscalers
+      - ingress
+      - jobs
+      - limitranges
+      - namespaces
+      - nodes
+      - pods
+      - persistentvolumes
+      - persistentvolumeclaims
+      - resourcequotas
+      - replicasets
+      - replicationcontrollers
+      - serviceaccounts
+      - services
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+EOF
+
+kubectl apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: patr-agent-crb
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: patr-agent-cr
+subjects:
+- kind: ServiceAccount
+  name: patr-agent-sa
+  namespace: patr-agent-ns
+EOF
+
+# TODO: update patr agent docker container
+kubectl apply -f - <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: patr-agent-deploy
+  namespace: patr-agent-ns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: patr-agent
+  template:
+    metadata:
+      labels:
+        app: patr-agent
+    spec:
+      containers:
+      - image: local-patr-agent
+        name: patr-agent
+      serviceAccountName: patr-agent-sa
+EOF
+
 rm $KUBECONFIG_PATH $TLS_CERT_PATH $TLS_KEY_PATH
 
 echo "Successfully initialized cluster $CLUSTER_ID"
