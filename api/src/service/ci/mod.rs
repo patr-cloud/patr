@@ -418,9 +418,10 @@ pub async fn add_build_steps_in_k8s(
 	.await?
 	.status(500)?;
 
+	let region_id = get_region_id_for_ci_build(connection, build_id).await?;
 	service::infrastructure::create_pvc_for_workspace(
-		&build_id.get_build_namespace(),
-		&build_id.get_pvc_name(),
+		build_id,
+		&region_id,
 		runner_resource.volume_in_mb(),
 		kubeconfig.clone(),
 		request_id,
@@ -429,8 +430,8 @@ pub async fn add_build_steps_in_k8s(
 
 	for service in services {
 		service::create_background_service_for_ci_in_kubernetes(
-			&build_id.get_build_namespace(),
-			build_id.repo_workspace_id.as_str(),
+			build_id,
+			&region_id,
 			service,
 			kubeconfig.clone(),
 			config,
@@ -751,4 +752,23 @@ pub async fn get_kubeconfig_for_ci_build(
 	.await?;
 
 	Ok(kubeconfig)
+}
+
+pub async fn get_region_id_for_ci_build(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	build_id: &BuildId,
+) -> Result<Uuid, Error> {
+	let build = db::get_build_details_for_build(
+		connection,
+		&build_id.repo_id,
+		build_id.build_num,
+	)
+	.await?
+	.status(500)?;
+
+	let runner = db::get_runner_by_id(connection, &build.runner_id)
+		.await?
+		.status(500)?;
+
+	Ok(runner.region_id)
 }

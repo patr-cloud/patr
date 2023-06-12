@@ -8,6 +8,7 @@ PARENT_WORKSPACE_ID=${2:?"Missing parameter: PARENT_WORKSPACE_ID"}
 KUBECONFIG_PATH=${3:?"Missing parameter: KUBECONFIG_PATH"}
 TLS_CERT_PATH=${4:?"Missing parameter: TLS_CERT_PATH"}
 TLS_KEY_PATH=${5:?"Missing parameter: TLS_KEY_PATH"}
+AGENT_API_TOKEN=${6:?"Missing parameter: AGENT_API_TOKEN"}
 
 # validate input values
 if [ ! -f $KUBECONFIG_PATH ]; then
@@ -135,7 +136,6 @@ subjects:
   namespace: patr-agent-ns
 EOF
 
-# TODO: update patr agent docker container
 kubectl apply -f - <<EOF
 apiVersion: apps/v1
 kind: Deployment
@@ -152,10 +152,15 @@ spec:
       labels:
         app: patr-agent
     spec:
-      containers:
-      - image: local-patr-agent
-        name: patr-agent
       serviceAccountName: patr-agent-sa
+      containers:
+      - name: patr-agent
+        image: patrcloud/patr-agent
+        env:
+          - name: PATR_REGION_ID
+            value: $CLUSTER_ID
+          - name: PATR_API_TOKEN
+            value: $AGENT_API_TOKEN
 EOF
 
 rm $KUBECONFIG_PATH $TLS_CERT_PATH $TLS_KEY_PATH

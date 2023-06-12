@@ -39,6 +39,8 @@ pub mod permissions {
 					"workspace::infrastructure::deployment::delete";
 				pub const EDIT: &str =
 					"workspace::infrastructure::deployment::edit";
+				pub const CHECK_STATUS: &str =
+					"workspace::infrastructure::deployment::check_status";
 			}
 
 			#[allow(dead_code)]

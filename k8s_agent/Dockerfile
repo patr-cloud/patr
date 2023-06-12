@@ -1,11 +1,17 @@
-FROM rust:1.61.0 as builder
-WORKDIR /usr/src/patr_agent
-COPY . .
-RUN cargo install --path .
+FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
+WORKDIR /app
 
-FROM debian:buster-slim
-RUN apt-get update & \
-    apt-get install -y extra-runtime-dependencies & \
-    rm -rf /var/lib/apt/lists/*
-COPY --from=builder /usr/local/cargo/bin/patr_agent /usr/local/bin/patr_agent
-CMD ["patr_agent"]
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef AS builder 
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+COPY . .
+RUN cargo build --release
+
+FROM ubuntu:focal AS runtime
+COPY --from=builder /app/target/release/patr_agent /usr/local/bin/patr_agent
+RUN apt-get update && apt install -y openssl
+ENTRYPOINT ["/usr/local/bin/patr_agent"]

@@ -1,5 +1,8 @@
+use std::sync::Arc;
+
+use clap::Parser;
 use futures::{future, StreamExt};
-use k8s_openapi::api::{apps::v1::Deployment, core::v1::Pod};
+use k8s_openapi::api::core::v1::Pod;
 use kube::{
 	api::ListParams,
 	runtime::watcher::{watcher, Event},
@@ -7,110 +10,98 @@ use kube::{
 	Client,
 	ResourceExt,
 };
-use once_cell_regex::{exports::regex::Regex, regex};
+use reqwest::header::AUTHORIZATION;
 
 const DEPLOYMENT_ID_LABEL: &str = "deploymentId";
 const WORKSPACE_ID_LABEL: &str = "workspaceId";
-const _REGION_ID_LABEL: &str = "regionId";
+const _CI_REPO_ID_LABEL: &str = "repoId";
+const _CI_BUILD_NUM_LABEL: &str = "buildNum";
+const _CI_BUILD_NUM_STEP_LABEL: &str = "step";
+
+#[derive(Debug, Clone, Parser)]
+struct Args {
+	// agent deployed region id
+	#[arg(long, env = "PATR_REGION_ID")]
+	region_id: String,
+
+	// patr api token
+	#[arg(long, env = "PATR_API_TOKEN")]
+	api_token: String,
+
+	// patr webhook url
+	#[arg(long, env = "PATR_HOST", default_value = "https://api.patr.cloud")]
+	patr_host: String,
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-	let uuid_pattern: &Regex = regex!("[a-f0-9]{32}");
+	let args = Arc::new(Args::parse());
 
 	let client = Client::try_default().await?;
 
 	// listening of single namespace in byoc won't work,
-	// as ci will created separate namespace for each build
-	let deployments = Api::<Deployment>::all(client);
-	// TODO: need to add support for sts as it is used by patr
+	// as ci will create separate namespace for each build
+	let deployments = Api::<Pod>::all(client);
 
 	// TODO: watcher may provide obsolete data,
 	// need to update it to controller to get current data
 	// see: https://github.com/kube-rs/kube/discussions/695#discussioncomment-1597566
-	watcher(deployments, ListParams::default())
-		.filter_map(|event| future::ready(event.ok()))
-		.filter_map(|event| async {
-			match event {
-				Event::Applied(obj) => Some(obj),
-				// TODO: only added/modified events are watched
-				// if the watcher restarted, the missed events will come
-				// in restarted type, need to handle that also
-				_ => None,
-			}
-		})
-		.filter(|obj| {
-			future::ready(
-				obj.metadata
-					.namespace
-					.as_deref()
-					.map_or(false, |ns| uuid_pattern.is_match(ns)),
-			)
-		})
-		.for_each_concurrent(16, |obj| async move {
-			match update_patr_deployment_status(obj).await {
+	watcher(
+		deployments,
+		ListParams::default()
+			.labels(&format!("{},{}", DEPLOYMENT_ID_LABEL, WORKSPACE_ID_LABEL)),
+	)
+	.filter_map(|event| future::ready(event.ok()))
+	.filter_map(|event| async {
+		match event {
+			Event::Applied(obj) => Some(obj),
+			// TODO: only added/modified events are watched
+			// if the watcher restarted, the missed events will come
+			// in restarted type, need to handle that also
+			_ => None,
+		}
+	})
+	.for_each(|obj| async {
+		let args = args.clone();
+		// TODO: try to accumulate the events based on deployments with an
+		// interval of atleast 1s to avoid increased number of status checks
+		tokio::spawn(async move {
+			match update_patr_deployment_status(args, obj).await {
 				Ok(()) => {}
 				// TODO: use log/tracing
 				Err(err) => println!("{:?}", err),
 			};
-		})
-		.await;
+		});
+	})
+	.await;
 
 	Ok(())
 }
 
 async fn update_patr_deployment_status(
-	deployment: Deployment,
+	args: Arc<Args>,
+	deployment: Pod,
 ) -> anyhow::Result<()> {
-	let Some(deployment_id) = deployment.labels().get(DEPLOYMENT_ID_LABEL) else {
-		return Ok(())
-	};
-	let Some(workspace_id) = deployment.labels().get(WORKSPACE_ID_LABEL) else {
-		return Ok(())
-	};
+	let deployment_id = deployment
+		.labels()
+		.get(DEPLOYMENT_ID_LABEL)
+		.expect("deploymentId value should be present");
+	let workspace_id = deployment
+		.labels()
+		.get(WORKSPACE_ID_LABEL)
+		.expect("deploymentId value should be present");
 
-	let pods =
-		Api::<Pod>::namespaced(Client::try_default().await?, workspace_id)
-			.list(
-				&ListParams::default()
-					.labels(&format!("deploymentId={}", deployment_id)),
-			)
-			.await?;
-	let mut container_status = pods
-		.items
-		.into_iter()
-		.filter_map(|pod| pod.status)
-		.filter_map(|status| status.container_statuses)
-		.flat_map(|status| {
-			status
-				.into_iter()
-				.filter_map(|status| status.state)
-				.filter_map(|state| state.waiting)
-				.filter_map(|waiting| waiting.reason)
-				.collect::<Vec<_>>()
-		});
+	println!("Triggering status check for deployment {}", deployment_id);
 
-	if container_status.any(|status| {
-		status.contains(&"ErrImagePull".to_string()) ||
-			status.contains(&"CrashLoopBackOff".to_string())
-	}) {
-		// notify patr that deployment errored
-		// and return
-	}
-
-	let Some(replicas) = deployment.status.and_then(|status| status.ready_replicas) else {
-		return Ok(())
-	};
-
-	// TODO: use hpa api to get min replica count
-	let min_replica_needed = 1;
-
-	if replicas < min_replica_needed {
-		// notify patr that deployment is still happening
-		// and return
-	}
-
-	// notify patr that deployment is running
-	// and return
+	reqwest::Client::new()
+		.post(format!(
+			"{}/workspace/{}/infrastructure/deployment/{}/check-status",
+			args.patr_host, workspace_id, deployment_id
+		))
+		.header(AUTHORIZATION, &args.api_token)
+		.send()
+		.await?
+		.error_for_status()?;
 
 	Ok(())
 }

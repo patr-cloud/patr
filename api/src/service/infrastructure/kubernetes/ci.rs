@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, iter};
 
 use api_models::{models::ci::file_format::EnvVarValue, utils::Uuid};
 use k8s_openapi::{
@@ -36,9 +36,9 @@ use kube::{
 
 use crate::{
 	models::ci::{Commit, EventType, PullRequest, Tag},
-	rabbitmq::BuildStep,
+	rabbitmq::{BuildId, BuildStep},
 	service::ext_traits::DeleteOpt,
-	utils::{settings::Settings, Error},
+	utils::{constants::request_keys, settings::Settings, Error},
 };
 
 pub async fn create_ci_job_in_kubernetes(
@@ -47,6 +47,7 @@ pub async fn create_ci_job_in_kubernetes(
 	ram_in_mb: u32,
 	cpu_in_milli: u32,
 	event_type: &EventType,
+	region_id: &Uuid,
 	kubeconfig: Kubeconfig,
 	config: &Settings,
 	request_id: &Uuid,
@@ -84,6 +85,28 @@ pub async fn create_ci_job_in_kubernetes(
 	.into_iter()
 	.collect();
 
+	let labels = [
+		(
+			request_keys::WORKSPACE_ID.to_string(),
+			build_step.id.build_id.repo_workspace_id.to_string(),
+		),
+		(request_keys::REGION_ID.to_string(), region_id.to_string()),
+		(
+			request_keys::REPO_ID.to_string(),
+			build_step.id.build_id.repo_id.to_string(),
+		),
+		(
+			request_keys::BUILD_NUM.to_string(),
+			build_step.id.build_id.build_num.to_string(),
+		),
+		(
+			request_keys::STEP.to_string(),
+			build_step.id.step_id.to_string(),
+		),
+	]
+	.into_iter()
+	.collect::<BTreeMap<_, _>>();
+
 	let build_machine_type = [
 		("memory".to_string(), Quantity(format!("{}M", ram_in_mb))),
 		("cpu".to_string(), Quantity(format!("{}m", cpu_in_milli))),
@@ -94,6 +117,7 @@ pub async fn create_ci_job_in_kubernetes(
 	let job_manifest = Job {
 		metadata: ObjectMeta {
 			name: Some(build_step.id.get_job_name()),
+			labels: Some(labels.clone()),
 			..Default::default()
 		},
 		spec: Some(JobSpec {
@@ -101,6 +125,7 @@ pub async fn create_ci_job_in_kubernetes(
 			template: PodTemplateSpec {
 				metadata: Some(ObjectMeta {
 					annotations: Some(annotations),
+					labels: Some(labels.clone()),
 					..Default::default()
 				}),
 				spec: Some(PodSpec {
@@ -315,8 +340,8 @@ pub async fn get_ci_job_status_in_kubernetes(
 }
 
 pub async fn create_pvc_for_workspace(
-	namespace_name: &str,
-	pvc_name: &str,
+	build_id: &BuildId,
+	region_id: &Uuid,
 	volume_in_mb: u32,
 	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
@@ -326,9 +351,9 @@ pub async fn create_pvc_for_workspace(
 	log::trace!(
 		"request_id: {} - creating pvc {} of size {} in namespace {}",
 		request_id,
-		pvc_name,
+		build_id.get_pvc_name(),
 		volume_in_mb,
-		namespace_name,
+		build_id.get_build_namespace(),
 	);
 
 	let pvc_spec = PersistentVolumeClaimSpec {
@@ -347,19 +372,41 @@ pub async fn create_pvc_for_workspace(
 		..Default::default()
 	};
 
-	Api::<PersistentVolumeClaim>::namespaced(client, namespace_name)
-		.create(
-			&Default::default(),
-			&PersistentVolumeClaim {
-				metadata: ObjectMeta {
-					name: Some(pvc_name.to_string()),
-					..Default::default()
-				},
-				spec: Some(pvc_spec),
+	let labels = [
+		(
+			request_keys::WORKSPACE_ID.to_string(),
+			build_id.repo_workspace_id.to_string(),
+		),
+		(request_keys::REGION_ID.to_string(), region_id.to_string()),
+		(
+			request_keys::REPO_ID.to_string(),
+			build_id.repo_id.to_string(),
+		),
+		(
+			request_keys::BUILD_NUM.to_string(),
+			build_id.build_num.to_string(),
+		),
+	]
+	.into_iter()
+	.collect::<BTreeMap<_, _>>();
+
+	Api::<PersistentVolumeClaim>::namespaced(
+		client,
+		&build_id.get_build_namespace(),
+	)
+	.create(
+		&Default::default(),
+		&PersistentVolumeClaim {
+			metadata: ObjectMeta {
+				name: Some(build_id.get_pvc_name().to_string()),
+				labels: Some(labels),
 				..Default::default()
 			},
-		)
-		.await?;
+			spec: Some(pvc_spec),
+			..Default::default()
+		},
+	)
+	.await?;
 
 	log::trace!("request_id: {} - pvc created", request_id);
 
@@ -396,13 +443,15 @@ pub async fn delete_kubernetes_job(
 }
 
 pub async fn create_background_service_for_ci_in_kubernetes(
-	namespace_name: &str,
-	repo_workspace_name: &str,
+	build_id: &BuildId,
+	region_id: &Uuid,
 	service: api_models::models::ci::file_format::Service,
 	kubeconfig: Kubeconfig,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
+	let namespace_name = &build_id.get_build_namespace();
+	let repo_workspace_name = &build_id.repo_workspace_id.to_string();
 	let client = super::get_kubernetes_client(kubeconfig).await?;
 	log::trace!(
 		"request_id: {} - creating background ci service {} in namespace {}",
@@ -454,12 +503,31 @@ pub async fn create_background_service_for_ci_in_kubernetes(
 	.into_iter()
 	.collect();
 
+	let labels = [
+		(
+			request_keys::WORKSPACE_ID.to_string(),
+			build_id.repo_workspace_id.to_string(),
+		),
+		(request_keys::REGION_ID.to_string(), region_id.to_string()),
+		(
+			request_keys::REPO_ID.to_string(),
+			build_id.repo_id.to_string(),
+		),
+		(
+			request_keys::BUILD_NUM.to_string(),
+			build_id.build_num.to_string(),
+		),
+	]
+	.into_iter()
+	.collect::<BTreeMap<_, _>>();
+
 	Api::<Deployment>::namespaced(client.clone(), namespace_name)
 		.create(
 			&Default::default(),
 			&Deployment {
 				metadata: ObjectMeta {
 					name: Some(service.name.to_string()),
+					labels: Some(labels.clone()),
 					..Default::default()
 				},
 				spec: Some(DeploymentSpec {
@@ -473,8 +541,13 @@ pub async fn create_background_service_for_ci_in_kubernetes(
 					template: PodTemplateSpec {
 						metadata: Some(ObjectMeta {
 							labels: Some(
-								[("app".to_string(), service.name.to_string())]
-									.into(),
+								labels
+									.into_iter()
+									.chain(iter::once((
+										"app".to_string(),
+										service.name.to_string(),
+									)))
+									.collect::<BTreeMap<_, _>>(),
 							),
 							annotations: Some(annotations),
 							..Default::default()

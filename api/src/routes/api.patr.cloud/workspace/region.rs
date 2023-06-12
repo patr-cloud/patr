@@ -469,6 +469,7 @@ async fn add_region(
 			auto_scale,
 			node_name,
 			node_size_slug,
+			agent_api_token,
 		} => {
 			log::trace!(
 				"request_id: {} creating digital ocean k8s cluster in db",
@@ -517,12 +518,16 @@ async fn add_region(
 				&region_id,
 				&cf_cert.cert,
 				&cf_cert.key,
+				&agent_api_token,
 				&config,
 				&request_id,
 			)
 			.await?;
 		}
-		AddRegionToWorkspaceData::KubeConfig { config_file } => {
+		AddRegionToWorkspaceData::KubeConfig {
+			config_file,
+			agent_api_token,
+		} => {
 			let cf_cert = service::create_origin_ca_certificate_for_region(
 				&region_id, &config,
 			)
@@ -545,6 +550,7 @@ async fn add_region(
 				config_file,
 				&cf_cert.cert,
 				&cf_cert.key,
+				&agent_api_token,
 				&config,
 				&request_id,
 			)

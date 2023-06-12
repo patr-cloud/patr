@@ -96,6 +96,12 @@ impl UserAuthenticationData {
 		resource_type_id: &Uuid,
 		permission_required: &str,
 	) -> bool {
+		let god_user_id = GOD_USER_ID.get().unwrap();
+		if god_user_id == self.user_id() {
+			// for god user allow all operations on all workspace
+			return true;
+		}
+
 		let workspace_permissions = self.workspace_permissions();
 
 		let workspace_permission =
@@ -106,11 +112,8 @@ impl UserAuthenticationData {
 			};
 
 		let allowed = {
-			// Check if super admin or god is permitted
-			workspace_permission.is_super_admin || {
-				let god_user_id = GOD_USER_ID.get().unwrap();
-				god_user_id == self.user_id()
-			}
+			// Check if super user is permitted
+			workspace_permission.is_super_admin
 		} || {
 			// Check if the resource type is allowed
 			if let Some(permissions) = workspace_permission

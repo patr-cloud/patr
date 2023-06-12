@@ -32,6 +32,7 @@ pub(super) async fn process_request(
 			kube_config,
 			tls_cert,
 			tls_key,
+			agent_api_token,
 			request_id,
 		} => {
 			let Some(region) =
@@ -79,6 +80,7 @@ pub(super) async fn process_request(
 					&kubeconfig_path,
 					&tls_cert_path,
 					&tls_key_path,
+					&agent_api_token,
 				])
 				.output()
 				.await?;
@@ -280,6 +282,7 @@ pub(super) async fn process_request(
 			region_id,
 			tls_cert,
 			tls_key,
+			agent_api_token,
 			request_id,
 		} => {
 			log::trace!(
@@ -364,6 +367,7 @@ pub(super) async fn process_request(
 								region_id,
 								tls_cert,
 								tls_key,
+								agent_api_token,
 								request_id: request_id.clone(),
 							},
 						),
@@ -414,6 +418,7 @@ pub(super) async fn process_request(
 								kube_config,
 								tls_cert,
 								tls_key,
+								agent_api_token,
 								request_id: request_id.clone(),
 							},
 						),

@@ -407,12 +407,19 @@ pub async fn process_request(
 							.await?
 							.status(500)?;
 
+						let region_id = service::get_region_id_for_ci_build(
+							connection,
+							&build_step.id.build_id,
+						)
+						.await?;
+
 						service::create_ci_job_in_kubernetes(
 							&build_namespace,
 							&build_step,
 							runner_resource.ram_in_mb(),
 							runner_resource.cpu_in_milli(),
 							&event_type,
+							&region_id,
 							kubeconfig,
 							config,
 							&request_id,

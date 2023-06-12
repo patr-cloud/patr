@@ -51,14 +51,15 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-				if status != DeploymentStatus::Deploying {
 					// TODO Log in audit log about the updated status
-					db::update_deployment_status(
-						connection,
-						&deployment_id,
-						&status,
-					)
-					.await?;
+				db::update_deployment_status(
+					connection,
+					&deployment_id,
+					&status,
+				)
+				.await?;
+
+				if status != DeploymentStatus::Deploying {
 					return Ok(());
 				}
 				time::sleep(Duration::from_millis(500)).await;
