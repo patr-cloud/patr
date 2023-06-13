@@ -89,7 +89,7 @@ async fn update_patr_deployment_status(
 	let workspace_id = deployment
 		.labels()
 		.get(WORKSPACE_ID_LABEL)
-		.expect("deploymentId value should be present");
+		.expect("workspaceId value should be present");
 
 	println!("Triggering status check for deployment {}", deployment_id);
 

@@ -51,7 +51,7 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-					// TODO Log in audit log about the updated status
+				// TODO Log in audit log about the updated status
 				db::update_deployment_status(
 					connection,
 					&deployment_id,

@@ -13,5 +13,5 @@ RUN cargo build --release
 
 FROM ubuntu:focal AS runtime
 COPY --from=builder /app/target/release/patr_agent /usr/local/bin/patr_agent
-RUN apt-get update && apt install -y openssl
+RUN apt-get update && apt install -y openssl ca-certificates
 ENTRYPOINT ["/usr/local/bin/patr_agent"]
