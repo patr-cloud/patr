@@ -91,7 +91,8 @@ impl ApiTokenData {
 			if !is_valid {
 				// Recheck the token permissions to ensure that it is still
 				// valid
-				let token = redis_token_data.revalidated(connection).await?;
+				let token =
+					Self::get_full_token_data(connection, &login_id).await?;
 
 				redis::set_user_api_token_data(
 					redis_connection,
@@ -109,10 +110,8 @@ impl ApiTokenData {
 			// Validate the token data to make sure the permissions that it has
 			// are still valid as per the user
 
-			let token = Self::get_full_token_data(connection, &login_id)
-				.await?
-				.revalidated(connection)
-				.await?;
+			let token =
+				Self::get_full_token_data(connection, &login_id).await?;
 
 			if !service::validate_hash(plain_token, &token.token_hash)? {
 				log::info!("Hashed user provided token doesn't match with token_hash in db");
@@ -151,44 +150,10 @@ impl ApiTokenData {
 				.status(401)
 				.body(error!(UNAUTHORIZED).to_string())?;
 
-		// token matches, so now return permissions for token
-		let mut permissions = BTreeMap::<_, WorkspacePermission>::new();
-
-		for workspace_id in db::get_all_super_admin_workspace_ids_for_api_token(
+		let permissions = service::get_derived_permissions_for_api_token(
 			connection, token_id,
 		)
-		.await?
-		{
-			permissions.entry(workspace_id).or_default().is_super_admin = true;
-		}
-
-		for (workspace_id, resource_type_id, permission_id) in
-			db::get_all_resource_type_permissions_for_api_token(
-				connection, token_id,
-			)
-			.await?
-		{
-			permissions
-				.entry(workspace_id)
-				.or_default()
-				.resource_type_permissions
-				.entry(resource_type_id)
-				.or_default()
-				.insert(permission_id);
-		}
-
-		for (workspace_id, resource_id, permission_id) in
-			db::get_all_resource_permissions_for_api_token(connection, token_id)
-				.await?
-		{
-			permissions
-				.entry(workspace_id)
-				.or_default()
-				.resource_permissions
-				.entry(resource_id)
-				.or_default()
-				.insert(permission_id);
-		}
+		.await?;
 
 		Ok(Self {
 			token_id: token_details.token_id,
@@ -256,86 +221,6 @@ impl ApiTokenData {
 		// all checks are passed, hence token has not revoked
 
 		Ok(true)
-	}
-
-	async fn revalidated(
-		mut self,
-		connection: &mut <Database as sqlx::Database>::Connection,
-	) -> Result<Self, Error> {
-		let old_permissions = self.permissions;
-
-		let new_permissions =
-			service::get_revalidated_permissions_for_user_api_token(
-				connection,
-				&self.token_id,
-				&self.user_id,
-			)
-			.await?;
-
-		if old_permissions != new_permissions {
-			// Write the new config to the db
-			db::remove_all_super_admin_permissions_for_api_token(
-				connection,
-				&self.token_id,
-			)
-			.await?;
-			db::remove_all_resource_type_permissions_for_api_token(
-				connection,
-				&self.token_id,
-			)
-			.await?;
-			db::remove_all_resource_permissions_for_api_token(
-				connection,
-				&self.token_id,
-			)
-			.await?;
-
-			for (workspace_id, permission) in &new_permissions {
-				if permission.is_super_admin {
-					db::add_super_admin_permission_for_api_token(
-						connection,
-						&self.token_id,
-						workspace_id,
-						&self.user_id,
-					)
-					.await?;
-				}
-
-				for (resource_type_id, permissions) in
-					&permission.resource_type_permissions
-				{
-					for permission_id in permissions {
-						db::add_resource_type_permission_for_api_token(
-							connection,
-							&self.token_id,
-							workspace_id,
-							resource_type_id,
-							permission_id,
-						)
-						.await?;
-					}
-				}
-
-				for (resource_id, permissions) in
-					&permission.resource_permissions
-				{
-					for permission_id in permissions {
-						db::add_resource_permission_for_api_token(
-							connection,
-							&self.token_id,
-							workspace_id,
-							resource_id,
-							permission_id,
-						)
-						.await?;
-					}
-				}
-			}
-		}
-
-		self.permissions = new_permissions;
-
-		Ok(self)
 	}
 
 	fn is_access_allowed(&self, accessing_ip: &IpAddr) -> bool {
