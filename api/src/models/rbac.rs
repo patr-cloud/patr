@@ -199,7 +199,7 @@ pub mod resource_types {
 	pub const WORKSPACE: &str = "workspace";
 	pub const DOMAIN: &str = "domain";
 	pub const DNS_RECORD: &str = "dnsRecord";
-	pub const CONTAINER_REGISTRY: &str = "containerRegistry";
+	pub const CONTAINER_REGISTRY_REPOSITORY: &str = "containerRegistryRepository";
 	pub const MANAGED_DATABASE: &str = "managedDatabase";
 	pub const DEPLOYMENT: &str = "deployment";
 	pub const STATIC_SITE: &str = "staticSite";

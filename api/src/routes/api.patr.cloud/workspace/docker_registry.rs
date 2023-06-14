@@ -513,7 +513,7 @@ async fn create_docker_repository(
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
-			.get(rbac::resource_types::CONTAINER_REGISTRY)
+			.get(rbac::resource_types::CONTAINER_REGISTRY_REPOSITORY)
 			.unwrap(),
 		&workspace_id,
 		&Utc::now(),
