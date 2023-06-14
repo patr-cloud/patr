@@ -19,7 +19,6 @@ use k8s_openapi::{
 			PodTemplateSpec,
 			Probe,
 			ResourceRequirements,
-			Secret,
 			Service,
 			ServicePort,
 			ServiceSpec,
@@ -263,7 +262,6 @@ pub async fn delete_kubernetes_mysql_database(
 	let namespace = workspace_id.as_str();
 	let sts_name_for_db = get_database_sts_name(database_id);
 	let svc_name_for_db = get_database_service_name(database_id);
-	let secret_name_for_db_pwd = get_database_secret_name(database_id);
 
 	let label = format!("database={}", database_id);
 
@@ -275,11 +273,6 @@ pub async fn delete_kubernetes_mysql_database(
 	log::trace!("request_id: {request_id} - Deleting service for database");
 	Api::<Service>::namespaced(kubernetes_client.clone(), namespace)
 		.delete_opt(&svc_name_for_db, &DeleteParams::default())
-		.await?;
-
-	log::trace!("request_id: {request_id} - Deleting secret for database");
-	Api::<Secret>::namespaced(kubernetes_client.clone(), namespace)
-		.delete_opt(&secret_name_for_db_pwd, &DeleteParams::default())
 		.await?;
 
 	log::trace!("request_id: {request_id} - Deleting volume for database");
@@ -342,10 +335,6 @@ pub async fn change_mysql_database_password(
 
 pub fn get_database_service_name(database_id: &Uuid) -> String {
 	format!("service-{database_id}")
-}
-
-pub fn get_database_secret_name(database_id: &Uuid) -> String {
-	format!("db-pwd-{database_id}")
 }
 
 pub fn get_database_pvc_name(database_id: &Uuid) -> String {
