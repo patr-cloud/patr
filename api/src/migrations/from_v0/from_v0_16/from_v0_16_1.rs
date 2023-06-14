@@ -8,7 +8,163 @@ pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), Error> {
+	update_permissions(connection, config).await?;
 	add_rbac_blocklist_tables(connection, config).await?;
+
+	Ok(())
+}
+
+async fn update_permissions(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	for permission in [
+		"workspace::infrastructure::upgradePath::list",
+		"workspace::infrastructure::upgradePath::create",
+		"workspace::infrastructure::upgradePath::info",
+		"workspace::infrastructure::upgradePath::delete",
+		"workspace::infrastructure::upgradePath::edit",
+	] {
+		query!(
+			r#"
+			DELETE FROM
+				permission
+			WHERE
+				name = $1
+			"#,
+			permission
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	query!(
+		r#"
+		UPDATE
+			permission
+		SET
+			name = REPLACE(
+				name,
+				'workspace::dockerRegistry::',
+				'workspace::containerRegistry::'
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	for (old_name, new_name) in [
+		(
+			"workspace::region::check_status",
+			"workspace::region::checkStatus",
+		),
+		(
+			"workspace::ci::recent_activity",
+			"workspace::ci::recentActivity",
+		),
+		(
+			"workspace::billing::make_payment",
+			"workspace::billing::makePayment",
+		),
+	] {
+		query!(
+			r#"
+			UPDATE
+				permission
+			SET
+				name = $2
+			WHERE
+				name = $1
+			"#,
+			old_name,
+			new_name
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	query!(
+		r#"
+		UPDATE
+			permission
+		SET
+			name = REPLACE(
+				name,
+				'workspace::ci::git_provider::',
+				'workspace::ci::gitProvider::'
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			permission
+		SET
+			name = REPLACE(
+				name,
+				'workspace::billing::payment_method::',
+				'workspace::billing::paymentMethod::'
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			permission
+		SET
+			name = REPLACE(
+				name,
+				'workspace::billing::billing_address::',
+				'workspace::billing::billingAddress::'
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			resource_type
+		SET
+			name = 'containerRegistry'
+		WHERE
+			name = 'dockerRegistry';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			resource_type
+		SET
+			name = 'region'
+		WHERE
+			name = 'deploymentRegion';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DELETE FROM
+			resource_type
+		WHERE
+			name = 'deploymentUpgradePath';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
