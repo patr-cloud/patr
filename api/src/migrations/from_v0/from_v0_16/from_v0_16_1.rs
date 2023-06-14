@@ -616,7 +616,7 @@ async fn update_permissions(
 		UPDATE
 			resource_type
 		SET
-			name = 'containerRepository'
+			name = 'containerRegistryRepository'
 		WHERE
 			name = 'dockerRepository';
 		"#
