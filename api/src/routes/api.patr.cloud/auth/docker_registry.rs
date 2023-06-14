@@ -498,9 +498,9 @@ async fn docker_registry_authenticate(
 		.split(',')
 		.filter_map(|permission| match permission {
 			"push" | "tag" => {
-				Some(permissions::workspace::docker_registry::PUSH)
+				Some(permissions::workspace::container_registry::PUSH)
 			}
-			"pull" => Some(permissions::workspace::docker_registry::PULL),
+			"pull" => Some(permissions::workspace::container_registry::PULL),
 			_ => None,
 		})
 		.map(String::from)
@@ -650,10 +650,10 @@ async fn docker_registry_authenticate(
 		}
 
 		match permission.as_str() {
-			permissions::workspace::docker_registry::PUSH => {
+			permissions::workspace::container_registry::PUSH => {
 				approved_permissions.push("push".to_string());
 			}
-			permissions::workspace::docker_registry::PULL => {
+			permissions::workspace::container_registry::PULL => {
 				approved_permissions.push("pull".to_string());
 			}
 			_ => {}
