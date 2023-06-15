@@ -250,55 +250,34 @@ pub async fn patch_kubernetes_mysql_database(
 	Ok(())
 }
 
-pub async fn delete_kubernetes_mysql_database(
+pub async fn change_mysql_database_password(
 	workspace_id: &Uuid,
 	database_id: &Uuid,
 	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
+	new_password: &String,
 ) -> Result<(), Error> {
+	log::trace!("request_id: {request_id} - Connecting to MySQL server and changing password");
+
+	let sts_name_for_db = get_database_sts_name(database_id);
+	let namespace = workspace_id.as_str();
 	let kubernetes_client = get_kubernetes_client(kubeconfig).await?;
 
-	// names
-	let namespace = workspace_id.as_str();
-	let sts_name_for_db = get_database_sts_name(database_id);
-	let svc_name_for_db = get_database_service_name(database_id);
-
-	let label = format!("database={}", database_id);
-
-	log::trace!("request_id: {request_id} - Deleting statefulset for database");
-	Api::<StatefulSet>::namespaced(kubernetes_client.clone(), namespace)
-		.delete_opt(&sts_name_for_db, &DeleteParams::default())
-		.await?;
-
-	log::trace!("request_id: {request_id} - Deleting service for database");
-	Api::<Service>::namespaced(kubernetes_client.clone(), namespace)
-		.delete_opt(&svc_name_for_db, &DeleteParams::default())
-		.await?;
-
-	log::trace!("request_id: {request_id} - Deleting volume for database");
-
-	// Manually deleting PVC as it does not get deleted automatically
-	// PVC related to the database is first found using labels(database =
-	// database_id)
-	let pvcs = Api::<PersistentVolumeClaim>::namespaced(
-		kubernetes_client.clone(),
-		namespace,
-	)
-	.list(&ListParams::default().labels(&label))
-	.await?
-	.into_iter()
-	.filter_map(|pvc| pvc.metadata.name);
-
-	// Then the PVC is deleted one-by-one
-	for pvc in pvcs {
-		Api::<PersistentVolumeClaim>::namespaced(
-			kubernetes_client.clone(),
-			namespace,
+	Api::<Pod>::namespaced(kubernetes_client.clone(), namespace)
+		.exec(
+			&format!("{sts_name_for_db}-0"),
+			[
+				"bash".to_owned(),
+				"-c".to_owned(),
+				vec![format!("mysql -e \"ALTER USER 'root'@'%' IDENTIFIED BY '{new_password}'; FLUSH PRIVILEGES;\"")].join("\n")
+			],
+			&AttachParams {
+				..Default::default()
+			},
 		)
-		.delete_opt(&pvc, &DeleteParams::default())
 		.await?;
-	}
 
+	log::trace!("request_id: {request_id} - Password changed successfully");
 	Ok(())
 }
 
