@@ -1319,6 +1319,16 @@
     },
     "query": "UPDATE region SET message_log = CONCAT(message_log, $2::TEXT) WHERE id = $1;"
   },
+  "11077a9cae21ff62f280d93c4a144eba4a93a35bc3cafbf0f0bf1dae5a249095": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE patr_database( id UUID NOT NULL, name CITEXT NOT NULL, workspace_id UUID NOT NULL, region UUID NOT NULL, db_name VARCHAR(255) NOT NULL, engine PATR_DATABASE_ENGINE NOT NULL, version TEXT NOT NULL, database_plan PATR_DATABASE_PLAN NOT NULL, status PATR_DATABASE_STATUS NOT NULL DEFAULT 'creating', host TEXT NOT NULL, port INTEGER NOT NULL, username TEXT NOT NULL, password TEXT NOT NULL, deleted TIMESTAMPTZ, CONSTRAINT patr_database_pk PRIMARY KEY (id), CONSTRAINT patr_database_chk_name_is_trimmed CHECK(name = TRIM(name)), CONSTRAINT patr_database_chk_db_name_is_trimmed CHECK(db_name = TRIM(db_name)), CONSTRAINT patr_database_fk_region FOREIGN KEY (region) REFERENCES region(id) );"
+  },
   "117cf2f33ceb30129812a98389512975c4e4be5a736a0b28e7ee38c77330eae1": {
     "describe": {
       "columns": [
