@@ -39,30 +39,16 @@ pub fn create_sub_app(
 	app.get(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator {
+			EveMiddleware::WorkspaceMemberAuthenticator {
 				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::infrastructure::managed_database::LIST,
-				resource: closure_as_pinned_box!(|mut context| {
+				requested_workspace: closure_as_pinned_box!(|context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
+					Ok((context, workspace_id))
 				}),
 			},
 			EveMiddleware::CustomFunction(pin_fn!(list_all_database_clusters)),
@@ -230,6 +216,7 @@ async fn list_all_database_clusters(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
+	let user_token = context.get_token_data().status(500)?.clone();
 
 	log::trace!(
 		"request_id: {} - Getting all database cluster info from db",
@@ -241,6 +228,13 @@ async fn list_all_database_clusters(
 	)
 	.await?
 	.into_iter()
+	.filter(|db| {
+		user_token.has_access_for_requested_action(
+			&workspace_id,
+			&db.id,
+			permissions::workspace::infrastructure::managed_database::INFO,
+		)
+	})
 	.map(|database| Database {
 		id: database.id.to_owned(),
 		name: database.name,

@@ -88,30 +88,16 @@ pub fn create_sub_app(
 	app.get(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator {
+			EveMiddleware::WorkspaceMemberAuthenticator {
 				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::infrastructure::deployment::LIST,
-				resource: closure_as_pinned_box!(|mut context| {
+				requested_workspace: closure_as_pinned_box!(|context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
+					Ok((context, workspace_id))
 				}),
 			},
 			EveMiddleware::CustomFunction(pin_fn!(list_deployments)),
@@ -486,7 +472,7 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
 				permission:
-					permissions::workspace::infrastructure::managed_url::LIST,
+					permissions::workspace::infrastructure::deployment::INFO,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -567,7 +553,7 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
 				permission:
-					permissions::workspace::infrastructure::deployment::LIST,
+					permissions::workspace::infrastructure::deployment::INFO,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -679,6 +665,8 @@ async fn list_deployments(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
+	let user_token = context.get_token_data().status(500)?.clone();
+
 	log::trace!(
 		"request_id: {} - Getting deployments from database",
 		request_id
@@ -689,6 +677,13 @@ async fn list_deployments(
 	)
 	.await?
 	.into_iter()
+	.filter(|deployment| {
+		user_token.has_access_for_requested_action(
+			&workspace_id,
+			&deployment.id,
+			permissions::workspace::infrastructure::deployment::INFO,
+		)
+	})
 	.filter_map(|deployment| {
 		Some(Deployment {
 			id: deployment.id,
