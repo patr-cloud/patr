@@ -968,7 +968,7 @@ pub async fn get_kubernetes_deployment_status(
 		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => {
 			// TODO: This is a temporary fix to solve issue #361.
 			// Need to find a better solution to do this
-			return Ok(DeploymentStatus::Deploying);
+			return Ok(DeploymentStatus::Errored);
 		}
 		Err(err) => return Err(err.into()),
 		Ok(sts) => sts,

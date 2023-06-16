@@ -6,7 +6,6 @@ use std::{
 use api_models::models::workspace::infrastructure::deployment::DeploymentStatus;
 use base64::prelude::*;
 use chrono::Utc;
-use eve_rs::AsError;
 use futures::{stream, StreamExt};
 use s3::{creds::Credentials, Bucket, Region};
 use zip::ZipArchive;
@@ -32,6 +31,27 @@ pub(super) async fn process_request(
 			files_length,
 			request_id,
 		} => {
+			log::trace!(
+				"request_id: {} - Checking if static site: {} if present for the upload: {}",
+				request_id,
+				static_site_id,
+				upload_id
+			);
+
+			let static_site =
+				db::get_static_site_by_id(&mut *connection, &static_site_id)
+					.await?;
+
+			if static_site.is_none() {
+				log::trace!(
+					"request_id: {} - unable to find any static site with ID: {} for upload: {}",
+					request_id,
+					static_site_id,
+					upload_id
+				);
+				return Ok(());
+			}
+
 			log::trace!(
 				"request_id: {} - logging into the s3 for uploading static site files",
 				request_id
@@ -230,28 +250,25 @@ pub(super) async fn process_request(
 				request_id
 			);
 
-			let static_site =
-				db::get_static_site_by_id(&mut *connection, &static_site_id)
-					.await?
-					.status(500)?;
-
-			if static_site.status == DeploymentStatus::Stopped {
-				log::trace!(
-					concat!(
-						"Static site with ID: {} is stopped manully,",
-						" skipping update static site k8s api call"
-					),
-					static_site_id
-				);
-			} else {
-				service::update_cloudflare_running_upload(
-					&mut *connection,
-					&static_site_id,
-					&upload_id,
-					config,
-					&request_id,
-				)
-				.await?;
+			if let Some(static_site) = static_site {
+				if static_site.status == DeploymentStatus::Stopped {
+					log::trace!(
+						concat!(
+							"Static site with ID: {} is stopped manully,",
+							" skipping update static site k8s api call"
+						),
+						static_site_id
+					);
+				} else {
+					service::update_cloudflare_running_upload(
+						&mut *connection,
+						&static_site_id,
+						&upload_id,
+						config,
+						&request_id,
+					)
+					.await?;
+				}
 			}
 
 			Ok(())
