@@ -258,6 +258,7 @@ pub struct RabbitMqSettings {
 	pub queue: String,
 	pub username: String,
 	pub password: String,
+	pub prefetch_count: u16,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -9,6 +9,7 @@ use lapin::{
 		BasicAckOptions,
 		BasicConsumeOptions,
 		BasicNackOptions,
+		BasicQosOptions,
 		ConfirmSelectOptions,
 		QueueDeclareOptions,
 	},
@@ -41,6 +42,14 @@ pub async fn start_consumer(app: &App) {
 				get_rabbitmq_connection_channel(&app.rabbitmq)
 					.await
 					.expect("unable to get rabbitmq connection");
+			// only 10 messages are processed in parallel in a queue
+			channel
+				.basic_qos(
+					app.config.rabbitmq.prefetch_count,
+					BasicQosOptions { global: true },
+				)
+				.await
+				.expect("not able to set limit for parallel processing of msg");
 			// Create Queue
 			channel
 				.queue_declare(
