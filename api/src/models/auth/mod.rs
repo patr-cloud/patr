@@ -106,6 +106,18 @@ impl UserAuthenticationData {
 			resource_id,
 		)
 	}
+
+	pub fn has_access_for_requested_workspace(
+		&self,
+		requested_workspace: &Uuid,
+	) -> bool {
+		// allow all operations on all workspace for god user
+		// for other users check whether he has some permissions on that
+		// workspace or not
+		self.user_id() == GOD_USER_ID.get().unwrap() ||
+			self.workspace_permissions()
+				.contains_key(requested_workspace)
+	}
 }
 
 pub fn is_user_action_authorized(

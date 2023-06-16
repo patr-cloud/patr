@@ -13,9 +13,8 @@ pub static PERMISSIONS: OnceCell<HashMap<String, Uuid>> = OnceCell::new();
 pub mod permissions {
 	pub mod workspace {
 		pub mod domain {
-			pub const LIST: &str = "workspace::domain::list";
 			pub const ADD: &str = "workspace::domain::add";
-			pub const VIEW_DETAILS: &str = "workspace::domain::viewDetails";
+			pub const INFO: &str = "workspace::domain::info";
 			pub const VERIFY: &str = "workspace::domain::verify";
 			pub const DELETE: &str = "workspace::domain::delete";
 
@@ -29,8 +28,6 @@ pub mod permissions {
 
 		pub mod infrastructure {
 			pub mod deployment {
-				pub const LIST: &str =
-					"workspace::infrastructure::deployment::list";
 				pub const CREATE: &str =
 					"workspace::infrastructure::deployment::create";
 				pub const INFO: &str =
@@ -42,8 +39,8 @@ pub mod permissions {
 			}
 
 			pub mod managed_url {
-				pub const LIST: &str =
-					"workspace::infrastructure::managedUrl::list";
+				pub const INFO: &str =
+					"workspace::infrastructure::managedUrl::info";
 				pub const CREATE: &str =
 					"workspace::infrastructure::managedUrl::create";
 				pub const EDIT: &str =
@@ -55,8 +52,6 @@ pub mod permissions {
 			pub mod managed_database {
 				pub const CREATE: &str =
 					"workspace::infrastructure::managedDatabase::create";
-				pub const LIST: &str =
-					"workspace::infrastructure::managedDatabase::list";
 				pub const DELETE: &str =
 					"workspace::infrastructure::managedDatabase::delete";
 				pub const INFO: &str =
@@ -64,8 +59,6 @@ pub mod permissions {
 			}
 
 			pub mod static_site {
-				pub const LIST: &str =
-					"workspace::infrastructure::staticSite::list";
 				pub const CREATE: &str =
 					"workspace::infrastructure::staticSite::create";
 				pub const INFO: &str =
@@ -79,7 +72,6 @@ pub mod permissions {
 
 		pub mod container_registry {
 			pub const CREATE: &str = "workspace::containerRegistry::create";
-			pub const LIST: &str = "workspace::containerRegistry::list";
 			pub const DELETE: &str = "workspace::containerRegistry::delete";
 			pub const INFO: &str = "workspace::containerRegistry::info";
 			pub const PUSH: &str = "workspace::containerRegistry::push";
@@ -87,7 +79,7 @@ pub mod permissions {
 		}
 
 		pub mod secret {
-			pub const LIST: &str = "workspace::secret::list";
+			pub const INFO: &str = "workspace::secret::info";
 			pub const CREATE: &str = "workspace::secret::create";
 			pub const EDIT: &str = "workspace::secret::edit";
 			pub const DELETE: &str = "workspace::secret::delete";
@@ -111,7 +103,6 @@ pub mod permissions {
 		}
 
 		pub mod region {
-			pub const LIST: &str = "workspace::region::list";
 			pub const INFO: &str = "workspace::region::info";
 			pub const CHECK_STATUS: &str = "workspace::region::checkStatus";
 			pub const ADD: &str = "workspace::region::add";
@@ -132,8 +123,8 @@ pub mod permissions {
 						"workspace::ci::gitProvider::repo::activate";
 					pub const DEACTIVATE: &str =
 						"workspace::ci::gitProvider::repo::deactivate";
-					pub const LIST: &str =
-						"workspace::ci::gitProvider::repo::list";
+					pub const SYNC: &str =
+						"workspace::ci::gitProvider::repo::sync";
 					pub const INFO: &str =
 						"workspace::ci::gitProvider::repo::info";
 					pub const WRITE: &str =
@@ -155,7 +146,6 @@ pub mod permissions {
 			}
 
 			pub mod runner {
-				pub const LIST: &str = "workspace::ci::runner::list";
 				pub const CREATE: &str = "workspace::ci::runner::create";
 				pub const INFO: &str = "workspace::ci::runner::info";
 				pub const UPDATE: &str = "workspace::ci::runner::update";

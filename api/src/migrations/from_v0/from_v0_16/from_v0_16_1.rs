@@ -13,6 +13,7 @@ pub(super) async fn migrate(
 	add_machine_type_for_k8s_database(connection, config).await?;
 	update_permissions(connection, config).await?;
 	add_rbac_blocklist_tables(connection, config).await?;
+	remove_list_permissions(connection, config).await?;
 	reset_permission_order(connection, config).await?;
 	re_add_constraints(connection, config).await?;
 
@@ -896,45 +897,104 @@ async fn update_permissions(
 	Ok(())
 }
 
+async fn remove_list_permissions(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+			DELETE FROM permission
+			WHERE name IN (
+					'workspace::domain::list',
+					'workspace::infrastructure::deployment::list',
+					'workspace::infrastructure::managedDatabase::list',
+					'workspace::infrastructure::staticSite::list',
+					'workspace::containerRegistry::list',
+					'workspace::region::list',
+					'workspace::ci::runner::list'
+				);
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+			UPDATE permission
+			SET name = 'workspace::domain::info'
+			WHERE name = 'workspace::domain::viewDetails';		
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+			UPDATE permission
+			SET name = 'workspace::infrastructure::managedUrl::info'
+			WHERE name = 'workspace::infrastructure::managedUrl::list';		
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+			UPDATE permission
+			SET name = 'workspace::secret::info'
+			WHERE name = 'workspace::secret::list';		
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+			UPDATE permission
+			SET name = 'workspace::ci::gitProvider::repo::sync'
+			WHERE name = 'workspace::ci::gitProvider::repo::list';
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
 async fn reset_permission_order(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
 	for permission in [
-		"workspace::domain::list",
 		"workspace::domain::add",
-		"workspace::domain::viewDetails",
+		"workspace::domain::info",
 		"workspace::domain::verify",
 		"workspace::domain::delete",
 		"workspace::domain::dnsRecord::list",
 		"workspace::domain::dnsRecord::add",
 		"workspace::domain::dnsRecord::edit",
 		"workspace::domain::dnsRecord::delete",
-		"workspace::infrastructure::deployment::list",
 		"workspace::infrastructure::deployment::create",
 		"workspace::infrastructure::deployment::info",
 		"workspace::infrastructure::deployment::delete",
 		"workspace::infrastructure::deployment::edit",
-		"workspace::infrastructure::managedUrl::list",
+		"workspace::infrastructure::managedUrl::info",
 		"workspace::infrastructure::managedUrl::create",
 		"workspace::infrastructure::managedUrl::edit",
 		"workspace::infrastructure::managedUrl::delete",
 		"workspace::infrastructure::managedDatabase::create",
-		"workspace::infrastructure::managedDatabase::list",
 		"workspace::infrastructure::managedDatabase::delete",
 		"workspace::infrastructure::managedDatabase::info",
-		"workspace::infrastructure::staticSite::list",
 		"workspace::infrastructure::staticSite::create",
 		"workspace::infrastructure::staticSite::info",
 		"workspace::infrastructure::staticSite::delete",
 		"workspace::infrastructure::staticSite::edit",
 		"workspace::containerRegistry::create",
-		"workspace::containerRegistry::list",
 		"workspace::containerRegistry::delete",
 		"workspace::containerRegistry::info",
 		"workspace::containerRegistry::push",
 		"workspace::containerRegistry::pull",
-		"workspace::secret::list",
+		"workspace::secret::info",
 		"workspace::secret::create",
 		"workspace::secret::edit",
 		"workspace::secret::delete",
@@ -946,7 +1006,6 @@ async fn reset_permission_order(
 		"workspace::rbac::user::add",
 		"workspace::rbac::user::remove",
 		"workspace::rbac::user::updateRoles",
-		"workspace::region::list",
 		"workspace::region::info",
 		"workspace::region::checkStatus",
 		"workspace::region::add",
@@ -957,7 +1016,7 @@ async fn reset_permission_order(
 		"workspace::ci::gitProvider::disconnect",
 		"workspace::ci::gitProvider::repo::activate",
 		"workspace::ci::gitProvider::repo::deactivate",
-		"workspace::ci::gitProvider::repo::list",
+		"workspace::ci::gitProvider::repo::sync",
 		"workspace::ci::gitProvider::repo::info",
 		"workspace::ci::gitProvider::repo::write",
 		"workspace::ci::gitProvider::repo::build::list",
@@ -965,7 +1024,6 @@ async fn reset_permission_order(
 		"workspace::ci::gitProvider::repo::build::info",
 		"workspace::ci::gitProvider::repo::build::start",
 		"workspace::ci::gitProvider::repo::build::restart",
-		"workspace::ci::runner::list",
 		"workspace::ci::runner::create",
 		"workspace::ci::runner::info",
 		"workspace::ci::runner::update",
