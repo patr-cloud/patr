@@ -83,7 +83,8 @@
 		"port": 5672,
 		"queue": "infrastructure",
 		"username": "",
-		"password": ""
+		"password": "",
+		"prefetchCount": 10
 	},
 	"vault": {
 		"address": "https://vault.example.com",
