@@ -101,6 +101,7 @@ pub(super) async fn process_request(
 					&patr_token,
 					&loki_log_push_url,
 					&mimir_metrics_push_url,
+					"true", // This is a init-script
 				])
 				.output()
 				.await?;
@@ -529,6 +530,87 @@ pub(super) async fn process_request(
 			}
 
 			log::info!("Un-Initialized cluster {region_id} successfully");
+			Ok(())
+		}
+		BYOCData::ReconfigureKubernetesCluster {
+			region_id,
+			kube_config,
+			request_id,
+		} => {
+			let Some(region) =
+				db::get_region_by_id(connection, &region_id).await? else {
+				log::error!(
+					"request_id: {} - Unable to find region with ID `{}`",
+					request_id,
+					&region_id
+				);
+				return Ok(());
+			};
+
+			if region.status != RegionStatus::Creating {
+				log::error!(
+					concat!(
+						"request_id: {} - Status of region {} is {:?}, so",
+						" dropping init msg in rabbitmq as it is not ",
+						"in `creating` state"
+					),
+					request_id,
+					region_id,
+					region.status,
+				);
+				return Ok(());
+			}
+
+			let kubeconfig_path = format!("init-kubeconfig-{region_id}.yaml");
+			fs::write(&kubeconfig_path, serde_yaml::to_string(&kube_config)?)
+				.await?;
+
+			// safe to return as only customer cluster is initalized here,
+			// so workspace_id will be present
+			let parent_workspace = region.workspace_id.status(500)?.to_string();
+
+			let output = Command::new("assets/k8s/fresh/k8s_init.sh")
+				.args([
+					region_id.as_str(),
+					&parent_workspace,
+					&kubeconfig_path,
+					"-", // providing dummy value to pass argument list
+					"-", // providing dummy value to pass argument list
+					"-", // providing dummy value to pass argument list
+					"-", // providing dummy value to pass argument list
+					"-", // providing dummy value to pass argument list
+					"false", /* Is this a init-script? No this is for
+					      * reconfiguration */
+				])
+				.output()
+				.await?;
+
+			let std_out = String::from_utf8_lossy(&output.stdout);
+			db::append_messge_log_for_region(connection, &region_id, &std_out)
+				.await?;
+
+			if !output.status.success() {
+				let std_err = String::from_utf8_lossy(&output.stderr);
+				log::debug!(
+                    "Error while reconfiguring the cluster {}:\nStatus: {}\nStdout: {}\nStderr: {}",
+                    region_id,
+                    output.status,
+                    std_out,
+                    std_err,
+                );
+				db::append_messge_log_for_region(
+					connection, &region_id, &std_err,
+				)
+				.await?;
+
+				db::set_region_as_errored(connection, &region_id).await?;
+
+				// don't requeue
+				return Ok(());
+			}
+
+			log::info!("Reconfigured cluster {region_id} successfully");
+
 			Ok(())
 		}
 	}

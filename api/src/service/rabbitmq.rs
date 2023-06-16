@@ -442,6 +442,24 @@ pub async fn queue_setup_kubernetes_cluster(
 	.await
 }
 
+pub async fn queue_reconfigure_kubernetes_cluster(
+	region_id: &Uuid,
+	kube_config: Kubeconfig,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_infra_queue(
+		&InfraRequestData::BYOC(BYOCData::ReconfigureKubernetesCluster {
+			region_id: region_id.clone(),
+			kube_config,
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await
+}
+
 pub async fn queue_sync_github_repo(
 	workspace_id: &Uuid,
 	git_provider_id: &Uuid,

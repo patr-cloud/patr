@@ -13,6 +13,8 @@ use api_models::{
 			GetRegionInfoResponse,
 			InfrastructureCloudProvider,
 			ListRegionsForWorkspaceResponse,
+			ReconfigureClusterRequest,
+			ReconfigureClusterResponse,
 			Region,
 			RegionStatus,
 			RegionType,
@@ -184,6 +186,39 @@ pub fn create_sub_app(
 				}),
 			},
 			EveMiddleware::CustomFunction(pin_fn!(add_region)),
+		],
+	);
+
+	// Reconfigure a region
+	app.post(
+		"/reconfigure",
+		[
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::region::ADD,
+				resource: closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			},
+			EveMiddleware::CustomFunction(pin_fn!(auto_reconfigure_region)),
 		],
 	);
 
@@ -639,6 +674,56 @@ async fn add_region(
 		request_id
 	);
 	context.success(AddRegionToWorkspaceResponse { region_id });
+	Ok(context)
+}
+
+async fn auto_reconfigure_region(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+	let ReconfigureClusterRequest { name, .. } = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let config = context.get_state().config.clone();
+
+	let region = db::get_region_by_name_in_workspace(
+		context.get_database_connection(),
+		&name,
+		&workspace_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	log::trace!(
+		"{} - reconfiguring region to workspace {}",
+		request_id,
+		workspace_id,
+	);
+
+	if let Some(config_file) = region.config_file {
+		service::queue_reconfigure_kubernetes_cluster(
+			&region.id,
+			config_file.0,
+			&config,
+			&request_id,
+		)
+		.await?;
+	} else {
+		log::warn!(
+			"{} - Kubeconfig not found in database for workspace: {}",
+			request_id,
+			workspace_id
+		)
+	}
+
+	context.success(ReconfigureClusterResponse {});
 	Ok(context)
 }
 
