@@ -38,6 +38,8 @@ pub struct GitProviderUser {
 	pub git_provider_id: Uuid,
 	pub user_id: Uuid,
 	pub workspace_id: Uuid,
+	pub domain_name: String,
+	pub provider_type: GitProviderType,
 	pub login_name: Option<String>,
 	pub access_token: Option<String>,
 	pub installation_id: Option<String>,
@@ -160,11 +162,6 @@ pub async fn initialize_ci_pre(
 	.execute(&mut *connection)
 	.await?;
 
-	// TODO - verify if we need workspace_id column here, we have a route named
-	// "list_git_providers" in mod.rs for ci which list the git provider for a
-	// workspace, hence I'm adding workspaceId here. Another reason is since
-	// "id" column is unique for each installation, hence workspace_id shouldn't
-	// be a problem.
 	query!(
 		r#"
 		CREATE TABLE ci_git_provider_info(
@@ -253,37 +250,37 @@ pub async fn initialize_ci_pre(
 
 	query!(
 		r#"
-			CREATE TABLE ci_workspace_repos(
-				resource_id 			UUID NOT NULL,
-				git_provider_info_id	UUID NOT NULL
-					CONSTRAINT ci_workspace_repos_fk_ci_git_provider_user_info
-						REFERENCES ci_git_provider_info(id),
-				git_repo_id 			TEXT NOT NULL,
-				workspace_id 			UUID NOT NULL,
-				git_provider_id 		UUID NOT NULL,
-				runner_id 				UUID
-					CONSTRAINT ci_repos_fk_runner_id REFERENCES ci_runner(id),
-				activated				BOOLEAN NOT NULL,
-				deleted					TIMESTAMPTZ,
+		CREATE TABLE ci_workspace_repos(
+			resource_id 			UUID CONSTRAINT ci_workspace_repos_pk PRIMARY KEY,
+			git_provider_info_id	UUID NOT NULL
+				CONSTRAINT ci_workspace_repos_fk_ci_git_provider_user_info
+					REFERENCES ci_git_provider_info(id),
+			git_repo_id 			TEXT NOT NULL,
+			workspace_id 			UUID NOT NULL,
+			git_provider_id 		UUID NOT NULL,
+			runner_id 				UUID
+				CONSTRAINT ci_repos_fk_runner_id REFERENCES ci_runner(id),
+			activated				BOOLEAN NOT NULL,
+			deleted					TIMESTAMPTZ,
 
-				CONSTRAINT ci_workspace_repos_unq_git_repo_id_git_provider_id
-					PRIMARY KEY(
-							resource_id,
-							git_repo_id,
-							git_provider_id
-						),
+			CONSTRAINT ci_workspace_repos_unq_git_repo_id_git_provider_id
+				UNIQUE (
+						resource_id,
+						git_repo_id,
+						git_provider_id
+					),
 
-				CONSTRAINT ci_workspace_repos_ch_activated_runner_id
-					CHECK(
-						(
-							activated = TRUE AND
-							runner_id IS NOT NULL
-						) OR (
-							activated = false AND
-							runner_id IS NULL
-						)
+			CONSTRAINT ci_workspace_repos_ch_activated_runner_id
+				CHECK(
+					(
+						activated = TRUE AND
+						runner_id IS NOT NULL
+					) OR (
+						activated = false AND
+						runner_id IS NULL
 					)
-			);
+				)
+		);
 		"#
 	)
 	.execute(&mut *connection)
@@ -558,20 +555,26 @@ pub async fn get_git_provider_details_by_id(
 		GitProviderUser,
 		r#"
 		SELECT
-			id as "id: _",
+			ci_git_provider_info.id as "id: _",
 			git_provider_id as "git_provider_id: _",
-			workspace_id as "workspace_id: _",
+			ci_git_provider_info.workspace_id as "workspace_id: _",
 			user_id as "user_id: _",
 			login_name,
 			access_token,
 			installation_id,
 			is_syncing,
 			last_synced, 
-			is_deleted
+			ci_git_provider_info.is_deleted,
+			ci_git_provider.domain_name,
+			ci_git_provider.git_provider_type as "provider_type: _"
 		FROM
 			ci_git_provider_info
+		LEFT JOIN
+			ci_git_provider
+		ON
+			ci_git_provider.id = ci_git_provider_info.git_provider_id
 		WHERE
-			id = $1 AND
+			ci_git_provider_info.id = $1 AND
 			git_provider_id = $2;
 		"#,
 		git_provider_info_id as _,
@@ -606,6 +609,29 @@ pub async fn remove_git_provider_credentials(
 	.map(|_| ())
 }
 
+pub async fn delete_git_provider_by_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	git_provider_id: &Uuid,
+	deleted_time: &DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+	query_as!(
+		GitProvider,
+		r#"
+		UPDATE
+			ci_git_provider
+		SET
+			is_deleted = $1
+		WHERE
+			id = $2;
+		"#,
+		deleted_time as _,
+		git_provider_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn list_connected_git_providers_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
@@ -618,12 +644,14 @@ pub async fn list_connected_git_providers_for_workspace(
 			git_provider_id as "git_provider_id: _",
 			ci_git_provider_info.workspace_id as "workspace_id: _",
 			user_id as "user_id: _",
+			ci_git_provider.domain_name,
 			login_name,
 			access_token,
 			installation_id,
 			ci_git_provider_info.is_deleted,
 			is_syncing,
-			last_synced
+			last_synced,
+			ci_git_provider.git_provider_type as "provider_type: _"
 		FROM
 			ci_git_provider_info
 		LEFT JOIN
@@ -651,21 +679,27 @@ pub async fn get_git_provider_account_details_by_id(
 		r#"
 		SELECT
 			git_provider_id as "git_provider_id: _",
-			workspace_id as "workspace_id: _",
+			ci_git_provider_info.workspace_id as "workspace_id: _",
 			user_id as "user_id: _",
-			id as "id: _",
+			ci_git_provider_info.id as "id: _",
 			login_name,
 			access_token,
 			installation_id as "installation_id!: _",
 			is_syncing,
 			last_synced,
-			is_deleted
+			ci_git_provider_info.is_deleted,
+			ci_git_provider.domain_name,
+			ci_git_provider.git_provider_type as "provider_type: _"
 		FROM
 			ci_git_provider_info
+		LEFT JOIN
+			ci_git_provider
+		ON
+			ci_git_provider.id = ci_git_provider_info.git_provider_id
 		WHERE
-			id = $1 AND
+			ci_git_provider_info.id = $1 AND
 			git_provider_id = $2 AND
-			is_deleted = FALSE;
+			ci_git_provider_info.is_deleted = FALSE;
 		"#,
 		id as _,
 		git_provider_id as _,

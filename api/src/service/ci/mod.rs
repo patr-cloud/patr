@@ -15,7 +15,11 @@ use api_models::{
 			When,
 			Work,
 		},
-		workspace::ci::git_provider::{BuildStatus, BuildStepStatus},
+		workspace::ci::git_provider::{
+			BuildStatus,
+			BuildStepStatus,
+			GitProviderType,
+		},
 	},
 	utils::Uuid,
 };
@@ -526,24 +530,26 @@ pub async fn sync_repos_for_git_provider(
 	git_provider: &GitProviderUser,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	// TODO - removing github check from git_provider_type, till introduce it
-	// back once we have other git_providers as well
-	if let Some(access_token) = git_provider.access_token.clone() {
-		sync_github_repos(
-			connection,
-			&git_provider.id,
-			&git_provider.user_id,
-			&git_provider.id,
-			access_token,
-			/* Cannot sync it without
-			 * installation id is
-			 * None, hence
-			 * throwing error
-			 */
-			git_provider.installation_id.clone().status(500)?,
-			request_id,
-		)
-		.await?
+	match git_provider.provider_type {
+		GitProviderType::Github => {
+			if let Some(access_token) = git_provider.access_token.clone() {
+				sync_github_repos(
+					connection,
+					&git_provider.id,
+					&git_provider.user_id,
+					&git_provider.id,
+					access_token,
+					/* Cannot sync it without
+					 * installation id is
+					 * None, hence
+					 * throwing error
+					 */
+					git_provider.installation_id.clone().status(500)?,
+					request_id,
+				)
+				.await?
+			}
+		}
 	}
 
 	Ok(())
@@ -709,8 +715,7 @@ pub async fn get_netrc_for_repo(
 
 	let netrc = match (git_provider.login_name, git_provider.access_token) {
 		(Some(login), Some(password)) => Some(Netrc {
-			machine: "github.com".to_owned(), /* Hard-coding github for now,
-			                                   * will change later */
+			machine: git_provider.domain_name,
 			login,
 			password,
 		}),

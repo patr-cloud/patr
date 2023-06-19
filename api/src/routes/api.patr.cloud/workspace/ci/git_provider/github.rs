@@ -42,6 +42,7 @@ use octorust::{self, auth::Credentials};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use redis::AsyncCommands;
 use serde::Deserialize;
+use url::Url;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -56,7 +57,7 @@ use crate::{
 	rabbitmq::{BuildId, BuildStepId},
 	service::{self, ParseStatus},
 	utils::{
-		constants::request_keys,
+		constants::{github_oauth, request_keys},
 		Error,
 		ErrorData,
 		EveContext,
@@ -748,9 +749,6 @@ async fn connect_to_github(
 
 	let client_id = git_provider_info.client_id.to_owned();
 
-	// https://docs.github.com/en/developers/apps/building-oauth-apps/scopes-for-oauth-apps
-	let scope = "repo";
-
 	// https://docs.github.com/en/developers/apps/building-oauth-apps/authorizing-oauth-apps#2-users-are-redirected-back-to-your-site-by-github
 	let state = thread_rng()
 		.sample_iter(&Alphanumeric)
@@ -767,7 +765,15 @@ async fn connect_to_github(
 		.set_ex(format!("githubAuthState:{state}"), value, ttl_in_secs)
 		.await?;
 
-	let oauth_url = format!("https://github.com/login/oauth/authorize?client_id={client_id}&scope={scope}&state={state}");
+	let oauth_url = Url::parse_with_params(
+		github_oauth::AUTH_URL,
+		&[
+			("client_id", client_id.as_str()),
+			("scope", "repo"),
+			("state", state.as_str()),
+		],
+	)?
+	.to_string();
 
 	context.success(GithubAuthResponse { oauth_url });
 	Ok(context)
@@ -830,7 +836,7 @@ async fn github_oauth_callback(
 		token_type: _token_type,
 	} = reqwest::Client::builder()
 		.build()?
-		.post("https://github.com/login/oauth/access_token")
+		.post(github_oauth::CALLBACK_URL)
 		.query(&[
 			("client_id", git_provider_info.client_id.clone()),
 			("client_secret", git_provider_info.client_secret.clone()),

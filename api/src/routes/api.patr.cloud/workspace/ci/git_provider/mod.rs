@@ -86,7 +86,7 @@ async fn list_git_providers(
 	.map(|git_provider| GitProvider {
 		id: git_provider.id,
 		// hard-coding this value now, have to make it dynamic once other ci_providers are introduced
-		domain_name: "github.com".to_owned(),
+		domain_name: git_provider.domain_name,
 		git_provider_type: api_models::models::workspace::ci::git_provider::GitProviderType::Github,
 		login_name: git_provider.login_name,
 		is_syncing: git_provider.is_syncing,

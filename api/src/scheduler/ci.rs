@@ -29,14 +29,14 @@ async fn sync_repos() -> Result<(), Error> {
 			)
 			.await?;
 
-		for git_provider in connected_git_providers {
+		for git_provider_info in connected_git_providers {
 			let mut connection = connection.begin().await?;
 
-			log::info!("request_id: {} - Syncing repos for workspace {} from git_provider {}", request_id, workspace.id, git_provider.id);
+			log::info!("request_id: {} - Syncing repos for workspace {} from git_provider {}", request_id, workspace.id, git_provider_info.id);
 			db::set_syncing(
 				&mut connection,
-				&git_provider.git_provider_id,
-				&git_provider.id,
+				&git_provider_info.git_provider_id,
+				&git_provider_info.id,
 				true,
 				None,
 			)
@@ -44,14 +44,14 @@ async fn sync_repos() -> Result<(), Error> {
 
 			let result = service::sync_repos_for_git_provider(
 				&mut connection,
-				&git_provider,
+				&git_provider_info,
 				&request_id,
 			)
 			.await;
 			db::set_syncing(
 				&mut connection,
-				&git_provider.git_provider_id,
-				&git_provider.id,
+				&git_provider_info.git_provider_id,
+				&git_provider_info.id,
 				false,
 				Some(Utc::now()),
 			)
@@ -65,7 +65,7 @@ async fn sync_repos() -> Result<(), Error> {
 					log::error!(
 						"request_id - {} : Error while syncing git provider {} => {}",
 						request_id,
-						git_provider.id,
+						git_provider_info.id,
 						err.get_error()
 					);
 				}

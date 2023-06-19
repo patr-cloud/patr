@@ -246,13 +246,31 @@ pub async fn delete_all_resources_in_workspace(
 		)
 		.await?;
 
-	for git_provider in connected_git_providers {
+	for git_provider_info in connected_git_providers {
 		db::remove_git_provider_credentials(
 			connection,
-			&git_provider.git_provider_id,
-			&git_provider.id,
+			&git_provider_info.git_provider_id,
+			&git_provider_info.id,
 		)
 		.await?;
+
+		let git_provider = db::get_git_provider_info_by_domain(
+			connection,
+			&git_provider_info.domain_name,
+			git_provider_info.provider_type,
+		)
+		.await?;
+
+		if let Some(git_provider) = git_provider {
+			if git_provider.workspace_id.is_some() {
+				db::delete_git_provider_by_id(
+					connection,
+					&git_provider.id,
+					&Utc::now(),
+				)
+				.await?;
+			}
+		}
 	}
 
 	log::trace!("deleting all secrets for workspace: {}", workspace_id);
