@@ -42,15 +42,17 @@ pub(super) async fn process_request(
 				db::get_static_site_by_id(&mut *connection, &static_site_id)
 					.await?;
 
-			if static_site.is_none() {
+			let static_site = if let Some(static_site) = static_site {
+				static_site
+			} else {
 				log::trace!(
-					"request_id: {} - unable to find any static site with ID: {} for upload: {}",
-					request_id,
-					static_site_id,
-					upload_id
-				);
+						"request_id: {} - unable to find any static site with ID: {} for upload: {}",
+						request_id,
+						static_site_id,
+						upload_id
+					);
 				return Ok(());
-			}
+			};
 
 			log::trace!(
 				"request_id: {} - logging into the s3 for uploading static site files",
@@ -250,25 +252,23 @@ pub(super) async fn process_request(
 				request_id
 			);
 
-			if let Some(static_site) = static_site {
-				if static_site.status == DeploymentStatus::Stopped {
-					log::trace!(
-						concat!(
-							"Static site with ID: {} is stopped manully,",
-							" skipping update static site k8s api call"
-						),
-						static_site_id
-					);
-				} else {
-					service::update_cloudflare_running_upload(
-						&mut *connection,
-						&static_site_id,
-						&upload_id,
-						config,
-						&request_id,
-					)
-					.await?;
-				}
+			if static_site.status == DeploymentStatus::Stopped {
+				log::trace!(
+					concat!(
+						"Static site with ID: {} is stopped manully,",
+						" skipping update static site k8s api call"
+					),
+					static_site_id
+				);
+			} else {
+				service::update_cloudflare_running_upload(
+					&mut *connection,
+					&static_site_id,
+					&upload_id,
+					config,
+					&request_id,
+				)
+				.await?;
 			}
 
 			Ok(())
