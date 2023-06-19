@@ -130,7 +130,7 @@ pub mod message {
 	pub const WRONG_PARAMETERS: &str =
 		"An internal error occured. This incident has been reported";
 	pub const UNAUTHORIZED: &str =
-		"An error occured. If this persists, please contact the administrator";
+		"You do not have access to this resource, please re-check your credentials";
 	pub const EXPIRED: &str =
 		"An error occured. If this persists, please try logging in again";
 	pub const INVALID_DOMAIN_NAME: &str =

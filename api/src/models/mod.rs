@@ -5,6 +5,7 @@ pub mod error;
 pub mod rabbitmq;
 pub mod rbac;
 pub mod region;
+pub mod secret;
 
 mod auditlog;
 mod auth;

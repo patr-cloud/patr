@@ -4,6 +4,8 @@ mod api_patr_cloud;
 mod assets_patr_cloud;
 #[path = "auth.patr.cloud/mod.rs"]
 mod auth_patr_cloud;
+#[path = "vault.patr.cloud/mod.rs"]
+mod vault_patr_cloud;
 
 use eve_rs::{App as EveApp, Context};
 
@@ -19,6 +21,7 @@ pub fn create_sub_app(
 
 	if cfg!(debug_assertions) {
 		sub_app.use_sub_app("/", api_patr_cloud::create_sub_app(app));
+		sub_app.use_sub_app("/v1", vault_patr_cloud::create_sub_app(app));
 	} else {
 		sub_app.use_middleware(
 			"/",
@@ -34,6 +37,10 @@ pub fn create_sub_app(
 				EveMiddleware::DomainRouter(
 					String::from("auth.patr.cloud"),
 					Box::new(auth_patr_cloud::create_sub_app(app)),
+				),
+				EveMiddleware::DomainRouter(
+					String::from("vault.patr.cloud"),
+					Box::new(vault_patr_cloud::create_sub_app(app)),
 				),
 			],
 		);
