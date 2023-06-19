@@ -218,7 +218,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			},
-			EveMiddleware::CustomFunction(pin_fn!(auto_reconfigure_region)),
+			EveMiddleware::CustomFunction(pin_fn!(reconfigure_region)),
 		],
 	);
 
@@ -677,7 +677,7 @@ async fn add_region(
 	Ok(context)
 }
 
-async fn auto_reconfigure_region(
+async fn reconfigure_region(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {

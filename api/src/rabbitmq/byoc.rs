@@ -547,20 +547,6 @@ pub(super) async fn process_request(
 				return Ok(());
 			};
 
-			if region.status != RegionStatus::Creating {
-				log::error!(
-					concat!(
-						"request_id: {} - Status of region {} is {:?}, so",
-						" dropping init msg in rabbitmq as it is not ",
-						"in `creating` state"
-					),
-					request_id,
-					region_id,
-					region.status,
-				);
-				return Ok(());
-			}
-
 			let kubeconfig_path = format!("init-kubeconfig-{region_id}.yaml");
 			fs::write(&kubeconfig_path, serde_yaml::to_string(&kube_config)?)
 				.await?;
