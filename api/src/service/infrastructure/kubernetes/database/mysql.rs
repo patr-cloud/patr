@@ -321,7 +321,7 @@ pub async fn change_mysql_database_password(
 			[
 				"bash".to_owned(),
 				"-c".to_owned(),
-				vec![format!("mysql -e \"ALTER USER 'root'@'%' IDENTIFIED BY '{new_password}'; FLUSH PRIVILEGES;\"")].join("\n")
+				format!("mysql -e \"ALTER USER 'root'@'%' IDENTIFIED BY '{new_password}'; FLUSH PRIVILEGES;\"")
 			],
 			&AttachParams {
 				..Default::default()
