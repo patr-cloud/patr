@@ -736,10 +736,10 @@ def test_migrations(step_name, release, env):
     }
     return {
         "name": step_name,
-        "image": "postgres",
+        "image": "postgres:13-bullseye",
         "commands": [
             "apt update",
-            "apt install ca-certificates",
+            "apt install -y ca-certificates",
             bin_location
         ],
         "environment": env

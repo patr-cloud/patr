@@ -14,6 +14,7 @@ pub(super) async fn migrate(
 	update_permissions(connection, config).await?;
 	add_rbac_blocklist_tables(connection, config).await?;
 	reset_permission_order(connection, config).await?;
+	re_add_constraints(connection, config).await?;
 
 	Ok(())
 }
@@ -1019,6 +1020,70 @@ async fn reset_permission_order(
 		.execute(&mut *connection)
 		.await?;
 	}
+
+	Ok(())
+}
+
+async fn re_add_constraints(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE secret
+		DROP CONSTRAINT secret_chk_name_is_trimmed;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+		DROP CONSTRAINT deployment_chk_name_is_trimmed;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE static_site
+		DROP CONSTRAINT static_site_chk_name_is_trimmed;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE secret
+		ADD CONSTRAINT secret_chk_name_is_trimmed
+		CHECK(name = TRIM(name));
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+		ADD CONSTRAINT deployment_chk_name_is_trimmed
+		CHECK(name = TRIM(name));
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE static_site
+		ADD CONSTRAINT static_site_chk_name_is_trimmed
+		CHECK(name = TRIM(name));
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }
