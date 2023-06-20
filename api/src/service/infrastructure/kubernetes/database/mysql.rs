@@ -269,37 +269,6 @@ pub async fn change_mysql_database_password(
 			[
 				"bash".to_owned(),
 				"-c".to_owned(),
-				vec![format!("mysql -e \"ALTER USER 'root'@'%' IDENTIFIED BY '{new_password}'; FLUSH PRIVILEGES;\"")].join("\n")
-			],
-			&AttachParams {
-				..Default::default()
-			},
-		)
-		.await?;
-
-	log::trace!("request_id: {request_id} - Password changed successfully");
-	Ok(())
-}
-
-pub async fn change_mysql_database_password(
-	workspace_id: &Uuid,
-	database_id: &Uuid,
-	kubeconfig: Kubeconfig,
-	request_id: &Uuid,
-	new_password: &String,
-) -> Result<(), Error> {
-	log::trace!("request_id: {request_id} - Connecting to MySQL server and changing password");
-
-	let sts_name_for_db = get_database_sts_name(database_id);
-	let namespace = workspace_id.as_str();
-	let kubernetes_client = get_kubernetes_client(kubeconfig).await?;
-
-	Api::<Pod>::namespaced(kubernetes_client.clone(), namespace)
-		.exec(
-			&format!("{sts_name_for_db}-0"),
-			[
-				"bash".to_owned(),
-				"-c".to_owned(),
 				format!("mysql -e \"ALTER USER 'root'@'%' IDENTIFIED BY '{new_password}'; FLUSH PRIVILEGES;\"")
 			],
 			&AttachParams {

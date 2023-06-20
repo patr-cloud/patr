@@ -70,7 +70,7 @@ pub async fn patch_kubernetes_psql_database(
 
 	// constants
 	let psql_port = 5432;
-	let psql_version = "postgres:12";
+	let psql_version = "postgres:14";
 
 	let labels =
 		BTreeMap::from([("database".to_owned(), database_id.to_string())]);
@@ -301,7 +301,7 @@ pub async fn change_psql_database_password(
 			[
 				"bash".to_owned(),
 				"-c".to_owned(),
-				vec![format!("psql -U postgres -c \"ALTER USER postgres WITH PASSWORD '{new_password}'\"")].join("\n")
+				format!("psql -U postgres -c \"ALTER USER postgres WITH PASSWORD '{new_password}'\"")
 			],
 			&AttachParams {
 				..Default::default()
