@@ -91,7 +91,6 @@ async fn middle_man_fn(
 	if !token_data.has_access_for_requested_action(
 		&resource.owner_id,
 		&resource.id,
-		&resource.resource_type_id,
 		permissions::workspace::secret::LIST,
 	) {
 		return Err(Error::empty()

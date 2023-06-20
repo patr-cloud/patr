@@ -72,10 +72,6 @@ impl EveContext {
 		&mut self.state.redis
 	}
 
-	pub const fn get_body_object(&self) -> &Value {
-		&self.body_object
-	}
-
 	pub fn get_body_as<TBody>(&self) -> Result<TBody, Error>
 	where
 		TBody: DeserializeOwned,

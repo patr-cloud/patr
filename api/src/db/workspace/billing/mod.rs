@@ -9,7 +9,6 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::query_as;
 
-use super::ManagedDatabasePlan;
 use crate::Database;
 
 pub struct DeploymentPaymentHistory {
@@ -39,7 +38,7 @@ pub struct StaticSitesPaymentHistory {
 pub struct ManagedDatabasePaymentHistory {
 	pub workspace_id: Uuid,
 	pub database_id: Uuid,
-	pub db_plan: ManagedDatabasePlan,
+	pub db_plan_id: Uuid,
 	pub start_time: DateTime<Utc>,
 	pub deletion_time: Option<DateTime<Utc>>,
 }
@@ -188,7 +187,7 @@ pub async fn initialize_billing_pre(
 		CREATE TABLE IF NOT EXISTS managed_database_payment_history(
 			workspace_id UUID NOT NULL,
 			database_id UUID NOT NULL,
-			db_plan MANAGED_DATABASE_PLAN NOT NULL,
+			db_plan_id UUID NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
 			deletion_time TIMESTAMPTZ
 		);
@@ -536,7 +535,7 @@ pub async fn get_all_volume_usage(
 	.await
 }
 
-pub async fn get_all_database_usage(
+pub async fn get_all_managed_database_usage(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
@@ -548,7 +547,7 @@ pub async fn get_all_database_usage(
 		SELECT
 			workspace_id as "workspace_id: _",
 			database_id as "database_id: _",
-			db_plan as "db_plan: _",
+			db_plan_id as "db_plan_id: _",
 			start_time as "start_time: _",
 			deletion_time as "deletion_time: _"
 		FROM
@@ -1055,11 +1054,11 @@ pub async fn get_volume_payment_history_by_volume_id(
 	.await
 }
 
-pub async fn start_database_usage_history(
+pub async fn start_managed_database_usage_history(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	database_id: &Uuid,
-	db_plan: &ManagedDatabasePlan,
+	db_plan_id: &Uuid,
 	start_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -1068,7 +1067,7 @@ pub async fn start_database_usage_history(
 			managed_database_payment_history(
 				workspace_id,
 				database_id,
-				db_plan,
+				db_plan_id,
 				start_time,
 				deletion_time
 			)
@@ -1083,7 +1082,7 @@ pub async fn start_database_usage_history(
 		"#,
 		workspace_id as _,
 		database_id as _,
-		db_plan as _,
+		db_plan_id as _,
 		start_time as _,
 	)
 	.execute(&mut *connection)
@@ -1091,7 +1090,7 @@ pub async fn start_database_usage_history(
 	.map(|_| ())
 }
 
-pub async fn stop_database_usage_history(
+pub async fn stop_managed_database_usage_history(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	database_id: &Uuid,
 	deletion_time: &DateTime<Utc>,
