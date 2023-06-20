@@ -124,8 +124,14 @@ pub async fn create_managed_database_in_workspace(
 
 	match engine {
 		ManagedDatabaseEngine::Postgres => {
-			// not supported as of now
-			return Err(Error::empty().status(500));
+			service::patch_kubernetes_psql_database(
+				workspace_id,
+				&database_id,
+				&database_plan,
+				kubeconfig,
+				request_id,
+			)
+			.await?;
 		}
 		ManagedDatabaseEngine::Mongo => {
 			// not supported as of now
@@ -186,7 +192,7 @@ pub async fn delete_managed_database(
 			.0;
 
 	// now delete the database from k8s
-	service::delete_kubernetes_mysql_database(
+	service::delete_kubernetes_database(
 		&database.workspace_id,
 		&database.id,
 		kubeconfig,
@@ -274,14 +280,36 @@ pub async fn change_database_password(
 			.await?
 			.0;
 
-	service::change_mysql_database_password(
-		&database.workspace_id,
-		&database.id,
-		kubeconfig,
-		request_id,
-		new_password,
-	)
-	.await?;
+	match database.engine {
+		ManagedDatabaseEngine::Postgres => {
+			service::change_psql_database_password(
+				&database.workspace_id,
+				&database.id,
+				kubeconfig,
+				request_id,
+				new_password,
+			)
+			.await?
+		}
+		ManagedDatabaseEngine::Mysql => {
+			service::change_mysql_database_password(
+				&database.workspace_id,
+				&database.id,
+				kubeconfig,
+				request_id,
+				new_password,
+			)
+			.await?
+		}
+		ManagedDatabaseEngine::Mongo => {
+			log::warn!("request_id: {request_id} - To be implemented");
+			return Err(Error::empty().status(500));
+		}
+		ManagedDatabaseEngine::Redis => {
+			log::warn!("request_id: {request_id} - To be implemented");
+			return Err(Error::empty().status(500));
+		}
+	}
 
 	Ok(())
 }

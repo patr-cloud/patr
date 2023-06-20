@@ -8,8 +8,11 @@ use k8s_openapi::{
 	api::{
 		apps::v1::{StatefulSet, StatefulSetSpec},
 		core::v1::{
+			ConfigMapEnvSource,
 			Container,
 			ContainerPort,
+			EnvFromSource,
+			EnvVar,
 			ExecAction,
 			PersistentVolumeClaim,
 			PersistentVolumeClaimSpec,
@@ -48,24 +51,26 @@ use crate::{
 	utils::Error,
 };
 
-pub async fn patch_kubernetes_mysql_database(
+pub async fn patch_kubernetes_psql_database(
 	workspace_id: &Uuid,
 	database_id: &Uuid,
 	db_plan: &DatabasePlanType,
 	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let kubernetes_client = get_kubernetes_client(kubeconfig).await?;
+	let kubernetes_client =
+		super::super::get_kubernetes_client(kubeconfig).await?;
 
 	// names
 	let namespace = workspace_id.as_str();
 	let sts_name_for_db = get_database_sts_name(database_id);
 	let svc_name_for_db = get_database_service_name(database_id);
 	let pvc_claim_for_db = get_database_pvc_name(database_id);
+	let configmap_name_for_db = "postgres-config".to_string();
 
 	// constants
-	let mysql_port = 3306;
-	let mysql_version = "patrcloud/mysql:8.0";
+	let psql_port = 5432;
+	let psql_version = "postgres:14";
 
 	let labels =
 		BTreeMap::from([("database".to_owned(), database_id.to_string())]);
@@ -75,14 +80,13 @@ pub async fn patch_kubernetes_mysql_database(
 	let service_for_db = Service {
 		metadata: ObjectMeta {
 			name: Some(svc_name_for_db.to_owned()),
-			labels: Some(labels.clone()),
 			..Default::default()
 		},
 		spec: Some(ServiceSpec {
 			selector: Some(labels.clone()),
 			ports: Some(vec![ServicePort {
-				name: Some("mysql".to_owned()),
-				port: mysql_port,
+				name: Some("postgres".to_owned()),
+				port: psql_port,
 				..Default::default()
 			}]),
 			..Default::default()
@@ -129,17 +133,39 @@ pub async fn patch_kubernetes_mysql_database(
 		}),
 		spec: Some(PodSpec {
 			containers: vec![Container {
-				name: "mysql".to_owned(),
-				image: Some(mysql_version.to_owned()),
-				image_pull_policy: Some("Always".to_owned()),
-				ports: Some(vec![ContainerPort {
-					name: Some("mysql".to_owned()),
-					container_port: mysql_port,
+				name: "postgres".to_owned(),
+				image: Some(psql_version.to_owned()),
+				env: Some(vec![
+					EnvVar {
+						name: "POSTGRES_USER".to_owned(),
+						value: Some("postgres".to_owned()),
+						..Default::default()
+					},
+					EnvVar {
+						name: "POSTGRES_PASSWORD".to_owned(),
+						value: Some("patr".to_owned()),
+						..Default::default()
+					},
+					EnvVar {
+						name: "POSTGRES_HOST_AUTH_METHOD".to_owned(),
+						value: Some("scram-sha-256".to_owned()),
+						..Default::default()
+					},
+					EnvVar {
+						name: "POSTGRES_INITDB_ARGS".to_owned(),
+						value: Some("--auth-host=scram-sha-256".to_owned()),
+						..Default::default()
+					},
+				]),
+				env_from: Some(vec![EnvFromSource {
+					config_map_ref: Some(ConfigMapEnvSource {
+						name: Some(configmap_name_for_db),
+						..Default::default()
+					}),
 					..Default::default()
 				}]),
-				volume_mounts: Some(vec![VolumeMount {
-					name: pvc_claim_for_db.to_owned(),
-					mount_path: "/var/lib/mysql".to_owned(),
+				ports: Some(vec![ContainerPort {
+					container_port: psql_port,
 					..Default::default()
 				}]),
 				resources: Some(ResourceRequirements {
@@ -173,16 +199,13 @@ pub async fn patch_kubernetes_mysql_database(
 						.into(),
 					),
 				}),
-				// https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#when-should-you-use-a-startup-probe
-				// startup probe are required when the containers take a long
-				// time to spin up according to docs it is recommended to use a
-				// startup probe instead of liveness probe in such instances
 				liveness_probe: Some(Probe {
 					exec: Some(ExecAction {
 						command: Some(vec![
 							"bash".to_owned(),
 							"-c".to_owned(),
-							"mysqladmin ping".to_owned(),
+							"psql -w -U postgres -d postgres -c \"SELECT 1\""
+								.to_owned(),
 						]),
 					}),
 					initial_delay_seconds: Some(30),
@@ -195,15 +218,21 @@ pub async fn patch_kubernetes_mysql_database(
 						command: Some(vec![
 							"bash".to_owned(),
 							"-c".to_owned(),
-							"mysql -u root -e \"SELECT 1\"".to_owned(),
+							"pg_isready -U postgres -d postgres -q".to_owned(),
 						]),
 					}),
 					initial_delay_seconds: Some(5),
 					failure_threshold: Some(10),
 					period_seconds: Some(2),
-					timeout_seconds: Some(1),
+					timeout_seconds: Some(5),
 					..Default::default()
 				}),
+				volume_mounts: Some(vec![VolumeMount {
+					name: pvc_claim_for_db.to_owned(),
+					mount_path: "/var/lib/postgresql/data".to_owned(),
+					sub_path: Some("postgres".to_owned()),
+					..Default::default()
+				}]),
 				..Default::default()
 			}],
 			volumes: Some(vec![Volume {
@@ -250,14 +279,14 @@ pub async fn patch_kubernetes_mysql_database(
 	Ok(())
 }
 
-pub async fn change_mysql_database_password(
+pub async fn change_psql_database_password(
 	workspace_id: &Uuid,
 	database_id: &Uuid,
 	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 	new_password: &String,
 ) -> Result<(), Error> {
-	log::trace!("request_id: {request_id} - Connecting to MySQL server and changing password");
+	log::trace!("request_id: {request_id} - Connecting to Postgres server and changing password");
 
 	let sts_name_for_db = get_database_sts_name(database_id);
 	let namespace = workspace_id.as_str();
@@ -269,7 +298,7 @@ pub async fn change_mysql_database_password(
 			[
 				"bash".to_owned(),
 				"-c".to_owned(),
-				format!("mysql -e \"ALTER USER 'root'@'%' IDENTIFIED BY '{new_password}'; FLUSH PRIVILEGES;\"")
+				format!("psql -U postgres -c \"ALTER USER postgres WITH PASSWORD '{new_password}'\"")
 			],
 			&AttachParams {
 				..Default::default()
