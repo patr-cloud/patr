@@ -32,7 +32,7 @@ use k8s_openapi::{
 	},
 };
 use kube::{
-	api::{AttachParams, DeleteParams, Patch, PatchParams},
+	api::{AttachParams, Patch, PatchParams},
 	config::Kubeconfig,
 	core::ObjectMeta,
 	Api,

@@ -8,11 +8,11 @@ use k8s_openapi::{
 	api::{
 		apps::v1::{StatefulSet, StatefulSetSpec},
 		core::v1::{
-			ConfigMap,
 			ConfigMapEnvSource,
 			Container,
 			ContainerPort,
 			EnvFromSource,
+			EnvVar,
 			ExecAction,
 			PersistentVolumeClaim,
 			PersistentVolumeClaimSpec,
@@ -75,30 +75,6 @@ pub async fn patch_kubernetes_psql_database(
 	let labels =
 		BTreeMap::from([("database".to_owned(), database_id.to_string())]);
 
-	log::trace!("request_id: {request_id} - Creating configmap for database");
-
-	let mut config_data = BTreeMap::new();
-	config_data.insert("POSTGRES_DB".to_owned(), "postgresdb".to_owned());
-	config_data.insert("POSTGRES_USER".to_owned(), "postgres".to_owned());
-	config_data.insert("POSTGRES_PASSWORD".to_owned(), "patr".to_owned());
-
-	let config_for_db = ConfigMap {
-		metadata: ObjectMeta {
-			name: Some(configmap_name_for_db.to_owned()),
-			..Default::default()
-		},
-		data: Some(config_data.clone()),
-		..Default::default()
-	};
-
-	Api::<ConfigMap>::namespaced(kubernetes_client.clone(), namespace)
-		.patch(
-			&configmap_name_for_db,
-			&PatchParams::apply(&configmap_name_for_db),
-			&Patch::Apply(config_for_db),
-		)
-		.await?;
-
 	log::trace!("request_id: {request_id} - Creating service for database");
 
 	let service_for_db = Service {
@@ -159,6 +135,28 @@ pub async fn patch_kubernetes_psql_database(
 			containers: vec![Container {
 				name: "postgres".to_owned(),
 				image: Some(psql_version.to_owned()),
+				env: Some(vec![
+					EnvVar {
+						name: "POSTGRES_USER".to_owned(),
+						value: Some("postgres".to_owned()),
+						..Default::default()
+					},
+					EnvVar {
+						name: "POSTGRES_PASSWORD".to_owned(),
+						value: Some("patr".to_owned()),
+						..Default::default()
+					},
+					EnvVar {
+						name: "POSTGRES_HOST_AUTH_METHOD".to_owned(),
+						value: Some("scram-sha-256".to_owned()),
+						..Default::default()
+					},
+					EnvVar {
+						name: "POSTGRES_INITDB_ARGS".to_owned(),
+						value: Some("--auth-host=scram-sha-256".to_owned()),
+						..Default::default()
+					},
+				]),
 				env_from: Some(vec![EnvFromSource {
 					config_map_ref: Some(ConfigMapEnvSource {
 						name: Some(configmap_name_for_db),
@@ -206,8 +204,8 @@ pub async fn patch_kubernetes_psql_database(
 						command: Some(vec![
 							"bash".to_owned(),
 							"-c".to_owned(),
-							vec!["psql -w -U postgres -d postgresdb -c \"SELECT 1\""]
-								.join("\n")
+							"psql -w -U postgres -d postgres -c \"SELECT 1\""
+								.to_owned(),
 						]),
 					}),
 					initial_delay_seconds: Some(30),
@@ -220,8 +218,7 @@ pub async fn patch_kubernetes_psql_database(
 						command: Some(vec![
 							"bash".to_owned(),
 							"-c".to_owned(),
-							vec!["pg_isready -U postgres -d postgresdb -q"]
-								.join("\n"),
+							"pg_isready -U postgres -d postgres -q".to_owned(),
 						]),
 					}),
 					initial_delay_seconds: Some(5),
