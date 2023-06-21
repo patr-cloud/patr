@@ -25,7 +25,7 @@ pub fn create_sub_app(
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.post(
-		"loki/api/v1/push",
+		"/loki/api/v1/push",
 		[EveMiddleware::CustomFunction(pin_fn!(push_loki_logs))],
 	);
 
@@ -79,7 +79,6 @@ async fn push_loki_logs(
 		.has_access_for_requested_action(
 			&region.owner_id,
 			&region.id,
-			&region.resource_type_id,
 			permissions::workspace::region::LOKI_PUSH,
 		);
 

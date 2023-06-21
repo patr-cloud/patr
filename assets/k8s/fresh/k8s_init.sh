@@ -8,7 +8,8 @@ PARENT_WORKSPACE_ID=${2:?"Missing parameter: PARENT_WORKSPACE_ID"}
 KUBECONFIG_PATH=${3:?"Missing parameter: KUBECONFIG_PATH"}
 TLS_CERT_PATH=${4:?"Missing parameter: TLS_CERT_PATH"}
 TLS_KEY_PATH=${5:?"Missing parameter: TLS_KEY_PATH"}
-LOKI_API_TOKEN=${6:?"Missing parameter: LOKI_API_TOKEN, provide '-' if don't want to enable logs"}
+LOKI_LOG_PUSH_URL=${6:?"Missing parameter: LOKI_LOG_PUSH_URL"}
+LOKI_API_TOKEN=${7:?"Missing parameter: LOKI_API_TOKEN, provide '-' if don't want to enable logs"}
 
 # validate input values
 if [ ! -f $KUBECONFIG_PATH ]; then
@@ -64,7 +65,7 @@ if [ $LOKI_API_TOKEN != '-' ]; then
     helm upgrade --install promtail grafana/promtail --namespace promtail --create-namespace -f - <<EOF
 config:
   clients:
-    - url: http://loki.patr.cloud/loki/api/v1/push
+    - url: $LOKI_LOG_PUSH_URL
       basic_auth:
         username: $CLUSTER_ID
         password: $LOKI_API_TOKEN
