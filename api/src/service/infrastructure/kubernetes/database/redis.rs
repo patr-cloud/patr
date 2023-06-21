@@ -82,8 +82,9 @@ pub async fn patch_kubernetes_redis_database(
 	config_data.insert(
 		"redis-config".to_owned(),
 		vec![
-			format!("masterauth {}", db_pwd.to_owned()),
 			format!("requirepass {}", db_pwd.to_owned()),
+			"save 60 1".to_owned(),
+			"dir /redis-master-data".to_owned(),
 		]
 		.join("\n"),
 	);
@@ -309,4 +310,56 @@ pub async fn patch_kubernetes_redis_database(
 
 pub fn get_database_config_name(database_id: &Uuid) -> String {
 	format!("config-{database_id}")
+}
+
+pub async fn change_redis_database_password(
+	workspace_id: &Uuid,
+	database_id: &Uuid,
+	kubeconfig: Kubeconfig,
+	request_id: &Uuid,
+	new_password: &String,
+) -> Result<(), Error> {
+	log::trace!("request_id: {request_id} - Editing redis config map and changing password");
+
+	let sts_name_for_db = get_database_sts_name(database_id);
+	let configmap_name_for_db = get_database_config_name(database_id);
+	let namespace = workspace_id.as_str();
+	let kubernetes_client = get_kubernetes_client(kubeconfig).await?;
+
+	let mut config_data = BTreeMap::new();
+	config_data.insert(
+		"redis-config".to_owned(),
+		vec![
+			format!("requirepass {}", new_password.to_owned()),
+			"save 60 1".to_owned(),
+			"dir /redis-master-data".to_owned(),
+		]
+		.join("\n"),
+	);
+
+	let config_for_db = ConfigMap {
+		metadata: ObjectMeta {
+			name: Some(configmap_name_for_db.to_owned()),
+			..Default::default()
+		},
+		data: Some(config_data.clone()),
+		..Default::default()
+	};
+
+	Api::<ConfigMap>::namespaced(kubernetes_client.clone(), namespace)
+		.patch(
+			&configmap_name_for_db,
+			&PatchParams::apply(&configmap_name_for_db),
+			&Patch::Apply(config_for_db),
+		)
+		.await?;
+
+	// Statefulset does not restart automatically on configmap change
+	// Trigger manual restart
+	Api::<StatefulSet>::namespaced(kubernetes_client.clone(), namespace)
+		.restart(&sts_name_for_db)
+		.await?;
+
+	log::trace!("request_id: {request_id} - Password changed successfully");
+	Ok(())
 }

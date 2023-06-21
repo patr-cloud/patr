@@ -1489,6 +1489,7 @@ pub async fn get_total_resource_usage(
 	let secret_charge = secret_usage.iter().map(|bill| bill.amount).sum();
 
 	let total_charge = deployment_charge +
+		managed_database_charge +
 		static_site_charge +
 		managed_url_charge +
 		domain_charge +
