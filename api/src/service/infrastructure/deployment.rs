@@ -42,7 +42,7 @@ use crate::{
 	},
 	service,
 	utils::{
-		constants::{free_limits, PATR_CLUSTER_TENANT_ID},
+		constants::{free_limits, logs::PATR_CLUSTER_TENANT_ID},
 		settings::Settings,
 		validator,
 		Error,
@@ -1295,6 +1295,18 @@ async fn get_container_logs(
 		request_id,
 		deployment_id
 	);
+
+	log::info!(
+		r#"Loki request => http 'https://{}/loki/api/v1/query_range?direction=BACKWARD&query={{container="deployment-{}",namespace="{}"}}&start={}&end={}&limit={}' 'X-Scope-OrgID: {}'"#,
+		config.loki.host,
+		deployment_id,
+		workspace_id,
+		start_time.timestamp_nanos(),
+		end_time.timestamp_nanos(),
+		limit,
+		tenant_id
+	);
+
 	let client = Client::new();
 	let logs = client
 		.get(format!(
