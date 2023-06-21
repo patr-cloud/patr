@@ -22,6 +22,7 @@ pub(super) async fn migrate(
 	add_loki_push_permission(connection, config).await?;
 	add_mimir_push_permission(connection, config).await?;
 	reset_permission_order(connection, config).await?;
+	add_multi_factor_authentication(connection, config).await?;
 
 	Ok(())
 }
@@ -1550,6 +1551,22 @@ async fn add_mimir_push_permission(
 		.fetch_optional(&mut *connection)
 		.await?;
 	}
+
+	Ok(())
+}
+
+async fn add_multi_factor_authentication(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE "user"
+		ADD COLUMN mfa_secret TEXT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }

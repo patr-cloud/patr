@@ -3,6 +3,7 @@ use std::net::{IpAddr, Ipv4Addr};
 use api_models::{models::auth::*, utils::Uuid, ErrorType};
 use chrono::{Duration, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use totp_rs::{Algorithm, Secret, TOTP};
 
 mod oauth;
 
@@ -138,7 +139,11 @@ async fn sign_in(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let LoginRequest { user_id, password } = context
+	let LoginRequest {
+		user_id,
+		password,
+		mfa_otp,
+	} = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -158,28 +163,71 @@ async fn sign_in(
 		return Ok(context);
 	}
 
+	if user_data.mfa_secret.is_some() && mfa_otp.is_none() {
+		context.error(ErrorType::MfaRequired);
+		return Ok(context);
+	}
+
 	let config = context.get_state().config.clone();
 	let ip_address = routes::get_request_ip_address(&context);
 	let user_agent = context.get_header("user-agent").unwrap_or_default();
 
-	let (UserWebLogin { login_id, .. }, access_token, refresh_token) =
-		service::sign_in_user(
-			context.get_database_connection(),
-			&user_data.id,
-			&ip_address
-				.parse()
-				.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
-			&user_agent,
-			&config,
-		)
-		.await?;
+	if let Some(mfa_secret) = user_data.mfa_secret {
+		// Verify if this unwrap is okay to use or not
+		// The program won't reach here if the above check is not passed
+		let otp = mfa_otp
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+		let secret = Secret::Encoded(mfa_secret);
+		let totp =
+			TOTP::new(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap())?;
 
-	context.success(LoginResponse {
-		access_token,
-		login_id,
-		refresh_token,
-	});
-	Ok(context)
+		let current_totp = totp.generate_current().unwrap().parse::<u32>()?;
+		if current_totp == otp {
+			let (UserWebLogin { login_id, .. }, access_token, refresh_token) =
+				service::sign_in_user(
+					context.get_database_connection(),
+					&user_data.id,
+					&ip_address
+						.parse()
+						.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+					&user_agent,
+					&config,
+				)
+				.await?;
+
+			context.success(LoginResponse {
+				access_token,
+				login_id,
+				refresh_token,
+			});
+			Ok(context)
+		} else {
+			Error::as_result()
+				.status(404)
+				.body(error!(MFA_OTP_INVALID).to_string())?
+		}
+	} else {
+		// TODO - is there any way to club the repeatation of this UserWebLogin
+		let (UserWebLogin { login_id, .. }, access_token, refresh_token) =
+			service::sign_in_user(
+				context.get_database_connection(),
+				&user_data.id,
+				&ip_address
+					.parse()
+					.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+				&user_agent,
+				&config,
+			)
+			.await?;
+
+		context.success(LoginResponse {
+			access_token,
+			login_id,
+			refresh_token,
+		});
+		Ok(context)
+	}
 }
 
 /// # Description

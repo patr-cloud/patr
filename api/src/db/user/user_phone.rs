@@ -434,7 +434,8 @@ pub async fn get_user_by_phone_number(
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
 			"user".workspace_limit,
-			"user".sign_up_coupon
+			"user".sign_up_coupon,
+			"user".mfa_secret
 		FROM
 			"user"
 		INNER JOIN
