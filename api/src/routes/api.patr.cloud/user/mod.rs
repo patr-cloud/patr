@@ -1,6 +1,7 @@
 use api_models::{
 	models::{
 		user::{
+			ActivateMultiFactorAuthResponse,
 			AddPersonalEmailRequest,
 			AddPersonalEmailResponse,
 			AddPhoneNumberRequest,
@@ -36,6 +37,7 @@ use api_models::{
 };
 use chrono::{Datelike, Utc};
 use eve_rs::{App as EveApp, AsError, NextHandler};
+use totp_rs::Secret;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -216,6 +218,7 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_user_id)),
 		],
 	);
+
 	sub_app.get(
 		"/search",
 		[
@@ -223,6 +226,18 @@ pub fn create_sub_app(
 				is_api_token_allowed: false,
 			},
 			EveMiddleware::CustomFunction(pin_fn!(search_for_user)),
+		],
+	);
+
+	sub_app.post(
+		"/:userId/activate-multi-factor-auth",
+		[
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
+			EveMiddleware::CustomFunction(pin_fn!(
+				activate_multi_factor_authentication
+			)),
 		],
 	);
 
@@ -1230,5 +1245,29 @@ async fn search_for_user(
 		db::search_for_users(context.get_database_connection(), &query).await?;
 
 	context.success(SearchForUserResponse { users });
+	Ok(context)
+}
+
+async fn activate_multi_factor_authentication(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let user_id = context
+		.get_param(request_keys::USER_ID)
+		.and_then(|user_id_str| Uuid::parse_str(user_id_str.trim()).ok())
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let secret = Secret::generate_secret().to_string();
+
+	// Do not activate if already activated
+	db::activate_multi_factor_authentication(
+		context.get_database_connection(),
+		&user_id,
+		&secret,
+	)
+	.await?;
+
+	context.success(ActivateMultiFactorAuthResponse { secret });
 	Ok(context)
 }
