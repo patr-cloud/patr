@@ -8,8 +8,6 @@ mod auth_patr_cloud;
 mod loki_patr_cloud;
 #[path = "vault.patr.cloud/mod.rs"]
 mod vault_patr_cloud;
-#[path = "loki.patr.cloud/mod.rs"]
-mod loki_patr_cloud;
 
 use eve_rs::{App as EveApp, Context};
 
