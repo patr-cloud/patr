@@ -8,7 +8,7 @@ use api_models::{
 };
 use k8s_openapi::api::{
 	apps::v1::StatefulSet,
-	core::v1::{PersistentVolumeClaim, Service, ConfigMap},
+	core::v1::{ConfigMap, PersistentVolumeClaim, Service},
 };
 use kube::{
 	api::{DeleteParams, ListParams},
