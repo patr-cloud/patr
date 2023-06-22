@@ -1,5 +1,4 @@
 use std::{
-	cmp::max,
 	ops::{Add, Sub},
 	str::FromStr,
 };
@@ -663,7 +662,7 @@ pub(super) async fn process_request(
 				}
 				TotalAmount::NeedToPay(need_to_pay) => (
 					need_to_pay,
-					max(0, total_bill.total_charge as i64 - need_to_pay as i64) as u64,
+					total_bill.total_charge.saturating_sub(need_to_pay),
 					0,
 				),
 			};
