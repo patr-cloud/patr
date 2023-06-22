@@ -88,6 +88,7 @@ pub mod id {
 	pub const CANNOT_ADD_NEW_VOLUME: &str = "cannotAddNewVolume";
 	pub const CANNOT_REMOVE_VOLUME: &str = "cannotRemoveVolume";
 	pub const MFA_OTP_INVALID: &str = "mfaOtpInvalid";
+	pub const MFA_ALREADY_ACTIVATED: &str = "mfaAlreadyActivated";
 
 	// error constants for billing related things
 	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "cardlessFreeLimitExceeded";
@@ -258,6 +259,8 @@ pub mod message {
 	pub const CANNOT_REMOVE_VOLUME: &str = "Removing a volume from a deployment is not allowed, if you want to achieve the same please try deleting the deployment and create a new one";
 	pub const MFA_OTP_INVALID: &str =
 		"Your entered OTP is either expired or is invalid. Please try again";
+	pub const MFA_ALREADY_ACTIVATED: &str =
+		"The MFA for this user is already activated";
 
 	// error constants for billing related things
 	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "You have reached the maximun free limit allowed to create resources without adding a payment card. Kindly add a card to create more resources";
