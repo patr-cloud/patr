@@ -899,7 +899,7 @@ pub(super) async fn process_request(
 						year,
 						// If `amount_due` is 0, definitely the card amount
 						// is 0
-						total_bill.total_charge,
+						card_amount_to_be_charged_in_cents,
 						deadline,
 					)
 					.await?;
@@ -912,7 +912,7 @@ pub(super) async fn process_request(
 						year,
 						// If `amount_due` is 0, definitely the card amount
 						// is 0
-						total_bill.total_charge,
+						card_amount_to_be_charged_in_cents,
 						deadline,
 					)
 					.await?;
