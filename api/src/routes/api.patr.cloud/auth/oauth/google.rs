@@ -20,7 +20,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, UserWebLogin},
 	error,
-	models::google::{GoogleAccessToken, GoogleUserInfo},
+	models::google::GoogleUserInfo,
 	pin_fn,
 	routes,
 	service,
@@ -94,9 +94,9 @@ async fn authorize_with_google(
 				),
 				("scope", google_oauth::SCOPE),
 				("state", state.as_str()),
-				("response_type", "code"),
+				("response_type", "token"),
 				("redirect_uri", google_oauth::REDIRECT_URL),
-				("access_type", "offline"),
+				("include_granted_scopes", "true"),
 			],
 		)?
 		.to_string(),
@@ -110,7 +110,7 @@ async fn oauth_callback(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let GoogleOAuthCallbackRequest {
-		code,
+		token,
 		state,
 		username,
 	} = context
@@ -130,51 +130,12 @@ async fn oauth_callback(
 			.body(error!(SERVER_ERROR).to_string())?
 	}
 
-	if let Some(username) = username.to_owned() {
-		let user_exist = db::get_user_by_username(
-			context.get_database_connection(),
-			&username,
-		)
-		.await?;
-		if user_exist.is_some() {
-			return Err(Error::empty()
-				.status(404)
-				.body(error!(USERNAME_TAKEN).to_string()));
-		}
-	}
-
 	let client = reqwest::Client::new();
-
-	log::trace!("Getting access token");
-	let GoogleAccessToken { access_token } = client
-		.post(google_oauth::CALLBACK_URL)
-		.query(&[
-			(
-				"client_id",
-				context.get_state().config.google.client_id.clone(),
-			),
-			(
-				"client_secret",
-				context.get_state().config.google.client_secret.clone(),
-			),
-			("redirect_uri", google_oauth::REDIRECT_URL.to_owned()),
-			("grant_type", "authorization_code".to_string()),
-			("code", code),
-		])
-		.header(header::ACCEPT, "application/json")
-		.header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-		.header(header::USER_AGENT, "patr".to_string())
-		.header(header::CONTENT_LENGTH, "0")
-		.send()
-		.await?
-		.error_for_status()?
-		.json::<GoogleAccessToken>()
-		.await?;
-
 	log::trace!("Getting user information");
+
 	let GoogleUserInfo { name, email } = client
 		.get(google_oauth::USER_INFO_URL)
-		.header(header::AUTHORIZATION, format!("Bearer {}", access_token))
+		.header(header::AUTHORIZATION, format!("Bearer {}", token))
 		.header(header::ACCEPT, "application/json")
 		.send()
 		.await?
@@ -213,6 +174,18 @@ async fn oauth_callback(
 		let username = username
 			.status(404)
 			.body(error!(INVALID_USERNAME).to_string())?;
+
+		let user_exist = db::get_user_by_username(
+			context.get_database_connection(),
+			&username,
+		)
+		.await?;
+
+		if user_exist.is_some() {
+			return Err(Error::empty()
+				.status(404)
+				.body(error!(USERNAME_TAKEN).to_string()));
+		}
 
 		let (first_name, last_name) =
 			name.split_once(' ').unwrap_or((name.as_str(), ""));
