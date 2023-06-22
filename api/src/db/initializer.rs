@@ -50,6 +50,14 @@ pub async fn initialize(app: &App) -> Result<(), Error> {
 	.execute(&app.database)
 	.await?;
 
+	query!(
+		r#"
+		CREATE EXTENSION IF NOT EXISTS btree_gist;
+		"#
+	)
+	.execute(&app.database)
+	.await?;
+
 	// If no tables exist in the database, initialize fresh
 	if tables.is_empty() {
 		log::warn!("No tables exist. Creating fresh");

@@ -1,3 +1,5 @@
+use std::{fmt::Display, str::FromStr};
+
 use api_macros::{query, query_as};
 use api_models::{
 	models::workspace::infrastructure::database::{
@@ -8,8 +10,57 @@ use api_models::{
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
+use eve_rs::AsError;
 
-use crate::{db, Database};
+use crate::{db, error, utils::Error, Database};
+
+#[derive(sqlx::Type)]
+#[sqlx(type_name = "LEGACY_MANAGED_DATABASE_PLAN", rename_all = "lowercase")]
+pub enum LegacyManagedDatabasePlan {
+	Nano,
+	Micro,
+	Small,
+	Medium,
+	Large,
+	Xlarge,
+	Xxlarge,
+	Mammoth,
+}
+
+impl Display for LegacyManagedDatabasePlan {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Nano => write!(f, "nano"),
+			Self::Micro => write!(f, "micro"),
+			Self::Small => write!(f, "small"),
+			Self::Medium => write!(f, "medium"),
+			Self::Large => write!(f, "large"),
+			Self::Xlarge => write!(f, "xlarge"),
+			Self::Xxlarge => write!(f, "xxlarge"),
+			Self::Mammoth => write!(f, "mammoth"),
+		}
+	}
+}
+
+impl FromStr for LegacyManagedDatabasePlan {
+	type Err = Error;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s.to_lowercase().as_str() {
+			"do-nano" | "db-s-1vcpu-1gb" => Ok(Self::Nano),
+			"do-micro" | "db-s-1vcpu-2gb" => Ok(Self::Micro),
+			"small_1_0" => Ok(Self::Small),
+			"do-medium" | "db-s-2vcpu-4gb" => Ok(Self::Medium),
+			"do-large" | "db-s-4vcpu-8gb" => Ok(Self::Large),
+			"do-xlarge" | "db-s-6vcpu-16gb" => Ok(Self::Xlarge),
+			"do-xxlarge" | "db-s-8vcpu-32gb" => Ok(Self::Xxlarge),
+			"do-mammoth" | "db-s-16vcpu-64gb" => Ok(Self::Mammoth),
+			_ => Error::as_result()
+				.status(500)
+				.body(error!(WRONG_PARAMETERS).to_string()),
+		}
+	}
+}
 
 pub struct ManagedDatabase {
 	pub id: Uuid,
@@ -34,6 +85,23 @@ pub async fn initialize_managed_database_pre(
 			'mysql',
 			'mongo',
 			'redis'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE LEGACY_MANAGED_DATABASE_PLAN AS ENUM(
+			'nano',
+			'micro',
+			'small',
+			'medium',
+			'large',
+			'xlarge',
+			'xxlarge',
+			'mammoth'
 		);
 		"#
 	)

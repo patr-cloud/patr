@@ -41,15 +41,8 @@ async fn add_tables_for_k8s_database(
 
 	query!(
 		r#"
-		DROP TYPE MANAGED_DATABASE_PLAN CASCADE;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		DROP TABLE managed_database_payment_history;
+		ALTER TYPE MANAGED_DATABASE_PLAN
+		RENAME TO LEGACY_MANAGED_DATABASE_PLAN;
 		"#
 	)
 	.execute(&mut *connection)
@@ -89,6 +82,73 @@ async fn add_tables_for_k8s_database(
 			CONSTRAINT managed_database_plan_chk_volume_positive
 				CHECK(volume > 0)
 		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE managed_database_payment_history
+			ADD COLUMN db_plan_id UUID,
+			ADD COLUMN legacy_db_plan LEGACY_MANAGED_DATABASE_PLAN,
+			ADD COLUMN new_start_time TIMESTAMPTZ,
+			ADD COLUMN new_deletion_time TIMESTAMPTZ,
+			ADD CONSTRAINT managed_database_payment_history_fk_db_plan_id
+				FOREIGN KEY(db_plan_id) REFERENCES managed_database_plan(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			managed_database_payment_history
+		SET
+			legacy_db_plan = db_plan,
+			new_start_time = managed_database_payment_history.start_time,
+			new_deletion_time = managed_database_payment_history.deletion_time;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE managed_database_payment_history
+			DROP COLUMN db_plan,
+			DROP COLUMN start_time,
+			DROP COLUMN deletion_time,
+			ALTER COLUMN new_start_time SET NOT NULL,
+			ADD CONSTRAINT managed_database_payment_history_chk_legacy_db_plan
+				CHECK(
+					(
+						db_plan_id IS NULL AND
+						legacy_db_plan IS NOT NULL
+					) OR (
+						db_plan_id IS NOT NULL AND
+						legacy_db_plan IS NULL
+					)
+				);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE managed_database_payment_history
+		RENAME COLUMN new_start_time TO start_time;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE managed_database_payment_history
+		RENAME COLUMN new_deletion_time TO deletion_time;
 		"#
 	)
 	.execute(&mut *connection)
@@ -154,30 +214,6 @@ async fn add_tables_for_k8s_database(
 		ALTER TABLE managed_database
 		ADD CONSTRAINT managed_database_fk_id_workspace_id
 		FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE IF NOT EXISTS managed_database_payment_history(
-			workspace_id UUID NOT NULL,
-			database_id UUID NOT NULL,
-			db_plan_id UUID NOT NULL,
-			start_time TIMESTAMPTZ NOT NULL,
-			deletion_time TIMESTAMPTZ
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE managed_database_payment_history
-		ADD CONSTRAINT managed_database_payment_history_workspace_id_fk
-		FOREIGN KEY (workspace_id) REFERENCES workspace(id);
 		"#
 	)
 	.execute(&mut *connection)
