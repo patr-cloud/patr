@@ -667,12 +667,7 @@ async fn delete_region(
 
 	// delete origin ca cert
 	if let Some(cert_id) = region.cloudflare_certificate_id {
-		service::revoke_origin_ca_certificate(&cert_id, &config)
-			.await
-			.map_err(|err| {
-				log::info!("Error while deleting certificate - {err:?}")
-			})
-			.ok();
+		service::revoke_origin_ca_certificate(&cert_id, &config).await?;
 	}
 
 	let onpatr_domain = db::get_domain_by_name(
