@@ -9,9 +9,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::query_as;
 
-use crate::Database;
-
 use super::LegacyManagedDatabasePlan;
+use crate::Database;
 
 pub struct DeploymentPaymentHistory {
 	pub workspace_id: Uuid,

@@ -12,7 +12,7 @@ use api_models::{
 use chrono::{DateTime, Utc};
 use eve_rs::AsError;
 
-use crate::{db, Database, utils::Error, error};
+use crate::{db, error, utils::Error, Database};
 
 #[derive(sqlx::Type)]
 #[sqlx(type_name = "LEGACY_MANAGED_DATABASE_PLAN", rename_all = "lowercase")]

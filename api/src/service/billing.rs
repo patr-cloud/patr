@@ -566,39 +566,40 @@ pub async fn calculate_managed_database_bill_for_workspace_till(
 				as i64,
 		);
 
-		let monthly_price =
-			match (&database_usage.db_plan_id, &database_usage.legacy_db_plan) {
-				(Some(plan_id), None) => {
-					let plan =
-						get_database_plan_by_id(connection, plan_id).await?;
-					match (plan.cpu_count, plan.memory_count, plan.volume) {
-						(1, 2, 25) => 10f64,
-						(2, 4, 50) => 20f64,
-						(2, 4, 100) => 25f64,
-						(4, 8, 200) => 50f64,
-						_ => 0f64,
-					}
+		let monthly_price = match (
+			&database_usage.db_plan_id,
+			&database_usage.legacy_db_plan,
+		) {
+			(Some(plan_id), None) => {
+				let plan = get_database_plan_by_id(connection, plan_id).await?;
+				match (plan.cpu_count, plan.memory_count, plan.volume) {
+					(1, 2, 25) => 10f64,
+					(2, 4, 50) => 20f64,
+					(2, 4, 100) => 25f64,
+					(4, 8, 200) => 50f64,
+					_ => 0f64,
 				}
-				(None, Some(legacy_plan)) => match legacy_plan {
-					LegacyManagedDatabasePlan::Nano => 15f64,
-					LegacyManagedDatabasePlan::Micro => 30f64,
-					LegacyManagedDatabasePlan::Small => 45f64,
-					LegacyManagedDatabasePlan::Medium => 60f64,
-					LegacyManagedDatabasePlan::Large => 120f64,
-					LegacyManagedDatabasePlan::Xlarge => 240f64,
-					LegacyManagedDatabasePlan::Xxlarge => 480f64,
-					LegacyManagedDatabasePlan::Mammoth => 960f64,
-				},
-				_ => {
-					log::error!(
+			}
+			(None, Some(legacy_plan)) => match legacy_plan {
+				LegacyManagedDatabasePlan::Nano => 15f64,
+				LegacyManagedDatabasePlan::Micro => 30f64,
+				LegacyManagedDatabasePlan::Small => 45f64,
+				LegacyManagedDatabasePlan::Medium => 60f64,
+				LegacyManagedDatabasePlan::Large => 120f64,
+				LegacyManagedDatabasePlan::Xlarge => 240f64,
+				LegacyManagedDatabasePlan::Xxlarge => 480f64,
+				LegacyManagedDatabasePlan::Mammoth => 960f64,
+			},
+			_ => {
+				log::error!(
 					"Both db_plan_id and legacy_db_plan are None for db: {}",
 					database_usage.database_id
 				);
-					return Err(Error::empty()
-						.status(500)
-						.body(error!(SERVER_ERROR).to_string()));
-				}
-			};
+				return Err(Error::empty()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string()));
+			}
+		};
 
 		let price_in_dollars = if hours >= 720 {
 			monthly_price
