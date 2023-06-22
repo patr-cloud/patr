@@ -296,7 +296,7 @@ pub async fn change_database_password(
 				request_id,
 				new_password,
 			)
-			.await?
+			.await
 		}
 		ManagedDatabaseEngine::Mysql => {
 			service::change_mysql_database_password(
@@ -306,17 +306,21 @@ pub async fn change_database_password(
 				request_id,
 				new_password,
 			)
-			.await?
+			.await
 		}
 		ManagedDatabaseEngine::Mongo => {
 			log::warn!("request_id: {request_id} - To be implemented");
-			return Err(Error::empty().status(500));
+			Err(Error::empty().status(500))
 		}
 		ManagedDatabaseEngine::Redis => {
-			log::warn!("request_id: {request_id} - To be implemented");
-			return Err(Error::empty().status(500));
+			service::change_redis_database_password(
+				&database.workspace_id,
+				&database.id,
+				kubeconfig,
+				request_id,
+				new_password,
+			)
+			.await
 		}
 	}
-
-	Ok(())
 }
