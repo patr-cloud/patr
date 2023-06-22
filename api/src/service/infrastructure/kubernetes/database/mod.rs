@@ -1,5 +1,6 @@
 mod mysql;
 mod psql;
+mod redis;
 
 use api_models::{
 	models::workspace::infrastructure::database::ManagedDatabaseStatus,
@@ -7,16 +8,15 @@ use api_models::{
 };
 use k8s_openapi::api::{
 	apps::v1::StatefulSet,
-	core::v1::{PersistentVolumeClaim, Service},
+	core::v1::{ConfigMap, PersistentVolumeClaim, Service},
 };
 use kube::{
 	api::{DeleteParams, ListParams},
 	config::Kubeconfig,
 	Api,
 };
-pub use mysql::*;
-pub use psql::*;
 
+pub use self::{mysql::*, psql::*, redis::*};
 use crate::{
 	service::{
 		ext_traits::DeleteOpt,
@@ -70,6 +70,7 @@ pub async fn delete_kubernetes_database(
 	let namespace = workspace_id.as_str();
 	let sts_name_for_db = get_database_sts_name(database_id);
 	let svc_name_for_db = get_database_service_name(database_id);
+	let configmap_name_for_db = get_database_config_name(database_id);
 
 	let label = format!("database={}", database_id);
 
@@ -81,6 +82,11 @@ pub async fn delete_kubernetes_database(
 	log::trace!("request_id: {request_id} - Deleting service for database");
 	Api::<Service>::namespaced(kubernetes_client.clone(), namespace)
 		.delete_opt(&svc_name_for_db, &DeleteParams::default())
+		.await?;
+
+	log::trace!("request_id: {request_id} - Deleting configmap for database");
+	Api::<ConfigMap>::namespaced(kubernetes_client.clone(), namespace)
+		.delete_opt(&configmap_name_for_db, &DeleteParams::default())
 		.await?;
 
 	log::trace!("request_id: {request_id} - Deleting volume for database");
