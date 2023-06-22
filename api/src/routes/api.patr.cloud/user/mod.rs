@@ -1258,6 +1258,18 @@ async fn activate_multi_factor_authentication(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let user =
+		db::get_user_by_user_id(context.get_database_connection(), &user_id)
+			.await?
+			.status(404)
+			.body(error!(USER_NOT_FOUND).to_string())?;
+
+	if user.mfa_secret.is_some() {
+		return Error::as_result()
+			.status(400)
+			.body(error!(MFA_ALREADY_ACTIVATED).to_string())?;
+	}
+
 	let secret = Secret::generate_secret().to_string();
 
 	// Do not activate if already activated
