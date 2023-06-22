@@ -11,6 +11,8 @@ use sqlx::query_as;
 
 use crate::Database;
 
+use super::LegacyManagedDatabasePlan;
+
 pub struct DeploymentPaymentHistory {
 	pub workspace_id: Uuid,
 	pub deployment_id: Uuid,
@@ -562,6 +564,7 @@ pub async fn get_all_managed_database_usage(
 		SELECT
 			workspace_id as "workspace_id: _",
 			database_id as "database_id: _",
+			legacy_db_plan as "legacy_db_plan: _",
 			db_plan_id as "db_plan_id: _",
 			start_time as "start_time: _",
 			deletion_time as "deletion_time: _"
@@ -1082,6 +1085,7 @@ pub async fn start_managed_database_usage_history(
 			managed_database_payment_history(
 				workspace_id,
 				database_id,
+				legacy_db_plan,
 				db_plan_id,
 				start_time,
 				deletion_time
@@ -1090,6 +1094,7 @@ pub async fn start_managed_database_usage_history(
 			(
 				$1,
 				$2,
+				NULL,
 				$3,
 				$4,
 				NULL

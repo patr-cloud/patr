@@ -1,3 +1,5 @@
+use std::{fmt::Display, str::FromStr};
+
 use api_macros::{query, query_as};
 use api_models::{
 	models::workspace::infrastructure::database::{
@@ -8,8 +10,9 @@ use api_models::{
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
+use eve_rs::AsError;
 
-use crate::{db, Database};
+use crate::{db, Database, utils::Error, error};
 
 #[derive(sqlx::Type)]
 #[sqlx(type_name = "LEGACY_MANAGED_DATABASE_PLAN", rename_all = "lowercase")]

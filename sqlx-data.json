@@ -258,16 +258,6 @@
     },
     "query": "CREATE TYPE CI_BUILD_STEP_STATUS AS ENUM( 'waiting_to_start', 'running', 'succeeded', 'cancelled', 'errored', 'skipped_dep_error' );"
   },
-  "0482c58c13e7b70e0a028857b17ad7278aa8071b07896785e0d2e20aafe20b58": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE IF NOT EXISTS managed_url_payment_history( workspace_id UUID NOT NULL, url_count INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
-  },
   "04d52fa774ea5052231cbeaab746432eb7cb2a03af69b6682cc27fa4c5afe998": {
     "describe": {
       "columns": [
@@ -1547,16 +1537,6 @@
       }
     },
     "query": "SELECT \"user\".*, CONCAT(domain.name, '.', domain.tld) as \"name!\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id INNER JOIN resource ON workspace_domain.id = resource.id INNER JOIN workspace ON resource.owner_id = workspace.id INNER JOIN \"user\" ON workspace.super_admin_id = \"user\".id WHERE workspace_domain.id = $1;"
-  },
-  "13868407ea1e6a8ad9ad43d4cc1cc90b89680bce6483a5478926de6219ea8907": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE IF NOT EXISTS transaction( id UUID CONSTRAINT transaction_pk PRIMARY KEY, month INTEGER NOT NULL, amount_in_cents BIGINT NOT NULL CONSTRAINT transaction_chk_amount_in_cents_positive CHECK (amount_in_cents >= 0), payment_intent_id TEXT, date TIMESTAMPTZ NOT NULL, workspace_id UUID NOT NULL, transaction_type TRANSACTION_TYPE NOT NULL, payment_status PAYMENT_STATUS NOT NULL CONSTRAINT transaction_payment_status_check CHECK( ( payment_status = 'success' AND transaction_type = 'bill' ) OR ( transaction_type != 'bill' ) ), description TEXT CONSTRAINT transaction_description_check CHECK( ( transaction_type = 'credits' AND description IS NOT NULL ) OR ( transaction_type != 'credits' ) ) );"
   },
   "144f726fa812daa0a68d84a79ce6dde25308df488a580e6c610fd1c3e6fab790": {
     "describe": {
@@ -2967,6 +2947,16 @@
     },
     "query": "CREATE INDEX web_login_idx_login_id ON web_login(login_id);"
   },
+  "238028d35c4d18950a7b901df545bc910f344173b2b13ea60963bfac33c77864": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TYPE LEGACY_MANAGED_DATABASE_PLAN AS ENUM( 'nano', 'micro', 'small', 'medium', 'large', 'xlarge', 'xxlarge', 'mammoth' );"
+  },
   "2416db57fa4893fbbb99e3ce247846a51fbb73bf83a9fc054b9ab51be8e43ba8": {
     "describe": {
       "columns": [],
@@ -3427,16 +3417,6 @@
     },
     "query": "DELETE FROM role_resource_permissions_type WHERE role_id = $1;"
   },
-  "2bdd5a61671481fdc701daf6cbfd6d8ac3191450e799731de25e312d2af349e3": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE IF NOT EXISTS domain_payment_history( workspace_id UUID NOT NULL, domain_plan DOMAIN_PLAN NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
-  },
   "2c79497ab37337c73fcde73f28078249266aaeeaf257f256d0e3897e4420fef1": {
     "describe": {
       "columns": [],
@@ -3604,16 +3584,6 @@
     },
     "query": "UPDATE managed_database SET deleted = $2, status = 'deleted' WHERE id = $1;"
   },
-  "2ee43784256fab1f48a059f39e58aab7623b3afd59d0ffa15fab0e5899589d04": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE IF NOT EXISTS docker_repo_payment_history( workspace_id UUID NOT NULL, storage BIGINT NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
-  },
   "2f15c7c4c4c069aca1c77d52ef40d55c6e580b727e691225b13442967eb5154f": {
     "describe": {
       "columns": [
@@ -3674,6 +3644,16 @@
     },
     "query": "DELETE FROM resource WHERE id = $1;"
   },
+  "3139853b37b881bc05a4569d86ee16d6432b1cce4b6f2fc31743025e4f528ce2": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE volume_payment_history( workspace_id UUID NOT NULL, volume_id UUID NOT NULL, storage BIGINT NOT NULL, number_of_volumes INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
+  },
   "31fa3365a18b7cdbb3532ea5559f8a6fafda313ec59e82c3d790c31ac45fb452": {
     "describe": {
       "columns": [],
@@ -3702,6 +3682,16 @@
       }
     },
     "query": "INSERT INTO user_api_token( token_id, name, user_id, token_hash, token_nbf, token_exp, allowed_ips, created, revoked ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULL);"
+  },
+  "3241a248ae3c6b6f66793581a2328804b58617de0d8b0fa07ddca99e17920d31": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE static_sites_payment_history( workspace_id UUID NOT NULL, static_site_plan STATIC_SITE_PLAN NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
   },
   "3281ea898d2d05689c3dcea35e2f0492fac21073bb093b8fe9bcd394cd33f3d7": {
     "describe": {
@@ -4196,16 +4186,6 @@
       }
     },
     "query": "CREATE TABLE resource_type( id UUID CONSTRAINT resource_type_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE, description VARCHAR(500) NOT NULL );"
-  },
-  "382152db383891a0bd3bc62f641182c52a318de9a91a1720f4370a9a61a8c179": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE IF NOT EXISTS volume_payment_history( workspace_id UUID NOT NULL, volume_id UUID NOT NULL, storage BIGINT NOT NULL, number_of_volumes INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
   },
   "390d510d40d06883eb2dadce6068803f240816db75a549608436da4f162f4165": {
     "describe": {
@@ -6038,6 +6018,21 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tsecret_count as \"secret_count: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tsecrets_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3)\n\t\tORDER BY\n\t\t\tstart_time ASC;\n\t\t"
   },
+  "5558854bf54cd46c20b359f17d40e4dbb70e0f4d1942f0442cc839298edd4035": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "INSERT INTO managed_database_payment_history( workspace_id, database_id, legacy_db_plan, db_plan_id, start_time, deletion_time ) VALUES ( $1, $2, NULL, $3, $4, NULL );"
+  },
   "56077a79a8820c6f226cadb6dbbaaf01e32eff552f9fb689f49ad9b491c9dfc1": {
     "describe": {
       "columns": [],
@@ -6587,16 +6582,6 @@
     },
     "query": "SELECT manifest_digest, size, created FROM docker_registry_repository_manifest WHERE repository_id = $1;"
   },
-  "5bda0e52a15bdaf032ab3d119e3322ef902b74b2eb9910441af0af7590bbfb09": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE IF NOT EXISTS payment_method( payment_method_id TEXT CONSTRAINT payment_method_pk PRIMARY KEY, workspace_id UUID NOT NULL );"
-  },
   "5c68c45dcf34bdb72122c92781b01fc91f4572892e9a800e5d9b744ac90e1090": {
     "describe": {
       "columns": [],
@@ -6995,6 +6980,16 @@
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE id = $1;"
   },
+  "6002b1dad9f96bbdb90d911a2469a49eb50543e18cc19420a832100e95e8b800": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE docker_repo_payment_history( workspace_id UUID NOT NULL, storage BIGINT NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
+  },
   "60052c09546b142087edbb8c7677a63a9567bbdc0ae3a6cb1626a3fd3b520c67": {
     "describe": {
       "columns": [
@@ -7112,6 +7107,16 @@
     },
     "query": "UPDATE patr_domain_dns_record SET record_identifier = $1 WHERE id = $2;"
   },
+  "608a0993dd78542698811c4c7432424e716c7dbee0a2614f20020d866b56ac7c": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE secrets_payment_history( workspace_id UUID NOT NULL, secret_count INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
+  },
   "60a973c0325d830a4327ef4406a8e8f4e878d1d0c69a5b98ec7dcad2c252e264": {
     "describe": {
       "columns": [],
@@ -7141,6 +7146,16 @@
       }
     },
     "query": "ALTER TABLE static_sites_payment_history ADD CONSTRAINT static_sites_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id);"
+  },
+  "6115eff74bd96cf4cf373d2a7e432d6d02c794707137850365449399a3a32001": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE transaction( id UUID CONSTRAINT transaction_pk PRIMARY KEY, month INTEGER NOT NULL, amount_in_cents BIGINT NOT NULL CONSTRAINT transaction_chk_amount_in_cents_positive CHECK (amount_in_cents >= 0), payment_intent_id TEXT, date TIMESTAMPTZ NOT NULL, workspace_id UUID NOT NULL, transaction_type TRANSACTION_TYPE NOT NULL, payment_status PAYMENT_STATUS NOT NULL CONSTRAINT transaction_payment_status_check CHECK( ( payment_status = 'success' AND transaction_type = 'bill' ) OR ( transaction_type != 'bill' ) ), description TEXT CONSTRAINT transaction_description_check CHECK( ( transaction_type = 'credits' AND description IS NOT NULL ) OR ( transaction_type != 'credits' ) ) );"
   },
   "62691e4324a2453a38d669d60484578454393cd3266f102f5088a9f5f682ac9f": {
     "describe": {
@@ -7199,6 +7214,16 @@
       }
     },
     "query": "INSERT INTO user_unverified_phone_number( country_code, phone_number, user_id, verification_token_hash, verification_token_expiry ) VALUES ($1, $2, $3, $4, $5) ON CONFLICT(country_code, phone_number) DO UPDATE SET user_id = EXCLUDED.user_id, verification_token_hash = EXCLUDED.verification_token_hash, verification_token_expiry = EXCLUDED.verification_token_expiry;"
+  },
+  "6356cc11d416d0a9940adfe8122d29fd3ea3bf2a2a59e6eb300cebf960602622": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE managed_database_payment_history( workspace_id UUID NOT NULL, database_id UUID NOT NULL, db_plan_id UUID CONSTRAINT managed_database_payment_history_fk_db_plan_id REFERENCES managed_database_plan(id), legacy_db_plan LEGACY_MANAGED_DATABASE_PLAN, start_time TIMESTAMPTZ NOT NULL, deletion_time TIMESTAMPTZ, CONSTRAINT managed_database_payment_history_chk_legacy_db_plan CHECK( ( db_plan_id IS NULL AND legacy_db_plan IS NOT NULL ) OR ( db_plan_id IS NOT NULL AND legacy_db_plan IS NULL ) ) );"
   },
   "63fc86568e0415560a3bbf43dce61d29c62ca4d0561100e6f4a10777de2b5c6f": {
     "describe": {
@@ -8448,16 +8473,6 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tstep_id,\n\t\t\tstep_name,\n\t\t\tbase_image,\n\t\t\tcommands,\n\t\t\tstatus as \"status: _\",\n\t\t\tstarted as \"started: _\",\n\t\t\tfinished as \"finished: _\"\n\t\tFROM\n\t\t\tci_steps\n\t\tWHERE\n\t\t\trepo_id = $1 AND\n\t\t\tbuild_num = $2\n\t\tORDER BY\n\t\t\tstep_id ASC;\n\t\t"
   },
-  "751647a7611b673b803cc851cbd8f888a2f2091a12d95819d55be370c4aafcc7": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE IF NOT EXISTS managed_database_payment_history( workspace_id UUID NOT NULL, database_id UUID NOT NULL, db_plan_id UUID NOT NULL, start_time TIMESTAMPTZ NOT NULL, deletion_time TIMESTAMPTZ );"
-  },
   "755b9a9cbf07434857270275ea77339365b5af23cb1b1a4c168e6e02089c6ca9": {
     "describe": {
       "columns": [],
@@ -8984,52 +8999,6 @@
       }
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE name = $1 AND workspace_id = $2 AND status != 'deleted';"
-  },
-  "7d4fdbc1613638dd4f9cfb6221e4ba8adb936918ddfbf8e9824d54ea9919ff13": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "database_id: _",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "db_plan_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "start_time: _",
-          "ordinal": 3,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "deletion_time: _",
-          "ordinal": 4,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdatabase_id as \"database_id: _\",\n\t\t\tdb_plan_id as \"db_plan_id: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tdeletion_time as \"deletion_time: _\"\n\t\tFROM\n\t\t\tmanaged_database_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(start_time, COALESCE(deletion_time, NOW())) OVERLAPS ($2, $3)\n\t\tORDER BY\n\t\t\tstart_time ASC;\n\t\t"
   },
   "7f9b090cc0013aadd0daed235a689086d001a05e18d401f0b03292615a7ad234": {
     "describe": {
@@ -9808,16 +9777,6 @@
     },
     "query": "ALTER TABLE transaction ADD CONSTRAINT transaction_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id);"
   },
-  "855f26245fffa3c12a4f05b04f8e55b9d5ce33eeccf371b8412962fc60ac7dd1": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE IF NOT EXISTS secrets_payment_history( workspace_id UUID NOT NULL, secret_count INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
-  },
   "85c2b0a9bf48c5cc257af57e4ecf5b439153fe1b82d213953db1f10bdc14fd87": {
     "describe": {
       "columns": [
@@ -9906,6 +9865,16 @@
       }
     },
     "query": "INSERT INTO docker_registry_repository_tag( repository_id, tag, manifest_digest, last_updated ) VALUES ($1, $2, $3, $4) ON CONFLICT(repository_id, tag) DO UPDATE SET manifest_digest = $3, last_updated = $4;"
+  },
+  "8748ac151e7bf77dfec1ef155cbf424ac2c5f87d45ca5234272f7511af8dc78e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_payment_history( workspace_id UUID NOT NULL, deployment_id UUID NOT NULL, machine_type UUID NOT NULL, num_instance INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
   },
   "87bca736fca728f58dad62df4bc2c4973eaad8c008f9b456c629907210a26ce3": {
     "describe": {
@@ -10660,6 +10629,16 @@
       }
     },
     "query": "CREATE TABLE ci_builds( repo_id UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id), build_num BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK(build_num > 0), git_ref TEXT NOT NULL, git_commit TEXT NOT NULL, status CI_BUILD_STATUS NOT NULL, created TIMESTAMPTZ NOT NULL, finished TIMESTAMPTZ, message TEXT, author TEXT, git_commit_message TEXT, git_pr_title TEXT, started TIMESTAMPTZ, runner_id UUID NOT NULL CONSTRAINT ci_builds_fk_runner_id REFERENCES ci_runner(id), CONSTRAINT ci_builds_pk_repo_id_build_num PRIMARY KEY(repo_id, build_num) );"
+  },
+  "8cad9b3bc842d3457a085ccb24e7f9ec211b13cf5c787065626fee05c8db456a": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE EXTENSION IF NOT EXISTS btree_gist;"
   },
   "8d2c961f04458f116b2d9e7f00668a83febae5648c3c4774795ff2bbe6f6e364": {
     "describe": {
@@ -12929,7 +12908,7 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdomain_name,\n\t\t\tgit_provider_type as \"git_provider_type: _\",\n\t\t\tlogin_name,\n\t\t\tpassword,\n\t\t\tis_syncing,\n\t\t\tlast_synced,\n\t\t\tis_deleted\n\t\tFROM\n\t\t\tci_git_provider\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\tis_deleted = FALSE;\n\t\t"
   },
-  "b6e0dd1826475d91e9f7ce39f7c50b81cbc075084cd51a041fd223c80add6e06": {
+  "b6a44aba30f6bc1b47833049464d70ac03f196326ce327c808f2da6239e353a3": {
     "describe": {
       "columns": [],
       "nullable": [],
@@ -12937,7 +12916,7 @@
         "Left": []
       }
     },
-    "query": "CREATE TABLE IF NOT EXISTS static_sites_payment_history( workspace_id UUID NOT NULL, static_site_plan STATIC_SITE_PLAN NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
+    "query": "CREATE TABLE payment_method( payment_method_id TEXT CONSTRAINT payment_method_pk PRIMARY KEY, workspace_id UUID NOT NULL );"
   },
   "b6fb3d6eb9b3f8236de0837741513fc4d6946c5be44ead58c751ae8cdffdfe8a": {
     "describe": {
@@ -13026,6 +13005,16 @@
       }
     },
     "query": "DELETE FROM docker_registry_repository_manifest WHERE repository_id = $1 AND manifest_digest = $2;"
+  },
+  "b95b4e53cd324ff6c8d0625f6506b35972f054bbaa6563414fab74c17974d0aa": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE domain_payment_history( workspace_id UUID NOT NULL, domain_plan DOMAIN_PLAN NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
   },
   "b9d97701e22c7948c38793c3124de8a5e0224d85d918ea202ecc90bb1236a829": {
     "describe": {
@@ -13609,15 +13598,73 @@
     },
     "query": "UPDATE patr_domain_dns_record SET value = $1, priority = $2, ttl = $3, proxied = $4 WHERE id = $5;"
   },
-  "c7badbbf95c47e30f52f6f6390e9af3a7e3f8cec8e9f6abe7e092bc2004eed5d": {
+  "c7c149e2873ad792fd87c4b641b84406e5591d5d00cadab737fb5b5fc3c24303": {
     "describe": {
-      "columns": [],
-      "nullable": [],
+      "columns": [
+        {
+          "name": "workspace_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "database_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "legacy_db_plan: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "nano",
+                  "micro",
+                  "small",
+                  "medium",
+                  "large",
+                  "xlarge",
+                  "xxlarge",
+                  "mammoth"
+                ]
+              },
+              "name": "legacy_managed_database_plan"
+            }
+          }
+        },
+        {
+          "name": "db_plan_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "start_time: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "deletion_time: _",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        true,
+        true,
+        false,
+        true
+      ],
       "parameters": {
-        "Left": []
+        "Left": [
+          "Uuid",
+          "Timestamptz",
+          "Timestamptz"
+        ]
       }
     },
-    "query": "CREATE TABLE IF NOT EXISTS deployment_payment_history( workspace_id UUID NOT NULL, deployment_id UUID NOT NULL, machine_type UUID NOT NULL, num_instance INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
+    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdatabase_id as \"database_id: _\",\n\t\t\tlegacy_db_plan as \"legacy_db_plan: _\",\n\t\t\tdb_plan_id as \"db_plan_id: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tdeletion_time as \"deletion_time: _\"\n\t\tFROM\n\t\t\tmanaged_database_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(start_time, COALESCE(deletion_time, NOW())) OVERLAPS ($2, $3)\n\t\tORDER BY\n\t\t\tstart_time ASC;\n\t\t"
   },
   "ca4052cd85b594d288729c62e3e740161789ae97e7e711dd2609235c40e0d4ed": {
     "describe": {
@@ -13681,21 +13728,6 @@
       }
     },
     "query": "UPDATE role SET name = COALESCE($1, name), description = COALESCE($2, description) WHERE id = $3;"
-  },
-  "cc5131218407ced320d35605e8f434a0a20755b06f5307f837e06908f8013abe": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          "Uuid",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "INSERT INTO managed_database_payment_history( workspace_id, database_id, db_plan_id, start_time, deletion_time ) VALUES ( $1, $2, $3, $4, NULL );"
   },
   "cc9e8b6528c4a5470becba2c5496e37acd8681d8749c240b85e02ffc04ef624f": {
     "describe": {
@@ -15085,6 +15117,16 @@
       }
     },
     "query": "UPDATE managed_database_payment_history SET deletion_time = $2 WHERE database_id = $1 AND deletion_time IS NULL;"
+  },
+  "e4d9ee0d665b94e93bedc7eb00c2a1432b36c88e3042988d1368af54232ffaea": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE managed_url_payment_history( workspace_id UUID NOT NULL, url_count INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
   },
   "e5c1647593a56d9b5d6777510cdc6e69212fd2a504f49a6345d7b63c26d1806e": {
     "describe": {
