@@ -565,18 +565,44 @@ pub async fn calculate_managed_database_bill_for_workspace_till(
 				as i64,
 		);
 
-		// todo: revisit patr db pricing
-		let plan =
-			get_database_plan_by_id(connection, &database_usage.db_plan_id)
+		let monthly_price = match (
+			database_usage.db_plan_id,
+			database_usage.legacy_db_plan,
+		) {
+			(Some(plan_id), None) => {
+				let plan = get_database_plan_by_id(
+					connection,
+					&database_usage.db_plan_id,
+				)
 				.await?;
-		let monthly_price =
-			match (plan.cpu_count, plan.memory_count, plan.volume) {
-				(1, 2, 25) => 10f64,
-				(2, 4, 50) => 20f64,
-				(2, 4, 100) => 25f64,
-				(4, 8, 200) => 50f64,
-				_ => 0f64,
-			};
+				match (plan.cpu_count, plan.memory_count, plan.volume) {
+					(1, 2, 25) => 10f64,
+					(2, 4, 50) => 20f64,
+					(2, 4, 100) => 25f64,
+					(4, 8, 200) => 50f64,
+					_ => 0f64,
+				}
+			}
+			(None, Some(legacy_plan)) => match database_usage.db_plan {
+				ManagedDatabasePlan::Nano => 15f64,
+				ManagedDatabasePlan::Micro => 30f64,
+				ManagedDatabasePlan::Small => 45f64,
+				ManagedDatabasePlan::Medium => 60f64,
+				ManagedDatabasePlan::Large => 120f64,
+				ManagedDatabasePlan::Xlarge => 240f64,
+				ManagedDatabasePlan::Xxlarge => 480f64,
+				ManagedDatabasePlan::Mammoth => 960f64,
+			},
+			_ => {
+				log::error!(
+					"Both db_plan_id and legacy_db_plan are None for db: {}",
+					database_usage.database_id
+				);
+				return Err(Error::empty()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string()));
+			}
+		};
 
 		let price_in_dollars = if hours >= 720 {
 			monthly_price

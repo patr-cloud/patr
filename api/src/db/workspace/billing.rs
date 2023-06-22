@@ -19,6 +19,7 @@ pub struct DeploymentPaymentHistory {
 	pub start_time: DateTime<Utc>,
 	pub stop_time: Option<DateTime<Utc>>,
 }
+
 pub struct VolumePaymentHistory {
 	pub workspace_id: Uuid,
 	pub volume_id: Uuid,
@@ -38,7 +39,8 @@ pub struct StaticSitesPaymentHistory {
 pub struct ManagedDatabasePaymentHistory {
 	pub workspace_id: Uuid,
 	pub database_id: Uuid,
-	pub db_plan_id: Uuid,
+	pub db_plan_id: Option<Uuid>,
+	pub legacy_db_plan: Option<LegacyManagedDatabasePlan>,
 	pub start_time: DateTime<Utc>,
 	pub deletion_time: Option<DateTime<Utc>>,
 }
@@ -156,7 +158,7 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS deployment_payment_history(
+		CREATE TABLE deployment_payment_history(
 			workspace_id UUID NOT NULL,
 			deployment_id UUID NOT NULL,
 			machine_type UUID NOT NULL,
@@ -171,7 +173,7 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS static_sites_payment_history(
+		CREATE TABLE static_sites_payment_history(
 			workspace_id UUID NOT NULL,
 			static_site_plan STATIC_SITE_PLAN NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
@@ -184,12 +186,25 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS managed_database_payment_history(
+		CREATE TABLE managed_database_payment_history(
 			workspace_id UUID NOT NULL,
 			database_id UUID NOT NULL,
-			db_plan_id UUID NOT NULL,
+			db_plan_id UUID
+				CONSTRAINT managed_database_payment_history_fk_db_plan_id
+					REFERENCES managed_database_plan(id),
+			legacy_db_plan LEGACY_MANAGED_DATABASE_PLAN,
 			start_time TIMESTAMPTZ NOT NULL,
-			deletion_time TIMESTAMPTZ
+			deletion_time TIMESTAMPTZ,
+			CONSTRAINT managed_database_payment_history_chk_legacy_db_plan
+				CHECK(
+					(
+						db_plan_id IS NULL AND
+						legacy_db_plan IS NOT NULL
+					) OR (
+						db_plan_id IS NOT NULL AND
+						legacy_db_plan IS NULL
+					)
+				)
 		);
 		"#
 	)
@@ -198,7 +213,7 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS managed_url_payment_history(
+		CREATE TABLE managed_url_payment_history(
 			workspace_id UUID NOT NULL,
 			url_count INTEGER NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
@@ -211,7 +226,7 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS secrets_payment_history(
+		CREATE TABLE secrets_payment_history(
 			workspace_id UUID NOT NULL,
 			secret_count INTEGER NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
@@ -224,7 +239,7 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS docker_repo_payment_history(
+		CREATE TABLE docker_repo_payment_history(
 			workspace_id UUID NOT NULL,
 			storage BIGINT NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
@@ -237,7 +252,7 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS domain_payment_history(
+		CREATE TABLE domain_payment_history(
 			workspace_id UUID NOT NULL,
 			domain_plan DOMAIN_PLAN NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
@@ -250,7 +265,7 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS volume_payment_history(
+		CREATE TABLE volume_payment_history(
 			workspace_id UUID NOT NULL,
 			volume_id UUID NOT NULL,
 			storage BIGINT NOT NULL,
@@ -265,7 +280,7 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS payment_method(
+		CREATE TABLE payment_method(
 			payment_method_id TEXT CONSTRAINT payment_method_pk PRIMARY KEY,
 			workspace_id UUID NOT NULL
 		);
@@ -300,7 +315,7 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS transaction(
+		CREATE TABLE transaction(
 			id UUID CONSTRAINT transaction_pk PRIMARY KEY,
 			month INTEGER NOT NULL,
 			amount_in_cents BIGINT NOT NULL
