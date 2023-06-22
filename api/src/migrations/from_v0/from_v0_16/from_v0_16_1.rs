@@ -219,30 +219,6 @@ async fn add_tables_for_k8s_database(
 	.execute(&mut *connection)
 	.await?;
 
-	query!(
-		r#"
-		CREATE TABLE IF NOT EXISTS managed_database_payment_history(
-			workspace_id UUID NOT NULL,
-			database_id UUID NOT NULL,
-			db_plan_id UUID NOT NULL,
-			start_time TIMESTAMPTZ NOT NULL,
-			deletion_time TIMESTAMPTZ
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE managed_database_payment_history
-		ADD CONSTRAINT managed_database_payment_history_workspace_id_fk
-		FOREIGN KEY (workspace_id) REFERENCES workspace(id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	Ok(())
 }
 
