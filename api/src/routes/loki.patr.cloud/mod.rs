@@ -79,7 +79,7 @@ async fn push_loki_logs(
 		.has_access_for_requested_action(
 			&region.owner_id,
 			&region.id,
-			permissions::workspace::region::LOKI_PUSH,
+			permissions::workspace::region::LOGS_PUSH,
 		);
 
 	if !has_permission {
@@ -118,6 +118,7 @@ async fn push_loki_logs(
 		.send()
 		.await?;
 
+	context.status(response.status().as_u16());
 	for (name, value) in response.headers() {
 		context.header(name.as_str(), value.to_str().status(500)?);
 	}

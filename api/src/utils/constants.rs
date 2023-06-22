@@ -84,6 +84,4 @@ pub mod github_oauth {
 	pub const USER_EMAIL_API: &str = "https://api.github.com/user/emails";
 }
 
-pub mod logs {
-	pub const PATR_CLUSTER_TENANT_ID: &str = "patr-internal";
-}
+pub const PATR_CLUSTER_TENANT_ID: &str = "patr-internal";

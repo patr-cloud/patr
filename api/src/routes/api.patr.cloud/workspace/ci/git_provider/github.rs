@@ -56,7 +56,7 @@ use crate::{
 	rabbitmq::{BuildId, BuildStepId},
 	service::{self, ParseStatus},
 	utils::{
-		constants::request_keys,
+		constants::{request_keys, PATR_CLUSTER_TENANT_ID},
 		Error,
 		ErrorData,
 		EveContext,
@@ -1335,6 +1335,34 @@ async fn get_build_logs(
 	.await?
 	.status(500)?;
 
+	let build_details = db::get_build_details_for_build(
+		context.get_database_connection(),
+		&repo.id,
+		build_num,
+	)
+	.await?
+	.status(500)?;
+
+	let runner_details = db::get_runner_by_id_including_deleted(
+		context.get_database_connection(),
+		&build_details.runner_id,
+	)
+	.await?
+	.status(500)?;
+
+	let runner_region = db::get_region_by_id(
+		context.get_database_connection(),
+		&runner_details.region_id,
+	)
+	.await?
+	.status(500)?;
+
+	let tenant_id = if runner_region.is_byoc_region() {
+		workspace_id.as_str()
+	} else {
+		PATR_CLUSTER_TENANT_ID
+	};
+
 	let build_created_time = db::get_build_created_time(
 		context.get_database_connection(),
 		&repo.id,
@@ -1366,7 +1394,7 @@ async fn get_build_logs(
 		.basic_auth(&loki.username, Some(&loki.password))
 		.header(
 			"X-Scope-OrgID",
-			HeaderValue::from_str(workspace_id.as_str())
+			HeaderValue::from_str(tenant_id)
 					.expect("workpsace_id to headervalue should not panic")
 		)
 		.send()

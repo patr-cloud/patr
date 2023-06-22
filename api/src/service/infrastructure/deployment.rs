@@ -42,7 +42,7 @@ use crate::{
 	},
 	service,
 	utils::{
-		constants::{free_limits, logs::PATR_CLUSTER_TENANT_ID},
+		constants::{free_limits, PATR_CLUSTER_TENANT_ID},
 		settings::Settings,
 		validator,
 		Error,

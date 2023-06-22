@@ -5532,6 +5532,44 @@
     },
     "query": "SELECT country_code, phone_number, user_id as \"user_id: _\", verification_token_hash, verification_token_expiry FROM user_unverified_phone_number WHERE country_code = $1 AND phone_number = $2;"
   },
+  "506cd221c3cf44d3d7fac0949fee63d1f6c5fdbc440a3bb1ff87f39a820abceb": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "region_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "build_machine_type_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", region_id as \"region_id: _\", build_machine_type_id as \"build_machine_type_id: _\" FROM ci_runner WHERE id = $1;"
+  },
   "51b48c931af24c0048305a577d2d0c1203f4bbfe08d39fec8106d6fec8fcb13b": {
     "describe": {
       "columns": [],

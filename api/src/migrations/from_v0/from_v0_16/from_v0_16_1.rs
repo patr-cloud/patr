@@ -1272,7 +1272,7 @@ async fn reset_permission_order(
 		"workspace::region::checkStatus",
 		"workspace::region::add",
 		"workspace::region::delete",
-		"workspace::region::loki_push",
+		"workspace::region::logs_push",
 		"workspace::ci::recentActivity",
 		"workspace::ci::gitProvider::list",
 		"workspace::ci::gitProvider::connect",
