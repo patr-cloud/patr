@@ -114,7 +114,7 @@ pub enum DatabaseRequestData {
 		request_id: Uuid,
 		password: String,
 	},
-	MongoStatefulUpdateStatus {
+	ChangeMongoPassword {
 		workspace_id: Uuid,
 		database_id: Uuid,
 		request_id: Uuid,

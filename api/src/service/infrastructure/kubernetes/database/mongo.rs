@@ -55,7 +55,6 @@ pub async fn patch_kubernetes_mongo_database(
 	db_plan: &DatabasePlanType,
 	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
-	is_init: bool,
 	auth_enabled: bool,
 ) -> Result<(), Error> {
 	let kubernetes_client = get_kubernetes_client(kubeconfig).await?;
@@ -72,10 +71,6 @@ pub async fn patch_kubernetes_mongo_database(
 
 	let labels =
 		BTreeMap::from([("database".to_owned(), database_id.to_string())]);
-
-	if is_init {
-		log::trace!("request_id: {request_id} - Creating service for database")
-	}
 
 	let service_for_db = Service {
 		metadata: ObjectMeta {
@@ -102,15 +97,7 @@ pub async fn patch_kubernetes_mongo_database(
 		)
 		.await?;
 
-	if is_init {
-		log::trace!(
-			"request_id: {request_id} - Creating statefulset for database"
-		)
-	} else {
-		log::trace!(
-			"request_id: {request_id} - Updating statefulset for database"
-		)
-	}
+	log::trace!("request_id: {request_id} - Updating statefulset for database");
 
 	let db_pvc_template = PersistentVolumeClaim {
 		metadata: ObjectMeta {
@@ -143,21 +130,11 @@ pub async fn patch_kubernetes_mongo_database(
 			containers: vec![Container {
 				name: "mongodb".to_owned(),
 				image: Some(mongo_version.to_owned()),
-				command: Some(
-					if !is_init {
-						vec![
-							"bash".to_owned(),
-							"-c".to_owned(),
-							if auth_enabled {
-								"mongod --auth".to_owned()
-							} else {
-								"mongod --noauth".to_owned()
-							},
-						]
-					} else {
-						vec![]
-					},
-				),
+				command: Some(vec![
+					"bash".to_owned(),
+					"-c".to_owned(),
+					"/usr/local/bin/docker-entrypoint.sh mongod $AUTH_STATUS".to_owned(),
+				]),
 				env: Some(vec![
 					EnvVar {
 						name: "MONGO_INITDB_ROOT_USERNAME".to_owned(),
@@ -167,6 +144,17 @@ pub async fn patch_kubernetes_mongo_database(
 					EnvVar {
 						name: "MONGO_INITDB_ROOT_PASSWORD".to_owned(),
 						value: Some("patr".to_owned()),
+						..Default::default()
+					},
+					EnvVar {
+						name: "AUTH_STATUS".to_owned(),
+						value: Some(
+							if auth_enabled {
+								"--auth".to_owned()
+							} else {
+								"--noauth".to_owned()
+							},
+						),
 						..Default::default()
 					},
 				]),
@@ -283,37 +271,14 @@ pub async fn patch_kubernetes_mongo_database(
 		.patch(
 			&sts_name_for_db,
 			&PatchParams::apply(&sts_name_for_db),
-			&Patch::Apply(statefulset_spec_for_db),
+			&Patch::Strategic(statefulset_spec_for_db),
 		)
 		.await?;
 
 	Ok(())
 }
 
-pub async fn change_mongo_database_auth(
-	workspace_id: &Uuid,
-	database_id: &Uuid,
-	kubeconfig: Kubeconfig,
-	request_id: &Uuid,
-	database_plan: &DatabasePlanType,
-	is_init: bool,
-	auth_enabled: bool,
-) -> Result<(), Error> {
-	patch_kubernetes_mongo_database(
-		workspace_id,
-		database_id,
-		database_plan,
-		kubeconfig.clone(),
-		request_id,
-		is_init,
-		auth_enabled,
-	)
-	.await?;
-
-	Ok(())
-}
-
-pub async fn mongo_pod_command_to_change_password(
+pub async fn change_mongo_database_password(
 	workspace_id: &Uuid,
 	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
@@ -324,16 +289,17 @@ pub async fn mongo_pod_command_to_change_password(
 
 	let sts_name_for_db = get_database_sts_name(database_id);
 	let namespace = workspace_id.as_str();
-	let kubernetes_client = get_kubernetes_client(kubeconfig.clone()).await?;
+	let kubernetes_client = get_kubernetes_client(kubeconfig).await?;
 
-	Api::<Pod>::namespaced(kubernetes_client.clone(), namespace)
+	Api::<Pod>::namespaced(kubernetes_client, namespace)
 		.exec(
 			&format!("{sts_name_for_db}-0"),
 			[
 				"bash".to_owned(),
 				"-c".to_owned(),
 				format!(
-					r#" mongo admin --eval 'db.changeUserPassword("user","{new_password}")' "#
+					"mongo admin --eval 'db.changeUserPassword(\"user\",\"{}\")'",
+					new_password
 				),
 			],
 			&AttachParams {

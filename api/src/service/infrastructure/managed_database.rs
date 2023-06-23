@@ -144,7 +144,6 @@ pub async fn create_managed_database_in_workspace(
 				kubeconfig,
 				request_id,
 				true,
-				true,
 			)
 			.await?;
 		}
@@ -327,17 +326,6 @@ pub async fn change_database_password(
 		ManagedDatabaseEngine::Mongo => {
 			log::trace!("request_id: {request_id} - Changing Mongo statefulset config to disable auth");
 
-			service::change_mongo_database_auth(
-				&database.workspace_id,
-				&database.id,
-				kubeconfig,
-				request_id,
-				&database_plan,
-				false,
-				false,
-			)
-			.await?;
-
 			db::update_managed_database_status(
 				connection,
 				database_id,
@@ -345,17 +333,27 @@ pub async fn change_database_password(
 			)
 			.await?;
 
+			service::patch_kubernetes_mongo_database(
+				&database.workspace_id,
+				database_id,
+				&database_plan,
+				kubeconfig.clone(),
+				request_id,
+				false,
+			)
+			.await?;
+
 			log::trace!(
 				"request_id: {request_id} - Queuing for mongo password change"
 			);
-			service::queue_status_check_update_and_change_mongo_database_password(
+			service::queue_change_mongo_database_password(
 				&database.workspace_id,
 				database_id,
 				config,
 				request_id,
 				new_password,
 			)
-			.await?;
+			.await
 		}
 		ManagedDatabaseEngine::Redis => {
 			service::change_redis_database_password(

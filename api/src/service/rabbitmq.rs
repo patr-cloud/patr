@@ -115,7 +115,7 @@ pub async fn queue_check_and_update_database_status(
 	.await
 }
 
-pub async fn queue_status_check_update_and_change_mongo_database_password(
+pub async fn queue_change_mongo_database_password(
 	workspace_id: &Uuid,
 	database_id: &Uuid,
 	config: &Settings,
@@ -124,7 +124,7 @@ pub async fn queue_status_check_update_and_change_mongo_database_password(
 ) -> Result<(), Error> {
 	send_message_to_infra_queue(
 		&InfraRequestData::Database(
-			DatabaseRequestData::MongoStatefulUpdateStatus {
+			DatabaseRequestData::ChangeMongoPassword {
 				workspace_id: workspace_id.clone(),
 				database_id: database_id.clone(),
 				request_id: request_id.clone(),
