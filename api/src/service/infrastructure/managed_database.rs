@@ -1,5 +1,8 @@
 use api_models::{
-	models::workspace::infrastructure::database::ManagedDatabaseEngine,
+	models::workspace::infrastructure::database::{
+		ManagedDatabaseEngine,
+		ManagedDatabaseStatus,
+	},
 	utils::Uuid,
 };
 use chrono::Utc;
@@ -11,7 +14,7 @@ use crate::{
 	error,
 	models::rbac,
 	service,
-	utils::{constants::free_limits, validator, Error},
+	utils::{constants::free_limits, settings::Settings, validator, Error},
 	Database,
 };
 
@@ -134,8 +137,15 @@ pub async fn create_managed_database_in_workspace(
 			.await?;
 		}
 		ManagedDatabaseEngine::Mongo => {
-			// not supported as of now
-			return Err(Error::empty().status(500));
+			service::patch_kubernetes_mongo_database(
+				workspace_id,
+				&database_id,
+				&database_plan,
+				kubeconfig,
+				request_id,
+				true,
+			)
+			.await?;
 		}
 		ManagedDatabaseEngine::Redis => {
 			service::patch_kubernetes_redis_database(
@@ -276,11 +286,16 @@ pub async fn change_database_password(
 	database_id: &Uuid,
 	request_id: &Uuid,
 	new_password: &String,
+	config: &Settings,
 ) -> Result<(), Error> {
 	let database = db::get_managed_database_by_id(connection, database_id)
 		.await?
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let database_plan =
+		db::get_database_plan_by_id(connection, &database.database_plan_id)
+			.await?;
 
 	let kubeconfig =
 		service::get_kubernetes_config_for_region(connection, &database.region)
@@ -309,8 +324,36 @@ pub async fn change_database_password(
 			.await
 		}
 		ManagedDatabaseEngine::Mongo => {
-			log::warn!("request_id: {request_id} - To be implemented");
-			Err(Error::empty().status(500))
+			log::trace!("request_id: {request_id} - Changing Mongo statefulset config to disable auth");
+
+			db::update_managed_database_status(
+				connection,
+				database_id,
+				&ManagedDatabaseStatus::Creating,
+			)
+			.await?;
+
+			service::patch_kubernetes_mongo_database(
+				&database.workspace_id,
+				database_id,
+				&database_plan,
+				kubeconfig.clone(),
+				request_id,
+				false,
+			)
+			.await?;
+
+			log::trace!(
+				"request_id: {request_id} - Queuing for mongo password change"
+			);
+			service::queue_change_mongo_database_password(
+				&database.workspace_id,
+				database_id,
+				config,
+				request_id,
+				new_password,
+			)
+			.await
 		}
 		ManagedDatabaseEngine::Redis => {
 			service::change_redis_database_password(

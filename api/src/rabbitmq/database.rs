@@ -8,13 +8,14 @@ use crate::{
 	db,
 	models::rabbitmq::DatabaseRequestData,
 	service,
-	utils::Error,
+	utils::{settings::Settings, Error},
 	Database,
 };
 
 pub(super) async fn process_request(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	request_data: DatabaseRequestData,
+	config: &Settings,
 ) -> Result<(), Error> {
 	match request_data {
 		DatabaseRequestData::CheckAndUpdateStatus {
@@ -45,19 +46,20 @@ pub(super) async fn process_request(
 
 			let start_time = Utc::now();
 
+			let kubeconfig = service::get_kubernetes_config_for_region(
+				connection,
+				&database.region,
+			)
+			.await?
+			.0;
+
 			loop {
-				log::trace!("Check patr database status: {database_id}");
-				let kubeconfig = service::get_kubernetes_config_for_region(
-					connection,
-					&database.region,
-				)
-				.await?
-				.0;
+				log::trace!("Checking patr database status: {database_id}");
 
 				let status = service::get_kubernetes_database_status(
 					&workspace_id,
 					&database_id,
-					kubeconfig,
+					kubeconfig.clone(),
 					&request_id,
 				)
 				.await?;
@@ -70,8 +72,6 @@ pub(super) async fn process_request(
 					)
 					.await?;
 
-					time::sleep(Duration::from_secs(15)).await;
-
 					if status == ManagedDatabaseStatus::Running {
 						log::trace!(
 							"Setting root password for database: {database_id}"
@@ -81,6 +81,7 @@ pub(super) async fn process_request(
 							&database_id,
 							&request_id,
 							&password,
+							config,
 						)
 						.await?;
 					}
@@ -97,6 +98,138 @@ pub(super) async fn process_request(
 
 			// requeue it again
 			Err(Error::empty())
+		}
+		DatabaseRequestData::ChangeMongoPassword {
+			workspace_id,
+			database_id,
+			request_id,
+			password,
+		} => {
+			let database =
+				db::get_managed_database_by_id(connection, &database_id)
+					.await?;
+
+			let database =
+				match database {
+					Some(database) => database,
+					None => {
+						log::info!("expected database id {database_id} not present in db");
+						return Ok(());
+					}
+				};
+
+			let kubeconfig = service::get_kubernetes_config_for_region(
+				connection,
+				&database.region,
+			)
+			.await?
+			.0;
+
+			let start_time = Utc::now();
+
+			loop {
+				log::trace!("Check patr database status to update password: {database_id}");
+
+				let status = service::get_kubernetes_database_status(
+					&workspace_id,
+					&database_id,
+					kubeconfig.clone(),
+					&request_id,
+				)
+				.await?;
+
+				if status != ManagedDatabaseStatus::Creating {
+					db::update_managed_database_status(
+						connection,
+						&database_id,
+						&status,
+					)
+					.await?;
+
+					if status == ManagedDatabaseStatus::Running {
+						log::trace!(
+							"Changing password for database: {database_id}"
+						);
+
+						service::change_mongo_database_password(
+							&workspace_id,
+							kubeconfig.clone(),
+							&request_id,
+							&database_id,
+							&password,
+						)
+						.await?;
+
+						log::trace!("request_id: {request_id} - Changing Mongo statefulset config to enable auth");
+						let database_plan = db::get_database_plan_by_id(
+							connection,
+							&database.database_plan_id,
+						)
+						.await?;
+
+						service::patch_kubernetes_mongo_database(
+							&database.workspace_id,
+							&database.id,
+							&database_plan,
+							kubeconfig.clone(),
+							&request_id,
+							true,
+						)
+						.await?;
+					}
+
+					break;
+				}
+				time::sleep(Duration::from_millis(500)).await;
+
+				if Utc::now() - start_time > chrono::Duration::seconds(30) {
+					// requeue it again
+					time::sleep(Duration::from_secs(5)).await;
+					return Err(Error::empty());
+				}
+			}
+
+			// Password changed. Mongo is updated. Now update the status
+			loop {
+				let status = service::get_kubernetes_database_status(
+					&workspace_id,
+					&database_id,
+					kubeconfig.clone(),
+					&request_id,
+				)
+				.await?;
+
+				if status != ManagedDatabaseStatus::Creating {
+					db::update_managed_database_status(
+						connection,
+						&database_id,
+						&status,
+					)
+					.await?;
+
+					if status == ManagedDatabaseStatus::Running {
+						log::trace!(
+							"Setting root password for database: {database_id}"
+						);
+						service::change_database_password(
+							connection,
+							&database_id,
+							&request_id,
+							&password,
+							config,
+						)
+						.await?;
+					}
+					return Ok(());
+				}
+				time::sleep(Duration::from_millis(1000)).await;
+
+				if Utc::now() - start_time > chrono::Duration::seconds(30) {
+					// requeue it again
+					time::sleep(Duration::from_secs(5)).await;
+					return Err(Error::empty());
+				}
+			}
 		}
 	}
 }

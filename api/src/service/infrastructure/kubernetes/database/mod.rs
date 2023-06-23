@@ -1,3 +1,4 @@
+mod mongo;
 mod mysql;
 mod psql;
 mod redis;
@@ -16,7 +17,7 @@ use kube::{
 	Api,
 };
 
-pub use self::{mysql::*, psql::*, redis::*};
+pub use self::{mongo::*, mysql::*, psql::*, redis::*};
 use crate::{
 	service::{
 		ext_traits::DeleteOpt,
@@ -44,7 +45,7 @@ pub async fn get_kubernetes_database_status(
 
 	let ready_replicas = match sts
 		.and_then(|sts| sts.status)
-		.and_then(|status| status.available_replicas)
+		.and_then(|status| status.ready_replicas)
 	{
 		Some(ready_replicas) => ready_replicas,
 		None => return Ok(ManagedDatabaseStatus::Errored),
