@@ -1,3 +1,6 @@
+use api_models::utils::Uuid;
+use sqlx::Row;
+
 use crate::{
 	db,
 	migrate_query as query,
@@ -12,10 +15,10 @@ pub(super) async fn migrate(
 	add_tables_for_k8s_database(connection, config).await?;
 	add_machine_type_for_k8s_database(connection, config).await?;
 	update_permissions(connection, config).await?;
-	add_rbac_blocklist_tables(connection, config).await?;
-	remove_list_permissions(connection, config).await?;
-	reset_permission_order(connection, config).await?;
 	re_add_constraints(connection, config).await?;
+	remove_list_permissions(connection, config).await?;
+	add_rbac_blocklist_tables(connection, config).await?;
+	reset_permission_order(connection, config).await?;
 
 	Ok(())
 }
@@ -415,7 +418,15 @@ async fn add_rbac_blocklist_tables(
 			permission_id,
 			resource_id
 		FROM
-			role_permissions_resource;
+			role_permissions_resource
+		WHERE EXISTS (
+			SELECT 1
+			FROM role_resource_permissions_type
+			WHERE 
+				role_id = role_permissions_resource.role_id
+				AND permission_id = role_permissions_resource.permission_id
+				AND permission_type = 'include'
+		);
 		"#
 	)
 	.execute(&mut *connection)
@@ -534,7 +545,12 @@ async fn add_rbac_blocklist_tables(
 					token_id
 				FROM
 					user_api_token_workspace_super_admin
-			);
+			)
+			AND COALESCE(
+				user_api_token_resource_type_permission.workspace_id,
+				user_api_token_resource_permission.workspace_id
+			) IS NOT NULL
+		ON CONFLICT DO NOTHING;
 		"#
 	)
 	.execute(&mut *connection)
@@ -675,6 +691,14 @@ async fn add_rbac_blocklist_tables(
 			'exclude'
 		FROM
 			user_api_token_resource_type_permission
+		WHERE EXISTS (
+			SELECT 1
+			FROM user_api_token_workspace_permission_type
+			WHERE 
+				token_id = user_api_token_resource_type_permission.token_id
+				AND workspace_id = user_api_token_resource_type_permission.workspace_id
+				AND token_permission_type = 'member'
+		)
 		ON CONFLICT DO NOTHING;
 		"#
 	)
@@ -697,6 +721,14 @@ async fn add_rbac_blocklist_tables(
 			'include'
 		FROM
 			user_api_token_resource_permission
+		WHERE EXISTS (
+			SELECT 1
+			FROM user_api_token_workspace_permission_type
+			WHERE 
+				token_id = user_api_token_resource_permission.token_id
+				AND workspace_id = user_api_token_resource_permission.workspace_id
+				AND token_permission_type = 'member'
+		)	
 		ON CONFLICT DO NOTHING;
 		"#
 	)
@@ -718,7 +750,15 @@ async fn add_rbac_blocklist_tables(
 			permission_id,
 			resource_id
 		FROM
-			user_api_token_resource_permission;
+			user_api_token_resource_permission
+		WHERE EXISTS (
+			SELECT 1
+			FROM user_api_token_workspace_permission_type
+			WHERE 
+				token_id = user_api_token_resource_permission.token_id
+				AND workspace_id = user_api_token_resource_permission.workspace_id
+				AND token_permission_type = 'member'
+		);
 		"#
 	)
 	.execute(&mut *connection)
@@ -901,23 +941,7 @@ async fn remove_list_permissions(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
-	query!(
-		r#"
-			DELETE FROM permission
-			WHERE name IN (
-					'workspace::domain::list',
-					'workspace::infrastructure::deployment::list',
-					'workspace::infrastructure::managedDatabase::list',
-					'workspace::infrastructure::staticSite::list',
-					'workspace::containerRegistry::list',
-					'workspace::region::list',
-					'workspace::ci::runner::list'
-				);
-		"#,
-	)
-	.execute(&mut *connection)
-	.await?;
-
+	// rename existing permissions
 	query!(
 		r#"
 			UPDATE permission
@@ -928,31 +952,229 @@ async fn remove_list_permissions(
 	.execute(&mut *connection)
 	.await?;
 
-	query!(
-		r#"
-			UPDATE permission
-			SET name = 'workspace::infrastructure::managedUrl::info'
-			WHERE name = 'workspace::infrastructure::managedUrl::list';		
-		"#,
-	)
-	.execute(&mut *connection)
-	.await?;
+	// insert missing permissions
+	for &permission in [
+		"workspace::infrastructure::managedUrl::info",
+		"workspace::secret::info",
+		"workspace::ci::gitProvider::repo::sync",
+	]
+	.iter()
+	{
+		let uuid = loop {
+			let uuid = Uuid::new_v4();
 
-	query!(
-		r#"
-			UPDATE permission
-			SET name = 'workspace::secret::info'
-			WHERE name = 'workspace::secret::list';		
-		"#,
-	)
-	.execute(&mut *connection)
-	.await?;
+			let exists = query!(
+				r#"
+				SELECT
+					*
+				FROM
+					permission
+				WHERE
+					id = $1;
+				"#,
+				&uuid
+			)
+			.fetch_optional(&mut *connection)
+			.await?
+			.is_some();
 
+			if !exists {
+				break uuid;
+			}
+		};
+
+		query!(
+			r#"
+			INSERT INTO
+				permission
+			VALUES
+				($1, $2, '');
+			"#,
+			&uuid,
+			permission
+		)
+		.fetch_optional(&mut *connection)
+		.await?;
+	}
+
+	// migrate from list permissions to info permissions
+	for (from_permision, to_permission) in [
+		("workspace::domain::list", "workspace::domain::info"),
+		(
+			"workspace::infrastructure::deployment::list",
+			"workspace::infrastructure::deployment::info",
+		),
+		(
+			"workspace::infrastructure::managedDatabase::list",
+			"workspace::infrastructure::managedDatabase::info",
+		),
+		(
+			"workspace::infrastructure::staticSite::list",
+			"workspace::infrastructure::staticSite::info",
+		),
+		(
+			"workspace::containerRegistry::list",
+			"workspace::containerRegistry::info",
+		),
+		("workspace::region::list", "workspace::region::info"),
+		("workspace::ci::runner::list", "workspace::ci::runner::info"),
+		(
+			"workspace::infrastructure::managedUrl::list",
+			"workspace::infrastructure::managedUrl::info",
+		),
+		("workspace::secret::list", "workspace::secret::info"),
+		(
+			"workspace::ci::gitProvider::repo::list",
+			"workspace::ci::gitProvider::repo::info",
+		),
+	]
+	.iter()
+	{
+		let from_permision = query!(
+			r#"
+			SELECT id
+			FROM permission
+			WHERE name = $1;
+			"#,
+			from_permision
+		)
+		.fetch_one(&mut *connection)
+		.await
+		.map(|row| row.get::<Uuid, _>("id"))?;
+
+		let to_permission = query!(
+			r#"
+			SELECT id
+			FROM permission
+			WHERE name = $1;
+			"#,
+			to_permission
+		)
+		.fetch_one(&mut *connection)
+		.await
+		.map(|row| row.get::<Uuid, _>("id"))?;
+
+		query!(
+			r#"
+				DELETE FROM workspace_audit_log
+				WHERE action = $1;
+			"#,
+			&from_permision
+		)
+		.execute(&mut *connection)
+		.await?;
+
+		query!(
+			r#"
+				DELETE FROM role_permissions_resource_type
+				WHERE permission_id = $1;
+			"#,
+			&from_permision
+		)
+		.execute(&mut *connection)
+		.await?;
+
+		query!(
+			r#"
+				INSERT INTO role_permissions_resource_type (
+					role_id,
+					permission_id,
+					resource_type_id
+				)
+				SELECT
+					role_permissions_resource.role_id,
+					$2,
+					resource_type.id
+				FROM role_permissions_resource
+				JOIN resource ON resource.id = role_permissions_resource.resource_id
+				JOIN resource_type ON (
+					resource_type.id = resource.resource_type_id
+					AND resource_type.name = 'workspace'
+				)
+				WHERE permission_id = $1
+				ON CONFLICT DO NOTHING;
+			"#,
+			&from_permision,
+			&to_permission,
+		)
+		.execute(&mut *connection)
+		.await?;
+
+		query!(
+			r#"
+				DELETE FROM role_permissions_resource
+				WHERE permission_id = $1;
+			"#,
+			&from_permision
+		)
+		.execute(&mut *connection)
+		.await?;
+
+		query!(
+			r#"
+				DELETE FROM user_api_token_resource_type_permission
+				WHERE permission_id = $1;
+			"#,
+			&from_permision
+		)
+		.execute(&mut *connection)
+		.await?;
+
+		query!(
+			r#"
+				INSERT INTO user_api_token_resource_type_permission (
+					token_id,
+					workspace_id,
+					resource_type_id,
+					permission_id
+				)
+				SELECT
+					user_api_token_resource_permission.token_id,
+					user_api_token_resource_permission.workspace_id,
+					resource_type.id,
+					$2
+				FROM user_api_token_resource_permission
+				JOIN resource ON resource.id = user_api_token_resource_permission.resource_id
+				JOIN resource_type ON (
+					resource_type.id = resource.resource_type_id
+					AND resource_type.name = 'workspace'
+				)
+				WHERE permission_id = $1
+				ON CONFLICT DO NOTHING;
+			"#,
+			&from_permision,
+			&to_permission,
+		)
+		.execute(&mut *connection)
+		.await?;
+
+		query!(
+			r#"
+				DELETE FROM user_api_token_resource_permission
+				WHERE permission_id = $1;
+			"#,
+			&from_permision
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	// delete list permissions
 	query!(
 		r#"
-			UPDATE permission
-			SET name = 'workspace::ci::gitProvider::repo::sync'
-			WHERE name = 'workspace::ci::gitProvider::repo::list';
+			DELETE FROM permission
+			WHERE name IN (
+					'workspace::domain::list',
+					'workspace::infrastructure::deployment::list',
+					'workspace::infrastructure::managedDatabase::list',
+					'workspace::infrastructure::staticSite::list',
+					'workspace::containerRegistry::list',
+					'workspace::region::list',
+					'workspace::ci::runner::list',
+					'workspace::infrastructure::managedUrl::list',
+					'workspace::secret::list',
+					'workspace::ci::gitProvider::repo::list'
+				);
 		"#,
 	)
 	.execute(&mut *connection)
