@@ -133,7 +133,8 @@ pub async fn patch_kubernetes_mongo_database(
 				command: Some(vec![
 					"bash".to_owned(),
 					"-c".to_owned(),
-					"/usr/local/bin/docker-entrypoint.sh mongod $AUTH_STATUS".to_owned(),
+					"/usr/local/bin/docker-entrypoint.sh mongod $AUTH_STATUS"
+						.to_owned(),
 				]),
 				env: Some(vec![
 					EnvVar {
