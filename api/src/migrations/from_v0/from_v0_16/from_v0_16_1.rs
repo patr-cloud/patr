@@ -1449,7 +1449,7 @@ async fn add_loki_push_permission(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
-	for &permission in ["workspace::region::loki_push"].iter() {
+	for &permission in ["workspace::region::logs_push"].iter() {
 		let uuid = loop {
 			let uuid = Uuid::new_v4();
 
