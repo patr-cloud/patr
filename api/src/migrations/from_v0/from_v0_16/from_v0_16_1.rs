@@ -944,9 +944,12 @@ async fn remove_list_permissions(
 	// rename existing permissions
 	query!(
 		r#"
-			UPDATE permission
-			SET name = 'workspace::domain::info'
-			WHERE name = 'workspace::domain::viewDetails';		
+		UPDATE
+			permission
+		SET
+			name = 'workspace::domain::info'
+		WHERE
+			name = 'workspace::domain::viewDetails';		
 		"#,
 	)
 	.execute(&mut *connection)
@@ -1032,9 +1035,12 @@ async fn remove_list_permissions(
 	{
 		let from_permision = query!(
 			r#"
-			SELECT id
-			FROM permission
-			WHERE name = $1;
+			SELECT
+				id
+			FROM
+				permission
+			WHERE
+				name = $1;
 			"#,
 			from_permision
 		)
@@ -1044,9 +1050,12 @@ async fn remove_list_permissions(
 
 		let to_permission = query!(
 			r#"
-			SELECT id
-			FROM permission
-			WHERE name = $1;
+			SELECT
+				id
+			FROM
+				permission
+			WHERE
+				name = $1;
 			"#,
 			to_permission
 		)
@@ -1056,8 +1065,10 @@ async fn remove_list_permissions(
 
 		query!(
 			r#"
-				DELETE FROM workspace_audit_log
-				WHERE action = $1;
+			DELETE FROM
+				workspace_audit_log
+			WHERE
+				action = $1;
 			"#,
 			&from_permision
 		)
@@ -1066,8 +1077,10 @@ async fn remove_list_permissions(
 
 		query!(
 			r#"
-				DELETE FROM role_permissions_resource_type
-				WHERE permission_id = $1;
+			DELETE FROM
+				role_permissions_resource_type
+			WHERE
+				permission_id = $1;
 			"#,
 			&from_permision
 		)
@@ -1076,23 +1089,32 @@ async fn remove_list_permissions(
 
 		query!(
 			r#"
-				INSERT INTO role_permissions_resource_type (
+			INSERT INTO
+				role_permissions_resource_type(
 					role_id,
 					permission_id,
 					resource_type_id
 				)
-				SELECT
-					role_permissions_resource.role_id,
-					$2,
-					resource_type.id
-				FROM role_permissions_resource
-				JOIN resource ON resource.id = role_permissions_resource.resource_id
-				JOIN resource_type ON (
+			SELECT
+				role_permissions_resource.role_id,
+				$2,
+				resource_type.id
+			FROM
+				role_permissions_resource
+			JOIN
+				resource
+			ON
+				resource.id = role_permissions_resource.resource_id
+			JOIN
+				resource_type
+			ON
+				(
+					resource_type.name = 'workspace' AND
 					resource_type.id = resource.resource_type_id
-					AND resource_type.name = 'workspace'
 				)
-				WHERE permission_id = $1
-				ON CONFLICT DO NOTHING;
+			WHERE
+				permission_id = $1
+			ON CONFLICT DO NOTHING;
 			"#,
 			&from_permision,
 			&to_permission,
@@ -1102,8 +1124,10 @@ async fn remove_list_permissions(
 
 		query!(
 			r#"
-				DELETE FROM role_permissions_resource
-				WHERE permission_id = $1;
+			DELETE FROM
+				role_permissions_resource
+			WHERE
+				permission_id = $1;
 			"#,
 			&from_permision
 		)
@@ -1112,8 +1136,10 @@ async fn remove_list_permissions(
 
 		query!(
 			r#"
-				DELETE FROM user_api_token_resource_type_permission
-				WHERE permission_id = $1;
+			DELETE FROM
+				user_api_token_resource_type_permission
+			WHERE
+				permission_id = $1;
 			"#,
 			&from_permision
 		)
@@ -1122,25 +1148,34 @@ async fn remove_list_permissions(
 
 		query!(
 			r#"
-				INSERT INTO user_api_token_resource_type_permission (
+			INSERT INTO
+				user_api_token_resource_type_permission(
 					token_id,
 					workspace_id,
 					resource_type_id,
 					permission_id
 				)
-				SELECT
-					user_api_token_resource_permission.token_id,
-					user_api_token_resource_permission.workspace_id,
-					resource_type.id,
-					$2
-				FROM user_api_token_resource_permission
-				JOIN resource ON resource.id = user_api_token_resource_permission.resource_id
-				JOIN resource_type ON (
+			SELECT
+				user_api_token_resource_permission.token_id,
+				user_api_token_resource_permission.workspace_id,
+				resource_type.id,
+				$2
+			FROM
+				user_api_token_resource_permission
+			JOIN
+				resource
+			ON
+				resource.id = user_api_token_resource_permission.resource_id
+			JOIN
+				resource_type
+			ON
+				(
+					resource_type.name = 'workspace' AND
 					resource_type.id = resource.resource_type_id
-					AND resource_type.name = 'workspace'
 				)
-				WHERE permission_id = $1
-				ON CONFLICT DO NOTHING;
+			WHERE
+				permission_id = $1
+			ON CONFLICT DO NOTHING;
 			"#,
 			&from_permision,
 			&to_permission,
@@ -1150,8 +1185,10 @@ async fn remove_list_permissions(
 
 		query!(
 			r#"
-				DELETE FROM user_api_token_resource_permission
-				WHERE permission_id = $1;
+			DELETE FROM
+				user_api_token_resource_permission
+			WHERE
+				permission_id = $1;
 			"#,
 			&from_permision
 		)
@@ -1162,19 +1199,21 @@ async fn remove_list_permissions(
 	// delete list permissions
 	query!(
 		r#"
-			DELETE FROM permission
-			WHERE name IN (
-					'workspace::domain::list',
-					'workspace::infrastructure::deployment::list',
-					'workspace::infrastructure::managedDatabase::list',
-					'workspace::infrastructure::staticSite::list',
-					'workspace::containerRegistry::list',
-					'workspace::region::list',
-					'workspace::ci::runner::list',
-					'workspace::infrastructure::managedUrl::list',
-					'workspace::secret::list',
-					'workspace::ci::gitProvider::repo::list'
-				);
+		DELETE FROM
+			permission
+		WHERE
+			name IN (
+				'workspace::domain::list',
+				'workspace::infrastructure::deployment::list',
+				'workspace::infrastructure::managedDatabase::list',
+				'workspace::infrastructure::staticSite::list',
+				'workspace::containerRegistry::list',
+				'workspace::region::list',
+				'workspace::ci::runner::list',
+				'workspace::infrastructure::managedUrl::list',
+				'workspace::secret::list',
+				'workspace::ci::gitProvider::repo::list'
+			);
 		"#,
 	)
 	.execute(&mut *connection)
