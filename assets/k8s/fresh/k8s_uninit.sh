@@ -26,6 +26,11 @@ helm uninstall promtail -n=promtail || true
 kubectl delete namespace promtail \
     --ignore-not-found=true
 
+echo "Deleting promtail for logs if enabled"
+helm uninstall prometheus -n=prometheus || true
+kubectl delete namespace prometheus \
+    --ignore-not-found=true
+
 echo "Deleting ingress from cluster"
 helm uninstall ingress-nginx -n=ingress-nginx || true
 kubectl delete namespace ingress-nginx \

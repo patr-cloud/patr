@@ -308,6 +308,7 @@ pub struct StripeSettings {
 #[serde(rename_all = "camelCase")]
 pub struct MimirSettings {
 	pub host: String,
+	pub upstream_host: String,
 	pub username: String,
 	pub password: String,
 }

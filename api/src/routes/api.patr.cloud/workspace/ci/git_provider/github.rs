@@ -56,7 +56,7 @@ use crate::{
 	rabbitmq::{BuildId, BuildStepId},
 	service::{self, ParseStatus},
 	utils::{
-		constants::{request_keys, PATR_CLUSTER_TENANT_ID},
+		constants::{logs::PATR_CLUSTER_TENANT_ID, request_keys},
 		Error,
 		ErrorData,
 		EveContext,

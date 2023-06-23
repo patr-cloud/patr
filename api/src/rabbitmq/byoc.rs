@@ -83,6 +83,14 @@ pub(super) async fn process_request(
 			} else {
 				format!("https://{}/loki/api/v1/push", config.loki.host)
 			};
+			let mimir_metrics_push_url = if cfg!(debug_assertions) {
+				// for debug builds, mimir won't be serverd as different domain,
+				// instead it will be served as a subroute for localhost
+				format!("https://{}/mimir-host/api/v1/push", config.mimir.host)
+			} else {
+				format!("https://{}/api/v1/push", config.mimir.host)
+			};
+
 			let output = Command::new("assets/k8s/fresh/k8s_init.sh")
 				.args([
 					region_id.as_str(),
@@ -90,8 +98,9 @@ pub(super) async fn process_request(
 					&kubeconfig_path,
 					&tls_cert_path,
 					&tls_key_path,
-					&loki_log_push_url,
 					&patr_token,
+					&loki_log_push_url,
+					&mimir_metrics_push_url,
 				])
 				.output()
 				.await?;
