@@ -25,14 +25,14 @@ pub fn create_sub_app(
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.post(
-		"/loki/api/v1/push",
-		[EveMiddleware::CustomFunction(pin_fn!(push_loki_logs))],
+		"/api/v1/push",
+		[EveMiddleware::CustomFunction(pin_fn!(push_mimir_metrics))],
 	);
 
 	sub_app
 }
 
-async fn push_loki_logs(
+async fn push_mimir_metrics(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -79,7 +79,7 @@ async fn push_loki_logs(
 		.has_access_for_requested_action(
 			&region.owner_id,
 			&region.id,
-			permissions::workspace::region::PUSH_LOGS,
+			permissions::workspace::region::PUSH_METRICS,
 		);
 
 	if !has_permission {
@@ -111,11 +111,8 @@ async fn push_loki_logs(
 	);
 
 	let response = reqwest::Client::new()
-		.post(format!(
-			"https://{}/loki/api/v1/push",
-			config.loki.upstream_host
-		))
-		.basic_auth(&config.loki.username, Some(&config.loki.password))
+		.post(format!("https://{}/api/v1/push", config.mimir.host))
+		.basic_auth(&config.mimir.username, Some(&config.mimir.password))
 		.headers(request_headers)
 		.body(context.get_request().get_body_bytes().to_owned())
 		.send()

@@ -473,7 +473,7 @@ async fn add_region(
 	if !api_token.has_access_for_requested_action(
 		&workspace_id,
 		&region_id,
-		rbac::permissions::workspace::region::LOGS_PUSH,
+		rbac::permissions::workspace::region::PUSH_LOGS,
 	) {
 		return Err(Error::empty()
 			.status(401)
@@ -489,7 +489,28 @@ async fn add_region(
 					rbac::PERMISSIONS
 						.get()
 						.unwrap()
-						.get(rbac::permissions::workspace::region::LOGS_PUSH)
+						.get(rbac::permissions::workspace::region::PUSH_LOGS)
+						.unwrap(),
+				)
+				.is_some(),
+		})
+		.unwrap_or(false)
+	{
+		return Err(Error::empty()
+			.status(401)
+			.body(error!(REGION_TOKEN_UNABLE_TO_PULL_IMAGES).to_string()));
+	}
+	if api_token
+		.workspace_permissions()
+		.get(&workspace_id)
+		.map(|permissions| match permissions {
+			WorkspacePermission::SuperAdmin => true,
+			WorkspacePermission::Member { permissions } => permissions
+				.get(
+					rbac::PERMISSIONS
+						.get()
+						.unwrap()
+						.get(rbac::permissions::workspace::region::PUSH_METRICS)
 						.unwrap(),
 				)
 				.is_some(),
@@ -724,12 +745,7 @@ async fn delete_region(
 
 	// delete origin ca cert
 	if let Some(cert_id) = region.cloudflare_certificate_id {
-		service::revoke_origin_ca_certificate(&cert_id, &config)
-			.await
-			.map_err(|err| {
-				log::info!("Error while deleting certificate - {err:?}")
-			})
-			.ok();
+		service::revoke_origin_ca_certificate(&cert_id, &config).await?;
 	}
 
 	let onpatr_domain = db::get_domain_by_name(

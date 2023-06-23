@@ -8,8 +8,9 @@ PARENT_WORKSPACE_ID=${2:?"Missing parameter: PARENT_WORKSPACE_ID"}
 KUBECONFIG_PATH=${3:?"Missing parameter: KUBECONFIG_PATH"}
 TLS_CERT_PATH=${4:?"Missing parameter: TLS_CERT_PATH"}
 TLS_KEY_PATH=${5:?"Missing parameter: TLS_KEY_PATH"}
-LOKI_LOG_PUSH_URL=${6:?"Missing parameter: LOKI_LOG_PUSH_URL"}
-LOKI_API_TOKEN=${7:?"Missing parameter: LOKI_API_TOKEN, provide '-' if don't want to enable logs"}
+PATR_API_TOKEN=${6:?"Missing parameter: PATR_API_TOKEN"}
+LOKI_LOG_PUSH_URL=${7:?"Missing parameter: LOKI_LOG_PUSH_URL"}
+MIMIR_METRICS_PUSH_URL=${8:?"Missing parameter: MIMIR_METRICS_PUSH_URL"}
 
 # validate input values
 if [ ! -f $KUBECONFIG_PATH ]; then
@@ -69,12 +70,47 @@ config:
     - url: $LOKI_LOG_PUSH_URL
       basic_auth:
         username: $CLUSTER_ID
-        password: $LOKI_API_TOKEN
+        password: $PATR_API_TOKEN
   snippets:
     pipelineStages:
       - match:
           selector: '{namespace!~"[a-f0-9]{32}"}'
           action: drop
+EOF
+
+echo "Installing prometheus for metrics"
+
+MIMIR_SECRET_NAME="mimr-token-$CLUSTER_ID"
+
+kubectl create namespace prometheus \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl create secret generic $MIMIR_SECRET_NAME \
+  --namespace prometheus \
+  --from-literal=username=$CLUSTER_ID \
+  --from-literal=password=$PATR_API_TOKEN \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+helm upgrade --install prometheus prometheus-community/kube-prometheus-stack --namespace prometheus --create-namespace -f - <<EOF
+prometheus:
+  prometheusSpec:
+    podMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+    remoteWriteDashboards: true
+    hostNetwork: false
+    remoteWrite:
+      - url: $MIMIR_METRICS_PUSH_URL
+        basicAuth:
+          username:
+            name: $MIMIR_SECRET_NAME
+            key: username
+          password:
+            name: $MIMIR_SECRET_NAME
+            key: password
+        writeRelabelConfigs:
+          - sourceLabels: [namespace]
+            regex: "(.*)([a-f0-9]{32})(.*)"
+            action: keep
 EOF
 
 echo "Creating parent workspace in new cluster"

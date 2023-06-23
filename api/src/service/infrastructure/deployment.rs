@@ -928,6 +928,7 @@ pub async fn get_full_deployment_config(
 }
 
 pub async fn get_deployment_metrics(
+	tenant_id: &str,
 	deployment_id: &Uuid,
 	config: &Settings,
 	start_time: &DateTime<Utc>,
@@ -976,6 +977,11 @@ pub async fn get_deployment_metrics(
 					&config.mimir.username,
 					Some(&config.mimir.password),
 				)
+				.header(
+					"X-Scope-OrgID",
+					HeaderValue::from_str(tenant_id)
+						.expect("workpsace_id to headervalue should not panic"),
+				)
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
@@ -1003,6 +1009,11 @@ pub async fn get_deployment_metrics(
 				.basic_auth(
 					&config.mimir.username,
 					Some(&config.mimir.password),
+				)
+				.header(
+					"X-Scope-OrgID",
+					HeaderValue::from_str(tenant_id)
+						.expect("workpsace_id to headervalue should not panic"),
 				)
 				.send()
 				.await?
@@ -1032,6 +1043,11 @@ pub async fn get_deployment_metrics(
 					&config.mimir.username,
 					Some(&config.mimir.password),
 				)
+				.header(
+					"X-Scope-OrgID",
+					HeaderValue::from_str(tenant_id)
+						.expect("workpsace_id to headervalue should not panic"),
+				)
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
@@ -1059,6 +1075,11 @@ pub async fn get_deployment_metrics(
 				.basic_auth(
 					&config.mimir.username,
 					Some(&config.mimir.password),
+				)
+				.header(
+					"X-Scope-OrgID",
+					HeaderValue::from_str(tenant_id)
+						.expect("workpsace_id to headervalue should not panic"),
 				)
 				.send()
 				.await?
