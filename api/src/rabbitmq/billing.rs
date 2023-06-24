@@ -238,8 +238,8 @@ pub(super) async fn process_request(
 				workspace.name.clone()
 			};
 
-			if card_amount_to_be_charged_in_cents == 0 &&
-				total_bill.total_charge == 0
+			if card_amount_to_be_charged_in_cents < 100 && // as 100=$1
+				total_bill.total_charge == 100
 			{
 				// do nothing, no email has to be sent for any payment action
 				log::trace!(
@@ -248,8 +248,8 @@ pub(super) async fn process_request(
 					workspace.id
 				);
 				return Ok(());
-			} else if card_amount_to_be_charged_in_cents == 0 &&
-				total_bill.total_charge > 0
+			} else if card_amount_to_be_charged_in_cents < 100 &&
+				total_bill.total_charge > 100
 			{
 				let billing_address = if let Some(address) =
 					workspace.address_id
@@ -686,7 +686,7 @@ pub(super) async fn process_request(
 				workspace.name.clone()
 			};
 
-			if card_amount_to_be_charged_in_cents == 0 {
+			if card_amount_to_be_charged_in_cents < 100 {
 				// the notification for payment success will be sent whenever
 				// the user has made a payment, so no need to send it again when
 				// confirming it in rabbitmq
