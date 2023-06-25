@@ -91,7 +91,7 @@
 		"token": "<vault token>"
 	},
 	"loki": {
-		"logPushHost": "loki-internal.patr.cloud",
+		"upstreamHost": "loki-internal.patr.cloud",
 		"host": "loki.patr.cloud",
 		"username": "admin",
 		"password": "admin"
