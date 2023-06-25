@@ -83,3 +83,5 @@ pub mod github_oauth {
 	pub const USER_INFO_API: &str = "https://api.github.com/user";
 	pub const USER_EMAIL_API: &str = "https://api.github.com/user/emails";
 }
+
+pub const PATR_CLUSTER_TENANT_ID: &str = "patr-internal";

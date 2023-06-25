@@ -105,6 +105,10 @@ pub mod id {
 	pub const FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER: &str =
 		"featureNotSupportedForCustomCluster";
 	pub const REGION_NOT_CONNECTED: &str = "regionNotConnected";
+	pub const REGION_TOKEN_UNABLE_TO_PUSH_LOGS: &str =
+		"regionTokenUnableToPushLogs";
+	pub const REGION_TOKEN_UNABLE_TO_PULL_IMAGES: &str =
+		"regionTokenUnableToPullImages";
 }
 
 #[allow(dead_code)]
@@ -268,4 +272,6 @@ pub mod message {
 	pub const FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER: &str =
 		"For custom cluster this feature is not supported";
 	pub const REGION_NOT_CONNECTED: &str = "We're unable to connect to your custom cluster. Kindly make sure your cluster is up and running. If you face any difficulty please contact support";
+	pub const REGION_TOKEN_UNABLE_TO_PUSH_LOGS: &str = "The API token you have used for this region does not have permissions to push logs";
+	pub const REGION_TOKEN_UNABLE_TO_PULL_IMAGES: &str = "The API token you have used for this region does not have permissions to pull images";
 }

@@ -4,6 +4,8 @@ mod api_patr_cloud;
 mod assets_patr_cloud;
 #[path = "auth.patr.cloud/mod.rs"]
 mod auth_patr_cloud;
+#[path = "loki.patr.cloud/mod.rs"]
+mod loki_patr_cloud;
 #[path = "vault.patr.cloud/mod.rs"]
 mod vault_patr_cloud;
 
@@ -22,6 +24,7 @@ pub fn create_sub_app(
 	if cfg!(debug_assertions) {
 		sub_app.use_sub_app("/", api_patr_cloud::create_sub_app(app));
 		sub_app.use_sub_app("/v1", vault_patr_cloud::create_sub_app(app));
+		sub_app.use_sub_app("/loki-host", loki_patr_cloud::create_sub_app(app));
 	} else {
 		sub_app.use_middleware(
 			"/",
@@ -41,6 +44,10 @@ pub fn create_sub_app(
 				EveMiddleware::DomainRouter(
 					String::from("vault.patr.cloud"),
 					Box::new(vault_patr_cloud::create_sub_app(app)),
+				),
+				EveMiddleware::DomainRouter(
+					app.config.loki.host.clone(),
+					Box::new(loki_patr_cloud::create_sub_app(app)),
 				),
 			],
 		);

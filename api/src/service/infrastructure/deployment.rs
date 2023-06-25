@@ -29,7 +29,7 @@ use api_models::{
 use chrono::{DateTime, TimeZone, Utc};
 use eve_rs::AsError;
 use k8s_openapi::api::core::v1::Event;
-use reqwest::Client;
+use reqwest::{header::HeaderValue, Client};
 
 use crate::{
 	db,
@@ -41,7 +41,12 @@ use crate::{
 		DeploymentMetadata,
 	},
 	service,
-	utils::{constants::free_limits, settings::Settings, validator, Error},
+	utils::{
+		constants::{free_limits, PATR_CLUSTER_TENANT_ID},
+		settings::Settings,
+		validator,
+		Error,
+	},
 	Database,
 };
 
@@ -328,7 +333,18 @@ pub async fn get_deployment_container_logs(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
+	let deployed_region = db::get_region_by_id(connection, &deployment.region)
+		.await?
+		.status(500)?;
+
+	let tenant_id = if deployed_region.is_byoc_region() {
+		deployment.workspace_id.as_str()
+	} else {
+		PATR_CLUSTER_TENANT_ID
+	};
+
 	let logs = get_container_logs(
+		tenant_id,
 		&deployment.workspace_id,
 		deployment_id,
 		start_time,
@@ -1265,6 +1281,7 @@ pub async fn get_deployment_metrics(
 }
 
 async fn get_container_logs(
+	tenant_id: &str,
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
 	start_time: &DateTime<Utc>,
@@ -1294,6 +1311,11 @@ async fn get_container_logs(
 			limit
 		))
 		.basic_auth(&config.loki.username, Some(&config.loki.password))
+		.header(
+			"X-Scope-OrgID",
+			HeaderValue::from_str(tenant_id)
+				.expect("workpsace_id to headervalue should not panic"),
+		)
 		.send()
 		.await?
 		.json::<Logs>()

@@ -423,6 +423,7 @@ pub async fn queue_setup_kubernetes_cluster(
 	kube_config: Kubeconfig,
 	tls_cer: &str,
 	tls_key: &str,
+	patr_token: &str,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -432,6 +433,7 @@ pub async fn queue_setup_kubernetes_cluster(
 			kube_config,
 			tls_cert: tls_cer.to_owned(),
 			tls_key: tls_key.to_owned(),
+			patr_token: patr_token.to_owned(),
 			request_id: request_id.clone(),
 		}),
 		config,
@@ -522,6 +524,7 @@ pub async fn queue_get_kube_config_for_do_cluster(
 	region_id: &Uuid,
 	tls_cer: &str,
 	tls_key: &str,
+	patr_token: &str,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -532,6 +535,7 @@ pub async fn queue_get_kube_config_for_do_cluster(
 			region_id: region_id.clone(),
 			tls_cert: tls_cer.to_owned(),
 			tls_key: tls_key.to_owned(),
+			patr_token: patr_token.to_owned(),
 			request_id: request_id.clone(),
 		}),
 		config,

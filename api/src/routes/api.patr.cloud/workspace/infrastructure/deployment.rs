@@ -1455,7 +1455,10 @@ async fn get_logs(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let GetDeploymentLogsRequest {
-		limit, end_time, ..
+		limit,
+		end_time,
+		start_time,
+		..
 	} = context
 		.get_query_as()
 		.status(400)
@@ -1468,33 +1471,20 @@ async fn get_logs(
 	)
 	.unwrap();
 
-	let deployment = db::get_deployment_by_id(
-		context.get_database_connection(),
-		&deployment_id,
-	)
-	.await?
-	.status(500)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	if !service::is_deployed_on_patr_cluster(
-		context.get_database_connection(),
-		&deployment.region,
-	)
-	.await?
-	{
-		return Err(Error::empty().status(500).body(
-			error!(FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER).to_string(),
-		));
-	}
-
 	let config = context.get_state().config.clone();
 
 	let end_time = end_time
 		.map(|DateTime(end_time)| end_time)
 		.unwrap_or_else(Utc::now);
 
-	// Loki query limit to 721h in time range
-	let start_time = end_time - Duration::days(30);
+	let start_time = start_time
+		.map(|DateTime(end_time)| end_time)
+		.unwrap_or_else(|| {
+			// Loki query limit to 721h in time range, but it current loki is
+			// not working as expected if query limit is 7 days or more,
+			// so limitting it to 2 day
+			end_time - Duration::days(2)
+		});
 
 	log::trace!("request_id: {} - Getting logs", request_id);
 	let logs = service::get_deployment_container_logs(

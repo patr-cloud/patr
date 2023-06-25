@@ -32,6 +32,7 @@ pub(super) async fn process_request(
 			kube_config,
 			tls_cert,
 			tls_key,
+			patr_token,
 			request_id,
 		} => {
 			let Some(region) =
@@ -72,6 +73,16 @@ pub(super) async fn process_request(
 			// so workspace_id will be present
 			let parent_workspace = region.workspace_id.status(500)?.to_string();
 
+			let loki_log_push_url = if cfg!(debug_assertions) {
+				// for debug builds, loki won't be serverd as different domain,
+				// instead it will be served as a subroute for localhost
+				format!(
+					"https://{}/loki-host/loki/api/v1/push",
+					config.loki.host
+				)
+			} else {
+				format!("https://{}/loki/api/v1/push", config.loki.host)
+			};
 			let output = Command::new("assets/k8s/fresh/k8s_init.sh")
 				.args([
 					region_id.as_str(),
@@ -79,6 +90,8 @@ pub(super) async fn process_request(
 					&kubeconfig_path,
 					&tls_cert_path,
 					&tls_key_path,
+					&loki_log_push_url,
+					&patr_token,
 				])
 				.output()
 				.await?;
@@ -280,6 +293,7 @@ pub(super) async fn process_request(
 			region_id,
 			tls_cert,
 			tls_key,
+			patr_token,
 			request_id,
 		} => {
 			log::trace!(
@@ -364,6 +378,7 @@ pub(super) async fn process_request(
 								region_id,
 								tls_cert,
 								tls_key,
+								patr_token,
 								request_id: request_id.clone(),
 							},
 						),
@@ -414,6 +429,7 @@ pub(super) async fn process_request(
 								kube_config,
 								tls_cert,
 								tls_key,
+								patr_token,
 								request_id: request_id.clone(),
 							},
 						),
