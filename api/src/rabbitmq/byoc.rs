@@ -296,7 +296,7 @@ pub(super) async fn process_request(
 			region_id,
 			tls_cert,
 			tls_key,
-			patr_token: loki_token,
+			patr_token,
 			request_id,
 		} => {
 			log::trace!(
@@ -381,7 +381,7 @@ pub(super) async fn process_request(
 								region_id,
 								tls_cert,
 								tls_key,
-								patr_token: loki_token,
+								patr_token,
 								request_id: request_id.clone(),
 							},
 						),
@@ -432,7 +432,7 @@ pub(super) async fn process_request(
 								kube_config,
 								tls_cert,
 								tls_key,
-								patr_token: loki_token,
+								patr_token,
 								request_id: request_id.clone(),
 							},
 						),
