@@ -42,7 +42,7 @@ use crate::{
 	},
 	service,
 	utils::{
-		constants::{free_limits, PATR_CLUSTER_TENANT_ID},
+		constants::{free_limits, logs::PATR_CLUSTER_TENANT_ID},
 		settings::Settings,
 		validator,
 		Error,
@@ -928,6 +928,7 @@ pub async fn get_full_deployment_config(
 }
 
 pub async fn get_deployment_metrics(
+	tenant_id: &str,
 	deployment_id: &Uuid,
 	config: &Settings,
 	start_time: &DateTime<Utc>,
@@ -976,6 +977,11 @@ pub async fn get_deployment_metrics(
 					&config.mimir.username,
 					Some(&config.mimir.password),
 				)
+				.header(
+					"X-Scope-OrgID",
+					HeaderValue::from_str(tenant_id)
+						.expect("workpsace_id to headervalue should not panic"),
+				)
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
@@ -1003,6 +1009,11 @@ pub async fn get_deployment_metrics(
 				.basic_auth(
 					&config.mimir.username,
 					Some(&config.mimir.password),
+				)
+				.header(
+					"X-Scope-OrgID",
+					HeaderValue::from_str(tenant_id)
+						.expect("workpsace_id to headervalue should not panic"),
 				)
 				.send()
 				.await?
@@ -1032,6 +1043,11 @@ pub async fn get_deployment_metrics(
 					&config.mimir.username,
 					Some(&config.mimir.password),
 				)
+				.header(
+					"X-Scope-OrgID",
+					HeaderValue::from_str(tenant_id)
+						.expect("workpsace_id to headervalue should not panic"),
+				)
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
@@ -1059,6 +1075,11 @@ pub async fn get_deployment_metrics(
 				.basic_auth(
 					&config.mimir.username,
 					Some(&config.mimir.password),
+				)
+				.header(
+					"X-Scope-OrgID",
+					HeaderValue::from_str(tenant_id)
+						.expect("workpsace_id to headervalue should not panic"),
 				)
 				.send()
 				.await?
@@ -1295,6 +1316,18 @@ async fn get_container_logs(
 		request_id,
 		deployment_id
 	);
+
+	log::info!(
+		r#"Loki request => http 'https://{}/loki/api/v1/query_range?direction=BACKWARD&query={{container="deployment-{}",namespace="{}"}}&start={}&end={}&limit={}' 'X-Scope-OrgID: {}'"#,
+		config.loki.host,
+		deployment_id,
+		workspace_id,
+		start_time.timestamp_nanos(),
+		end_time.timestamp_nanos(),
+		limit,
+		tenant_id
+	);
+
 	let client = Client::new();
 	let logs = client
 		.get(format!(

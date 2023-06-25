@@ -108,7 +108,8 @@ pub mod permissions {
 			pub const ADD: &str = "workspace::region::add";
 			pub const DELETE: &str = "workspace::region::delete";
 
-			pub const LOGS_PUSH: &str = "workspace::region::logsPush";
+			pub const PUSH_LOGS: &str = "workspace::region::pushLogs";
+			pub const PUSH_METRICS: &str = "workspace::region::pushMetrics";
 		}
 
 		pub mod ci {

@@ -57,7 +57,7 @@ use crate::{
 	routes,
 	service,
 	utils::{
-		constants::request_keys,
+		constants::{logs::PATR_CLUSTER_TENANT_ID, request_keys},
 		Error,
 		ErrorData,
 		EveContext,
@@ -1921,11 +1921,11 @@ async fn get_deployment_metrics(
 	.await?
 	.status(500)?;
 
-	if region.is_byoc_region() {
-		return Err(Error::empty().status(500).body(
-			error!(FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER).to_string(),
-		));
-	}
+	let tenant_id = if region.is_byoc_region() {
+		deployment.workspace_id.as_str()
+	} else {
+		PATR_CLUSTER_TENANT_ID
+	};
 
 	log::trace!(
 		"request_id: {} - Getting deployment metrics for deployment: {}",
@@ -1957,6 +1957,7 @@ async fn get_deployment_metrics(
 	let config = context.get_state().config.clone();
 
 	let deployment_metrics = service::get_deployment_metrics(
+		tenant_id,
 		&deployment_id,
 		&config,
 		&start_time,
