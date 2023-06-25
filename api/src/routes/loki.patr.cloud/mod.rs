@@ -111,7 +111,10 @@ async fn push_loki_logs(
 	);
 
 	let response = reqwest::Client::new()
-		.post(format!("https://{}/loki/api/v1/push", config.loki.upstream_host))
+		.post(format!(
+			"https://{}/loki/api/v1/push",
+			config.loki.upstream_host
+		))
 		.basic_auth(&config.loki.username, Some(&config.loki.password))
 		.headers(request_headers)
 		.body(context.get_request().get_body_bytes().to_owned())

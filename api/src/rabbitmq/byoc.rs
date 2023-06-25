@@ -81,10 +81,7 @@ pub(super) async fn process_request(
 					config.loki.host
 				)
 			} else {
-				format!(
-					"https://{}/loki/api/v1/push",
-					config.loki.host
-				)
+				format!("https://{}/loki/api/v1/push", config.loki.host)
 			};
 			let output = Command::new("assets/k8s/fresh/k8s_init.sh")
 				.args([
