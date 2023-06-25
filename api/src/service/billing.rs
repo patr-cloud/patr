@@ -1356,6 +1356,8 @@ pub async fn calculate_total_bill_for_workspace_till(
 	let secret_charge = secret_usage.iter().map(|bill| bill.amount).sum();
 
 	let total_charge = deployment_charge +
+		volume_charge +
+		managed_database_charge +
 		static_site_charge +
 		managed_url_charge +
 		docker_repository_charge +
@@ -1520,6 +1522,7 @@ pub async fn get_total_resource_usage(
 	let secret_charge = secret_usage.iter().map(|bill| bill.amount).sum();
 
 	let total_charge = deployment_charge +
+		volume_charge +
 		managed_database_charge +
 		static_site_charge +
 		managed_url_charge +
