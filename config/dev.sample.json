@@ -110,8 +110,8 @@
 	},
 	"ipinfoToken": "token",
 	"mimir": {
-		"metricsPushHost": "metrics.patr.cloud",
-		"host": "mimir.samyakgangwal.com",
+		"upstreamHost": "mimir.samyakgangwal.com",
+		"host": "metrics.patr.cloud",
 		"username": "admin",
 		"password": "admin"
 	},
