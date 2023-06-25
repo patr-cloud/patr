@@ -1272,7 +1272,7 @@ async fn reset_permission_order(
 		"workspace::region::checkStatus",
 		"workspace::region::add",
 		"workspace::region::delete",
-		"workspace::region::logs_push",
+		"workspace::region::logsPush",
 		"workspace::ci::recentActivity",
 		"workspace::ci::gitProvider::list",
 		"workspace::ci::gitProvider::connect",
@@ -1449,7 +1449,7 @@ async fn add_loki_push_permission(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
-	for &permission in ["workspace::region::logs_push"].iter() {
+	for &permission in ["workspace::region::logsPush"].iter() {
 		let uuid = loop {
 			let uuid = Uuid::new_v4();
 

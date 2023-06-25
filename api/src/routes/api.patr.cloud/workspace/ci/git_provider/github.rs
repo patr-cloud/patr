@@ -1385,7 +1385,7 @@ async fn get_build_logs(
 	let response = reqwest::Client::new()
 		.get(format!(
 			"https://{}/loki/api/v1/query_range?query={{namespace=\"{}\",job=\"{}/{}\"}}&start={}",
-			loki.host,
+			loki.upstream_host,
 			build_step_id.build_id.get_build_namespace(),
 			build_step_id.build_id.get_build_namespace(),
 			build_step_id.get_job_name(),

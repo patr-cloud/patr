@@ -271,7 +271,7 @@ pub struct VaultSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LokiSettings {
-	pub log_push_host: String,
+	pub upstream_host: String,
 	pub host: String,
 	pub username: String,
 	pub password: String,

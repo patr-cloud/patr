@@ -1,18 +1,23 @@
+use std::net::{IpAddr, Ipv4Addr};
+
 use api_macros::closure_as_pinned_box;
 use api_models::{
-	models::workspace::region::{
-		AddRegionToWorkspaceData,
-		AddRegionToWorkspaceRequest,
-		AddRegionToWorkspaceResponse,
-		CheckRegionStatusResponse,
-		DeleteRegionFromWorkspaceRequest,
-		DeleteRegionFromWorkspaceResponse,
-		GetRegionInfoResponse,
-		InfrastructureCloudProvider,
-		ListRegionsForWorkspaceResponse,
-		Region,
-		RegionStatus,
-		RegionType,
+	models::workspace::{
+		region::{
+			AddRegionToWorkspaceData,
+			AddRegionToWorkspaceRequest,
+			AddRegionToWorkspaceResponse,
+			CheckRegionStatusResponse,
+			DeleteRegionFromWorkspaceRequest,
+			DeleteRegionFromWorkspaceResponse,
+			GetRegionInfoResponse,
+			InfrastructureCloudProvider,
+			ListRegionsForWorkspaceResponse,
+			Region,
+			RegionStatus,
+			RegionType,
+		},
+		WorkspacePermission,
 	},
 	utils::{DateTime, Uuid},
 };
@@ -24,7 +29,11 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::{self, permissions},
+	models::{
+		rbac::{self, permissions},
+		ApiTokenData,
+		UserAuthenticationData,
+	},
 	pin_fn,
 	routes,
 	service,
@@ -419,6 +428,23 @@ async fn add_region(
 
 	let config = context.get_state().config.clone();
 
+	let mut redis_connection = context.get_redis_connection().clone();
+
+	let patr_token = match &data {
+		AddRegionToWorkspaceData::Digitalocean { patr_token, .. } => patr_token,
+		AddRegionToWorkspaceData::KubeConfig { patr_token, .. } => patr_token,
+	};
+
+	let api_token = UserAuthenticationData::ApiToken(
+		ApiTokenData::decode(
+			context.get_database_connection(),
+			&mut redis_connection,
+			patr_token,
+			&IpAddr::V4(Ipv4Addr::LOCALHOST),
+		)
+		.await?,
+	);
+
 	log::trace!(
 		"request_id: {} - Checking if the deployment name already exists",
 		request_id
@@ -444,6 +470,37 @@ async fn add_region(
 	let region_id =
 		db::generate_new_resource_id(context.get_database_connection()).await?;
 
+	if !api_token.has_access_for_requested_action(
+		&workspace_id,
+		&region_id,
+		rbac::permissions::workspace::region::LOGS_PUSH,
+	) {
+		return Err(Error::empty()
+			.status(401)
+			.body(error!(REGION_TOKEN_UNABLE_TO_PUSH_LOGS).to_string()));
+	}
+	if api_token
+		.workspace_permissions()
+		.get(&workspace_id)
+		.map(|permissions| match permissions {
+			WorkspacePermission::SuperAdmin => true,
+			WorkspacePermission::Member { permissions } => permissions
+				.get(
+					rbac::PERMISSIONS
+						.get()
+						.unwrap()
+						.get(rbac::permissions::workspace::region::LOGS_PUSH)
+						.unwrap(),
+				)
+				.is_some(),
+		})
+		.unwrap_or(false)
+	{
+		return Err(Error::empty()
+			.status(401)
+			.body(error!(REGION_TOKEN_UNABLE_TO_PULL_IMAGES).to_string()));
+	}
+
 	db::create_resource(
 		context.get_database_connection(),
 		&region_id,
@@ -467,7 +524,7 @@ async fn add_region(
 			auto_scale,
 			node_name,
 			node_size_slug,
-			loki_token,
+			patr_token,
 		} => {
 			log::trace!(
 				"request_id: {} creating digital ocean k8s cluster in db",
@@ -516,7 +573,7 @@ async fn add_region(
 				&region_id,
 				&cf_cert.cert,
 				&cf_cert.key,
-				loki_token.as_deref().unwrap_or("-"),
+				&patr_token,
 				&config,
 				&request_id,
 			)
@@ -524,7 +581,7 @@ async fn add_region(
 		}
 		AddRegionToWorkspaceData::KubeConfig {
 			config_file,
-			loki_token,
+			patr_token,
 		} => {
 			let cf_cert = service::create_origin_ca_certificate_for_region(
 				&region_id, &config,
@@ -548,7 +605,7 @@ async fn add_region(
 				config_file,
 				&cf_cert.cert,
 				&cf_cert.key,
-				loki_token.as_deref().unwrap_or("-"),
+				&patr_token,
 				&config,
 				&request_id,
 			)

@@ -46,7 +46,7 @@ pub fn create_sub_app(
 					Box::new(vault_patr_cloud::create_sub_app(app)),
 				),
 				EveMiddleware::DomainRouter(
-					app.config.loki.log_push_host.clone(),
+					app.config.loki.host.clone(),
 					Box::new(loki_patr_cloud::create_sub_app(app)),
 				),
 			],

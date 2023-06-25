@@ -60,9 +60,8 @@ kubectl wait --namespace ingress-nginx --for=condition=ready pod \
 
 echo "Ingress controller is ready"
 
-if [ $LOKI_API_TOKEN != '-' ]; then
-    echo "Installing promtail for logs"
-    helm upgrade --install promtail grafana/promtail --namespace promtail --create-namespace -f - <<EOF
+echo "Installing promtail for logs"
+helm upgrade --install promtail grafana/promtail --namespace promtail --create-namespace -f - <<EOF
 config:
   clients:
     - url: $LOKI_LOG_PUSH_URL
@@ -75,9 +74,6 @@ config:
           selector: '{namespace!~"[a-f0-9]{32}"}'
           action: drop
 EOF
-else
-    echo "Skipped promtail installation"
-fi
 
 echo "Creating parent workspace in new cluster"
 kubectl create namespace "$PARENT_WORKSPACE_ID" \

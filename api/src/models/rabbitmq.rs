@@ -81,7 +81,7 @@ pub enum BYOCData {
 		kube_config: Kubeconfig,
 		tls_cert: String,
 		tls_key: String,
-		loki_token: String,
+		patr_token: String,
 		request_id: Uuid,
 	},
 	CheckClusterForReadiness {
@@ -95,7 +95,7 @@ pub enum BYOCData {
 		region_id: Uuid,
 		tls_cert: String,
 		tls_key: String,
-		loki_token: String,
+		patr_token: String,
 		request_id: Uuid,
 	},
 	DeleteKubernetesCluster {
