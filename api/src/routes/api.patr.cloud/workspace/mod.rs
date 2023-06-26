@@ -565,10 +565,19 @@ async fn delete_workspace(
 
 	// Make sure that a workspace with that ID exists. Users shouldn't be
 	// allowed to delete a workspace that doesn't exist
-	db::get_workspace_info(context.get_database_connection(), &workspace_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+	let workspace_info = db::get_workspace_info(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
+
+	if workspace_info.amount_due_in_cents > 0 {
+		return Error::as_result()
+			.status(500)
+			.body(error!(CANNOT_DELETE_UNPAID_WORKSPACE).to_string())?;
+	}
 
 	let namespace = workspace_id.as_str();
 
