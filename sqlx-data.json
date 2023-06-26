@@ -64,110 +64,6 @@
     },
     "query": "DELETE FROM user_api_token_resource_permissions_exclude WHERE token_id = $1;"
   },
-  "01ae581baf799dd8d8063809601ab527eb44e4c8f0649405b07c6bd00acd525e": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "username",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "password",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "first_name",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "last_name",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "dob",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "bio",
-          "ordinal": 6,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "location",
-          "ordinal": 7,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "created",
-          "ordinal": 8,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "recovery_email_local",
-          "ordinal": 9,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "recovery_email_domain_id: _",
-          "ordinal": 10,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "recovery_phone_country_code",
-          "ordinal": 11,
-          "type_info": "Bpchar"
-        },
-        {
-          "name": "recovery_phone_number",
-          "ordinal": 12,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "workspace_limit",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "sign_up_coupon",
-          "ordinal": 14,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      }
-    },
-    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id LEFT JOIN user_phone_number ON user_phone_number.user_id = \"user\".id LEFT JOIN phone_number_country_code ON phone_number_country_code.country_code = user_phone_number.country_code WHERE \"user\".username = $1 OR CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( business_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( '+', phone_number_country_code.phone_code, user_phone_number.number ) = $1;"
-  },
   "01e6d07b478e87f5dc58bb569c13bacafb9bbd6cbb32f9cc3d2a39976ac10464": {
     "describe": {
       "columns": [
@@ -607,110 +503,6 @@
       }
     },
     "query": "INSERT INTO user_api_token_resource_permissions_include( token_id, workspace_id, permission_id, resource_id ) VALUES ($1, $2, $3, $4);"
-  },
-  "07177688d8c236f615400391dd0e71b93f67477d32c92213e9b2bf3fd8c2cd9a": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "username",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "password",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "first_name",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "last_name",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "dob",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "bio",
-          "ordinal": 6,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "location",
-          "ordinal": 7,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "created",
-          "ordinal": 8,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "recovery_email_local",
-          "ordinal": 9,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "recovery_email_domain_id: _",
-          "ordinal": 10,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "recovery_phone_country_code",
-          "ordinal": 11,
-          "type_info": "Bpchar"
-        },
-        {
-          "name": "recovery_phone_number",
-          "ordinal": 12,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "workspace_limit",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "sign_up_coupon",
-          "ordinal": 14,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      }
-    },
-    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" WHERE username = $1;"
   },
   "07aac19835c6180a151a944003e5e014a8ba26aac47a3122cc32bf5c9be6af26": {
     "describe": {
@@ -1507,8 +1299,13 @@
           "type_info": "Text"
         },
         {
-          "name": "name!",
+          "name": "mfa_secret",
           "ordinal": 15,
+          "type_info": "Text"
+        },
+        {
+          "name": "name!",
+          "ordinal": 16,
           "type_info": "Text"
         }
       ],
@@ -1527,6 +1324,7 @@
         true,
         true,
         false,
+        true,
         true,
         null
       ],
@@ -1791,58 +1589,7 @@
     },
     "query": "CREATE TABLE user_api_token_resource_permissions_type( token_id UUID NOT NULL, workspace_id UUID NOT NULL, permission_id UUID NOT NULL, resource_permission_type PERMISSION_TYPE NOT NULL, token_permission_type TOKEN_PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('member') STORED, CONSTRAINT user_api_token_resource_permissions_type_pk PRIMARY KEY( token_id, workspace_id, permission_id ), CONSTRAINT user_api_token_resource_permissions_type_uq UNIQUE( token_id, workspace_id, permission_id, resource_permission_type ), CONSTRAINT user_api_token_resource_permisssions_type_fk_type FOREIGN KEY(token_id, workspace_id, token_permission_type) REFERENCES user_api_token_workspace_permission_type( token_id, workspace_id, token_permission_type ), CONSTRAINT user_api_token_resource_permisssions_type_fk_permission_id FOREIGN KEY(permission_id) REFERENCES permission(id) );"
   },
-  "1990483ba5f3420ccdef6d5dccb62ffbd132e10a473c9f99efe25a3f8bc5f1e0": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "api_token",
-                  "web_login"
-                ]
-              },
-              "name": "user_login_type"
-            }
-          },
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "INSERT INTO user_login( login_id, user_id, login_type, created ) VALUES ($1, $2, $3, $4);"
-  },
-  "1a37c74f5a0f8098453203ee590650fb0965525c1bb31adc5c2e1da4a02dbd3e": {
-    "describe": {
-      "columns": [
-        {
-          "name": "payment_method_id",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id!: _",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tpayment_method_id,\n\t\t\tworkspace_id as \"workspace_id!: _\"\n\t\tFROM\n\t\t\tpayment_method\n\t\tWHERE\n\t\t\tworkspace_id = $1;\n\t\t"
-  },
-  "1b15d94cb3db84e91a75b6263ce3946a283cd7cad7c28624d2e9b9d5913aad1f": {
+  "198b4214d86d7d1a5f2ef00d16f22bc297a901229872e3b1b27ef3fd9c93de36": {
     "describe": {
       "columns": [
         {
@@ -1919,6 +1666,11 @@
           "name": "sign_up_coupon",
           "ordinal": 14,
           "type_info": "Text"
+        },
+        {
+          "name": "mfa_secret",
+          "ordinal": 15,
+          "type_info": "Text"
         }
       ],
       "nullable": [
@@ -1936,15 +1688,67 @@
         true,
         true,
         false,
+        true,
         true
       ],
       "parameters": {
         "Left": [
-          "Text"
+          "Uuid"
         ]
       }
     },
-    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id WHERE CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( business_email.local, '@', domain.name, '.', domain.tld ) = $1;"
+    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon, \"user\".mfa_secret FROM \"user\" WHERE id = $1;"
+  },
+  "1990483ba5f3420ccdef6d5dccb62ffbd132e10a473c9f99efe25a3f8bc5f1e0": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "api_token",
+                  "web_login"
+                ]
+              },
+              "name": "user_login_type"
+            }
+          },
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "INSERT INTO user_login( login_id, user_id, login_type, created ) VALUES ($1, $2, $3, $4);"
+  },
+  "1a37c74f5a0f8098453203ee590650fb0965525c1bb31adc5c2e1da4a02dbd3e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "payment_method_id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "workspace_id!: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tpayment_method_id,\n\t\t\tworkspace_id as \"workspace_id!: _\"\n\t\tFROM\n\t\t\tpayment_method\n\t\tWHERE\n\t\t\tworkspace_id = $1;\n\t\t"
   },
   "1b3634e32c6ecaafebf73dfc9e4040bb423d04ec615ee06300233bb2ee88f481": {
     "describe": {
@@ -2120,6 +1924,116 @@
       }
     },
     "query": "CREATE TABLE workspace_audit_log ( id UUID NOT NULL CONSTRAINT workspace_audit_log_pk PRIMARY KEY, date TIMESTAMPTZ NOT NULL, ip_address TEXT NOT NULL, workspace_id UUID NOT NULL CONSTRAINT workspace_audit_log_fk_workspace_id REFERENCES workspace(id), user_id UUID, login_id UUID, resource_id UUID NOT NULL, action UUID NOT NULL, request_id UUID NOT NULL, metadata JSON NOT NULL, patr_action BOOL NOT NULL, success BOOL NOT NULL, CONSTRAINT workspace_audit_log_chk_patr_action CHECK( ( patr_action = true AND user_id IS NULL AND login_id IS NULL ) OR ( patr_action = false AND user_id IS NOT NULL AND login_id IS NOT NULL ) ) );"
+  },
+  "1d0e7fe38eddd18ff77a81397bb63e271c1c655b4e23034bf0f9b6c0fe310218": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "password",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "first_name",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "last_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "dob",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "bio",
+          "ordinal": 6,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "location",
+          "ordinal": 7,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created",
+          "ordinal": 8,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "recovery_email_local",
+          "ordinal": 9,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "recovery_email_domain_id: _",
+          "ordinal": 10,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "recovery_phone_country_code",
+          "ordinal": 11,
+          "type_info": "Bpchar"
+        },
+        {
+          "name": "recovery_phone_number",
+          "ordinal": 12,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "workspace_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "sign_up_coupon",
+          "ordinal": 14,
+          "type_info": "Text"
+        },
+        {
+          "name": "mfa_secret",
+          "ordinal": 15,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon, \"user\".mfa_secret FROM \"user\" WHERE username = $1;"
   },
   "1d1f568364822d8bce83a9ae1aec29a6b5a0182431b361dfcedb2f9398962724": {
     "describe": {
@@ -4551,6 +4465,116 @@
       }
     },
     "query": "CREATE UNIQUE INDEX static_site_uq_name_workspace_id ON static_site(workspace_id, name) WHERE deleted IS NULL;"
+  },
+  "40fc499e19e56f25c565a62d5e8f9ad7d152b934b996225c5dbda91a077ea58d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "password",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "first_name",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "last_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "dob",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "bio",
+          "ordinal": 6,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "location",
+          "ordinal": 7,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created",
+          "ordinal": 8,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "recovery_email_local",
+          "ordinal": 9,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "recovery_email_domain_id: _",
+          "ordinal": 10,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "recovery_phone_country_code",
+          "ordinal": 11,
+          "type_info": "Bpchar"
+        },
+        {
+          "name": "recovery_phone_number",
+          "ordinal": 12,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "workspace_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "sign_up_coupon",
+          "ordinal": 14,
+          "type_info": "Text"
+        },
+        {
+          "name": "mfa_secret",
+          "ordinal": 15,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon, \"user\".mfa_secret FROM \"user\" INNER JOIN workspace_user ON \"user\".id = workspace_user.user_id WHERE workspace_user.role_id = $1;"
   },
   "4357441a58d66b47fffabe8c10fa5ddedbe067c22d5c59d00cb492be40abc1a8": {
     "describe": {
@@ -7146,6 +7170,11 @@
           "name": "sign_up_coupon",
           "ordinal": 14,
           "type_info": "Text"
+        },
+        {
+          "name": "mfa_secret",
+          "ordinal": 15,
+          "type_info": "Text"
         }
       ],
       "nullable": [
@@ -7163,6 +7192,7 @@
         true,
         true,
         false,
+        true,
         true
       ],
       "parameters": {
@@ -7185,6 +7215,117 @@
       }
     },
     "query": "UPDATE patr_domain_dns_record SET record_identifier = $1 WHERE id = $2;"
+  },
+  "60516f26b428f94de034b8a35a63879dac81b8e706cd2431e589355c42ab174e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "password",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "first_name",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "last_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "dob",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "bio",
+          "ordinal": 6,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "location",
+          "ordinal": 7,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created",
+          "ordinal": 8,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "recovery_email_local",
+          "ordinal": 9,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "recovery_email_domain_id: _",
+          "ordinal": 10,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "recovery_phone_country_code",
+          "ordinal": 11,
+          "type_info": "Bpchar"
+        },
+        {
+          "name": "recovery_phone_number",
+          "ordinal": 12,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "workspace_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "sign_up_coupon",
+          "ordinal": 14,
+          "type_info": "Text"
+        },
+        {
+          "name": "mfa_secret",
+          "ordinal": 15,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Bpchar",
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon, \"user\".mfa_secret FROM \"user\" INNER JOIN user_phone_number ON \"user\".id = user_phone_number.user_id WHERE user_phone_number.country_code = $1 AND user_phone_number.number = $2;"
   },
   "608a0993dd78542698811c4c7432424e716c7dbee0a2614f20020d866b56ac7c": {
     "describe": {
@@ -7235,6 +7376,16 @@
       }
     },
     "query": "CREATE TABLE transaction( id UUID CONSTRAINT transaction_pk PRIMARY KEY, month INTEGER NOT NULL, amount_in_cents BIGINT NOT NULL CONSTRAINT transaction_chk_amount_in_cents_positive CHECK (amount_in_cents >= 0), payment_intent_id TEXT, date TIMESTAMPTZ NOT NULL, workspace_id UUID NOT NULL, transaction_type TRANSACTION_TYPE NOT NULL, payment_status PAYMENT_STATUS NOT NULL CONSTRAINT transaction_payment_status_check CHECK( ( payment_status = 'success' AND transaction_type = 'bill' ) OR ( transaction_type != 'bill' ) ), description TEXT CONSTRAINT transaction_description_check CHECK( ( transaction_type = 'credits' AND description IS NOT NULL ) OR ( transaction_type != 'credits' ) ) );"
+  },
+  "61778e1dae8e50fe0157df1814ddefb37061a0cfd70b479f51d3a066ae6b389f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE \"user\"( id UUID CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uq_username UNIQUE CONSTRAINT user_chk_username_is_valid CHECK( /* Username is a-z, 0-9, _, cannot begin or end with a . or - */ username ~ '^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$' AND username NOT LIKE '%..%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%' ), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob TIMESTAMPTZ DEFAULT NULL CONSTRAINT user_chk_dob_is_13_plus CHECK( dob IS NULL OR dob < (NOW() - INTERVAL '13 YEARS') ), bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created TIMESTAMPTZ NOT NULL, /* Recovery options */ recovery_email_local VARCHAR(64) CONSTRAINT user_chk_recovery_email_is_lower_case CHECK( recovery_email_local = LOWER(recovery_email_local) ), recovery_email_domain_id UUID, recovery_phone_country_code CHAR(2) CONSTRAINT user_chk_recovery_phone_country_code_is_upper_case CHECK( recovery_phone_country_code = UPPER(recovery_phone_country_code) ), recovery_phone_number VARCHAR(15), workspace_limit INTEGER NOT NULL, sign_up_coupon TEXT, mfa_secret TEXT, CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id UNIQUE(recovery_email_local, recovery_email_domain_id), CONSTRAINT user_uq_recovery_phone_country_code_recovery_phone_number UNIQUE(recovery_phone_country_code, recovery_phone_number), CONSTRAINT user_chk_rcvry_eml_or_rcvry_phn_present CHECK( ( recovery_email_local IS NOT NULL AND recovery_email_domain_id IS NOT NULL ) OR ( recovery_phone_country_code IS NOT NULL AND recovery_phone_number IS NOT NULL ) ) );"
   },
   "62691e4324a2453a38d669d60484578454393cd3266f102f5088a9f5f682ac9f": {
     "describe": {
@@ -7336,6 +7487,19 @@
       }
     },
     "query": "CREATE TABLE ci_repos( id UUID CONSTRAINT ci_repos_pk PRIMARY KEY, repo_owner TEXT NOT NULL, repo_name TEXT NOT NULL, clone_url TEXT NOT NULL, webhook_secret TEXT CONSTRAINT ci_repos_uq_secret UNIQUE, status CI_REPO_STATUS NOT NULL, git_provider_id UUID NOT NULL CONSTRAINT ci_repos_fk_git_provider_id REFERENCES ci_git_provider(id), git_provider_repo_uid TEXT NOT NULL, runner_id UUID CONSTRAINT ci_repos_fk_runner_id REFERENCES ci_runner(id), CONSTRAINT ci_repos_uq_git_provider_id_repo_uid UNIQUE(git_provider_id, git_provider_repo_uid), CONSTRAINT ci_repos_chk_status_runner_id_webhook_secret CHECK( ( status = 'active' AND runner_id IS NOT NULL AND webhook_secret IS NOT NULL ) OR status != 'active' ) );"
+  },
+  "65c541daa25bb95a1b3b511a84b702ade71cc45f30173b7cfc695f73c7d75e40": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      }
+    },
+    "query": "UPDATE \"user\" SET mfa_secret = $2 WHERE id = $1;"
   },
   "6638f3d38152434f1b147c298fc950412cd5c6fa322eac6a7a075aca3351983f": {
     "describe": {
@@ -10386,110 +10550,6 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tmonth,\n\t\t\tamount_in_cents,\n\t\t\tpayment_intent_id,\n\t\t\tdate as \"date: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\ttransaction_type as \"transaction_type: _\",\n\t\t\tpayment_status as \"payment_status: _\",\n\t\t\tdescription\n\t\tFROM\n\t\t\ttransaction\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\tid = $2;\n\t\t"
   },
-  "8aa82901e29ccd7edd84d1b4cc7d0a1cfc43a889f99ec0a9cb25748be2829849": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "username",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "password",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "first_name",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "last_name",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "dob",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "bio",
-          "ordinal": 6,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "location",
-          "ordinal": 7,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "created",
-          "ordinal": 8,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "recovery_email_local",
-          "ordinal": 9,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "recovery_email_domain_id: _",
-          "ordinal": 10,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "recovery_phone_country_code",
-          "ordinal": 11,
-          "type_info": "Bpchar"
-        },
-        {
-          "name": "recovery_phone_number",
-          "ordinal": 12,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "workspace_limit",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "sign_up_coupon",
-          "ordinal": 14,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" INNER JOIN workspace_user ON \"user\".id = workspace_user.user_id WHERE workspace_user.role_id = $1;"
-  },
   "8b4bd70d26c0ddf2d18faaaa3aec9e96a8d28d4660f853dc54d3bd7b5b0f2eb7": {
     "describe": {
       "columns": [
@@ -11255,6 +11315,116 @@
     },
     "query": "CREATE TABLE address( id UUID NOT NULL CONSTRAINT address_pk PRIMARY KEY, first_name TEXT NOT NULL, last_name TEXT NOT NULL, address_line_1 TEXT NOT NULL, address_line_2 TEXT, address_line_3 TEXT, city TEXT NOT NULL, state TEXT NOT NULL, zip TEXT NOT NULL, country TEXT NOT NULL );"
   },
+  "96c755eb5a7c9272f1e03b428ecb37e70bad1dd7cd36a8f27ba62f7338121904": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "password",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "first_name",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "last_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "dob",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "bio",
+          "ordinal": 6,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "location",
+          "ordinal": 7,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created",
+          "ordinal": 8,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "recovery_email_local",
+          "ordinal": 9,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "recovery_email_domain_id: _",
+          "ordinal": 10,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "recovery_phone_country_code",
+          "ordinal": 11,
+          "type_info": "Bpchar"
+        },
+        {
+          "name": "recovery_phone_number",
+          "ordinal": 12,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "workspace_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "sign_up_coupon",
+          "ordinal": 14,
+          "type_info": "Text"
+        },
+        {
+          "name": "mfa_secret",
+          "ordinal": 15,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon, \"user\".mfa_secret FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id LEFT JOIN user_phone_number ON user_phone_number.user_id = \"user\".id LEFT JOIN phone_number_country_code ON phone_number_country_code.country_code = user_phone_number.country_code WHERE \"user\".username = $1 OR CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( business_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( '+', phone_number_country_code.phone_code, user_phone_number.number ) = $1;"
+  },
   "96e525b047f0838a7c25a1277bae273d2ce2aaf541f0b2aad82404728baecc42": {
     "describe": {
       "columns": [],
@@ -11523,110 +11693,6 @@
       }
     },
     "query": "CREATE TYPE PAYMENT_TYPE AS ENUM( 'card', 'enterprise' );"
-  },
-  "9f1c8b23afb69530b2c15e56a3397f51a5e54114ed7c07514c717ba9c3831026": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "username",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "password",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "first_name",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "last_name",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "dob",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "bio",
-          "ordinal": 6,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "location",
-          "ordinal": 7,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "created",
-          "ordinal": 8,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "recovery_email_local",
-          "ordinal": 9,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "recovery_email_domain_id: _",
-          "ordinal": 10,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "recovery_phone_country_code",
-          "ordinal": 11,
-          "type_info": "Bpchar"
-        },
-        {
-          "name": "recovery_phone_number",
-          "ordinal": 12,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "workspace_limit",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "sign_up_coupon",
-          "ordinal": 14,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" WHERE id = $1;"
   },
   "9f5db091f02a6e330f73022f7f9a5c272b63f5d5ed8219cb13b04e924ced25e7": {
     "describe": {
@@ -13529,16 +13595,6 @@
     },
     "query": "SELECT id as \"workspace_id: Uuid\" FROM workspace WHERE super_admin_id = $1;"
   },
-  "c5789c6b887e9b1dcff50b2f96cb7c757c98e8f0a2f0e40054df370b609ef9a8": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE \"user\"( id UUID CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uq_username UNIQUE CONSTRAINT user_chk_username_is_valid CHECK( /* Username is a-z, 0-9, _, cannot begin or end with a . or - */ username ~ '^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$' AND username NOT LIKE '%..%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%' ), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob TIMESTAMPTZ DEFAULT NULL CONSTRAINT user_chk_dob_is_13_plus CHECK( dob IS NULL OR dob < (NOW() - INTERVAL '13 YEARS') ), bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created TIMESTAMPTZ NOT NULL, /* Recovery options */ recovery_email_local VARCHAR(64) CONSTRAINT user_chk_recovery_email_is_lower_case CHECK( recovery_email_local = LOWER(recovery_email_local) ), recovery_email_domain_id UUID, recovery_phone_country_code CHAR(2) CONSTRAINT user_chk_recovery_phone_country_code_is_upper_case CHECK( recovery_phone_country_code = UPPER(recovery_phone_country_code) ), recovery_phone_number VARCHAR(15), workspace_limit INTEGER NOT NULL, sign_up_coupon TEXT, CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id UNIQUE(recovery_email_local, recovery_email_domain_id), CONSTRAINT user_uq_recovery_phone_country_code_recovery_phone_number UNIQUE(recovery_phone_country_code, recovery_phone_number), CONSTRAINT user_chk_rcvry_eml_or_rcvry_phn_present CHECK( ( recovery_email_local IS NOT NULL AND recovery_email_domain_id IS NOT NULL ) OR ( recovery_phone_country_code IS NOT NULL AND recovery_phone_number IS NOT NULL ) ) );"
-  },
   "c6e35d76871d48b730f158a517f1e82785e34dbc8039cc51eafcb8123aa7f131": {
     "describe": {
       "columns": [],
@@ -14333,111 +14389,6 @@
       }
     },
     "query": "CREATE TABLE docker_registry_repository_manifest( repository_id UUID NOT NULL CONSTRAINT docker_registry_repository_manifest_fk_repository_id REFERENCES docker_registry_repository(id), manifest_digest TEXT NOT NULL, size BIGINT NOT NULL CONSTRAINT docker_registry_repository_manifest_chk_size_unsigned CHECK(size >= 0), created TIMESTAMPTZ NOT NULL, CONSTRAINT docker_registry_repository_manifest_pk PRIMARY KEY( repository_id, manifest_digest ) );"
-  },
-  "d3dd14301e39841c7027251c66667c349f284f0ab47a38a38d0001c52391593e": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "username",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "password",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "first_name",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "last_name",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "dob",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "bio",
-          "ordinal": 6,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "location",
-          "ordinal": 7,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "created",
-          "ordinal": 8,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "recovery_email_local",
-          "ordinal": 9,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "recovery_email_domain_id: _",
-          "ordinal": 10,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "recovery_phone_country_code",
-          "ordinal": 11,
-          "type_info": "Bpchar"
-        },
-        {
-          "name": "recovery_phone_number",
-          "ordinal": 12,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "workspace_limit",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "sign_up_coupon",
-          "ordinal": 14,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Bpchar",
-          "Text"
-        ]
-      }
-    },
-    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" INNER JOIN user_phone_number ON \"user\".id = user_phone_number.user_id WHERE user_phone_number.country_code = $1 AND user_phone_number.number = $2;"
   },
   "d554e0cdaefed7bec784a16adfa3a7e2e844251ddab8d60a00e481b7adc938d9": {
     "describe": {
@@ -15982,6 +15933,116 @@
       }
     },
     "query": "SELECT COUNT(*) \"count!\" FROM deployment INNER JOIN workspace ON deployment.workspace_id = workspace.id WHERE deployment.status = 'deleted' AND workspace.super_admin_id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );"
+  },
+  "efb896e96f915cd3fa5035db79ac99a68f29f72063791a847fa8f2c1de787f3a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "password",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "first_name",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "last_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "dob",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "bio",
+          "ordinal": 6,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "location",
+          "ordinal": 7,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created",
+          "ordinal": 8,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "recovery_email_local",
+          "ordinal": 9,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "recovery_email_domain_id: _",
+          "ordinal": 10,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "recovery_phone_country_code",
+          "ordinal": 11,
+          "type_info": "Bpchar"
+        },
+        {
+          "name": "recovery_phone_number",
+          "ordinal": 12,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "workspace_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "sign_up_coupon",
+          "ordinal": 14,
+          "type_info": "Text"
+        },
+        {
+          "name": "mfa_secret",
+          "ordinal": 15,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon, \"user\".mfa_secret FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id WHERE CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( business_email.local, '@', domain.name, '.', domain.tld ) = $1;"
   },
   "f0d89c52ec908f391a5753b69b004cabf7f3635d492317901a9c140198634bfb": {
     "describe": {

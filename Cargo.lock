@@ -174,6 +174,7 @@ dependencies = [
  "sha2",
  "sqlx",
  "tokio",
+ "totp-rs",
  "trust-dns-client",
  "url",
  "vaultrs",
@@ -738,6 +739,12 @@ name = "constant_time_eq"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "245097e9a4535ee1e3e3931fcfcd55a796a44c643e8596ff6566d68f09b87bbc"
+
+[[package]]
+name = "constant_time_eq"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21a53c0a4d288377e7415b53dcfc3c04da5cdc2cc95c8d5ac178b58f0b861ad6"
 
 [[package]]
 name = "cookie"
@@ -4204,6 +4211,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "totp-rs"
+version = "5.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ad5e73765ff14ae797c1a61ee0c7beaf21b4e4a0047844300e332c6c24df1fc"
+dependencies = [
+ "base32",
+ "constant_time_eq 0.2.6",
+ "hmac",
+ "rand 0.8.5",
+ "sha1",
+ "sha2",
+]
+
+[[package]]
 name = "tower"
 version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4933,7 +4954,7 @@ dependencies = [
  "aes",
  "byteorder",
  "bzip2",
- "constant_time_eq",
+ "constant_time_eq 0.1.5",
  "crc32fast",
  "crossbeam-utils",
  "flate2",

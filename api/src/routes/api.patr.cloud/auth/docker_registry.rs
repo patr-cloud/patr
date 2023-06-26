@@ -314,7 +314,8 @@ async fn docker_registry_login(
 
 		// the user might have password which might start 'patrv1'
 		// so check for normal username password authentication too
-		service::validate_hash(password, &user.password)?
+		service::validate_hash(password, &user.password)? &&
+			user.mfa_secret.is_none()
 	};
 
 	if !auth_success {
@@ -505,7 +506,9 @@ async fn docker_registry_authenticate(
 
 		// the user might have password which might start 'patrv1'
 		// so check for normal username password authentication too
-		if service::validate_hash(password, &user.password)? {
+		if service::validate_hash(password, &user.password)? &&
+			user.mfa_secret.is_none()
+		{
 			let user_roles = db::get_all_workspace_role_permissions_for_user(
 				context.get_database_connection(),
 				&user.id,
