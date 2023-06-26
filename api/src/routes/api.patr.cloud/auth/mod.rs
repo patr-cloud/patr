@@ -182,52 +182,34 @@ async fn sign_in(
 		let totp =
 			TOTP::new(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap())?;
 
-		let current_totp = totp.generate_current().unwrap().parse::<u32>()?;
-		if current_totp == otp {
-			let (UserWebLogin { login_id, .. }, access_token, refresh_token) =
-				service::sign_in_user(
-					context.get_database_connection(),
-					&user_data.id,
-					&ip_address
-						.parse()
-						.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
-					&user_agent,
-					&config,
-				)
-				.await?;
-
-			context.success(LoginResponse {
-				access_token,
-				login_id,
-				refresh_token,
-			});
-			Ok(context)
-		} else {
-			Error::as_result()
-				.status(404)
-				.body(error!(MFA_OTP_INVALID).to_string())?
+		// let current_totp = totp.generate_current().unwrap().parse::<u32>()?;
+		let is_otp_valid = totp.check_current(&otp.to_string())?;
+		if !is_otp_valid {
+			return Error::as_result()
+				.status(401)
+				.body(error!(MFA_OTP_INVALID).to_string())?;
 		}
-	} else {
-		// TODO - is there any way to club the repeatation of this UserWebLogin
-		let (UserWebLogin { login_id, .. }, access_token, refresh_token) =
-			service::sign_in_user(
-				context.get_database_connection(),
-				&user_data.id,
-				&ip_address
-					.parse()
-					.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
-				&user_agent,
-				&config,
-			)
-			.await?;
-
-		context.success(LoginResponse {
-			access_token,
-			login_id,
-			refresh_token,
-		});
-		Ok(context)
 	}
+
+	let (UserWebLogin { login_id, .. }, access_token, refresh_token) =
+		service::sign_in_user(
+			context.get_database_connection(),
+			&user_data.id,
+			&ip_address
+				.parse()
+				.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+			&user_agent,
+			&config,
+		)
+		.await?;
+
+	context.success(LoginResponse {
+		access_token,
+		login_id,
+		refresh_token,
+	});
+
+	Ok(context)
 }
 
 /// # Description
