@@ -14,6 +14,7 @@ pub(super) async fn migrate(
 ) -> Result<(), Error> {
 	add_tables_for_k8s_database(connection, config).await?;
 	add_machine_type_for_k8s_database(connection, config).await?;
+	remove_deployment_secrets(connection, config).await?;
 	update_permissions(connection, config).await?;
 	re_add_constraints(connection, config).await?;
 	remove_list_permissions(connection, config).await?;
@@ -262,6 +263,22 @@ async fn add_machine_type_for_k8s_database(
 		.execute(&mut *connection)
 		.await?;
 	}
+
+	Ok(())
+}
+
+async fn remove_deployment_secrets(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE secret
+		DROP COLUMN deployment_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }

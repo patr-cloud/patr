@@ -5379,6 +5379,38 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\turl_count as \"url_count: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tmanaged_url_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3)\n\t\tORDER BY\n\t\t\tstart_time ASC;\n\t\t"
   },
+  "4dbeee0dfccea719208dc2f2a9a972f073090897a66e516f447f05d3fb233820": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", workspace_id as \"workspace_id: _\" FROM secret WHERE workspace_id = $1 AND deleted IS NULL;"
+  },
   "4f14264ca0017e06439d1465a8f1eb7bbede532cd68ef4a04750ae353ba6f229": {
     "describe": {
       "columns": [
@@ -5569,26 +5601,6 @@
       }
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", region_id as \"region_id: _\", build_machine_type_id as \"build_machine_type_id: _\" FROM ci_runner WHERE id = $1;"
-  },
-  "51b48c931af24c0048305a577d2d0c1203f4bbfe08d39fec8106d6fec8fcb13b": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "INSERT INTO secret( id, name, workspace_id, deployment_id ) VALUES ($1, $2, $3, $4);"
   },
   "51e6f9c43ba3f7a6e75421aee62a007526052edb231f8b12812fc510b9870d0d": {
     "describe": {
@@ -5956,6 +5968,16 @@
       }
     },
     "query": "INSERT INTO role_resource_permissions_type( role_id, permission_id, permission_type ) VALUES ($1, $2, $3);"
+  },
+  "536832f4942a26e2cfb05fb2ee56fb24f8e1aa41e11a6972691f56d5702ee9aa": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE secret( id UUID CONSTRAINT secret_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)), workspace_id UUID NOT NULL, deleted TIMESTAMPTZ );"
   },
   "5443d8492257b3f1a81aea2c8b8995bc0b754d4df43d87fb305e442e914f2cc5": {
     "describe": {
@@ -6619,6 +6641,25 @@
       }
     },
     "query": "SELECT manifest_digest, size, created FROM docker_registry_repository_manifest WHERE repository_id = $1;"
+  },
+  "5b41285479f67ec8a62e9dc541457dee0a383697338668491382e100d9d5b8ac": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          },
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO secret( id, name, workspace_id ) VALUES ($1, $2, $3);"
   },
   "5c68c45dcf34bdb72122c92781b01fc91f4572892e9a800e5d9b744ac90e1090": {
     "describe": {
@@ -9038,16 +9079,6 @@
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE name = $1 AND workspace_id = $2 AND status != 'deleted';"
   },
-  "7f9b090cc0013aadd0daed235a689086d001a05e18d401f0b03292615a7ad234": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE secret( id UUID CONSTRAINT secret_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)), workspace_id UUID NOT NULL, deployment_id UUID, /* For deployment specific secrets */ deleted TIMESTAMPTZ );"
-  },
   "800d62914728ade2506a37adb5f5032a5e410e4b13f365e623a6929b0e5fff85": {
     "describe": {
       "columns": [
@@ -9352,44 +9383,6 @@
       }
     },
     "query": "CREATE TABLE deployment_environment_variable( deployment_id UUID CONSTRAINT deployment_environment_variable_fk_deployment_id REFERENCES deployment(id), name VARCHAR(256) NOT NULL, value TEXT, secret_id UUID, CONSTRAINT deployment_environment_variable_pk PRIMARY KEY(deployment_id, name), CONSTRAINT deployment_environment_variable_fk_secret_id FOREIGN KEY(secret_id) REFERENCES secret(id), CONSTRAINT deployment_env_var_chk_value_secret_id_either_not_null CHECK( ( value IS NOT NULL AND secret_id IS NULL ) OR ( value IS NULL AND secret_id IS NOT NULL ) ) );"
-  },
-  "819e618434cdff425c67c3f046f6b17017f502cf2e5d54e82b57a6dc619fb851": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", workspace_id as \"workspace_id: _\", deployment_id as \"deployment_id: _\" FROM secret WHERE id = $1;"
   },
   "81e8018fea4592654aaae9a7c0e1fcefdd2c9dc81bf3a44756485c94d70b3a8f": {
     "describe": {
@@ -11141,6 +11134,38 @@
     },
     "query": "UPDATE web_login SET token_expiry = TO_TIMESTAMP(0) WHERE login_id = $1 AND user_id = $2;"
   },
+  "966810083c58e0725b5846deb36ab6cc19dc861a360cf580dfdf96e39738b74f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", workspace_id as \"workspace_id: _\" FROM secret WHERE id = $1;"
+  },
   "96840a4f1a359e45250800a6adab9a8c436b07b2270aed6d11d57cf6e1247287": {
     "describe": {
       "columns": [
@@ -11239,25 +11264,6 @@
       }
     },
     "query": "CREATE TYPE RESOURCE_OWNER_TYPE AS ENUM( 'personal', 'business' );"
-  },
-  "9733ca414a05574a04cc7e723043e606936d009f3b5fa595225aaedcd4e71d07": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Uuid"
-        ]
-      }
-    },
-    "query": "INSERT INTO secret( id, name, workspace_id, deployment_id ) VALUES ($1, $2, $3, NULL);"
   },
   "9812ea5c7c65e99cde5228c6e4d96194ada29029922f09ad6f5dc1fa7fb2c25f": {
     "describe": {
@@ -11821,6 +11827,16 @@
       }
     },
     "query": "SELECT * FROM information_schema.tables WHERE table_catalog = $1 AND table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name != 'spatial_ref_sys';"
+  },
+  "a08016d220f4a99abcba2c6eeba41cd7d7eb9dbb4b49afa330a0ede9281005a5": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "ALTER TABLE secret ADD CONSTRAINT secret_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);"
   },
   "a1ef5b3c2269453d465e5f47f7bd9a8d8e7cd237085cf1a59a4c55ddd093c269": {
     "describe": {
@@ -13382,16 +13398,6 @@
       }
     },
     "query": "SELECT status as \"status: BuildStepStatus\" FROM ci_steps WHERE repo_id = $1 AND build_num = $2 AND step_id = $3;"
-  },
-  "c15c9714352f98ccb6ae73eb80f523db23e3f5381f3cb368ddac0743bfae3dcf": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "ALTER TABLE secret ADD CONSTRAINT secret_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id), ADD CONSTRAINT secret_fk_deployment_id_workspace_id FOREIGN KEY(deployment_id, workspace_id) REFERENCES deployment(id, workspace_id);"
   },
   "c1c8b46a3c33cf18cb7c38efcdd4ffac8d96ed9bce46c6af3f383fc19d0ea9e0": {
     "describe": {
@@ -16004,44 +16010,6 @@
       }
     },
     "query": "SELECT COUNT(*) as \"count!\" FROM user_to_sign_up;"
-  },
-  "f2a34d60ffd9cc0e462838dfb409c817fcb584cab7cfed5e63813881afe56d54": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", workspace_id as \"workspace_id: _\", deployment_id as \"deployment_id: _\" FROM secret WHERE workspace_id = $1 AND deleted IS NULL;"
   },
   "f2a44134a01b4bcd94ff4d7b847b205199c59cb7e613b384a501c8415190b57b": {
     "describe": {

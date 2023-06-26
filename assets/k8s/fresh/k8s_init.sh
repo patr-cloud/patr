@@ -48,8 +48,6 @@ kubectl create secret tls $DEFAULT_CERT_NAME \
     --namespace ingress-nginx \
     --dry-run=client -o yaml | kubectl apply -f -
 
-# TODO: check whether helm upgrade changes nginx IP or not,
-# else it will cause problems
 echo "Installing nginx as ingress for cluster"
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
     --namespace ingress-nginx --create-namespace \
@@ -113,9 +111,19 @@ prometheus:
             action: keep
 EOF
 
+echo "Creating vault-ingress for cluster"
+kubectl create ns vault-infra
+kubectl label namespace vault-infra name=vault-infra
+helm upgrade --namespace vault-infra --install vault-secrets-webhook banzaicloud-stable/vault-secrets-webhook
+
 echo "Creating parent workspace in new cluster"
 kubectl create namespace "$PARENT_WORKSPACE_ID" \
     --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl create secret generic patr-token \
+  -n=$PARENT_WORKSPACE_ID \
+  --from-literal=token=$PATR_API_TOKEN \
+  --dry-run=client -o yaml | kubectl apply -f -
 
 rm $KUBECONFIG_PATH $TLS_CERT_PATH $TLS_KEY_PATH
 

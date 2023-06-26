@@ -46,7 +46,7 @@ pub fn create_sub_app(
 					Box::new(auth_patr_cloud::create_sub_app(app)),
 				),
 				EveMiddleware::DomainRouter(
-					String::from("vault.patr.cloud"),
+					app.config.vault.host.clone(),
 					Box::new(vault_patr_cloud::create_sub_app(app)),
 				),
 				EveMiddleware::DomainRouter(

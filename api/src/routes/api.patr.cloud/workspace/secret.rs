@@ -199,7 +199,6 @@ async fn list_secrets(
 	.map(|secret| Secret {
 		id: secret.id,
 		name: secret.name,
-		deployment_id: secret.deployment_id,
 	})
 	.collect();
 

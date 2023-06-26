@@ -411,7 +411,8 @@ def deep_clone_repo(step_name):
         "name": step_name,
         "image": "alpine/git",
         "commands": [
-            "git submodule update --init --recursive"
+            "git submodule update --init macros",
+            "git submodule update --init api-models"
         ]
     }
 

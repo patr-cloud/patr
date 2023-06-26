@@ -264,7 +264,8 @@ pub struct RabbitMqSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VaultSettings {
-	pub address: String,
+	pub upstream_host: String,
+	pub host: String,
 	pub token: String,
 }
 
