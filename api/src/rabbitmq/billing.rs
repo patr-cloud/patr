@@ -458,6 +458,7 @@ pub(super) async fn process_request(
 							&workspace.super_admin_id,
 							workspace_name,
 							total_bill,
+							card_amount_to_be_charged_in_cents,
 							billing_address,
 						)
 						.await?;
@@ -493,6 +494,7 @@ pub(super) async fn process_request(
 						&workspace.super_admin_id,
 						workspace_name,
 						total_bill,
+						card_amount_to_be_charged_in_cents,
 						Address {
 							first_name: "".to_string(),
 							last_name: "".to_string(),

@@ -576,6 +576,7 @@ pub async fn send_payment_failure_invoice_notification(
 	super_admin_id: &Uuid,
 	workspace_name: String,
 	bill_breakdown: WorkspaceBillBreakdown,
+	card_amount_to_be_charged_in_cents: u64,
 	billing_address: Address,
 ) -> Result<(), Error> {
 	let user = db::get_user_by_user_id(connection, super_admin_id)
@@ -600,6 +601,7 @@ pub async fn send_payment_failure_invoice_notification(
 		user.username,
 		workspace_name,
 		bill_breakdown,
+		card_amount_to_be_charged_in_cents,
 		billing_address,
 	)
 	.await

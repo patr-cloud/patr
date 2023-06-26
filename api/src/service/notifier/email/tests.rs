@@ -241,6 +241,7 @@ async fn test_payment_failure_invoice_email() -> Result<(), Error> {
 	send_email(PaymentFailureInvoiceEmail {
 		username: "username".to_owned(),
 		workspace_name: "workspaceName".to_owned(),
+		card_amount_to_be_charged_in_cents: 100,
 		bill_breakdown: WorkspaceBillBreakdown {
 			year: 2022,
 			month: 5,
