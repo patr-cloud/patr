@@ -163,32 +163,36 @@ async fn sign_in(
 		return Ok(context);
 	}
 
-	if user_data.mfa_secret.is_some() && mfa_otp.is_none() {
-		context.error(ErrorType::MfaRequired);
-		return Ok(context);
-	}
-
 	let config = context.get_state().config.clone();
 	let ip_address = routes::get_request_ip_address(&context);
 	let user_agent = context.get_header("user-agent").unwrap_or_default();
 
-	if let Some(mfa_secret) = user_data.mfa_secret {
-		// Verify if this unwrap is okay to use or not
-		// The program won't reach here if the above check is not passed
-		let otp = mfa_otp
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
-		let secret = Secret::Encoded(mfa_secret);
-		let totp =
-			TOTP::new(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap())?;
+	match (user_data.mfa_secret, mfa_otp) {
+		// MFA secret exists and OTP provided
+		(Some(mfa_secret), Some(otp)) => {
+			let secret = Secret::Encoded(mfa_secret);
+			let totp = TOTP::new(
+				Algorithm::SHA1,
+				6,
+				1,
+				30,
+				secret.to_bytes().unwrap(),
+			)?;
 
-		// let current_totp = totp.generate_current().unwrap().parse::<u32>()?;
-		let is_otp_valid = totp.check_current(&otp.to_string())?;
-		if !is_otp_valid {
-			return Error::as_result()
-				.status(401)
-				.body(error!(MFA_OTP_INVALID).to_string())?;
+			let is_otp_valid = totp.check_current(&otp.to_string())?;
+			if !is_otp_valid {
+				return Error::as_result()
+					.status(401)
+					.body(error!(MFA_OTP_INVALID).to_string())?;
+			}
 		}
+		// MFA secret exists, but no OTP provided
+		(Some(_), None) => {
+			context.error(ErrorType::MfaRequired);
+			return Ok(context);
+		}
+		// MFA secret does not exist. OTP doesn't matter
+		(None, _) => (),
 	}
 
 	let (UserWebLogin { login_id, .. }, access_token, refresh_token) =
