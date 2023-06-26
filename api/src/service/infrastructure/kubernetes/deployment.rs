@@ -207,7 +207,7 @@ pub async fn update_kubernetes_deployment(
 	let annotations = [
 		(
 			"vault.security.banzaicloud.io/vault-addr".to_string(),
-			config.vault.address.clone(),
+			config.vault.host.clone(),
 		),
 		(
 			"vault.security.banzaicloud.io/vault-role".to_string(),

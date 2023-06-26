@@ -106,7 +106,7 @@ async fn middle_man_fn(
 	let config = context.get_state().config.clone();
 	let vault_client = VaultClient::new(
 		VaultClientSettingsBuilder::default()
-			.address(&config.vault.address)
+			.address(&config.vault.upstream_host)
 			.token(&config.vault.token)
 			.build()?,
 	)?;

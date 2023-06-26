@@ -87,7 +87,8 @@
 		"prefetchCount": 10
 	},
 	"vault": {
-		"address": "https://vault.example.com",
+		"upstreamHost": "https://vault-internal.patr.cloud",
+		"host": "https://vault.example.com",
 		"token": "<vault token>"
 	},
 	"loki": {

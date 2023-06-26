@@ -111,7 +111,10 @@ async fn push_mimir_metrics(
 	);
 
 	let response = reqwest::Client::new()
-		.post(format!("https://{}/api/v1/push", config.mimir.host))
+		.post(format!(
+			"https://{}/api/v1/push",
+			config.mimir.upstream_host
+		))
 		.basic_auth(&config.mimir.username, Some(&config.mimir.password))
 		.headers(request_headers)
 		.body(context.get_request().get_body_bytes().to_owned())
