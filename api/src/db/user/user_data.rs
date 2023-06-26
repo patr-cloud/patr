@@ -730,6 +730,28 @@ pub async fn activate_multi_factor_authentication(
 	.map(|_| ())
 }
 
+pub async fn update_workspace_limit(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+	limit: i16,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			"user"
+		SET
+			workspace_limit = $1
+		WHERE
+			id = $2;
+		"#,
+		limit as _,
+		user_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn search_for_users(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	query: &str,
