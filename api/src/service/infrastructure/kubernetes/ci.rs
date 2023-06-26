@@ -62,7 +62,7 @@ pub async fn create_ci_job_in_kubernetes(
 	let annotations = [
 		(
 			"vault.security.banzaicloud.io/vault-addr".to_string(),
-			config.vault.upstream_host.clone(),
+			config.vault.host.clone(),
 		),
 		(
 			"vault.security.banzaicloud.io/vault-role".to_string(),
