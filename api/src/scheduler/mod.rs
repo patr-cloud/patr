@@ -70,6 +70,7 @@ fn get_scheduled_jobs() -> Vec<Job> {
 		// byoc jobs
 		byoc::check_status_of_active_byoc_regions_job(),
 		byoc::handle_disconnected_byoc_regions_job(),
+		byoc::handle_revoke_unwanted_certs_job(),
 		report_card::generate_report_card_job(),
 	]
 }

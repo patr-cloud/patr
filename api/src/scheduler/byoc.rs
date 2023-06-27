@@ -1,5 +1,8 @@
+use std::time::Duration;
+
 use api_models::utils::Uuid;
 use chrono::Utc;
+use cloudflare::framework::response::ApiFailure;
 use sqlx::Acquire;
 
 use super::Job;
@@ -20,6 +23,15 @@ pub(super) fn handle_disconnected_byoc_regions_job() -> Job {
 		String::from("Handle disconnected byoc regions"),
 		"0 0 6 * * *".parse().unwrap(),
 		|| Box::pin(handle_disconnected_byoc_regions()),
+	)
+}
+
+// Every day at 9 am
+pub(super) fn handle_revoke_unwanted_certs_job() -> Job {
+	Job::new(
+		String::from("Handle disconnected byoc regions"),
+		"0 0 9 * * *".parse().unwrap(),
+		|| Box::pin(handle_revoke_unwanted_certs()),
 	)
 }
 
@@ -177,6 +189,82 @@ async fn handle_disconnected_byoc_regions() -> Result<(), Error> {
 		}
 
 		connection.commit().await?;
+	}
+
+	Ok(())
+}
+
+async fn handle_revoke_unwanted_certs() -> Result<(), Error> {
+	let config = super::CONFIG.get().unwrap().config.clone();
+
+	let mut connection =
+		super::CONFIG.get().unwrap().database.acquire().await?;
+
+	let unrevoked_regions =
+		db::get_errored_and_deleted_regions_with_unrevoked_certificates(
+			&mut connection,
+		)
+		.await?
+		.into_iter()
+		.filter_map(|region| {
+			Some((region.id, region.cloudflare_certificate_id?))
+		});
+
+	for (region_id, cert_id) in unrevoked_regions {
+		let mut connection = connection.begin().await?;
+
+		let status =
+			service::revoke_origin_ca_certificate(&cert_id, &config).await?;
+
+		match status {
+			Ok(success) => {
+				log::info!(
+					"Successfully deleted the cloudflare origin CA cert {} for region {}",
+					success.result.id,
+					region_id
+				);
+				db::update_region_certificate_as_revoked(
+					&mut connection,
+					&region_id,
+				)
+				.await?;
+			}
+			Err(err) => match err {
+				ApiFailure::Error(status_code, _)
+					if status_code.is_client_error() =>
+				{
+					log::info!(
+						"cloudflare origin CA cert {} is already revoked for region {}",
+						cert_id,
+						region_id
+					);
+					db::update_region_certificate_as_revoked(
+						&mut connection,
+						&region_id,
+					)
+					.await?;
+				}
+				unknown_error => {
+					log::warn!(
+						"Error while deleting cloudflare origin CA cert {} for region {} - {}",
+						cert_id,
+						region_id,
+						unknown_error
+					);
+				}
+			},
+		}
+
+		connection.commit().await?;
+
+		// The global rate limit for the Cloudflare API is 1200 requests per
+		// five minutes. If you exceed this, all API calls for the next five
+		// minutes will be blocked, receiving a HTTP 429 response
+
+		// so allow only 2 API calls per sec which means
+		// atmost 600 requests will be made in 5 mins,
+		// still 600 requests are left in buffer for application
+		tokio::time::sleep(Duration::from_millis(500)).await;
 	}
 
 	Ok(())

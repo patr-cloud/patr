@@ -646,3 +646,55 @@ pub async fn delete_region(
 	.await
 	.map(|_| ())
 }
+
+pub async fn get_errored_and_deleted_regions_with_unrevoked_certificates(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<Region>, sqlx::Error> {
+	query_as!(
+		Region,
+		r#"
+		SELECT
+			id as "id: _",
+			name,
+			provider as "cloud_provider: _",
+			workspace_id as "workspace_id: _",
+			ingress_hostname as "ingress_hostname: _",
+			message_log,
+			cloudflare_certificate_id,
+			config_file as "config_file: _",
+			status as "status: _",
+			disconnected_at as "disconnected_at: _"
+		FROM
+			region
+		WHERE
+			cloudflare_certificate_id IS NOT NULL AND
+			workspace_id IS NOT NULL AND
+			(
+				status = 'deleted' OR
+				status = 'errored'
+			);
+		"#,
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn update_region_certificate_as_revoked(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	region_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			region
+		SET
+			cloudflare_certificate_id = NULL
+		WHERE
+			id = $1;
+		"#,
+		region_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
