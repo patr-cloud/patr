@@ -36,7 +36,6 @@ use eve_rs::AsError;
 use stripe::{
 	Client,
 	CreatePaymentIntent,
-	CreateRefund,
 	Currency,
 	CustomerId,
 	PaymentIntent,
@@ -44,7 +43,6 @@ use stripe::{
 	PaymentIntentSetupFutureUsage,
 	PaymentIntentStatus,
 	PaymentMethodId,
-	Refund,
 };
 
 use crate::{
@@ -57,7 +55,7 @@ use crate::{
 		Workspace,
 	},
 	error,
-	models::{deployment, IpQualityScore},
+	models::deployment,
 	utils::{settings::Settings, Error},
 	Database,
 };
@@ -198,18 +196,24 @@ pub async fn verify_card_with_charges(
 				.await?;
 			}
 
-			db::unmark_workspace_as_spam(connection, &workspace.id).await?;
+			let transaction_id =
+				db::generate_new_transaction_id(connection).await?;
 
-			Refund::create(&client, {
-				let mut refund = CreateRefund::new();
-
-				// https://stripe.com/docs/api/refunds#create_refund
-				refund.payment_intent =
-					Some(PaymentIntentId::from_str(payment_intent_id)?);
-
-				refund
-			})
+			db::create_transaction(
+				connection,
+				&workspace.id,
+				&transaction_id,
+				Utc::now().month() as i32,
+				1000u64,
+				Some(&payment_intent.id),
+				&Utc::now(),
+				&TransactionType::Credits,
+				&PaymentStatus::Success,
+				Some("Patr charge: Card verification charges"),
+			)
 			.await?;
+
+			db::unmark_workspace_as_spam(connection, &workspace.id).await?;
 
 			Ok(())
 		}
@@ -1097,52 +1101,7 @@ pub async fn add_card_details(
 			.body(error!(ADDRESS_REQUIRED).to_string()));
 	};
 
-	let user = db::get_user_by_user_id(connection, &workspace.super_admin_id)
-		.await?
-		.status(500)?;
-
-	let email_str = user
-		.recovery_email_local
-		.as_ref()
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let domain = db::get_personal_domain_by_id(
-		connection,
-		user.recovery_email_domain_id
-			.as_ref()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?,
-	)
-	.await?
-	.status(500)?;
-
-	let email = format!("{}@{}", email_str, domain.name);
-
-	let email_spam_result = reqwest::Client::new()
-		.get(format!(
-			"{}/{}/{}",
-			config.ip_quality.host, config.ip_quality.token, email
-		))
-		.send()
-		.await
-		.map_err(|error| {
-			log::error!("IPQS api call error: {}", error);
-			Error::from(error)
-		})?
-		.json::<IpQualityScore>()
-		.await
-		.map_err(|error| {
-			log::error!("Error parsing IPQS response: {}", error);
-			Error::from(error)
-		})?;
-
-	let amount_in_cents = match email_spam_result.fraud_score {
-		(0..=50) => 200u64,  // $2 in cents
-		(51..=80) => 500u64, // $5 in cents
-		(81..=90) => 800u64, // $8 in cents
-		_ => 1200u64,        // $12 in cents
-	};
+	let amount_in_cents = 1000u64; // $10 in cents will be added as credits in user's account
 
 	let description = "Patr charge: Card verification charges";
 
