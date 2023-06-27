@@ -6777,6 +6777,19 @@
     },
     "query": "SELECT id as \"id: _\", cpu as \"cpu_count: _\", ram as \"memory_count: _\", volume FROM managed_database_plan;"
   },
+  "5d4154ea447797210fea2f950f5f74882422f63717599e6f836d271620fc9534": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE \"user\" SET workspace_limit = $1 WHERE id = $2;"
+  },
   "5dc79c54f863d3da0fcf0dd730fad1cbfa9df08e77b72a3a4ebc360e50618511": {
     "describe": {
       "columns": [
@@ -13752,7 +13765,7 @@
         false,
         false,
         true,
-        true,
+        false,
         false,
         true
       ],
