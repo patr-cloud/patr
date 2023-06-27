@@ -364,7 +364,7 @@ async fn get_user_info(
 		secondary_emails,
 		recovery_phone_number,
 		secondary_phone_numbers,
-		mfa_secret,
+		mfa_activated: mfa_secret.is_some(),
 	});
 	Ok(context)
 }
