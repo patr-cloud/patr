@@ -10,6 +10,7 @@ use cloudflare::{
 				CreateCertifcate,
 				CreateCertifcateBody,
 				RevokeCertificate,
+				RevokedCertificateID,
 			},
 			custom_hostname::{
 				ActivationStatus,
@@ -26,7 +27,7 @@ use cloudflare::{
 	framework::{
 		async_api::Client as CloudflareClient,
 		auth::Credentials,
-		response::ApiFailure,
+		response::{ApiFailure, ApiResponse},
 		Environment,
 		HttpApiClientConfig,
 	},
@@ -395,7 +396,7 @@ pub async fn create_origin_ca_certificate_for_region(
 pub async fn revoke_origin_ca_certificate(
 	certificate_id: &str,
 	config: &Settings,
-) -> Result<(), Error> {
+) -> Result<ApiResponse<RevokedCertificateID>, Error> {
 	// for origin ca, origin_ca_key should be used for client
 	let cf_client = {
 		let credentials = Credentials::Service {
@@ -413,11 +414,11 @@ pub async fn revoke_origin_ca_certificate(
 		})?
 	};
 
-	cf_client
+	let result = cf_client
 		.request(&RevokeCertificate {
 			identifier: certificate_id,
 		})
-		.await?;
+		.await;
 
-	Ok(())
+	Ok(result)
 }
