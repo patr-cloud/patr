@@ -176,7 +176,11 @@ async fn sign_in(
 				6,
 				1,
 				30,
-				secret.to_bytes().unwrap(),
+				secret
+					.to_bytes()
+					.map_err(|err| log::error!("Error occured while creating totp for user sign-in. Error: {}", err))
+					.ok()
+					.unwrap(),
 			)?;
 
 			let is_otp_valid = totp.check_current(&otp.to_string())?;
