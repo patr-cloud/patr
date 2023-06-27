@@ -299,6 +299,7 @@ async fn get_user_info(
 		bio,
 		created,
 		password,
+		mfa_secret,
 		..
 	} = db::get_user_by_user_id(context.get_database_connection(), &user_id)
 		.await?
@@ -363,6 +364,7 @@ async fn get_user_info(
 		secondary_emails,
 		recovery_phone_number,
 		secondary_phone_numbers,
+		mfa_activated: mfa_secret.is_some(),
 	});
 	Ok(context)
 }
