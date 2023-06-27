@@ -13,7 +13,6 @@ use api_models::{
 			GetRegionInfoResponse,
 			InfrastructureCloudProvider,
 			ListRegionsForWorkspaceResponse,
-			ReconfigureClusterRequest,
 			ReconfigureClusterResponse,
 			Region,
 			RegionStatus,
@@ -685,21 +684,18 @@ async fn reconfigure_region(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let ReconfigureClusterRequest { name, .. } = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let region_id =
+		Uuid::parse_str(context.get_param(request_keys::REGION_ID).unwrap())
+			.unwrap();
 
 	let config = context.get_state().config.clone();
 
-	let region = db::get_region_by_name_in_workspace(
-		context.get_database_connection(),
-		&name,
-		&workspace_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let region =
+		db::get_region_by_id(context.get_database_connection(), &region_id)
+			.await?
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	log::trace!(
 		"{} - reconfiguring region to workspace {}",
