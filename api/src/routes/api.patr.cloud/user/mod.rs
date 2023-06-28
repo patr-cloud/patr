@@ -1272,13 +1272,13 @@ async fn activate_multi_factor_authentication(
 			.body(error!(MFA_ALREADY_ACTIVATED).to_string())?;
 	}
 
-	let secret = Secret::generate_secret().to_encoded();
+	let secret = Secret::generate_secret().to_encoded().to_string();
 
 	// Do not activate if already activated
 	db::activate_multi_factor_authentication(
 		context.get_database_connection(),
 		&user_id,
-		&secret.to_string(),
+		&secret,
 	)
 	.await?;
 
