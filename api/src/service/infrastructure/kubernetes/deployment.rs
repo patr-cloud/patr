@@ -33,6 +33,7 @@ use k8s_openapi::{
 			Container,
 			ContainerPort,
 			EnvVar,
+			EnvVarSource,
 			HTTPGetAction,
 			KeyToPath,
 			LocalObjectReference,
@@ -43,6 +44,7 @@ use k8s_openapi::{
 			PodTemplateSpec,
 			Probe,
 			ResourceRequirements,
+			SecretKeySelector,
 			Service,
 			ServicePort,
 			ServiceSpec,
@@ -477,6 +479,23 @@ pub async fn update_kubernetes_deployment(
 								name: "CONFIG_MAP_HASH".to_string(),
 								value: Some(config_map_hash),
 								..EnvVar::default()
+							},
+							EnvVar {
+								name: "VAULT_AUTH_METHOD".to_string(),
+								value: Some("token".to_string()),
+								..EnvVar::default()
+							},
+							EnvVar {
+								name: "VAULT_TOKEN".to_string(),
+								value_from: Some(EnvVarSource {
+									secret_key_ref: Some(SecretKeySelector {
+										name: Some("patr-token".to_string()),
+										key: "token".to_string(),
+										..Default::default()
+									}),
+									..Default::default()
+								}),
+								..Default::default()
 							},
 						])
 						.collect::<Vec<_>>(),

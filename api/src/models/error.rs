@@ -109,6 +109,8 @@ pub mod id {
 	pub const REGION_NOT_CONNECTED: &str = "regionNotConnected";
 	pub const REGION_TOKEN_UNABLE_TO_PUSH_LOGS: &str =
 		"regionTokenUnableToPushLogs";
+	pub const REGION_TOKEN_UNABLE_TO_PUSH_METRICS: &str =
+		"regionTokenUnableToPushMetrics";
 	pub const REGION_TOKEN_UNABLE_TO_PULL_IMAGES: &str =
 		"regionTokenUnableToPullImages";
 	pub const KUBE_CONFIG_NOT_FOUND: &str = "kubeConfigNotFound";
@@ -280,6 +282,7 @@ pub mod message {
 		"For custom cluster this feature is not supported";
 	pub const REGION_NOT_CONNECTED: &str = "We're unable to connect to your custom cluster. Kindly make sure your cluster is up and running. If you face any difficulty please contact support";
 	pub const REGION_TOKEN_UNABLE_TO_PUSH_LOGS: &str = "The API token you have used for this region does not have permissions to push logs";
+	pub const REGION_TOKEN_UNABLE_TO_PUSH_METRICS: &str = "The API token you have used for this region does not have permissions to push metrics";
 	pub const REGION_TOKEN_UNABLE_TO_PULL_IMAGES: &str = "The API token you have used for this region does not have permissions to pull images";
 	pub const KUBE_CONFIG_NOT_FOUND: &str =
 		"Kube config not found for your region";
