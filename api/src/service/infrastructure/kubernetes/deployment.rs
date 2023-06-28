@@ -59,6 +59,7 @@ use k8s_openapi::{
 			IngressSpec,
 			ServiceBackendPort,
 		},
+		policy::v1::{PodDisruptionBudget, PodDisruptionBudgetSpec},
 	},
 	apimachinery::pkg::{
 		api::resource::Quantity,
@@ -685,6 +686,58 @@ pub async fn update_kubernetes_deployment(
 			.await?;
 	}
 
+	// For a deployment has more than one replica, then only we can use
+	// pod-disruption-budget to move pods between nodes without any down time.
+	// Even with hpa of max=4 but min=1 if the number of pods currently running
+	// is 1, then it will block the node drain
+	if running_details.min_horizontal_scale > 1 {
+		// Create pdb for deployment alone
+		// For sts, we can't use pdb as it involves state handling
+		// see: https://kubernetes.io/docs/tasks/run-application/configure-pdb/#think-about-how-your-application-reacts-to-disruptions
+		log::trace!(
+			"request_id: {} - creating pod disruption budget",
+			request_id
+		);
+
+		let pdb = PodDisruptionBudget {
+			metadata: ObjectMeta {
+				name: Some(format!("pdb-{}", deployment.id)),
+				namespace: Some(namespace.to_string()),
+				labels: Some(labels.clone()),
+				..Default::default()
+			},
+			spec: Some(PodDisruptionBudgetSpec {
+				selector: Some(LabelSelector {
+					match_labels: Some(labels.clone()),
+					..Default::default()
+				}),
+				min_available: Some(IntOrString::String("50%".to_owned())),
+				..Default::default()
+			}),
+			..Default::default()
+		};
+
+		Api::<PodDisruptionBudget>::namespaced(
+			kubernetes_client.clone(),
+			namespace,
+		)
+		.patch(
+			&format!("pdb-{}", deployment.id),
+			&PatchParams::apply(&format!("pdb-{}", deployment.id)),
+			&Patch::Apply(pdb),
+		)
+		.await?;
+	} else {
+		log::trace!("request_id: {} - min replica is not more than one, so deleting the pdb (if present)", request_id);
+
+		Api::<PodDisruptionBudget>::namespaced(
+			kubernetes_client.clone(),
+			namespace,
+		)
+		.delete_opt(&format!("pdb-{}", deployment.id), &DeleteParams::default())
+		.await?;
+	}
+
 	let annotations = [(
 		"kubernetes.io/ingress.class".to_string(),
 		"nginx".to_string(),
@@ -825,6 +878,15 @@ pub async fn delete_kubernetes_deployment(
 		workspace_id.as_str(),
 	)
 	.delete_opt(&format!("hpa-{}", deployment_id), &DeleteParams::default())
+	.await?;
+
+	log::trace!("request_id: {} - deleting the pdb", request_id);
+
+	Api::<PodDisruptionBudget>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.delete_opt(&format!("pdb-{}", deployment_id), &DeleteParams::default())
 	.await?;
 
 	log::trace!("request_id: {} - deleting the ingress", request_id);
