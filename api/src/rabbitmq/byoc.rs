@@ -535,6 +535,7 @@ pub(super) async fn process_request(
 		BYOCData::ReconfigureKubernetesCluster {
 			region_id,
 			kube_config,
+			patr_api_token,
 			request_id,
 		} => {
 			let Some(region) =
@@ -551,6 +552,24 @@ pub(super) async fn process_request(
 			fs::write(&kubeconfig_path, serde_yaml::to_string(&kube_config)?)
 				.await?;
 
+			let loki_log_push_url = if cfg!(debug_assertions) {
+				// for debug builds, loki won't be serverd as different domain,
+				// instead it will be served as a subroute for localhost
+				format!(
+					"https://{}/loki-host/loki/api/v1/push",
+					config.loki.host
+				)
+			} else {
+				format!("https://{}/loki/api/v1/push", config.loki.host)
+			};
+			let mimir_metrics_push_url = if cfg!(debug_assertions) {
+				// for debug builds, mimir won't be serverd as different domain,
+				// instead it will be served as a subroute for localhost
+				format!("https://{}/mimir-host/api/v1/push", config.mimir.host)
+			} else {
+				format!("https://{}/api/v1/push", config.mimir.host)
+			};
+
 			// safe to return as only customer cluster is initalized here,
 			// so workspace_id will be present
 			let parent_workspace = region.workspace_id.status(500)?.to_string();
@@ -560,13 +579,15 @@ pub(super) async fn process_request(
 					region_id.as_str(),
 					&parent_workspace,
 					&kubeconfig_path,
-					"-", // providing dummy value to pass argument list
-					"-", // providing dummy value to pass argument list
-					"-", // providing dummy value to pass argument list
-					"-", // providing dummy value to pass argument list
-					"-", // providing dummy value to pass argument list
+					"-", /* providing dummy value to
+					      * pass argument list */
+					"-", /* providing dummy value to
+					      * pass argument list */
+					&patr_api_token,
+					&loki_log_push_url,
+					&mimir_metrics_push_url,
 					"false", /* Is this a init-script? No this is for
-					      * reconfiguration */
+					          * reconfiguration */
 				])
 				.output()
 				.await?;

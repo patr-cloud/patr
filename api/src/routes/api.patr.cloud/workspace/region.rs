@@ -13,6 +13,7 @@ use api_models::{
 			GetRegionInfoResponse,
 			InfrastructureCloudProvider,
 			ListRegionsForWorkspaceResponse,
+			ReconfigureClusterRequest,
 			ReconfigureClusterResponse,
 			Region,
 			RegionStatus,
@@ -689,6 +690,11 @@ async fn reconfigure_region(
 		Uuid::parse_str(context.get_param(request_keys::REGION_ID).unwrap())
 			.unwrap();
 
+	let ReconfigureClusterRequest { patr_api_token, .. } = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
 	let config = context.get_state().config.clone();
 
 	let region =
@@ -707,6 +713,7 @@ async fn reconfigure_region(
 		service::queue_reconfigure_kubernetes_cluster(
 			&region.id,
 			config_file.0,
+			&patr_api_token,
 			&config,
 			&request_id,
 		)
@@ -716,7 +723,11 @@ async fn reconfigure_region(
 			"{} - Kubeconfig not found in database for workspace: {}",
 			request_id,
 			workspace_id
-		)
+		);
+
+		return Error::as_result()
+			.status(404)
+			.body(error!(KUBE_CONFIG_NOT_FOUND).to_string())?;
 	}
 
 	context.success(ReconfigureClusterResponse {});

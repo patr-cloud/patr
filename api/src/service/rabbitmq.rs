@@ -445,6 +445,7 @@ pub async fn queue_setup_kubernetes_cluster(
 pub async fn queue_reconfigure_kubernetes_cluster(
 	region_id: &Uuid,
 	kube_config: Kubeconfig,
+	patr_api_token: &str,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -452,6 +453,7 @@ pub async fn queue_reconfigure_kubernetes_cluster(
 		&InfraRequestData::BYOC(BYOCData::ReconfigureKubernetesCluster {
 			region_id: region_id.clone(),
 			kube_config,
+			patr_api_token: patr_api_token.to_string(),
 			request_id: request_id.clone(),
 		}),
 		config,
