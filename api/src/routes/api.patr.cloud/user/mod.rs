@@ -1273,10 +1273,6 @@ async fn activate_multi_factor_authentication(
 	}
 
 	let secret = Secret::generate_secret().to_encoded();
-	let secret_string = format!(
-		"otpauth://totp/Patr:{}?secret={}&issuer=Patr",
-		user.username, secret
-	);
 
 	// Do not activate if already activated
 	db::activate_multi_factor_authentication(
@@ -1286,8 +1282,6 @@ async fn activate_multi_factor_authentication(
 	)
 	.await?;
 
-	context.success(ActivateMultiFactorAuthResponse {
-		secret: secret_string,
-	});
+	context.success(ActivateMultiFactorAuthResponse { secret });
 	Ok(context)
 }
