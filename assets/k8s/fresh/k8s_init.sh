@@ -11,6 +11,7 @@ TLS_KEY_PATH=${5:?"Missing parameter: TLS_KEY_PATH"}
 PATR_API_TOKEN=${6:?"Missing parameter: PATR_API_TOKEN"}
 LOKI_LOG_PUSH_URL=${7:?"Missing parameter: LOKI_LOG_PUSH_URL"}
 MIMIR_METRICS_PUSH_URL=${8:?"Missing parameter: MIMIR_METRICS_PUSH_URL"}
+IS_INIT_SCRIPT=${9:?"Missing parameter: IS_INIT_SCRIPT"}
 
 # validate input values
 if [ ! -f $KUBECONFIG_PATH ]; then
@@ -18,22 +19,22 @@ if [ ! -f $KUBECONFIG_PATH ]; then
     exit 1
 fi
 
-if [ ! -f $TLS_CERT_PATH ]; then
-    echo "TLS certificate file not found: $TLS_CERT_PATH"
-    exit 1
-fi
+if [ "$IS_INIT_SCRIPT" = true ]; then
+    if [ ! -f $TLS_CERT_PATH ]; then
+        echo "TLS certificate file not found: $TLS_CERT_PATH"
+        exit 1
+    fi
 
-if [ ! -f $TLS_KEY_PATH ]; then
-    echo "TLS private key file not found: $TLS_KEY_PATH"
-    exit 1
+    if [ ! -f $TLS_KEY_PATH ]; then
+        echo "TLS private key file not found: $TLS_KEY_PATH"
+        exit 1
+    fi
 fi
 
 chmod go-r $KUBECONFIG_PATH
 
 export KUBECONFIG=$KUBECONFIG_PATH
 
-SCRIPT_DIR="$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)"
-CONFIG_DIR="$SCRIPT_DIR/config"
 DEFAULT_CERT_NAME="default-cert-$CLUSTER_ID"
 
 echo "Initializing $CLUSTER_ID cluster"
@@ -41,12 +42,14 @@ echo "Initializing $CLUSTER_ID cluster"
 kubectl create namespace ingress-nginx \
     --dry-run=client -o yaml | kubectl apply -f -
 
-echo "Storing origin CA certificate as secret"
-kubectl create secret tls $DEFAULT_CERT_NAME \
-    --cert=$TLS_CERT_PATH \
-    --key=$TLS_KEY_PATH \
-    --namespace ingress-nginx \
-    --dry-run=client -o yaml | kubectl apply -f -
+if [ "$IS_INIT_SCRIPT" = true ]; then
+    echo "Storing origin CA certificate as secret"
+    kubectl create secret tls $DEFAULT_CERT_NAME \
+        --cert=$TLS_CERT_PATH \
+        --key=$TLS_KEY_PATH \
+        --namespace ingress-nginx \
+        --dry-run=client -o yaml | kubectl apply -f -
+fi
 
 echo "Installing nginx as ingress for cluster"
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
@@ -125,7 +128,10 @@ kubectl create secret generic patr-token \
   --from-literal=token=$PATR_API_TOKEN \
   --dry-run=client -o yaml | kubectl apply -f -
 
-rm $KUBECONFIG_PATH $TLS_CERT_PATH $TLS_KEY_PATH
+rm $KUBECONFIG_PATH
+if [ "$IS_INIT_SCRIPT" = true ]; then
+    rm $TLS_CERT_PATH $TLS_KEY_PATH
+fi
 
 echo "Successfully initialized cluster $CLUSTER_ID"
 

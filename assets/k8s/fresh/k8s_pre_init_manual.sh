@@ -26,4 +26,7 @@ helm repo add grafana https://grafana.github.io/helm-charts
 echo -e "Adding Reflector"
 helm repo add emberstack https://emberstack.github.io/helm-charts
 
+echo -e "Adding vault"
+helm repo add banzaicloud-stable https://kubernetes-charts.banzaicloud.com
+
 helm repo update

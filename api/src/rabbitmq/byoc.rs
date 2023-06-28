@@ -101,6 +101,7 @@ pub(super) async fn process_request(
 					&patr_token,
 					&loki_log_push_url,
 					&mimir_metrics_push_url,
+					"true", // This is a init-script
 				])
 				.output()
 				.await?;
@@ -529,6 +530,94 @@ pub(super) async fn process_request(
 			}
 
 			log::info!("Un-Initialized cluster {region_id} successfully");
+			Ok(())
+		}
+		BYOCData::ReconfigureKubernetesCluster {
+			region_id,
+			kube_config,
+			patr_api_token,
+			request_id,
+		} => {
+			let Some(region) =
+				db::get_region_by_id(connection, &region_id).await? else {
+				log::error!(
+					"request_id: {} - Unable to find region with ID `{}`",
+					request_id,
+					&region_id
+				);
+				return Ok(());
+			};
+
+			let kubeconfig_path = format!("init-kubeconfig-{region_id}.yaml");
+			fs::write(&kubeconfig_path, serde_yaml::to_string(&kube_config)?)
+				.await?;
+
+			let loki_log_push_url = if cfg!(debug_assertions) {
+				// for debug builds, loki won't be serverd as different domain,
+				// instead it will be served as a subroute for localhost
+				format!(
+					"https://{}/loki-host/loki/api/v1/push",
+					config.loki.host
+				)
+			} else {
+				format!("https://{}/loki/api/v1/push", config.loki.host)
+			};
+			let mimir_metrics_push_url = if cfg!(debug_assertions) {
+				// for debug builds, mimir won't be serverd as different domain,
+				// instead it will be served as a subroute for localhost
+				format!("https://{}/mimir-host/api/v1/push", config.mimir.host)
+			} else {
+				format!("https://{}/api/v1/push", config.mimir.host)
+			};
+
+			// safe to return as only customer cluster is initalized here,
+			// so workspace_id will be present
+			let parent_workspace = region.workspace_id.status(500)?.to_string();
+
+			let output = Command::new("assets/k8s/fresh/k8s_init.sh")
+				.args([
+					region_id.as_str(),
+					&parent_workspace,
+					&kubeconfig_path,
+					"-", /* providing dummy value to
+					      * pass argument list */
+					"-", /* providing dummy value to
+					      * pass argument list */
+					&patr_api_token,
+					&loki_log_push_url,
+					&mimir_metrics_push_url,
+					"false", /* Is this a init-script? No this is for
+					          * reconfiguration */
+				])
+				.output()
+				.await?;
+
+			let std_out = String::from_utf8_lossy(&output.stdout);
+			db::append_messge_log_for_region(connection, &region_id, &std_out)
+				.await?;
+
+			if !output.status.success() {
+				let std_err = String::from_utf8_lossy(&output.stderr);
+				log::debug!(
+                    "Error while reconfiguring the cluster {}:\nStatus: {}\nStdout: {}\nStderr: {}",
+                    region_id,
+                    output.status,
+                    std_out,
+                    std_err,
+                );
+				db::append_messge_log_for_region(
+					connection, &region_id, &std_err,
+				)
+				.await?;
+
+				db::set_region_as_errored(connection, &region_id).await?;
+
+				// don't requeue
+				return Ok(());
+			}
+
+			log::info!("Reconfigured cluster {region_id} successfully");
+
 			Ok(())
 		}
 	}

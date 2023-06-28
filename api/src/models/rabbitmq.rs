@@ -89,6 +89,12 @@ pub enum BYOCData {
 		kube_config: Kubeconfig,
 		request_id: Uuid,
 	},
+	ReconfigureKubernetesCluster {
+		region_id: Uuid,
+		kube_config: Kubeconfig,
+		patr_api_token: String,
+		request_id: Uuid,
+	},
 	GetDigitalOceanKubeconfig {
 		api_token: String,
 		cluster_id: Uuid,
