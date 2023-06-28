@@ -15,16 +15,16 @@ IS_INIT_SCRIPT=${5:?"Missing parameter: IS_INIT_SCRIPT"}
 
 # validate input values
 if [ ! -f $KUBECONFIG_PATH ]; then
-    echo "Kubeconfig file not found: $KUBECONFIG_PATH"
-    exit 1
+	echo "Kubeconfig file not found: $KUBECONFIG_PATH"
+	exit 1
 fi
 
 if [ "$IS_INIT_SCRIPT" = true ]; then
 	if [ ! -f $TLS_CERT_PATH ]; then
-    	echo "TLS certificate file not found: $TLS_CERT_PATH"
-    	exit 1
+		echo "TLS certificate file not found: $TLS_CERT_PATH"
+		exit 1
 	fi
-	
+
 	if [ ! -f $TLS_KEY_PATH ]; then
 		echo "TLS private key file not found: $TLS_KEY_PATH"
 		exit 1
@@ -40,7 +40,7 @@ DEFAULT_CERT_NAME="default-cert-$CLUSTER_ID"
 echo "Initializing $CLUSTER_ID cluster"
 
 kubectl create namespace ingress-nginx \
-    --dry-run=client -o yaml | kubectl apply -f -
+	--dry-run=client -o yaml | kubectl apply -f -
 
 if [ "$IS_INIT_SCRIPT" = true ]; then
 	echo "Storing origin CA certificate as secret"
@@ -53,30 +53,30 @@ fi
 
 echo "Installing nginx as ingress for cluster"
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
-    --namespace ingress-nginx --create-namespace \
-    --set controller.extraArgs.default-ssl-certificate="ingress-nginx/$DEFAULT_CERT_NAME"
+	--namespace ingress-nginx --create-namespace \
+	--set controller.extraArgs.default-ssl-certificate="ingress-nginx/$DEFAULT_CERT_NAME"
 
 echo "Waiting for nginx ingress controller to be ready"
 kubectl wait --namespace ingress-nginx --for=condition=available deployment \
-    --selector=app.kubernetes.io/component=controller --timeout=-1s > /dev/null
+	--selector=app.kubernetes.io/component=controller --timeout=-1s >/dev/null
 kubectl wait --namespace ingress-nginx --for=condition=ready pod \
-    --selector=app.kubernetes.io/component=controller --timeout=-1s > /dev/null
+	--selector=app.kubernetes.io/component=controller --timeout=-1s >/dev/null
 
 echo "Ingress controller is ready"
 
 echo "Installing promtail for logs"
 helm upgrade --install promtail grafana/promtail --namespace promtail --create-namespace -f - <<EOF
 config:
-  clients:
-    - url: $LOKI_LOG_PUSH_URL
-      basic_auth:
-        username: $CLUSTER_ID
-        password: $PATR_API_TOKEN
-  snippets:
-    pipelineStages:
-      - match:
-          selector: '{namespace!~"[a-f0-9]{32}"}'
-          action: drop
+	clients:
+		- url: $LOKI_LOG_PUSH_URL
+			basic_auth:
+				username: $CLUSTER_ID
+				password: $PATR_API_TOKEN
+	snippets:
+		pipelineStages:
+			- match:
+					selector: '{namespace!~"[a-f0-9]{32}"}'
+					action: drop
 EOF
 
 echo "Installing prometheus for metrics"
@@ -84,34 +84,34 @@ echo "Installing prometheus for metrics"
 MIMIR_SECRET_NAME="mimr-token-$CLUSTER_ID"
 
 kubectl create namespace prometheus \
-  --dry-run=client -o yaml | kubectl apply -f -
+	--dry-run=client -o yaml | kubectl apply -f -
 
 kubectl create secret generic $MIMIR_SECRET_NAME \
-  --namespace prometheus \
-  --from-literal=username=$CLUSTER_ID \
-  --from-literal=password=$PATR_API_TOKEN \
-  --dry-run=client -o yaml | kubectl apply -f -
+	--namespace prometheus \
+	--from-literal=username=$CLUSTER_ID \
+	--from-literal=password=$PATR_API_TOKEN \
+	--dry-run=client -o yaml | kubectl apply -f -
 
 helm upgrade --install prometheus prometheus-community/kube-prometheus-stack --namespace prometheus --create-namespace -f - <<EOF
 prometheus:
-  prometheusSpec:
-    podMonitorSelectorNilUsesHelmValues: false
-    serviceMonitorSelectorNilUsesHelmValues: false
-    remoteWriteDashboards: true
-    hostNetwork: false
-    remoteWrite:
-      - url: $MIMIR_METRICS_PUSH_URL
-        basicAuth:
-          username:
-            name: $MIMIR_SECRET_NAME
-            key: username
-          password:
-            name: $MIMIR_SECRET_NAME
-            key: password
-        writeRelabelConfigs:
-          - sourceLabels: [namespace]
-            regex: "(.*)([a-f0-9]{32})(.*)"
-            action: keep
+	prometheusSpec:
+		podMonitorSelectorNilUsesHelmValues: false
+		serviceMonitorSelectorNilUsesHelmValues: false
+		remoteWriteDashboards: true
+		hostNetwork: false
+		remoteWrite:
+			- url: $MIMIR_METRICS_PUSH_URL
+				basicAuth:
+					username:
+						name: $MIMIR_SECRET_NAME
+						key: username
+					password:
+						name: $MIMIR_SECRET_NAME
+						key: password
+				writeRelabelConfigs:
+					- sourceLabels: [namespace]
+						regex: "(.*)([a-f0-9]{32})(.*)"
+						action: keep
 EOF
 
 echo "Creating vault-ingress for cluster"
@@ -121,12 +121,12 @@ helm upgrade --namespace vault-infra --install vault-secrets-webhook banzaicloud
 
 echo "Creating parent workspace in new cluster"
 kubectl create namespace "$PARENT_WORKSPACE_ID" \
-    --dry-run=client -o yaml | kubectl apply -f -
+	--dry-run=client -o yaml | kubectl apply -f -
 
 kubectl create secret generic patr-token \
-  -n=$PARENT_WORKSPACE_ID \
-  --from-literal=token=$PATR_API_TOKEN \
-  --dry-run=client -o yaml | kubectl apply -f -
+	-n=$PARENT_WORKSPACE_ID \
+	--from-literal=token=$PATR_API_TOKEN \
+	--dry-run=client -o yaml | kubectl apply -f -
 
 rm $KUBECONFIG_PATH
 if [ "$IS_INIT_SCRIPT" = true ]; then
