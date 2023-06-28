@@ -834,8 +834,6 @@ pub(super) async fn process_request(
 			}
 
 			// notify customer that the payment has failed
-
-			// TODO - verify how is this working till now
 			if (Utc::now() - next_month_start_date) > Duration::days(15) {
 				// It's been more than 15 days since the bill was
 				// generated and the payment has still not been
