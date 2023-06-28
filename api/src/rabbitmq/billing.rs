@@ -239,7 +239,7 @@ pub(super) async fn process_request(
 			};
 
 			if card_amount_to_be_charged_in_cents < 100 && // as 100=$1
-				total_bill.total_charge == 100
+				total_bill.total_charge < 100
 			{
 				// do nothing, no email has to be sent for any payment action
 				log::trace!(
@@ -291,7 +291,8 @@ pub(super) async fn process_request(
 					total_bill,
 					billing_address,
 					credits_deducted_in_cents,
-					// If `amount_due` is 0, definitely the card amount is 0
+					// If `amount_due` is less then 100, definitely the card
+					// amount is less then 100
 					card_amount_to_be_charged_in_cents,
 					credits_remaining_in_cents,
 				)
@@ -898,8 +899,8 @@ pub(super) async fn process_request(
 						workspace_name,
 						month,
 						year,
-						// If `amount_due` is 0, definitely the card amount
-						// is 0
+						// If `amount_due` is less than 100, definitely the
+						// card amount is less then 100
 						card_amount_to_be_charged_in_cents,
 						deadline,
 					)
@@ -911,8 +912,8 @@ pub(super) async fn process_request(
 						workspace_name,
 						month,
 						year,
-						// If `amount_due` is 0, definitely the card amount
-						// is 0
+						// If `amount_due` is less than 100, definitely the
+						// card amount is less then 100
 						card_amount_to_be_charged_in_cents,
 						deadline,
 					)
