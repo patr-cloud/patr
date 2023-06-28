@@ -24,6 +24,7 @@ use api_models::{
 	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
+use cloudflare::framework::response::ApiFailure;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use sqlx::types::Json;
 
@@ -824,7 +825,49 @@ async fn delete_region(
 
 	// delete origin ca cert
 	if let Some(cert_id) = region.cloudflare_certificate_id {
-		service::revoke_origin_ca_certificate(&cert_id, &config).await?;
+		let status =
+			service::revoke_origin_ca_certificate(&cert_id, &config).await?;
+
+		match status {
+			Ok(success) => {
+				log::info!(
+					"Successfully deleted the cloudflare origin CA cert {} for region {}",
+					success.result.id,
+					region_id
+				);
+				db::update_region_certificate_as_revoked(
+					context.get_database_connection(),
+					&region_id,
+				)
+				.await?;
+			}
+			Err(err) => match err {
+				ApiFailure::Error(status_code, _)
+					if status_code.is_client_error() =>
+				{
+					log::info!(
+						"cloudflare origin CA cert {} is already revoked for region {}",
+						cert_id,
+						region_id
+					);
+					db::update_region_certificate_as_revoked(
+						context.get_database_connection(),
+						&region_id,
+					)
+					.await?;
+				}
+				unknown_error => {
+					// not updating anything here, as it will be taken care in
+					// scheduler
+					log::warn!(
+						"Error while deleting cloudflare origin CA cert {} for region {} - {}",
+						cert_id,
+						region_id,
+						unknown_error
+					);
+				}
+			},
+		}
 	}
 
 	let onpatr_domain = db::get_domain_by_name(
