@@ -514,41 +514,28 @@ async fn add_region(
 			.status(401)
 			.body(error!(REGION_TOKEN_UNABLE_TO_PUSH_LOGS).to_string()));
 	}
-	if api_token
-		.workspace_permissions()
-		.get(&workspace_id)
-		.map(|permissions| match permissions {
-			WorkspacePermission::SuperAdmin => true,
-			WorkspacePermission::Member { permissions } => permissions
-				.get(
-					rbac::PERMISSIONS
-						.get()
-						.unwrap()
-						.get(rbac::permissions::workspace::region::PUSH_LOGS)
-						.unwrap(),
-				)
-				.is_some(),
-		})
-		.unwrap_or(false)
-	{
+	if !api_token.has_access_for_requested_action(
+		&workspace_id,
+		&region_id,
+		rbac::permissions::workspace::region::PUSH_METRICS,
+	) {
 		return Err(Error::empty()
 			.status(401)
-			.body(error!(REGION_TOKEN_UNABLE_TO_PULL_IMAGES).to_string()));
+			.body(error!(REGION_TOKEN_UNABLE_TO_PUSH_METRICS).to_string()));
 	}
-	if api_token
+	if !api_token
 		.workspace_permissions()
 		.get(&workspace_id)
 		.map(|permissions| match permissions {
 			WorkspacePermission::SuperAdmin => true,
 			WorkspacePermission::Member { permissions } => permissions
-				.get(
-					rbac::PERMISSIONS
-						.get()
-						.unwrap()
-						.get(rbac::permissions::workspace::region::PUSH_METRICS)
-						.unwrap(),
-				)
-				.is_some(),
+				.contains_key(
+				rbac::PERMISSIONS
+					.get()
+					.unwrap()
+					.get(rbac::permissions::workspace::container_registry::PULL)
+					.unwrap(),
+			),
 		})
 		.unwrap_or(false)
 	{

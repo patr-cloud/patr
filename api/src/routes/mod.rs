@@ -25,7 +25,8 @@ pub fn create_sub_app(
 
 	if cfg!(debug_assertions) {
 		sub_app.use_sub_app("/", api_patr_cloud::create_sub_app(app));
-		sub_app.use_sub_app("/v1", vault_patr_cloud::create_sub_app(app));
+		sub_app
+			.use_sub_app("/vault-host", vault_patr_cloud::create_sub_app(app));
 		sub_app.use_sub_app("/loki-host", loki_patr_cloud::create_sub_app(app));
 		sub_app
 			.use_sub_app("/mimir-host", mimir_patr_cloud::create_sub_app(app));

@@ -38,7 +38,7 @@ pub fn create_sub_app(
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.get(
-		"secret/data/:workspaceId/:secretId",
+		"/v1/secret/data/:workspaceId/:secretId",
 		[EveMiddleware::CustomFunction(pin_fn!(middle_man_fn))],
 	);
 
