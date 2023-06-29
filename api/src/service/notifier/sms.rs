@@ -187,26 +187,24 @@ pub async fn send_phone_number_verification_otp(
 async fn send_sms(to_number: &str, body: String) -> Result<(), Error> {
 	use reqwest::Client;
 
-	use crate::{
-		error,
-		models::{SmsRequest, SmsResponse},
-		service,
-	};
+	use crate::{error, models::SmsResponse, service};
 
 	let config = service::get_settings();
 	let client = Client::new();
 	let response = client
 		.post(format!(
-			"https://{}:{}@api.twilio.com/2010-04-01/Accounts/{}/Messages.json",
-			config.twilio.username,
-			config.twilio.access_token,
-			config.twilio.username
+			"https://api.twilio.com/2010-04-01/Accounts/{}/Messages.json",
+			config.twilio.account_s_id.clone(),
 		))
-		.json(&SmsRequest {
-			body,
-			from: config.twilio.from_number.clone(),
-			to: to_number.to_string(),
-		})
+		.basic_auth(
+			config.twilio.account_s_id.clone(),
+			Some(config.twilio.access_token.clone()),
+		)
+		.form(&[
+			("From", config.twilio.from_number.clone()),
+			("Body", body),
+			("To", to_number.to_string()),
+		])
 		.send()
 		.await?
 		.json::<SmsResponse>()

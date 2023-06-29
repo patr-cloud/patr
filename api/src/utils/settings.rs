@@ -116,11 +116,12 @@ pub struct RedisSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TwilioSettings {
-	pub username: String,
 	#[serde(alias = "accesstoken")]
 	pub access_token: String,
 	#[serde(alias = "fromnumber")]
 	pub from_number: String,
+	#[serde(alias = "accountsid")]
+	pub account_s_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

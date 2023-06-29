@@ -38,7 +38,7 @@
 		"password": "password"
 	},
 	"twilio": {
-		"username": "<example-user-name>",
+		"accountSId": "Account-S-ID",
 		"accessToken": "<ACCESS-TOKEN-HHERE>",
 		"fromNumber": "+0123456789"
 	},
