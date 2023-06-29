@@ -1,9 +1,10 @@
 use std::net::{IpAddr, Ipv4Addr};
 
 use api_models::{models::auth::*, utils::Uuid, ErrorType};
+use base64::{prelude::BASE64_STANDARD, Engine};
 use chrono::{Duration, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use totp_rs::{Algorithm, Secret, TOTP};
+use totp_rs::{Algorithm, TOTP};
 
 mod oauth;
 
@@ -170,13 +171,12 @@ async fn sign_in(
 	match (user_data.mfa_secret, mfa_otp) {
 		// MFA secret exists and OTP provided
 		(Some(mfa_secret), Some(otp)) => {
-			let secret = Secret::Encoded(mfa_secret);
 			let totp = TOTP::new(
 				Algorithm::SHA1,
 				6,
 				1,
 				30,
-				secret.to_bytes().unwrap(),
+				BASE64_STANDARD.decode(mfa_secret)?,
 			)?;
 
 			let is_otp_valid = totp.check_current(&otp.to_string())?;

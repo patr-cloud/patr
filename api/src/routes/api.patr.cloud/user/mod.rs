@@ -35,6 +35,7 @@ use api_models::{
 	},
 	utils::{DateTime, Uuid},
 };
+use base64::{prelude::BASE64_STANDARD, Engine};
 use chrono::{Datelike, Utc};
 use eve_rs::{App as EveApp, AsError, NextHandler};
 use totp_rs::Secret;
@@ -230,7 +231,7 @@ pub fn create_sub_app(
 	);
 
 	sub_app.post(
-		"/:userId/activate-multi-factor-auth",
+		"/activate-multi-factor-auth",
 		[
 			EveMiddleware::PlainTokenAuthenticator {
 				is_api_token_allowed: false,
@@ -1254,11 +1255,7 @@ async fn activate_multi_factor_authentication(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context
-		.get_param(request_keys::USER_ID)
-		.and_then(|user_id_str| Uuid::parse_str(user_id_str.trim()).ok())
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	let user =
 		db::get_user_by_user_id(context.get_database_connection(), &user_id)
@@ -1272,7 +1269,7 @@ async fn activate_multi_factor_authentication(
 			.body(error!(MFA_ALREADY_ACTIVATED).to_string())?;
 	}
 
-	let secret = Secret::generate_secret().to_string();
+	let secret = BASE64_STANDARD.encode(Secret::generate_secret().to_bytes()?);
 
 	// Do not activate if already activated
 	db::activate_multi_factor_authentication(
