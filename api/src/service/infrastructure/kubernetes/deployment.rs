@@ -80,11 +80,19 @@ use kube::{
 use sha2::{Digest, Sha512};
 
 use crate::{
-	db::{self, DeploymentVolume},
+	db::{self, DeploymentVolume, Region},
 	error,
 	models::deployment,
 	service::{self, ext_traits::DeleteOpt},
-	utils::{constants::request_keys, settings::Settings, Error},
+	utils::{
+		constants::{
+			request_keys,
+			PATR_BYOC_TOKEN_NAME,
+			PATR_BYOC_TOKEN_VALUE_NAME,
+		},
+		settings::Settings,
+		Error,
+	},
 	Database,
 };
 
@@ -96,7 +104,7 @@ pub async fn update_kubernetes_deployment(
 	running_details: &DeploymentRunningDetails,
 	deployment_volumes: &Vec<DeploymentVolume>,
 	kubeconfig: Kubeconfig,
-	deployed_region_id: &Uuid,
+	deployed_region: &Region,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -210,11 +218,11 @@ pub async fn update_kubernetes_deployment(
 	let annotations = [
 		(
 			"vault.security.banzaicloud.io/vault-addr".to_string(),
-			config.vault.host.clone(),
-		),
-		(
-			"vault.security.banzaicloud.io/vault-role".to_string(),
-			"vault".to_string(),
+			if deployed_region.is_byoc_region() {
+				config.vault.base_url()
+			} else {
+				config.vault.upstream_base_url()
+			},
 		),
 		(
 			"vault.security.banzaicloud.io/vault-skip-verify".to_string(),
@@ -224,12 +232,25 @@ pub async fn update_kubernetes_deployment(
 			"vault.security.banzaicloud.io/vault-agent".to_string(),
 			"false".to_string(),
 		),
-		(
-			"vault.security.banzaicloud.io/vault-path".to_string(),
-			"kubernetes".to_string(),
-		),
 	]
 	.into_iter()
+	.chain(
+		if deployed_region.is_byoc_region() {
+			itertools::Either::Left([])
+		} else {
+			itertools::Either::Right([
+				(
+					"vault.security.banzaicloud.io/vault-role".to_string(),
+					"vault".to_string(),
+				),
+				(
+					"vault.security.banzaicloud.io/vault-path".to_string(),
+					"kubernetes".to_string(),
+				),
+			])
+		}
+		.into_iter(),
+	)
 	.collect();
 
 	if !deployment_volumes.is_empty() {
@@ -480,24 +501,38 @@ pub async fn update_kubernetes_deployment(
 								value: Some(config_map_hash),
 								..EnvVar::default()
 							},
-							EnvVar {
-								name: "VAULT_AUTH_METHOD".to_string(),
-								value: Some("token".to_string()),
-								..EnvVar::default()
-							},
-							EnvVar {
-								name: "VAULT_TOKEN".to_string(),
-								value_from: Some(EnvVarSource {
-									secret_key_ref: Some(SecretKeySelector {
-										name: Some("patr-token".to_string()),
-										key: "token".to_string(),
-										..Default::default()
-									}),
-									..Default::default()
-								}),
-								..Default::default()
-							},
 						])
+						.chain(
+							if deployed_region.is_byoc_region() {
+								itertools::Either::Left([
+									EnvVar {
+										name: "VAULT_AUTH_METHOD".to_string(),
+										value: Some("token".to_string()),
+										..EnvVar::default()
+									},
+									EnvVar {
+										name: "VAULT_TOKEN".to_string(),
+										value_from: Some(EnvVarSource {
+											secret_key_ref: Some(
+												SecretKeySelector {
+													name: Some(
+														PATR_BYOC_TOKEN_NAME
+															.to_string(),
+													),
+													key: PATR_BYOC_TOKEN_VALUE_NAME.to_string(),
+													..Default::default()
+												},
+											),
+											..Default::default()
+										}),
+										..Default::default()
+									},
+								])
+							} else {
+								itertools::Either::Right([])
+							}
+							.into_iter(),
+						)
 						.collect::<Vec<_>>(),
 				),
 				resources: Some(ResourceRequirements {
@@ -772,7 +807,7 @@ pub async fn update_kubernetes_deployment(
 				"{}-{}.{}.{}",
 				port,
 				deployment.id,
-				deployed_region_id,
+				deployed_region.id,
 				config.cloudflare.onpatr_domain
 			)),
 			http: Some(HTTPIngressRuleValue {

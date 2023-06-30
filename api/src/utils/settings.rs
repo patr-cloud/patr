@@ -269,6 +269,20 @@ pub struct VaultSettings {
 	pub token: String,
 }
 
+impl VaultSettings {
+	pub fn upstream_base_url(&self) -> String {
+		format!("https://{}", self.upstream_host)
+	}
+
+	pub fn base_url(&self) -> String {
+		if cfg!(debug_assertions) {
+			format!("https://{}/vault-host", self.host)
+		} else {
+			format!("https://{}", self.host)
+		}
+	}
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LokiSettings {

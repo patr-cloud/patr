@@ -57,7 +57,7 @@ use crate::{
 	routes,
 	service,
 	utils::{
-		constants::{logs::PATR_CLUSTER_TENANT_ID, request_keys},
+		constants::{request_keys, PATR_CLUSTER_TENANT_ID},
 		Error,
 		ErrorData,
 		EveContext,

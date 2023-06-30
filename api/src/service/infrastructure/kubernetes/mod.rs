@@ -1,6 +1,7 @@
 mod ci;
 mod database;
 mod deployment;
+mod secret;
 mod workspace;
 
 pub mod ext_traits;
@@ -9,7 +10,7 @@ use k8s_openapi::api::core::v1::Service;
 use kube::{config::Kubeconfig, Api, Config};
 use url::Host;
 
-pub use self::{ci::*, database::*, deployment::*, workspace::*};
+pub use self::{ci::*, database::*, deployment::*, secret::*, workspace::*};
 use crate::utils::Error;
 
 async fn get_kubernetes_client(

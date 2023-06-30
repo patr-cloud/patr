@@ -163,11 +163,12 @@ pub async fn process_request(
 			let build_namespace = build_step.id.build_id.get_build_namespace();
 			let build_step_job_name = build_step.id.get_job_name();
 
-			let kubeconfig = service::get_kubeconfig_for_ci_build(
-				connection,
-				&build_step.id.build_id,
-			)
-			.await?;
+			let (kubeconfig, deployed_region) =
+				service::get_kubeconfig_for_ci_build(
+					connection,
+					&build_step.id.build_id,
+				)
+				.await?;
 
 			let step_status = service::get_ci_job_status_in_kubernetes(
 				&build_namespace,
@@ -414,6 +415,7 @@ pub async fn process_request(
 							runner_resource.cpu_in_milli(),
 							&event_type,
 							kubeconfig,
+							&deployed_region,
 							config,
 							&request_id,
 						)
@@ -470,6 +472,10 @@ pub async fn process_request(
 			// for now sequential, so checking last status is enough
 			let status = steps.last().map(|step| step.status.clone());
 
+			let (kubeconfig, _deployed_region) =
+				service::get_kubeconfig_for_ci_build(connection, &build_id)
+					.await?;
+
 			match status.unwrap_or(BuildStepStatus::Succeeded) {
 				BuildStepStatus::Errored | BuildStepStatus::SkippedDepError => {
 					log::info!(
@@ -477,10 +483,7 @@ pub async fn process_request(
 					);
 					service::delete_kubernetes_namespace(
 						&build_id.get_build_namespace(),
-						service::get_kubeconfig_for_ci_build(
-							connection, &build_id,
-						)
-						.await?,
+						kubeconfig,
 						&request_id,
 					)
 					.await?;
@@ -513,10 +516,7 @@ pub async fn process_request(
 					);
 					service::delete_kubernetes_namespace(
 						&build_id.get_build_namespace(),
-						service::get_kubeconfig_for_ci_build(
-							connection, &build_id,
-						)
-						.await?,
+						kubeconfig,
 						&request_id,
 					)
 					.await?;
@@ -557,10 +557,7 @@ pub async fn process_request(
 					log::debug!("request_id: {request_id} - Cleaning stopped build `{build_id}`");
 					service::delete_kubernetes_namespace(
 						&build_id.get_build_namespace(),
-						service::get_kubeconfig_for_ci_build(
-							connection, &build_id,
-						)
-						.await?,
+						kubeconfig,
 						&request_id,
 					)
 					.await?;
