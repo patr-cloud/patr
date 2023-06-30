@@ -42,7 +42,7 @@ use crate::{
 	},
 	service,
 	utils::{
-		constants::{free_limits, logs::PATR_CLUSTER_TENANT_ID},
+		constants::{free_limits, PATR_CLUSTER_TENANT_ID},
 		settings::Settings,
 		validator,
 		Error,
@@ -739,6 +739,11 @@ pub async fn update_deployment(
 				.await?;
 			}
 
+			let deployed_region =
+				db::get_region_by_id(connection, &deployed_region_id)
+					.await?
+					.status(500)?;
+
 			service::update_kubernetes_deployment(
 				workspace_id,
 				&deployment,
@@ -747,7 +752,7 @@ pub async fn update_deployment(
 				&running_details,
 				&volumes,
 				kubeconfig,
-				&deployed_region_id,
+				&deployed_region,
 				config,
 				request_id,
 			)
@@ -1667,6 +1672,10 @@ pub async fn start_deployment(
 		)
 		.await?;
 
+	let deployed_region = db::get_region_by_id(connection, &deployed_region_id)
+		.await?
+		.status(500)?;
+
 	service::update_kubernetes_deployment(
 		workspace_id,
 		deployment,
@@ -1675,7 +1684,7 @@ pub async fn start_deployment(
 		deployment_running_details,
 		&volumes,
 		kubeconfig,
-		&deployed_region_id,
+		&deployed_region,
 		config,
 		request_id,
 	)
@@ -1758,6 +1767,11 @@ pub async fn update_deployment_image(
 			service::get_kubernetes_config_for_region(connection, region)
 				.await?;
 
+		let deployed_region =
+			db::get_region_by_id(connection, &deployed_region_id)
+				.await?
+				.status(500)?;
+
 		service::update_kubernetes_deployment(
 			workspace_id,
 			&Deployment {
@@ -1775,7 +1789,7 @@ pub async fn update_deployment_image(
 			deployment_running_details,
 			&volumes,
 			kubeconfig,
-			&deployed_region_id,
+			&deployed_region,
 			config,
 			request_id,
 		)

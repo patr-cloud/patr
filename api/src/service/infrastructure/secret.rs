@@ -68,7 +68,7 @@ pub async fn create_new_secret_in_workspace(
 	log::trace!("request_id: {} - Getting vault client", request_id);
 	let client = VaultClient::new(
 		VaultClientSettingsBuilder::default()
-			.address(&config.vault.upstream_host)
+			.address(&config.vault.upstream_base_url())
 			.token(&config.vault.token)
 			.build()?,
 	)?;
@@ -120,7 +120,7 @@ pub async fn update_workspace_secret(
 
 		let client = VaultClient::new(
 			VaultClientSettingsBuilder::default()
-				.address(&config.vault.upstream_host)
+				.address(&config.vault.upstream_base_url())
 				.token(&config.vault.token)
 				.build()?,
 		)?;
@@ -172,7 +172,7 @@ pub async fn delete_secret_in_workspace(
 
 	let client = VaultClient::new(
 		VaultClientSettingsBuilder::default()
-			.address(&config.vault.upstream_host)
+			.address(&config.vault.upstream_base_url())
 			.token(&config.vault.token)
 			.build()?,
 	)?;
