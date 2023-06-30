@@ -43,13 +43,10 @@ pub async fn get_kubernetes_database_status(
 		.get_opt(&sts_name_for_db)
 		.await?;
 
-	let ready_replicas = match sts
+	let ready_replicas = sts
 		.and_then(|sts| sts.status)
 		.and_then(|status| status.ready_replicas)
-	{
-		Some(ready_replicas) => ready_replicas,
-		None => return Ok(ManagedDatabaseStatus::Errored),
-	};
+		.unwrap_or(0i32);
 
 	// todo: need to change when database cluster is used
 	if ready_replicas == 1 {

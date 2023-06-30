@@ -272,7 +272,7 @@ pub async fn patch_kubernetes_mongo_database(
 		.patch(
 			&sts_name_for_db,
 			&PatchParams::apply(&sts_name_for_db),
-			&Patch::Strategic(statefulset_spec_for_db),
+			&Patch::Apply(statefulset_spec_for_db),
 		)
 		.await?;
 
