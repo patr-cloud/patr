@@ -195,7 +195,7 @@ pub async fn patch_kubernetes_mysql_database(
 						command: Some(vec![
 							"bash".to_owned(),
 							"-c".to_owned(),
-							"mysql -u root -e \"SELECT 1\"".to_owned(),
+							"mysql -e \"SELECT 1\"".to_owned(),
 						]),
 					}),
 					initial_delay_seconds: Some(5),
