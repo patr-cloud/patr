@@ -56,6 +56,7 @@ pub async fn patch_kubernetes_mongo_database(
 	kubeconfig: Kubeconfig,
 	request_id: &Uuid,
 	auth_enabled: bool,
+	is_init: bool,
 ) -> Result<(), Error> {
 	let kubernetes_client = get_kubernetes_client(kubeconfig).await?;
 
@@ -130,12 +131,17 @@ pub async fn patch_kubernetes_mongo_database(
 			containers: vec![Container {
 				name: "mongodb".to_owned(),
 				image: Some(mongo_version.to_owned()),
-				command: Some(vec![
-					"bash".to_owned(),
-					"-c".to_owned(),
-					"/usr/local/bin/docker-entrypoint.sh mongod $AUTH_STATUS"
-						.to_owned(),
-				]),
+				command: Some(
+					if !is_init {
+						vec![
+							"bash".to_owned(),
+							"-c".to_owned(),
+							"mongod $AUTH_STATUS".to_owned(),
+						]
+					} else {
+						vec![]
+					},
+				),
 				env: Some(vec![
 					EnvVar {
 						name: "MONGO_INITDB_ROOT_USERNAME".to_owned(),
@@ -272,7 +278,7 @@ pub async fn patch_kubernetes_mongo_database(
 		.patch(
 			&sts_name_for_db,
 			&PatchParams::apply(&sts_name_for_db),
-			&Patch::Strategic(statefulset_spec_for_db),
+			&Patch::Apply(statefulset_spec_for_db),
 		)
 		.await?;
 

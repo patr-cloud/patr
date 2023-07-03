@@ -310,14 +310,25 @@ async fn create_database_cluster(
 
 	context.commit_database_transaction().await?;
 
-	service::queue_check_and_update_database_status(
-		&workspace_id,
-		&database_id,
-		&config,
-		&request_id,
-		&password,
-	)
-	.await?;
+	if engine != ManagedDatabaseEngine::Mongo {
+		service::queue_check_and_update_database_status(
+			&workspace_id,
+			&database_id,
+			&config,
+			&request_id,
+			&password,
+		)
+		.await?;
+	} else {
+		service::change_database_password(
+			context.get_database_connection(),
+			&database_id,
+			&request_id,
+			&password,
+			&config,
+		)
+		.await?;
+	}
 
 	let _ = service::get_internal_metrics(
 		context.get_database_connection(),

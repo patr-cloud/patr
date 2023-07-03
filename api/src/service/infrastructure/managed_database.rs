@@ -144,6 +144,7 @@ pub async fn create_managed_database_in_workspace(
 				kubeconfig,
 				request_id,
 				true,
+				true,
 			)
 			.await?;
 		}
@@ -340,13 +341,14 @@ pub async fn change_database_password(
 				kubeconfig.clone(),
 				request_id,
 				false,
+				false,
 			)
 			.await?;
 
 			log::trace!(
 				"request_id: {request_id} - Queuing for mongo password change"
 			);
-			service::queue_change_mongo_database_password(
+			service::queue_change_mongo_database_password_and_status(
 				&database.workspace_id,
 				database_id,
 				config,

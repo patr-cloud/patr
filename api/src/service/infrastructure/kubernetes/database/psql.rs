@@ -8,10 +8,8 @@ use k8s_openapi::{
 	api::{
 		apps::v1::{StatefulSet, StatefulSetSpec},
 		core::v1::{
-			ConfigMapEnvSource,
 			Container,
 			ContainerPort,
-			EnvFromSource,
 			EnvVar,
 			ExecAction,
 			PersistentVolumeClaim,
@@ -66,7 +64,6 @@ pub async fn patch_kubernetes_psql_database(
 	let sts_name_for_db = get_database_sts_name(database_id);
 	let svc_name_for_db = get_database_service_name(database_id);
 	let pvc_claim_for_db = get_database_pvc_name(database_id);
-	let configmap_name_for_db = "postgres-config".to_string();
 
 	// constants
 	let psql_port = 5432;
@@ -157,13 +154,6 @@ pub async fn patch_kubernetes_psql_database(
 						..Default::default()
 					},
 				]),
-				env_from: Some(vec![EnvFromSource {
-					config_map_ref: Some(ConfigMapEnvSource {
-						name: Some(configmap_name_for_db),
-						..Default::default()
-					}),
-					..Default::default()
-				}]),
 				ports: Some(vec![ContainerPort {
 					container_port: psql_port,
 					..Default::default()

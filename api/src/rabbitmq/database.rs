@@ -53,9 +53,8 @@ pub(super) async fn process_request(
 			.await?
 			.0;
 
+			log::trace!("Checking patr database status: {database_id}");
 			loop {
-				log::trace!("Checking patr database status: {database_id}");
-
 				let status = service::get_kubernetes_database_status(
 					&workspace_id,
 					&database_id,
@@ -76,6 +75,7 @@ pub(super) async fn process_request(
 						log::trace!(
 							"Setting root password for database: {database_id}"
 						);
+						time::sleep(Duration::from_secs(15)).await;
 						service::change_database_password(
 							connection,
 							&database_id,
@@ -90,16 +90,20 @@ pub(super) async fn process_request(
 				time::sleep(Duration::from_millis(1000)).await;
 
 				if Utc::now() - start_time > chrono::Duration::seconds(30) {
+					db::update_managed_database_status(
+						connection,
+						&database_id,
+						&ManagedDatabaseStatus::Errored,
+					)
+					.await?;
 					break;
 				}
 			}
 
-			time::sleep(Duration::from_secs(5)).await;
-
 			// requeue it again
 			Err(Error::empty())
 		}
-		DatabaseRequestData::ChangeMongoPassword {
+		DatabaseRequestData::ChangeMongoPasswordAndStatus {
 			workspace_id,
 			database_id,
 			request_id,
@@ -118,6 +122,11 @@ pub(super) async fn process_request(
 					}
 				};
 
+			if database.status != ManagedDatabaseStatus::Creating {
+				log::info!("Database {database_id} is not in creating state. Hence stopping status check message");
+				return Ok(());
+			}
+
 			let kubeconfig = service::get_kubernetes_config_for_region(
 				connection,
 				&database.region,
@@ -127,9 +136,10 @@ pub(super) async fn process_request(
 
 			let start_time = Utc::now();
 
+			log::trace!(
+				"Check patr database status to update password: {database_id}"
+			);
 			loop {
-				log::trace!("Check patr database status to update password: {database_id}");
-
 				let status = service::get_kubernetes_database_status(
 					&workspace_id,
 					&database_id,
@@ -138,53 +148,53 @@ pub(super) async fn process_request(
 				)
 				.await?;
 
-				if status != ManagedDatabaseStatus::Creating {
-					db::update_managed_database_status(
-						connection,
+				if status == ManagedDatabaseStatus::Running {
+					log::trace!(
+						"Changing password for database: {database_id}"
+					);
+
+					time::sleep(Duration::from_secs(15)).await;
+
+					service::change_mongo_database_password(
+						&workspace_id,
+						kubeconfig.clone(),
+						&request_id,
 						&database_id,
-						&status,
+						&password,
 					)
 					.await?;
 
-					if status == ManagedDatabaseStatus::Running {
-						log::trace!(
-							"Changing password for database: {database_id}"
-						);
+					log::trace!("request_id: {request_id} - Changing Mongo statefulset config to enable auth");
+					let database_plan = db::get_database_plan_by_id(
+						connection,
+						&database.database_plan_id,
+					)
+					.await?;
 
-						service::change_mongo_database_password(
-							&workspace_id,
-							kubeconfig.clone(),
-							&request_id,
-							&database_id,
-							&password,
-						)
-						.await?;
-
-						log::trace!("request_id: {request_id} - Changing Mongo statefulset config to enable auth");
-						let database_plan = db::get_database_plan_by_id(
-							connection,
-							&database.database_plan_id,
-						)
-						.await?;
-
-						service::patch_kubernetes_mongo_database(
-							&database.workspace_id,
-							&database.id,
-							&database_plan,
-							kubeconfig.clone(),
-							&request_id,
-							true,
-						)
-						.await?;
-					}
+					service::patch_kubernetes_mongo_database(
+						&database.workspace_id,
+						&database.id,
+						&database_plan,
+						kubeconfig.clone(),
+						&request_id,
+						true,
+						false,
+					)
+					.await?;
 
 					break;
 				}
-				time::sleep(Duration::from_millis(500)).await;
+				time::sleep(Duration::from_millis(1000)).await;
 
 				if Utc::now() - start_time > chrono::Duration::seconds(30) {
+					log::trace!("request_id: {request_id} - Password change failed for Mongo. Pod not in running state");
+					db::update_managed_database_status(
+						connection,
+						&database_id,
+						&ManagedDatabaseStatus::Errored,
+					)
+					.await?;
 					// requeue it again
-					time::sleep(Duration::from_secs(5)).await;
 					return Err(Error::empty());
 				}
 			}
@@ -207,26 +217,18 @@ pub(super) async fn process_request(
 					)
 					.await?;
 
-					if status == ManagedDatabaseStatus::Running {
-						log::trace!(
-							"Setting root password for database: {database_id}"
-						);
-						service::change_database_password(
-							connection,
-							&database_id,
-							&request_id,
-							&password,
-							config,
-						)
-						.await?;
-					}
 					return Ok(());
 				}
 				time::sleep(Duration::from_millis(1000)).await;
 
 				if Utc::now() - start_time > chrono::Duration::seconds(30) {
+					db::update_managed_database_status(
+						connection,
+						&database_id,
+						&ManagedDatabaseStatus::Errored,
+					)
+					.await?;
 					// requeue it again
-					time::sleep(Duration::from_secs(5)).await;
 					return Err(Error::empty());
 				}
 			}
