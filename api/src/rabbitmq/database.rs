@@ -122,6 +122,11 @@ pub(super) async fn process_request(
 					}
 				};
 
+			if database.status != ManagedDatabaseStatus::Creating {
+				log::info!("Database {database_id} is not in creating state. Hence stopping status check message");
+				return Ok(());
+			}
+
 			let kubeconfig = service::get_kubernetes_config_for_region(
 				connection,
 				&database.region,
@@ -182,6 +187,13 @@ pub(super) async fn process_request(
 				time::sleep(Duration::from_millis(1000)).await;
 
 				if Utc::now() - start_time > chrono::Duration::seconds(30) {
+					log::trace!("request_id: {request_id} - Password change failed for Mongo. Pod not in running state");
+					db::update_managed_database_status(
+						connection,
+						&database_id,
+						&ManagedDatabaseStatus::Errored,
+					)
+					.await?;
 					// requeue it again
 					return Err(Error::empty());
 				}
