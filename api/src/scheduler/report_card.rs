@@ -134,13 +134,15 @@ async fn generate_report_card() -> Result<(), Error> {
 				user_deployment.push(deployment_report)
 			}
 
-			service::send_report_card_email_notification(
-				&mut connection,
-				&workspace,
-				"Deployment", // Resource Type
-				&user_deployment,
-			)
-			.await?;
+			if !user_deployment.is_empty() {
+				service::send_report_card_email_notification(
+					&mut connection,
+					&workspace,
+					"Deployment", // Resource Type
+					&user_deployment,
+				)
+				.await?;
+			}
 		}
 	}
 

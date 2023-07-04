@@ -1,22 +1,30 @@
+use std::net::{IpAddr, Ipv4Addr};
+
 use api_macros::closure_as_pinned_box;
 use api_models::{
-	models::workspace::region::{
-		AddRegionToWorkspaceData,
-		AddRegionToWorkspaceRequest,
-		AddRegionToWorkspaceResponse,
-		CheckRegionStatusResponse,
-		DeleteRegionFromWorkspaceRequest,
-		DeleteRegionFromWorkspaceResponse,
-		GetRegionInfoResponse,
-		InfrastructureCloudProvider,
-		ListRegionsForWorkspaceResponse,
-		Region,
-		RegionStatus,
-		RegionType,
+	models::workspace::{
+		region::{
+			AddRegionToWorkspaceData,
+			AddRegionToWorkspaceRequest,
+			AddRegionToWorkspaceResponse,
+			CheckRegionStatusResponse,
+			DeleteRegionFromWorkspaceRequest,
+			DeleteRegionFromWorkspaceResponse,
+			GetRegionInfoResponse,
+			InfrastructureCloudProvider,
+			ListRegionsForWorkspaceResponse,
+			ReconfigureClusterRequest,
+			ReconfigureClusterResponse,
+			Region,
+			RegionStatus,
+			RegionType,
+		},
+		WorkspacePermission,
 	},
 	utils::{DateTime, Uuid},
 };
 use chrono::Utc;
+use cloudflare::framework::response::ApiFailure;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use sqlx::types::Json;
 
@@ -24,7 +32,11 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::{self, permissions},
+	models::{
+		rbac::{self, permissions},
+		ApiTokenData,
+		UserAuthenticationData,
+	},
 	pin_fn,
 	routes,
 	service,
@@ -46,30 +58,20 @@ pub fn create_sub_app(
 	app.get(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator {
+			EveMiddleware::WorkspaceMemberAuthenticator {
 				is_api_token_allowed: true,
-				permission: permissions::workspace::region::LIST,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+				requested_workspace: api_macros::closure_as_pinned_box!(
+					|context| {
+						let workspace_id = context
+							.get_param(request_keys::WORKSPACE_ID)
+							.unwrap();
+						let workspace_id = Uuid::parse_str(workspace_id)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+						Ok((context, workspace_id))
 					}
-
-					Ok((context, resource))
-				}),
+				),
 			},
 			EveMiddleware::CustomFunction(pin_fn!(list_regions)),
 		],
@@ -188,6 +190,39 @@ pub fn create_sub_app(
 		],
 	);
 
+	// Reconfigure a region
+	app.post(
+		"/reconfigure",
+		[
+			EveMiddleware::ResourceTokenAuthenticator {
+				is_api_token_allowed: true,
+				permission: permissions::workspace::region::ADD,
+				resource: closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			},
+			EveMiddleware::CustomFunction(pin_fn!(reconfigure_region)),
+		],
+	);
+
 	// Delete a new region
 	app.delete(
 		"/:regionId",
@@ -241,6 +276,7 @@ async fn list_regions(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
+	let user_token = context.get_token_data().status(500)?.clone();
 
 	let regions = db::get_all_regions_for_workspace(
 		context.get_database_connection(),
@@ -248,6 +284,13 @@ async fn list_regions(
 	)
 	.await?
 	.into_iter()
+	.filter(|region| {
+		user_token.has_access_for_requested_action(
+			&workspace_id,
+			&region.id,
+			permissions::workspace::region::INFO,
+		)
+	})
 	.map(|region| Region {
 		r#type: if region.is_byoc_region() {
 			RegionType::BYOC
@@ -421,6 +464,23 @@ async fn add_region(
 
 	let config = context.get_state().config.clone();
 
+	let mut redis_connection = context.get_redis_connection().clone();
+
+	let patr_token = match &data {
+		AddRegionToWorkspaceData::Digitalocean { patr_token, .. } => patr_token,
+		AddRegionToWorkspaceData::KubeConfig { patr_token, .. } => patr_token,
+	};
+
+	let api_token = UserAuthenticationData::ApiToken(
+		ApiTokenData::decode(
+			context.get_database_connection(),
+			&mut redis_connection,
+			patr_token,
+			&IpAddr::V4(Ipv4Addr::LOCALHOST),
+		)
+		.await?,
+	);
+
 	log::trace!(
 		"request_id: {} - Checking if the deployment name already exists",
 		request_id
@@ -446,13 +506,52 @@ async fn add_region(
 	let region_id =
 		db::generate_new_resource_id(context.get_database_connection()).await?;
 
+	if !api_token.has_access_for_requested_action(
+		&workspace_id,
+		&region_id,
+		rbac::permissions::workspace::region::PUSH_LOGS,
+	) {
+		return Err(Error::empty()
+			.status(401)
+			.body(error!(REGION_TOKEN_UNABLE_TO_PUSH_LOGS).to_string()));
+	}
+	if !api_token.has_access_for_requested_action(
+		&workspace_id,
+		&region_id,
+		rbac::permissions::workspace::region::PUSH_METRICS,
+	) {
+		return Err(Error::empty()
+			.status(401)
+			.body(error!(REGION_TOKEN_UNABLE_TO_PUSH_METRICS).to_string()));
+	}
+	if !api_token
+		.workspace_permissions()
+		.get(&workspace_id)
+		.map(|permissions| match permissions {
+			WorkspacePermission::SuperAdmin => true,
+			WorkspacePermission::Member { permissions } => permissions
+				.contains_key(
+				rbac::PERMISSIONS
+					.get()
+					.unwrap()
+					.get(rbac::permissions::workspace::container_registry::PULL)
+					.unwrap(),
+			),
+		})
+		.unwrap_or(false)
+	{
+		return Err(Error::empty()
+			.status(401)
+			.body(error!(REGION_TOKEN_UNABLE_TO_PULL_IMAGES).to_string()));
+	}
+
 	db::create_resource(
 		context.get_database_connection(),
 		&region_id,
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
-			.get(crate::models::rbac::resource_types::DEPLOYMENT_REGION)
+			.get(crate::models::rbac::resource_types::REGION)
 			.unwrap(),
 		&workspace_id,
 		&Utc::now(),
@@ -469,6 +568,7 @@ async fn add_region(
 			auto_scale,
 			node_name,
 			node_size_slug,
+			patr_token,
 		} => {
 			log::trace!(
 				"request_id: {} creating digital ocean k8s cluster in db",
@@ -517,12 +617,16 @@ async fn add_region(
 				&region_id,
 				&cf_cert.cert,
 				&cf_cert.key,
+				&patr_token,
 				&config,
 				&request_id,
 			)
 			.await?;
 		}
-		AddRegionToWorkspaceData::KubeConfig { config_file } => {
+		AddRegionToWorkspaceData::KubeConfig {
+			config_file,
+			patr_token,
+		} => {
 			let cf_cert = service::create_origin_ca_certificate_for_region(
 				&region_id, &config,
 			)
@@ -545,6 +649,7 @@ async fn add_region(
 				config_file,
 				&cf_cert.cert,
 				&cf_cert.key,
+				&patr_token,
 				&config,
 				&request_id,
 			)
@@ -557,6 +662,63 @@ async fn add_region(
 		request_id
 	);
 	context.success(AddRegionToWorkspaceResponse { region_id });
+	Ok(context)
+}
+
+async fn reconfigure_region(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+
+	let region_id =
+		Uuid::parse_str(context.get_param(request_keys::REGION_ID).unwrap())
+			.unwrap();
+
+	let ReconfigureClusterRequest { patr_api_token, .. } = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let config = context.get_state().config.clone();
+
+	let region =
+		db::get_region_by_id(context.get_database_connection(), &region_id)
+			.await?
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	log::trace!(
+		"{} - reconfiguring region to workspace {}",
+		request_id,
+		workspace_id,
+	);
+
+	if let Some(config_file) = region.config_file {
+		service::queue_reconfigure_kubernetes_cluster(
+			&region.id,
+			config_file.0,
+			&patr_api_token,
+			&config,
+			&request_id,
+		)
+		.await?;
+	} else {
+		log::warn!(
+			"{} - Kubeconfig not found in database for workspace: {}",
+			request_id,
+			workspace_id
+		);
+
+		return Error::as_result()
+			.status(404)
+			.body(error!(KUBE_CONFIG_NOT_FOUND).to_string())?;
+	}
+
+	context.success(ReconfigureClusterResponse {});
 	Ok(context)
 }
 
@@ -663,7 +825,49 @@ async fn delete_region(
 
 	// delete origin ca cert
 	if let Some(cert_id) = region.cloudflare_certificate_id {
-		service::revoke_origin_ca_certificate(&cert_id, &config).await?;
+		let status =
+			service::revoke_origin_ca_certificate(&cert_id, &config).await?;
+
+		match status {
+			Ok(success) => {
+				log::info!(
+					"Successfully deleted the cloudflare origin CA cert {} for region {}",
+					success.result.id,
+					region_id
+				);
+				db::update_region_certificate_as_revoked(
+					context.get_database_connection(),
+					&region_id,
+				)
+				.await?;
+			}
+			Err(err) => match err {
+				ApiFailure::Error(status_code, _)
+					if status_code.is_client_error() =>
+				{
+					log::info!(
+						"cloudflare origin CA cert {} is already revoked for region {}",
+						cert_id,
+						region_id
+					);
+					db::update_region_certificate_as_revoked(
+						context.get_database_connection(),
+						&region_id,
+					)
+					.await?;
+				}
+				unknown_error => {
+					// not updating anything here, as it will be taken care in
+					// scheduler
+					log::warn!(
+						"Error while deleting cloudflare origin CA cert {} for region {} - {}",
+						cert_id,
+						region_id,
+						unknown_error
+					);
+				}
+			},
+		}
 	}
 
 	let onpatr_domain = db::get_domain_by_name(

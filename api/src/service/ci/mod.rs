@@ -30,7 +30,7 @@ use globset::{Glob, GlobSetBuilder};
 use kube::config::Kubeconfig;
 
 use crate::{
-	db::{self, GitProvider},
+	db::{self, GitProvider, Region},
 	models::{
 		ci::{Commit, EventType, PullRequest, Tag},
 		rbac,
@@ -400,15 +400,25 @@ pub async fn add_build_steps_in_k8s(
 		.await?
 		.status(500)?;
 
-	let kubeconfig =
+	let (kubeconfig, deployed_region) =
 		service::get_kubeconfig_for_ci_build(connection, build_id).await?;
 
 	service::infrastructure::create_kubernetes_namespace(
 		&build_id.get_build_namespace(),
-		service::get_kubeconfig_for_ci_build(connection, build_id).await?,
+		kubeconfig.clone(),
 		request_id,
 	)
 	.await?;
+
+	if deployed_region.is_byoc_region() {
+		service::infrastructure::copy_patr_token_to_ci_namespace(
+			&build_id.repo_workspace_id,
+			&build_id.get_build_namespace(),
+			kubeconfig.clone(),
+			request_id,
+		)
+		.await?;
+	}
 
 	let runner_resource = db::get_runner_resource_for_build(
 		connection,
@@ -433,6 +443,7 @@ pub async fn add_build_steps_in_k8s(
 			build_id.repo_workspace_id.as_str(),
 			service,
 			kubeconfig.clone(),
+			&deployed_region,
 			config,
 			request_id,
 		)
@@ -731,7 +742,7 @@ pub async fn get_netrc_for_repo(
 pub async fn get_kubeconfig_for_ci_build(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	build_id: &BuildId,
-) -> Result<Kubeconfig, Error> {
+) -> Result<(Kubeconfig, Region), Error> {
 	let build = db::get_build_details_for_build(
 		connection,
 		&build_id.repo_id,
@@ -744,11 +755,15 @@ pub async fn get_kubeconfig_for_ci_build(
 		.await?
 		.status(500)?;
 
-	let (kubeconfig, _) = service::get_kubernetes_config_for_region(
+	let (kubeconfig, region_id) = service::get_kubernetes_config_for_region(
 		connection,
 		&runner.region_id,
 	)
 	.await?;
 
-	Ok(kubeconfig)
+	let region = db::get_region_by_id(connection, &region_id)
+		.await?
+		.status(500)?;
+
+	Ok((kubeconfig, region))
 }

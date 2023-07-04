@@ -1,5 +1,4 @@
 use std::{
-	cmp::max,
 	ops::{Add, Sub},
 	str::FromStr,
 };
@@ -239,8 +238,8 @@ pub(super) async fn process_request(
 				workspace.name.clone()
 			};
 
-			if card_amount_to_be_charged_in_cents == 0 &&
-				total_bill.total_charge == 0
+			if card_amount_to_be_charged_in_cents < 100 && // as 100=$1
+				total_bill.total_charge < 100
 			{
 				// do nothing, no email has to be sent for any payment action
 				log::trace!(
@@ -249,8 +248,8 @@ pub(super) async fn process_request(
 					workspace.id
 				);
 				return Ok(());
-			} else if card_amount_to_be_charged_in_cents == 0 &&
-				total_bill.total_charge > 0
+			} else if card_amount_to_be_charged_in_cents < 100 &&
+				total_bill.total_charge > 100
 			{
 				let billing_address = if let Some(address) =
 					workspace.address_id
@@ -292,7 +291,8 @@ pub(super) async fn process_request(
 					total_bill,
 					billing_address,
 					credits_deducted_in_cents,
-					// If `amount_due` is 0, definitely the card amount is 0
+					// If `amount_due` is less then 100, definitely the card
+					// amount is less then 100
 					card_amount_to_be_charged_in_cents,
 					credits_remaining_in_cents,
 				)
@@ -459,6 +459,7 @@ pub(super) async fn process_request(
 							&workspace.super_admin_id,
 							workspace_name,
 							total_bill,
+							card_amount_to_be_charged_in_cents,
 							billing_address,
 						)
 						.await?;
@@ -494,6 +495,7 @@ pub(super) async fn process_request(
 						&workspace.super_admin_id,
 						workspace_name,
 						total_bill,
+						card_amount_to_be_charged_in_cents,
 						Address {
 							first_name: "".to_string(),
 							last_name: "".to_string(),
@@ -663,7 +665,7 @@ pub(super) async fn process_request(
 				}
 				TotalAmount::NeedToPay(need_to_pay) => (
 					need_to_pay,
-					max(0, total_bill.total_charge - need_to_pay),
+					total_bill.total_charge.saturating_sub(need_to_pay),
 					0,
 				),
 			};
@@ -687,7 +689,7 @@ pub(super) async fn process_request(
 				workspace.name.clone()
 			};
 
-			if card_amount_to_be_charged_in_cents == 0 {
+			if card_amount_to_be_charged_in_cents < 100 {
 				// the notification for payment success will be sent whenever
 				// the user has made a payment, so no need to send it again when
 				// confirming it in rabbitmq
@@ -897,9 +899,9 @@ pub(super) async fn process_request(
 						workspace_name,
 						month,
 						year,
-						// If `amount_due` is 0, definitely the card amount
-						// is 0
-						total_bill.total_charge,
+						// If `amount_due` is less than 100, definitely the
+						// card amount is less then 100
+						card_amount_to_be_charged_in_cents,
 						deadline,
 					)
 					.await?;
@@ -910,9 +912,9 @@ pub(super) async fn process_request(
 						workspace_name,
 						month,
 						year,
-						// If `amount_due` is 0, definitely the card amount
-						// is 0
-						total_bill.total_charge,
+						// If `amount_due` is less than 100, definitely the
+						// card amount is less then 100
+						card_amount_to_be_charged_in_cents,
 						deadline,
 					)
 					.await?;

@@ -40,6 +40,7 @@ use octorust::{
 };
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use redis::AsyncCommands;
+use reqwest::header::HeaderValue;
 use serde::Deserialize;
 
 use crate::{
@@ -55,7 +56,7 @@ use crate::{
 	rabbitmq::{BuildId, BuildStepId},
 	service::{self, ParseStatus},
 	utils::{
-		constants::request_keys,
+		constants::{request_keys, PATR_CLUSTER_TENANT_ID},
 		Error,
 		ErrorData,
 		EveContext,
@@ -138,7 +139,7 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
 				permission:
-					permissions::workspace::ci::git_provider::repo::LIST,
+					permissions::workspace::ci::git_provider::repo::SYNC,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -168,31 +169,20 @@ pub fn create_sub_app(
 	app.get(
 		"/repo",
 		[
-			EveMiddleware::ResourceTokenAuthenticator {
+			EveMiddleware::WorkspaceMemberAuthenticator {
 				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::ci::git_provider::repo::LIST,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+				requested_workspace: api_macros::closure_as_pinned_box!(
+					|context| {
+						let workspace_id = context
+							.get_param(request_keys::WORKSPACE_ID)
+							.unwrap();
+						let workspace_id = Uuid::parse_str(workspace_id)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+						Ok((context, workspace_id))
 					}
-
-					Ok((context, resource))
-				}),
+				),
 			},
 			EveMiddleware::CustomFunction(pin_fn!(list_repositories)),
 		],
@@ -204,7 +194,7 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
 				permission:
-					permissions::workspace::ci::git_provider::repo::ACTIVATE,
+					permissions::workspace::ci::git_provider::repo::INFO,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id = Uuid::parse_str(
 						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
@@ -626,7 +616,7 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
 				permission:
-					permissions::workspace::ci::git_provider::repo::LIST,
+					permissions::workspace::ci::git_provider::repo::INFO,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id = Uuid::parse_str(
 						context.get_param(request_keys::WORKSPACE_ID).unwrap(),
@@ -980,6 +970,7 @@ async fn list_repositories(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
+	let user_token = context.get_token_data().status(500)?.clone();
 
 	log::trace!("request_id: {request_id} - Listing github repos for workspace {workspace_id}");
 
@@ -997,6 +988,13 @@ async fn list_repositories(
 	)
 	.await?
 	.into_iter()
+	.filter(|repo| {
+		user_token.has_access_for_requested_action(
+			&workspace_id,
+			&repo.id,
+			permissions::workspace::ci::git_provider::repo::INFO,
+		)
+	})
 	.map(|repo| RepositoryDetails {
 		id: repo.git_provider_repo_uid,
 		name: repo.repo_name,
@@ -1337,6 +1335,34 @@ async fn get_build_logs(
 	.await?
 	.status(500)?;
 
+	let build_details = db::get_build_details_for_build(
+		context.get_database_connection(),
+		&repo.id,
+		build_num,
+	)
+	.await?
+	.status(500)?;
+
+	let runner_details = db::get_runner_by_id_including_deleted(
+		context.get_database_connection(),
+		&build_details.runner_id,
+	)
+	.await?
+	.status(500)?;
+
+	let runner_region = db::get_region_by_id(
+		context.get_database_connection(),
+		&runner_details.region_id,
+	)
+	.await?
+	.status(500)?;
+
+	let tenant_id = if runner_region.is_byoc_region() {
+		workspace_id.as_str()
+	} else {
+		PATR_CLUSTER_TENANT_ID
+	};
+
 	let build_created_time = db::get_build_created_time(
 		context.get_database_connection(),
 		&repo.id,
@@ -1348,7 +1374,7 @@ async fn get_build_logs(
 
 	let build_step_id = BuildStepId {
 		build_id: BuildId {
-			repo_workspace_id: workspace_id,
+			repo_workspace_id: workspace_id.clone(),
 			repo_id: repo.id,
 			build_num,
 		},
@@ -1359,13 +1385,18 @@ async fn get_build_logs(
 	let response = reqwest::Client::new()
 		.get(format!(
 			"https://{}/loki/api/v1/query_range?query={{namespace=\"{}\",job=\"{}/{}\"}}&start={}",
-			loki.host,
+			loki.upstream_host,
 			build_step_id.build_id.get_build_namespace(),
 			build_step_id.build_id.get_build_namespace(),
 			build_step_id.get_job_name(),
 			build_created_time.timestamp_nanos()
 		))
 		.basic_auth(&loki.username, Some(&loki.password))
+		.header(
+			"X-Scope-OrgID",
+			HeaderValue::from_str(tenant_id)
+					.expect("workpsace_id to headervalue should not panic")
+		)
 		.send()
 		.await?
 		.json::<Logs>()
@@ -1677,6 +1708,50 @@ async fn restart_build(
 		}
 	};
 
+	let (kubeconfig, deployed_region) = service::get_kubeconfig_for_ci_build(
+		context.get_database_connection(),
+		&BuildId {
+			repo_workspace_id: git_provider.workspace_id.clone(),
+			repo_id: repo.id.clone(),
+			build_num,
+		},
+	)
+	.await?;
+
+	// check whether patr token is present in byoc cluster or not
+	if deployed_region.is_byoc_region() &&
+		!service::is_patr_token_exists(
+			git_provider.workspace_id.as_str(),
+			kubeconfig,
+			&request_id,
+		)
+		.await?
+	{
+		db::update_build_status(
+			context.get_database_connection(),
+			&repo.id,
+			build_num,
+			BuildStatus::Errored,
+		)
+		.await?;
+		db::update_build_message(
+			context.get_database_connection(),
+			&repo.id,
+			build_num,
+			"Unable to find PATR_TOKEN, try reconfiguring your BYOC region",
+		)
+		.await?;
+		db::update_build_finished_time(
+			context.get_database_connection(),
+			&repo.id,
+			build_num,
+			&Utc::now(),
+		)
+		.await?;
+
+		return Ok(context);
+	}
+
 	service::add_build_steps_in_db(
 		context.get_database_connection(),
 		&repo.id,
@@ -1880,6 +1955,50 @@ async fn start_build_for_branch(
 			return Ok(context);
 		}
 	};
+
+	let (kubeconfig, deployed_region) = service::get_kubeconfig_for_ci_build(
+		context.get_database_connection(),
+		&BuildId {
+			repo_workspace_id: git_provider.workspace_id.clone(),
+			repo_id: repo.id.clone(),
+			build_num,
+		},
+	)
+	.await?;
+
+	// check whether patr token is present in byoc cluster or not
+	if deployed_region.is_byoc_region() &&
+		!service::is_patr_token_exists(
+			git_provider.workspace_id.as_str(),
+			kubeconfig,
+			&request_id,
+		)
+		.await?
+	{
+		db::update_build_status(
+			context.get_database_connection(),
+			&repo.id,
+			build_num,
+			BuildStatus::Errored,
+		)
+		.await?;
+		db::update_build_message(
+			context.get_database_connection(),
+			&repo.id,
+			build_num,
+			"Unable to find PATR_TOKEN, try reconfiguring your BYOC region",
+		)
+		.await?;
+		db::update_build_finished_time(
+			context.get_database_connection(),
+			&repo.id,
+			build_num,
+			&Utc::now(),
+		)
+		.await?;
+
+		return Ok(context);
+	}
 
 	service::add_build_steps_in_db(
 		context.get_database_connection(),

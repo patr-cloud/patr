@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use ::redis::aio::MultiplexedConnection as RedisConnection;
 use api_models::{models::workspace::WorkspacePermission, utils::Uuid};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use jsonwebtoken::{
 	Algorithm,
 	DecodingKey,
@@ -12,7 +12,7 @@ use jsonwebtoken::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{error, redis, utils::Error};
+use crate::{db, error, redis, service, utils::Error, Database};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -26,25 +26,32 @@ pub struct AccessTokenData {
 	pub exp: DateTime<Utc>,
 	pub login_id: Uuid,
 	pub user: ExposedUserData,
+	#[serde(skip)]
 	pub permissions: BTreeMap<Uuid, WorkspacePermission>,
-	// Do we need to add more?
 }
 
 impl AccessTokenData {
 	pub async fn decode(
+		connection: &mut <Database as sqlx::Database>::Connection,
 		redis_connection: &mut RedisConnection,
 		token: &str,
 		key: &str,
 	) -> Result<AccessTokenData, Error> {
 		let decode_key = DecodingKey::from_secret(key.as_ref());
-		let TokenData { header: _, claims } =
-			jsonwebtoken::decode::<Self>(token, &decode_key, &{
-				let mut validation = Validation::new(Algorithm::HS256);
-				validation.validate_exp = false;
-				validation
-			})?;
+		let TokenData {
+			header: _,
+			mut claims,
+		} = jsonwebtoken::decode::<Self>(token, &decode_key, &{
+			let mut validation = Validation::new(Algorithm::HS256);
+			validation.validate_exp = false;
+			validation
+		})?;
 
-		if !claims.is_valid(redis_connection).await.unwrap_or(false) {
+		if !claims
+			.is_valid(connection, redis_connection)
+			.await
+			.unwrap_or(false)
+		{
 			return Err(Error::empty()
 				.status(401)
 				.body(error!(EXPIRED).to_string()));
@@ -54,7 +61,8 @@ impl AccessTokenData {
 	}
 
 	async fn is_valid(
-		&self,
+		&mut self,
+		connection: &mut <Database as sqlx::Database>::Connection,
 		redis_conn: &mut RedisConnection,
 	) -> Result<bool, Error> {
 		// check whether access token has expired
@@ -84,6 +92,44 @@ impl AccessTokenData {
 		{
 			return Ok(false);
 		}
+
+		// get permissions from redis
+		let permissions = redis::get_user_access_token_permissions(
+			redis_conn,
+			&self.login_id,
+		)
+		.await?
+		.and_then(|permission| {
+			serde_json::from_str::<BTreeMap<Uuid, WorkspacePermission>>(
+				&permission,
+			)
+			.ok()
+		});
+
+		self.permissions = if let Some(permissions) = permissions {
+			permissions
+		} else {
+			// If not present in the redis fetch from db
+			let all_workspace_permissions =
+				db::get_all_workspace_role_permissions_for_user(
+					connection,
+					&self.user.id,
+				)
+				.await?;
+
+			// add into redis
+			let access_token_ttl =
+				service::get_access_token_expiry() + Duration::seconds(60);
+			redis::set_user_access_token_permissions(
+				redis_conn,
+				&self.login_id,
+				&serde_json::to_string(&all_workspace_permissions)?,
+				Some(&access_token_ttl),
+			)
+			.await?;
+
+			all_workspace_permissions
+		};
 
 		// check workspace revocation
 		for workspace_id in self.permissions.keys() {
@@ -124,7 +170,6 @@ impl AccessTokenData {
 	pub fn new(
 		iat: DateTime<Utc>,
 		exp: DateTime<Utc>,
-		permissions: BTreeMap<Uuid, WorkspacePermission>,
 		login_id: Uuid,
 		user: ExposedUserData,
 	) -> Self {
@@ -134,7 +179,7 @@ impl AccessTokenData {
 			iat,
 			typ: String::from("accessToken"),
 			exp,
-			permissions,
+			permissions: BTreeMap::new(),
 			login_id,
 			user,
 		}

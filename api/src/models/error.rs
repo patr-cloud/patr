@@ -57,6 +57,8 @@ pub mod id {
 	pub const DNS_RECORD_NOT_FOUND: &str = "dnsRecordNotFound";
 	pub const INVALID_DNS_RECORD_NAME: &str = "invalidDnsRecordName";
 	pub const MAX_LIMIT_REACHED: &str = "maxLimitReached";
+	pub const CANNOT_DELETE_UNPAID_WORKSPACE: &str =
+		"cannotDeleteUnpaidWorkspace";
 	pub const CANNOT_DELETE_WORKSPACE: &str = "cannotDeleteWorkspace";
 	pub const ADDRESS_LINE_3_NOT_ALLOWED: &str = "addressLine3NotAllowed";
 	pub const PAYMENT_FAILED: &str = "paymentFailed";
@@ -87,6 +89,8 @@ pub mod id {
 	pub const REDUCED_VOLUME_SIZE: &str = "reducedVolumeSize";
 	pub const CANNOT_ADD_NEW_VOLUME: &str = "cannotAddNewVolume";
 	pub const CANNOT_REMOVE_VOLUME: &str = "cannotRemoveVolume";
+	pub const MFA_OTP_INVALID: &str = "mfaOtpInvalid";
+	pub const MFA_ALREADY_ACTIVATED: &str = "mfaAlreadyActivated";
 
 	// error constants for billing related things
 	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "cardlessFreeLimitExceeded";
@@ -105,6 +109,13 @@ pub mod id {
 	pub const FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER: &str =
 		"featureNotSupportedForCustomCluster";
 	pub const REGION_NOT_CONNECTED: &str = "regionNotConnected";
+	pub const REGION_TOKEN_UNABLE_TO_PUSH_LOGS: &str =
+		"regionTokenUnableToPushLogs";
+	pub const REGION_TOKEN_UNABLE_TO_PUSH_METRICS: &str =
+		"regionTokenUnableToPushMetrics";
+	pub const REGION_TOKEN_UNABLE_TO_PULL_IMAGES: &str =
+		"regionTokenUnableToPullImages";
+	pub const KUBE_CONFIG_NOT_FOUND: &str = "kubeConfigNotFound";
 }
 
 #[allow(dead_code)]
@@ -130,7 +141,7 @@ pub mod message {
 	pub const WRONG_PARAMETERS: &str =
 		"An internal error occured. This incident has been reported";
 	pub const UNAUTHORIZED: &str =
-		"An error occured. If this persists, please contact the administrator";
+		"You do not have access to this resource, please re-check your credentials";
 	pub const EXPIRED: &str =
 		"An error occured. If this persists, please try logging in again";
 	pub const INVALID_DOMAIN_NAME: &str =
@@ -218,6 +229,7 @@ pub mod message {
 	pub const DNS_RECORD_NOT_FOUND: &str = "The DNS record does not exist";
 	pub const INVALID_DNS_RECORD_NAME: &str = "The DNS record name is invalid";
 	pub const MAX_LIMIT_REACHED: &str = "You have reached the limit of the maximum number resources allowed for your workspace";
+	pub const CANNOT_DELETE_UNPAID_WORKSPACE: &str = "There is a amount due in your workspace, hence cannot delete workspace. Please clear all your dues on workspace and try again";
 	pub const CANNOT_DELETE_WORKSPACE: &str =
 		"You have some resources present in the workspace. Please delete them before proceeding to delete your workspace";
 	pub const ADDRESS_LINE_3_NOT_ALLOWED: &str =
@@ -251,6 +263,10 @@ pub mod message {
 		"Cannot update volume size to be less than the actual size given at the time of creating deployment";
 	pub const CANNOT_ADD_NEW_VOLUME: &str = "Adding new volume to your deployment is not allowed. You can try increasing the size or create a new deployment with desired number of volumes";
 	pub const CANNOT_REMOVE_VOLUME: &str = "Removing a volume from a deployment is not allowed, if you want to achieve the same please try deleting the deployment and create a new one";
+	pub const MFA_OTP_INVALID: &str =
+		"Your entered OTP is either expired or is invalid. Please try again";
+	pub const MFA_ALREADY_ACTIVATED: &str =
+		"The MFA for this user is already activated";
 
 	// error constants for billing related things
 	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "You have reached the maximun free limit allowed to create resources without adding a payment card. Kindly add a card to create more resources";
@@ -268,4 +284,9 @@ pub mod message {
 	pub const FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER: &str =
 		"For custom cluster this feature is not supported";
 	pub const REGION_NOT_CONNECTED: &str = "We're unable to connect to your custom cluster. Kindly make sure your cluster is up and running. If you face any difficulty please contact support";
+	pub const REGION_TOKEN_UNABLE_TO_PUSH_LOGS: &str = "The API token you have used for this region does not have permissions to push logs";
+	pub const REGION_TOKEN_UNABLE_TO_PUSH_METRICS: &str = "The API token you have used for this region does not have permissions to push metrics";
+	pub const REGION_TOKEN_UNABLE_TO_PULL_IMAGES: &str = "The API token you have used for this region does not have permissions to pull images";
+	pub const KUBE_CONFIG_NOT_FOUND: &str =
+		"Kube config not found for your region";
 }

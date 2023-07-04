@@ -299,6 +299,50 @@ async fn handle_ci_hooks_for_repo(
 		}
 	};
 
+	let (kubeconfig, deployed_region) = service::get_kubeconfig_for_ci_build(
+		context.get_database_connection(),
+		&BuildId {
+			repo_workspace_id: git_provider.workspace_id.clone(),
+			repo_id: repo.id.clone(),
+			build_num,
+		},
+	)
+	.await?;
+
+	// check whether patr token is present in byoc cluster or not
+	if deployed_region.is_byoc_region() &&
+		!service::is_patr_token_exists(
+			git_provider.workspace_id.as_str(),
+			kubeconfig,
+			&request_id,
+		)
+		.await?
+	{
+		db::update_build_status(
+			context.get_database_connection(),
+			&repo.id,
+			build_num,
+			BuildStatus::Errored,
+		)
+		.await?;
+		db::update_build_message(
+			context.get_database_connection(),
+			&repo.id,
+			build_num,
+			"Unable to find PATR_TOKEN, try reconfiguring your BYOC region",
+		)
+		.await?;
+		db::update_build_finished_time(
+			context.get_database_connection(),
+			&repo.id,
+			build_num,
+			&Utc::now(),
+		)
+		.await?;
+
+		return Ok(context);
+	}
+
 	service::add_build_steps_in_db(
 		context.get_database_connection(),
 		&repo.id,

@@ -51,6 +51,7 @@ pub enum InfraRequestData {
 	Deployment(DeploymentRequestData),
 	BYOC(BYOCData),
 	DockerRegistry(DockerRegistryData),
+	Database(DatabaseRequestData),
 	StaticSite(StaticSiteData),
 }
 
@@ -80,11 +81,18 @@ pub enum BYOCData {
 		kube_config: Kubeconfig,
 		tls_cert: String,
 		tls_key: String,
+		patr_token: String,
 		request_id: Uuid,
 	},
 	CheckClusterForReadiness {
 		region_id: Uuid,
 		kube_config: Kubeconfig,
+		request_id: Uuid,
+	},
+	ReconfigureKubernetesCluster {
+		region_id: Uuid,
+		kube_config: Kubeconfig,
+		patr_api_token: String,
 		request_id: Uuid,
 	},
 	GetDigitalOceanKubeconfig {
@@ -93,6 +101,7 @@ pub enum BYOCData {
 		region_id: Uuid,
 		tls_cert: String,
 		tls_key: String,
+		patr_token: String,
 		request_id: Uuid,
 	},
 	DeleteKubernetesCluster {
@@ -100,6 +109,24 @@ pub enum BYOCData {
 		workspace_id: Uuid,
 		kube_config: Kubeconfig,
 		request_id: Uuid,
+	},
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "action", rename_all = "camelCase")]
+#[allow(clippy::large_enum_variant)]
+pub enum DatabaseRequestData {
+	CheckAndUpdateStatus {
+		workspace_id: Uuid,
+		database_id: Uuid,
+		request_id: Uuid,
+		password: String,
+	},
+	ChangeMongoPasswordAndStatus {
+		workspace_id: Uuid,
+		database_id: Uuid,
+		request_id: Uuid,
+		password: String,
 	},
 }
 

@@ -7,12 +7,12 @@ use std::{
 use api_models::{
 	models::workspace::{
 		billing::{
-			DatabaseUsage,
 			DeploymentBill,
 			DeploymentUsage,
 			DockerRepositoryUsage,
 			DomainPlan,
 			DomainUsage,
+			ManagedDatabaseUsage,
 			ManagedUrlUsage,
 			PaymentMethod,
 			PaymentStatus,
@@ -24,6 +24,7 @@ use api_models::{
 			WorkspaceBillBreakdown,
 		},
 		infrastructure::{
+			database::ManagedDatabaseStatus,
 			deployment::DeploymentStatus,
 			list_all_deployment_machine_type::DeploymentMachineType,
 		},
@@ -35,7 +36,6 @@ use eve_rs::AsError;
 use stripe::{
 	Client,
 	CreatePaymentIntent,
-	CreateRefund,
 	Currency,
 	CustomerId,
 	PaymentIntent,
@@ -43,20 +43,19 @@ use stripe::{
 	PaymentIntentSetupFutureUsage,
 	PaymentIntentStatus,
 	PaymentMethodId,
-	Refund,
 };
 
 use crate::{
 	db::{
 		self,
+		get_database_plan_by_id,
 		DomainPlan as DbDomainPlan,
-		ManagedDatabasePlan,
-		ManagedDatabaseStatus,
+		LegacyManagedDatabasePlan,
 		StaticSitePlan as DbStaticSitePlan,
 		Workspace,
 	},
 	error,
-	models::{deployment, IpQualityScore},
+	models::deployment,
 	utils::{settings::Settings, Error},
 	Database,
 };
@@ -197,18 +196,24 @@ pub async fn verify_card_with_charges(
 				.await?;
 			}
 
-			db::unmark_workspace_as_spam(connection, &workspace.id).await?;
+			let transaction_id =
+				db::generate_new_transaction_id(connection).await?;
 
-			Refund::create(&client, {
-				let mut refund = CreateRefund::new();
-
-				// https://stripe.com/docs/api/refunds#create_refund
-				refund.payment_intent =
-					Some(PaymentIntentId::from_str(payment_intent_id)?);
-
-				refund
-			})
+			db::create_transaction(
+				connection,
+				&workspace.id,
+				&transaction_id,
+				Utc::now().month() as i32,
+				1000u64,
+				Some(&payment_intent.id),
+				&Utc::now(),
+				&TransactionType::Credits,
+				&PaymentStatus::Success,
+				Some("Patr charge: Card verification charges"),
+			)
 			.await?;
+
+			db::unmark_workspace_as_spam(connection, &workspace.id).await?;
 
 			Ok(())
 		}
@@ -537,13 +542,13 @@ pub async fn calculate_volumes_bill_for_workspace_till(
 	Ok(volume_usage_bill)
 }
 
-pub async fn calculate_database_bill_for_workspace_till(
+pub async fn calculate_managed_database_bill_for_workspace_till(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	month_start_date: &chrono::DateTime<Utc>,
 	till_date: &chrono::DateTime<Utc>,
-) -> Result<Vec<DatabaseUsage>, Error> {
-	let database_usages = db::get_all_database_usage(
+) -> Result<Vec<ManagedDatabaseUsage>, Error> {
+	let database_usages = db::get_all_managed_database_usage(
 		&mut *connection,
 		workspace_id,
 		&DateTime::from(*month_start_date),
@@ -565,15 +570,39 @@ pub async fn calculate_database_bill_for_workspace_till(
 				as i64,
 		);
 
-		let monthly_price = match database_usage.db_plan {
-			ManagedDatabasePlan::Nano => 15f64,
-			ManagedDatabasePlan::Micro => 30f64,
-			ManagedDatabasePlan::Small => 45f64,
-			ManagedDatabasePlan::Medium => 60f64,
-			ManagedDatabasePlan::Large => 120f64,
-			ManagedDatabasePlan::Xlarge => 240f64,
-			ManagedDatabasePlan::Xxlarge => 480f64,
-			ManagedDatabasePlan::Mammoth => 960f64,
+		let monthly_price = match (
+			&database_usage.db_plan_id,
+			&database_usage.legacy_db_plan,
+		) {
+			(Some(plan_id), None) => {
+				let plan = get_database_plan_by_id(connection, plan_id).await?;
+				match (plan.cpu_count, plan.memory_count, plan.volume) {
+					(1, 2, 25) => 10f64,
+					(2, 4, 50) => 20f64,
+					(2, 4, 100) => 25f64,
+					(4, 8, 200) => 50f64,
+					_ => 0f64,
+				}
+			}
+			(None, Some(legacy_plan)) => match legacy_plan {
+				LegacyManagedDatabasePlan::Nano => 15f64,
+				LegacyManagedDatabasePlan::Micro => 30f64,
+				LegacyManagedDatabasePlan::Small => 45f64,
+				LegacyManagedDatabasePlan::Medium => 60f64,
+				LegacyManagedDatabasePlan::Large => 120f64,
+				LegacyManagedDatabasePlan::Xlarge => 240f64,
+				LegacyManagedDatabasePlan::Xxlarge => 480f64,
+				LegacyManagedDatabasePlan::Mammoth => 960f64,
+			},
+			_ => {
+				log::error!(
+					"Both db_plan_id and legacy_db_plan are None for db: {}",
+					database_usage.database_id
+				);
+				return Err(Error::empty()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string()));
+			}
 		};
 
 		let price_in_dollars = if hours >= 720 {
@@ -590,13 +619,11 @@ pub async fn calculate_database_bill_for_workspace_till(
 				&database_usage.database_id,
 			)
 			.await?
-			.status(500)?; // If database_id is presnt in usage table the it should be in the
-			   // database table as well, otherwise this is something wrong with our
-			   // logic
+			.status(500)?;
 
 		database_usage_bill
 			.entry(database_usage.database_id.clone())
-			.or_insert(DatabaseUsage {
+			.or_insert(ManagedDatabaseUsage {
 				start_time: DateTime(start_time),
 				deletion_time: database_usage.deletion_time.map(DateTime),
 				database_id: database_usage.database_id.clone(),
@@ -606,7 +633,15 @@ pub async fn calculate_database_bill_for_workspace_till(
 				is_deleted: managed_database.status ==
 					ManagedDatabaseStatus::Deleted,
 				monthly_charge: monthly_price as u64 * 100,
-				plan: database_usage.db_plan.to_string(),
+				plan: database_usage
+					.db_plan_id
+					.map(|plan_id| plan_id.to_string())
+					.or_else(|| {
+						database_usage
+							.legacy_db_plan
+							.map(|plan| plan.to_string())
+					})
+					.unwrap_or_else(|| "undefined".to_owned()),
 			});
 	}
 
@@ -1066,52 +1101,7 @@ pub async fn add_card_details(
 			.body(error!(ADDRESS_REQUIRED).to_string()));
 	};
 
-	let user = db::get_user_by_user_id(connection, &workspace.super_admin_id)
-		.await?
-		.status(500)?;
-
-	let email_str = user
-		.recovery_email_local
-		.as_ref()
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let domain = db::get_personal_domain_by_id(
-		connection,
-		user.recovery_email_domain_id
-			.as_ref()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?,
-	)
-	.await?
-	.status(500)?;
-
-	let email = format!("{}@{}", email_str, domain.name);
-
-	let email_spam_result = reqwest::Client::new()
-		.get(format!(
-			"{}/{}/{}",
-			config.ip_quality.host, config.ip_quality.token, email
-		))
-		.send()
-		.await
-		.map_err(|error| {
-			log::error!("IPQS api call error: {}", error);
-			Error::from(error)
-		})?
-		.json::<IpQualityScore>()
-		.await
-		.map_err(|error| {
-			log::error!("Error parsing IPQS response: {}", error);
-			Error::from(error)
-		})?;
-
-	let amount_in_cents = match email_spam_result.fraud_score {
-		(0..=50) => 200u64,  // $2 in cents
-		(51..=80) => 500u64, // $5 in cents
-		(81..=90) => 800u64, // $8 in cents
-		_ => 1200u64,        // $12 in cents
-	};
+	let amount_in_cents = 1000u64; // $10 in cents will be added as credits in user's account
 
 	let description = "Patr charge: Card verification charges";
 
@@ -1252,13 +1242,14 @@ pub async fn calculate_total_bill_for_workspace_till(
 	)
 	.await?;
 
-	let database_usage = calculate_database_bill_for_workspace_till(
-		&mut *connection,
-		workspace_id,
-		month_start_date,
-		till_date,
-	)
-	.await?;
+	let managed_database_usage =
+		calculate_managed_database_bill_for_workspace_till(
+			connection,
+			workspace_id,
+			month_start_date,
+			till_date,
+		)
+		.await?;
 
 	let static_site_usage = calculate_static_sites_bill_for_workspace_till(
 		&mut *connection,
@@ -1312,7 +1303,8 @@ pub async fn calculate_total_bill_for_workspace_till(
 		.sum();
 
 	let volume_charge = volume_usage.iter().map(|bill| bill.amount).sum();
-	let database_charge = database_usage.iter().map(|bill| bill.amount).sum();
+	let managed_database_charge =
+		managed_database_usage.iter().map(|bill| bill.amount).sum();
 	let static_site_charge =
 		static_site_usage.iter().map(|bill| bill.amount).sum();
 	let managed_url_charge =
@@ -1323,7 +1315,8 @@ pub async fn calculate_total_bill_for_workspace_till(
 	let secret_charge = secret_usage.iter().map(|bill| bill.amount).sum();
 
 	let total_charge = deployment_charge +
-		database_charge +
+		volume_charge +
+		managed_database_charge +
 		static_site_charge +
 		managed_url_charge +
 		docker_repository_charge +
@@ -1341,8 +1334,6 @@ pub async fn calculate_total_bill_for_workspace_till(
 		deployment_usage,
 		volume_charge,
 		volume_usage,
-		database_charge,
-		database_usage,
 		static_site_charge,
 		static_site_usage,
 		managed_url_charge,
@@ -1353,6 +1344,8 @@ pub async fn calculate_total_bill_for_workspace_till(
 		domain_usage,
 		secret_charge,
 		secret_usage,
+		managed_database_charge,
+		managed_database_usage,
 	};
 
 	if total_charge > 0 && cfg!(debug_assertions) {
@@ -1377,7 +1370,7 @@ pub async fn get_total_resource_usage(
 ) -> Result<WorkspaceBillBreakdown, Error> {
 	log::trace!(
 		"request_id: {} getting bill for all deployments",
-		request_id,
+		request_id
 	);
 	let deployment_usage = calculate_deployment_bill_for_workspace_till(
 		connection,
@@ -1410,22 +1403,23 @@ pub async fn get_total_resource_usage(
 		volume_usage.iter().map(|bill| bill.amount).sum::<u64>();
 
 	log::trace!(
-		"request_id: {} getting bill for all managed_databases",
-		request_id,
+		"request_id: {} getting bill for all managed databases",
+		request_id
 	);
-
-	let database_usage = calculate_database_bill_for_workspace_till(
-		connection,
-		workspace_id,
-		month_start_date,
-		till_date,
-	)
-	.await?;
-	let database_charge = database_usage.iter().map(|bill| bill.amount).sum();
+	let managed_database_usage =
+		calculate_managed_database_bill_for_workspace_till(
+			connection,
+			workspace_id,
+			month_start_date,
+			till_date,
+		)
+		.await?;
+	let managed_database_charge =
+		managed_database_usage.iter().map(|bill| bill.amount).sum();
 
 	log::trace!(
 		"request_id: {} getting bill for all static_site",
-		request_id,
+		request_id
 	);
 	let static_site_usage = calculate_static_sites_bill_for_workspace_till(
 		connection,
@@ -1439,7 +1433,7 @@ pub async fn get_total_resource_usage(
 
 	log::trace!(
 		"request_id: {} getting bill for all managed_urls",
-		request_id,
+		request_id
 	);
 	let managed_url_usage = calculate_managed_urls_bill_for_workspace_till(
 		connection,
@@ -1453,7 +1447,7 @@ pub async fn get_total_resource_usage(
 
 	log::trace!(
 		"request_id: {} getting bill for all docker repos",
-		request_id,
+		request_id
 	);
 	let docker_repository_usage =
 		calculate_docker_repository_bill_for_workspace_till(
@@ -1466,7 +1460,7 @@ pub async fn get_total_resource_usage(
 	let docker_repository_charge =
 		docker_repository_usage.iter().map(|bill| bill.amount).sum();
 
-	log::trace!("request_id: {} getting bill for all domains", request_id,);
+	log::trace!("request_id: {} getting bill for all domains", request_id);
 	let domain_usage = calculate_domains_bill_for_workspace_till(
 		connection,
 		workspace_id,
@@ -1476,7 +1470,7 @@ pub async fn get_total_resource_usage(
 	.await?;
 	let domain_charge = domain_usage.iter().map(|bill| bill.amount).sum();
 
-	log::trace!("request_id: {} getting bill for all secrest", request_id,);
+	log::trace!("request_id: {} getting bill for all secrest", request_id);
 	let secret_usage = calculate_secrets_bill_for_workspace_till(
 		connection,
 		workspace_id,
@@ -1487,7 +1481,8 @@ pub async fn get_total_resource_usage(
 	let secret_charge = secret_usage.iter().map(|bill| bill.amount).sum();
 
 	let total_charge = deployment_charge +
-		database_charge +
+		volume_charge +
+		managed_database_charge +
 		static_site_charge +
 		managed_url_charge +
 		domain_charge +
@@ -1508,8 +1503,6 @@ pub async fn get_total_resource_usage(
 		deployment_usage,
 		volume_charge,
 		volume_usage,
-		database_charge,
-		database_usage,
 		static_site_charge,
 		static_site_usage,
 		domain_charge,
@@ -1520,6 +1513,8 @@ pub async fn get_total_resource_usage(
 		secret_usage,
 		docker_repository_charge,
 		docker_repository_usage,
+		managed_database_charge,
+		managed_database_usage,
 	};
 	Ok(bill)
 }

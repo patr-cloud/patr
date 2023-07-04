@@ -944,6 +944,22 @@ async fn confirm_payment_method(
 	)
 	.await?;
 
+	let user = db::get_user_by_user_id(
+		context.get_database_connection(),
+		&workspace.super_admin_id,
+	)
+	.await?
+	.status(404)?;
+
+	if user.workspace_limit == 1 {
+		db::update_workspace_limit(
+			context.get_database_connection(),
+			&user.id,
+			3_i16,
+		)
+		.await?;
+	}
+
 	context.success(ConfirmPaymentMethodResponse {});
 	Ok(context)
 }

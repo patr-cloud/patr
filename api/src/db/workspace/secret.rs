@@ -7,7 +7,6 @@ pub struct Secret {
 	pub id: Uuid,
 	pub name: String,
 	pub workspace_id: Uuid,
-	pub deployment_id: Option<Uuid>,
 }
 
 pub async fn initialize_secret_pre(
@@ -21,7 +20,6 @@ pub async fn initialize_secret_pre(
 			name CITEXT NOT NULL
 				CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)),
 			workspace_id UUID NOT NULL,
-			deployment_id UUID, /* For deployment specific secrets */
 			deleted TIMESTAMPTZ
 		);
 		"#
@@ -41,12 +39,8 @@ pub async fn initialize_secret_post(
 	query!(
 		r#"
 		ALTER TABLE secret
-			ADD CONSTRAINT secret_fk_id_workspace_id
-				FOREIGN KEY(id, workspace_id) 
-					REFERENCES resource(id, owner_id),
-			ADD CONSTRAINT secret_fk_deployment_id_workspace_id
-				FOREIGN KEY(deployment_id, workspace_id)
-					REFERENCES deployment(id, workspace_id);
+		ADD CONSTRAINT secret_fk_id_workspace_id
+		FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -78,8 +72,7 @@ pub async fn get_secret_by_id(
 		SELECT
 			id as "id: _",
 			name::TEXT as "name!: _",
-			workspace_id as "workspace_id: _",
-			deployment_id as "deployment_id: _"
+			workspace_id as "workspace_id: _"
 		FROM
 			secret
 		WHERE
@@ -101,8 +94,7 @@ pub async fn get_all_secrets_in_workspace(
 		SELECT
 			id as "id: _",
 			name::TEXT as "name!: _",
-			workspace_id as "workspace_id: _",
-			deployment_id as "deployment_id: _"
+			workspace_id as "workspace_id: _"
 		FROM
 			secret
 		WHERE
@@ -127,45 +119,14 @@ pub async fn create_new_secret_in_workspace(
 			secret(
 				id,
 				name,
-				workspace_id,
-				deployment_id
+				workspace_id
 			)
 		VALUES
-			($1, $2, $3, NULL);
+			($1, $2, $3);
 		"#,
 		secret_id as _,
 		name as _,
 		workspace_id as _,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-#[allow(dead_code)]
-pub async fn create_new_secret_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	secret_id: &Uuid,
-	name: &str,
-	workspace_id: &Uuid,
-	deployment_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			secret(
-				id,
-				name,
-				workspace_id,
-				deployment_id
-			)
-		VALUES
-			($1, $2, $3, $4);
-		"#,
-		secret_id as _,
-		name as _,
-		workspace_id as _,
-		deployment_id as _,
 	)
 	.execute(&mut *connection)
 	.await

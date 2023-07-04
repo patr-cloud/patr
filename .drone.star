@@ -411,7 +411,8 @@ def deep_clone_repo(step_name):
         "name": step_name,
         "image": "alpine/git",
         "commands": [
-            "git submodule update --init --recursive"
+            "git submodule update --init macros",
+            "git submodule update --init api-models"
         ]
     }
 
@@ -736,10 +737,10 @@ def test_migrations(step_name, release, env):
     }
     return {
         "name": step_name,
-        "image": "postgres",
+        "image": "postgres:13-bullseye",
         "commands": [
             "apt update",
-            "apt install ca-certificates",
+            "apt install -y ca-certificates",
             bin_location
         ],
         "environment": env

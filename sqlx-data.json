@@ -52,109 +52,37 @@
     },
     "query": "INSERT INTO workspace( id, name, super_admin_id, active, alert_emails, payment_type, default_payment_method_id, deployment_limit, database_limit, static_site_limit, managed_url_limit, docker_repository_storage_limit, domain_limit, secret_limit, volume_storage_limit, stripe_customer_id, address_id, amount_due_in_cents, is_spam, is_frozen ) VALUES ( $1, $2, $3, $4, $5, $6, NULL, $7, $8, $9, $10, $11, $12, $13, $14, $15, NULL, $16, FALSE, FALSE );"
   },
-  "01ae581baf799dd8d8063809601ab527eb44e4c8f0649405b07c6bd00acd525e": {
+  "0143433897b87a778e36c091e193a1679b2bf6c7d2f68602b98e47674b106923": {
     "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "username",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "password",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "first_name",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "last_name",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "dob",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "bio",
-          "ordinal": 6,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "location",
-          "ordinal": 7,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "created",
-          "ordinal": 8,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "recovery_email_local",
-          "ordinal": 9,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "recovery_email_domain_id: _",
-          "ordinal": 10,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "recovery_phone_country_code",
-          "ordinal": 11,
-          "type_info": "Bpchar"
-        },
-        {
-          "name": "recovery_phone_number",
-          "ordinal": 12,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "workspace_limit",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "sign_up_coupon",
-          "ordinal": 14,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        true
-      ],
+      "columns": [],
+      "nullable": [],
       "parameters": {
         "Left": [
-          "Text"
+          "Uuid"
         ]
       }
     },
-    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id LEFT JOIN user_phone_number ON user_phone_number.user_id = \"user\".id LEFT JOIN phone_number_country_code ON phone_number_country_code.country_code = user_phone_number.country_code WHERE \"user\".username = $1 OR CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( business_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( '+', phone_number_country_code.phone_code, user_phone_number.number ) = $1;"
+    "query": "DELETE FROM user_api_token_resource_permissions_exclude WHERE token_id = $1;"
+  },
+  "01e6d07b478e87f5dc58bb569c13bacafb9bbd6cbb32f9cc3d2a39976ac10464": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT workspace_id as \"workspace_id: Uuid\" FROM user_api_token_workspace_permission_type WHERE token_permission_type = 'member' AND token_id = $1;"
   },
   "01fe497f00dc8157a50bf14531ea0aa14d14f8e361ceea753137c2ba5a955242": {
     "describe": {
@@ -216,16 +144,6 @@
     },
     "query": "SELECT user_unverified_personal_email.local, user_unverified_personal_email.domain_id as \"domain_id: _\", user_unverified_personal_email.user_id as \"user_id: _\", user_unverified_personal_email.verification_token_hash, user_unverified_personal_email.verification_token_expiry FROM user_unverified_personal_email INNER JOIN domain ON domain.id = user_unverified_personal_email.domain_id WHERE CONCAT(local, '@', domain.name, '.', domain.tld) = $1;"
   },
-  "03984abcca588da3a9b753795bb20462c2732f7cc535813f2617ce4b3af13365": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE IF NOT EXISTS managed_database_payment_history( workspace_id UUID NOT NULL, database_id UUID NOT NULL, db_plan MANAGED_DATABASE_PLAN NOT NULL, start_time TIMESTAMPTZ NOT NULL, deletion_time TIMESTAMPTZ );"
-  },
   "042bb0128fd3849920ff7af33503334854fc9499ce436d81894d65e2617227de": {
     "describe": {
       "columns": [],
@@ -235,16 +153,6 @@
       }
     },
     "query": "CREATE TYPE CI_BUILD_STEP_STATUS AS ENUM( 'waiting_to_start', 'running', 'succeeded', 'cancelled', 'errored', 'skipped_dep_error' );"
-  },
-  "0482c58c13e7b70e0a028857b17ad7278aa8071b07896785e0d2e20aafe20b58": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE IF NOT EXISTS managed_url_payment_history( workspace_id UUID NOT NULL, url_count INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
   },
   "04d52fa774ea5052231cbeaab746432eb7cb2a03af69b6682cc27fa4c5afe998": {
     "describe": {
@@ -581,119 +489,20 @@
     },
     "query": "SELECT id as \"id: Uuid\", name::TEXT as \"name!: String\", super_admin_id as \"super_admin_id: Uuid\", active, alert_emails as \"alert_emails: Vec<String>\", payment_type as \"payment_type: PaymentType\", default_payment_method_id as \"default_payment_method_id: String\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, volume_storage_limit, stripe_customer_id, address_id as \"address_id: Uuid\", amount_due_in_cents, is_spam, is_frozen FROM workspace WHERE super_admin_id = $1 AND deleted IS NULL;"
   },
-  "06996105bdcc06ade90e67db371aa915dc31e8e8d1a4aa8a778a78909a585f74": {
+  "064884f8a526c10f5104508a3a81f3912287543911ce3d8a164cab9aea090fdf": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE role_permissions_resource_type( role_id UUID CONSTRAINT role_permissions_resource_type_fk_role_id REFERENCES role(id), permission_id UUID CONSTRAINT role_permissions_resource_type_fk_permission_id REFERENCES permission(id), resource_type_id UUID CONSTRAINT role_permissions_resource_type_fk_resource_type_id REFERENCES resource_type(id), CONSTRAINT role_permissions_resource_type_pk PRIMARY KEY(role_id, permission_id, resource_type_id) );"
-  },
-  "07177688d8c236f615400391dd0e71b93f67477d32c92213e9b2bf3fd8c2cd9a": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "username",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "password",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "first_name",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "last_name",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "dob",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "bio",
-          "ordinal": 6,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "location",
-          "ordinal": 7,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "created",
-          "ordinal": 8,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "recovery_email_local",
-          "ordinal": 9,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "recovery_email_domain_id: _",
-          "ordinal": 10,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "recovery_phone_country_code",
-          "ordinal": 11,
-          "type_info": "Bpchar"
-        },
-        {
-          "name": "recovery_phone_number",
-          "ordinal": 12,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "workspace_limit",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "sign_up_coupon",
-          "ordinal": 14,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        true
-      ],
-      "parameters": {
         "Left": [
-          "Text"
+          "Uuid",
+          "Uuid",
+          "Uuid",
+          "Uuid"
         ]
       }
     },
-    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" WHERE username = $1;"
+    "query": "INSERT INTO user_api_token_resource_permissions_include( token_id, workspace_id, permission_id, resource_id ) VALUES ($1, $2, $3, $4);"
   },
   "07aac19835c6180a151a944003e5e014a8ba26aac47a3122cc32bf5c9be6af26": {
     "describe": {
@@ -734,6 +543,30 @@
       }
     },
     "query": "SELECT CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) as \"email!: String\" FROM personal_email INNER JOIN domain ON personal_email.domain_id = domain.id WHERE personal_email.user_id = $1;"
+  },
+  "08197393efa75ea3956c7e3868fcbb01765451c2c4602f0067cc1a100adf7fb3": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "super_admin",
+                  "member"
+                ]
+              },
+              "name": "token_permission_type"
+            }
+          }
+        ]
+      }
+    },
+    "query": "INSERT INTO user_api_token_workspace_permission_type( token_id, workspace_id, token_permission_type ) VALUES ($1, $2, $3);"
   },
   "08ef2fd52eb3904957a929e714d54f703b24f785d52aecebe5bc50deed2c0ab6": {
     "describe": {
@@ -1083,6 +916,18 @@
     },
     "query": "SELECT username, account_type as \"account_type: _\", password, first_name, last_name, recovery_email_local, recovery_email_domain_id as \"recovery_email_domain_id: _\", recovery_phone_country_code, recovery_phone_number, business_email_local, CASE WHEN business_domain_name IS NULL THEN NULL ELSE CONCAT(business_domain_name, '.', business_domain_tld) END as \"business_domain_name: _\", business_name, otp_hash, otp_expiry, coupon_code FROM user_to_sign_up WHERE username = $1;"
   },
+  "0c89a27e56e5a3601a88a7d19d5e0f0ae5bac9c857a572505b19f093e9fef76b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "DELETE FROM user_api_token_workspace_permission_type WHERE token_id = $1;"
+  },
   "0d262a2cdb70f0c2af1b7b788df13c6d6da8ce31fd6172023a0490f6cbda6d94": {
     "describe": {
       "columns": [],
@@ -1242,38 +1087,6 @@
       }
     },
     "query": "UPDATE web_login SET token_expiry = $1, last_activity = $2 WHERE login_id = $3;"
-  },
-  "0fbbb5c61561a45788d97a6871350c3ca93a5ef1f72498e9976f31c12d0e24dd": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "resource_id: Uuid",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "permission_id: Uuid",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT workspace_id as \"workspace_id: Uuid\", resource_id as \"resource_id: Uuid\", permission_id as \"permission_id: Uuid\" FROM user_api_token_resource_permission WHERE token_id = $1;"
   },
   "10d6af47121b65f003d6986eba47253453fff2560401e8c77acbcc6ba02c799c": {
     "describe": {
@@ -1486,8 +1299,13 @@
           "type_info": "Text"
         },
         {
-          "name": "name!",
+          "name": "mfa_secret",
           "ordinal": 15,
+          "type_info": "Text"
+        },
+        {
+          "name": "name!",
+          "ordinal": 16,
           "type_info": "Text"
         }
       ],
@@ -1507,6 +1325,7 @@
         true,
         false,
         true,
+        true,
         null
       ],
       "parameters": {
@@ -1516,16 +1335,6 @@
       }
     },
     "query": "SELECT \"user\".*, CONCAT(domain.name, '.', domain.tld) as \"name!\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id INNER JOIN resource ON workspace_domain.id = resource.id INNER JOIN workspace ON resource.owner_id = workspace.id INNER JOIN \"user\" ON workspace.super_admin_id = \"user\".id WHERE workspace_domain.id = $1;"
-  },
-  "13868407ea1e6a8ad9ad43d4cc1cc90b89680bce6483a5478926de6219ea8907": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE IF NOT EXISTS transaction( id UUID CONSTRAINT transaction_pk PRIMARY KEY, month INTEGER NOT NULL, amount_in_cents BIGINT NOT NULL CONSTRAINT transaction_chk_amount_in_cents_positive CHECK (amount_in_cents >= 0), payment_intent_id TEXT, date TIMESTAMPTZ NOT NULL, workspace_id UUID NOT NULL, transaction_type TRANSACTION_TYPE NOT NULL, payment_status PAYMENT_STATUS NOT NULL CONSTRAINT transaction_payment_status_check CHECK( ( payment_status = 'success' AND transaction_type = 'bill' ) OR ( transaction_type != 'bill' ) ), description TEXT CONSTRAINT transaction_description_check CHECK( ( transaction_type = 'credits' AND description IS NOT NULL ) OR ( transaction_type != 'credits' ) ) );"
   },
   "144f726fa812daa0a68d84a79ce6dde25308df488a580e6c610fd1c3e6fab790": {
     "describe": {
@@ -1707,7 +1516,6 @@
                 "Enum": [
                   "creating",
                   "running",
-                  "stopped",
                   "errored",
                   "deleted"
                 ]
@@ -1771,70 +1579,17 @@
     },
     "query": "CREATE INDEX user_phone_number_idx_user_id ON user_phone_number (user_id);"
   },
-  "1990483ba5f3420ccdef6d5dccb62ffbd132e10a473c9f99efe25a3f8bc5f1e0": {
+  "18a5efd8150250c4d3ea56d83f3c19a9cfc8cc078762637de0e0746318b3940a": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "api_token",
-                  "web_login"
-                ]
-              },
-              "name": "user_login_type"
-            }
-          },
-          "Timestamptz"
-        ]
+        "Left": []
       }
     },
-    "query": "INSERT INTO user_login( login_id, user_id, login_type, created ) VALUES ($1, $2, $3, $4);"
+    "query": "CREATE TABLE user_api_token_resource_permissions_type( token_id UUID NOT NULL, workspace_id UUID NOT NULL, permission_id UUID NOT NULL, resource_permission_type PERMISSION_TYPE NOT NULL, token_permission_type TOKEN_PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('member') STORED, CONSTRAINT user_api_token_resource_permissions_type_pk PRIMARY KEY( token_id, workspace_id, permission_id ), CONSTRAINT user_api_token_resource_permissions_type_uq UNIQUE( token_id, workspace_id, permission_id, resource_permission_type ), CONSTRAINT user_api_token_resource_permisssions_type_fk_type FOREIGN KEY(token_id, workspace_id, token_permission_type) REFERENCES user_api_token_workspace_permission_type( token_id, workspace_id, token_permission_type ), CONSTRAINT user_api_token_resource_permisssions_type_fk_permission_id FOREIGN KEY(permission_id) REFERENCES permission(id) );"
   },
-  "1a37c74f5a0f8098453203ee590650fb0965525c1bb31adc5c2e1da4a02dbd3e": {
-    "describe": {
-      "columns": [
-        {
-          "name": "payment_method_id",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id!: _",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tpayment_method_id,\n\t\t\tworkspace_id as \"workspace_id!: _\"\n\t\tFROM\n\t\t\tpayment_method\n\t\tWHERE\n\t\t\tworkspace_id = $1;\n\t\t"
-  },
-  "1a3b8e1bff241f2560652afe203c892e15868c7c48da74963afeccc550d90a9d": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "DELETE FROM role_permissions_resource_type WHERE role_id = $1;"
-  },
-  "1b15d94cb3db84e91a75b6263ce3946a283cd7cad7c28624d2e9b9d5913aad1f": {
+  "198b4214d86d7d1a5f2ef00d16f22bc297a901229872e3b1b27ef3fd9c93de36": {
     "describe": {
       "columns": [
         {
@@ -1911,6 +1666,11 @@
           "name": "sign_up_coupon",
           "ordinal": 14,
           "type_info": "Text"
+        },
+        {
+          "name": "mfa_secret",
+          "ordinal": 15,
+          "type_info": "Text"
         }
       ],
       "nullable": [
@@ -1928,15 +1688,67 @@
         true,
         true,
         false,
+        true,
         true
       ],
       "parameters": {
         "Left": [
-          "Text"
+          "Uuid"
         ]
       }
     },
-    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id WHERE CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( business_email.local, '@', domain.name, '.', domain.tld ) = $1;"
+    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon, \"user\".mfa_secret FROM \"user\" WHERE id = $1;"
+  },
+  "1990483ba5f3420ccdef6d5dccb62ffbd132e10a473c9f99efe25a3f8bc5f1e0": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "api_token",
+                  "web_login"
+                ]
+              },
+              "name": "user_login_type"
+            }
+          },
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "INSERT INTO user_login( login_id, user_id, login_type, created ) VALUES ($1, $2, $3, $4);"
+  },
+  "1a37c74f5a0f8098453203ee590650fb0965525c1bb31adc5c2e1da4a02dbd3e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "payment_method_id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "workspace_id!: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n\t\tSELECT\n\t\t\tpayment_method_id,\n\t\t\tworkspace_id as \"workspace_id!: _\"\n\t\tFROM\n\t\t\tpayment_method\n\t\tWHERE\n\t\t\tworkspace_id = $1;\n\t\t"
   },
   "1b3634e32c6ecaafebf73dfc9e4040bb423d04ec615ee06300233bb2ee88f481": {
     "describe": {
@@ -2017,6 +1829,92 @@
     },
     "query": "SELECT country_code, number as \"phone_number\" FROM user_phone_number WHERE user_id = $1;"
   },
+  "1cfdefce4ded39720e217328dccfc8b79c9e5569706d006a2349001b010fb0c9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "region: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "engine: _",
+          "ordinal": 4,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "postgres",
+                  "mysql",
+                  "mongo",
+                  "redis"
+                ]
+              },
+              "name": "managed_database_engine"
+            }
+          }
+        },
+        {
+          "name": "database_plan_id: _",
+          "ordinal": 5,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 6,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "creating",
+                  "running",
+                  "errored",
+                  "deleted"
+                ]
+              },
+              "name": "managed_database_status"
+            }
+          }
+        },
+        {
+          "name": "username",
+          "ordinal": 7,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", engine as \"engine: _\", database_plan_id as \"database_plan_id: _\", status as \"status: _\", username FROM managed_database WHERE id = $1;"
+  },
   "1d05ab27fbc6052a09fe32569ad75b5041f02c31ea8e7fcb880c557da0db666f": {
     "describe": {
       "columns": [],
@@ -2026,6 +1924,116 @@
       }
     },
     "query": "CREATE TABLE workspace_audit_log ( id UUID NOT NULL CONSTRAINT workspace_audit_log_pk PRIMARY KEY, date TIMESTAMPTZ NOT NULL, ip_address TEXT NOT NULL, workspace_id UUID NOT NULL CONSTRAINT workspace_audit_log_fk_workspace_id REFERENCES workspace(id), user_id UUID, login_id UUID, resource_id UUID NOT NULL, action UUID NOT NULL, request_id UUID NOT NULL, metadata JSON NOT NULL, patr_action BOOL NOT NULL, success BOOL NOT NULL, CONSTRAINT workspace_audit_log_chk_patr_action CHECK( ( patr_action = true AND user_id IS NULL AND login_id IS NULL ) OR ( patr_action = false AND user_id IS NOT NULL AND login_id IS NOT NULL ) ) );"
+  },
+  "1d0e7fe38eddd18ff77a81397bb63e271c1c655b4e23034bf0f9b6c0fe310218": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "password",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "first_name",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "last_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "dob",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "bio",
+          "ordinal": 6,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "location",
+          "ordinal": 7,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created",
+          "ordinal": 8,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "recovery_email_local",
+          "ordinal": 9,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "recovery_email_domain_id: _",
+          "ordinal": 10,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "recovery_phone_country_code",
+          "ordinal": 11,
+          "type_info": "Bpchar"
+        },
+        {
+          "name": "recovery_phone_number",
+          "ordinal": 12,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "workspace_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "sign_up_coupon",
+          "ordinal": 14,
+          "type_info": "Text"
+        },
+        {
+          "name": "mfa_secret",
+          "ordinal": 15,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon, \"user\".mfa_secret FROM \"user\" WHERE username = $1;"
   },
   "1d1f568364822d8bce83a9ae1aec29a6b5a0182431b361dfcedb2f9398962724": {
     "describe": {
@@ -2258,16 +2266,6 @@
       }
     },
     "query": "UPDATE domain SET deleted = $2 WHERE id = $1;"
-  },
-  "1fbbf7824b6eec88e9a07501d790b7ec4a3d154754defc787de7e4c8ba323981": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TYPE MANAGED_DATABASE_STATUS AS ENUM( 'creating', /* Started the creation of database */ 'running', /* Database is running successfully */ 'stopped', /* Database is stopped by the user */ 'errored', /* Database encountered errors */ 'deleted' /* Database is deled by the user */ );"
   },
   "2084346a17fcb4a3eb17ba52cf7ac11d62fc37aa5d4c56abe1d4fe27d69316df": {
     "describe": {
@@ -2863,6 +2861,16 @@
     },
     "query": "CREATE INDEX web_login_idx_login_id ON web_login(login_id);"
   },
+  "238028d35c4d18950a7b901df545bc910f344173b2b13ea60963bfac33c77864": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TYPE LEGACY_MANAGED_DATABASE_PLAN AS ENUM( 'nano', 'micro', 'small', 'medium', 'large', 'xlarge', 'xxlarge', 'mammoth' );"
+  },
   "2416db57fa4893fbbb99e3ce247846a51fbb73bf83a9fc054b9ab51be8e43ba8": {
     "describe": {
       "columns": [],
@@ -3014,6 +3022,38 @@
       }
     },
     "query": "\n\t\tSELECT\n\t\t\tbuild_num,\n\t\t\tgit_ref,\n\t\t\tgit_commit,\n\t\t\tstatus as \"status: _\",\n\t\t\tcreated as \"created: _\",\n\t\t\tstarted as \"started: _\",\n\t\t\tfinished as \"finished: _\",\n\t\t\tmessage,\n\t\t\tauthor,\n\t\t\tgit_pr_title,\n\t\t\tgit_commit_message,\n\t\t\trunner_id as \"runner_id: _\"\n\t\tFROM\n\t\t\tci_builds\n\t\tWHERE\n\t\t\trepo_id = $1 AND\n\t\t\tbuild_num = $2\n\t\tFOR UPDATE;\n\t\t"
+  },
+  "2550b5e8b240f26ff55ad22e497bac01b4765d1cbc11753bdf374bc20ed10db8": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "permission_id: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "resource_id: Uuid",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT workspace_user.workspace_id as \"workspace_id: Uuid\", role_resource_permissions_include.permission_id as \"permission_id: Uuid\", role_resource_permissions_include.resource_id as \"resource_id: Uuid\" FROM role_resource_permissions_include JOIN workspace_user ON workspace_user.role_id = role_resource_permissions_include.role_id WHERE workspace_user.user_id = $1;"
   },
   "264d9322d25bc993eef1da2e3a786aa5dacf30273bf468b2727f64655c367bc4": {
     "describe": {
@@ -3279,15 +3319,17 @@
     },
     "query": "INSERT INTO docker_repo_payment_history( workspace_id, storage, start_time, stop_time ) VALUES ( $1, $2, $3, NULL );"
   },
-  "2bdd5a61671481fdc701daf6cbfd6d8ac3191450e799731de25e312d2af349e3": {
+  "2baabaa05dfbbdfeb579ec2f70f0ddd84e5cc8c4e24cdc86104fab5e3d5e872f": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
-        "Left": []
+        "Left": [
+          "Uuid"
+        ]
       }
     },
-    "query": "CREATE TABLE IF NOT EXISTS domain_payment_history( workspace_id UUID NOT NULL, domain_plan DOMAIN_PLAN NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
+    "query": "DELETE FROM role_resource_permissions_type WHERE role_id = $1;"
   },
   "2c79497ab37337c73fcde73f28078249266aaeeaf257f256d0e3897e4420fef1": {
     "describe": {
@@ -3456,15 +3498,43 @@
     },
     "query": "UPDATE managed_database SET deleted = $2, status = 'deleted' WHERE id = $1;"
   },
-  "2ee43784256fab1f48a059f39e58aab7623b3afd59d0ffa15fab0e5899589d04": {
+  "2f15c7c4c4c069aca1c77d52ef40d55c6e580b727e691225b13442967eb5154f": {
     "describe": {
-      "columns": [],
-      "nullable": [],
+      "columns": [
+        {
+          "name": "workspace_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "role_id: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "permission_id: Uuid",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "resource_id: Uuid",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
       "parameters": {
-        "Left": []
+        "Left": [
+          "Uuid"
+        ]
       }
     },
-    "query": "CREATE TABLE IF NOT EXISTS docker_repo_payment_history( workspace_id UUID NOT NULL, storage BIGINT NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
+    "query": "SELECT workspace_user.workspace_id as \"workspace_id: Uuid\", workspace_user.role_id as \"role_id: Uuid\", role_resource_permissions_exclude.permission_id as \"permission_id: Uuid\", role_resource_permissions_exclude.resource_id as \"resource_id: Uuid\" FROM role_resource_permissions_exclude JOIN workspace_user ON workspace_user.role_id = role_resource_permissions_exclude.role_id WHERE workspace_user.user_id = $1;"
   },
   "30653640dbfdeb1e2caa666a9b85be290220813278ce2acad9cc3590b7198d18": {
     "describe": {
@@ -3487,6 +3557,16 @@
       }
     },
     "query": "DELETE FROM resource WHERE id = $1;"
+  },
+  "3139853b37b881bc05a4569d86ee16d6432b1cce4b6f2fc31743025e4f528ce2": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE volume_payment_history( workspace_id UUID NOT NULL, volume_id UUID NOT NULL, storage BIGINT NOT NULL, number_of_volumes INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
   },
   "31fa3365a18b7cdbb3532ea5559f8a6fafda313ec59e82c3d790c31ac45fb452": {
     "describe": {
@@ -3516,6 +3596,16 @@
       }
     },
     "query": "INSERT INTO user_api_token( token_id, name, user_id, token_hash, token_nbf, token_exp, allowed_ips, created, revoked ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULL);"
+  },
+  "3241a248ae3c6b6f66793581a2328804b58617de0d8b0fa07ddca99e17920d31": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE static_sites_payment_history( workspace_id UUID NOT NULL, static_site_plan STATIC_SITE_PLAN NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
   },
   "3281ea898d2d05689c3dcea35e2f0492fac21073bb093b8fe9bcd394cd33f3d7": {
     "describe": {
@@ -3701,38 +3791,6 @@
       }
     },
     "query": "ALTER TABLE patr_domain_dns_record ADD CONSTRAINT patr_domain_dns_record_fk_id FOREIGN KEY(id) REFERENCES resource(id);"
-  },
-  "33954cce439b249527e1f1db410192c30a96d0da1c9eb51e2002a631eea54498": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "resource_type_id: Uuid",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "permission_id: Uuid",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT workspace_id as \"workspace_id: Uuid\", resource_type_id as \"resource_type_id: Uuid\", permission_id as \"permission_id: Uuid\" FROM user_api_token_resource_type_permission WHERE token_id = $1;"
   },
   "33b487de7c39eb343675c2213545e8c83566f565f3a4f0f2379170a9bad047fe": {
     "describe": {
@@ -3987,68 +4045,6 @@
     },
     "query": "SELECT * FROM role WHERE id = $1;"
   },
-  "35c0efe296c7bd8a395af6f4f81f05782f1b4a9fbc30548e78a3d4501accd147": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "database_id: _",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "db_plan: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "nano",
-                  "micro",
-                  "small",
-                  "medium",
-                  "large",
-                  "xlarge",
-                  "xxlarge",
-                  "mammoth"
-                ]
-              },
-              "name": "managed_database_plan"
-            }
-          }
-        },
-        {
-          "name": "start_time: _",
-          "ordinal": 3,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "deletion_time: _",
-          "ordinal": 4,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Timestamptz",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdatabase_id as \"database_id: _\",\n\t\t\tdb_plan as \"db_plan: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tdeletion_time as \"deletion_time: _\"\n\t\tFROM\n\t\t\tmanaged_database_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(start_time, COALESCE(deletion_time, NOW())) OVERLAPS ($2, $3)\n\t\tORDER BY\n\t\t\tstart_time ASC;\n\t\t"
-  },
   "35fd341424f5499d7f0c076cd4a99dd5953db90ad7bb92694d82416d6ddb5134": {
     "describe": {
       "columns": [],
@@ -4104,16 +4100,6 @@
       }
     },
     "query": "CREATE TABLE resource_type( id UUID CONSTRAINT resource_type_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE, description VARCHAR(500) NOT NULL );"
-  },
-  "382152db383891a0bd3bc62f641182c52a318de9a91a1720f4370a9a61a8c179": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE IF NOT EXISTS volume_payment_history( workspace_id UUID NOT NULL, volume_id UUID NOT NULL, storage BIGINT NOT NULL, number_of_volumes INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
   },
   "390d510d40d06883eb2dadce6068803f240816db75a549608436da4f162f4165": {
     "describe": {
@@ -4480,6 +4466,116 @@
     },
     "query": "CREATE UNIQUE INDEX static_site_uq_name_workspace_id ON static_site(workspace_id, name) WHERE deleted IS NULL;"
   },
+  "40fc499e19e56f25c565a62d5e8f9ad7d152b934b996225c5dbda91a077ea58d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "password",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "first_name",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "last_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "dob",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "bio",
+          "ordinal": 6,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "location",
+          "ordinal": 7,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created",
+          "ordinal": 8,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "recovery_email_local",
+          "ordinal": 9,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "recovery_email_domain_id: _",
+          "ordinal": 10,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "recovery_phone_country_code",
+          "ordinal": 11,
+          "type_info": "Bpchar"
+        },
+        {
+          "name": "recovery_phone_number",
+          "ordinal": 12,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "workspace_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "sign_up_coupon",
+          "ordinal": 14,
+          "type_info": "Text"
+        },
+        {
+          "name": "mfa_secret",
+          "ordinal": 15,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon, \"user\".mfa_secret FROM \"user\" INNER JOIN workspace_user ON \"user\".id = workspace_user.user_id WHERE workspace_user.role_id = $1;"
+  },
   "4357441a58d66b47fffabe8c10fa5ddedbe067c22d5c59d00cb492be40abc1a8": {
     "describe": {
       "columns": [],
@@ -4730,6 +4826,16 @@
     },
     "query": "CREATE TABLE meta_data( id VARCHAR(100) CONSTRAINT meta_data_pk PRIMARY KEY, value TEXT NOT NULL );"
   },
+  "46d5cdbedafc1be823bd372671230c6cc133e50b5cb50296481c687d5d83aee4": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TYPE TOKEN_PERMISSION_TYPE AS ENUM( 'super_admin', 'member' );"
+  },
   "4708633ea62017c02ca996b71833126bb09c45aa717a610231a61c39f4abd3ed": {
     "describe": {
       "columns": [],
@@ -4970,6 +5076,16 @@
       }
     },
     "query": "INSERT INTO ci_git_provider( id, workspace_id, domain_name, git_provider_type, login_name, password ) VALUES ($1, $2, $3, $4, $5, $6);"
+  },
+  "4a3ae444ef361568be47911a0d7265e9c76e511871e070331b39f1a19571026d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE role_resource_permissions_include( role_id UUID NOT NULL, permission_id UUID NOT NULL, resource_id UUID NOT NULL, permission_type PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS('include') STORED, CONSTRAINT role_resource_permissions_include_pk PRIMARY KEY( role_id, permission_id, resource_id ), CONSTRAINT role_resource_permissions_include_fk_parent FOREIGN KEY( role_id, permission_id, permission_type ) REFERENCES role_resource_permissions_type( role_id, permission_id, permission_type ), CONSTRAINT role_resource_permissions_include_fk_resource FOREIGN KEY(resource_id) REFERENCES resource(id) );"
   },
   "4a59dfecc6411d998b7f8b8b4a8d32a9f565197e1cc4ef5518b2290c243ffddf": {
     "describe": {
@@ -5247,19 +5363,6 @@
     },
     "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", workspace_id as \"workspace_id: _\", ingress_hostname as \"ingress_hostname: _\", message_log, cloudflare_certificate_id, config_file as \"config_file: _\", status as \"status: _\", disconnected_at as \"disconnected_at: _\" FROM region WHERE status != 'deleted' AND ( workspace_id IS NULL OR workspace_id = $1 );"
   },
-  "4d4d3f0596fa4cb76250545fe274ac8edb6d56fd4a60d7f5b3085280ea880105": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE managed_database SET digitalocean_db_id = $1 WHERE id = $2;"
-  },
   "4d86501eaadd913e69456a46ea1ee01767938275f0aec2f198b2aa1797e27f30": {
     "describe": {
       "columns": [
@@ -5299,6 +5402,38 @@
       }
     },
     "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\turl_count as \"url_count: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tmanaged_url_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3)\n\t\tORDER BY\n\t\t\tstart_time ASC;\n\t\t"
+  },
+  "4dbeee0dfccea719208dc2f2a9a972f073090897a66e516f447f05d3fb233820": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", workspace_id as \"workspace_id: _\" FROM secret WHERE workspace_id = $1 AND deleted IS NULL;"
   },
   "4f14264ca0017e06439d1465a8f1eb7bbede532cd68ef4a04750ae353ba6f229": {
     "describe": {
@@ -5408,18 +5543,6 @@
     },
     "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, permanent_redirect, http_only, cloudflare_custom_hostname_id FROM managed_url WHERE is_configured = TRUE AND deleted IS NULL;"
   },
-  "4f1a513b45750aa514a8928122a22edd728e7ae6bb07301dd58885e7ac3da3e4": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "DELETE FROM role_permissions_resource WHERE role_id = $1;"
-  },
   "503b206db96ce1497dfb887e1d4099d16d782e1649067ecba6cecb0c5b8623fa": {
     "describe": {
       "columns": [
@@ -5465,25 +5588,43 @@
     },
     "query": "SELECT country_code, phone_number, user_id as \"user_id: _\", verification_token_hash, verification_token_expiry FROM user_unverified_phone_number WHERE country_code = $1 AND phone_number = $2;"
   },
-  "51b48c931af24c0048305a577d2d0c1203f4bbfe08d39fec8106d6fec8fcb13b": {
+  "506cd221c3cf44d3d7fac0949fee63d1f6c5fdbc440a3bb1ff87f39a820abceb": {
     "describe": {
-      "columns": [],
-      "nullable": [],
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "region_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "build_machine_type_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false
+      ],
       "parameters": {
         "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Uuid",
           "Uuid"
         ]
       }
     },
-    "query": "INSERT INTO secret( id, name, workspace_id, deployment_id ) VALUES ($1, $2, $3, $4);"
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", region_id as \"region_id: _\", build_machine_type_id as \"build_machine_type_id: _\" FROM ci_runner WHERE id = $1;"
   },
   "51e6f9c43ba3f7a6e75421aee62a007526052edb231f8b12812fc510b9870d0d": {
     "describe": {
@@ -5828,6 +5969,40 @@
     },
     "query": "CREATE UNIQUE INDEX docker_registry_repository_uq_workspace_id_name ON docker_registry_repository(workspace_id, name) WHERE deleted IS NULL;"
   },
+  "534ce9747874e8094409c70777030b4d73550de87fd357f6a7e9f65cc0ebc634": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "include",
+                  "exclude"
+                ]
+              },
+              "name": "permission_type"
+            }
+          }
+        ]
+      }
+    },
+    "query": "INSERT INTO role_resource_permissions_type( role_id, permission_id, permission_type ) VALUES ($1, $2, $3);"
+  },
+  "536832f4942a26e2cfb05fb2ee56fb24f8e1aa41e11a6972691f56d5702ee9aa": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE secret( id UUID CONSTRAINT secret_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)), workspace_id UUID NOT NULL, deleted TIMESTAMPTZ );"
+  },
   "5443d8492257b3f1a81aea2c8b8995bc0b754d4df43d87fb305e442e914f2cc5": {
     "describe": {
       "columns": [
@@ -5927,60 +6102,45 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tsecret_count as \"secret_count: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tsecrets_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(start_time, COALESCE(stop_time, NOW())) OVERLAPS ($2, $3)\n\t\tORDER BY\n\t\t\tstart_time ASC;\n\t\t"
   },
-  "55928bf7053a2a886b4945df3ef925674eb8486de9869e09fc22c77e3c864acc": {
+  "5558854bf54cd46c20b359f17d40e4dbb70e0f4d1942f0442cc839298edd4035": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
         "Left": [
           "Uuid",
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Varchar",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "postgres",
-                  "mysql"
-                ]
-              },
-              "name": "managed_database_engine"
-            }
-          },
-          "Text",
-          "Int4",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "nano",
-                  "micro",
-                  "small",
-                  "medium",
-                  "large",
-                  "xlarge",
-                  "xxlarge",
-                  "mammoth"
-                ]
-              },
-              "name": "managed_database_plan"
-            }
-          },
-          "Text",
-          "Text",
-          "Int4",
-          "Text",
-          "Text",
-          "Uuid"
+          "Uuid",
+          "Uuid",
+          "Timestamptz"
         ]
       }
     },
-    "query": "INSERT INTO managed_database( id, name, db_name, engine, version, num_nodes, database_plan, region, status, host, port, username, password, workspace_id, digitalocean_db_id ) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, 'creating', $9, $10, $11, $12, $13, NULL );"
+    "query": "INSERT INTO managed_database_payment_history( workspace_id, database_id, legacy_db_plan, db_plan_id, start_time, deletion_time ) VALUES ( $1, $2, NULL, $3, $4, NULL );"
+  },
+  "56077a79a8820c6f226cadb6dbbaaf01e32eff552f9fb689f49ad9b491c9dfc1": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Uuid",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "include",
+                  "exclude"
+                ]
+              },
+              "name": "permission_type"
+            }
+          }
+        ]
+      }
+    },
+    "query": "INSERT INTO user_api_token_resource_permissions_type( token_id, workspace_id, permission_id, resource_permission_type ) VALUES ($1, $2, $3, $4);"
   },
   "56227fccf9e60c797a9f7bfb575ab4cc57e2109bb04661317b53900682745de4": {
     "describe": {
@@ -6211,6 +6371,92 @@
     },
     "query": "ALTER TABLE workspace ADD CONSTRAINT workspace_default_payment_method_id_fk FOREIGN KEY (default_payment_method_id) REFERENCES payment_method(payment_method_id) DEFERRABLE INITIALLY DEFERRED;"
   },
+  "58bc49afbc3b087efe7f68c9d2244c622150e872f2396d57ab41c1f69604eddc": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "region: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "engine: _",
+          "ordinal": 4,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "postgres",
+                  "mysql",
+                  "mongo",
+                  "redis"
+                ]
+              },
+              "name": "managed_database_engine"
+            }
+          }
+        },
+        {
+          "name": "database_plan_id: _",
+          "ordinal": 5,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 6,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "creating",
+                  "running",
+                  "errored",
+                  "deleted"
+                ]
+              },
+              "name": "managed_database_status"
+            }
+          }
+        },
+        {
+          "name": "username",
+          "ordinal": 7,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", engine as \"engine: _\", database_plan_id as \"database_plan_id: _\", status as \"status: _\", username FROM managed_database WHERE workspace_id = $1 AND status != 'deleted';"
+  },
   "596263b2e3a73f7471e29ba577e91c086364896755cfd4dad9eb62b5cbbde966": {
     "describe": {
       "columns": [],
@@ -6420,15 +6666,39 @@
     },
     "query": "SELECT manifest_digest, size, created FROM docker_registry_repository_manifest WHERE repository_id = $1;"
   },
-  "5bda0e52a15bdaf032ab3d119e3322ef902b74b2eb9910441af0af7590bbfb09": {
+  "5b41285479f67ec8a62e9dc541457dee0a383697338668491382e100d9d5b8ac": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
-        "Left": []
+        "Left": [
+          "Uuid",
+          {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          },
+          "Uuid"
+        ]
       }
     },
-    "query": "CREATE TABLE IF NOT EXISTS payment_method( payment_method_id TEXT CONSTRAINT payment_method_pk PRIMARY KEY, workspace_id UUID NOT NULL );"
+    "query": "INSERT INTO secret( id, name, workspace_id ) VALUES ($1, $2, $3);"
+  },
+  "5c68c45dcf34bdb72122c92781b01fc91f4572892e9a800e5d9b744ac90e1090": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO user_api_token_resource_permissions_exclude( token_id, workspace_id, permission_id, resource_id ) VALUES ($1, $2, $3, $4);"
   },
   "5c728664f0d3b4154611b02d3a3bf8a5e5218ba317da5325f4f78a9385d47dcb": {
     "describe": {
@@ -6470,6 +6740,55 @@
       }
     },
     "query": "UPDATE address SET first_name = $2, last_name = $3, address_line_1 = $4, address_line_2 = $5, address_line_3 = $6, city = $7, state = $8, zip = $9, country = $10 WHERE id = $1;"
+  },
+  "5c95a75c7907e1b8e506fa6137958979f4e0d1fac04c24a1f2c193482a50005d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "cpu_count: _",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "memory_count: _",
+          "ordinal": 2,
+          "type_info": "Int4"
+        },
+        {
+          "name": "volume",
+          "ordinal": 3,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT id as \"id: _\", cpu as \"cpu_count: _\", ram as \"memory_count: _\", volume FROM managed_database_plan;"
+  },
+  "5d4154ea447797210fea2f950f5f74882422f63717599e6f836d271620fc9534": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE \"user\" SET workspace_limit = $1 WHERE id = $2;"
   },
   "5dc79c54f863d3da0fcf0dd730fad1cbfa9df08e77b72a3a4ebc360e50618511": {
     "describe": {
@@ -6566,6 +6885,16 @@
       }
     },
     "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", workspace_id as \"workspace_id: _\", ingress_hostname as \"ingress_hostname: _\", message_log, cloudflare_certificate_id, config_file as \"config_file: _\", status as \"status: _\", disconnected_at as \"disconnected_at: _\" FROM region WHERE workspace_id IS NOT NULL AND status = 'active';"
+  },
+  "5ea2700994018190747ea2dd6631759fab961f077c1b63fa637da4ef0c37d99e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE managed_database_plan( id UUID CONSTRAINT managed_database_plan_pk PRIMARY KEY, cpu INTEGER NOT NULL, /* Multiples of 1 vCPU */ ram INTEGER NOT NULL, /* Multiples of 1 GB RAM */ volume INTEGER NOT NULL, /* Multiples of 1 GB storage space */ CONSTRAINT managed_database_plan_chk_cpu_positive CHECK(cpu > 0), CONSTRAINT managed_database_plan_chk_ram_positive CHECK(ram > 0), CONSTRAINT managed_database_plan_chk_volume_positive CHECK(volume > 0) );"
   },
   "5ec14128836c489c8979c9a4370b835d41cfb7a408eebc5235a83d8e3e3849fa": {
     "describe": {
@@ -6767,6 +7096,16 @@
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE id = $1;"
   },
+  "6002b1dad9f96bbdb90d911a2469a49eb50543e18cc19420a832100e95e8b800": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE docker_repo_payment_history( workspace_id UUID NOT NULL, storage BIGINT NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
+  },
   "60052c09546b142087edbb8c7677a63a9567bbdc0ae3a6cb1626a3fd3b520c67": {
     "describe": {
       "columns": [
@@ -6844,6 +7183,11 @@
           "name": "sign_up_coupon",
           "ordinal": 14,
           "type_info": "Text"
+        },
+        {
+          "name": "mfa_secret",
+          "ordinal": 15,
+          "type_info": "Text"
         }
       ],
       "nullable": [
@@ -6861,6 +7205,7 @@
         true,
         true,
         false,
+        true,
         true
       ],
       "parameters": {
@@ -6883,6 +7228,127 @@
       }
     },
     "query": "UPDATE patr_domain_dns_record SET record_identifier = $1 WHERE id = $2;"
+  },
+  "60516f26b428f94de034b8a35a63879dac81b8e706cd2431e589355c42ab174e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "password",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "first_name",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "last_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "dob",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "bio",
+          "ordinal": 6,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "location",
+          "ordinal": 7,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created",
+          "ordinal": 8,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "recovery_email_local",
+          "ordinal": 9,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "recovery_email_domain_id: _",
+          "ordinal": 10,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "recovery_phone_country_code",
+          "ordinal": 11,
+          "type_info": "Bpchar"
+        },
+        {
+          "name": "recovery_phone_number",
+          "ordinal": 12,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "workspace_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "sign_up_coupon",
+          "ordinal": 14,
+          "type_info": "Text"
+        },
+        {
+          "name": "mfa_secret",
+          "ordinal": 15,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Bpchar",
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon, \"user\".mfa_secret FROM \"user\" INNER JOIN user_phone_number ON \"user\".id = user_phone_number.user_id WHERE user_phone_number.country_code = $1 AND user_phone_number.number = $2;"
+  },
+  "608a0993dd78542698811c4c7432424e716c7dbee0a2614f20020d866b56ac7c": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE secrets_payment_history( workspace_id UUID NOT NULL, secret_count INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
   },
   "60a973c0325d830a4327ef4406a8e8f4e878d1d0c69a5b98ec7dcad2c252e264": {
     "describe": {
@@ -6914,23 +7380,7 @@
     },
     "query": "ALTER TABLE static_sites_payment_history ADD CONSTRAINT static_sites_payment_history_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id);"
   },
-  "61459ad9f96ec14221d1f72ea908e87f7d66f49747ddc186048cdf37ec5cf318": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Int4",
-          "Text",
-          "Text",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE managed_database SET host = $1, port = $2, username = $3, password = $4 WHERE id = $5;"
-  },
-  "61a6786298cd87e10037ca906b854a924e43d1f78c88e61ca02fb700e80d0a9e": {
+  "6115eff74bd96cf4cf373d2a7e432d6d02c794707137850365449399a3a32001": {
     "describe": {
       "columns": [],
       "nullable": [],
@@ -6938,7 +7388,17 @@
         "Left": []
       }
     },
-    "query": "CREATE TABLE user_api_token_resource_permission( token_id UUID NOT NULL CONSTRAINT user_api_token_resource_permission_fk_token_id REFERENCES user_api_token(token_id), workspace_id UUID NOT NULL, resource_id UUID NOT NULL, permission_id UUID NOT NULL CONSTRAINT user_api_token_resource_permission_fk_permission_id REFERENCES permission(id), CONSTRAINT user_api_token_resource_permission_workspace_id_resource_id FOREIGN KEY (workspace_id, resource_id) REFERENCES resource(owner_id, id), CONSTRAINT user_api_token_resource_permission_pk PRIMARY KEY(token_id, permission_id, resource_id, workspace_id) );"
+    "query": "CREATE TABLE transaction( id UUID CONSTRAINT transaction_pk PRIMARY KEY, month INTEGER NOT NULL, amount_in_cents BIGINT NOT NULL CONSTRAINT transaction_chk_amount_in_cents_positive CHECK (amount_in_cents >= 0), payment_intent_id TEXT, date TIMESTAMPTZ NOT NULL, workspace_id UUID NOT NULL, transaction_type TRANSACTION_TYPE NOT NULL, payment_status PAYMENT_STATUS NOT NULL CONSTRAINT transaction_payment_status_check CHECK( ( payment_status = 'success' AND transaction_type = 'bill' ) OR ( transaction_type != 'bill' ) ), description TEXT CONSTRAINT transaction_description_check CHECK( ( transaction_type = 'credits' AND description IS NOT NULL ) OR ( transaction_type != 'credits' ) ) );"
+  },
+  "61778e1dae8e50fe0157df1814ddefb37061a0cfd70b479f51d3a066ae6b389f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE \"user\"( id UUID CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uq_username UNIQUE CONSTRAINT user_chk_username_is_valid CHECK( /* Username is a-z, 0-9, _, cannot begin or end with a . or - */ username ~ '^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$' AND username NOT LIKE '%..%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%' ), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob TIMESTAMPTZ DEFAULT NULL CONSTRAINT user_chk_dob_is_13_plus CHECK( dob IS NULL OR dob < (NOW() - INTERVAL '13 YEARS') ), bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created TIMESTAMPTZ NOT NULL, /* Recovery options */ recovery_email_local VARCHAR(64) CONSTRAINT user_chk_recovery_email_is_lower_case CHECK( recovery_email_local = LOWER(recovery_email_local) ), recovery_email_domain_id UUID, recovery_phone_country_code CHAR(2) CONSTRAINT user_chk_recovery_phone_country_code_is_upper_case CHECK( recovery_phone_country_code = UPPER(recovery_phone_country_code) ), recovery_phone_number VARCHAR(15), workspace_limit INTEGER NOT NULL, sign_up_coupon TEXT, mfa_secret TEXT, CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id UNIQUE(recovery_email_local, recovery_email_domain_id), CONSTRAINT user_uq_recovery_phone_country_code_recovery_phone_number UNIQUE(recovery_phone_country_code, recovery_phone_number), CONSTRAINT user_chk_rcvry_eml_or_rcvry_phn_present CHECK( ( recovery_email_local IS NOT NULL AND recovery_email_domain_id IS NOT NULL ) OR ( recovery_phone_country_code IS NOT NULL AND recovery_phone_number IS NOT NULL ) ) );"
   },
   "62691e4324a2453a38d669d60484578454393cd3266f102f5088a9f5f682ac9f": {
     "describe": {
@@ -6998,6 +7458,16 @@
     },
     "query": "INSERT INTO user_unverified_phone_number( country_code, phone_number, user_id, verification_token_hash, verification_token_expiry ) VALUES ($1, $2, $3, $4, $5) ON CONFLICT(country_code, phone_number) DO UPDATE SET user_id = EXCLUDED.user_id, verification_token_hash = EXCLUDED.verification_token_hash, verification_token_expiry = EXCLUDED.verification_token_expiry;"
   },
+  "6356cc11d416d0a9940adfe8122d29fd3ea3bf2a2a59e6eb300cebf960602622": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE managed_database_payment_history( workspace_id UUID NOT NULL, database_id UUID NOT NULL, db_plan_id UUID CONSTRAINT managed_database_payment_history_fk_db_plan_id REFERENCES managed_database_plan(id), legacy_db_plan LEGACY_MANAGED_DATABASE_PLAN, start_time TIMESTAMPTZ NOT NULL, deletion_time TIMESTAMPTZ, CONSTRAINT managed_database_payment_history_chk_legacy_db_plan CHECK( ( db_plan_id IS NULL AND legacy_db_plan IS NOT NULL ) OR ( db_plan_id IS NOT NULL AND legacy_db_plan IS NULL ) ) );"
+  },
   "63fc86568e0415560a3bbf43dce61d29c62ca4d0561100e6f4a10777de2b5c6f": {
     "describe": {
       "columns": [],
@@ -7021,16 +7491,6 @@
     },
     "query": "CREATE TABLE managed_url( id UUID CONSTRAINT managed_url_pk PRIMARY KEY, sub_domain TEXT NOT NULL CONSTRAINT managed_url_chk_sub_domain_valid CHECK( sub_domain ~ '^(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])$' OR sub_domain = '@' ), domain_id UUID NOT NULL, path TEXT NOT NULL, url_type MANAGED_URL_TYPE NOT NULL, deployment_id UUID, port INTEGER CONSTRAINT managed_url_chk_port_u16 CHECK( port > 0 AND port <= 65535 ), static_site_id UUID, url TEXT, workspace_id UUID NOT NULL, is_configured BOOLEAN NOT NULL, deleted TIMESTAMPTZ, permanent_redirect BOOLEAN, http_only BOOLEAN, cloudflare_custom_hostname_id TEXT NOT NULL, CONSTRAINT managed_url_chk_values_null_or_not_null CHECK( ( url_type = 'proxy_to_deployment' AND deployment_id IS NOT NULL AND port IS NOT NULL AND static_site_id IS NULL AND url IS NULL AND permanent_redirect IS NULL AND http_only IS NULL ) OR ( url_type = 'proxy_to_static_site' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NOT NULL AND url IS NULL AND permanent_redirect IS NULL AND http_only IS NULL ) OR ( url_type = 'proxy_url' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NULL AND url IS NOT NULL AND permanent_redirect IS NULL AND http_only IS NOT NULL ) OR ( url_type = 'redirect' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NULL AND url IS NOT NULL AND permanent_redirect IS NOT NULL AND http_only IS NOT NULL ) ) );"
   },
-  "6505122d8c40c26849eb3a6144e2de08388b087d10d049cdbba7a1742fefc5de": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE INDEX role_permissions_resource_idx_role_id ON role_permissions_resource (role_id);"
-  },
   "65891a9f35c3a0c1d19f924008f120c176dd67d4c18bf4781febdc54888f1d46": {
     "describe": {
       "columns": [],
@@ -7040,6 +7500,19 @@
       }
     },
     "query": "CREATE TABLE ci_repos( id UUID CONSTRAINT ci_repos_pk PRIMARY KEY, repo_owner TEXT NOT NULL, repo_name TEXT NOT NULL, clone_url TEXT NOT NULL, webhook_secret TEXT CONSTRAINT ci_repos_uq_secret UNIQUE, status CI_REPO_STATUS NOT NULL, git_provider_id UUID NOT NULL CONSTRAINT ci_repos_fk_git_provider_id REFERENCES ci_git_provider(id), git_provider_repo_uid TEXT NOT NULL, runner_id UUID CONSTRAINT ci_repos_fk_runner_id REFERENCES ci_runner(id), CONSTRAINT ci_repos_uq_git_provider_id_repo_uid UNIQUE(git_provider_id, git_provider_repo_uid), CONSTRAINT ci_repos_chk_status_runner_id_webhook_secret CHECK( ( status = 'active' AND runner_id IS NOT NULL AND webhook_secret IS NOT NULL ) OR status != 'active' ) );"
+  },
+  "65c541daa25bb95a1b3b511a84b702ade71cc45f30173b7cfc695f73c7d75e40": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      }
+    },
+    "query": "UPDATE \"user\" SET mfa_secret = $2 WHERE id = $1;"
   },
   "6638f3d38152434f1b147c298fc950412cd5c6fa322eac6a7a075aca3351983f": {
     "describe": {
@@ -7327,6 +7800,16 @@
     },
     "query": "SELECT user_id as \"user_id: _\", token, token_expiry, attempts FROM password_reset_request WHERE user_id = $1;"
   },
+  "695c8db6f216737ae5bc6e2a419f1137e7a4c921cd6d7fa576e32a896c9d37e1": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE user_api_token_resource_permissions_exclude( token_id UUID NOT NULL, workspace_id UUID NOT NULL, permission_id UUID NOT NULL, resource_id UUID NOT NULL, permission_type PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('exclude') STORED, CONSTRAINT user_api_token_resource_permissions_exclude_pk PRIMARY KEY(token_id, workspace_id, permission_id, resource_id), CONSTRAINT user_api_token_resource_permissions_exclude_fk_parent FOREIGN KEY( token_id, workspace_id, permission_id, permission_type ) REFERENCES user_api_token_resource_permissions_type( token_id, workspace_id, permission_id, resource_permission_type ), CONSTRAINT user_api_token_resource_permissions_exclude_fk_resource FOREIGN KEY(resource_id, workspace_id) REFERENCES resource( id, owner_id ) );"
+  },
   "696749fb5dd8e4bb7c3d80c5619417e05c78691505add6a7af389858cb3bf0d4": {
     "describe": {
       "columns": [],
@@ -7501,6 +7984,16 @@
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE repository_id = $1 AND status != 'deleted';"
   },
+  "6ac38a264720b54070950e5de5bbd869555a087dd4e9ad309aa819ec3388941b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TYPE MANAGED_DATABASE_STATUS AS ENUM( 'creating', 'running', 'errored', 'deleted' );"
+  },
   "6b678ec64a61d5c20d7ea207efa6fce83058481b7af34fb81a36022b0a52dbc6": {
     "describe": {
       "columns": [],
@@ -7538,6 +8031,18 @@
       }
     },
     "query": "\n\t\tUPDATE\n\t\t\tci_git_provider\n\t\tSET\n\t\t\tis_deleted = TRUE,\n\t\t\tpassword = NULL\n\t\tWHERE\n\t\t\tid = $1;\n\t\t"
+  },
+  "6c6cef4ed1b0eea21407bda23be226140df175f8e5b738956203687ee826e38a": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "DELETE FROM user_api_token_resource_permissions_include WHERE token_id = $1;"
   },
   "6d05432bf536bd93c59a5659b928adf4a27e787c99fdc988ea527af2cdf0a3e8": {
     "describe": {
@@ -7791,6 +8296,24 @@
     },
     "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE workspace_id = $1;"
   },
+  "6d77de503b723648c29315c2a7d4f59090fc17ba6e7688d069fdf6f400cf452e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "token_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "UPDATE user_api_token SET revoked = token_exp WHERE token_exp > NOW() RETURNING token_id as \"token_id: Uuid\";"
+  },
   "6ddfdcb9b140f828044c0bb49746175a8201d4b212a05d478f0278aa434e232b": {
     "describe": {
       "columns": [],
@@ -7947,6 +8470,44 @@
       }
     },
     "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id!: Uuid\", workspace_domain.domain_type as \"domain_type!: ResourceType\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: DomainNameserverType\", workspace_domain.last_unverified as \"last_unverified\", workspace_domain.cloudflare_worker_route_id as \"cloudflare_worker_route_id!\", patr_controlled_domain.zone_identifier as \"zone_identifier?\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id LEFT JOIN patr_controlled_domain ON patr_controlled_domain.domain_id = workspace_domain.id WHERE is_verified = FALSE AND domain.deleted IS NULL;"
+  },
+  "7056ddb2b0ce4107aa1a5a3716b31b2e3631d678240ba08a292d2025590510ce": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "cpu_count: _",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "memory_count: _",
+          "ordinal": 2,
+          "type_info": "Int4"
+        },
+        {
+          "name": "volume",
+          "ordinal": 3,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", cpu as \"cpu_count: _\", ram as \"memory_count: _\", volume FROM managed_database_plan WHERE id = $1;"
   },
   "71851c0dceb357cee7d00bff65ca31965f2aef6778a2f86283fa626ec6359412": {
     "describe": {
@@ -8254,6 +8815,16 @@
     },
     "query": "INSERT INTO transaction( id, month, amount_in_cents, payment_intent_id, date, workspace_id, transaction_type, payment_status, description ) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9 );"
   },
+  "7632792e02dab3670ad12323de10fdf9da567bc4f59654ceed0d8f70aebe530c": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE managed_database( id UUID CONSTRAINT managed_database_pk PRIMARY KEY, name CITEXT NOT NULL, workspace_id UUID NOT NULL, region UUID NOT NULL, engine MANAGED_DATABASE_ENGINE NOT NULL, database_plan_id UUID NOT NULL, status MANAGED_DATABASE_STATUS NOT NULL, username TEXT NOT NULL, deleted TIMESTAMPTZ, CONSTRAINT managed_database_chk_name_is_trimmed CHECK( name = TRIM(name) ), CONSTRAINT managed_database_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id), CONSTRAINT managed_database_fk_region FOREIGN KEY(region) REFERENCES region(id), CONSTRAINT managed_database_fk_managed_database_plan_id FOREIGN KEY(database_plan_id) REFERENCES managed_database_plan(id) );"
+  },
   "76bc542a8b4d4d866a7688aa48dd929d2756904cf8f0a699bc8befb800721a9a": {
     "describe": {
       "columns": [],
@@ -8276,6 +8847,18 @@
       }
     },
     "query": "UPDATE deployment SET deleted = $2, status = 'deleted' WHERE id = $1;"
+  },
+  "786a2b83d210669c66aa19aa5294387c13b8dea9e9657093ecf7623d9f54e658": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "DELETE FROM role_resource_permissions_exclude WHERE role_id = $1;"
   },
   "788ce1b7e4c4beca4179e66d90f54a5c434d77fa493b0491d5b95d238163be58": {
     "describe": {
@@ -8673,26 +9256,6 @@
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE name = $1 AND workspace_id = $2 AND status != 'deleted';"
   },
-  "7d4f82ad1a647d0bcb90321774d7e4261578091c7822d00cef3ec66a8a4f0174": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE INDEX role_permissions_resource_type_idx_role_id_resource_type_id ON role_permissions_resource_type (role_id, resource_type_id);"
-  },
-  "7f9b090cc0013aadd0daed235a689086d001a05e18d401f0b03292615a7ad234": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE secret( id UUID CONSTRAINT secret_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)), workspace_id UUID NOT NULL, deployment_id UUID, /* For deployment specific secrets */ deleted TIMESTAMPTZ );"
-  },
   "800d62914728ade2506a37adb5f5032a5e410e4b13f365e623a6929b0e5fff85": {
     "describe": {
       "columns": [
@@ -8998,44 +9561,6 @@
     },
     "query": "CREATE TABLE deployment_environment_variable( deployment_id UUID CONSTRAINT deployment_environment_variable_fk_deployment_id REFERENCES deployment(id), name VARCHAR(256) NOT NULL, value TEXT, secret_id UUID, CONSTRAINT deployment_environment_variable_pk PRIMARY KEY(deployment_id, name), CONSTRAINT deployment_environment_variable_fk_secret_id FOREIGN KEY(secret_id) REFERENCES secret(id), CONSTRAINT deployment_env_var_chk_value_secret_id_either_not_null CHECK( ( value IS NOT NULL AND secret_id IS NULL ) OR ( value IS NULL AND secret_id IS NOT NULL ) ) );"
   },
-  "819e618434cdff425c67c3f046f6b17017f502cf2e5d54e82b57a6dc619fb851": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", workspace_id as \"workspace_id: _\", deployment_id as \"deployment_id: _\" FROM secret WHERE id = $1;"
-  },
   "81e8018fea4592654aaae9a7c0e1fcefdd2c9dc81bf3a44756485c94d70b3a8f": {
     "describe": {
       "columns": [
@@ -9091,18 +9616,6 @@
       }
     },
     "query": "UPDATE secret SET name = $1 WHERE id = $2;"
-  },
-  "82b24edd9f2340f5b6d247980a1a2245a317be52245d3791f5b0835a10397128": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "DELETE FROM user_api_token_resource_type_permission WHERE token_id = $1;"
   },
   "82da24f490bda354fedf27b0cfefedc99dcc610c4d4d99265899f3c7dd815616": {
     "describe": {
@@ -9472,16 +9985,6 @@
     },
     "query": "ALTER TABLE transaction ADD CONSTRAINT transaction_workspace_id_fk FOREIGN KEY (workspace_id) REFERENCES workspace(id);"
   },
-  "855f26245fffa3c12a4f05b04f8e55b9d5ce33eeccf371b8412962fc60ac7dd1": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE IF NOT EXISTS secrets_payment_history( workspace_id UUID NOT NULL, secret_count INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
-  },
   "85c2b0a9bf48c5cc257af57e4ecf5b439153fe1b82d213953db1f10bdc14fd87": {
     "describe": {
       "columns": [
@@ -9514,15 +10017,59 @@
     },
     "query": "SELECT * FROM resource_type WHERE id = $1;"
   },
-  "860c561776aaf1f078eb0392b11b2be437f2cf6847a00b4d7214a158514664c4": {
+  "8610d1f88d2166a611197a6cab235176fe1a6dcaf393e6dbcd71db74fe806652": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
-        "Left": []
+        "Left": [
+          "Uuid"
+        ]
       }
     },
-    "query": "CREATE INDEX role_permissions_resource_idx_role_id_resource_id ON role_permissions_resource (role_id, resource_id);"
+    "query": "UPDATE region SET cloudflare_certificate_id = NULL WHERE id = $1;"
+  },
+  "86c17e78e9324620669f470b7133f2e838d402be49b2387d0b6e5397c6c33de4": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "permission_id: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "permission_type: PermissionType",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "include",
+                  "exclude"
+                ]
+              },
+              "name": "permission_type"
+            }
+          }
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT workspace_id as \"workspace_id: Uuid\", permission_id as \"permission_id: Uuid\", resource_permission_type as \"permission_type: PermissionType\" FROM user_api_token_resource_permissions_type WHERE token_id = $1;"
   },
   "86da166d78d720baa27481d402b8f31a8e589c8da416d4cf8f17ef67a4e6f899": {
     "describe": {
@@ -9539,6 +10086,16 @@
     },
     "query": "INSERT INTO docker_registry_repository_tag( repository_id, tag, manifest_digest, last_updated ) VALUES ($1, $2, $3, $4) ON CONFLICT(repository_id, tag) DO UPDATE SET manifest_digest = $3, last_updated = $4;"
   },
+  "8748ac151e7bf77dfec1ef155cbf424ac2c5f87d45ca5234272f7511af8dc78e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_payment_history( workspace_id UUID NOT NULL, deployment_id UUID NOT NULL, machine_type UUID NOT NULL, num_instance INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
+  },
   "87bca736fca728f58dad62df4bc2c4973eaad8c008f9b456c629907210a26ce3": {
     "describe": {
       "columns": [],
@@ -9552,6 +10109,16 @@
       }
     },
     "query": "DELETE FROM personal_email WHERE user_id = $1 AND local = $2 AND domain_id = $3;"
+  },
+  "88776e18dee8728b68510b5f7ca1b9d06d685063e73bfa8c0bebe726a68cdcfc": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TYPE MANAGED_DATABASE_ENGINE AS ENUM( 'postgres', 'mysql', 'mongo', 'redis' );"
   },
   "88f2640e5f048199631e232658a5495d55a885ae1c9436d2fe239731148d32ed": {
     "describe": {
@@ -10008,7 +10575,7 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tmonth,\n\t\t\tamount_in_cents,\n\t\t\tpayment_intent_id,\n\t\t\tdate as \"date: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\ttransaction_type as \"transaction_type: _\",\n\t\t\tpayment_status as \"payment_status: _\",\n\t\t\tdescription\n\t\tFROM\n\t\t\ttransaction\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\tid = $2;\n\t\t"
   },
-  "8a7f673204b386ab84508b8bd966898a6fb940501f2caa676285b90295d9a7bf": {
+  "8b4bd70d26c0ddf2d18faaaa3aec9e96a8d28d4660f853dc54d3bd7b5b0f2eb7": {
     "describe": {
       "columns": [
         {
@@ -10032,111 +10599,7 @@
         ]
       }
     },
-    "query": "SELECT permission_id as \"permission_id: Uuid\", resource_id as \"resource_id: Uuid\" FROM role_permissions_resource WHERE role_id = $1;"
-  },
-  "8aa82901e29ccd7edd84d1b4cc7d0a1cfc43a889f99ec0a9cb25748be2829849": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "username",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "password",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "first_name",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "last_name",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "dob",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "bio",
-          "ordinal": 6,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "location",
-          "ordinal": 7,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "created",
-          "ordinal": 8,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "recovery_email_local",
-          "ordinal": 9,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "recovery_email_domain_id: _",
-          "ordinal": 10,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "recovery_phone_country_code",
-          "ordinal": 11,
-          "type_info": "Bpchar"
-        },
-        {
-          "name": "recovery_phone_number",
-          "ordinal": 12,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "workspace_limit",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "sign_up_coupon",
-          "ordinal": 14,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" INNER JOIN workspace_user ON \"user\".id = workspace_user.user_id WHERE workspace_user.role_id = $1;"
+    "query": "SELECT permission_id as \"permission_id: Uuid\", resource_id as \"resource_id: Uuid\" FROM role_resource_permissions_include WHERE role_id = $1;"
   },
   "8b9bbaaf87f495640225a74d1c606a51276db98897f34ceaad38d06aad9a4f69": {
     "describe": {
@@ -10283,6 +10746,16 @@
     },
     "query": "CREATE TABLE ci_builds( repo_id UUID NOT NULL CONSTRAINT ci_builds_fk_repo_id REFERENCES ci_repos(id), build_num BIGINT NOT NULL CONSTRAINT ci_builds_chk_build_num_unsigned CHECK(build_num > 0), git_ref TEXT NOT NULL, git_commit TEXT NOT NULL, status CI_BUILD_STATUS NOT NULL, created TIMESTAMPTZ NOT NULL, finished TIMESTAMPTZ, message TEXT, author TEXT, git_commit_message TEXT, git_pr_title TEXT, started TIMESTAMPTZ, runner_id UUID NOT NULL CONSTRAINT ci_builds_fk_runner_id REFERENCES ci_runner(id), CONSTRAINT ci_builds_pk_repo_id_build_num PRIMARY KEY(repo_id, build_num) );"
   },
+  "8cad9b3bc842d3457a085ccb24e7f9ec211b13cf5c787065626fee05c8db456a": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE EXTENSION IF NOT EXISTS btree_gist;"
+  },
   "8d2c961f04458f116b2d9e7f00668a83febae5648c3c4774795ff2bbe6f6e364": {
     "describe": {
       "columns": [],
@@ -10306,16 +10779,6 @@
       }
     },
     "query": "DELETE FROM deployment_environment_variable WHERE deployment_id = $1;"
-  },
-  "8d7e84d1eeda0a1f776ce67ed1ca9d6c1b6aa7e1fe83278eadf900c40035118b": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE managed_database( id UUID CONSTRAINT managed_database_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT managed_database_chk_name_is_trimmed CHECK( name = TRIM(name) ), db_name VARCHAR(255) NOT NULL CONSTRAINT managed_database_chk_db_name_is_trimmed CHECK( db_name = TRIM(db_name) ), engine MANAGED_DATABASE_ENGINE NOT NULL, version TEXT NOT NULL, num_nodes INTEGER NOT NULL, database_plan MANAGED_DATABASE_PLAN NOT NULL, region TEXT NOT NULL, status MANAGED_DATABASE_STATUS NOT NULL, host TEXT NOT NULL, port INTEGER NOT NULL, username TEXT NOT NULL, password TEXT NOT NULL, workspace_id UUID NOT NULL, digitalocean_db_id TEXT CONSTRAINT managed_database_uq_digitalocean_db_id UNIQUE, deleted TIMESTAMPTZ );"
   },
   "8e7433b1af4c66de9bc7eba31cb2639190f235a410264641ba86b0cd6890c736": {
     "describe": {
@@ -10756,6 +11219,38 @@
     },
     "query": "UPDATE web_login SET token_expiry = TO_TIMESTAMP(0) WHERE login_id = $1 AND user_id = $2;"
   },
+  "966810083c58e0725b5846deb36ab6cc19dc861a360cf580dfdf96e39738b74f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", workspace_id as \"workspace_id: _\" FROM secret WHERE id = $1;"
+  },
   "96840a4f1a359e45250800a6adab9a8c436b07b2270aed6d11d57cf6e1247287": {
     "describe": {
       "columns": [
@@ -10845,15 +11340,115 @@
     },
     "query": "CREATE TABLE address( id UUID NOT NULL CONSTRAINT address_pk PRIMARY KEY, first_name TEXT NOT NULL, last_name TEXT NOT NULL, address_line_1 TEXT NOT NULL, address_line_2 TEXT, address_line_3 TEXT, city TEXT NOT NULL, state TEXT NOT NULL, zip TEXT NOT NULL, country TEXT NOT NULL );"
   },
-  "96b3517ef88f76e14a7f25c2ee6c94502f52a8e72314b6ba8e5e2010e9c06965": {
+  "96c755eb5a7c9272f1e03b428ecb37e70bad1dd7cd36a8f27ba62f7338121904": {
     "describe": {
-      "columns": [],
-      "nullable": [],
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "password",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "first_name",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "last_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "dob",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "bio",
+          "ordinal": 6,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "location",
+          "ordinal": 7,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created",
+          "ordinal": 8,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "recovery_email_local",
+          "ordinal": 9,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "recovery_email_domain_id: _",
+          "ordinal": 10,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "recovery_phone_country_code",
+          "ordinal": 11,
+          "type_info": "Bpchar"
+        },
+        {
+          "name": "recovery_phone_number",
+          "ordinal": 12,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "workspace_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "sign_up_coupon",
+          "ordinal": 14,
+          "type_info": "Text"
+        },
+        {
+          "name": "mfa_secret",
+          "ordinal": 15,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true
+      ],
       "parameters": {
-        "Left": []
+        "Left": [
+          "Text"
+        ]
       }
     },
-    "query": "CREATE TABLE workspace_user( user_id UUID NOT NULL CONSTRAINT workspace_user_fk_user_id REFERENCES \"user\"(id), workspace_id UUID NOT NULL CONSTRAINT workspace_user_fk_workspace_id REFERENCES workspace(id), role_id UUID NOT NULL CONSTRAINT workspace_user_fk_role_id REFERENCES role(id), CONSTRAINT workspace_user_pk PRIMARY KEY(user_id, workspace_id, role_id) );"
+    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon, \"user\".mfa_secret FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id LEFT JOIN user_phone_number ON user_phone_number.user_id = \"user\".id LEFT JOIN phone_number_country_code ON phone_number_country_code.country_code = user_phone_number.country_code WHERE \"user\".username = $1 OR CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( business_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( '+', phone_number_country_code.phone_code, user_phone_number.number ) = $1;"
   },
   "96e525b047f0838a7c25a1277bae273d2ce2aaf541f0b2aad82404728baecc42": {
     "describe": {
@@ -10864,25 +11459,6 @@
       }
     },
     "query": "CREATE TYPE RESOURCE_OWNER_TYPE AS ENUM( 'personal', 'business' );"
-  },
-  "9733ca414a05574a04cc7e723043e606936d009f3b5fa595225aaedcd4e71d07": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Uuid"
-        ]
-      }
-    },
-    "query": "INSERT INTO secret( id, name, workspace_id, deployment_id ) VALUES ($1, $2, $3, NULL);"
   },
   "9812ea5c7c65e99cde5228c6e4d96194ada29029922f09ad6f5dc1fa7fb2c25f": {
     "describe": {
@@ -10903,6 +11479,41 @@
       }
     },
     "query": "CREATE TYPE DOMAIN_PLAN AS ENUM( 'free', 'unlimited' );"
+  },
+  "9993fba44c0652a57609d0ed13acd7ad52075ba9ab7d8871b3cab0bd97583865": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          },
+          "Uuid",
+          "Uuid",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "postgres",
+                  "mysql",
+                  "mongo",
+                  "redis"
+                ]
+              },
+              "name": "managed_database_engine"
+            }
+          },
+          "Uuid",
+          "Text"
+        ]
+      }
+    },
+    "query": "INSERT INTO managed_database( id, name, workspace_id, region, status, engine, database_plan_id, username ) VALUES ($1, $2, $3, $4, 'creating', $5, $6, $7);"
   },
   "99aa3fab0d93a31d339b94fe2c0916cb159988c87123650a0686ca167ec0c4f7": {
     "describe": {
@@ -10954,7 +11565,7 @@
     },
     "query": "SELECT COALESCE(SUM(size), 0)::BIGINT as \"size!\" FROM docker_registry_repository_manifest WHERE repository_id = $1;"
   },
-  "9c3a8439eb72bacedd686bc01944398392c09f761ddc8fc7fac2fa3e97f74f3b": {
+  "9c0c7e00602c6af1a5943e5e4f696fa27ea83f1fc43b34caa66eaf26b987aa8e": {
     "describe": {
       "columns": [],
       "nullable": [],
@@ -10962,7 +11573,7 @@
         "Left": []
       }
     },
-    "query": "CREATE INDEX role_permissions_resource_type_idx_role_id ON role_permissions_resource_type (role_id);"
+    "query": "CREATE TABLE role_resource_permissions_type( role_id UUID NOT NULL, permission_id UUID NOT NULL, permission_type PERMISSION_TYPE NOT NULL, CONSTRAINT role_resource_permissions_type_pk PRIMARY KEY( role_id, permission_id ), CONSTRAINT role_resource_permissions_type_uq UNIQUE( role_id, permission_id, permission_type ), CONSTRAINT role_resource_permissions_type_fk_role_id FOREIGN KEY(role_id) REFERENCES role(id), CONSTRAINT role_resource_permissions_type_fk_permission_id FOREIGN KEY(permission_id) REFERENCES permission(id) );"
   },
   "9cf0a9094118925bd1079644c538862c90d31b9ec0ad9c0dc8c5711c58c27b3a": {
     "describe": {
@@ -11086,16 +11697,6 @@
     },
     "query": "SELECT patr_domain_dns_record.id as \"id: _\", patr_domain_dns_record.record_identifier, patr_domain_dns_record.domain_id as \"domain_id: _\", patr_domain_dns_record.name, patr_domain_dns_record.type as \"type: _\", patr_domain_dns_record.value, patr_domain_dns_record.priority, patr_domain_dns_record.ttl, patr_domain_dns_record.proxied FROM patr_domain_dns_record INNER JOIN domain ON patr_domain_dns_record.domain_id = domain.id WHERE patr_domain_dns_record.domain_id = $1 AND domain.deleted IS NULL;"
   },
-  "9e3736b6e5d9a9db4281d8ce42a2fa507275cbb428769ab441069341dc304212": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE role_permissions_resource( role_id UUID CONSTRAINT role_permissions_resource_fk_role_id REFERENCES role(id), permission_id UUID CONSTRAINT role_permissions_resource_fk_permission_id REFERENCES permission(id), resource_id UUID CONSTRAINT role_permissions_resource_fk_resource_id REFERENCES resource(id), CONSTRAINT role_permissions_resource_pk PRIMARY KEY(role_id, permission_id, resource_id) );"
-  },
   "9eb0993ca671ecb32e1ed2303b5bd741a025fb8b0c7ce6a1600cc64f57eb8002": {
     "describe": {
       "columns": [],
@@ -11117,110 +11718,6 @@
       }
     },
     "query": "CREATE TYPE PAYMENT_TYPE AS ENUM( 'card', 'enterprise' );"
-  },
-  "9f1c8b23afb69530b2c15e56a3397f51a5e54114ed7c07514c717ba9c3831026": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "username",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "password",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "first_name",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "last_name",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "dob",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "bio",
-          "ordinal": 6,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "location",
-          "ordinal": 7,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "created",
-          "ordinal": 8,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "recovery_email_local",
-          "ordinal": 9,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "recovery_email_domain_id: _",
-          "ordinal": 10,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "recovery_phone_country_code",
-          "ordinal": 11,
-          "type_info": "Bpchar"
-        },
-        {
-          "name": "recovery_phone_number",
-          "ordinal": 12,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "workspace_limit",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "sign_up_coupon",
-          "ordinal": 14,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" WHERE id = $1;"
   },
   "9f5db091f02a6e330f73022f7f9a5c272b63f5d5ed8219cb13b04e924ced25e7": {
     "describe": {
@@ -11336,20 +11833,6 @@
     },
     "query": "SELECT username, account_type as \"account_type: _\", password, first_name, last_name, recovery_email_local, recovery_email_domain_id as \"recovery_email_domain_id: _\", recovery_phone_country_code, recovery_phone_number, business_email_local, CASE WHEN business_domain_name IS NULL THEN NULL ELSE CONCAT(business_domain_name, '.', business_domain_tld) END as \"business_domain_name: _\", business_name, otp_hash, otp_expiry, coupon_code FROM user_to_sign_up WHERE business_name = $1;"
   },
-  "9fbae237f57d2ec4e73a150869fbb399fb6f4906afae729c85f93002b27d894b": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "INSERT INTO role_permissions_resource_type( role_id, permission_id, resource_type_id ) VALUES ($1, $2, $3);"
-  },
   "9fd9a0789b91eb2be01664d4ce94d89303376e356cf1d188ba64b7b1b3ccf732": {
     "describe": {
       "columns": [
@@ -11435,6 +11918,16 @@
       }
     },
     "query": "SELECT * FROM information_schema.tables WHERE table_catalog = $1 AND table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name != 'spatial_ref_sys';"
+  },
+  "a08016d220f4a99abcba2c6eeba41cd7d7eb9dbb4b49afa330a0ede9281005a5": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "ALTER TABLE secret ADD CONSTRAINT secret_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);"
   },
   "a1ef5b3c2269453d465e5f47f7bd9a8d8e7cd237085cf1a59a4c55ddd093c269": {
     "describe": {
@@ -11678,44 +12171,6 @@
     },
     "query": "SELECT ci_repos.git_provider_repo_uid as \"github_repo_id\", ci_builds.build_num, ci_builds.git_ref, ci_builds.git_commit, ci_builds.status as \"status: BuildStatus\", ci_builds.created, ci_builds.started, ci_builds.finished, ci_builds.message, ci_builds.author, ci_builds.git_pr_title, ci_builds.git_commit_message FROM ci_builds JOIN ci_repos ON ci_repos.id = ci_builds.repo_id WHERE ci_builds.runner_id = $1 ORDER BY ci_builds.created DESC;"
   },
-  "a3383d5df7266cf5c1f2116b8d93df630ec6cfae3059445c0075fe502ff64c0e": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "DELETE FROM user_api_token_resource_permission WHERE token_id = $1;"
-  },
-  "a3d44c2d7c66de013a3510d3f42bf75f60a71f34682522a2882471f9a1f4414e": {
-    "describe": {
-      "columns": [
-        {
-          "name": "permission_id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "resource_type_id: Uuid",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT permission_id as \"permission_id: Uuid\", resource_type_id as \"resource_type_id: Uuid\" FROM role_permissions_resource_type WHERE role_id = $1;"
-  },
   "a4a2f1cf647e8612f0b461bc85e215e590fc186f0ef948c3d2c2786e7c7fd50f": {
     "describe": {
       "columns": [
@@ -11757,20 +12212,6 @@
       }
     },
     "query": "CREATE TABLE static_site( id UUID CONSTRAINT static_site_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT static_site_chk_name_is_trimmed CHECK( name = TRIM(name) ), status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, current_live_upload UUID, deleted TIMESTAMPTZ, CONSTRAINT static_site_uq_id_workspace_id UNIQUE(id, workspace_id) );"
-  },
-  "a52af9e8867c7460b1f9958bed22d9164e0e57977225a2c94d4fb0dad48b595f": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "INSERT INTO role_permissions_resource( role_id, permission_id, resource_id ) VALUES ($1, $2, $3);"
   },
   "a5b1ccf80da6fe1bf60853ecc0c58b5d5c48aea97a57c45b599d6f7eb5ce2b8a": {
     "describe": {
@@ -11836,6 +12277,20 @@
       }
     },
     "query": "DELETE FROM password_reset_request WHERE user_id = $1;"
+  },
+  "a7d513d533627aaa510b2085fbdf41b82b4a2adfb4ff8a1e4ca2a0571c4a4d43": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO role_resource_permissions_exclude( role_id, permission_id, resource_id ) VALUES ($1, $2, $3);"
   },
   "a81cf328200edaabf69a7dcf02287b59b9642b9d6e516292028a7aba2093e5e9": {
     "describe": {
@@ -12254,6 +12709,102 @@
     },
     "query": "SELECT * FROM address WHERE id = $1;"
   },
+  "ac72d873430a704abac14e656971584db0a5cd9cdb47e6ea6d246d6aba78637d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "cloud_provider: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "digitalocean",
+                  "other"
+                ]
+              },
+              "name": "infrastructure_cloud_provider"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "ingress_hostname: _",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "message_log",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "cloudflare_certificate_id",
+          "ordinal": 6,
+          "type_info": "Text"
+        },
+        {
+          "name": "config_file: _",
+          "ordinal": 7,
+          "type_info": "Json"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 8,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "creating",
+                  "active",
+                  "errored",
+                  "deleted",
+                  "disconnected",
+                  "coming_soon"
+                ]
+              },
+              "name": "region_status"
+            }
+          }
+        },
+        {
+          "name": "disconnected_at: _",
+          "ordinal": 9,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\", workspace_id as \"workspace_id: _\", ingress_hostname as \"ingress_hostname: _\", message_log, cloudflare_certificate_id, config_file as \"config_file: _\", status as \"status: _\", disconnected_at as \"disconnected_at: _\" FROM region WHERE cloudflare_certificate_id IS NOT NULL AND workspace_id IS NOT NULL AND ( status = 'deleted' OR status = 'errored' );"
+  },
   "accf6879a9e73cbb3aeca3c002e9addd544180cae109a8ed690886420fae7f64": {
     "describe": {
       "columns": [],
@@ -12266,6 +12817,32 @@
       }
     },
     "query": "UPDATE user_api_token SET token_hash = $1 WHERE token_id = $2 AND revoked IS NULL;"
+  },
+  "ad3fd504a86e310114d83153b68582a03fe63493e487d15f9a6a9a276c8d0331": {
+    "describe": {
+      "columns": [
+        {
+          "name": "permission_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "resource_id: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT permission_id as \"permission_id: Uuid\", resource_id as \"resource_id: Uuid\" FROM role_resource_permissions_exclude WHERE role_id = $1;"
   },
   "ae41156d89527be463294943976764f6e16e645eb799bdbd47aa1efdb637d4f1": {
     "describe": {
@@ -12305,149 +12882,6 @@
       }
     },
     "query": "INSERT INTO static_site( id, name, status, workspace_id ) VALUES ($1, $2, 'created', $3);"
-  },
-  "aec6e34747f88716757f9bda17cfea7cef75d08125220026cbea614587c05706": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "db_name",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "engine: _",
-          "ordinal": 3,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "postgres",
-                  "mysql"
-                ]
-              },
-              "name": "managed_database_engine"
-            }
-          }
-        },
-        {
-          "name": "version",
-          "ordinal": 4,
-          "type_info": "Text"
-        },
-        {
-          "name": "num_nodes",
-          "ordinal": 5,
-          "type_info": "Int4"
-        },
-        {
-          "name": "database_plan: _",
-          "ordinal": 6,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "nano",
-                  "micro",
-                  "small",
-                  "medium",
-                  "large",
-                  "xlarge",
-                  "xxlarge",
-                  "mammoth"
-                ]
-              },
-              "name": "managed_database_plan"
-            }
-          }
-        },
-        {
-          "name": "region",
-          "ordinal": 7,
-          "type_info": "Text"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 8,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "creating",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              },
-              "name": "managed_database_status"
-            }
-          }
-        },
-        {
-          "name": "host",
-          "ordinal": 9,
-          "type_info": "Text"
-        },
-        {
-          "name": "port",
-          "ordinal": 10,
-          "type_info": "Int4"
-        },
-        {
-          "name": "username",
-          "ordinal": 11,
-          "type_info": "Text"
-        },
-        {
-          "name": "password",
-          "ordinal": 12,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 13,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "digitalocean_db_id",
-          "ordinal": 14,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", db_name, engine as \"engine: _\", version, num_nodes, database_plan as \"database_plan: _\", region, status as \"status: _\", host, port, username, password, workspace_id as \"workspace_id: _\", digitalocean_db_id FROM managed_database WHERE workspace_id = $1 AND status != 'deleted';"
   },
   "af58419038b2d4b4e66cc7589d6c0d065b04c7ed230ba38f6574742fbc11ca8f": {
     "describe": {
@@ -12554,6 +12988,16 @@
     },
     "query": "SELECT image_digest, created as \"created: _\" FROM deployment_deploy_history WHERE deployment_id = $1;"
   },
+  "b19d1f23e232df2c8eccc8db9523f91afe59f2eada755262c57de71e37889772": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE user_api_token_workspace_super_admin( token_id UUID NOT NULL, user_id UUID NOT NULL, workspace_id UUID NOT NULL, token_permission_type TOKEN_PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('super_admin') STORED, CONSTRAINT user_api_token_workspace_super_admin_pk PRIMARY KEY( token_id, user_id, workspace_id ), CONSTRAINT user_api_token_workspace_super_admin_fk_type FOREIGN KEY( token_id, workspace_id, token_permission_type ) REFERENCES user_api_token_workspace_permission_type( token_id, workspace_id, token_permission_type ), CONSTRAINT user_api_token_workspace_super_admin_fk_token FOREIGN KEY(token_id, user_id) REFERENCES user_api_token( token_id, user_id ), CONSTRAINT user_api_token_workspace_super_admin_fk_workspace FOREIGN KEY(workspace_id, user_id) REFERENCES workspace( id, super_admin_id ) );"
+  },
   "b20318352ed6022a580e4b93b0ee91cd7098eb700c0fc306a678bb0fc5bf18bd": {
     "describe": {
       "columns": [],
@@ -12627,32 +13071,6 @@
       }
     },
     "query": "UPDATE workspace SET address_id = $1 WHERE id = $2;"
-  },
-  "b4d2a52eacd8db7502f452aa9fddab45bd6f171581cd217c99b32a1727cf2155": {
-    "describe": {
-      "columns": [
-        {
-          "name": "workspace_id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "role_id: Uuid",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT workspace_id as \"workspace_id: Uuid\", role_id as \"role_id: Uuid\" FROM workspace_user WHERE user_id = $1 ORDER BY workspace_id;"
   },
   "b619a70da76dcc0c66dd8e1c654f8ef2502e84fea0979723e0f297722394a579": {
     "describe": {
@@ -12731,7 +13149,7 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdomain_name,\n\t\t\tgit_provider_type as \"git_provider_type: _\",\n\t\t\tlogin_name,\n\t\t\tpassword,\n\t\t\tis_syncing,\n\t\t\tlast_synced,\n\t\t\tis_deleted\n\t\tFROM\n\t\t\tci_git_provider\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\tis_deleted = FALSE;\n\t\t"
   },
-  "b6e0dd1826475d91e9f7ce39f7c50b81cbc075084cd51a041fd223c80add6e06": {
+  "b6a44aba30f6bc1b47833049464d70ac03f196326ce327c808f2da6239e353a3": {
     "describe": {
       "columns": [],
       "nullable": [],
@@ -12739,7 +13157,7 @@
         "Left": []
       }
     },
-    "query": "CREATE TABLE IF NOT EXISTS static_sites_payment_history( workspace_id UUID NOT NULL, static_site_plan STATIC_SITE_PLAN NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
+    "query": "CREATE TABLE payment_method( payment_method_id TEXT CONSTRAINT payment_method_pk PRIMARY KEY, workspace_id UUID NOT NULL );"
   },
   "b6fb3d6eb9b3f8236de0837741513fc4d6946c5be44ead58c751ae8cdffdfe8a": {
     "describe": {
@@ -12829,7 +13247,7 @@
     },
     "query": "DELETE FROM docker_registry_repository_manifest WHERE repository_id = $1 AND manifest_digest = $2;"
   },
-  "b942b832e2fc3ef4a7d0d4b355ea1a81f3b6b9738141c542371d1f8ef7b3d70b": {
+  "b95b4e53cd324ff6c8d0625f6506b35972f054bbaa6563414fab74c17974d0aa": {
     "describe": {
       "columns": [],
       "nullable": [],
@@ -12837,7 +13255,7 @@
         "Left": []
       }
     },
-    "query": "CREATE TABLE user_api_token_resource_type_permission( token_id UUID NOT NULL CONSTRAINT user_api_token_resource_type_permission_fk_token_id REFERENCES user_api_token(token_id), workspace_id UUID NOT NULL CONSTRAINT user_api_token_resource_type_permission_fk_workspace_id REFERENCES workspace(id), resource_type_id UUID NOT NULL CONSTRAINT user_api_token_resource_type_permission_fk_resource_type_id REFERENCES resource_type(id), permission_id UUID NOT NULL CONSTRAINT user_api_token_resource_type_permission_fk_permission_id REFERENCES permission(id), CONSTRAINT user_api_token_resource_type_permission_pk PRIMARY KEY(token_id, permission_id, resource_type_id, workspace_id) );"
+    "query": "CREATE TABLE domain_payment_history( workspace_id UUID NOT NULL, domain_plan DOMAIN_PLAN NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
   },
   "b9d97701e22c7948c38793c3124de8a5e0224d85d918ea202ecc90bb1236a829": {
     "describe": {
@@ -12969,16 +13387,6 @@
       }
     },
     "query": "CREATE TABLE role( id UUID CONSTRAINT role_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500) NOT NULL, owner_id UUID NOT NULL CONSTRAINT role_fk_owner_id REFERENCES workspace(id), CONSTRAINT role_uq_name_owner_id UNIQUE(name, owner_id) );"
-  },
-  "bdaeb51981c627273df25d9f429211412a10aecdf420ea483c71fa45c480a52f": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TYPE MANAGED_DATABASE_ENGINE AS ENUM( 'postgres', 'mysql' );"
   },
   "beb72702ef21c33f9f6cb5f1778823f19becd161d3694e181eb9014f682b81e1": {
     "describe": {
@@ -13178,16 +13586,6 @@
     },
     "query": "SELECT status as \"status: BuildStepStatus\" FROM ci_steps WHERE repo_id = $1 AND build_num = $2 AND step_id = $3;"
   },
-  "c15c9714352f98ccb6ae73eb80f523db23e3f5381f3cb368ddac0743bfae3dcf": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "ALTER TABLE secret ADD CONSTRAINT secret_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id), ADD CONSTRAINT secret_fk_deployment_id_workspace_id FOREIGN KEY(deployment_id, workspace_id) REFERENCES deployment(id, workspace_id);"
-  },
   "c1c8b46a3c33cf18cb7c38efcdd4ffac8d96ed9bce46c6af3f383fc19d0ea9e0": {
     "describe": {
       "columns": [],
@@ -13298,15 +13696,25 @@
     },
     "query": "SELECT COUNT(*) as \"count!\" FROM \"user\" WHERE id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );"
   },
-  "c5789c6b887e9b1dcff50b2f96cb7c757c98e8f0a2f0e40054df370b609ef9a8": {
+  "c4a539df7c901187f9381b13a3bfffee0c22925957035d090eac329a9f87cb38": {
     "describe": {
-      "columns": [],
-      "nullable": [],
+      "columns": [
+        {
+          "name": "workspace_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false
+      ],
       "parameters": {
-        "Left": []
+        "Left": [
+          "Uuid"
+        ]
       }
     },
-    "query": "CREATE TABLE \"user\"( id UUID CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uq_username UNIQUE CONSTRAINT user_chk_username_is_valid CHECK( /* Username is a-z, 0-9, _, cannot begin or end with a . or - */ username ~ '^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$' AND username NOT LIKE '%..%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%' ), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob TIMESTAMPTZ DEFAULT NULL CONSTRAINT user_chk_dob_is_13_plus CHECK( dob IS NULL OR dob < (NOW() - INTERVAL '13 YEARS') ), bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created TIMESTAMPTZ NOT NULL, /* Recovery options */ recovery_email_local VARCHAR(64) CONSTRAINT user_chk_recovery_email_is_lower_case CHECK( recovery_email_local = LOWER(recovery_email_local) ), recovery_email_domain_id UUID, recovery_phone_country_code CHAR(2) CONSTRAINT user_chk_recovery_phone_country_code_is_upper_case CHECK( recovery_phone_country_code = UPPER(recovery_phone_country_code) ), recovery_phone_number VARCHAR(15), workspace_limit INTEGER NOT NULL, sign_up_coupon TEXT, CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id UNIQUE(recovery_email_local, recovery_email_domain_id), CONSTRAINT user_uq_recovery_phone_country_code_recovery_phone_number UNIQUE(recovery_phone_country_code, recovery_phone_number), CONSTRAINT user_chk_rcvry_eml_or_rcvry_phn_present CHECK( ( recovery_email_local IS NOT NULL AND recovery_email_domain_id IS NOT NULL ) OR ( recovery_phone_country_code IS NOT NULL AND recovery_phone_number IS NOT NULL ) ) );"
+    "query": "SELECT id as \"workspace_id: Uuid\" FROM workspace WHERE super_admin_id = $1;"
   },
   "c6e35d76871d48b730f158a517f1e82785e34dbc8039cc51eafcb8123aa7f131": {
     "describe": {
@@ -13411,15 +13819,73 @@
     },
     "query": "UPDATE patr_domain_dns_record SET value = $1, priority = $2, ttl = $3, proxied = $4 WHERE id = $5;"
   },
-  "c7badbbf95c47e30f52f6f6390e9af3a7e3f8cec8e9f6abe7e092bc2004eed5d": {
+  "c7c149e2873ad792fd87c4b641b84406e5591d5d00cadab737fb5b5fc3c24303": {
     "describe": {
-      "columns": [],
-      "nullable": [],
+      "columns": [
+        {
+          "name": "workspace_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "database_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "legacy_db_plan: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "nano",
+                  "micro",
+                  "small",
+                  "medium",
+                  "large",
+                  "xlarge",
+                  "xxlarge",
+                  "mammoth"
+                ]
+              },
+              "name": "legacy_managed_database_plan"
+            }
+          }
+        },
+        {
+          "name": "db_plan_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "start_time: _",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "deletion_time: _",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        true,
+        true,
+        false,
+        true
+      ],
       "parameters": {
-        "Left": []
+        "Left": [
+          "Uuid",
+          "Timestamptz",
+          "Timestamptz"
+        ]
       }
     },
-    "query": "CREATE TABLE IF NOT EXISTS deployment_payment_history( workspace_id UUID NOT NULL, deployment_id UUID NOT NULL, machine_type UUID NOT NULL, num_instance INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
+    "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdatabase_id as \"database_id: _\",\n\t\t\tlegacy_db_plan as \"legacy_db_plan: _\",\n\t\t\tdb_plan_id as \"db_plan_id: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tdeletion_time as \"deletion_time: _\"\n\t\tFROM\n\t\t\tmanaged_database_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(start_time, COALESCE(deletion_time, NOW())) OVERLAPS ($2, $3)\n\t\tORDER BY\n\t\t\tstart_time ASC;\n\t\t"
   },
   "ca4052cd85b594d288729c62e3e740161789ae97e7e711dd2609235c40e0d4ed": {
     "describe": {
@@ -13560,6 +14026,38 @@
       }
     },
     "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", personal_domain.id as \"id: _\", personal_domain.domain_type as \"domain_type: _\" FROM personal_domain INNER JOIN domain ON domain.id = personal_domain.id WHERE domain.id = $1;"
+  },
+  "cdbf494beb959c63581ae184491622da65620b25e1a1a0c497b366adf6557998": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "permission_id: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "resource_id: Uuid",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT workspace_id as \"workspace_id: Uuid\", permission_id as \"permission_id: Uuid\", resource_id as \"resource_id: Uuid\" FROM user_api_token_resource_permissions_include WHERE token_id = $1;"
   },
   "ce783ce1a514dd029ca460ab65b51d0c6c70fbc49742d1e05c50ea5420b6d592": {
     "describe": {
@@ -14013,111 +14511,6 @@
     },
     "query": "CREATE TABLE docker_registry_repository_manifest( repository_id UUID NOT NULL CONSTRAINT docker_registry_repository_manifest_fk_repository_id REFERENCES docker_registry_repository(id), manifest_digest TEXT NOT NULL, size BIGINT NOT NULL CONSTRAINT docker_registry_repository_manifest_chk_size_unsigned CHECK(size >= 0), created TIMESTAMPTZ NOT NULL, CONSTRAINT docker_registry_repository_manifest_pk PRIMARY KEY( repository_id, manifest_digest ) );"
   },
-  "d3dd14301e39841c7027251c66667c349f284f0ab47a38a38d0001c52391593e": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "username",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "password",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "first_name",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "last_name",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "dob",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "bio",
-          "ordinal": 6,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "location",
-          "ordinal": 7,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "created",
-          "ordinal": 8,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "recovery_email_local",
-          "ordinal": 9,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "recovery_email_domain_id: _",
-          "ordinal": 10,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "recovery_phone_country_code",
-          "ordinal": 11,
-          "type_info": "Bpchar"
-        },
-        {
-          "name": "recovery_phone_number",
-          "ordinal": 12,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "workspace_limit",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "sign_up_coupon",
-          "ordinal": 14,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Bpchar",
-          "Text"
-        ]
-      }
-    },
-    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon FROM \"user\" INNER JOIN user_phone_number ON \"user\".id = user_phone_number.user_id WHERE user_phone_number.country_code = $1 AND user_phone_number.number = $2;"
-  },
   "d554e0cdaefed7bec784a16adfa3a7e2e844251ddab8d60a00e481b7adc938d9": {
     "describe": {
       "columns": [],
@@ -14132,6 +14525,21 @@
       }
     },
     "query": "INSERT INTO ci_build_machine_type( id, cpu, ram, volume ) VALUES ($1, $2, $3, $4);"
+  },
+  "d64243c8d1f08d7bf0d14456c2d95e43d9f8eb37dce357d7f21ac748a876c687": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Int4",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "INSERT INTO managed_database_plan( id, cpu, ram, volume ) VALUES ($1, $2, $3, $4);"
   },
   "d7e60cbbd6b83c7176f0e04faf6540b7bc9952273aa83cf7783626886748671c": {
     "describe": {
@@ -14260,6 +14668,16 @@
     },
     "query": "UPDATE workspace SET name = COALESCE($1, name), alert_emails = COALESCE($2, alert_emails), default_payment_method_id = COALESCE($3, default_payment_method_id) WHERE id = $4;"
   },
+  "da289e6340b9dd160a1c58dbcb59c8bb4506469319c9f07169e59a288fe1f5e5": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE user_api_token_workspace_permission_type( token_id UUID NOT NULL, workspace_id UUID NOT NULL, token_permission_type TOKEN_PERMISSION_TYPE NOT NULL, CONSTRAINT user_api_token_workspace_permission_type_pk PRIMARY KEY( token_id, workspace_id ), CONSTRAINT user_api_token_workspace_permission_type_uq UNIQUE( token_id, workspace_id, token_permission_type ), CONSTRAINT user_api_token_workspace_permission_type_fk_token FOREIGN KEY(token_id) REFERENCES user_api_token(token_id) );"
+  },
   "da3901cb1079f58c9b722ee678e97e05baa99e5ee5747e51b084a3c1a60063d7": {
     "describe": {
       "columns": [],
@@ -14325,149 +14743,6 @@
       }
     },
     "query": "SELECT id as \"id: Uuid\", workspace_id as \"workspace_id: Uuid\", name::TEXT as \"name!: String\", COALESCE(size, 0) as \"size!\", ( SELECT GREATEST( resource.created, ( SELECT COALESCE(created, TO_TIMESTAMP(0)) FROM docker_registry_repository_manifest WHERE repository_id = docker_registry_repository.id ORDER BY created DESC LIMIT 1 ), ( SELECT COALESCE(last_updated, TO_TIMESTAMP(0)) FROM docker_registry_repository_tag WHERE repository_id = docker_registry_repository.id ORDER BY created DESC LIMIT 1 ) ) FROM resource WHERE resource.id = docker_registry_repository.id ) as \"last_updated!\" FROM docker_registry_repository LEFT JOIN ( SELECT SUM(size) as size, repository_id FROM docker_registry_repository_manifest GROUP BY repository_id ) docker_registry_repository_manifest ON docker_registry_repository_manifest.repository_id = docker_registry_repository.id WHERE workspace_id = $1 AND deleted IS NULL;"
-  },
-  "dc143c1965f5cd576eced73955f378a1330ab5e8cb535bbd6ac7c202e95520ee": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "db_name",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "engine: _",
-          "ordinal": 3,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "postgres",
-                  "mysql"
-                ]
-              },
-              "name": "managed_database_engine"
-            }
-          }
-        },
-        {
-          "name": "version",
-          "ordinal": 4,
-          "type_info": "Text"
-        },
-        {
-          "name": "num_nodes",
-          "ordinal": 5,
-          "type_info": "Int4"
-        },
-        {
-          "name": "database_plan: _",
-          "ordinal": 6,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "nano",
-                  "micro",
-                  "small",
-                  "medium",
-                  "large",
-                  "xlarge",
-                  "xxlarge",
-                  "mammoth"
-                ]
-              },
-              "name": "managed_database_plan"
-            }
-          }
-        },
-        {
-          "name": "region",
-          "ordinal": 7,
-          "type_info": "Text"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 8,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "creating",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              },
-              "name": "managed_database_status"
-            }
-          }
-        },
-        {
-          "name": "host",
-          "ordinal": 9,
-          "type_info": "Text"
-        },
-        {
-          "name": "port",
-          "ordinal": 10,
-          "type_info": "Int4"
-        },
-        {
-          "name": "username",
-          "ordinal": 11,
-          "type_info": "Text"
-        },
-        {
-          "name": "password",
-          "ordinal": 12,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 13,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "digitalocean_db_id",
-          "ordinal": 14,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", db_name, engine as \"engine: _\", version, num_nodes, database_plan as \"database_plan: _\", region, status as \"status: _\", host, port, username, password, workspace_id as \"workspace_id: _\", digitalocean_db_id FROM managed_database WHERE id = $1;"
   },
   "dc532b30067cfee729672c5ddffe470971c2b69db1c60f3c883d2e34aa08808e": {
     "describe": {
@@ -14557,15 +14832,37 @@
     },
     "query": "INSERT INTO \"user\"( id, username, password, first_name, last_name, dob, bio, location, created, recovery_email_local, recovery_email_domain_id, recovery_phone_country_code, recovery_phone_number, workspace_limit, sign_up_coupon ) VALUES ( $1, $2, $3, $4, $5, NULL, NULL, NULL, $6, $7, $8, $9, $10, $11, $12 );"
   },
-  "dca7ef80973e51ffe78bd9f717ae1cbcd73aaf19b3530b322a77c9d39edf26fb": {
+  "dcb44938c380cfa55b8db89abda70f261220b363a2b58535c3c8824ed2f3372f": {
     "describe": {
-      "columns": [],
-      "nullable": [],
+      "columns": [
+        {
+          "name": "workspace_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "permission_id: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "resource_id: Uuid",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
       "parameters": {
-        "Left": []
+        "Left": [
+          "Uuid"
+        ]
       }
     },
-    "query": "CREATE TYPE MANAGED_DATABASE_PLAN AS ENUM( 'nano', 'micro', 'small', 'medium', 'large', 'xlarge', 'xxlarge', 'mammoth' );"
+    "query": "SELECT workspace_id as \"workspace_id: Uuid\", permission_id as \"permission_id: Uuid\", resource_id as \"resource_id: Uuid\" FROM user_api_token_resource_permissions_exclude WHERE token_id = $1;"
   },
   "dd227e4051b6f768477c66b2ddfa2617832787a776c1f3e9b7fc1a23ed45ddd4": {
     "describe": {
@@ -14697,6 +14994,16 @@
     },
     "query": "CREATE UNIQUE INDEX ci_runner_uq_workspace_id_name ON ci_runner (workspace_id, name) WHERE deleted IS NULL;"
   },
+  "de44ac55d7ada23b6c0560ff839a1d394fa3ddb9ea3964480824877e7a46de71": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE workspace_user( user_id UUID NOT NULL CONSTRAINT workspace_user_fk_user_id REFERENCES \"user\"(id), workspace_id UUID NOT NULL CONSTRAINT workspace_user_fk_workspace_id REFERENCES workspace(id), role_id UUID NOT NULL CONSTRAINT workspace_user_fk_role_id REFERENCES role(id), CONSTRAINT workspace_user_pk PRIMARY KEY( user_id, workspace_id, role_id ) );"
+  },
   "de6fb017822253924727b17e21c4d18169e9b6e2cb68e0f08fb7032fb478be9b": {
     "describe": {
       "columns": [],
@@ -14720,21 +15027,6 @@
       }
     },
     "query": "ALTER TABLE docker_registry_repository ADD CONSTRAINT docker_registry_repository_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);"
-  },
-  "ded347eebcb0d27aadaf209b7a2b0a5ed379ee1b29ced3de7ec5a69bdc80a918": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "INSERT INTO user_api_token_resource_type_permission( token_id, workspace_id, resource_type_id, permission_id ) VALUES ($1, $2, $3, $4);"
   },
   "deeb5ac6620a16041f76fdbc16d40d8d468d5275d16c74a22d684ab79215a599": {
     "describe": {
@@ -14823,15 +15115,91 @@
     },
     "query": "CREATE UNIQUE INDEX user_api_token_uq_name_user_id ON user_api_token(name, user_id) WHERE revoked IS NULL;"
   },
-  "e2f6a571d891caa72875902539f461c7c9ebcba77978a1f8207979ff601546f3": {
+  "e2aabbbb607d4be0016badbb784fb21ba95467adf4d3d5b2e7f194c69b8e69fd": {
     "describe": {
-      "columns": [],
-      "nullable": [],
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "region: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "engine: _",
+          "ordinal": 4,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "postgres",
+                  "mysql",
+                  "mongo",
+                  "redis"
+                ]
+              },
+              "name": "managed_database_engine"
+            }
+          }
+        },
+        {
+          "name": "database_plan_id: _",
+          "ordinal": 5,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "status: _",
+          "ordinal": 6,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "creating",
+                  "running",
+                  "errored",
+                  "deleted"
+                ]
+              },
+              "name": "managed_database_status"
+            }
+          }
+        },
+        {
+          "name": "username",
+          "ordinal": 7,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
       "parameters": {
-        "Left": []
+        "Left": [
+          "Uuid"
+        ]
       }
     },
-    "query": "UPDATE user_api_token SET revoked = token_exp WHERE token_exp > NOW();"
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", engine as \"engine: _\", database_plan_id as \"database_plan_id: _\", status as \"status: _\", username FROM managed_database WHERE id = $1 AND status != 'deleted';"
   },
   "e3e5df5305f2f4f8363d750c83ab960c127587667bbf53d355dda740fa3da2fc": {
     "describe": {
@@ -14843,151 +15211,7 @@
     },
     "query": "CREATE TABLE static_site_upload_history( upload_id UUID CONSTRAINT static_site_upload_history_pk PRIMARY KEY, static_site_id UUID NOT NULL CONSTRAINT static_site_upload_history_fk_static_site_id REFERENCES static_site(id), message TEXT NOT NULL, uploaded_by UUID NOT NULL CONSTRAINT static_site_upload_history_fk_uploaded_by REFERENCES \"user\"(id), created TIMESTAMPTZ NOT NULL, processed TIMESTAMPTZ, CONSTRAINT static_site_upload_history_uq_upload_id_static_site_id UNIQUE(upload_id, static_site_id) );"
   },
-  "e42a05bee78769d3a009585e5dfcb5266701e896e413f8346c32e063c708dcec": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: String",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "super_admin_id: Uuid",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "active",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "alert_emails: Vec<String>",
-          "ordinal": 4,
-          "type_info": "VarcharArray"
-        },
-        {
-          "name": "payment_type: PaymentType",
-          "ordinal": 5,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "card",
-                  "enterprise"
-                ]
-              },
-              "name": "payment_type"
-            }
-          }
-        },
-        {
-          "name": "default_payment_method_id: String",
-          "ordinal": 6,
-          "type_info": "Text"
-        },
-        {
-          "name": "deployment_limit",
-          "ordinal": 7,
-          "type_info": "Int4"
-        },
-        {
-          "name": "static_site_limit",
-          "ordinal": 8,
-          "type_info": "Int4"
-        },
-        {
-          "name": "database_limit",
-          "ordinal": 9,
-          "type_info": "Int4"
-        },
-        {
-          "name": "managed_url_limit",
-          "ordinal": 10,
-          "type_info": "Int4"
-        },
-        {
-          "name": "secret_limit",
-          "ordinal": 11,
-          "type_info": "Int4"
-        },
-        {
-          "name": "domain_limit",
-          "ordinal": 12,
-          "type_info": "Int4"
-        },
-        {
-          "name": "docker_repository_storage_limit",
-          "ordinal": 13,
-          "type_info": "Int4"
-        },
-        {
-          "name": "volume_storage_limit",
-          "ordinal": 14,
-          "type_info": "Int4"
-        },
-        {
-          "name": "stripe_customer_id",
-          "ordinal": 15,
-          "type_info": "Text"
-        },
-        {
-          "name": "address_id: Uuid",
-          "ordinal": 16,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "amount_due_in_cents",
-          "ordinal": 17,
-          "type_info": "Int8"
-        },
-        {
-          "name": "is_spam",
-          "ordinal": 18,
-          "type_info": "Bool"
-        },
-        {
-          "name": "is_frozen",
-          "ordinal": 19,
-          "type_info": "Bool"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: Uuid\", name::TEXT as \"name!: String\", super_admin_id as \"super_admin_id: Uuid\", active, alert_emails as \"alert_emails: Vec<String>\", payment_type as \"payment_type: PaymentType\", default_payment_method_id as \"default_payment_method_id: String\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, volume_storage_limit, stripe_customer_id, address_id as \"address_id: Uuid\", amount_due_in_cents, is_spam, is_frozen FROM workspace WHERE super_admin_id = $1;"
-  },
-  "e43cbb91a88870e7f60a36e520e8ff8af49e7b99dbf20c341eebd4bb1b2feb76": {
+  "e448228ff79a8bf6aa2d4214937f7eae5f3309cff038edcc6e5b68fbd575f784": {
     "describe": {
       "columns": [],
       "nullable": [],
@@ -14995,7 +15219,7 @@
         "Left": []
       }
     },
-    "query": "CREATE TABLE user_api_token_workspace_super_admin( token_id UUID NOT NULL, user_id UUID NOT NULL, workspace_id UUID NOT NULL, CONSTRAINT user_api_token_workspace_super_admin_fk_token FOREIGN KEY(token_id, user_id) REFERENCES user_api_token(token_id, user_id), CONSTRAINT user_api_token_workspace_super_admin_fk_workspace FOREIGN KEY(workspace_id, user_id) REFERENCES workspace(id, super_admin_id) );"
+    "query": "CREATE TABLE role_resource_permissions_exclude( role_id UUID NOT NULL, permission_id UUID NOT NULL, resource_id UUID NOT NULL, permission_type PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('exclude') STORED, CONSTRAINT role_resource_permissions_exclude_pk PRIMARY KEY( role_id, permission_id, resource_id ), CONSTRAINT role_resource_permissions_exclude_fk_parent FOREIGN KEY(role_id, permission_id, permission_type) REFERENCES role_resource_permissions_type( role_id, permission_id, permission_type ), CONSTRAINT role_resource_permissions_exclude_fk_resource FOREIGN KEY(resource_id) REFERENCES resource(id) );"
   },
   "e4bde43b0c682fac1c3d75723e1d9a9f133ff21525cec4fcdbea36908407284a": {
     "describe": {
@@ -15009,6 +15233,16 @@
       }
     },
     "query": "UPDATE managed_database_payment_history SET deletion_time = $2 WHERE database_id = $1 AND deletion_time IS NULL;"
+  },
+  "e4d9ee0d665b94e93bedc7eb00c2a1432b36c88e3042988d1368af54232ffaea": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE managed_url_payment_history( workspace_id UUID NOT NULL, url_count INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
   },
   "e5c1647593a56d9b5d6777510cdc6e69212fd2a504f49a6345d7b63c26d1806e": {
     "describe": {
@@ -15590,36 +15824,17 @@
     },
     "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, permanent_redirect, http_only, cloudflare_custom_hostname_id FROM managed_url WHERE deleted IS NULL AND sub_domain = $1 AND domain_id = $2 ORDER BY path DESC;"
   },
-  "ec98bd64b322bca84d91ae223c1b6171b30b049d75c8a96f5b54b08bf95bfa59": {
+  "ec431215f64fcba4d61a2d208c619672246d5a421e6cc60ef97a29ff0314143a": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
         "Left": [
-          "Uuid",
-          "Uuid",
-          {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "nano",
-                  "micro",
-                  "small",
-                  "medium",
-                  "large",
-                  "xlarge",
-                  "xxlarge",
-                  "mammoth"
-                ]
-              },
-              "name": "managed_database_plan"
-            }
-          },
-          "Timestamptz"
+          "Uuid"
         ]
       }
     },
-    "query": "INSERT INTO managed_database_payment_history( workspace_id, database_id, db_plan, start_time, deletion_time ) VALUES ( $1, $2, $3, $4, NULL );"
+    "query": "DELETE FROM role_resource_permissions_include WHERE role_id = $1;"
   },
   "ece0b5c9110deede9b4f81b82feb4a52d278fd279ed20e55b51bf2b0cf4a71cc": {
     "describe": {
@@ -15812,6 +16027,16 @@
     },
     "query": "\n\t\tSELECT\n\t\t\tid as \"id: _\",\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tdomain_name,\n\t\t\tgit_provider_type as \"git_provider_type: _\",\n\t\t\tlogin_name,\n\t\t\tpassword,\n\t\t\tis_syncing,\n\t\t\tlast_synced,\n\t\t\tis_deleted\n\t\tFROM\n\t\t\tci_git_provider\n\t\tWHERE\n\t\t\tid = $1;\n\t\t"
   },
+  "ef66ca75a2c8ec2b1c9a4c5defa0ce01ab4eca3c84c0da5f5b92cbde85c3499d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE user_api_token_resource_permissions_include( token_id UUID NOT NULL, workspace_id UUID NOT NULL, permission_id UUID NOT NULL, resource_id UUID NOT NULL, permission_type PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('include') STORED, CONSTRAINT user_api_token_resource_permissions_include_pk PRIMARY KEY(token_id, workspace_id, permission_id, resource_id), CONSTRAINT user_api_token_resource_permissions_include_fk_parent FOREIGN KEY( token_id, workspace_id, permission_id, permission_type ) REFERENCES user_api_token_resource_permissions_type( token_id, workspace_id, permission_id, resource_permission_type ), CONSTRAINT user_api_token_resource_permissions_include_fk_resource FOREIGN KEY(resource_id, workspace_id) REFERENCES resource( id, owner_id ) );"
+  },
   "efa0a6ff35f40c8f91021798d83cbff7e35471895783a4ca95ec64d173dbdddf": {
     "describe": {
       "columns": [
@@ -15829,6 +16054,116 @@
       }
     },
     "query": "SELECT COUNT(*) \"count!\" FROM deployment INNER JOIN workspace ON deployment.workspace_id = workspace.id WHERE deployment.status = 'deleted' AND workspace.super_admin_id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );"
+  },
+  "efb896e96f915cd3fa5035db79ac99a68f29f72063791a847fa8f2c1de787f3a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "password",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "first_name",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "last_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "dob",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "bio",
+          "ordinal": 6,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "location",
+          "ordinal": 7,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created",
+          "ordinal": 8,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "recovery_email_local",
+          "ordinal": 9,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "recovery_email_domain_id: _",
+          "ordinal": 10,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "recovery_phone_country_code",
+          "ordinal": 11,
+          "type_info": "Bpchar"
+        },
+        {
+          "name": "recovery_phone_number",
+          "ordinal": 12,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "workspace_limit",
+          "ordinal": 13,
+          "type_info": "Int4"
+        },
+        {
+          "name": "sign_up_coupon",
+          "ordinal": 14,
+          "type_info": "Text"
+        },
+        {
+          "name": "mfa_secret",
+          "ordinal": 15,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT \"user\".id as \"id: _\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: _\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".workspace_limit, \"user\".sign_up_coupon, \"user\".mfa_secret FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id WHERE CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( business_email.local, '@', domain.name, '.', domain.tld ) = $1;"
   },
   "f0d89c52ec908f391a5753b69b004cabf7f3635d492317901a9c140198634bfb": {
     "describe": {
@@ -15857,59 +16192,6 @@
       }
     },
     "query": "SELECT COUNT(*) as \"count!\" FROM user_to_sign_up;"
-  },
-  "f25dcaa2a97d22a225c515196200df9c28c19c20d8bf0d5c4d65b165ca97eb95": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "INSERT INTO user_api_token_resource_permission( token_id, workspace_id, resource_id, permission_id ) VALUES ($1, $2, $3, $4);"
-  },
-  "f2a34d60ffd9cc0e462838dfb409c817fcb584cab7cfed5e63813881afe56d54": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", workspace_id as \"workspace_id: _\", deployment_id as \"deployment_id: _\" FROM secret WHERE workspace_id = $1 AND deleted IS NULL;"
   },
   "f2a44134a01b4bcd94ff4d7b847b205199c59cb7e613b384a501c8415190b57b": {
     "describe": {
@@ -16108,6 +16390,46 @@
     },
     "query": "CREATE TABLE docker_registry_repository_tag( repository_id UUID NOT NULL CONSTRAINT docker_registry_repository_tag_fk_repository_id REFERENCES docker_registry_repository(id), tag TEXT NOT NULL, manifest_digest TEXT NOT NULL, last_updated TIMESTAMPTZ NOT NULL, CONSTRAINT docker_registry_repository_tag_pk PRIMARY KEY( repository_id, tag ), CONSTRAINT docker_registry_repository_tag_fk_repository_id_manifest_digest FOREIGN KEY(repository_id, manifest_digest) REFERENCES docker_registry_repository_manifest( repository_id, manifest_digest ) );"
   },
+  "f52cbabf17987e8f41cf13847b6dc75f436fda2539454d861b6f6cd4ffa483eb": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO role_resource_permissions_include( role_id, permission_id, resource_id ) VALUES ($1, $2, $3);"
+  },
+  "f542fb018e204e89986a28a0702fd56692ec02a0f9ff5de0a74c7d7abbe10e20": {
+    "describe": {
+      "columns": [
+        {
+          "name": "workspace_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "permission_id: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT workspace_user.workspace_id as \"workspace_id: Uuid\", role_resource_permissions_type.permission_id as \"permission_id: Uuid\" FROM role_resource_permissions_type JOIN workspace_user ON workspace_user.role_id = role_resource_permissions_type.role_id WHERE workspace_user.user_id = $1 AND role_resource_permissions_type.permission_type = 'exclude' AND NOT EXISTS ( SELECT 1 FROM role_resource_permissions_exclude WHERE role_resource_permissions_exclude.role_id = role_resource_permissions_type.role_id AND role_resource_permissions_exclude.permission_id = role_resource_permissions_type.permission_id );"
+  },
   "f586863518a7bc2ad7980aa354656d0373289758bc9de1605b1123fffe485f12": {
     "describe": {
       "columns": [],
@@ -16251,44 +16573,6 @@
     },
     "query": "SELECT token_id as \"token_id: _\", name, user_id as \"user_id: _\", token_hash, token_nbf, token_exp, allowed_ips, created, revoked FROM user_api_token WHERE user_id = $1 AND revoked IS NULL;"
   },
-  "f6cc8d79f2c2f52757cc15fd59ac42c6d1ea67fc8232fed1260895a5d418492a": {
-    "describe": {
-      "columns": [
-        {
-          "name": "permission_id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "resource_id: Uuid",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "description",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT permission_id as \"permission_id: Uuid\", resource_id as \"resource_id: Uuid\", name, description FROM role_permissions_resource INNER JOIN permission ON role_permissions_resource.permission_id = permission.id WHERE role_permissions_resource.role_id = $1;"
-  },
   "f6e0b2010d86312b33f11087f800160c1d55985297da0ec6cabe92980f23c678": {
     "describe": {
       "columns": [],
@@ -16429,44 +16713,6 @@
     },
     "query": "CREATE TABLE domain_tld( tld TEXT CONSTRAINT domain_tld_pk PRIMARY KEY CONSTRAINT domain_tld_chk_is_length_valid CHECK( LENGTH(tld) >= 2 AND LENGTH(tld) <= 63 ) CONSTRAINT domain_tld_chk_is_tld_valid CHECK( tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) );"
   },
-  "f97a6aa74e29fce79cf925131c1d9600abb217529d44954f2044e5b11d43ef17": {
-    "describe": {
-      "columns": [
-        {
-          "name": "permission_id: Uuid",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "resource_type_id: Uuid",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "description",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT permission_id as \"permission_id: Uuid\", resource_type_id as \"resource_type_id: Uuid\", name, description FROM role_permissions_resource_type INNER JOIN permission ON role_permissions_resource_type.permission_id = permission.id WHERE role_permissions_resource_type.role_id = $1;"
-  },
   "fa89602b65bbd65d99ce5991ee341ca2e81bdc359f53597641ef76d35f5cc7dc": {
     "describe": {
       "columns": [
@@ -16485,149 +16731,6 @@
     },
     "query": "SELECT COUNT(*) as \"count!\" FROM deployment INNER JOIN workspace ON deployment.workspace_id = workspace.id WHERE deployment.status != 'deleted' AND workspace.super_admin_id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );"
   },
-  "fa9213a72b19a2d2ddedbf3309082989a735933d738146936c5a852521f327f9": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name!: _",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "db_name",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "engine: _",
-          "ordinal": 3,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "postgres",
-                  "mysql"
-                ]
-              },
-              "name": "managed_database_engine"
-            }
-          }
-        },
-        {
-          "name": "version",
-          "ordinal": 4,
-          "type_info": "Text"
-        },
-        {
-          "name": "num_nodes",
-          "ordinal": 5,
-          "type_info": "Int4"
-        },
-        {
-          "name": "database_plan: _",
-          "ordinal": 6,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "nano",
-                  "micro",
-                  "small",
-                  "medium",
-                  "large",
-                  "xlarge",
-                  "xxlarge",
-                  "mammoth"
-                ]
-              },
-              "name": "managed_database_plan"
-            }
-          }
-        },
-        {
-          "name": "region",
-          "ordinal": 7,
-          "type_info": "Text"
-        },
-        {
-          "name": "status: _",
-          "ordinal": 8,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "creating",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              },
-              "name": "managed_database_status"
-            }
-          }
-        },
-        {
-          "name": "host",
-          "ordinal": 9,
-          "type_info": "Text"
-        },
-        {
-          "name": "port",
-          "ordinal": 10,
-          "type_info": "Int4"
-        },
-        {
-          "name": "username",
-          "ordinal": 11,
-          "type_info": "Text"
-        },
-        {
-          "name": "password",
-          "ordinal": 12,
-          "type_info": "Text"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 13,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "digitalocean_db_id",
-          "ordinal": 14,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", db_name, engine as \"engine: _\", version, num_nodes, database_plan as \"database_plan: _\", region, status as \"status: _\", host, port, username, password, workspace_id as \"workspace_id: _\", digitalocean_db_id FROM managed_database WHERE id = $1 AND status != 'deleted';"
-  },
   "fac02cf3a9ff8a277fffa4989400d5d49f1889f65ca14af7ffc5e2a001c10a06": {
     "describe": {
       "columns": [],
@@ -16643,6 +16746,42 @@
       }
     },
     "query": "INSERT INTO volume_payment_history( workspace_id, volume_id, storage, number_of_volumes, start_time, stop_time ) VALUES ( $1, $2, $3, $4, $5, NULL );"
+  },
+  "fafc631ddfa124fed32d8dff892c0b4a17fea2cbe0274af9793307bd515d9749": {
+    "describe": {
+      "columns": [
+        {
+          "name": "permission_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "permission_type: PermissionType",
+          "ordinal": 1,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "include",
+                  "exclude"
+                ]
+              },
+              "name": "permission_type"
+            }
+          }
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT permission_id as \"permission_id: Uuid\", permission_type as \"permission_type: PermissionType\" FROM role_resource_permissions_type WHERE role_id = $1;"
   },
   "fb97eba66b6b6448bed531336a20c58c9f58d29a2bcf19b1e7808750b460cea7": {
     "describe": {
@@ -16867,6 +17006,28 @@
       }
     },
     "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\", is_configured, permanent_redirect as \"permanent_redirect: _\", http_only as \"http_only: _\", cloudflare_custom_hostname_id FROM managed_url WHERE domain_id = $1 AND deleted IS NULL;"
+  },
+  "fbc07ef26348d500ae149387023bee9a6113f1a5d15604d6416e78c9f0cd3314": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TYPE PERMISSION_TYPE AS ENUM( 'include', 'exclude' );"
+  },
+  "fc60e0b3d36914f5a58ea96f9b5a39e5f3eac4a541f292ec2de7f3a961343470": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "DELETE FROM user_api_token_resource_permissions_type WHERE token_id = $1;"
   },
   "fcda3a3e1abdd1cb97ed8554b73b6896b41ecc9bb81964ef2f663ed869131151": {
     "describe": {

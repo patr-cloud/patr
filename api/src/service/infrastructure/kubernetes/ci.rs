@@ -8,12 +8,14 @@ use k8s_openapi::{
 		core::v1::{
 			Container,
 			EnvVar,
+			EnvVarSource,
 			PersistentVolumeClaim,
 			PersistentVolumeClaimSpec,
 			PersistentVolumeClaimVolumeSource,
 			PodSpec,
 			PodTemplateSpec,
 			ResourceRequirements,
+			SecretKeySelector,
 			Service,
 			ServicePort,
 			ServiceSpec,
@@ -35,10 +37,15 @@ use kube::{
 };
 
 use crate::{
+	db::Region,
 	models::ci::{Commit, EventType, PullRequest, Tag},
 	rabbitmq::BuildStep,
 	service::ext_traits::DeleteOpt,
-	utils::{settings::Settings, Error},
+	utils::{
+		constants::{PATR_BYOC_TOKEN_NAME, PATR_BYOC_TOKEN_VALUE_NAME},
+		settings::Settings,
+		Error,
+	},
 };
 
 pub async fn create_ci_job_in_kubernetes(
@@ -48,6 +55,7 @@ pub async fn create_ci_job_in_kubernetes(
 	cpu_in_milli: u32,
 	event_type: &EventType,
 	kubeconfig: Kubeconfig,
+	deployed_region: &Region,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -62,11 +70,11 @@ pub async fn create_ci_job_in_kubernetes(
 	let annotations = [
 		(
 			"vault.security.banzaicloud.io/vault-addr".to_string(),
-			config.vault.address.clone(),
-		),
-		(
-			"vault.security.banzaicloud.io/vault-role".to_string(),
-			"vault".to_string(),
+			if deployed_region.is_byoc_region() {
+				config.vault.base_url()
+			} else {
+				config.vault.upstream_base_url()
+			},
 		),
 		(
 			"vault.security.banzaicloud.io/vault-skip-verify".to_string(),
@@ -76,12 +84,25 @@ pub async fn create_ci_job_in_kubernetes(
 			"vault.security.banzaicloud.io/vault-agent".to_string(),
 			"false".to_string(),
 		),
-		(
-			"vault.security.banzaicloud.io/vault-path".to_string(),
-			"kubernetes".to_string(),
-		),
 	]
 	.into_iter()
+	.chain(
+		if deployed_region.is_byoc_region() {
+			itertools::Either::Left([])
+		} else {
+			itertools::Either::Right([
+				(
+					"vault.security.banzaicloud.io/vault-role".to_string(),
+					"vault".to_string(),
+				),
+				(
+					"vault.security.banzaicloud.io/vault-path".to_string(),
+					"kubernetes".to_string(),
+				),
+			])
+		}
+		.into_iter(),
+	)
 	.collect();
 
 	let build_machine_type = [
@@ -113,9 +134,42 @@ pub async fn create_ci_job_in_kubernetes(
 							name: "workdir".to_string(),
 							..Default::default()
 						}]),
-						env: Some(get_env_variables_for_build(
-							build_step, event_type,
-						)),
+						env: Some(
+							get_env_variables_for_build(build_step, event_type)
+								.into_iter()
+								.chain(
+									if deployed_region.is_byoc_region() {
+										itertools::Either::Left([
+											EnvVar {
+												name: "VAULT_AUTH_METHOD".to_string(),
+												value: Some("token".to_string()),
+												..EnvVar::default()
+											},
+											EnvVar {
+												name: "VAULT_TOKEN".to_string(),
+												value_from: Some(EnvVarSource {
+													secret_key_ref: Some(
+														SecretKeySelector {
+															name: Some(
+																PATR_BYOC_TOKEN_NAME
+																	.to_string(),
+															),
+															key: PATR_BYOC_TOKEN_VALUE_NAME.to_string(),
+															..Default::default()
+														},
+													),
+													..Default::default()
+												}),
+												..Default::default()
+											},
+										])
+									} else {
+										itertools::Either::Right([])
+									}
+									.into_iter(),
+								)
+								.collect(),
+						),
 						command: Some(vec![
 							"sh".to_string(),
 							"-ce".to_string(),
@@ -400,6 +454,7 @@ pub async fn create_background_service_for_ci_in_kubernetes(
 	repo_workspace_name: &str,
 	service: api_models::models::ci::file_format::Service,
 	kubeconfig: Kubeconfig,
+	deployed_region: &Region,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -426,32 +481,73 @@ pub async fn create_background_service_for_ci_in_kubernetes(
 				}),
 				..Default::default()
 			})
+			.chain(
+				if deployed_region.is_byoc_region() {
+					itertools::Either::Left([
+						EnvVar {
+							name: "VAULT_AUTH_METHOD".to_string(),
+							value: Some("token".to_string()),
+							..EnvVar::default()
+						},
+						EnvVar {
+							name: "VAULT_TOKEN".to_string(),
+							value_from: Some(EnvVarSource {
+								secret_key_ref: Some(SecretKeySelector {
+									name: Some(
+										PATR_BYOC_TOKEN_NAME.to_string(),
+									),
+									key: PATR_BYOC_TOKEN_VALUE_NAME.to_string(),
+									..Default::default()
+								}),
+								..Default::default()
+							}),
+							..Default::default()
+						},
+					])
+				} else {
+					itertools::Either::Right([])
+				}
+				.into_iter(),
+			)
 			.collect()
 	});
 
 	let annotations = [
 		(
 			"vault.security.banzaicloud.io/vault-addr".to_string(),
-			config.vault.address.clone(),
-		),
-		(
-			"vault.security.banzaicloud.io/vault-role".to_string(),
-			"vault".to_string(),
+			if deployed_region.is_byoc_region() {
+				config.vault.base_url()
+			} else {
+				config.vault.upstream_base_url()
+			},
 		),
 		(
 			"vault.security.banzaicloud.io/vault-skip-verify".to_string(),
-			"true".to_string(),
+			"false".to_string(),
 		),
 		(
 			"vault.security.banzaicloud.io/vault-agent".to_string(),
 			"false".to_string(),
 		),
-		(
-			"vault.security.banzaicloud.io/vault-path".to_string(),
-			"kubernetes".to_string(),
-		),
 	]
 	.into_iter()
+	.chain(
+		if deployed_region.is_byoc_region() {
+			itertools::Either::Left([])
+		} else {
+			itertools::Either::Right([
+				(
+					"vault.security.banzaicloud.io/vault-role".to_string(),
+					"vault".to_string(),
+				),
+				(
+					"vault.security.banzaicloud.io/vault-path".to_string(),
+					"kubernetes".to_string(),
+				),
+			])
+		}
+		.into_iter(),
+	)
 	.collect();
 
 	Api::<Deployment>::namespaced(client.clone(), namespace_name)

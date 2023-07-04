@@ -57,7 +57,7 @@ use crate::{
 	routes,
 	service,
 	utils::{
-		constants::request_keys,
+		constants::{request_keys, PATR_CLUSTER_TENANT_ID},
 		Error,
 		ErrorData,
 		EveContext,
@@ -88,30 +88,16 @@ pub fn create_sub_app(
 	app.get(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator {
+			EveMiddleware::WorkspaceMemberAuthenticator {
 				is_api_token_allowed: true,
-				permission:
-					permissions::workspace::infrastructure::deployment::LIST,
-				resource: closure_as_pinned_box!(|mut context| {
+				requested_workspace: closure_as_pinned_box!(|context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
+					Ok((context, workspace_id))
 				}),
 			},
 			EveMiddleware::CustomFunction(pin_fn!(list_deployments)),
@@ -486,7 +472,7 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
 				permission:
-					permissions::workspace::infrastructure::managed_url::LIST,
+					permissions::workspace::infrastructure::deployment::INFO,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -567,7 +553,7 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
 				permission:
-					permissions::workspace::infrastructure::deployment::LIST,
+					permissions::workspace::infrastructure::deployment::INFO,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -679,6 +665,8 @@ async fn list_deployments(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
+	let user_token = context.get_token_data().status(500)?.clone();
+
 	log::trace!(
 		"request_id: {} - Getting deployments from database",
 		request_id
@@ -689,6 +677,13 @@ async fn list_deployments(
 	)
 	.await?
 	.into_iter()
+	.filter(|deployment| {
+		user_token.has_access_for_requested_action(
+			&workspace_id,
+			&deployment.id,
+			permissions::workspace::infrastructure::deployment::INFO,
+		)
+	})
 	.filter_map(|deployment| {
 		Some(Deployment {
 			id: deployment.id,
@@ -1460,7 +1455,10 @@ async fn get_logs(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let GetDeploymentLogsRequest {
-		limit, end_time, ..
+		limit,
+		end_time,
+		start_time,
+		..
 	} = context
 		.get_query_as()
 		.status(400)
@@ -1473,33 +1471,20 @@ async fn get_logs(
 	)
 	.unwrap();
 
-	let deployment = db::get_deployment_by_id(
-		context.get_database_connection(),
-		&deployment_id,
-	)
-	.await?
-	.status(500)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	if !service::is_deployed_on_patr_cluster(
-		context.get_database_connection(),
-		&deployment.region,
-	)
-	.await?
-	{
-		return Err(Error::empty().status(500).body(
-			error!(FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER).to_string(),
-		));
-	}
-
 	let config = context.get_state().config.clone();
 
 	let end_time = end_time
 		.map(|DateTime(end_time)| end_time)
 		.unwrap_or_else(Utc::now);
 
-	// Loki query limit to 721h in time range
-	let start_time = end_time - Duration::days(30);
+	let start_time = start_time
+		.map(|DateTime(end_time)| end_time)
+		.unwrap_or_else(|| {
+			// Loki query limit to 721h in time range, but it current loki is
+			// not working as expected if query limit is 7 days or more,
+			// so limitting it to 2 day
+			end_time - Duration::days(2)
+		});
 
 	log::trace!("request_id: {} - Getting logs", request_id);
 	let logs = service::get_deployment_container_logs(
@@ -1936,11 +1921,11 @@ async fn get_deployment_metrics(
 	.await?
 	.status(500)?;
 
-	if region.is_byoc_region() {
-		return Err(Error::empty().status(500).body(
-			error!(FEATURE_NOT_SUPPORTED_FOR_CUSTOM_CLUSTER).to_string(),
-		));
-	}
+	let tenant_id = if region.is_byoc_region() {
+		deployment.workspace_id.as_str()
+	} else {
+		PATR_CLUSTER_TENANT_ID
+	};
 
 	log::trace!(
 		"request_id: {} - Getting deployment metrics for deployment: {}",
@@ -1972,6 +1957,7 @@ async fn get_deployment_metrics(
 	let config = context.get_state().config.clone();
 
 	let deployment_metrics = service::get_deployment_metrics(
+		tenant_id,
 		&deployment_id,
 		&config,
 		&start_time,

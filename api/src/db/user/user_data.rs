@@ -24,6 +24,7 @@ pub struct User {
 	pub recovery_phone_number: Option<String>,
 	pub workspace_limit: i32,
 	pub sign_up_coupon: Option<String>,
+	pub mfa_secret: Option<String>,
 }
 
 pub struct PasswordResetRequest {
@@ -72,6 +73,7 @@ pub async fn initialize_user_data_pre(
 			recovery_phone_number VARCHAR(15),
 			workspace_limit INTEGER NOT NULL,
 			sign_up_coupon TEXT,
+			mfa_secret TEXT,
 
 			CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id
 				UNIQUE(recovery_email_local, recovery_email_domain_id),
@@ -166,7 +168,8 @@ pub async fn get_user_by_username_email_or_phone_number(
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
 			"user".workspace_limit,
-			"user".sign_up_coupon
+			"user".sign_up_coupon,
+			"user".mfa_secret
 		FROM
 			"user"
 		LEFT JOIN
@@ -240,7 +243,8 @@ pub async fn get_user_by_username(
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
 			"user".workspace_limit,
-			"user".sign_up_coupon
+			"user".sign_up_coupon,
+			"user".mfa_secret
 		FROM
 			"user"
 		WHERE
@@ -274,7 +278,8 @@ pub async fn get_user_by_user_id(
 			"user".recovery_phone_country_code,
 			"user".recovery_phone_number,
 			"user".workspace_limit,
-			"user".sign_up_coupon
+			"user".sign_up_coupon,
+			"user".mfa_secret
 		FROM
 			"user"
 		WHERE
@@ -701,6 +706,50 @@ pub async fn get_all_workspaces_owned_by_user(
 	.collect();
 
 	Ok(res)
+}
+
+pub async fn activate_multi_factor_authentication(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+	secret: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			"user"
+		SET
+			mfa_secret = $2
+		WHERE
+			id = $1;
+		"#,
+		user_id as _,
+		secret
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_workspace_limit(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+	limit: i16,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			"user"
+		SET
+			workspace_limit = $1
+		WHERE
+			id = $2;
+		"#,
+		limit as _,
+		user_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 pub async fn search_for_users(

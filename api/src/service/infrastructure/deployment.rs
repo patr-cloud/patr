@@ -29,7 +29,7 @@ use api_models::{
 use chrono::{DateTime, TimeZone, Utc};
 use eve_rs::AsError;
 use k8s_openapi::api::core::v1::Event;
-use reqwest::Client;
+use reqwest::{header::HeaderValue, Client};
 
 use crate::{
 	db,
@@ -41,7 +41,12 @@ use crate::{
 		DeploymentMetadata,
 	},
 	service,
-	utils::{constants::free_limits, settings::Settings, validator, Error},
+	utils::{
+		constants::{free_limits, PATR_CLUSTER_TENANT_ID},
+		settings::Settings,
+		validator,
+		Error,
+	},
 	Database,
 };
 
@@ -328,7 +333,18 @@ pub async fn get_deployment_container_logs(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
+	let deployed_region = db::get_region_by_id(connection, &deployment.region)
+		.await?
+		.status(500)?;
+
+	let tenant_id = if deployed_region.is_byoc_region() {
+		deployment.workspace_id.as_str()
+	} else {
+		PATR_CLUSTER_TENANT_ID
+	};
+
 	let logs = get_container_logs(
+		tenant_id,
 		&deployment.workspace_id,
 		deployment_id,
 		start_time,
@@ -723,6 +739,11 @@ pub async fn update_deployment(
 				.await?;
 			}
 
+			let deployed_region =
+				db::get_region_by_id(connection, &deployed_region_id)
+					.await?
+					.status(500)?;
+
 			service::update_kubernetes_deployment(
 				workspace_id,
 				&deployment,
@@ -731,7 +752,7 @@ pub async fn update_deployment(
 				&running_details,
 				&volumes,
 				kubeconfig,
-				&deployed_region_id,
+				&deployed_region,
 				config,
 				request_id,
 			)
@@ -912,6 +933,7 @@ pub async fn get_full_deployment_config(
 }
 
 pub async fn get_deployment_metrics(
+	tenant_id: &str,
 	deployment_id: &Uuid,
 	config: &Settings,
 	start_time: &DateTime<Utc>,
@@ -960,6 +982,11 @@ pub async fn get_deployment_metrics(
 					&config.mimir.username,
 					Some(&config.mimir.password),
 				)
+				.header(
+					"X-Scope-OrgID",
+					HeaderValue::from_str(tenant_id)
+						.expect("workpsace_id to headervalue should not panic"),
+				)
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
@@ -987,6 +1014,11 @@ pub async fn get_deployment_metrics(
 				.basic_auth(
 					&config.mimir.username,
 					Some(&config.mimir.password),
+				)
+				.header(
+					"X-Scope-OrgID",
+					HeaderValue::from_str(tenant_id)
+						.expect("workpsace_id to headervalue should not panic"),
 				)
 				.send()
 				.await?
@@ -1016,6 +1048,11 @@ pub async fn get_deployment_metrics(
 					&config.mimir.username,
 					Some(&config.mimir.password),
 				)
+				.header(
+					"X-Scope-OrgID",
+					HeaderValue::from_str(tenant_id)
+						.expect("workpsace_id to headervalue should not panic"),
+				)
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
@@ -1043,6 +1080,11 @@ pub async fn get_deployment_metrics(
 				.basic_auth(
 					&config.mimir.username,
 					Some(&config.mimir.password),
+				)
+				.header(
+					"X-Scope-OrgID",
+					HeaderValue::from_str(tenant_id)
+						.expect("workpsace_id to headervalue should not panic"),
 				)
 				.send()
 				.await?
@@ -1265,6 +1307,7 @@ pub async fn get_deployment_metrics(
 }
 
 async fn get_container_logs(
+	tenant_id: &str,
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
 	start_time: &DateTime<Utc>,
@@ -1278,6 +1321,18 @@ async fn get_container_logs(
 		request_id,
 		deployment_id
 	);
+
+	log::info!(
+		r#"Loki request => http 'https://{}/loki/api/v1/query_range?direction=BACKWARD&query={{container="deployment-{}",namespace="{}"}}&start={}&end={}&limit={}' 'X-Scope-OrgID: {}'"#,
+		config.loki.host,
+		deployment_id,
+		workspace_id,
+		start_time.timestamp_nanos(),
+		end_time.timestamp_nanos(),
+		limit,
+		tenant_id
+	);
+
 	let client = Client::new();
 	let logs = client
 		.get(format!(
@@ -1294,6 +1349,11 @@ async fn get_container_logs(
 			limit
 		))
 		.basic_auth(&config.loki.username, Some(&config.loki.password))
+		.header(
+			"X-Scope-OrgID",
+			HeaderValue::from_str(tenant_id)
+				.expect("workpsace_id to headervalue should not panic"),
+		)
 		.send()
 		.await?
 		.json::<Logs>()
@@ -1612,6 +1672,10 @@ pub async fn start_deployment(
 		)
 		.await?;
 
+	let deployed_region = db::get_region_by_id(connection, &deployed_region_id)
+		.await?
+		.status(500)?;
+
 	service::update_kubernetes_deployment(
 		workspace_id,
 		deployment,
@@ -1620,7 +1684,7 @@ pub async fn start_deployment(
 		deployment_running_details,
 		&volumes,
 		kubeconfig,
-		&deployed_region_id,
+		&deployed_region,
 		config,
 		request_id,
 	)
@@ -1703,6 +1767,11 @@ pub async fn update_deployment_image(
 			service::get_kubernetes_config_for_region(connection, region)
 				.await?;
 
+		let deployed_region =
+			db::get_region_by_id(connection, &deployed_region_id)
+				.await?
+				.status(500)?;
+
 		service::update_kubernetes_deployment(
 			workspace_id,
 			&Deployment {
@@ -1720,7 +1789,7 @@ pub async fn update_deployment_image(
 			deployment_running_details,
 			&volumes,
 			kubeconfig,
-			&deployed_region_id,
+			&deployed_region,
 			config,
 			request_id,
 		)

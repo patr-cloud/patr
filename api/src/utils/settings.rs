@@ -258,18 +258,35 @@ pub struct RabbitMqSettings {
 	pub queue: String,
 	pub username: String,
 	pub password: String,
+	pub prefetch_count: u16,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VaultSettings {
-	pub address: String,
+	pub upstream_host: String,
+	pub host: String,
 	pub token: String,
+}
+
+impl VaultSettings {
+	pub fn upstream_base_url(&self) -> String {
+		format!("https://{}", self.upstream_host)
+	}
+
+	pub fn base_url(&self) -> String {
+		if cfg!(debug_assertions) {
+			format!("https://{}/vault-host", self.host)
+		} else {
+			format!("https://{}", self.host)
+		}
+	}
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LokiSettings {
+	pub upstream_host: String,
 	pub host: String,
 	pub username: String,
 	pub password: String,
@@ -306,6 +323,7 @@ pub struct StripeSettings {
 #[serde(rename_all = "camelCase")]
 pub struct MimirSettings {
 	pub host: String,
+	pub upstream_host: String,
 	pub username: String,
 	pub password: String,
 }

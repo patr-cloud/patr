@@ -1,6 +1,7 @@
 use api_models::{
 	models::{
 		user::{
+			ActivateMultiFactorAuthResponse,
 			AddPersonalEmailRequest,
 			AddPersonalEmailResponse,
 			AddPhoneNumberRequest,
@@ -34,8 +35,10 @@ use api_models::{
 	},
 	utils::{DateTime, Uuid},
 };
+use base64::{prelude::BASE64_STANDARD, Engine};
 use chrono::{Datelike, Utc};
 use eve_rs::{App as EveApp, AsError, NextHandler};
+use totp_rs::Secret;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -216,6 +219,7 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_user_id)),
 		],
 	);
+
 	sub_app.get(
 		"/search",
 		[
@@ -223,6 +227,18 @@ pub fn create_sub_app(
 				is_api_token_allowed: false,
 			},
 			EveMiddleware::CustomFunction(pin_fn!(search_for_user)),
+		],
+	);
+
+	sub_app.post(
+		"/activate-multi-factor-auth",
+		[
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
+			EveMiddleware::CustomFunction(pin_fn!(
+				activate_multi_factor_authentication
+			)),
 		],
 	);
 
@@ -284,6 +300,7 @@ async fn get_user_info(
 		bio,
 		created,
 		password,
+		mfa_secret,
 		..
 	} = db::get_user_by_user_id(context.get_database_connection(), &user_id)
 		.await?
@@ -348,6 +365,7 @@ async fn get_user_info(
 		secondary_emails,
 		recovery_phone_number,
 		secondary_phone_numbers,
+		mfa_activated: mfa_secret.is_some(),
 	});
 	Ok(context)
 }
@@ -1230,5 +1248,38 @@ async fn search_for_user(
 		db::search_for_users(context.get_database_connection(), &query).await?;
 
 	context.success(SearchForUserResponse { users });
+	Ok(context)
+}
+
+async fn activate_multi_factor_authentication(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let user_id = context.get_token_data().unwrap().user_id().clone();
+
+	let user =
+		db::get_user_by_user_id(context.get_database_connection(), &user_id)
+			.await?
+			.status(404)
+			.body(error!(USER_NOT_FOUND).to_string())?;
+
+	if user.mfa_secret.is_some() {
+		return Error::as_result()
+			.status(400)
+			.body(error!(MFA_ALREADY_ACTIVATED).to_string())?;
+	}
+
+	let secret =
+		BASE64_STANDARD.encode(Secret::generate_secret().to_bytes().unwrap());
+
+	// Do not activate if already activated
+	db::activate_multi_factor_authentication(
+		context.get_database_connection(),
+		&user_id,
+		&secret,
+	)
+	.await?;
+
+	context.success(ActivateMultiFactorAuthResponse { secret });
 	Ok(context)
 }

@@ -65,7 +65,7 @@ pub fn create_sub_app(
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
-				permission: permissions::workspace::docker_registry::CREATE,
+				permission: permissions::workspace::container_registry::CREATE,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -96,29 +96,16 @@ pub fn create_sub_app(
 	app.get(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator {
+			EveMiddleware::WorkspaceMemberAuthenticator {
 				is_api_token_allowed: true,
-				permission: permissions::workspace::docker_registry::LIST,
-				resource: closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
+				requested_workspace: closure_as_pinned_box!(|context| {
+					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
+					let workspace_id = Uuid::parse_str(workspace_id)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
+					Ok((context, workspace_id))
 				}),
 			},
 			EveMiddleware::CustomFunction(pin_fn!(list_docker_repositories)),
@@ -131,7 +118,7 @@ pub fn create_sub_app(
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
-				permission: permissions::workspace::docker_registry::INFO,
+				permission: permissions::workspace::container_registry::INFO,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -171,7 +158,7 @@ pub fn create_sub_app(
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
-				permission: permissions::workspace::docker_registry::INFO,
+				permission: permissions::workspace::container_registry::INFO,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -213,7 +200,7 @@ pub fn create_sub_app(
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
-				permission: permissions::workspace::docker_registry::INFO,
+				permission: permissions::workspace::container_registry::INFO,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -255,7 +242,7 @@ pub fn create_sub_app(
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
-				permission: permissions::workspace::docker_registry::INFO,
+				permission: permissions::workspace::container_registry::INFO,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -295,7 +282,7 @@ pub fn create_sub_app(
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
-				permission: permissions::workspace::docker_registry::INFO,
+				permission: permissions::workspace::container_registry::INFO,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -335,7 +322,7 @@ pub fn create_sub_app(
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
-				permission: permissions::workspace::docker_registry::DELETE,
+				permission: permissions::workspace::container_registry::DELETE,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -377,7 +364,7 @@ pub fn create_sub_app(
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
-				permission: permissions::workspace::docker_registry::DELETE,
+				permission: permissions::workspace::container_registry::DELETE,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -513,7 +500,7 @@ async fn create_docker_repository(
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
-			.get(rbac::resource_types::DOCKER_REPOSITORY)
+			.get(rbac::resource_types::CONTAINER_REGISTRY_REPOSITORY)
 			.unwrap(),
 		&workspace_id,
 		&Utc::now(),
@@ -577,6 +564,7 @@ async fn list_docker_repositories(
 	let workspace_id_string =
 		context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id_string).unwrap();
+	let user_token = context.get_token_data().status(500)?.clone();
 
 	log::trace!("request_id: {} - Listing docker repositories", request_id);
 
@@ -586,6 +574,13 @@ async fn list_docker_repositories(
 	)
 	.await?
 	.into_iter()
+	.filter(|(repository, ..)| {
+		user_token.has_access_for_requested_action(
+			&workspace_id,
+			&repository.id,
+			permissions::workspace::container_registry::INFO,
+		)
+	})
 	.map(|(repository, size, last_updated)| DockerRepository {
 		id: repository.id,
 		name: repository.name,

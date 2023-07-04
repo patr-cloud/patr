@@ -167,6 +167,28 @@ pub async fn get_runner_by_id(
 	.await
 }
 
+pub async fn get_runner_by_id_including_deleted(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	runner_id: &Uuid,
+) -> Result<Option<Runner>, sqlx::Error> {
+	query_as!(
+		Runner,
+		r#"
+		SELECT
+			id as "id: _",
+			name::TEXT as "name!: _",
+			region_id as "region_id: _",
+			build_machine_type_id as "build_machine_type_id: _"
+		FROM ci_runner
+		WHERE
+			id = $1;
+		"#,
+		runner_id as _,
+	)
+	.fetch_optional(connection)
+	.await
+}
+
 pub async fn update_runner(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	runner_id: &Uuid,

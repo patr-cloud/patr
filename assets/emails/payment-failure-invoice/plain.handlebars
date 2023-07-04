@@ -1,6 +1,6 @@
 Hello {{username}}, 
 
-Payment for your billing period {{stringify-month billBreakdown.month}} {{billBreakdown.year}} amounting to ${{cents-to-dollars billBreakdown.totalCharge}} for the workspace {{workspaceName}} was unsuccessful. 
+We regret to inform you that the payment amounting to ${{cents-to-dollars cardAmountToBeChargedInCents}} for your workspace {{workspaceName}} has failed to process. Please note that this pertains to all outstanding bills up until {{stringify-month billBreakdown.month}} {{billBreakdown.year}}.
 
 Detailed Charges 
 
@@ -36,7 +36,7 @@ Volume Usage:
   Bill Amount: ${{cents-to-dollars this.amount}}
 {{/each}}
 Database Usage:
-{{#each billBreakdown.databaseUsage}}
+{{#each billBreakdown.managedDatabaseUsage}}
   Name: {{this.name}}
   Monthly Charge: ${{cents-to-dollars this.monthlyCharge}}
   From: {{format-date this.startTime}}

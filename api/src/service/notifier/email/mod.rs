@@ -409,6 +409,7 @@ struct PaymentFailureInvoiceEmail {
 	username: String,
 	workspace_name: String,
 	bill_breakdown: WorkspaceBillBreakdown,
+	card_amount_to_be_charged_in_cents: u64,
 	billing_address: Address,
 }
 
@@ -417,6 +418,7 @@ pub async fn send_payment_failure_invoice_email(
 	username: String,
 	workspace_name: String,
 	bill_breakdown: WorkspaceBillBreakdown,
+	card_amount_to_be_charged_in_cents: u64,
 	billing_address: Address,
 ) -> Result<(), Error> {
 	send_email(
@@ -424,6 +426,7 @@ pub async fn send_payment_failure_invoice_email(
 			username,
 			workspace_name,
 			bill_breakdown,
+			card_amount_to_be_charged_in_cents,
 			billing_address,
 		},
 		email,

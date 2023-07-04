@@ -22,6 +22,7 @@ use crate::{
 			BYOCData,
 			BillingData,
 			CIData,
+			DatabaseRequestData,
 			DeploymentRequestData,
 			DockerRegistryData,
 			DockerWebhookData,
@@ -86,6 +87,50 @@ pub async fn queue_update_deployment_image(
 			running_details: deployment_running_details.clone(),
 			request_id: request_id.clone(),
 		}),
+		config,
+		request_id,
+	)
+	.await
+}
+
+pub async fn queue_check_and_update_database_status(
+	workspace_id: &Uuid,
+	database_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+	password: &String,
+) -> Result<(), Error> {
+	send_message_to_infra_queue(
+		&InfraRequestData::Database(
+			DatabaseRequestData::CheckAndUpdateStatus {
+				workspace_id: workspace_id.clone(),
+				database_id: database_id.clone(),
+				request_id: request_id.clone(),
+				password: password.to_owned(),
+			},
+		),
+		config,
+		request_id,
+	)
+	.await
+}
+
+pub async fn queue_change_mongo_database_password_and_status(
+	workspace_id: &Uuid,
+	database_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+	password: &String,
+) -> Result<(), Error> {
+	send_message_to_infra_queue(
+		&InfraRequestData::Database(
+			DatabaseRequestData::ChangeMongoPasswordAndStatus {
+				workspace_id: workspace_id.clone(),
+				database_id: database_id.clone(),
+				request_id: request_id.clone(),
+				password: password.to_owned(),
+			},
+		),
 		config,
 		request_id,
 	)
@@ -380,6 +425,7 @@ pub async fn queue_setup_kubernetes_cluster(
 	kube_config: Kubeconfig,
 	tls_cer: &str,
 	tls_key: &str,
+	patr_token: &str,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -389,6 +435,27 @@ pub async fn queue_setup_kubernetes_cluster(
 			kube_config,
 			tls_cert: tls_cer.to_owned(),
 			tls_key: tls_key.to_owned(),
+			patr_token: patr_token.to_owned(),
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await
+}
+
+pub async fn queue_reconfigure_kubernetes_cluster(
+	region_id: &Uuid,
+	kube_config: Kubeconfig,
+	patr_api_token: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	send_message_to_infra_queue(
+		&InfraRequestData::BYOC(BYOCData::ReconfigureKubernetesCluster {
+			region_id: region_id.clone(),
+			kube_config,
+			patr_api_token: patr_api_token.to_string(),
 			request_id: request_id.clone(),
 		}),
 		config,
@@ -479,6 +546,7 @@ pub async fn queue_get_kube_config_for_do_cluster(
 	region_id: &Uuid,
 	tls_cer: &str,
 	tls_key: &str,
+	patr_token: &str,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -489,6 +557,7 @@ pub async fn queue_get_kube_config_for_do_cluster(
 			region_id: region_id.clone(),
 			tls_cert: tls_cer.to_owned(),
 			tls_key: tls_key.to_owned(),
+			patr_token: patr_token.to_owned(),
 			request_id: request_id.clone(),
 		}),
 		config,

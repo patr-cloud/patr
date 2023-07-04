@@ -9,7 +9,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::query_as;
 
-use super::ManagedDatabasePlan;
+use super::LegacyManagedDatabasePlan;
 use crate::Database;
 
 pub struct DeploymentPaymentHistory {
@@ -20,6 +20,7 @@ pub struct DeploymentPaymentHistory {
 	pub start_time: DateTime<Utc>,
 	pub stop_time: Option<DateTime<Utc>>,
 }
+
 pub struct VolumePaymentHistory {
 	pub workspace_id: Uuid,
 	pub volume_id: Uuid,
@@ -39,7 +40,8 @@ pub struct StaticSitesPaymentHistory {
 pub struct ManagedDatabasePaymentHistory {
 	pub workspace_id: Uuid,
 	pub database_id: Uuid,
-	pub db_plan: ManagedDatabasePlan,
+	pub db_plan_id: Option<Uuid>,
+	pub legacy_db_plan: Option<LegacyManagedDatabasePlan>,
 	pub start_time: DateTime<Utc>,
 	pub deletion_time: Option<DateTime<Utc>>,
 }
@@ -157,7 +159,7 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS deployment_payment_history(
+		CREATE TABLE deployment_payment_history(
 			workspace_id UUID NOT NULL,
 			deployment_id UUID NOT NULL,
 			machine_type UUID NOT NULL,
@@ -172,7 +174,7 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS static_sites_payment_history(
+		CREATE TABLE static_sites_payment_history(
 			workspace_id UUID NOT NULL,
 			static_site_plan STATIC_SITE_PLAN NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
@@ -185,12 +187,25 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS managed_database_payment_history(
+		CREATE TABLE managed_database_payment_history(
 			workspace_id UUID NOT NULL,
 			database_id UUID NOT NULL,
-			db_plan MANAGED_DATABASE_PLAN NOT NULL,
+			db_plan_id UUID
+				CONSTRAINT managed_database_payment_history_fk_db_plan_id
+					REFERENCES managed_database_plan(id),
+			legacy_db_plan LEGACY_MANAGED_DATABASE_PLAN,
 			start_time TIMESTAMPTZ NOT NULL,
-			deletion_time TIMESTAMPTZ
+			deletion_time TIMESTAMPTZ,
+			CONSTRAINT managed_database_payment_history_chk_legacy_db_plan
+				CHECK(
+					(
+						db_plan_id IS NULL AND
+						legacy_db_plan IS NOT NULL
+					) OR (
+						db_plan_id IS NOT NULL AND
+						legacy_db_plan IS NULL
+					)
+				)
 		);
 		"#
 	)
@@ -199,7 +214,7 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS managed_url_payment_history(
+		CREATE TABLE managed_url_payment_history(
 			workspace_id UUID NOT NULL,
 			url_count INTEGER NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
@@ -212,7 +227,7 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS secrets_payment_history(
+		CREATE TABLE secrets_payment_history(
 			workspace_id UUID NOT NULL,
 			secret_count INTEGER NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
@@ -225,7 +240,7 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS docker_repo_payment_history(
+		CREATE TABLE docker_repo_payment_history(
 			workspace_id UUID NOT NULL,
 			storage BIGINT NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
@@ -238,7 +253,7 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS domain_payment_history(
+		CREATE TABLE domain_payment_history(
 			workspace_id UUID NOT NULL,
 			domain_plan DOMAIN_PLAN NOT NULL,
 			start_time TIMESTAMPTZ NOT NULL,
@@ -251,7 +266,7 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS volume_payment_history(
+		CREATE TABLE volume_payment_history(
 			workspace_id UUID NOT NULL,
 			volume_id UUID NOT NULL,
 			storage BIGINT NOT NULL,
@@ -266,7 +281,7 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS payment_method(
+		CREATE TABLE payment_method(
 			payment_method_id TEXT CONSTRAINT payment_method_pk PRIMARY KEY,
 			workspace_id UUID NOT NULL
 		);
@@ -301,7 +316,7 @@ pub async fn initialize_billing_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS transaction(
+		CREATE TABLE transaction(
 			id UUID CONSTRAINT transaction_pk PRIMARY KEY,
 			month INTEGER NOT NULL,
 			amount_in_cents BIGINT NOT NULL
@@ -536,7 +551,7 @@ pub async fn get_all_volume_usage(
 	.await
 }
 
-pub async fn get_all_database_usage(
+pub async fn get_all_managed_database_usage(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
@@ -548,7 +563,8 @@ pub async fn get_all_database_usage(
 		SELECT
 			workspace_id as "workspace_id: _",
 			database_id as "database_id: _",
-			db_plan as "db_plan: _",
+			legacy_db_plan as "legacy_db_plan: _",
+			db_plan_id as "db_plan_id: _",
 			start_time as "start_time: _",
 			deletion_time as "deletion_time: _"
 		FROM
@@ -1055,11 +1071,11 @@ pub async fn get_volume_payment_history_by_volume_id(
 	.await
 }
 
-pub async fn start_database_usage_history(
+pub async fn start_managed_database_usage_history(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	database_id: &Uuid,
-	db_plan: &ManagedDatabasePlan,
+	db_plan_id: &Uuid,
 	start_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -1068,7 +1084,8 @@ pub async fn start_database_usage_history(
 			managed_database_payment_history(
 				workspace_id,
 				database_id,
-				db_plan,
+				legacy_db_plan,
+				db_plan_id,
 				start_time,
 				deletion_time
 			)
@@ -1076,6 +1093,7 @@ pub async fn start_database_usage_history(
 			(
 				$1,
 				$2,
+				NULL,
 				$3,
 				$4,
 				NULL
@@ -1083,7 +1101,7 @@ pub async fn start_database_usage_history(
 		"#,
 		workspace_id as _,
 		database_id as _,
-		db_plan as _,
+		db_plan_id as _,
 		start_time as _,
 	)
 	.execute(&mut *connection)
@@ -1091,7 +1109,7 @@ pub async fn start_database_usage_history(
 	.map(|_| ())
 }
 
-pub async fn stop_database_usage_history(
+pub async fn stop_managed_database_usage_history(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	database_id: &Uuid,
 	deletion_time: &DateTime<Utc>,

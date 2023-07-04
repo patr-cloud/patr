@@ -1,3 +1,5 @@
+use std::net::{IpAddr, Ipv4Addr};
+
 use api_models::utils::Uuid;
 use base64::prelude::*;
 use chrono::Utc;
@@ -9,11 +11,14 @@ use crate::{
 	db::{self},
 	models::{
 		error::{id as ErrorId, message as ErrorMessage},
-		rbac::{self, permissions, GOD_USER_ID},
+		is_user_action_authorized,
+		rbac::{self, permissions},
+		ApiTokenData,
 		RegistryToken,
 		RegistryTokenAccess,
 	},
 	pin_fn,
+	routes::get_request_ip_address,
 	service,
 	utils::{
 		constants::request_keys,
@@ -274,11 +279,46 @@ async fn docker_registry_login(
 				.to_string(),
 			)?;
 
-	// TODO API token as password instead of password, for TFA.
-	// This will happen once the API token is merged in
-	let success = service::validate_hash(password, &user.password)?;
+	let auth_success = 'auth: {
+		if password.starts_with("patrv1") {
+			// the user might have used api_token as password,
+			// so first check whether that api token has valid permission or not
+			let mut redis_connection = context.get_redis_connection().clone();
+			let accessing_ip = get_request_ip_address(&context)
+				.parse()
+				.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
+			let api_token = ApiTokenData::decode(
+				context.get_database_connection(),
+				&mut redis_connection,
+				password,
+				&accessing_ip,
+			)
+			.await;
 
-	if !success {
+			match api_token {
+				Ok(token) => {
+					// since username is used in sub, check whether provided
+					// username is valid with token's username
+					break 'auth db::get_user_by_user_id(
+						context.get_database_connection(),
+						&token.user_id,
+					)
+					.await?
+					.map_or(false, |api_user| api_user.username == username);
+				}
+				Err(err) => {
+					log::error!("Error while decoding api token: {err:?}");
+				}
+			}
+		}
+
+		// the user might have password which might start 'patrv1'
+		// so check for normal username password authentication too
+		service::validate_hash(password, &user.password)? &&
+			user.mfa_secret.is_none()
+	};
+
+	if !auth_success {
 		Error::as_result().status(401).body(
 			json!({
 				request_keys::ERRORS: [{
@@ -406,12 +446,8 @@ async fn docker_registry_authenticate(
 			)?;
 
 	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
-	let god_user =
-		db::get_user_by_user_id(context.get_database_connection(), god_user_id)
-			.await?
-			.unwrap();
 	// check if user is GOD_USER then return the token
-	if username == god_user.username {
+	if &user.id == god_user_id {
 		// return token.
 		if RegistryToken::parse(
 			password,
@@ -429,10 +465,63 @@ async fn docker_registry_authenticate(
 		}
 	}
 
-	let success = service::validate_hash(password, &user.password)?;
+	let auth_success = 'auth: {
+		if password.starts_with("patrv1") {
+			// the user might have used api_token as password,
+			// so first check whether that api token has valid permission or not
+			let mut redis_connection = context.get_redis_connection().clone();
+			let accessing_ip = get_request_ip_address(&context)
+				.parse()
+				.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
+			let api_token = ApiTokenData::decode(
+				context.get_database_connection(),
+				&mut redis_connection,
+				password,
+				&accessing_ip,
+			)
+			.await;
 
-	if !success {
-		Error::as_result().status(401).body(
+			match api_token {
+				Ok(token) => {
+					// since username is used in sub, check whether provided
+					// username is valid with token's username
+					break 'auth db::get_user_by_user_id(
+						context.get_database_connection(),
+						&token.user_id,
+					)
+					.await?
+					.and_then(|api_user| {
+						if api_user.username == username {
+							Some(token.permissions)
+						} else {
+							None
+						}
+					});
+				}
+				Err(err) => {
+					log::error!("Error while decoding api token: {err:?}");
+				}
+			}
+		}
+
+		// the user might have password which might start 'patrv1'
+		// so check for normal username password authentication too
+		if service::validate_hash(password, &user.password)? &&
+			user.mfa_secret.is_none()
+		{
+			let user_roles = db::get_all_workspace_role_permissions_for_user(
+				context.get_database_connection(),
+				&user.id,
+			)
+			.await?;
+			Some(user_roles)
+		} else {
+			None
+		}
+	};
+
+	let Some(user_permissions) = auth_success else {
+		return Error::as_result().status(401).body(
 			json!({
 				request_keys::ERRORS: [{
 					request_keys::CODE: ErrorId::UNAUTHORIZED,
@@ -442,7 +531,7 @@ async fn docker_registry_authenticate(
 			})
 			.to_string(),
 		)?;
-	}
+	};
 
 	let scope = query.get(request_keys::SCOPE).status(500)?;
 	let mut splitter = scope.split(':');
@@ -497,9 +586,9 @@ async fn docker_registry_authenticate(
 		.split(',')
 		.filter_map(|permission| match permission {
 			"push" | "tag" => {
-				Some(permissions::workspace::docker_registry::PUSH)
+				Some(permissions::workspace::container_registry::PUSH)
 			}
-			"pull" => Some(permissions::workspace::docker_registry::PULL),
+			"pull" => Some(permissions::workspace::container_registry::PULL),
 			_ => None,
 		})
 		.map(String::from)
@@ -626,72 +715,26 @@ async fn docker_registry_authenticate(
 		)?;
 	}
 
-	let god_user_id = GOD_USER_ID.get().unwrap();
-
 	// get all workspace roles for the user using the id
-	let user_id = &user.id;
-	let user_roles = db::get_all_workspace_role_permissions_for_user(
-		context.get_database_connection(),
-		&user.id,
-	)
-	.await?;
-
-	let required_role_for_user = user_roles.get(&workspace_id);
 	let mut approved_permissions = vec![];
 
 	for permission in required_permissions {
-		let allowed =
-			if let Some(required_role_for_user) = required_role_for_user {
-				let resource_type_allowed = {
-					if let Some(permissions) = required_role_for_user
-						.resource_type_permissions
-						.get(&resource.resource_type_id)
-					{
-						permissions.contains(
-							rbac::PERMISSIONS
-								.get()
-								.unwrap()
-								.get(&(*permission).to_string())
-								.unwrap(),
-						)
-					} else {
-						false
-					}
-				};
-				let resource_allowed = {
-					if let Some(permissions) = required_role_for_user
-						.resource_permissions
-						.get(&resource.id)
-					{
-						permissions.contains(
-							rbac::PERMISSIONS
-								.get()
-								.unwrap()
-								.get(&(*permission).to_string())
-								.unwrap(),
-						)
-					} else {
-						false
-					}
-				};
-				let is_super_admin = {
-					required_role_for_user.is_super_admin || {
-						user_id == god_user_id
-					}
-				};
-				resource_type_allowed || resource_allowed || is_super_admin
-			} else {
-				user_id == god_user_id
-			};
+		let allowed = is_user_action_authorized(
+			&user_permissions,
+			&user.id,
+			&workspace_id,
+			&permission,
+			&resource.id,
+		);
 		if !allowed {
 			continue;
 		}
 
 		match permission.as_str() {
-			permissions::workspace::docker_registry::PUSH => {
+			permissions::workspace::container_registry::PUSH => {
 				approved_permissions.push("push".to_string());
 			}
-			permissions::workspace::docker_registry::PULL => {
+			permissions::workspace::container_registry::PULL => {
 				approved_permissions.push("pull".to_string());
 			}
 			_ => {}

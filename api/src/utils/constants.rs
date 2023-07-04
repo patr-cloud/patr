@@ -6,8 +6,6 @@ pub const DATABASE_VERSION: Version = version!();
 pub const DNS_RESOLVER: &str = "1.1.1.1:53";
 
 pub mod request_keys {
-	pub const USERNAME: &str = "username";
-	pub const PASSWORD: &str = "password";
 	pub const SUCCESS: &str = "success";
 	pub const ERROR: &str = "error";
 	pub const ERRORS: &str = "errors";
@@ -17,9 +15,6 @@ pub mod request_keys {
 	pub const TOKEN: &str = "token";
 	pub const DOMAIN_ID: &str = "domainId";
 	pub const WORKSPACE_ID: &str = "workspaceId";
-	pub const NAME: &str = "name";
-	pub const ID: &str = "id";
-	pub const VERSION: &str = "version";
 	pub const ROLE_ID: &str = "roleId";
 	pub const RESOURCE_ID: &str = "resourceId";
 	pub const LOGIN_ID: &str = "loginId";
@@ -30,17 +25,9 @@ pub mod request_keys {
 	pub const REPOSITORY: &str = "repository";
 	pub const REPOSITORY_ID: &str = "repositoryId";
 	pub const DEPLOYMENT_ID: &str = "deploymentId";
-	pub const PORT: &str = "port";
-	pub const STATUS: &str = "status";
-	pub const ENGINE: &str = "engine";
-	pub const NUM_NODES: &str = "numNodes";
 	pub const REGION: &str = "region";
 	pub const REGION_ID: &str = "regionId";
-	pub const HOST: &str = "host";
 	pub const DATABASES: &str = "databases";
-	pub const DATABASE_PLAN: &str = "databasePlan";
-	pub const PUBLIC_CONNECTION: &str = "publicConnection";
-	pub const DATABASE_NAME: &str = "databaseName";
 	pub const DATABASE_ID: &str = "databaseId";
 	pub const STATIC_SITE_ID: &str = "staticSiteId";
 	pub const UPLOAD_ID: &str = "uploadId";
@@ -78,7 +65,7 @@ pub mod default_limits {
 
 pub mod free_limits {
 	pub const DEPLOYMENT_COUNT: usize = 1;
-	pub const DATABASE_COUNT: usize = 0;
+	pub const MANAGED_DATABASE_COUNT: usize = 0;
 	pub const STATIC_SITE_COUNT: usize = 3;
 	pub const MANAGED_URL_COUNT: usize = 10;
 	pub const DOMAIN_COUNT: usize = 1;
@@ -96,3 +83,7 @@ pub mod github_oauth {
 	pub const USER_INFO_API: &str = "https://api.github.com/user";
 	pub const USER_EMAIL_API: &str = "https://api.github.com/user/emails";
 }
+
+pub const PATR_CLUSTER_TENANT_ID: &str = "patr-internal";
+pub const PATR_BYOC_TOKEN_NAME: &str = "patr-token";
+pub const PATR_BYOC_TOKEN_VALUE_NAME: &str = "token";

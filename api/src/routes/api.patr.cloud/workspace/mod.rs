@@ -1,5 +1,6 @@
 use api_models::{
 	models::workspace::{
+		billing::TotalAmount,
 		region::RegionStatus,
 		CreateNewWorkspaceRequest,
 		CreateNewWorkspaceResponse,
@@ -15,7 +16,7 @@ use api_models::{
 	},
 	utils::{DateTime, Uuid},
 };
-use chrono::{Duration, Utc};
+use chrono::{Datelike, Duration, TimeZone, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use sqlx::types::Json;
 
@@ -567,8 +568,8 @@ async fn delete_workspace(
 	// allowed to delete a workspace that doesn't exist
 	db::get_workspace_info(context.get_database_connection(), &workspace_id)
 		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.status(404)
+		.body(error!(NOT_FOUND).to_string())?;
 
 	let namespace = workspace_id.as_str();
 
@@ -578,7 +579,7 @@ async fn delete_workspace(
 	)
 	.await?;
 
-	let managed_database = db::get_all_database_clusters_for_workspace(
+	let managed_databases = db::get_all_managed_database_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 	)
@@ -629,17 +630,51 @@ async fn delete_workspace(
 
 	if !domains.is_empty() ||
 		!docker_repositories.is_empty() ||
-		!managed_database.is_empty() ||
 		!deployments.is_empty() ||
 		!static_site.is_empty() ||
 		!managed_url.is_empty() ||
 		!connected_git_providers.is_empty() ||
 		!ci_runners.is_empty() ||
-		!regions.is_empty()
+		!regions.is_empty() ||
+		!managed_databases.is_empty()
 	{
 		return Err(Error::empty()
 			.status(424)
 			.body(error!(CANNOT_DELETE_WORKSPACE).to_string()));
+	}
+
+	let now = Utc::now();
+	let month_start_date = Utc
+		.with_ymd_and_hms(now.year(), now.month(), 1, 0, 0, 0)
+		.unwrap();
+
+	let total_bill = db::get_total_amount_in_cents_to_pay_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?;
+
+	let total_resource_usage_bill_till_now =
+		service::calculate_total_bill_for_workspace_till(
+			context.get_database_connection(),
+			&workspace_id,
+			&month_start_date,
+			&now,
+		)
+		.await?;
+
+	let current_month_bill =
+		TotalAmount::NeedToPay(total_resource_usage_bill_till_now.total_charge);
+
+	let total_bill_including_current_month = current_month_bill + total_bill;
+
+	match total_bill_including_current_month {
+		TotalAmount::NeedToPay(amount) if amount > 0 => {
+			return Error::as_result()
+				.status(500)
+				.body(error!(CANNOT_DELETE_UNPAID_WORKSPACE).to_string())?;
+		}
+		_ => (),
 	}
 
 	for config in db::get_all_default_regions(context.get_database_connection())

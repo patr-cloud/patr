@@ -33,6 +33,7 @@ use k8s_openapi::{
 			Container,
 			ContainerPort,
 			EnvVar,
+			EnvVarSource,
 			HTTPGetAction,
 			KeyToPath,
 			LocalObjectReference,
@@ -43,6 +44,7 @@ use k8s_openapi::{
 			PodTemplateSpec,
 			Probe,
 			ResourceRequirements,
+			SecretKeySelector,
 			Service,
 			ServicePort,
 			ServiceSpec,
@@ -59,6 +61,7 @@ use k8s_openapi::{
 			IngressSpec,
 			ServiceBackendPort,
 		},
+		policy::v1::{PodDisruptionBudget, PodDisruptionBudgetSpec},
 	},
 	apimachinery::pkg::{
 		api::resource::Quantity,
@@ -77,11 +80,19 @@ use kube::{
 use sha2::{Digest, Sha512};
 
 use crate::{
-	db::{self, DeploymentVolume},
+	db::{self, DeploymentVolume, Region},
 	error,
 	models::deployment,
 	service::{self, ext_traits::DeleteOpt},
-	utils::{constants::request_keys, settings::Settings, Error},
+	utils::{
+		constants::{
+			request_keys,
+			PATR_BYOC_TOKEN_NAME,
+			PATR_BYOC_TOKEN_VALUE_NAME,
+		},
+		settings::Settings,
+		Error,
+	},
 	Database,
 };
 
@@ -93,7 +104,7 @@ pub async fn update_kubernetes_deployment(
 	running_details: &DeploymentRunningDetails,
 	deployment_volumes: &Vec<DeploymentVolume>,
 	kubeconfig: Kubeconfig,
-	deployed_region_id: &Uuid,
+	deployed_region: &Region,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -207,11 +218,11 @@ pub async fn update_kubernetes_deployment(
 	let annotations = [
 		(
 			"vault.security.banzaicloud.io/vault-addr".to_string(),
-			config.vault.address.clone(),
-		),
-		(
-			"vault.security.banzaicloud.io/vault-role".to_string(),
-			"vault".to_string(),
+			if deployed_region.is_byoc_region() {
+				config.vault.base_url()
+			} else {
+				config.vault.upstream_base_url()
+			},
 		),
 		(
 			"vault.security.banzaicloud.io/vault-skip-verify".to_string(),
@@ -221,12 +232,25 @@ pub async fn update_kubernetes_deployment(
 			"vault.security.banzaicloud.io/vault-agent".to_string(),
 			"false".to_string(),
 		),
-		(
-			"vault.security.banzaicloud.io/vault-path".to_string(),
-			"kubernetes".to_string(),
-		),
 	]
 	.into_iter()
+	.chain(
+		if deployed_region.is_byoc_region() {
+			itertools::Either::Left([])
+		} else {
+			itertools::Either::Right([
+				(
+					"vault.security.banzaicloud.io/vault-role".to_string(),
+					"vault".to_string(),
+				),
+				(
+					"vault.security.banzaicloud.io/vault-path".to_string(),
+					"kubernetes".to_string(),
+				),
+			])
+		}
+		.into_iter(),
+	)
 	.collect();
 
 	if !deployment_volumes.is_empty() {
@@ -478,6 +502,37 @@ pub async fn update_kubernetes_deployment(
 								..EnvVar::default()
 							},
 						])
+						.chain(
+							if deployed_region.is_byoc_region() {
+								itertools::Either::Left([
+									EnvVar {
+										name: "VAULT_AUTH_METHOD".to_string(),
+										value: Some("token".to_string()),
+										..EnvVar::default()
+									},
+									EnvVar {
+										name: "VAULT_TOKEN".to_string(),
+										value_from: Some(EnvVarSource {
+											secret_key_ref: Some(
+												SecretKeySelector {
+													name: Some(
+														PATR_BYOC_TOKEN_NAME
+															.to_string(),
+													),
+													key: PATR_BYOC_TOKEN_VALUE_NAME.to_string(),
+													..Default::default()
+												},
+											),
+											..Default::default()
+										}),
+										..Default::default()
+									},
+								])
+							} else {
+								itertools::Either::Right([])
+							}
+							.into_iter(),
+						)
 						.collect::<Vec<_>>(),
 				),
 				resources: Some(ResourceRequirements {
@@ -685,6 +740,58 @@ pub async fn update_kubernetes_deployment(
 			.await?;
 	}
 
+	// For a deployment has more than one replica, then only we can use
+	// pod-disruption-budget to move pods between nodes without any down time.
+	// Even with hpa of max=4 but min=1 if the number of pods currently running
+	// is 1, then it will block the node drain
+	if running_details.min_horizontal_scale > 1 {
+		// Create pdb for deployment alone
+		// For sts, we can't use pdb as it involves state handling
+		// see: https://kubernetes.io/docs/tasks/run-application/configure-pdb/#think-about-how-your-application-reacts-to-disruptions
+		log::trace!(
+			"request_id: {} - creating pod disruption budget",
+			request_id
+		);
+
+		let pdb = PodDisruptionBudget {
+			metadata: ObjectMeta {
+				name: Some(format!("pdb-{}", deployment.id)),
+				namespace: Some(namespace.to_string()),
+				labels: Some(labels.clone()),
+				..Default::default()
+			},
+			spec: Some(PodDisruptionBudgetSpec {
+				selector: Some(LabelSelector {
+					match_labels: Some(labels.clone()),
+					..Default::default()
+				}),
+				min_available: Some(IntOrString::String("50%".to_owned())),
+				..Default::default()
+			}),
+			..Default::default()
+		};
+
+		Api::<PodDisruptionBudget>::namespaced(
+			kubernetes_client.clone(),
+			namespace,
+		)
+		.patch(
+			&format!("pdb-{}", deployment.id),
+			&PatchParams::apply(&format!("pdb-{}", deployment.id)),
+			&Patch::Apply(pdb),
+		)
+		.await?;
+	} else {
+		log::trace!("request_id: {} - min replica is not more than one, so deleting the pdb (if present)", request_id);
+
+		Api::<PodDisruptionBudget>::namespaced(
+			kubernetes_client.clone(),
+			namespace,
+		)
+		.delete_opt(&format!("pdb-{}", deployment.id), &DeleteParams::default())
+		.await?;
+	}
+
 	let annotations = [(
 		"kubernetes.io/ingress.class".to_string(),
 		"nginx".to_string(),
@@ -700,7 +807,7 @@ pub async fn update_kubernetes_deployment(
 				"{}-{}.{}.{}",
 				port,
 				deployment.id,
-				deployed_region_id,
+				deployed_region.id,
 				config.cloudflare.onpatr_domain
 			)),
 			http: Some(HTTPIngressRuleValue {
@@ -825,6 +932,15 @@ pub async fn delete_kubernetes_deployment(
 		workspace_id.as_str(),
 	)
 	.delete_opt(&format!("hpa-{}", deployment_id), &DeleteParams::default())
+	.await?;
+
+	log::trace!("request_id: {} - deleting the pdb", request_id);
+
+	Api::<PodDisruptionBudget>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.delete_opt(&format!("pdb-{}", deployment_id), &DeleteParams::default())
 	.await?;
 
 	log::trace!("request_id: {} - deleting the ingress", request_id);
@@ -968,7 +1084,7 @@ pub async fn get_kubernetes_deployment_status(
 		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => {
 			// TODO: This is a temporary fix to solve issue #361.
 			// Need to find a better solution to do this
-			return Ok(DeploymentStatus::Deploying);
+			return Ok(DeploymentStatus::Errored);
 		}
 		Err(err) => return Err(err.into()),
 		Ok(sts) => sts,
