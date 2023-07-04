@@ -1,15 +1,7 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Duration, Utc};
-use jsonwebtoken::{
-	errors::Error as JWTError,
-	Algorithm,
-	DecodingKey,
-	EncodingKey,
-	Header,
-	TokenData,
-	Validation,
-};
+use jsonwebtoken::{errors::Error as JWTError, Algorithm, EncodingKey, Header};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -91,17 +83,6 @@ impl RegistryToken {
 			&self,
 			&EncodingKey::from_ec_pem(private_key)?,
 		)
-	}
-
-	pub fn parse(token: &str, public_key: &[u8]) -> Result<Self, JWTError> {
-		let decode_key = DecodingKey::from_ec_pem(public_key)?;
-		let TokenData { header: _, claims } =
-			jsonwebtoken::decode(token, &decode_key, &{
-				let mut validation = Validation::new(Algorithm::ES256);
-				validation.validate_exp = false;
-				validation
-			})?;
-		Ok(claims)
 	}
 }
 

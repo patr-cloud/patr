@@ -12,7 +12,7 @@ use crate::{
 	models::{
 		error::{id as ErrorId, message as ErrorMessage},
 		is_user_action_authorized,
-		rbac::{self, permissions},
+		rbac::permissions,
 		ApiTokenData,
 		RegistryToken,
 		RegistryTokenAccess,
@@ -264,23 +264,9 @@ async fn docker_registry_login(
 		})
 		.to_string(),
 	)?;
-	let user =
-		db::get_user_by_username(context.get_database_connection(), username)
-			.await?
-			.status(401)
-			.body(
-				json!({
-					request_keys::ERRORS: [{
-						request_keys::CODE: ErrorId::UNAUTHORIZED,
-						request_keys::MESSAGE: ErrorMessage::USER_NOT_FOUND,
-						request_keys::DETAIL: []
-					}]
-				})
-				.to_string(),
-			)?;
 
 	let auth_success = 'auth: {
-		if password.starts_with("patrv1") {
+		if username == "patr" && password.starts_with("patrv1") {
 			// the user might have used api_token as password,
 			// so first check whether that api token has valid permission or not
 			let mut redis_connection = context.get_redis_connection().clone();
@@ -296,21 +282,31 @@ async fn docker_registry_login(
 			.await;
 
 			match api_token {
-				Ok(token) => {
-					// since username is used in sub, check whether provided
-					// username is valid with token's username
-					break 'auth db::get_user_by_user_id(
-						context.get_database_connection(),
-						&token.user_id,
-					)
-					.await?
-					.map_or(false, |api_user| api_user.username == username);
+				Ok(_) => {
+					break 'auth true;
 				}
 				Err(err) => {
 					log::error!("Error while decoding api token: {err:?}");
 				}
 			}
 		}
+
+		let user = db::get_user_by_username(
+			context.get_database_connection(),
+			username,
+		)
+		.await?
+		.status(401)
+		.body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::USER_NOT_FOUND,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)?;
 
 		// the user might have password which might start 'patrv1'
 		// so check for normal username password authentication too
@@ -430,43 +426,9 @@ async fn docker_registry_authenticate(
 		})
 		.to_string(),
 	)?;
-	let user =
-		db::get_user_by_username(context.get_database_connection(), username)
-			.await?
-			.status(401)
-			.body(
-				json!({
-					request_keys::ERRORS: [{
-						request_keys::CODE: ErrorId::UNAUTHORIZED,
-						request_keys::MESSAGE: ErrorMessage::USER_NOT_FOUND,
-						request_keys::DETAIL: []
-					}]
-				})
-				.to_string(),
-			)?;
-
-	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
-	// check if user is GOD_USER then return the token
-	if &user.id == god_user_id {
-		// return token.
-		if RegistryToken::parse(
-			password,
-			context
-				.get_state()
-				.config
-				.docker_registry
-				.public_key
-				.as_bytes(),
-		)
-		.is_ok()
-		{
-			context.json(json!({ request_keys::TOKEN: password }));
-			return Ok(context);
-		}
-	}
 
 	let auth_success = 'auth: {
-		if password.starts_with("patrv1") {
+		if username == "patr" && password.starts_with("patrv1") {
 			// the user might have used api_token as password,
 			// so first check whether that api token has valid permission or not
 			let mut redis_connection = context.get_redis_connection().clone();
@@ -483,26 +445,30 @@ async fn docker_registry_authenticate(
 
 			match api_token {
 				Ok(token) => {
-					// since username is used in sub, check whether provided
-					// username is valid with token's username
-					break 'auth db::get_user_by_user_id(
-						context.get_database_connection(),
-						&token.user_id,
-					)
-					.await?
-					.and_then(|api_user| {
-						if api_user.username == username {
-							Some(token.permissions)
-						} else {
-							None
-						}
-					});
+					break 'auth Some((token.user_id, token.permissions));
 				}
 				Err(err) => {
 					log::error!("Error while decoding api token: {err:?}");
 				}
 			}
 		}
+
+		let user = db::get_user_by_username(
+			context.get_database_connection(),
+			username,
+		)
+		.await?
+		.status(401)
+		.body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::USER_NOT_FOUND,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)?;
 
 		// the user might have password which might start 'patrv1'
 		// so check for normal username password authentication too
@@ -514,13 +480,13 @@ async fn docker_registry_authenticate(
 				&user.id,
 			)
 			.await?;
-			Some(user_roles)
+			Some((user.id, user_roles))
 		} else {
 			None
 		}
 	};
 
-	let Some(user_permissions) = auth_success else {
+	let Some((user_id, user_permissions)) = auth_success else {
 		return Error::as_result().status(401).body(
 			json!({
 				request_keys::ERRORS: [{
@@ -721,7 +687,7 @@ async fn docker_registry_authenticate(
 	for permission in required_permissions {
 		let allowed = is_user_action_authorized(
 			&user_permissions,
-			&user.id,
+			&user_id,
 			&workspace_id,
 			&permission,
 			&resource.id,
