@@ -107,6 +107,7 @@ pub mod permissions {
 			pub const CHECK_STATUS: &str = "workspace::region::checkStatus";
 			pub const ADD: &str = "workspace::region::add";
 			pub const DELETE: &str = "workspace::region::delete";
+			// TODO: add reconfigure region permission later
 
 			pub const PUSH_LOGS: &str = "workspace::region::pushLogs";
 			pub const PUSH_METRICS: &str = "workspace::region::pushMetrics";

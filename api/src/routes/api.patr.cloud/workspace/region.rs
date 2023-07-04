@@ -192,10 +192,11 @@ pub fn create_sub_app(
 
 	// Reconfigure a region
 	app.post(
-		"/reconfigure",
+		"/:regionId/reconfigure",
 		[
 			EveMiddleware::ResourceTokenAuthenticator {
 				is_api_token_allowed: true,
+				// TODO: add reconfigure region permission later
 				permission: permissions::workspace::region::ADD,
 				resource: closure_as_pinned_box!(|mut context| {
 					let workspace_id =
@@ -204,11 +205,18 @@ pub fn create_sub_app(
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
+					let region_id =
+						context.get_param(request_keys::REGION_ID).unwrap();
+					let region_id = Uuid::parse_str(region_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&workspace_id,
+						&region_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
