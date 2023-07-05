@@ -2,7 +2,7 @@
 members = ["api", "macros", "api-models"]
 
 [workspace.package]
-version = "0.17.2"
+version = "0.17.3"
 rust-version = "1.69"
 
 [profile.release]
