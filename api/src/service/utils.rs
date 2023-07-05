@@ -107,6 +107,10 @@ pub fn get_refresh_token_expiry() -> Duration {
 	Duration::days(30)
 }
 
+pub fn get_mfa_secret_expiry() -> Duration {
+	Duration::minutes(5)
+}
+
 /// # Description
 /// This function is used to generate a new refresh token and check if the token
 /// is already present or not in the database

@@ -708,7 +708,7 @@ pub async fn get_all_workspaces_owned_by_user(
 	Ok(res)
 }
 
-pub async fn activate_multi_factor_authentication(
+pub async fn activate_mfa_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 	secret: &str,
@@ -724,6 +724,26 @@ pub async fn activate_multi_factor_authentication(
 		"#,
 		user_id as _,
 		secret
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn deactivate_mfa_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			"user"
+		SET
+			mfa_secret = NULL
+		WHERE
+			id = $1;
+		"#,
+		user_id as _,
 	)
 	.execute(&mut *connection)
 	.await

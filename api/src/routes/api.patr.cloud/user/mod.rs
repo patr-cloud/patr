@@ -1,7 +1,8 @@
 use api_models::{
 	models::{
 		user::{
-			ActivateMultiFactorAuthResponse,
+			ActivateMfaRequest,
+			ActivateMfaResponse,
 			AddPersonalEmailRequest,
 			AddPersonalEmailResponse,
 			AddPhoneNumberRequest,
@@ -9,10 +10,13 @@ use api_models::{
 			BasicUserInfo,
 			ChangePasswordRequest,
 			ChangePasswordResponse,
+			DeactivateMfaRequest,
+			DeactivateMfaResponse,
 			DeletePersonalEmailRequest,
 			DeletePersonalEmailResponse,
 			DeletePhoneNumberRequest,
 			DeletePhoneNumberResponse,
+			GetMfaSecretResponse,
 			GetUserInfoByUserIdResponse,
 			GetUserInfoResponse,
 			ListPersonalEmailsResponse,
@@ -35,17 +39,16 @@ use api_models::{
 	},
 	utils::{DateTime, Uuid},
 };
-use base64::{prelude::BASE64_STANDARD, Engine};
 use chrono::{Datelike, Utc};
 use eve_rs::{App as EveApp, AsError, NextHandler};
-use totp_rs::Secret;
+use totp_rs::{Algorithm, Secret, TOTP};
 
 use crate::{
 	app::{create_eve_app, App},
 	db::{self, User},
 	error,
 	pin_fn,
-	service,
+	service::{self, get_mfa_secret_expiry},
 	utils::{
 		constants::request_keys,
 		Error,
@@ -230,15 +233,33 @@ pub fn create_sub_app(
 		],
 	);
 
-	sub_app.post(
-		"/activate-multi-factor-auth",
+	sub_app.get(
+		"/mfa",
 		[
 			EveMiddleware::PlainTokenAuthenticator {
 				is_api_token_allowed: false,
 			},
-			EveMiddleware::CustomFunction(pin_fn!(
-				activate_multi_factor_authentication
-			)),
+			EveMiddleware::CustomFunction(pin_fn!(get_mfa_secret)),
+		],
+	);
+
+	sub_app.post(
+		"/mfa",
+		[
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
+			EveMiddleware::CustomFunction(pin_fn!(activate_mfa)),
+		],
+	);
+
+	sub_app.delete(
+		"/mfa",
+		[
+			EveMiddleware::PlainTokenAuthenticator {
+				is_api_token_allowed: false,
+			},
+			EveMiddleware::CustomFunction(pin_fn!(deactivate_mfa)),
 		],
 	);
 
@@ -1251,7 +1272,7 @@ async fn search_for_user(
 	Ok(context)
 }
 
-async fn activate_multi_factor_authentication(
+async fn get_mfa_secret(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -1269,17 +1290,119 @@ async fn activate_multi_factor_authentication(
 			.body(error!(MFA_ALREADY_ACTIVATED).to_string())?;
 	}
 
-	let secret =
-		BASE64_STANDARD.encode(Secret::generate_secret().to_bytes().unwrap());
+	let secret = Secret::generate_secret().to_encoded().to_string();
 
-	// Do not activate if already activated
-	db::activate_multi_factor_authentication(
+	// add mfa secret in redis with expiry
+	crate::redis::set_mfa_secret_for_user(
+		context.get_redis_connection(),
+		&user_id,
+		&secret,
+		&get_mfa_secret_expiry(),
+	)
+	.await?;
+
+	context.success(GetMfaSecretResponse { secret });
+	Ok(context)
+}
+
+async fn activate_mfa(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let ActivateMfaRequest { otp } = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let user_id = context.get_token_data().unwrap().user_id().clone();
+
+	let user =
+		db::get_user_by_user_id(context.get_database_connection(), &user_id)
+			.await?
+			.status(404)
+			.body(error!(USER_NOT_FOUND).to_string())?;
+
+	if user.mfa_secret.is_some() {
+		return Error::as_result()
+			.status(400)
+			.body(error!(MFA_ALREADY_ACTIVATED).to_string())?;
+	}
+
+	let secret = crate::redis::get_mfa_secret_for_user(
+		context.get_redis_connection(),
+		&user_id,
+	)
+	.await?
+	.status(498)
+	.body(error!(INVALID_MFA_SECRET).to_string())?;
+
+	let totp = TOTP::new(
+		Algorithm::SHA1,
+		6,
+		1,
+		30,
+		Secret::Encoded(secret.clone()).to_bytes().unwrap(),
+	)?;
+
+	let is_otp_valid = totp.check_current(&otp)?;
+	if !is_otp_valid {
+		return Error::as_result()
+			.status(401)
+			.body(error!(MFA_OTP_INVALID).to_string())?;
+	}
+
+	db::activate_mfa_for_user(
 		context.get_database_connection(),
 		&user_id,
 		&secret,
 	)
 	.await?;
 
-	context.success(ActivateMultiFactorAuthResponse { secret });
+	context.success(ActivateMfaResponse {});
+	Ok(context)
+}
+
+async fn deactivate_mfa(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let DeactivateMfaRequest { otp } = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let user_id = context.get_token_data().unwrap().user_id().clone();
+
+	let user =
+		db::get_user_by_user_id(context.get_database_connection(), &user_id)
+			.await?
+			.status(404)
+			.body(error!(USER_NOT_FOUND).to_string())?;
+
+	let Some(secret) = user.mfa_secret else  {
+		return Error::as_result()
+			.status(400)
+			.body(error!(MFA_NOT_ACTIVATED).to_string())?;
+	};
+
+	let totp = TOTP::new(
+		Algorithm::SHA1,
+		6,
+		1,
+		30,
+		Secret::Encoded(secret.clone()).to_bytes().unwrap(),
+	)?;
+
+	let is_otp_valid = totp.check_current(&otp)?;
+	if !is_otp_valid {
+		return Error::as_result()
+			.status(401)
+			.body(error!(MFA_OTP_INVALID).to_string())?;
+	}
+
+	db::deactivate_mfa_for_user(context.get_database_connection(), &user_id)
+		.await?;
+
+	context.success(DeactivateMfaResponse {});
 	Ok(context)
 }

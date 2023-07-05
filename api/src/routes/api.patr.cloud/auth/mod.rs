@@ -1,10 +1,9 @@
 use std::net::{IpAddr, Ipv4Addr};
 
 use api_models::{models::auth::*, utils::Uuid, ErrorType};
-use base64::{prelude::BASE64_STANDARD, Engine};
 use chrono::{Duration, Utc};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use totp_rs::{Algorithm, TOTP};
+use totp_rs::{Algorithm, Secret, TOTP};
 
 mod oauth;
 
@@ -176,10 +175,10 @@ async fn sign_in(
 				6,
 				1,
 				30,
-				BASE64_STANDARD.decode(mfa_secret)?,
+				Secret::Encoded(mfa_secret).to_bytes().unwrap(),
 			)?;
 
-			let is_otp_valid = totp.check_current(&otp.to_string())?;
+			let is_otp_valid = totp.check_current(&otp)?;
 			if !is_otp_valid {
 				return Error::as_result()
 					.status(401)
