@@ -972,7 +972,7 @@ pub async fn get_deployment_metrics(
 						"{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)",
 						"&start={}&end={}&step={step}"
 					),
-					config.mimir.host,
+					config.mimir.upstream_host,
 					deployment_id,
 					start_time.timestamp(),
 					end_time.timestamp(),
@@ -1005,7 +1005,7 @@ pub async fn get_deployment_metrics(
 						"{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)",
 						"&start={}&end={}&step={step}"
 					),
-					config.mimir.host,
+					config.mimir.upstream_host,
 					deployment_id,
 					start_time.timestamp(),
 					end_time.timestamp(),
@@ -1038,7 +1038,7 @@ pub async fn get_deployment_metrics(
 						"{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)",
 						"&start={}&end={}&step={step}"
 					),
-					config.mimir.host,
+					config.mimir.upstream_host,
 					deployment_id,
 					start_time.timestamp(),
 					end_time.timestamp(),
@@ -1071,7 +1071,7 @@ pub async fn get_deployment_metrics(
 						"{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)",
 						"&start={}&end={}&step={step}"
 					),
-					config.mimir.host,
+					config.mimir.upstream_host,
 					deployment_id,
 					start_time.timestamp(),
 					end_time.timestamp(),
@@ -1322,17 +1322,6 @@ async fn get_container_logs(
 		deployment_id
 	);
 
-	log::info!(
-		r#"Loki request => http 'https://{}/loki/api/v1/query_range?direction=BACKWARD&query={{container="deployment-{}",namespace="{}"}}&start={}&end={}&limit={}' 'X-Scope-OrgID: {}'"#,
-		config.loki.host,
-		deployment_id,
-		workspace_id,
-		start_time.timestamp_nanos(),
-		end_time.timestamp_nanos(),
-		limit,
-		tenant_id
-	);
-
 	let client = Client::new();
 	let logs = client
 		.get(format!(
@@ -1341,7 +1330,7 @@ async fn get_container_logs(
 				"query={{container=\"deployment-{}\",namespace=\"{}\"}}",
 				"&start={}&end={}&limit={}"
 			),
-			config.loki.host,
+			config.loki.upstream_host,
 			deployment_id,
 			workspace_id,
 			start_time.timestamp_nanos(),
@@ -1403,7 +1392,7 @@ pub async fn get_deployment_build_logs(
 				"query={{app=\"eventrouter\",namespace=\"{}\"}}",
 				"&start={}&end={}"
 			),
-			config.loki.host,
+			config.loki.upstream_host,
 			workspace_id,
 			start_time.timestamp_nanos(),
 			end_time.timestamp_nanos()
