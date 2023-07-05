@@ -91,6 +91,8 @@ pub mod id {
 	pub const CANNOT_REMOVE_VOLUME: &str = "cannotRemoveVolume";
 	pub const MFA_OTP_INVALID: &str = "mfaOtpInvalid";
 	pub const MFA_ALREADY_ACTIVATED: &str = "mfaAlreadyActivated";
+	pub const MFA_NOT_ACTIVATED: &str = "mfaNotActivated";
+	pub const INVALID_MFA_SECRET: &str = "invalidMfaSecret";
 
 	// error constants for billing related things
 	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "cardlessFreeLimitExceeded";
@@ -267,6 +269,10 @@ pub mod message {
 		"Your entered OTP is either expired or is invalid. Please try again";
 	pub const MFA_ALREADY_ACTIVATED: &str =
 		"The MFA for this user is already activated";
+	pub const MFA_NOT_ACTIVATED: &str =
+		"The MFA for this user is not activated";
+	pub const INVALID_MFA_SECRET: &str =
+		"The MFA for this user is expired/invalid";
 
 	// error constants for billing related things
 	pub const CARDLESS_FREE_LIMIT_EXCEEDED: &str = "You have reached the maximun free limit allowed to create resources without adding a payment card. Kindly add a card to create more resources";
