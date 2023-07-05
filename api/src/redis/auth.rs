@@ -27,6 +27,9 @@ fn get_key_for_add_card_payment_intent_id(workspace_id: &Uuid) -> String {
 fn get_key_for_user_access_token_data(login_id: &Uuid) -> String {
 	format!("access-token-permissions:{}", login_id)
 }
+fn get_key_for_user_mfa_secret(user_id: &Uuid) -> String {
+	format!("mfa:{}", user_id)
+}
 
 /// returns last set revocation timestamp (in millis) for the given user
 pub async fn get_token_revoked_timestamp_for_user(
@@ -232,4 +235,23 @@ pub async fn set_user_access_token_permissions(
 	} else {
 		redis_conn.set(key, token_data).await
 	}
+}
+
+pub async fn get_mfa_secret_for_user(
+	redis_conn: &mut RedisConnection,
+	user_id: &Uuid,
+) -> Result<Option<String>, RedisError> {
+	redis_conn.get(get_key_for_user_mfa_secret(user_id)).await
+}
+
+pub async fn set_mfa_secret_for_user(
+	redis_conn: &mut RedisConnection,
+	user_id: &Uuid,
+	secret: &str,
+	ttl: &Duration,
+) -> Result<(), RedisError> {
+	let key = get_key_for_user_mfa_secret(user_id);
+	redis_conn
+		.set_ex(key, secret, ttl.num_seconds() as usize)
+		.await
 }
