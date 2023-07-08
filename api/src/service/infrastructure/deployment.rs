@@ -846,12 +846,23 @@ pub async fn get_full_deployment_config(
 					.status(404)
 					.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-			format!(
-				"{}/{}/{}",
-				constants::PATR_REGISTRY,
-				repository.workspace_id,
-				repository.name
-			)
+			if let Some(current_live_digest) = &deployment.current_live_digest {
+				format!(
+					"{}/{}/{}@{}",
+					constants::PATR_REGISTRY,
+					repository.workspace_id,
+					repository.name,
+					current_live_digest
+				)
+			} else {
+				format!(
+					"{}/{}/{}:{}",
+					constants::PATR_REGISTRY,
+					repository.workspace_id,
+					repository.name,
+					deployment.image_tag
+				)
+			}
 		}
 		DeploymentRegistry::ExternalRegistry {
 			registry,

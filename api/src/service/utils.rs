@@ -352,15 +352,28 @@ pub async fn get_image_name_and_digest_for_deployment_image(
 				request_id
 			);
 
-			Ok((
-				format!(
-					"{}/{}/{}",
-					config.docker_registry.registry_url,
-					repository_details.workspace_id,
-					repository_details.name
-				),
-				digest,
-			))
+			if let Some(digest) = digest {
+				Ok((
+					format!(
+						"{}/{}/{}",
+						config.docker_registry.registry_url,
+						repository_details.workspace_id,
+						repository_details.name
+					),
+					Some(digest),
+				))
+			} else {
+				Ok((
+					format!(
+						"{}/{}/{}:{}",
+						config.docker_registry.registry_url,
+						repository_details.workspace_id,
+						repository_details.name,
+						image_tag
+					),
+					None,
+				))
+			}
 		}
 		DeploymentRegistry::ExternalRegistry {
 			registry,
