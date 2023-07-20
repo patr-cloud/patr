@@ -1,9 +1,23 @@
 [workspace]
-members = ["api", "macros", "api-models"]
+members = [
+    "api",
+    "macros",
+    "models",
+    "controller",
+    "cloudflare-ingress",
+    "frontend",
+    "cli",
+]
+package.authors = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
+package.description = "Patr API and all it's dependencies"
+package.edition = "2021"
+package.rust-version = "1.69"
+package.version = "0.17.4"
+resolver = "2"
 
-[workspace.package]
-version = "0.17.8"
-rust-version = "1.69"
+[workspace.dependencies]
+tokio = { version = "1", features = ["full"] }
+tracing = { version = "0.1", features = ["full"] }
 
 [profile.release]
 codegen-units = 1
