@@ -1,0 +1,23 @@
+[package]
+name = "cli"
+
+authors.workspace = true
+description.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[[bin]]
+name = "patr"
+path = "src/main.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.72"
+async-trait = "0.1.71"
+clap = { version = "4", features = ["derive"] }
+monostate = "0.1"
+open = "5"
+serde = { version = "1", features = ["derive"] }
+tokio = { workspace = true }
