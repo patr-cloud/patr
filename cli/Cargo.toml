@@ -20,4 +20,5 @@ clap = { version = "4", features = ["derive"] }
 monostate = "0.1"
 open = "5"
 serde = { version = "1", features = ["derive"] }
+tabled = "0.12"
 tokio = { workspace = true }
