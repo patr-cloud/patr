@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use clap::Args;
 
 use super::GlobalArgs;
@@ -19,7 +21,13 @@ pub struct LoginArgs {
 pub(super) async fn execute(
 	global_args: &GlobalArgs,
 	args: LoginArgs,
+	mut writer: impl Write + Send,
 ) -> Result<(), anyhow::Error> {
-	
+	let table = crate::models::commands::login::Table {
+		first_name: "Test".to_string(),
+		last_name: "User".to_string(),
+		username: "testuser".to_string(),
+	}.into_formatted();
+	write!(writer, "{}", table)?;
 	todo!()
 }

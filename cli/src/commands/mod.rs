@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, io::Write};
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
@@ -19,6 +19,7 @@ pub trait CommandExecutor<T> {
 		self,
 		global_args: &GlobalArgs,
 		args: T,
+		output_writer: impl Write + Send,
 	) -> anyhow::Result<()>;
 }
 
@@ -85,10 +86,11 @@ impl CommandExecutor<()> for GlobalCommands {
 		self,
 		global_args: &GlobalArgs,
 		args: (),
+		writer: impl Write + Send,
 	) -> anyhow::Result<()> {
 		match self {
 			GlobalCommands::Login(args) => {
-				login::execute(global_args, args).await
+				login::execute(global_args, args, writer).await
 			}
 			GlobalCommands::Logout => logout::execute(global_args, args).await,
 			GlobalCommands::Info => info::execute(global_args, args).await,
