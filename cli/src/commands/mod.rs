@@ -14,11 +14,10 @@ mod logout;
 /// A trait that defines the functionality of a command.
 /// Every command must implement this trait.
 #[async_trait::async_trait]
-pub trait CommandExecutor<T> {
+pub trait CommandExecutor {
 	async fn execute(
 		self,
 		global_args: &GlobalArgs,
-		args: T,
 		output_writer: impl Write + Send,
 	) -> anyhow::Result<()>;
 }
@@ -78,22 +77,25 @@ pub enum GlobalCommands {
 	/// Get information about the current logged in user.
 	#[command(alias = "whoami")]
 	Info,
+	/// All the commands that are meant for a workspace
+	#[command(flatten)]
+	Workspaced(WorkspacedCommands),
 }
 
 #[async_trait::async_trait]
-impl CommandExecutor<()> for GlobalCommands {
+impl CommandExecutor for GlobalCommands {
 	async fn execute(
 		self,
 		global_args: &GlobalArgs,
-		args: (),
 		writer: impl Write + Send,
 	) -> anyhow::Result<()> {
 		match self {
-			GlobalCommands::Login(args) => {
+			Self::Login(args) => {
 				login::execute(global_args, args, writer).await
 			}
-			GlobalCommands::Logout => logout::execute(global_args, args).await,
-			GlobalCommands::Info => info::execute(global_args, args).await,
+			Self::Logout => logout::execute(global_args).await,
+			Self::Info => info::execute(global_args).await,
+			Self::Workspaced(commands) => commands.execute(global_args, ()).await,
 		}
 	}
 }
