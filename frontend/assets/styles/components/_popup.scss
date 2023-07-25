@@ -1,0 +1,40 @@
+.popup {
+	opacity: 1;
+	width: clamp(20rem, 25rem, 25rem);
+	z-index: 1000;
+	box-shadow: $shadow-medium;
+	max-height: 20rem;
+	transition: opacity 500ms ease, transform 500ms ease;
+	&.top-left {
+		top: 1rem;
+		left: 1rem;
+		right: auto;
+		bottom: auto;
+		transform: translateY(-200%);
+	}
+	&.top-right {
+		top: 1rem;
+		right: 1rem;
+		left: auto;
+		bottom: auto;
+		transform: translateY(-200%);
+	}
+	&.bottom-left {
+		bottom: 1rem;
+		left: 1rem;
+		right: auto;
+		top: auto;
+		transform: translateY(200%);
+	}
+	&.bottom-right {
+		bottom: 1rem;
+		right: 1rem;
+		left: auto;
+		top: auto;
+		transform: translateY(200%);
+	}
+	&.show {
+		transform: translateY(0);
+		opacity: 1;
+	}
+}

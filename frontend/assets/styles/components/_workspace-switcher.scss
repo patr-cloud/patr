@@ -1,0 +1,30 @@
+.workspace-switcher {
+	position: fixed;
+	top: 1rem;
+	right: 1rem;
+	box-shadow: $shadow-medium;
+	width: 24rem;
+	max-height: 40rem;
+	z-index: 1000;
+	& .workspace-item:hover,
+	& .active {
+		background-color: lighten(
+			map-get($background-colors, "secondary-light"),
+			10%
+		);
+		transition: 150ms;
+	}
+	transform: scaleY(0);
+	transform-origin: top;
+	transition: 250ms;
+	&.open-workspace-switcher {
+		transform: scaleY(1);
+	}
+	& li,
+	& a {
+		@include btn-secondary-focus;
+	}
+	& ul {
+		max-height: 10rem;
+	}
+}

@@ -1,0 +1,7 @@
+[build]
+target = "./index.html"
+dist = "../target/trunk/"
+
+[watch]
+watch = ["./src", "./assets/styles"]
+ignore = ["../target"]

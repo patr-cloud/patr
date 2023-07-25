@@ -1,0 +1,13 @@
+.database-plan-card {
+	width: 13rem;
+	height: 8rem;
+	@include btn-secondary-focus("info");
+}
+.database-card {
+	height: 16rem;
+	.date-time {
+		background-color: $bg-code-snippet;
+		color: $txt-code-snippet;
+		padding: 2px 5px;
+	}
+}

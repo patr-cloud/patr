@@ -1,0 +1,26 @@
+.machine-type-card {
+	width: 9.5rem;
+	height: 8.5rem;
+	transition: transform 200ms;
+	@include btn-secondary-focus("info");
+}
+.deployment-card {
+	height: 20rem;
+	.date-time {
+		background-color: $bg-code-snippet;
+		color: $txt-code-snippet;
+		padding: 2px 5px;
+	}
+}
+.log-statement {
+	font-family: $font-log;
+	&:hover {
+		background-color: transparentize(map-get($text-colors, "grey"), 0.6);
+	}
+	& *::selection {
+		background-color: map-get($text-colors, "disabled");
+	}
+}
+.event-log-container {
+	max-height: 26rem;
+}

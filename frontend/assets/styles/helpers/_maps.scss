@@ -1,0 +1,210 @@
+/* 
+this partial includes all the Maps that can be used to generate 
+utility classes and component specific classes
+
+font-sizes, paddings, margins and border-radii are calculated as
+ multiples of a BASE VALUE which can be fount in _variables.scss
+*/
+$background-colors: (
+	"primary": $primary-main,
+	"primary-light": $primary-light,
+	"primary-dark": $primary-dark,
+	"secondary": $secondary-main,
+	"secondary-dark": $secondary-dark,
+	"secondary-medium": $secondary-medium,
+	"secondary-light": $secondary-light,
+	"success": $success-main,
+	"warning": $warning-main,
+	"error": $error-main,
+	"info": $info-main,
+	"grey": $text-grey,
+	"white": $text-white,
+	"code": $bg-code-snippet,
+);
+$text-colors: (
+	"primary": $primary-main,
+	"secondary": $secondary-main,
+	"white": $text-white,
+	"black": $text-black,
+	"grey": $text-grey,
+	"success": $success-main,
+	"warning": $warning-main,
+	"error": $error-main,
+	"info": $info-main,
+	"disabled": $text-disabled,
+	"code": $txt-code-snippet,
+);
+$font-sizes: (
+	//base is 1rem. 10px 12px 13px 16px 18px 24px 33px
+	"xxs": $base-font-size * 0.625,
+	"xs": $base-font-size * 0.75,
+	"sm": $base-font-size * 0.8125,
+	"md": $base-font-size,
+	"lg": $base-font-size * 1.125,
+	"xl": $base-font-size * 1.5,
+	"xxl": $base-font-size * 2.0625
+);
+$font-weights: (
+	//300 400 500 600
+	"thin": $font-thin,
+	"regular": $font-regular,
+	"medium": $font-medium,
+	"bold": $font-bold
+);
+$paddings: (
+	//base is .3125rem. 6px 8px 11px 16px 20px 24px 33px
+	"xxs": $base-padding * 1.2,
+	"xs": $base-padding * 1.6,
+	"sm": $base-padding * 2.2,
+	"md": $base-padding * 3.2,
+	"lg": $base-padding * 4,
+	"xl": $base-padding * 4.8,
+	"xxl": $base-padding * 6.6
+);
+$margins: (
+	//base is .3125rem. 6px 8px 10px 12px 16px 24px
+	"xxs": $base-margin * 1.2,
+	"xs": $base-margin * 1.6,
+	"sm": $base-margin * 2,
+	"md": $base-margin * 2.4,
+	"lg": $base-margin * 3.2,
+	"xl": $base-margin * 4.8,
+	"auto": auto
+);
+$grid-gaps: (
+	//base is .3125rem. 6px 8px 10px 12px 16px 24px
+	"xxs": $base-grid-gap * 1.2,
+	"xs": $base-grid-gap * 1.6,
+	"sm": $base-grid-gap * 2,
+	"md": $base-grid-gap * 2.4,
+	"lg": $base-grid-gap * 3.2,
+	"xl": $base-grid-gap * 4.8,
+	"auto": auto
+);
+$border-radii: (
+	//base is .3125rem. 10px 14px 18px 20px
+	"sm": $base-border-radius * 2,
+	"md": $base-border-radius * 2.8,
+	"lg": $base-border-radius * 3.6,
+	"xl": $base-border-radius * 4,
+	"none": 0
+);
+
+//utility Map with the above Maps combined into one.
+
+$utility-map: (
+	"padding": (
+		"prefix": "p",
+		"values": $paddings,
+	),
+	"padding-left": (
+		"prefix": "pl",
+		"values": $paddings,
+	),
+	"padding-top": (
+		"prefix": "pt",
+		"values": $paddings,
+	),
+	"padding-right": (
+		"prefix": "pr",
+		"values": $paddings,
+	),
+	"padding-bottom": (
+		"prefix": "pb",
+		"values": $paddings,
+	),
+	"margin": (
+		"prefix": "m",
+		"values": $margins,
+	),
+	"margin-left": (
+		"prefix": "ml",
+		"values": $margins,
+	),
+	"margin-top": (
+		"prefix": "mt",
+		"values": $margins,
+	),
+	"margin-right": (
+		"prefix": "mr",
+		"values": $margins,
+	),
+	"margin-bottom": (
+		"prefix": "mb",
+		"values": $margins,
+	),
+	"gap": (
+		"prefix": "gap",
+		"values": $grid-gaps,
+	),
+	"border-radius": (
+		"prefix": "br",
+		"values": $border-radii,
+	),
+	"background-color": (
+		"prefix": "bg",
+		"values": $background-colors,
+	),
+	"color": (
+		"prefix": "txt",
+		"values": $text-colors,
+	),
+	"font-size": (
+		"prefix": "txt",
+		"values": $font-sizes,
+	),
+	"font-weight": (
+		"prefix": "txt",
+		"values": $font-weights,
+	),
+);
+
+$icon-sizes: (
+	//base is 1.25rem. 15px 20px 24px 30px 35px
+	"xxs": $base-icon-size * 0.6,
+	"xs": $base-icon-size * 0.75,
+	"sm": $base-icon-size,
+	"md": $base-icon-size * 1.25,
+	"lg": $base-icon-size * 1.6,
+	"xl": $base-icon-size * 1.9,
+	"xxl": $base-icon-size * 4.5
+);
+$avatar-sizes: (
+	//base is 2rem. 24px 28px 32px 36px 76px
+	"xs": $base-avatar-sizes * 0.75,
+	"sm": $base-avatar-sizes * 0.875,
+	"md": $base-avatar-sizes,
+	"lg": $base-avatar-sizes * 1.125,
+	"xl": $base-avatar-sizes * 2.375,
+	"xxl": $base-avatar-sizes * 2.65
+);
+
+$flex-directions: (
+	"fr": row,
+	"fc": column,
+);
+$flex-justify: (
+	"fs": flex-start,
+	"fe": flex-end,
+	"ct": center,
+	"sb": space-between,
+	"sa": space-around,
+	"se": space-evenly,
+);
+$flex-align: (
+	"fs": flex-start,
+	"fe": flex-end,
+	"ct": center,
+	"bl": baseline,
+);
+
+//media query break points
+$break-points: (
+	"xxs": $bp-xxs,
+	"xs": $bp-xs,
+	"sm": $bp-sm,
+	"md": $bp-md,
+	"lg": $bp-lg,
+	"xl": $bp-xl,
+	"xxl": $bp-xxl,
+);

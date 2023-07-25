@@ -17,5 +17,5 @@ pub(super) async fn execute(
 	args: CreateArgs,
 	mut writer: impl Write + Send,
 ) -> anyhow::Result<()> {
-
+	Ok(())
 }

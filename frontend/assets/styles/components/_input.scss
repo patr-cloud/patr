@@ -1,0 +1,74 @@
+.input {
+	background-color: map-get($background-colors, "secondary-light");
+	border-radius: map-get($border-radii, "sm");
+	padding: map-get($paddings, "sm") map-get($paddings, "xl");
+	input {
+		border: none;
+		background-color: inherit;
+		font-weight: map-get($font-weights, "medium");
+		color: map-get($text-colors, "white");
+		width: 100%;
+		&:disabled {
+			color: map-get($text-colors, "disabled");
+		}
+		&:-webkit-autofill {
+			-webkit-text-fill-color: map-get($text-colors, "white");
+			box-shadow: inset 0 0 0 32px $secondary-light !important;
+		}
+		&[type="range"] {
+			-webkit-appearance: none;
+			appearance: none;
+			width: 100%;
+			background: map-get($map: $background-colors, $key: "secondary");
+			outline: none;
+			height: 0.6rem;
+			border-radius: map-get($map: $border-radii, $key: "sm");
+			&:is(::-webkit-slider-thumb, ::-moz-range-thumb) {
+				-webkit-appearance: none;
+				appearance: none;
+				width: 25px;
+				height: 25px;
+				background: map-get($map: $background-colors, $key: "primary");
+				cursor: pointer;
+			}
+		}
+		&::-webkit-slider-thumb {
+			background-color: map-get($background-colors, "primary");
+			border: none;
+			border-radius: 50%;
+			cursor: pointer;
+			height: 1.5rem;
+			width: 1.5rem;
+			pointer-events: all;
+			position: relative;
+			appearance: none;
+			-webkit-appearance: none;
+		}
+		&::-moz-range-thumb {
+			background-color: map-get($background-colors, "primary");
+			border: none;
+			border-radius: 50%;
+			cursor: pointer;
+			height: 1.5rem;
+			width: 1.5rem;
+			pointer-events: all;
+			position: relative;
+			appearance: none;
+			-webkit-appearance: none;
+		}
+	}
+	input::-webkit-calendar-picker-indicator {
+		border-radius: 50%;
+		background-color: map-get($background-colors, "primary");
+		padding: map-get($paddings, "xxs");
+		cursor: pointer;
+	}
+}
+.placeholder-sm::placeholder {
+	font-size: map-get($font-sizes, "xs");
+	font-weight: map-get($font-weights, "regular");
+}
+.autofill-dark:-webkit-autofill {
+	-webkit-text-fill-color: map-get($text-colors, "white");
+	box-shadow: inset 0 0 0 32px map-get($background-colors, "secondary-dark") !important;
+}
