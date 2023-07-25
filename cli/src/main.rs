@@ -19,7 +19,7 @@ async fn main() -> anyhow::Result<()> {
 	let args = AppArgs::parse();
 
 	args.command
-		.execute(&args.global_args, (), std::io::stdout())
+		.execute(&args.global_args, std::io::stdout())
 		.await?;
 
 	Ok(())

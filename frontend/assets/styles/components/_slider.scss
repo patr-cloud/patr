@@ -1,0 +1,57 @@
+.slider {
+	.track,
+	.range {
+		height: 0.5rem;
+	}
+	.track {
+		z-index: 1;
+	}
+	.range {
+		z-index: 2;
+	}
+	.left-value {
+		left: 3px;
+	}
+	.right-value {
+		right: 3px;
+	}
+	.thumb,
+	.thumb::-webkit-slider-thumb {
+		-webkit-appearance: none;
+		appearance: none;
+		-webkit-tap-highlight-color: transparent;
+	}
+	.thumb {
+		pointer-events: none;
+		height: 0;
+		outline: none;
+		&.left {
+			z-index: 3;
+		}
+		&.right {
+			z-index: 4;
+		}
+	}
+	.thumb::-webkit-slider-thumb {
+		background-color: map-get($background-colors, "primary");
+		border: none;
+		border-radius: 50%;
+		cursor: pointer;
+		height: 1.5rem;
+		width: 1.5rem;
+		pointer-events: all;
+		position: relative;
+		margin-top: 0.5rem;
+	}
+	.thumb::-moz-range-thumb {
+		background-color: map-get($background-colors, "primary");
+		border: none;
+		border-radius: 50%;
+		cursor: pointer;
+		height: 1.5rem;
+		width: 1.5rem;
+		margin-top: 0.5rem;
+		pointer-events: all;
+		position: relative;
+	}
+}

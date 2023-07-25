@@ -1,3 +1,13 @@
+use std::io::Write;
+
+use clap::Subcommand;
+
+use self::{
+	create::CreateArgs,
+	rename::RenameArgs,
+	switch::SwitchArgs,
+};
+use crate::commands::{CommandExecutor, GlobalArgs};
 
 mod create;
 mod list;
@@ -7,11 +17,11 @@ mod switch;
 #[derive(Debug, Clone, Subcommand)]
 #[command(rename_all = "kebab-case")]
 pub enum WorkspaceCommands {
-	#[subcommand(rename = "workspace")]
+	#[command(subcommand, name = "workspace")]
 	WorkspaceAction(WorkspaceActionCommands),
-	#[subcommand]
+	#[command(subcommand)]
 	Context(ContextCommands),
-	#[subcommand(rename = "workspaces")]
+	#[command(subcommand, name = "workspaces")]
 	ListWorkspaces,
 }
 
@@ -20,35 +30,39 @@ pub enum WorkspaceCommands {
 pub enum WorkspaceActionCommands {
 	Create(CreateArgs),
 	Switch(SwitchArgs),
-	List(ListArgs),
+	List,
 	Rename(RenameArgs),
 }
 
 #[derive(Debug, Clone, Subcommand)]
 #[command(rename_all = "kebab-case")]
 pub enum ContextCommands {
-	Switch {
-		name: String,
-	}
+	Switch { name: String },
 }
 
 #[async_trait::async_trait]
 impl CommandExecutor for WorkspaceCommands {
-    async fn execute(
-        self,
-        global_args: &GlobalArgs,
-        writer: impl Write + Send,
-    ) -> anyhow::Result<()> {
-        match self {
-            Self::WorkspaceAction(commands) => commands.execute(global_args, writer).await,
-            Self::Context(ContextCommands::Switch {
-				name
-			}) => WorkspaceActionCommands::Switch {
-				name
-			}.execute(global_args, writer).await,
-            Self::ListWorkspaces => WorkspaceActionCommands::List.execute(global_args, writer).await,
-        }
-    }
+	async fn execute(
+		self,
+		global_args: &GlobalArgs,
+		writer: impl Write + Send,
+	) -> anyhow::Result<()> {
+		match self {
+			Self::WorkspaceAction(commands) => {
+				commands.execute(global_args, writer).await
+			}
+			Self::Context(ContextCommands::Switch { name }) => {
+				WorkspaceActionCommands::Switch(SwitchArgs { name })
+					.execute(global_args, writer)
+					.await
+			}
+			Self::ListWorkspaces => {
+				WorkspaceActionCommands::List
+					.execute(global_args, writer)
+					.await
+			}
+		}
+	}
 }
 
 #[async_trait::async_trait]
@@ -59,10 +73,16 @@ impl CommandExecutor for WorkspaceActionCommands {
 		writer: impl Write + Send,
 	) -> anyhow::Result<()> {
 		match self {
-			Self::Create(args) => create::execute(global_args, args, writer).await,
-			Self::Switch(args) => switch::execute(global_args, args, writer).await,
-			Self::List(args) => list::execute(global_args, args, writer).await,
-			Self::Rename(args) => rename::execute(global_args, args, writer).await,
+			Self::Create(args) => {
+				create::execute(global_args, args, writer).await
+			}
+			Self::Switch(args) => {
+				switch::execute(global_args, args, writer).await
+			}
+			Self::List => list::execute(global_args, (), writer).await,
+			Self::Rename(args) => {
+				rename::execute(global_args, args, writer).await
+			}
 		}
 	}
 }

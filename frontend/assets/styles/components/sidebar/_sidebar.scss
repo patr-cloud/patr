@@ -1,0 +1,9 @@
+@import "./logo";
+@import "./sidebar-item";
+@import "./user";
+
+.sidebar {
+	height: 100vh;
+	width: 20rem;
+	box-shadow: $shadow-light;
+}

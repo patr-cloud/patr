@@ -2,7 +2,7 @@ use std::{fmt::Display, io::Write};
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
-use self::login::LoginArgs;
+use self::{login::LoginArgs, workspaced::WorkspacedCommands};
 
 /// The command to get information about the current logged in user.
 mod info;
@@ -10,6 +10,8 @@ mod info;
 mod login;
 /// The command to logout of your Patr account.
 mod logout;
+/// All commands that are meant for a workspace.
+mod workspaced;
 
 /// A trait that defines the functionality of a command.
 /// Every command must implement this trait.
@@ -95,7 +97,9 @@ impl CommandExecutor for GlobalCommands {
 			}
 			Self::Logout => logout::execute(global_args).await,
 			Self::Info => info::execute(global_args).await,
-			Self::Workspaced(commands) => commands.execute(global_args, ()).await,
+			Self::Workspaced(commands) => {
+				commands.execute(global_args, writer).await
+			}
 		}
 	}
 }

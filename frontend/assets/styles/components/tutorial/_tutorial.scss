@@ -1,0 +1,73 @@
+.tutorial-card {
+	width: 40rem;
+	position: fixed;
+	z-index: 700;
+	background-color: transparentize(map-get($text-colors, "black"), 0.5);
+	&.center {
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+	}
+	&.bottom {
+		top: auto;
+		bottom: 10%;
+		left: 50%;
+		transform: translateX(-50%);
+	}
+	&.top {
+		top: 10%;
+		bottom: auto;
+		left: 50%;
+		transform: translateX(-50%);
+	}
+}
+
+.tutorial-tooltip {
+	width: 30rem;
+	background-color: transparentize(map-get($text-colors, "black"), 0.5);
+	box-shadow: $shadow-medium;
+	&.bottom-left {
+		left: -2rem;
+		transform: translateX(-100%);
+		bottom: -5rem;
+	}
+	&.bottom-right {
+		right: -2rem;
+		transform: translateX(100%);
+		bottom: -5rem;
+	}
+	&.top-left {
+		left: -2rem;
+		transform: translateX(-100%);
+		top: -5rem;
+	}
+	&.top-right {
+		right: -2rem;
+		transform: translateX(100%);
+		top: -5rem;
+	}
+	& button {
+		background-color: transparent;
+	}
+}
+
+.tutorial-modal {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	z-index: 900;
+	transform: translate(-50%, -50%);
+	box-shadow: $shadow-medium;
+	width: 32rem;
+	max-height: 28rem;
+	background-color: transparentize(map-get($text-colors, "black"), 0.7);
+	backdrop-filter: blur(0.5px);
+	& button {
+		&:hover {
+			background-color: lighten(
+				transparentize(map-get($text-colors, "black"), 0.6),
+				15%
+			);
+		}
+	}
+}

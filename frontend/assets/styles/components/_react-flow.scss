@@ -1,0 +1,47 @@
+.react-flow__node {
+	padding: 0 !important;
+	background-color: transparent !important;
+	&.react-flow__node-default {
+		border: none !important;
+	}
+	& {
+		.react-flow__handle {
+			background-color: $border-color !important;
+			width: 0.75rem;
+			height: 0.75rem;
+			&-left {
+				border-radius: 2rem 1rem 1rem 2rem;
+			}
+			&-right {
+				border-radius: 1rem 2rem 2rem 1rem;
+			}
+		}
+	}
+	&:not(.react-flow__node-start, .react-flow__node-end) {
+		width: 100px !important;
+	}
+	&:is(.react-flow__node-decision) {
+		width: 120px !important;
+	}
+	&:is(.react-flow__node-start, .react-flow__node-end) {
+		& {
+			.react-flow__handle {
+				top: 50%;
+				&-left {
+					transform: translate(-50%, -50%);
+				}
+				&-right {
+					transform: translate(50%, -50%);
+				}
+			}
+		}
+	}
+}
+.react-flow__controls {
+	& > * {
+		border: none !important;
+	}
+}
+.react-flow__attribution {
+	display: none !important;
+}
