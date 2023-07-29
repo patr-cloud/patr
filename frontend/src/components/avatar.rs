@@ -51,12 +51,12 @@ pub fn Avatar(
 								first_name
 								.get()
 								.some_if_not_empty()
-								.unwrap_or(&"avatar".into())
+								.unwrap_or("avatar".into())
 							}
 						/>
 					}
 				})}
-			{first_name
+			{move || first_name
 				.get()
 				.some_if_not_empty()
 				.map(|first_name| {
@@ -68,7 +68,7 @@ pub fn Avatar(
 							.to_ascii_uppercase()
 					}
 				})}
-			{last_name
+			{move || last_name
 				.get()
 				.some_if_not_empty()
 				.map(|last_name| {

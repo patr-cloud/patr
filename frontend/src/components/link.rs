@@ -1,5 +1,3 @@
-use leptos_router::use_navigate;
-
 use crate::prelude::*;
 
 /// The type of link to use. A contained link is a button with a background,
