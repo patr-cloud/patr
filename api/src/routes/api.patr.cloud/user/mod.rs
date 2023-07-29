@@ -1379,7 +1379,7 @@ async fn deactivate_mfa(
 			.status(404)
 			.body(error!(USER_NOT_FOUND).to_string())?;
 
-	let Some(secret) = user.mfa_secret else  {
+	let Some(secret) = user.mfa_secret else {
 		return Error::as_result()
 			.status(400)
 			.body(error!(MFA_NOT_ACTIVATED).to_string())?;

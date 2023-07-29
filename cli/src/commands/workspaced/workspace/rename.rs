@@ -7,12 +7,12 @@ use super::GlobalArgs;
 /// The arguments that can be passed to the switch workspace command.
 #[derive(Debug, Clone, Args)]
 pub struct RenameArgs {
-    /// Name of the workspace to rename
+	/// Name of the workspace to rename
 	#[arg(short = 'w', long = "workspace")]
-    pub workspace: String,
-    /// New name of the workspace
+	pub workspace: String,
+	/// New name of the workspace
 	#[arg(short = 'n', long = "name")]
-    pub new_name: String,
+	pub new_name: String,
 }
 
 pub(super) async fn execute(

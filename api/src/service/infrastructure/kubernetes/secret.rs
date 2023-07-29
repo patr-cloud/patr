@@ -25,9 +25,10 @@ pub async fn copy_patr_token_to_ci_namespace(
 	let Some(existing_token) =
 		Api::<Secret>::namespaced(client.clone(), repo_workspace_id.as_str())
 			.get_opt(PATR_BYOC_TOKEN_NAME)
-			.await? else {
-				return Ok(false)
-			};
+			.await?
+	else {
+		return Ok(false);
+	};
 
 	Api::<Secret>::namespaced(client.clone(), build_namespace)
 		.patch(

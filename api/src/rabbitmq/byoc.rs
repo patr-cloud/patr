@@ -36,7 +36,8 @@ pub(super) async fn process_request(
 			request_id,
 		} => {
 			let Some(region) =
-				db::get_region_by_id(connection, &region_id).await? else {
+				db::get_region_by_id(connection, &region_id).await?
+			else {
 				log::error!(
 					"request_id: {} - Unable to find region with ID `{}`",
 					request_id,
@@ -160,7 +161,8 @@ pub(super) async fn process_request(
 			);
 
 			let Some(region) =
-				db::get_region_by_id(connection, &region_id).await? else {
+				db::get_region_by_id(connection, &region_id).await?
+			else {
 				log::error!(
 					"request_id: {} - Unable to find region with ID `{}`",
 					request_id,
@@ -414,7 +416,8 @@ pub(super) async fn process_request(
 						.send()
 						.await?;
 					let kube_config = response.text().await?;
-					let Ok(kube_config) = Kubeconfig::from_yaml(&kube_config) else {
+					let Ok(kube_config) = Kubeconfig::from_yaml(&kube_config)
+					else {
 						db::append_messge_log_for_region(
 							connection,
 							&region_id,
@@ -426,7 +429,8 @@ pub(super) async fn process_request(
 							),
 						)
 						.await?;
-						db::set_region_as_errored(connection, &region_id).await?;
+						db::set_region_as_errored(connection, &region_id)
+							.await?;
 
 						return Ok(());
 					};
@@ -539,7 +543,8 @@ pub(super) async fn process_request(
 			request_id,
 		} => {
 			let Some(region) =
-				db::get_region_by_id(connection, &region_id).await? else {
+				db::get_region_by_id(connection, &region_id).await?
+			else {
 				log::error!(
 					"request_id: {} - Unable to find region with ID `{}`",
 					request_id,
