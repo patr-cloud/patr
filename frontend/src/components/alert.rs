@@ -24,12 +24,13 @@ pub fn Alert(
 							r#type,
 							NotificationType::Error | NotificationType::Warning,
 						) {
-							"alert-circle"
+							IconType::AlertCircle
 						} else {
-							"check-circle"
+							IconType::CheckCircle
 						}
 					})
 				}
+				size={Small}
 				color={r#type.with(NotificationType::as_patr_color)}
 			/>
 			<span

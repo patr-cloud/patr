@@ -47,13 +47,12 @@ pub fn TooltipContainer(
 			} else {
 				view! { cx,
 					<Icon
-						icon="info"
+						icon=IconType::Info
 						size={ExtraSmall}
 						color={icon_color}
 						class="br-round cursor-pointer"
 					/>
-				}
-					.into()
+				}.into()
 			}}
 			<Tooltip
 				content={content}

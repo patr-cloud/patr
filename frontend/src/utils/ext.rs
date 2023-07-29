@@ -2,11 +2,11 @@
 /// is not empty.
 pub trait StringExt {
 	/// Returns `Some(self)` if the string is not empty, `None` otherwise.
-	fn some_if_not_empty(&self) -> Option<&String>;
+	fn some_if_not_empty(self) -> Option<String>;
 }
 
 impl StringExt for String {
-	fn some_if_not_empty(&self) -> Option<&String> {
+	fn some_if_not_empty(self) -> Option<String> {
 		if self.is_empty() {
 			None
 		} else {

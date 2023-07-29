@@ -47,9 +47,13 @@ pub fn Input(
 	/// The initial value of the input.
 	#[prop(into, optional)]
 	value: MaybeSignal<String>,
-	#[prop(into, optional)] class: MaybeSignal<String>,
+	/// Additional class names to apply to the input, if any.
+	#[prop(into, optional)]
+	class: MaybeSignal<String>,
 ) -> impl IntoView {
 	let node_ref = ref_.unwrap_or_else(|| create_node_ref::<html::Input>(cx));
+
+	let (input_value, set_input_value) = create_signal(cx, "test".to_string());
 
 	view! { cx,
 		<div class=move || format!(
@@ -73,54 +77,25 @@ pub fn Input(
 						},
 					)
 				})}
-			{match start_icon {
-				MaybeSignal::Static(Some(value)) => {
-					let IconProps {
-						icon,
-						size,
-						color,
-						class,
-						click,
-						enable_pulse,
-						fill,
-					} = value;
-					Icon(cx, IconProps {
-						icon,
-						size,
-						color,
-						class,
-						click,
-						enable_pulse,
-						fill,
-					}).into_view(cx)
-				},
-				MaybeSignal::Static(None) => ().into_view(cx),
-				MaybeSignal::Dynamic(value) => {
-					value.with(|props| {
-						if let Some(props) = props {
-						let IconProps {
-							icon,
-							size,
-							color,
-							class,
-							click,
-							enable_pulse,
-							fill,
-						} = props;
-						Icon(cx, IconProps {
-							icon: icon.clone(),
-							size: size.clone(),
-							color: color.clone(),
-							class: class.clone(),
-							click: click.take(),
-							enable_pulse: enable_pulse.clone(),
-							fill: fill.clone(),
-						}).into_view(cx)
-					} else {
-						().into_view(cx)
-					}})
-				},
-			}}
+			{
+				start_icon
+					.with(|props|
+						props
+							.as_ref()
+							.map(|props|
+								IconProps {
+									icon: props.icon,
+									size: props.size,
+									color: props.color,
+									class: props.class.clone(),
+									click: props.click.clone(),
+									enable_pulse: props.enable_pulse,
+									fill: props.fill,
+								}
+							)
+					)
+					.into_view(cx)
+			}
 			{move || start_text.get()}
 			{
 				match value {
@@ -133,8 +108,8 @@ pub fn Input(
 								disabled={move || disabled.get()}
 								placeholder={move || placeholder.get()}
 								on:input=on_input
-								value=value
-								type_=move || type_.get() />
+								value=move || value.clone()
+								type=move || type_.get() />
 						}
 					}
 					MaybeSignal::Dynamic(value) => {
@@ -149,13 +124,31 @@ pub fn Input(
 								prop:value={move || {
 									JsValue::from_str(value.get().as_str())
 								}}
-								type_=move || type_.get() />
+								type=move || type_.get() />
 						}
 					}
 				}
 			}
 			{move || end_text.get()}
-			{move || end_icon.with(|props| props.map(|icon| Icon(cx, icon)))}
+			{
+				end_icon
+					.with(|props|
+						props
+							.as_ref()
+							.map(|props|
+								IconProps {
+									icon: props.icon,
+									size: props.size,
+									color: props.color,
+									class: props.class.clone(),
+									click: props.click.clone(),
+									enable_pulse: props.enable_pulse,
+									fill: props.fill,
+								}
+							)
+					)
+					.into_view(cx)
+			}
 		</div>
 	}
 }
