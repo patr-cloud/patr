@@ -27,7 +27,8 @@ pub(super) async fn execute(
 		first_name: "Test".to_string(),
 		last_name: "User".to_string(),
 		username: "testuser".to_string(),
-	}.into_formatted();
+	}
+	.into_formatted();
 	write!(writer, "{}", table)?;
 	todo!()
 }

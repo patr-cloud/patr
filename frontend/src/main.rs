@@ -1,8 +1,21 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
+#![cfg_attr(debug_assertions, allow(dead_code, unused_variables))]
+#![feature(fn_traits, unboxed_closures)]
 
 //! Main dashboard console for Patr
 
+/// Prelude module. Used to re-export commonly used items.
+pub mod prelude {
+	/// The global Portal ID for creating any portals
+	pub struct PortalId;
+
+	pub use leptos::*;
+
+	pub use crate::{components::*, pages::*, utils::*};
+}
+
+use leptos_declarative::prelude::*;
 use prelude::*;
 
 mod app;
@@ -10,7 +23,6 @@ mod components;
 mod pages;
 mod utils;
 
-pub use app::prelude;
 use app::App;
 use wasm_bindgen::JsCast;
 
@@ -18,13 +30,17 @@ use wasm_bindgen::JsCast;
 /// Is only used when running the application directly.
 /// If the application is used as a library, this function is not called.
 pub fn main() {
+	wasm_logger::init(wasm_logger::Config::default());
+
 	let root_element = document()
 		.get_element_by_id("root")
 		.expect("unable to find root element");
 	mount_to(root_element.unchecked_into(), |cx| {
-		view! {
-			cx,
-			<App />
+		view! { cx,
+			<PortalProvider>
+				<App/>
+				<PortalOutput id={PortalId}/>
+			</PortalProvider>
 		}
 	});
 }

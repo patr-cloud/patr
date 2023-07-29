@@ -2,11 +2,7 @@ use std::io::Write;
 
 use clap::Subcommand;
 
-use self::{
-	create::CreateArgs,
-	rename::RenameArgs,
-	switch::SwitchArgs,
-};
+use self::{create::CreateArgs, rename::RenameArgs, switch::SwitchArgs};
 use crate::commands::{CommandExecutor, GlobalArgs};
 
 mod create;

@@ -7,9 +7,9 @@ use super::GlobalArgs;
 /// The arguments that can be passed to the create workspace command.
 #[derive(Debug, Clone, Args)]
 pub struct CreateArgs {
-    /// Name of the workspace to be created
+	/// Name of the workspace to be created
 	#[arg(short = 'n', long = "name")]
-    pub name: String,
+	pub name: String,
 }
 
 pub(super) async fn execute(
