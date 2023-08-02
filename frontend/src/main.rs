@@ -1,7 +1,14 @@
 #![forbid(unsafe_code)]
-#![warn(missing_docs)]
-#![cfg_attr(debug_assertions, allow(dead_code, unused_variables))]
-#![feature(fn_traits, unboxed_closures)]
+#![warn(missing_docs, clippy::missing_docs_in_private_items)]
+#![cfg_attr(
+	debug_assertions,
+	allow(
+		dead_code,
+		unused_variables,
+		missing_docs,
+		clippy::missing_docs_in_private_items
+	)
+)]
 
 //! Main dashboard console for Patr
 
@@ -31,6 +38,10 @@ use wasm_bindgen::JsCast;
 /// If the application is used as a library, this function is not called.
 pub fn main() {
 	wasm_logger::init(wasm_logger::Config::default());
+
+	if cfg!(debug_assertions) {
+		console_error_panic_hook::set_once();
+	}
 
 	let root_element = document()
 		.get_element_by_id("root")

@@ -1,0 +1,142 @@
+version: '3'
+
+networks:
+  vpc:
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Overrides default command so things don't shut down after the process ends.
+    command: sudo /bin/dumb-init /runc.sh
+    privileged: true
+    user: vscode
+    environment:
+      - PGHOST=postgres
+      - PGUSER=postgres
+      - PG_PASSWORD=postgres
+    expose:
+      - 3000
+    volumes:
+      - ..:/workspace:cached
+      - /var/run/docker.sock:/var/run/docker-host.sock
+      - ./volume/data/cargo:/home/vscode/.cargo-volume
+      - ${HOME}/.bash_history:/home/vscode/.bash_history
+      - ./volume/data/dockerd:/var/lib/docker
+      - ${HOME}/.netrc:/home/vscode/.netrc
+    depends_on:
+      - reverseProxy
+      - postgres
+      - rabbitmq
+      - redis
+      - registry
+    hostname: backend
+    networks:
+      vpc:
+        aliases:
+          - backend
+
+  reverseProxy:
+    image: nginx:latest
+    restart: unless-stopped
+    expose:
+      - 80
+      - 443
+    volumes:
+      - ./volume/config/nginx-certs:/etc/volume/certs
+      - ./config/nginx:/etc/nginx/conf.d
+    hostname: nginx
+    networks:
+      vpc:
+        aliases:
+          - api.patr.cloud
+          - registry.patr.cloud
+
+  postgres:
+    image: postgis/postgis:13-master
+    restart: unless-stopped
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=api
+      - PGDATA=/var/lib/postgresql/data
+    expose:
+      - 5432
+    volumes:
+      - ./volume/data/postgres:/var/lib/postgresql/data
+    hostname: postgres
+    networks:
+      vpc:
+        aliases:
+          - postgres
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: unless-stopped
+    environment:
+      - RABBITMQ_DEFAULT_USER=rabbitmq
+      - RABBITMQ_DEFAULT_PASS=rabbitmq
+    expose:
+      - 5672
+      - 15672
+    hostname: rabbitmq
+    networks:
+      vpc:
+        aliases:
+          - rabbitmq
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    expose:
+      - 6379
+    hostname: redis
+    networks:
+      vpc:
+        aliases:
+          - redis
+
+  registry:
+    image: registry:2
+    restart: always
+    command: /scripts/registry-runner.sh
+    environment:
+      - REGISTRY_VERSION=0.1
+      - REGISTRY_LOG_FORMATTER=text
+      - REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=redis
+      - REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/data
+      - REGISTRY_STORAGE_DELETE_ENABLED=true
+      - REGISTRY_HTTP_ADDR="0.0.0.0:5000"
+      - REGISTRY_HTTP_SECRET="keyboard cat"
+      - REGISTRY_REDIS_ADDR="redis:6379"
+      - REGISTRY_REDIS_DB=2
+      - REGISTRY_REDIS_POOL_MAXIDLE=16
+      - REGISTRY_REDIS_POOL_MAXACTIVE=64
+      - REGISTRY_REDIS_POOL_IDLETIMEOUT=300s
+      - REGISTRY_AUTH_TOKEN_REALM=https://api.patr.cloud/auth/docker-registry-token
+      - REGISTRY_AUTH_TOKEN_SERVICE="Patr registry service"
+      - REGISTRY_AUTH_TOKEN_ISSUER="api.patr.cloud"
+      - REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE=/certs/ecdsa.pubkey.crt
+      - REGISTRY_NOTIFICATIONS_ENDPOINTS_EVENTS_INCLUDEREFERENCES=true
+      - |-
+        REGISTRY_NOTIFICATIONS_ENDPOINTS=- name: api
+          url: https://api.patr.cloud/webhook/docker-registry/notification
+          headers:
+            Authorization: [authkey123456]
+          timeout: 30m
+          threshold: 5
+          backoff: 1m        
+    expose:
+      - 5000
+    volumes:
+      - ./volume/data/docker-registry:/data
+      - ./volume/config/docker-registry:/certs
+      - ./volume/config/nginx-certs:/patr-ca-certs
+      - ./scripts/registry-runner.sh:/scripts/registry-runner.sh
+    depends_on:
+      - redis
+    hostname: redis
+    networks:
+      vpc:
+        aliases:
+          - registry

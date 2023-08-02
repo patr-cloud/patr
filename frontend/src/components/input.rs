@@ -16,13 +16,13 @@ pub fn Input(
 	placeholder: MaybeSignal<String>,
 	/// The type of input
 	#[prop(into, default = "text".into())]
-	type_: MaybeSignal<String>,
+	r#type: MaybeSignal<String>,
 	/// Whether the input is disabled.
 	#[prop(into, default = false.into())]
 	disabled: MaybeSignal<bool>,
 	/// The ref to forward to the input
 	#[prop(into, optional)]
-	ref_: Option<NodeRef<html::Input>>,
+	r#ref: Option<NodeRef<html::Input>>,
 	/// The start icon, if any.
 	#[prop(into, optional)]
 	start_icon: MaybeSignal<Option<IconProps>>,
@@ -51,7 +51,7 @@ pub fn Input(
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
 ) -> impl IntoView {
-	let node_ref = ref_.unwrap_or_else(|| create_node_ref::<html::Input>(cx));
+	let node_ref = r#ref.unwrap_or_else(|| create_node_ref::<html::Input>(cx));
 
 	let (input_value, set_input_value) = create_signal(cx, "test".to_string());
 
@@ -109,7 +109,7 @@ pub fn Input(
 								placeholder={move || placeholder.get()}
 								on:input=on_input
 								value=move || value.clone()
-								type=move || type_.get() />
+								type=move || r#type.get() />
 						}
 					}
 					MaybeSignal::Dynamic(value) => {
@@ -124,7 +124,7 @@ pub fn Input(
 								prop:value={move || {
 									JsValue::from_str(value.get().as_str())
 								}}
-								type=move || type_.get() />
+								type=move || r#type.get() />
 						}
 					}
 				}

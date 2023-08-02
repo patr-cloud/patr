@@ -14,11 +14,11 @@ path = "src/main.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.72"
-async-trait = "0.1.71"
+anyhow = "1"
+async-trait = "0.1"
 clap = { version = "4", features = ["derive"] }
 monostate = "0.1"
 open = "5"
 serde = { version = "1", features = ["derive"] }
-tabled = "0.12"
+tabled = "0.13"
 tokio = { workspace = true }

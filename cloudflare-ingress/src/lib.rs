@@ -132,6 +132,18 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 			for file_to_try in [
 				format!("{}/{}/{}", static_site_id, upload_id, requested_path),
 				format!(
+					"{}/{}/{}.html",
+					static_site_id, upload_id, requested_path
+				),
+				format!(
+					"{}/{}/{}.htm",
+					static_site_id, upload_id, requested_path
+				),
+				format!(
+					"{}/{}/{}.shtml",
+					static_site_id, upload_id, requested_path
+				),
+				format!(
 					"{}/{}/{}/index.html",
 					static_site_id, upload_id, requested_path
 				),
@@ -153,13 +165,12 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 					.map(|(_, ext)| ext)
 					.unwrap_or_default();
 
-				if let "html" | "htm" | "shtml" = file_extension {
-					// /contacts.html will be redirected to /contacts
+				if let Some(stripped) = url.path().strip_suffix("/index.html") {
+					// /contacts/index.html will be redirected to /contacts/
 					let mut response = Response::redirect({
+						let new_path = format!("{}/", stripped);
 						let mut url = url;
 
-						let new_path =
-							url.path().trim_end_matches(".html").to_string();
 						url.set_path(&new_path);
 
 						url
@@ -174,12 +185,17 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 					return Ok(response);
 				}
 
-				if let Some(stripped) = url.path().strip_suffix("/index.html") {
-					// /contacts/index.html will be redirected to /contacts/
+				if let "html" | "htm" | "shtml" = file_extension {
+					// /contacts.html will be redirected to /contacts
 					let mut response = Response::redirect({
-						let new_path = format!("{}/", stripped);
 						let mut url = url;
 
+						let new_path = url
+							.path()
+							.trim_end_matches(".html")
+							.trim_end_matches(".htm")
+							.trim_end_matches(".shtml")
+							.to_string();
 						url.set_path(&new_path);
 
 						url

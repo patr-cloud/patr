@@ -8,6 +8,7 @@ mod portal;
 mod spinner;
 mod tooltip;
 mod tooltip_container;
+mod otp_input;
 
 pub use self::{
 	alert::*,
@@ -20,4 +21,5 @@ pub use self::{
 	spinner::*,
 	tooltip::*,
 	tooltip_container::*,
+	otp_input::*,
 };
