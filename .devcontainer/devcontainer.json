@@ -1,0 +1,35 @@
+{
+	"dockerComposeFile": "docker-compose.yml",
+	"name": "Patr API",
+	"service": "app",
+	"workspaceFolder": "/workspace",
+	"customizations": {
+		"vscode": {
+			"settings": {
+				// runs rust analyzer in different folder so that cargo build won't wait to start compiling
+				"rust-analyzer.checkOnSave.extraArgs": [
+					"--target-dir=./.devcontainer/volume/data/rust-analyzer"
+				],
+				"files.watcherExclude": {
+					"**/target/**": true,
+					"./devcontainer/volume/**": true
+				}
+			},
+			"extensions": [
+				"vadimcn.vscode-lldb",
+				"rust-lang.rust-analyzer",
+				"tamasfe.even-better-toml",
+				"serayuzgur.crates",
+				"usernamehw.errorlens",
+				"eamodio.gitlens",
+				"patr-cloud.patr-theme-live",
+				"be5invis.toml"
+			]
+		}
+	},
+	"shutdownAction": "stopCompose",
+	"forwardPorts": [],
+	"postCreateCommand": "./.devcontainer/scripts/post-init.sh",
+	"initializeCommand": "./.devcontainer/scripts/pre-init.sh",
+	"remoteUser": "vscode"
+}

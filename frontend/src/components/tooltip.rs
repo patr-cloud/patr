@@ -101,7 +101,7 @@ pub fn Tooltip(
 	});
 
 	let get_tooltip_dimensions = move || {
-		if let Some(ref_) = tooltip_ref.get() {
+		if let Some(r#ref) = tooltip_ref.get() {
 			let root_font_size_in_px = window()
 				.get_computed_style(&document().body().unwrap())
 				.unwrap()
@@ -109,12 +109,12 @@ pub fn Tooltip(
 			if let Some(root_font_size_in_px) = root_font_size_in_px {
 				let root_font_size =
 					root_font_size_in_px.parse::<f64>().unwrap();
-				let bounding_rect = ref_.get_bounding_client_rect();
+				let bounding_rect = r#ref.get_bounding_client_rect();
 
 				let parent_left = bounding_rect.left();
 				let parent_top = bounding_rect.top();
-				let parent_width = ref_.offset_width() as f64;
-				let parent_height = ref_.offset_height() as f64;
+				let parent_width = r#ref.offset_width() as f64;
+				let parent_height = r#ref.offset_height() as f64;
 
 				let tooltip_width = 16f64 * root_font_size;
 				(

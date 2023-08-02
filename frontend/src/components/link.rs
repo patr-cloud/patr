@@ -1,3 +1,5 @@
+use leptos_router::use_navigate;
+
 use crate::prelude::*;
 
 /// The type of link to use. A contained link is a button with a background,
@@ -18,7 +20,7 @@ pub fn Link(
 	cx: Scope,
 	/// The target of the link. TODO make this an enum
 	#[prop(into, optional)]
-	to: MaybeSignal<String>,
+	to: MaybeSignal<AppRoute>,
 	/// The color of the link
 	#[prop(into, optional)]
 	color: MaybeSignal<PatrColor>,
@@ -31,7 +33,7 @@ pub fn Link(
 	/// The type of the button. This is directly passed to the `type` attribute
 	/// of the button.
 	#[prop(into, optional, default = "button".into())]
-	type_: MaybeSignal<String>,
+	r#type: MaybeSignal<String>,
 	/// Additional class names to apply to the link, if any
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
@@ -41,14 +43,17 @@ pub fn Link(
 	/// The children of the link, if any
 	children: Children,
 ) -> impl IntoView {
-	// let navigate = use_navigate(cx);
+	let navigate = use_navigate(cx);
 
 	view! { cx,
 		<button
-			type_={move || type_.get()}
+			type={move || r#type.get()}
 			on:click={move |e| {
 				if !to.get().is_empty() {
-					// _ = navigate(to.get().as_str(), Default::default());
+					_ = navigate(
+						to.get().to_string().as_str(),
+						Default::default()
+					);
 				}
 				if let Some(click) = &click {
 					click(e);

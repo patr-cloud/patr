@@ -1,2 +1,5 @@
 [registries.crates-io]
 protocol = 'sparse'
+
+[build]
+rustflags = "--cfg=web_sys_unstable_apis"

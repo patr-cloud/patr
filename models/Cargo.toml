@@ -1,11 +1,36 @@
 [package]
 name = "models"
-version.workspace = true
-rust-version.workspace = true
-description.workspace = true
-authors.workspace = true
-edition.workspace = true
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors.workspace = true
+description.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [dependencies]
+axum-extra = { version = "0.7", features = ["typed-routing"] }
+hex = "0.4"
+macros = { workspace = true }
+serde = { version = "1", features = ["derive"] }
+serde_test = "1"
+tower = { version = "0.4", features = ["tracing"] }
+typed-headers = "0.2"
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+axum = { version = "0.6", features = [
+    "form",
+    "json",
+    "query",
+    "tracing",
+], default-features = false }
+reqwest = { version = "0.11", features = ["rustls-tls"] }
+uuid = { version = "1", features = ["v4", "js"] }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+axum = { version = "0.6", features = ["ws", "tracing"] }
+axum-typed-websockets = { version = "0.5" }
+reqwest = { version = "0.11", features = [
+    "json",
+    "rustls-tls",
+], default-features = false }
+uuid = { version = "1", features = ["v4"] }

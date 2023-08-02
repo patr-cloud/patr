@@ -1,7 +1,9 @@
 {
-    "rust-analyzer.check.command": "clippy",
     "rust-analyzer.rustfmt.extraArgs": [
         "+nightly"
+    ],
+    "rust-analyzer.check.extraArgs": [
+        "--target-dir=./target/rust-analyzer"
     ],
     "editor.rulers": [
         80
