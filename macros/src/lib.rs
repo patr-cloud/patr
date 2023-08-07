@@ -1,8 +1,7 @@
-
-
 use proc_macro::TokenStream;
 
-mod api_endpoint;
+mod declare_api_endpoint;
+mod has_headers;
 
 #[proc_macro]
 pub fn classes(input: TokenStream) -> TokenStream {
@@ -10,6 +9,11 @@ pub fn classes(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-pub fn api_endpoint(input: TokenStream) -> TokenStream {
-	api_endpoint::parse(input)
+pub fn declare_api_endpoint(input: TokenStream) -> TokenStream {
+	declare_api_endpoint::parse(input)
+}
+
+#[proc_macro_derive(HasHeaders)]
+pub fn has_headers(input: TokenStream) -> TokenStream {
+	has_headers::parse(input)
 }

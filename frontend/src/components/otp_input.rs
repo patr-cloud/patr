@@ -8,12 +8,12 @@ use crate::prelude::*;
 pub fn OtpInput(
 	/// The scope of the component
 	cx: Scope,
-	/// The ID of the input.
+	/// ID of the input
 	#[prop(into, optional)]
 	id: MaybeSignal<String>,
-	/// The ref to forward to the input
-	#[prop(into, optional)]
-	r#ref: Option<NodeRef<html::AnyElement>>,
+	/// The ref of the input
+	#[prop(optional)]
+	r#ref: Option<NodeRef<html::Input>>,
 	/// The default value of the OTP
 	#[prop(into, optional)]
 	otp: String,
@@ -26,13 +26,19 @@ pub fn OtpInput(
 	/// The color of the input
 	#[prop(into, optional)]
 	variant: MaybeSignal<SecondaryColorVariant>,
+	/// If the component should automatically call the `on_submit` function
+	/// when the last digit is typed
+	#[prop(into, optional, default = false)]
+	auto_submit: bool,
 	/// The submit handler for the input
 	#[prop(optional)]
-	on_change: Option<Rc<dyn Fn(String)>>,
+	on_submit: Option<Rc<dyn Fn(String)>>,
 	/// Additional class names to apply to the input, if any
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
 ) -> impl IntoView {
+	let node_ref = r#ref.unwrap_or_else(|| create_node_ref(cx));
+
 	let refs = store_value(
 		cx,
 		(0..length)
@@ -63,9 +69,20 @@ pub fn OtpInput(
 		});
 	});
 
+	let value = MaybeSignal::derive(cx, move || {
+		refs.with_value(|refs| {
+			refs.iter()
+				.try_fold(String::new(), |mut acc, (_, _, signal)| {
+					acc.push_str(&signal.get()?.to_string());
+					Some(acc)
+				})
+		})
+		.unwrap_or_default()
+	});
+
 	let handle_key_down = move |index: usize,
 	                            signal: RwSignal<Option<u8>>,
-	                            on_change: Option<Rc<dyn Fn(String)>>,
+	                            on_submit: Option<Rc<dyn Fn(String)>>,
 	                            e: ev::KeyboardEvent| {
 		let refs = refs.clone();
 		match e.code().as_str() {
@@ -99,8 +116,8 @@ pub fn OtpInput(
 						},
 					)
 				});
-				if let Some((value, on_change)) = value.zip(on_change) {
-					on_change(value);
+				if let Some((value, on_submit)) = value.zip(on_submit) {
+					on_submit(value);
 				}
 			}
 			digit
@@ -125,8 +142,10 @@ pub fn OtpInput(
 					)
 				});
 
-				if let Some((value, on_change)) = value.zip(on_change) {
-					on_change(value);
+				if auto_submit {
+					if let Some((value, on_submit)) = value.zip(on_submit) {
+						on_submit(value);
+					}
 				}
 			}
 			_ => (),
@@ -163,6 +182,13 @@ pub fn OtpInput(
 		<div
 			class=move || format!("full-width fr-ct-ct gap-xs {}", class.get())
 		>
+		<input
+			id=move || id.get()
+			ref=node_ref
+			prop:value=value.get()
+			type="text"
+			style="display: none;"
+			disabled=true />
 		{
 			refs
 				.with_value(|items| {
@@ -170,7 +196,7 @@ pub fn OtpInput(
 						.iter()
 						.copied()
 						.map(|(index, node_ref, signal)| {
-							let on_change = on_change.clone();
+							let on_submit = on_submit.clone();
 							view! { cx,
 								<input
 									ref=node_ref
@@ -179,7 +205,7 @@ pub fn OtpInput(
 										handle_key_down(
 											index,
 											signal,
-											on_change.clone(),
+											on_submit.clone(),
 											e
 										);
 									}

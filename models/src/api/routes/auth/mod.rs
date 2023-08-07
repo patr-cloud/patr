@@ -7,7 +7,7 @@ mod join;
 mod list_recovery_options;
 mod login;
 mod logout;
-mod oauth;
+// mod oauth;
 mod resend_otp;
 mod reset_password;
 mod validate_coupon;
@@ -22,7 +22,7 @@ pub use self::{
 	list_recovery_options::*,
 	login::*,
 	logout::*,
-	oauth::*,
+	// oauth::*,
 	resend_otp::*,
 	reset_password::*,
 	validate_coupon::*,

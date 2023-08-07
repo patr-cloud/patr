@@ -38,8 +38,8 @@ pub fn Link(
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
 	/// click handler
-	#[prop(into, optional)]
-	click: Option<Box<dyn Fn(ev::MouseEvent)>>,
+	#[prop(optional)]
+	on_click: Option<Box<dyn Fn(ev::MouseEvent)>>,
 	/// The children of the link, if any
 	children: Children,
 ) -> impl IntoView {
@@ -55,7 +55,7 @@ pub fn Link(
 						Default::default()
 					);
 				}
-				if let Some(click) = &click {
+				if let Some(click) = &on_click {
 					click(e);
 				}
 			}}

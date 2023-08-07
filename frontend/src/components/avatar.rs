@@ -61,11 +61,11 @@ pub fn Avatar(
 				.some_if_not_empty()
 				.map(|first_name| {
 					view! { cx,
-						first_name
+						{first_name
 							.chars()
 							.next()
 							.unwrap_or_default()
-							.to_ascii_uppercase()
+							.to_ascii_uppercase()}
 					}
 				})}
 			{move || last_name
@@ -73,11 +73,11 @@ pub fn Avatar(
 				.some_if_not_empty()
 				.map(|last_name| {
 					view! { cx,
-						last_name
+						{last_name
 							.chars()
 							.next()
 							.unwrap_or_default()
-							.to_ascii_uppercase()
+							.to_ascii_uppercase()}
 					}
 				})}
 		</div>

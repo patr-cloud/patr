@@ -2,7 +2,7 @@ use axum::{
 	response::{IntoResponse, Response},
 	Json,
 };
-use serde::Serialize;
+use serde::{de::DeserializeOwned, Serialize};
 
 pub trait IntoAxumResponse {
 	fn into_response(self) -> Response;
@@ -10,10 +10,10 @@ pub trait IntoAxumResponse {
 
 impl<T> IntoAxumResponse for T
 where
-	T: Serialize,
+	T: Serialize + DeserializeOwned,
 {
 	fn into_response(self) -> Response {
-        Json(self).into_response()
+		Json(self).into_response()
 	}
 }
 

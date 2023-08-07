@@ -905,9 +905,9 @@ pub fn Icon(
 	enable_pulse: MaybeSignal<bool>,
 	/// click handler
 	#[prop(optional)]
-	click: Option<Rc<dyn Fn(ev::MouseEvent)>>,
+	on_click: Option<Rc<dyn Fn(ev::MouseEvent)>>,
 ) -> impl IntoView {
-	let is_clickable = click.is_some();
+	let is_clickable = on_click.is_some();
 
 	view! { cx,
 		<svg
@@ -929,7 +929,7 @@ pub fn Icon(
 				class.get()
 			)
 			on:click=move |ev| {
-				if let Some(click) = click.clone() {
+				if let Some(click) = on_click.clone() {
 					click(ev)
 				}
 			}
