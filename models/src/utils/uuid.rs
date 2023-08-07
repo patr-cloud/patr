@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct Uuid(uuid::Uuid);
 
 impl Uuid {
@@ -53,7 +53,8 @@ impl<'de> Deserialize<'de> for Uuid {
 	{
 		let mut buffer = [0u8; 16];
 		let string: &str = Deserialize::deserialize(deserializer)?;
-		hex::decode_to_slice(string, &mut buffer).map_err(Error::custom)?;
+		hex::decode_to_slice(string, &mut buffer)
+			.map_err(Error::custom)?;
 		Ok(Self(uuid::Uuid::from_bytes(buffer)))
 	}
 }

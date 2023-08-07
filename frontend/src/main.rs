@@ -1,14 +1,15 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs, clippy::missing_docs_in_private_items)]
-#![cfg_attr(
-	debug_assertions,
-	allow(
-		dead_code,
-		unused_variables,
-		missing_docs,
-		clippy::missing_docs_in_private_items
-	)
-)]
+#![feature(try_blocks, try_trait_v2)]
+// #![cfg_attr(
+// 	debug_assertions,
+// 	allow(
+// 		dead_code,
+// 		unused_variables,
+// 		missing_docs,
+// 		clippy::missing_docs_in_private_items
+// 	)
+// )]
 
 //! Main dashboard console for Patr
 

@@ -1,12 +1,22 @@
-use leptos_router::{Outlet, ProtectedRoute, Redirect, Route, Router, Routes};
-use leptos_use::storage::use_storage;
+use leptos_router::{
+	use_location,
+	Outlet,
+	ProtectedRoute,
+	Redirect,
+	Route,
+	Router,
+	Routes,
+};
+use leptos_use::storage::use_local_storage;
 
 use crate::prelude::*;
 
 #[component]
 pub fn App(cx: Scope) -> impl IntoView {
 	let (state, set_state, _) =
-		use_storage(cx, "app-storage", AppStorage::default());
+		use_local_storage(cx, "app-storage", AppStorage::default());
+	provide_context(cx, state);
+	provide_context(cx, set_state);
 
 	view! { cx,
 		<Router>
@@ -16,7 +26,7 @@ pub fn App(cx: Scope) -> impl IntoView {
 					path=AppRoute::Empty
 					// If not logged out (as in if logged in), redirect to home
 					redirect_path=AppRoute::LoggedInRoutes(LoggedInRoutes::Home)
-					condition=move |_| !state.get().is_logged_in()
+					condition=move |_| !is_logged_in(cx)
 					view=|cx| view! {cx,
 						<div class="fc-ct-ct bg-page bg-onboard">
 							<Outlet />
@@ -26,41 +36,59 @@ pub fn App(cx: Scope) -> impl IntoView {
 					<Route path=LoggedOutRoutes::Login view=Login />
 					<Route path=LoggedOutRoutes::SignUp view=SignUp />
 					<Route path="*" view=|cx| {
+						let location = use_location(cx);
+						log::info!("location: {}", location.pathname.get());
+						let to = if location.search.get().is_empty() {
+							format!(
+								"{}{}",
+								location.pathname.get(),
+								location.hash.get(),
+							)
+						} else {
+							format!(
+								"{}{}{}",
+								location.pathname.get(),
+								location.search.get(),
+								location.hash.get()
+							)
+						};
+						let path = format!(
+							"{}?{}",
+							LoggedOutRoutes::Login,
+							serde_urlencoded::to_string(&[("to", to)]).unwrap()
+						);
 						view! { cx,
-							<Redirect path=LoggedOutRoutes::Login />
+							<Redirect path=path />
 						}
 					} />
 				</ProtectedRoute>
-			// {move || {
-			// 	if state.get().is_logged_in() {
-			// 		view! { cx,
-			// 			<Route path="" view=move |_| {
-			// 				view! { cx,
-			// 					<Redirect path="logout" />
-			// 				}
-			// 			} />
-			// 			<Route path="logout" view=move |_| {
-			// 				view! { cx,
-			// 					<Redirect path="home" />
-			// 				}
-			// 			} />
-			// 		}
-			// 	} else {
-			// 		log::error!("App state out: {:?}", state.get());
-			// 		view! { cx,
-			// 		}
-			// 	}
-			// }}
+
+				// Logged in routes
+				<ProtectedRoute
+					path=AppRoute::Empty
+					// If logged out, redirect to login
+					redirect_path=AppRoute::LoggedOutRoutes(LoggedOutRoutes::Login)
+					condition=move |_| is_logged_in(cx)
+					view=|cx| view! {cx,
+						<PageContainer>
+							<Outlet />
+						</PageContainer>
+					}
+					>
+					<Route path=LoggedInRoutes::Home view=|_| () />
+
+					<Route path="*" view=|cx| {
+						view! { cx,
+							<Redirect path=LoggedInRoutes::Home />
+						}
+					} />
+				</ProtectedRoute>
 			</Routes>
 		</Router>
 	}
 }
 
 fn is_logged_in(cx: Scope) -> bool {
-	let state = expect_context::<AppStorage>(cx);
-	state.is_logged_in()
-}
-
-fn is_logged_out(cx: Scope) -> bool {
-	!is_logged_in(cx)
+	let state = expect_context::<Signal<AppStorage>>(cx);
+	state.get().is_logged_in()
 }

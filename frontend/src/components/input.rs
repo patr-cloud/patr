@@ -42,7 +42,7 @@ pub fn Input(
 	#[prop(into, optional)]
 	variant: MaybeSignal<SecondaryColorVariant>,
 	/// Input event handler, if any
-	#[prop(into, optional, default = Box::new(|_| ()))]
+	#[prop(optional, default = Box::new(|_| ()))]
 	on_input: Box<dyn FnMut(ev::Event)>,
 	/// The initial value of the input.
 	#[prop(into, optional)]
@@ -52,8 +52,6 @@ pub fn Input(
 	class: MaybeSignal<String>,
 ) -> impl IntoView {
 	let node_ref = r#ref.unwrap_or_else(|| create_node_ref::<html::Input>(cx));
-
-	let (input_value, set_input_value) = create_signal(cx, "test".to_string());
 
 	view! { cx,
 		<div class=move || format!(
@@ -88,7 +86,7 @@ pub fn Input(
 									size: props.size,
 									color: props.color,
 									class: props.class.clone(),
-									click: props.click.clone(),
+									on_click: props.on_click.clone(),
 									enable_pulse: props.enable_pulse,
 									fill: props.fill,
 								}
@@ -141,7 +139,7 @@ pub fn Input(
 									size: props.size,
 									color: props.color,
 									class: props.class.clone(),
-									click: props.click.clone(),
+									on_click: props.on_click.clone(),
 									enable_pulse: props.enable_pulse,
 									fill: props.fill,
 								}

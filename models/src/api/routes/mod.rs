@@ -1,4 +1,4 @@
-// pub mod auth;
+pub mod auth;
 // pub mod ci;
 // pub mod survey;
 // pub mod user;

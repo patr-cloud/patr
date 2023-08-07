@@ -28,7 +28,7 @@ pub struct GithubAuthorizeRequest {}
 impl ApiRequest for GithubAuthorizeRequest {
 	const IS_PROTECTED: bool = false;
 	const METHOD: Method = Method::POST;
-	
+
 	type RequestPath = GithubAuthorizePath;
 	type RequestQuery = ();
 	type RequestBody = ();

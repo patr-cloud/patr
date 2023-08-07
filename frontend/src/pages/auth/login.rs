@@ -1,5 +1,11 @@
 use std::rc::Rc;
 
+use models::{
+	api::auth::{LoginRequest, LoginResponse},
+	utils::{ApiErrorResponse, ApiRequest, ApiResponse},
+	ErrorType,
+};
+
 use crate::prelude::*;
 
 /// The login page
@@ -8,39 +14,137 @@ pub fn Login(
 	/// The scope of the component
 	cx: Scope,
 ) -> impl IntoView {
-	let (login_loading, set_login_loading) = create_signal(cx, false);
+	let set_state = expect_context::<WriteSignal<AppStorage>>(cx);
+
 	let (show_password, set_show_password) = create_signal(cx, false);
 	let (show_create_account_button, set_show_create_account_button) =
 		create_signal(cx, false);
 
 	let (show_otp_input, set_show_otp_input) = create_signal(cx, false);
 
-	set_interval(move || {
-		set_show_otp_input.update(|value| *value = !*value);
-	}, std::time::Duration::from_secs(2));
-
 	let (username_error, set_username_error) =
 		create_signal(cx, String::from(""));
 	let (password_error, set_password_error) =
 		create_signal(cx, String::from(""));
-	let (mfa_otp, set_mfa_otp) = create_signal(cx, String::from(""));
 	let (mfa_otp_error, set_mfa_otp_error) =
 		create_signal(cx, String::from(""));
 
+	let handle_errors = move |error, message| match error {
+		ErrorType::MfaRequired => {
+			set_show_otp_input.set(true);
+		}
+		ErrorType::MfaOtpInvalid => {
+			set_mfa_otp_error.set(message);
+		}
+		ErrorType::InvalidPassword => {
+			set_password_error.set(message);
+		}
+		ErrorType::UserNotFound => {
+			set_username_error.set(error.message().into());
+			set_show_create_account_button.set(true);
+		}
+		_ => {
+			set_password_error.set(message);
+		}
+	};
+
+	let login_action = create_action(
+		cx,
+		move |(username, password, mfa_otp): &(
+			String,
+			String,
+			Option<String>,
+		)| {
+			let user_id = username.clone();
+			let password = password.clone();
+			let mfa_otp = mfa_otp.clone();
+			async move {
+				let result = make_request(ApiRequest::<LoginRequest>::new(
+					(),
+					(),
+					LoginRequest {
+						user_id,
+						password,
+						mfa_otp,
+					},
+				))
+				.await;
+				let LoginResponse {
+					access_token,
+					refresh_token,
+					login_id,
+				} = match result {
+					ApiResponse::Success {
+						status_code: _,
+						headers: (),
+						body,
+					} => body,
+					ApiResponse::Error {
+						status_code: _,
+						body:
+							ApiErrorResponse {
+								success: _,
+								error,
+								message,
+							},
+					} => {
+						handle_errors(error, message);
+						return;
+					}
+				};
+
+				set_state.set(AppStorage::LoggedIn {
+					user_id: Default::default(),
+					access_token,
+					refresh_token,
+					login_id,
+					default_workspace: None,
+				});
+			}
+		},
+	);
+
+	let login_loading = login_action.pending();
+
 	let username_ref = create_node_ref(cx);
 	let password_ref = create_node_ref(cx);
+	let mfa_otp_ref = create_node_ref(cx);
 
 	let handle_login = move |e: ev::SubmitEvent| {
 		e.prevent_default();
-		let username: HtmlElement<html::Input> = username_ref.get().unwrap();
-		let username = username.value();
 
-		let password: HtmlElement<html::Input> = password_ref.get().unwrap();
-		let password = password.value();
+		let username = username_ref
+			.get()
+			.map(|input: HtmlElement<html::Input>| input.value())
+			.unwrap();
+		let password = password_ref
+			.get()
+			.map(|input: HtmlElement<html::Input>| input.value())
+			.unwrap();
 
-		let mfa_otp = mfa_otp.get();
+		let mfa_otp = mfa_otp_ref
+			.get()
+			.map(|input: HtmlElement<html::Input>| input.value());
 
-		// TODO make the http call here and set errors based on the response
+		if username.is_empty() {
+			set_username_error.set("Username / Email cannot be empty".into());
+			_ = username_ref.get().unwrap().focus();
+			return;
+		}
+
+		if password.is_empty() {
+			set_password_error.set("Password cannot be empty".into());
+			_ = password_ref.get().unwrap().focus();
+			return;
+		}
+
+		login_action.dispatch((username, password, mfa_otp));
+	};
+
+	let handle_create_new_account = move |e: ev::MouseEvent| {
+		e.prevent_default();
+		// TODO navigate to the create new account page with the username
+		// pre-filled through setting the state
 	};
 
 	view! { cx,
@@ -63,9 +167,11 @@ pub fn Login(
 				class="full-width"
 				disabled={login_loading}
 				id="username"
+				on_input=Box::new(move |_| {
+					set_username_error.update(|password| password.clear());
+				})
 				r#ref=username_ref
 				placeholder="Username/Email"
-				value="test"
 				start_icon={
 					Some(IconProps::builder()
 						.icon(IconType::User)
@@ -93,7 +199,7 @@ pub fn Login(
 						value.then(move || view! { cx,
 							<Link
 								disabled={login_loading}
-								// onClick={handleCreateNewAccount}
+								on_click=Box::new(handle_create_new_account)
 								class="ml-sm txt-underline txt-medium mt-xs"
 							>
 								Create a new account?
@@ -109,6 +215,9 @@ pub fn Login(
 				} else {
 					"password".to_owned()
 				})}
+				on_input=Box::new(move |_| {
+					set_password_error.update(|password| password.clear());
+				})
 				id="password"
 				r#ref=password_ref
 				placeholder="Password"
@@ -133,7 +242,7 @@ pub fn Login(
 							}))
 							.color(Grey)
 							.size(ExtraSmall)
-							.click(Rc::new(move |_| {
+							.on_click(Rc::new(move |_| {
 								set_show_password.update(|value| *value = !*value);
 							}))
 							.build()
@@ -163,29 +272,30 @@ pub fn Login(
 					</p>
 					<OtpInput
 						id="mfa-otp"
-						otp=mfa_otp.get_untracked()
-						on_change=Rc::new(move |otp| {
-							set_mfa_otp.update(|value| *value = otp);
+						r#ref=mfa_otp_ref
+						//TODO otp=mfa_otp.get_untracked()
+						on_submit=Rc::new(move |_| {
+							handle_login(ev::SubmitEvent::new("submit").unwrap());
 						})
 						disabled={login_loading}
 						class="mt-xl"
 						/>
-					{move || {
-						mfa_otp_error
-							.get()
-							.some_if_not_empty()
-							.map(|mfa_otp| {
-								view! {cx,
-									<Alert
-										r#type=NotificationType::Error
-										class="mt-xs"
-										message={mfa_otp}
-										/>
-								}
-							})
-					}}
 				}
 			})}
+			{move || {
+				mfa_otp_error
+					.get()
+					.some_if_not_empty()
+					.map(|mfa_otp| {
+						view! {cx,
+							<Alert
+								r#type=NotificationType::Error
+								class="mt-xs"
+								message={mfa_otp}
+								/>
+						}
+					})
+			}}
 			<div class="fr-sb-ct full-width mt-xs">
 				<Link
 					to=AppRoute::LoggedOutRoutes(LoggedOutRoutes::ForgotPassword)
