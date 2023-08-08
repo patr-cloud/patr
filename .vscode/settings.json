@@ -5,6 +5,12 @@
     "rust-analyzer.check.extraArgs": [
         "--target-dir=./target/rust-analyzer"
     ],
+    "rust-analyzer.procMacro.ignored": {
+        "leptos_macro": [
+            "component",
+            "server"
+        ]
+    },
     "editor.rulers": [
         80
     ],
