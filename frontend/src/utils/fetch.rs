@@ -78,9 +78,9 @@ where
 		},
 		Err(error) => {
 			log::error!("{}", error.to_string());
-			return ApiResponse::internal_error(
+			ApiResponse::internal_error(
 				"Internal server occured parsing response",
-			);
+			)
 		}
 	}
 }

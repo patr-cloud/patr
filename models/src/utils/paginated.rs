@@ -33,8 +33,8 @@ impl Header for TotalCountHeader {
 		&TOTAL_COUNT_HEADER_NAME
 	}
 
-	fn from_values<'a>(
-		values: &mut ValueIter<'a, HeaderValue>,
+	fn from_values(
+		values: &mut ValueIter<'_, HeaderValue>,
 	) -> Result<Option<Self>, typed_headers::Error>
 	where
 		Self: Sized,

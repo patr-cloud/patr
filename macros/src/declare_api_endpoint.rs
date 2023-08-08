@@ -38,14 +38,12 @@ impl Parse for ApiEndpoint {
 		let path_body = if input.peek(Token![,]) {
 			input.parse::<Token![,]>()?;
 			None
+		} else if input.is_empty() {
+			None
 		} else {
-			if input.is_empty() {
-				None
-			} else {
-				input.parse::<Token![,]>()?;
+			input.parse::<Token![,]>()?;
 
-				Some(input.parse()?)
-			}
+			Some(input.parse()?)
 		};
 
 		let mut is_protected = false;
