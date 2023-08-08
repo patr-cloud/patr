@@ -905,7 +905,7 @@ pub fn Icon(
 	enable_pulse: MaybeSignal<bool>,
 	/// click handler
 	#[prop(optional)]
-	on_click: Option<Rc<dyn Fn(ev::MouseEvent)>>,
+	on_click: Option<Rc<dyn Fn(&ev::MouseEvent)>>,
 ) -> impl IntoView {
 	let is_clickable = on_click.is_some();
 
@@ -930,7 +930,7 @@ pub fn Icon(
 			)
 			on:click=move |ev| {
 				if let Some(click) = on_click.clone() {
-					click(ev)
+					click(&ev)
 				}
 			}
 		>

@@ -137,7 +137,7 @@ pub fn Login(
 		login_action.dispatch((username, password, mfa_otp));
 	};
 
-	let handle_create_new_account = move |e: ev::MouseEvent| {
+	let handle_create_new_account = move |e: &ev::MouseEvent| {
 		e.prevent_default();
 		// TODO navigate to the create new account page with the username
 		// pre-filled through setting the state
@@ -195,6 +195,7 @@ pub fn Login(
 						value.then(move || view! { cx,
 							<Link
 								disabled={login_loading}
+								to=AppRoute::LoggedOutRoutes(LoggedOutRoutes::SignUp)
 								on_click=Box::new(handle_create_new_account)
 								class="ml-sm txt-underline txt-medium mt-xs"
 							>

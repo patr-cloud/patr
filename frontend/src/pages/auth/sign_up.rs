@@ -243,7 +243,7 @@ pub fn SignUp(
 		MaybeSignal::Static(500f64),
 	);
 
-	let handle_login_username = |e: ev::MouseEvent| {
+	let handle_login_username = |e: &ev::MouseEvent| {
 		e.prevent_default();
 	};
 

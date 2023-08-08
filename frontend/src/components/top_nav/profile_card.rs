@@ -5,7 +5,7 @@ pub fn ProfileCard(
 	/// The scope of the component
 	cx: Scope,
 	/// The click handler for the profile card
-	on_click: Box<dyn Fn(ev::MouseEvent)>,
+	on_click: Box<dyn Fn(&ev::MouseEvent)>,
 	/// Additional class names to apply to the profile card, if any
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,

@@ -16,7 +16,7 @@ pub enum LinkVariant {
 pub fn Link(
 	/// The scope of the component
 	cx: Scope,
-	/// The target of the link. TODO make this an enum
+	/// The target of the link.
 	#[prop(into, optional)]
 	to: MaybeSignal<AppRoute>,
 	/// The color of the link
@@ -37,7 +37,7 @@ pub fn Link(
 	class: MaybeSignal<String>,
 	/// click handler
 	#[prop(optional)]
-	on_click: Option<Box<dyn Fn(ev::MouseEvent)>>,
+	on_click: Option<Box<dyn Fn(&ev::MouseEvent)>>,
 	/// The children of the link, if any
 	children: Children,
 ) -> impl IntoView {
@@ -47,11 +47,15 @@ pub fn Link(
 		<button
 			type={move || r#type.get()}
 			on:click={move |e| {
-				if !to.get().is_empty() {
-					_ = navigate(to.get());
-				}
+				let mut navigate_page = true;
 				if let Some(click) = &on_click {
-					click(e);
+					click(&e);
+					navigate_page = !e.default_prevented();
+				}
+				if navigate_page {
+					if !to.get().is_empty() {
+						_ = navigate(to.get());
+					}
 				}
 			}}
 			disabled={move || disabled.get()}
