@@ -16,35 +16,31 @@ pub fn Login(
 ) -> impl IntoView {
 	let set_state = expect_context::<WriteSignal<AppStorage>>(cx);
 
-	let (show_password, set_show_password) = create_signal(cx, false);
-	let (show_create_account_button, set_show_create_account_button) =
-		create_signal(cx, false);
+	let show_password = create_rw_signal(cx, false);
+	let show_create_account_button = create_rw_signal(cx, false);
 
-	let (show_otp_input, set_show_otp_input) = create_signal(cx, false);
+	let show_otp_input = create_rw_signal(cx, false);
 
-	let (username_error, set_username_error) =
-		create_signal(cx, String::from(""));
-	let (password_error, set_password_error) =
-		create_signal(cx, String::from(""));
-	let (mfa_otp_error, set_mfa_otp_error) =
-		create_signal(cx, String::from(""));
+	let username_error = create_rw_signal(cx, String::from(""));
+	let password_error = create_rw_signal(cx, String::from(""));
+	let mfa_otp_error = create_rw_signal(cx, String::from(""));
 
 	let handle_errors = move |error, message| match error {
 		ErrorType::MfaRequired => {
-			set_show_otp_input.set(true);
+			show_otp_input.set(true);
 		}
 		ErrorType::MfaOtpInvalid => {
-			set_mfa_otp_error.set(message);
+			mfa_otp_error.set(message);
 		}
 		ErrorType::InvalidPassword => {
-			set_password_error.set(message);
+			password_error.set(message);
 		}
 		ErrorType::UserNotFound => {
-			set_username_error.set(error.message().into());
-			set_show_create_account_button.set(true);
+			username_error.set(error.message().into());
+			show_create_account_button.set(true);
 		}
 		_ => {
-			set_password_error.set(message);
+			password_error.set(message);
 		}
 	};
 
@@ -127,13 +123,13 @@ pub fn Login(
 			.map(|input: HtmlElement<html::Input>| input.value());
 
 		if username.is_empty() {
-			set_username_error.set("Username / Email cannot be empty".into());
+			username_error.set("Username / Email cannot be empty".into());
 			_ = username_ref.get().unwrap().focus();
 			return;
 		}
 
 		if password.is_empty() {
-			set_password_error.set("Password cannot be empty".into());
+			password_error.set("Password cannot be empty".into());
 			_ = password_ref.get().unwrap().focus();
 			return;
 		}
@@ -168,7 +164,7 @@ pub fn Login(
 				disabled={login_loading}
 				id="username"
 				on_input=Box::new(move |_| {
-					set_username_error.update(|password| password.clear());
+					username_error.update(|password| password.clear());
 				})
 				r#ref=username_ref
 				placeholder="Username/Email"
@@ -216,7 +212,7 @@ pub fn Login(
 					"password".to_owned()
 				})}
 				on_input=Box::new(move |_| {
-					set_password_error.update(|password| password.clear());
+					password_error.update(|password| password.clear());
 				})
 				id="password"
 				r#ref=password_ref
@@ -243,7 +239,7 @@ pub fn Login(
 							.color(Grey)
 							.size(ExtraSmall)
 							.on_click(Rc::new(move |_| {
-								set_show_password.update(|value| *value = !*value);
+								show_password.update(|value| *value = !*value);
 							}))
 							.build()
 					)

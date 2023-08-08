@@ -32,38 +32,32 @@ pub fn SignUp(
 	let password_ref = create_node_ref(cx);
 	let confirm_password_ref = create_node_ref(cx);
 
-	let (show_password, set_show_password) = create_signal(cx, false);
-	let (first_name_error, set_first_name_error) =
-		create_signal(cx, String::from(""));
-	let (last_name_error, set_last_name_error) =
-		create_signal(cx, String::from(""));
-	let (username_error_type, set_username_error_type) =
-		create_signal(cx, NotificationType::Error);
-	let (username_error, set_username_error) =
-		create_signal(cx, String::from(""));
-	let (email_error, set_email_error) = create_signal(cx, String::from(""));
-	let (email_error_type, set_email_error_type) =
-		create_signal(cx, NotificationType::Error);
-	let (password_error, set_password_error) =
-		create_signal(cx, String::from(""));
-	let (confirm_password_error, set_confirm_password_error) =
-		create_signal(cx, String::from(""));
-	let (show_login_username_button, set_show_login_username_button) =
-		create_signal(cx, false);
+	let show_password = create_rw_signal(cx, false);
+	let first_name_error = create_rw_signal(cx, String::from(""));
+	let last_name_error = create_rw_signal(cx, String::from(""));
+	let username_error_type = create_rw_signal(cx, NotificationType::Error);
+	let username_error = create_rw_signal(cx, String::from(""));
+	let username_verifying = create_rw_signal(cx, false);
+	let email_error = create_rw_signal(cx, String::from(""));
+	let email_error_type = create_rw_signal(cx, NotificationType::Error);
+	let email_verifying = create_rw_signal(cx, false);
+	let password_error = create_rw_signal(cx, String::from(""));
+	let confirm_password_error = create_rw_signal(cx, String::from(""));
+	let show_login_username_button = create_rw_signal(cx, false);
 
 	let handle_errors = move |error, message| match error {
 		ErrorType::InvalidPassword => {
-			set_password_error.set(message);
+			password_error.set(message);
 		}
 		ErrorType::UserNotFound => {
-			set_username_error.set(error.message().into());
-			set_show_login_username_button.set(true);
+			username_error.set(error.message().into());
+			show_login_username_button.set(true);
 		}
 		ErrorType::InvalidEmail => {
-			set_email_error.set(message);
+			email_error.set(message);
 		}
 		_ => {
-			set_confirm_password_error.set(message);
+			confirm_password_error.set(message);
 		}
 	};
 
@@ -99,11 +93,14 @@ pub fn SignUp(
 			};
 
 			if !available {
-				set_username_error.set("Username is already taken".to_string());
-				set_username_error_type.set(NotificationType::Error);
+				username_error.set("Username is already taken".to_string());
+				username_error_type.set(NotificationType::Error);
 			} else {
-				set_username_error.set("Username is available".to_string());
-				set_username_error_type.set(NotificationType::Success);
+				username_error.set("Username is available".to_string());
+				username_error_type.set(NotificationType::Success);
+			}
+			if username_verifying.get_untracked() {
+				username_verifying.set(false);
 			}
 		}
 	});
@@ -139,11 +136,14 @@ pub fn SignUp(
 			};
 
 			if !available {
-				set_email_error.set("Email is already taken".to_string());
-				set_email_error_type.set(NotificationType::Error);
+				email_error.set("Email is already taken".to_string());
+				email_error_type.set(NotificationType::Error);
 			} else {
-				set_email_error.set("Email is available".to_string());
-				set_email_error_type.set(NotificationType::Success);
+				email_error.set("Email is available".to_string());
+				email_error_type.set(NotificationType::Success);
+			}
+			if email_verifying.get_untracked() {
+				email_verifying.set(false);
 			}
 		}
 	});
@@ -203,15 +203,23 @@ pub fn SignUp(
 	);
 
 	let check_username_valid = use_debounce_fn_with_arg(
-		move |username| {
-			username_valid_action.dispatch(username);
+		move |username: String| {
+			if !username.is_empty() {
+				username_valid_action.dispatch(username);
+			} else {
+				username_error.set("".into());
+			}
 		},
 		MaybeSignal::Static(500f64),
 	);
 
 	let check_email_valid = use_debounce_fn_with_arg(
-		move |email| {
-			email_valid_action.dispatch(email);
+		move |email: String| {
+			if !email.is_empty() {
+				email_valid_action.dispatch(email);
+			} else {
+				email_error.set("".into());
+			}
 		},
 		MaybeSignal::Static(500f64),
 	);
@@ -219,7 +227,7 @@ pub fn SignUp(
 	let check_confirm_password_valid = use_debounce_fn_with_arg(
 		move |confirm_password: String| {
 			if confirm_password.is_empty() {
-				set_confirm_password_error
+				confirm_password_error
 					.set("Please confirm your Password again".into());
 				return;
 			}
@@ -229,7 +237,7 @@ pub fn SignUp(
 				.map(|element: HtmlElement<html::Input>| element.value())
 				.unwrap() != confirm_password
 			{
-				set_confirm_password_error.set("Passwords do not match".into());
+				confirm_password_error.set("Passwords do not match".into());
 			}
 		},
 		MaybeSignal::Static(500f64),
@@ -270,44 +278,44 @@ pub fn SignUp(
 		let mut invalid_data = false;
 
 		if first_name.is_empty() {
-			set_first_name_error.set("First Name cannot be empty".into());
+			first_name_error.set("First Name cannot be empty".into());
 			_ = first_name_ref.get().unwrap().focus();
 			invalid_data = true;
 		}
 
 		if last_name.is_empty() {
-			set_last_name_error.set("Last Name cannot be empty".into());
+			last_name_error.set("Last Name cannot be empty".into());
 			_ = last_name_ref.get().unwrap().focus();
 			invalid_data = true;
 		}
 
 		if username.is_empty() {
-			set_username_error.set("Username cannot be empty".into());
+			username_error.set("Username cannot be empty".into());
 			_ = username_ref.get().unwrap().focus();
 			invalid_data = true;
 		}
 
 		if email.is_empty() {
-			set_email_error.set("Email cannot be empty".into());
+			email_error.set("Email cannot be empty".into());
 			_ = email_ref.get().unwrap().focus();
 			invalid_data = true;
 		}
 
 		if password.is_empty() {
-			set_password_error.set("Password cannot be empty".into());
+			password_error.set("Password cannot be empty".into());
 			_ = password_ref.get().unwrap().focus();
 			invalid_data = true;
 		}
 
 		if confirm_password.is_empty() {
-			set_confirm_password_error
+			confirm_password_error
 				.set("Please confirm your Password again".into());
 			_ = confirm_password_ref.get().unwrap().focus();
 			invalid_data = true;
 		}
 
 		if password != confirm_password {
-			set_confirm_password_error.set("Passwords do not match".into());
+			confirm_password_error.set("Passwords do not match".into());
 			_ = confirm_password_ref.get().unwrap().focus();
 			invalid_data = true;
 		}
@@ -316,17 +324,10 @@ pub fn SignUp(
 			return;
 		}
 
-		sign_up_action.dispatch((
-			first_name,
-			last_name,
-			username,
-			email,
-			password,
-		));
+		sign_up_action
+			.dispatch((first_name, last_name, username, email, password));
 	};
 
-	let username_verifying = username_valid_action.pending();
-	let email_verifying = email_valid_action.pending();
 	let sign_up_loading = sign_up_action.pending();
 
 	view! { cx,
@@ -354,7 +355,7 @@ pub fn SignUp(
 						disabled={sign_up_loading}
 						placeholder="First Name"
 						on_input=Box::new(move |_| {
-							set_first_name_error.update(|value| value.clear());
+							first_name_error.update(|value| value.clear());
 						})
 						start_icon={
 							Some(IconProps::builder()
@@ -387,7 +388,7 @@ pub fn SignUp(
 						disabled={sign_up_loading}
 						placeholder="Last Name"
 						on_input=Box::new(move |_| {
-							set_last_name_error.update(|value| value.clear());
+							last_name_error.update(|value| value.clear());
 						})
 						start_icon={
 							Some(IconProps::builder()
@@ -421,11 +422,11 @@ pub fn SignUp(
 				loading=username_verifying
 				on_input=Box::new(move |ev| {
 					let value = event_target_value(&ev);
-					if !value.is_empty() {
-						username_valid_action.set_pending(true);
-						check_username_valid(value);
+					if username_verifying.get_untracked() != !value.is_empty() {
+						username_verifying.set(!value.is_empty());
 					}
-					set_username_error.update(|password| password.clear());
+					check_username_valid(value);
+					username_error.update(|password| password.clear());
 				})
 				placeholder="Username"
 				start_icon={
@@ -437,13 +438,14 @@ pub fn SignUp(
 			/>
 			<div class="fr-fs-ct">
 				{move || {
+					let username_error = username_error.get();
+					let username_error_type = username_error_type.get();
 					username_error
-						.get()
 						.some_if_not_empty()
 						.map(|username| {
 							view! {cx,
 								<Alert
-									r#type=NotificationType::Error
+									r#type=username_error_type
 									class="mt-xs"
 									message=username
 									/>
@@ -478,11 +480,15 @@ pub fn SignUp(
 				loading=email_verifying
 				on_input=Box::new(move |ev| {
 					let value = event_target_value(&ev);
-					if !value.is_empty() {
-						email_valid_action.set_pending(true);
-						check_email_valid(value);
+					// If the value is empty, we don't want to show the loading
+					// icon. So we set the value of the loading icon to the
+					// input having a value. If the input has a value, then
+					// loading is true, else it is false.
+					if email_verifying.get_untracked() != !value.is_empty() {
+						email_verifying.set(!value.is_empty());
 					}
-					set_email_error.update(|password| password.clear());
+					check_email_valid(value);
+					email_error.update(|password| password.clear());
 				})
 				placeholder="patron@email.com"
 				start_icon={
@@ -519,7 +525,7 @@ pub fn SignUp(
 					if !value.is_empty() {
 						check_confirm_password_valid(value);
 					}
-					set_password_error.update(|password| password.clear());
+					password_error.update(|password| password.clear());
 				})
 				id="password"
 				placeholder="Password"
@@ -545,7 +551,7 @@ pub fn SignUp(
 							.color(Grey)
 							.size(ExtraSmall)
 							.on_click(Rc::new(move |_| {
-								set_show_password.update(|value| *value = !*value);
+								show_password.update(|value| *value = !*value);
 							}))
 							.build()
 					)
@@ -574,7 +580,7 @@ pub fn SignUp(
 					"password".to_owned()
 				})}
 				on_input=Box::new(move |_| {
-					set_confirm_password_error.update(|password| password.clear());
+					confirm_password_error.update(|password| password.clear());
 				})
 				id="password"
 				placeholder="Confirm Password"
@@ -600,7 +606,7 @@ pub fn SignUp(
 							.color(Grey)
 							.size(ExtraSmall)
 							.on_click(Rc::new(move |_| {
-								set_show_password.update(|value| *value = !*value);
+								show_password.update(|value| *value = !*value);
 							}))
 							.build()
 					)

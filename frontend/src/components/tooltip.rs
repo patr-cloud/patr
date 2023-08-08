@@ -22,14 +22,14 @@ pub fn Tooltip(
 ) -> impl IntoView {
 	let tooltip_ref = create_node_ref::<html::Span>(cx);
 
-	let (is_visible, set_is_visible) = create_signal(cx, false);
+	let is_visible = create_rw_signal(cx, false);
 
 	create_effect(cx, move |_| {
 		let show_tooltip = move || {
-			set_is_visible.set(true);
+			is_visible.set(true);
 		};
 		let hide_tooltip = move || {
-			set_is_visible.set(false);
+			is_visible.set(false);
 		};
 
 		let handle_mouse_move = move |e: ev::MouseEvent| {
