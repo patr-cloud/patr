@@ -303,7 +303,7 @@ pub fn Login(
 					Forgot Password?
 				</Link>
 			</div>
-			{move || if login_loading.get() {
+			{move || if !login_loading.get() {
 				view! { cx,
 					<Spinner class="mt-md mr-xl ml-auto" />
 				}

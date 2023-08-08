@@ -35,6 +35,9 @@ pub fn Input(
 	/// The end text, if any.
 	#[prop(into, optional)]
 	end_text: MaybeSignal<Option<String>>,
+	/// A loading spinner, if any.
+	#[prop(into, optional)]
+	loading: MaybeSignal<bool>,
 	/// The tooltip for the input.
 	#[prop(into, optional)]
 	info_tooltip: MaybeSignal<Option<String>>,
@@ -147,6 +150,9 @@ pub fn Input(
 					)
 					.into_view(cx)
 			}
+			{move || loading.get().then(|| Spinner(cx, SpinnerProps {
+				class: String::from("spinner-xs").into(),
+			}))}
 		</div>
 	}
 }

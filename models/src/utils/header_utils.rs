@@ -45,8 +45,8 @@ impl Header for LoginId {
 		&LOGIN_ID_HEADER_NAME
 	}
 
-	fn from_values<'a>(
-		values: &mut ValueIter<'a, HeaderValue>,
+	fn from_values(
+		values: &mut ValueIter<'_, HeaderValue>,
 	) -> Result<Option<Self>, Error>
 	where
 		Self: Sized,

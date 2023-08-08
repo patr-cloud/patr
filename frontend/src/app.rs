@@ -55,7 +55,7 @@ pub fn App(cx: Scope) -> impl IntoView {
 						let path = format!(
 							"{}?{}",
 							LoggedOutRoutes::Login,
-							serde_urlencoded::to_string(&[("to", to)]).unwrap()
+							serde_urlencoded::to_string([("to", to)]).unwrap()
 						);
 						view! { cx,
 							<Redirect path=path />
@@ -88,6 +88,7 @@ pub fn App(cx: Scope) -> impl IntoView {
 	}
 }
 
+/// Returns a boolean if the user is logged in or not
 fn is_logged_in(cx: Scope) -> bool {
 	let state = expect_context::<Signal<AppStorage>>(cx);
 	state.get().is_logged_in()

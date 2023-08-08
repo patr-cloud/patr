@@ -1,5 +1,3 @@
-use leptos_router::use_navigate;
-
 use crate::prelude::*;
 
 /// The type of link to use. A contained link is a button with a background,
@@ -50,10 +48,7 @@ pub fn Link(
 			type={move || r#type.get()}
 			on:click={move |e| {
 				if !to.get().is_empty() {
-					_ = navigate(
-						to.get().to_string().as_str(),
-						Default::default()
-					);
+					_ = navigate(to.get());
 				}
 				if let Some(click) = &on_click {
 					click(e);

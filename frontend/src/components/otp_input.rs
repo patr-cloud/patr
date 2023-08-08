@@ -80,12 +80,11 @@ pub fn OtpInput(
 		.unwrap_or_default()
 	});
 
-	let handle_key_down = move |index: usize,
-	                            signal: RwSignal<Option<u8>>,
-	                            on_submit: Option<Rc<dyn Fn(String)>>,
-	                            e: ev::KeyboardEvent| {
-		let refs = refs.clone();
-		match e.code().as_str() {
+	let handle_key_down =
+		move |index: usize,
+		      signal: RwSignal<Option<u8>>,
+		      on_submit: Option<Rc<dyn Fn(String)>>,
+		      e: ev::KeyboardEvent| match e.code().as_str() {
 			"Backspace" | "Delete" => {
 				e.prevent_default();
 				signal.set(None);
@@ -149,8 +148,7 @@ pub fn OtpInput(
 				}
 			}
 			_ => (),
-		}
-	};
+		};
 
 	let handle_on_paste = move |e: ev::Event| {
 		e.prevent_default();
@@ -239,28 +237,21 @@ pub fn OtpInput(
 	}
 }
 
-fn next_input(
-	index: usize,
-	refs: &Vec<(usize, NodeRef<html::Input>, RwSignal<Option<u8>>)>,
-) {
+type RefsValue = (usize, NodeRef<html::Input>, RwSignal<Option<u8>>);
+
+fn next_input(index: usize, refs: &[RefsValue]) {
 	if index < refs.len() - 1 {
 		_ = refs[index + 1].1.get().unwrap().focus();
 	}
 }
 
-fn prev_input(
-	index: usize,
-	refs: &Vec<(usize, NodeRef<html::Input>, RwSignal<Option<u8>>)>,
-) {
+fn prev_input(index: usize, refs: &[RefsValue]) {
 	if index > 0 {
 		_ = refs[index - 1].1.get().unwrap().focus();
 	}
 }
 
-fn is_disabled(
-	index: usize,
-	refs: &Vec<(usize, NodeRef<html::Input>, RwSignal<Option<u8>>)>,
-) -> bool {
+fn is_disabled(index: usize, refs: &[RefsValue]) -> bool {
 	if let Some(rposition) = refs
 		.iter()
 		.rposition(|(_, _, signal)| signal.get().is_some())

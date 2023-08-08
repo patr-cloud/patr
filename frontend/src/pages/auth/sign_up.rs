@@ -37,9 +37,13 @@ pub fn SignUp(
 		create_signal(cx, String::from(""));
 	let (last_name_error, set_last_name_error) =
 		create_signal(cx, String::from(""));
+	let (username_error_type, set_username_error_type) =
+		create_signal(cx, NotificationType::Error);
 	let (username_error, set_username_error) =
 		create_signal(cx, String::from(""));
 	let (email_error, set_email_error) = create_signal(cx, String::from(""));
+	let (email_error_type, set_email_error_type) =
+		create_signal(cx, NotificationType::Error);
 	let (password_error, set_password_error) =
 		create_signal(cx, String::from(""));
 	let (confirm_password_error, set_confirm_password_error) =
@@ -96,6 +100,10 @@ pub fn SignUp(
 
 			if !available {
 				set_username_error.set("Username is already taken".to_string());
+				set_username_error_type.set(NotificationType::Error);
+			} else {
+				set_username_error.set("Username is available".to_string());
+				set_username_error_type.set(NotificationType::Success);
 			}
 		}
 	});
@@ -132,6 +140,10 @@ pub fn SignUp(
 
 			if !available {
 				set_email_error.set("Email is already taken".to_string());
+				set_email_error_type.set(NotificationType::Error);
+			} else {
+				set_email_error.set("Email is available".to_string());
+				set_email_error_type.set(NotificationType::Success);
 			}
 		}
 	});
@@ -313,6 +325,8 @@ pub fn SignUp(
 		));
 	};
 
+	let username_verifying = username_valid_action.pending();
+	let email_verifying = email_valid_action.pending();
 	let sign_up_loading = sign_up_action.pending();
 
 	view! { cx,
@@ -404,9 +418,11 @@ pub fn SignUp(
 				class="mt-lg full-width"
 				disabled={sign_up_loading}
 				id="username"
+				loading=username_verifying
 				on_input=Box::new(move |ev| {
 					let value = event_target_value(&ev);
 					if !value.is_empty() {
+						username_valid_action.set_pending(true);
 						check_username_valid(value);
 					}
 					set_username_error.update(|password| password.clear());
@@ -458,10 +474,12 @@ pub fn SignUp(
 				id="email"
 				class="mt-lg full-width"
 				r#type="email"
-				disabled={sign_up_loading}
+				disabled=sign_up_loading
+				loading=email_verifying
 				on_input=Box::new(move |ev| {
 					let value = event_target_value(&ev);
 					if !value.is_empty() {
+						email_valid_action.set_pending(true);
 						check_email_valid(value);
 					}
 					set_email_error.update(|password| password.clear());
