@@ -5,15 +5,14 @@ pub fn TopNav(
 	/// The scope of the component
 	cx: Scope,
 ) -> impl IntoView {
-	let (open_feedback, set_open_feedback) = create_signal(cx, false);
-	let (show_profile_settings, set_show_profile_settings) =
-		create_signal(cx, false);
+	let open_feedback = create_rw_signal(cx, false);
+	let show_profile_settings = create_rw_signal(cx, false);
 
 	view! { cx,
 		<header class="full-width fr-sb-ct pt-xl pb-md">
 			<nav class="full-width fr-fe-ct">
 				<button
-					on:click=move |_| set_open_feedback.set(true)
+					on:click=move |_| open_feedback.set(true)
 					class="btn btn-secondary row-card mx-sm"
 				>
 					Feedback
@@ -30,8 +29,8 @@ pub fn TopNav(
 				})}
 				<ProfileCard
 					on_click=Box::new(move |_| {
-                        set_show_profile_settings.set(true)
-                    }) />
+						show_profile_settings.set(true)
+					}) />
 			</nav>
 		</header>
 	}
