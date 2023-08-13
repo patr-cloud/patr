@@ -1,5 +1,5 @@
+mod confirm_sign_up;
 mod login;
 mod sign_up;
-// mod verify_sign_up;
 
-pub use self::{login::*, sign_up::*};
+pub use self::{confirm_sign_up::*, login::*, sign_up::*};
