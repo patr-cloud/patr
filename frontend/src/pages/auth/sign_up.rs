@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use leptos_router::use_query_map;
 use leptos_use::use_debounce_fn_with_arg;
 use models::{
 	api::auth::{
@@ -28,6 +29,8 @@ pub fn SignUp(
 	let first_name_ref = create_node_ref(cx);
 	let last_name_ref = create_node_ref(cx);
 	let username_ref = create_node_ref(cx);
+	let query = use_query_map(cx);
+
 	let email_ref = create_node_ref(cx);
 	let password_ref = create_node_ref(cx);
 	let confirm_password_ref = create_node_ref(cx);
@@ -35,9 +38,19 @@ pub fn SignUp(
 	let show_password = create_rw_signal(cx, false);
 	let first_name_error = create_rw_signal(cx, String::from(""));
 	let last_name_error = create_rw_signal(cx, String::from(""));
+	let username_default = query
+		.get_untracked()
+		.get("username")
+		.cloned()
+		.unwrap_or_default();
 	let username_error_type = create_rw_signal(cx, NotificationType::Error);
 	let username_error = create_rw_signal(cx, String::from(""));
 	let username_verifying = create_rw_signal(cx, false);
+	let email_default = query
+		.get_untracked()
+		.get("email")
+		.cloned()
+		.unwrap_or_default();
 	let email_error = create_rw_signal(cx, String::from(""));
 	let email_error_type = create_rw_signal(cx, NotificationType::Error);
 	let email_verifying = create_rw_signal(cx, false);
@@ -338,7 +351,7 @@ pub fn SignUp(
 					Already have an account?
 					<Link
 						disabled={sign_up_loading}
-						to=AppRoute::LoggedOutRoutes(LoggedOutRoutes::SignUp)
+						to=AppRoute::LoggedOutRoutes(LoggedOutRoutes::Login)
 						class="ml-xs"
 					>
 						Login
@@ -419,6 +432,7 @@ pub fn SignUp(
 				class="mt-lg full-width"
 				disabled={sign_up_loading}
 				id="username"
+				value=username_default
 				loading=username_verifying
 				on_input=Box::new(move |ev| {
 					let value = event_target_value(&ev);
@@ -478,6 +492,7 @@ pub fn SignUp(
 				r#type="email"
 				disabled=sign_up_loading
 				loading=email_verifying
+				value=email_default
 				on_input=Box::new(move |ev| {
 					let value = event_target_value(&ev);
 					// If the value is empty, we don't want to show the loading

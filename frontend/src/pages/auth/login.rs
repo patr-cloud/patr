@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use leptos_router::{use_navigate, NavigateOptions};
 use models::{
 	api::auth::{LoginRequest, LoginResponse},
 	utils::{ApiErrorResponse, ApiRequest, ApiResponse},
@@ -102,14 +103,14 @@ pub fn Login(
 
 	let login_loading = login_action.pending();
 
-	let username_ref = create_node_ref(cx);
+	let user_id_ref = create_node_ref(cx);
 	let password_ref = create_node_ref(cx);
 	let mfa_otp_ref = create_node_ref(cx);
 
 	let handle_login = move |e: ev::SubmitEvent| {
 		e.prevent_default();
 
-		let username = username_ref
+		let user_id = user_id_ref
 			.get()
 			.map(|input: HtmlElement<html::Input>| input.value())
 			.unwrap();
@@ -122,9 +123,9 @@ pub fn Login(
 			.get()
 			.map(|input: HtmlElement<html::Input>| input.value());
 
-		if username.is_empty() {
+		if user_id.is_empty() {
 			username_error.set("Username / Email cannot be empty".into());
-			_ = username_ref.get().unwrap().focus();
+			_ = user_id_ref.get().unwrap().focus();
 			return;
 		}
 
@@ -134,13 +135,37 @@ pub fn Login(
 			return;
 		}
 
-		login_action.dispatch((username, password, mfa_otp));
+		login_action.dispatch((user_id, password, mfa_otp));
 	};
 
 	let handle_create_new_account = move |e: &ev::MouseEvent| {
 		e.prevent_default();
-		// TODO navigate to the create new account page with the username
+
+		let user_id = user_id_ref
+			.get()
+			.map(|input: HtmlElement<html::Input>| input.value())
+			.unwrap();
+
+		let is_email = user_id.contains('@');
+
+		// navigate to the create new account page with the username
 		// pre-filled through setting the state
+		let navigate = use_navigate(cx);
+		_ = navigate(
+			format!(
+				"{}?{}",
+				AppRoute::LoggedOutRoutes(LoggedOutRoutes::SignUp)
+					.to_string()
+					.as_str(),
+				serde_urlencoded::to_string([(
+					if is_email { "email" } else { "username" },
+					user_id.as_str()
+				)])
+				.unwrap(),
+			)
+			.as_str(),
+			NavigateOptions::default(),
+		);
 	};
 
 	view! { cx,
@@ -166,7 +191,7 @@ pub fn Login(
 				on_input=Box::new(move |_| {
 					username_error.update(|password| password.clear());
 				})
-				r#ref=username_ref
+				r#ref=user_id_ref
 				placeholder="Username/Email"
 				start_icon={
 					Some(IconProps::builder()
@@ -270,7 +295,6 @@ pub fn Login(
 					<OtpInput
 						id="mfa-otp"
 						r#ref=mfa_otp_ref
-						//TODO otp=mfa_otp.get_untracked()
 						on_submit=Rc::new(move |_| {
 							handle_login(ev::SubmitEvent::new("submit").unwrap());
 						})
@@ -300,7 +324,7 @@ pub fn Login(
 					Forgot Password?
 				</Link>
 			</div>
-			{move || if !login_loading.get() {
+			{move || if login_loading.get() {
 				view! { cx,
 					<Spinner class="mt-md mr-xl ml-auto" />
 				}
