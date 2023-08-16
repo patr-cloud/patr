@@ -589,15 +589,12 @@ async fn add_email_address(
 			.body(error!(WRONG_PARAMETERS).to_string())?;
 	let email_address = email.to_lowercase();
 
-	let config = context.get_state().config.clone();
-
 	let user_id = context.get_token_data().unwrap().user_id().clone();
 
 	service::add_personal_email_to_be_verified_for_user(
 		context.get_database_connection(),
 		&email_address,
 		&user_id,
-		&config,
 	)
 	.await?;
 
@@ -1379,7 +1376,7 @@ async fn deactivate_mfa(
 			.status(404)
 			.body(error!(USER_NOT_FOUND).to_string())?;
 
-	let Some(secret) = user.mfa_secret else  {
+	let Some(secret) = user.mfa_secret else {
 		return Error::as_result()
 			.status(400)
 			.body(error!(MFA_NOT_ACTIVATED).to_string())?;

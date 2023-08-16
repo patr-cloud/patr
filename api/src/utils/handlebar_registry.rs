@@ -70,15 +70,16 @@ fn initialize_handlebar_registry_helper<'a>() -> Result<Handlebars<'a>, Error> {
 			continue;
 		}
 
-		let Some("hbs" | "handlebars") = file_path
-			.extension()
-			.and_then(|osstr| osstr.to_str()) else {
+		let Some("hbs" | "handlebars") =
+			file_path.extension().and_then(|osstr| osstr.to_str())
+		else {
 			continue;
 		};
 
 		let Some(partial_name) = file_path
 			.file_stem()
-			.and_then(|file_name| file_name.to_str()) else {
+			.and_then(|file_name| file_name.to_str())
+		else {
 			continue;
 		};
 

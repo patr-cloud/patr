@@ -7,13 +7,11 @@ use api_models::{
 };
 use chrono::{DateTime, Utc};
 use eve_rs::AsError;
-use reqwest::Client;
 use sqlx::types::ipnetwork::IpNetwork;
 
 use crate::{
 	db::{self, User, UserLoginType},
 	error,
-	models::IpQualityScore,
 	redis,
 	service,
 	utils::{settings::Settings, validator, Error},
@@ -38,7 +36,6 @@ pub async fn add_personal_email_to_be_verified_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email_address: &str,
 	user_id: &Uuid,
-	config: &Settings,
 ) -> Result<(), Error> {
 	if !validator::is_email_valid(email_address) {
 		Error::as_result()
@@ -591,7 +588,9 @@ pub async fn get_derived_permissions_for_api_token(
 	let mut derived_token_permissions = BTreeMap::new();
 
 	for (workspace_id, token_workspace_permission) in raw_token_permissions {
-		let Some(user_workspace_permission) = user_permissions.remove(&workspace_id) else {
+		let Some(user_workspace_permission) =
+			user_permissions.remove(&workspace_id)
+		else {
 			continue;
 		};
 
@@ -628,7 +627,9 @@ pub async fn get_derived_permissions_for_api_token(
 				for (permission_id, token_resource_permission_type) in
 					token_member_permissions
 				{
-					let Some(user_resource_permission_type) = user_member_permissions.remove(&permission_id) else {
+					let Some(user_resource_permission_type) =
+						user_member_permissions.remove(&permission_id)
+					else {
 						continue;
 					};
 

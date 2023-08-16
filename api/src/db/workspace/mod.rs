@@ -1209,26 +1209,6 @@ pub async fn set_resource_limit_for_workspace(
 	.map(|_| ())
 }
 
-pub async fn mark_workspace_as_spam(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			workspace
-		SET
-			is_spam = TRUE
-		WHERE
-			id = $1;
-		"#,
-		workspace_id as _,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
 pub async fn unmark_workspace_as_spam(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,

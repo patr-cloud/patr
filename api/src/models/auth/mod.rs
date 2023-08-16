@@ -132,8 +132,7 @@ pub fn is_user_action_authorized(
 		return true;
 	}
 
-	let Some(workspace_permission) =
-		user_permissions.get(requested_workspace)
+	let Some(workspace_permission) = user_permissions.get(requested_workspace)
 	else {
 		// user don't have any permission on given workspace
 		return false;
@@ -153,8 +152,10 @@ pub fn is_user_action_authorized(
 				.get(&(*requested_permission).to_string())
 				.unwrap();
 
-			let Some(resource_permission_type) = workspace_member_permissions.get(permission_required) else {
-				// user don't have required permission 
+			let Some(resource_permission_type) =
+				workspace_member_permissions.get(permission_required)
+			else {
+				// user don't have required permission
 				return false;
 			};
 

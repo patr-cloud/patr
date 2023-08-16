@@ -12,7 +12,6 @@ use api_models::{
 };
 use chrono::{Datelike, Duration, Utc};
 use eve_rs::AsError;
-use reqwest::Client;
 
 use super::get_ip_address_info;
 /// This module validates user info and performs tasks related to user
@@ -23,7 +22,7 @@ use super::get_ip_address_info;
 use crate::{
 	db::{self, User, UserLoginType, UserToSignUp, UserWebLogin},
 	error,
-	models::{rbac, AccessTokenData, ExposedUserData, IpQualityScore},
+	models::{rbac, AccessTokenData, ExposedUserData},
 	service,
 	utils::{settings::Settings, validator, Error},
 	Database,
