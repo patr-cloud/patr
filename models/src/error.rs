@@ -1,7 +1,10 @@
 use std::mem;
 
+use axum::{response::IntoResponse, Json};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
+
+use crate::utils::{ApiErrorResponse, False};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -70,5 +73,16 @@ mod serialize_server_error {
 		D: Deserializer<'de>,
 	{
 		Ok(Error::msg("internalServerError"))
+	}
+}
+
+impl IntoResponse for ErrorType {
+	fn into_response(self) -> axum::response::Response {
+		Json(ApiErrorResponse {
+			success: False,
+			message: self.message().into(),
+			error: self,
+		})
+		.into_response()
 	}
 }

@@ -1,0 +1,23 @@
+[package]
+name = "api"
+
+authors.workspace = true
+description.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+anyhow = "1.0.74"
+axum = { version = "0.6", features = ["tracing", "ws", "macros"] }
+axum-extra = { version = "0.7", features = ["typed-routing"] }
+config = "0.13"
+models = { workspace = true }
+preprocess = "0.2"
+rustis = { version = "0.11", features = ["pool", "tls", "redis-json", "tokio-tls"] }
+sea-orm = { version = "0.12", features = ["sqlx-postgres", "runtime-tokio", "runtime-tokio-rustls", "macros"] }
+serde = { version = "1", features = ["derive"] }
+tokio = { workspace = true }
+tower = { version = "0.4", features = ["tracing", "full"] }
+tracing = { version = "0.1", features = ["async-await"] }
+typed-headers = "0.2"

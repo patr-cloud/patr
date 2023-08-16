@@ -1,6 +1,6 @@
 [workspace]
 members = [
-#    "api",
+   "api",
     "macros",
     "models",
     "controller",
