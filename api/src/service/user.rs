@@ -14,7 +14,7 @@ use crate::{
 	error,
 	redis,
 	service,
-	utils::{settings::Settings, validator, Error},
+	utils::{validator, Error},
 	Database,
 };
 
