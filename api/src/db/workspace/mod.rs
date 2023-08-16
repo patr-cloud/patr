@@ -422,7 +422,7 @@ pub async fn create_workspace(
 				$15,
 				NULL,
 				$16,
-				FALSE,
+				TRUE,
 				FALSE
 			);
 		"#,
@@ -1202,26 +1202,6 @@ pub async fn set_resource_limit_for_workspace(
 		docker_repository_storage_limit,
 		domain_limit,
 		secret_limit,
-		workspace_id as _,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn mark_workspace_as_spam(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			workspace
-		SET
-			is_spam = TRUE
-		WHERE
-			id = $1;
-		"#,
 		workspace_id as _,
 	)
 	.execute(&mut *connection)

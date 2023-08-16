@@ -22,8 +22,8 @@ export default {
     ): Promise<Response> {
         try {
             let url = new URL(request.url);
-            if (url.protocol === "http:") {
-                url.protocol = "https:";
+            if (url.protocol === "http") {
+                url.protocol = "https";
                 return Response.redirect(url.toString(), 301);
             }
 
@@ -54,9 +54,9 @@ async function fetchOnPatrRequest(
     let [part1, part2] = subdomain.split("-", 2);
 
     if (part2) {
-        return fetchDeployment(request, env, part2, parseInt(part1));
+        return fetchDeployment(request, env, "/", part2, parseInt(part1));
     } else {
-        return fetchStaticSite(request, env, part1);
+        return fetchStaticSite(request, env, '/', part1);
     }
 }
 
@@ -90,11 +90,17 @@ async function fetchManagedUrlRequest(
             return fetchDeployment(
                 request,
                 env,
+                matched_route.path,
                 matched_route.deploymentId,
                 matched_route.port
             );
         case "proxyStaticSite":
-            return fetchStaticSite(request, env, matched_route.staticSiteId);
+            return fetchStaticSite(
+                request,
+                env,
+                matched_route.path,
+                matched_route.staticSiteId
+            );
         case "proxyUrl":
             return proxyUrl(
                 request,
@@ -113,28 +119,25 @@ async function fetchManagedUrlRequest(
                 matched_route.httpOnly
             );
         default:
-            return new Response(
-                "500 Internal Server Error - Invalid router type",
-                { status: 500 }
-            );
+            return new Response("500 Internal Server Error - Invalid router type", {
+                status: 500,
+            });
     }
 }
 
 async function fetchDeployment(
     request: Request,
     env: Env,
+    matched_path: string,
     deploymentId: string,
     port: number
 ): Promise<Response> {
     let deploymentStatusStr = await env.DEPLOYMENT.get(deploymentId);
 
     if (!deploymentStatusStr) {
-        return new Response(
-            "500 Internal Server Error - Deployment not found",
-            {
-                status: 500,
-            }
-        );
+        return new Response("500 Internal Server Error - Deployment not found", {
+            status: 500,
+        });
     }
 
     let deploymentStatus = JSON.parse(deploymentStatusStr) as DeploymentValue;
@@ -152,16 +155,22 @@ async function fetchDeployment(
         deploymentStatus.running.regionId
     ) {
         if (deploymentStatus.running.ports.includes(port)) {
-            let regionId = deploymentStatus.running.regionId;
             let destination_url = new URL(request.url);
             destination_url.host = `${port}-${deploymentId}.${deploymentStatus.running.regionId}.${env.ONPATR_DOMAIN}`;
+            destination_url.pathname = destination_url.pathname.substring(
+                matched_path.length
+            );
+            destination_url.pathname =
+                destination_url.pathname[0] === "/"
+                    ? destination_url.pathname
+                    : "/" + destination_url.pathname;
 
             // todo: need to add extra headers like client ip
             // see: https://fly.io/docs/reference/runtime-environment/#request-headers
             // see: https://developers.cloudflare.com/fundamentals/get-started/reference/http-request-headers/
 
             let headers = new Headers(request.headers);
-            headers.set('Patr-Forwarded-For', new URL(request.url).hostname);
+            headers.set("Patr-Forwarded-For", new URL(request.url).hostname);
 
             let modified_request = new Request(destination_url, {
                 method: request.method,
@@ -175,20 +184,14 @@ async function fetchDeployment(
 
             return fetch(modified_request);
         } else {
-            return new Response(
-                "500 Internal Server Error - Port not running",
-                {
-                    status: 500,
-                }
-            );
+            return new Response("500 Internal Server Error - Port not running", {
+                status: 500,
+            });
         }
     } else {
-        return new Response(
-            "500 Internal Server Error - Invalid deployment type",
-            {
-                status: 500,
-            }
-        );
+        return new Response("500 Internal Server Error - Invalid deployment type", {
+            status: 500,
+        });
     }
 }
 

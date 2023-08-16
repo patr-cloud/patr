@@ -12,7 +12,6 @@ use api_models::{
 };
 use chrono::{Datelike, Duration, Utc};
 use eve_rs::AsError;
-use reqwest::Client;
 
 use super::get_ip_address_info;
 /// This module validates user info and performs tasks related to user
@@ -23,7 +22,7 @@ use super::get_ip_address_info;
 use crate::{
 	db::{self, User, UserLoginType, UserToSignUp, UserWebLogin},
 	error,
-	models::{rbac, AccessTokenData, ExposedUserData, IpQualityScore},
+	models::{rbac, AccessTokenData, ExposedUserData},
 	service,
 	utils::{settings::Settings, validator, Error},
 	Database,
@@ -1104,56 +1103,6 @@ pub async fn join_user(
 						)
 						.await?;
 					}
-				}
-			}
-		}
-	}
-
-	if let Some(ref recovery_email) = welcome_email_to {
-		// Reference for APIs docs of ipqualityscore can be found in this
-		// url https://www.ipqualityscore.com/documentation/email-validation/overview
-		let email_spam_result = Client::new()
-			.get(format!(
-				"{}/{}/{}",
-				config.ip_quality.host, config.ip_quality.token, recovery_email
-			))
-			.send()
-			.await
-			.map_err(|error| {
-				log::error!("IPQS api call error: {}", error);
-				Error::empty()
-			})?
-			.json::<IpQualityScore>()
-			.await
-			.map_err(|error| {
-				log::error!("Error parsing IPQS response: {}", error);
-				Error::empty()
-			})?;
-
-		let disposable = email_spam_result.disposable;
-		let is_spam = email_spam_result.fraud_score > 75;
-
-		let workspaces =
-			db::get_all_workspaces_for_user(connection, &user_id).await?;
-
-		if disposable || is_spam {
-			for workspace in &workspaces {
-				if disposable {
-					db::set_resource_limit_for_workspace(
-						connection,
-						&workspace.id,
-						0,
-						0,
-						0,
-						0,
-						0,
-						0,
-						0,
-					)
-					.await?;
-				} else {
-					db::mark_workspace_as_spam(connection, &workspace.id)
-						.await?;
 				}
 			}
 		}
