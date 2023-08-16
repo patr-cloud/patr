@@ -10,7 +10,7 @@
     },
     "query": "CREATE INDEX deployment_idx_registry_image_name_image_tag ON deployment (registry, image_name, image_tag);"
   },
-  "00f4f9f47c61cd26bb472df26e32e61b553d6001955c4dd385b3f4398587b3d0": {
+  "3339118d247a360e3eaf9fc7674529d7a56c378cf269f78486ec33416c2db96e": {
     "describe": {
       "columns": [],
       "nullable": [],
@@ -50,7 +50,7 @@
         ]
       }
     },
-    "query": "INSERT INTO workspace( id, name, super_admin_id, active, alert_emails, payment_type, default_payment_method_id, deployment_limit, database_limit, static_site_limit, managed_url_limit, docker_repository_storage_limit, domain_limit, secret_limit, volume_storage_limit, stripe_customer_id, address_id, amount_due_in_cents, is_spam, is_frozen ) VALUES ( $1, $2, $3, $4, $5, $6, NULL, $7, $8, $9, $10, $11, $12, $13, $14, $15, NULL, $16, FALSE, FALSE );"
+    "query": "INSERT INTO workspace( id, name, super_admin_id, active, alert_emails, payment_type, default_payment_method_id, deployment_limit, database_limit, static_site_limit, managed_url_limit, docker_repository_storage_limit, domain_limit, secret_limit, volume_storage_limit, stripe_customer_id, address_id, amount_due_in_cents, is_spam, is_frozen ) VALUES ( $1, $2, $3, $4, $5, $6, NULL, $7, $8, $9, $10, $11, $12, $13, $14, $15, NULL, $16, TRUE, FALSE );"
   },
   "0143433897b87a778e36c091e193a1679b2bf6c7d2f68602b98e47674b106923": {
     "describe": {
