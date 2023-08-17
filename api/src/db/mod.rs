@@ -2,6 +2,10 @@ use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 
 use crate::utils::config::DatabaseConfig;
 
+mod entities;
+
+pub use self::entities::prelude::*;
+
 pub async fn connect(config: &DatabaseConfig) -> DatabaseConnection {
 	let mut connect_options = ConnectOptions::new(format!(
 		"postgres://{}:{}@{}:{}/{}",
