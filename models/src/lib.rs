@@ -17,6 +17,7 @@ pub mod prelude {
 	pub use crate::utils::{LoginId, Paginated, TotalCountHeader, Uuid};
 }
 
+mod endpoint;
 mod error;
 
-pub use self::error::*;
+pub use self::{endpoint::*, error::*};

@@ -15,6 +15,7 @@ mod api_patr_cloud;
 #[path = "registry.patr.cloud/mod.rs"]
 mod registry_patr_cloud;
 
+#[instrument(skip(state))]
 pub fn setup_routes(state: &AppState) -> Router {
 	let api_router = api_patr_cloud::setup_routes(state);
 	let registry_router = registry_patr_cloud::setup_routes(state);

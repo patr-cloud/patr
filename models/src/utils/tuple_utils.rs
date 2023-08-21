@@ -6,8 +6,6 @@ impl AddTuple<()> for () {
 	type ResultantTuple = ();
 }
 
-// Write a macro to automate the above
-
 macro_rules! impl_add_tuples {
     () => {
         impl<H> AddTuple<H> for () {

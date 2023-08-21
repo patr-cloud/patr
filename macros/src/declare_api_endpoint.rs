@@ -356,8 +356,8 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			type RequiredResponseHeaders = ();
 		}
 
-		impl crate::api::ApiEndpoint for #request_name {
-			const METHOD: reqwest::Method = reqwest::Method::#method;
+		impl crate::ApiEndpoint for #request_name {
+			const METHOD: ::reqwest::Method = ::reqwest::Method::#method;
 
 			type RequestPath = #path_name;
 			type RequestQuery = #query_name;

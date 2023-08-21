@@ -2,6 +2,7 @@ use rustis::client::Client;
 
 use crate::utils::config::RedisConfig;
 
+#[tracing::instrument(skip(config))]
 pub async fn connect(config: &RedisConfig) -> Client {
 	Client::connect(format!(
 		"{}://{}{}:{}/{}",
