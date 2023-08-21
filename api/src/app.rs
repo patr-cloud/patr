@@ -1,15 +1,8 @@
 use std::fmt::Debug;
 
-use axum::{
-	extract::{FromRef, FromRequestParts, State},
-	http::{Request, request::Parts},
-	response::Response,
-	middleware::Next,
-	Router,
-};
-use models::{utils::{ApiResponse, ApiErrorResponse, IntoAxumResponse}, ErrorType};
-use rustis::client::{Client as RedisClient, Transaction as RedisTransaction};
-use sea_orm::{DatabaseConnection, DatabaseTransaction, TransactionTrait};
+use axum::{extract::FromRef, Router};
+use rustis::client::Client as RedisClient;
+use sea_orm::DatabaseConnection;
 
 use crate::prelude::*;
 
@@ -17,26 +10,6 @@ use crate::prelude::*;
 pub struct AppState {
 	pub database: DatabaseConnection,
 	pub redis: RedisClient,
-}
-
-pub struct AppConnection<'a> {
-	pub database: DatabaseTransaction,
-	pub redis: RedisTransaction<'a>,
-}
-
-#[axum::async_trait]
-impl<'a, S> FromRequestParts<S> for AppConnection<'a> {
-	type Rejection = ErrorType;
-
-	async fn from_request_parts(
-		parts: &mut Parts,
-		_: &S,
-	) -> Result<Self, Self::Rejection> {
-		parts.extensions.get::<AppConnection>().ok_or_else(|| {
-			error!("Failed to get AppConnection from request extensions");
-			ApiResponse::internal_error("Failed to get AppConnection")
-		})
-	}
 }
 
 impl Debug for AppState {

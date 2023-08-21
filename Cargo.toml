@@ -11,13 +11,13 @@ members = [
 package.authors = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
 package.description = "Patr API and all it's dependencies"
 package.edition = "2021"
-package.rust-version = "1.69"
-package.version = "0.17.4"
+package.rust-version = "1.71"
+package.version = "0.18.0"
 resolver = "2"
 
 [workspace.dependencies]
 macros = { path = "macros" }
-models = { path = "models" }
+models = { path = "models", default-features = false }
 tokio = { version = "1", features = ["full"] }
 
 [profile.release]

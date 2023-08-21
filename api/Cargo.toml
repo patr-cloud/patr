@@ -12,10 +12,20 @@ anyhow = "1.0.74"
 axum = { version = "0.6", features = ["tracing", "ws", "macros"] }
 axum-extra = { version = "0.7", features = ["typed-routing"] }
 config = "0.13"
-models = { workspace = true, features = ["server"]}
+models = { workspace = true, features = ["server"] }
 preprocess = "0.2"
-rustis = { version = "0.11", features = ["pool", "tls", "redis-json", "tokio-tls"] }
-sea-orm = { version = "0.12", features = ["sqlx-postgres", "runtime-tokio", "runtime-tokio-rustls", "macros"] }
+rustis = { version = "0.11", features = [
+    "pool",
+    "tls",
+    "redis-json",
+    "tokio-tls",
+] }
+sea-orm = { version = "0.12", features = [
+    "sqlx-postgres",
+    "runtime-tokio",
+    "runtime-tokio-rustls",
+    "macros",
+] }
 serde = { version = "1", features = ["derive"] }
 tokio = { workspace = true }
 tower = { version = "0.4", features = ["tracing", "full"] }
