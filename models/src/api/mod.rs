@@ -1,5 +1,9 @@
-mod audit_logger;
-mod endpoint;
-mod routes;
+pub mod auth;
+// pub mod ci;
+// pub mod survey;
+// pub mod user;
+// pub mod workspace;
 
-pub use self::{audit_logger::*, endpoint::*, routes::*};
+mod get_version;
+
+pub use self::get_version::*;

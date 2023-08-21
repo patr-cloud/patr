@@ -2,6 +2,7 @@ mod account_type;
 mod axum_response;
 mod bools;
 mod header_utils;
+mod middlewares;
 mod paginated;
 mod request;
 mod response;
@@ -13,6 +14,7 @@ pub use self::{
 	axum_response::*,
 	bools::*,
 	header_utils::*,
+	middlewares::*,
 	paginated::*,
 	request::*,
 	response::*,

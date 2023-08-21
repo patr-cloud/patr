@@ -1,4 +1,4 @@
-use crate::api::ApiEndpoint;
+use crate::ApiEndpoint;
 
 pub struct ApiRequest<E>
 where
