@@ -10,6 +10,7 @@ version.workspace = true
 [features]
 server = [
 	"axum/http1",
+	"axum/http2",
 	"axum/matched-path",
 	"axum/original-uri",
 	"axum/tokio",
@@ -17,6 +18,7 @@ server = [
 	"axum/ws",
 	"axum/tracing",
 	"axum-typed-websockets",
+	"reqwest/default",
 	"uuid/js",
 ]
 default = ["server"]
@@ -33,7 +35,10 @@ axum-typed-websockets = { version = "0.5", optional = true }
 hex = "0.4"
 log = "0.4"
 macros = { workspace = true }
-reqwest = { version = "0.11", features = ["rustls-tls"] }
+reqwest = { version = "0.11", features = [
+	"rustls-tls",
+	"json",
+], default-features = false }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_test = "1"

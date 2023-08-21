@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use models::{
-	api::ApiEndpoint,
+	ApiEndpoint,
 	utils::{
 		ApiRequest,
 		ApiResponse,

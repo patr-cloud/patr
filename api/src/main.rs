@@ -1,4 +1,3 @@
-
 #![feature(impl_trait_in_assoc_type)]
 
 use std::net::SocketAddr;
@@ -14,7 +13,10 @@ mod utils;
 pub mod prelude {
 	pub use tracing::{debug, error, info, instrument, trace, warn};
 
-	pub use crate::{app::AppState, utils::extractors::*};
+	pub use crate::{
+		app::AppState,
+		utils::{extractors::*, RouterExt},
+	};
 }
 
 #[tokio::main]
