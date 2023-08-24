@@ -1,10 +1,7 @@
-use std::mem;
+use std::{error::Error as StdError, mem};
 
-use axum::{response::IntoResponse, Json};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-
-use crate::utils::{ApiErrorResponse, False};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -14,6 +11,7 @@ pub enum ErrorType {
 	InvalidPassword,
 	MfaRequired,
 	MfaOtpInvalid,
+	WrongParameters,
 	#[serde(with = "serialize_server_error")]
 	InternalServerError(anyhow::Error),
 }
@@ -26,6 +24,7 @@ impl ErrorType {
 			Self::InvalidPassword => StatusCode::UNAUTHORIZED,
 			Self::MfaOtpInvalid => StatusCode::UNAUTHORIZED,
 			Self::MfaRequired => StatusCode::UNAUTHORIZED,
+			Self::WrongParameters => StatusCode::BAD_REQUEST,
 			Self::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
 		}
 	}
@@ -37,8 +36,15 @@ impl ErrorType {
 			Self::InvalidPassword => "Invalid Password",
 			Self::MfaRequired => "Two factor authentication required",
 			Self::MfaOtpInvalid => "Invalid two factor authentication code",
+			Self::WrongParameters => {
+				"The parameters sent with that request is invalid"
+			}
 			Self::InternalServerError(_) => "internal server error",
 		}
+	}
+
+	pub fn server_error(message: impl Into<String>) -> Self {
+		Self::InternalServerError(anyhow::anyhow!(message.into()))
 	}
 }
 
@@ -54,6 +60,31 @@ impl PartialEq for ErrorType {
 }
 
 impl Eq for ErrorType {}
+
+impl<Error> From<Error> for ErrorType
+where
+	Error: StdError + Send + Sync + 'static,
+{
+	fn from(error: Error) -> Self {
+		Self::InternalServerError(error.into())
+	}
+}
+
+impl Clone for ErrorType {
+	fn clone(&self) -> Self {
+		match self {
+			Self::InvalidEmail => Self::InvalidEmail,
+			Self::UserNotFound => Self::UserNotFound,
+			Self::InvalidPassword => Self::InvalidPassword,
+			Self::MfaRequired => Self::MfaRequired,
+			Self::MfaOtpInvalid => Self::MfaOtpInvalid,
+			Self::WrongParameters => Self::WrongParameters,
+			Self::InternalServerError(arg0) => {
+				Self::InternalServerError(anyhow::anyhow!(arg0.to_string()))
+			}
+		}
+	}
+}
 
 mod serialize_server_error {
 	use anyhow::Error;
@@ -73,16 +104,5 @@ mod serialize_server_error {
 		D: Deserializer<'de>,
 	{
 		Ok(Error::msg("internalServerError"))
-	}
-}
-
-impl IntoResponse for ErrorType {
-	fn into_response(self) -> axum::response::Response {
-		Json(ApiErrorResponse {
-			success: False,
-			message: self.message().into(),
-			error: self,
-		})
-		.into_response()
 	}
 }

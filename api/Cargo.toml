@@ -14,7 +14,7 @@ axum-extra = { version = "0.7", features = ["typed-routing"] }
 config = "0.13"
 models = { workspace = true, features = ["server"] }
 preprocess = "0.2"
-rustis = { version = "0.11", features = [
+rustis = { path = "../../../rustis", features = [
     "pool",
     "tls",
     "redis-json",
@@ -30,4 +30,5 @@ serde = { version = "1", features = ["derive"] }
 tokio = { workspace = true }
 tower = { version = "0.4", features = ["tracing", "full"] }
 tracing = { version = "0.1", features = ["async-await"] }
+typed-builder = "0.15"
 typed-headers = "0.2"

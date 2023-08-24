@@ -74,7 +74,7 @@ macro_rules! impl_dto_handler {
 					Err(err) => return Err::<(), _>(err).into_response(),
 				};
 
-				self($($ty,)* dto).await.into_response()
+				self($($ty,)* dto).await.into_axum_response()
 			})
 		}
 	}

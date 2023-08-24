@@ -3,7 +3,7 @@ use std::rc::Rc;
 use leptos_router::{use_navigate, NavigateOptions};
 use models::{
 	api::auth::{LoginRequest, LoginResponse},
-	utils::{ApiErrorResponse, ApiRequest, ApiResponse},
+	utils::{ApiErrorResponse, ApiRequest, ApiSuccessResponse, ApiErrorResponseBody},
 	ErrorType,
 };
 
@@ -71,20 +71,20 @@ pub fn Login(
 					refresh_token,
 					login_id,
 				} = match result {
-					ApiResponse::Success {
+					Ok(ApiSuccessResponse {
 						status_code: _,
 						headers: (),
 						body,
-					} => body,
-					ApiResponse::Error {
+					}) => body,
+					Err(ApiErrorResponse {
 						status_code: _,
 						body:
-							ApiErrorResponse {
+							ApiErrorResponseBody {
 								success: _,
 								error,
 								message,
 							},
-					} => {
+					}) => {
 						handle_errors(error, message);
 						return;
 					}

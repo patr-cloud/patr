@@ -1,14 +1,18 @@
 use std::str::FromStr;
 
 use models::{
-	ApiEndpoint,
 	utils::{
+		ApiErrorResponse,
+		ApiErrorResponseBody,
 		ApiRequest,
-		ApiResponse,
 		ApiResponseBody,
 		ApiSuccessResponse,
+		ApiSuccessResponseBody,
+		False,
 		Headers,
 	},
+	ApiEndpoint,
+	ErrorType,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use url::Url;
@@ -26,7 +30,7 @@ pub async fn make_request<T>(
 		headers,
 		body,
 	}: ApiRequest<T>,
-) -> ApiResponse<T>
+) -> Result<ApiSuccessResponse<T>, ApiErrorResponse>
 where
 	T: ApiEndpoint,
 	T::ResponseBody: DeserializeOwned + Serialize,
@@ -53,34 +57,53 @@ where
 	let response = match response {
 		Ok(response) => response,
 		Err(error) => {
-			return ApiResponse::internal_error(error.to_string());
+			return Err(ApiErrorResponse {
+				status_code: reqwest::StatusCode::INTERNAL_SERVER_ERROR,
+				body: ApiErrorResponseBody {
+					success: False,
+					error: ErrorType::server_error(error.to_string()),
+					message: error.to_string(),
+				},
+			});
 		}
 	};
 
 	let status_code = response.status();
 	let Some(headers) = T::ResponseHeaders::from_header_map(response.headers())
 	else {
-		return ApiResponse::internal_error("invalid headers");
+		return Err(ApiErrorResponse {
+			status_code: reqwest::StatusCode::INTERNAL_SERVER_ERROR,
+			body: ApiErrorResponseBody {
+				success: False,
+				error: ErrorType::server_error("invalid headers"),
+				message: "invalid headers".to_string(),
+			},
+		});
 	};
 
 	match response.json::<ApiResponseBody<T::ResponseBody>>().await {
-		Ok(ApiResponseBody::Success(ApiSuccessResponse {
+		Ok(ApiResponseBody::Success(ApiSuccessResponseBody {
 			success: _,
 			response: body,
-		})) => ApiResponse::Success {
+		})) => Ok(ApiSuccessResponse {
 			status_code,
 			headers,
 			body,
-		},
-		Ok(ApiResponseBody::Error(error)) => ApiResponse::Error {
+		}),
+		Ok(ApiResponseBody::Error(error)) => Err(ApiErrorResponse {
 			status_code,
 			body: error,
-		},
+		}),
 		Err(error) => {
 			log::error!("{}", error.to_string());
-			ApiResponse::internal_error(
-				"Internal server occured parsing response",
-			)
+			Err(ApiErrorResponse {
+				status_code: reqwest::StatusCode::INTERNAL_SERVER_ERROR,
+				body: ApiErrorResponseBody {
+					success: False,
+					error: ErrorType::server_error(error.to_string()),
+					message: error.to_string(),
+				},
+			})
 		}
 	}
 }

@@ -14,7 +14,12 @@ use models::{
 		IsUsernameValidResponse,
 		RecoveryMethod,
 	},
-	utils::{ApiErrorResponse, ApiRequest, ApiResponse},
+	utils::{
+		ApiErrorResponse,
+		ApiErrorResponseBody,
+		ApiRequest,
+		ApiSuccessResponse,
+	},
 	ErrorType,
 };
 
@@ -86,20 +91,20 @@ pub fn SignUp(
 				.await;
 
 			let IsUsernameValidResponse { available } = match result {
-				ApiResponse::Success {
+				Ok(ApiSuccessResponse {
 					status_code: _,
 					headers: (),
 					body,
-				} => body,
-				ApiResponse::Error {
+				}) => body,
+				Err(ApiErrorResponse {
 					status_code: _,
 					body:
-						ApiErrorResponse {
+						ApiErrorResponseBody {
 							success: _,
 							error,
 							message,
 						},
-				} => {
+				}) => {
 					handle_errors(error, message);
 					return;
 				}
@@ -129,20 +134,20 @@ pub fn SignUp(
 			.await;
 
 			let IsEmailValidResponse { available } = match result {
-				ApiResponse::Success {
+				Ok(ApiSuccessResponse {
 					status_code: _,
 					headers: (),
 					body,
-				} => body,
-				ApiResponse::Error {
+				}) => body,
+				Err(ApiErrorResponse {
 					status_code: _,
 					body:
-						ApiErrorResponse {
+						ApiErrorResponseBody {
 							success: _,
 							error,
 							message,
 						},
-				} => {
+				}) => {
 					handle_errors(error, message);
 					return;
 				}
@@ -193,20 +198,20 @@ pub fn SignUp(
 					.await;
 
 				let CreateAccountResponse = match result {
-					ApiResponse::Success {
+					Ok(ApiSuccessResponse {
 						status_code: _,
 						headers: (),
 						body,
-					} => body,
-					ApiResponse::Error {
+					}) => body,
+					Err(ApiErrorResponse {
 						status_code: _,
 						body:
-							ApiErrorResponse {
+							ApiErrorResponseBody {
 								success: _,
 								error,
 								message,
 							},
-					} => {
+					}) => {
 						handle_errors(error, message);
 						return;
 					}

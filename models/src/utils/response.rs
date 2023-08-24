@@ -1,47 +1,52 @@
-use axum::http::StatusCode;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use axum::{http::StatusCode, response::IntoResponse, Json};
+use serde::{Deserialize, Serialize};
 
-use super::{False, True};
+use super::{False, Headers, IntoAxumResponse, True};
 use crate::{ApiEndpoint, ErrorType};
 
 #[derive(Debug)]
-pub enum ApiResponse<E>
+pub struct ApiSuccessResponse<E>
 where
 	E: ApiEndpoint,
-	E::ResponseBody: Serialize + DeserializeOwned,
 {
-	Success {
-		status_code: StatusCode,
-		headers: E::ResponseHeaders,
-		body: E::ResponseBody,
-	},
-	Error {
-		status_code: StatusCode,
-		body: ApiErrorResponse,
-	},
+	pub status_code: StatusCode,
+	pub headers: E::ResponseHeaders,
+	pub body: E::ResponseBody,
 }
 
-impl<T> ApiResponse<T>
+impl<E> IntoResponse for ApiSuccessResponse<E>
 where
-	T: ApiEndpoint,
-	T::ResponseBody: Serialize + DeserializeOwned,
+	E: ApiEndpoint,
 {
-	pub fn success(
-		status_code: StatusCode,
-		headers: T::ResponseHeaders,
-		response: T::ResponseBody,
-	) -> Self {
-		Self::Success {
-			status_code,
-			headers,
-			body: response,
-		}
+	fn into_response(self) -> axum::response::Response {
+		(
+			self.status_code,
+			self.headers.to_header_map(),
+			self.body.into_axum_response(),
+		)
+			.into_response()
 	}
+}
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiSuccessResponseBody<T> {
+	pub success: True,
+	#[serde(flatten)]
+	pub response: T,
+}
+
+#[derive(Debug, Clone)]
+pub struct ApiErrorResponse {
+	pub status_code: StatusCode,
+	pub body: ApiErrorResponseBody,
+}
+
+impl ApiErrorResponse {
 	pub fn error(error: ErrorType) -> Self {
-		Self::Error {
+		Self {
 			status_code: error.default_status_code(),
-			body: ApiErrorResponse {
+			body: ApiErrorResponseBody {
 				success: False,
 				message: error.message().into(),
 				error,
@@ -49,80 +54,44 @@ where
 		}
 	}
 
-	pub fn error_with_message(error: ErrorType, message: String) -> Self {
-		Self::Error {
+	pub fn error_with_message(
+		error: ErrorType,
+		message: impl Into<String>,
+	) -> Self {
+		Self {
 			status_code: error.default_status_code(),
-			body: ApiErrorResponse {
+			body: ApiErrorResponseBody {
 				success: False,
 				error,
-				message,
+				message: message.into(),
 			},
 		}
 	}
 
 	pub fn internal_error(message: impl Into<String>) -> Self {
-		let message = message.into();
-		Self::error_with_message(
-			ErrorType::InternalServerError(anyhow::Error::msg(message.clone())),
-			message,
-		)
+		Self::error(ErrorType::InternalServerError(anyhow::Error::msg(
+			message.into(),
+		)))
 	}
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct ApiSuccessResponse<T> {
-	pub success: True,
-	#[serde(flatten)]
-	pub response: T,
-}
-
-impl<T> ApiSuccessResponse<T> {
-	pub fn into_response(self) -> T {
-		self.response
+impl IntoResponse for ApiErrorResponse {
+	fn into_response(self) -> axum::response::Response {
+		(self.status_code, Json(self.body)).into_response()
 	}
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ApiErrorResponse {
+pub struct ApiErrorResponseBody {
 	pub success: False,
 	pub error: ErrorType,
 	pub message: String,
 }
 
-impl ApiErrorResponse {
-	pub fn new(error: ErrorType) -> Self {
-		Self {
-			success: False,
-			message: error.message().into(),
-			error,
-		}
-	}
-
-	pub fn new_with_message(
-		error: ErrorType,
-		message: impl Into<String>,
-	) -> Self {
-		Self {
-			success: False,
-			error,
-			message: message.into(),
-		}
-	}
-
-	pub fn internal_error(message: impl Into<String>) -> Self {
-		let message = message.into();
-		Self::new_with_message(
-			ErrorType::InternalServerError(anyhow::Error::msg(message.clone())),
-			message,
-		)
-	}
-}
-
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum ApiResponseBody<T> {
-	Success(ApiSuccessResponse<T>),
-	Error(ApiErrorResponse),
+	Success(ApiSuccessResponseBody<T>),
+	Error(ApiErrorResponseBody),
 }

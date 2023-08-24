@@ -147,6 +147,7 @@ dependencies = [
  "tokio",
  "tower",
  "tracing",
+ "typed-builder 0.15.2",
  "typed-headers",
 ]
 
@@ -1850,7 +1851,7 @@ dependencies = [
  "leptos_server",
  "server_fn",
  "tracing",
- "typed-builder",
+ "typed-builder 0.14.0",
 ]
 
 [[package]]
@@ -1881,7 +1882,7 @@ dependencies = [
  "regex",
  "serde",
  "thiserror",
- "typed-builder",
+ "typed-builder 0.14.0",
 ]
 
 [[package]]
@@ -2184,6 +2185,7 @@ dependencies = [
  "serde_json",
  "serde_test",
  "tower",
+ "tracing",
  "typed-headers",
  "uuid",
 ]
@@ -3059,9 +3061,7 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
 name = "rustis"
-version = "0.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7b6a32fafd07d978c66d3e29f3758d72bc0e812df9342e2dd7e5d75cb0d5679"
+version = "0.1.0"
 dependencies = [
  "atoi",
  "bb8",
@@ -4263,6 +4263,26 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "typed-builder"
+version = "0.15.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7fe83c85a85875e8c4cb9ce4a890f05b23d38cd0d47647db7895d3d2a79566d2"
+dependencies = [
+ "typed-builder-macro",
+]
+
+[[package]]
+name = "typed-builder-macro"
+version = "0.15.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29a3151c41d0b13e3d011f98adc24434560ef06673a155a6c7f66b9879eecce2"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.28",
 ]
 
 [[package]]
