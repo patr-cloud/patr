@@ -1,4 +1,8 @@
-#![feature(impl_trait_in_assoc_type)]
+#![forbid(unsafe_code)]
+#![warn(missing_docs, clippy::missing_docs_in_private_items)]
+#![feature(impl_trait_in_assoc_type, associated_type_defaults)]
+
+//! The main API server for Patr.
 
 use std::net::SocketAddr;
 
@@ -10,11 +14,13 @@ mod redis;
 mod routes;
 mod utils;
 
+/// A prelude that re-exports commonly used items.
 pub mod prelude {
+	pub use models::ApiEndpoint;
 	pub use tracing::{debug, error, info, instrument, trace, warn};
 
 	pub use crate::{
-		app::AppState,
+		app::{AppRequest, AppState},
 		utils::{extractors::*, RouterExt},
 	};
 }
@@ -28,12 +34,14 @@ async fn main() {
 
 	let redis = redis::connect(&config.redis).await;
 
-	let state = AppState { database, redis };
-
 	axum::Server::bind(&config.bind_addr)
 		.serve(
-			app::setup_routes(&state)
-				.into_make_service_with_connect_info::<SocketAddr>(),
+			app::setup_routes(&AppState {
+				database,
+				redis,
+				config,
+			})
+			.into_make_service_with_connect_info::<SocketAddr>(),
 		)
 		.with_graceful_shutdown(async {
 			tokio::signal::ctrl_c()

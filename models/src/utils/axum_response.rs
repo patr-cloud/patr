@@ -4,16 +4,22 @@ use axum::{
 };
 use serde::{de::DeserializeOwned, Serialize};
 
+use super::{ApiSuccessResponseBody, True};
+
 pub trait IntoAxumResponse {
-	fn into_response(self) -> Response;
+	fn into_axum_response(self) -> Response;
 }
 
 impl<T> IntoAxumResponse for T
 where
 	T: Serialize + DeserializeOwned,
 {
-	fn into_response(self) -> Response {
-		Json(self).into_response()
+	fn into_axum_response(self) -> Response {
+		Json(ApiSuccessResponseBody {
+			success: True,
+			response: self,
+		})
+		.into_response()
 	}
 }
 
@@ -21,7 +27,7 @@ where
 pub struct GenericResponse(pub Response);
 
 impl IntoAxumResponse for GenericResponse {
-	fn into_response(self) -> Response {
+	fn into_axum_response(self) -> Response {
 		self.0
 	}
 }

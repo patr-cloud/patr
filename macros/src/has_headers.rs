@@ -65,7 +65,17 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		.map(|field| {
 			let Field { ident, ty, .. } = field;
 			quote::quote! {
-				#ident: ::typed_headers::HeaderMapExt::typed_get::<#ty>(map).ok().flatten()?,
+				#ident: ::typed_headers::HeaderMapExt::typed_get::<#ty>(map)
+					.map_err(|err| {
+						tracing::debug!(
+							"Failed to parse header `{}`: {}",
+							<#ty as ::typed_headers::Header>::name().as_str(),
+							err
+						);
+						err
+					})
+					.ok()
+					.flatten()?,
 			}
 		})
 		.collect::<TokenStream2>();

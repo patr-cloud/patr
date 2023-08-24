@@ -10,13 +10,18 @@ use axum::{
 use axum_extra::routing::TypedPath;
 use models::{utils::ApiRequest, ApiEndpoint};
 
-use super::{route_handler::EndpointHandler, LastElementIs};
+use crate::utils::{route_handler::EndpointHandler, LastElementIs};
 
+/// Extension trait for axum Router to mount an API endpoint directly along with
+/// the required request parser, Rate limiter, Audit logger and Auth
+/// middlewares, using tower layers.
 pub trait RouterExt<S, B>
 where
 	B: HttpBody + Send + 'static,
 	S: Clone + Send + Sync + 'static,
 {
+	/// Mount an API endpoint directly along with the required request parser,
+	/// Rate limiter, Audit logger and Auth middlewares, using tower layers.
 	#[track_caller]
 	fn mount_endpoint<E, Params, H>(self, handler: H) -> Self
 	where
@@ -47,7 +52,11 @@ where
 					state: PhantomData,
 					body: PhantomData,
 					endpoint: PhantomData,
-				},
+				}
+				.layer(todo!("Add audit logger middleware here"))
+				.layer(todo!("Add auth middleware here"))
+				.layer(todo!("Add request parser middleware here"))
+				.layer(todo!("Add rate limiter middleware here")),
 			),
 		)
 	}
