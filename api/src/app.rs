@@ -39,7 +39,7 @@ impl Debug for AppState {
 }
 
 /// A request object that is passed through the tower layers and services
-pub struct AppRequest<E>
+pub struct AppRequest<'a, E>
 where
 	E: ApiEndpoint,
 {
@@ -48,10 +48,10 @@ where
 	pub request: ApiRequest<E>,
 	/// The database transaction for the request. In case the request returns
 	/// an Error, this transaction will be automatically rolled back.
-	pub database: DatabaseTransaction,
+	pub database: &'a mut DatabaseTransaction,
 	/// The redis transaction for the request. In case the request returns
 	/// an Error, this transaction will be automatically rolled back.
-	pub redis: RedisTransaction,
+	pub redis: &'a mut RedisTransaction,
 	/// The application configuration.
 	pub config: AppConfig,
 }

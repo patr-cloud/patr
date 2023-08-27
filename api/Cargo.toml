@@ -14,12 +14,12 @@ axum-extra = { version = "0.7", features = ["typed-routing"] }
 config = "0.13"
 models = { workspace = true, features = ["server"] }
 preprocess = "0.2"
-rustis = { path = "../../../rustis", features = [
+rustis = { git = "https://github.com/rakshith-ravi/rustis", features = [
     "pool",
     "tls",
     "redis-json",
     "tokio-tls",
-] }
+], branch = "feature/dockerfile-changes" }
 sea-orm = { version = "0.12", features = [
     "sqlx-postgres",
     "runtime-tokio",
@@ -30,5 +30,5 @@ serde = { version = "1", features = ["derive"] }
 tokio = { workspace = true }
 tower = { version = "0.4", features = ["tracing", "full"] }
 tracing = { version = "0.1", features = ["async-await"] }
-typed-builder = "0.15"
+typed-builder = "0.16"
 typed-headers = "0.2"

@@ -1,101 +1,122 @@
-use std::{error::Error as StdError, future::Future, pin::Pin};
-
-use axum::{
-	body::HttpBody,
-	extract::{FromRequest, FromRequestParts},
-	http::Request,
-	response::{IntoResponse, Response},
-};
-use models::{
-	utils::{ApiRequest, IntoAxumResponse},
-	ApiEndpoint,
-	ErrorType,
+use std::{
+	future::Future,
+	marker::PhantomData,
+	task::{Context, Poll},
 };
 
-use crate::utils::LastElementIs;
+use models::{ApiEndpoint, ErrorType};
+use tower::{Layer, Service};
 
-pub trait EndpointHandler<Params, S, B, E>
+use crate::{app::AppResponse, prelude::AppRequest};
+
+pub trait EndpointHandler<E>
 where
-	Params: LastElementIs<ApiRequest<E>>,
 	E: ApiEndpoint,
 {
-	type Future: Future<Output = Response> + Send + 'static;
+	type Future: Future<Output = Result<AppResponse<E>, ErrorType>> + Send + 'static;
 
-	fn call(self, req: Request<B>, state: S) -> Self::Future;
+	fn call<'a>(self, req: AppRequest<'a, E>) -> Self::Future;
 }
 
-macro_rules! impl_dto_handler {
-	( $($ty:ident),* $(,)? ) => {
-	impl<F, Fut, R, S, $($ty,)* E, B>
-		EndpointHandler<($($ty,)* ApiRequest<E>,), S, B, E> for F
-	where
-		F: FnOnce($($ty,)* ApiRequest<E>) -> Fut
-			+ Clone
-			+ Send
-			+ 'static,
-		Fut: Future<Output = R>
-			+ Send
-			+ 'static,
-		R: IntoAxumResponse,
-		B: HttpBody + Send + 'static,
-		<B as HttpBody>::Data: Send,
-		<B as HttpBody>::Error: StdError + Send + Sync,
-		S: Send + Sync + 'static,
-		$($ty: FromRequestParts<S> + Send,)*
-		E: ApiEndpoint + Send,
-		ApiRequest<E>: FromRequest<S, B>,
-		<ApiRequest<E> as FromRequest<S, B>>::Rejection:
-			Into<ErrorType> + Send,
-	{
-		type Future = Pin<
-			Box<
-				dyn Future<Output = Response> + Send,
-			>,
-		>;
+impl<F, Fut, E> EndpointHandler<E> for F
+where
+	F: FnOnce(AppRequest<'_, E>) -> Fut + Clone + Send + 'static,
+	Fut: Future<Output = Result<AppResponse<E>, ErrorType>> + Send + 'static,
+	E: ApiEndpoint,
+{
+	type Future = Fut;
 
-		#[allow(non_snake_case, unused_mut)]
-		fn call(self, req: Request<B>, state: S) -> Self::Future {
-			Box::pin(async move {
-				let (mut parts, body) = req.into_parts();
-				let state = &state;
+	fn call(self, req: AppRequest<'_, E>) -> Self::Future {
+		self(req)
+	}
+}
 
-				$(
-					let $ty = match $ty::from_request_parts(&mut parts, state).await {
-						Ok(value) => value,
-						Err(rejection) => return rejection.into_response(),
-					};
-				)*
+pub struct EndpointLayer<H, E>
+where
+	H: EndpointHandler<E> + Clone + Send + 'static,
+	E: ApiEndpoint,
+{
+	handler: H,
+	endpoint: PhantomData<E>,
+}
 
-				let req = Request::from_parts(parts, body);
-
-				let result = ApiRequest::<E>::from_request(req, state).await;
-				let dto = match result {
-					Ok(dto) => dto,
-					Err(err) => return Err::<(), _>(err).into_response(),
-				};
-
-				self($($ty,)* dto).await.into_axum_response()
-			})
+impl<H, E> EndpointLayer<H, E>
+where
+	H: EndpointHandler<E> + Clone + Send + 'static,
+	E: ApiEndpoint,
+{
+	pub fn new(handler: H) -> Self {
+		Self {
+			handler,
+			endpoint: PhantomData,
 		}
 	}
-	};
 }
 
-impl_dto_handler!();
-impl_dto_handler!(T1);
-impl_dto_handler!(T1, T2);
-impl_dto_handler!(T1, T2, T3);
-impl_dto_handler!(T1, T2, T3, T4);
-impl_dto_handler!(T1, T2, T3, T4, T5);
-impl_dto_handler!(T1, T2, T3, T4, T5, T6);
-impl_dto_handler!(T1, T2, T3, T4, T5, T6, T7);
-impl_dto_handler!(T1, T2, T3, T4, T5, T6, T7, T8);
-impl_dto_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9);
-impl_dto_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
-impl_dto_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
-impl_dto_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12);
-impl_dto_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13);
-impl_dto_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14);
-impl_dto_handler!(
-	T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15
-);
+impl<S, H, E> Layer<S> for EndpointLayer<H, E>
+where
+	H: EndpointHandler<E> + Clone + Send + 'static,
+	E: ApiEndpoint,
+{
+	type Service = EndpointService<H, E>;
+
+	fn layer(&self, _: S) -> Self::Service {
+		EndpointService {
+			handler: self.handler.clone(),
+			endpoint: PhantomData,
+		}
+	}
+}
+
+impl<H, E> Clone for EndpointLayer<H, E>
+where
+	H: EndpointHandler<E> + Clone + Send + 'static,
+	E: ApiEndpoint,
+{
+	fn clone(&self) -> Self {
+		Self {
+			handler: self.handler.clone(),
+			endpoint: PhantomData,
+		}
+	}
+}
+
+pub struct EndpointService<H, E>
+where
+	H: EndpointHandler<E> + Clone + Send + 'static,
+	E: ApiEndpoint,
+{
+	handler: H,
+	endpoint: PhantomData<E>,
+}
+
+impl<'a, H, E> Service<AppRequest<'a, E>> for EndpointService<H, E>
+where
+	H: EndpointHandler<E> + Clone + Send + 'static,
+	E: ApiEndpoint,
+{
+	type Response = AppResponse<E>;
+	type Error = ErrorType;
+	type Future = H::Future;
+
+	fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+		Poll::Ready(Ok(()))
+	}
+
+	fn call(&mut self, req: AppRequest<'a, E>) -> Self::Future {
+		self.handler.clone().call(req)
+	}
+}
+
+impl<H, E> Clone for EndpointService<H, E>
+where
+	H: EndpointHandler<E> + Clone + Send + 'static,
+	E: ApiEndpoint,
+{
+	fn clone(&self) -> Self {
+		Self {
+			handler: self.handler.clone(),
+			endpoint: PhantomData,
+		}
+	}
+}

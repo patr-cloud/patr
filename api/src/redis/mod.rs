@@ -7,9 +7,7 @@ pub async fn connect(config: &RedisConfig) -> Client {
 	Client::connect(format!(
 		"{}://{}{}:{}/{}",
 		if config.secure { "rediss" } else { "redis" },
-		if let Some((username, password)) =
-			config.user.as_ref().zip(config.password.as_ref())
-		{
+		if let Some((username, password)) = config.user.as_ref().zip(config.password.as_ref()) {
 			format!("{}:{}@", username, password)
 		} else {
 			"".to_string()
