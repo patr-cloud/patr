@@ -19,10 +19,7 @@ pub struct ClientIP(pub IpAddr);
 impl<S> FromRequestParts<S> for ClientIP {
 	type Rejection = Infallible;
 
-	async fn from_request_parts(
-		parts: &mut Parts,
-		_: &S,
-	) -> Result<Self, Self::Rejection> {
+	async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
 		let cf_connecting_ip = parts
 			.headers
 			.get("CF-Connecting-IP")

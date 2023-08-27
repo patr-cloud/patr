@@ -12,9 +12,10 @@
         ]
     },
     "editor.rulers": [
-        80
+        100
     ],
     "cSpell.words": [
         "leptos"
-    ]
+    ],
+    "nixEnvSelector.nixFile": "${workspaceRoot}/shell.nix"
 }

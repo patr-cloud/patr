@@ -26,9 +26,7 @@ pub fn setup_routes(state: &AppState) -> Router {
 			any(|Host(hostname), request: Request<Body>| async move {
 				match hostname.as_str() {
 					"api.patr.cloud" => api_router.oneshot(request).await,
-					"registry.patr.cloud" => {
-						registry_router.oneshot(request).await
-					}
+					"registry.patr.cloud" => registry_router.oneshot(request).await,
 					_ => Ok(Response::builder()
 						.status(StatusCode::NOT_FOUND)
 						.body(body::boxed(Body::empty()))

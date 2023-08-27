@@ -37,7 +37,7 @@ where
 
 impl<S, E> Layer<S> for NoAuthMiddlewareLayer<E>
 where
-	S: Service<AppRequest<E>>,
+	for<'a> S: Service<AppRequest<'a, E>>,
 	E: ApiEndpoint,
 {
 	type Service = NoAuthMiddleware<S, E>;
@@ -53,30 +53,27 @@ where
 #[derive(Clone, Debug)]
 pub struct NoAuthMiddleware<S, E>
 where
-	S: Service<AppRequest<E>>,
+	for<'a> S: Service<AppRequest<'a, E>>,
 	E: ApiEndpoint,
 {
 	inner: S,
 	phantom: PhantomData<E>,
 }
 
-impl<S, E> Service<AppRequest<E>> for NoAuthMiddleware<S, E>
+impl<'a, S, E> Service<AppRequest<'a, E>> for NoAuthMiddleware<S, E>
 where
 	E: ApiEndpoint,
-	S: Service<AppRequest<E>>,
+	for<'b> S: Service<AppRequest<'b, E>>,
 {
-	type Response = S::Response;
-	type Error = S::Error;
-	type Future = S::Future;
+	type Response = <S as Service<AppRequest<'a, E>>>::Response;
+	type Error = <S as Service<AppRequest<'a, E>>>::Error;
+	type Future = <S as Service<AppRequest<'a, E>>>::Future;
 
-	fn poll_ready(
-		&mut self,
-		cx: &mut Context<'_>,
-	) -> Poll<Result<(), Self::Error>> {
+	fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
 		self.inner.poll_ready(cx)
 	}
 
-	fn call(&mut self, req: AppRequest<E>) -> Self::Future {
+	fn call(&mut self, req: AppRequest<'a, E>) -> Self::Future {
 		self.inner.call(req)
 	}
 }

@@ -1,4 +1,8 @@
-use std::{env, net::SocketAddr, fmt::{Formatter, Display}};
+use std::{
+	env,
+	fmt::{Display, Formatter},
+	net::SocketAddr,
+};
 
 use config::{Config, Environment, File};
 use serde::{Deserialize, Serialize};

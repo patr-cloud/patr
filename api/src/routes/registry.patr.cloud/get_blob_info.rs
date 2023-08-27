@@ -1,6 +1,6 @@
 use axum::{
 	extract::Path,
-	http::{HeaderMap, HeaderName, HeaderValue, StatusCode, Method},
+	http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode},
 	response::IntoResponse,
 };
 use models::utils::Uuid;
@@ -23,7 +23,6 @@ pub(super) async fn handle(
 		digest,
 	}): Path<PathParams>,
 ) -> impl IntoResponse {
-	
 	(
 		[(
 			HeaderName::from_static("Docker-Distribution-API-Version"),
