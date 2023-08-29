@@ -9,8 +9,10 @@ use axum_extra::routing::TypedPath;
 use models::ApiEndpoint;
 use tower::ServiceBuilder;
 
-use super::{layers::RequestParserLayer, route_handler::EndpointLayer};
-use crate::{prelude::AppState, utils::route_handler::EndpointHandler};
+use crate::{
+	prelude::AppState,
+	utils::layers::{EndpointHandler, EndpointLayer, RequestParserLayer},
+};
 
 /// Extension trait for axum Router to mount an API endpoint directly along with
 /// the required request parser, Rate limiter, Audit logger and Auth
@@ -51,9 +53,10 @@ where
 				)
 				.layer(
 					ServiceBuilder::new()
-						// .layer(todo!("Add rate limiter middleware here")),
+						// .layer(todo!("Add rate limiter checker middleware here")),
 						.layer(RequestParserLayer::with_state(state))
 						// .layer(todo!("Add auth middleware here"))
+						// .layer(todo!("Add rate limiter value updater middleware here"))
 						// .layer(todo!("Add audit logger middleware here"))
 						.layer(EndpointLayer::new(handler)),
 				),

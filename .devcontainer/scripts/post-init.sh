@@ -15,8 +15,8 @@ mkdir -p ~/.kube
 
 # TODO setup kubernetes cluster with k3d and use that kubeconfig
 
-echo "Installing sea-orm-cli"
-cargo install sea-orm-cli
+echo "Installing sea-orm-cli and trunk"
+cargo install sea-orm-cli trunk
 
 if [ ! -f /workspace/config/dev.json ]; then
 	echo "Setting up dev.json"
