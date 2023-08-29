@@ -34,7 +34,7 @@ async fn main() {
 
 	let redis = redis::connect(&config.redis).await;
 
-	axum::Server::bind(&config.bind_addr)
+	axum::Server::bind(&config.bind_address)
 		.serve(
 			app::setup_routes(&AppState {
 				database,

@@ -2,10 +2,7 @@
 
 use sea_orm::entity::prelude::*;
 
-use super::sea_orm_active_enums::{
-	ManagedDatabaseEngine,
-	ManagedDatabaseStatus,
-};
+use super::sea_orm_active_enums::{ManagedDatabaseEngine, ManagedDatabaseStatus};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "managed_database")]

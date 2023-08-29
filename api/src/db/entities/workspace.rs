@@ -31,12 +31,6 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-	#[sea_orm(has_many = "super::ci_git_provider::Entity")]
-	CiGitProvider,
-	#[sea_orm(has_many = "super::ci_runner::Entity")]
-	CiRunner,
-	#[sea_orm(has_many = "super::deployment_payment_history::Entity")]
-	DeploymentPaymentHistory,
 	#[sea_orm(has_many = "super::docker_registry_repository::Entity")]
 	DockerRegistryRepository,
 	#[sea_orm(has_many = "super::docker_repo_payment_history::Entity")]
@@ -83,32 +77,12 @@ pub enum Relation {
 		on_delete = "NoAction"
 	)]
 	User,
-	#[sea_orm(
-		has_many = "super::user_api_token_workspace_super_admin::Entity"
-	)]
+	#[sea_orm(has_many = "super::user_api_token_workspace_super_admin::Entity")]
 	UserApiTokenWorkspaceSuperAdmin,
 	#[sea_orm(has_many = "super::workspace_audit_log::Entity")]
 	WorkspaceAuditLog,
 	#[sea_orm(has_many = "super::workspace_user::Entity")]
 	WorkspaceUser,
-}
-
-impl Related<super::ci_git_provider::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::CiGitProvider.def()
-	}
-}
-
-impl Related<super::ci_runner::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::CiRunner.def()
-	}
-}
-
-impl Related<super::deployment_payment_history::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::DeploymentPaymentHistory.def()
-	}
 }
 
 impl Related<super::docker_registry_repository::Entity> for Entity {

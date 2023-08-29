@@ -1,17 +1,8 @@
 {
-	"port": 3000,
-	"bindAddress": "127.0.0.1",
-	"basePath": "/",
+	"bindAddress": "127.0.0.1:3000",
+	"apiBasePath": "/",
 	"passwordPepper": "keyboard cat",
 	"jwtSecret": "keyboard cat",
-	"apiUrl": "https://api.patr.cloud",
-	"s3": {
-		"endpoint": "s3.localhost",
-		"region": "sample-region",
-		"bucket": "sample-bucket",
-		"key": "key123",
-		"secret": "secret123"
-	},
 	"database": {
 		"host": "localhost",
 		"port": 3306,
@@ -28,6 +19,18 @@
 		"database": 0,
 		"connectionLimit": 10,
 		"secure": false
+	},
+
+
+
+	
+	"apiUrl": "https://api.patr.cloud",
+	"s3": {
+		"endpoint": "s3.localhost",
+		"region": "sample-region",
+		"bucket": "sample-bucket",
+		"key": "key123",
+		"secret": "secret123"
 	},
 	"email": {
 		"host": "smtp.example.com",

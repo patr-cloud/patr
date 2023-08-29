@@ -24,7 +24,7 @@ pub struct Model {
 	#[sea_orm(column_type = "Text", nullable)]
 	pub password_reset_token: Option<String>,
 	pub password_reset_token_expiry: Option<DateTimeWithTimeZone>,
-	pub password_reset_attempts: i32,
+	pub password_reset_attempts: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -64,25 +64,37 @@ impl Related<super::deployment::Entity> for Entity {
 		super::deployment_deploy_history::Relation::Deployment.def()
 	}
 	fn via() -> Option<RelationDef> {
-		Some (super :: deployment_deploy_history :: Relation :: DockerRegistryRepository . def () . rev ())
+		Some(
+			super::deployment_deploy_history::Relation::DockerRegistryRepository
+				.def()
+				.rev(),
+		)
 	}
 }
 
 impl Related<super::docker_registry_repository_manifest::Entity> for Entity {
 	fn to() -> RelationDef {
-		super :: docker_registry_repository_tag :: Relation :: DockerRegistryRepositoryManifest . def ()
+		super::docker_registry_repository_tag::Relation::DockerRegistryRepositoryManifest.def()
 	}
 	fn via() -> Option<RelationDef> {
-		Some (super :: docker_registry_repository_tag :: Relation :: DockerRegistryRepository . def () . rev ())
+		Some(
+			super::docker_registry_repository_tag::Relation::DockerRegistryRepository
+				.def()
+				.rev(),
+		)
 	}
 }
 
 impl Related<super::docker_registry_repository_tag::Entity> for Entity {
 	fn to() -> RelationDef {
-		super :: docker_registry_repository_manifest :: Relation :: DockerRegistryRepositoryTag . def ()
+		super::docker_registry_repository_manifest::Relation::DockerRegistryRepositoryTag.def()
 	}
 	fn via() -> Option<RelationDef> {
-		Some (super :: docker_registry_repository_manifest :: Relation :: DockerRegistryRepository . def () . rev ())
+		Some(
+			super::docker_registry_repository_manifest::Relation::DockerRegistryRepository
+				.def()
+				.rev(),
+		)
 	}
 }
 

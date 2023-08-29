@@ -27,13 +27,9 @@ pub enum Relation {
 		on_delete = "NoAction"
 	)]
 	Permission,
-	#[sea_orm(
-		has_many = "super::user_api_token_resource_permissions_exclude::Entity"
-	)]
+	#[sea_orm(has_many = "super::user_api_token_resource_permissions_exclude::Entity")]
 	UserApiTokenResourcePermissionsExclude,
-	#[sea_orm(
-		has_many = "super::user_api_token_resource_permissions_include::Entity"
-	)]
+	#[sea_orm(has_many = "super::user_api_token_resource_permissions_include::Entity")]
 	UserApiTokenResourcePermissionsInclude,
 	#[sea_orm(
 		belongs_to = "super::user_api_token_workspace_permission_type::Entity",
@@ -51,25 +47,19 @@ impl Related<super::permission::Entity> for Entity {
 	}
 }
 
-impl Related<super::user_api_token_resource_permissions_exclude::Entity>
-	for Entity
-{
+impl Related<super::user_api_token_resource_permissions_exclude::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::UserApiTokenResourcePermissionsExclude.def()
 	}
 }
 
-impl Related<super::user_api_token_resource_permissions_include::Entity>
-	for Entity
-{
+impl Related<super::user_api_token_resource_permissions_include::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::UserApiTokenResourcePermissionsInclude.def()
 	}
 }
 
-impl Related<super::user_api_token_workspace_permission_type::Entity>
-	for Entity
-{
+impl Related<super::user_api_token_workspace_permission_type::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::UserApiTokenWorkspacePermissionType.def()
 	}

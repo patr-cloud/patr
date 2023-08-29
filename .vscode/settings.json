@@ -3,7 +3,7 @@
         "+nightly"
     ],
     "rust-analyzer.check.extraArgs": [
-        "--target-dir=./target/rust-analyzer"
+        "--target-dir=./.devcontainer/volume/data/rust-analyzer"
     ],
     "rust-analyzer.procMacro.ignored": {
         "leptos_macro": [
@@ -17,5 +17,6 @@
     "cSpell.words": [
         "leptos"
     ],
-    "nixEnvSelector.nixFile": "${workspaceRoot}/shell.nix"
+    "nixEnvSelector.nixFile": "${workspaceRoot}/shell.nix",
+    "rust-analyzer.showUnlinkedFileNotification": false
 }

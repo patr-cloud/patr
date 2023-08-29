@@ -16,9 +16,7 @@ pub struct Model {
 pub enum Relation {
 	#[sea_orm(has_many = "super::role_resource_permissions_type::Entity")]
 	RoleResourcePermissionsType,
-	#[sea_orm(
-		has_many = "super::user_api_token_resource_permissions_type::Entity"
-	)]
+	#[sea_orm(has_many = "super::user_api_token_resource_permissions_type::Entity")]
 	UserApiTokenResourcePermissionsType,
 	#[sea_orm(has_many = "super::workspace_audit_log::Entity")]
 	WorkspaceAuditLog,
@@ -30,9 +28,7 @@ impl Related<super::role_resource_permissions_type::Entity> for Entity {
 	}
 }
 
-impl Related<super::user_api_token_resource_permissions_type::Entity>
-	for Entity
-{
+impl Related<super::user_api_token_resource_permissions_type::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::UserApiTokenResourcePermissionsType.def()
 	}

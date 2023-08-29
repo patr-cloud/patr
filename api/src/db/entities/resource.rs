@@ -14,8 +14,6 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-	#[sea_orm(has_many = "super::ci_runner::Entity")]
-	CiRunner,
 	#[sea_orm(has_many = "super::deployment::Entity")]
 	Deployment,
 	#[sea_orm(has_many = "super::docker_registry_repository::Entity")]
@@ -44,13 +42,9 @@ pub enum Relation {
 	StaticSite,
 	#[sea_orm(has_many = "super::static_site_upload_history::Entity")]
 	StaticSiteUploadHistory,
-	#[sea_orm(
-		has_many = "super::user_api_token_resource_permissions_exclude::Entity"
-	)]
+	#[sea_orm(has_many = "super::user_api_token_resource_permissions_exclude::Entity")]
 	UserApiTokenResourcePermissionsExclude,
-	#[sea_orm(
-		has_many = "super::user_api_token_resource_permissions_include::Entity"
-	)]
+	#[sea_orm(has_many = "super::user_api_token_resource_permissions_include::Entity")]
 	UserApiTokenResourcePermissionsInclude,
 	#[sea_orm(
 		belongs_to = "super::workspace::Entity",
@@ -64,12 +58,6 @@ pub enum Relation {
 	WorkspaceAuditLog,
 	#[sea_orm(has_many = "super::workspace_domain::Entity")]
 	WorkspaceDomain,
-}
-
-impl Related<super::ci_runner::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::CiRunner.def()
-	}
 }
 
 impl Related<super::deployment::Entity> for Entity {
@@ -138,17 +126,13 @@ impl Related<super::static_site_upload_history::Entity> for Entity {
 	}
 }
 
-impl Related<super::user_api_token_resource_permissions_exclude::Entity>
-	for Entity
-{
+impl Related<super::user_api_token_resource_permissions_exclude::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::UserApiTokenResourcePermissionsExclude.def()
 	}
 }
 
-impl Related<super::user_api_token_resource_permissions_include::Entity>
-	for Entity
-{
+impl Related<super::user_api_token_resource_permissions_include::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::UserApiTokenResourcePermissionsInclude.def()
 	}
