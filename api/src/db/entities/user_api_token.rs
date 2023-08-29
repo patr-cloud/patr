@@ -24,13 +24,9 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-	#[sea_orm(
-		has_many = "super::user_api_token_workspace_permission_type::Entity"
-	)]
+	#[sea_orm(has_many = "super::user_api_token_workspace_permission_type::Entity")]
 	UserApiTokenWorkspacePermissionType,
-	#[sea_orm(
-		has_many = "super::user_api_token_workspace_super_admin::Entity"
-	)]
+	#[sea_orm(has_many = "super::user_api_token_workspace_super_admin::Entity")]
 	UserApiTokenWorkspaceSuperAdmin,
 	#[sea_orm(
 		belongs_to = "super::user_login::Entity",
@@ -42,9 +38,7 @@ pub enum Relation {
 	UserLogin,
 }
 
-impl Related<super::user_api_token_workspace_permission_type::Entity>
-	for Entity
-{
+impl Related<super::user_api_token_workspace_permission_type::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::UserApiTokenWorkspacePermissionType.def()
 	}

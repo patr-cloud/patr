@@ -27,8 +27,6 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-	#[sea_orm(has_many = "super::ci_runner::Entity")]
-	CiRunner,
 	#[sea_orm(has_many = "super::deployment::Entity")]
 	Deployment,
 	#[sea_orm(has_many = "super::managed_database::Entity")]
@@ -49,12 +47,6 @@ pub enum Relation {
 		on_delete = "NoAction"
 	)]
 	Workspace,
-}
-
-impl Related<super::ci_runner::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::CiRunner.def()
-	}
 }
 
 impl Related<super::deployment::Entity> for Entity {

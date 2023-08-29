@@ -42,10 +42,14 @@ impl Related<super::docker_registry_repository_manifest::Entity> for Entity {
 
 impl Related<super::docker_registry_repository::Entity> for Entity {
 	fn to() -> RelationDef {
-		super :: docker_registry_repository_manifest :: Relation :: DockerRegistryRepository . def ()
+		super::docker_registry_repository_manifest::Relation::DockerRegistryRepository.def()
 	}
 	fn via() -> Option<RelationDef> {
-		Some (super :: docker_registry_repository_manifest :: Relation :: DockerRegistryRepositoryTag . def () . rev ())
+		Some(
+			super::docker_registry_repository_manifest::Relation::DockerRegistryRepositoryTag
+				.def()
+				.rev(),
+		)
 	}
 }
 

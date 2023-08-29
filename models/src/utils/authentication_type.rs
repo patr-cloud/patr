@@ -3,7 +3,7 @@ use std::future::Future;
 pub use crate::prelude::*;
 use crate::{api::EmptyRequest, utils::ApiRequest, ApiEndpoint};
 
-pub enum AuthenticatorMiddleware<E = EmptyRequest>
+pub enum AuthenticatorType<E = EmptyRequest>
 where
 	E: ApiEndpoint,
 {

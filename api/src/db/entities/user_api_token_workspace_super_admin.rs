@@ -50,9 +50,7 @@ impl Related<super::user_api_token::Entity> for Entity {
 	}
 }
 
-impl Related<super::user_api_token_workspace_permission_type::Entity>
-	for Entity
-{
+impl Related<super::user_api_token_workspace_permission_type::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::UserApiTokenWorkspacePermissionType.def()
 	}

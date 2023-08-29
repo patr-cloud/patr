@@ -3,65 +3,7 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "ci_build_status")]
-pub enum CiBuildStatus {
-	#[sea_orm(string_value = "cancelled")]
-	Cancelled,
-	#[sea_orm(string_value = "errored")]
-	Errored,
-	#[sea_orm(string_value = "running")]
-	Running,
-	#[sea_orm(string_value = "succeeded")]
-	Succeeded,
-	#[sea_orm(string_value = "waiting_to_start")]
-	WaitingToStart,
-}
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(
-	rs_type = "String",
-	db_type = "Enum",
-	enum_name = "ci_build_step_status"
-)]
-pub enum CiBuildStepStatus {
-	#[sea_orm(string_value = "cancelled")]
-	Cancelled,
-	#[sea_orm(string_value = "errored")]
-	Errored,
-	#[sea_orm(string_value = "running")]
-	Running,
-	#[sea_orm(string_value = "skipped_dep_error")]
-	SkippedDepError,
-	#[sea_orm(string_value = "succeeded")]
-	Succeeded,
-	#[sea_orm(string_value = "waiting_to_start")]
-	WaitingToStart,
-}
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(
-	rs_type = "String",
-	db_type = "Enum",
-	enum_name = "ci_git_provider_type"
-)]
-pub enum CiGitProviderType {
-	#[sea_orm(string_value = "github")]
-	Github,
-}
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "ci_repo_status")]
-pub enum CiRepoStatus {
-	#[sea_orm(string_value = "active")]
-	Active,
-	#[sea_orm(string_value = "deleted")]
-	Deleted,
-	#[sea_orm(string_value = "inactive")]
-	Inactive,
-}
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(
-	rs_type = "String",
-	db_type = "Enum",
-	enum_name = "deployment_status"
-)]
+#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "deployment_status")]
 pub enum DeploymentStatus {
 	#[sea_orm(string_value = "created")]
 	Created,
@@ -113,11 +55,7 @@ pub enum DomainPlan {
 	Unlimited,
 }
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(
-	rs_type = "String",
-	db_type = "Enum",
-	enum_name = "exposed_port_type"
-)]
+#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "exposed_port_type")]
 pub enum ExposedPortType {
 	#[sea_orm(string_value = "http")]
 	Http,

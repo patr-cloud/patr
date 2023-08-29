@@ -12,7 +12,6 @@ COPY ./volume/config/init-data/user user
 COPY ./volume/config/init-data/group group
 COPY ./.bashrc bashrc
 COPY ./scripts/runc.sh /runc.sh
-RUN addgroup --gid $(cat ./group) vscode
 RUN adduser --uid $(cat ./user) --gid $(cat ./group) vscode
 
 # Add newly created user to sudo and docker

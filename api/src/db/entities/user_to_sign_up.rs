@@ -18,20 +18,10 @@ pub struct Model {
 	#[sea_orm(column_type = "Text")]
 	pub otp_hash: String,
 	pub otp_expiry: DateTimeWithTimeZone,
-	#[sea_orm(column_type = "Text", nullable)]
-	pub coupon_code: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-	#[sea_orm(
-		belongs_to = "super::coupon_code::Entity",
-		from = "Column::CouponCode",
-		to = "super::coupon_code::Column::Code",
-		on_update = "NoAction",
-		on_delete = "NoAction"
-	)]
-	CouponCode,
 	#[sea_orm(
 		belongs_to = "super::personal_domain::Entity",
 		from = "Column::RecoveryEmailDomainId",
@@ -48,12 +38,6 @@ pub enum Relation {
 		on_delete = "NoAction"
 	)]
 	PhoneNumberCountryCode,
-}
-
-impl Related<super::coupon_code::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::CouponCode.def()
-	}
 }
 
 impl Related<super::personal_domain::Entity> for Entity {

@@ -44,9 +44,7 @@ impl Related<super::resource::Entity> for Entity {
 	}
 }
 
-impl Related<super::user_api_token_resource_permissions_type::Entity>
-	for Entity
-{
+impl Related<super::user_api_token_resource_permissions_type::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::UserApiTokenResourcePermissionsType.def()
 	}

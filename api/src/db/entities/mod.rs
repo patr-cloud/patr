@@ -2,21 +2,12 @@
 
 pub mod prelude;
 
-pub mod address;
-pub mod ci_build_machine_type;
-pub mod ci_builds;
-pub mod ci_git_provider;
-pub mod ci_repos;
-pub mod ci_runner;
-pub mod ci_steps;
-pub mod coupon_code;
 pub mod deployment;
 pub mod deployment_config_mounts;
 pub mod deployment_deploy_history;
 pub mod deployment_environment_variable;
 pub mod deployment_exposed_port;
 pub mod deployment_machine_type;
-pub mod deployment_payment_history;
 pub mod deployment_volume;
 pub mod docker_registry_repository;
 pub mod docker_registry_repository_manifest;
@@ -48,6 +39,7 @@ pub mod role_resource_permissions_type;
 pub mod sea_orm_active_enums;
 pub mod secret;
 pub mod secrets_payment_history;
+pub mod spatial_ref_sys;
 pub mod static_site;
 pub mod static_site_upload_history;
 pub mod static_sites_payment_history;

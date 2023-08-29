@@ -24,13 +24,9 @@ pub enum Relation {
 		on_delete = "NoAction"
 	)]
 	UserApiToken,
-	#[sea_orm(
-		has_many = "super::user_api_token_resource_permissions_type::Entity"
-	)]
+	#[sea_orm(has_many = "super::user_api_token_resource_permissions_type::Entity")]
 	UserApiTokenResourcePermissionsType,
-	#[sea_orm(
-		has_many = "super::user_api_token_workspace_super_admin::Entity"
-	)]
+	#[sea_orm(has_many = "super::user_api_token_workspace_super_admin::Entity")]
 	UserApiTokenWorkspaceSuperAdmin,
 }
 
@@ -40,9 +36,7 @@ impl Related<super::user_api_token::Entity> for Entity {
 	}
 }
 
-impl Related<super::user_api_token_resource_permissions_type::Entity>
-	for Entity
-{
+impl Related<super::user_api_token_resource_permissions_type::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::UserApiTokenResourcePermissionsType.def()
 	}

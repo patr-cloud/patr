@@ -42,7 +42,7 @@ pub fn parse_config() -> AppConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppConfig {
-	pub bind_addr: SocketAddr,
+	pub bind_address: SocketAddr,
 	pub api_base_path: String,
 	pub password_pepper: String,
 	pub jwt_secret: String,

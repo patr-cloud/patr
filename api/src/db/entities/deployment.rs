@@ -145,8 +145,7 @@ impl Related<super::resource::Entity> for Entity {
 
 impl Related<super::docker_registry_repository::Entity> for Entity {
 	fn to() -> RelationDef {
-		super::deployment_deploy_history::Relation::DockerRegistryRepository
-			.def()
+		super::deployment_deploy_history::Relation::DockerRegistryRepository.def()
 	}
 	fn via() -> Option<RelationDef> {
 		Some(
