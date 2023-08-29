@@ -1,5 +1,3 @@
-use std::future::Future;
-
 pub use crate::prelude::*;
 use crate::{api::EmptyRequest, utils::ApiRequest, ApiEndpoint};
 
@@ -10,6 +8,6 @@ where
 	NoAuthentication,
 	PlainTokenAuthenticator,
 	WorkspaceMembershipAuthenticator {
-		extract_workspace_id: fn(&ApiRequest<E>) -> dyn Future<Output = Uuid>,
+		extract_workspace_id: fn(&ApiRequest<E>) -> Uuid,
 	},
 }
