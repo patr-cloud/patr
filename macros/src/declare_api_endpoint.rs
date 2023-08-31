@@ -4,11 +4,12 @@ use syn::{
 	parse::{Parse, ParseStream},
 	parse_macro_input,
 	Error,
+	Fields,
 	FieldsNamed,
 	Ident,
-	LitBool,
 	LitStr,
 	Token,
+	Variant,
 };
 
 pub struct ApiEndpoint {
@@ -16,8 +17,7 @@ pub struct ApiEndpoint {
 	method: Ident,
 	path: LitStr,
 	path_body: Option<FieldsNamed>,
-	#[allow(dead_code)]
-	is_protected: bool,
+	auth_type: Option<Variant>,
 
 	query: Option<(bool, FieldsNamed)>,
 	request: Option<FieldsNamed>,
@@ -46,7 +46,7 @@ impl Parse for ApiEndpoint {
 			Some(input.parse()?)
 		};
 
-		let mut is_protected = false;
+		let mut auth_type = None;
 		let mut query = None;
 		let mut request = None;
 		let mut request_headers = None;
@@ -58,10 +58,7 @@ impl Parse for ApiEndpoint {
 			match ident.to_string().as_str() {
 				"query" | "paginated_query" => {
 					if query.is_some() {
-						return Err(Error::new(
-							ident.span(),
-							"Duplicate field",
-						));
+						return Err(Error::new(ident.span(), "Duplicate field"));
 					}
 					input.parse::<Token![=]>()?;
 
@@ -69,10 +66,7 @@ impl Parse for ApiEndpoint {
 				}
 				"request_headers" => {
 					if request_headers.is_some() {
-						return Err(Error::new(
-							ident.span(),
-							"Duplicate field",
-						));
+						return Err(Error::new(ident.span(), "Duplicate field"));
 					}
 					input.parse::<Token![=]>()?;
 
@@ -80,10 +74,7 @@ impl Parse for ApiEndpoint {
 				}
 				"request" => {
 					if request.is_some() {
-						return Err(Error::new(
-							ident.span(),
-							"Duplicate field",
-						));
+						return Err(Error::new(ident.span(), "Duplicate field"));
 					}
 					input.parse::<Token![=]>()?;
 
@@ -91,10 +82,7 @@ impl Parse for ApiEndpoint {
 				}
 				"response_headers" => {
 					if response_headers.is_some() {
-						return Err(Error::new(
-							ident.span(),
-							"Duplicate field",
-						));
+						return Err(Error::new(ident.span(), "Duplicate field"));
 					}
 					input.parse::<Token![=]>()?;
 
@@ -102,25 +90,19 @@ impl Parse for ApiEndpoint {
 				}
 				"response" => {
 					if response.is_some() {
-						return Err(Error::new(
-							ident.span(),
-							"Duplicate field",
-						));
+						return Err(Error::new(ident.span(), "Duplicate field"));
 					}
 					input.parse::<Token![=]>()?;
 
 					response = Some(input.parse()?);
 				}
-				"protected" => {
-					if is_protected {
-						return Err(Error::new(
-							ident.span(),
-							"Duplicate field",
-						));
+				"authentication" | "auth" | "authenticator" => {
+					if auth_type.is_some() {
+						return Err(Error::new(ident.span(), "Duplicate field"));
 					}
 					input.parse::<Token![=]>()?;
 
-					is_protected = input.parse::<LitBool>()?.value;
+					auth_type = Some(input.parse()?);
 				}
 				_ => {
 					return Err(Error::new(ident.span(), "Unknown field"));
@@ -136,7 +118,7 @@ impl Parse for ApiEndpoint {
 			method,
 			path,
 			path_body,
-			is_protected,
+			auth_type,
 
 			query,
 			request_headers,
@@ -155,7 +137,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		path,
 		path_body,
 
-		is_protected: _,
+		auth_type,
 		query,
 		request_headers,
 		request,
@@ -230,6 +212,13 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	} else {
 		quote::quote!()
 	};
+
+	let auth_type = auth_type.unwrap_or_else(|| Variant {
+		attrs: vec![],
+		ident: format_ident!("NoAuthentication"),
+		fields: Fields::Unit,
+		discriminant: None,
+	});
 
 	let request_headers_name = if request_headers.is_some() {
 		let ident = format_ident!("{}RequestHeaders", name);
@@ -358,6 +347,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 
 		impl crate::ApiEndpoint for #request_name {
 			const METHOD: ::reqwest::Method = ::reqwest::Method::#method;
+			const AUTHENTICATION: crate::utils::AuthenticationType<Self> = crate::utils::AuthenticationType::<Self>::#auth_type;
 
 			type RequestPath = #path_name;
 			type RequestQuery = #query_name;

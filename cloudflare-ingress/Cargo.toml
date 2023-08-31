@@ -1,11 +1,11 @@
 [package]
-name = "cloudflare-ingress"
 description = "The cloudflare worker script that proxies requests to the right cluster"
+name = "cloudflare-ingress"
 
-version.workspace = true
-rust-version.workspace = true
 authors.workspace = true
 edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false
@@ -14,7 +14,7 @@ wasm-opt = false
 crate-type = ["cdylib"]
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
-url = "2"
-uuid = { version = "1", features = ["serde", "js"], default-features = false }
-worker = "0.0.17"
+serde = { workspace = true, features = ["default", "derive"] }
+url = { workspace = true, features = ["default"] }
+uuid = { workspace = true, features = ["serde", "js"] }
+worker = { workspace = true, features = [] }

@@ -1,6 +1,6 @@
 [package]
-name = "frontend"
 description = "The frontend dashboard for Patr"
+name = "frontend"
 
 authors.workspace = true
 edition.workspace = true
@@ -8,23 +8,23 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
-leptos = { version = "0.4", features = ["tracing", "csr"] }
-leptos-use = { version = "0.6", features = ["storage"] }
-leptos_declarative = "0.3"
-leptos_router = { version = "0.4", features = ["csr"] }
-log = "0.4"
-models = { workspace = true }
-serde = { version = "1", features = ["derive"] }
-wasm-bindgen = "0.2"
-wasm-logger = "0.2"
-console_error_panic_hook = "0.1"
-web-sys = { version = "0.3", features = [
+axum-extra = { workspace = true, features = ["typed-routing"] }
+console_error_panic_hook = { workspace = true, features = [] }
+leptos = { workspace = true, features = ["default", "tracing", "csr"] }
+leptos-use = { workspace = true, features = ["storage"] }
+leptos_declarative = { workspace = true, features = [] }
+leptos_router = { workspace = true, features = ["default", "csr"] }
+log = { workspace = true, features = [] }
+models = { workspace = true, features = [] }
+reqwest = { workspace = true, features = ["json", "rustls-tls"] }
+serde = { workspace = true, features = ["default", "derive"] }
+serde_json = { workspace = true, features = ["default"] }
+serde_urlencoded = { workspace = true, features = [] }
+url = { workspace = true, features = ["default"] }
+wasm-bindgen = { workspace = true, features = ["default"] }
+wasm-logger = { workspace = true, features = [] }
+web-sys = { workspace = true, features = [
     "Clipboard",
     "Navigator",
     "DataTransfer",
 ] }
-serde_urlencoded = "0.7"
-reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
-url = "2"
-serde_json = "1"
-axum-extra = { version = "0.7", default-features = false, features = ["typed-routing"] }

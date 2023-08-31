@@ -1,6 +1,6 @@
 [package]
-name = "cli"
 description = "A command line tool for managing your Patr resources"
+name = "cli"
 
 authors.workspace = true
 edition.workspace = true
@@ -14,11 +14,10 @@ path = "src/main.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1"
-async-trait = "0.1"
-clap = { version = "4", features = ["derive"] }
-monostate = "0.1"
-open = "5"
-serde = { version = "1", features = ["derive"] }
-tabled = "0.13"
-tokio = { workspace = true }
+anyhow = { workspace = true, features = ["default"] }
+async-trait = { workspace = true, features = [] }
+clap = { workspace = true, features = ["default", "derive"] }
+open = { workspace = true, features = [] }
+serde = { workspace = true, features = ["default", "derive"] }
+tabled = { workspace = true, features = ["default", "derive"] }
+tokio = { workspace = true, features = ["default", "full"] }

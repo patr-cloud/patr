@@ -8,27 +8,29 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
-anyhow = "1.0.74"
-axum = { version = "0.6", features = ["tracing", "ws", "macros"] }
-axum-extra = { version = "0.7", features = ["typed-routing"] }
-config = "0.13"
-models = { workspace = true, features = ["server"] }
-preprocess = "0.2"
-rustis = { git = "https://github.com/rakshith-ravi/rustis", features = [
+anyhow = { workspace = true, features = ["default"] }
+axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
+axum-extra = { workspace = true, features = ["default", "typed-routing"] }
+config = { workspace = true, features = ["default"] }
+models = { workspace = true, features = [] }
+rustis = { workspace = true, features = [
+    "default",
     "pool",
     "tls",
     "redis-json",
     "tokio-tls",
-], branch = "feature/dockerfile-changes" }
-sea-orm = { version = "0.12", features = [
+] }
+sea-orm = { workspace = true, features = [
+    "default",
     "sqlx-postgres",
     "runtime-tokio",
     "runtime-tokio-rustls",
     "macros",
 ] }
-serde = { version = "1", features = ["derive"] }
-tokio = { workspace = true }
-tower = { version = "0.4", features = ["tracing", "full"] }
-tracing = { version = "0.1", features = ["async-await"] }
-typed-builder = "0.16"
-typed-headers = "0.2"
+serde = { workspace = true, features = ["default", "derive"] }
+time = { workspace = true, features = ["default", "serde-human-readable"] }
+tokio = { workspace = true, features = ["default", "full"] }
+tower = { workspace = true, features = ["default", "full"] }
+tracing = { workspace = true, features = ["default", "async-await"] }
+typed-builder = { workspace = true, features = [] }
+typed-headers = { workspace = true, features = [] }

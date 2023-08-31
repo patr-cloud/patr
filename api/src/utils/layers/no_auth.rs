@@ -62,8 +62,8 @@ where
 
 impl<'a, S, E> Service<AppRequest<'a, E>> for NoAuthMiddleware<S, E>
 where
-	E: ApiEndpoint,
 	for<'b> S: Service<AppRequest<'b, E>>,
+	E: ApiEndpoint,
 {
 	type Response = <S as Service<AppRequest<'a, E>>>::Response;
 	type Error = <S as Service<AppRequest<'a, E>>>::Error;
