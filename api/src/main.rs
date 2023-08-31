@@ -10,6 +10,7 @@ use app::AppState;
 
 mod app;
 mod db;
+mod models;
 mod redis;
 mod routes;
 mod utils;

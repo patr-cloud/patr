@@ -1,7 +1,7 @@
 pub use crate::prelude::*;
-use crate::{api::EmptyRequest, utils::ApiRequest, ApiEndpoint};
+use crate::{utils::ApiRequest, ApiEndpoint};
 
-pub enum AuthenticatorType<E = EmptyRequest>
+pub enum AuthenticationType<E>
 where
 	E: ApiEndpoint,
 {
@@ -9,5 +9,9 @@ where
 	PlainTokenAuthenticator,
 	WorkspaceMembershipAuthenticator {
 		extract_workspace_id: fn(&ApiRequest<E>) -> Uuid,
+	},
+	ResourcePermissionAuthenticator {
+		extract_resource_id: fn(&ApiRequest<E>) -> Uuid,
+		// permission: ResourcePermission,
 	},
 }

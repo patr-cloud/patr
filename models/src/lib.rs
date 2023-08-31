@@ -5,7 +5,6 @@
 	allow(unused_variables, dead_code, unused_mut),
 	allow(missing_docs, clippy::missing_docs_in_private_items)
 )]
-#![feature(try_trait_v2)]
 
 pub mod api;
 pub mod ci;
@@ -19,5 +18,6 @@ pub mod prelude {
 
 mod endpoint;
 mod error;
+mod user_data;
 
-pub use self::{endpoint::*, error::*};
+pub use self::{endpoint::*, error::*, user_data::*};
