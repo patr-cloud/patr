@@ -3,20 +3,33 @@ use std::{error::Error as StdError, mem};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
+/// A list of all the possible errors that can be returned by the API
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ErrorType {
+	/// The email provided is invalid
 	InvalidEmail,
+	/// The user was not found
 	UserNotFound,
+	/// The password provided is invalid
 	InvalidPassword,
+	/// The user has two factor authentication enabled and it is required
 	MfaRequired,
+	/// The two factor authentication code provided is invalid
 	MfaOtpInvalid,
+	/// The parameters sent with the request is invalid. This would ideally not
+	/// happen unless there is a bug in the client
 	WrongParameters,
+	/// An internal server error occurred. This should not happen unless there
+	/// is a bug in the server
 	#[serde(with = "serialize_server_error")]
 	InternalServerError(anyhow::Error),
 }
 
 impl ErrorType {
+	/// Returns the status code that should be used for this error. Note that
+	/// this is only the default status code and specific endpoints can override
+	/// this if needed
 	pub fn default_status_code(&self) -> StatusCode {
 		match self {
 			Self::InvalidEmail => StatusCode::BAD_REQUEST,
@@ -29,6 +42,8 @@ impl ErrorType {
 		}
 	}
 
+	/// Returns the message that should be used for this error. This is the
+	/// message that is user-friendly and can be shown to the user
 	pub fn message(&self) -> impl Into<String> {
 		match self {
 			Self::InvalidEmail => "Invalid email",
@@ -36,13 +51,12 @@ impl ErrorType {
 			Self::InvalidPassword => "Invalid Password",
 			Self::MfaRequired => "Two factor authentication required",
 			Self::MfaOtpInvalid => "Invalid two factor authentication code",
-			Self::WrongParameters => {
-				"The parameters sent with that request is invalid"
-			}
+			Self::WrongParameters => "The parameters sent with that request is invalid",
 			Self::InternalServerError(_) => "internal server error",
 		}
 	}
 
+	/// Creates an [`ErrorType::InternalServerError`] with the given message
 	pub fn server_error(message: impl Into<String>) -> Self {
 		Self::InternalServerError(anyhow::anyhow!(message.into()))
 	}
@@ -51,9 +65,7 @@ impl ErrorType {
 impl PartialEq for ErrorType {
 	fn eq(&self, other: &Self) -> bool {
 		match (self, other) {
-			(Self::InternalServerError(_), Self::InternalServerError(_)) => {
-				true
-			}
+			(Self::InternalServerError(_), Self::InternalServerError(_)) => true,
 			_ => mem::discriminant(self) == mem::discriminant(other),
 		}
 	}
@@ -90,16 +102,14 @@ mod serialize_server_error {
 	use anyhow::Error;
 	use serde::{Deserializer, Serializer};
 
-	pub fn serialize<S>(error: &Error, serializer: S) -> Result<S::Ok, S::Error>
+	pub fn serialize<S>(_: &Error, serializer: S) -> Result<S::Ok, S::Error>
 	where
 		S: Serializer,
 	{
 		serializer.serialize_str("internalServerError")
 	}
 
-	pub fn deserialize<'de, D>(
-		deserializer: D,
-	) -> Result<anyhow::Error, D::Error>
+	pub fn deserialize<'de, D>(_: D) -> Result<anyhow::Error, D::Error>
 	where
 		D: Deserializer<'de>,
 	{

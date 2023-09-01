@@ -2,30 +2,43 @@ use std::fmt::Display;
 
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 
+/// A wrapper around [`uuid::Uuid`] that implements [`serde::Serialize`] and
+/// [`serde::Deserialize`], but specifically only in the form of a hex string.
+/// Any other format will be rejected. In API requests and response, this should
+/// be used instead of [`uuid::Uuid`]. Ideally, this is the struct that should
+/// be imported and [`uuid`] should not be added as a dependency at all. This
+/// would prevent wrong UUIDs from being sent or received.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct Uuid(uuid::Uuid);
 
 impl Uuid {
+	/// Creates a new v4 (randomly generated) [`Uuid`]
 	pub fn new_v4() -> Self {
 		Self(uuid::Uuid::new_v4())
 	}
 
+	/// Creates a new nil [`Uuid`] (all zeroes).
 	pub const fn nil() -> Self {
 		Self(uuid::Uuid::nil())
 	}
 
+	/// Parses a [`Uuid`] from a string of hexadecimal digits with optional
+	/// hyphens.
 	pub fn parse_str(input: &str) -> Result<Self, uuid::Error> {
 		uuid::Uuid::try_parse(input).map(Self)
 	}
 
+	/// A helper function to check if the [`Uuid`] is nil (all zeroes).
 	pub const fn is_nil(&self) -> bool {
 		self.0.is_nil()
 	}
 
+	/// Returns a 128-bit number representing the [`Uuid`].
 	pub const fn as_u128(&self) -> u128 {
 		self.0.as_u128()
 	}
 
+	/// Returns a 16-element byte array representing the [`Uuid`].
 	pub const fn as_bytes(&self) -> &[u8; 16] {
 		self.0.as_bytes()
 	}
@@ -53,8 +66,7 @@ impl<'de> Deserialize<'de> for Uuid {
 	{
 		let mut buffer = [0u8; 16];
 		let string: &str = Deserialize::deserialize(deserializer)?;
-		hex::decode_to_slice(string, &mut buffer)
-			.map_err(Error::custom)?;
+		hex::decode_to_slice(string, &mut buffer).map_err(Error::custom)?;
 		Ok(Self(uuid::Uuid::from_bytes(buffer)))
 	}
 }

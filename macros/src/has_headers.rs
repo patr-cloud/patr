@@ -10,6 +10,7 @@ use syn::{
 	Field,
 };
 
+/// Provides a derive macro for the `HasHeaders` trait.
 pub fn parse(input: TokenStream) -> TokenStream {
 	let DeriveInput { data, ident, .. } =
 		parse_macro_input!(input as DeriveInput);

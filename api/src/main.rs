@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs, clippy::missing_docs_in_private_items)]
-#![feature(impl_trait_in_assoc_type, associated_type_defaults)]
+#![feature(impl_trait_in_assoc_type)]
 
 //! The main API server for Patr.
 
@@ -21,7 +21,7 @@ pub mod prelude {
 	pub use tracing::{debug, error, info, instrument, trace, warn};
 
 	pub use crate::{
-		app::{AppRequest, AppState},
+		app::{AppRequest, AppState, AuthenticatedAppRequest},
 		utils::{extractors::*, RouterExt},
 	};
 }

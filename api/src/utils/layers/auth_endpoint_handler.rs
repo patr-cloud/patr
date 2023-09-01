@@ -4,57 +4,45 @@ use std::{
 	task::{Context, Poll},
 };
 
-use models::{ApiEndpoint, ErrorType, utils::True};
+use models::{ApiEndpoint, ErrorType};
 use tower::{Layer, Service};
 
-use crate::{app::AppResponse, prelude::AppRequest};
+use crate::{app::AppResponse, prelude::AuthenticatedAppRequest};
 
-pub trait RequestType<E> where E: ApiEndpoint {
-	type Request;
-}
-
-impl<E> RequestType<E> for E
-where
-	E: ApiEndpoint,
-	E::AUTHENTICATION::IS_AUTH: Into<True>,
-{
-	type Request = <E as ApiEndpoint>::Request;
-}
-
-pub trait EndpointHandler<E>
+pub trait AuthEndpointHandler<E>
 where
 	E: ApiEndpoint,
 {
 	type Future: Future<Output = Result<AppResponse<E>, ErrorType>> + Send + 'static;
 
-	fn call<'a>(self, req: AppRequest<'a, E>) -> Self::Future;
+	fn call<'a>(self, req: AuthenticatedAppRequest<'a, E>) -> Self::Future;
 }
 
-impl<F, Fut, E> EndpointHandler<E> for F
+impl<F, Fut, E> AuthEndpointHandler<E> for F
 where
-	F: FnOnce(AppRequest<'_, E>) -> Fut + Clone + Send + 'static,
+	F: FnOnce(AuthenticatedAppRequest<'_, E>) -> Fut + Clone + Send + 'static,
 	Fut: Future<Output = Result<AppResponse<E>, ErrorType>> + Send + 'static,
 	E: ApiEndpoint,
 {
 	type Future = Fut;
 
-	fn call(self, req: AppRequest<'_, E>) -> Self::Future {
+	fn call(self, req: AuthenticatedAppRequest<'_, E>) -> Self::Future {
 		self(req)
 	}
 }
 
-pub struct EndpointLayer<H, E>
+pub struct AuthEndpointLayer<H, E>
 where
-	H: EndpointHandler<E> + Clone + Send + 'static,
+	H: AuthEndpointHandler<E> + Clone + Send + 'static,
 	E: ApiEndpoint,
 {
 	handler: H,
 	endpoint: PhantomData<E>,
 }
 
-impl<H, E> EndpointLayer<H, E>
+impl<H, E> AuthEndpointLayer<H, E>
 where
-	H: EndpointHandler<E> + Clone + Send + 'static,
+	H: AuthEndpointHandler<E> + Clone + Send + 'static,
 	E: ApiEndpoint,
 {
 	pub fn new(handler: H) -> Self {
@@ -65,9 +53,9 @@ where
 	}
 }
 
-impl<S, H, E> Layer<S> for EndpointLayer<H, E>
+impl<S, H, E> Layer<S> for AuthEndpointLayer<H, E>
 where
-	H: EndpointHandler<E> + Clone + Send + 'static,
+	H: AuthEndpointHandler<E> + Clone + Send + 'static,
 	E: ApiEndpoint,
 {
 	type Service = EndpointService<H, E>;
@@ -80,9 +68,9 @@ where
 	}
 }
 
-impl<H, E> Clone for EndpointLayer<H, E>
+impl<H, E> Clone for AuthEndpointLayer<H, E>
 where
-	H: EndpointHandler<E> + Clone + Send + 'static,
+	H: AuthEndpointHandler<E> + Clone + Send + 'static,
 	E: ApiEndpoint,
 {
 	fn clone(&self) -> Self {
@@ -95,16 +83,16 @@ where
 
 pub struct EndpointService<H, E>
 where
-	H: EndpointHandler<E> + Clone + Send + 'static,
+	H: AuthEndpointHandler<E> + Clone + Send + 'static,
 	E: ApiEndpoint,
 {
 	handler: H,
 	endpoint: PhantomData<E>,
 }
 
-impl<'a, H, E> Service<AppRequest<'a, E>> for EndpointService<H, E>
+impl<'a, H, E> Service<AuthenticatedAppRequest<'a, E>> for EndpointService<H, E>
 where
-	H: EndpointHandler<E> + Clone + Send + 'static,
+	H: AuthEndpointHandler<E> + Clone + Send + 'static,
 	E: ApiEndpoint,
 {
 	type Response = AppResponse<E>;
@@ -115,14 +103,14 @@ where
 		Poll::Ready(Ok(()))
 	}
 
-	fn call(&mut self, req: AppRequest<'a, E>) -> Self::Future {
+	fn call(&mut self, req: AuthenticatedAppRequest<'a, E>) -> Self::Future {
 		self.handler.clone().call(req)
 	}
 }
 
 impl<H, E> Clone for EndpointService<H, E>
 where
-	H: EndpointHandler<E> + Clone + Send + 'static,
+	H: AuthEndpointHandler<E> + Clone + Send + 'static,
 	E: ApiEndpoint,
 {
 	fn clone(&self) -> Self {

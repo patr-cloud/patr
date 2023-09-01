@@ -1,3 +1,9 @@
+#![forbid(unsafe_code)]
+#![warn(missing_docs, clippy::missing_docs_in_private_items)]
+
+//! This crate is the worker that runs on cloudflare before a request is sent to
+//! any one of Patr's Kubernetes clusters.
+
 use std::collections::HashMap;
 
 use url::Host;
@@ -8,6 +14,7 @@ use self::{models::IngressKVData, utils::constants};
 mod models;
 mod utils;
 
+/// The main function that is called when a request is made to the worker.
 #[event(fetch)]
 pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 	let url = req.url()?;
@@ -55,8 +62,7 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 		return Response::error("not found", 404);
 	};
 
-	let requested_path =
-		get_stripped_path_by_mount_point(url.path(), mount_point);
+	let requested_path = get_stripped_path_by_mount_point(url.path(), mount_point);
 
 	match value {
 		IngressKVData::Redirect {
@@ -131,18 +137,9 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 
 			for file_to_try in [
 				format!("{}/{}/{}", static_site_id, upload_id, requested_path),
-				format!(
-					"{}/{}/{}.html",
-					static_site_id, upload_id, requested_path
-				),
-				format!(
-					"{}/{}/{}.htm",
-					static_site_id, upload_id, requested_path
-				),
-				format!(
-					"{}/{}/{}.shtml",
-					static_site_id, upload_id, requested_path
-				),
+				format!("{}/{}/{}.html", static_site_id, upload_id, requested_path),
+				format!("{}/{}/{}.htm", static_site_id, upload_id, requested_path),
+				format!("{}/{}/{}.shtml", static_site_id, upload_id, requested_path),
 				format!(
 					"{}/{}/{}/index.html",
 					static_site_id, upload_id, requested_path
@@ -155,8 +152,7 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 				format!("{}/{}/index.html", static_site_id, upload_id),
 				format!("{}/{}/index.htm", static_site_id, upload_id),
 			] {
-				let Some(file) = bucket.get(file_to_try).execute().await?
-				else {
+				let Some(file) = bucket.get(file_to_try).execute().await? else {
 					continue;
 				};
 
@@ -178,8 +174,7 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 
 					let cached_response = response.cloned()?;
 					ctx.wait_until(async move {
-						let _ =
-							cache_store.put(cache_key, cached_response).await;
+						let _ = cache_store.put(cache_key, cached_response).await;
 					});
 
 					return Ok(response);
@@ -203,8 +198,7 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 
 					let cached_response = response.cloned()?;
 					ctx.wait_until(async move {
-						let _ =
-							cache_store.put(cache_key, cached_response).await;
+						let _ = cache_store.put(cache_key, cached_response).await;
 					});
 
 					return Ok(response);
@@ -221,10 +215,7 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 					let mut headers = Headers::new();
 
 					headers.set("etag", file.etag().as_str())?;
-					headers.set(
-						"content-length",
-						file.size().to_string().as_str(),
-					)?;
+					headers.set("content-length", file.size().to_string().as_str())?;
 					headers.set(
 						"content-type",
 						match file_extension {
@@ -288,22 +279,10 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 							"kmz" => "application/vnd.google-earth.kmz",
 							"xls" => "application/vnd.ms-excel",
 							"ppt" => "application/vnd.ms-powerpoint",
-							"odg" => concat!(
-								"application/",
-								"vnd.oasis.opendocument.graphics"
-							),
-							"odp" => concat!(
-								"application/vnd.oasis",
-								".opendocument.presentation"
-							),
-							"ods" => concat!(
-								"application/vnd.oasis",
-								".opendocument.spreadsheet"
-							),
-							"odt" => concat!(
-								"application/vnd.oasis",
-								".opendocument.text"
-							),
+							"odg" => concat!("application/", "vnd.oasis.opendocument.graphics"),
+							"odp" => concat!("application/vnd.oasis", ".opendocument.presentation"),
+							"ods" => concat!("application/vnd.oasis", ".opendocument.spreadsheet"),
+							"odt" => concat!("application/vnd.oasis", ".opendocument.text"),
 							"pptx" => concat!(
 								"application/vnd.openxmlformats",
 								"-officedocument.presentationml.presentation"
@@ -365,10 +344,7 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 							_ => "application/octet-stream",
 						},
 					)?;
-					headers.set(
-						"last-modified",
-						file.uploaded().to_string().as_str(),
-					)?;
+					headers.set("last-modified", file.uploaded().to_string().as_str())?;
 
 					headers
 				})
@@ -421,15 +397,17 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 	}
 }
 
-pub fn get_stripped_path_by_mount_point(
-	path: &str,
-	mount_point: String,
-) -> &str {
+/// Gets the path of the URL without the mount point. A request stripped of it's
+/// mount point will be made in the case of static sites since they are stored
+/// in a bucket with the mount point as the root.
+pub fn get_stripped_path_by_mount_point(path: &str, mount_point: String) -> &str {
 	path.trim_start_matches(mount_point.trim_end_matches('/'))
 		.trim_start_matches('/')
 		.trim_end_matches('/')
 }
 
+/// Gets the hostname of the URL. This is the domain name without the protocol
+/// and port.
 pub fn get_hostname_for_url(url: &Url) -> Result<&str> {
 	url.host()
 		.and_then(|host| match host {
@@ -450,10 +428,7 @@ mod tests {
 		#[test]
 		pub fn test_basic_url_with_http_protocol() {
 			assert_eq!(
-				get_hostname_for_url(
-					&Url::parse("http://www.example.com").unwrap()
-				)
-				.unwrap(),
+				get_hostname_for_url(&Url::parse("http://www.example.com").unwrap()).unwrap(),
 				"www.example.com"
 			);
 		}
@@ -461,10 +436,7 @@ mod tests {
 		#[test]
 		pub fn test_basic_url_with_https_protocol() {
 			assert_eq!(
-				get_hostname_for_url(
-					&Url::parse("https://www.example.com").unwrap()
-				)
-				.unwrap(),
+				get_hostname_for_url(&Url::parse("https://www.example.com").unwrap()).unwrap(),
 				"www.example.com"
 			);
 		}
@@ -472,10 +444,7 @@ mod tests {
 		#[test]
 		pub fn test_url_with_a_specific_port() {
 			assert_eq!(
-				get_hostname_for_url(
-					&Url::parse("http://www.example.com:8080").unwrap()
-				)
-				.unwrap(),
+				get_hostname_for_url(&Url::parse("http://www.example.com:8080").unwrap()).unwrap(),
 				"www.example.com"
 			);
 		}
@@ -484,8 +453,7 @@ mod tests {
 		#[should_panic]
 		pub fn test_url_without_protocol() {
 			assert_eq!(
-				get_hostname_for_url(&Url::parse("www.example.com").unwrap())
-					.unwrap(),
+				get_hostname_for_url(&Url::parse("www.example.com").unwrap()).unwrap(),
 				""
 			);
 		}
@@ -493,28 +461,9 @@ mod tests {
 		#[test]
 		pub fn test_url_with_path_and_query_parameters() {
 			assert_eq!(
-			get_hostname_for_url(&Url::parse("https://www.example.com/path/to/page?param1=value1&param2=value2").unwrap()).unwrap(),
-			"www.example.com"
-		);
-		}
-
-		#[test]
-		#[should_panic]
-		pub fn test_url_with_an_ip_address() {
-			assert_eq!(
 				get_hostname_for_url(
-					&Url::parse("http://192.168.1.1").unwrap()
-				)
-				.unwrap(),
-				""
-			);
-		}
-
-		#[test]
-		pub fn test_url_with_non_standard_protocol() {
-			assert_eq!(
-				get_hostname_for_url(
-					&Url::parse("customproto://www.example.com").unwrap()
+					&Url::parse("https://www.example.com/path/to/page?param1=value1&param2=value2")
+						.unwrap()
 				)
 				.unwrap(),
 				"www.example.com"
@@ -522,12 +471,27 @@ mod tests {
 		}
 
 		#[test]
+		#[should_panic]
+		pub fn test_url_with_an_ip_address() {
+			assert_eq!(
+				get_hostname_for_url(&Url::parse("http://192.168.1.1").unwrap()).unwrap(),
+				""
+			);
+		}
+
+		#[test]
+		pub fn test_url_with_non_standard_protocol() {
+			assert_eq!(
+				get_hostname_for_url(&Url::parse("customproto://www.example.com").unwrap())
+					.unwrap(),
+				"www.example.com"
+			);
+		}
+
+		#[test]
 		pub fn test_url_with_subdomains() {
 			assert_eq!(
-				get_hostname_for_url(
-					&Url::parse("http://subdomain.example.com").unwrap()
-				)
-				.unwrap(),
+				get_hostname_for_url(&Url::parse("http://subdomain.example.com").unwrap()).unwrap(),
 				"subdomain.example.com"
 			);
 		}
@@ -535,11 +499,8 @@ mod tests {
 		#[test]
 		pub fn test_url_with_username_and_password() {
 			assert_eq!(
-				get_hostname_for_url(
-					&Url::parse("http://username:password@example.com")
-						.unwrap()
-				)
-				.unwrap(),
+				get_hostname_for_url(&Url::parse("http://username:password@example.com").unwrap())
+					.unwrap(),
 				"example.com"
 			);
 		}
@@ -548,8 +509,7 @@ mod tests {
 		pub fn test_url_with_special_characters() {
 			assert_eq!(
 				get_hostname_for_url(
-					&Url::parse("http://www.example.com/path?param=va lue")
-						.unwrap()
+					&Url::parse("http://www.example.com/path?param=va lue").unwrap()
 				)
 				.unwrap(),
 				"www.example.com"
@@ -559,10 +519,7 @@ mod tests {
 		#[test]
 		pub fn test_url_with_international() {
 			assert_eq!(
-				get_hostname_for_url(
-					&Url::parse("http://www.пример.рф").unwrap()
-				)
-				.unwrap(),
+				get_hostname_for_url(&Url::parse("http://www.пример.рф").unwrap()).unwrap(),
 				"www.xn--e1afmkfd.xn--p1ai"
 			);
 		}
@@ -570,10 +527,7 @@ mod tests {
 		#[test]
 		pub fn test_url_with_invalid_format() {
 			assert_eq!(
-				get_hostname_for_url(
-					&Url::parse("htp://www.example.com").unwrap()
-				)
-				.unwrap(),
+				get_hostname_for_url(&Url::parse("htp://www.example.com").unwrap()).unwrap(),
 				"www.example.com"
 			);
 		}
@@ -590,19 +544,13 @@ mod tests {
 		#[test]
 		#[should_panic]
 		pub fn test_empty_url() {
-			assert_eq!(
-				get_hostname_for_url(&Url::parse("").unwrap()).unwrap(),
-				""
-			);
+			assert_eq!(get_hostname_for_url(&Url::parse("").unwrap()).unwrap(), "");
 		}
 
 		#[test]
 		pub fn test_url_with_trailing_spaces() {
 			assert_eq!(
-				get_hostname_for_url(
-					&Url::parse(" http://www.example.com ").unwrap()
-				)
-				.unwrap(),
+				get_hostname_for_url(&Url::parse(" http://www.example.com ").unwrap()).unwrap(),
 				"www.example.com"
 			);
 		}
@@ -614,10 +562,7 @@ mod tests {
 		#[test]
 		pub fn test_basic_url_with_matching_mount_point() {
 			assert_eq!(
-				get_stripped_path_by_mount_point(
-					"/hello/world",
-					"/hello".to_string()
-				),
+				get_stripped_path_by_mount_point("/hello/world", "/hello".to_string()),
 				"world"
 			);
 		}
@@ -625,10 +570,7 @@ mod tests {
 		#[test]
 		pub fn test_url_with_trailing_slash_in_the_mount_point() {
 			assert_eq!(
-				get_stripped_path_by_mount_point(
-					"/hello/world",
-					"/hello/".to_string()
-				),
+				get_stripped_path_by_mount_point("/hello/world", "/hello/".to_string()),
 				"world"
 			);
 		}
@@ -636,10 +578,7 @@ mod tests {
 		#[test]
 		pub fn test_url_with_no_match_in_the_mount_point() {
 			assert_eq!(
-				get_stripped_path_by_mount_point(
-					"/hello/world",
-					"/test".to_string()
-				),
+				get_stripped_path_by_mount_point("/hello/world", "/test".to_string()),
 				"hello/world"
 			);
 		}
@@ -647,10 +586,7 @@ mod tests {
 		#[test]
 		pub fn test_url_with_the_same_mount_point() {
 			assert_eq!(
-				get_stripped_path_by_mount_point(
-					"/hello",
-					"/hello".to_string()
-				),
+				get_stripped_path_by_mount_point("/hello", "/hello".to_string()),
 				""
 			);
 		}
@@ -658,10 +594,7 @@ mod tests {
 		#[test]
 		pub fn test_url_with_the_root_mount_point() {
 			assert_eq!(
-				get_stripped_path_by_mount_point(
-					"/hello/world",
-					"/".to_string()
-				),
+				get_stripped_path_by_mount_point("/hello/world", "/".to_string()),
 				"hello/world"
 			);
 		}
@@ -669,10 +602,7 @@ mod tests {
 		#[test]
 		pub fn test_url_with_multiple_segments_in_the_mount_point() {
 			assert_eq!(
-				get_stripped_path_by_mount_point(
-					"/hello/world/2023",
-					"/hello/world".to_string()
-				),
+				get_stripped_path_by_mount_point("/hello/world/2023", "/hello/world".to_string()),
 				"2023"
 			);
 		}
@@ -680,10 +610,7 @@ mod tests {
 		#[test]
 		pub fn test_url_with_a_mount_point_that_partially_matches() {
 			assert_eq!(
-				get_stripped_path_by_mount_point(
-					"/hello/world",
-					"/hello/wrong".to_string()
-				),
+				get_stripped_path_by_mount_point("/hello/world", "/hello/wrong".to_string()),
 				"hello/world"
 			);
 		}
@@ -691,20 +618,14 @@ mod tests {
 		#[test]
 		pub fn test_url_with_an_empty_mount_point() {
 			assert_eq!(
-				get_stripped_path_by_mount_point(
-					"/hello/world",
-					"".to_string()
-				),
+				get_stripped_path_by_mount_point("/hello/world", "".to_string()),
 				"hello/world"
 			);
 		}
 
 		#[test]
 		pub fn test_url_with_an_empty_url_and_mount_point() {
-			assert_eq!(
-				get_stripped_path_by_mount_point("", "".to_string()),
-				""
-			);
+			assert_eq!(get_stripped_path_by_mount_point("", "".to_string()), "");
 		}
 
 		#[test]
@@ -721,10 +642,7 @@ mod tests {
 		#[test]
 		pub fn test_url_with_international_characters() {
 			assert_eq!(
-				get_stripped_path_by_mount_point(
-					"/hello/世界",
-					"/hello".to_string()
-				),
+				get_stripped_path_by_mount_point("/hello/世界", "/hello".to_string()),
 				"世界"
 			);
 		}
@@ -732,10 +650,7 @@ mod tests {
 		#[test]
 		pub fn test_url_with_trailing_spaces_in_the_mount_point() {
 			assert_eq!(
-				get_stripped_path_by_mount_point(
-					"/hello/world",
-					"/hello/ ".to_string()
-				),
+				get_stripped_path_by_mount_point("/hello/world", "/hello/ ".to_string()),
 				"hello/world"
 			);
 		}
@@ -743,10 +658,7 @@ mod tests {
 		#[test]
 		pub fn test_url_with_trailing_spaces_in_the_url() {
 			assert_eq!(
-				get_stripped_path_by_mount_point(
-					"/hello/world ",
-					"/hello".to_string()
-				),
+				get_stripped_path_by_mount_point("/hello/world ", "/hello".to_string()),
 				"world "
 			);
 		}
@@ -765,10 +677,7 @@ mod tests {
 		#[test]
 		pub fn test_url_with_a_mount_point_containing_special_characters() {
 			assert_eq!(
-				get_stripped_path_by_mount_point(
-					"/hello/world",
-					"/hel*o".to_string()
-				),
+				get_stripped_path_by_mount_point("/hello/world", "/hel*o".to_string()),
 				"hello/world"
 			);
 		}

@@ -6,13 +6,21 @@ use axum::{
 	Router,
 };
 use axum_extra::routing::TypedPath;
-use models::ApiEndpoint;
+use models::{utils::AuthenticationType, ApiEndpoint};
 use tower::ServiceBuilder;
 
 use crate::{
 	prelude::AppState,
-	utils::layers::{EndpointHandler, EndpointLayer, RequestParserLayer},
+	utils::layers::{
+		AuthEndpointHandler,
+		AuthEndpointLayer,
+		AuthenticatedParserLayer,
+		EndpointLayer,
+		RequestParserLayer,
+	},
 };
+
+use super::layers::EndpointHandler;
 
 /// Extension trait for axum Router to mount an API endpoint directly along with
 /// the required request parser, Rate limiter, Audit logger and Auth
@@ -44,29 +52,43 @@ where
 		H: EndpointHandler<E> + Clone + Send + 'static,
 		E: ApiEndpoint,
 	{
-		self.route(
-			<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
-			MethodRouter::<S, B>::new()
-				.on(
-					MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
-					|| async { unreachable!() },
-				)
-				.layer(
+		use AuthenticationType as Auth;
+		self.route(<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH, {
+			let router = MethodRouter::<S, B>::new().on(
+				MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
+				|| async { unreachable!() },
+			);
+			match E::AUTHENTICATION {
+				Auth::NoAuthentication => router.layer(
 					ServiceBuilder::new()
 						// .layer(todo!("Add rate limiter checker middleware here")),
 						.layer(RequestParserLayer::with_state(state))
+						// .layer(todo!("Add rate limiter value updater middleware here"))
+						.layer(EndpointLayer::new(handler)),
+				),
+				Auth::PlainTokenAuthenticator => router.layer(
+					ServiceBuilder::new()
+						// .layer(todo!("Add rate limiter checker middleware here")),
+						.layer(AuthenticatedParserLayer::with_state(state))
 						// .layer(todo!("Add auth middleware here"))
 						// .layer(todo!("Add rate limiter value updater middleware here"))
 						// .layer(todo!("Add audit logger middleware here"))
-						.layer(EndpointLayer::new(handler)),
+						.layer(AuthEndpointLayer::new(handler)),
 				),
-		)
+				Auth::WorkspaceMembershipAuthenticator {
+					extract_workspace_id,
+				} => todo!(),
+				Auth::ResourcePermissionAuthenticator {
+					extract_resource_id,
+				} => todo!(),
+			}
+		})
 	}
 }
 
 struct EndpointHandlerToAxumHandler<H, Params, S, B, E>
 where
-	H: EndpointHandler<E> + Clone + Send + 'static,
+	H: AuthEndpointHandler<E> + Clone + Send + 'static,
 	S: Clone + Send + Sync + 'static,
 	B: HttpBody + Send + 'static,
 	E: ApiEndpoint,
@@ -80,7 +102,7 @@ where
 
 impl<H, Params, S, B, E> Clone for EndpointHandlerToAxumHandler<H, Params, S, B, E>
 where
-	H: EndpointHandler<E> + Clone + Send + 'static,
+	H: AuthEndpointHandler<E> + Clone + Send + 'static,
 	S: Clone + Send + Sync + 'static,
 	B: HttpBody + Send + 'static,
 	E: ApiEndpoint,

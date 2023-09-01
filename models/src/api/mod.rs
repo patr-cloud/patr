@@ -1,6 +1,6 @@
-pub mod auth;
+/// All auth related endpoints, including OAuth
+// pub mod auth;
 // pub mod ci;
-// pub mod survey;
 // pub mod user;
 // pub mod workspace;
 

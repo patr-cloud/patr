@@ -2,8 +2,11 @@ use std::ops::Deref;
 
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 
+/// A type that can be used to represent a constant `false` boolean.
 #[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct False;
+
+/// A type that can be used to represent a constant `true` boolean.
 #[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct True;
 

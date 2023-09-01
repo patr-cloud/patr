@@ -24,7 +24,7 @@ use tower::{Layer, Service};
 use crate::{app::AppResponse, prelude::*};
 
 #[derive(Clone, Debug)]
-pub struct RequestParserLayer<E>
+pub struct AuthenticatedParserLayer<E>
 where
 	E: ApiEndpoint,
 {
@@ -32,7 +32,7 @@ where
 	state: AppState,
 }
 
-impl<E> RequestParserLayer<E>
+impl<E> AuthenticatedParserLayer<E>
 where
 	E: ApiEndpoint,
 {
@@ -44,15 +44,15 @@ where
 	}
 }
 
-impl<S, E> Layer<S> for RequestParserLayer<E>
+impl<S, E> Layer<S> for AuthenticatedParserLayer<E>
 where
-	for<'a> S: Service<AppRequest<'a, E>>,
+	for<'a> S: Service<AuthenticatedAppRequest<'a, E>>,
 	E: ApiEndpoint,
 {
-	type Service = RequestParser<S, E>;
+	type Service = AuthenticatedParser<S, E>;
 
 	fn layer(&self, inner: S) -> Self::Service {
-		RequestParser {
+		AuthenticatedParser {
 			inner,
 			state: self.state.clone(),
 			phantom: PhantomData,
@@ -61,9 +61,9 @@ where
 }
 
 #[derive(Clone, Debug)]
-pub struct RequestParser<S, E>
+pub struct AuthenticatedParser<S, E>
 where
-	for<'a> S: Service<AppRequest<'a, E>>,
+	for<'a> S: Service<AuthenticatedAppRequest<'a, E>>,
 	E: ApiEndpoint,
 {
 	inner: S,
@@ -71,13 +71,14 @@ where
 	phantom: PhantomData<E>,
 }
 
-impl<B, S, E> Service<Request<B>> for RequestParser<S, E>
+impl<B, S, E> Service<Request<B>> for AuthenticatedParser<S, E>
 where
 	B: HttpBody + Send + 'static,
 	B::Data: Send,
 	B::Error: StdError + Send + Sync,
 	E: ApiEndpoint,
-	for<'a> S: Service<AppRequest<'a, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
+	for<'a> S: Service<AuthenticatedAppRequest<'a, E>, Response = AppResponse<E>, Error = ErrorType>
+		+ Clone,
 {
 	type Response = Response;
 	type Error = Infallible;
@@ -145,7 +146,7 @@ where
 
 			let mut redis = state.redis.create_transaction();
 
-			let req = AppRequest {
+			let req = AuthenticatedAppRequest {
 				request: ApiRequest {
 					path,
 					query,
@@ -155,6 +156,7 @@ where
 				database: &mut database,
 				redis: &mut redis,
 				config: state.config.clone(),
+				user_data: todo!(),
 			};
 
 			match inner.call(req).await {
