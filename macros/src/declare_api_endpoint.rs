@@ -3,32 +3,64 @@ use quote::format_ident;
 use syn::{
 	parse::{Parse, ParseStream},
 	parse_macro_input,
+	Attribute,
 	Error,
+	Expr,
 	Fields,
 	FieldsNamed,
 	Ident,
+	Lit,
 	LitStr,
 	Token,
 	Variant,
 };
 
+/// A helper struct to parse an API endpoint
 pub struct ApiEndpoint {
+	/// The documentation for the API endpoint. This is used for all the
+	/// generated structs, along with some pre-text.
+	documentation: String,
+	/// The name of the endpoint. All generated structs will be prefixed with
+	/// this name.
 	name: Ident,
+	/// The HTTP method for the endpoint.
 	method: Ident,
+	/// The URL path for the endpoint.
 	path: LitStr,
+	/// The body of the URL path. This is used for typed paths.
 	path_body: Option<FieldsNamed>,
+	/// The authentication type for the endpoint.
 	auth_type: Option<Variant>,
 
+	/// The query params for the endpoint. The tuple is (is_paginated, fields).
 	query: Option<(bool, FieldsNamed)>,
+	/// The body of the request.
 	request: Option<FieldsNamed>,
+	/// The required request headers for the endpoint.
 	request_headers: Option<FieldsNamed>,
 
+	/// The required response headers for the endpoint.
 	response_headers: Option<FieldsNamed>,
+	/// The body of the response.
 	response: Option<FieldsNamed>,
 }
 
 impl Parse for ApiEndpoint {
 	fn parse(input: ParseStream) -> Result<Self, Error> {
+		let meta = Attribute::parse_outer(input)?
+			.into_iter()
+			.next()
+			.ok_or_else(|| Error::new(input.span(), "Expected documentation"))?
+			.meta;
+		let Expr::Lit(ref lit) = meta.require_name_value()?.value else {
+			return Err(Error::new(input.span(), "Expected documentation"));
+		};
+
+		let Lit::Str(ref lit_str) = lit.lit else {
+			return Err(Error::new(input.span(), "Expected documentation"));
+		};
+		let documentation = lit_str.value();
+
 		let name = input.parse()?;
 		input.parse::<Token![,]>()?;
 
@@ -114,6 +146,7 @@ impl Parse for ApiEndpoint {
 		}
 
 		Ok(Self {
+			documentation,
 			name,
 			method,
 			path,
@@ -130,8 +163,12 @@ impl Parse for ApiEndpoint {
 	}
 }
 
+/// Declares an API endpoint. This macro allows easy definition of an API
+/// endpoint along with the request URL, headers, query, body as well as the
+/// response headers and body. Generates the required structs for the endpoint.
 pub fn parse(input: TokenStream) -> TokenStream {
 	let ApiEndpoint {
+		documentation,
 		name,
 		method,
 		path,
@@ -194,6 +231,11 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	};
 	let query_decl = if let Some((_, query)) = query {
 		quote::quote! {
+			/// The query params for the #name endpoint.
+			///
+			/// The documentation for the endpoint is below:
+			///
+			#[doc = #documentation]
 			#[derive(
 				Eq,
 				Debug,
@@ -232,6 +274,11 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	};
 	let request_headers_decl = if let Some(headers) = request_headers {
 		quote::quote! {
+			/// The required request headers for the #name endpoint.
+			///
+			/// The documentation for the endpoint is below:
+			///
+			#[doc = #documentation]
 			#[derive(
 				Eq,
 				Debug,
@@ -261,6 +308,11 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	};
 	let response_headers_decl = if let Some(headers) = response_headers {
 		quote::quote! {
+			/// The required response headers for the #name endpoint.
+			///
+			/// The documentation for the endpoint is below:
+			///
+			#[doc = #documentation]
 			#[derive(
 				Eq,
 				Debug,
@@ -286,6 +338,11 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	};
 
 	quote::quote! {
+		/// The URL path for the #name endpoint.
+		/// 
+		/// The documentation for the endpoint is below:
+		/// 
+		#[doc = #documentation]
 		#[derive(
 			Eq,
 			Hash,
@@ -305,6 +362,11 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			type RequiredResponseHeaders = ();
 		}
 
+		/// The request body for the #name endpoint
+		/// 
+		/// The documentation for the endpoint is below:
+		/// 
+		#[doc = #documentation]
 		#[derive(
 			Eq,
 			Debug,
@@ -326,6 +388,11 @@ pub fn parse(input: TokenStream) -> TokenStream {
 
 		#response_headers_decl
 
+		/// The response body for the #name endpoint.
+		/// 
+		/// The documentation for the endpoint is below:
+		/// 
+		#[doc = #documentation]
 		#[derive(
 			Eq,
 			Debug,

@@ -1,7 +1,7 @@
 use std::fmt::{self, Debug, Formatter};
 
 use axum::{extract::FromRef, http::StatusCode, Router};
-use models::{utils::ApiRequest, ApiEndpoint, ErrorType};
+use models::{prelude::*, RequestUserData};
 use rustis::client::{Client as RedisClient, Transaction as RedisTransaction};
 use sea_orm::{DatabaseConnection, DatabaseTransaction};
 use typed_builder::TypedBuilder;
@@ -38,7 +38,8 @@ impl Debug for AppState {
 	}
 }
 
-/// A request object that is passed through the tower layers and services
+/// A request object that is passed through the tower layers and services for
+/// endpoints that do not require authentication
 pub struct AppRequest<'a, E>
 where
 	E: ApiEndpoint,
@@ -52,6 +53,28 @@ where
 	/// The redis transaction for the request. In case the request returns
 	/// an Error, this transaction will be automatically rolled back.
 	pub redis: &'a mut RedisTransaction,
+	/// The application configuration.
+	pub config: AppConfig,
+}
+
+/// A request object that is passed through the tower layers and services for
+/// endpoints that require authentication. This will contain the user data of
+/// the current authenticated user.
+pub struct AuthenticatedAppRequest<'a, E>
+where
+	E: ApiEndpoint,
+{
+	/// The Endpoint that the request is being made for. This would ideally be
+	/// parsed to have all the data needed to process a request
+	pub request: ApiRequest<E>,
+	/// The database transaction for the request. In case the request returns
+	/// an Error, this transaction will be automatically rolled back.
+	pub database: &'a mut DatabaseTransaction,
+	/// The redis transaction for the request. In case the request returns
+	/// an Error, this transaction will be automatically rolled back.
+	pub redis: &'a mut RedisTransaction,
+	/// The user data of the current authenticated user.
+	pub user_data: RequestUserData,
 	/// The application configuration.
 	pub config: AppConfig,
 }
