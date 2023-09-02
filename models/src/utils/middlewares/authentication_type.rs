@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use crate::prelude::*;
 
 /// This enum represents the different types of authentication that can be used
@@ -39,10 +41,10 @@ where
 		/// the workspace.
 		extract_workspace_id: fn(&ApiRequest<E>) -> Uuid,
 	},
-	/// Only users that have the permission specific by [`permission`][2] on the resource that is
-	/// specified in the [`extract_resource_id`][1] function can access this
-	/// endpoint.
-	/// 
+	/// Only users that have the permission specific by [`permission`][2] on the
+	/// resource that is specified in the [`extract_resource_id`][1] function
+	/// can access this endpoint.
+	///
 	/// [1]: AuthenticationType::<E>::ResourcePermissionAuthenticator::extract_resource_id
 	/// [2]: AuthenticationType::<E>::ResourcePermissionAuthenticator::permission
 	ResourcePermissionAuthenticator {
@@ -55,12 +57,20 @@ where
 	},
 }
 
-impl<E> AuthenticationType<E>
+impl<E> Debug for AuthenticationType<E>
 where
 	E: ApiEndpoint,
 {
-	const IS_AUTH: bool = match E::AUTHENTICATION {
-		AuthenticationType::NoAuthentication => false,
-		_ => true,
-	};
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::NoAuthentication => write!(f, "NoAuthentication"),
+			Self::PlainTokenAuthenticator => write!(f, "PlainTokenAuthenticator"),
+			Self::WorkspaceMembershipAuthenticator { .. } => {
+				write!(f, "WorkspaceMembershipAuthenticator")
+			}
+			Self::ResourcePermissionAuthenticator { .. } => {
+				write!(f, "ResourcePermissionAuthenticator")
+			}
+		}
+	}
 }

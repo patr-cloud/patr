@@ -1,4 +1,4 @@
-use std::{error::Error as StdError, marker::PhantomData};
+use std::error::Error as StdError;
 
 use axum::{
 	body::HttpBody,
@@ -15,12 +15,11 @@ use crate::{
 		AuthEndpointHandler,
 		AuthEndpointLayer,
 		AuthenticatedParserLayer,
+		EndpointHandler,
 		EndpointLayer,
 		RequestParserLayer,
 	},
 };
-
-use super::layers::EndpointHandler;
 
 /// Extension trait for axum Router to mount an API endpoint directly along with
 /// the required request parser, Rate limiter, Audit logger and Auth
@@ -31,11 +30,19 @@ where
 	S: Clone + Send + Sync + 'static,
 {
 	/// Mount an API endpoint directly along with the required request parser,
-	/// Rate limiter, Audit logger and Auth middlewares, using tower layers.
+	/// Rate limiter using tower layers.
 	#[track_caller]
 	fn mount_endpoint<E, H>(self, handler: H, state: AppState) -> Self
 	where
 		H: EndpointHandler<E> + Clone + Send + 'static,
+		E: ApiEndpoint;
+
+	/// Mount an API endpoint directly along with the required request parser,
+	/// Rate limiter, Audit logger and Auth middlewares, using tower layers.
+	#[track_caller]
+	fn mount_auth_endpoint<E, H>(self, handler: H, state: AppState) -> Self
+	where
+		H: AuthEndpointHandler<E> + Clone + Send + 'static,
 		E: ApiEndpoint;
 }
 
@@ -52,6 +59,7 @@ where
 		H: EndpointHandler<E> + Clone + Send + 'static,
 		E: ApiEndpoint,
 	{
+		verify_endpoint_no_auth(E::AUTHENTICATION);
 		use AuthenticationType as Auth;
 		self.route(<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH, {
 			let router = MethodRouter::<S, B>::new().on(
@@ -66,6 +74,28 @@ where
 						// .layer(todo!("Add rate limiter value updater middleware here"))
 						.layer(EndpointLayer::new(handler)),
 				),
+				Auth::PlainTokenAuthenticator |
+				Auth::WorkspaceMembershipAuthenticator { .. } |
+				Auth::ResourcePermissionAuthenticator { .. } => unreachable!(),
+			}
+		})
+	}
+
+	#[track_caller]
+	fn mount_auth_endpoint<E, H>(self, handler: H, state: AppState) -> Self
+	where
+		H: AuthEndpointHandler<E> + Clone + Send + 'static,
+		E: ApiEndpoint,
+	{
+		verify_endpoint_auth(E::AUTHENTICATION);
+		use AuthenticationType as Auth;
+		self.route(<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH, {
+			let router = MethodRouter::<S, B>::new().on(
+				MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
+				|| async { unreachable!() },
+			);
+			match E::AUTHENTICATION {
+				Auth::NoAuthentication => unreachable!(),
 				Auth::PlainTokenAuthenticator => router.layer(
 					ServiceBuilder::new()
 						// .layer(todo!("Add rate limiter checker middleware here")),
@@ -86,34 +116,34 @@ where
 	}
 }
 
-struct EndpointHandlerToAxumHandler<H, Params, S, B, E>
+const fn verify_endpoint_no_auth<E>(auth: AuthenticationType<E>)
 where
-	H: AuthEndpointHandler<E> + Clone + Send + 'static,
-	S: Clone + Send + Sync + 'static,
-	B: HttpBody + Send + 'static,
 	E: ApiEndpoint,
 {
-	handler: H,
-	params: PhantomData<Params>,
-	state: PhantomData<S>,
-	body: PhantomData<B>,
-	endpoint: PhantomData<E>,
+	use AuthenticationType as Auth;
+	match auth {
+		Auth::NoAuthentication => {}
+		Auth::PlainTokenAuthenticator |
+		Auth::ResourcePermissionAuthenticator { .. } |
+		Auth::WorkspaceMembershipAuthenticator { .. } => panic!(concat!(
+			"Endpoint with authentication cannot be mounted here. ",
+			"Use mount_auth_endpoint instead"
+		)),
+	}
 }
 
-impl<H, Params, S, B, E> Clone for EndpointHandlerToAxumHandler<H, Params, S, B, E>
+const fn verify_endpoint_auth<E>(auth: AuthenticationType<E>)
 where
-	H: AuthEndpointHandler<E> + Clone + Send + 'static,
-	S: Clone + Send + Sync + 'static,
-	B: HttpBody + Send + 'static,
 	E: ApiEndpoint,
 {
-	fn clone(&self) -> Self {
-		Self {
-			handler: self.handler.clone(),
-			params: PhantomData,
-			state: PhantomData,
-			body: PhantomData,
-			endpoint: PhantomData,
-		}
+	use AuthenticationType as Auth;
+	match auth {
+		Auth::NoAuthentication => panic!(concat!(
+			"Endpoint without authentication cannot be mounted here. ",
+			"Use mount_endpoint instead"
+		)),
+		Auth::PlainTokenAuthenticator |
+		Auth::ResourcePermissionAuthenticator { .. } |
+		Auth::WorkspaceMembershipAuthenticator { .. } => {}
 	}
 }
