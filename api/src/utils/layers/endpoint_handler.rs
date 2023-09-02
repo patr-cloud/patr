@@ -4,30 +4,19 @@ use std::{
 	task::{Context, Poll},
 };
 
-use models::{ApiEndpoint, ErrorType, utils::True};
+use models::{ApiEndpoint, ErrorType, utils::{False, True}};
 use tower::{Layer, Service};
 
-use crate::{app::AppResponse, prelude::AppRequest};
-
-pub trait RequestType<E> where E: ApiEndpoint {
-	type Request;
-}
-
-impl<E> RequestType<E> for E
-where
-	E: ApiEndpoint,
-	E::AUTHENTICATION::IS_AUTH: Into<True>,
-{
-	type Request = <E as ApiEndpoint>::Request;
-}
+use crate::{app::AppResponse, prelude::{AppRequest, AuthenticatedAppRequest}};
 
 pub trait EndpointHandler<E>
 where
 	E: ApiEndpoint,
 {
 	type Future: Future<Output = Result<AppResponse<E>, ErrorType>> + Send + 'static;
+	type Request<'a>;
 
-	fn call<'a>(self, req: AppRequest<'a, E>) -> Self::Future;
+	fn call(self, req: Self::Request<'_>) -> Self::Future;
 }
 
 impl<F, Fut, E> EndpointHandler<E> for F
@@ -35,10 +24,27 @@ where
 	F: FnOnce(AppRequest<'_, E>) -> Fut + Clone + Send + 'static,
 	Fut: Future<Output = Result<AppResponse<E>, ErrorType>> + Send + 'static,
 	E: ApiEndpoint,
+	E::AUTHD: Into<False>,
 {
 	type Future = Fut;
+	type Request<'a> = AppRequest<'a, E>;
 
-	fn call(self, req: AppRequest<'_, E>) -> Self::Future {
+	fn call(self, req: Self::Request<'_>) -> Self::Future {
+		self(req)
+	}
+}
+
+impl<F, Fut, E> EndpointHandler<E> for F
+where
+	F: FnOnce(AuthenticatedAppRequest<'_, E>) -> Fut + Clone + Send + 'static,
+	Fut: Future<Output = Result<AppResponse<E>, ErrorType>> + Send + 'static,
+	E: ApiEndpoint,
+	E::AUTHD: Into<True>,
+{
+	type Future = Fut;
+	type Request<'a> = AuthenticatedAppRequest<'a, E>;
+
+	fn call(self, req: Self::Request<'_>) -> Self::Future {
 		self(req)
 	}
 }
