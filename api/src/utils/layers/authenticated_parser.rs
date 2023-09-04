@@ -13,6 +13,7 @@ use axum::{
 	response::{IntoResponse, Response},
 	Json,
 };
+use jsonwebtoken::{DecodingKey, TokenData, Validation};
 use models::{
 	prelude::*,
 	utils::{Headers, IntoAxumResponse},
@@ -20,8 +21,9 @@ use models::{
 };
 use sea_orm::TransactionTrait;
 use tower::{Layer, Service};
+use typed_headers::{Authorization, HeaderMapExt};
 
-use crate::{app::AppResponse, prelude::*};
+use crate::{app::AppResponse, models::access_token_data::AccessTokenData, prelude::*};
 
 #[derive(Clone, Debug)]
 pub struct AuthenticatedParserLayer<E>
@@ -119,6 +121,55 @@ where
 			let Some(headers) = <E::RequestHeaders as Headers>::from_header_map(&parts.headers)
 			else {
 				debug!("Failed to parse headers");
+				return Ok(ApiErrorResponse::error_with_message(
+					ErrorType::WrongParameters,
+					"Invalid Headers",
+				)
+				.into_response());
+			};
+
+			let Ok(Some(bearer_token)) = parts.headers.typed_get::<Authorization>() else {
+				debug!("Could not get bearer token from headers");
+				return Ok(ApiErrorResponse::error_with_message(
+					ErrorType::WrongParameters,
+					"Invalid Headers",
+				)
+				.into_response());
+			};
+			let Some(bearer_token) = bearer_token.as_bearer() else {
+				debug!("Could not parse bearer token from headers");
+				return Ok(ApiErrorResponse::error_with_message(
+					ErrorType::WrongParameters,
+					"Invalid Headers",
+				)
+				.into_response());
+			};
+			let Ok(TokenData {
+				header: _,
+				claims:
+					AccessTokenData {
+						iss,
+						sub,
+						aud,
+						exp,
+						nbf,
+						iat,
+						jti,
+					},
+			}) = jsonwebtoken::decode(
+				bearer_token.as_str(),
+				&DecodingKey::from_secret(state.config.jwt_secret.as_bytes()),
+				&{
+					let mut validation = Validation::default();
+
+					validation.validate_exp = false;
+					validation.validate_nbf = false;
+
+					validation
+				},
+			)
+			else {
+				debug!("Error parsing JWT");
 				return Ok(ApiErrorResponse::error_with_message(
 					ErrorType::WrongParameters,
 					"Invalid Headers",

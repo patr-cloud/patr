@@ -50,7 +50,6 @@ where
 	/// The HTTP method that should be used for this endpoint
 	const METHOD: reqwest::Method;
 	const AUTHENTICATION: AuthenticationType<Self>;
-	const AUTHD: bool = false;
 
 	/// The path that should be used for this endpoint. This should be a valid
 	/// HTML URL Path and can contain URL parameters as a struct. For example,
