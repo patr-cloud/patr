@@ -8,17 +8,15 @@
 /// type Tuple = (u8, u16, u32);
 /// type ResultantTuple = <Tuple as AddTuple<u64>>::ResultantTuple; // (u8, u16, u32, u64)
 ///
-/// fn main() {
-///     assert_eq!(
-///         ResultantTuple::default(),
-///         (
-///             u8::default(),
-///             u16::default(),
-///             u32::default(),
-///             u64::default(),
-///         )
-///     );
-/// }
+/// assert_eq!(
+///     ResultantTuple::default(),
+///     (
+///         u8::default(),
+///         u16::default(),
+///         u32::default(),
+///         u64::default(),
+///     )
+/// );
 /// ```
 pub trait AddTuple<T> {
 	/// The resulting tuple after adding the type.

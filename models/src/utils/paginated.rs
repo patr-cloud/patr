@@ -41,6 +41,8 @@ where
 /// query. This is used to set the `X-Total-Count` header in the response.
 pub struct TotalCountHeader(pub usize);
 
+/// A header that is added to the response to indicate the total number of
+/// items that are available for the query (usually for list routes).
 static TOTAL_COUNT_HEADER_NAME: HeaderName = HeaderName::from_static("x-total-count");
 
 impl Header for TotalCountHeader {

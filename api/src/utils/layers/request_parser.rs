@@ -189,7 +189,7 @@ where
 						.into_response());
 					};
 
-					return Ok(ApiErrorResponse::error(error).into_response());
+					Ok(ApiErrorResponse::error(error).into_response())
 				}
 			}
 		}
