@@ -20,6 +20,15 @@ pub enum ErrorType {
 	/// The parameters sent with the request is invalid. This would ideally not
 	/// happen unless there is a bug in the client
 	WrongParameters,
+	/// The API token provided is invalid
+	MalformedApiToken,
+	/// The access token (JWT) provided is malformed
+	MalformedAccessToken,
+	/// The authentication token provided is not authorized to perform the
+	/// requested action
+	Unauthorized,
+	/// The access token (JWT) provided is invalid
+	AuthorizationTokenInvalid,
 	/// An internal server error occurred. This should not happen unless there
 	/// is a bug in the server
 	#[serde(with = "serialize_server_error")]
@@ -38,6 +47,10 @@ impl ErrorType {
 			Self::MfaOtpInvalid => StatusCode::UNAUTHORIZED,
 			Self::MfaRequired => StatusCode::UNAUTHORIZED,
 			Self::WrongParameters => StatusCode::BAD_REQUEST,
+			Self::MalformedApiToken => StatusCode::BAD_REQUEST,
+			Self::MalformedAccessToken => StatusCode::BAD_REQUEST,
+			Self::Unauthorized => StatusCode::UNAUTHORIZED,
+			Self::AuthorizationTokenInvalid => StatusCode::UNAUTHORIZED,
 			Self::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
 		}
 	}
@@ -52,6 +65,10 @@ impl ErrorType {
 			Self::MfaRequired => "Two factor authentication required",
 			Self::MfaOtpInvalid => "Invalid two factor authentication code",
 			Self::WrongParameters => "The parameters sent with that request is invalid",
+			Self::MalformedApiToken => "The API token provided is not a valid token",
+			Self::MalformedAccessToken => "Your access token is invalid. Please login in again",
+			Self::Unauthorized => "You are not authorized to perform that action",
+			Self::AuthorizationTokenInvalid => "Your access token has expired. Please login again",
 			Self::InternalServerError(_) => "internal server error",
 		}
 	}
@@ -91,6 +108,10 @@ impl Clone for ErrorType {
 			Self::MfaRequired => Self::MfaRequired,
 			Self::MfaOtpInvalid => Self::MfaOtpInvalid,
 			Self::WrongParameters => Self::WrongParameters,
+			Self::MalformedApiToken => Self::MalformedApiToken,
+			Self::MalformedAccessToken => Self::MalformedAccessToken,
+			Self::Unauthorized => Self::Unauthorized,
+			Self::AuthorizationTokenInvalid => Self::AuthorizationTokenInvalid,
 			Self::InternalServerError(arg0) => {
 				Self::InternalServerError(anyhow::anyhow!(arg0.to_string()))
 			}

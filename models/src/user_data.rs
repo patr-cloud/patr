@@ -21,7 +21,7 @@ pub struct RequestUserData {
 	pub created: OffsetDateTime,
 	/// The loginId of the current authenticated request.
 	pub login_id: Uuid,
-	/// The permissions that the user has on all current workspaces.
+	/// The permissions that the user has on all workspaces.
 	pub permissions: BTreeMap<Uuid, WorkspacePermission>,
 }
 

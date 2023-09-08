@@ -15,7 +15,9 @@
         100
     ],
     "cSpell.words": [
-        "leptos"
+        "leptos",
+        "jsonwebtoken",
+        "middlewares"
     ],
     "nixEnvSelector.nixFile": "${workspaceRoot}/shell.nix",
     "rust-analyzer.showUnlinkedFileNotification": false

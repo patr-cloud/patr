@@ -7,7 +7,7 @@ use std::{
 use models::{ApiEndpoint, ErrorType};
 use tower::{Layer, Service};
 
-use crate::{app::AppResponse, prelude::AppRequest};
+use crate::prelude::*;
 
 pub trait EndpointHandler<E>
 where
@@ -103,7 +103,9 @@ where
 		Poll::Ready(Ok(()))
 	}
 
+	#[instrument(skip(self, req))]
 	fn call(&mut self, req: AppRequest<'a, E>) -> Self::Future {
+		trace!("Calling request handler");
 		self.handler.clone().call(req)
 	}
 }

@@ -5,15 +5,34 @@ use serde::{Deserialize, Serialize};
 /// Represents a value that can be either one or many. This is useful for
 /// serializing and deserializing JSON values that can be either a single
 /// object or an array of objects.
-/// 
+///
 /// The default implementation is [`OneOrMore::One(Default::default())`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum OneOrMore<T> {
-    /// A single value.
+	/// A single value.
 	One(T),
-    /// A list of values.
+	/// A list of values.
 	Multiple(Vec<T>),
+}
+
+impl<T> OneOrMore<T>
+where
+	T: PartialEq,
+{
+	/// If a single value is present, checks if the provided value is equal to
+	/// it. If multiple values are present, checks if the provided value is
+	/// present in the list.
+	///
+	/// This is mostly used in scenarios where we need to check if one of the
+	/// values are present, regardless of whether it is a single value or
+	/// present in a list.
+	pub fn contains(&self, value: &T) -> bool {
+		match self {
+			Self::One(one) => one == value,
+			Self::Multiple(many) => many.contains(value),
+		}
+	}
 }
 
 impl<T> PartialEq for OneOrMore<T>
