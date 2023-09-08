@@ -6,15 +6,18 @@ use axum::{
 	Router,
 };
 use axum_extra::routing::TypedPath;
-use models::{utils::AuthenticationType, ApiEndpoint};
+use models::{
+	utils::{AppAuthentication, BearerToken, HasHeader, NoAuthentication},
+	ApiEndpoint,
+};
 use tower::ServiceBuilder;
 
+use super::layers::AuthenticationLayer;
 use crate::{
 	prelude::AppState,
 	utils::layers::{
 		AuthEndpointHandler,
 		AuthEndpointLayer,
-		AuthenticatedParserLayer,
 		EndpointHandler,
 		EndpointLayer,
 		RequestParserLayer,
@@ -35,7 +38,7 @@ where
 	fn mount_endpoint<E, H>(self, handler: H, state: AppState) -> Self
 	where
 		H: EndpointHandler<E> + Clone + Send + 'static,
-		E: ApiEndpoint;
+		E: ApiEndpoint<Authenticator = NoAuthentication>;
 
 	/// Mount an API endpoint directly along with the required request parser,
 	/// Rate limiter, Audit logger and Auth middlewares, using tower layers.
@@ -43,7 +46,8 @@ where
 	fn mount_auth_endpoint<E, H>(self, handler: H, state: AppState) -> Self
 	where
 		H: AuthEndpointHandler<E> + Clone + Send + 'static,
-		E: ApiEndpoint;
+		E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
+		E::RequestHeaders: HasHeader<BearerToken>;
 }
 
 impl<S, B> RouterExt<S, B> for Router<S, B>
@@ -57,93 +61,48 @@ where
 	fn mount_endpoint<E, H>(self, handler: H, state: AppState) -> Self
 	where
 		H: EndpointHandler<E> + Clone + Send + 'static,
-		E: ApiEndpoint,
+		E: ApiEndpoint<Authenticator = NoAuthentication>,
 	{
-		verify_endpoint_no_auth(E::AUTHENTICATION);
-		use AuthenticationType as Auth;
-		self.route(<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH, {
-			let router = MethodRouter::<S, B>::new().on(
-				MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
-				|| async { unreachable!() },
-			);
-			match E::AUTHENTICATION {
-				Auth::NoAuthentication => router.layer(
+		self.route(
+			<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
+			MethodRouter::<S, B>::new()
+				.on(
+					MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
+					|| async { unreachable!() },
+				)
+				.layer(
 					ServiceBuilder::new()
 						// .layer(todo!("Add rate limiter checker middleware here")),
 						.layer(RequestParserLayer::with_state(state))
 						// .layer(todo!("Add rate limiter value updater middleware here"))
 						.layer(EndpointLayer::new(handler)),
 				),
-				Auth::PlainTokenAuthenticator |
-				Auth::WorkspaceMembershipAuthenticator { .. } |
-				Auth::ResourcePermissionAuthenticator { .. } => unreachable!(),
-			}
-		})
+		)
 	}
 
 	#[track_caller]
 	fn mount_auth_endpoint<E, H>(self, handler: H, state: AppState) -> Self
 	where
 		H: AuthEndpointHandler<E> + Clone + Send + 'static,
-		E: ApiEndpoint,
+		E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
+		E::RequestHeaders: HasHeader<BearerToken>,
 	{
-		verify_endpoint_auth(E::AUTHENTICATION);
-		use AuthenticationType as Auth;
-		self.route(<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH, {
-			let router = MethodRouter::<S, B>::new().on(
-				MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
-				|| async { unreachable!() },
-			);
-			match E::AUTHENTICATION {
-				Auth::NoAuthentication => unreachable!(),
-				Auth::PlainTokenAuthenticator => router.layer(
+		self.route(
+			<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
+			MethodRouter::<S, B>::new()
+				.on(
+					MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
+					|| async { unreachable!() },
+				)
+				.layer(
 					ServiceBuilder::new()
 						// .layer(todo!("Add rate limiter checker middleware here")),
-						.layer(AuthenticatedParserLayer::with_state(state))
-						// .layer(todo!("Add auth middleware here"))
+						.layer(RequestParserLayer::with_state(state))
+						.layer(AuthenticationLayer::new())
 						// .layer(todo!("Add rate limiter value updater middleware here"))
 						// .layer(todo!("Add audit logger middleware here"))
 						.layer(AuthEndpointLayer::new(handler)),
 				),
-				Auth::WorkspaceMembershipAuthenticator {
-					extract_workspace_id,
-				} => todo!(),
-				Auth::ResourcePermissionAuthenticator {
-					extract_resource_id,
-				} => todo!(),
-			}
-		})
-	}
-}
-
-const fn verify_endpoint_no_auth<E>(auth: AuthenticationType<E>)
-where
-	E: ApiEndpoint,
-{
-	use AuthenticationType as Auth;
-	match auth {
-		Auth::NoAuthentication => {}
-		Auth::PlainTokenAuthenticator |
-		Auth::ResourcePermissionAuthenticator { .. } |
-		Auth::WorkspaceMembershipAuthenticator { .. } => panic!(concat!(
-			"Endpoint with authentication cannot be mounted here. ",
-			"Use mount_auth_endpoint instead"
-		)),
-	}
-}
-
-const fn verify_endpoint_auth<E>(auth: AuthenticationType<E>)
-where
-	E: ApiEndpoint,
-{
-	use AuthenticationType as Auth;
-	match auth {
-		Auth::NoAuthentication => panic!(concat!(
-			"Endpoint without authentication cannot be mounted here. ",
-			"Use mount_endpoint instead"
-		)),
-		Auth::PlainTokenAuthenticator |
-		Auth::ResourcePermissionAuthenticator { .. } |
-		Auth::WorkspaceMembershipAuthenticator { .. } => {}
+		)
 	}
 }

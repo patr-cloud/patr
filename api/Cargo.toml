@@ -22,11 +22,13 @@ rustis = { workspace = true, features = [
     "tokio-tls",
 ] }
 sea-orm = { workspace = true, features = [
-    "default",
+    "macros",
+    "with-json",
+    "with-uuid",
+    "with-time",
     "sqlx-postgres",
     "runtime-tokio",
     "runtime-tokio-rustls",
-    "macros",
 ] }
 serde = { workspace = true, features = ["default", "derive"] }
 time = { workspace = true, features = ["default", "serde-human-readable"] }

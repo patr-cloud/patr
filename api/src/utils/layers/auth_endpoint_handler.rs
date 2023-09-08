@@ -58,10 +58,10 @@ where
 	H: AuthEndpointHandler<E> + Clone + Send + 'static,
 	E: ApiEndpoint,
 {
-	type Service = EndpointService<H, E>;
+	type Service = AuthEndpointService<H, E>;
 
 	fn layer(&self, _: S) -> Self::Service {
-		EndpointService {
+		AuthEndpointService {
 			handler: self.handler.clone(),
 			endpoint: PhantomData,
 		}
@@ -81,7 +81,7 @@ where
 	}
 }
 
-pub struct EndpointService<H, E>
+pub struct AuthEndpointService<H, E>
 where
 	H: AuthEndpointHandler<E> + Clone + Send + 'static,
 	E: ApiEndpoint,
@@ -90,7 +90,7 @@ where
 	endpoint: PhantomData<E>,
 }
 
-impl<'a, H, E> Service<AuthenticatedAppRequest<'a, E>> for EndpointService<H, E>
+impl<'a, H, E> Service<AuthenticatedAppRequest<'a, E>> for AuthEndpointService<H, E>
 where
 	H: AuthEndpointHandler<E> + Clone + Send + 'static,
 	E: ApiEndpoint,
@@ -108,7 +108,7 @@ where
 	}
 }
 
-impl<H, E> Clone for EndpointService<H, E>
+impl<H, E> Clone for AuthEndpointService<H, E>
 where
 	H: AuthEndpointHandler<E> + Clone + Send + 'static,
 	E: ApiEndpoint,

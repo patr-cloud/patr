@@ -24,6 +24,35 @@ use typed_headers::{
 
 use super::Uuid;
 
+/// This struct represents a bearer token. It is used to authenticate a user's
+/// request to the API. It is used as a header in requests to the API.
+///
+/// This is a wrapper around [`typed_headers::Token68`].
+/// Example: Authorization: Bearer <token>
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BearerToken(pub Token68);
+
+impl Header for BearerToken {
+	fn name() -> &'static HeaderName {
+		&Authorization::name()
+	}
+
+	fn from_values<'a>(
+		values: &mut reqwest::header::ValueIter<'a, HeaderValue>,
+	) -> Result<Option<Self>, Error>
+	where
+		Self: Sized,
+	{
+		Authorization::from_values(values).map(|token| {
+			token.and_then(|Authorization(creds)| creds.as_bearer().cloned().map(BearerToken))
+		})
+	}
+
+	fn to_values(&self, values: &mut ToValues) {
+		Authorization::to_values(&Authorization(Credentials::bearer(self.0.clone())), values)
+	}
+}
+
 /// This struct represents a login ID. It is used to identify a user's login in
 /// the database. A user's login can be any way they access the API - Either
 /// through the website, through an API request, the CLI or from an OAuth
@@ -96,8 +125,8 @@ where
 /// Given a struct `RequestHeaders` like so:
 /// ```rust
 /// pub struct RequestHeaders {
-///     pub accept: Accept,
-///     pub content_type: ContentType,
+/// 	pub accept: Accept,
+/// 	pub content_type: ContentType,
 /// }
 /// ```
 ///
@@ -106,15 +135,15 @@ where
 ///
 /// ```rust
 /// impl HasHeader<Accept> for RequestHeaders {
-///     fn get_header(&self) -> &Accept {
-///         &self.accept
-///     }
+/// 	fn get_header(&self) -> &Accept {
+/// 		&self.accept
+/// 	}
 /// }
 ///
 /// impl HasHeader<ContentType> for RequestHeaders {
-///     fn get_header(&self) -> &ContentType {
-///         &self.content_type
-///     }
+/// 	fn get_header(&self) -> &ContentType {
+/// 		&self.content_type
+/// 	}
 /// }
 /// ```
 ///
@@ -129,8 +158,8 @@ where
 /// ```rust
 /// #[derive(HasHeaders)]
 /// pub struct RequestHeaders {
-///     pub accept: Accept,
-///     pub content_type: ContentType,
+/// 	pub accept: Accept,
+/// 	pub content_type: ContentType,
 /// }
 /// ```
 ///
@@ -139,9 +168,9 @@ where
 /// ```rust
 /// // A function that requires the `Accept` and `Content-Type` headers
 /// fn foo<T: HasHeaders<(Accept, ContentType)>>(headers: &T) {
-///     // ...
-///     let accept: &Accept = headers.get_header();
-///     let content_type: &ContentType = headers.get_header();
+/// 	// ...
+/// 	let accept: &Accept = headers.get_header();
+/// 	let content_type: &ContentType = headers.get_header();
 /// }
 /// ```
 ///
@@ -239,8 +268,8 @@ impl Headers for () {
 /// The response headers required should be mentioned as a tuple of headers so
 /// that it can be used by the [`HasHeaders`] trait.
 pub trait RequiresResponseHeaders {
-	/// The response headers that are required for this struct to be a part of an
-	/// endpoint. This should be a tuple of headers.
+	/// The response headers that are required for this struct to be a part of
+	/// an endpoint. This should be a tuple of headers.
 	type RequiredResponseHeaders;
 }
 

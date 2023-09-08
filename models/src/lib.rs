@@ -28,6 +28,10 @@ pub mod prelude {
 	};
 }
 
+mod private {
+	pub trait Sealed {}
+}
+
 mod endpoint;
 mod error;
 mod request;

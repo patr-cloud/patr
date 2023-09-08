@@ -1,17 +1,42 @@
 use std::fmt::Debug;
 
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	private::Sealed,
+	utils::{BearerToken, RequiresRequestHeaders},
+};
+
+/// This trait is used to specify if an API endpoint requires authentication or
+/// not. It is used in the [`ApiEndpoint`] trait to specify the
+/// [`Authenticator`][1] type of an endpoint. The constant in the trait is used
+/// by the router extension to mount the corresponding [`tower::Layer`] in the
+/// router.
+///
+/// [1]: ApiEndpoint::Authenticator
+pub trait HasAuthentication: RequiresRequestHeaders + Sealed {}
+
+/// This struct is used to specify that an API endpoint does not require
+/// authentication. It can be accessed without any token.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct NoAuthentication;
+
+impl RequiresRequestHeaders for NoAuthentication {
+	type RequiredRequestHeaders = ();
+}
+
+impl Sealed for NoAuthentication {}
+
+impl HasAuthentication for NoAuthentication {}
 
 /// This enum represents the different types of authentication that can be used
 /// for an API endpoint.
 ///
 /// The variants are:
-/// - [`NoAuthentication`][1]: No authentication is required for this endpoint.
-/// - [`PlainTokenAuthenticator`][2]: Any logged in user can access this
+/// - [`PlainTokenAuthenticator`][1]: Any logged in user can access this
 ///   endpoint.
-/// - [`WorkspaceMembershipAuthenticator`][3]: Only users that are members of
+/// - [`WorkspaceMembershipAuthenticator`][2]: Only users that are members of
 ///   the workspace that is specified in the request can access this endpoint.
-/// - [`ResourcePermissionAuthenticator`][4]: Only users that have the specified
+/// - [`ResourcePermissionAuthenticator`][3]: Only users that have the specified
 ///   permission on the resource that is specified in the request can access
 ///   this endpoint.
 ///
@@ -19,16 +44,14 @@ use crate::prelude::*;
 /// type of an endpoint. The constant in the trait is used by the router
 /// extension to mount the corresponding [`tower::Layer`] in the router.
 ///
-/// [1]: AuthenticationType::<E>::NoAuthentication
-/// [2]: AuthenticationType::<E>::PlainTokenAuthenticator
-/// [3]: AuthenticationType::<E>::WorkspaceMembershipAuthenticator
-/// [4]: AuthenticationType::<E>::ResourcePermissionAuthenticator
-pub enum AuthenticationType<E>
+/// [1]: AppAuthentication::PlainTokenAuthenticator
+/// [2]: AppAuthentication::WorkspaceMembershipAuthenticator
+/// [3]: AppAuthentication::ResourcePermissionAuthenticator
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum AppAuthentication<E>
 where
 	E: ApiEndpoint,
 {
-	/// No authentication is required for this endpoint.
-	NoAuthentication,
 	/// Any logged in user can access this endpoint.
 	PlainTokenAuthenticator,
 	/// Only users that are members of the workspace that is specified in the
@@ -57,13 +80,23 @@ where
 	},
 }
 
-impl<E> Debug for AuthenticationType<E>
+impl<E> RequiresRequestHeaders for AppAuthentication<E>
+where
+	E: ApiEndpoint,
+{
+	type RequiredRequestHeaders = BearerToken;
+}
+
+impl<E> Sealed for AppAuthentication<E> where E: ApiEndpoint {}
+
+impl<E> HasAuthentication for AppAuthentication<E> where E: ApiEndpoint {}
+
+impl<E> Debug for AppAuthentication<E>
 where
 	E: ApiEndpoint,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			Self::NoAuthentication => write!(f, "NoAuthentication"),
 			Self::PlainTokenAuthenticator => write!(f, "PlainTokenAuthenticator"),
 			Self::WorkspaceMembershipAuthenticator { .. } => {
 				write!(f, "WorkspaceMembershipAuthenticator")
