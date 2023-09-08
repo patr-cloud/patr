@@ -6,6 +6,6 @@ description.workspace = true
 authors.workspace = true
 
 [dependencies]
-k8s-openapi = { workspace = true, features = ["default", "v1_24"] }
-kube = { workspace = true, features = ["default", "ws"] }
+k8s-openapi = { workspace = true, features = ["v1_24"] }
+kube = { workspace = true, features = ["client", "rustls-tls", "ws"] }
 tokio = { workspace = true, features = ["tracing"] }

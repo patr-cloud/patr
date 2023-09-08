@@ -6,13 +6,11 @@ use syn::{
 	Attribute,
 	Error,
 	Expr,
-	Fields,
 	FieldsNamed,
 	Ident,
 	Lit,
 	LitStr,
 	Token,
-	Variant,
 };
 
 /// A helper struct to parse an API endpoint
@@ -30,7 +28,7 @@ pub struct ApiEndpoint {
 	/// The body of the URL path. This is used for typed paths.
 	path_body: Option<FieldsNamed>,
 	/// The authentication type for the endpoint.
-	auth_type: Option<Variant>,
+	auth_type: Option<Ident>,
 
 	/// The query params for the endpoint. The tuple is (is_paginated, fields).
 	query: Option<(bool, FieldsNamed)>,
@@ -255,12 +253,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		quote::quote!()
 	};
 
-	let auth_type = auth_type.unwrap_or_else(|| Variant {
-		attrs: vec![],
-		ident: format_ident!("NoAuthentication"),
-		fields: Fields::Unit,
-		discriminant: None,
-	});
+	let auth_type = auth_type.unwrap_or_else(|| format_ident!("NoAuthentication"));
 
 	let request_headers_name = if request_headers.is_some() {
 		let ident = format_ident!("{}RequestHeaders", name);
@@ -414,12 +407,12 @@ pub fn parse(input: TokenStream) -> TokenStream {
 
 		impl crate::ApiEndpoint for #request_name {
 			const METHOD: ::reqwest::Method = ::reqwest::Method::#method;
-			const AUTHENTICATION: crate::utils::AuthenticationType<Self> = crate::utils::AuthenticationType::<Self>::#auth_type;
 
 			type RequestPath = #path_name;
 			type RequestQuery = #query_name;
 			type RequestHeaders = #request_headers_name;
 			type RequestBody = Self;
+			type Authenticator = crate::utils::#auth_type;
 
 			type ResponseHeaders = #response_headers_name;
 			type ResponseBody = #response_name;
