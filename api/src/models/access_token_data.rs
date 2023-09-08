@@ -1,6 +1,7 @@
-use models::utils::OneOrMore;
 use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
+use time::{OffsetDateTime, Duration};
+
+use crate::prelude::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -19,7 +20,7 @@ pub struct AccessTokenData {
 	///
 	/// I think this is the user's login ID (from which we can extract
 	/// everything else that is needed to know about the user)
-	pub sub: String,
+	pub sub: Uuid,
 	/// RFC7519:
 	/// The "aud" (audience) claim identifies the recipients that the JWT is
 	/// intended for.  Each principal intended to process the JWT MUST identify
@@ -76,7 +77,11 @@ pub struct AccessTokenData {
 	///
 	/// This can perhaps be a UUID v1, and any JWT with an old jti can be
 	/// rejected.
-	pub jti: String,
+	pub jti: Uuid,
+}
+
+impl AccessTokenData {
+	pub const REFRESH_TOKEN_VALIDITY: Duration = Duration::days(30);
 }
 
 mod datetime_as_seconds {

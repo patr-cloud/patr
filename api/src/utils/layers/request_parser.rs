@@ -8,10 +8,11 @@ use std::{
 
 use axum::{
 	body::HttpBody,
-	extract::{FromRequest, FromRequestParts, Path, Query},
+	extract::{Path, Query},
 	http::Request,
 	response::{IntoResponse, Response},
 	Json,
+	RequestExt,
 };
 use models::{
 	prelude::*,
@@ -90,14 +91,14 @@ where
 	}
 
 	#[instrument(skip(self, req))]
-	fn call(&mut self, req: Request<B>) -> Self::Future {
+	fn call(&mut self, mut req: Request<B>) -> Self::Future {
 		let state = self.state.clone();
 		let mut inner = self.inner.clone();
 		async {
-			let (mut parts, body) = req.into_parts();
-			let Ok(Path(path)) = FromRequestParts::from_request_parts(&mut parts, &state).await
-			else {
-				debug!("Failed to parse path: {}", parts.uri.path());
+			debug!("Parsing request for URL: {}", req.uri());
+
+			let Ok(Path(path)) = req.extract_parts().await else {
+				debug!("Failed to parse path: {}", req.uri().path());
 				return Ok(ApiErrorResponse::error_with_message(
 					ErrorType::WrongParameters,
 					"Invalid Request URL",
@@ -105,9 +106,8 @@ where
 				.into_response());
 			};
 
-			let Ok(Query(query)) = FromRequestParts::from_request_parts(&mut parts, &state).await
-			else {
-				debug!("Failed to parse query: {:?}", parts.uri.query());
+			let Ok(Query(query)) = req.extract_parts().await else {
+				debug!("Failed to parse query: {:?}", req.uri().query());
 				return Ok(ApiErrorResponse::error_with_message(
 					ErrorType::WrongParameters,
 					"Invalid Query Parameters",
@@ -115,7 +115,7 @@ where
 				.into_response());
 			};
 
-			let Some(headers) = <E::RequestHeaders as Headers>::from_header_map(&parts.headers)
+			let Some(headers) = <E::RequestHeaders as Headers>::from_header_map(req.headers())
 			else {
 				debug!("Failed to parse headers");
 				return Ok(ApiErrorResponse::error_with_message(
@@ -125,8 +125,7 @@ where
 				.into_response());
 			};
 
-			let req = Request::from_parts(parts, body);
-			let Ok(Json(body)) = FromRequest::from_request(req, &state).await else {
+			let Ok(Json(body)) = req.extract().await else {
 				debug!("Failed to parse body");
 				return Ok(ApiErrorResponse::error_with_message(
 					ErrorType::WrongParameters,
@@ -134,6 +133,8 @@ where
 				)
 				.into_response());
 			};
+
+			debug!("Request parsed successfully");
 
 			let Ok(mut database) = state.database.begin().await else {
 				debug!("Failed to begin database transaction");
@@ -157,8 +158,11 @@ where
 				config: state.config.clone(),
 			};
 
+			info!("Calling inner service");
+
 			match inner.call(req).await {
 				Ok(response) => {
+					info!("Inner service called successfully");
 					let Ok(()) = database.commit().await else {
 						debug!("Failed to commit database transaction");
 						return Ok(ApiErrorResponse::internal_error(
@@ -181,6 +185,7 @@ where
 						.into_response())
 				}
 				Err(error) => {
+					warn!("Inner service failed: {:?}", error);
 					let Ok(()) = database.rollback().await else {
 						debug!("Failed to rollback database transaction");
 						return Ok(ApiErrorResponse::internal_error(

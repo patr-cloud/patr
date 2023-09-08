@@ -35,7 +35,7 @@ where
 	/// Mount an API endpoint directly along with the required request parser,
 	/// Rate limiter using tower layers.
 	#[track_caller]
-	fn mount_endpoint<E, H>(self, handler: H, state: AppState) -> Self
+	fn mount_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
 	where
 		H: EndpointHandler<E> + Clone + Send + 'static,
 		E: ApiEndpoint<Authenticator = NoAuthentication>;
@@ -43,7 +43,7 @@ where
 	/// Mount an API endpoint directly along with the required request parser,
 	/// Rate limiter, Audit logger and Auth middlewares, using tower layers.
 	#[track_caller]
-	fn mount_auth_endpoint<E, H>(self, handler: H, state: AppState) -> Self
+	fn mount_auth_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
 	where
 		H: AuthEndpointHandler<E> + Clone + Send + 'static,
 		E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
@@ -58,7 +58,7 @@ where
 	S: Clone + Send + Sync + 'static,
 {
 	#[track_caller]
-	fn mount_endpoint<E, H>(self, handler: H, state: AppState) -> Self
+	fn mount_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
 	where
 		H: EndpointHandler<E> + Clone + Send + 'static,
 		E: ApiEndpoint<Authenticator = NoAuthentication>,
@@ -73,7 +73,7 @@ where
 				.layer(
 					ServiceBuilder::new()
 						// .layer(todo!("Add rate limiter checker middleware here")),
-						.layer(RequestParserLayer::with_state(state))
+						.layer(RequestParserLayer::with_state(state.clone()))
 						// .layer(todo!("Add rate limiter value updater middleware here"))
 						.layer(EndpointLayer::new(handler)),
 				),
@@ -81,7 +81,7 @@ where
 	}
 
 	#[track_caller]
-	fn mount_auth_endpoint<E, H>(self, handler: H, state: AppState) -> Self
+	fn mount_auth_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
 	where
 		H: AuthEndpointHandler<E> + Clone + Send + 'static,
 		E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
@@ -97,7 +97,7 @@ where
 				.layer(
 					ServiceBuilder::new()
 						// .layer(todo!("Add rate limiter checker middleware here")),
-						.layer(RequestParserLayer::with_state(state))
+						.layer(RequestParserLayer::with_state(state.clone()))
 						.layer(AuthenticationLayer::new())
 						// .layer(todo!("Add rate limiter value updater middleware here"))
 						// .layer(todo!("Add audit logger middleware here"))

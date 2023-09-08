@@ -6,23 +6,22 @@ use models::{
 	ErrorType,
 };
 
-use crate::{app::AppResponse, prelude::*};
+use crate::prelude::*;
 
+#[instrument(skip(state))]
 pub fn setup_routes(state: &AppState) -> Router {
 	Router::new()
 		.with_state(state.clone())
-		.mount_endpoint(login, state.clone())
+		.mount_endpoint(login, state)
 }
 
 async fn login<'a>(
 	req: AppRequest<'a, LoginRequest>,
 ) -> Result<AppResponse<LoginRequest>, ErrorType> {
-	let user_data = db::get_user_by_username_email_or_phone_number(
-		req.database,
-		user_id.to_lowercase().trim(),
-	)
-	.await?
-    .ok_or(ErrorType::UserNotFound)?;
+	let user_data =
+		db::get_user_by_username_email_or_phone_number(req.database, user_id.to_lowercase().trim())
+			.await?
+			.ok_or(ErrorType::UserNotFound)?;
 
 	let success = service::validate_hash(&password, &user_data.password)?;
 

@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
+use time::{Duration, OffsetDateTime};
 
 /// A wrapper around [`uuid::Uuid`] that implements [`serde::Serialize`] and
 /// [`serde::Deserialize`], but specifically only in the form of a hex string.
@@ -31,6 +32,17 @@ impl Uuid {
 	/// A helper function to check if the [`Uuid`] is nil (all zeroes).
 	pub const fn is_nil(&self) -> bool {
 		self.0.is_nil()
+	}
+
+	/// Gets the timestamp of the Uuid if it is a v1 Uuid.
+	pub fn get_timestamp(&self) -> Option<OffsetDateTime> {
+		self.0.get_timestamp().and_then(|ts| {
+			let (secs, nanos) = ts.to_unix();
+			Some(
+				OffsetDateTime::from_unix_timestamp(secs.try_into().unwrap_or_default()).ok()? +
+					Duration::nanoseconds(nanos.try_into().unwrap_or_default()),
+			)
+		})
 	}
 
 	/// Returns a 128-bit number representing the [`Uuid`].
