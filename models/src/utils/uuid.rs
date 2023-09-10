@@ -82,3 +82,15 @@ impl<'de> Deserialize<'de> for Uuid {
 		Ok(Self(uuid::Uuid::from_bytes(buffer)))
 	}
 }
+
+impl Into<uuid::Uuid> for Uuid {
+	fn into(self) -> uuid::Uuid {
+		uuid::Uuid::from(self.0)
+	}
+}
+
+impl From<uuid::Uuid> for Uuid {
+	fn from(uuid: uuid::Uuid) -> Self {
+		Self(uuid.into())
+	}
+}

@@ -1,8 +1,11 @@
 use serde::{Deserialize, Serialize};
-use time::{OffsetDateTime, Duration};
+use time::{Duration, OffsetDateTime};
 
 use crate::prelude::*;
 
+/// A struct representing the data that is stored inside the access token, which
+/// will be encoded as a JWT. Remember, JWTs can be decoded on the client side,
+/// so no sensitive data should be stored here.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AccessTokenData {
@@ -81,6 +84,9 @@ pub struct AccessTokenData {
 }
 
 impl AccessTokenData {
+	/// The validity of a refresh token. After this time, the refresh token will
+	/// be considered expired, and the client should handle this by logging out
+	/// the user, or attempting to login again.
 	pub const REFRESH_TOKEN_VALIDITY: Duration = Duration::days(30);
 }
 

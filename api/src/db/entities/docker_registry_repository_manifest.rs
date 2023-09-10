@@ -10,7 +10,7 @@ pub struct Model {
 	#[sea_orm(primary_key, auto_increment = false, column_type = "Text")]
 	pub manifest_digest: String,
 	pub size: i64,
-	pub created: DateTimeWithTimeZone,
+	pub created: TimeDateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

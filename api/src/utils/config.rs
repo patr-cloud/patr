@@ -9,6 +9,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
 
+/// Parses the configuration of the application and returns the parsed config.
+/// In case of any errors while parsing, this function will panic.
+///
+/// This should ideally be only called once during initialization and the parsed
+/// config should be used for the lifetime of the application.
 #[instrument]
 pub fn parse_config() -> AppConfig {
 	trace!("Reading config data...");
@@ -39,24 +44,39 @@ pub fn parse_config() -> AppConfig {
 	.expect("unable to parse settings")
 }
 
+/// The global application configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppConfig {
+	/// The address to listed on
 	pub bind_address: SocketAddr,
+	/// The base path of the API
 	pub api_base_path: String,
+	/// The pepper used to hash passwords
 	pub password_pepper: String,
+	/// The secret used to sign JWTs
 	pub jwt_secret: String,
+	/// The environment the application is running in. This is set at runtime
+	/// based on an environment variable and if the application is compiled with
+	/// debug mode.
 	pub environment: RunningEnvironment,
+	/// The configuration for S3, used for storing layers of docker images
 	pub s3: S3Config,
+	/// The configuration for the database to connect to
 	pub database: DatabaseConfig,
+	/// The configuration for Redis. This is used for caching, rate limiting and
+	/// for subscribing to events from the database on websockets
 	pub redis: RedisConfig,
 	// pub email: EmailConfig,
 }
 
+/// The environment the application is running in
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum RunningEnvironment {
+	/// The application is running in development mode
 	Development,
+	/// The application is running in production mode
 	Production,
 }
 

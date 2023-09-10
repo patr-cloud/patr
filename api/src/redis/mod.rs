@@ -2,6 +2,10 @@ use rustis::client::Client;
 
 use crate::utils::config::RedisConfig;
 
+/// A list of all the keys to store data in Redis
+pub mod keys;
+
+/// Connect to a Redis server using the given configuration
 #[tracing::instrument(skip(config))]
 pub async fn connect(config: &RedisConfig) -> Client {
 	Client::connect(format!(

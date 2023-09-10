@@ -14,7 +14,7 @@ pub struct Model {
 	pub status: DeploymentStatus,
 	pub workspace_id: Uuid,
 	pub current_live_upload: Option<Uuid>,
-	pub deleted: Option<DateTimeWithTimeZone>,
+	pub deleted: Option<TimeDateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -24,7 +24,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::resource::Entity",
 		from = "Column::Id",
-		to = "super::resource::Column::OwnerId",
+		to = "super::resource::Column::Id",
 		on_update = "NoAction",
 		on_delete = "NoAction"
 	)]
@@ -32,7 +32,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::static_site_upload_history::Entity",
 		from = "Column::Id",
-		to = "super::static_site_upload_history::Column::StaticSiteId",
+		to = "super::static_site_upload_history::Column::UploadId",
 		on_update = "NoAction",
 		on_delete = "NoAction"
 	)]

@@ -30,7 +30,7 @@ pub struct Model {
 	pub liveness_probe_port_type: Option<ExposedPortType>,
 	#[sea_orm(column_type = "Text", nullable)]
 	pub current_live_digest: Option<String>,
-	pub deleted: Option<DateTimeWithTimeZone>,
+	pub deleted: Option<TimeDateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -50,7 +50,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::deployment_exposed_port::Entity",
 		from = "Column::Id",
-		to = "super::deployment_exposed_port::Column::PortType",
+		to = "super::deployment_exposed_port::Column::DeploymentId",
 		on_update = "NoAction",
 		on_delete = "NoAction"
 	)]
@@ -58,7 +58,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::deployment_exposed_port::Entity",
 		from = "Column::Id",
-		to = "super::deployment_exposed_port::Column::Port",
+		to = "super::deployment_exposed_port::Column::DeploymentId",
 		on_update = "NoAction",
 		on_delete = "NoAction"
 	)]
@@ -94,7 +94,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::resource::Entity",
 		from = "Column::Id",
-		to = "super::resource::Column::OwnerId",
+		to = "super::resource::Column::Id",
 		on_update = "NoAction",
 		on_delete = "NoAction"
 	)]

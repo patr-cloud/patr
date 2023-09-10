@@ -17,7 +17,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::workspace_domain::Entity",
 		from = "Column::DomainId",
-		to = "super::workspace_domain::Column::NameserverType",
+		to = "super::workspace_domain::Column::Id",
 		on_update = "NoAction",
 		on_delete = "NoAction"
 	)]

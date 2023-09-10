@@ -11,7 +11,7 @@ pub struct Model {
 	pub login_id: Uuid,
 	pub user_id: Uuid,
 	pub login_type: UserLoginType,
-	pub created: DateTimeWithTimeZone,
+	pub created: TimeDateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

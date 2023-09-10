@@ -14,7 +14,7 @@ pub struct Model {
 	pub r#type: ResourceOwnerType,
 	#[sea_orm(column_type = "Text")]
 	pub tld: String,
-	pub deleted: Option<DateTimeWithTimeZone>,
+	pub deleted: Option<TimeDateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

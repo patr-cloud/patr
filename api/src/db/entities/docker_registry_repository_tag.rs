@@ -11,7 +11,7 @@ pub struct Model {
 	pub tag: String,
 	#[sea_orm(column_type = "Text")]
 	pub manifest_digest: String,
-	pub last_updated: DateTimeWithTimeZone,
+	pub last_updated: TimeDateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

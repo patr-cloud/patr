@@ -8,12 +8,26 @@ use std::net::SocketAddr;
 
 use app::AppState;
 
-mod app;
-mod db;
-mod models;
-mod redis;
-mod routes;
-mod utils;
+/// This module contains the main application logic. Most of the app requests,
+/// states, and mounting of endpoints are done here
+pub mod app;
+/// This module contains the database connection logic, as well as all the
+/// SeaORM entities.
+pub mod db;
+/// This module contains the models used by the API. These are the structs that
+/// are used for encoding and decoding things that are not a part of the API
+/// (eg, JWT).
+pub mod models;
+/// This module contains the Redis connection and all utilities to set and get
+/// data in Redis.
+pub mod redis;
+/// This module contains the routes for the API. This is where the endpoints
+/// are mounted.
+pub mod routes;
+/// This module contains all the utilities used by the API. This includes things
+/// like the config parser, the [`tower::Layer`]s that are used to parse the
+/// requests.
+pub mod utils;
 
 /// A prelude that re-exports commonly used items.
 pub mod prelude {
@@ -22,11 +36,14 @@ pub mod prelude {
 		ApiEndpoint,
 		ErrorType,
 	};
+	pub use sea_orm::prelude::*;
 	pub use tracing::{debug, error, info, instrument, trace, warn};
 
 	pub use crate::{
 		app::{AppRequest, AppResponse, AppState, AuthenticatedAppRequest},
-		utils::{extractors::*, RouterExt},
+		db,
+		redis,
+		utils::RouterExt,
 	};
 }
 

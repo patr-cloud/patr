@@ -17,7 +17,7 @@ pub struct Model {
 	pub recovery_phone_number: Option<String>,
 	#[sea_orm(column_type = "Text")]
 	pub otp_hash: String,
-	pub otp_expiry: DateTimeWithTimeZone,
+	pub otp_expiry: TimeDateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

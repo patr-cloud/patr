@@ -29,6 +29,7 @@ sea-orm = { workspace = true, features = [
     "sqlx-postgres",
     "runtime-tokio",
     "runtime-tokio-rustls",
+    "sea-query-binder",
 ] }
 serde = { workspace = true, features = ["default", "derive"] }
 time = { workspace = true, features = ["default", "serde-human-readable"] }

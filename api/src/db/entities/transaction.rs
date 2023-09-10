@@ -13,7 +13,7 @@ pub struct Model {
 	pub amount_in_cents: i64,
 	#[sea_orm(column_type = "Text", nullable)]
 	pub payment_intent_id: Option<String>,
-	pub date: DateTimeWithTimeZone,
+	pub date: TimeDateTimeWithTimeZone,
 	pub workspace_id: Uuid,
 	pub transaction_type: TransactionType,
 	pub payment_status: PaymentStatus,

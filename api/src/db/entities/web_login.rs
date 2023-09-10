@@ -12,8 +12,8 @@ pub struct Model {
 	pub user_id: Uuid,
 	#[sea_orm(column_type = "Text")]
 	pub refresh_token: String,
-	pub token_expiry: DateTimeWithTimeZone,
-	pub created: DateTimeWithTimeZone,
+	pub token_expiry: TimeDateTimeWithTimeZone,
+	pub created: TimeDateTimeWithTimeZone,
 	#[sea_orm(column_type = "custom(\"inet\")")]
 	pub created_ip: String,
 	#[sea_orm(column_type = "custom(\"geometry\")")]
@@ -26,8 +26,8 @@ pub struct Model {
 	pub created_city: String,
 	#[sea_orm(column_type = "Text")]
 	pub created_timezone: String,
-	pub last_login: DateTimeWithTimeZone,
-	pub last_activity: DateTimeWithTimeZone,
+	pub last_login: TimeDateTimeWithTimeZone,
+	pub last_activity: TimeDateTimeWithTimeZone,
 	#[sea_orm(column_type = "custom(\"inet\")")]
 	pub last_activity_ip: String,
 	#[sea_orm(column_type = "custom(\"geometry\")")]
