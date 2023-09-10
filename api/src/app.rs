@@ -8,6 +8,7 @@ use typed_builder::TypedBuilder;
 
 use crate::{prelude::*, utils::config::AppConfig};
 
+/// Sets up all the routes for the API
 #[instrument(skip(state))]
 pub fn setup_routes(state: &AppState) -> Router {
 	crate::routes::setup_routes(state)

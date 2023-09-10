@@ -21,7 +21,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::user_api_token::Entity",
 		from = "Column::TokenId",
-		to = "super::user_api_token::Column::TokenId",
+		to = "super::user_api_token::Column::UserId",
 		on_update = "NoAction",
 		on_delete = "NoAction"
 	)]
@@ -29,7 +29,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::user_api_token_workspace_permission_type::Entity",
 		from = "Column::TokenId",
-		to = "super::user_api_token_workspace_permission_type::Column::WorkspaceId",
+		to = "super::user_api_token_workspace_permission_type::Column::TokenId",
 		on_update = "NoAction",
 		on_delete = "NoAction"
 	)]
@@ -37,7 +37,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::workspace::Entity",
 		from = "Column::WorkspaceId",
-		to = "super::workspace::Column::SuperAdminId",
+		to = "super::workspace::Column::Id",
 		on_update = "NoAction",
 		on_delete = "NoAction"
 	)]

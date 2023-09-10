@@ -21,8 +21,8 @@ pub struct Model {
 	#[sea_orm(column_type = "Text", nullable)]
 	pub cloudflare_certificate_id: Option<String>,
 	pub config_file: Option<Json>,
-	pub deleted: Option<DateTimeWithTimeZone>,
-	pub disconnected_at: Option<DateTimeWithTimeZone>,
+	pub deleted: Option<TimeDateTimeWithTimeZone>,
+	pub disconnected_at: Option<TimeDateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

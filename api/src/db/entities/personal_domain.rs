@@ -10,7 +10,7 @@ pub struct Model {
 	#[sea_orm(primary_key, auto_increment = false)]
 	pub id: Uuid,
 	pub domain_type: ResourceOwnerType,
-	pub deleted: Option<DateTimeWithTimeZone>,
+	pub deleted: Option<TimeDateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -18,7 +18,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::domain::Entity",
 		from = "Column::Id",
-		to = "super::domain::Column::Id",
+		to = "super::domain::Column::Type",
 		on_update = "NoAction",
 		on_delete = "NoAction"
 	)]

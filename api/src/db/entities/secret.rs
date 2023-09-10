@@ -10,7 +10,7 @@ pub struct Model {
 	#[sea_orm(column_type = "custom(\"citext\")")]
 	pub name: String,
 	pub workspace_id: Uuid,
-	pub deleted: Option<DateTimeWithTimeZone>,
+	pub deleted: Option<TimeDateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

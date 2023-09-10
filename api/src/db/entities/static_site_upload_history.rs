@@ -11,8 +11,8 @@ pub struct Model {
 	#[sea_orm(column_type = "Text")]
 	pub message: String,
 	pub uploaded_by: Uuid,
-	pub created: DateTimeWithTimeZone,
-	pub processed: Option<DateTimeWithTimeZone>,
+	pub created: TimeDateTimeWithTimeZone,
+	pub processed: Option<TimeDateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

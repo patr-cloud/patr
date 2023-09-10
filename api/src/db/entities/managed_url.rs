@@ -22,7 +22,7 @@ pub struct Model {
 	pub url: Option<String>,
 	pub workspace_id: Uuid,
 	pub is_configured: bool,
-	pub deleted: Option<DateTimeWithTimeZone>,
+	pub deleted: Option<TimeDateTimeWithTimeZone>,
 	pub permanent_redirect: Option<bool>,
 	pub http_only: Option<bool>,
 	#[sea_orm(column_type = "Text")]
@@ -34,7 +34,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::deployment::Entity",
 		from = "Column::DeploymentId",
-		to = "super::deployment::Column::Id",
+		to = "super::deployment::Column::WorkspaceId",
 		on_update = "NoAction",
 		on_delete = "NoAction"
 	)]
@@ -42,7 +42,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::deployment_exposed_port::Entity",
 		from = "Column::DeploymentId",
-		to = "super::deployment_exposed_port::Column::Port",
+		to = "super::deployment_exposed_port::Column::DeploymentId",
 		on_update = "NoAction",
 		on_delete = "NoAction"
 	)]
@@ -50,7 +50,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::resource::Entity",
 		from = "Column::DomainId",
-		to = "super::resource::Column::Id",
+		to = "super::resource::Column::OwnerId",
 		on_update = "NoAction",
 		on_delete = "NoAction"
 	)]
@@ -66,7 +66,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::static_site::Entity",
 		from = "Column::StaticSiteId",
-		to = "super::static_site::Column::Id",
+		to = "super::static_site::Column::WorkspaceId",
 		on_update = "NoAction",
 		on_delete = "NoAction"
 	)]

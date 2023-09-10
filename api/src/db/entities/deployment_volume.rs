@@ -13,7 +13,7 @@ pub struct Model {
 	pub volume_size: i32,
 	#[sea_orm(column_type = "Text")]
 	pub volume_mount_path: String,
-	pub deleted: Option<DateTimeWithTimeZone>,
+	pub deleted: Option<TimeDateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

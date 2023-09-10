@@ -13,7 +13,7 @@ pub struct Model {
 	pub password: String,
 	pub first_name: String,
 	pub last_name: String,
-	pub created: DateTimeWithTimeZone,
+	pub created: TimeDateTimeWithTimeZone,
 	pub recovery_email_local: Option<String>,
 	pub recovery_email_domain_id: Option<Uuid>,
 	pub recovery_phone_country_code: Option<String>,
@@ -21,10 +21,6 @@ pub struct Model {
 	pub workspace_limit: i32,
 	#[sea_orm(column_type = "Text", nullable)]
 	pub mfa_secret: Option<String>,
-	#[sea_orm(column_type = "Text", nullable)]
-	pub password_reset_token: Option<String>,
-	pub password_reset_token_expiry: Option<DateTimeWithTimeZone>,
-	pub password_reset_attempts: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -39,6 +35,8 @@ pub enum Relation {
 	PersonalEmail,
 	#[sea_orm(has_many = "super::static_site_upload_history::Entity")]
 	StaticSiteUploadHistory,
+	#[sea_orm(has_many = "super::user_api_token::Entity")]
+	UserApiToken,
 	#[sea_orm(has_many = "super::user_login::Entity")]
 	UserLogin,
 	#[sea_orm(
@@ -70,6 +68,12 @@ impl Related<super::personal_email::Entity> for Entity {
 impl Related<super::static_site_upload_history::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::StaticSiteUploadHistory.def()
+	}
+}
+
+impl Related<super::user_api_token::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::UserApiToken.def()
 	}
 }
 

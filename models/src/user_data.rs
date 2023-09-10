@@ -2,12 +2,14 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+use typed_builder::TypedBuilder;
 
 use crate::prelude::*;
 
 /// Represents the data of a user that is used in an authenticated endpoint.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TypedBuilder)]
 #[serde(rename_all = "camelCase")]
+#[builder(field_defaults(setter(into)))]
 pub struct RequestUserData {
 	/// The userId as per the database.
 	pub id: Uuid,

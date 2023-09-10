@@ -9,7 +9,7 @@ pub struct Model {
 	pub id: Uuid,
 	pub resource_type_id: Uuid,
 	pub owner_id: Uuid,
-	pub created: DateTimeWithTimeZone,
+	pub created: TimeDateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

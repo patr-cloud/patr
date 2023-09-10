@@ -12,7 +12,7 @@ pub struct Model {
 	pub domain_type: ResourceOwnerType,
 	pub is_verified: bool,
 	pub nameserver_type: DomainNameserverType,
-	pub last_unverified: Option<DateTimeWithTimeZone>,
+	pub last_unverified: Option<TimeDateTimeWithTimeZone>,
 	#[sea_orm(column_type = "Text")]
 	pub cloudflare_worker_route_id: String,
 }
@@ -22,7 +22,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::domain::Entity",
 		from = "Column::Id",
-		to = "super::domain::Column::Id",
+		to = "super::domain::Column::Type",
 		on_update = "NoAction",
 		on_delete = "NoAction"
 	)]

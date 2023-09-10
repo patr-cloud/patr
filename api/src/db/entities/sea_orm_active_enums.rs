@@ -47,14 +47,6 @@ pub enum DomainNameserverType {
 	Internal,
 }
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "domain_plan")]
-pub enum DomainPlan {
-	#[sea_orm(string_value = "free")]
-	Free,
-	#[sea_orm(string_value = "unlimited")]
-	Unlimited,
-}
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "exposed_port_type")]
 pub enum ExposedPortType {
 	#[sea_orm(string_value = "http")]
@@ -71,30 +63,6 @@ pub enum InfrastructureCloudProvider {
 	Digitalocean,
 	#[sea_orm(string_value = "other")]
 	Other,
-}
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(
-	rs_type = "String",
-	db_type = "Enum",
-	enum_name = "legacy_managed_database_plan"
-)]
-pub enum LegacyManagedDatabasePlan {
-	#[sea_orm(string_value = "large")]
-	Large,
-	#[sea_orm(string_value = "mammoth")]
-	Mammoth,
-	#[sea_orm(string_value = "medium")]
-	Medium,
-	#[sea_orm(string_value = "micro")]
-	Micro,
-	#[sea_orm(string_value = "nano")]
-	Nano,
-	#[sea_orm(string_value = "small")]
-	Small,
-	#[sea_orm(string_value = "xlarge")]
-	Xlarge,
-	#[sea_orm(string_value = "xxlarge")]
-	Xxlarge,
 }
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(
@@ -193,16 +161,6 @@ pub enum ResourceOwnerType {
 	Business,
 	#[sea_orm(string_value = "personal")]
 	Personal,
-}
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "static_site_plan")]
-pub enum StaticSitePlan {
-	#[sea_orm(string_value = "free")]
-	Free,
-	#[sea_orm(string_value = "pro")]
-	Pro,
-	#[sea_orm(string_value = "unlimited")]
-	Unlimited,
 }
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(

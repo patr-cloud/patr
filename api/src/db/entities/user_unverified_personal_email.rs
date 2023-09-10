@@ -12,7 +12,7 @@ pub struct Model {
 	pub user_id: Uuid,
 	#[sea_orm(column_type = "Text")]
 	pub verification_token_hash: String,
-	pub verification_token_expiry: DateTimeWithTimeZone,
+	pub verification_token_expiry: TimeDateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

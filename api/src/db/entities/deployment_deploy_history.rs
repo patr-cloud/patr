@@ -10,7 +10,7 @@ pub struct Model {
 	#[sea_orm(primary_key, auto_increment = false, column_type = "Text")]
 	pub image_digest: String,
 	pub repository_id: Uuid,
-	pub created: DateTimeWithTimeZone,
+	pub created: TimeDateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

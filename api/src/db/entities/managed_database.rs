@@ -18,7 +18,7 @@ pub struct Model {
 	pub status: ManagedDatabaseStatus,
 	#[sea_orm(column_type = "Text")]
 	pub username: String,
-	pub deleted: Option<DateTimeWithTimeZone>,
+	pub deleted: Option<TimeDateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -42,7 +42,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::resource::Entity",
 		from = "Column::Id",
-		to = "super::resource::Column::Id",
+		to = "super::resource::Column::OwnerId",
 		on_update = "NoAction",
 		on_delete = "NoAction"
 	)]

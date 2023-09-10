@@ -31,7 +31,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::user_api_token_resource_permissions_type::Entity",
 		from = "Column::TokenId",
-		to = "super::user_api_token_resource_permissions_type::Column::PermissionId",
+		to = "super::user_api_token_resource_permissions_type::Column::ResourcePermissionType",
 		on_update = "NoAction",
 		on_delete = "NoAction"
 	)]

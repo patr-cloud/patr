@@ -1,4 +1,5 @@
 use std::{
+	collections::BTreeMap,
 	future::Future,
 	marker::PhantomData,
 	ops::Sub,
@@ -10,7 +11,11 @@ use models::{
 	utils::{AppAuthentication, BearerToken, HasAuthentication, HasHeader},
 	ApiEndpoint,
 	ErrorType,
+	RequestUserData,
+	WorkspacePermission,
 };
+use rustis::{client::Transaction as RedisTransaction, commands::StringCommands};
+use sea_orm::JoinType;
 use time::OffsetDateTime;
 use tower::{Layer, Service};
 
@@ -93,16 +98,53 @@ where
 			trace!("Authenticating request");
 			let BearerToken(token) = req.request.headers.get_header();
 			let token = token.as_str();
-			
+
 			let user_data = if let Some(token) = token.strip_prefix("patrv1.") {
 				trace!("Parsing authentication header as an API token");
 				let (refresh_token, login_id) = token.split_once('.').ok_or_else(|| {
 					warn!("Invalid API token provided: {}", token);
-					return ErrorType::MalformedApiToken;
+					ErrorType::MalformedApiToken
 				})?;
 
-				// TODO get token from DB
-				unreachable!()
+				let refresh_token = Uuid::parse_str(refresh_token).map_err(|err| {
+					warn!("Invalid API token provided: {}", token);
+					warn!(
+						"Cannot parse refresh token `{}` as UUID: {}",
+						refresh_token, err
+					);
+					ErrorType::MalformedApiToken
+				})?;
+
+				let login_id = Uuid::parse_str(login_id).map_err(|err| {
+					warn!("Invalid API token provided: {}", token);
+					warn!("Cannot parse loginId `{}` as UUID: {}", login_id, err);
+					ErrorType::MalformedApiToken
+				})?;
+
+				info!("Extracting information about API token");
+				let Some((token, Some(user))) = db::UserApiToken::find_by_id(login_id)
+					.select_also(db::User)
+					.one(req.database)
+					.await?
+				else {
+					warn!("API token not found");
+					// No specific error for API token not found, since we don't want to leak
+					// information about whether a loginId is valid or if it's expired
+					return Err(ErrorType::AuthorizationTokenInvalid);
+				};
+
+				// TODO verify token
+				let permissions = get_permissions_for_login_id(req.database, &mut *req.redis).await?;
+
+				RequestUserData::builder()
+					.id(token.user_id)
+					.username(user.username)
+					.first_name(user.first_name)
+					.last_name(user.last_name)
+					.created(user.created)
+					.login_id(token.token_id)
+					.permissions(permissions)
+					.build()
 			} else {
 				trace!("Parsing authentication header as a JWT");
 
@@ -197,4 +239,14 @@ where
 			endpoint: PhantomData,
 		}
 	}
+}
+
+async fn get_permissions_for_login_id(
+	db_connection: &mut impl ConnectionTrait,
+	redis_connection: &mut RedisTransaction,
+	login_id: &Uuid,
+) -> Result<BTreeMap<Uuid, WorkspacePermission>, ErrorType> {
+	let redis_data = redis_connection.get(redis::keys::permission_for_login_id(login_id));
+	let () = redis_data.await.unwrap();
+	Ok(Default::default())
 }

@@ -25,7 +25,7 @@ pub struct Model {
 	#[sea_orm(column_type = "Text")]
 	pub stripe_customer_id: String,
 	pub amount_due_in_cents: i64,
-	pub deleted: Option<DateTimeWithTimeZone>,
+	pub deleted: Option<TimeDateTimeWithTimeZone>,
 	pub volume_storage_limit: i32,
 }
 
@@ -33,16 +33,8 @@ pub struct Model {
 pub enum Relation {
 	#[sea_orm(has_many = "super::docker_registry_repository::Entity")]
 	DockerRegistryRepository,
-	#[sea_orm(has_many = "super::docker_repo_payment_history::Entity")]
-	DockerRepoPaymentHistory,
-	#[sea_orm(has_many = "super::domain_payment_history::Entity")]
-	DomainPaymentHistory,
 	#[sea_orm(has_many = "super::managed_database::Entity")]
 	ManagedDatabase,
-	#[sea_orm(has_many = "super::managed_database_payment_history::Entity")]
-	ManagedDatabasePaymentHistory,
-	#[sea_orm(has_many = "super::managed_url_payment_history::Entity")]
-	ManagedUrlPaymentHistory,
 	#[sea_orm(
 		belongs_to = "super::payment_method::Entity",
 		from = "Column::DefaultPaymentMethodId",
@@ -63,10 +55,6 @@ pub enum Relation {
 	Resource,
 	#[sea_orm(has_many = "super::role::Entity")]
 	Role,
-	#[sea_orm(has_many = "super::secrets_payment_history::Entity")]
-	SecretsPaymentHistory,
-	#[sea_orm(has_many = "super::static_sites_payment_history::Entity")]
-	StaticSitesPaymentHistory,
 	#[sea_orm(has_many = "super::transaction::Entity")]
 	Transaction,
 	#[sea_orm(
@@ -91,33 +79,9 @@ impl Related<super::docker_registry_repository::Entity> for Entity {
 	}
 }
 
-impl Related<super::docker_repo_payment_history::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::DockerRepoPaymentHistory.def()
-	}
-}
-
-impl Related<super::domain_payment_history::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::DomainPaymentHistory.def()
-	}
-}
-
 impl Related<super::managed_database::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::ManagedDatabase.def()
-	}
-}
-
-impl Related<super::managed_database_payment_history::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::ManagedDatabasePaymentHistory.def()
-	}
-}
-
-impl Related<super::managed_url_payment_history::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::ManagedUrlPaymentHistory.def()
 	}
 }
 
@@ -142,18 +106,6 @@ impl Related<super::resource::Entity> for Entity {
 impl Related<super::role::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::Role.def()
-	}
-}
-
-impl Related<super::secrets_payment_history::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::SecretsPaymentHistory.def()
-	}
-}
-
-impl Related<super::static_sites_payment_history::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::StaticSitesPaymentHistory.def()
 	}
 }
 

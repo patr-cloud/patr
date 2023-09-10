@@ -16,19 +16,11 @@ pub struct Model {
 pub enum Relation {
 	#[sea_orm(has_many = "super::managed_database::Entity")]
 	ManagedDatabase,
-	#[sea_orm(has_many = "super::managed_database_payment_history::Entity")]
-	ManagedDatabasePaymentHistory,
 }
 
 impl Related<super::managed_database::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::ManagedDatabase.def()
-	}
-}
-
-impl Related<super::managed_database_payment_history::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::ManagedDatabasePaymentHistory.def()
 	}
 }
 

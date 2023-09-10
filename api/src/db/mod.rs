@@ -2,10 +2,12 @@ use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 
 use crate::utils::config::DatabaseConfig;
 
-// mod entities;
+#[allow(missing_docs)]
+mod entities;
 
-// pub use self::entities::prelude::*;
+pub use self::entities::{prelude::*, *};
 
+/// Connects to the database based on a config. Not much to say here.
 #[tracing::instrument(skip(config))]
 pub async fn connect(config: &DatabaseConfig) -> DatabaseConnection {
 	let mut connect_options = ConnectOptions::new(format!(
