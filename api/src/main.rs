@@ -31,12 +31,13 @@ pub mod utils;
 
 /// A prelude that re-exports commonly used items.
 pub mod prelude {
+	pub use anyhow::Context;
+	pub use macros::query;
 	pub use models::{
 		utils::{OneOrMore, Paginated, Uuid},
 		ApiEndpoint,
 		ErrorType,
 	};
-	pub use sea_orm::prelude::*;
 	pub use tracing::{debug, error, info, instrument, trace, warn};
 
 	pub use crate::{
@@ -45,6 +46,10 @@ pub mod prelude {
 		redis,
 		utils::RouterExt,
 	};
+
+	pub type DatabaseConnection = <sqlx::Postgres as sqlx::Database>::Connection;
+	pub type DatabaseTransaction = sqlx::Transaction<'static, DatabaseType>;
+	pub type DatabaseType = sqlx::Postgres;
 }
 
 #[tokio::main]

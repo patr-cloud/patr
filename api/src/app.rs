@@ -2,8 +2,7 @@ use std::fmt::{self, Debug, Formatter};
 
 use axum::{extract::FromRef, http::StatusCode, Router};
 use models::{prelude::*, RequestUserData};
-use rustis::client::{Client as RedisClient, Transaction as RedisTransaction};
-use sea_orm::{DatabaseConnection, DatabaseTransaction};
+use rustis::client::Client as RedisClient;
 use typed_builder::TypedBuilder;
 
 use crate::{prelude::*, utils::config::AppConfig};
@@ -21,7 +20,7 @@ pub struct AppState {
 	/// The database connection.
 	/// **Note:** This is NOT a transaction. The request object will contain a
 	/// transaction.
-	pub database: DatabaseConnection,
+	pub database: sqlx::Pool<DatabaseType>,
 	/// The redis connection.
 	/// **Note:** This is NOT a transaction. The request object will contain a
 	/// transaction.
@@ -34,7 +33,7 @@ impl Debug for AppState {
 	fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
 		f.debug_struct("AppState")
 			.field("database", &self.database)
-			.field("redis", &"[RedisConnection]")
+			.field("redis", &"[RedisClient]")
 			.finish()
 	}
 }
@@ -53,7 +52,7 @@ where
 	pub database: &'a mut DatabaseTransaction,
 	/// The redis transaction for the request. In case the request returns
 	/// an Error, this transaction will be automatically rolled back.
-	pub redis: &'a mut RedisTransaction,
+	pub redis: &'a mut RedisClient,
 	/// The application configuration.
 	pub config: AppConfig,
 }
@@ -73,7 +72,7 @@ where
 	pub database: &'a mut DatabaseTransaction,
 	/// The redis transaction for the request. In case the request returns
 	/// an Error, this transaction will be automatically rolled back.
-	pub redis: &'a mut RedisTransaction,
+	pub redis: &'a mut RedisClient,
 	/// The user data of the current authenticated user.
 	pub user_data: RequestUserData,
 	/// The application configuration.

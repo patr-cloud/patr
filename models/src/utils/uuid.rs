@@ -94,3 +94,29 @@ impl From<uuid::Uuid> for Uuid {
 		Self(uuid.into())
 	}
 }
+
+// For backend
+#[cfg(not(target_arch = "wasm32"))]
+impl<Db> sqlx::Type<Db> for Uuid
+where
+	Db: sqlx::Database,
+	uuid::Uuid: sqlx::Type<Db>,
+{
+	fn type_info() -> <Db as sqlx::Database>::TypeInfo {
+		<uuid::Uuid as sqlx::Type<Db>>::type_info()
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<'a, Db> sqlx::Encode<'a, Db> for Uuid
+where
+	Db: sqlx::Database,
+	uuid::Uuid: sqlx::Encode<'a, Db>,
+{
+	fn encode_by_ref(
+		&self,
+		buf: &mut <Db as sqlx::database::HasArguments<'a>>::ArgumentBuffer,
+	) -> sqlx::encode::IsNull {
+		self.0.encode_by_ref(buf)
+	}
+}

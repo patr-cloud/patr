@@ -93,36 +93,59 @@ impl Display for RunningEnvironment {
 	}
 }
 
+/// The configuration for S3, where objects and large files used by the API will
+/// be stored in
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct S3Config {
+	/// The endpoint of the S3 server
 	pub endpoint: String,
+	/// The region of the S3 server
 	pub region: String,
+	/// The bucket to store objects in
 	pub bucket: String,
+	/// The access key to use to connect to the S3 server
 	pub key: String,
+	/// The secret key to use to connect to the S3 server
 	pub secret: String,
 }
 
+/// The configuration for the database to connect to. This will be the primary
+/// data store for all information contained in the API
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DatabaseConfig {
+	/// The host of the database
 	pub host: String,
+	/// The port of the database
 	pub port: u16,
+	/// The username to use to connect to the database
 	pub user: String,
+	/// The password to use to connect to the database
 	pub password: String,
+	/// The name of the database to connect to within the database server
 	pub database: String,
+	/// The maximum number of connections to the database
 	pub connection_limit: u32,
 }
 
+/// The configuration for Redis. This is used for caching, rate limiting and for
+/// subscribing to events from the database on websockets
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RedisConfig {
+	/// The host of the Redis server
 	pub host: String,
+	/// The port of the Redis server
 	pub port: u16,
+	/// The username to use to connect to the Redis server, if any
 	pub user: Option<String>,
+	/// The password to use to connect to the Redis server, if any
 	pub password: Option<String>,
+	/// The database to use within the Redis server. The default is 0
 	#[serde(default = "default_redis_database")]
 	pub database: u8,
+	/// Whether or not to use TLS to connect to the Redis server
 	pub secure: bool,
 }
 
@@ -130,13 +153,20 @@ fn default_redis_database() -> u8 {
 	0
 }
 
+/// The configuration for the SMTP server to use to send emails to users
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EmailConfig {
+	/// The host of the SMTP server
 	pub host: String,
+	/// The port of the SMTP server
 	pub port: u16,
+	/// Whether or not to use TLS to connect to the SMTP server
 	pub secure: bool,
+	/// The username to use to connect to the SMTP server
 	pub username: String,
+	/// The from address to use when sending emails
 	pub from: String,
+	/// The password to use to connect to the SMTP server
 	pub password: String,
 }

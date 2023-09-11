@@ -9,10 +9,12 @@ version.workspace = true
 
 [dependencies]
 anyhow = { workspace = true, features = ["default"] }
+argon2 = { workspace = true, features = ["default"] }
 axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
 axum-extra = { workspace = true, features = ["default", "typed-routing"] }
 config = { workspace = true, features = ["default"] }
 jsonwebtoken = { workspace = true, features = ["default"] }
+macros = { workspace = true, features = [] }
 models = { workspace = true, features = [] }
 rustis = { workspace = true, features = [
     "default",
@@ -21,17 +23,17 @@ rustis = { workspace = true, features = [
     "redis-json",
     "tokio-tls",
 ] }
-sea-orm = { workspace = true, features = [
-    "macros",
-    "with-json",
-    "with-uuid",
-    "with-time",
-    "sqlx-postgres",
-    "runtime-tokio",
-    "runtime-tokio-rustls",
-    "sea-query-binder",
-] }
 serde = { workspace = true, features = ["default", "derive"] }
+serde_json = { workspace = true, features = ["default"] }
+sqlx = { workspace = true, features = [
+    "runtime-tokio",
+    "tls-rustls",
+    "macros",
+    "uuid",
+    "time",
+    "ipnetwork",
+    "postgres",
+] }
 time = { workspace = true, features = ["default", "serde-human-readable"] }
 tokio = { workspace = true, features = ["default", "full"] }
 tower = { workspace = true, features = ["default", "full"] }
