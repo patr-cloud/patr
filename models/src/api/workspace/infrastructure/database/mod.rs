@@ -16,7 +16,7 @@ pub use self::{
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ManagedDatabaseConnection {
+pub struct DatabaseConnection {
 	pub host: String,
 	pub port: u32,
 	pub username: String,
@@ -25,7 +25,7 @@ pub struct ManagedDatabaseConnection {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ManagedDatabase {
+pub struct Database {
 	pub id: Uuid,
 	pub name: String,
 	pub database_name: String,
@@ -35,5 +35,5 @@ pub struct ManagedDatabase {
 	pub database_plan: String,
 	pub region: String,
 	pub status: String,
-	pub public_connection: ManagedDatabaseConnection,
+	pub public_connection: DatabaseConnection,
 }
