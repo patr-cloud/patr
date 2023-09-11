@@ -12,6 +12,8 @@ use proc_macro::TokenStream;
 mod declare_api_endpoint;
 /// A derive macro for the `HasHeaders` trait.
 mod has_headers;
+/// A proc macro for stripping whitespaces and newlines from SQL queries.
+mod query;
 
 /// Declares an API endpoint. This macro allows easy definition of an API
 /// endpoint along with the request URL, headers, query, body as well as the
@@ -61,4 +63,12 @@ pub fn declare_api_endpoint(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(HasHeaders)]
 pub fn has_headers(input: TokenStream) -> TokenStream {
 	has_headers::parse(input)
+}
+
+/// A proc macro that strips whitespaces and newlines from SQL queries. Same as
+/// `sqlx::query!` but with the added benefit of stripping whitespaces and
+/// newlines.
+#[proc_macro]
+pub fn query(input: TokenStream) -> TokenStream {
+	query::parse(input)
 }

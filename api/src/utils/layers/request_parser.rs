@@ -19,7 +19,6 @@ use models::{
 	utils::{Headers, IntoAxumResponse},
 	ApiErrorResponse,
 };
-use sea_orm::TransactionTrait;
 use tower::{Layer, Service};
 
 use crate::{app::AppResponse, prelude::*};
@@ -92,7 +91,7 @@ where
 
 	#[instrument(skip(self, req))]
 	fn call(&mut self, mut req: Request<B>) -> Self::Future {
-		let state = self.state.clone();
+		let mut state = self.state.clone();
 		let mut inner = self.inner.clone();
 		async {
 			debug!("Parsing request for URL: {}", req.uri());
@@ -136,6 +135,8 @@ where
 
 			debug!("Request parsed successfully");
 
+			let mut redis = &mut state.redis;
+
 			let Ok(mut database) = state.database.begin().await else {
 				debug!("Failed to begin database transaction");
 				return Ok(ApiErrorResponse::internal_error(
@@ -143,8 +144,6 @@ where
 				)
 				.into_response());
 			};
-
-			let mut redis = state.redis.create_transaction();
 
 			let req = AppRequest {
 				request: ApiRequest {
@@ -164,13 +163,6 @@ where
 				Ok(response) => {
 					info!("Inner service called successfully");
 					let Ok(()) = database.commit().await else {
-						debug!("Failed to commit database transaction");
-						return Ok(ApiErrorResponse::internal_error(
-							"unable to commit database transaction",
-						)
-						.into_response());
-					};
-					let Ok(()) = redis.execute().await else {
 						debug!("Failed to commit database transaction");
 						return Ok(ApiErrorResponse::internal_error(
 							"unable to commit database transaction",

@@ -22,11 +22,11 @@ tower = { workspace = true }
 tracing = { workspace = true }
 typed-builder = { workspace = true, features = [] }
 typed-headers = { workspace = true, features = [] }
-sea-orm = { workspace = true, features = ["with-uuid"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 time = { workspace = true, features = ["default", "serde-human-readable"] }
 uuid = { workspace = true, features = ["v4"] }
+sqlx = { workspace = true, features = ["uuid", "postgres"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 time = { workspace = true, features = [

@@ -17,6 +17,7 @@ resolver = "2"
 
 [workspace.dependencies]
 anyhow = { version = "1", default-features = false }
+argon2 = { version = "0.5", default-features = false }
 async-trait = { version = "0.1", default-features = false }
 axum = { version = "0.6", default-features = false }
 axum-extra = { version = "0.7", default-features = false }
@@ -41,11 +42,11 @@ proc-macro2 = { version = "1", default-features = false }
 quote = { version = "1", default-features = false }
 reqwest = { version = "0.11", default-features = false }
 rustis = { version = "0.12", default-features = false }
-sea-orm = { version = "0.12", default-features = false }
 serde = { version = "1", default-features = false }
 serde_json = { version = "1", default-features = false }
 serde_test = { version = "1", default-features = false }
 serde_urlencoded = { version = "0.7", default-features = false }
+sqlx = { version = "0.7", default-features = false }
 syn = { version = "2", default-features = false }
 tabled = { version = "0.14", default-features = false }
 time = { version = "0.3", default-features = false }

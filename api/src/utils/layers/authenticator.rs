@@ -6,6 +6,7 @@ use std::{
 	task::{Context, Poll},
 };
 
+use argon2::{Argon2, PasswordHash, PasswordVerifier};
 use jsonwebtoken::{DecodingKey, TokenData, Validation};
 use models::{
 	utils::{AppAuthentication, BearerToken, HasAuthentication, HasHeader},
@@ -14,8 +15,7 @@ use models::{
 	RequestUserData,
 	WorkspacePermission,
 };
-use rustis::{client::Transaction as RedisTransaction, commands::StringCommands};
-use sea_orm::JoinType;
+use rustis::{client::Client as RedisClient, commands::StringCommands};
 use time::OffsetDateTime;
 use tower::{Layer, Service};
 
@@ -122,10 +122,35 @@ where
 				})?;
 
 				info!("Extracting information about API token");
-				let Some((token, Some(user))) = db::UserApiToken::find_by_id(login_id)
-					.select_also(db::User)
-					.one(req.database)
-					.await?
+				let Some(token) = query!(
+					r#"
+					SELECT
+						user_api_token.token_id,
+						user_api_token.user_id,
+						user_api_token.token_hash,
+						user_api_token.token_nbf,
+						user_api_token.token_exp,
+						user_api_token.allowed_ips,
+						user_api_token.revoked,
+						"user".*
+					FROM
+						user_api_token
+					INNER JOIN
+						user_login
+					ON
+						user_api_token.token_id = user_login.login_id
+					INNER JOIN
+						"user"
+					ON
+						user_api_token.user_id = "user".id
+					WHERE
+						user_api_token.token_id = $1 AND
+						user_login.login_type = 'api_token';
+					"#,
+					login_id as _
+				)
+				.fetch_optional(&mut **req.database) // What the actual fuck?
+				.await?
 				else {
 					warn!("API token not found");
 					// No specific error for API token not found, since we don't want to leak
@@ -133,15 +158,46 @@ where
 					return Err(ErrorType::AuthorizationTokenInvalid);
 				};
 
-				// TODO verify token
-				let permissions = get_permissions_for_login_id(req.database, &mut *req.redis).await?;
+				if let Some(nbf) = token.token_nbf {
+					if OffsetDateTime::now_utc() < nbf {
+						info!("API token is not valid yet");
+						return Err(ErrorType::AuthorizationTokenInvalid);
+					}
+				}
+
+				if let Some(exp) = token.token_exp {
+					if OffsetDateTime::now_utc() > exp {
+						info!("API token has expired");
+						return Err(ErrorType::AuthorizationTokenInvalid);
+					}
+				}
+
+				if let Some(revoked) = token.revoked {
+					if OffsetDateTime::now_utc() > revoked {
+						info!("API token has been revoked");
+						return Err(ErrorType::AuthorizationTokenInvalid);
+					}
+				}
+
+				// TODO verify allowed IPs
+
+				let Ok(password_hash) = PasswordHash::new(&token.token_hash) else {
+					error!("Unable to parse password hash: {}", token.token_hash);
+					return Err(ErrorType::server_error("password hash parsing failed"));
+				};
+				let success = Argon2::default()
+					.verify_password(refresh_token.as_bytes(), &password_hash)
+					.is_ok();
+
+				let permissions =
+					get_permissions_for_login_id(req.database, req.redis, &login_id).await?;
 
 				RequestUserData::builder()
 					.id(token.user_id)
-					.username(user.username)
-					.first_name(user.first_name)
-					.last_name(user.last_name)
-					.created(user.created)
+					.username(token.username)
+					.first_name(token.first_name)
+					.last_name(token.last_name)
+					.created(token.created)
 					.login_id(token.token_id)
 					.permissions(permissions)
 					.build()
@@ -204,6 +260,26 @@ where
 					return Err(ErrorType::AuthorizationTokenInvalid);
 				}
 
+				// let Some(()) = todo!()
+				// else {
+				// 	warn!("API token not found");
+				// 	// No specific error for API token not found, since we don't want to leak
+				// 	// information about whether a loginId is valid or if it's expired
+				// 	return Err(ErrorType::AuthorizationTokenInvalid);
+				// };
+
+				let permissions =
+					get_permissions_for_login_id(req.database, req.redis, &sub).await?;
+
+				// RequestUserData::builder()
+				// 	.id(token.user_id)
+				// 	.username(user.username)
+				// 	.first_name(user.first_name)
+				// 	.last_name(user.last_name)
+				// 	.created(user.created)
+				// 	.login_id(sub)
+				// 	.permissions(permissions)
+				// 	.build()
 				todo!()
 			};
 
@@ -242,11 +318,16 @@ where
 }
 
 async fn get_permissions_for_login_id(
-	db_connection: &mut impl ConnectionTrait,
-	redis_connection: &mut RedisTransaction,
+	_db_connection: &mut DatabaseConnection,
+	redis_connection: &mut RedisClient,
 	login_id: &Uuid,
 ) -> Result<BTreeMap<Uuid, WorkspacePermission>, ErrorType> {
-	let redis_data = redis_connection.get(redis::keys::permission_for_login_id(login_id));
-	let () = redis_data.await.unwrap();
-	Ok(Default::default())
+	let redis_data: Option<String> = redis_connection
+		.get(redis::keys::permission_for_login_id(login_id))
+		.await?;
+	if let Some(data) = redis_data {
+		Ok(serde_json::from_str(data.as_str()).unwrap())
+	} else {
+		Ok(Default::default())
+	}
 }

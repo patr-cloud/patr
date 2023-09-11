@@ -1,0 +1,130 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT user_api_token.token_id, user_api_token.user_id, user_api_token.token_hash, user_api_token.token_nbf, user_api_token.token_exp, user_api_token.allowed_ips, user_api_token.revoked, \"user\".* FROM user_api_token INNER JOIN user_login ON user_api_token.token_id = user_login.login_id INNER JOIN \"user\" ON user_api_token.user_id = \"user\".id WHERE user_api_token.token_id = $1 AND user_login.login_type = 'api_token';",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "token_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "token_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "token_nbf",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "token_exp",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "allowed_ips",
+        "type_info": "InetArray"
+      },
+      {
+        "ordinal": 6,
+        "name": "revoked",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "password",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "first_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 11,
+        "name": "last_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 12,
+        "name": "created",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "recovery_email_local",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 14,
+        "name": "recovery_email_domain_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 15,
+        "name": "recovery_phone_country_code",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 16,
+        "name": "recovery_phone_number",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 17,
+        "name": "workspace_limit",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 18,
+        "name": "mfa_secret",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "83b562cb50d398cf56e04504e25881f34f7c0c07e062a8113fd54fe1e897fffe"
+}
