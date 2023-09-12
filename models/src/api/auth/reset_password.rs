@@ -1,4 +1,7 @@
+use crate::prelude::*;
+
 macros::declare_api_endpoint!(
+	// Reset passsword
 	ResetPassword,
 	POST "/auth/reset-password",
 	request = {

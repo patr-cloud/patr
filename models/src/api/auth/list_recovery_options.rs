@@ -1,4 +1,7 @@
+use crate::prelude::*;
+
 macros::declare_api_endpoint!(
+	// List all recovery options
 	ListRecoveryOptions,
 	POST "/auth/list-recovery-options",
 	request = {

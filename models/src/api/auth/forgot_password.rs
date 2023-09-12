@@ -1,3 +1,4 @@
+use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -8,6 +9,7 @@ pub enum PreferredRecoveryOption {
 }
 
 macros::declare_api_endpoint!(
+	// Forget password
 	ForgotPassword,
 	POST "/auth/forgot-password",
 	request = {

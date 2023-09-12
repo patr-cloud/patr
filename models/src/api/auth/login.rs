@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 macros::declare_api_endpoint!(
+	// Login
 	Login,
 	POST "/auth/sign-in",
 	request = {
