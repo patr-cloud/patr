@@ -1,5 +1,5 @@
 macros::declare_api_endpoint!(
-	/// Definition of a route to reset the current password of the user using an OTP sent to their
+	/// The route to reset the current password of the user using an OTP sent to their
 	/// preferred recovery method
 	ResetPassword,
 	POST "/auth/reset-password",

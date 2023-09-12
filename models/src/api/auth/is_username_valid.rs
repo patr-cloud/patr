@@ -1,5 +1,5 @@
 macros::declare_api_endpoint!(
-	/// Definition of a route to validate user's entered username is available or not
+	/// The route to check if a user's username is available to be used to create an account or not
 	IsUsernameValid,
 	GET "/auth/username-valid",
 	query = {

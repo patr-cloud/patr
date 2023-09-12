@@ -1,6 +1,9 @@
+use crate::prelude::*;
+
 macros::declare_api_endpoint!(
-	/// Definition of a route to list all the available recovery options when user forgets their 
-	/// password and opt for changing it. The current recovery options are email and phone number.
+	/// The route to list all the available recovery options when user forgets their
+	/// password and opt for changing it. The email address and phone number are
+	/// masked for privacy reasons, so this route can be called without any authentication.
 	ListRecoveryOptions,
 	POST "/auth/list-recovery-options",
 	request = {

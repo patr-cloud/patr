@@ -1,5 +1,5 @@
 macros::declare_api_endpoint!(
-	/// Definition of a route to validate user's entered email ID is available or not
+	/// The route to check if a user's email ID is available to be used to create an account or not
 	IsEmailValid,
 	GET "/auth/email-valid",
 	query = {

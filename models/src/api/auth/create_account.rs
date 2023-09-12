@@ -1,3 +1,4 @@
+use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// Recovery method options provided to the users
@@ -20,8 +21,22 @@ pub enum RecoveryMethod {
 	},
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum SignUpAccountType {
+	#[serde(rename_all = "camelCase")]
+	Personal { account_type: Personal },
+	#[serde(rename_all = "camelCase")]
+	Business {
+		account_type: Business,
+		workspace_name: String,
+		business_email_local: String,
+		domain: String,
+	},
+}
+
 macros::declare_api_endpoint!(
-	/// Definition of a route to create a new user account
+	// Create a new account
 	CreateAccount,
 	POST "/auth/sign-up",
 	request = {
@@ -36,5 +51,9 @@ macros::declare_api_endpoint!(
 		/// The recovery method the user would recover their account with
 		#[serde(flatten)]
 		pub recovery_method: RecoveryMethod,
+		#[serde(flatten)]
+		pub account_type: SignUpAccountType,
+		#[serde(skip_serializing_if = "Option::is_none")]
+		pub coupon_code: Option<String>,
 	},
 );
