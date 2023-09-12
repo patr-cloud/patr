@@ -1,7 +1,5 @@
 macros::declare_api_endpoint!(
-	/// Definition of a route when user verifies his identity/recovery-method by entering the OTP
-	/// sent to their recovery method which is email/phone-number. 
-	/// This route will complete the sign-up process of the user.
+	/// The route to call when a user has received an OTP and wants to complete the sign up process.
 	CompleteSignUp,
 	POST "/auth/join",
 	request = {
