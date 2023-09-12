@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 macros::declare_api_endpoint!(
+	// Complete sign-up after OTP
 	CompleteSignUp,
 	POST "/auth/join",
 	request = {

@@ -1,7 +1,12 @@
+// ***NOT NEEDED. USING PREPROCESS MACRO***
+
+use crate::prelude::*;
+
 macros::declare_api_endpoint!(
+	// Validate username
 	IsUsernameValid,
 	GET "/auth/username-valid",
-	query = {
+	request = {
 		pub username: String,
 	},
 	response = {
