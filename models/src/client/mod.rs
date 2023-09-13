@@ -1,23 +1,16 @@
 use std::str::FromStr;
 
-use models::{
-	utils::{
-		ApiErrorResponse,
-		ApiErrorResponseBody,
-		ApiRequest,
-		ApiResponseBody,
-		ApiSuccessResponse,
-		ApiSuccessResponseBody,
-		False,
-		Headers,
-	},
-	ApiEndpoint,
-	ErrorType,
-};
 use serde::{de::DeserializeOwned, Serialize};
 use url::Url;
 
-use super::constants;
+use crate::{
+	prelude::*,
+	utils::{constants, False, Headers},
+	ApiErrorResponse,
+	ApiErrorResponseBody,
+	ApiResponseBody,
+	ApiSuccessResponseBody,
+};
 
 /// Makes a request to the API. Requires an ApiRequest object for a specific
 /// endpoint, and returns the response corresponding to that endpoint
@@ -69,8 +62,7 @@ where
 	};
 
 	let status_code = response.status();
-	let Some(headers) = T::ResponseHeaders::from_header_map(response.headers())
-	else {
+	let Some(headers) = T::ResponseHeaders::from_header_map(response.headers()) else {
 		return Err(ApiErrorResponse {
 			status_code: reqwest::StatusCode::INTERNAL_SERVER_ERROR,
 			body: ApiErrorResponseBody {
@@ -95,7 +87,7 @@ where
 			body: error,
 		}),
 		Err(error) => {
-			log::error!("{}", error.to_string());
+			tracing::error!("{}", error.to_string());
 			Err(ApiErrorResponse {
 				status_code: reqwest::StatusCode::INTERNAL_SERVER_ERROR,
 				body: ApiErrorResponseBody {

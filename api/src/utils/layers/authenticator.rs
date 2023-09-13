@@ -6,7 +6,7 @@ use std::{
 	task::{Context, Poll},
 };
 
-use argon2::{Argon2, PasswordHash, PasswordVerifier};
+use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier, Version};
 use jsonwebtoken::{DecodingKey, TokenData, Validation};
 use models::{
 	utils::{AppAuthentication, BearerToken, HasAuthentication, HasHeader},
@@ -21,6 +21,11 @@ use tower::{Layer, Service};
 
 use crate::{models::access_token_data::AccessTokenData, prelude::*, utils::constants};
 
+/// The [`tower::Layer`] used to authenticate requests. This will parse the
+/// [`BearerToken`] header and verify it against the database. If the token is
+/// valid, the [`RequestUserData`] will be added to the request. All subsequent
+/// underlying layers will recieve an [`AuthenticatedAppRequest`] with the
+/// appropriate [`RequestUserData`] filled.
 pub struct AuthenticationLayer<E>
 where
 	E: ApiEndpoint,
@@ -32,6 +37,7 @@ impl<E> AuthenticationLayer<E>
 where
 	E: ApiEndpoint,
 {
+	/// Helper function to initialize an authentication layer
 	pub fn new() -> Self {
 		Self {
 			endpoint: PhantomData,
@@ -66,6 +72,7 @@ where
 	}
 }
 
+/// The underlying service that runs when the [`AuthenticationLayer`] is used.
 pub struct AuthenticationService<A, E, S>
 where
 	A: HasAuthentication,
@@ -185,9 +192,20 @@ where
 					error!("Unable to parse password hash: {}", token.token_hash);
 					return Err(ErrorType::server_error("password hash parsing failed"));
 				};
-				let success = Argon2::default()
-					.verify_password(refresh_token.as_bytes(), &password_hash)
-					.is_ok();
+				let success = Argon2::new_with_secret(
+					req.config.password_pepper.as_bytes(),
+					Algorithm::Argon2id,
+					Version::V0x13,
+					constants::HASHING_PARAMS,
+				)
+				.map_err(|err| ErrorType::server_error(err.to_string()))?
+				.verify_password(refresh_token.as_bytes(), &password_hash)
+				.is_ok();
+
+				if !success {
+					warn!("API token has invalid refresh token");
+					return Err(ErrorType::AuthorizationTokenInvalid);
+				}
 
 				let permissions =
 					get_permissions_for_login_id(req.database, req.redis, &login_id).await?;
@@ -260,27 +278,43 @@ where
 					return Err(ErrorType::AuthorizationTokenInvalid);
 				}
 
-				// let Some(()) = todo!()
-				// else {
-				// 	warn!("API token not found");
-				// 	// No specific error for API token not found, since we don't want to leak
-				// 	// information about whether a loginId is valid or if it's expired
-				// 	return Err(ErrorType::AuthorizationTokenInvalid);
-				// };
+				let Some(user) = query!{
+					r#"
+					SELECT
+						"user".*
+					FROM
+						"user"
+					INNER JOIN
+						user_login
+					ON
+						"user".id = user_login.user_id
+					WHERE
+						user_login.login_id = $1 AND
+						user_login.login_type = 'web_login';
+					"#,
+					sub as _
+				}
+				.fetch_optional(&mut **req.database)
+				.await?
+				else {
+					warn!("API token not found");
+					// No specific error for API token not found, since we don't want to leak
+					// information about whether a loginId is valid or if it's expired
+					return Err(ErrorType::AuthorizationTokenInvalid);
+				};
 
 				let permissions =
 					get_permissions_for_login_id(req.database, req.redis, &sub).await?;
 
-				// RequestUserData::builder()
-				// 	.id(token.user_id)
-				// 	.username(user.username)
-				// 	.first_name(user.first_name)
-				// 	.last_name(user.last_name)
-				// 	.created(user.created)
-				// 	.login_id(sub)
-				// 	.permissions(permissions)
-				// 	.build()
-				todo!()
+				RequestUserData::builder()
+					.id(user.id)
+					.username(user.username)
+					.first_name(user.first_name)
+					.last_name(user.last_name)
+					.created(user.created)
+					.login_id(sub)
+					.permissions(permissions)
+					.build()
 			};
 
 			let AppRequest {
@@ -326,8 +360,8 @@ async fn get_permissions_for_login_id(
 		.get(redis::keys::permission_for_login_id(login_id))
 		.await?;
 	if let Some(data) = redis_data {
-		Ok(serde_json::from_str(data.as_str()).unwrap())
-	} else {
-		Ok(Default::default())
+		return Ok(serde_json::from_str(data.as_str())?);
 	}
+	
+	todo!("Fetch from db")
 }

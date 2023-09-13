@@ -47,8 +47,26 @@ pub mod prelude {
 		utils::RouterExt,
 	};
 
-	pub type DatabaseConnection = <sqlx::Postgres as sqlx::Database>::Connection;
+	/// The type of the database connection. A mutable reference to this should
+	/// be used as the parameter for database functions, since it accepts both a
+	/// connection and a transaction.
+	///
+	/// Example:
+	/// ```rust
+	/// pub fn database_fn(connection: &mut DatabaseConnection) {
+	/// 	// Do something with `connection` ....
+	/// }
+	/// ```
+	pub type DatabaseConnection = <DatabaseType as sqlx::Database>::Connection;
+
+	/// The type of the database transaction. This is used in requests to
+	/// rollback or commit transactions based on how an endpoint responds. This
+	/// currently has a static lifetime, implying that only transactions from a
+	/// pooled connection is allowed.
 	pub type DatabaseTransaction = sqlx::Transaction<'static, DatabaseType>;
+
+	/// The type of the database. This is currently set to [`sqlx::Postgres`].
+	/// A type alias is used here so that it can be referenced everywhere easily
 	pub type DatabaseType = sqlx::Postgres;
 }
 
