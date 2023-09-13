@@ -1,15 +1,15 @@
-// ***NOT NEEDED. USING PREPROCESS MACRO***
-
 use crate::prelude::*;
 
 macros::declare_api_endpoint!(
-	// Validate username
+	// Definition of a route to validate user's entered username is available or not
 	IsUsernameValid,
 	GET "/auth/username-valid",
-	request = {
+	query = {
+		// The username that has to be verified
 		pub username: String,
 	},
 	response = {
+		// A boolean response corresponding the availability of the username
 		pub available: bool,
 	}
 );
