@@ -17,3 +17,11 @@ pub use self::{
 	tuple_utils::*,
 	uuid::*,
 };
+
+/// All the constants used in the application.
+/// Constants are used to avoid hardcoding values, since that might introduce
+/// typos.
+pub mod constants {
+	/// Base URL for the API
+	pub const API_BASE_URL: &str = "https://api.patr.cloud";
+}

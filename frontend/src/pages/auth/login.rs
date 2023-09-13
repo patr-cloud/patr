@@ -3,7 +3,7 @@ use std::rc::Rc;
 use leptos_router::{use_navigate, NavigateOptions};
 use models::{
 	api::auth::{LoginRequest, LoginResponse},
-	utils::{ApiErrorResponse, ApiRequest, ApiSuccessResponse, ApiErrorResponseBody},
+	utils::{ApiErrorResponse, ApiErrorResponseBody, ApiRequest, ApiSuccessResponse},
 	ErrorType,
 };
 
@@ -47,11 +47,7 @@ pub fn Login(
 
 	let login_action = create_action(
 		cx,
-		move |(username, password, mfa_otp): &(
-			String,
-			String,
-			Option<String>,
-		)| {
+		move |(username, password, mfa_otp): &(String, String, Option<String>)| {
 			let user_id = username.clone();
 			let password = password.clone();
 			let mfa_otp = mfa_otp.clone();

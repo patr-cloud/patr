@@ -17,4 +17,14 @@ pub use self::router_ext::RouterExt;
 pub mod constants {
 	/// The issuer (iss) of the JWT. This is currently the URL of Patr API.
 	pub const JWT_ISSUER: &str = "https://api.patr.cloud";
+
+	/// The parameters that will be used to hash, using argon2 as the hashing
+	/// algorithm. This is used for all sorts of hashing, from API tokens, user
+	/// passwords, sign up tokens, etc.
+	pub const HASHING_PARAMS: argon2::Params =
+		if let Ok(params) = argon2::Params::new(8192, 4, 4, None) {
+			params
+		} else {
+			panic!("Failed to create hashing params");
+		};
 }

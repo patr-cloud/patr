@@ -1,7 +1,6 @@
 mod app_route;
 mod color;
 mod ext;
-mod fetch;
 mod notification_type;
 mod routes;
 mod size;
@@ -12,7 +11,6 @@ pub use self::{
 	app_route::*,
 	color::*,
 	ext::*,
-	fetch::*,
 	notification_type::*,
 	routes::*,
 	size::*,
@@ -26,7 +24,4 @@ pub use self::{
 pub mod constants {
 	/// Path to the Feather icon sprite.
 	pub const FEATHER_IMG: &str = "/icons/sprite/feather-sprite.svg";
-
-	/// Base URL for the API
-	pub const API_BASE_URL: &str = "https://api.patr.cloud";
 }

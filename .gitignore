@@ -5,3 +5,4 @@
 !/config/*.sample.*
 .env
 .localData
+.[Dd][Ss]_[Ss]tore

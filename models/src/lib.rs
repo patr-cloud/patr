@@ -8,6 +8,10 @@
 pub mod api;
 /// All the CI structs and formats
 pub mod ci;
+/// All utilities commonly used by clients, including a fetch function, and a
+/// [`tower::Layer`] that refreshes access tokens and retries requests in case
+/// in case the token expires.
+pub mod client;
 /// Any data that is sent to or from cloudflare (mostly KV)
 pub mod cloudflare;
 /// All infrastructure as code related structs and formats
@@ -20,7 +24,7 @@ pub mod utils;
 /// of things from different modules.
 pub mod prelude {
 	pub use crate::{
-		utils::{LoginId, Paginated, TotalCountHeader, Uuid},
+		utils::{LoginId, OneOrMore, Paginated, TotalCountHeader, Uuid},
 		ApiEndpoint,
 		ApiRequest,
 		ApiSuccessResponse,

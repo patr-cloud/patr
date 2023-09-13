@@ -54,6 +54,8 @@ where
 	}
 }
 
+impl<T> Eq for OneOrMore<T> where T: Eq {}
+
 impl<T> Default for OneOrMore<T>
 where
 	T: Default,
@@ -79,6 +81,20 @@ where
 				.first()
 				.map(|first| first.partial_cmp(one))
 				.unwrap_or(None),
+		}
+	}
+}
+
+impl<T> Ord for OneOrMore<T>
+where
+	T: Ord,
+{
+	fn cmp(&self, other: &Self) -> Ordering {
+		match (self, other) {
+			(OneOrMore::One(a), OneOrMore::One(b)) => a.cmp(b),
+			(OneOrMore::Multiple(a), OneOrMore::Multiple(b)) => a.cmp(b),
+			(OneOrMore::One(a), OneOrMore::Multiple(b)) => Some(a).cmp(&b.first()),
+			(OneOrMore::Multiple(a), OneOrMore::One(b)) => a.first().cmp(&Some(b)),
 		}
 	}
 }
