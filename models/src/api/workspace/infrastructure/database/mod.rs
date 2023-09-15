@@ -14,6 +14,7 @@ pub use self::{
 	list_managed_database::*,
 };
 
+/// Information to connect to the database
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct DatabaseConnection {
@@ -23,17 +24,37 @@ pub struct DatabaseConnection {
 	pub password: String,
 }
 
+/// Supported databases
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum DatabaseEngine {
+	Postgres,
+	Mysql,
+	Mongo,
+	Redis,
+}
+
+/// Possible database status
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum DatabaseStatus {
+	Creating,
+	Running,
+	Errored,
+	Deleted,
+}
+
+/// Database information
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Database {
 	pub id: Uuid,
 	pub name: String,
-	pub database_name: String,
-	pub engine: String,
+	pub engine: DatabaseEngine,
 	pub version: String,
 	pub num_nodes: u16,
-	pub database_plan: String,
-	pub region: String,
-	pub status: String,
+	pub database_plan_id: Uuid,
+	pub region: Uuid,
+	pub status: DatabaseStatus,
 	pub public_connection: DatabaseConnection,
 }
