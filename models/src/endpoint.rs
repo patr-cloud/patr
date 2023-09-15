@@ -4,6 +4,7 @@ use axum_extra::routing::TypedPath;
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::utils::{
+	FromAxumRequest,
 	HasAuthentication,
 	HasHeaders,
 	Headers,
@@ -33,8 +34,7 @@ where
 		+ Send
 		+ Sync
 		+ 'static,
-	Self::RequestBody:
-		ResponseHeaders + Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+	Self::RequestBody: ResponseHeaders + FromAxumRequest + Clone + Send + Sync + 'static,
 	Self::Authenticator: HasAuthentication + RequestHeaders + Clone + Send,
 
 	Self::ResponseHeaders: Headers

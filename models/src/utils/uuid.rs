@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{borrow::Cow, fmt::Display};
 
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use time::{Duration, OffsetDateTime};
@@ -77,8 +77,8 @@ impl<'de> Deserialize<'de> for Uuid {
 		D: Deserializer<'de>,
 	{
 		let mut buffer = [0u8; 16];
-		let string: &str = Deserialize::deserialize(deserializer)?;
-		hex::decode_to_slice(string, &mut buffer).map_err(Error::custom)?;
+		let string: Cow<'de, str> = Deserialize::deserialize(deserializer)?;
+		hex::decode_to_slice(string.as_ref(), &mut buffer).map_err(Error::custom)?;
 		Ok(Self(uuid::Uuid::from_bytes(buffer)))
 	}
 }

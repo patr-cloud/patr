@@ -1,7 +1,5 @@
-use std::error::Error as StdError;
-
 use axum::{
-	body::HttpBody,
+	body::Body,
 	routing::{MethodFilter, MethodRouter},
 	Router,
 };
@@ -10,7 +8,6 @@ use models::{
 	utils::{AppAuthentication, BearerToken, HasHeader, NoAuthentication},
 	ApiEndpoint,
 };
-use serde::{de::DeserializeOwned, Serialize};
 use tower::ServiceBuilder;
 
 use super::layers::AuthenticationLayer;
@@ -28,9 +25,8 @@ use crate::{
 /// Extension trait for axum Router to mount an API endpoint directly along with
 /// the required request parser, Rate limiter, Audit logger and Auth
 /// middlewares, using tower layers.
-pub trait RouterExt<S, B>
+pub trait RouterExt<S>
 where
-	B: HttpBody + Send + 'static,
 	S: Clone + Send + Sync + 'static,
 {
 	/// Mount an API endpoint directly along with the required request parser,
@@ -39,8 +35,7 @@ where
 	fn mount_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
 	where
 		H: EndpointHandler<E> + Clone + Send + 'static,
-		E: ApiEndpoint<Authenticator = NoAuthentication>,
-		E::RequestBody: Serialize + DeserializeOwned + 'static;
+		E: ApiEndpoint<Authenticator = NoAuthentication>;
 
 	/// Mount an API endpoint directly along with the required request parser,
 	/// Rate limiter, Audit logger and Auth middlewares, using tower layers.
@@ -49,15 +44,11 @@ where
 	where
 		H: AuthEndpointHandler<E> + Clone + Send + 'static,
 		E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
-		E::RequestHeaders: HasHeader<BearerToken>,
-		E::RequestBody: Serialize + DeserializeOwned + 'static;
+		E::RequestHeaders: HasHeader<BearerToken>;
 }
 
-impl<S, B> RouterExt<S, B> for Router<S, B>
+impl<S> RouterExt<S> for Router<S, Body>
 where
-	B: HttpBody + Send + 'static,
-	<B as HttpBody>::Data: Send,
-	<B as HttpBody>::Error: StdError + Send + Sync,
 	S: Clone + Send + Sync + 'static,
 {
 	#[track_caller]
@@ -65,11 +56,10 @@ where
 	where
 		H: EndpointHandler<E> + Clone + Send + 'static,
 		E: ApiEndpoint<Authenticator = NoAuthentication>,
-		E::RequestBody: Serialize + DeserializeOwned + 'static,
 	{
 		self.route(
 			<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
-			MethodRouter::<S, B>::new()
+			MethodRouter::<S>::new()
 				.on(
 					MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
 					|| async { unreachable!() },
@@ -90,11 +80,10 @@ where
 		H: AuthEndpointHandler<E> + Clone + Send + 'static,
 		E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 		E::RequestHeaders: HasHeader<BearerToken>,
-		E::RequestBody: Serialize + DeserializeOwned + 'static,
 	{
 		self.route(
 			<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
-			MethodRouter::<S, B>::new()
+			MethodRouter::<S>::new()
 				.on(
 					MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
 					|| async { unreachable!() },

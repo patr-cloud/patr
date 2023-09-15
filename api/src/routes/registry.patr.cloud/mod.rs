@@ -1,5 +1,5 @@
 use axum::{
-	routing::{get, head, patch, post, put},
+	routing::{get, head},
 	Router,
 };
 use serde::{Deserialize, Serialize};
@@ -42,7 +42,7 @@ pub struct ErrorItem {
 	pub detail: String,
 }
 
-fn error(error: RegistryError, message: String) -> Error {
+fn _error(error: RegistryError, message: String) -> Error {
 	Error {
 		errors: [ErrorItem {
 			code: error,
