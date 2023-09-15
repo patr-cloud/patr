@@ -1,5 +1,4 @@
 use kube::CustomResource;
-use models::utils::Uuid;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

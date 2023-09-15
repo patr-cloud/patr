@@ -16,7 +16,7 @@ use crate::prelude::*;
 /// that the `Deployment` struct should not contain the ID field, or it will
 /// panic. The struct contained in the `WithId` struct can be reused in multiple
 /// places.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct WithId<T> {
 	/// The ID of the object. For example, in case of a deployment, this would
@@ -37,14 +37,23 @@ impl<T> WithId<T> {
 	}
 }
 
-impl<T> Clone for WithId<T>
-where
-	T: Clone,
-{
-	fn clone(&self) -> Self {
-		Self {
-			id: self.id,
-			data: self.data.clone(),
-		}
+#[cfg(test)]
+mod test {
+	use serde_test::{assert_tokens, Token};
+
+	use super::WithId;
+	use crate::prelude::Uuid;
+
+	#[test]
+	pub fn test_with_id_empty() {
+		assert_tokens(
+			&WithId::new(Uuid::nil(), ()),
+			&[
+				Token::Map { len: None },
+				Token::Str("id"),
+				Token::Str("00000000000000000000000000000000"),
+				Token::MapEnd,
+			],
+		);
 	}
 }

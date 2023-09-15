@@ -27,6 +27,7 @@ pub async fn make_request<T>(
 where
 	T: ApiEndpoint,
 	T::ResponseBody: DeserializeOwned + Serialize,
+	T::RequestBody: DeserializeOwned + Serialize,
 {
 	let body = serde_json::to_value(&body).unwrap();
 	let builder = reqwest::Client::new()

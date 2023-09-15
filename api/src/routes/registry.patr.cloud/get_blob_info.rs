@@ -16,11 +16,11 @@ pub struct PathParams {
 
 #[axum::debug_handler]
 pub(super) async fn handle(
-	method: Method,
+	_method: Method,
 	Path(PathParams {
-		workspace_id,
-		repo_name,
-		digest,
+		workspace_id: _,
+		repo_name: _,
+		digest: _,
 	}): Path<PathParams>,
 ) -> impl IntoResponse {
 	(

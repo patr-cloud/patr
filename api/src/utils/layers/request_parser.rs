@@ -1,22 +1,20 @@
 use std::{
 	convert::Infallible,
-	error::Error as StdError,
 	future::Future,
 	marker::PhantomData,
 	task::{Context, Poll},
 };
 
 use axum::{
-	body::HttpBody,
+	body::Body,
 	extract::{Path, Query},
 	http::Request,
 	response::{IntoResponse, Response},
-	Json,
 	RequestExt,
 };
 use models::{
 	prelude::*,
-	utils::{Headers, IntoAxumResponse},
+	utils::{FromAxumRequest, Headers, IntoAxumResponse},
 	ApiErrorResponse,
 };
 use tower::{Layer, Service};
@@ -83,11 +81,8 @@ where
 	phantom: PhantomData<E>,
 }
 
-impl<B, S, E> Service<Request<B>> for RequestParser<S, E>
+impl<S, E> Service<Request<Body>> for RequestParser<S, E>
 where
-	B: HttpBody + Send + 'static,
-	B::Data: Send,
-	B::Error: StdError + Send + Sync,
 	E: ApiEndpoint,
 	for<'a> S: Service<AppRequest<'a, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
 {
@@ -102,7 +97,7 @@ where
 	}
 
 	#[instrument(skip(self, req))]
-	fn call(&mut self, mut req: Request<B>) -> Self::Future {
+	fn call(&mut self, mut req: Request<Body>) -> Self::Future {
 		let mut state = self.state.clone();
 		let mut inner = self.inner.clone();
 		async {
@@ -136,7 +131,9 @@ where
 				.into_response());
 			};
 
-			let Ok(Json(body)) = req.extract().await else {
+			let Ok(body) =
+				<<E as ApiEndpoint>::RequestBody as FromAxumRequest>::from_axum_request(req).await
+			else {
 				debug!("Failed to parse body");
 				return Ok(ApiErrorResponse::error_with_message(
 					ErrorType::WrongParameters,

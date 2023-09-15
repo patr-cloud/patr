@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs, clippy::missing_docs_in_private_items)]
+#![feature(return_position_impl_trait_in_trait)]
 
 //! This crate contains all the DTOs and common models used in the API across
 //! the frontend, backend, the CLI, and the controller.
