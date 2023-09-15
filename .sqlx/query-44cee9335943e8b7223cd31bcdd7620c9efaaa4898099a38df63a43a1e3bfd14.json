@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE password_reset_request( user_id UUID NOT NULL, token TEXT NOT NULL, token_expiry TIMESTAMPTZ NOT NULL, attempts INT NOT NULL );",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "44cee9335943e8b7223cd31bcdd7620c9efaaa4898099a38df63a43a1e3bfd14"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX resource_idx_owner_id ON resource (owner_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "34a6c091329abb7322f4583844fc2bcd5a5d8a6b610da77113647a6583bff569"
+}

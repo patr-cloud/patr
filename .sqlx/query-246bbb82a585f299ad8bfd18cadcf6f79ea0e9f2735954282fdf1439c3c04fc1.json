@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE resource_type ADD CONSTRAINT resource_type_pk PRIMARY KEY(id), ADD CONSTRAINT resource_type_uq_name UNIQUE(name);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "246bbb82a585f299ad8bfd18cadcf6f79ea0e9f2735954282fdf1439c3c04fc1"
+}

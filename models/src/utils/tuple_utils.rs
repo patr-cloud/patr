@@ -27,6 +27,10 @@ impl AddTuple<()> for () {
 	type ResultantTuple = ();
 }
 
+/// A macro to implement [`AddTuple`] for tuples of different sizes. It is
+/// automatically implemented for tuples of size 1 to 16. More can be added
+/// below if you really need it. But if you need more than 16, you should
+/// probably rethink your design.
 macro_rules! impl_add_tuples {
     () => {
         impl<H> AddTuple<H> for () {

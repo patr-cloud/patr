@@ -87,12 +87,13 @@ where
 	/// - [`AppAuthentication`][2]: This struct is used to specify that an API
 	/// endpoint requires authentication. It can be accessed only with a valid
 	/// token. This token can be of three types:
-	/// 	- [`PlainTokenAuthenticator`][3]: Any logged in user can access this
+	///     - [`PlainTokenAuthenticator`][3]: Any logged in user can access this
 	///    endpoint.
-	/// 	- [`WorkspaceMembershipAuthenticator`][4]: Only users that are members
+	///     - [`WorkspaceMembershipAuthenticator`][4]: Only users that are
+	///       members
 	///    of the workspace that is specified in the [`extract_workspace_id`][5]
 	///    function can access this endpoint.
-	/// 	- [`ResourcePermissionAuthenticator`][6]: Only users that have the
+	///     - [`ResourcePermissionAuthenticator`][6]: Only users that have the
 	///    specified permission on the resource that is specified in the request
 	///    can access this endpoint.
 	///

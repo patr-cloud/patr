@@ -1,7 +1,14 @@
 use sqlx::{pool::PoolOptions, Pool};
 
-pub use crate::prelude::*;
-use crate::utils::config::DatabaseConfig;
+use crate::{prelude::*, utils::config::DatabaseConfig};
+
+mod initializer;
+mod meta_data;
+mod rbac;
+mod user;
+// mod workspace;
+
+pub use self::{initializer::*, meta_data::*, rbac::*, user::*};
 
 /// Connects to the database based on a config. Not much to say here.
 #[tracing::instrument(skip(config))]

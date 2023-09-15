@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE permission ADD CONSTRAINT permission_pk PRIMARY KEY(id), ADD CONSTRAINT permission_uq_name UNIQUE(name);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "1931d89b7ca56ed006044a2cdbd97d02eb64916fd45b4c0c49eb616d755f5e7b"
+}

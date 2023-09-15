@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM information_schema.tables WHERE table_catalog = $1 AND table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name != 'spatial_ref_sys';",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "table_catalog",
+        "type_info": "Name"
+      },
+      {
+        "ordinal": 1,
+        "name": "table_schema",
+        "type_info": "Name"
+      },
+      {
+        "ordinal": 2,
+        "name": "table_name",
+        "type_info": "Name"
+      },
+      {
+        "ordinal": 3,
+        "name": "table_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "self_referencing_column_name",
+        "type_info": "Name"
+      },
+      {
+        "ordinal": 5,
+        "name": "reference_generation",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "user_defined_type_catalog",
+        "type_info": "Name"
+      },
+      {
+        "ordinal": 7,
+        "name": "user_defined_type_schema",
+        "type_info": "Name"
+      },
+      {
+        "ordinal": 8,
+        "name": "user_defined_type_name",
+        "type_info": "Name"
+      },
+      {
+        "ordinal": 9,
+        "name": "is_insertable_into",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "is_typed",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 11,
+        "name": "commit_action",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Name"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "9fd9a0789b91eb2be01664d4ce94d89303376e356cf1d188ba64b7b1b3ccf732"
+}

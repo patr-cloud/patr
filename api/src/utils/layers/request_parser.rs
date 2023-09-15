@@ -2,12 +2,14 @@ use std::{
 	convert::Infallible,
 	future::Future,
 	marker::PhantomData,
+	net::{IpAddr, SocketAddr},
+	str::FromStr,
 	task::{Context, Poll},
 };
 
 use axum::{
 	body::Body,
-	extract::{Path, Query},
+	extract::{ConnectInfo, Path, Query},
 	http::Request,
 	response::{IntoResponse, Response},
 	RequestExt,
@@ -86,8 +88,9 @@ where
 	E: ApiEndpoint,
 	for<'a> S: Service<AppRequest<'a, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
 {
-	type Response = Response;
 	type Error = Infallible;
+	type Response = Response;
+
 	type Future = impl Future<Output = Result<Self::Response, Self::Error>>;
 
 	fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -131,6 +134,29 @@ where
 				.into_response());
 			};
 
+			let cf_connecting_ip = req
+				.headers()
+				.get("CF-Connecting-IP")
+				.and_then(|header_value| header_value.to_str().ok())
+				.and_then(|value| IpAddr::from_str(value).ok());
+			let x_forwarded_for = req
+				.headers()
+				.get("X-Forwarded-For")
+				.and_then(|header_value| header_value.to_str().ok())
+				.and_then(|value| {
+					value
+						.split(',')
+						.next()
+						.and_then(|ip| IpAddr::from_str(ip.trim()).ok())
+				});
+			let ip = req
+				.extract_parts::<ConnectInfo<SocketAddr>>()
+				.await
+				.unwrap()
+				.ip();
+
+			let client_ip = cf_connecting_ip.or(x_forwarded_for).unwrap_or(ip);
+
 			let Ok(body) =
 				<<E as ApiEndpoint>::RequestBody as FromAxumRequest>::from_axum_request(req).await
 			else {
@@ -163,6 +189,7 @@ where
 				},
 				database: &mut database,
 				redis: &mut redis,
+				client_ip,
 				config: state.config.clone(),
 			};
 

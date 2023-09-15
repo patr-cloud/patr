@@ -107,9 +107,9 @@ where
 	H: EndpointHandler<E> + Clone + Send + 'static,
 	E: ApiEndpoint,
 {
-	type Response = AppResponse<E>;
 	type Error = ErrorType;
 	type Future = H::Future;
+	type Response = AppResponse<E>;
 
 	fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
 		Poll::Ready(Ok(()))

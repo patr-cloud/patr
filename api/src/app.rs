@@ -1,4 +1,7 @@
-use std::fmt::{self, Debug, Formatter};
+use std::{
+	fmt::{self, Debug, Formatter},
+	net::IpAddr,
+};
 
 use axum::{extract::FromRef, http::StatusCode, Router};
 use models::{prelude::*, RequestUserData};
@@ -53,6 +56,8 @@ where
 	/// The redis transaction for the request. In case the request returns
 	/// an Error, this transaction will be automatically rolled back.
 	pub redis: &'a mut RedisClient,
+	/// The IP address of the client that made the request.
+	pub client_ip: IpAddr,
 	/// The application configuration.
 	pub config: AppConfig,
 }
@@ -73,6 +78,8 @@ where
 	/// The redis transaction for the request. In case the request returns
 	/// an Error, this transaction will be automatically rolled back.
 	pub redis: &'a mut RedisClient,
+	/// The IP address of the client that made the request.
+	pub client_ip: IpAddr,
 	/// The user data of the current authenticated user.
 	pub user_data: RequestUserData,
 	/// The application configuration.

@@ -44,6 +44,7 @@ quote = { version = "1", default-features = false }
 reqwest = { version = "0.11", default-features = false }
 rustis = { version = "0.12", default-features = false }
 schemars = { version = "0.8", default-features = false }
+semver = { version = "1", default-features = false }
 serde = { version = "1", default-features = false }
 serde_json = { version = "1", default-features = false }
 serde_test = { version = "1", default-features = false }

@@ -90,8 +90,9 @@ where
 	for<'b> S: Service<AuthenticatedAppRequest<'b, E>, Response = AppResponse<E>, Error = ErrorType>
 		+ Clone,
 {
-	type Response = AppResponse<E>;
 	type Error = ErrorType;
+	type Response = AppResponse<E>;
+
 	type Future = impl Future<Output = Result<Self::Response, Self::Error>>;
 
 	fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -278,7 +279,7 @@ where
 					return Err(ErrorType::AuthorizationTokenInvalid);
 				}
 
-				let Some(user) = query!{
+				let Some(user) = query! {
 					r#"
 					SELECT
 						"user".*
@@ -321,12 +322,14 @@ where
 				request,
 				database,
 				redis,
+				client_ip,
 				config,
 			} = req;
 			let req = AuthenticatedAppRequest {
 				request,
 				database,
 				redis,
+				client_ip,
 				config,
 				user_data,
 			};
@@ -362,6 +365,6 @@ async fn get_permissions_for_login_id(
 	if let Some(data) = redis_data {
 		return Ok(serde_json::from_str(data.as_str())?);
 	}
-	
+
 	todo!("Fetch from db")
 }

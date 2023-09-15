@@ -24,16 +24,14 @@ where
 	T: Serialize + DeserializeOwned + 'static,
 {
 	#[tracing::instrument(skip(request))]
-	fn from_axum_request(request: Request<Body>) -> impl Future<Output = Result<Self, ErrorType>> {
-		async move {
-			request
-				.extract()
-				.await
-				.map_err(|err| {
-					tracing::debug!("Failed to parse body: {}", err);
-					ErrorType::WrongParameters
-				})
-				.map(|Json(body)| body)
-		}
+	async fn from_axum_request(request: Request<Body>) -> Result<Self, ErrorType> {
+		request
+			.extract()
+			.await
+			.map_err(|err| {
+				tracing::debug!("Failed to parse body: {}", err);
+				ErrorType::WrongParameters
+			})
+			.map(|Json(body)| body)
 	}
 }

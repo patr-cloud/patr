@@ -44,7 +44,7 @@ pub mod prelude {
 		app::{AppRequest, AppResponse, AppState, AuthenticatedAppRequest},
 		db,
 		redis,
-		utils::RouterExt,
+		utils::{constants, RouterExt},
 	};
 
 	/// The type of the database connection. A mutable reference to this should
@@ -54,7 +54,7 @@ pub mod prelude {
 	/// Example:
 	/// ```rust
 	/// pub fn database_fn(connection: &mut DatabaseConnection) {
-	/// 	// Do something with `connection` ....
+	///     // Do something with `connection` ....
 	/// }
 	/// ```
 	pub type DatabaseConnection = <DatabaseType as sqlx::Database>::Connection;

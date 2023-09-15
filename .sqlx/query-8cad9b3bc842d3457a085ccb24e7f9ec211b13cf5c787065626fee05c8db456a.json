@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE EXTENSION IF NOT EXISTS btree_gist;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "8cad9b3bc842d3457a085ccb24e7f9ec211b13cf5c787065626fee05c8db456a"
+}

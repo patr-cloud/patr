@@ -44,9 +44,7 @@ impl CommandExecutor for WorkspaceCommands {
 		writer: impl Write + Send,
 	) -> anyhow::Result<()> {
 		match self {
-			Self::WorkspaceAction(commands) => {
-				commands.execute(global_args, writer).await
-			}
+			Self::WorkspaceAction(commands) => commands.execute(global_args, writer).await,
 			Self::Context(ContextCommands::Switch { name }) => {
 				WorkspaceActionCommands::Switch(SwitchArgs { name })
 					.execute(global_args, writer)
@@ -69,16 +67,10 @@ impl CommandExecutor for WorkspaceActionCommands {
 		writer: impl Write + Send,
 	) -> anyhow::Result<()> {
 		match self {
-			Self::Create(args) => {
-				create::execute(global_args, args, writer).await
-			}
-			Self::Switch(args) => {
-				switch::execute(global_args, args, writer).await
-			}
+			Self::Create(args) => create::execute(global_args, args, writer).await,
+			Self::Switch(args) => switch::execute(global_args, args, writer).await,
 			Self::List => list::execute(global_args, (), writer).await,
-			Self::Rename(args) => {
-				rename::execute(global_args, args, writer).await
-			}
+			Self::Rename(args) => rename::execute(global_args, args, writer).await,
 		}
 	}
 }

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE EXTENSION IF NOT EXISTS postgis;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "292b36a0ab84f6022c19fafc224ce4d2a090fa4a4df94a861480c5835ff6f864"
+}

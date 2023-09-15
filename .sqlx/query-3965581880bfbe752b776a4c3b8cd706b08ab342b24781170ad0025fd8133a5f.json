@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX phone_number_country_code_idx_phone_code ON phone_number_country_code (phone_code);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "3965581880bfbe752b776a4c3b8cd706b08ab342b24781170ad0025fd8133a5f"
+}

@@ -31,10 +31,10 @@ impl RunnerResource {
 	}
 }
 
-pub async fn initialize_ci_runner_pre(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_ci_runner_tables(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing ci runner tables");
+	info!("Initializing ci runner tables");
 
 	query!(
 		r#"
@@ -73,10 +73,10 @@ pub async fn initialize_ci_runner_pre(
 	Ok(())
 }
 
-pub async fn initialize_ci_runner_post(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_ci_runner_constraints(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Finishing up ci tables initialization");
+	info!("Finishing up ci tables initialization");
 
 	query!(
 		r#"
@@ -92,7 +92,7 @@ pub async fn initialize_ci_runner_post(
 }
 
 pub async fn get_runners_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<Vec<Runner>, sqlx::Error> {
 	query_as!(
@@ -115,7 +115,7 @@ pub async fn get_runners_for_workspace(
 }
 
 pub async fn create_runner_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	runner_id: &Uuid,
 	name: &str,
 	workspace_id: &Uuid,
@@ -145,7 +145,7 @@ pub async fn create_runner_for_workspace(
 }
 
 pub async fn get_runner_by_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	runner_id: &Uuid,
 ) -> Result<Option<Runner>, sqlx::Error> {
 	query_as!(
@@ -168,7 +168,7 @@ pub async fn get_runner_by_id(
 }
 
 pub async fn get_runner_by_id_including_deleted(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	runner_id: &Uuid,
 ) -> Result<Option<Runner>, sqlx::Error> {
 	query_as!(
@@ -190,7 +190,7 @@ pub async fn get_runner_by_id_including_deleted(
 }
 
 pub async fn update_runner(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	runner_id: &Uuid,
 	name: &str,
 ) -> Result<(), sqlx::Error> {
@@ -211,7 +211,7 @@ pub async fn update_runner(
 }
 
 pub async fn list_active_repos_for_runner(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	runner_id: &Uuid,
 ) -> Result<Vec<Repository>, sqlx::Error> {
 	query_as!(
@@ -240,7 +240,7 @@ pub async fn list_active_repos_for_runner(
 }
 
 pub async fn mark_runner_as_deleted(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	runner_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query_as!(
@@ -260,7 +260,7 @@ pub async fn mark_runner_as_deleted(
 }
 
 pub async fn list_build_details_for_runner(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	runner_id: &Uuid,
 ) -> Result<Vec<RunnerBuildDetails>, sqlx::Error> {
 	query!(
@@ -308,7 +308,7 @@ pub async fn list_build_details_for_runner(
 }
 
 pub async fn list_queued_builds_for_runner(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	runner_id: &Uuid,
 ) -> Result<Vec<RunnerBuildDetails>, sqlx::Error> {
 	query!(
@@ -360,7 +360,7 @@ pub async fn list_queued_builds_for_runner(
 }
 
 pub async fn get_runner_resource_for_build(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	repo_id: &Uuid,
 	build_num: i64,
 ) -> Result<Option<RunnerResource>, sqlx::Error> {
@@ -396,7 +396,7 @@ pub async fn get_runner_resource_for_build(
 }
 
 pub async fn is_runner_available_to_start_build(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	repo_id: &Uuid,
 	build_num: i64,
 ) -> Result<bool, sqlx::Error> {

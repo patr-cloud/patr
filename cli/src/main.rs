@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-#![deny(missing_docs, clippy::missing_docs_in_private_items)]
+#![warn(missing_docs, clippy::missing_docs_in_private_items)]
 
 //! A CLI tool for interacting and managing your Patr resources.
 

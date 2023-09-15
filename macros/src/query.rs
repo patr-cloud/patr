@@ -8,8 +8,11 @@ use syn::{
 	Token,
 };
 
+/// A SQL query and a list of parameters to pass to it.
 struct QueryParser {
+	/// The SQL query to run.
 	query: LitStr,
+	/// A list of parameters to pass to the query.
 	params: Vec<Expr>,
 }
 
@@ -29,11 +32,11 @@ impl Parse for QueryParser {
 	}
 }
 
+/// Runs an SQL query without the spaces and newlines and logs it. This is
+/// mostly just a wrapper around [`sqlx::query!`].
 pub fn parse(input: TokenStream) -> TokenStream {
-	let QueryParser { query, params } =
-		parse_macro_input!(input as QueryParser);
-	let mut simplified_query =
-		query.value().replace(['\n', '\r'], " ").replace('\t', "  ");
+	let QueryParser { query, params } = parse_macro_input!(input as QueryParser);
+	let mut simplified_query = query.value().replace(['\n', '\r'], " ").replace('\t', "  ");
 	while simplified_query.contains("  ") {
 		simplified_query = simplified_query.replace("  ", " ");
 	}

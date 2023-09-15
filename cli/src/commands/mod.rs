@@ -92,14 +92,10 @@ impl CommandExecutor for GlobalCommands {
 		writer: impl Write + Send,
 	) -> anyhow::Result<()> {
 		match self {
-			Self::Login(args) => {
-				login::execute(global_args, args, writer).await
-			}
+			Self::Login(args) => login::execute(global_args, args, writer).await,
 			Self::Logout => logout::execute(global_args).await,
 			Self::Info => info::execute(global_args).await,
-			Self::Workspaced(commands) => {
-				commands.execute(global_args, writer).await
-			}
+			Self::Workspaced(commands) => commands.execute(global_args, writer).await,
 		}
 	}
 }

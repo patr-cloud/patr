@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE business_email ADD CONSTRAINT business_email_pk PRIMARY KEY(local, domain_id), ADD CONSTRAINT business_email_fk_user_id FOREIGN KEY(user_id) REFERENCES \"user\"(id), ADD CONSTRAINT business_email_chk_local_is_lower_case CHECK( local = LOWER(local) ), ADD CONSTRAINT business_email_fk_domain_id FOREIGN KEY(domain_id) REFERENCES workspace_domain(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "9047b724ad8241816442eda57287add15f98c3f1069df3af4e001d339e1a681d"
+}

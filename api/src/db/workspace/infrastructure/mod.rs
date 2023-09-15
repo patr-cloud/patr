@@ -11,26 +11,26 @@ pub use self::{
 };
 use crate::Database;
 
-pub async fn initialize_infrastructure_pre(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_infrastructure_tables(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing deployment tables");
-	deployment::initialize_deployment_pre(connection).await?;
-	managed_database::initialize_managed_database_pre(connection).await?;
-	managed_url::initialize_managed_url_pre(connection).await?;
-	static_site::initialize_static_site_pre(connection).await?;
+	info!("Initializing deployment tables");
+	deployment::initialize_deployment_tables(connection).await?;
+	managed_database::initialize_managed_database_tables(connection).await?;
+	managed_url::initialize_managed_url_tables(connection).await?;
+	static_site::initialize_static_site_tables(connection).await?;
 
 	Ok(())
 }
 
-pub async fn initialize_infrastructure_post(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_infrastructure_constraints(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Finishing up deployment tables initialization");
-	deployment::initialize_deployment_post(connection).await?;
-	managed_database::initialize_managed_database_post(connection).await?;
-	managed_url::initialize_managed_url_post(connection).await?;
-	static_site::initialize_static_site_post(connection).await?;
+	info!("Finishing up deployment tables initialization");
+	deployment::initialize_deployment_constraints(connection).await?;
+	managed_database::initialize_managed_database_constraints(connection).await?;
+	managed_url::initialize_managed_url_constraints(connection).await?;
+	static_site::initialize_static_site_constraints(connection).await?;
 
 	Ok(())
 }

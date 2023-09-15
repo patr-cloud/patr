@@ -32,10 +32,10 @@ pub struct StaticSiteManagedUrl {
 	pub http_only: Option<bool>,
 }
 
-pub async fn initialize_static_site_pre(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_static_site_tables(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing static site tables");
+	info!("Initializing static site tables");
 	query!(
 		r#"
 		CREATE TABLE static_site(
@@ -80,10 +80,10 @@ pub async fn initialize_static_site_pre(
 	Ok(())
 }
 
-pub async fn initialize_static_site_post(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_static_site_constraints(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Finishing up static site tables initialization");
+	info!("Finishing up static site tables initialization");
 	query!(
 		r#"
 		ALTER TABLE static_site
@@ -132,7 +132,7 @@ pub async fn initialize_static_site_post(
 }
 
 pub async fn create_static_site(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	static_site_id: &Uuid,
 	name: &str,
 	workspace_id: &Uuid,
@@ -159,7 +159,7 @@ pub async fn create_static_site(
 }
 
 pub async fn get_static_site_by_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	static_site_id: &Uuid,
 ) -> Result<Option<StaticSite>, sqlx::Error> {
 	query_as!(
@@ -184,7 +184,7 @@ pub async fn get_static_site_by_id(
 }
 
 pub async fn get_static_site_by_name_in_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	name: &str,
 	workspace_id: &Uuid,
 ) -> Result<Option<StaticSite>, sqlx::Error> {
@@ -212,7 +212,7 @@ pub async fn get_static_site_by_name_in_workspace(
 }
 
 pub async fn update_static_site_status(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	static_site_id: &Uuid,
 	status: &DeploymentStatus,
 ) -> Result<(), sqlx::Error> {
@@ -234,7 +234,7 @@ pub async fn update_static_site_status(
 }
 
 pub async fn update_current_live_upload_for_static_site(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	static_site_id: &Uuid,
 	upload_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
@@ -256,7 +256,7 @@ pub async fn update_current_live_upload_for_static_site(
 }
 
 pub async fn get_managed_urls_for_static_site(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	static_site_id: &Uuid,
 ) -> Result<Vec<StaticSiteManagedUrl>, sqlx::Error> {
 	query_as!(
@@ -283,7 +283,7 @@ pub async fn get_managed_urls_for_static_site(
 }
 
 pub async fn update_static_site_name(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	static_site_id: &Uuid,
 	name: &str,
 ) -> Result<(), sqlx::Error> {
@@ -305,7 +305,7 @@ pub async fn update_static_site_name(
 }
 
 pub async fn delete_static_site(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	static_site_id: &Uuid,
 	deletion_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
@@ -328,7 +328,7 @@ pub async fn delete_static_site(
 }
 
 pub async fn get_static_sites_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<Vec<StaticSite>, sqlx::Error> {
 	query_as!(
@@ -353,7 +353,7 @@ pub async fn get_static_sites_for_workspace(
 }
 
 pub async fn create_static_site_upload_history(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	upload_id: &Uuid,
 	static_site_id: &Uuid,
 	message: &str,
@@ -386,7 +386,7 @@ pub async fn create_static_site_upload_history(
 }
 
 pub async fn get_static_site_upload_history(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	static_site_id: &Uuid,
 ) -> Result<Vec<StaticSiteUploadHistory>, sqlx::Error> {
 	query_as!(
@@ -410,7 +410,7 @@ pub async fn get_static_site_upload_history(
 }
 
 pub async fn get_static_site_upload_history_by_upload_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	static_site_id: &Uuid,
 	upload_id: &Uuid,
 ) -> Result<Option<StaticSiteUploadHistory>, sqlx::Error> {
@@ -437,7 +437,7 @@ pub async fn get_static_site_upload_history_by_upload_id(
 }
 
 pub async fn set_static_site_upload_as_processed(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	static_site_id: &Uuid,
 	upload_id: &Uuid,
 	processed_time: Option<&DateTime<Utc>>,

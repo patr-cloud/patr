@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX user_idx_created ON \"user\" (created);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "f5b7bf00eb407d889619e638614750a5deab18378edd398c074adb012b209f75"
+}

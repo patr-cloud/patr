@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX user_to_sign_up_idx_otp_expiry ON user_to_sign_up (otp_expiry);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "0d262a2cdb70f0c2af1b7b788df13c6d6da8ce31fd6172023a0490f6cbda6d94"
+}

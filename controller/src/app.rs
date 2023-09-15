@@ -1,11 +1,18 @@
 use models::prelude::*;
 
+/// Represents the state of the application. This is used to share information
+/// across the entire application, such as the API token, the region ID, etc.
 pub struct AppState {
+	/// The API token used to authenticate with the Patr API.
 	pub patr_token: String,
+	/// The region ID of the cluster.
 	pub region_id: Uuid,
 }
 
 impl AppState {
+	/// Tries to create a new `AppState` from the environment variables. If the
+	/// environment variables are not set in release mode, it will panic. In
+	/// debug mode, it will use the default values.
 	pub fn try_default() -> Self {
 		let patr_token = std::env::var("PATR_TOKEN");
 		let region_id = std::env::var("REGION_ID");

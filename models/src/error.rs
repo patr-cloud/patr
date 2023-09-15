@@ -119,10 +119,15 @@ impl Clone for ErrorType {
 	}
 }
 
+/// A helper module to serialize and deserialize the internal server error
+/// variant of the [`super::ErrorType`] enum
 mod serialize_server_error {
 	use anyhow::Error;
 	use serde::{Deserializer, Serializer};
 
+	/// Converts an
+	/// [`ErrorType::InternalServerError`][super::ErrorType::InternalServerError]
+	/// into an error field.
 	pub fn serialize<S>(_: &Error, serializer: S) -> Result<S::Ok, S::Error>
 	where
 		S: Serializer,
@@ -130,6 +135,10 @@ mod serialize_server_error {
 		serializer.serialize_str("internalServerError")
 	}
 
+	/// Converts a given error field into an internal server error. Since the
+	/// module is only used on the
+	/// [`ErrorType::InternalServerError`][super::ErrorType::InternalServerError]
+	/// variant, this function will always return an internal server error.
 	pub fn deserialize<'de, D>(_: D) -> Result<anyhow::Error, D::Error>
 	where
 		D: Deserializer<'de>,
