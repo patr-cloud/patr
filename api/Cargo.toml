@@ -40,3 +40,4 @@ tower = { workspace = true, features = ["default", "full"] }
 tracing = { workspace = true, features = ["default", "async-await"] }
 typed-builder = { workspace = true, features = [] }
 typed-headers = { workspace = true, features = [] }
+axum-typed-websockets = { workspace = true, features = ["default"] }

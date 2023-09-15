@@ -13,8 +13,10 @@ kube = { workspace = true, features = [
     "rustls-tls",
     "ws",
     "runtime",
-    "derive"
+    "derive",
 ] }
 models = { workspace = true, features = [] }
 tokio = { workspace = true, features = ["tracing", "full"] }
+serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
+schemars = { workspace = true, features = ["default"] }

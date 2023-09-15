@@ -1,7 +1,11 @@
 use axum::{http::StatusCode, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
-use crate::{ApiEndpoint, ErrorType, utils::{Headers, IntoAxumResponse, True, False}};
+use crate::{
+	utils::{False, Headers, IntoAxumResponse, True},
+	ApiEndpoint,
+	ErrorType,
+};
 
 /// This struct represents a successful response from the API. It contains the
 /// status code, headers and body.

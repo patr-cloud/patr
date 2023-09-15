@@ -9,18 +9,18 @@
 use std::{sync::Arc, time::Duration};
 
 use app::AppState;
-use futures::{future, FutureExt, StreamExt};
+use futures::{future, StreamExt};
 use k8s_openapi::api::apps::v1::Deployment;
 use kube::{
 	api::ListParams,
-	runtime::{controller::Action, watcher, Controller, WatchStreamExt},
+	runtime::{controller::Action, watcher, Controller},
 	Api,
 	Client,
-	Config,
-	ResourceExt,
 };
 
 mod app;
+mod deployment;
+mod models;
 
 #[tokio::main]
 async fn main() {
@@ -32,20 +32,21 @@ async fn main() {
 
 	sync_deployments(client.clone()).await.unwrap();
 
-	let pods = Api::<Deployment>::all(client.clone());
+	let deployments = Api::<Deployment>::all(client.clone());
 
-	Controller::new(pods, watcher::Config::default())
+	Controller::new(deployments.clone(), watcher::Config::default())
+		.owns(deployments, watcher::Config::default())
 		.run(reconcile, error_policy, Arc::new(state))
 		.for_each(|_| future::ready(()))
 		.await;
 }
 
 async fn reconcile(obj: Arc<Deployment>, _ctx: Arc<AppState>) -> Result<Action, kube::Error> {
-	println!("{}", serde_json::to_string_pretty(&obj).unwrap());
-	Ok(Action::requeue(Duration::from_secs(3600)))
+	println!("{:?}", obj.metadata);
+	Ok(Action::requeue(Duration::from_secs(30)))
 }
 
-fn error_policy(_object: Arc<Deployment>, _err: &kube::Error, _ctx: Arc<AppState>) -> Action {
+fn error_policy(_obj: Arc<Deployment>, _err: &kube::Error, _ctx: Arc<AppState>) -> Action {
 	Action::requeue(Duration::from_secs(5))
 }
 
@@ -75,7 +76,7 @@ async fn sync_deployments(client: Client) -> Result<(), kube::Error> {
 		.into_iter()
 		.zip(should_be_running_deployments.into_iter())
 	{
-		println!("deployment: {}", current_running.name_any());
+		// println!("deployment: {}", current_running.name_any());
 	}
 
 	Ok(())

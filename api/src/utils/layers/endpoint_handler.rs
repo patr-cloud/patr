@@ -9,12 +9,18 @@ use tower::{Layer, Service};
 
 use crate::prelude::*;
 
+/// A trait that is implemented for functions and closures that take a specific
+/// request and returns an async fn that returns a response. This can be used to
+/// mount endpoint handlers that respond to specific API endpoints as per the
+/// [`ApiEndpoint`] trait.
 pub trait EndpointHandler<E>
 where
 	E: ApiEndpoint,
 {
+	/// The future returned by the endpoint handler.
 	type Future: Future<Output = Result<AppResponse<E>, ErrorType>> + Send + 'static;
 
+	/// Call the endpoint handler with the given request.
 	fn call<'a>(self, req: AppRequest<'a, E>) -> Self::Future;
 }
 
@@ -31,6 +37,9 @@ where
 	}
 }
 
+/// A [`tower::Layer`] that can be used mount the endpoint to the router.
+/// Ideally, this will automatically be done by [`RouterExt::mount_endpoint`],
+/// and you should not need to use this directly.
 pub struct EndpointLayer<H, E>
 where
 	H: EndpointHandler<E> + Clone + Send + 'static,
@@ -45,6 +54,8 @@ where
 	H: EndpointHandler<E> + Clone + Send + 'static,
 	E: ApiEndpoint,
 {
+	/// Create a new instance of the [`EndpointLayer`] with the given endpoint
+	/// handler.
 	pub fn new(handler: H) -> Self {
 		Self {
 			handler,
@@ -81,6 +92,7 @@ where
 	}
 }
 
+/// A [`tower::Service`] that can be used mount the endpoint to the router.
 pub struct EndpointService<H, E>
 where
 	H: EndpointHandler<E> + Clone + Send + 'static,
