@@ -10,6 +10,7 @@ use models::{
 	utils::{AppAuthentication, BearerToken, HasHeader, NoAuthentication},
 	ApiEndpoint,
 };
+use serde::{de::DeserializeOwned, Serialize};
 use tower::ServiceBuilder;
 
 use super::layers::AuthenticationLayer;
@@ -38,7 +39,8 @@ where
 	fn mount_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
 	where
 		H: EndpointHandler<E> + Clone + Send + 'static,
-		E: ApiEndpoint<Authenticator = NoAuthentication>;
+		E: ApiEndpoint<Authenticator = NoAuthentication>,
+		E::RequestBody: Serialize + DeserializeOwned + 'static;
 
 	/// Mount an API endpoint directly along with the required request parser,
 	/// Rate limiter, Audit logger and Auth middlewares, using tower layers.
@@ -47,7 +49,8 @@ where
 	where
 		H: AuthEndpointHandler<E> + Clone + Send + 'static,
 		E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
-		E::RequestHeaders: HasHeader<BearerToken>;
+		E::RequestHeaders: HasHeader<BearerToken>,
+		E::RequestBody: Serialize + DeserializeOwned + 'static;
 }
 
 impl<S, B> RouterExt<S, B> for Router<S, B>
@@ -62,6 +65,7 @@ where
 	where
 		H: EndpointHandler<E> + Clone + Send + 'static,
 		E: ApiEndpoint<Authenticator = NoAuthentication>,
+		E::RequestBody: Serialize + DeserializeOwned + 'static,
 	{
 		self.route(
 			<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
@@ -86,6 +90,7 @@ where
 		H: AuthEndpointHandler<E> + Clone + Send + 'static,
 		E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 		E::RequestHeaders: HasHeader<BearerToken>,
+		E::RequestBody: Serialize + DeserializeOwned + 'static,
 	{
 		self.route(
 			<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,

@@ -23,6 +23,9 @@ use tower::{Layer, Service};
 
 use crate::{app::AppResponse, prelude::*};
 
+/// A [`tower::Layer`] that can be used to parse the request and call the inner
+/// service with the parsed request. Ideally, this will automatically be done by
+/// [`RouterExt::mount_endpoint`], and you should not need to use this directly.
 #[derive(Clone, Debug)]
 pub struct RequestParserLayer<E>
 where
@@ -36,6 +39,11 @@ impl<E> RequestParserLayer<E>
 where
 	E: ApiEndpoint,
 {
+	/// Create a new instance of the [`RequestParserLayer`] with the given
+	/// state. This state will be used to parse the request, create a database
+	/// transaction, and call the inner service. If the inner service fails, the
+	/// database transaction will be automatically rolled back, otherwise it
+	/// will be committed.
 	pub fn with_state(state: AppState) -> Self {
 		Self {
 			phantom: PhantomData,
@@ -60,6 +68,10 @@ where
 	}
 }
 
+/// A [`tower::Service`] that can be used to parse the request and call the
+/// inner service with the parsed request. Ideally, this will automatically be
+/// done by [`RouterExt::mount_endpoint`], and you should not need to use this
+/// directly.
 #[derive(Clone, Debug)]
 pub struct RequestParser<S, E>
 where

@@ -10,10 +10,15 @@ version.workspace = true
 [dependencies]
 axum-extra = { workspace = true, features = ["typed-routing"] }
 console_error_panic_hook = { workspace = true, features = [] }
-leptos = { workspace = true, features = ["default", "tracing", "csr"] }
+leptos = { workspace = true, features = [
+    "default",
+    "tracing",
+    "ssr",
+    "hydrate",
+] }
 leptos-use = { workspace = true, features = ["storage"] }
 leptos_declarative = { workspace = true, features = [] }
-leptos_router = { workspace = true, features = ["default", "csr"] }
+leptos_router = { workspace = true, features = ["default", "hydrate", "ssr"] }
 log = { workspace = true, features = [] }
 models = { workspace = true, features = [] }
 reqwest = { workspace = true, features = ["json", "rustls-tls"] }

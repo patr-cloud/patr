@@ -23,11 +23,32 @@ use super::{AddTuple, RequiresResponseHeaders};
 pub struct Paginated<T = ()> {
 	/// Any other query parameters that should be included in the request.
 	pub data: T,
-	/// The number of items that should be returned.
+	/// The number of items that should be returned per page.
 	pub count: usize,
-	/// The offset of the items that should be returned. This represents the
-	/// index of the first item that should be returned.
-	pub offset: usize,
+	/// The page number that should be returned. This is zero-indexed. So to get
+	/// the first page, you should set this to 0, and to get the second page,
+	/// you should set this to 1, etc.
+	pub page: usize,
+}
+
+impl<T> Paginated<T> {
+	/// The default page size that should be used if no page size is specified.
+	/// This is currently set to 25. So if no page size is specified, the API
+	/// will return a maximum of 25 items, starting from the first item.
+	pub const DEFAULT_PAGE_SIZE: usize = 25;
+}
+
+impl<T> Default for Paginated<T>
+where
+	T: Default,
+{
+	fn default() -> Self {
+		Self {
+			data: T::default(),
+			count: Self::DEFAULT_PAGE_SIZE,
+			page: 0,
+		}
+	}
 }
 
 impl<T> RequiresResponseHeaders for Paginated<T>

@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{prelude::*, utils::BearerToken};
 
 macros::declare_api_endpoint!(
 	RenewAccessToken,

@@ -7,16 +7,16 @@
 // pub use self::{database::*, deployment::*};
 // use crate::prelude::*;
 
-// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-// #[serde(rename_all = "snake_case", deny_unknown_fields)]
+// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd,
+// Ord)] #[serde(rename_all = "snake_case", deny_unknown_fields)]
 // pub struct Resource {
 // 	#[serde(flatten)]
 // 	pub data: IaacResource,
 // 	pub depends_on: OneOrMore<Dependency>,
 // }
 
-// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-// #[serde(tag = "type", deny_unknown_fields)]
+// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd,
+// Ord)] #[serde(tag = "type", deny_unknown_fields)]
 // pub enum IaacResource {
 // 	Deployment(IaacDeployment),
 // 	Database,
@@ -41,8 +41,8 @@
 // 	}
 // }
 
-// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-// pub enum IaacResourceType {
+// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd,
+// Ord)] pub enum IaacResourceType {
 // 	Deployment,
 // 	Database,
 // 	StaticSite,
@@ -52,15 +52,15 @@
 // 	Secret,
 // }
 
-// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-// #[serde(deny_unknown_fields)]
+// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd,
+// Ord)] #[serde(deny_unknown_fields)]
 // pub struct Dependency {
 // 	pub resource: IaacResourceType,
 // 	pub identifier: Either<Uuid, String>,
 // }
 
-// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-// #[serde(untagged, rename_all = "camelCase", deny_unknown_fields)]
+// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd,
+// Ord)] #[serde(untagged, rename_all = "camelCase", deny_unknown_fields)]
 // pub enum MaybeExternallySourced<T> {
 // 	Value(T),
 // 	#[serde(rename_all = "snake_case")]

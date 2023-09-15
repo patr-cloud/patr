@@ -9,12 +9,19 @@ use tower::{Layer, Service};
 
 use crate::{app::AppResponse, prelude::AuthenticatedAppRequest};
 
+/// A trait that is implemented for all functions and closures that are used to
+/// handle endpoints that require authentication. This trait is used to
+/// implement the [`Layer`] trait for anything that takes an
+/// [`AuthenticatedAppRequest`] and returns a `Future` that resolves to a
+/// [`Result<AppResponse<E>, ErrorType>>`].
 pub trait AuthEndpointHandler<E>
 where
 	E: ApiEndpoint,
 {
+	/// The `Future` type that is returned by the handler.
 	type Future: Future<Output = Result<AppResponse<E>, ErrorType>> + Send + 'static;
 
+	/// Call the handler with the given authenticated request.
 	fn call<'a>(self, req: AuthenticatedAppRequest<'a, E>) -> Self::Future;
 }
 
@@ -31,6 +38,10 @@ where
 	}
 }
 
+/// A [`tower::Layer`] that can be used to parse the request and call the inner
+/// service with the parsed request. Ideally, this will automatically be done by
+/// [`RouterExt::mount_auth_endpoint`], and you should not need to use this
+/// directly.
 pub struct AuthEndpointLayer<H, E>
 where
 	H: AuthEndpointHandler<E> + Clone + Send + 'static,
@@ -45,6 +56,8 @@ where
 	H: AuthEndpointHandler<E> + Clone + Send + 'static,
 	E: ApiEndpoint,
 {
+	/// Create a new instance of the [`AuthEndpointLayer`] with the given
+	/// function or closure.
 	pub fn new(handler: H) -> Self {
 		Self {
 			handler,
@@ -81,6 +94,9 @@ where
 	}
 }
 
+/// The [`Service`] used by the [`AuthEndpointLayer`]. Ideally, this will
+/// automatically be done by [`RouterExt::mount_auth_endpoint`], and you should
+/// not need to use this directly.
 pub struct AuthEndpointService<H, E>
 where
 	H: AuthEndpointHandler<E> + Clone + Send + 'static,
