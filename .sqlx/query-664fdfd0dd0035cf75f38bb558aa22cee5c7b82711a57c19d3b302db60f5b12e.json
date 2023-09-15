@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE business_email( user_id UUID NOT NULL, local VARCHAR(64) NOT NULL, domain_id UUID NOT NULL );",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "664fdfd0dd0035cf75f38bb558aa22cee5c7b82711a57c19d3b302db60f5b12e"
+}

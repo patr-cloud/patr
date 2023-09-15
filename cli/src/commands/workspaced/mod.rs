@@ -28,14 +28,12 @@ impl CommandExecutor for WorkspacedCommands {
 		writer: impl Write + Send,
 	) -> anyhow::Result<()> {
 		match self {
-			Self::WorkspaceCommands(commands) => {
-				commands.execute(global_args, writer).await
-			} /* Self::InfrastructureCommands(commands) => {
-			   * 	commands.execute(global_args, writer).await
-			   * }
-			   * Self::DomainConfigurationCommands(commands) => {
-			   * 	commands.execute(global_args, writer).await
-			   * } */
+			Self::WorkspaceCommands(commands) => commands.execute(global_args, writer).await, /* Self::InfrastructureCommands(commands) => {
+			                                                                                   * 	commands.execute(global_args, writer).await
+			                                                                                   * }
+			                                                                                   * Self::DomainConfigurationCommands(commands) => {
+			                                                                                   * 	commands.execute(global_args, writer).await
+			                                                                                   * } */
 		}
 	}
 }

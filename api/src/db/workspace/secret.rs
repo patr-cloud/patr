@@ -9,10 +9,10 @@ pub struct Secret {
 	pub workspace_id: Uuid,
 }
 
-pub async fn initialize_secret_pre(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_secret_tables(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing secret tables");
+	info!("Initializing secret tables");
 	query!(
 		r#"
 		CREATE TABLE secret(
@@ -30,10 +30,10 @@ pub async fn initialize_secret_pre(
 	Ok(())
 }
 
-pub async fn initialize_secret_post(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_secret_constraints(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Finishing up secret tables initialization");
+	info!("Finishing up secret tables initialization");
 	// TODO create all the necessary indexes
 
 	query!(
@@ -63,7 +63,7 @@ pub async fn initialize_secret_post(
 }
 
 pub async fn get_secret_by_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	secret_id: &Uuid,
 ) -> Result<Option<Secret>, sqlx::Error> {
 	query_as!(
@@ -85,7 +85,7 @@ pub async fn get_secret_by_id(
 }
 
 pub async fn get_all_secrets_in_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<Vec<Secret>, sqlx::Error> {
 	query_as!(
@@ -108,7 +108,7 @@ pub async fn get_all_secrets_in_workspace(
 }
 
 pub async fn create_new_secret_in_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	secret_id: &Uuid,
 	name: &str,
 	workspace_id: &Uuid,
@@ -134,7 +134,7 @@ pub async fn create_new_secret_in_workspace(
 }
 
 pub async fn update_secret_name(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	secret_id: &Uuid,
 	name: &str,
 ) -> Result<(), sqlx::Error> {
@@ -156,7 +156,7 @@ pub async fn update_secret_name(
 }
 
 pub async fn delete_secret(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	secret_id: &Uuid,
 	deletion_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {

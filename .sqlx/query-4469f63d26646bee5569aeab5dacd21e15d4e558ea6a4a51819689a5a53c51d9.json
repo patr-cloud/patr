@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE role_resource_permissions_include( role_id UUID NOT NULL, permission_id UUID NOT NULL, resource_id UUID NOT NULL, permission_type PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS('include') STORED );",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "4469f63d26646bee5569aeab5dacd21e15d4e558ea6a4a51819689a5a53c51d9"
+}

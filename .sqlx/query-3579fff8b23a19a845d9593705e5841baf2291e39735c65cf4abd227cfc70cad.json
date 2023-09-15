@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE user_api_token_workspace_permission_type( token_id UUID NOT NULL, workspace_id UUID NOT NULL, token_permission_type TOKEN_PERMISSION_TYPE NOT NULL );",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "3579fff8b23a19a845d9593705e5841baf2291e39735c65cf4abd227cfc70cad"
+}

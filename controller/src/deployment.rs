@@ -16,6 +16,8 @@ use tokio::signal;
 
 use crate::{app::AppState, models::PatrDeployment};
 
+/// Starts the deployment controller. This function will ideally run forever,
+/// only exiting when a ctrl-c signal is received.
 pub async fn start_controller(client: Client, state: Arc<AppState>) {
 	Controller::new(
 		Api::<PatrDeployment>::all(client.clone()),
@@ -55,10 +57,19 @@ pub async fn start_controller(client: Client, state: Arc<AppState>) {
 	.await;
 }
 
+/// Reconciles the state of the cluster with the state of the Patr API. This
+/// function is called whenever a new `PatrDeployment` is created, updated, or
+/// deleted. In case a child object (an object owned by this controller) is
+/// updated / deleted, this function is then as well. This function should
+/// check with the Patr API to see if the deployment is up to date, and if not,
+/// update it, along with all child objects.
 async fn reconcile(_obj: Arc<PatrDeployment>, _ctx: Arc<AppState>) -> Result<Action, kube::Error> {
 	Ok(Action::requeue(Duration::from_secs(3600)))
 }
 
+/// Handles errors that occur during the reconciliation process. This function
+/// is called whenever an error occurs during the reconciliation process. This
+/// function should decide what to do with the error.
 fn error_policy(_obj: Arc<PatrDeployment>, _err: &kube::Error, _ctx: Arc<AppState>) -> Action {
 	Action::requeue(Duration::from_secs(5))
 }

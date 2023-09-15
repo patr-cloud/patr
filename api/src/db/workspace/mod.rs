@@ -91,10 +91,10 @@ pub struct Address {
 	pub country: String,
 }
 
-pub async fn initialize_workspaces_pre(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_workspaces_tables(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing workspace tables");
+	info!("Initializing workspace tables");
 
 	query!(
 		r#"
@@ -248,21 +248,21 @@ pub async fn initialize_workspaces_pre(
 	.execute(&mut *connection)
 	.await?;
 
-	domain::initialize_domain_pre(connection).await?;
-	docker_registry::initialize_docker_registry_pre(connection).await?;
-	secret::initialize_secret_pre(connection).await?;
-	region::initialize_region_pre(connection).await?;
-	infrastructure::initialize_infrastructure_pre(connection).await?;
-	billing::initialize_billing_pre(connection).await?;
-	ci::initialize_ci_pre(connection).await?;
+	domain::initialize_domain_tables(connection).await?;
+	docker_registry::initialize_docker_registry_tables(connection).await?;
+	secret::initialize_secret_tables(connection).await?;
+	region::initialize_region_tables(connection).await?;
+	infrastructure::initialize_infrastructure_tables(connection).await?;
+	billing::initialize_billing_tables(connection).await?;
+	ci::initialize_ci_tables(connection).await?;
 
 	Ok(())
 }
 
-pub async fn initialize_workspaces_post(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_workspaces_constraints(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Finishing up workspace tables initialization");
+	info!("Finishing up workspace tables initialization");
 	query!(
 		r#"
 		ALTER TABLE workspace
@@ -349,19 +349,19 @@ pub async fn initialize_workspaces_post(
 	.execute(&mut *connection)
 	.await?;
 
-	domain::initialize_domain_post(connection).await?;
-	docker_registry::initialize_docker_registry_post(connection).await?;
-	secret::initialize_secret_post(connection).await?;
-	region::initialize_region_post(connection).await?;
-	infrastructure::initialize_infrastructure_post(connection).await?;
-	billing::initialize_billing_post(connection).await?;
-	ci::initialize_ci_post(connection).await?;
+	domain::initialize_domain_constraints(connection).await?;
+	docker_registry::initialize_docker_registry_constraints(connection).await?;
+	secret::initialize_secret_constraints(connection).await?;
+	region::initialize_region_constraints(connection).await?;
+	infrastructure::initialize_infrastructure_constraints(connection).await?;
+	billing::initialize_billing_constraints(connection).await?;
+	ci::initialize_ci_constraints(connection).await?;
 
 	Ok(())
 }
 
 pub async fn create_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	name: &str,
 	super_admin_id: &Uuid,
@@ -449,7 +449,7 @@ pub async fn create_workspace(
 }
 
 pub async fn get_workspace_info(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<Option<Workspace>, sqlx::Error> {
 	query!(
@@ -513,7 +513,7 @@ pub async fn get_workspace_info(
 }
 
 pub async fn get_workspace_by_name(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	name: &str,
 ) -> Result<Option<Workspace>, sqlx::Error> {
 	query!(
@@ -576,7 +576,7 @@ pub async fn get_workspace_by_name(
 }
 
 pub async fn delete_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	deletion_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
@@ -598,7 +598,7 @@ pub async fn delete_workspace(
 }
 
 pub async fn update_workspace_info(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	name: Option<String>,
 	alert_emails: Option<Vec<String>>,
@@ -626,7 +626,7 @@ pub async fn update_workspace_info(
 }
 
 pub async fn create_workspace_audit_log(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	id: &Uuid,
 	workspace_id: &Uuid,
 	ip_address: &str,
@@ -679,7 +679,7 @@ pub async fn create_workspace_audit_log(
 }
 
 pub async fn generate_new_workspace_audit_log_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 ) -> Result<Uuid, sqlx::Error> {
 	loop {
 		let uuid = Uuid::new_v4();
@@ -706,7 +706,7 @@ pub async fn generate_new_workspace_audit_log_id(
 }
 
 pub async fn get_workspace_audit_logs(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<Vec<WorkspaceAuditLog>, sqlx::Error> {
 	query_as!(
@@ -741,7 +741,7 @@ pub async fn get_workspace_audit_logs(
 }
 
 pub async fn get_resource_audit_logs(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	resource_id: &Uuid,
 ) -> Result<Vec<WorkspaceAuditLog>, sqlx::Error> {
 	query_as!(
@@ -776,7 +776,7 @@ pub async fn get_resource_audit_logs(
 }
 
 pub async fn get_all_workspaces(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 ) -> Result<Vec<Workspace>, sqlx::Error> {
 	let res = query!(
 		r#"
@@ -838,7 +838,7 @@ pub async fn get_all_workspaces(
 }
 
 pub async fn get_all_active_workspaces_for_billing(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 ) -> Result<Vec<Workspace>, sqlx::Error> {
 	let res = query!(
 		r#"
@@ -901,7 +901,7 @@ pub async fn get_all_active_workspaces_for_billing(
 }
 
 pub async fn get_resource_limit_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<u32, sqlx::Error> {
 	query!(
@@ -927,7 +927,7 @@ pub async fn get_resource_limit_for_workspace(
 }
 
 pub async fn generate_new_address_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 ) -> Result<Uuid, sqlx::Error> {
 	loop {
 		let uuid = Uuid::new_v4();
@@ -952,7 +952,7 @@ pub async fn generate_new_address_id(
 }
 
 pub async fn add_billing_address(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	address_details: &Address,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -1000,7 +1000,7 @@ pub async fn add_billing_address(
 }
 
 pub async fn update_billing_address(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	address_details: &Address,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -1037,7 +1037,7 @@ pub async fn update_billing_address(
 }
 
 pub async fn add_billing_address_to_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	address_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
@@ -1059,7 +1059,7 @@ pub async fn add_billing_address_to_workspace(
 }
 
 pub async fn delete_billing_address_from_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -1079,7 +1079,7 @@ pub async fn delete_billing_address_from_workspace(
 }
 
 pub async fn delete_billing_address(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	address_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -1097,7 +1097,7 @@ pub async fn delete_billing_address(
 }
 
 pub async fn get_billing_address(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	address_id: &Uuid,
 ) -> Result<Option<Address>, sqlx::Error> {
 	query_as!(
@@ -1126,7 +1126,7 @@ pub async fn get_billing_address(
 }
 
 pub async fn set_default_payment_method_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	payment_method_id: &str,
 ) -> Result<(), sqlx::Error> {
@@ -1148,7 +1148,7 @@ pub async fn set_default_payment_method_for_workspace(
 }
 
 pub async fn get_default_payment_method_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<Option<String>, sqlx::Error> {
 	query!(
@@ -1170,7 +1170,7 @@ pub async fn get_default_payment_method_for_workspace(
 }
 
 pub async fn set_resource_limit_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	deployment_limit: i32,
 	database_limit: i32,
@@ -1210,7 +1210,7 @@ pub async fn set_resource_limit_for_workspace(
 }
 
 pub async fn unmark_workspace_as_spam(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -1230,7 +1230,7 @@ pub async fn unmark_workspace_as_spam(
 }
 
 pub async fn freeze_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -1250,7 +1250,7 @@ pub async fn freeze_workspace(
 }
 
 pub async fn submit_inapp_survey(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	user_id: &Uuid,
 	version: &str,
 	response: &serde_json::Value,

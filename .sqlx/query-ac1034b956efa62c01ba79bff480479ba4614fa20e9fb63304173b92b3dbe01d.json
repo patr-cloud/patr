@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE EXTENSION IF NOT EXISTS citext;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "ac1034b956efa62c01ba79bff480479ba4614fa20e9fb63304173b92b3dbe01d"
+}

@@ -69,10 +69,10 @@ pub struct DeploymentVolume {
 	pub path: String,
 }
 
-pub async fn initialize_deployment_pre(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_deployment_tables(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing deployments tables");
+	info!("Initializing deployments tables");
 
 	query!(
 		r#"
@@ -371,10 +371,10 @@ pub async fn initialize_deployment_pre(
 	Ok(())
 }
 
-pub async fn initialize_deployment_post(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_deployment_constraints(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Finishing up deployment tables initialization");
+	info!("Finishing up deployment tables initialization");
 	query!(
 		r#"
 		ALTER TABLE deployment
@@ -435,7 +435,7 @@ pub async fn initialize_deployment_post(
 }
 
 pub async fn create_deployment_with_internal_registry(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	id: &Uuid,
 	name: &str,
 	repository_id: &Uuid,
@@ -520,7 +520,7 @@ pub async fn create_deployment_with_internal_registry(
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_deployment_with_external_registry(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	id: &Uuid,
 	name: &str,
 	registry: &str,
@@ -606,7 +606,7 @@ pub async fn create_deployment_with_external_registry(
 }
 
 pub async fn get_deployments_by_image_name_and_tag_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	image_name: &str,
 	image_tag: &str,
 	workspace_id: &Uuid,
@@ -663,7 +663,7 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 }
 
 pub async fn get_deployments_by_repository_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	repository_id: &Uuid,
 ) -> Result<Vec<Deployment>, sqlx::Error> {
 	query_as!(
@@ -701,7 +701,7 @@ pub async fn get_deployments_by_repository_id(
 }
 
 pub async fn get_deployments_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<Vec<Deployment>, sqlx::Error> {
 	query_as!(
@@ -739,7 +739,7 @@ pub async fn get_deployments_for_workspace(
 }
 
 pub async fn get_deployment_by_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 ) -> Result<Option<Deployment>, sqlx::Error> {
 	query_as!(
@@ -777,7 +777,7 @@ pub async fn get_deployment_by_id(
 }
 
 pub async fn get_deployment_by_id_including_deleted(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 ) -> Result<Option<Deployment>, sqlx::Error> {
 	query_as!(
@@ -814,7 +814,7 @@ pub async fn get_deployment_by_id_including_deleted(
 }
 
 pub async fn get_deployment_by_name_in_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	name: &str,
 	workspace_id: &Uuid,
 ) -> Result<Option<Deployment>, sqlx::Error> {
@@ -855,7 +855,7 @@ pub async fn get_deployment_by_name_in_workspace(
 }
 
 pub async fn update_deployment_status(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 	status: &DeploymentStatus,
 ) -> Result<(), sqlx::Error> {
@@ -877,7 +877,7 @@ pub async fn update_deployment_status(
 }
 
 pub async fn delete_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 	deletion_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
@@ -900,7 +900,7 @@ pub async fn delete_deployment(
 }
 
 pub async fn get_environment_variables_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 ) -> Result<Vec<DeploymentEnvironmentVariable>, sqlx::Error> {
 	query_as!(
@@ -923,7 +923,7 @@ pub async fn get_environment_variables_for_deployment(
 }
 
 pub async fn add_environment_variable_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 	key: &str,
 	value: Option<&str>,
@@ -952,7 +952,7 @@ pub async fn add_environment_variable_for_deployment(
 }
 
 pub async fn remove_all_environment_variables_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -970,7 +970,7 @@ pub async fn remove_all_environment_variables_for_deployment(
 }
 
 pub async fn get_deployments_with_secret_as_environment_variable(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	secret_id: &Uuid,
 ) -> Result<Vec<Uuid>, sqlx::Error> {
 	let rows = query!(
@@ -1000,7 +1000,7 @@ pub async fn get_deployments_with_secret_as_environment_variable(
 }
 
 pub async fn get_exposed_ports_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 ) -> Result<Vec<(u16, ExposedPortType)>, sqlx::Error> {
 	let rows = query!(
@@ -1025,7 +1025,7 @@ pub async fn get_exposed_ports_for_deployment(
 }
 
 pub async fn add_exposed_port_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 	port: u16,
 	exposed_port_type: &ExposedPortType,
@@ -1051,7 +1051,7 @@ pub async fn add_exposed_port_for_deployment(
 }
 
 pub async fn remove_all_exposed_ports_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -1069,7 +1069,7 @@ pub async fn remove_all_exposed_ports_for_deployment(
 }
 
 pub async fn update_deployment_details(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 	name: Option<&str>,
 	machine_type: Option<&Uuid>,
@@ -1161,7 +1161,7 @@ pub async fn update_deployment_details(
 }
 
 pub async fn add_config_mount_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 	path: &str,
 	file: &[u8],
@@ -1187,7 +1187,7 @@ pub async fn add_config_mount_for_deployment(
 }
 
 pub async fn add_volume_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 	volume_id: &Uuid,
 	name: &str,
@@ -1219,7 +1219,7 @@ pub async fn add_volume_for_deployment(
 }
 
 pub async fn update_volume_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 	size: i32,
 	name: &str,
@@ -1244,7 +1244,7 @@ pub async fn update_volume_for_deployment(
 }
 
 pub async fn delete_volume(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	volume_id: &Uuid,
 	deleted_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
@@ -1266,7 +1266,7 @@ pub async fn delete_volume(
 }
 
 pub async fn get_all_deployment_volumes(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 ) -> Result<Vec<DeploymentVolume>, sqlx::Error> {
 	query_as!(
@@ -1291,7 +1291,7 @@ pub async fn get_all_deployment_volumes(
 }
 
 pub async fn get_all_deployment_config_mounts(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 ) -> Result<Vec<DeploymentConfigMount>, sqlx::Error> {
 	query_as!(
@@ -1313,7 +1313,7 @@ pub async fn get_all_deployment_config_mounts(
 }
 
 pub async fn remove_all_config_mounts_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -1331,7 +1331,7 @@ pub async fn remove_all_config_mounts_for_deployment(
 }
 
 pub async fn get_all_deployment_machine_types(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 ) -> Result<Vec<DeploymentMachineType>, sqlx::Error> {
 	query_as!(
 		DeploymentMachineType,
@@ -1349,7 +1349,7 @@ pub async fn get_all_deployment_machine_types(
 }
 
 pub async fn get_build_events_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 ) -> Result<Vec<WorkspaceAuditLog>, sqlx::Error> {
 	query_as!(
@@ -1390,7 +1390,7 @@ pub async fn get_build_events_for_deployment(
 }
 
 pub async fn add_digest_to_deployment_deploy_history(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 	repository_id: &Uuid,
 	digest: &str,
@@ -1422,7 +1422,7 @@ pub async fn add_digest_to_deployment_deploy_history(
 }
 
 pub async fn update_current_live_digest_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 	digest: &str,
 ) -> Result<(), sqlx::Error> {
@@ -1444,7 +1444,7 @@ pub async fn update_current_live_digest_for_deployment(
 }
 
 pub async fn get_deployment_image_digest_by_digest(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	digest: &str,
 ) -> Result<Option<DeploymentDeployHistory>, sqlx::Error> {
 	query_as!(
@@ -1465,7 +1465,7 @@ pub async fn get_deployment_image_digest_by_digest(
 }
 
 pub async fn get_all_digest_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 ) -> Result<Vec<DeploymentDeployHistory>, sqlx::Error> {
 	query_as!(
@@ -1486,7 +1486,7 @@ pub async fn get_all_digest_for_deployment(
 }
 
 pub async fn get_deployments_by_region_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	region_id: &Uuid,
 ) -> Result<Vec<Deployment>, sqlx::Error> {
@@ -1527,7 +1527,7 @@ pub async fn get_deployments_by_region_id(
 }
 
 pub async fn get_deployments_for_report_card(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<Vec<Deployment>, sqlx::Error> {
 	query_as!(

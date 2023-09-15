@@ -100,8 +100,8 @@ where
 }
 
 impl<T> IntoIterator for OneOrMore<T> {
-	type Item = T;
 	type IntoIter = std::vec::IntoIter<T>;
+	type Item = T;
 
 	fn into_iter(self) -> Self::IntoIter {
 		match self {

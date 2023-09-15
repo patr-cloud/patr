@@ -46,10 +46,10 @@ impl Region {
 	}
 }
 
-pub async fn initialize_region_pre(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_region_tables(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing region tables");
+	info!("Initializing region tables");
 	query!(
 		r#"
 		CREATE TYPE INFRASTRUCTURE_CLOUD_PROVIDER AS ENUM(
@@ -138,8 +138,8 @@ pub async fn initialize_region_pre(
 	Ok(())
 }
 
-pub async fn initialize_region_post(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_region_constraints(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -269,7 +269,7 @@ pub async fn initialize_region_post(
 }
 
 pub async fn get_region_by_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	region_id: &Uuid,
 ) -> Result<Option<Region>, sqlx::Error> {
 	query_as!(
@@ -298,7 +298,7 @@ pub async fn get_region_by_id(
 }
 
 pub async fn get_all_default_regions(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 ) -> Result<Vec<Region>, sqlx::Error> {
 	query_as!(
 		Region,
@@ -325,7 +325,7 @@ pub async fn get_all_default_regions(
 }
 
 pub async fn get_region_by_name_in_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	name: &str,
 	workspace_id: &Uuid,
 ) -> Result<Option<Region>, sqlx::Error> {
@@ -358,7 +358,7 @@ pub async fn get_region_by_name_in_workspace(
 }
 
 pub async fn get_all_regions_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<Vec<Region>, sqlx::Error> {
 	query_as!(
@@ -391,7 +391,7 @@ pub async fn get_all_regions_for_workspace(
 }
 
 pub async fn get_all_byoc_regions_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<Vec<Region>, sqlx::Error> {
 	query_as!(
@@ -421,7 +421,7 @@ pub async fn get_all_byoc_regions_for_workspace(
 }
 
 pub async fn get_all_active_byoc_region(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 ) -> Result<Vec<Region>, sqlx::Error> {
 	query_as!(
 		Region,
@@ -449,7 +449,7 @@ pub async fn get_all_active_byoc_region(
 }
 
 pub async fn get_all_disconnected_byoc_region(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 ) -> Result<Vec<Region>, sqlx::Error> {
 	query_as!(
 		Region,
@@ -479,7 +479,7 @@ pub async fn get_all_disconnected_byoc_region(
 }
 
 pub async fn set_region_as_connected(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	region_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -500,7 +500,7 @@ pub async fn set_region_as_connected(
 }
 
 pub async fn set_region_as_disconnected(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	region_id: &Uuid,
 	disconnected_at: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
@@ -523,7 +523,7 @@ pub async fn set_region_as_disconnected(
 }
 
 pub async fn add_region_to_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	region_id: &Uuid,
 	name: &str,
 	cloud_provider: &InfrastructureCloudProvider,
@@ -556,7 +556,7 @@ pub async fn add_region_to_workspace(
 }
 
 pub async fn set_region_as_active(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	region_id: &Uuid,
 	kube_config: Kubeconfig,
 	ingress_hostname: &Host,
@@ -583,7 +583,7 @@ pub async fn set_region_as_active(
 }
 
 pub async fn set_region_as_errored(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	region_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -603,7 +603,7 @@ pub async fn set_region_as_errored(
 }
 
 pub async fn append_messge_log_for_region(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	region_id: &Uuid,
 	message: &str,
 ) -> Result<(), sqlx::Error> {
@@ -625,7 +625,7 @@ pub async fn append_messge_log_for_region(
 }
 
 pub async fn delete_region(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	region_id: &Uuid,
 	deletion_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
@@ -648,7 +648,7 @@ pub async fn delete_region(
 }
 
 pub async fn get_errored_and_deleted_regions_with_unrevoked_certificates(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 ) -> Result<Vec<Region>, sqlx::Error> {
 	query_as!(
 		Region,
@@ -680,7 +680,7 @@ pub async fn get_errored_and_deleted_regions_with_unrevoked_certificates(
 }
 
 pub async fn update_region_certificate_as_revoked(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	region_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(

@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs, clippy::missing_docs_in_private_items)]
-#![feature(return_position_impl_trait_in_trait)]
+#![feature(return_position_impl_trait_in_trait, async_fn_in_trait)]
 
 //! This crate contains all the DTOs and common models used in the API across
 //! the frontend, backend, the CLI, and the controller.
@@ -33,14 +33,37 @@ pub mod prelude {
 	};
 }
 
+/// A private module to restrict implementations within the crate.
 mod private {
+	/// A private trait to restrict implementations within the crate. Any trait
+	/// that requires a [`Sealed`] trait to be implemented, must have
+	/// implementations provided within the crate. If you need to implement
+	/// something outside this crate that requires a [`Sealed`] trait, something
+	/// went wrong in the API design.
 	pub trait Sealed {}
 }
 
+/// Contains the trait that is used to represent all the data that will be sent
+/// to an endpoint in the API. This trait is implemented for all the endpoints
+/// in the API. Since it is a large trait, a helper macro is provided to
+/// generate a request. See: [`macros::declare_api_endpoint`]
 mod endpoint;
+/// Contains the enum used to represent an error response from the API. This is
+/// an exhaustive list of all the possible error types and the status codes for
+/// the error variant
 mod error;
+/// Contains the struct used to represent a request being made to the API. This
+/// struct will contain the path, query, headers, body and it's necesssary
+/// parameters and fields to make the request. The generated
+/// [`request::ApiRequest`] can be used to make requests to the API.
 mod request;
+/// The structs used to represent all the different types of responses that the
+/// API can return, including success responses, error responses, and a
+/// flattened enum to parse the response from the API.
 mod response;
+/// The structs that are used to represent user data in a request. These structs
+/// will be used by the audit logger middleware, other middleware, and the API
+/// itself.
 mod user_data;
 
 pub use self::{endpoint::*, error::*, request::*, response::*, user_data::*};

@@ -73,10 +73,10 @@ pub struct ManagedDatabase {
 	pub username: String,
 }
 
-pub async fn initialize_managed_database_pre(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_managed_database_tables(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing patr databases tables");
+	info!("Initializing patr databases tables");
 
 	query!(
 		r#"
@@ -184,10 +184,10 @@ pub async fn initialize_managed_database_pre(
 	Ok(())
 }
 
-pub async fn initialize_managed_database_post(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_managed_database_constraints(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Finishing up patr databases tables initialization");
+	info!("Finishing up patr databases tables initialization");
 
 	const MANAGED_DATABASE_MACHINE_TYPE: [(i32, i32, i32); 4] = [
 		(1, 2, 25),  // 1 vCPU, 2 GB RAM, 25GB storage
@@ -234,7 +234,7 @@ pub async fn initialize_managed_database_post(
 }
 
 pub async fn create_managed_database(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	id: &Uuid,
 	name: &str,
 	workspace_id: &Uuid,
@@ -273,7 +273,7 @@ pub async fn create_managed_database(
 }
 
 pub async fn update_managed_database_status(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	id: &Uuid,
 	status: &ManagedDatabaseStatus,
 ) -> Result<(), sqlx::Error> {
@@ -295,7 +295,7 @@ pub async fn update_managed_database_status(
 }
 
 pub async fn delete_managed_database(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	database_id: &Uuid,
 	deletion_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
@@ -318,7 +318,7 @@ pub async fn delete_managed_database(
 }
 
 pub async fn get_all_managed_database_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<Vec<ManagedDatabase>, sqlx::Error> {
 	query_as!(
@@ -346,7 +346,7 @@ pub async fn get_all_managed_database_for_workspace(
 }
 
 pub async fn get_managed_database_by_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	id: &Uuid,
 ) -> Result<Option<ManagedDatabase>, sqlx::Error> {
 	query_as!(
@@ -374,7 +374,7 @@ pub async fn get_managed_database_by_id(
 }
 
 pub async fn get_managed_database_by_id_including_deleted(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	id: &Uuid,
 ) -> Result<Option<ManagedDatabase>, sqlx::Error> {
 	query_as!(
@@ -401,7 +401,7 @@ pub async fn get_managed_database_by_id_including_deleted(
 }
 
 pub async fn get_all_database_plans(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 ) -> Result<Vec<DatabasePlanType>, sqlx::Error> {
 	query_as!(
 		DatabasePlanType,
@@ -420,7 +420,7 @@ pub async fn get_all_database_plans(
 }
 
 pub async fn get_database_plan_by_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	id: &Uuid,
 ) -> Result<DatabasePlanType, sqlx::Error> {
 	query_as!(

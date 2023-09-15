@@ -16,10 +16,10 @@ pub struct DockerRepository {
 	pub name: String,
 }
 
-pub async fn initialize_docker_registry_pre(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_docker_registry_tables(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing docker registry tables");
+	info!("Initializing docker registry tables");
 	query!(
 		r#"
 		CREATE TABLE docker_registry_repository(
@@ -88,10 +88,10 @@ pub async fn initialize_docker_registry_pre(
 	Ok(())
 }
 
-pub async fn initialize_docker_registry_post(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_docker_registry_constraints(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Finishing up docker registry tables initialization");
+	info!("Finishing up docker registry tables initialization");
 	query!(
 		r#"
 		ALTER TABLE docker_registry_repository
@@ -120,7 +120,7 @@ pub async fn initialize_docker_registry_post(
 
 // function to add new repositorys
 pub async fn create_docker_repository(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	resource_id: &Uuid,
 	name: &str,
 	workspace_id: &Uuid,
@@ -146,7 +146,7 @@ pub async fn create_docker_repository(
 }
 
 pub async fn get_docker_repository_by_name(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	repository_name: &str,
 	workspace_id: &Uuid,
 ) -> Result<Option<DockerRepository>, sqlx::Error> {
@@ -173,7 +173,7 @@ pub async fn get_docker_repository_by_name(
 }
 
 pub async fn get_docker_repositories_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<Vec<(DockerRepository, u64, DateTime<Utc>)>, sqlx::Error> {
 	let rows = query!(
@@ -255,7 +255,7 @@ pub async fn get_docker_repositories_for_workspace(
 }
 
 pub async fn get_docker_repository_by_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	repository_id: &Uuid,
 ) -> Result<Option<DockerRepository>, sqlx::Error> {
 	query_as!(
@@ -278,7 +278,7 @@ pub async fn get_docker_repository_by_id(
 }
 
 pub async fn delete_docker_repository(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	docker_repository_id: &Uuid,
 	deletion_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
@@ -300,7 +300,7 @@ pub async fn delete_docker_repository(
 }
 
 pub async fn create_docker_repository_digest(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	repository_id: &Uuid,
 	digest: &str,
 	size: u64,
@@ -330,7 +330,7 @@ pub async fn create_docker_repository_digest(
 }
 
 pub async fn set_docker_repository_tag_details(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	repository_id: &Uuid,
 	tag: &str,
 	digest: &str,
@@ -363,7 +363,7 @@ pub async fn set_docker_repository_tag_details(
 }
 
 pub async fn get_list_of_tags_for_docker_repository(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	repository_id: &Uuid,
 ) -> Result<Vec<(DockerRepositoryTagInfo, String)>, sqlx::Error> {
 	let rows = query!(
@@ -397,7 +397,7 @@ pub async fn get_list_of_tags_for_docker_repository(
 }
 
 pub async fn get_tags_for_docker_repository_image(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	repository_id: &Uuid,
 	digest: &str,
 ) -> Result<Vec<DockerRepositoryTagInfo>, sqlx::Error> {
@@ -428,7 +428,7 @@ pub async fn get_tags_for_docker_repository_image(
 }
 
 pub async fn get_total_size_of_docker_repository(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	repository_id: &Uuid,
 ) -> Result<u64, sqlx::Error> {
 	query!(
@@ -448,7 +448,7 @@ pub async fn get_total_size_of_docker_repository(
 }
 
 pub async fn get_total_size_of_docker_repositories_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<u64, sqlx::Error> {
 	query!(
@@ -472,7 +472,7 @@ pub async fn get_total_size_of_docker_repositories_for_workspace(
 }
 
 pub async fn get_docker_repository_image_by_digest(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	repository_id: &Uuid,
 	digest: &str,
 ) -> Result<Option<DockerRepositoryImageInfo>, sqlx::Error> {
@@ -503,7 +503,7 @@ pub async fn get_docker_repository_image_by_digest(
 }
 
 pub async fn get_docker_repository_tag_details(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	repository_id: &Uuid,
 	tag: &str,
 ) -> Result<Option<(DockerRepositoryTagInfo, String)>, sqlx::Error> {
@@ -538,7 +538,7 @@ pub async fn get_docker_repository_tag_details(
 }
 
 pub async fn get_list_of_digests_for_docker_repository(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	repository_id: &Uuid,
 ) -> Result<Vec<DockerRepositoryImageInfo>, sqlx::Error> {
 	let rows = query!(
@@ -568,7 +568,7 @@ pub async fn get_list_of_digests_for_docker_repository(
 }
 
 pub async fn get_latest_digest_for_docker_repository(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	repository_id: &Uuid,
 ) -> Result<Option<String>, sqlx::Error> {
 	let digest = query!(
@@ -593,7 +593,7 @@ pub async fn get_latest_digest_for_docker_repository(
 }
 
 pub async fn delete_all_tags_for_docker_repository(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	repository_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -611,7 +611,7 @@ pub async fn delete_all_tags_for_docker_repository(
 }
 
 pub async fn delete_all_images_for_docker_repository(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	repository_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -629,7 +629,7 @@ pub async fn delete_all_images_for_docker_repository(
 }
 
 pub async fn delete_docker_repository_image(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	repository_id: &Uuid,
 	digest: &str,
 ) -> Result<(), sqlx::Error> {
@@ -650,7 +650,7 @@ pub async fn delete_docker_repository_image(
 }
 
 pub async fn delete_tag_from_docker_repository(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	repository_id: &Uuid,
 	tag: &str,
 ) -> Result<(), sqlx::Error> {
@@ -671,7 +671,7 @@ pub async fn delete_tag_from_docker_repository(
 }
 
 pub async fn get_last_updated_for_docker_repository(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	repository_id: &Uuid,
 ) -> Result<DateTime<Utc>, sqlx::Error> {
 	query!(

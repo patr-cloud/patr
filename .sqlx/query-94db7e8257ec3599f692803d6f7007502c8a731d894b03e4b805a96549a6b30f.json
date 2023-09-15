@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE user_login ADD CONSTRAINT user_login_pk PRIMARY KEY(login_id), ADD CONSTRAINT user_login_fk_user_id FOREIGN KEY(user_id) REFERENCES \"user\"(id), ADD CONSTRAINT user_login_uq_login_id_user_id UNIQUE(login_id, user_id), ADD CONSTRAINT user_login_uq_login_id_user_id_login_type UNIQUE( login_id, user_id, login_type );",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "94db7e8257ec3599f692803d6f7007502c8a731d894b03e4b805a96549a6b30f"
+}

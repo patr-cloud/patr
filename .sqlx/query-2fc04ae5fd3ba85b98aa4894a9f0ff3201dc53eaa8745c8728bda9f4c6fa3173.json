@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE phone_number_country_code ADD CONSTRAINT phone_number_country_code_pk PRIMARY KEY(country_code), ADD CONSTRAINT phone_number_country_code_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) );",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "2fc04ae5fd3ba85b98aa4894a9f0ff3201dc53eaa8745c8728bda9f4c6fa3173"
+}

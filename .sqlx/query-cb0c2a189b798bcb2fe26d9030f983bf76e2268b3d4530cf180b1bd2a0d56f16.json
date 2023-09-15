@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE user_api_token_workspace_permission_type ADD CONSTRAINT user_api_token_workspace_permission_type_pk PRIMARY KEY( token_id, workspace_id ), ADD CONSTRAINT user_api_token_workspace_permission_type_uq UNIQUE( token_id, workspace_id, token_permission_type ), ADD CONSTRAINT user_api_token_workspace_permission_type_fk_token FOREIGN KEY(token_id) REFERENCES user_api_token(token_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "cb0c2a189b798bcb2fe26d9030f983bf76e2268b3d4530cf180b1bd2a0d56f16"
+}

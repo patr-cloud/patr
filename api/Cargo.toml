@@ -12,6 +12,7 @@ anyhow = { workspace = true, features = ["default"] }
 argon2 = { workspace = true, features = ["default"] }
 axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
 axum-extra = { workspace = true, features = ["default", "typed-routing"] }
+axum-typed-websockets = { workspace = true, features = ["default"] }
 config = { workspace = true, features = ["default"] }
 jsonwebtoken = { workspace = true, features = ["default"] }
 macros = { workspace = true, features = [] }
@@ -23,6 +24,7 @@ rustis = { workspace = true, features = [
     "redis-json",
     "tokio-tls",
 ] }
+semver = { workspace = true, features = ["default"] }
 serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
 sqlx = { workspace = true, features = [
@@ -40,4 +42,3 @@ tower = { workspace = true, features = ["default", "full"] }
 tracing = { workspace = true, features = ["default", "async-await"] }
 typed-builder = { workspace = true, features = [] }
 typed-headers = { workspace = true, features = [] }
-axum-typed-websockets = { workspace = true, features = ["default"] }

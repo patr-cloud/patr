@@ -29,10 +29,10 @@ pub struct ManagedUrl {
 	pub cloudflare_custom_hostname_id: String,
 }
 
-pub async fn initialize_managed_url_pre(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_managed_url_tables(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing managed_url tables");
+	info!("Initializing managed_url tables");
 	query!(
 		r#"
 		CREATE TYPE MANAGED_URL_TYPE AS ENUM(
@@ -114,10 +114,10 @@ pub async fn initialize_managed_url_pre(
 	Ok(())
 }
 
-pub async fn initialize_managed_url_post(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_managed_url_constraints(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Finishing up managed_url tables initialization");
+	info!("Finishing up managed_url tables initialization");
 	/* TODO remove some of these unnecessarry foreign key constraints after
 	 * the permission checks are moved to the code */
 	query!(
@@ -163,7 +163,7 @@ pub async fn initialize_managed_url_post(
 }
 
 pub async fn get_all_managed_urls_in_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<Vec<ManagedUrl>, sqlx::Error> {
 	query_as!(
@@ -197,7 +197,7 @@ pub async fn get_all_managed_urls_in_workspace(
 }
 
 pub async fn get_all_managed_urls_for_domain(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	domain_id: &Uuid,
 ) -> Result<Vec<ManagedUrl>, sqlx::Error> {
 	query_as!(
@@ -231,7 +231,7 @@ pub async fn get_all_managed_urls_for_domain(
 }
 
 pub async fn get_all_unconfigured_managed_urls(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 ) -> Result<Vec<ManagedUrl>, sqlx::Error> {
 	query_as!(
 		ManagedUrl,
@@ -263,7 +263,7 @@ pub async fn get_all_unconfigured_managed_urls(
 }
 
 pub async fn get_all_configured_managed_urls(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 ) -> Result<Vec<ManagedUrl>, sqlx::Error> {
 	query_as!(
 		ManagedUrl,
@@ -295,7 +295,7 @@ pub async fn get_all_configured_managed_urls(
 }
 
 pub async fn create_new_managed_url_in_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	managed_url_id: &Uuid,
 	sub_domain: &str,
 	domain_id: &Uuid,
@@ -369,7 +369,7 @@ pub async fn create_new_managed_url_in_workspace(
 }
 
 pub async fn get_managed_url_by_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	managed_url_id: &Uuid,
 ) -> Result<Option<ManagedUrl>, sqlx::Error> {
 	query_as!(
@@ -403,7 +403,7 @@ pub async fn get_managed_url_by_id(
 }
 
 pub async fn update_managed_url(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	managed_url_id: &Uuid,
 	path: &str,
 	url_type: &ManagedUrlType,
@@ -446,7 +446,7 @@ pub async fn update_managed_url(
 }
 
 pub async fn update_managed_url_configuration_status(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	managed_url_id: &Uuid,
 	is_configured: bool,
 ) -> Result<(), sqlx::Error> {
@@ -468,7 +468,7 @@ pub async fn update_managed_url_configuration_status(
 }
 
 pub async fn delete_managed_url(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	managed_url_id: &Uuid,
 	deletion_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
@@ -490,7 +490,7 @@ pub async fn delete_managed_url(
 }
 
 pub async fn get_all_managed_urls_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 	workspace_id: &Uuid,
 ) -> Result<Vec<ManagedUrl>, sqlx::Error> {
@@ -528,7 +528,7 @@ pub async fn get_all_managed_urls_for_deployment(
 }
 
 pub async fn get_all_managed_urls_for_static_site(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	static_site_id: &Uuid,
 	workspace_id: &Uuid,
 ) -> Result<Vec<ManagedUrl>, sqlx::Error> {
@@ -566,7 +566,7 @@ pub async fn get_all_managed_urls_for_static_site(
 }
 
 pub async fn get_active_managed_url_count_for_domain(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	domain_id: &Uuid,
 ) -> Result<i64, sqlx::Error> {
 	query!(
@@ -587,7 +587,7 @@ pub async fn get_active_managed_url_count_for_domain(
 }
 
 pub async fn get_all_managed_urls_for_host(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	sub_domain: &str,
 	domain_id: &Uuid,
 ) -> Result<Vec<ManagedUrl>, sqlx::Error> {

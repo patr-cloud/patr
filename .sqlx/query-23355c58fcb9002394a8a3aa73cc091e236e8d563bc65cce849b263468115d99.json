@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX web_login_idx_login_id ON web_login(login_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "23355c58fcb9002394a8a3aa73cc091e236e8d563bc65cce849b263468115d99"
+}

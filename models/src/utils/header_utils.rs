@@ -34,11 +34,11 @@ pub struct BearerToken(pub Token68);
 
 impl Header for BearerToken {
 	fn name() -> &'static HeaderName {
-		&Authorization::name()
+		Authorization::name()
 	}
 
-	fn from_values<'a>(
-		values: &mut reqwest::header::ValueIter<'a, HeaderValue>,
+	fn from_values(
+		values: &mut reqwest::header::ValueIter<'_, HeaderValue>,
 	) -> Result<Option<Self>, Error>
 	where
 		Self: Sized,
@@ -60,6 +60,7 @@ impl Header for BearerToken {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct LoginId(pub Uuid);
 
+/// The header name used for the [`LoginId`] header.
 static LOGIN_ID_HEADER_NAME: HeaderName = HeaderName::from_static("x-login-id");
 
 impl Header for LoginId {
@@ -125,8 +126,8 @@ where
 /// Given a struct `RequestHeaders` like so:
 /// ```rust
 /// pub struct RequestHeaders {
-/// 	pub accept: Accept,
-/// 	pub content_type: ContentType,
+///     pub accept: Accept,
+///     pub content_type: ContentType,
 /// }
 /// ```
 ///
@@ -135,15 +136,15 @@ where
 ///
 /// ```rust
 /// impl HasHeader<Accept> for RequestHeaders {
-/// 	fn get_header(&self) -> &Accept {
-/// 		&self.accept
-/// 	}
+///     fn get_header(&self) -> &Accept {
+///         &self.accept
+///     }
 /// }
 ///
 /// impl HasHeader<ContentType> for RequestHeaders {
-/// 	fn get_header(&self) -> &ContentType {
-/// 		&self.content_type
-/// 	}
+///     fn get_header(&self) -> &ContentType {
+///         &self.content_type
+///     }
 /// }
 /// ```
 ///
@@ -158,8 +159,8 @@ where
 /// ```rust
 /// #[derive(HasHeaders)]
 /// pub struct RequestHeaders {
-/// 	pub accept: Accept,
-/// 	pub content_type: ContentType,
+///     pub accept: Accept,
+///     pub content_type: ContentType,
 /// }
 /// ```
 ///
@@ -168,9 +169,9 @@ where
 /// ```rust
 /// // A function that requires the `Accept` and `Content-Type` headers
 /// fn foo<T: HasHeaders<(Accept, ContentType)>>(headers: &T) {
-/// 	// ...
-/// 	let accept: &Accept = headers.get_header();
-/// 	let content_type: &ContentType = headers.get_header();
+///     // ...
+///     let accept: &Accept = headers.get_header();
+///     let content_type: &ContentType = headers.get_header();
 /// }
 /// ```
 ///
@@ -180,6 +181,42 @@ where
 /// if it has more headers.
 pub trait HasHeaders<T> {}
 
+/// This macro is used to implement [`HasHeaders`] for a struct. It is used to
+/// automatically implement [`HasHeader`] for all headers in a given struct.
+///
+/// If a struct implements [`HasHeader`] for all headers in the tuple, then
+/// [`HasHeaders`] is automatically implemented for that struct.
+///
+/// If you want to accept a struct that has certain headers, you can use the
+/// [`HasHeaders`] trait to do so. For example:
+/// ```rust
+/// use models::utils::HasHeaders;
+/// use typed_headers::Accept;
+///
+/// pub struct RequestHeaders {
+///     pub accept: Accept,
+/// }
+///
+/// impl HasHeader<Accept> for RequestHeaders {
+///     fn get_header(&self) -> &Accept {
+///         &self.accept
+///     }
+/// }
+///
+/// // This is equivalent to the above code
+/// #[derive(HasHeaders)]
+/// pub struct RequestHeaders {
+///     pub accept: Accept,
+/// }
+///
+/// // A function that requires the `Accept` header
+/// fn foo<T: HasHeaders<Accept>>(headers: &T) {
+///     // ...
+///     let accept: &Accept = headers.get_header();
+/// }
+/// ```
+///
+/// For more details, see the documentation for [`HasHeaders`].
 macro_rules! impl_has_headers {
 	() => {
 		impl<S> HasHeaders<()> for S {}
@@ -212,6 +249,10 @@ impl_has_headers!(H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14);
 impl_has_headers!(H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14, H15);
 impl_has_headers!(H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14, H15, H16);
 
+/// This trait is implemented for all types that can be used as a header in a
+/// request to the API. This struct is used in conjunction with the
+/// [`HasHeaders`] trait to ensure that a request headers struct has all the
+/// required headers that are needed for the query, body, etc.
 macro_rules! impl_has_headers_for_standard_header {
 	[$($header:ident),+ $(,)?] => {
 		$(impl HasHeaders<$header> for $header {})+

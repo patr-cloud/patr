@@ -129,10 +129,10 @@ impl fmt::Display for DomainPlan {
 	}
 }
 
-pub async fn initialize_billing_pre(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_billing_tables(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing billing tables");
+	info!("Initializing billing tables");
 
 	query!(
 		r#"
@@ -354,10 +354,10 @@ pub async fn initialize_billing_pre(
 	Ok(())
 }
 
-pub async fn initialize_billing_post(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn initialize_billing_constraints(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Finishing up billing tables initialization");
+	info!("Finishing up billing tables initialization");
 
 	query!(
 		r#"
@@ -454,7 +454,7 @@ pub async fn initialize_billing_post(
 }
 
 pub async fn get_all_deployment_usage(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	month_start_date: &DateTime<Utc>,
 	till_date: &DateTime<Utc>,
@@ -486,7 +486,7 @@ pub async fn get_all_deployment_usage(
 }
 
 pub async fn get_deployment_usage(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 	month_start_date: &DateTime<Utc>,
 	till_date: &DateTime<Utc>,
@@ -518,7 +518,7 @@ pub async fn get_deployment_usage(
 }
 
 pub async fn get_all_volume_usage(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	month_start_date: &DateTime<Utc>,
 	till_date: &DateTime<Utc>,
@@ -552,7 +552,7 @@ pub async fn get_all_volume_usage(
 }
 
 pub async fn get_all_managed_database_usage(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
 	till_date: &DateTime<Utc>,
@@ -584,7 +584,7 @@ pub async fn get_all_managed_database_usage(
 }
 
 pub async fn get_all_static_site_usages(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
 	till_date: &DateTime<Utc>,
@@ -614,7 +614,7 @@ pub async fn get_all_static_site_usages(
 }
 
 pub async fn get_all_managed_url_usages(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
 	till_date: &DateTime<Utc>,
@@ -643,7 +643,7 @@ pub async fn get_all_managed_url_usages(
 	.await
 }
 pub async fn get_all_docker_repository_usages(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
 	till_date: &DateTime<Utc>,
@@ -672,7 +672,7 @@ pub async fn get_all_docker_repository_usages(
 	.await
 }
 pub async fn get_all_domains_usages(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	start_date: &DateTime<Utc>,
 	till_date: &DateTime<Utc>,
@@ -702,7 +702,7 @@ pub async fn get_all_domains_usages(
 }
 
 pub async fn get_all_secrets_usages(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	month_start_date: &DateTime<Utc>,
 	till_date: &DateTime<Utc>,
@@ -732,7 +732,7 @@ pub async fn get_all_secrets_usages(
 }
 
 pub async fn create_transaction(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	id: &Uuid,
 	month: i32,
@@ -786,7 +786,7 @@ pub async fn create_transaction(
 }
 
 pub async fn update_transaction_status(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	transaction_id: &Uuid,
 	payment_status: &PaymentStatus,
 ) -> Result<(), sqlx::Error> {
@@ -808,7 +808,7 @@ pub async fn update_transaction_status(
 }
 
 pub async fn generate_new_transaction_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 ) -> Result<Uuid, sqlx::Error> {
 	loop {
 		let uuid = Uuid::new_v4();
@@ -835,7 +835,7 @@ pub async fn generate_new_transaction_id(
 }
 
 pub async fn get_payment_methods_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<Vec<PaymentMethod>, sqlx::Error> {
 	query_as!(
@@ -856,7 +856,7 @@ pub async fn get_payment_methods_for_workspace(
 }
 
 pub async fn get_total_amount_in_cents_to_pay_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<TotalAmount, sqlx::Error> {
 	query!(
@@ -889,7 +889,7 @@ pub async fn get_total_amount_in_cents_to_pay_for_workspace(
 }
 
 pub async fn get_transaction_by_transaction_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	transaction_id: &Uuid,
 ) -> Result<Option<Transaction>, sqlx::Error> {
@@ -920,7 +920,7 @@ pub async fn get_transaction_by_transaction_id(
 }
 
 pub async fn start_deployment_usage_history(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
 	machine_type: &Uuid,
@@ -960,7 +960,7 @@ pub async fn start_deployment_usage_history(
 }
 
 pub async fn stop_deployment_usage_history(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	deployment_id: &Uuid,
 	stop_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
@@ -983,7 +983,7 @@ pub async fn stop_deployment_usage_history(
 }
 
 pub async fn start_volume_usage_history(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	volume_id: &Uuid,
 	storage: u64,
@@ -1023,7 +1023,7 @@ pub async fn start_volume_usage_history(
 }
 
 pub async fn stop_volume_usage_history(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	volume_id: &Uuid,
 	stop_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
@@ -1046,7 +1046,7 @@ pub async fn stop_volume_usage_history(
 }
 
 pub async fn get_volume_payment_history_by_volume_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	volume_id: &Uuid,
 ) -> Result<Option<VolumePaymentHistory>, sqlx::Error> {
 	query_as!(
@@ -1072,7 +1072,7 @@ pub async fn get_volume_payment_history_by_volume_id(
 }
 
 pub async fn start_managed_database_usage_history(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	database_id: &Uuid,
 	db_plan_id: &Uuid,
@@ -1110,7 +1110,7 @@ pub async fn start_managed_database_usage_history(
 }
 
 pub async fn stop_managed_database_usage_history(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	database_id: &Uuid,
 	deletion_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
@@ -1133,7 +1133,7 @@ pub async fn stop_managed_database_usage_history(
 }
 
 pub async fn update_static_site_usage_history(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	static_site_plan: &StaticSitePlan,
 	update_time: &DateTime<Utc>,
@@ -1181,7 +1181,7 @@ pub async fn update_static_site_usage_history(
 }
 
 pub async fn update_managed_url_usage_history(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	url_count: &i32,
 	update_time: &DateTime<Utc>,
@@ -1229,7 +1229,7 @@ pub async fn update_managed_url_usage_history(
 }
 
 pub async fn update_docker_repo_usage_history(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	storage: &i64,
 	update_time: &DateTime<Utc>,
@@ -1277,7 +1277,7 @@ pub async fn update_docker_repo_usage_history(
 }
 
 pub async fn update_secret_usage_history(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	secret_count: &i32,
 	update_time: &DateTime<Utc>,
@@ -1325,7 +1325,7 @@ pub async fn update_secret_usage_history(
 }
 
 pub async fn update_domain_usage_history(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	domain_plan: &DomainPlan,
 	update_time: &DateTime<Utc>,
@@ -1373,7 +1373,7 @@ pub async fn update_domain_usage_history(
 }
 
 pub async fn update_amount_due_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	amount_due_in_cents: u64,
 ) -> Result<(), sqlx::Error> {
@@ -1395,7 +1395,7 @@ pub async fn update_amount_due_for_workspace(
 }
 
 pub async fn get_payment_method_info(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	payment_method_id: &str,
 ) -> Result<Option<PaymentMethod>, sqlx::Error> {
 	query_as!(
@@ -1416,7 +1416,7 @@ pub async fn get_payment_method_info(
 }
 
 pub async fn delete_payment_method(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	payment_method_id: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -1434,7 +1434,7 @@ pub async fn delete_payment_method(
 }
 
 pub async fn add_payment_method_info(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 	payment_method_id: &str,
 ) -> Result<(), sqlx::Error> {
@@ -1459,7 +1459,7 @@ pub async fn add_payment_method_info(
 }
 
 pub async fn get_transactions_in_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut DatabaseConnection,
 	workspace_id: &Uuid,
 ) -> Result<Vec<Transaction>, sqlx::Error> {
 	query_as!(

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE role( id UUID NOT NULL, name VARCHAR(100) NOT NULL, description VARCHAR(500) NOT NULL, owner_id UUID NOT NULL );",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "39b24f17a15e2447d9742ea259601afb65e39414f37e11a63d28533f2098d86a"
+}

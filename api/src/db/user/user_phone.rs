@@ -1,43 +1,63 @@
-use api_models::{models::user::UserPhoneNumber, utils::Uuid};
-use chrono::{DateTime, Utc};
+use crate::prelude::*;
 
-use super::User;
-use crate::{query, query_as, Database};
-
-pub struct PhoneCountryCode {
-	pub country_code: String,
-	pub phone_code: String,
-	pub country_name: String,
-}
-
-pub struct PhoneNumberToBeVerified {
-	pub country_code: String,
-	pub phone_number: String,
-	pub user_id: Uuid,
-	pub verification_token_hash: String,
-	pub verification_token_expiry: DateTime<Utc>,
-}
-
-pub async fn initialize_user_phone_pre(
-	_connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
-	Ok(())
-}
-
-pub async fn initialize_user_phone_post(
-	connection: &mut <Database as sqlx::Database>::Connection,
+/// Initializes the user phone tables
+#[instrument(skip(connection))]
+pub async fn initialize_user_phone_tables(
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		CREATE TABLE phone_number_country_code(
-			country_code CHAR(2)
-				CONSTRAINT phone_number_country_code_pk PRIMARY KEY
-				CONSTRAINT phone_number_country_code_chk_country_code_is_upper_case CHECK(
-					country_code = UPPER(country_code)
-				),
+			country_code CHAR(2),
 			phone_code VARCHAR(5) NOT NULL,
 			country_name VARCHAR(80) NOT NULL
 		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_phone_number(
+			user_id UUID NOT NULL,
+			country_code CHAR(2) NOT NULL,
+			number VARCHAR(15) NOT NULL
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_unverified_phone_number(
+			country_code CHAR(2) NOT NULL,
+			phone_number VARCHAR(15) NOT NULL,
+			user_id UUID NOT NULL,
+			verification_token_hash TEXT NOT NULL,
+			verification_token_expiry TIMESTAMPTZ NOT NULL
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+/// Initializes the user phone constraints
+#[instrument(skip(connection))]
+pub async fn initialize_user_phone_constraints(
+	connection: &mut DatabaseConnection,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		ALTER TABLE phone_number_country_code
+			ADD CONSTRAINT phone_number_country_code_pk PRIMARY KEY(country_code),
+			ADD CONSTRAINT phone_number_country_code_chk_country_code_is_upper_case CHECK(
+				country_code = UPPER(country_code)
+			);
 		"#
 	)
 	.execute(&mut *connection)
@@ -57,26 +77,24 @@ pub async fn initialize_user_phone_post(
 
 	query!(
 		r#"
-		CREATE TABLE user_phone_number(
-			user_id UUID NOT NULL
-				CONSTRAINT user_phone_number_fk_user_id REFERENCES "user"(id)
+		ALTER TABLE user_phone_number
+			ADD CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number),
+			ADD CONSTRAINT user_phone_number_fk_user_id
+				FOREIGN KEY(user_id) REFERENCES "user"(id)
 					DEFERRABLE INITIALLY IMMEDIATE,
-			country_code CHAR(2) NOT NULL
-				CONSTRAINT user_phone_number_fk_country_code
-					REFERENCES phone_number_country_code(country_code)
-				CONSTRAINT user_phone_number_chk_country_code_is_upper_case CHECK(
-					country_code = UPPER(country_code)
-				),
-			number VARCHAR(15) NOT NULL
-				CONSTRAINT user_phone_number_chk_number_valid CHECK(
-					LENGTH(number) >= 7 AND
-					LENGTH(number) <= 15 AND
-					CAST(number AS BIGINT) > 0
-				),
-			CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number),
-			CONSTRAINT user_phone_number_uq_user_id_country_code_number
-				UNIQUE(user_id, country_code, number)
-		);
+			ADD CONSTRAINT user_phone_number_fk_country_code
+				FOREIGN KEY(country_code) REFERENCES phone_number_country_code(country_code),
+			ADD CONSTRAINT user_phone_number_chk_country_code_is_upper_case CHECK(
+				country_code = UPPER(country_code)
+			),
+			ADD CONSTRAINT user_phone_number_chk_number_valid CHECK(
+				LENGTH(number) >= 7 AND
+				LENGTH(number) <= 15 AND
+				CAST(number AS BIGINT) > 0
+			),
+			ADD CONSTRAINT user_phone_number_uq_user_id_country_code_number UNIQUE(
+				user_id, country_code, number
+			);
 		"#
 	)
 	.execute(&mut *connection)
@@ -96,26 +114,19 @@ pub async fn initialize_user_phone_post(
 
 	query!(
 		r#"
-		CREATE TABLE user_unverified_phone_number(
-			country_code CHAR(2) NOT NULL
-				CONSTRAINT user_unverified_phone_number_fk_country_code
-					REFERENCES phone_number_country_code(country_code)
-				CONSTRAINT user_unverified_phone_number_chk_country_code_is_upper_case CHECK(
-					country_code = UPPER(country_code)
-				),
-			phone_number VARCHAR(15) NOT NULL,
-			user_id UUID NOT NULL
-				CONSTRAINT user_unverified_phone_number_fk_user_id
-					REFERENCES "user"(id),
-			verification_token_hash TEXT NOT NULL,
-			verification_token_expiry TIMESTAMPTZ NOT NULL,
-
-			CONSTRAINT user_univerified_phone_number_pk
+		ALTER TABLE user_unverified_phone_number
+			ADD CONSTRAINT user_univerified_phone_number_pk
 				PRIMARY KEY(country_code, phone_number),
-			CONSTRAINT
-				user_univerified_phone_number_uq_country_code_phone_number
-				UNIQUE(user_id, country_code, phone_number)
-		);
+			ADD CONSTRAINT user_unverified_phone_number_fk_country_code
+				FOREIGN KEY(country_code) REFERENCES phone_number_country_code(country_code),
+			ADD CONSTRAINT user_unverified_phone_number_chk_country_code_is_upper_case CHECK(
+				country_code = UPPER(country_code)
+			),
+			ADD CONSTRAINT user_unverified_phone_number_fk_user_id
+				FOREIGN KEY(user_id) REFERENCES "user"(id),
+			ADD CONSTRAINT user_univerified_phone_number_uq_country_code_phone_number UNIQUE(
+				user_id, country_code, phone_number
+			);
 		"#
 	)
 	.execute(&mut *connection)
@@ -409,307 +420,4 @@ pub async fn initialize_user_phone_post(
 	.await?;
 
 	Ok(())
-}
-
-pub async fn get_user_by_phone_number(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	country_code: &str,
-	phone_number: &str,
-) -> Result<Option<User>, sqlx::Error> {
-	query_as!(
-		User,
-		r#"
-		SELECT
-			"user".id as "id: _",
-			"user".username,
-			"user".password,
-			"user".first_name,
-			"user".last_name,
-			"user".dob,
-			"user".bio,
-			"user".location,
-			"user".created,
-			"user".recovery_email_local,
-			"user".recovery_email_domain_id as "recovery_email_domain_id: _",
-			"user".recovery_phone_country_code,
-			"user".recovery_phone_number,
-			"user".workspace_limit,
-			"user".sign_up_coupon,
-			"user".mfa_secret
-		FROM
-			"user"
-		INNER JOIN
-			user_phone_number
-		ON
-			"user".id = user_phone_number.user_id
-		WHERE
-			user_phone_number.country_code = $1 AND
-			user_phone_number.number = $2;
-		"#,
-		country_code,
-		phone_number
-	)
-	.fetch_optional(&mut *connection)
-	.await
-}
-
-pub async fn add_phone_number_to_be_verified_for_user(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	country_code: &str,
-	phone_number: &str,
-	user_id: &Uuid,
-	verification_token: &str,
-	token_expiry: &DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			user_unverified_phone_number(
-				country_code,
-				phone_number,
-				user_id,
-				verification_token_hash,
-				verification_token_expiry
-			)
-		VALUES
-			($1, $2, $3, $4, $5)
-		ON CONFLICT(country_code, phone_number) DO UPDATE SET
-			user_id = EXCLUDED.user_id,
-			verification_token_hash = EXCLUDED.verification_token_hash,
-			verification_token_expiry = EXCLUDED.verification_token_expiry;
-		"#,
-		country_code,
-		phone_number,
-		user_id as _,
-		verification_token,
-		token_expiry as _
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
-}
-
-pub async fn get_phone_number_to_be_verified_for_user(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &Uuid,
-	country_code: &str,
-	phone_number: &str,
-) -> Result<Option<PhoneNumberToBeVerified>, sqlx::Error> {
-	query_as!(
-		PhoneNumberToBeVerified,
-		r#"
-		SELECT
-			user_unverified_phone_number.country_code,
-			user_unverified_phone_number.phone_number,
-			user_unverified_phone_number.user_id as "user_id: _",
-			user_unverified_phone_number.verification_token_hash,
-			user_unverified_phone_number.verification_token_expiry
-		FROM
-			user_unverified_phone_number
-		INNER JOIN
-			phone_number_country_code
-		ON
-			user_unverified_phone_number.country_code = phone_number_country_code.country_code
-		WHERE
-			user_id = $1 AND
-			user_unverified_phone_number.country_code = $2 AND
-			user_unverified_phone_number.phone_number = $3;
-		"#,
-		user_id as _,
-		country_code,
-		phone_number
-	)
-	.fetch_optional(&mut *connection)
-	.await
-}
-
-pub async fn get_phone_number_to_be_verified_by_phone_number(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	country_code: &str,
-	phone_number: &str,
-) -> Result<Option<PhoneNumberToBeVerified>, sqlx::Error> {
-	query_as!(
-		PhoneNumberToBeVerified,
-		r#"
-		SELECT
-			country_code,
-			phone_number,
-			user_id as "user_id: _",
-			verification_token_hash,
-			verification_token_expiry
-		FROM
-			user_unverified_phone_number
-		WHERE
-			country_code = $1 AND
-			phone_number = $2;
-		"#,
-		country_code,
-		phone_number
-	)
-	.fetch_optional(&mut *connection)
-	.await
-}
-
-pub async fn delete_phone_number_to_be_verified_for_user(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &Uuid,
-	country_code: &str,
-	phone_number: &str,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		DELETE FROM
-			user_unverified_phone_number
-		WHERE
-			user_id = $1 AND
-			country_code = $2 AND
-			phone_number = $3;
-		"#,
-		user_id as _,
-		country_code,
-		phone_number
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn update_recovery_phone_number_for_user(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &Uuid,
-	country_code: &str,
-	phone_number: &str,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			"user"
-		SET
-			recovery_phone_country_code = $1,
-			recovery_phone_number = $2
-		WHERE
-			id = $3;
-		"#,
-		country_code,
-		phone_number,
-		user_id as _,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn get_phone_country_by_country_code(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	country_code: &str,
-) -> Result<Option<PhoneCountryCode>, sqlx::Error> {
-	query_as!(
-		PhoneCountryCode,
-		r#"
-		SELECT
-			*
-		FROM
-			phone_number_country_code
-		WHERE
-			country_code = $1;
-		"#,
-		country_code
-	)
-	.fetch_optional(&mut *connection)
-	.await
-}
-
-pub async fn add_phone_number_for_user(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &Uuid,
-	phone_country_code: &str,
-	phone_number: &str,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			user_phone_number(
-				user_id,
-				country_code,
-				number
-			)
-		VALUES
-			($1, $2, $3);
-		"#,
-		user_id as _,
-		phone_country_code,
-		phone_number
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn get_phone_numbers_for_user(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &Uuid,
-) -> Result<Vec<UserPhoneNumber>, sqlx::Error> {
-	query_as!(
-		UserPhoneNumber,
-		r#"
-		SELECT
-			country_code,
-			number as "phone_number"
-		FROM
-			user_phone_number
-		WHERE
-			user_id = $1;
-		"#,
-		user_id as _,
-	)
-	.fetch_all(&mut *connection)
-	.await
-}
-
-pub async fn get_recovery_phone_number_for_user(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &Uuid,
-) -> Result<Option<UserPhoneNumber>, sqlx::Error> {
-	query_as!(
-		UserPhoneNumber,
-		r#"
-		SELECT
-			"user".recovery_phone_country_code as "country_code!",
-			"user".recovery_phone_number as "phone_number!"
-		FROM
-			"user"
-		WHERE
-			"user".id = $1 AND
-			"user".recovery_phone_number IS NOT NULL AND
-			"user".recovery_phone_country_code IS NOT NULL;
-		"#,
-		user_id as _,
-	)
-	.fetch_optional(&mut *connection)
-	.await
-}
-
-pub async fn delete_phone_number_for_user(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &Uuid,
-	country_code: &str,
-	phone_number: &str,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		DELETE FROM
-			user_phone_number
-		WHERE
-			user_id = $1 AND
-			country_code = $2 AND
-			number = $3;
-		"#,
-		user_id as _,
-		country_code,
-		phone_number
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
 }

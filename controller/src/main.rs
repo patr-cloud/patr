@@ -12,8 +12,14 @@ use app::AppState;
 use kube::Client;
 use tokio::task;
 
+/// All app state that is shared across the entire application. Used to share
+/// ApiTokens, backend connections, etc.
 mod app;
+/// All functions and business login to run a deployment controller and keep it
+/// in sync with the Patr API data.
 mod deployment;
+/// All models used by the controller, including CRDs, requests, responses, etc.
+#[allow(clippy::missing_docs_in_private_items)]
 mod models;
 
 #[tokio::main]

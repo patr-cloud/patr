@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE user_api_token_resource_permissions_include( token_id UUID NOT NULL, workspace_id UUID NOT NULL, permission_id UUID NOT NULL, resource_id UUID NOT NULL, permission_type PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('include') STORED );",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "66b6244289c8cc6c68b683120c3867605e091b31a05efe072730f89f7f592760"
+}
