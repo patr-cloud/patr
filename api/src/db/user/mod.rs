@@ -16,7 +16,7 @@ pub use self::{
 
 /// Initializes all user tables
 #[instrument(skip(connection))]
-pub async fn initialize_users_tables(
+pub async fn initialize_user_tables(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
 	info!("Initializing user tables");
@@ -31,7 +31,7 @@ pub async fn initialize_users_tables(
 
 /// Finishes up all user tables
 #[instrument(skip(connection))]
-pub async fn initialize_users_constraints(
+pub async fn initialize_user_constraints(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
 	info!("Finishing up user tables initialization");

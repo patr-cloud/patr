@@ -6,9 +6,9 @@ mod initializer;
 mod meta_data;
 mod rbac;
 mod user;
-// mod workspace;
+mod workspace;
 
-pub use self::{initializer::*, meta_data::*, rbac::*, user::*};
+pub use self::{initializer::*, meta_data::*, rbac::*, user::*, workspace::*};
 
 /// Connects to the database based on a config. Not much to say here.
 #[tracing::instrument(skip(config))]
