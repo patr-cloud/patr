@@ -57,13 +57,13 @@ pub async fn initialize(app: &AppState) -> Result<(), ErrorType> {
 
 		// Create all tables
 		db::initialize_meta_tables(&mut transaction).await?;
-		db::initialize_users_tables(&mut transaction).await?;
-		// db::initialize_workspaces_tables(&mut transaction).await?;
+		db::initialize_user_tables(&mut transaction).await?;
+		db::initialize_workspace_tables(&mut transaction).await?;
 		db::initialize_rbac_tables(&mut transaction).await?;
 
 		db::initialize_rbac_constraints(&mut transaction).await?;
-		// db::initialize_workspaces_constraints(&mut transaction).await?;
-		db::initialize_users_constraints(&mut transaction).await?;
+		db::initialize_workspace_constraints(&mut transaction).await?;
+		db::initialize_user_constraints(&mut transaction).await?;
 		db::initialize_meta_constraints(&mut transaction).await?;
 
 		// Set the database schema version
