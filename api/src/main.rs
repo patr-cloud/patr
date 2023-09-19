@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs, clippy::missing_docs_in_private_items)]
-#![feature(impl_trait_in_assoc_type)]
+#![feature(impl_trait_in_assoc_type, return_position_impl_trait_in_trait)]
 
 //! The main API server for Patr.
 
@@ -21,6 +21,9 @@ pub mod models;
 /// This module contains the Redis connection and all utilities to set and get
 /// data in Redis.
 pub mod redis;
+/// This module is used to listen for changes in the database and publish them
+/// to Redis. This is used for the real-time updates on stream requests.
+pub mod redis_publisher;
 /// This module contains the routes for the API. This is where the endpoints
 /// are mounted.
 pub mod routes;
@@ -74,25 +77,46 @@ pub mod prelude {
 #[tracing::instrument]
 async fn main() {
 	let config = utils::config::parse_config();
+	let config_cloned = config.clone();
 
-	let database = db::connect(&config.database).await;
+	// TODO tracing open telemetry
 
-	let redis = redis::connect(&config.redis).await;
+	tokio::join!(
+		async move {
+			let database = db::connect(&config.database).await;
 
-	axum::Server::bind(&config.bind_address)
-		.serve(
-			app::setup_routes(&AppState {
+			let redis = redis::connect(&config.redis).await;
+
+			axum::Server::bind(&config.bind_address)
+				.serve(
+					app::setup_routes(&AppState {
+						database,
+						redis,
+						config,
+					})
+					.into_make_service_with_connect_info::<SocketAddr>(),
+				)
+				.with_graceful_shutdown(async {
+					tokio::signal::ctrl_c()
+						.await
+						.expect("failed to install CTRL+C signal handler");
+				})
+				.await
+				.unwrap();
+		},
+		async move {
+			let config = config_cloned;
+
+			let database = db::connect(&config.database).await;
+
+			let redis = redis::connect(&config.redis).await;
+
+			redis_publisher::run(&AppState {
 				database,
 				redis,
 				config,
 			})
-			.into_make_service_with_connect_info::<SocketAddr>(),
-		)
-		.with_graceful_shutdown(async {
-			tokio::signal::ctrl_c()
-				.await
-				.expect("failed to install CTRL+C signal handler");
-		})
-		.await
-		.unwrap();
+			.await;
+		}
+	);
 }

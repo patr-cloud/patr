@@ -34,7 +34,7 @@ where
 	#[track_caller]
 	fn mount_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
 	where
-		H: EndpointHandler<E> + Clone + Send + 'static,
+		for<'req> H: EndpointHandler<'req, E> + Clone + Send + 'static,
 		E: ApiEndpoint<Authenticator = NoAuthentication>;
 
 	/// Mount an API endpoint directly along with the required request parser,
@@ -42,7 +42,7 @@ where
 	#[track_caller]
 	fn mount_auth_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
 	where
-		H: AuthEndpointHandler<E> + Clone + Send + 'static,
+	for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send + 'static,
 		E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 		E::RequestHeaders: HasHeader<BearerToken>;
 }
@@ -54,7 +54,7 @@ where
 	#[track_caller]
 	fn mount_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
 	where
-		H: EndpointHandler<E> + Clone + Send + 'static,
+		for<'req> H: EndpointHandler<'req, E> + Clone + Send + 'static,
 		E: ApiEndpoint<Authenticator = NoAuthentication>,
 	{
 		self.route(
@@ -77,7 +77,7 @@ where
 	#[track_caller]
 	fn mount_auth_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
 	where
-		H: AuthEndpointHandler<E> + Clone + Send + 'static,
+	for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send + 'static,
 		E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 		E::RequestHeaders: HasHeader<BearerToken>,
 	{

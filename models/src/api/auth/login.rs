@@ -1,25 +1,21 @@
-use crate::prelude::*;
-
 macros::declare_api_endpoint!(
-	// Definition of a route to login and start a new user session. This route will generate all
-	// the authentication token needed to access all the services on PATR.
+	/// Definition of a route to login and start a new user session. This route will generate all
+	/// the authentication token needed to access all the services on PATR.
 	Login,
 	POST "/auth/sign-in",
 	request = {
-		// The user ID of the user
+		/// The user ID of the user
 		pub user_id: String,
-		// The password of the user
+		/// The password of the user
 		pub password: String,
-		// If a user has a multi-factor authentication enabled, the OTP to authenticate the identity
-		// of the user
+		/// If a user has a multi-factor authentication enabled, the OTP to authenticate the identity
+		/// of the user
 		pub mfa_otp: Option<String>,
 	},
 	response = {
-		// A new access token to authenticate the user
+		/// A new access token to authenticate the user
 		pub access_token: String,
-		// A new refresh token for the renewal of the access token once expired
-		pub refresh_token: Uuid,
-		// The login ID of the new user session
-		pub login_id: Uuid,
+		/// A new refresh token for the renewal of the access token once expired
+		pub refresh_token: String,
 	}
 );

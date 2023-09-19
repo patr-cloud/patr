@@ -1,20 +1,16 @@
-use crate::{prelude::*, utils::BearerToken};
+use crate::utils::BearerToken;
 
 macros::declare_api_endpoint!(
-	// Definition of a route which renews an access token
+	/// This endpoint is used to get a new access token for a user. This is used 
+	/// when the access token expires, and requires the refresh token to be provided.
 	RenewAccessToken,
 	GET "/auth/access-token",
 	request_headers = {
-		// The login ID to identify a user session
-		pub login_id: Uuid,
+		/// The refresh token which was provided to the user when they logged in
+		pub refresh_token: BearerToken,
 	},
-	query = {
-		// The refresh token to get a new access token
-		#[serde(skip)]
-		pub refresh_token: Uuid,
-	}
 	response = {
-		// The new access token which will be used for authentication by the user
+		/// The new access token which will be used for authentication by the user
 		access_token: String,
 	},
 );

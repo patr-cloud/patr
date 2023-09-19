@@ -13,26 +13,26 @@ use crate::prelude::*;
 /// request and returns an async fn that returns a response. This can be used to
 /// mount endpoint handlers that respond to specific API endpoints as per the
 /// [`ApiEndpoint`] trait.
-pub trait EndpointHandler<E>
+pub trait EndpointHandler<'req, E>
 where
 	E: ApiEndpoint,
 {
 	/// The future returned by the endpoint handler.
-	type Future: Future<Output = Result<AppResponse<E>, ErrorType>> + Send + 'static;
+	type Future: Future<Output = Result<AppResponse<E>, ErrorType>> + Send;
 
 	/// Call the endpoint handler with the given request.
-	fn call<'a>(self, req: AppRequest<'a, E>) -> Self::Future;
+	fn call(self, req: AppRequest<'req, E>) -> Self::Future;
 }
 
-impl<F, Fut, E> EndpointHandler<E> for F
+impl<'req, F, Fut, E> EndpointHandler<'req, E> for F
 where
-	F: FnOnce(AppRequest<'_, E>) -> Fut + Clone + Send + 'static,
-	Fut: Future<Output = Result<AppResponse<E>, ErrorType>> + Send + 'static,
+	F: FnOnce(AppRequest<'req, E>) -> Fut,
+	Fut: Future<Output = Result<AppResponse<E>, ErrorType>> + Send,
 	E: ApiEndpoint,
 {
 	type Future = Fut;
 
-	fn call(self, req: AppRequest<'_, E>) -> Self::Future {
+	fn call(self, req: AppRequest<'req, E>) -> Self::Future {
 		self(req)
 	}
 }
@@ -42,7 +42,7 @@ where
 /// and you should not need to use this directly.
 pub struct EndpointLayer<H, E>
 where
-	H: EndpointHandler<E> + Clone + Send + 'static,
+	for<'req> H: EndpointHandler<'req, E> + Clone + Send,
 	E: ApiEndpoint,
 {
 	handler: H,
@@ -51,7 +51,7 @@ where
 
 impl<H, E> EndpointLayer<H, E>
 where
-	H: EndpointHandler<E> + Clone + Send + 'static,
+	for<'req> H: EndpointHandler<'req, E> + Clone + Send,
 	E: ApiEndpoint,
 {
 	/// Create a new instance of the [`EndpointLayer`] with the given endpoint
@@ -66,7 +66,7 @@ where
 
 impl<S, H, E> Layer<S> for EndpointLayer<H, E>
 where
-	H: EndpointHandler<E> + Clone + Send + 'static,
+	for<'req> H: EndpointHandler<'req, E> + Clone + Send,
 	E: ApiEndpoint,
 {
 	type Service = EndpointService<H, E>;
@@ -81,7 +81,7 @@ where
 
 impl<H, E> Clone for EndpointLayer<H, E>
 where
-	H: EndpointHandler<E> + Clone + Send + 'static,
+	for<'req> H: EndpointHandler<'req, E> + Clone + Send,
 	E: ApiEndpoint,
 {
 	fn clone(&self) -> Self {
@@ -95,28 +95,29 @@ where
 /// A [`tower::Service`] that can be used mount the endpoint to the router.
 pub struct EndpointService<H, E>
 where
-	H: EndpointHandler<E> + Clone + Send + 'static,
+	for<'req> H: EndpointHandler<'req, E> + Clone + Send,
 	E: ApiEndpoint,
 {
 	handler: H,
 	endpoint: PhantomData<E>,
 }
 
-impl<'a, H, E> Service<AppRequest<'a, E>> for EndpointService<H, E>
+impl<'req, H, E> Service<AppRequest<'req, E>> for EndpointService<H, E>
 where
-	H: EndpointHandler<E> + Clone + Send + 'static,
+	for<'anon> H: EndpointHandler<'anon, E> + Clone + Send,
 	E: ApiEndpoint,
 {
 	type Error = ErrorType;
-	type Future = H::Future;
 	type Response = AppResponse<E>;
+
+	type Future = impl Future<Output = Result<AppResponse<E>, Self::Error>> + Send;
 
 	fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
 		Poll::Ready(Ok(()))
 	}
 
 	#[instrument(skip(self, req))]
-	fn call(&mut self, req: AppRequest<'a, E>) -> Self::Future {
+	fn call(&mut self, req: AppRequest<'req, E>) -> Self::Future {
 		trace!("Calling request handler");
 		self.handler.clone().call(req)
 	}
@@ -124,7 +125,7 @@ where
 
 impl<H, E> Clone for EndpointService<H, E>
 where
-	H: EndpointHandler<E> + Clone + Send + 'static,
+	for<'req> H: EndpointHandler<'req, E> + Clone + Send,
 	E: ApiEndpoint,
 {
 	fn clone(&self) -> Self {
