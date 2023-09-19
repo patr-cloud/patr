@@ -1,21 +1,25 @@
 macros::declare_api_endpoint!(
-	/// The route to login and start a new user session. This route will generate the
+	/// Route to login and start a new user session. This route will generate all
 	/// the authentication token needed to access all the services on PATR.
 	Login,
 	POST "/auth/sign-in",
 	request = {
-		/// The user ID of the user
+		/// The user identifier of the user
+		/// It can be either the username or the email of the user depending on the user input
 		pub user_id: String,
 		/// The password of the user
 		pub password: String,
-		/// If a user has a multi-factor authentication enabled, the OTP to authenticate the 
-		/// identity of the user
+		/// If a user has a multi-factor authentication enabled, the OTP to authenticate the identity
+		/// of the user
 		pub mfa_otp: Option<String>,
 	},
 	response = {
-		/// A new access token to authenticate the user
+		/// The access token is used to authenticate the user, implying that the user is logged in 
+		/// once the route is completed successfully. 
 		pub access_token: String,
-		/// A new refresh token for the renewal of the access token once expired
+		/// The access token has a expiry, and the refresh token (below) is used to 
+		/// renew the access token.
+		/// It contains the login_id and the refresh_token concatenated together.
 		pub refresh_token: String,
 	}
 );
