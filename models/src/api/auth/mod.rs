@@ -10,7 +10,6 @@ mod logout;
 // mod oauth;
 mod resend_otp;
 mod reset_password;
-mod validate_coupon;
 
 pub use self::{
 	access_token::*,
@@ -25,5 +24,4 @@ pub use self::{
 	// oauth::*,
 	resend_otp::*,
 	reset_password::*,
-	validate_coupon::*,
 };

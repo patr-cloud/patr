@@ -12,6 +12,7 @@ anyhow = { workspace = true, features = ["default"] }
 axum = { workspace = true, features = ["default", "http2", "ws", "tracing"] }
 axum-extra = { workspace = true, features = ["typed-routing"] }
 axum-typed-websockets = { workspace = true, features = ["default"] }
+base64 = { workspace = true, features = ["default"] }
 hex = { workspace = true, features = ["default"] }
 macros = { workspace = true, features = [] }
 preprocess = { workspace = true, features = [] }

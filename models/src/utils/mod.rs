@@ -4,6 +4,10 @@ mod axum_request;
 /// This module contains all the utilities used for parsing a response and using
 /// it in the [`crate::ApiEndpoint`] response struct.
 mod axum_response;
+/// Contains the [`Base64String`] struct, which is used to represent a string
+/// that is encoded in base64. This is used to ensure that the base64 string is
+/// always serialized and deserialized correctly.
+mod base64string;
 /// A set of constant booleans that are used to ensure that the values are
 /// forced to be either true or false.
 mod bools;
@@ -22,6 +26,9 @@ mod one_or_many;
 /// request enforces a response header to be present, which provides the total
 /// number of items in the response.
 mod paginated;
+/// A helper type that serializes and deserializes u16 values as strings. This
+/// is used for using u16 values as keys in a JSON object.
+mod stringified_u16;
 /// A set of utilities to work with tuples. This is mostly used in adding a
 /// required response header for [`paginated`][super::paginated] responses.
 mod tuple_utils;
@@ -36,11 +43,13 @@ mod websocket;
 pub use self::{
 	axum_request::*,
 	axum_response::*,
+	base64string::*,
 	bools::*,
 	header_utils::*,
 	middlewares::*,
 	one_or_many::*,
 	paginated::*,
+	stringified_u16::*,
 	tuple_utils::*,
 	uuid::*,
 	websocket::*,
@@ -52,4 +61,6 @@ pub use self::{
 pub mod constants {
 	/// Base URL for the API
 	pub const API_BASE_URL: &str = "https://api.patr.cloud";
+	/// Patr's container registry URL
+	pub const CONTAINER_REGISTRY_URL: &str = "registry.patr.cloud";
 }
