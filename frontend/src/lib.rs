@@ -9,10 +9,9 @@ pub mod prelude {
 	pub struct PortalId;
 
 	pub use leptos::*;
+	pub use log::{debug, error, info, trace, warn};
 
 	pub use crate::{components::*, pages::*, utils::*};
-
-	pub use models::prelude::*;
 }
 
 use leptos_declarative::prelude::*;
@@ -26,10 +25,10 @@ mod utils;
 use app::App;
 use wasm_bindgen::JsCast;
 
-/// Main function. Called when the application is started.
-/// Is only used when running the application directly.
-/// If the application is used as a library, this function is not called.
-pub fn main() {
+/// The main hydrate function. Called when the application starts to hydrate
+/// from the server side.
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn hydrate() {
 	wasm_logger::init(wasm_logger::Config::default());
 
 	if cfg!(debug_assertions) {

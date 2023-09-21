@@ -1,3 +1,4 @@
+use kube::Client;
 use models::prelude::*;
 
 /// Represents the state of the application. This is used to share information
@@ -7,13 +8,15 @@ pub struct AppState {
 	pub patr_token: String,
 	/// The region ID of the cluster.
 	pub region_id: Uuid,
+	/// The kuberentes client used to communicate with the cluster.
+	pub client: Client,
 }
 
 impl AppState {
 	/// Tries to create a new `AppState` from the environment variables. If the
 	/// environment variables are not set in release mode, it will panic. In
 	/// debug mode, it will use the default values.
-	pub fn try_default() -> Self {
+	pub async fn try_default() -> Self {
 		let patr_token = std::env::var("PATR_TOKEN");
 		let region_id = std::env::var("REGION_ID");
 
@@ -42,9 +45,14 @@ impl AppState {
 			region_id.expect("malformed region ID")
 		};
 
+		let client = Client::try_default()
+			.await
+			.expect("Failed to get kubernetes client details");
+
 		Self {
 			patr_token,
 			region_id,
+			client,
 		}
 	}
 }

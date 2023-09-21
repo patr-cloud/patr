@@ -7,17 +7,12 @@ use std::{
 use config::{Config, Environment, File};
 use serde::{Deserialize, Serialize};
 
-use crate::prelude::*;
-
 /// Parses the configuration of the application and returns the parsed config.
 /// In case of any errors while parsing, this function will panic.
 ///
 /// This should ideally be only called once during initialization and the parsed
 /// config should be used for the lifetime of the application.
-#[instrument]
 pub fn parse_config() -> AppConfig {
-	trace!("Reading config data...");
-
 	let env = if cfg!(debug_assertions) {
 		"dev".to_string()
 	} else {

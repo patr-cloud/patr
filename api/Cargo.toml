@@ -39,7 +39,13 @@ sqlx = { workspace = true, features = [
 ] }
 time = { workspace = true, features = ["default", "serde-human-readable"] }
 tokio = { workspace = true, features = ["default", "full"] }
+tokio-tungstenite = { workspace = true, features = [
+    "default",
+    "rustls-tls-webpki-roots",
+    "rustls",
+] }
 tower = { workspace = true, features = ["default", "full"] }
 tracing = { workspace = true, features = ["default", "async-await"] }
+tracing-log = { workspace = true, features = ["default"] }
 typed-builder = { workspace = true, features = [] }
 typed-headers = { workspace = true, features = [] }

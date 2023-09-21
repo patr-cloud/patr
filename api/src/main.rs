@@ -7,6 +7,7 @@
 use std::net::SocketAddr;
 
 use app::AppState;
+use tracing_log::{log::LevelFilter, LogTracer};
 
 /// This module contains the main application logic. Most of the app requests,
 /// states, and mounting of endpoints are done here
@@ -77,24 +78,31 @@ pub mod prelude {
 #[tracing::instrument]
 async fn main() {
 	let config = utils::config::parse_config();
-	let config_cloned = config.clone();
 
+	LogTracer::builder()
+		.with_max_level(LevelFilter::Debug)
+		.init()
+		.expect("failed to set tracing logger");
+	tracing::info!("Config parsed. Running in {} mode", config.environment);
 	// TODO tracing open telemetry
 
+	let bind_address = config.bind_address;
+
+	let database = db::connect(&config.database).await;
+
+	let redis = redis::connect(&config.redis).await;
+
+	let state = AppState {
+		database,
+		redis,
+		config,
+	};
+
 	tokio::join!(
-		async move {
-			let database = db::connect(&config.database).await;
-
-			let redis = redis::connect(&config.redis).await;
-
-			axum::Server::bind(&config.bind_address)
+		async {
+			axum::Server::bind(&bind_address)
 				.serve(
-					app::setup_routes(&AppState {
-						database,
-						redis,
-						config,
-					})
-					.into_make_service_with_connect_info::<SocketAddr>(),
+					app::setup_routes(&state).into_make_service_with_connect_info::<SocketAddr>(),
 				)
 				.with_graceful_shutdown(async {
 					tokio::signal::ctrl_c()
@@ -104,19 +112,8 @@ async fn main() {
 				.await
 				.unwrap();
 		},
-		async move {
-			let config = config_cloned;
-
-			let database = db::connect(&config.database).await;
-
-			let redis = redis::connect(&config.redis).await;
-
-			redis_publisher::run(&AppState {
-				database,
-				redis,
-				config,
-			})
-			.await;
+		async {
+			redis_publisher::run(&state).await;
 		}
 	);
 }
