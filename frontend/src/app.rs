@@ -33,8 +33,8 @@ pub fn App(cx: Scope) -> impl IntoView {
 						</div>
 					}
 					>
-					<Route path=LoggedOutRoutes::Login view=Login />
-					<Route path=LoggedOutRoutes::SignUp view=SignUp />
+					// <Route path=LoggedOutRoutes::Login view=Login />
+					// <Route path=LoggedOutRoutes::SignUp view=SignUp />
 					<Route path="*" view=|cx| {
 						let location = use_location(cx);
 						info!("location: {}", location.pathname.get());

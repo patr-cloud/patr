@@ -14,15 +14,21 @@ pub async fn run(state: &AppState) {
 		.expect("unable to connect to database");
 
 	listener
-		.listen_all(["channel1", "channel2", "channel3"])
+		.listen(constants::DATABASE_CHANNEL)
 		.await
-		.expect("unable to listen to channels");
+		.expect("unable to listen to the notification channel");
 
-	while let Ok(message) = listener.recv().await {
-		println!("Received notification: {:?}", message);
-		_ = state
-			.redis
-			.publish(message.channel(), message.payload())
-			.await;
+	tokio::select! {
+		_ = async {
+			while let Ok(message) = listener.recv().await {
+				_ = state
+					.redis
+					.publish(message.channel(), message.payload())
+					.await;
+			}
+		} => {},
+		_ = tokio::signal::ctrl_c() => {
+			info!("Received SIGINT, shutting down");
+		}
 	}
 }

@@ -7,18 +7,16 @@ edition.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 axum-extra = { workspace = true, features = ["typed-routing"] }
 console_error_panic_hook = { workspace = true, features = [] }
-leptos = { workspace = true, features = [
-    "default",
-    "tracing",
-    "ssr",
-    "hydrate",
-] }
+leptos = { workspace = true, features = ["tracing", "hydrate"] }
 leptos-use = { workspace = true, features = ["storage"] }
 leptos_declarative = { workspace = true, features = [] }
-leptos_router = { workspace = true, features = ["default", "hydrate", "ssr"] }
+leptos_router = { workspace = true, features = ["hydrate"] }
 log = { workspace = true, features = [] }
 models = { workspace = true, features = [] }
 reqwest = { workspace = true, features = ["json", "rustls-tls"] }

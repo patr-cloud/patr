@@ -9,7 +9,6 @@
 use std::sync::Arc;
 
 use app::AppState;
-use kube::Client;
 use tokio::task;
 
 /// All app state that is shared across the entire application. Used to share
@@ -24,13 +23,12 @@ mod models;
 
 #[tokio::main]
 async fn main() {
-	let state = Arc::new(AppState::try_default());
+	let state = Arc::new(AppState::try_default().await);
 
-	let client = Client::try_default()
-		.await
-		.expect("Failed to get kubernetes client details");
-
-	let deployment_task = task::spawn(deployment::start_controller(client.clone(), state.clone()));
+	let deployment_task = task::spawn(deployment::start_controller(
+		state.client.clone(),
+		state.clone(),
+	));
 
 	_ = deployment_task.await;
 }
