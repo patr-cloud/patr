@@ -1,4 +1,5 @@
 use axum::{body::Body, http::Request, RequestExt};
+#[cfg(not(target_arch = "wasm32"))]
 use axum_typed_websockets::WebSocketUpgrade as TypedWebSocketUpgrade;
 
 use super::FromAxumRequest;
@@ -6,8 +7,12 @@ use crate::ErrorType;
 
 /// A websocket upgrade request. This can be used as a body type for websocket
 /// endpoints.
-pub struct WebSocketUpgrade<ServerMsg, ClientMsg>(pub TypedWebSocketUpgrade<ServerMsg, ClientMsg>);
+pub struct WebSocketUpgrade<ServerMsg, ClientMsg>(
+	#[cfg(not(target_arch = "wasm32"))] pub TypedWebSocketUpgrade<ServerMsg, ClientMsg>,
+	#[cfg(target_arch = "wasm32")] pub std::marker::PhantomData<(ServerMsg, ClientMsg)>,
+);
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<ServerMsg, ClientMsg> FromAxumRequest for WebSocketUpgrade<ServerMsg, ClientMsg>
 where
 	ClientMsg: 'static,

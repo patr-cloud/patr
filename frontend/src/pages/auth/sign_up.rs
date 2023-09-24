@@ -14,12 +14,10 @@ use models::{
 		IsUsernameValidResponse,
 		RecoveryMethod,
 	},
-	utils::{
-		ApiErrorResponse,
-		ApiErrorResponseBody,
-		ApiRequest,
-		ApiSuccessResponse,
-	},
+	ApiErrorResponse,
+	ApiErrorResponseBody,
+	ApiRequest,
+	ApiSuccessResponse,
 	ErrorType,
 };
 
@@ -82,13 +80,15 @@ pub fn SignUp(
 	let username_valid_action = create_action(cx, move |username: &String| {
 		let username = username.clone();
 		async move {
-			let result =
-				make_request(ApiRequest::<IsUsernameValidRequest>::new(
-					IsUsernameValidQuery { username },
-					(),
-					IsUsernameValidRequest,
-				))
-				.await;
+			let result = make_request(
+				ApiRequest::<IsUsernameValidRequest>::builder()
+					.path(Default::default())
+					.query(IsUsernameValidQuery { username })
+					.headers(())
+					.body(IsUsernameValidRequest)
+					.build(),
+			)
+			.await;
 
 			let IsUsernameValidResponse { available } = match result {
 				Ok(ApiSuccessResponse {
@@ -126,11 +126,14 @@ pub fn SignUp(
 	let email_valid_action = create_action(cx, move |email: &String| {
 		let email = email.clone();
 		async move {
-			let result = make_request(ApiRequest::<IsEmailValidRequest>::new(
-				IsEmailValidQuery { email },
-				(),
-				IsEmailValidRequest,
-			))
+			let result = make_request(
+				ApiRequest::<IsEmailValidRequest>::builder()
+					.path(Default::default())
+					.query(IsEmailValidQuery { email })
+					.headers(())
+					.body(IsEmailValidRequest)
+					.build(),
+			)
 			.await;
 
 			let IsEmailValidResponse { available } = match result {
@@ -181,21 +184,21 @@ pub fn SignUp(
 			let recovery_email = email.clone();
 			let password = password.clone();
 			async move {
-				let result =
-					make_request(ApiRequest::<CreateAccountRequest>::new(
-						(),
-						(),
-						CreateAccountRequest {
+				let result = make_request(
+					ApiRequest::<CreateAccountRequest>::builder()
+						.path(Default::default())
+						.query(())
+						.headers(())
+						.body(CreateAccountRequest {
 							first_name,
 							last_name,
 							username,
 							password,
-							recovery_method: RecoveryMethod::Email {
-								recovery_email,
-							},
-						},
-					))
-					.await;
+							recovery_method: RecoveryMethod::Email { recovery_email },
+						})
+						.build(),
+				)
+				.await;
 
 				let CreateAccountResponse = match result {
 					Ok(ApiSuccessResponse {
@@ -245,8 +248,7 @@ pub fn SignUp(
 	let check_confirm_password_valid = use_debounce_fn_with_arg(
 		move |confirm_password: String| {
 			if confirm_password.is_empty() {
-				confirm_password_error
-					.set("Please confirm your Password again".into());
+				confirm_password_error.set("Please confirm your Password again".into());
 				return;
 			}
 
@@ -326,8 +328,7 @@ pub fn SignUp(
 		}
 
 		if confirm_password.is_empty() {
-			confirm_password_error
-				.set("Please confirm your Password again".into());
+			confirm_password_error.set("Please confirm your Password again".into());
 			_ = confirm_password_ref.get().unwrap().focus();
 			invalid_data = true;
 		}
@@ -342,8 +343,7 @@ pub fn SignUp(
 			return;
 		}
 
-		sign_up_action
-			.dispatch((first_name, last_name, username, email, password));
+		sign_up_action.dispatch((first_name, last_name, username, email, password));
 	};
 
 	let sign_up_loading = sign_up_action.pending();

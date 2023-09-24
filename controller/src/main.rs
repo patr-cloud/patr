@@ -11,6 +11,13 @@ use std::sync::Arc;
 use app::AppState;
 use tokio::task;
 
+/// A prelude that re-exports commonly used items.
+pub mod prelude {
+	pub use tracing::{debug, error, info, instrument, trace, warn};
+
+	pub use crate::{app::AppState, models::PatrDeployment};
+}
+
 /// All app state that is shared across the entire application. Used to share
 /// ApiTokens, backend connections, etc.
 mod app;

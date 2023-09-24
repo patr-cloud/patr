@@ -11,15 +11,16 @@ use crate::prelude::*;
 
 #[path = "api.patr.cloud/mod.rs"]
 mod api_patr_cloud;
-
+// #[path = "app.patr.cloud/mod.rs"]
+// mod app_patr_cloud; TODO later
 #[path = "registry.patr.cloud/mod.rs"]
 mod registry_patr_cloud;
 
 /// Sets up the routes for the API, across all domains.
 #[instrument(skip(state))]
-pub fn setup_routes(state: &AppState) -> Router {
-	let api_router = api_patr_cloud::setup_routes(state);
-	let registry_router = registry_patr_cloud::setup_routes(state);
+pub async fn setup_routes(state: &AppState) -> Router {
+	let api_router = api_patr_cloud::setup_routes(state).await;
+	let registry_router = registry_patr_cloud::setup_routes(state).await;
 
 	Router::new()
 		.route(

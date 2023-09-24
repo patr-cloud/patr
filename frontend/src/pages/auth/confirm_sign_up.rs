@@ -1,33 +1,32 @@
-use models::{api::auth::CompleteSignUpRequest, utils::ApiRequest};
-
 use crate::prelude::*;
 
 #[component]
 pub fn ConfirmSignUp(
 	/// The scope of the component.
-	cx: Scope,
+	_cx: Scope,
 ) -> impl IntoView {
 	// let navigate = use_navigate(cx);
 
-	// let confirm_sign_up_action =
-	// 	create_action(cx, |(username, otp): &(String, String)| {
-	// 		let username = username.clone();
-	// 		let otp = otp.clone();
-	// 		async move {
-	// 			let result =
-	// 				make_request(ApiRequest::<CompleteSignUpRequest>::new(
-	// 					(),
-	// 					(),
-	// 					CompleteSignUpRequest {
-	// 						username,
-	// 						verification_token: otp,
-	// 					},
-	// 				))
-	// 				.await;
-	// 		}
-	// 	});
-    
-    // let confirm_loading = confirm_sign_up_action.pending();
+	// let confirm_sign_up_action = create_action(cx, |(username, otp): &(String, String)| {
+	// 	let username = username.clone();
+	// 	let otp = otp.clone();
+	// 	async move {
+	// 		let result = make_request(
+	// 			ApiRequest::<CompleteSignUpRequest>::builder()
+	// 				.path(Default::default())
+	// 				.query(())
+	// 				.headers(())
+	// 				.body(CompleteSignUpRequest {
+	// 					username,
+	// 					verification_token: otp,
+	// 				})
+	// 				.build(),
+	// 		)
+	// 		.await;
+	// 	}
+	// });
+
+	// let confirm_loading = confirm_sign_up_action.pending();
 
 	// view! { cx,
 	// 	<div class="box-onboard fc-fs-fs">
@@ -37,7 +36,8 @@ pub fn ConfirmSignUp(
 	// 				disabled=confirm_loading
 	// 				on_click=Box::new(move |_| {
 	// 					_ = navigate(
-	// 						AppRoute::LoggedOutRoutes(LoggedOutRoutes::SignUp)
+	// 						AppRoute::LoggedOutRoutes(LoggedOutRoutes::SignUp).to_string().as_str(),
+	// 						NavigateOptions::default(),
 	// 					);
 	// 				})
 	// 			>

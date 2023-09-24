@@ -1,6 +1,7 @@
 mod app_route;
 mod color;
 mod ext;
+mod fetch;
 mod notification_type;
 mod routes;
 mod size;
@@ -11,6 +12,7 @@ pub use self::{
 	app_route::*,
 	color::*,
 	ext::*,
+	fetch::*,
 	notification_type::*,
 	routes::*,
 	size::*,
