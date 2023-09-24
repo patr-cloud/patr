@@ -2,8 +2,10 @@
 pub mod auth;
 // pub mod ci;
 // pub mod user;
-pub mod workspace;
 mod get_version;
+pub mod workspace;
+
+use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
 
@@ -34,6 +36,14 @@ impl<T> WithId<T> {
 	/// instantiate the struct with the data and Id provided as parameters.
 	pub fn new(id: Uuid, data: T) -> Self {
 		Self { id, data }
+	}
+}
+
+impl<T> Deref for WithId<T> {
+	type Target = T;
+
+	fn deref(&self) -> &Self::Target {
+		&self.data
 	}
 }
 

@@ -11,6 +11,11 @@ use leptos_use::storage::use_local_storage;
 
 use crate::prelude::*;
 
+#[server(Test)]
+async fn test(name: String) -> Result<String, ServerFnError> {
+	Ok("Hello, world!".to_string())
+}
+
 #[component]
 pub fn App(cx: Scope) -> impl IntoView {
 	let (state, set_state, _) =

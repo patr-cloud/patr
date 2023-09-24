@@ -14,9 +14,7 @@ pub enum AppStorage {
 		/// The user's access token.
 		access_token: String,
 		/// The user's refresh token.
-		refresh_token: Uuid,
-		/// The user's login ID.
-		login_id: Uuid,
+		refresh_token: String,
 		/// The user's default workspace, if they have any
 		default_workspace: Option<Uuid>,
 	},

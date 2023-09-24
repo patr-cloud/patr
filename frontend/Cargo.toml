@@ -23,6 +23,7 @@ reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
 serde_urlencoded = { workspace = true, features = [] }
+tracing = { workspace = true, features = ["attributes"] }
 url = { workspace = true, features = ["default"] }
 wasm-bindgen = { workspace = true, features = ["default"] }
 wasm-logger = { workspace = true, features = [] }

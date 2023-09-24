@@ -4,7 +4,7 @@ use reqwest::Client;
 use serde::{de::DeserializeOwned, Serialize};
 use url::Url;
 
-use crate::{
+use models::{
 	prelude::*,
 	utils::{constants, False, Headers},
 	ApiErrorResponse,

@@ -52,7 +52,7 @@ fn _error(error: RegistryError, message: String) -> Error {
 	}
 }
 
-pub fn setup_routes(state: &AppState) -> Router {
+pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
 		.nest(
 			"/v2",

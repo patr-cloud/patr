@@ -102,7 +102,9 @@ async fn main() {
 		async {
 			axum::Server::bind(&bind_address)
 				.serve(
-					app::setup_routes(&state).into_make_service_with_connect_info::<SocketAddr>(),
+					app::setup_routes(&state)
+						.await
+						.into_make_service_with_connect_info::<SocketAddr>(),
 				)
 				.with_graceful_shutdown(async {
 					tokio::signal::ctrl_c()

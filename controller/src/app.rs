@@ -1,5 +1,6 @@
 use kube::Client;
 use models::prelude::*;
+use thiserror::Error;
 
 /// Represents the state of the application. This is used to share information
 /// across the entire application, such as the API token, the region ID, etc.
@@ -8,7 +9,7 @@ pub struct AppState {
 	pub patr_token: String,
 	/// The region ID of the cluster.
 	pub region_id: Uuid,
-	/// The kuberentes client used to communicate with the cluster.
+	/// The kubernetes client used to communicate with the cluster.
 	pub client: Client,
 }
 
@@ -55,4 +56,14 @@ impl AppState {
 			client,
 		}
 	}
+}
+
+#[derive(Error, Debug)]
+pub enum AppError {
+	#[error("error while communicating with the Kubernetes API: {0}")]
+	Kubernetes(#[from] kube::Error),
+	#[error("error while communicating with the Patr API: {0}")]
+	Patr(#[from] ErrorType),
+	#[error("internal error: {0}")]
+	InternalError(String),
 }

@@ -55,20 +55,22 @@ pub fn Login(
 			let password = password.clone();
 			let mfa_otp = mfa_otp.clone();
 			async move {
-				let result = make_request(ApiRequest::<LoginRequest>::new(
-					(),
-					(),
-					LoginRequest {
-						user_id,
-						password,
-						mfa_otp,
-					},
-				))
+				let result = make_request(
+					ApiRequest::<LoginRequest>::builder()
+						.path(Default::default())
+						.query(())
+						.headers(())
+						.body(LoginRequest {
+							user_id,
+							password,
+							mfa_otp,
+						})
+						.build(),
+				)
 				.await;
 				let LoginResponse {
 					access_token,
 					refresh_token,
-					login_id,
 				} = match result {
 					Ok(ApiSuccessResponse {
 						status_code: _,
@@ -93,7 +95,6 @@ pub fn Login(
 					user_id: Default::default(),
 					access_token,
 					refresh_token,
-					login_id,
 					default_workspace: None,
 				});
 			}

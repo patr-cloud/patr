@@ -3,8 +3,7 @@ members = [
     "api",
     "macros",
     "models",
-    "controller",
-    "cloudflare-ingress",
+    "controller", # "cloudflare-ingress",
     "frontend",
     "cli",
 ]
@@ -20,7 +19,7 @@ anyhow = { version = "1", default-features = false }
 argon2 = { version = "0.5", default-features = false }
 async-trait = { version = "0.1", default-features = false }
 axum = { version = "0.6", default-features = false }
-axum-extra = { version = "0.7", default-features = false }
+axum-extra = { version = "0.8", default-features = false }
 axum-typed-websockets = { version = "0.5", default-features = false }
 base64 = { version = "0.21", default-features = false }
 clap = { version = "4", default-features = false }
@@ -33,6 +32,7 @@ k8s-openapi = { version = "0.20", default-features = false }
 kube = { version = "0.86", default-features = false }
 leptos = { version = "0.4", default-features = false }
 leptos-use = { version = "0.6", default-features = false }
+leptos_axum = { version = "0.4", default-features = false }
 leptos_declarative = { version = "0.3", default-features = false }
 leptos_router = { version = "0.4", default-features = false }
 log = { version = "0.4", default-features = false }
@@ -50,9 +50,11 @@ serde = { version = "1", default-features = false }
 serde_json = { version = "1", default-features = false }
 serde_test = { version = "1", default-features = false }
 serde_urlencoded = { version = "0.7", default-features = false }
+sha2 = { version = "0.10", default-features = false }
 sqlx = { version = "0.7", default-features = false }
 syn = { version = "2", default-features = false }
 tabled = { version = "0.14", default-features = false }
+thiserror = { version = "1", default-features = false }
 time = { version = "0.3", default-features = false }
 tokio = { version = "1", default-features = false }
 tokio-tungstenite = { version = "0.20", default-features = false }
@@ -84,18 +86,18 @@ strip = true
 
 [[workspace.metadata.leptos]]
 # The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
-name = "patr-api"
 bin-package = "api"
 lib-package = "frontend"
+name = "patr-api"
 # The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
 site-root = "target/site"
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written
-site-pkg-dir = "public"
+site-pkg-dir = "."
 # [Optional] The source CSS file. If it ends with .sass or .scss then it will be compiled by dart-sass into CSS. The CSS is optimized by Lightning CSS before being written to <site-root>/<site-pkg>/app.css
-style-file = "assets/styles/index.scss"
+style-file = "frontend/assets/styles/index.scss"
 # Assets source dir. All files found here will be copied and synchronized to site-root.
 # The assets-dir cannot have a sub directory with the same name/path as site-pkg-dir.
-assets-dir = "public"
+assets-dir = "frontend/public"
 #  The browserlist query used for optimizing the CSS.
 browserquery = "defaults"
 # Set by cargo-leptos watch when building with that tool. Controls whether autoreload JS will be included in the head
