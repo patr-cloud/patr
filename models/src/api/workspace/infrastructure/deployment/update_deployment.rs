@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-	utils::{Base64String, StringifiedU16, Uuid},
+	utils::{Base64String, StringifiedU16, Uuid, BearerToken},
 }; 
 use std::collections::BTreeMap;
 use super::{
@@ -16,7 +16,7 @@ macros::declare_api_endpoint!(
 	PATCH "/workspace/:workspace_id/infrastructure/deployment/:deployment_id",
     request_headers = {
         /// Token used to authorize user
-        pub access_token: AuthorizationToken
+        pub access_token: BearerToken
     },
     query = {
         /// The workspace ID of the user

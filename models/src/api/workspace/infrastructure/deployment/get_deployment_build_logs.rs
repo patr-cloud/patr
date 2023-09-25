@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-	utils::Uuid,
+	utils::{Uuid, BearerToken},
 };
 use super::{BuildLog, Interval};
 
@@ -10,13 +10,13 @@ macros::declare_api_endpoint!(
 	GET "/workspace/:workspace_id/infrastructure/deployment/:deployment_id/build-logs",
     request_headers = {
         /// Token used to authorize user
-        pub access_token: AuthorizationToken
+        pub access_token: BearerToken
     },
     query = {
         /// The workspace ID of the user
         pub workspace_id: Uuid,
         /// The deployment ID to get build logs of
-        pub deployment_id: Uuid
+        pub deployment_id: Uuid,
         /// The time from when the build logs should be fetched
         pub start_time: Option<Interval>,
 	},

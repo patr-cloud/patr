@@ -3,15 +3,15 @@ use serde::{Deserialize, Serialize};
 use crate::prelude::Uuid;
 
 mod create_database;
-mod delete_managed_database;
-mod get_managed_database;
-mod list_managed_database;
+mod delete_database;
+mod get_database;
+mod list_database;
 
 pub use self::{
 	create_database::*,
-	delete_managed_database::*,
-	get_managed_database::*,
-	list_managed_database::*,
+	delete_database::*,
+	get_database::*,
+	list_database::*,
 };
 
 /// Information to connect to the database
