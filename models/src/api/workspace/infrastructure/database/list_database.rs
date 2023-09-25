@@ -1,4 +1,7 @@
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    utils::BearerToken
+};
 
 macros::declare_api_endpoint!(
 	/// Route to get list of all database in a workspace
@@ -6,7 +9,7 @@ macros::declare_api_endpoint!(
 	GET "/workspace/:workspace_id/infrastructure/database",
     request_headers = {
         /// Token used to authorize user
-        pub access_token: AuthorizationToken
+        pub access_token: BearerToken
     },
 	query = {
 		/// The workspace ID of the user

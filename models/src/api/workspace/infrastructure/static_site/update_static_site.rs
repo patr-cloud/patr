@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-	utils::Uuid,
+	utils::{Uuid, BearerToken},
 }; 
 
 macros::declare_api_endpoint!(
@@ -9,14 +9,14 @@ macros::declare_api_endpoint!(
     PATCH "/workspace/:workspace_id/infrastructure/static-site/:static_site_id",
     request_headers = {
         /// Token used to authorize user
-        pub access_token: AuthorizationToken
+        pub access_token: BearerToken
     },
     query = {
         /// The workspace ID of the user
         pub workspace_id: Uuid,
         /// The static site ID of static site to update
         pub static_site_id: Uuid,
-    }
+    },
     request = {
         /// The updated static site name
         pub name: String,

@@ -3,37 +3,37 @@ use std::{collections::BTreeMap, fmt::Display, str::FromStr};
 // use chrono::Utc;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
-// mod create_deployment;
-// mod delete_deployment;
-// mod get_deployment_build_logs;
-// mod get_deployment_events;
-// mod get_deployment_info;
-// mod get_deployment_logs;
-// mod get_deployment_metrics;
-// mod list_deployment_history;
-// mod list_deployments;
-// mod list_linked_urls;
-// mod revert_deployment;
-// mod start_deployment;
-// mod stop_deployment;
-// mod update_deployment;
+mod create_deployment;
+mod delete_deployment;
+mod get_deployment_build_logs;
+mod get_deployment_events;
+mod get_deployment_info;
+mod get_deployment_logs;
+mod get_deployment_metrics;
+mod list_deployment_history;
+mod list_deployments;
+mod list_linked_urls;
+mod revert_deployment;
+mod start_deployment;
+mod stop_deployment;
+mod update_deployment;
 
-// pub use self::{
-// 	create_deployment::*,
-// 	delete_deployment::*,
-// 	get_deployment_build_logs::*,
-// 	get_deployment_events::*,
-// 	get_deployment_info::*,
-// 	get_deployment_logs::*,
-// 	get_deployment_metrics::*,
-// 	list_deployment_history::*,
-// 	list_deployments::*,
-// 	list_linked_urls::*,
-// 	revert_deployment::*,
-// 	start_deployment::*,
-// 	stop_deployment::*,
-// 	update_deployment::*,
-// };
+pub use self::{
+	create_deployment::*,
+	delete_deployment::*,
+	get_deployment_build_logs::*,
+	get_deployment_events::*,
+	get_deployment_info::*,
+	get_deployment_logs::*,
+	get_deployment_metrics::*,
+	list_deployment_history::*,
+	list_deployments::*,
+	list_linked_urls::*,
+	revert_deployment::*,
+	start_deployment::*,
+	stop_deployment::*,
+	update_deployment::*,
+};
 use crate::prelude::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -308,131 +308,131 @@ impl FromStr for StatefulSetStatus {
 	}
 }
 
-// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct DeploymentMetrics {
-// 	pub pod_name: String,
-// 	pub metrics: Vec<Metric>,
-// }
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DeploymentMetrics {
+	pub pod_name: String,
+	pub metrics: Vec<Metric>,
+}
 
-// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct Metric {
-// 	pub timestamp: u64,
-// 	pub cpu_usage: String,
-// 	pub memory_usage: String,
-// 	pub network_usage_tx: String,
-// 	pub network_usage_rx: String,
-// }
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct Metric {
+	pub timestamp: u64,
+	pub cpu_usage: String,
+	pub memory_usage: String,
+	pub network_usage_tx: String,
+	pub network_usage_rx: String,
+}
 
-// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct DeploymentLogs {
-// 	pub timestamp: DateTime<Utc>,
-// 	pub logs: String,
-// }
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DeploymentLogs {
+	pub timestamp: DateTime<Utc>,
+	pub logs: String,
+}
 
-// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct BuildLog {
-// 	pub timestamp: Option<u64>,
-// 	pub reason: Option<String>,
-// 	pub message: Option<String>,
-// }
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct BuildLog {
+	pub timestamp: Option<u64>,
+	pub reason: Option<String>,
+	pub message: Option<String>,
+}
 
-// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub enum Step {
-// 	OneMinute,
-// 	TwoMinutes,
-// 	FiveMinutes,
-// 	TenMinutes,
-// 	FifteenMinutes,
-// 	ThirtyMinutes,
-// 	OneHour,
-// }
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum Step {
+	OneMinute,
+	TwoMinutes,
+	FiveMinutes,
+	TenMinutes,
+	FifteenMinutes,
+	ThirtyMinutes,
+	OneHour,
+}
 
-// impl Display for Step {
-// 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-// 		match self {
-// 			Self::OneMinute => write!(f, "1m"),
-// 			Self::TwoMinutes => write!(f, "2m"),
-// 			Self::FiveMinutes => write!(f, "5m"),
-// 			Self::TenMinutes => write!(f, "10m"),
-// 			Self::FifteenMinutes => write!(f, "15m"),
-// 			Self::ThirtyMinutes => write!(f, "30m"),
-// 			Self::OneHour => write!(f, "1h"),
-// 		}
-// 	}
-// }
+impl Display for Step {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::OneMinute => write!(f, "1m"),
+			Self::TwoMinutes => write!(f, "2m"),
+			Self::FiveMinutes => write!(f, "5m"),
+			Self::TenMinutes => write!(f, "10m"),
+			Self::FifteenMinutes => write!(f, "15m"),
+			Self::ThirtyMinutes => write!(f, "30m"),
+			Self::OneHour => write!(f, "1h"),
+		}
+	}
+}
 
-// impl FromStr for Step {
-// 	type Err = String;
+impl FromStr for Step {
+	type Err = String;
 
-// 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-// 		let s = s.to_lowercase();
-// 		match s.as_str() {
-// 			"1m" => Ok(Self::OneMinute),
-// 			"2m" => Ok(Self::TwoMinutes),
-// 			"5m" => Ok(Self::FiveMinutes),
-// 			"10m" => Ok(Self::TenMinutes),
-// 			"15m" => Ok(Self::FifteenMinutes),
-// 			"30m" => Ok(Self::ThirtyMinutes),
-// 			"1h" => Ok(Self::OneHour),
-// 			_ => Err(s),
-// 		}
-// 	}
-// }
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		let s = s.to_lowercase();
+		match s.as_str() {
+			"1m" => Ok(Self::OneMinute),
+			"2m" => Ok(Self::TwoMinutes),
+			"5m" => Ok(Self::FiveMinutes),
+			"10m" => Ok(Self::TenMinutes),
+			"15m" => Ok(Self::FifteenMinutes),
+			"30m" => Ok(Self::ThirtyMinutes),
+			"1h" => Ok(Self::OneHour),
+			_ => Err(s),
+		}
+	}
+}
 
-// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub enum Interval {
-// 	Hour,
-// 	Day,
-// 	Week,
-// 	Month,
-// 	Year,
-// }
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum Interval {
+	Hour,
+	Day,
+	Week,
+	Month,
+	Year,
+}
 
-// impl Display for Interval {
-// 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-// 		match self {
-// 			Self::Hour => write!(f, "hour"),
-// 			Self::Day => write!(f, "day"),
-// 			Self::Week => write!(f, "week"),
-// 			Self::Month => write!(f, "month"),
-// 			Self::Year => write!(f, "year"),
-// 		}
-// 	}
-// }
+impl Display for Interval {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Hour => write!(f, "hour"),
+			Self::Day => write!(f, "day"),
+			Self::Week => write!(f, "week"),
+			Self::Month => write!(f, "month"),
+			Self::Year => write!(f, "year"),
+		}
+	}
+}
 
-// impl Interval {
-// 	pub fn as_u64(&self) -> u64 {
-// 		match self {
-// 			Interval::Hour => get_current_time().as_secs() - 3600,
-// 			Interval::Day => get_current_time().as_secs() - 86400,
-// 			Interval::Week => get_current_time().as_secs() - 604800,
-// 			Interval::Month => get_current_time().as_secs() - 2628000,
-// 			Interval::Year => get_current_time().as_secs() - 31556952,
-// 		}
-// 	}
-// }
+impl Interval {
+	pub fn as_u64(&self) -> u64 {
+		match self {
+			Interval::Hour => get_current_time().as_secs() - 3600,
+			Interval::Day => get_current_time().as_secs() - 86400,
+			Interval::Week => get_current_time().as_secs() - 604800,
+			Interval::Month => get_current_time().as_secs() - 2628000,
+			Interval::Year => get_current_time().as_secs() - 31556952,
+		}
+	}
+}
 
-// impl FromStr for Interval {
-// 	type Err = String;
+impl FromStr for Interval {
+	type Err = String;
 
-// 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-// 		let s = s.to_lowercase();
-// 		match s.as_str() {
-// 			"hour" | "hr" | "h" => Ok(Self::Hour),
-// 			"day" | "d" => Ok(Self::Day),
-// 			"week" | "w" => Ok(Self::Week),
-// 			"month" | "mnth" | "m" => Ok(Self::Month),
-// 			"year" | "yr" | "y" => Ok(Self::Year),
-// 			_ => Err(s),
-// 		}
-// 	}
-// }
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		let s = s.to_lowercase();
+		match s.as_str() {
+			"hour" | "hr" | "h" => Ok(Self::Hour),
+			"day" | "d" => Ok(Self::Day),
+			"week" | "w" => Ok(Self::Week),
+			"month" | "mnth" | "m" => Ok(Self::Month),
+			"year" | "yr" | "y" => Ok(Self::Year),
+			_ => Err(s),
+		}
+	}
+}
 
 // #[cfg(test)]
 // mod test {

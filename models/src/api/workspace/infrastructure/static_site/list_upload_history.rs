@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-	utils::Uuid,
+	utils::{Uuid, BearerToken},
 }; 
 use super::StaticSiteUploadHistory;
 
@@ -10,7 +10,7 @@ macros::declare_api_endpoint!(
     GET "/workspace/:workspace_id/infrastructure/static-site/:static_site_id/upload",
     request_headers = {
         /// Token used to authorize user
-        pub access_token: AuthorizationToken
+        pub access_token: BearerToken
     },
     query = {
         /// The workspace ID of the user
