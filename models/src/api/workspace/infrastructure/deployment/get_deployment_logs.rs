@@ -1,8 +1,8 @@
 use crate::{
     prelude::*,
-	utils::{DateTime, Uuid},
+	utils::{Uuid, BearerToken},
 };
-use chrono::Utc;
+use super::DeploymentLogs;
 
 macros::declare_api_endpoint!(
     /// Route to get the running logs of a deployment
@@ -10,13 +10,13 @@ macros::declare_api_endpoint!(
 	GET "/workspace/:workspace_id/infrastructure/deployment/:deployment_id/logs",
     request_headers = {
         /// Token used to authorize user
-        pub access_token: AuthorizationToken
+        pub access_token: BearerToken
     },
     query = {
         /// The workspace ID of the user
         pub workspace_id: Uuid,
         /// The deployment ID to get the logs for
-        pub deployment_id: Uuid
+        pub deployment_id: Uuid,
         /// The time up until which the deployment logs should be fetched
         pub end_time: Option<DateTime<Utc>>,
         /// The limit of logs to fetch

@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-	utils::Uuid,
+	utils::{Uuid, BearerToken},
 }; 
 
 macros::declare_api_endpoint!(
@@ -9,7 +9,7 @@ macros::declare_api_endpoint!(
 	POST "/workspace/:workspace_id/infrastructure/deployment/:deployment_id/stop",
     request_headers = {
         /// Token used to authorize user
-        pub access_token: AuthorizationToken
+        pub access_token: BearerToken
     },
     query = {
         /// The workspace ID of the user

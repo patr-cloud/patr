@@ -9,7 +9,7 @@ macros::declare_api_endpoint!(
     POST "/workspace/:workspace_id/infrastructure/static-site/:static_site_id/start",
     request_headers = {
         /// Token used to authorize user
-        pub access_token: AuthorizationToken
+        pub access_token: BearerToken
     },
     query = {
         /// The workspace ID of the user

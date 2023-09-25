@@ -1,4 +1,8 @@
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    utils::BearerToken
+};
+
 use super::DatabaseEngine;
 
 macros::declare_api_endpoint!(
@@ -8,7 +12,7 @@ macros::declare_api_endpoint!(
     POST "/workspace/:workspace_id/infrastructure/database",
     request_headers = {
         /// Token used to authorize user
-        pub access_token: AuthorizationToken
+        pub access_token: BearerToken
     },
     query ={
         /// The workspace ID of the user
