@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-/// Recovery method options provided to the users
+/// Recovery method options provided to the user when they forget their passsword
+/// and request a password change by hitting the ForgetPassword API endpoint.
+/// The curent recovery options are email and phone number.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum RecoveryMethod {
@@ -21,7 +23,7 @@ pub enum RecoveryMethod {
 }
 
 macros::declare_api_endpoint!(
-	/// Definition of a route to create a new user account
+	/// The route to create a new user account
 	CreateAccount,
 	POST "/auth/sign-up",
 	request = {

@@ -1,10 +1,12 @@
 macros::declare_api_endpoint!(
-	/// Definition of a route to list all the available recovery options when user forgets their 
+	/// Route to list all the available recovery options when user forgets their 
 	/// password and opt for changing it. The current recovery options are email and phone number.
+	/// The backend performs validation and prevents the leak of sensitive user information.
 	ListRecoveryOptions,
-	POST "/auth/list-recovery-options",
+	GET "/auth/list-recovery-options",
 	request = {
-		/// The user ID of the user
+		/// The user identifier of the user
+		/// It can be either the username or the email of the user depending on the user input
 		pub user_id: String,
 	},
 	response = {

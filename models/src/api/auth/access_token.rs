@@ -11,6 +11,6 @@ macros::declare_api_endpoint!(
 	},
 	response = {
 		/// The new access token which will be used for authentication by the user
-		access_token: String,
+		pub access_token: String,
 	},
 );
