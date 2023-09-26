@@ -42,7 +42,7 @@ where
 	#[track_caller]
 	fn mount_auth_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
 	where
-	for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send + 'static,
+		for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send + 'static,
 		E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 		E::RequestHeaders: HasHeader<BearerToken>;
 }
@@ -77,8 +77,8 @@ where
 	#[track_caller]
 	fn mount_auth_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
 	where
-	for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send + 'static,
-		E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
+		for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send + 'static,
+		E: ApiEndpoint,
 		E::RequestHeaders: HasHeader<BearerToken>,
 	{
 		self.route(

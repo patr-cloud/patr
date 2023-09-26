@@ -34,9 +34,11 @@ impl HasAuthentication for NoAuthentication {}
 /// The variants are:
 /// - [`PlainTokenAuthenticator`][1]: Any logged in user can access this
 ///   endpoint.
-/// - [`WorkspaceMembershipAuthenticator`][2]: Only users that are members of
+/// - [`WorkspaceSuperAdminAuthenticator`][2]: Only the super admin of the
+///  workspace that is specified in the request can access this endpoint.
+/// - [`WorkspaceMembershipAuthenticator`][3]: Only users that are members of
 ///   the workspace that is specified in the request can access this endpoint.
-/// - [`ResourcePermissionAuthenticator`][3]: Only users that have the specified
+/// - [`ResourcePermissionAuthenticator`][4]: Only users that have the specified
 ///   permission on the resource that is specified in the request can access
 ///   this endpoint.
 ///
@@ -45,8 +47,9 @@ impl HasAuthentication for NoAuthentication {}
 /// extension to mount the corresponding [`tower::Layer`] in the router.
 ///
 /// [1]: AppAuthentication::PlainTokenAuthenticator
-/// [2]: AppAuthentication::WorkspaceMembershipAuthenticator
-/// [3]: AppAuthentication::ResourcePermissionAuthenticator
+/// [2]: AppAuthentication::WorkspaceSuperAdminAuthenticator
+/// [3]: AppAuthentication::WorkspaceMembershipAuthenticator
+/// [4]: AppAuthentication::ResourcePermissionAuthenticator
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum AppAuthentication<E>
 where
@@ -54,6 +57,16 @@ where
 {
 	/// Any logged in user can access this endpoint.
 	PlainTokenAuthenticator,
+	/// Only the super admin of the workspace that is specified in the
+	/// [`extract_workspace_id`][1] function can access this endpoint.
+	///
+	/// [1]: AuthenticationType::<E>::WorkspaceSuperAdminAuthenticator::extract_workspace_id
+	WorkspaceSuperAdminAuthenticator {
+		/// This function is used to extract the workspace id from the request.
+		/// The workspace id is then used to check if the user is the super
+		/// admin of the workspace.
+		extract_workspace_id: fn(&ApiRequest<E>) -> Uuid,
+	},
 	/// Only users that are members of the workspace that is specified in the
 	/// [`extract_workspace_id`][1] function can access this endpoint.
 	///
@@ -84,7 +97,7 @@ impl<E> RequiresRequestHeaders for AppAuthentication<E>
 where
 	E: ApiEndpoint,
 {
-	type RequiredRequestHeaders = BearerToken;
+	type RequiredRequestHeaders = (BearerToken,);
 }
 
 impl<E> Sealed for AppAuthentication<E> where E: ApiEndpoint {}
@@ -98,6 +111,9 @@ where
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::PlainTokenAuthenticator => write!(f, "PlainTokenAuthenticator"),
+			Self::WorkspaceSuperAdminAuthenticator { .. } => {
+				write!(f, "WorkspaceSuperAdminAuthenticator")
+			}
 			Self::WorkspaceMembershipAuthenticator { .. } => {
 				write!(f, "WorkspaceMembershipAuthenticator")
 			}
