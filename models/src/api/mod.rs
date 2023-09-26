@@ -1,9 +1,10 @@
 /// All auth related endpoints, including OAuth
 pub mod auth;
-// pub mod ci;
 // pub mod user;
-mod get_version;
+/// All endpoints that can be performed on a workspace
 pub mod workspace;
+
+mod get_version;
 
 use std::ops::Deref;
 

@@ -4,6 +4,7 @@ use syn::{
 	parse::{Parse, ParseStream},
 	parse_macro_input,
 	Attribute,
+	Block,
 	Error,
 	Expr,
 	FieldsNamed,
@@ -27,8 +28,8 @@ pub struct ApiEndpoint {
 	path: LitStr,
 	/// The body of the URL path. This is used for typed paths.
 	path_body: Option<FieldsNamed>,
-	/// The authentication type for the endpoint.
-	auth_type: Option<Ident>,
+	/// The authentication for this endpoint.
+	auth: Option<Block>,
 
 	/// The query params for the endpoint. The tuple is (is_paginated, fields).
 	query: Option<(bool, FieldsNamed)>,
@@ -71,12 +72,13 @@ impl Parse for ApiEndpoint {
 		} else if input.is_empty() {
 			None
 		} else {
+			let body = input.parse()?;
 			input.parse::<Token![,]>()?;
 
-			Some(input.parse()?)
+			Some(body)
 		};
 
-		let mut auth_type = None;
+		let mut auth = None;
 		let mut query = None;
 		let mut request = None;
 		let mut request_headers = None;
@@ -126,13 +128,13 @@ impl Parse for ApiEndpoint {
 
 					response = Some(input.parse()?);
 				}
-				"authentication" | "auth" | "authenticator" => {
-					if auth_type.is_some() {
+				"authentication" | "auth" => {
+					if auth.is_some() {
 						return Err(Error::new(ident.span(), "Duplicate field"));
 					}
 					input.parse::<Token![=]>()?;
 
-					auth_type = Some(input.parse()?);
+					auth = Some(input.parse()?);
 				}
 				_ => {
 					return Err(Error::new(ident.span(), "Unknown field"));
@@ -149,7 +151,7 @@ impl Parse for ApiEndpoint {
 			method,
 			path,
 			path_body,
-			auth_type,
+			auth,
 
 			query,
 			request_headers,
@@ -172,7 +174,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		path,
 		path_body,
 
-		auth_type,
+		auth,
 		query,
 		request_headers,
 		request,
@@ -253,7 +255,25 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		quote::quote!()
 	};
 
-	let auth_type = auth_type.unwrap_or_else(|| format_ident!("NoAuthentication"));
+	let (auth_type, auth_impl) = auth
+		.map(|block| {
+			(
+				quote::quote! {
+					AppAuthentication::<Self>
+				},
+				quote::quote! {
+					fn get_authenticator() -> Self::Authenticator #block
+				},
+			)
+		})
+		.unwrap_or_else(|| {
+			(
+				quote::quote! {
+					NoAuthentication
+				},
+				quote::quote! {},
+			)
+		});
 
 	let request_headers_name = if request_headers.is_some() {
 		let ident = format_ident!("{}RequestHeaders", name);
@@ -332,9 +352,9 @@ pub fn parse(input: TokenStream) -> TokenStream {
 
 	quote::quote! {
 		/// The URL path for the #name endpoint.
-		/// 
+		///
 		/// The documentation for the endpoint is below:
-		/// 
+		///
 		#[doc = #documentation]
 		#[derive(
 			Eq,
@@ -356,9 +376,9 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		}
 
 		/// The request body for the #name endpoint
-		/// 
+		///
 		/// The documentation for the endpoint is below:
-		/// 
+		///
 		#[doc = #documentation]
 		#[derive(
 			Eq,
@@ -382,9 +402,9 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		#response_headers_decl
 
 		/// The response body for the #name endpoint.
-		/// 
+		///
 		/// The documentation for the endpoint is below:
-		/// 
+		///
 		#[doc = #documentation]
 		#[derive(
 			Eq,
@@ -413,6 +433,8 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			type RequestHeaders = #request_headers_name;
 			type RequestBody = Self;
 			type Authenticator = crate::utils::#auth_type;
+
+			#auth_impl
 
 			type ResponseHeaders = #response_headers_name;
 			type ResponseBody = #response_name;

@@ -21,8 +21,10 @@ pub mod utils;
 /// of things from different modules.
 pub mod prelude {
 	pub use crate::{
+		api::WithId,
 		utils::{
 			constants,
+			AppAuthentication,
 			Base64String,
 			LoginId,
 			OneOrMore,
