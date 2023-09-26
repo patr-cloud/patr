@@ -16,14 +16,14 @@ pub mod prelude {
 
 use leptos_declarative::prelude::*;
 use prelude::*;
+use leptos_meta::{Meta, Link, Title, Stylesheet, provide_meta_context};
 
-mod app;
-mod components;
-mod pages;
-mod utils;
+pub mod app;
+pub mod components;
+pub mod pages;
+pub mod utils;
 
 use app::App;
-use wasm_bindgen::JsCast;
 
 /// The main hydrate function. Called when the application starts to hydrate
 /// from the server side.
@@ -35,15 +35,49 @@ pub fn hydrate() {
 		console_error_panic_hook::set_once();
 	}
 
-	let root_element = document()
-		.get_element_by_id("root")
-		.expect("unable to find root element");
-	mount_to(root_element.unchecked_into(), |cx| {
-		view! { cx,
+	mount_to_body(render);
+}
+
+/// The main render function. Called when the application starts to render
+/// from the client side.
+pub fn render(cx: Scope) -> View {
+	provide_meta_context(cx);
+	view! { cx,
+		<>
+			<Meta charset="utf-8" />
+			<Link rel="shortcut icon" href="/favicon.svg" type_="image/svg+xml" />
+			<Link rel="apple-touch-icon" href="/favicon.svg" />
+			<Meta name="viewport" content="width=device-width, initial-scale=1" />
+			<Meta name="theme-color" content="#000000" />
+			<Meta
+				name="description"
+				content="Patr: A code Deployment Platform that helps you scale what you build. You build, we scale"
+			/>
+			<Link rel="preconnect" href="https://fonts.gstatic.com" />
+			<Link rel="preconnect" href="https://fonts.googleapis.com" />
+			<Link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+			<Link
+				href="https://fonts.googleapis.com/css2?family=PT+Serif:wght@700&family=Source+Code+Pro:wght@300;400&family=Poppins:wght@300;400;500;600;700&display=swap"
+				rel="stylesheet"
+			/>
+			<Link
+				rel="stylesheet"
+				href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+			/>
+			<Stylesheet id="leptos" href="/dashboard.css" />
+
+			<Title formatter=|title: String| {
+				if title.is_empty() {
+					"Patr".to_string()
+				} else {
+					format!("{title} | Patr")
+				}
+			} />
+
 			<PortalProvider>
 				<App/>
 				<PortalOutput id={PortalId}/>
 			</PortalProvider>
-		}
-	});
+		</>
+	}.into()
 }

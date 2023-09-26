@@ -14,8 +14,12 @@ axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
 axum-extra = { workspace = true, features = ["default", "typed-routing"] }
 axum-typed-websockets = { workspace = true, features = ["default"] }
 config = { workspace = true, features = ["default"] }
+frontend = { workspace = true, features = [] }
 futures = { workspace = true, features = ["default"] }
 jsonwebtoken = { workspace = true, features = ["default"] }
+leptos = { workspace = true, features = ["ssr"] }
+leptos_axum = { workspace = true, features = [] }
+leptos_declarative = { workspace = true, features = [] }
 macros = { workspace = true, features = [] }
 models = { workspace = true, features = [] }
 rustis = { workspace = true, features = [
@@ -45,6 +49,7 @@ tokio-tungstenite = { workspace = true, features = [
     "rustls",
 ] }
 tower = { workspace = true, features = ["default", "full"] }
+tower-http = { version = "*", features = ["default", "fs"] }
 tracing = { workspace = true, features = ["default", "async-await"] }
 tracing-log = { workspace = true, features = ["default"] }
 typed-builder = { workspace = true, features = [] }

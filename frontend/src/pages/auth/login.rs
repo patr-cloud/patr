@@ -18,7 +18,8 @@ pub fn Login(
 	/// The scope of the component
 	cx: Scope,
 ) -> impl IntoView {
-	let set_state = expect_context::<WriteSignal<AppStorage>>(cx);
+	// let set_state = expect_context::<WriteSignal<AppStorage>>(cx);
+	let (state, set_state) = create_signal(cx, AppStorage::LoggedOut);
 
 	let show_password = create_rw_signal(cx, false);
 	let show_create_account_button = create_rw_signal(cx, false);
