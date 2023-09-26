@@ -1,4 +1,8 @@
-use std::{error::Error as StdError, mem};
+use std::{
+	error::Error as StdError,
+	fmt::{Display, Formatter},
+	mem,
+};
 
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -116,6 +120,12 @@ impl Clone for ErrorType {
 				Self::InternalServerError(anyhow::anyhow!(arg0.to_string()))
 			}
 		}
+	}
+}
+
+impl Display for ErrorType {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.message().into())
 	}
 }
 

@@ -25,6 +25,7 @@ base64 = { version = "0.21", default-features = false }
 clap = { version = "4", default-features = false }
 config = { version = "0.13", default-features = false }
 console_error_panic_hook = { version = "0.1", default-features = false }
+frontend = { path = "frontend", default-features = false }
 futures = { version = "0.3", default-features = false }
 hex = { version = "0.4", default-features = false }
 jsonwebtoken = { version = "8", default-features = false }
@@ -34,12 +35,13 @@ leptos = { version = "0.4", default-features = false }
 leptos-use = { version = "0.6", default-features = false }
 leptos_axum = { version = "0.4", default-features = false }
 leptos_declarative = { version = "0.3", default-features = false }
+leptos_meta = { version = "0.4", default-features = false }
 leptos_router = { version = "0.4", default-features = false }
 log = { version = "0.4", default-features = false }
 macros = { path = "macros", default-features = false }
 models = { path = "models", default-features = false }
 open = { version = "5", default-features = false }
-preprocess = { version = "0.2", default-features = false }
+preprocess = { version = "0.3", default-features = false }
 proc-macro2 = { version = "1", default-features = false }
 quote = { version = "1", default-features = false }
 reqwest = { version = "0.11", default-features = false }
@@ -88,7 +90,7 @@ strip = true
 # The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
 bin-package = "api"
 lib-package = "frontend"
-name = "patr-api"
+name = "dashboard"
 # The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
 site-root = "target/site"
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written
@@ -102,7 +104,5 @@ assets-dir = "frontend/public"
 browserquery = "defaults"
 # Set by cargo-leptos watch when building with that tool. Controls whether autoreload JS will be included in the head
 watch = true
-# The environment Leptos will run in, usually either "DEV" or "PROD"
-env = "DEV"
 # The profile to use for the lib target when compiling for release
 lib-profile-release = "frontend"
