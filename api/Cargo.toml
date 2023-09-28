@@ -49,7 +49,7 @@ tokio-tungstenite = { workspace = true, features = [
     "rustls",
 ] }
 tower = { workspace = true, features = ["default", "full"] }
-tower-http = { version = "*", features = ["default", "fs"] }
+tower-http = { workspace = true, features = ["fs"] }
 tracing = { workspace = true, features = ["default", "async-await"] }
 tracing-log = { workspace = true, features = ["default"] }
 typed-builder = { workspace = true, features = [] }
