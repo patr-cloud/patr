@@ -1,14 +1,17 @@
+use std::path::Path;
+
 use axum::{
-	body::{Body, BoxBody},
+	body::Body,
 	extract::State,
-	http::{Request, Response, StatusCode, Uri},
+	http::{Request, StatusCode},
 	response::{IntoResponse, Response as AxumResponse},
-	routing::post,
+	routing::{any, post},
 	Router,
 };
-use leptos::{Errors, LeptosOptions};
+use leptos::LeptosOptions;
 use leptos_axum::LeptosRoutes;
 use tower::ServiceExt;
+use tower_http::services::ServeDir;
 
 use crate::prelude::*;
 
@@ -27,43 +30,31 @@ pub async fn setup_routes(state: &AppState) -> Router {
 			leptos_axum::generate_route_list(frontend::render).await,
 			frontend::render,
 		)
-		.fallback(file_and_error_handler)
+		.fallback(serve_file)
 		.with_state(config.leptos_options)
 		.with_state(state.clone())
 }
 
-pub async fn file_and_error_handler(
-	uri: Uri,
-	State(options): State<LeptosOptions>,
-	req: Request<Body>,
-) -> AxumResponse {
-	let root = options.site_root.clone();
-	let res = get_static_file(uri.clone(), &root).await.unwrap();
+async fn serve_file(State(options): State<LeptosOptions>, req: Request<Body>) -> AxumResponse {
+	println!("Falling back to serving file: {}", req.uri());
+	let response = ServeDir::new(Path::new(options.site_root.as_str()))
+		.oneshot(
+			Request::builder()
+				.uri(req.uri().clone())
+				.body(Body::empty())
+				.unwrap(),
+		)
+		.await
+		.map_err(|err| match err {})
+		.into_response();
 
-	if res.status() == StatusCode::OK {
-		res.into_response()
+	if response.status() != StatusCode::OK {
+		println!("File not found: {}", req.uri());
+		(leptos_axum::render_app_to_stream(options, frontend::pages::NotFound))(req)
+			.await
+			.into_response()
 	} else {
-		let mut errors = Errors::default();
-		let handler = leptos_axum::render_app_to_stream(
-			options.to_owned(),
-			move |cx| leptos::view! {cx, <div>404 not found</div>},
-		);
-		handler(req).await.into_response()
-	}
-}
-
-async fn get_static_file(uri: Uri, root: &str) -> Result<Response<BoxBody>, (StatusCode, String)> {
-	let req = Request::builder()
-		.uri(uri.clone())
-		.body(Body::empty())
-		.unwrap();
-	// `ServeDir` implements `tower::Service` so we can call it with
-	// `tower::ServiceExt::oneshot` This path is relative to the cargo root
-	match tower_http::services::ServeDir::new(root).oneshot(req).await {
-		Ok(res) => Ok(res.map(axum::body::boxed)),
-		Err(err) => Err((
-			StatusCode::INTERNAL_SERVER_ERROR,
-			format!("Something went wrong: {err}"),
-		)),
+		println!("File found: {}", req.uri());
+		response
 	}
 }

@@ -78,7 +78,7 @@ where
 	fn mount_auth_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
 	where
 		for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send + 'static,
-		E: ApiEndpoint,
+		E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 		E::RequestHeaders: HasHeader<BearerToken>,
 	{
 		self.route(

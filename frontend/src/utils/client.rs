@@ -161,7 +161,7 @@ where
 	#[cfg(not(target_arch = "wasm32"))]
 	fn call_fn(
 		self,
-		cx: Scope,
+		_cx: Scope,
 	) -> Pin<Box<dyn Future<Output = Result<Self::Output, ServerFnError>>>> {
 		Box::pin(async move {
 			println!("Server fn {} called", Self::url());

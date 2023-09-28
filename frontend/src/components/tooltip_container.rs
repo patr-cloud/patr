@@ -32,7 +32,7 @@ pub fn TooltipContainer(
 	view! { cx,
 		<span
 			ref={container_ref}
-			tab_index={if disable_focus { -1 } else { 0 }}
+			tab_index=if disable_focus { -1 } else { 0 }
 			class=format!(
 				"fr-ct-ct pos-rel br-sm mx-xxs tooltip-container {} {class}",
 				if disable_focus {

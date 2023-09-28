@@ -39,6 +39,7 @@ leptos_meta = { version = "0.4", default-features = false }
 leptos_router = { version = "0.4", default-features = false }
 log = { version = "0.4", default-features = false }
 macros = { path = "macros", default-features = false }
+mime_guess = { version = "2", default-features = false }
 models = { path = "models", default-features = false }
 open = { version = "5", default-features = false }
 preprocess = { version = "0.3", default-features = false }
@@ -61,6 +62,7 @@ time = { version = "0.3", default-features = false }
 tokio = { version = "1", default-features = false }
 tokio-tungstenite = { version = "0.20", default-features = false }
 tower = { version = "0.4", default-features = false }
+tower-http = { version = "0.4", default-features = false }
 tracing = { version = "0.1", default-features = false }
 tracing-log = { version = "0.1", default-features = false }
 typed-builder = { version = "0.16", default-features = false }
@@ -94,7 +96,7 @@ name = "dashboard"
 # The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
 site-root = "target/site"
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written
-site-pkg-dir = "."
+site-pkg-dir = "pkg"
 # [Optional] The source CSS file. If it ends with .sass or .scss then it will be compiled by dart-sass into CSS. The CSS is optimized by Lightning CSS before being written to <site-root>/<site-pkg>/app.css
 style-file = "frontend/assets/styles/index.scss"
 # Assets source dir. All files found here will be copied and synchronized to site-root.
@@ -102,7 +104,5 @@ style-file = "frontend/assets/styles/index.scss"
 assets-dir = "frontend/public"
 #  The browserlist query used for optimizing the CSS.
 browserquery = "defaults"
-# Set by cargo-leptos watch when building with that tool. Controls whether autoreload JS will be included in the head
-watch = true
 # The profile to use for the lib target when compiling for release
 lib-profile-release = "frontend"

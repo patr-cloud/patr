@@ -934,7 +934,7 @@ pub fn Icon(
 				}
 			}
 		>
-			<use_ href={move || format!("{}#{}", constants::FEATHER_IMG, icon.get())} />
+			<use_ href=move || format!("{}#{}", constants::FEATHER_IMG, icon.get()) />
 		</svg>
 	}
 }
