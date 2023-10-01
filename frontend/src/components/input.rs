@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use wasm_bindgen::JsValue;
 
 use crate::prelude::*;
@@ -6,8 +8,6 @@ use crate::prelude::*;
 /// tooltip.
 #[component]
 pub fn Input(
-	/// The scope of the component.
-	cx: Scope,
 	/// The ID of the input.
 	#[prop(into, optional)]
 	id: MaybeSignal<String>,
@@ -54,9 +54,9 @@ pub fn Input(
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
 ) -> impl IntoView {
-	let node_ref = r#ref.unwrap_or_else(|| create_node_ref::<html::Input>(cx));
+	let node_ref = r#ref.unwrap_or_else(|| create_node_ref::<html::Input>());
 
-	view! { cx,
+	view! {
 		<div class=move || format!(
 			"input fr-fs-ct row-card bg-secondary-{} {}",
 			variant.get().as_css_name(),
@@ -66,7 +66,6 @@ pub fn Input(
 				.get()
 				.map(move |content| {
 					TooltipContainer(
-						cx,
 						TooltipContainerProps {
 							content: String::new(),
 							label: None,
@@ -74,7 +73,7 @@ pub fn Input(
 							icon_color: PatrColor::default(),
 							variant: variant.get(),
 							class: String::new(),
-							children: Box::new(move |cx| content.clone().into_view(cx).into()),
+							children: Rc::new(move || content.clone().into_view().into()),
 						},
 					)
 				})}
@@ -95,13 +94,13 @@ pub fn Input(
 								}
 							)
 					)
-					.into_view(cx)
+					.into_view()
 			}
 			{move || start_text.get()}
 			{
 				match value {
 					MaybeSignal::Static(value) => {
-						view! {cx,
+						view! {
 							<input
 								id={move || id.get()}
 								ref={node_ref}
@@ -114,7 +113,7 @@ pub fn Input(
 						}
 					}
 					MaybeSignal::Dynamic(value) => {
-						view! {cx,
+						view! {
 							<input
 								id={move || id.get()}
 								ref={node_ref}
@@ -148,9 +147,9 @@ pub fn Input(
 								}
 							)
 					)
-					.into_view(cx)
+					.into_view()
 			}
-			{move || loading.get().then(|| Spinner(cx, SpinnerProps {
+			{move || loading.get().then(|| Spinner(SpinnerProps {
 				class: String::from("spinner-xs").into(),
 			}))}
 		</div>

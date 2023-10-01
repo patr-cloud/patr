@@ -883,8 +883,6 @@ impl Display for IconType {
 /// Icon component. Used to display icons from the Feather icon set.
 #[component]
 pub fn Icon(
-	/// scope of the component
-	cx: Scope,
 	/// name of the icon to display
 	#[prop(into)]
 	icon: MaybeSignal<IconType>,
@@ -909,7 +907,7 @@ pub fn Icon(
 ) -> impl IntoView {
 	let is_clickable = on_click.is_some();
 
-	view! { cx,
+	view! {
 		<svg
 			class=move || format!(
 				"icon {} {} icon-fill-{} icon-{} {} {}",

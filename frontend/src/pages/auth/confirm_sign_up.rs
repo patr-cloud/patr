@@ -1,14 +1,11 @@
 use crate::prelude::*;
 
 #[component]
-pub fn ConfirmSignUp(
-	/// The scope of the component.
-	_cx: Scope,
-) -> impl IntoView {
-	// let navigate = use_navigate(cx);
+pub fn ConfirmSignUp() -> impl IntoView {
+	// let navigate = use_navigate();
 
-	// let confirm_sign_up_action = create_action(cx, |(username, otp): &(String, String)| {
-	// 	let username = username.clone();
+	// let confirm_sign_up_action = create_action(|(username, otp): &(String,
+	// String)| { 	let username = username.clone();
 	// 	let otp = otp.clone();
 	// 	async move {
 	// 		let result = make_request(
@@ -28,7 +25,7 @@ pub fn ConfirmSignUp(
 
 	// let confirm_loading = confirm_sign_up_action.pending();
 
-	// view! { cx,
+	// view! {
 	// 	<div class="box-onboard fc-fs-fs">
 	// 		<div class="fr-sb-bl mb-lg full-width">
 	// 			<h1 class="txt-primary txt-xl txt-medium">Confirm OTP</h1>
@@ -49,7 +46,7 @@ pub fn ConfirmSignUp(
 	// 				username
 	// 					.get()
 	// 					.is_empty()
-	// 					.then(|| view!{ cx,
+	// 					.then(|| view! {
 	// 						<Input
 	// 							value={username.get()}
 	// 							disabled={confirm_loading}
@@ -63,7 +60,7 @@ pub fn ConfirmSignUp(
 	// 				username_error
 	// 					.get()
 	// 					.some_if_not_empty()
-	// 					.map(|error| view! { cx,
+	// 					.map(|error| view! {
 	// 						<Alert
 	// 							message=error
 	// 							r#type=NotificationType::Error
@@ -85,7 +82,7 @@ pub fn ConfirmSignUp(
 	// 				otp_error
 	// 					.get()
 	// 					.some_if_not_empty()
-	// 					.map(|error| view! { cx,
+	// 					.map(|error| view! {
 	// 						<Alert
 	// 							message=error
 	// 							r#type=NotificationType::Error
@@ -108,11 +105,11 @@ pub fn ConfirmSignUp(
 	// 					)
 	// 				)}
 	// 				{move || if confirm_loading.get() || resend_loading.get() {
-	// 					view! {cx,
+	// 					view! {
 	// 						<Spinner class="mx-xl" />
 	// 					}
 	// 				} else {
-	// 					view! {cx,
+	// 					view! {
 	// 						<Link
 	// 							r#type="submit"
 	// 							variant=LinkVariant::Contained>

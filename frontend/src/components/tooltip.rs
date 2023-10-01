@@ -5,8 +5,6 @@ use crate::prelude::*;
 /// Tooltip for displaying additional information when hovering over an element
 #[component]
 pub fn Tooltip(
-	/// The scope of the component
-	cx: Scope,
 	/// The content of the tooltip
 	#[prop(into, optional)]
 	content: String,
@@ -20,11 +18,11 @@ pub fn Tooltip(
 	#[prop(into)]
 	children: ChildrenFn,
 ) -> impl IntoView {
-	let tooltip_ref = create_node_ref::<html::Span>(cx);
+	let tooltip_ref = create_node_ref::<html::Span>();
 
-	let is_visible = create_rw_signal(cx, false);
+	let is_visible = create_rw_signal(false);
 
-	create_effect(cx, move |_| {
+	create_effect(move |_| {
 		let show_tooltip = move || {
 			is_visible.set(true);
 		};
@@ -88,14 +86,14 @@ pub fn Tooltip(
 			}
 		};
 
-		_ = use_event_listener(cx, window(), ev::mousemove, handle_mouse_move);
-		_ = use_event_listener(cx, parent_ref, ev::mouseenter, move |_| {
+		_ = use_event_listener(window(), ev::mousemove, handle_mouse_move);
+		_ = use_event_listener(parent_ref, ev::mouseenter, move |_| {
 			show_tooltip()
 		});
-		_ = use_event_listener(cx, parent_ref, ev::focus, move |_| {
+		_ = use_event_listener(parent_ref, ev::focus, move |_| {
 			show_tooltip()
 		});
-		_ = use_event_listener(cx, parent_ref, ev::blur, move |_| {
+		_ = use_event_listener(parent_ref, ev::blur, move |_| {
 			hide_tooltip()
 		});
 	});
@@ -130,7 +128,7 @@ pub fn Tooltip(
 		}
 	};
 
-	view! { cx,
+	view! {
 		<Portal>
 			<span
 				style=move || {
@@ -151,7 +149,7 @@ pub fn Tooltip(
 				<span class="tip px-md py-xxs full-width fc-fs-fs pos-rel">
 					<span class="fr-ct-ct txt-white full-width txt-xxs">
 						{&content}
-						{children(cx)}
+						{children()}
 					</span>
 				</span>
 			</span>

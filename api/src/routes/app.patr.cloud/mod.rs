@@ -1,17 +1,9 @@
-use std::path::Path;
+use std::{future::Future, pin::Pin};
 
-use axum::{
-	body::Body,
-	extract::State,
-	http::{Request, StatusCode},
-	response::{IntoResponse, Response as AxumResponse},
-	routing::{any, post},
-	Router,
-};
-use leptos::LeptosOptions;
+use axum::{routing::post, Router};
 use leptos_axum::LeptosRoutes;
-use tower::ServiceExt;
-use tower_http::services::ServeDir;
+use tokio::fs;
+use tower_http::services::ServeFile;
 
 use crate::prelude::*;
 
@@ -20,41 +12,43 @@ pub async fn setup_routes(state: &AppState) -> Router {
 	let config = leptos::get_configuration(None)
 		.await
 		.expect("failed to get configuration");
-	Router::new()
-		.route(
-			"/api/*fn_name",
-			post(leptos_axum::handle_server_fns).get(leptos_axum::handle_server_fns),
-		)
+
+	let mut router = Router::new().route(
+		"/api/*fn_name",
+		post(leptos_axum::handle_server_fns).get(leptos_axum::handle_server_fns),
+	);
+
+	let files = read_files(&config.leptos_options.site_root).await;
+
+	for file in files {
+		router = router.route_service(
+			file.trim_start_matches(config.leptos_options.site_root.as_str()),
+			ServeFile::new(file.as_str()),
+		);
+	}
+
+	router
 		.leptos_routes(
 			&config.leptos_options,
-			leptos_axum::generate_route_list(frontend::render).await,
+			leptos_axum::generate_route_list(frontend::render),
 			frontend::render,
 		)
-		.fallback(serve_file)
 		.with_state(config.leptos_options)
 		.with_state(state.clone())
 }
 
-async fn serve_file(State(options): State<LeptosOptions>, req: Request<Body>) -> AxumResponse {
-	println!("Falling back to serving file: {}", req.uri());
-	let response = ServeDir::new(Path::new(options.site_root.as_str()))
-		.oneshot(
-			Request::builder()
-				.uri(req.uri().clone())
-				.body(Body::empty())
-				.unwrap(),
-		)
-		.await
-		.map_err(|err| match err {})
-		.into_response();
-
-	if response.status() != StatusCode::OK {
-		println!("File not found: {}", req.uri());
-		(leptos_axum::render_app_to_stream(options, frontend::pages::NotFound))(req)
-			.await
-			.into_response()
-	} else {
-		println!("File found: {}", req.uri());
-		response
-	}
+fn read_files(path: &str) -> Pin<Box<dyn Future<Output = Vec<String>> + '_>> {
+	Box::pin(async move {
+		let mut files = Vec::new();
+		let mut read_dir = fs::read_dir(path).await.expect("failed to read directory");
+		while let Some(entry) = read_dir.next_entry().await.expect("failed to read entry") {
+			let path = entry.path();
+			if path.is_dir() {
+				files.append(&mut read_files(path.to_str().unwrap()).await);
+			} else {
+				files.push(path.to_str().unwrap().to_string());
+			}
+		}
+		files
+	})
 }

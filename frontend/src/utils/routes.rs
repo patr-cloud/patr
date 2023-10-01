@@ -58,7 +58,7 @@ impl Display for LoggedInRoutes {
 			f,
 			"{}",
 			match self {
-				Self::Home => "/home",
+				Self::Home => "/",
 			}
 		)
 	}

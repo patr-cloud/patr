@@ -18,8 +18,7 @@ frontend = { workspace = true, features = [] }
 futures = { workspace = true, features = ["default"] }
 jsonwebtoken = { workspace = true, features = ["default"] }
 leptos = { workspace = true, features = ["ssr"] }
-leptos_axum = { workspace = true, features = [] }
-leptos_declarative = { workspace = true, features = [] }
+leptos_axum = { workspace = true, features = ["default"] }
 macros = { workspace = true, features = [] }
 models = { workspace = true, features = [] }
 rustis = { workspace = true, features = [

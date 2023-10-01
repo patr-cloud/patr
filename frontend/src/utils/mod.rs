@@ -8,6 +8,7 @@ mod size;
 mod state;
 mod variant;
 
+#[allow(ambiguous_glob_reexports)]
 pub use self::{
 	app_route::*,
 	color::*,

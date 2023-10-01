@@ -42,8 +42,6 @@ struct UrlParams<T>(T);
 
 #[component]
 pub fn AppRoute<R, F, V>(
-	/// The scope of the component
-	cx: Scope,
 	/// The path of the route
 	_route: R,
 	/// The view for the route
@@ -53,40 +51,40 @@ pub fn AppRoute<R, F, V>(
 ) -> impl IntoView
 where
 	R: TypedRoute,
-	F: Fn(Scope) -> V + 'static,
+	F: Fn() -> V + 'static,
 	V: IntoView,
 {
-	view! { cx,
+	view! {
 		<Route
-			view={move |cx| {
-				let query: R::Query = use_router_query(cx)
+			view={move || {
+				let query: R::Query = use_router_query()
 					.get_untracked()
 					.unwrap_or_default();
-				let params: R = use_router_params(cx)
+				let params: R = use_router_params()
 					.get_untracked()
 					.unwrap_or_default();
-				provide_context(cx, Query(query));
-				provide_context(cx, UrlParams(params));
-				view(cx)
+				provide_context(Query(query));
+				provide_context(UrlParams(params));
+				view()
 			}}
 			path={<R as TypedPath>::PATH}>
-			{children(cx)}
+			{children()}
 		</Route>
 	}
 }
 
 /// Get the query parameters for the current route.
-pub fn use_query<R>(cx: Scope) -> R::Query
+pub fn use_query<R>() -> R::Query
 where
 	R: TypedRoute,
 {
-	expect_context::<Query<R::Query>>(cx).0
+	expect_context::<Query<R::Query>>().0
 }
 
 /// Get the path parameters for the current route.
-pub fn use_params<R>(cx: Scope) -> R
+pub fn use_params<R>() -> R
 where
     R: TypedRoute,
 {
-    expect_context::<UrlParams<R>>(cx).0
+    expect_context::<UrlParams<R>>().0
 }
