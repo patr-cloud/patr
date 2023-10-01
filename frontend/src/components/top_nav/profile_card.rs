@@ -2,8 +2,6 @@ use crate::prelude::*;
 
 #[component]
 pub fn ProfileCard(
-	/// The scope of the component
-	cx: Scope,
 	/// The click handler for the profile card
 	on_click: Box<dyn Fn(&ev::MouseEvent)>,
 	/// Additional class names to apply to the profile card, if any
@@ -13,10 +11,10 @@ pub fn ProfileCard(
 	let first_name = "Rakshith"; // TODO get this from user data
 	let last_name = "Ravi"; // TODO get this from user data
 
-	view! { cx,
+	view! {
 		<Link
 			on_click=on_click
-			class=MaybeSignal::derive(cx, move || {
+			class=MaybeSignal::derive(move || {
 				format!(
 					"fr-fe-ct px-lg row-card br-lg bg-secondary-light ml-sm {}",
 					class.get()

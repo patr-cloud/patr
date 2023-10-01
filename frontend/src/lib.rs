@@ -15,7 +15,6 @@ pub mod prelude {
 	pub use crate::{components::*, pages::*, utils::*};
 }
 
-use leptos_declarative::prelude::*;
 use leptos_meta::provide_meta_context;
 use prelude::*;
 
@@ -48,11 +47,11 @@ pub fn hydrate() {
 
 /// The main render function. Called when the application starts to render
 /// from the client side.
-pub fn render(cx: Scope) -> View {
+pub fn render() -> View {
 	use app::App;
 
-	provide_meta_context(cx);
-	view! { cx,
+	provide_meta_context();
+	view! {
 		<>
 			<Meta charset="utf-8" />
 			<MetaLink rel="shortcut icon" href="/favicon.svg" type_="image/svg+xml" />

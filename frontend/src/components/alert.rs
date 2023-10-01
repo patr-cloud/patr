@@ -3,8 +3,6 @@ use crate::prelude::*;
 /// Alert component. Used to display alerts.
 #[component]
 pub fn Alert(
-	/// scope of the component
-	cx: Scope,
 	/// type of the alert
 	#[prop(into)]
 	r#type: MaybeSignal<NotificationType>,
@@ -15,7 +13,7 @@ pub fn Alert(
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
 ) -> impl IntoView {
-	view! { cx,
+	view! {
 		<span class=move || format!("txt-white fr-fs-fs {}", class.get())>
 			<Icon
 				icon={

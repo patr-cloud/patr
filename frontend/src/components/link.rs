@@ -16,8 +16,6 @@ pub enum LinkVariant {
 /// Link component to navigate to other pages
 #[component]
 pub fn Link(
-	/// The scope of the component
-	cx: Scope,
 	/// The target of the link.
 	#[prop(into, optional)]
 	to: MaybeSignal<AppRoute>,
@@ -43,9 +41,9 @@ pub fn Link(
 	/// The children of the link, if any
 	children: Children,
 ) -> impl IntoView {
-	let navigate = use_navigate(cx);
+	let navigate = use_navigate();
 
-	view! { cx,
+	view! {
 		<button
 			type=move || r#type.get()
 			on:click={move |e| {
@@ -71,7 +69,7 @@ pub fn Link(
 				class.get()
 			)}
 		>
-			{children(cx)}
+			{children()}
 		</button>
 	}
 }

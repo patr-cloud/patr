@@ -2,13 +2,11 @@ use crate::prelude::*;
 
 #[component]
 pub fn TopNav(
-	/// The scope of the component
-	cx: Scope,
 ) -> impl IntoView {
-	let open_feedback = create_rw_signal(cx, false);
-	let show_profile_settings = create_rw_signal(cx, false);
+	let open_feedback = create_rw_signal(false);
+	let show_profile_settings = create_rw_signal(false);
 
-	view! { cx,
+	view! {
 		<header class="full-width fr-sb-ct pt-xl pb-md">
 			<nav class="full-width fr-fe-ct">
 				<button
@@ -18,7 +16,7 @@ pub fn TopNav(
 					Feedback
 				</button>
 				{move || open_feedback.get().then(move || {
-					view! { cx,
+					view! {
 						// <FeedbackModal
 						// 	handleSubmit={handleSubmit}
 						// 	openFeedback={openFeedback}

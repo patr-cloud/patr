@@ -2,8 +2,6 @@ use crate::prelude::*;
 
 #[component]
 pub fn TooltipContainer(
-	/// The scope of the component
-	cx: Scope,
 	/// The content of the tooltip
 	#[prop(into, optional)]
 	content: String,
@@ -27,9 +25,9 @@ pub fn TooltipContainer(
 	#[prop(into)]
 	children: ChildrenFn,
 ) -> impl IntoView {
-	let container_ref = create_node_ref::<html::Span>(cx);
+	let container_ref = create_node_ref::<html::Span>();
 
-	view! { cx,
+	view! {
 		<span
 			ref={container_ref}
 			tab_index=if disable_focus { -1 } else { 0 }
@@ -43,9 +41,9 @@ pub fn TooltipContainer(
 			)
 		>
 			{if let Some(label) = label {
-				label(cx)
+				label()
 			} else {
-				view! { cx,
+				view! {
 					<Icon
 						icon=IconType::Info
 						size={ExtraSmall}

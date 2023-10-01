@@ -6,8 +6,6 @@ use crate::prelude::*;
 
 #[component]
 pub fn OtpInput(
-	/// The scope of the component
-	cx: Scope,
 	/// ID of the input
 	#[prop(into, optional)]
 	id: MaybeSignal<String>,
@@ -37,16 +35,15 @@ pub fn OtpInput(
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
 ) -> impl IntoView {
-	let node_ref = r#ref.unwrap_or_else(|| create_node_ref(cx));
+	let node_ref = r#ref.unwrap_or_else(|| create_node_ref());
 
 	let refs = store_value(
-		cx,
 		(0..length)
 			.map(|index| {
 				(
 					index,
-					create_node_ref::<html::Input>(cx),
-					create_rw_signal(cx, None),
+					create_node_ref::<html::Input>(),
+					create_rw_signal(None),
 				)
 			})
 			.collect::<Vec<_>>(),
@@ -64,12 +61,12 @@ pub fn OtpInput(
 			});
 		});
 	refs.with_value(|refs| {
-		refs[last_index].1.on_load(cx, |node| {
+		refs[last_index].1.on_load(|node| {
 			_ = node.focus();
 		});
 	});
 
-	let value = MaybeSignal::derive(cx, move || {
+	let value = MaybeSignal::derive(move || {
 		refs.with_value(|refs| {
 			refs.iter()
 				.try_fold(String::new(), |mut acc, (_, _, signal)| {
@@ -176,7 +173,7 @@ pub fn OtpInput(
 		});
 	};
 
-	view! { cx,
+	view! {
 		<div
 			class=move || format!("full-width fr-ct-ct gap-xs {}", class.get())
 		>
@@ -195,7 +192,7 @@ pub fn OtpInput(
 						.copied()
 						.map(|(index, node_ref, signal)| {
 							let on_submit = on_submit.clone();
-							view! { cx,
+							view! {
 								<input
 									ref=node_ref
 									type="number"

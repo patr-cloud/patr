@@ -26,40 +26,38 @@ use crate::prelude::*;
 /// The login page
 #[component]
 pub fn SignUp(
-	/// The scope of the component
-	cx: Scope,
 ) -> impl IntoView {
-	let first_name_ref = create_node_ref(cx);
-	let last_name_ref = create_node_ref(cx);
-	let username_ref = create_node_ref(cx);
-	let query = use_query_map(cx);
+	let first_name_ref = create_node_ref();
+	let last_name_ref = create_node_ref();
+	let username_ref = create_node_ref();
+	let query = use_query_map();
 
-	let email_ref = create_node_ref(cx);
-	let password_ref = create_node_ref(cx);
-	let confirm_password_ref = create_node_ref(cx);
+	let email_ref = create_node_ref();
+	let password_ref = create_node_ref();
+	let confirm_password_ref = create_node_ref();
 
-	let show_password = create_rw_signal(cx, false);
-	let first_name_error = create_rw_signal(cx, String::from(""));
-	let last_name_error = create_rw_signal(cx, String::from(""));
+	let show_password = create_rw_signal(false);
+	let first_name_error = create_rw_signal(String::from(""));
+	let last_name_error = create_rw_signal(String::from(""));
 	let username_default = query
 		.get_untracked()
 		.get("username")
 		.cloned()
 		.unwrap_or_default();
-	let username_error_type = create_rw_signal(cx, NotificationType::Error);
-	let username_error = create_rw_signal(cx, String::from(""));
-	let username_verifying = create_rw_signal(cx, false);
+	let username_error_type = create_rw_signal(NotificationType::Error);
+	let username_error = create_rw_signal(String::from(""));
+	let username_verifying = create_rw_signal(false);
 	let email_default = query
 		.get_untracked()
 		.get("email")
 		.cloned()
 		.unwrap_or_default();
-	let email_error = create_rw_signal(cx, String::from(""));
-	let email_error_type = create_rw_signal(cx, NotificationType::Error);
-	let email_verifying = create_rw_signal(cx, false);
-	let password_error = create_rw_signal(cx, String::from(""));
-	let confirm_password_error = create_rw_signal(cx, String::from(""));
-	let show_login_username_button = create_rw_signal(cx, false);
+	let email_error = create_rw_signal(String::from(""));
+	let email_error_type = create_rw_signal(NotificationType::Error);
+	let email_verifying = create_rw_signal(false);
+	let password_error = create_rw_signal(String::from(""));
+	let confirm_password_error = create_rw_signal(String::from(""));
+	let show_login_username_button = create_rw_signal(false);
 
 	let handle_errors = move |error, message| match error {
 		ErrorType::InvalidPassword => {
@@ -77,7 +75,7 @@ pub fn SignUp(
 		}
 	};
 
-	let username_valid_action = create_action(cx, move |username: &String| {
+	let username_valid_action = create_action(move |username: &String| {
 		let username = username.clone();
 		async move {
 			let result = make_request(
@@ -123,7 +121,7 @@ pub fn SignUp(
 		}
 	});
 
-	let email_valid_action = create_action(cx, move |email: &String| {
+	let email_valid_action = create_action(move |email: &String| {
 		let email = email.clone();
 		async move {
 			let result = make_request(
@@ -170,7 +168,6 @@ pub fn SignUp(
 	});
 
 	let sign_up_action = create_action(
-		cx,
 		move |(first_name, last_name, username, email, password): &(
 			String,
 			String,
@@ -348,7 +345,7 @@ pub fn SignUp(
 
 	let sign_up_loading = sign_up_action.pending();
 
-	view! { cx,
+	view! {
 		<form class="box-onboard txt-white fc-fs-fs" on:submit=handle_sign_up>
 			<div class="fr-sb-bl mb-lg full-width">
 				<h1 class="txt-primary txt-xl txt-medium">{"Sign In"}</h1>
@@ -387,7 +384,7 @@ pub fn SignUp(
 							.get()
 							.some_if_not_empty()
 							.map(|username| {
-								view! {cx,
+								view! {
 									<Alert
 										r#type=NotificationType::Error
 										class="mt-xs"
@@ -420,7 +417,7 @@ pub fn SignUp(
 							.get()
 							.some_if_not_empty()
 							.map(|username| {
-								view! {cx,
+								view! {
 									<Alert
 										r#type=NotificationType::Error
 										class="mt-xs"
@@ -462,7 +459,7 @@ pub fn SignUp(
 					username_error
 						.some_if_not_empty()
 						.map(|username| {
-							view! {cx,
+							view! {
 								<Alert
 									r#type=username_error_type
 									class="mt-xs"
@@ -473,7 +470,7 @@ pub fn SignUp(
 				}}
 				{move || show_login_username_button
 					.with(|value| {
-						value.then(move || view! { cx,
+						value.then(move || view! {
 							<Link
 								disabled={sign_up_loading}
 								on_click=Box::new(handle_login_username)
@@ -523,7 +520,7 @@ pub fn SignUp(
 					.get()
 					.some_if_not_empty()
 					.map(|email| {
-						view! {cx,
+						view! {
 							<Alert
 								r#type=NotificationType::Error
 								class="mt-xs"
@@ -535,7 +532,7 @@ pub fn SignUp(
 			<Input
 				r#ref=password_ref
 				class="mt-md full-width"
-				r#type={MaybeSignal::derive(cx, move || if show_password.get() {
+				r#type={MaybeSignal::derive(move || if show_password.get() {
 					"text".to_owned()
 				} else {
 					"password".to_owned()
@@ -561,7 +558,7 @@ pub fn SignUp(
 				end_icon={
 					Some(
 						IconProps::builder()
-							.icon(MaybeSignal::derive(cx, move || {
+							.icon(MaybeSignal::derive(move || {
 								if show_password.get() {
 									IconType::Eye
 								} else {
@@ -582,7 +579,7 @@ pub fn SignUp(
 					.get()
 					.some_if_not_empty()
 					.map(|password| {
-						view! {cx,
+						view! {
 							<Alert
 								r#type=NotificationType::Error
 								class="mt-xs"
@@ -594,7 +591,7 @@ pub fn SignUp(
 			<Input
 				r#ref=confirm_password_ref
 				class="mt-md full-width"
-				r#type={MaybeSignal::derive(cx, move || if show_password.get() {
+				r#type={MaybeSignal::derive(move || if show_password.get() {
 					"text".to_owned()
 				} else {
 					"password".to_owned()
@@ -616,7 +613,7 @@ pub fn SignUp(
 				end_icon={
 					Some(
 						IconProps::builder()
-							.icon(MaybeSignal::derive(cx, move || {
+							.icon(MaybeSignal::derive(move || {
 								if show_password.get() {
 									IconType::Eye
 								} else {
@@ -637,7 +634,7 @@ pub fn SignUp(
 					.get()
 					.some_if_not_empty()
 					.map(|password| {
-						view! {cx,
+						view! {
 							<Alert
 								r#type=NotificationType::Error
 								class="mt-xs"
@@ -660,11 +657,11 @@ pub fn SignUp(
 				</Link>
 				{move || {
 					if sign_up_loading.get() {
-						view! { cx,
+						view! {
 							<Spinner class="mx-xl" />
 						}
 					} else {
-						view! { cx,
+						view! {
 							<Link
 								disabled={sign_up_loading}
 								r#type="submit"

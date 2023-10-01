@@ -1,8 +1,11 @@
+#[cfg(not(target_arch = "wasm32"))]
 use axum::{body::Body, http::Request, RequestExt};
 #[cfg(not(target_arch = "wasm32"))]
 use axum_typed_websockets::WebSocketUpgrade as TypedWebSocketUpgrade;
 
+#[cfg(not(target_arch = "wasm32"))]
 use super::FromAxumRequest;
+#[cfg(not(target_arch = "wasm32"))]
 use crate::ErrorType;
 
 /// A websocket upgrade request. This can be used as a body type for websocket

@@ -3,8 +3,6 @@ use crate::prelude::*;
 /// The avatar component, used for displaying a user's avatar.
 #[component]
 pub fn Avatar(
-	/// The scope of the component.
-	cx: Scope,
 	/// The first name of the user.
 	#[prop(into, optional)]
 	first_name: MaybeSignal<String>,
@@ -24,7 +22,7 @@ pub fn Avatar(
 	#[prop(into, optional)]
 	variant: MaybeSignal<Option<SecondaryColorVariant>>,
 ) -> impl IntoView {
-	view! { cx,
+	view! {
 		<div class=move || format!(
 			concat!(
 				"avatar cursor-pointer txt-white bg-secondary",
@@ -43,7 +41,7 @@ pub fn Avatar(
 				.some_if_not_empty()
 				.map(|image| {
 					let first_name = first_name.clone();
-					view! { cx,
+					view! {
 						<img
 							class="img-res"
 							src={image}
@@ -60,7 +58,7 @@ pub fn Avatar(
 				.get()
 				.some_if_not_empty()
 				.map(|first_name| {
-					view! { cx,
+					view! {
 						{first_name
 							.chars()
 							.next()
@@ -72,7 +70,7 @@ pub fn Avatar(
 				.get()
 				.some_if_not_empty()
 				.map(|last_name| {
-					view! { cx,
+					view! {
 						{last_name
 							.chars()
 							.next()
