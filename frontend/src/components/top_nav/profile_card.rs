@@ -25,7 +25,7 @@ pub fn ProfileCard(
 				{first_name} {last_name}
 			</strong>
 			<Avatar
-				size=Small
+				size=Size::Small
 				first_name={first_name}
 				last_name={last_name} />
 		</Link>

@@ -70,7 +70,7 @@ pub fn Input(
 							content: String::new(),
 							label: None,
 							disable_focus: false,
-							icon_color: PatrColor::default(),
+							icon_color: Color::default(),
 							variant: variant.get(),
 							class: String::new(),
 							children: Rc::new(move || content.clone().into_view().into()),

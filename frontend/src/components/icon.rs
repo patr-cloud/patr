@@ -6,579 +6,579 @@ use crate::prelude::*;
 /// set.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum IconType {
-	/// https://feathericons.com/?query=activity
+	/// <https://feathericons.com/?query=activity>
 	Activity,
-	/// https://feathericons.com/?query=airplay
+	/// <https://feathericons.com/?query=airplay>
 	Airplay,
-	/// https://feathericons.com/?query=alert-circle
+	/// <https://feathericons.com/?query=alert-circle>
 	AlertCircle,
-	/// https://feathericons.com/?query=alert-octagon
+	/// <https://feathericons.com/?query=alert-octagon>
 	AlertOctagon,
-	/// https://feathericons.com/?query=alert-triangle
+	/// <https://feathericons.com/?query=alert-triangle>
 	AlertTriangle,
-	/// https://feathericons.com/?query=align-center
+	/// <https://feathericons.com/?query=align-center>
 	AlignCenter,
-	/// https://feathericons.com/?query=align-justify
+	/// <https://feathericons.com/?query=align-justify>
 	AlignJustify,
-	/// https://feathericons.com/?query=align-left
+	/// <https://feathericons.com/?query=align-left>
 	AlignLeft,
-	/// https://feathericons.com/?query=align-right
+	/// <https://feathericons.com/?query=align-right>
 	AlignRight,
-	/// https://feathericons.com/?query=anchor
+	/// <https://feathericons.com/?query=anchor>
 	Anchor,
-	/// https://feathericons.com/?query=aperture
+	/// <https://feathericons.com/?query=aperture>
 	Aperture,
-	/// https://feathericons.com/?query=archive
+	/// <https://feathericons.com/?query=archive>
 	Archive,
-	/// https://feathericons.com/?query=arrow-down-circle
+	/// <https://feathericons.com/?query=arrow-down-circle>
 	ArrowDownCircle,
-	/// https://feathericons.com/?query=arrow-down-left
+	/// <https://feathericons.com/?query=arrow-down-left>
 	ArrowDownLeft,
-	/// https://feathericons.com/?query=arrow-down-right
+	/// <https://feathericons.com/?query=arrow-down-right>
 	ArrowDownRight,
-	/// https://feathericons.com/?query=arrow-down
+	/// <https://feathericons.com/?query=arrow-down>
 	ArrowDown,
-	/// https://feathericons.com/?query=arrow-left-circle
+	/// <https://feathericons.com/?query=arrow-left-circle>
 	ArrowLeftCircle,
-	/// https://feathericons.com/?query=arrow-left
+	/// <https://feathericons.com/?query=arrow-left>
 	ArrowLeft,
-	/// https://feathericons.com/?query=arrow-right-circle
+	/// <https://feathericons.com/?query=arrow-right-circle>
 	ArrowRightCircle,
-	/// https://feathericons.com/?query=arrow-right
+	/// <https://feathericons.com/?query=arrow-right>
 	ArrowRight,
-	/// https://feathericons.com/?query=arrow-up-circle
+	/// <https://feathericons.com/?query=arrow-up-circle>
 	ArrowUpCircle,
-	/// https://feathericons.com/?query=arrow-up-left
+	/// <https://feathericons.com/?query=arrow-up-left>
 	ArrowUpLeft,
-	/// https://feathericons.com/?query=arrow-up-right
+	/// <https://feathericons.com/?query=arrow-up-right>
 	ArrowUpRight,
-	/// https://feathericons.com/?query=arrow-up
+	/// <https://feathericons.com/?query=arrow-up>
 	ArrowUp,
-	/// https://feathericons.com/?query=at-sign
+	/// <https://feathericons.com/?query=at-sign>
 	AtSign,
-	/// https://feathericons.com/?query=award
+	/// <https://feathericons.com/?query=award>
 	Award,
-	/// https://feathericons.com/?query=bar-chart2
+	/// <https://feathericons.com/?query=bar-chart2>
 	BarChart2,
-	/// https://feathericons.com/?query=bar-chart
+	/// <https://feathericons.com/?query=bar-chart>
 	BarChart,
-	/// https://feathericons.com/?query=battery-charging
+	/// <https://feathericons.com/?query=battery-charging>
 	BatteryCharging,
-	/// https://feathericons.com/?query=battery
+	/// <https://feathericons.com/?query=battery>
 	Battery,
-	/// https://feathericons.com/?query=bell-off
+	/// <https://feathericons.com/?query=bell-off>
 	BellOff,
-	/// https://feathericons.com/?query=bell
+	/// <https://feathericons.com/?query=bell>
 	Bell,
-	/// https://feathericons.com/?query=bluetooth
+	/// <https://feathericons.com/?query=bluetooth>
 	Bluetooth,
-	/// https://feathericons.com/?query=bold
+	/// <https://feathericons.com/?query=bold>
 	Bold,
-	/// https://feathericons.com/?query=book-open
+	/// <https://feathericons.com/?query=book-open>
 	BookOpen,
-	/// https://feathericons.com/?query=book
+	/// <https://feathericons.com/?query=book>
 	Book,
-	/// https://feathericons.com/?query=bookmark
+	/// <https://feathericons.com/?query=bookmark>
 	Bookmark,
-	/// https://feathericons.com/?query=box
+	/// <https://feathericons.com/?query=box>
 	Box,
-	/// https://feathericons.com/?query=briefcase
+	/// <https://feathericons.com/?query=briefcase>
 	Briefcase,
-	/// https://feathericons.com/?query=calendar
+	/// <https://feathericons.com/?query=calendar>
 	Calendar,
-	/// https://feathericons.com/?query=camera-off
+	/// <https://feathericons.com/?query=camera-off>
 	CameraOff,
-	/// https://feathericons.com/?query=camera
+	/// <https://feathericons.com/?query=camera>
 	Camera,
-	/// https://feathericons.com/?query=cast
+	/// <https://feathericons.com/?query=cast>
 	Cast,
-	/// https://feathericons.com/?query=check-circle
+	/// <https://feathericons.com/?query=check-circle>
 	CheckCircle,
-	/// https://feathericons.com/?query=check-square
+	/// <https://feathericons.com/?query=check-square>
 	CheckSquare,
-	/// https://feathericons.com/?query=check
+	/// <https://feathericons.com/?query=check>
 	Check,
-	/// https://feathericons.com/?query=chevron-down
+	/// <https://feathericons.com/?query=chevron-down>
 	ChevronDown,
-	/// https://feathericons.com/?query=chevron-left
+	/// <https://feathericons.com/?query=chevron-left>
 	ChevronLeft,
-	/// https://feathericons.com/?query=chevron-right
+	/// <https://feathericons.com/?query=chevron-right>
 	ChevronRight,
-	/// https://feathericons.com/?query=chevron-up
+	/// <https://feathericons.com/?query=chevron-up>
 	ChevronUp,
-	/// https://feathericons.com/?query=chevrons-down
+	/// <https://feathericons.com/?query=chevrons-down>
 	ChevronsDown,
-	/// https://feathericons.com/?query=chevrons-left
+	/// <https://feathericons.com/?query=chevrons-left>
 	ChevronsLeft,
-	/// https://feathericons.com/?query=chevrons-right
+	/// <https://feathericons.com/?query=chevrons-right>
 	ChevronsRight,
-	/// https://feathericons.com/?query=chevrons-up
+	/// <https://feathericons.com/?query=chevrons-up>
 	ChevronsUp,
-	/// https://feathericons.com/?query=chrome
+	/// <https://feathericons.com/?query=chrome>
 	Chrome,
-	/// https://feathericons.com/?query=circle
+	/// <https://feathericons.com/?query=circle>
 	Circle,
-	/// https://feathericons.com/?query=clipboard
+	/// <https://feathericons.com/?query=clipboard>
 	Clipboard,
-	/// https://feathericons.com/?query=clock
+	/// <https://feathericons.com/?query=clock>
 	Clock,
-	/// https://feathericons.com/?query=cloud-drizzle
+	/// <https://feathericons.com/?query=cloud-drizzle>
 	CloudDrizzle,
-	/// https://feathericons.com/?query=cloud-lightning
+	/// <https://feathericons.com/?query=cloud-lightning>
 	CloudLightning,
-	/// https://feathericons.com/?query=cloud-off
+	/// <https://feathericons.com/?query=cloud-off>
 	CloudOff,
-	/// https://feathericons.com/?query=cloud-rain
+	/// <https://feathericons.com/?query=cloud-rain>
 	CloudRain,
-	/// https://feathericons.com/?query=cloud-snow
+	/// <https://feathericons.com/?query=cloud-snow>
 	CloudSnow,
-	/// https://feathericons.com/?query=cloud
+	/// <https://feathericons.com/?query=cloud>
 	Cloud,
-	/// https://feathericons.com/?query=code
+	/// <https://feathericons.com/?query=code>
 	Code,
-	/// https://feathericons.com/?query=codepen
+	/// <https://feathericons.com/?query=codepen>
 	Codepen,
-	/// https://feathericons.com/?query=codesandbox
+	/// <https://feathericons.com/?query=codesandbox>
 	Codesandbox,
-	/// https://feathericons.com/?query=coffee
+	/// <https://feathericons.com/?query=coffee>
 	Coffee,
-	/// https://feathericons.com/?query=columns
+	/// <https://feathericons.com/?query=columns>
 	Columns,
-	/// https://feathericons.com/?query=command
+	/// <https://feathericons.com/?query=command>
 	Command,
-	/// https://feathericons.com/?query=compass
+	/// <https://feathericons.com/?query=compass>
 	Compass,
-	/// https://feathericons.com/?query=copy
+	/// <https://feathericons.com/?query=copy>
 	Copy,
-	/// https://feathericons.com/?query=corner-down-left
+	/// <https://feathericons.com/?query=corner-down-left>
 	CornerDownLeft,
-	/// https://feathericons.com/?query=corner-down-right
+	/// <https://feathericons.com/?query=corner-down-right>
 	CornerDownRight,
-	/// https://feathericons.com/?query=corner-left-down
+	/// <https://feathericons.com/?query=corner-left-down>
 	CornerLeftDown,
-	/// https://feathericons.com/?query=corner-left-up
+	/// <https://feathericons.com/?query=corner-left-up>
 	CornerLeftUp,
-	/// https://feathericons.com/?query=corner-right-down
+	/// <https://feathericons.com/?query=corner-right-down>
 	CornerRightDown,
-	/// https://feathericons.com/?query=corner-right-up
+	/// <https://feathericons.com/?query=corner-right-up>
 	CornerRightUp,
-	/// https://feathericons.com/?query=corner-up-left
+	/// <https://feathericons.com/?query=corner-up-left>
 	CornerUpLeft,
-	/// https://feathericons.com/?query=corner-up-right
+	/// <https://feathericons.com/?query=corner-up-right>
 	CornerUpRight,
-	/// https://feathericons.com/?query=cpu
+	/// <https://feathericons.com/?query=cpu>
 	Cpu,
-	/// https://feathericons.com/?query=credit-card
+	/// <https://feathericons.com/?query=credit-card>
 	CreditCard,
-	/// https://feathericons.com/?query=crop
+	/// <https://feathericons.com/?query=crop>
 	Crop,
-	/// https://feathericons.com/?query=crosshair
+	/// <https://feathericons.com/?query=crosshair>
 	Crosshair,
-	/// https://feathericons.com/?query=database
+	/// <https://feathericons.com/?query=database>
 	Database,
-	/// https://feathericons.com/?query=delete
+	/// <https://feathericons.com/?query=delete>
 	Delete,
-	/// https://feathericons.com/?query=disc
+	/// <https://feathericons.com/?query=disc>
 	Disc,
-	/// https://feathericons.com/?query=divide-circle
+	/// <https://feathericons.com/?query=divide-circle>
 	DivideCircle,
-	/// https://feathericons.com/?query=divide-square
+	/// <https://feathericons.com/?query=divide-square>
 	DivideSquare,
-	/// https://feathericons.com/?query=divide
+	/// <https://feathericons.com/?query=divide>
 	Divide,
-	/// https://feathericons.com/?query=dollar-sign
+	/// <https://feathericons.com/?query=dollar-sign>
 	DollarSign,
-	/// https://feathericons.com/?query=download-cloud
+	/// <https://feathericons.com/?query=download-cloud>
 	DownloadCloud,
-	/// https://feathericons.com/?query=download
+	/// <https://feathericons.com/?query=download>
 	Download,
-	/// https://feathericons.com/?query=dribbble
+	/// <https://feathericons.com/?query=dribbble>
 	Dribbble,
-	/// https://feathericons.com/?query=droplet
+	/// <https://feathericons.com/?query=droplet>
 	Droplet,
-	/// https://feathericons.com/?query=edit2
+	/// <https://feathericons.com/?query=edit2>
 	Edit2,
-	/// https://feathericons.com/?query=edit3
+	/// <https://feathericons.com/?query=edit3>
 	Edit3,
-	/// https://feathericons.com/?query=edit
+	/// <https://feathericons.com/?query=edit>
 	Edit,
-	/// https://feathericons.com/?query=external-link
+	/// <https://feathericons.com/?query=external-link>
 	ExternalLink,
-	/// https://feathericons.com/?query=eye-off
+	/// <https://feathericons.com/?query=eye-off>
 	EyeOff,
-	/// https://feathericons.com/?query=eye
+	/// <https://feathericons.com/?query=eye>
 	Eye,
-	/// https://feathericons.com/?query=facebook
+	/// <https://feathericons.com/?query=facebook>
 	Facebook,
-	/// https://feathericons.com/?query=fast-forward
+	/// <https://feathericons.com/?query=fast-forward>
 	FastForward,
-	/// https://feathericons.com/?query=feather
+	/// <https://feathericons.com/?query=feather>
 	Feather,
-	/// https://feathericons.com/?query=figma
+	/// <https://feathericons.com/?query=figma>
 	Figma,
-	/// https://feathericons.com/?query=file-minus
+	/// <https://feathericons.com/?query=file-minus>
 	FileMinus,
-	/// https://feathericons.com/?query=file-plus
+	/// <https://feathericons.com/?query=file-plus>
 	FilePlus,
-	/// https://feathericons.com/?query=file-text
+	/// <https://feathericons.com/?query=file-text>
 	FileText,
-	/// https://feathericons.com/?query=file
+	/// <https://feathericons.com/?query=file>
 	File,
-	/// https://feathericons.com/?query=film
+	/// <https://feathericons.com/?query=film>
 	Film,
-	/// https://feathericons.com/?query=filter
+	/// <https://feathericons.com/?query=filter>
 	Filter,
-	/// https://feathericons.com/?query=flag
+	/// <https://feathericons.com/?query=flag>
 	Flag,
-	/// https://feathericons.com/?query=folder-minus
+	/// <https://feathericons.com/?query=folder-minus>
 	FolderMinus,
-	/// https://feathericons.com/?query=folder-plus
+	/// <https://feathericons.com/?query=folder-plus>
 	FolderPlus,
-	/// https://feathericons.com/?query=folder
+	/// <https://feathericons.com/?query=folder>
 	Folder,
-	/// https://feathericons.com/?query=framer
+	/// <https://feathericons.com/?query=framer>
 	Framer,
-	/// https://feathericons.com/?query=frown
+	/// <https://feathericons.com/?query=frown>
 	Frown,
-	/// https://feathericons.com/?query=gift
+	/// <https://feathericons.com/?query=gift>
 	Gift,
-	/// https://feathericons.com/?query=git-branch
+	/// <https://feathericons.com/?query=git-branch>
 	GitBranch,
-	/// https://feathericons.com/?query=git-commit
+	/// <https://feathericons.com/?query=git-commit>
 	GitCommit,
-	/// https://feathericons.com/?query=git-merge
+	/// <https://feathericons.com/?query=git-merge>
 	GitMerge,
-	/// https://feathericons.com/?query=git-pull-request
+	/// <https://feathericons.com/?query=git-pull-request>
 	GitPullRequest,
-	/// https://feathericons.com/?query=github
+	/// <https://feathericons.com/?query=github>
 	Github,
-	/// https://feathericons.com/?query=gitlab
+	/// <https://feathericons.com/?query=gitlab>
 	Gitlab,
-	/// https://feathericons.com/?query=globe
+	/// <https://feathericons.com/?query=globe>
 	Globe,
-	/// https://feathericons.com/?query=grid
+	/// <https://feathericons.com/?query=grid>
 	Grid,
-	/// https://feathericons.com/?query=hard-drive
+	/// <https://feathericons.com/?query=hard-drive>
 	HardDrive,
-	/// https://feathericons.com/?query=hash
+	/// <https://feathericons.com/?query=hash>
 	Hash,
-	/// https://feathericons.com/?query=headphones
+	/// <https://feathericons.com/?query=headphones>
 	Headphones,
-	/// https://feathericons.com/?query=heart
+	/// <https://feathericons.com/?query=heart>
 	Heart,
-	/// https://feathericons.com/?query=help-circle
+	/// <https://feathericons.com/?query=help-circle>
 	HelpCircle,
-	/// https://feathericons.com/?query=hexagon
+	/// <https://feathericons.com/?query=hexagon>
 	Hexagon,
-	/// https://feathericons.com/?query=home
+	/// <https://feathericons.com/?query=home>
 	Home,
-	/// https://feathericons.com/?query=image
+	/// <https://feathericons.com/?query=image>
 	Image,
-	/// https://feathericons.com/?query=inbox
+	/// <https://feathericons.com/?query=inbox>
 	Inbox,
-	/// https://feathericons.com/?query=info
+	/// <https://feathericons.com/?query=info>
 	Info,
-	/// https://feathericons.com/?query=instagram
+	/// <https://feathericons.com/?query=instagram>
 	Instagram,
-	/// https://feathericons.com/?query=italic
+	/// <https://feathericons.com/?query=italic>
 	Italic,
-	/// https://feathericons.com/?query=key
+	/// <https://feathericons.com/?query=key>
 	Key,
-	/// https://feathericons.com/?query=layers
+	/// <https://feathericons.com/?query=layers>
 	Layers,
-	/// https://feathericons.com/?query=layout
+	/// <https://feathericons.com/?query=layout>
 	Layout,
-	/// https://feathericons.com/?query=life-buoy
+	/// <https://feathericons.com/?query=life-buoy>
 	LifeBuoy,
-	/// https://feathericons.com/?query=link2
+	/// <https://feathericons.com/?query=link2>
 	Link2,
-	/// https://feathericons.com/?query=link
+	/// <https://feathericons.com/?query=link>
 	Link,
-	/// https://feathericons.com/?query=linkedin
+	/// <https://feathericons.com/?query=linkedin>
 	Linkedin,
-	/// https://feathericons.com/?query=list
+	/// <https://feathericons.com/?query=list>
 	List,
-	/// https://feathericons.com/?query=loader
+	/// <https://feathericons.com/?query=loader>
 	Loader,
-	/// https://feathericons.com/?query=lock
+	/// <https://feathericons.com/?query=lock>
 	Lock,
-	/// https://feathericons.com/?query=log-in
+	/// <https://feathericons.com/?query=log-in>
 	LogIn,
-	/// https://feathericons.com/?query=log-out
+	/// <https://feathericons.com/?query=log-out>
 	LogOut,
-	/// https://feathericons.com/?query=mail
+	/// <https://feathericons.com/?query=mail>
 	Mail,
-	/// https://feathericons.com/?query=map-pin
+	/// <https://feathericons.com/?query=map-pin>
 	MapPin,
-	/// https://feathericons.com/?query=map
+	/// <https://feathericons.com/?query=map>
 	Map,
-	/// https://feathericons.com/?query=maximize2
+	/// <https://feathericons.com/?query=maximize2>
 	Maximize2,
-	/// https://feathericons.com/?query=maximize
+	/// <https://feathericons.com/?query=maximize>
 	Maximize,
-	/// https://feathericons.com/?query=meh
+	/// <https://feathericons.com/?query=meh>
 	Meh,
-	/// https://feathericons.com/?query=menu
+	/// <https://feathericons.com/?query=menu>
 	Menu,
-	/// https://feathericons.com/?query=message-circle
+	/// <https://feathericons.com/?query=message-circle>
 	MessageCircle,
-	/// https://feathericons.com/?query=message-square
+	/// <https://feathericons.com/?query=message-square>
 	MessageSquare,
-	/// https://feathericons.com/?query=mic-off
+	/// <https://feathericons.com/?query=mic-off>
 	MicOff,
-	/// https://feathericons.com/?query=mic
+	/// <https://feathericons.com/?query=mic>
 	Mic,
-	/// https://feathericons.com/?query=minimize2
+	/// <https://feathericons.com/?query=minimize2>
 	Minimize2,
-	/// https://feathericons.com/?query=minimize
+	/// <https://feathericons.com/?query=minimize>
 	Minimize,
-	/// https://feathericons.com/?query=minus-circle
+	/// <https://feathericons.com/?query=minus-circle>
 	MinusCircle,
-	/// https://feathericons.com/?query=minus-square
+	/// <https://feathericons.com/?query=minus-square>
 	MinusSquare,
-	/// https://feathericons.com/?query=minus
+	/// <https://feathericons.com/?query=minus>
 	Minus,
-	/// https://feathericons.com/?query=monitor
+	/// <https://feathericons.com/?query=monitor>
 	Monitor,
-	/// https://feathericons.com/?query=moon
+	/// <https://feathericons.com/?query=moon>
 	Moon,
-	/// https://feathericons.com/?query=more-horizontal
+	/// <https://feathericons.com/?query=more-horizontal>
 	MoreHorizontal,
-	/// https://feathericons.com/?query=more-vertical
+	/// <https://feathericons.com/?query=more-vertical>
 	MoreVertical,
-	/// https://feathericons.com/?query=mouse-pointer
+	/// <https://feathericons.com/?query=mouse-pointer>
 	MousePointer,
-	/// https://feathericons.com/?query=move
+	/// <https://feathericons.com/?query=move>
 	Move,
-	/// https://feathericons.com/?query=music
+	/// <https://feathericons.com/?query=music>
 	Music,
-	/// https://feathericons.com/?query=navigation2
+	/// <https://feathericons.com/?query=navigation2>
 	Navigation2,
-	/// https://feathericons.com/?query=navigation
+	/// <https://feathericons.com/?query=navigation>
 	Navigation,
-	/// https://feathericons.com/?query=octagon
+	/// <https://feathericons.com/?query=octagon>
 	Octagon,
-	/// https://feathericons.com/?query=package
+	/// <https://feathericons.com/?query=package>
 	Package,
-	/// https://feathericons.com/?query=paperclip
+	/// <https://feathericons.com/?query=paperclip>
 	Paperclip,
-	/// https://feathericons.com/?query=pause-circle
+	/// <https://feathericons.com/?query=pause-circle>
 	PauseCircle,
-	/// https://feathericons.com/?query=pause
+	/// <https://feathericons.com/?query=pause>
 	Pause,
-	/// https://feathericons.com/?query=pen-tool
+	/// <https://feathericons.com/?query=pen-tool>
 	PenTool,
-	/// https://feathericons.com/?query=percent
+	/// <https://feathericons.com/?query=percent>
 	Percent,
-	/// https://feathericons.com/?query=phone-call
+	/// <https://feathericons.com/?query=phone-call>
 	PhoneCall,
-	/// https://feathericons.com/?query=phone-forwarded
+	/// <https://feathericons.com/?query=phone-forwarded>
 	PhoneForwarded,
-	/// https://feathericons.com/?query=phone-incoming
+	/// <https://feathericons.com/?query=phone-incoming>
 	PhoneIncoming,
-	/// https://feathericons.com/?query=phone-missed
+	/// <https://feathericons.com/?query=phone-missed>
 	PhoneMissed,
-	/// https://feathericons.com/?query=phone-off
+	/// <https://feathericons.com/?query=phone-off>
 	PhoneOff,
-	/// https://feathericons.com/?query=phone-outgoing
+	/// <https://feathericons.com/?query=phone-outgoing>
 	PhoneOutgoing,
-	/// https://feathericons.com/?query=phone
+	/// <https://feathericons.com/?query=phone>
 	Phone,
-	/// https://feathericons.com/?query=pie-chart
+	/// <https://feathericons.com/?query=pie-chart>
 	PieChart,
-	/// https://feathericons.com/?query=play-circle
+	/// <https://feathericons.com/?query=play-circle>
 	PlayCircle,
-	/// https://feathericons.com/?query=play
+	/// <https://feathericons.com/?query=play>
 	Play,
-	/// https://feathericons.com/?query=plus-circle
+	/// <https://feathericons.com/?query=plus-circle>
 	PlusCircle,
-	/// https://feathericons.com/?query=plus-square
+	/// <https://feathericons.com/?query=plus-square>
 	PlusSquare,
-	/// https://feathericons.com/?query=plus
+	/// <https://feathericons.com/?query=plus>
 	Plus,
-	/// https://feathericons.com/?query=pocket
+	/// <https://feathericons.com/?query=pocket>
 	Pocket,
-	/// https://feathericons.com/?query=power
+	/// <https://feathericons.com/?query=power>
 	Power,
-	/// https://feathericons.com/?query=printer
+	/// <https://feathericons.com/?query=printer>
 	Printer,
-	/// https://feathericons.com/?query=radio
+	/// <https://feathericons.com/?query=radio>
 	Radio,
-	/// https://feathericons.com/?query=refresh-ccw
+	/// <https://feathericons.com/?query=refresh-ccw>
 	RefreshCcw,
-	/// https://feathericons.com/?query=refresh-cw
+	/// <https://feathericons.com/?query=refresh-cw>
 	RefreshCw,
-	/// https://feathericons.com/?query=repeat
+	/// <https://feathericons.com/?query=repeat>
 	Repeat,
-	/// https://feathericons.com/?query=rewind
+	/// <https://feathericons.com/?query=rewind>
 	Rewind,
-	/// https://feathericons.com/?query=rotate-ccw
+	/// <https://feathericons.com/?query=rotate-ccw>
 	RotateCcw,
-	/// https://feathericons.com/?query=rotate-cw
+	/// <https://feathericons.com/?query=rotate-cw>
 	RotateCw,
-	/// https://feathericons.com/?query=rss
+	/// <https://feathericons.com/?query=rss>
 	Rss,
-	/// https://feathericons.com/?query=save
+	/// <https://feathericons.com/?query=save>
 	Save,
-	/// https://feathericons.com/?query=scissors
+	/// <https://feathericons.com/?query=scissors>
 	Scissors,
-	/// https://feathericons.com/?query=search
+	/// <https://feathericons.com/?query=search>
 	Search,
-	/// https://feathericons.com/?query=send
+	/// <https://feathericons.com/?query=send>
 	Send,
-	/// https://feathericons.com/?query=server
+	/// <https://feathericons.com/?query=server>
 	Server,
-	/// https://feathericons.com/?query=settings
+	/// <https://feathericons.com/?query=settings>
 	Settings,
-	/// https://feathericons.com/?query=share2
+	/// <https://feathericons.com/?query=share2>
 	Share2,
-	/// https://feathericons.com/?query=share
+	/// <https://feathericons.com/?query=share>
 	Share,
-	/// https://feathericons.com/?query=shield-off
+	/// <https://feathericons.com/?query=shield-off>
 	ShieldOff,
-	/// https://feathericons.com/?query=shield
+	/// <https://feathericons.com/?query=shield>
 	Shield,
-	/// https://feathericons.com/?query=shopping-bag
+	/// <https://feathericons.com/?query=shopping-bag>
 	ShoppingBag,
-	/// https://feathericons.com/?query=shopping-cart
+	/// <https://feathericons.com/?query=shopping-cart>
 	ShoppingCart,
-	/// https://feathericons.com/?query=shuffle
+	/// <https://feathericons.com/?query=shuffle>
 	Shuffle,
-	/// https://feathericons.com/?query=sidebar
+	/// <https://feathericons.com/?query=sidebar>
 	Sidebar,
-	/// https://feathericons.com/?query=skip-back
+	/// <https://feathericons.com/?query=skip-back>
 	SkipBack,
-	/// https://feathericons.com/?query=skip-forward
+	/// <https://feathericons.com/?query=skip-forward>
 	SkipForward,
-	/// https://feathericons.com/?query=slack
+	/// <https://feathericons.com/?query=slack>
 	Slack,
-	/// https://feathericons.com/?query=slash
+	/// <https://feathericons.com/?query=slash>
 	Slash,
-	/// https://feathericons.com/?query=sliders
+	/// <https://feathericons.com/?query=sliders>
 	Sliders,
-	/// https://feathericons.com/?query=smartphone
+	/// <https://feathericons.com/?query=smartphone>
 	Smartphone,
-	/// https://feathericons.com/?query=smile
+	/// <https://feathericons.com/?query=smile>
 	Smile,
-	/// https://feathericons.com/?query=speaker
+	/// <https://feathericons.com/?query=speaker>
 	Speaker,
-	/// https://feathericons.com/?query=square
+	/// <https://feathericons.com/?query=square>
 	Square,
-	/// https://feathericons.com/?query=star
+	/// <https://feathericons.com/?query=star>
 	Star,
-	/// https://feathericons.com/?query=stop-circle
+	/// <https://feathericons.com/?query=stop-circle>
 	StopCircle,
-	/// https://feathericons.com/?query=sun
+	/// <https://feathericons.com/?query=sun>
 	Sun,
-	/// https://feathericons.com/?query=sunrise
+	/// <https://feathericons.com/?query=sunrise>
 	Sunrise,
-	/// https://feathericons.com/?query=sunset
+	/// <https://feathericons.com/?query=sunset>
 	Sunset,
-	/// https://feathericons.com/?query=table
+	/// <https://feathericons.com/?query=table>
 	Table,
-	/// https://feathericons.com/?query=tablet
+	/// <https://feathericons.com/?query=tablet>
 	Tablet,
-	/// https://feathericons.com/?query=tag
+	/// <https://feathericons.com/?query=tag>
 	Tag,
-	/// https://feathericons.com/?query=target
+	/// <https://feathericons.com/?query=target>
 	Target,
-	/// https://feathericons.com/?query=terminal
+	/// <https://feathericons.com/?query=terminal>
 	Terminal,
-	/// https://feathericons.com/?query=thermometer
+	/// <https://feathericons.com/?query=thermometer>
 	Thermometer,
-	/// https://feathericons.com/?query=thumbs-down
+	/// <https://feathericons.com/?query=thumbs-down>
 	ThumbsDown,
-	/// https://feathericons.com/?query=thumbs-up
+	/// <https://feathericons.com/?query=thumbs-up>
 	ThumbsUp,
-	/// https://feathericons.com/?query=toggle-left
+	/// <https://feathericons.com/?query=toggle-left>
 	ToggleLeft,
-	/// https://feathericons.com/?query=toggle-right
+	/// <https://feathericons.com/?query=toggle-right>
 	ToggleRight,
-	/// https://feathericons.com/?query=tool
+	/// <https://feathericons.com/?query=tool>
 	Tool,
-	/// https://feathericons.com/?query=trash2
+	/// <https://feathericons.com/?query=trash2>
 	Trash2,
-	/// https://feathericons.com/?query=trash
+	/// <https://feathericons.com/?query=trash>
 	Trash,
-	/// https://feathericons.com/?query=trello
+	/// <https://feathericons.com/?query=trello>
 	Trello,
-	/// https://feathericons.com/?query=trending-down
+	/// <https://feathericons.com/?query=trending-down>
 	TrendingDown,
-	/// https://feathericons.com/?query=trending-up
+	/// <https://feathericons.com/?query=trending-up>
 	TrendingUp,
-	/// https://feathericons.com/?query=triangle
+	/// <https://feathericons.com/?query=triangle>
 	Triangle,
-	/// https://feathericons.com/?query=truck
+	/// <https://feathericons.com/?query=truck>
 	Truck,
-	/// https://feathericons.com/?query=tv
+	/// <https://feathericons.com/?query=tv>
 	Tv,
-	/// https://feathericons.com/?query=twitch
+	/// <https://feathericons.com/?query=twitch>
 	Twitch,
-	/// https://feathericons.com/?query=twitter
+	/// <https://feathericons.com/?query=twitter>
 	Twitter,
-	/// https://feathericons.com/?query=type
+	/// <https://feathericons.com/?query=type>
 	Type,
-	/// https://feathericons.com/?query=umbrella
+	/// <https://feathericons.com/?query=umbrella>
 	Umbrella,
-	/// https://feathericons.com/?query=underline
+	/// <https://feathericons.com/?query=underline>
 	Underline,
-	/// https://feathericons.com/?query=unlock
+	/// <https://feathericons.com/?query=unlock>
 	Unlock,
-	/// https://feathericons.com/?query=upload-cloud
+	/// <https://feathericons.com/?query=upload-cloud>
 	UploadCloud,
-	/// https://feathericons.com/?query=upload
+	/// <https://feathericons.com/?query=upload>
 	Upload,
-	/// https://feathericons.com/?query=user-check
+	/// <https://feathericons.com/?query=user-check>
 	UserCheck,
-	/// https://feathericons.com/?query=user-minus
+	/// <https://feathericons.com/?query=user-minus>
 	UserMinus,
-	/// https://feathericons.com/?query=user-plus
+	/// <https://feathericons.com/?query=user-plus>
 	UserPlus,
-	/// https://feathericons.com/?query=user-x
+	/// <https://feathericons.com/?query=user-x>
 	UserX,
-	/// https://feathericons.com/?query=user
+	/// <https://feathericons.com/?query=user>
 	User,
-	/// https://feathericons.com/?query=users
+	/// <https://feathericons.com/?query=users>
 	Users,
-	/// https://feathericons.com/?query=video-off
+	/// <https://feathericons.com/?query=video-off>
 	VideoOff,
-	/// https://feathericons.com/?query=video
+	/// <https://feathericons.com/?query=video>
 	Video,
-	/// https://feathericons.com/?query=voicemail
+	/// <https://feathericons.com/?query=voicemail>
 	Voicemail,
-	/// https://feathericons.com/?query=volume1
+	/// <https://feathericons.com/?query=volume1>
 	Volume1,
-	/// https://feathericons.com/?query=volume2
+	/// <https://feathericons.com/?query=volume2>
 	Volume2,
-	/// https://feathericons.com/?query=volume-x
+	/// <https://feathericons.com/?query=volume-x>
 	VolumeX,
-	/// https://feathericons.com/?query=volume
+	/// <https://feathericons.com/?query=volume>
 	Volume,
-	/// https://feathericons.com/?query=watch
+	/// <https://feathericons.com/?query=watch>
 	Watch,
-	/// https://feathericons.com/?query=wifi-off
+	/// <https://feathericons.com/?query=wifi-off>
 	WifiOff,
-	/// https://feathericons.com/?query=wifi
+	/// <https://feathericons.com/?query=wifi>
 	Wifi,
-	/// https://feathericons.com/?query=wind
+	/// <https://feathericons.com/?query=wind>
 	Wind,
-	/// https://feathericons.com/?query=x-circle
+	/// <https://feathericons.com/?query=x-circle>
 	XCircle,
-	/// https://feathericons.com/?query=x-octagon
+	/// <https://feathericons.com/?query=x-octagon>
 	XOctagon,
-	/// https://feathericons.com/?query=x-square
+	/// <https://feathericons.com/?query=x-square>
 	XSquare,
-	/// https://feathericons.com/?query=x
+	/// <https://feathericons.com/?query=x>
 	X,
-	/// https://feathericons.com/?query=youtube
+	/// <https://feathericons.com/?query=youtube>
 	Youtube,
-	/// https://feathericons.com/?query=zap-off
+	/// <https://feathericons.com/?query=zap-off>
 	ZapOff,
-	/// https://feathericons.com/?query=zap
+	/// <https://feathericons.com/?query=zap>
 	Zap,
-	/// https://feathericons.com/?query=zoom-in
+	/// <https://feathericons.com/?query=zoom-in>
 	ZoomIn,
-	/// https://feathericons.com/?query=zoom-out
+	/// <https://feathericons.com/?query=zoom-out>
 	ZoomOut,
 }
 
@@ -890,11 +890,11 @@ pub fn Icon(
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
 	/// text color of the icon
-	#[prop(into, optional, default = White.into())]
-	color: MaybeSignal<PatrColor>,
+	#[prop(into, optional, default = Color::White.into())]
+	color: MaybeSignal<Color>,
 	/// fill color of the icon
 	#[prop(into, optional)]
-	fill: MaybeSignal<PatrColor>,
+	fill: MaybeSignal<Color>,
 	/// size of the icon
 	#[prop(into, optional)]
 	size: MaybeSignal<Size>,

@@ -11,6 +11,9 @@ mod base64string;
 /// A set of constant booleans that are used to ensure that the values are
 /// forced to be either true or false.
 mod bools;
+/// Represents a location on the planet. This is used to represent the location
+/// of a user, a login, etc. Basically just a latitude and longitude.
+mod geo_location;
 /// A set of utilities to parse headers from a request, ensure that certain
 /// headers are present in a struct as well as provide what headers are required
 /// for an endpoint.
@@ -45,6 +48,7 @@ pub use self::{
 	axum_response::*,
 	base64string::*,
 	bools::*,
+	geo_location::*,
 	header_utils::*,
 	middlewares::*,
 	one_or_many::*,

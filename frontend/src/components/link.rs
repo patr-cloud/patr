@@ -21,7 +21,7 @@ pub fn Link(
 	to: MaybeSignal<AppRoute>,
 	/// The color of the link
 	#[prop(into, optional)]
-	color: MaybeSignal<PatrColor>,
+	color: MaybeSignal<Color>,
 	/// The variant of the link
 	#[prop(into, optional)]
 	variant: MaybeSignal<LinkVariant>,

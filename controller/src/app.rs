@@ -63,7 +63,7 @@ pub enum AppError {
 	#[error("error while communicating with the Kubernetes API: {0}")]
 	Kubernetes(#[from] kube::Error),
 	#[error("error while communicating with the Patr API: {0}")]
-	Patr(#[from] ErrorType),
+	Patr(ErrorType),
 	#[error("internal error: {0}")]
 	InternalError(String),
 }

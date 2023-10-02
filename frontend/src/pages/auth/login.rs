@@ -14,8 +14,7 @@ use crate::prelude::*;
 
 /// The login page
 #[component]
-pub fn Login(
-) -> impl IntoView {
+pub fn Login() -> impl IntoView {
 	// let set_state = expect_context::<WriteSignal<AppStorage>>();
 	let (_state, set_state) = create_signal(AppStorage::LoggedOut);
 
@@ -152,7 +151,7 @@ pub fn Login(
 		_ = navigate(
 			format!(
 				"{}?{}",
-				AppRoute::LoggedOutRoutes(LoggedOutRoutes::SignUp)
+				AppRoute::LoggedOutRoute(LoggedOutRoute::SignUp)
 					.to_string()
 					.as_str(),
 				serde_urlencoded::to_string([(
@@ -174,7 +173,7 @@ pub fn Login(
 					New user?
 					<Link
 						disabled={login_loading}
-						to=AppRoute::LoggedOutRoutes(LoggedOutRoutes::SignUp)
+						to=AppRoute::LoggedOutRoute(LoggedOutRoute::SignUp)
 						class="ml-xs"
 					>
 						Sign Up
@@ -194,7 +193,7 @@ pub fn Login(
 				start_icon={
 					Some(IconProps::builder()
 						.icon(IconType::User)
-						.size(ExtraSmall)
+						.size(Size::ExtraSmall)
 						.build())
 				}
 			/>
@@ -218,7 +217,7 @@ pub fn Login(
 						value.then(move || view! {
 							<Link
 								disabled={login_loading}
-								to=AppRoute::LoggedOutRoutes(LoggedOutRoutes::SignUp)
+								to=AppRoute::LoggedOutRoute(LoggedOutRoute::SignUp)
 								on_click=Box::new(handle_create_new_account)
 								class="ml-sm txt-underline txt-medium mt-xs"
 							>
@@ -246,7 +245,7 @@ pub fn Login(
 					Some(
 						IconProps::builder()
 							.icon(IconType::Shield)
-							.size(ExtraSmall)
+							.size(Size::ExtraSmall)
 							.build()
 					)
 				}
@@ -260,8 +259,8 @@ pub fn Login(
 									IconType::EyeOff
 								}
 							}))
-							.color(Grey)
-							.size(ExtraSmall)
+							.color(Color::Grey)
+							.size(Size::ExtraSmall)
 							.on_click(Rc::new(move |_| {
 								show_password.update(|value| *value = !*value);
 							}))
@@ -317,7 +316,7 @@ pub fn Login(
 			}}
 			<div class="fr-sb-ct full-width mt-xs">
 				<Link
-					to=AppRoute::LoggedOutRoutes(LoggedOutRoutes::ForgotPassword)
+					to=AppRoute::LoggedOutRoute(LoggedOutRoute::ForgotPassword)
 					disabled={login_loading}>
 					Forgot Password?
 				</Link>

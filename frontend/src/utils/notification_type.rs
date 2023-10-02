@@ -1,4 +1,4 @@
-use super::PatrColor;
+use super::Color;
 
 /// All notification types supported by CSS class names in the app.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -15,27 +15,25 @@ impl NotificationType {
 	/// Returns the CSS name of the notification.
 	pub const fn as_css_name(&self) -> &'static str {
 		match self {
-			Success => "success",
-			Warning => "warning",
-			Error => "error",
+			Self::Success => "success",
+			Self::Warning => "warning",
+			Self::Error => "error",
 		}
 	}
 
 	/// Returns the color of the notification.
-	pub const fn as_patr_color(&self) -> PatrColor {
+	pub const fn as_patr_color(&self) -> Color {
 		match self {
-			Success => PatrColor::Success,
-			Warning => PatrColor::Warning,
-			Error => PatrColor::Error,
+			Self::Success => Color::Success,
+			Self::Warning => Color::Warning,
+			Self::Error => Color::Error,
 		}
 	}
 }
 
 /// Converts a notification type into a color.
-impl From<NotificationType> for PatrColor {
+impl From<NotificationType> for Color {
 	fn from(val: NotificationType) -> Self {
 		val.as_patr_color()
 	}
 }
-
-pub use NotificationType::*;

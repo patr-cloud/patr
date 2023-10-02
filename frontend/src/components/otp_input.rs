@@ -77,75 +77,68 @@ pub fn OtpInput(
 		.unwrap_or_default()
 	});
 
-	let handle_key_down =
-		move |index: usize,
-		      signal: RwSignal<Option<u8>>,
-		      on_submit: Option<Rc<dyn Fn(String)>>,
-		      e: ev::KeyboardEvent| match e.code().as_str() {
-			"Backspace" | "Delete" => {
-				e.prevent_default();
-				signal.set(None);
-				refs.with_value(|refs| {
-					prev_input(index, refs);
-				});
+	let handle_key_down = move |index: usize,
+	                            signal: RwSignal<Option<u8>>,
+	                            on_submit: Option<Rc<dyn Fn(String)>>,
+	                            e: ev::KeyboardEvent| match e.code().as_str()
+	{
+		"Backspace" | "Delete" => {
+			e.prevent_default();
+			signal.set(None);
+			refs.with_value(|refs| {
+				prev_input(index, refs);
+			});
+		}
+		"ArrowLeft" => {
+			e.prevent_default();
+			refs.with_value(|refs| {
+				prev_input(index, refs);
+			});
+		}
+		"ArrowRight" => {
+			e.prevent_default();
+			refs.with_value(|refs| {
+				next_input(index, refs);
+			});
+		}
+		"Enter" | "NumpadEnter" => {
+			e.prevent_default();
+			let value = refs.with_value(|refs| {
+				refs.iter()
+					.try_fold(String::new(), |mut acc, (_, _, signal)| {
+						acc.push_str(&signal.get()?.to_string());
+						Some(acc)
+					})
+			});
+			if let Some((value, on_submit)) = value.zip(on_submit) {
+				on_submit(value);
 			}
-			"ArrowLeft" => {
-				e.prevent_default();
-				refs.with_value(|refs| {
-					prev_input(index, refs);
-				});
-			}
-			"ArrowRight" => {
-				e.prevent_default();
-				refs.with_value(|refs| {
-					next_input(index, refs);
-				});
-			}
-			"Enter" | "NumpadEnter" => {
-				e.prevent_default();
-				let value = refs.with_value(|refs| {
-					refs.iter().try_fold(
-						String::new(),
-						|mut acc, (_, _, signal)| {
-							acc.push_str(&signal.get()?.to_string());
-							Some(acc)
-						},
-					)
-				});
+		}
+		digit if digit.starts_with("Digit") || digit.starts_with("Numpad") => {
+			e.prevent_default();
+			let number = digit
+				.chars()
+				.last()
+				.and_then(|c| c.to_digit(10))
+				.map(|n| n as u8);
+			signal.set(number);
+			let value = refs.with_value(|refs| {
+				next_input(index, refs);
+				refs.iter()
+					.try_fold(String::new(), |mut acc, (_, _, signal)| {
+						acc.push_str(&signal.get()?.to_string());
+						Some(acc)
+					})
+			});
+
+			if auto_submit {
 				if let Some((value, on_submit)) = value.zip(on_submit) {
 					on_submit(value);
 				}
 			}
-			digit
-				if digit.starts_with("Digit") ||
-					digit.starts_with("Numpad") =>
-			{
-				e.prevent_default();
-				let number = digit
-					.chars()
-					.last()
-					.and_then(|c| c.to_digit(10))
-					.map(|n| n as u8);
-				signal.set(number);
-				let value = refs.with_value(|refs| {
-					next_input(index, refs);
-					refs.iter().try_fold(
-						String::new(),
-						|mut acc, (_, _, signal)| {
-							acc.push_str(&signal.get()?.to_string());
-							Some(acc)
-						},
-					)
-				});
-
-				if auto_submit {
-					if let Some((value, on_submit)) = value.zip(on_submit) {
-						on_submit(value);
-					}
-				}
-			}
-			_ => (),
-		};
+		}
+		_ => (),
+	};
 
 	let handle_on_paste = move |e: ev::Event| {
 		e.prevent_default();

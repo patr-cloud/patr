@@ -6,13 +6,7 @@ mod user_email;
 mod user_login;
 mod user_phone;
 
-pub use self::{
-	sign_up::*,
-	user_data::*,
-	user_email::*,
-	user_login::*,
-	user_phone::*,
-};
+pub use self::{sign_up::*, user_data::*, user_email::*, user_login::*, user_phone::*};
 
 /// Initializes all user tables
 #[instrument(skip(connection))]

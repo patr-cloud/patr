@@ -14,10 +14,10 @@ macros::declare_api_endpoint!(
 		pub mfa_otp: Option<String>,
 	},
 	response = {
-		/// The access token is used to authenticate the user, implying that the user is logged in 
-		/// once the route is completed successfully. 
+		/// The access token is used to authenticate the user, implying that the user is logged in
+		/// once the route is completed successfully.
 		pub access_token: String,
-		/// The access token has a expiry, and the refresh token (below) is used to 
+		/// The access token has a expiry, and the refresh token (below) is used to
 		/// renew the access token.
 		/// It contains the login_id and the refresh_token concatenated together.
 		pub refresh_token: String,

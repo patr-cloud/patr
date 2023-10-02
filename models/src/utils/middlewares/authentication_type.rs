@@ -60,7 +60,7 @@ where
 	/// Only the super admin of the workspace that is specified in the
 	/// [`extract_workspace_id`][1] function can access this endpoint.
 	///
-	/// [1]: AuthenticationType::<E>::WorkspaceSuperAdminAuthenticator::extract_workspace_id
+	/// [1]: AppAuthentication::<E>::WorkspaceSuperAdminAuthenticator::extract_workspace_id
 	WorkspaceSuperAdminAuthenticator {
 		/// This function is used to extract the workspace id from the request.
 		/// The workspace id is then used to check if the user is the super
@@ -70,7 +70,7 @@ where
 	/// Only users that are members of the workspace that is specified in the
 	/// [`extract_workspace_id`][1] function can access this endpoint.
 	///
-	/// [1]: AuthenticationType::<E>::WorkspaceMembershipAuthenticator::extract_workspace_id
+	/// [1]: AppAuthentication::<E>::WorkspaceMembershipAuthenticator::extract_workspace_id
 	WorkspaceMembershipAuthenticator {
 		/// This function is used to extract the workspace id from the request.
 		/// The workspace id is then used to check if the user is a member of
@@ -81,8 +81,8 @@ where
 	/// resource that is specified in the [`extract_resource_id`][1] function
 	/// can access this endpoint.
 	///
-	/// [1]: AuthenticationType::<E>::ResourcePermissionAuthenticator::extract_resource_id
-	/// [2]: AuthenticationType::<E>::ResourcePermissionAuthenticator::permission
+	/// [1]: AppAuthentication::<E>::ResourcePermissionAuthenticator::extract_resource_id
+	/// [2]: AppAuthentication::<E>::ResourcePermissionAuthenticator::permission
 	ResourcePermissionAuthenticator {
 		/// This function is used to extract the resource id from the request.
 		/// The resource id is then used to check if the user has the specified

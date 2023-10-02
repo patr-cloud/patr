@@ -7,13 +7,13 @@ pub fn PageContainer(
 ) -> impl IntoView {
 	// TODO check if workspace exists, and if it doesn't, show a create
 	// workspace page
-    view! {
-        <div class="fr-fs-fs full-width full-height bg-secondary">
+	view! {
+		<div class="fr-fs-fs full-width full-height bg-secondary">
 			// <Sidebar blurLinks={!currentWorkspace} />
 			<main class="fc-fs-ct full-width px-lg">
 				<TopNav />
-                {children()}
-            </main>
-        </div>
-    }
+				{children()}
+			</main>
+		</div>
+	}
 }

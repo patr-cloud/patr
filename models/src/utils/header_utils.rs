@@ -28,7 +28,7 @@ use super::Uuid;
 /// request to the API. It is used as a header in requests to the API.
 ///
 /// This is a wrapper around [`typed_headers::Token68`].
-/// Example: Authorization: Bearer <token>
+/// Example: Authorization: Bearer *token*
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BearerToken(pub Token68);
 
@@ -125,6 +125,7 @@ where
 ///
 /// Given a struct `RequestHeaders` like so:
 /// ```rust
+/// # use typed_headers::{Accept, ContentType};
 /// pub struct RequestHeaders {
 ///     pub accept: Accept,
 ///     pub content_type: ContentType,
@@ -135,6 +136,12 @@ where
 /// `HasHeader<ContentType>` like so:
 ///
 /// ```rust
+/// # use typed_headers::{Accept, ContentType};
+/// # pub struct RequestHeaders {
+/// #    pub accept: Accept,
+/// #    pub content_type: ContentType,
+/// # }
+/// # use models::utils::{HasHeaders, HasHeader};
 /// impl HasHeader<Accept> for RequestHeaders {
 ///     fn get_header(&self) -> &Accept {
 ///         &self.accept
@@ -157,6 +164,9 @@ where
 ///
 /// In the above example, the following code is equivalent to the code above:
 /// ```rust
+/// # use typed_headers::{Accept, ContentType};
+/// # use macros::HasHeaders;
+/// # use models::utils::HasHeaders;
 /// #[derive(HasHeaders)]
 /// pub struct RequestHeaders {
 ///     pub accept: Accept,
@@ -165,10 +175,17 @@ where
 /// ```
 ///
 /// Now, we can make a function that requires a RequestHeader to have these two
-/// headers necessarilly by using the [`HasHeaders`] trait:
+/// headers necessarily by using the [`HasHeaders`] trait:
 /// ```rust
+/// # use typed_headers::{Accept, ContentType};
+/// # use models::utils::{HasHeaders, HasHeader};
 /// // A function that requires the `Accept` and `Content-Type` headers
-/// fn foo<T: HasHeaders<(Accept, ContentType)>>(headers: &T) {
+/// fn foo<T>(headers: &T)
+/// where
+///     T: HasHeaders<(Accept, ContentType)>,
+/// #    T: HasHeader<Accept>,
+/// #    T: HasHeader<ContentType>,
+/// {
 ///     // ...
 ///     let accept: &Accept = headers.get_header();
 ///     let content_type: &ContentType = headers.get_header();
@@ -190,9 +207,9 @@ pub trait HasHeaders<T> {}
 /// If you want to accept a struct that has certain headers, you can use the
 /// [`HasHeaders`] trait to do so. For example:
 /// ```rust
-/// use models::utils::HasHeaders;
-/// use typed_headers::Accept;
-///
+/// # use models::utils::{HasHeaders, HasHeader};
+/// # use typed_headers::Accept;
+/// #
 /// pub struct RequestHeaders {
 ///     pub accept: Accept,
 /// }
@@ -202,7 +219,13 @@ pub trait HasHeaders<T> {}
 ///         &self.accept
 ///     }
 /// }
+/// ```
 ///
+/// ```rust
+/// # use models::utils::{HasHeaders, HasHeader};
+/// # use typed_headers::Accept;
+/// # use macros::HasHeaders;
+/// #
 /// // This is equivalent to the above code
 /// #[derive(HasHeaders)]
 /// pub struct RequestHeaders {
@@ -210,7 +233,11 @@ pub trait HasHeaders<T> {}
 /// }
 ///
 /// // A function that requires the `Accept` header
-/// fn foo<T: HasHeaders<Accept>>(headers: &T) {
+/// fn foo<T>(headers: &T)
+/// where
+///     T: HasHeaders<(Accept,)>,
+/// #    T: HasHeader<Accept>,
+/// {
 ///     // ...
 ///     let accept: &Accept = headers.get_header();
 /// }
