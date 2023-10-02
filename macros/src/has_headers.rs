@@ -1,19 +1,10 @@
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use syn::{
-	parse_macro_input,
-	spanned::Spanned,
-	Data,
-	DataStruct,
-	DeriveInput,
-	Error,
-	Field,
-};
+use syn::{parse_macro_input, spanned::Spanned, Data, DataStruct, DeriveInput, Error, Field};
 
 /// Provides a derive macro for the `HasHeaders` trait.
 pub fn parse(input: TokenStream) -> TokenStream {
-	let DeriveInput { data, ident, .. } =
-		parse_macro_input!(input as DeriveInput);
+	let DeriveInput { data, ident, .. } = parse_macro_input!(input as DeriveInput);
 
 	let DataStruct { fields, .. } = match data {
 		Data::Struct(data) => data,
@@ -39,7 +30,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				..
 			} = field;
 			quote::quote! {
-				impl crate::utils::HasHeader<#ty> for #ident {
+				impl models::utils::HasHeader<#ty> for #ident {
 					fn get_header(&self) -> &#ty {
 						&self.#field_ident
 					}
@@ -84,7 +75,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	quote::quote! {
 		#has_header_impls
 
-		impl crate::utils::Headers for #ident {
+		impl models::utils::Headers for #ident {
 			fn to_header_map(&self) -> ::typed_headers::http::HeaderMap {
 				let mut map = ::typed_headers::http::HeaderMap::new();
 				#headers_impl

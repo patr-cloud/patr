@@ -1,4 +1,4 @@
-use crate::utils::BearerToken;
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// The route to logout a user and end the current user session by discarding the

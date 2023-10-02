@@ -20,12 +20,15 @@ pub mod utils;
 /// used across the crate. This is mostly used to avoid having to import a lot
 /// of things from different modules.
 pub mod prelude {
+	pub(crate) use crate as models;
 	pub use crate::{
 		api::WithId,
 		utils::{
 			constants,
 			AppAuthentication,
 			Base64String,
+			BearerToken,
+			GeoLocation,
 			LoginId,
 			OneOrMore,
 			Paginated,

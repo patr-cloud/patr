@@ -25,8 +25,7 @@ use crate::prelude::*;
 
 /// The login page
 #[component]
-pub fn SignUp(
-) -> impl IntoView {
+pub fn SignUp() -> impl IntoView {
 	let first_name_ref = create_node_ref();
 	let last_name_ref = create_node_ref();
 	let username_ref = create_node_ref();
@@ -353,7 +352,7 @@ pub fn SignUp(
 					Already have an account?
 					<Link
 						disabled={sign_up_loading}
-						to=AppRoute::LoggedOutRoutes(LoggedOutRoutes::Login)
+						to=AppRoute::LoggedOutRoute(LoggedOutRoute::Login)
 						class="ml-xs"
 					>
 						Login
@@ -375,7 +374,7 @@ pub fn SignUp(
 						start_icon={
 							Some(IconProps::builder()
 								.icon(IconType::User)
-								.size(ExtraSmall)
+								.size(Size::ExtraSmall)
 								.build())
 						}
 					/>
@@ -408,7 +407,7 @@ pub fn SignUp(
 						start_icon={
 							Some(IconProps::builder()
 								.icon(IconType::User)
-								.size(ExtraSmall)
+								.size(Size::ExtraSmall)
 								.build())
 						}
 					/>
@@ -448,7 +447,7 @@ pub fn SignUp(
 				start_icon={
 					Some(IconProps::builder()
 						.icon(IconType::User)
-						.size(ExtraSmall)
+						.size(Size::ExtraSmall)
 						.build())
 				}
 			/>
@@ -511,7 +510,7 @@ pub fn SignUp(
 				start_icon={
 					Some(IconProps::builder()
 						.icon(IconType::Mail)
-						.size(ExtraSmall)
+						.size(Size::ExtraSmall)
 						.build())
 				}
 				/>
@@ -551,7 +550,7 @@ pub fn SignUp(
 					Some(
 						IconProps::builder()
 							.icon(IconType::Shield)
-							.size(ExtraSmall)
+							.size(Size::ExtraSmall)
 							.build()
 					)
 				}
@@ -565,8 +564,8 @@ pub fn SignUp(
 									IconType::EyeOff
 								}
 							}))
-							.color(Grey)
-							.size(ExtraSmall)
+							.color(Color::Grey)
+							.size(Size::ExtraSmall)
 							.on_click(Rc::new(move |_| {
 								show_password.update(|value| *value = !*value);
 							}))
@@ -606,7 +605,7 @@ pub fn SignUp(
 					Some(
 						IconProps::builder()
 							.icon(IconType::Shield)
-							.size(ExtraSmall)
+							.size(Size::ExtraSmall)
 							.build()
 					)
 				}
@@ -620,8 +619,8 @@ pub fn SignUp(
 									IconType::EyeOff
 								}
 							}))
-							.color(Grey)
-							.size(ExtraSmall)
+							.color(Color::Grey)
+							.size(Size::ExtraSmall)
 							.on_click(Rc::new(move |_| {
 								show_password.update(|value| *value = !*value);
 							}))

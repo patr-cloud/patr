@@ -2,7 +2,7 @@ use std::fmt::{self, Display, Formatter};
 
 /// All colors supported by CSS class names in the app.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub enum PatrColor {
+pub enum Color {
 	/// Primary yellow color. This is the default.
 	#[default]
 	Primary,
@@ -26,26 +26,26 @@ pub enum PatrColor {
 	Disabled,
 }
 
-impl Display for PatrColor {
+impl Display for Color {
 	fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
 		write!(f, "{}", self.as_css_name())
 	}
 }
 
-impl PatrColor {
+impl Color {
 	/// Returns the CSS name of the color.
 	pub const fn as_css_name(self) -> &'static str {
 		match self {
-			Primary => "primary",
-			Secondary => "secondary",
-			White => "white",
-			Black => "black",
-			Grey => "grey",
-			Success => "success",
-			Warning => "warning",
-			Error => "error",
-			Info => "info",
-			Disabled => "disabled",
+			Self::Primary => "primary",
+			Self::Secondary => "secondary",
+			Self::White => "white",
+			Self::Black => "black",
+			Self::Grey => "grey",
+			Self::Success => "success",
+			Self::Warning => "warning",
+			Self::Error => "error",
+			Self::Info => "info",
+			Self::Disabled => "disabled",
 		}
 	}
 
@@ -55,11 +55,9 @@ impl PatrColor {
 	}
 }
 
-pub use PatrColor::*;
-
 /// All text colors supported by CSS class names in the app.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct TextColor(pub PatrColor);
+pub struct TextColor(pub Color);
 
 impl Display for TextColor {
 	fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -71,16 +69,16 @@ impl TextColor {
 	/// Returns the CSS name of the text color.
 	pub const fn as_css_color(self) -> &'static str {
 		match self.0 {
-			Primary => "txt-primary",
-			Secondary => "txt-secondary",
-			White => "txt-white",
-			Black => "txt-black",
-			Grey => "txt-grey",
-			Success => "txt-success",
-			Warning => "txt-warning",
-			Error => "txt-error",
-			Info => "txt-info",
-			Disabled => "txt-disabled",
+			Color::Primary => "txt-primary",
+			Color::Secondary => "txt-secondary",
+			Color::White => "txt-white",
+			Color::Black => "txt-black",
+			Color::Grey => "txt-grey",
+			Color::Success => "txt-success",
+			Color::Warning => "txt-warning",
+			Color::Error => "txt-error",
+			Color::Info => "txt-info",
+			Color::Disabled => "txt-disabled",
 		}
 	}
 }

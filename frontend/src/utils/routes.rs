@@ -8,9 +8,9 @@ pub enum AppRoute {
 	#[default]
 	Empty,
 	/// The routes that can be taken when the user is logged in
-	LoggedInRoutes(LoggedInRoutes),
+	LoggedInRoute(LoggedInRoute),
 	/// The routes that can be taken when the user is logged out
-	LoggedOutRoutes(LoggedOutRoutes),
+	LoggedOutRoute(LoggedOutRoute),
 }
 
 impl AppRoute {
@@ -22,7 +22,7 @@ impl AppRoute {
 
 /// The routes that can be taken when the user is logged in
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LoggedOutRoutes {
+pub enum LoggedOutRoute {
 	/// The login page
 	Login,
 	/// The sign up page
@@ -33,7 +33,7 @@ pub enum LoggedOutRoutes {
 
 /// The routes that can be taken when the user is logged out
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LoggedInRoutes {
+pub enum LoggedInRoute {
 	/// The home page
 	Home,
 }
@@ -42,17 +42,17 @@ impl Display for AppRoute {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Empty => write!(f, ""),
-			Self::LoggedInRoutes(logged_in_routes) => {
+			Self::LoggedInRoute(logged_in_routes) => {
 				write!(f, "{}", logged_in_routes)
 			}
-			Self::LoggedOutRoutes(logged_out_routes) => {
+			Self::LoggedOutRoute(logged_out_routes) => {
 				write!(f, "{}", logged_out_routes)
 			}
 		}
 	}
 }
 
-impl Display for LoggedInRoutes {
+impl Display for LoggedInRoute {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(
 			f,
@@ -64,7 +64,7 @@ impl Display for LoggedInRoutes {
 	}
 }
 
-impl Display for LoggedOutRoutes {
+impl Display for LoggedOutRoute {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(
 			f,

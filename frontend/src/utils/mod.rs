@@ -1,19 +1,18 @@
 mod app_route;
+mod client;
 mod color;
 mod ext;
-mod client;
 mod notification_type;
 mod routes;
 mod size;
 mod state;
 mod variant;
 
-#[allow(ambiguous_glob_reexports)]
 pub use self::{
 	app_route::*,
+	client::*,
 	color::*,
 	ext::*,
-	client::*,
 	notification_type::*,
 	routes::*,
 	size::*,

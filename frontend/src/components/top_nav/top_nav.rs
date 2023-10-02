@@ -1,8 +1,7 @@
 use crate::prelude::*;
 
 #[component]
-pub fn TopNav(
-) -> impl IntoView {
+pub fn TopNav() -> impl IntoView {
 	let open_feedback = create_rw_signal(false);
 	let show_profile_settings = create_rw_signal(false);
 

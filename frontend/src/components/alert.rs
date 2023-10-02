@@ -28,7 +28,7 @@ pub fn Alert(
 						}
 					})
 				}
-				size={Small}
+				size={Size::Small}
 				color={r#type.with(NotificationType::as_patr_color)}
 			/>
 			<span

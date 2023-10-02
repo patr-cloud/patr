@@ -22,11 +22,9 @@ impl SecondaryColorVariant {
 	/// Returns the CSS name of the variant.
 	pub const fn as_css_name(self) -> &'static str {
 		match self {
-			Light => "light",
-			Medium => "medium",
-			Dark => "dark",
+			Self::Light => "light",
+			Self::Medium => "medium",
+			Self::Dark => "dark",
 		}
 	}
 }
-
-pub use SecondaryColorVariant::*;

@@ -36,7 +36,7 @@ pub mod constants {
 	pub const DATABASE_VERSION: Version = Version::new(0, 0, 0);
 
 	/// The channel to publish and listen for data on from the database. This is
-	/// used to notify the backend when data has changed in the database, so that
-	/// it can notify the frontend via websockets.
+	/// used to notify the backend when data has changed in the database, so
+	/// that it can notify the frontend via websockets.
 	pub const DATABASE_CHANNEL: &str = "data";
 }

@@ -1,6 +1,6 @@
 macros::declare_api_endpoint!(
 	/// Route when user verifies his identity/recovery-method by entering the OTP
-	/// sent to their recovery method which is email/phone-number. 
+	/// sent to their recovery method which is email/phone-number.
 	/// This route will complete the sign-up process of the user.
 	CompleteSignUp,
 	POST "/auth/join",
@@ -11,11 +11,11 @@ macros::declare_api_endpoint!(
 		pub verification_token: String,
 	},
 	response = {
-		/// Upon login, the route responds with an access token and a refresh token. 
-		/// The access token is used to authenticate the user, implying that the user is logged in 
-		/// once the route is completed successfully. 
+		/// Upon login, the route responds with an access token and a refresh token.
+		/// The access token is used to authenticate the user, implying that the user is logged in
+		/// once the route is completed successfully.
 		pub access_token: String,
-		/// The access token has a expiry, and the refresh token (below) is used to 
+		/// The access token has a expiry, and the refresh token (below) is used to
 		/// renew the access token.
 		/// It contains the login_id and the refresh_token concatinated together.
 		pub refresh_token: String,

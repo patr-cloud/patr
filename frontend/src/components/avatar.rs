@@ -13,7 +13,7 @@ pub fn Avatar(
 	#[prop(into, optional)]
 	image: MaybeSignal<String>,
 	/// The size of the avatar.
-	#[prop(into, optional, default = Small.into())]
+	#[prop(into, optional, default = Size::Small.into())]
 	size: MaybeSignal<Size>,
 	/// Additional classes to add to the avatar, if any.
 	#[prop(into, optional)]

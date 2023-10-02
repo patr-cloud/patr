@@ -8,7 +8,7 @@ pub fn Badge(
 	class: MaybeSignal<String>,
 	/// The color of the badge.
 	#[prop(into, optional)]
-	color: MaybeSignal<PatrColor>,
+	color: MaybeSignal<Color>,
 	/// The text in the badge.
 	#[prop(into, optional)]
 	text: MaybeSignal<String>,

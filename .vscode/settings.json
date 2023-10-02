@@ -15,9 +15,13 @@
         100
     ],
     "cSpell.words": [
-        "leptos",
         "jsonwebtoken",
-        "middlewares"
+        "leptos",
+        "middlewares",
+        "padawan",
+        "reauthenticated",
+        "reauthentication",
+        "wayy"
     ],
     "nixEnvSelector.nixFile": "${workspaceRoot}/shell.nix",
     "rust-analyzer.showUnlinkedFileNotification": false

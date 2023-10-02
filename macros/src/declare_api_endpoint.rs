@@ -31,8 +31,10 @@ pub struct ApiEndpoint {
 	/// The authentication for this endpoint.
 	auth: Option<Block>,
 
-	/// The query params for the endpoint. The tuple is (is_paginated, fields).
-	query: Option<(bool, FieldsNamed)>,
+	/// The query params for the endpoint
+	query: Option<FieldsNamed>,
+	/// Whether the query is paginated or not.
+	paginate_query: Option<bool>,
 	/// The body of the request.
 	request: Option<FieldsNamed>,
 	/// The required request headers for the endpoint.
@@ -80,6 +82,7 @@ impl Parse for ApiEndpoint {
 
 		let mut auth = None;
 		let mut query = None;
+		let mut paginate_query = None;
 		let mut request = None;
 		let mut request_headers = None;
 		let mut response_headers = None;
@@ -88,13 +91,25 @@ impl Parse for ApiEndpoint {
 		while !input.is_empty() {
 			let ident = input.parse::<Ident>()?;
 			match ident.to_string().as_str() {
-				"query" | "paginated_query" => {
+				"query" => {
 					if query.is_some() {
 						return Err(Error::new(ident.span(), "Duplicate field"));
 					}
 					input.parse::<Token![=]>()?;
 
-					query = Some((ident == "paginated_query", input.parse()?));
+					query = Some(input.parse()?);
+				}
+				"pagination" => {
+					if paginate_query.is_some() {
+						return Err(Error::new(ident.span(), "Duplicate field"));
+					}
+					input.parse::<Token![=]>()?;
+
+					let Lit::Bool(lit) = input.parse()? else {
+						return Err(Error::new(input.span(), "Expected boolean value"));
+					};
+
+					paginate_query = Some(lit.value);
 				}
 				"request_headers" => {
 					if request_headers.is_some() {
@@ -154,6 +169,7 @@ impl Parse for ApiEndpoint {
 			auth,
 
 			query,
+			paginate_query,
 			request_headers,
 			request,
 
@@ -176,6 +192,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 
 		auth,
 		query,
+		paginate_query,
 		request_headers,
 		request,
 
@@ -213,9 +230,9 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		}
 	};
 
-	let query_name = if let Some((paginated, _)) = &query {
+	let query_name = if query.is_some() {
 		let name = format_ident!("{}Query", name);
-		if *paginated {
+		if paginate_query.unwrap_or(false) {
 			quote::quote! {
 				crate::api::Paginated<#name>
 			}
@@ -229,7 +246,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			()
 		}
 	};
-	let query_decl = if let Some((_, query)) = query {
+	let query_decl = if let Some(query) = query {
 		quote::quote! {
 			/// The query params for the #name endpoint.
 			///
@@ -237,7 +254,6 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			///
 			#[doc = #documentation]
 			#[derive(
-				Eq,
 				Debug,
 				Clone,
 				PartialEq,
@@ -293,7 +309,6 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			///
 			#[doc = #documentation]
 			#[derive(
-				Eq,
 				Debug,
 				Clone,
 				PartialEq,
@@ -327,7 +342,6 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			///
 			#[doc = #documentation]
 			#[derive(
-				Eq,
 				Debug,
 				Clone,
 				PartialEq,
@@ -357,8 +371,6 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		///
 		#[doc = #documentation]
 		#[derive(
-			Eq,
-			Hash,
 			Debug,
 			Clone,
 			#path_default_impl
@@ -381,7 +393,6 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		///
 		#[doc = #documentation]
 		#[derive(
-			Eq,
 			Debug,
 			Clone,
 			PartialEq,
@@ -407,7 +418,6 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		///
 		#[doc = #documentation]
 		#[derive(
-			Eq,
 			Debug,
 			Clone,
 			PartialEq,

@@ -1,6 +1,7 @@
 /// All auth related endpoints, including OAuth
 pub mod auth;
-// pub mod user;
+/// All endpoints that relate to a user and their data
+pub mod user;
 /// All endpoints that can be performed on a workspace
 pub mod workspace;
 
@@ -19,7 +20,7 @@ use crate::prelude::*;
 /// that the `Deployment` struct should not contain the ID field, or it will
 /// panic. The struct contained in the `WithId` struct can be reused in multiple
 /// places.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct WithId<T> {
 	/// The ID of the object. For example, in case of a deployment, this would

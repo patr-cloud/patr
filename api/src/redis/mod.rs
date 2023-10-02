@@ -1,7 +1,6 @@
 use rustis::client::Client;
 
-use crate::utils::config::RedisConfig;
-use crate::prelude::*;
+use crate::{prelude::*, utils::config::RedisConfig};
 
 /// A list of all the keys to store data in Redis
 pub mod keys;

@@ -14,7 +14,7 @@ pub fn TooltipContainer(
 	disable_focus: bool,
 	/// The color variant of the icon in the tooltip
 	#[prop(into, optional)]
-	icon_color: PatrColor,
+	icon_color: Color,
 	/// The color variant of the tooltip
 	#[prop(into, optional)]
 	variant: SecondaryColorVariant,
@@ -46,7 +46,7 @@ pub fn TooltipContainer(
 				view! {
 					<Icon
 						icon=IconType::Info
-						size={ExtraSmall}
+						size={Size::ExtraSmall}
 						color={icon_color}
 						class="br-round cursor-pointer"
 					/>

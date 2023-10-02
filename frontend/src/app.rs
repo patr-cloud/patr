@@ -1,4 +1,4 @@
-use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes, use_location, Redirect};
+use leptos_router::{use_location, Outlet, ProtectedRoute, Redirect, Route, Router, Routes};
 
 use crate::prelude::*;
 
@@ -11,7 +11,7 @@ pub fn App() -> impl IntoView {
 				<ProtectedRoute
 					path=AppRoute::Empty
 					// If not logged out (as in if logged in), redirect to home
-					redirect_path=AppRoute::LoggedInRoutes(LoggedInRoutes::Home)
+					redirect_path=AppRoute::LoggedInRoute(LoggedInRoute::Home)
 					condition=|| !is_logged_in()
 					view=|| view! {
 						<div class="fc-ct-ct bg-page bg-onboard">
@@ -19,15 +19,15 @@ pub fn App() -> impl IntoView {
 						</div>
 					}
 					>
-					<Route path=LoggedOutRoutes::Login view=Login />
-					<Route path=LoggedOutRoutes::SignUp view=SignUp />
+					<Route path=LoggedOutRoute::Login view=Login />
+					<Route path=LoggedOutRoute::SignUp view=SignUp />
 				</ProtectedRoute>
 
 				// Logged in routes
 				<ProtectedRoute
 					path=AppRoute::Empty
 					// If logged out, redirect to login
-					redirect_path=AppRoute::LoggedOutRoutes(LoggedOutRoutes::Login)
+					redirect_path=AppRoute::LoggedOutRoute(LoggedOutRoute::Login)
 					condition=|| is_logged_in()
 					view=|| view! {
 						<PageContainer>
@@ -35,14 +35,12 @@ pub fn App() -> impl IntoView {
 						</PageContainer>
 					}
 					>
-					<Route path=LoggedInRoutes::Home view=|| () /> // TODO show home page
+					<Route path=LoggedInRoute::Home view=|| () /> // TODO show home page
 				</ProtectedRoute>
 
 				<Route path="/*other" view=|| {
 					if is_logged_in() {
-						view! {
-							<Redirect path=LoggedInRoutes::Home />
-						}
+						NotFound().into_view()
 					} else {
 						let location = use_location();
 						info!("location: {}", location.pathname.get());
@@ -61,11 +59,11 @@ pub fn App() -> impl IntoView {
 							)
 						};
 						let path = if to.is_empty() {
-							LoggedOutRoutes::Login.to_string()
+							LoggedOutRoute::Login.to_string()
 						} else {
 							format!(
 								"{}?{}",
-								LoggedOutRoutes::Login,
+								LoggedOutRoute::Login,
 								serde_urlencoded::to_string([("to", to)]).unwrap()
 							)
 						};
@@ -83,5 +81,5 @@ pub fn App() -> impl IntoView {
 fn is_logged_in() -> bool {
 	// let state = expect_context::<Signal<AppStorage>>();
 	// state.get().is_logged_in()
-	false
+	true
 }
