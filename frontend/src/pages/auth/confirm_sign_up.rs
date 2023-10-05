@@ -32,7 +32,7 @@ pub fn ConfirmSignUp() -> impl IntoView {
 	// 			<Link
 	// 				disabled=confirm_loading
 	// 				on_click=Box::new(move |_| {
-	// 					_ = navigate(
+	// 					navigate(
 	// 						AppRoute::LoggedOutRoutes(LoggedOutRoutes::SignUp).to_string().as_str(),
 	// 						NavigateOptions::default(),
 	// 					);

@@ -1,0 +1,21 @@
+use crate::{api::user::UserPhoneNumber, prelude::*};
+
+macros::declare_api_endpoint!(
+	/// Update the phone number for the currently authenticated user. An OTP will be sent
+	/// to the new phone number. The user then must verify the new phone number using the
+	/// [`super::verify_phone_number`] endpoint.
+	UpdateUserPhoneNumber,
+	POST "/user/update-phone-number",
+	request_headers = {
+		/// The authorization token
+		pub authorization: BearerToken,
+	},
+	authentication = {
+		AppAuthentication::<Self>::PlainTokenAuthenticator
+	},
+	request = {
+		/// The new phone number. A `None` value will remove the phone number. This is only
+		/// allowed if the user has an email address
+		pub phone_number: Option<UserPhoneNumber>,
+	},
+);

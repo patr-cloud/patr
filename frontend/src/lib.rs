@@ -42,6 +42,7 @@ pub fn hydrate() {
 		console_error_panic_hook::set_once();
 	}
 
+	// Comment the below line to disable JS and test the app in pure SSR mode
 	mount_to_body(render);
 }
 

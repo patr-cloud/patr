@@ -148,7 +148,7 @@ pub fn Login() -> impl IntoView {
 		// navigate to the create new account page with the username
 		// pre-filled through setting the state
 		let navigate = use_navigate();
-		_ = navigate(
+		navigate(
 			format!(
 				"{}?{}",
 				AppRoute::LoggedOutRoute(LoggedOutRoute::SignUp)

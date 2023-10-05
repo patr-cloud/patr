@@ -4,6 +4,22 @@ use wasm_bindgen::JsValue;
 
 use crate::prelude::*;
 
+/// The type of input
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum InputType {
+	/// Any arbitrary text
+	#[default]
+	Text,
+	/// An email address
+	Email,
+	/// Password field
+	Password,
+	/// Numbers only
+	Numeric,
+	/// A phone number
+	Phone,
+}
+
 /// An input field, with optional start and end icons, and an optional info
 /// tooltip.
 #[component]
@@ -15,10 +31,12 @@ pub fn Input(
 	#[prop(into, optional)]
 	placeholder: MaybeSignal<String>,
 	/// The type of input
+	// #[prop(into, default = InputType::Text.into())]
+	// r#type: MaybeSignal<InputType>,
 	#[prop(into, default = "text".into())]
 	r#type: MaybeSignal<String>,
 	/// Whether the input is disabled.
-	#[prop(into, default = false.into())]
+	#[prop(into, optional, default = false.into())]
 	disabled: MaybeSignal<bool>,
 	/// The ref to forward to the input
 	#[prop(into, optional)]
@@ -27,13 +45,13 @@ pub fn Input(
 	#[prop(into, optional)]
 	start_icon: MaybeSignal<Option<IconProps>>,
 	/// The start text, if any.
-	#[prop(into, optional)]
+	#[prop(into, optional, default = Some("start".to_string()).into())]
 	start_text: MaybeSignal<Option<String>>,
 	/// The end icon, if any.
 	#[prop(into, optional)]
 	end_icon: MaybeSignal<Option<IconProps>>,
 	/// The end text, if any.
-	#[prop(into, optional)]
+	#[prop(into, optional, default = Some("end".to_string()).into())]
 	end_text: MaybeSignal<Option<String>>,
 	/// A loading spinner, if any.
 	#[prop(into, optional)]

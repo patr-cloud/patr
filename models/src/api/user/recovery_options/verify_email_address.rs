@@ -1,88 +1,22 @@
-use axum_extra::routing::TypedPath;
-use reqwest::Method;
-use serde::{Deserialize, Serialize};
+use crate::prelude::*;
 
-use crate::ApiRequest;
-
-#[derive(
-	Eq,
-	Ord,
-	Copy,
-	Hash,
-	Debug,
-	Clone,
-	Default,
-	TypedPath,
-	PartialEq,
-	Serialize,
-	PartialOrd,
-	Deserialize,
-)]
-#[typed_path("/user/verify-phone-number")]
-pub struct VerifyPersonalEmailPath;
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct VerifyPersonalEmailRequest {
-	pub email: String,
-	pub verification_token: String,
-}
-
-impl ApiRequest for VerifyPersonalEmailRequest {
-	const METHOD: Method = Method::POST;
-	const IS_PROTECTED: bool = true;
-
-	type RequestPath = VerifyPersonalEmailPath;
-	type RequestQuery = ();
-	type RequestBody = Self;
-	type Response = ();
-}
-
-#[cfg(test)]
-mod tests {
-	use serde_test::{assert_tokens, Token};
-
-	use super::VerifyPersonalEmailRequest;
-	use crate::{ApiRequest, ApiResponse};
-
-	#[test]
-	fn assert_request_types() {
-		assert_tokens(
-			&VerifyPersonalEmailRequest {
-				email: "johnpatr@gmail.com".to_string(),
-				verification_token: "069-069".to_string(),
-			},
-			&[
-				Token::Struct {
-					name: "VerifyPersonalEmailRequest",
-					len: 2,
-				},
-				Token::Str("email"),
-				Token::Str("johnpatr@gmail.com"),
-				Token::Str("verificationToken"),
-				Token::Str("069-069"),
-				Token::StructEnd,
-			],
-		);
-	}
-
-	#[test]
-	fn assert_response_types() {
-		crate::assert_types::<
-			<VerifyPersonalEmailRequest as ApiRequest>::Response,
-		>(());
-	}
-
-	#[test]
-	fn assert_success_response_types() {
-		assert_tokens(
-			&ApiResponse::success(()),
-			&[
-				Token::Map { len: None },
-				Token::Str("success"),
-				Token::Bool(true),
-				Token::MapEnd,
-			],
-		);
-	}
-}
+macros::declare_api_endpoint!(
+	/// Verify the email for the currently authenticated user. This endpoint is used to
+	/// verify the email address after the user has requested to change their email
+	/// using the [`super::update_user_email`] endpoint.
+	VerifyUserEmail,
+	POST "/user/verify-email",
+	request_headers = {
+		/// The authorization token
+		pub authorization: BearerToken,
+	},
+	authentication = {
+		AppAuthentication::<Self>::PlainTokenAuthenticator
+	},
+	request = {
+		/// The new email address
+		pub email: String,
+		/// The verification token sent to the new email address
+		pub verification_token: String,
+	},
+);

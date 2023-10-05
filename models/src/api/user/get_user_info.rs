@@ -22,11 +22,7 @@ macros::declare_api_endpoint!(
 		pub created: OffsetDateTime,
 		/// The primary recovery email of the user
 		pub recovery_email: Option<String>,
-		/// Alternate emails of the user, if any
-		pub secondary_emails: Vec<String>,
 		/// The primary phone number of the user
 		pub recovery_phone_number: Option<UserPhoneNumber>,
-		/// Alternate phone numbers of the user, if any
-		pub secondary_phone_numbers: Vec<UserPhoneNumber>,
 	}
 );

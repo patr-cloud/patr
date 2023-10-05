@@ -13,7 +13,7 @@ use models::{
 	ApiEndpoint,
 	ErrorType,
 	RequestUserData,
-	WorkspacePermission,
+	permission::WorkspacePermission,
 };
 use rustis::{client::Client as RedisClient, commands::StringCommands};
 use time::OffsetDateTime;
