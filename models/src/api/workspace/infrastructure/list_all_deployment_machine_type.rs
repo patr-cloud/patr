@@ -15,8 +15,7 @@ pub struct DeploymentMachineType {
 macros::declare_api_endpoint!(
     /// Route to list all machine types for deployment
     ListAllDeploymentMachineTypes,
-    GET "/workspace/:workspace_id/infrastructure/machine-type",
-    query = {
+    GET "/workspace/:workspace_id/infrastructure/machine-type" {
         /// The workspace ID of the user
         pub workspace_id: Uuid
     },
@@ -25,6 +24,6 @@ macros::declare_api_endpoint!(
         /// id - The machine type ID
         /// cpu_count - The number of CPUs
         /// memory_count - The amount of RAM
-        pub machine_types: Vec<DeploymentMachineType>
+        pub machine_types: Vec<WithId<DeploymentMachineType>>
     }
 );

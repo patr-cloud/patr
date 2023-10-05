@@ -1,22 +1,26 @@
 use crate::{
     prelude::*,
-	utils::{Uuid, BearerToken},
+	utils::{Uuid, BearerToken}, api::workspace::WorkspaceAuditLog,
 };
 
 macros::declare_api_endpoint!(
     /// Route to get events of a deployments like pod messages, activities, etc
 	GetDeploymentEvents,
-	GET "/workspace/:workspace_id/infrastructure/deployment/:deployment_id/events",
-    request_headers = {
-        /// Token used to authorize user
-        pub access_token: BearerToken
-    },
-    query = {
+	GET "/workspace/:workspace_id/infrastructure/deployment/:deployment_id/events" {
         /// The workspace ID of the user
         pub workspace_id: Uuid,
         /// The deployment ID to get the event details for
         pub deployment_id: Uuid
     },
+    request_headers = {
+        /// Token used to authorize user
+        pub authorization: BearerToken
+    },
+    authentication = {
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
+            extract_resource_id: |req| req.path.deployment_id
+        }
+	},
     response = {
         /// The event logs of the deployment containing:
         /// id - The event ID
@@ -31,6 +35,6 @@ macros::declare_api_endpoint!(
         /// metadata - The metadata value
         /// patr_action - Is it patr action or not
         /// request_sucess - Was the request successful or not
-        pub logs: Vec<WorkspaceAuditLog>,
+        pub logs: Vec<WithId<WorkspaceAuditLog>>,
     }
 );

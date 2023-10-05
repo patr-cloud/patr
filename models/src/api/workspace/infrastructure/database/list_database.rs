@@ -2,19 +2,24 @@ use crate::{
     prelude::*,
     utils::BearerToken
 };
+use super::Database;
 
 macros::declare_api_endpoint!(
 	/// Route to get list of all database in a workspace
 	ListDatabase,
-	GET "/workspace/:workspace_id/infrastructure/database",
-    request_headers = {
-        /// Token used to authorize user
-        pub access_token: BearerToken
-    },
-	query = {
+	GET "/workspace/:workspace_id/infrastructure/database" {
 		/// The workspace ID of the user
         pub workspace_id: Uuid
     },
+    request_headers = {
+        /// Token used to authorize user
+        pub authorization: BearerToken
+    },
+    authentication = {
+		AppAuthentication::<Self>::WorkspaceMembershipAuthenticator {
+			extract_workspace_id: |req| req.path.workspace_id,
+		}
+	},
 	response = {
 		/// List of databases in the current workspace containing:
 		/// id - The database ID
@@ -30,7 +35,7 @@ macros::declare_api_endpoint!(
         ///                     port - The connection port
         ///                     username - The amin username
         ///                     password - The admin password
-		pub database: Vec<Database>
+		pub database: Vec<WithId<Database>>
 	}
 );
 
