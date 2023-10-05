@@ -8,15 +8,19 @@ macros::declare_api_endpoint!(
     /// Definition of a route to create a new static site
     /// This route will allow users to upload a new index.html which would go live
     CreateStaticSite,
-    POST "/workspace/:workspace_id/infrastructure/static-site",
-    request_headers = {
-        /// Token used to authorize user
-        pub access_token: BearerToken
-    },
-    query = {
+    POST "/workspace/:workspace_id/infrastructure/static-site" {
         /// The workspace ID of the user
         pub workspace_id: Uuid
     },
+    request_headers = {
+        /// Token used to authorize user
+        pub authorization: BearerToken
+    },
+    authentication = {
+		AppAuthentication::<Self>::WorkspaceMembershipAuthenticator {
+			extract_workspace_id: |req| req.path.workspace_id,
+		}
+	},
     request = {
         /// The static site name
         pub name: String,

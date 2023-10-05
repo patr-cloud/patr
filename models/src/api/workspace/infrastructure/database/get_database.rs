@@ -7,17 +7,21 @@ use super::Database;
 macros::declare_api_endpoint!(
     /// Route to get database information
     GetDatabase,
-    GET "/workspace/:workspace_id/infrastructure/database/:database_id",
-    request_headers = {
-        /// Token used to authorize user
-        pub access_token: BearerToken
-    },
-    query = {
+    GET "/workspace/:workspace_id/infrastructure/database/:database_id" {
         /// The workspace ID of the user
         pub workspace_id: Uuid,
         /// The database ID to retrieve database information
         pub database_id: Uuid
     },
+    request_headers = {
+        /// Token used to authorize user
+        pub authorization: BearerToken
+    },
+    authentication = {
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
+            extract_resource_id: |req| req.path.database_id 
+        }
+	},
     response = {
         /// The database information containing:
         /// id - The database ID
@@ -33,6 +37,6 @@ macros::declare_api_endpoint!(
         ///                     port - The connection port
         ///                     username - The amin username
         ///                     password - The admin password
-        pub database: Database,
+        pub database: WithId<Database>
     }
 );

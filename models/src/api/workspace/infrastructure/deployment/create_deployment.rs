@@ -7,15 +7,19 @@ use super::{DeploymentRegistry, DeploymentRunningDetails};
 macros::declare_api_endpoint!(
     /// Route to create a new deployment
 	CreateDeployment,
-	POST "/workspace/:workspace_id/infrastructure/deployment",
-    request_headers = {
-        /// Token used to authorize user
-        pub access_token: BearerToken
-    },
-    query = {
+	POST "/workspace/:workspace_id/infrastructure/deployment" {
         /// The workspace ID of the user
         pub workspace_id: Uuid,
     },
+    request_headers = {
+        /// Token used to authorize user
+        pub authorization: BearerToken
+    },
+    authentication = {
+		AppAuthentication::<Self>::WorkspaceMembershipAuthenticator { 
+            extract_workspace_id: |req| req.path.workspace_id 
+        }
+	},
 	request = {
         /// The name of the deployment
 		pub name: String,
