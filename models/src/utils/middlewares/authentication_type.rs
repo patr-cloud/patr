@@ -50,7 +50,7 @@ impl HasAuthentication for NoAuthentication {}
 /// [2]: AppAuthentication::WorkspaceSuperAdminAuthenticator
 /// [3]: AppAuthentication::WorkspaceMembershipAuthenticator
 /// [4]: AppAuthentication::ResourcePermissionAuthenticator
-#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AppAuthentication<E>
 where
 	E: ApiEndpoint,

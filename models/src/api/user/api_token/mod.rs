@@ -1,72 +1,105 @@
+use std::collections::BTreeMap;
+
+use crate::prelude::*;
+
 mod create_api_token;
 mod list_all_api_tokens;
-mod list_permissions_for_api_token;
 mod regenerate_api_token;
 mod revoke_api_token;
 mod update_api_token;
 
-use chrono::Utc;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
 pub use self::{
 	create_api_token::*,
 	list_all_api_tokens::*,
-	list_permissions_for_api_token::*,
 	regenerate_api_token::*,
 	revoke_api_token::*,
 	update_api_token::*,
 };
-use crate::utils::{DateTime, Uuid};
+use crate::permission::WorkspacePermission;
 
+/// An API token created by the user. This is mostly used by the user if they
+/// want to automate something on Patr using the API. The ID of the token is the
+/// same as the login ID. The only problem here is that since login IDs are
+/// hard-coded in the API token, we will have to explicitly store the IP address
+/// and other things in the audit log to make sure that we can track the token,
+/// instead of changing the loginId when something changes. Not sure how to go
+/// about doing that yet.
+///
+/// I mean, if we're anyway gonna store everything in the audit log, then why
+/// store anything in the login ID table? Ehh, idk.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct UserApiToken {
-	pub id: Uuid,
+	/// A user-friendly name for the token. This is used to identify the token
+	/// when the user is looking at the list of tokens.
 	pub name: String,
+	/// The list of permissions for this token for a given workspace. A token
+	/// can have multiple permissions across different workspaces. But all the
+	/// actions performed by the token will be logged as the user who created
+	/// the token.
+	pub permissions: BTreeMap<Uuid, WorkspacePermission>,
+	/// Any token that is used before the nbf (not before) should be rejected.
+	/// Tokens are only valid after this time.
 	#[serde(skip_serializing_if = "Option::is_none")]
-	pub token_nbf: Option<DateTime<Utc>>,
+	pub token_nbf: Option<OffsetDateTime>,
+	/// Any token that is used after the exp (expiry) should be rejected. Tokens
+	/// are only valid before this time.
 	#[serde(skip_serializing_if = "Option::is_none")]
-	pub token_exp: Option<DateTime<Utc>>,
+	pub token_exp: Option<OffsetDateTime>,
+	/// The IP addresses that are allowed to use this token. If this is not
+	/// specified, then any IP address can use this token. This can also take a
+	/// CIDR range, to allow a range of IP addresses.
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub allowed_ips: Option<Vec<IpNetwork>>,
-	pub created: DateTime<Utc>,
+	/// The time at which this token was created.
+	pub created: OffsetDateTime,
 }
 
 #[cfg(test)]
 mod test {
-	use std::str::FromStr;
+	use std::{
+		collections::{BTreeMap, BTreeSet},
+		str::FromStr,
+	};
 
-	use chrono::{TimeZone, Utc};
 	use ipnetwork::IpNetwork;
-	use serde_test::{assert_tokens, Token};
+	use serde_test::{assert_tokens, Configure, Token};
+	use time::OffsetDateTime;
 
 	use super::UserApiToken;
-	use crate::utils::Uuid;
+	use crate::{
+		permission::{ResourcePermissionType, WorkspacePermission},
+		prelude::*,
+	};
 
 	#[test]
 	fn assert_empty_user_api_token_types() {
 		assert_tokens(
 			&UserApiToken {
-				id: Uuid::parse_str("2aef18631ded45eb9170dc2166b30867")
-					.unwrap(),
 				name: "Token 1".to_string(),
+				permissions: Default::default(),
 				token_nbf: None,
 				token_exp: None,
 				allowed_ips: None,
-				created: Utc.timestamp_opt(1431648000, 0).unwrap().into(),
-			},
+				created: OffsetDateTime::UNIX_EPOCH,
+			}
+			.readable(),
 			&[
 				Token::Struct {
 					name: "UserApiToken",
 					len: 3,
 				},
-				Token::Str("id"),
-				Token::Str("2aef18631ded45eb9170dc2166b30867"),
 				Token::Str("name"),
 				Token::Str("Token 1"),
+				Token::Str("permissions"),
+				Token::Map { len: Some(0) },
+				Token::MapEnd,
 				Token::Str("created"),
-				Token::Str("Fri, 15 May 2015 00:00:00 +0000"),
+				Token::Str("1970-01-01 00:00:00.0 +00:00:00"),
 				Token::StructEnd,
 			],
 		);
@@ -76,36 +109,78 @@ mod test {
 	fn assert_filled_user_api_token_types() {
 		assert_tokens(
 			&UserApiToken {
-				id: Uuid::parse_str("2aef18631ded45eb9170dc2166b30867")
-					.unwrap(),
 				name: "Token 2".to_string(),
-				token_nbf: Some(
-					Utc.timestamp_opt(1431648000, 0).unwrap().into(),
-				),
-				token_exp: Some(
-					Utc.timestamp_opt(1431648000, 0).unwrap().into(),
-				),
+				permissions: {
+					let mut map = BTreeMap::new();
+					map.insert(Uuid::nil(), WorkspacePermission::SuperAdmin);
+					map.insert(
+						Uuid::parse_str("00000000000000000000000000000001").unwrap(),
+						WorkspacePermission::Member {
+							permissions: {
+								let mut map = BTreeMap::new();
+								map.insert(
+									Uuid::nil(),
+									ResourcePermissionType::Include(BTreeSet::from([Uuid::nil()])),
+								);
+								map
+							},
+						},
+					);
+					map
+				},
+				token_nbf: Some(OffsetDateTime::UNIX_EPOCH),
+				token_exp: Some(OffsetDateTime::UNIX_EPOCH),
 				allowed_ips: Some(vec![
 					IpNetwork::from_str("1.1.1.1").unwrap(),
 					IpNetwork::from_str("1.0.0.0/8").unwrap(),
 				]),
-				created: Utc.timestamp_opt(1431648000, 0).unwrap().into(),
-			},
+				created: OffsetDateTime::UNIX_EPOCH,
+			}
+			.readable(),
 			&[
 				Token::Struct {
 					name: "UserApiToken",
 					len: 6,
 				},
-				Token::Str("id"),
-				Token::Str("2aef18631ded45eb9170dc2166b30867"),
 				Token::Str("name"),
 				Token::Str("Token 2"),
+				Token::Str("permissions"),
+				Token::Map { len: Some(2) },
+				Token::Str("00000000000000000000000000000000"),
+				Token::Struct {
+					name: "WorkspacePermission",
+					len: 1,
+				},
+				Token::Str("type"),
+				Token::Str("superAdmin"),
+				Token::StructEnd,
+				Token::Str("00000000000000000000000000000001"),
+				Token::Map { len: None },
+				Token::Str("type"),
+				Token::Str("member"),
+				Token::Str("00000000000000000000000000000000"),
+				Token::Struct {
+					name: "ResourcePermissionType",
+					len: 2,
+				},
+				Token::Str("permissionType"),
+				Token::UnitVariant {
+					name: "ResourcePermissionType",
+					variant: "include",
+				},
+				Token::Str("resources"),
+				Token::Seq { len: Some(1) },
+				Token::Str("00000000000000000000000000000000"),
+				Token::SeqEnd,
+				Token::StructEnd,
+				Token::MapEnd,
+				Token::MapEnd,
 				Token::Str("tokenNbf"),
 				Token::Some,
-				Token::Str("Fri, 15 May 2015 00:00:00 +0000"),
+				Token::Str("1970-01-01 00:00:00.0 +00:00:00"),
 				Token::Str("tokenExp"),
 				Token::Some,
-				Token::Str("Fri, 15 May 2015 00:00:00 +0000"),
+				Token::Str("1970-01-01 00:00:00.0 +00:00:00"),
 				Token::Str("allowedIps"),
 				Token::Some,
 				Token::Seq { len: Some(2) },
@@ -113,7 +188,7 @@ mod test {
 				Token::Str("1.0.0.0/8"),
 				Token::SeqEnd,
 				Token::Str("created"),
-				Token::Str("Fri, 15 May 2015 00:00:00 +0000"),
+				Token::Str("1970-01-01 00:00:00.0 +00:00:00"),
 				Token::StructEnd,
 			],
 		);

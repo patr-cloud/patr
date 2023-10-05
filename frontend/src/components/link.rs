@@ -54,7 +54,7 @@ pub fn Link(
 				}
 				if navigate_page {
 					if !to.get().is_empty() {
-						_ = navigate(to.get().to_string().as_str(), NavigateOptions::default());
+						navigate(to.get().to_string().as_str(), NavigateOptions::default());
 					}
 				}
 			}}

@@ -15,12 +15,14 @@
         100
     ],
     "cSpell.words": [
+        "BYOC",
         "jsonwebtoken",
         "leptos",
         "middlewares",
         "padawan",
         "reauthenticated",
         "reauthentication",
+        "Stylesheet",
         "wayy"
     ],
     "nixEnvSelector.nixFile": "${workspaceRoot}/shell.nix",

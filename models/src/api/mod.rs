@@ -1,3 +1,5 @@
+#![allow(clippy::missing_docs_in_private_items)]
+
 /// All auth related endpoints, including OAuth
 pub mod auth;
 /// All endpoints that relate to a user and their data

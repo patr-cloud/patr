@@ -14,6 +14,7 @@ axum-extra = { workspace = true, features = ["typed-routing"] }
 base64 = { workspace = true, features = ["default"] }
 futures = { workspace = true, features = ["default"] }
 hex = { workspace = true, features = ["default"] }
+ipnetwork = { workspace = true, features = ["default"] }
 macros = { workspace = true, features = [] }
 preprocess = { workspace = true, features = [] }
 reqwest = { workspace = true, features = ["default", "rustls-tls", "json"] }
@@ -21,6 +22,7 @@ serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
 serde_test = { workspace = true, features = [] }
 serde_urlencoded = { workspace = true, features = [] }
+strum = { workspace = true, features = ["default", "derive"] }
 tokio = { workspace = true, features = [] }
 tokio-tungstenite = { workspace = true, features = [] }
 tower = { workspace = true }

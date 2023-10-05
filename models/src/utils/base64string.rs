@@ -10,6 +10,7 @@ use serde::{de::Error, Serialize};
 /// encode the data as base64. Mostly used for config mount values.
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Base64String {
+	/// The data that is being wrapped.
 	data: Vec<u8>,
 }
 

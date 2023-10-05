@@ -1,23 +1,23 @@
 use serde::{Deserialize, Serialize};
 
-// mod api_token;
+mod api_token;
 mod change_password;
 mod get_user_details; // Get a user's details by userId
 mod get_user_info; // Get my own personal info
 mod list_workspaces;
-mod logins;
-// mod recovery_options;
-mod set_user_info; // Set my own personal info
+mod recovery_options;
+mod set_user_info;
+mod web_logins; // Set my own personal info
 
 pub use self::{
-	// 	api_token::*,
+	api_token::*,
 	change_password::*,
 	get_user_details::*,
 	get_user_info::*,
 	list_workspaces::*,
-	logins::*,
-	// 	recovery_options::*,
+	recovery_options::*,
 	set_user_info::*,
+	web_logins::*,
 };
 
 /// The phone number of a user. This is used to send OTPs, notifications, etc to
