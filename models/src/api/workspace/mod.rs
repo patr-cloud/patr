@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
-use crate::prelude::*;
+use chrono::Utc;
+use crate::{prelude::*, utils::DateTime};
 
 /// All the routes that corresponds to Patr's in-build container registry
 pub mod container_registry;
@@ -36,4 +38,24 @@ pub struct Workspace {
 	/// The userId of the user that is the super admin of this workspace. This
 	/// user has the highest level of permissions in this workspace.
 	pub super_admin_id: Uuid,
+}
+
+/// TODO
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceAuditLog {
+	pub id: Uuid,
+	pub date: DateTime<Utc>,
+	pub ip_address: String,
+	pub workspace_id: Uuid,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub user_id: Option<Uuid>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub login_id: Option<Uuid>,
+	pub resource_id: Uuid,
+	pub action: String,
+	pub request_id: Uuid,
+	pub metadata: Value,
+	pub patr_action: bool,
+	pub request_success: bool,
 }

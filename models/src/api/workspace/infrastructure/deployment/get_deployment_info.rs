@@ -7,17 +7,21 @@ use super::{Deployment, DeploymentRunningDetails};
 macros::declare_api_endpoint!(
     /// Route to get all the deployment information of a deployment
 	GetDeploymentInfo,
-	GET "/workspace/:workspace_id/infrastructure/deployment/:deployment_id/",
-    request_headers = {
-        /// Token used to authorize user
-        pub access_token: BearerToken
-    },
-    query = {
+	GET "/workspace/:workspace_id/infrastructure/deployment/:deployment_id" {
         /// The workspace ID of the user
         pub workspace_id: Uuid,
         /// The deployment ID to get the event details for
         pub deployment_id: Uuid
     },
+    request_headers = {
+        /// Token used to authorize user
+        pub authorization: BearerToken
+    },
+    authentication = {
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
+            extract_resource_id: |req| req.path.deployment_id
+        }
+	},
     response = {
         /// The deployment metadata information containing:
         /// id - The deployment ID
@@ -27,7 +31,7 @@ macros::declare_api_endpoint!(
         /// region - The deployment region
         /// machine_type - The deployment machine type corresponding to CPU and RAM
         /// current_live_digest - The current live digest running
-        pub deployment: Deployment,
+        pub deployment: WithId<Deployment>,
         /// The deployment details which contains information 
         /// related to configuration containing:
         /// deploy_on_push - Is automatic update on new image push enabled

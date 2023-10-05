@@ -8,16 +8,22 @@ macros::declare_api_endpoint!(
     /// Route to get monitoring metrics like CPU, RAM and Disk usage 
     /// for a deployment
 	GetDeploymentMetrics,
-	GET "/workspace/:workspace_id/infrastructure/deployment/:deployment_id/metrics",
-    request_headers = {
-        /// Token used to authorize user
-        pub access_token: BearerToken
-    },
-    query = {
+	GET "/workspace/:workspace_id/infrastructure/deployment/:deployment_id/metrics" {
         /// The workspace ID of the user
         pub workspace_id: Uuid,
         /// The deployment ID to get the metrics for
         pub deployment_id: Uuid,
+    },
+    request_headers = {
+        /// Token used to authorize user
+        pub authorization: BearerToken
+    },
+    authentication = {
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
+            extract_resource_id: |req| req.path.deployment_id
+        }
+	},
+    query = {
         /// The interval of the metric to fetch where start_time is the starting duration
         /// All metrics from the start_time to the current time will be fetched
         pub start_time: Option<Interval>,

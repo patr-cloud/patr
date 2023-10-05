@@ -29,6 +29,7 @@ tracing = { workspace = true, features = ["attributes"] }
 typed-builder = { workspace = true, features = [] }
 typed-headers = { workspace = true, features = [] }
 url = { workspace = true, features = ["default"] }
+chrono = { workspace = true, features = ["default"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 axum-typed-websockets = { workspace = true, features = ["default"] }
