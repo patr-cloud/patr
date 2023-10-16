@@ -1,7 +1,7 @@
-use std::{collections::BTreeMap, fmt::Display, str::FromStr, time::SystemTime};
+use std::{collections::BTreeMap, fmt::Display, str::FromStr};
 
-use chrono::Utc;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+use time::OffsetDateTime;
 
 mod create_deployment;
 mod delete_deployment;
@@ -34,7 +34,7 @@ pub use self::{
 	stop_deployment::*,
 	update_deployment::*,
 };
-use crate::{prelude::*, utils::DateTime};
+use crate::prelude::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -328,7 +328,7 @@ pub struct Metric {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentLogs {
-	pub timestamp: DateTime<Utc>,
+	pub timestamp: OffsetDateTime,
 	pub logs: String,
 }
 
