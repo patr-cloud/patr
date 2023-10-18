@@ -45,13 +45,13 @@ pub fn Input(
 	#[prop(into, optional)]
 	start_icon: MaybeSignal<Option<IconProps>>,
 	/// The start text, if any.
-	#[prop(into, optional, default = Some("start".to_string()).into())]
+	#[prop(into, optional, default = Some("".to_string()).into())]
 	start_text: MaybeSignal<Option<String>>,
 	/// The end icon, if any.
 	#[prop(into, optional)]
 	end_icon: MaybeSignal<Option<IconProps>>,
 	/// The end text, if any.
-	#[prop(into, optional, default = Some("end".to_string()).into())]
+	#[prop(into, optional, default = Some("".to_string()).into())]
 	end_text: MaybeSignal<Option<String>>,
 	/// A loading spinner, if any.
 	#[prop(into, optional)]

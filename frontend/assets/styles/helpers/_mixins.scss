@@ -30,3 +30,13 @@
 		background-color: darken(map-get($map, $color), 2%);
 	}
 }
+
+@mixin grid-template-($direction: "row", $fill-property: auto-fit, $min-size: 0px) {
+	display: grid;
+
+	@if ($direction == "row") {
+		grid-template-rows: repeat(#{$fill-property}, minmax($min-size, 1fr));
+	} @else {
+		grid-template-columns: repeat(#{$fill-property}, minmax($min-size, 1fr));
+	}
+}

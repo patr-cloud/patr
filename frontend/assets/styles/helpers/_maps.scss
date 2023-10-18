@@ -208,3 +208,27 @@ $break-points: (
 	"xl": $bp-xl,
 	"xxl": $bp-xxl,
 );
+
+$grid-item-loc: (
+	"grid-col-start": grid-column-start,
+	"grid-col-end": grid-column-start,
+	"grid-row-start": grid-column-start,
+	"grid-row-end": grid-column-start,
+);
+
+$grid-items: (
+	"st": start,
+	"end": end,
+	"ct": center,
+	"stretch": stretch,
+);
+
+$grid-content: (
+	"st": start,
+	"end": end,
+	"ct": center,
+	"sb": space-between,
+	"sa": space-around,
+	"se": space-evenly,
+	"stretch": stretch,
+);

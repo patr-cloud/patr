@@ -76,6 +76,15 @@ eg: .fc-sb-ct {
         align-items: center
     }
 */
+.flex {
+	display: flex;
+}
+
+@for $i from 1 to 13 {
+	.flex-col-#{$i} {
+		flex: 0 0 calc($i / 12 * 100%);
+	}
+}
 
 @each $dir, $dir-value in $flex-directions {
 	@each $justify, $justify-value in $flex-justify {
@@ -86,11 +95,98 @@ eg: .fc-sb-ct {
 		}
 	}
 }
+
 .f-wrap {
 	flex-wrap: wrap;
 }
 
+// --------------- Grid classes -------------------------
+.grid {
+	display: grid;
+}
+
+@for $i from 1 to 13 {
+	.grid-row-#{$i} {
+		display: grid;
+		grid-template-rows: repeat($i, minmax(0, 1fr));
+	}
+}
+
+@for $i from 1 to 13 {
+	.grid-col-#{$i} {
+		display: grid;
+		grid-template-columns: repeat($i, minmax(0, 1fr));
+	}
+}
+
+@each $align, $align-value in $grid-items {
+	@each $justify, $justify-value in $grid-items {
+		.grid-itm-#{$justify}-#{$align} {
+			display: grid;
+			align-items: $align-value;
+			justify-items: $justify-value;
+		}
+	}
+}
+
+@each $align, $align-value in $grid-content {
+	@each $justify, $justify-value in $grid-content {
+		.grid-cnt-#{$justify}-#{$align} {
+			display: grid;
+			align-content: $align-value;
+			justify-content: $justify-value;
+		}
+	}
+}
+
+// -------------------- For Grid Children ---------------------
+// Parents need grid for these to take effect
+
+@each $align, $align-value in $grid-items {
+	@each $justify, $justify-value in $grid-items {
+		.grid-self-#{$justify}-#{$align} {
+			align-self: $align-value;
+			justify-self: $justify-value;
+		}
+	}
+}
+
+@for $i from 1 to 13 {
+	@each $grid-item, $grid-item-value in $grid-item-loc {
+		.#{$grid-item}-#{$i} {
+			#{$grid-item-value}: $i;
+		}
+	}
+}
+
+@for $i from 1 to 13 {
+	.grid-col-span-#{$i} {
+		grid-column: span $i / span $i;
+	}
+
+	.grid-row-span-#{$i} {
+		grid-row: span $i / span $i;
+	}
+}
+
+.grid-col-span-auto {
+	grid-column: auto;
+}
+
+.grid-row-span-auto {
+	grid-row: auto;
+}
+
+.grid-col-span-full {
+	grid-column: 1 / -1;
+}
+
+.grid-row-span-full {
+	grid-row: 1 / -1;
+}
+
 //------------------cursor types-------------------------
+
 @each $cursor in $cursors {
 	.cursor-#{$cursor} {
 		cursor: $cursor;
@@ -141,22 +237,6 @@ eg: .fc-sb-ct {
 .txt-of-ellipsis {
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-.grid {
-	display: flex;
-}
-@for $i from 1 to 13 {
-	.grid-col-#{$i} {
-		flex: 0 0 calc($i / 12 * 100%);
-	}
-}
-
-@for $i from 1 to 13 {
-	.grid-#{$i} {
-		display: grid;
-		grid-template-columns: repeat($i, 1fr);
-	}
 }
 
 .bg-gradient {
