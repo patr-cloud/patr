@@ -1,12 +1,13 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use time::OffsetDateTime;
 
-use chrono::Utc;
-use crate::{prelude::*, utils::DateTime};
+use crate::prelude::*;
 
 /// All the routes that corresponds to Patr's in-build container registry
 pub mod container_registry;
 // pub mod domain;
+/// This module contains all the models that corresponds to Patr's main infrastructure
 pub mod infrastructure;
 // pub mod rbac;
 // pub mod region;
@@ -40,22 +41,32 @@ pub struct Workspace {
 	pub super_admin_id: Uuid,
 }
 
-/// TODO
+/// Logs corresponding to the actions performed on the workspace
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkspaceAuditLog {
-	pub id: Uuid,
-	pub date: DateTime<Utc>,
+	/// Date and time of the audit log
+	pub date: OffsetDateTime,
+	/// The IP address of the user who made the request
 	pub ip_address: String,
+	/// The workspace ID of the workspace the request was made in
 	pub workspace_id: Uuid,
+	/// The user ID of the user who made the request
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub user_id: Option<Uuid>,
+	/// The login ID of the user who made the request
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub login_id: Option<Uuid>,
+	/// The resource ID of the resource the request was made on
 	pub resource_id: Uuid,
+	/// The action that was performed on the resource
 	pub action: String,
+	/// The request ID of the request
 	pub request_id: Uuid,
+	/// The metadata of the request
 	pub metadata: Value,
+	/// Is it an action done by patr or not
 	pub patr_action: bool,
+	/// Was the request successful or not
 	pub request_success: bool,
 }

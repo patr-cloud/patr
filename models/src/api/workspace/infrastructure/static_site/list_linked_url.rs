@@ -1,11 +1,11 @@
 use crate::{
     prelude::*,
-	utils::{Uuid, BearerToken}, api::workspace::infrastructure::managed_urls::ManagedUrl,
+	utils::{Uuid, BearerToken}, api::workspace::infrastructure::managed_url::ManagedUrl,
 }; 
 
 macros::declare_api_endpoint!(
     /// Route to get all the linked URLs with a static site
-    ListLinkedURLs,
+    ListLinkedUrl,
     GET "/workspace/:workspace_id/infrastructure/static-site/:static_site_id/managed-urls" {
         /// The workspace ID of the user
         pub workspace_id: Uuid,
@@ -23,7 +23,6 @@ macros::declare_api_endpoint!(
 	},
     response = {
         /// The list of linked URLs linked to the static site which contain:
-        /// id - The managed URL ID
         /// sub_domain - The subdomain of the URL
         /// domain_id - The domain ID of the URL
         /// path - The URL path

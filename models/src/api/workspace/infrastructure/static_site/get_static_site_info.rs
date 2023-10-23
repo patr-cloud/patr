@@ -25,7 +25,6 @@ macros::declare_api_endpoint!(
 	},
     response = {
         /// The static site details which contains:
-        /// ID - The ID of the static site
         /// name - The name of the static site
         /// status - The status of the static site 
         ///         (Created, Pushed, Deploying, Running, Stopped, Errored,Deleted)
