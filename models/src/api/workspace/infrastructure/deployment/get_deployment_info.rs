@@ -24,7 +24,6 @@ macros::declare_api_endpoint!(
 	},
     response = {
         /// The deployment metadata information containing:
-        /// id - The deployment ID
         /// name - The deployment name
         /// registry - The deployment registry (patr registry or docker registry)
         /// image_tag - The deployment image tag

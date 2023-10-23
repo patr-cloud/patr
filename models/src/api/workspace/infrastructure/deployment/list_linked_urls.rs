@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-	utils::{Uuid, BearerToken}, api::workspace::infrastructure::managed_urls::ManagedUrl,
+	utils::{Uuid, BearerToken}, api::workspace::infrastructure::managed_url::ManagedUrl,
 }; 
 
 macros::declare_api_endpoint!(
@@ -23,7 +23,6 @@ macros::declare_api_endpoint!(
 	},
     response = {
         /// The list of linked managed URL to a deployment containing:
-        /// id - The managed URL ID
         /// sub_domain - The subdomain of the URL
         /// domain_id - The domain ID of the URL
         /// path - The URL path

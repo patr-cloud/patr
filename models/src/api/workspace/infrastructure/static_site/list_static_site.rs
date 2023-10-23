@@ -6,7 +6,7 @@ use super::StaticSite;
 
 macros::declare_api_endpoint!(
     /// Route to list all static site in a workspace
-    ListStaticSites,
+    ListStaticSite,
     GET "/workspace/:workspace_id/infrastructure/static-site" {
         /// The workspace ID of the user
         pub workspace_id: Uuid,
@@ -23,7 +23,6 @@ macros::declare_api_endpoint!(
     response = {
         /// The list of static site in the workspace
         /// The list contains:
-        /// ID - The ID of the static site
         /// name - The name of the static site
         /// status - The status of the static site 
         ///         (Created, Pushed, Deploying, Running, Stopped, Errored,Deleted)

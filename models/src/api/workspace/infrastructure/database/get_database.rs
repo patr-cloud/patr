@@ -24,7 +24,6 @@ macros::declare_api_endpoint!(
 	},
     response = {
         /// The database information containing:
-        /// id - The database ID
         /// name - The database name
         /// engine - The database engine (MySQL, Postgres, MongoDB, Redis)
         /// version - The database version

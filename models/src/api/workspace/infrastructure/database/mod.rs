@@ -6,41 +6,55 @@ mod create_database;
 mod delete_database;
 mod get_database;
 mod list_database;
+mod all_database_plan;
 
 pub use self::{
 	create_database::*,
 	delete_database::*,
 	get_database::*,
 	list_database::*,
+	all_database_plan::*,
 };
 
-/// Information to connect to the database
+/// Information for the user to connect to the database instance
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct DatabaseConnection {
+	/// The database host IP
 	pub host: String,
+	/// The connection port
 	pub port: u32,
+	/// The amin username
 	pub username: String,
+	/// The admin password
 	pub password: String,
 }
 
-/// Supported databases
+/// All the currrently supported databases offered to the users
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum DatabaseEngine {
+	/// version:
 	Postgres,
+	/// version:
 	Mysql,
+	/// version:
 	Mongo,
+	/// version:
 	Redis,
 }
 
-/// Possible database status
+/// All the possible status the database pod can be in during it's lifetime
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum DatabaseStatus {
+	/// Database is deploying
 	Creating,
+	/// Database is running and ready for connections
 	Running,
+	/// Database has stopped due to an error
 	Errored,
+	/// Database has being deleted and does not exist
 	Deleted,
 }
 
@@ -48,13 +62,20 @@ pub enum DatabaseStatus {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Database {
-	pub id: Uuid,
+	/// Name of database entered by the user
 	pub name: String,
+	/// Database engine the instance is running
 	pub engine: DatabaseEngine,
+	/// Version of the database engine
 	pub version: String,
+	/// Number of database instances supposed to be running
 	pub num_nodes: u16,
+	/// Database plan ID selected by the user
 	pub database_plan_id: Uuid,
+	/// The region the database is deployed on
 	pub region: Uuid,
+	/// The current status of the database
 	pub status: DatabaseStatus,
+	/// The connection configuration for the user to connect to the database instance
 	pub public_connection: DatabaseConnection,
 }

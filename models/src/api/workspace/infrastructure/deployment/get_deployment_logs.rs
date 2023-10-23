@@ -1,9 +1,10 @@
+use time::OffsetDateTime;
+
 use crate::{
     prelude::*,
-	utils::{Uuid, BearerToken, DateTime},
+	utils::{Uuid, BearerToken},
 };
 use super::DeploymentLogs;
-use chrono::Utc;
 
 macros::declare_api_endpoint!(
     /// Route to get the running logs of a deployment
@@ -25,7 +26,7 @@ macros::declare_api_endpoint!(
     },
     query = {
         /// The time up until which the deployment logs should be fetched
-        pub end_time: Option<DateTime<Utc>>,
+        pub end_time: Option<OffsetDateTime>,
         /// The limit of logs to fetch
         pub limit: Option<u32>
     },
