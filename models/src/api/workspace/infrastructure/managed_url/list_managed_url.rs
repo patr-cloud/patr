@@ -6,7 +6,7 @@ use super::ManagedUrl;
 
 macros::declare_api_endpoint!(
     /// Route to list all managed URLs
-    ListManagedUrls,
+    ListManagedUrl,
     GET "/workspace/:workspace_id/infrastructure/managed-url" {
         /// The workspace ID of the user
         pub workspace_id: Uuid,
@@ -22,7 +22,6 @@ macros::declare_api_endpoint!(
 	},
     response = {
         /// The list of all managed URLs present in the workspace containing:
-        /// id - The managed URL ID
         /// sub_domain - The subdomain of the URL
         /// domain_id - The domain ID of the URL
         /// path - The URL path

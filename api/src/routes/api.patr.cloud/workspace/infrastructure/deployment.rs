@@ -1,4 +1,4 @@
-use crate::{prelude::*, service};
+use crate::prelude::*;
 use axum::{http::StatusCode, Router};
 
 use models::{
@@ -10,60 +10,51 @@ use models::{
 #[instrument(skip(state))]
 pub fn setup_routes(state: &AppState) -> Router {
 	Router::new()
+		.mount_endpoint(machine_type, state)
 		.mount_endpoint(list_deployments, state)
-		.with_state(state.clone());
-
-	Router::new()
 		.mount_endpoint(list_deployment_history, state)
-		.with_state(state.clone());
-		
-	Router::new()
 		.mount_endpoint(create_deployment, state)
-		.with_state(state.clone());
-
-	Router::new()
 		.mount_endpoint(get_deployment_info, state)
-		.with_state(state.clone());
-
-    Router::new()
 		.mount_endpoint(start_deployment, state)
-		.with_state(state.clone());
-
-    Router::new()
 		.mount_endpoint(stop_deployment, state)
-		.with_state(state.clone());
-
-    Router::new()
 		.mount_endpoint(revert_deployment, state)
-		.with_state(state.clone());
-
-    Router::new()
 		.mount_endpoint(get_deployment_logs, state)
-		.with_state(state.clone());
-
-    Router::new()
 		.mount_endpoint(delete_deployment, state)
-		.with_state(state.clone());
-
-    Router::new()
 		.mount_endpoint(update_deployment, state)
-		.with_state(state.clone());
-
-    Router::new()
 		.mount_endpoint(list_linked_urls, state)
-		.with_state(state.clone());
-
-    Router::new()
 		.mount_endpoint(get_deployment_metrics, state)
-		.with_state(state.clone());
-
-    Router::new()
 		.mount_endpoint(get_build_logs, state)
-		.with_state(state.clone());
-
-    Router::new()
 		.mount_endpoint(get_build_events, state)
 		.with_state(state.clone())
+}
+
+async fn machine_type(
+	AppRequest {
+		request: ApiRequest {
+			path,
+			query: _,
+			headers,
+			body,
+		},
+		database,
+		redis: _,
+		client_ip: _,
+		config,
+	}: AppRequest<'_, ListAllDeploymentMachineTypesRequest>,
+) -> Result<AppResponse<ListAllDeploymentMachineTypesResponse>, ErrorType> {
+	
+	info!("Starting: List deployments");
+
+	// LOGIC
+
+    AppResponse::builder()
+        .body(ListAllDeploymentMachineTypesResponse {
+            machine_types: todo!(),
+        })
+        .headers(())
+        .status_code(StatusCode::OK)
+        .build()
+        .into_result() 
 }
 
 async fn list_deployments(

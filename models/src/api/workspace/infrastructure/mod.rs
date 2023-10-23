@@ -1,8 +1,8 @@
+/// This module contains all the database models
 pub mod database;
+/// This module contains all the deployment models
 pub mod deployment;
-pub mod managed_urls;
+/// This module contains all the managed URL models
+pub mod managed_url;
+/// This module contains all the static site models
 pub mod static_site;
-
-mod list_all_deployment_machine_type;
-
-pub use self::list_all_deployment_machine_type::*;

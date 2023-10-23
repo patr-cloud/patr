@@ -1,4 +1,4 @@
-use crate::{prelude::*, service};
+use crate::prelude::*;
 use axum::{http::StatusCode, Router};
 
 use models::{
@@ -10,20 +10,41 @@ use models::{
 #[instrument(skip(state))]
 pub fn setup_routes(state: &AppState) -> Router {
 	Router::new()
+		.mount_endpoint(all_database_plan, state)
 		.mount_endpoint(create_database, state)
-		.with_state(state.clone());
-
-	Router::new()
 		.mount_endpoint(delete_database, state)
-		.with_state(state.clone());
-		
-	Router::new()
 		.mount_endpoint(get_database, state)
-		.with_state(state.clone());
-
-	Router::new()
 		.mount_endpoint(list_database, state)
 		.with_state(state.clone())
+}
+
+async fn all_database_plan(
+	AppRequest {
+		request: ApiRequest {
+			path,
+			query: _,
+			headers,
+			body,
+		},
+		database,
+		redis: _,
+		client_ip: _,
+		config,
+	}: AppRequest<'_, AllDatabasePlanRequest>,
+) -> Result<AppResponse<AllDatabasePlanResponse>, ErrorType> {
+	
+	info!("Starting: Get database plans");
+
+	// LOGIC
+
+    AppResponse::builder()
+        .body(AllDatabasePlanResponse {
+            plans: todo!(),
+        })
+        .headers(())
+        .status_code(StatusCode::OK)
+        .build()
+        .into_result() 
 }
 
 async fn create_database(

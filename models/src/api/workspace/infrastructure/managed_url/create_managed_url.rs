@@ -6,7 +6,7 @@ use super::ManagedUrlType;
 
 macros::declare_api_endpoint!(
     /// Route to create a new managed URL
-    CreateNewManagedUrl,
+    CreateManagedUrl,
     POST "/workspace/:workspace_id/infrastructure/managed-url" {
         /// The workspace ID of the user
         pub workspace_id: Uuid,
