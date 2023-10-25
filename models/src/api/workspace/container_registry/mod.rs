@@ -25,6 +25,8 @@ pub struct ContainerRepository {
 	/// The last time the repository was either created, updated or a tag was
 	/// updated.
 	pub last_updated: OffsetDateTime,
+	/// The time the repository was created.
+	pub created: OffsetDateTime,
 }
 
 #[cfg(test)]
@@ -41,18 +43,21 @@ mod test {
 				name: "test".to_string(),
 				size: 1234567890,
 				last_updated: OffsetDateTime::UNIX_EPOCH,
+				created: OffsetDateTime::UNIX_EPOCH,
 			}
 			.readable(),
 			&[
 				Token::Struct {
 					name: "ContainerRepository",
-					len: 3,
+					len: 4,
 				},
 				Token::Str("name"),
 				Token::Str("test"),
 				Token::Str("size"),
 				Token::U64(1234567890),
 				Token::Str("lastUpdated"),
+				Token::Str("1970-01-01 00:00:00.0 +00:00:00"),
+				Token::Str("created"),
 				Token::Str("1970-01-01 00:00:00.0 +00:00:00"),
 				Token::StructEnd,
 			],

@@ -74,17 +74,6 @@ pub async fn initialize_rbac_tables(
 
 	query!(
 		r#"
-		CREATE TYPE PERMISSION_TYPE AS ENUM(
-			'include',
-			'exclude'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
 		CREATE TABLE role_resource_permissions_type(
 			role_id UUID NOT NULL,
 			permission_id UUID NOT NULL,

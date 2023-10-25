@@ -9,7 +9,7 @@ pub async fn initialize_meta_tables(
 	query!(
 		r#"
 		CREATE TABLE meta_data(
-			id VARCHAR(100) CONSTRAINT meta_data_pk PRIMARY KEY,
+			id TEXT CONSTRAINT meta_data_pk PRIMARY KEY,
 			value TEXT NOT NULL
 		);
 		"#

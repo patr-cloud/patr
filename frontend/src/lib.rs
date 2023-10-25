@@ -1,6 +1,5 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs, clippy::missing_docs_in_private_items)]
-
 //! Main dashboard console for Patr
 
 /// Prelude module. Used to re-export commonly used items.

@@ -77,92 +77,92 @@ pub fn SignUp() -> impl IntoView {
 	let username_valid_action = create_action(move |username: &String| {
 		let username = username.clone();
 		async move {
-			let result = make_request(
-				ApiRequest::<IsUsernameValidRequest>::builder()
-					.path(Default::default())
-					.query(IsUsernameValidQuery { username })
-					.headers(())
-					.body(IsUsernameValidRequest)
-					.build(),
-			)
-			.await;
+			// let result = make_request(
+			// 	ApiRequest::<IsUsernameValidRequest>::builder()
+			// 		.path(Default::default())
+			// 		.query(IsUsernameValidQuery { username })
+			// 		.headers(())
+			// 		.body(IsUsernameValidRequest)
+			// 		.build(),
+			// )
+			// .await;
 
-			let IsUsernameValidResponse { available } = match result {
-				Ok(ApiSuccessResponse {
-					status_code: _,
-					headers: (),
-					body,
-				}) => body,
-				Err(ApiErrorResponse {
-					status_code: _,
-					body:
-						ApiErrorResponseBody {
-							success: _,
-							error,
-							message,
-						},
-				}) => {
-					handle_errors(error, message);
-					return;
-				}
-			};
+			// let IsUsernameValidResponse { available } = match result {
+			// 	Ok(ApiSuccessResponse {
+			// 		status_code: _,
+			// 		headers: (),
+			// 		body,
+			// 	}) => body,
+			// 	Err(ApiErrorResponse {
+			// 		status_code: _,
+			// 		body:
+			// 			ApiErrorResponseBody {
+			// 				success: _,
+			// 				error,
+			// 				message,
+			// 			},
+			// 	}) => {
+			// 		handle_errors(error, message);
+			// 		return;
+			// 	}
+			// };
 
-			if !available {
-				username_error.set("Username is already taken".to_string());
-				username_error_type.set(NotificationType::Error);
-			} else {
-				username_error.set("Username is available".to_string());
-				username_error_type.set(NotificationType::Success);
-			}
-			if username_verifying.get_untracked() {
-				username_verifying.set(false);
-			}
+			// if !available {
+			// 	username_error.set("Username is already taken".to_string());
+			// 	username_error_type.set(NotificationType::Error);
+			// } else {
+			// 	username_error.set("Username is available".to_string());
+			// 	username_error_type.set(NotificationType::Success);
+			// }
+			// if username_verifying.get_untracked() {
+			// 	username_verifying.set(false);
+			// }
 		}
 	});
 
 	let email_valid_action = create_action(move |email: &String| {
 		let email = email.clone();
 		async move {
-			let result = make_request(
-				ApiRequest::<IsEmailValidRequest>::builder()
-					.path(Default::default())
-					.query(IsEmailValidQuery { email })
-					.headers(())
-					.body(IsEmailValidRequest)
-					.build(),
-			)
-			.await;
+			// let result = make_request(
+			// 	ApiRequest::<IsEmailValidRequest>::builder()
+			// 		.path(Default::default())
+			// 		.query(IsEmailValidQuery { email })
+			// 		.headers(())
+			// 		.body(IsEmailValidRequest)
+			// 		.build(),
+			// )
+			// .await;
 
-			let IsEmailValidResponse { available } = match result {
-				Ok(ApiSuccessResponse {
-					status_code: _,
-					headers: (),
-					body,
-				}) => body,
-				Err(ApiErrorResponse {
-					status_code: _,
-					body:
-						ApiErrorResponseBody {
-							success: _,
-							error,
-							message,
-						},
-				}) => {
-					handle_errors(error, message);
-					return;
-				}
-			};
+			// let IsEmailValidResponse { available } = match result {
+			// 	Ok(ApiSuccessResponse {
+			// 		status_code: _,
+			// 		headers: (),
+			// 		body,
+			// 	}) => body,
+			// 	Err(ApiErrorResponse {
+			// 		status_code: _,
+			// 		body:
+			// 			ApiErrorResponseBody {
+			// 				success: _,
+			// 				error,
+			// 				message,
+			// 			},
+			// 	}) => {
+			// 		handle_errors(error, message);
+			// 		return;
+			// 	}
+			// };
 
-			if !available {
-				email_error.set("Email is already taken".to_string());
-				email_error_type.set(NotificationType::Error);
-			} else {
-				email_error.set("Email is available".to_string());
-				email_error_type.set(NotificationType::Success);
-			}
-			if email_verifying.get_untracked() {
-				email_verifying.set(false);
-			}
+			// if !available {
+			// 	email_error.set("Email is already taken".to_string());
+			// 	email_error_type.set(NotificationType::Error);
+			// } else {
+			// 	email_error.set("Email is available".to_string());
+			// 	email_error_type.set(NotificationType::Success);
+			// }
+			// if email_verifying.get_untracked() {
+			// 	email_verifying.set(false);
+			// }
 		}
 	});
 
@@ -180,41 +180,41 @@ pub fn SignUp() -> impl IntoView {
 			let recovery_email = email.clone();
 			let password = password.clone();
 			async move {
-				let result = make_request(
-					ApiRequest::<CreateAccountRequest>::builder()
-						.path(Default::default())
-						.query(())
-						.headers(())
-						.body(CreateAccountRequest {
-							first_name,
-							last_name,
-							username,
-							password,
-							recovery_method: RecoveryMethod::Email { recovery_email },
-						})
-						.build(),
-				)
-				.await;
+				// let result = make_request(
+				// 	ApiRequest::<CreateAccountRequest>::builder()
+				// 		.path(Default::default())
+				// 		.query(())
+				// 		.headers(())
+				// 		.body(CreateAccountRequest {
+				// 			first_name,
+				// 			last_name,
+				// 			username,
+				// 			password,
+				// 			recovery_method: RecoveryMethod::Email { recovery_email },
+				// 		})
+				// 		.build(),
+				// )
+				// .await;
 
-				let CreateAccountResponse = match result {
-					Ok(ApiSuccessResponse {
-						status_code: _,
-						headers: (),
-						body,
-					}) => body,
-					Err(ApiErrorResponse {
-						status_code: _,
-						body:
-							ApiErrorResponseBody {
-								success: _,
-								error,
-								message,
-							},
-					}) => {
-						handle_errors(error, message);
-						return;
-					}
-				};
+				// let CreateAccountResponse = match result {
+				// 	Ok(ApiSuccessResponse {
+				// 		status_code: _,
+				// 		headers: (),
+				// 		body,
+				// 	}) => body,
+				// 	Err(ApiErrorResponse {
+				// 		status_code: _,
+				// 		body:
+				// 			ApiErrorResponseBody {
+				// 				success: _,
+				// 				error,
+				// 				message,
+				// 			},
+				// 	}) => {
+				// 		handle_errors(error, message);
+				// 		return;
+				// 	}
+				// };
 			}
 		},
 	);

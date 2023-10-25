@@ -9,7 +9,7 @@ pub async fn initialize_web_login_tables(
 		r#"
 		CREATE TABLE web_login(
 			login_id UUID NOT NULL,
-			user_id UUID NOT NULL,
+			original_login_id UUID, /* In case this login was magically swapped, what's the original one */
 
 			refresh_token TEXT NOT NULL,
 			token_expiry TIMESTAMPTZ NOT NULL,
@@ -17,20 +17,11 @@ pub async fn initialize_web_login_tables(
 			created TIMESTAMPTZ NOT NULL,
 			created_ip INET NOT NULL,
 			created_location GEOMETRY NOT NULL,
+			created_user_agent TEXT NOT NULL,
 			created_country TEXT NOT NULL,
 			created_region TEXT NOT NULL,
 			created_city TEXT NOT NULL,
 			created_timezone TEXT NOT NULL,
-
-			last_login TIMESTAMPTZ NOT NULL,
-			last_activity TIMESTAMPTZ NOT NULL,
-			last_activity_ip INET NOT NULL,
-			last_activity_location GEOMETRY NOT NULL,
-			last_activity_country TEXT NOT NULL,
-			last_activity_region TEXT NOT NULL,
-			last_activity_city TEXT NOT NULL,
-			last_activity_timezone TEXT NOT NULL,
-			last_activity_user_agent TEXT NOT NULL,
 
 			login_type USER_LOGIN_TYPE NOT NULL GENERATED ALWAYS AS ('web_login') STORED
 		);

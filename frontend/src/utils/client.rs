@@ -1,110 +1,62 @@
-use std::{str::FromStr, sync::OnceLock};
+use std::{any::Any, collections::BTreeMap, sync::OnceLock};
 
-use models::{
-	prelude::*,
-	utils::{constants, False, Headers},
-	ApiErrorResponse,
-	ApiErrorResponseBody,
-	ApiResponseBody,
-	ApiSuccessResponseBody,
+use axum_extra::routing::TypedPath;
+use models::{ApiEndpoint, ApiRequest, AppResponse, ErrorType};
+use tower::{
+	service_fn,
+	util::{BoxCloneService, BoxLayer, ServiceExt},
+	ServiceBuilder,
 };
-use reqwest::Client;
-use serde::{de::DeserializeOwned, Serialize};
-use url::Url;
 
-static REQUEST_CLIENT: OnceLock<Client> = OnceLock::new();
+/// Used internally for registering API calls to the backend. DO NOT USE THIS ON
+/// YOUR OWN. Use the [`make_api_call`] fn instead.
+pub static API_CALL_REGISTRY: OnceLock<
+	BTreeMap<
+		String,
+		BoxLayer<
+			BoxCloneService<Box<dyn Any>, Box<dyn Any>, ErrorType>,
+			Box<dyn Any>,
+			Box<dyn Any>,
+			ErrorType,
+		>,
+	>,
+> = OnceLock::new();
 
-/// Makes a request to the API. Requires an ApiRequest object for a specific
-/// endpoint, and returns the response corresponding to that endpoint
-/// TODO implement automatically refreshing tokens
-pub async fn make_request<E>(
-	ApiRequest {
-		path,
-		query,
-		headers,
-		body,
-	}: ApiRequest<E>,
-) -> Result<ApiSuccessResponse<E>, ApiErrorResponse>
+pub(crate) async fn make_api_call<E>(request: ApiRequest<E>) -> Result<AppResponse<E>, ErrorType>
 where
 	E: ApiEndpoint,
-	E::ResponseBody: DeserializeOwned + Serialize,
-	E::RequestBody: DeserializeOwned + Serialize,
 {
-	let body = serde_json::to_value(&body).unwrap();
-	let builder = REQUEST_CLIENT
-		.get_or_init(initialize_client)
-		.request(
-			E::METHOD,
-			Url::from_str(constants::API_BASE_URL)
-				.unwrap()
-				.join(path.to_string().as_str())
-				.unwrap(),
+	ServiceBuilder::new()
+		.layer(
+			API_CALL_REGISTRY
+				.get()
+				.expect(concat!(
+					"API call registry not initialized.",
+					" Are you sure you are running the code with the backend?"
+				))
+				.get(&format!(
+					"{} {}",
+					E::METHOD,
+					<E::RequestPath as TypedPath>::PATH
+				))
+				.expect(
+					format!(
+						"API call registry for the route `{} {}` not registered.",
+						E::METHOD,
+						<E::RequestPath as TypedPath>::PATH
+					)
+					.as_str(),
+				)
+				.clone(),
 		)
-		.query(&query)
-		.headers(headers.to_header_map());
-	let response = if body.is_null() {
-		builder
-	} else {
-		builder.json(&body)
-	}
-	.send()
-	.await;
-
-	let response = match response {
-		Ok(response) => response,
-		Err(error) => {
-			return Err(ApiErrorResponse {
-				status_code: reqwest::StatusCode::INTERNAL_SERVER_ERROR,
-				body: ApiErrorResponseBody {
-					success: False,
-					error: ErrorType::server_error(error.to_string()),
-					message: error.to_string(),
-				},
-			});
-		}
-	};
-
-	let status_code = response.status();
-	let Some(headers) = E::ResponseHeaders::from_header_map(response.headers()) else {
-		return Err(ApiErrorResponse {
-			status_code: reqwest::StatusCode::INTERNAL_SERVER_ERROR,
-			body: ApiErrorResponseBody {
-				success: False,
-				error: ErrorType::server_error("invalid headers"),
-				message: "invalid headers".to_string(),
-			},
-		});
-	};
-
-	match response.json::<ApiResponseBody<E::ResponseBody>>().await {
-		Ok(ApiResponseBody::Success(ApiSuccessResponseBody {
-			success: _,
-			response: body,
-		})) => Ok(ApiSuccessResponse {
-			status_code,
-			headers,
-			body,
-		}),
-		Ok(ApiResponseBody::Error(error)) => Err(ApiErrorResponse {
-			status_code,
-			body: error,
-		}),
-		Err(error) => {
-			tracing::error!("{}", error.to_string());
-			Err(ApiErrorResponse {
-				status_code: reqwest::StatusCode::INTERNAL_SERVER_ERROR,
-				body: ApiErrorResponseBody {
-					success: False,
-					error: ErrorType::server_error(error.to_string()),
-					message: error.to_string(),
-				},
-			})
-		}
-	}
-}
-
-fn initialize_client() -> Client {
-	Client::builder()
-		.build()
-		.expect("failed to initialize client")
+		.service(BoxCloneService::new(service_fn(|_| async move {
+			unreachable!()
+		})))
+		.oneshot(Box::new(request))
+		.await
+		.map(|response| {
+			*response
+				.downcast::<AppResponse<E>>()
+				.expect("invalid response")
+		})
 }

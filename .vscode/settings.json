@@ -16,13 +16,18 @@
     ],
     "cSpell.words": [
         "BYOC",
+        "Citext",
+        "INET",
         "jsonwebtoken",
         "leptos",
         "middlewares",
+        "opentelemetry",
+        "otlp",
         "padawan",
         "reauthenticated",
         "reauthentication",
         "Stylesheet",
+        "TIMESTAMPTZ",
         "wayy"
     ],
     "nixEnvSelector.nixFile": "${workspaceRoot}/shell.nix",

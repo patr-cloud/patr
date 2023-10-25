@@ -14,6 +14,8 @@ mod declare_api_endpoint;
 mod has_headers;
 /// A proc macro for stripping whitespaces and newlines from SQL queries.
 mod query;
+/// A macro to get the current crate version.
+mod version;
 
 /// Declares an API endpoint. This macro allows easy definition of an API
 /// endpoint along with the request URL, headers, query, body as well as the
@@ -71,4 +73,11 @@ pub fn has_headers(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn query(input: TokenStream) -> TokenStream {
 	query::parse(input)
+}
+
+/// A macro to get the current crate version. This is used to set the version
+/// number for the current database version
+#[proc_macro]
+pub fn version(input: TokenStream) -> TokenStream {
+	version::parse(input)
 }
