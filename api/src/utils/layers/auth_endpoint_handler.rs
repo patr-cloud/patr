@@ -7,7 +7,7 @@ use std::{
 use models::{ApiEndpoint, ErrorType};
 use tower::{Layer, Service};
 
-use crate::{app::AppResponse, prelude::AuthenticatedAppRequest};
+use crate::{ prelude::*};
 
 /// A trait that is implemented for all functions and closures that are used to
 /// handle endpoints that require authentication. This trait is used to

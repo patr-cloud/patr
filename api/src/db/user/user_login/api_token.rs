@@ -19,6 +19,17 @@ pub async fn initialize_api_token_tables(
 
 	query!(
 		r#"
+		CREATE TYPE PERMISSION_TYPE AS ENUM(
+			'include',
+			'exclude'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE user_api_token(
 			token_id UUID NOT NULL,
 			name TEXT NOT NULL,

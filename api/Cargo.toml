@@ -21,6 +21,8 @@ leptos = { workspace = true, features = ["ssr"] }
 leptos_axum = { workspace = true, features = ["default"] }
 macros = { workspace = true, features = [] }
 models = { workspace = true, features = [] }
+opentelemetry-otlp = { workspace = true, features = ["default"] }
+opentelemetry_sdk = { workspace = true, features = ["default"] }
 rustis = { workspace = true, features = [
     "default",
     "pool",
@@ -51,5 +53,7 @@ tower = { workspace = true, features = ["default", "full"] }
 tower-http = { workspace = true, features = ["fs"] }
 tracing = { workspace = true, features = ["default", "async-await"] }
 tracing-log = { workspace = true, features = ["default"] }
+tracing-opentelemetry = { workspace = true, features = ["default"] }
+tracing-subscriber = { workspace = true, features = ["default"] }
 typed-builder = { workspace = true, features = [] }
 typed-headers = { workspace = true, features = [] }

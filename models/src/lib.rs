@@ -41,6 +41,7 @@ pub mod prelude {
 		ApiEndpoint,
 		ApiRequest,
 		ApiSuccessResponse,
+		AppResponse,
 		ErrorType,
 	};
 }

@@ -33,7 +33,7 @@ pub mod constants {
 	/// The version of the database. This is used to determine whether the
 	/// database needs to be migrated or not. This is always set to the manifest
 	/// version in Cargo.toml.
-	pub const DATABASE_VERSION: Version = Version::new(0, 0, 0);
+	pub const DATABASE_VERSION: Version = macros::version!();
 
 	/// The channel to publish and listen for data on from the database. This is
 	/// used to notify the backend when data has changed in the database, so

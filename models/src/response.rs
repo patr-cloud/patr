@@ -1,11 +1,37 @@
 use axum::{http::StatusCode, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
+use typed_builder::TypedBuilder;
 
 use crate::{
 	utils::{False, Headers, IntoAxumResponse, True},
 	ApiEndpoint,
 	ErrorType,
 };
+
+/// A response object that is passed through the tower layers and services
+#[derive(TypedBuilder)]
+#[builder(field_defaults(setter(into)))]
+pub struct AppResponse<E>
+where
+	E: ApiEndpoint,
+{
+	/// The status code of the response
+	pub status_code: StatusCode,
+	/// The headers of the response
+	pub headers: E::ResponseHeaders,
+	/// The body of the response
+	pub body: E::ResponseBody,
+}
+
+impl<E> AppResponse<E>
+where
+	E: ApiEndpoint,
+{
+	/// Convert the response into a Result
+	pub fn into_result(self) -> Result<Self, ErrorType> {
+		Ok(self)
+	}
+}
 
 /// This struct represents a successful response from the API. It contains the
 /// status code, headers and body.

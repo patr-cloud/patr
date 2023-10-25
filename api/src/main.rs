@@ -4,11 +4,6 @@
 
 //! The main API server for Patr.
 
-use std::net::SocketAddr;
-
-use app::AppState;
-use tracing_log::{log::LevelFilter, LogTracer};
-
 /// This module contains the main application logic. Most of the app requests,
 /// states, and mounting of endpoints are done here
 pub mod app;
@@ -40,12 +35,13 @@ pub mod prelude {
 	pub use models::{
 		utils::{OneOrMore, Paginated, Uuid},
 		ApiEndpoint,
+		AppResponse,
 		ErrorType,
 	};
 	pub use tracing::{debug, error, info, instrument, trace, warn};
 
 	pub use crate::{
-		app::{AppRequest, AppResponse, AppState, AuthenticatedAppRequest},
+		app::{AppRequest, AppState, AuthenticatedAppRequest},
 		db,
 		redis,
 		utils::{constants, RouterExt},
@@ -77,14 +73,68 @@ pub mod prelude {
 #[tokio::main]
 #[tracing::instrument]
 async fn main() {
+	use std::net::SocketAddr;
+
+	use app::AppState;
+	use opentelemetry_otlp::WithExportConfig;
+	use tracing::Level;
+	use tracing_opentelemetry::OpenTelemetryLayer;
+	use tracing_subscriber::{
+		filter::LevelFilter,
+		fmt::{format::FmtSpan, Layer as FmtLayer},
+		prelude::*,
+	};
+
+	use crate::utils::config::RunningEnvironment;
+
 	let config = utils::config::parse_config();
 
-	LogTracer::builder()
-		.with_max_level(LevelFilter::Debug)
-		.init()
-		.expect("failed to set tracing logger");
+	tracing::subscriber::set_global_default(
+		tracing_subscriber::registry()
+			.with(
+				FmtLayer::new()
+					.with_span_events(FmtSpan::NONE)
+					.event_format(
+						tracing_subscriber::fmt::format()
+							.with_ansi(true)
+							.with_file(false)
+							.without_time()
+							.compact(),
+					)
+					.with_filter(
+						tracing_subscriber::filter::Targets::new()
+							.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE),
+					)
+					.with_filter(LevelFilter::from_level(
+						if config.environment == RunningEnvironment::Development {
+							Level::DEBUG
+						} else {
+							Level::TRACE
+						},
+					)),
+			)
+			.with(
+				// TODO: WHAT THE FUCK IS HAPPENING HERE?
+				OpenTelemetryLayer::new(
+					opentelemetry_otlp::new_pipeline()
+						.tracing()
+						.with_trace_config(opentelemetry_sdk::trace::config())
+						.with_exporter(
+							opentelemetry_otlp::new_exporter()
+								.tonic()
+								.with_endpoint(config.opentelemetry.endpoint.as_str()),
+						)
+						.install_simple()
+						.expect("Failed to install OpenTelemetry tracing pipeline"),
+				)
+				.with_filter(
+					tracing_subscriber::filter::Targets::new()
+						.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE),
+				),
+			),
+	)
+	.expect("Failed to set global default subscriber");
 	tracing::info!("Config parsed. Running in {} mode", config.environment);
-	// TODO tracing open telemetry
 
 	let bind_address = config.bind_address;
 

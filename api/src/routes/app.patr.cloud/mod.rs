@@ -9,9 +9,15 @@ use crate::prelude::*;
 
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
-	let config = leptos::get_configuration(None)
-		.await
-		.expect("failed to get configuration");
+	let config = leptos::get_configuration(
+		if option_env!("LEPTOS_OUTPUT_NAME").is_some() {
+			None
+		} else {
+			Some(concat!(env!("CARGO_MANIFEST_DIR"), "/../Cargo.toml"))
+		},
+	)
+	.await
+	.expect("failed to get configuration");
 
 	let mut router = Router::new().route(
 		"/api/*fn_name",

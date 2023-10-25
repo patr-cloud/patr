@@ -20,20 +20,10 @@ pub async fn initialize_user_data_tables(
 			recovery_phone_country_code CHAR(2),
 			recovery_phone_number VARCHAR(15),
 			workspace_limit INTEGER NOT NULL,
+			password_reset_token TEXT,
+			password_reset_token_expiry TIMESTAMPTZ NOT NULL,
+			password_reset_attempts INT NOT NULL,
 			mfa_secret TEXT
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE password_reset_request(
-			user_id UUID NOT NULL,
-			token TEXT NOT NULL,
-			token_expiry TIMESTAMPTZ NOT NULL,
-			attempts INT NOT NULL
 		);
 		"#
 	)

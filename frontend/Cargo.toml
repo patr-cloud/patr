@@ -30,6 +30,7 @@ web-sys = { workspace = true, features = [
     "Navigator",
     "DataTransfer",
 ] }
+tower = { workspace = true, features = ["util"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 leptos = { workspace = true, features = ["tracing", "hydrate"] }

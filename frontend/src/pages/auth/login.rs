@@ -52,48 +52,48 @@ pub fn Login() -> impl IntoView {
 			let password = password.clone();
 			let mfa_otp = mfa_otp.clone();
 			async move {
-				let result = make_request(
-					ApiRequest::<LoginRequest>::builder()
-						.path(Default::default())
-						.query(())
-						.headers(())
-						.body(LoginRequest {
-							user_id,
-							password,
-							mfa_otp,
-						})
-						.build(),
-				)
-				.await;
-				let LoginResponse {
-					access_token,
-					refresh_token,
-				} = match result {
-					Ok(ApiSuccessResponse {
-						status_code: _,
-						headers: (),
-						body,
-					}) => body,
-					Err(ApiErrorResponse {
-						status_code: _,
-						body:
-							ApiErrorResponseBody {
-								success: _,
-								error,
-								message,
-							},
-					}) => {
-						handle_errors(error, message);
-						return;
-					}
-				};
+				// let result = make_request(
+				// 	ApiRequest::<LoginRequest>::builder()
+				// 		.path(Default::default())
+				// 		.query(())
+				// 		.headers(())
+				// 		.body(LoginRequest {
+				// 			user_id,
+				// 			password,
+				// 			mfa_otp,
+				// 		})
+				// 		.build(),
+				// )
+				// .await;
+				// let LoginResponse {
+				// 	access_token,
+				// 	refresh_token,
+				// } = match result {
+				// 	Ok(ApiSuccessResponse {
+				// 		status_code: _,
+				// 		headers: (),
+				// 		body,
+				// 	}) => body,
+				// 	Err(ApiErrorResponse {
+				// 		status_code: _,
+				// 		body:
+				// 			ApiErrorResponseBody {
+				// 				success: _,
+				// 				error,
+				// 				message,
+				// 			},
+				// 	}) => {
+				// 		handle_errors(error, message);
+				// 		return;
+				// 	}
+				// };
 
-				set_state.set(AppStorage::LoggedIn {
-					user_id: Default::default(),
-					access_token,
-					refresh_token,
-					default_workspace: None,
-				});
+				// set_state.set(AppStorage::LoggedIn {
+				// 	user_id: Default::default(),
+				// 	access_token,
+				// 	refresh_token,
+				// 	default_workspace: None,
+				// });
 			}
 		},
 	);

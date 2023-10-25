@@ -20,11 +20,6 @@
 		"connectionLimit": 10,
 		"secure": false
 	},
-
-
-
-	
-	"apiUrl": "https://api.patr.cloud",
 	"s3": {
 		"endpoint": "s3.localhost",
 		"region": "sample-region",
@@ -40,87 +35,7 @@
 		"from": "no-reply@example.com",
 		"password": "password"
 	},
-	"twilio": {
-		"username": "<example-user-name>",
-		"accessToken": "<ACCESS-TOKEN-HHERE>",
-		"fromNumber": "+0123456789"
-	},
-	"cloudflare": {
-		"accountId": "<example-account-id>",
-		"accountEmail": "account@example.com",
-		"apiToken": "<example-api-token>",
-		"kvRoutingNs": "kvRoutingNs",
-		"kvDeploymentNs": "kvDeploymentNs",
-		"kvStaticSiteNs": "kvStaticSiteNs",
-		"onpatrDomain": "onpatrDomain",
-		"originCaKey": "originCaKey",
-		"patrZoneIdentifier": "patrZoneIdentifier",
-		"workerScript": "workerScript"
-	},
-	"dockerRegistry": {
-		"serviceName": "Deployer Registry Service",
-		"issuer": "localhost:3000",
-		"registryUrl": "localhost:5000",
-		"privateKey": "",
-		"publicKey": "",
-		"publicKeyDer": "",
-		"authorizationHeader": "auth key"
-	},
-	"digitalocean": {
-		"apiKey": "key"
-	},
-	"kubernetes": {
-		"certificateAuthorityData": "",
-		"clusterName": "",
-		"clusterUrl": "",
-		"authName": "",
-		"authUsername": "",
-		"authToken": "",
-		"contextName": "",
-		"certIssuerHttp": "letsencrypt-staging",
-		"certIssuerDns": "letsencrypt-staging-dns",
-		"staticSiteProxyService": "proxy-static-site-service.default.svc.cluster.local"
-	},
-	"rabbitmq": {
-		"host": "localhost",
-		"port": 5672,
-		"queue": "infrastructure",
-		"username": "",
-		"password": "",
-		"prefetchCount": 10
-	},
-	"vault": {
-		"upstreamHost": "vault-upstream.patr.cloud",
-		"host": "vault.patr.cloud",
-		"token": "<vault token>"
-	},
-	"loki": {
-		"upstreamHost": "loki-internal.patr.cloud",
-		"host": "loki.patr.cloud",
-		"username": "admin",
-		"password": "admin"
-	},
-	"mailchimp": {
-		"apiKey": "example-api-key",
-		"listId": "example-list-id"
-	},
-	"github": {
-		"clientId": "app-client-id",
-		"clientSecret": "app-client-secret"
-	},
-	"stripe": {
-		"publishableKey": "pk_test_123",
-		"secretKey": "sk_test_123"
-	},
-	"ipinfoToken": "token",
-	"mimir": {
-		"upstreamHost": "mimir.samyakgangwal.com",
-		"host": "metrics.patr.cloud",
-		"username": "admin",
-		"password": "admin"
-	},
-	"ipQuality": {
-		"host": "<ip-quality-score-host>",
-		"token": "<api-token>"
+	"opentelemetry": {
+		"endpoint": "http://localhost:4317"
 	}
 }

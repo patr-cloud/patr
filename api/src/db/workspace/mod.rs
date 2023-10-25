@@ -1,21 +1,15 @@
 use crate::prelude::*;
 
-// mod billing;
-// mod ci;
 // mod docker_registry;
 // mod domain;
 // mod infrastructure;
-// mod metrics;
 // mod region;
 // mod secret;
 
 // pub use self::{
-// 	billing::*,
-// 	ci::*,
 // 	docker_registry::*,
 // 	domain::*,
 // 	infrastructure::*,
-// 	metrics::*,
 // 	region::*,
 // 	secret::*,
 // };

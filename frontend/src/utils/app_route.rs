@@ -44,20 +44,17 @@ where
 	F: Fn() -> V + 'static,
 	V: IntoView,
 {
+	let query: R::Query = use_router_query()
+		.get_untracked()
+		.unwrap_or_default();
+	let params: R = use_router_params()
+		.get_untracked()
+		.unwrap_or_default();
+	let path = <R as TypedPath>::PATH;
 	view! {
 		<Route
-			view={move || {
-				let query: R::Query = use_router_query()
-					.get_untracked()
-					.unwrap_or_default();
-				let params: R = use_router_params()
-					.get_untracked()
-					.unwrap_or_default();
-				provide_context(Query(query));
-				provide_context(UrlParams(params));
-				view()
-			}}
-			path={<R as TypedPath>::PATH}>
+			view={move || view().into_view()}
+			path=path >
 			{children()}
 		</Route>
 	}

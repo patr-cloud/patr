@@ -63,10 +63,12 @@ pub struct AppConfig {
 	/// for subscribing to events from the database on websockets
 	pub redis: RedisConfig,
 	// pub email: EmailConfig,
+	/// The opentelemetry endpoint to send traces to
+	pub opentelemetry: OpenTelemetryConfig,
 }
 
 /// The environment the application is running in
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum RunningEnvironment {
 	/// The application is running in development mode
@@ -164,4 +166,12 @@ pub struct EmailConfig {
 	pub from: String,
 	/// The password to use to connect to the SMTP server
 	pub password: String,
+}
+
+/// The configuration for the opentelemetry endpoint to send traces to
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenTelemetryConfig {
+	/// The endpoint to send traces to
+	pub endpoint: String,
 }

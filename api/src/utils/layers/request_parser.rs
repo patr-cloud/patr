@@ -21,7 +21,7 @@ use models::{
 };
 use tower::{Layer, Service};
 
-use crate::{app::AppResponse, prelude::*};
+use crate::{prelude::*};
 
 /// A [`tower::Layer`] that can be used to parse the request and call the inner
 /// service with the parsed request. Ideally, this will automatically be done by
