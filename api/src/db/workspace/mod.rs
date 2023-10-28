@@ -2,14 +2,14 @@ use crate::prelude::*;
 
 mod container_registry;
 // mod domain;
-// mod infrastructure;
+mod infrastructure;
 // mod region;
 // mod secret;
 
 pub use self::{
 	container_registry::*,
 // 	domain::*,
-// 	infrastructure::*,
+	infrastructure::*,
 // 	region::*,
 // 	secret::*,
 };
