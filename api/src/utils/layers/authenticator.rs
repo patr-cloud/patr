@@ -9,17 +9,32 @@ use std::{
 use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier, Version};
 use jsonwebtoken::{DecodingKey, TokenData, Validation};
 use models::{
+	permission::WorkspacePermission,
 	utils::{AppAuthentication, BearerToken, HasAuthentication, HasHeader},
 	ApiEndpoint,
 	ErrorType,
 	RequestUserData,
-	permission::WorkspacePermission,
 };
 use rustis::{client::Client as RedisClient, commands::StringCommands};
 use time::OffsetDateTime;
 use tower::{Layer, Service};
 
 use crate::{models::access_token_data::AccessTokenData, prelude::*, utils::constants};
+
+/// The type of client used for a request. This is used to determine
+/// which authentication method to use, based on if the API call is made by our
+/// web dashboard or by a third party application using the API token. This is
+/// required because some endpoints are only accessible by the web dashboard,
+/// and some are only accessible by third party applications. For example, you
+/// cannot change your password, or create a new user using the API token, but
+/// you can do so using the web dashboard.
+#[derive(Debug, Clone, Copy)]
+pub enum ClientType {
+	/// The request is authenticated using a JWT from the web dashboard
+	WebDashboard,
+	/// The request is authenticated using an API token
+	ApiToken,
+}
 
 /// The [`tower::Layer`] used to authenticate requests. This will parse the
 /// [`BearerToken`] header and verify it against the database. If the token is
@@ -31,6 +46,7 @@ where
 	E: ApiEndpoint,
 {
 	endpoint: PhantomData<E>,
+	client_type: ClientType,
 }
 
 impl<E> AuthenticationLayer<E>
@@ -38,9 +54,10 @@ where
 	E: ApiEndpoint,
 {
 	/// Helper function to initialize an authentication layer
-	pub fn new() -> Self {
+	pub fn new(client_type: ClientType) -> Self {
 		Self {
 			endpoint: PhantomData,
+			client_type,
 		}
 	}
 }
@@ -68,6 +85,7 @@ where
 	fn clone(&self) -> Self {
 		Self {
 			endpoint: PhantomData,
+			client_type: self.client_type,
 		}
 	}
 }

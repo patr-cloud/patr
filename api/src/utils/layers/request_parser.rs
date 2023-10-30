@@ -21,7 +21,7 @@ use models::{
 };
 use tower::{Layer, Service};
 
-use crate::{prelude::*};
+use crate::prelude::*;
 
 /// A [`tower::Layer`] that can be used to parse the request and call the inner
 /// service with the parsed request. Ideally, this will automatically be done by
@@ -85,8 +85,8 @@ where
 
 impl<S, E> Service<Request<Body>> for RequestParser<S, E>
 where
-	E: ApiEndpoint,
 	for<'a> S: Service<AppRequest<'a, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
+	E: ApiEndpoint,
 {
 	type Error = Infallible;
 	type Response = Response;

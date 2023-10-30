@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE container_registry_repository ADD CONSTRAINT container_registry_repository_pk PRIMARY KEY(id), ADD CONSTRAINT container_registry_repository_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id), ADD CONSTRAINT container_registry_repository_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id), ADD CONSTRAINT container_registry_repository_uq_id_workspace_id UNIQUE( id, workspace_id );",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "dc829e9756102701cccc14e5651b6a15d2a296fec3a68f4fd2f73007b45e7824"
+}

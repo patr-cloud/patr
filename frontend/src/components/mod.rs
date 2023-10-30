@@ -6,7 +6,6 @@ mod icon;
 mod input;
 mod link;
 mod otp_input;
-mod portal;
 mod spinner;
 mod tooltip;
 mod tooltip_container;
@@ -21,7 +20,6 @@ pub use self::{
 	input::*,
 	link::*,
 	otp_input::*,
-	portal::*,
 	spinner::*,
 	tooltip::*,
 	tooltip_container::*,

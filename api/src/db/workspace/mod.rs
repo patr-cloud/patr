@@ -1,18 +1,18 @@
 use crate::prelude::*;
 
-// mod docker_registry;
+mod container_registry;
 // mod domain;
 // mod infrastructure;
 // mod region;
 // mod secret;
 
-// pub use self::{
-// 	docker_registry::*,
+pub use self::{
+	container_registry::*,
 // 	domain::*,
 // 	infrastructure::*,
 // 	region::*,
 // 	secret::*,
-// };
+};
 
 /// Initializes all workspace-related tables
 #[instrument(skip(connection))]
@@ -47,7 +47,7 @@ pub async fn initialize_workspace_tables(
 	.await?;
 
 	// domain::initialize_domain_tables(connection).await?;
-	// docker_registry::initialize_docker_registry_tables(connection).await?;
+	// container_registry::initialize_container_registry_tables(connection).await?;
 	// secret::initialize_secret_tables(connection).await?;
 	// region::initialize_region_tables(connection).await?;
 	// infrastructure::initialize_infrastructure_tables(connection).await?;
@@ -114,7 +114,7 @@ pub async fn initialize_workspace_constraints(
 	.await?;
 
 	// domain::initialize_domain_constraints(connection).await?;
-	// docker_registry::initialize_docker_registry_constraints(connection).await?;
+	// container_registry::initialize_container_registry_constraints(connection).await?;
 	// secret::initialize_secret_constraints(connection).await?;
 	// region::initialize_region_constraints(connection).await?;
 	// infrastructure::initialize_infrastructure_constraints(connection).await?;

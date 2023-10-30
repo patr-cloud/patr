@@ -21,6 +21,7 @@ reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
 serde_urlencoded = { workspace = true, features = [] }
+tower = { workspace = true, features = ["util"] }
 tracing = { workspace = true, features = ["attributes"] }
 url = { workspace = true, features = ["default"] }
 wasm-bindgen = { workspace = true, features = ["default"] }
@@ -30,7 +31,6 @@ web-sys = { workspace = true, features = [
     "Navigator",
     "DataTransfer",
 ] }
-tower = { workspace = true, features = ["util"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 leptos = { workspace = true, features = ["tracing", "hydrate"] }
