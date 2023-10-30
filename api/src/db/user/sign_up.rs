@@ -62,7 +62,7 @@ pub async fn initialize_user_sign_up_constraints(
 				LENGTH(recovery_phone_number) <= 15 AND
 				CAST(recovery_phone_number AS BIGINT) > 0
 			),
-			ADD	CONSTRAINT user_to_sign_up_chk_recovery_details CHECK(
+			ADD CONSTRAINT user_to_sign_up_chk_recovery_details CHECK(
 				(
 					recovery_email_local IS NOT NULL AND
 					recovery_email_domain_id IS NOT NULL AND

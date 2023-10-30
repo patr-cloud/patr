@@ -41,8 +41,9 @@ pub async fn initialize_web_login_constraints(
 	query!(
 		r#"
 		ALTER TABLE web_login
-		ADD CONSTRAINT web_login_fk FOREIGN KEY(login_id, user_id, login_type)
-		REFERENCES user_login(login_id, user_id, login_type);
+			ADD CONSTRAINT web_login_pk PRIMARY KEY(login_id),
+			ADD CONSTRAINT web_login_fk FOREIGN KEY(login_id, user_id, login_type)
+				REFERENCES user_login(login_id, user_id, login_type);
 		"#
 	)
 	.execute(&mut *connection)

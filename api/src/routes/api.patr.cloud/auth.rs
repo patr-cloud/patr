@@ -9,7 +9,7 @@ use models::{
 use crate::prelude::*;
 
 #[instrument(skip(state))]
-pub fn setup_routes(state: &AppState) -> Router {
+pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
 		.mount_endpoint(login, state)
 		.with_state(state.clone())

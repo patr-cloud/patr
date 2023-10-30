@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE container_registry_manifest ADD CONSTRAINT container_registry_manifest_pk PRIMARY KEY(manifest_digest);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "52c021fd79c8c13d2cd7b390617188464bcf5d15592a7f87d36207acf09097f6"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE UNIQUE INDEX container_registry_repository_uq_workspace_id_name ON container_registry_repository(workspace_id, name) WHERE deleted IS NULL;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "8c03b47a64ba1f56a31ecac25eaf0138d7c1291da7971be6040915895bb7b749"
+}

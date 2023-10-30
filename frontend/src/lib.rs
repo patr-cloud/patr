@@ -83,10 +83,7 @@ pub fn render() -> View {
 				}
 			} />
 
-			// <PortalProvider>
-				<App/>
-				// <PortalOutput id={PortalId}/>
-			// </PortalProvider>
+			<App />
 		</>
 	}.into()
 }
