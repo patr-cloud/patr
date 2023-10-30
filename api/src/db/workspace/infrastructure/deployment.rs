@@ -25,7 +25,7 @@ pub async fn initialize_deployment_tables(
 	query!(
 		r#"
 		CREATE TABLE deployment_machine_type(
-			id UUID,
+			id UUID NOT NULL,
 			cpu_count SMALLINT NOT NULL,
 			memory_count INTEGER NOT NULL /* Multiples of 0.25 GB */
 		);
@@ -47,7 +47,7 @@ pub async fn initialize_deployment_tables(
 	query!(
 		r#"
 		CREATE TABLE deployment(
-			id UUID,
+			id UUID NOT NULL,
 			name CITEXT NOT NULL,
 			registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud',
 			repository_id UUID,
@@ -77,7 +77,7 @@ pub async fn initialize_deployment_tables(
 	query!(
 		r#"
 		CREATE TABLE deployment_environment_variable(
-			deployment_id UUID,
+			deployment_id UUID NOT NULL,
 			name VARCHAR(256) NOT NULL,
 			value TEXT,
 			secret_id UUID
@@ -127,7 +127,7 @@ pub async fn initialize_deployment_tables(
 	query!(
 		r#"
 		CREATE TABLE deployment_volume(
-			id UUID,
+			id UUID NOT NULL,
 			name TEXT NOT NULL,
 			deployment_id UUID NOT NULL,
 			volume_size INT NOT NULL,
@@ -167,7 +167,9 @@ pub async fn initialize_deployment_constraints(
 			ADD CONSTRAINT deployment_chk_image_name_is_valid CHECK(
 				image_name ~ '^(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?)(((\/)(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?))*)?$'
 			),
-			ADD CONSTRAINT deployment_fk_region REFERENCES region(id),
+			ADD CONSTRAINT deployment_fk_region 
+				FOREIGN KEY(region) 
+					REFERENCES region(id),
 			ADD CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK(
 				min_horizontal_scale >= 0 AND min_horizontal_scale <= 256
 			),
@@ -175,7 +177,8 @@ pub async fn initialize_deployment_constraints(
 				max_horizontal_scale >= 0 AND max_horizontal_scale <= 256
 			),
 			ADD CONSTRAINT deployment_fk_machine_type
-				REFERENCES deployment_machine_type(id),
+				FOREIGN KEY(machine_type)
+					REFERENCES deployment_machine_type(id),
 			ADD CONSTRAINT deployment_fk_repository_id_workspace_id
 				FOREIGN KEY(repository_id, workspace_id)
 					REFERENCES docker_registry_repository(id, workspace_id),
@@ -245,7 +248,8 @@ pub async fn initialize_deployment_constraints(
 		r#"
 		ALTER TABLE deployment_environment_variable
 			ADD CONSTRAINT CONSTRAINT deployment_environment_variable_fk_deployment_id
-				REFERENCES deployment(id),
+				FOREIGN KEY(deployment_id)
+					REFERENCES deployment(id),
 			ADD CONSTRAINT deployment_environment_variable_pk
 				PRIMARY KEY(deployment_id, name),
 			ADD CONSTRAINT deployment_environment_variable_fk_secret_id
@@ -269,7 +273,8 @@ pub async fn initialize_deployment_constraints(
 		r#"
 		ALTER TABLE deployment_exposed_port
 			ADD CONSTRAINT deployment_exposed_port_fk_deployment_id
-				REFERENCES deployment(id),
+				FOREIGN KEY(deployment_id)
+					REFERENCES deployment(id),
 			ADD CONSTRAINT
 				deployment_exposed_port_chk_port_u16 CHECK(
 					port > 0 AND port <= 65535
@@ -289,6 +294,7 @@ pub async fn initialize_deployment_constraints(
 			ADD CONSTRAINT deployment_config_mounts_chk_path_valid
 				CHECK(path ~ '^[a-zA-Z0-9_\-\.\(\)]+$'),
 			ADD CONSTRAINT deployment_config_mounts_fk_deployment_id
+				FOREIGN KEY(deployment_id)
 					REFERENCES deployment(id),
 			ADD CONSTRAINT deployment_config_mounts_pk PRIMARY KEY(
 				deployment_id,
@@ -303,8 +309,10 @@ pub async fn initialize_deployment_constraints(
 		r#"
 		ALTER TABLE deployment_deploy_history
 			ADD CONSTRAINT deployment_image_digest_fk_deployment_id
+				FOREIGN KEY(deployment_id)
 					REFERENCES deployment(id),
 			ADD CONSTRAINT deployment_image_digest_fk_repository_id
+				FOREIGN KEY(repository_id)
 					REFERENCES docker_registry_repository(id),
 			ADD CONSTRAINT deployment_image_digest_pk
 				PRIMARY KEY(deployment_id, image_digest);
@@ -318,6 +326,7 @@ pub async fn initialize_deployment_constraints(
 		ALTER TABLE deployment_volume
 			ADD CONSTRAINT deployment_volume_pk PRIMARY KEY(id),
 			ADD CONSTRAINT deployment_volume_fk_deployment_id
+				FOREIGN KEY(deployment_id)
 					REFERENCES deployment(id),
 			ADD CONSTRAINT
 				deployment_volume_chk_size_unsigned CHECK(volume_size > 0),

@@ -22,7 +22,7 @@ pub async fn initialize_managed_url_tables(
 	query!(
 		r#"
 		CREATE TABLE managed_url(
-			id UUID,
+			id UUID NOT NULL,
 			sub_domain TEXT NOT NULL,
 			domain_id UUID NOT NULL,
 			path TEXT NOT NULL,
