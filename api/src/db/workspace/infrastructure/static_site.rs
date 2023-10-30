@@ -9,7 +9,7 @@ pub async fn initialize_static_site_tables(
 	query!(
 		r#"
 		CREATE TABLE static_site(
-			id UUID,
+			id UUID NOT NULL,
 			name CITEXT NOT NULL,
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
 			workspace_id UUID NOT NULL,
@@ -24,7 +24,7 @@ pub async fn initialize_static_site_tables(
 	query!(
 		r#"
 		CREATE TABLE static_site_upload_history(
-			upload_id UUID,
+			upload_id UUID NOT NULL,
 			static_site_id UUID NOT NULL,
 			message TEXT NOT NULL,
 			uploaded_by UUID NOT NULL,
@@ -69,9 +69,11 @@ pub async fn initialize_static_site_constraints(
 		ALTER TABLE static_site_upload_history
 			ADD CONSTRAINT static_site_upload_history_pk PRIMARY KEY(upload_id),
 			ADD CONSTRAINT static_site_upload_history_fk_static_site_id
-				REFERENCES static_site(id),
+				FOREIGN KEY(static_site_id)
+					REFERENCES static_site(id),
 			ADD CONSTRAINT static_site_upload_history_fk_uploaded_by
-				REFERENCES "user"(id),
+				FOREIGN KEY(uploaded_by)
+					REFERENCES "user"(id),
 			ADD CONSTRAINT static_site_upload_history_uq_upload_id_static_site_id
 				UNIQUE(upload_id, static_site_id),
 			ADD CONSTRAINT static_site_upload_history_fk_upload_id_resource_id

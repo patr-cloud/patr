@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
-/// Initializes the database tables
+/// Initializes the managed database tables
 #[instrument(skip(connection))]
-pub async fn initialize_database_tables(
+pub async fn initialize_managed_database_tables(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
 
@@ -38,8 +38,8 @@ pub async fn initialize_database_tables(
 
 	query!(
 		r#"
-		CREATE TABLE database_plan(
-			id 		UUID,
+		CREATE TABLE managed_database_plan(
+			id 		UUID NOT NULL,
 			cpu 	INTEGER NOT NULL, /* Multiples of 1 vCPU */
 			ram 	INTEGER NOT NULL, /* Multiples of 1 GB RAM */
 			volume 	INTEGER NOT NULL, /* Multiples of 1 GB storage space */
@@ -64,8 +64,8 @@ pub async fn initialize_database_tables(
 
 	query!(
 		r#"
-		CREATE TABLE database(
-			id UUID,
+		CREATE TABLE managed_database(
+			id UUID NOT NULL,
 			name CITEXT NOT NULL,
 			workspace_id UUID NOT NULL,
 			region UUID NOT NULL,
@@ -83,15 +83,15 @@ pub async fn initialize_database_tables(
 	Ok(())
 }
 
-/// Initializes the deployment constraints
+/// Initializes the managed database constraints
 #[instrument(skip(connection))]
-pub async fn initialize_database_constraints(
+pub async fn initialize_managed_database_constraints(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
 
 	query!(
 		r#"
-		ALTER TABLE database_plan
+		ALTER TABLE managed_database_plan
 			ADD CONSTRAINT managed_database_plan_pk PRIMARY KEY(id),
 			ADD managed_database_plan_chk_cpu_positive CHECK(cpu > 0),
 			ADD CONSTRAINT managed_database_plan_chk_ram_positive CHECK(ram > 0),
@@ -104,7 +104,7 @@ pub async fn initialize_database_constraints(
 
 	query!(
 		r#"
-		ALTER TABLE database
+		ALTER TABLE managed_database
 			ADD CONSTRAINT managed_database_pk PRIMARY KEY(id),
 			ADD CONSTRAINT managed_database_chk_name_is_trimmed CHECK(
 				name = TRIM(name)
