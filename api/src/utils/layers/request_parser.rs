@@ -2,14 +2,13 @@ use std::{
 	convert::Infallible,
 	future::Future,
 	marker::PhantomData,
-	net::{IpAddr, SocketAddr},
-	str::FromStr,
+	net::IpAddr,
 	task::{Context, Poll},
 };
 
 use axum::{
 	body::Body,
-	extract::{ConnectInfo, Path, Query},
+	extract::{Path, Query},
 	http::Request,
 	response::{IntoResponse, Response},
 	RequestExt,
@@ -21,7 +20,7 @@ use models::{
 };
 use tower::{Layer, Service};
 
-use crate::prelude::*;
+use crate::{prelude::*, utils::extractors::ClientIP};
 
 /// A [`tower::Layer`] that can be used to parse the request and call the inner
 /// service with the parsed request. Ideally, this will automatically be done by
@@ -32,37 +31,30 @@ where
 	E: ApiEndpoint,
 {
 	phantom: PhantomData<E>,
-	state: AppState,
 }
 
 impl<E> RequestParserLayer<E>
 where
 	E: ApiEndpoint,
 {
-	/// Create a new instance of the [`RequestParserLayer`] with the given
-	/// state. This state will be used to parse the request, create a database
-	/// transaction, and call the inner service. If the inner service fails, the
-	/// database transaction will be automatically rolled back, otherwise it
-	/// will be committed.
-	pub fn with_state(state: AppState) -> Self {
+	/// Create a new instance of the [`RequestParserLayer`]
+	pub fn new() -> Self {
 		Self {
 			phantom: PhantomData,
-			state,
 		}
 	}
 }
 
 impl<S, E> Layer<S> for RequestParserLayer<E>
 where
-	for<'a> S: Service<AppRequest<'a, E>>,
+	for<'a> S: Service<(ApiRequest<E>, IpAddr)>,
 	E: ApiEndpoint,
 {
-	type Service = RequestParser<S, E>;
+	type Service = RequestParserService<S, E>;
 
 	fn layer(&self, inner: S) -> Self::Service {
-		RequestParser {
+		RequestParserService {
 			inner,
-			state: self.state.clone(),
 			phantom: PhantomData,
 		}
 	}
@@ -73,19 +65,19 @@ where
 /// done by [`RouterExt::mount_endpoint`], and you should not need to use this
 /// directly.
 #[derive(Clone, Debug)]
-pub struct RequestParser<S, E>
+pub struct RequestParserService<S, E>
 where
-	for<'a> S: Service<AppRequest<'a, E>>,
+	for<'a> S: Service<(ApiRequest<E>, IpAddr)>,
 	E: ApiEndpoint,
 {
 	inner: S,
-	state: AppState,
 	phantom: PhantomData<E>,
 }
 
-impl<S, E> Service<Request<Body>> for RequestParser<S, E>
+impl<S, E> Service<Request<Body>> for RequestParserService<S, E>
 where
-	for<'a> S: Service<AppRequest<'a, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
+	for<'a> S:
+		Service<(ApiRequest<E>, IpAddr), Response = AppResponse<E>, Error = ErrorType> + Clone,
 	E: ApiEndpoint,
 {
 	type Error = Infallible;
@@ -101,7 +93,6 @@ where
 
 	#[instrument(skip(self, req))]
 	fn call(&mut self, mut req: Request<Body>) -> Self::Future {
-		let mut state = self.state.clone();
 		let mut inner = self.inner.clone();
 		async {
 			debug!("Parsing request for URL: {}", req.uri());
@@ -134,28 +125,14 @@ where
 				.into_response());
 			};
 
-			let cf_connecting_ip = req
-				.headers()
-				.get("CF-Connecting-IP")
-				.and_then(|header_value| header_value.to_str().ok())
-				.and_then(|value| IpAddr::from_str(value).ok());
-			let x_forwarded_for = req
-				.headers()
-				.get("X-Forwarded-For")
-				.and_then(|header_value| header_value.to_str().ok())
-				.and_then(|value| {
-					value
-						.split(',')
-						.next()
-						.and_then(|ip| IpAddr::from_str(ip.trim()).ok())
-				});
-			let ip = req
-				.extract_parts::<ConnectInfo<SocketAddr>>()
-				.await
-				.unwrap()
-				.ip();
-
-			let client_ip = cf_connecting_ip.or(x_forwarded_for).unwrap_or(ip);
+			let Ok(ClientIP(client_ip)) = req.extract_parts().await else {
+				debug!("Failed to parse client IP");
+				return Ok(ApiErrorResponse::error_with_message(
+					ErrorType::server_error("Failed to parse client IP"),
+					"Internal Server Error",
+				)
+				.into_response());
+			};
 
 			let Ok(body) =
 				<<E as ApiEndpoint>::RequestBody as FromAxumRequest>::from_axum_request(req).await
@@ -170,41 +147,18 @@ where
 
 			debug!("Request parsed successfully");
 
-			let mut redis = &mut state.redis;
-
-			let Ok(mut database) = state.database.begin().await else {
-				debug!("Failed to begin database transaction");
-				return Ok(ApiErrorResponse::internal_error(
-					"unable to begin database transaction",
-				)
-				.into_response());
-			};
-
-			let req = AppRequest {
-				request: ApiRequest {
-					path,
-					query,
-					headers,
-					body,
-				},
-				database: &mut database,
-				redis: &mut redis,
-				client_ip,
-				config: state.config.clone(),
+			let request = ApiRequest {
+				path,
+				query,
+				headers,
+				body,
 			};
 
 			info!("Calling inner service");
 
-			match inner.call(req).await {
+			match inner.call((request, client_ip)).await {
 				Ok(response) => {
 					info!("Inner service called successfully");
-					let Ok(()) = database.commit().await else {
-						debug!("Failed to commit database transaction");
-						return Ok(ApiErrorResponse::internal_error(
-							"unable to commit database transaction",
-						)
-						.into_response());
-					};
 					Ok((
 						response.status_code,
 						response.headers.to_header_map(),
@@ -214,14 +168,6 @@ where
 				}
 				Err(error) => {
 					warn!("Inner service failed: {:?}", error);
-					let Ok(()) = database.rollback().await else {
-						debug!("Failed to rollback database transaction");
-						return Ok(ApiErrorResponse::internal_error(
-							"unable to rollback database transaction",
-						)
-						.into_response());
-					};
-
 					Ok(ApiErrorResponse::error(error).into_response())
 				}
 			}

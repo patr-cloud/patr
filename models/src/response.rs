@@ -9,7 +9,7 @@ use crate::{
 };
 
 /// A response object that is passed through the tower layers and services
-#[derive(TypedBuilder)]
+#[derive(Debug, TypedBuilder)]
 #[builder(field_defaults(setter(into)))]
 pub struct AppResponse<E>
 where

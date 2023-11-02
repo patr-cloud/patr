@@ -8,6 +8,13 @@ pub mod config;
 /// [2]: axum::Router
 pub mod layers;
 
+/// Contains the [`extractor`][1]s that will be used with [`tower`] mounted on
+/// the axum [`Router`][2]
+/// 
+/// [1]: axum::extract::FromRequest
+/// [2]: axum::Router
+pub mod extractors;
+
 mod router_ext;
 
 pub use self::router_ext::RouterExt;

@@ -40,7 +40,6 @@ pub async fn setup_routes(state: &AppState) -> Router {
 	});
 
 	Router::new()
-		.route("/", route_handler.clone())
-		.route("/*any", route_handler)
+		.fallback(route_handler)
 		.with_state(state.clone())
 }

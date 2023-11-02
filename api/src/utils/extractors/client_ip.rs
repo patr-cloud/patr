@@ -16,10 +16,10 @@ use axum::{
 pub struct ClientIP(pub IpAddr);
 
 #[axum::async_trait]
-impl<S> FromRequestParts<S> for ClientIP {
+impl FromRequestParts<()> for ClientIP {
 	type Rejection = Infallible;
 
-	async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+	async fn from_request_parts(parts: &mut Parts, _: &()) -> Result<Self, Self::Rejection> {
 		let cf_connecting_ip = parts
 			.headers
 			.get("CF-Connecting-IP")
@@ -35,10 +35,7 @@ impl<S> FromRequestParts<S> for ClientIP {
 					.next()
 					.and_then(|ip| IpAddr::from_str(ip.trim()).ok())
 			});
-		let ip = ConnectInfo::<SocketAddr>::from_request_parts(parts, &())
-			.await
-			.unwrap()
-			.ip();
+		let ip = ConnectInfo::<SocketAddr>::from_request_parts(parts, &()).await.unwrap().ip();
 
 		Ok(Self(cf_connecting_ip.or(x_forwarded_for).unwrap_or(ip)))
 	}

@@ -1,4 +1,5 @@
 mod app_route;
+#[cfg(not(target_arch = "wasm32"))]
 mod client;
 mod color;
 mod ext;
@@ -8,9 +9,10 @@ mod size;
 mod state;
 mod variant;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::client::*;
 pub use self::{
 	app_route::*,
-	client::*,
 	color::*,
 	ext::*,
 	notification_type::*,
