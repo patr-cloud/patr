@@ -7,7 +7,7 @@ use std::{
 use models::{ApiEndpoint, ErrorType};
 use tower::{Layer, Service};
 
-use crate::{ prelude::*};
+use crate::prelude::*;
 
 /// A trait that is implemented for all functions and closures that are used to
 /// handle endpoints that require authentication. This trait is used to
@@ -108,6 +108,21 @@ where
 {
 	handler: H,
 	endpoint: PhantomData<E>,
+}
+
+impl<H, E> AuthEndpointService<H, E>
+where
+	for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send,
+	E: ApiEndpoint,
+{
+	/// Create a new instance of the [`AuthEndpointService`] with the given
+	/// function or closure.
+	pub fn new(handler: H) -> Self {
+		Self {
+			handler,
+			endpoint: PhantomData,
+		}
+	}
 }
 
 impl<'req, H, E> Service<AuthenticatedAppRequest<'req, E>> for AuthEndpointService<H, E>

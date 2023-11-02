@@ -2,15 +2,34 @@ use std::rc::Rc;
 
 use leptos_router::{use_navigate, NavigateOptions};
 use models::{
-	api::auth::{LoginRequest, LoginResponse},
-	ApiErrorResponse,
-	ApiErrorResponseBody,
+	api::auth::{LoginPath, LoginRequest, LoginResponse},
 	ApiRequest,
-	ApiSuccessResponse,
 	ErrorType,
 };
 
 use crate::prelude::*;
+
+#[server(endpoint = "login")]
+async fn test(
+	user_id: String,
+	password: String,
+	mfa_otp: Option<String>,
+) -> Result<Result<LoginResponse, ErrorType>, ServerFnError> {
+	Ok(make_api_call::<LoginRequest>(
+		ApiRequest::builder()
+			.path(LoginPath)
+			.query(())
+			.headers(())
+			.body(LoginRequest {
+				user_id,
+				password,
+				mfa_otp,
+			})
+			.build(),
+	)
+	.await
+	.map(|res| res.body))
+}
 
 /// The login page
 #[component]
@@ -52,6 +71,7 @@ pub fn Login() -> impl IntoView {
 			let password = password.clone();
 			let mfa_otp = mfa_otp.clone();
 			async move {
+				let response = test(user_id, password, mfa_otp).await;
 				// let result = make_request(
 				// 	ApiRequest::<LoginRequest>::builder()
 				// 		.path(Default::default())

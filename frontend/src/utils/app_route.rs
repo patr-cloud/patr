@@ -44,10 +44,10 @@ where
 	F: Fn() -> V + 'static,
 	V: IntoView,
 {
-	let query: R::Query = use_router_query()
+	let _query: R::Query = use_router_query()
 		.get_untracked()
 		.unwrap_or_default();
-	let params: R = use_router_params()
+	let _params: R = use_router_params()
 		.get_untracked()
 		.unwrap_or_default();
 	let path = <R as TypedPath>::PATH;

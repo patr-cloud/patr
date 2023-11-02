@@ -13,7 +13,11 @@ use crate::{
 /// router.
 ///
 /// [1]: ApiEndpoint::Authenticator
-pub trait HasAuthentication: RequiresRequestHeaders + Sealed {}
+pub trait HasAuthentication: RequiresRequestHeaders + Sealed {
+	/// A simple constant that specifies if the API endpoint requires
+	/// authentication or not. Can be used for runtime checks on API endpoints.
+	const REQUIRES_AUTHENTICATION: bool;
+}
 
 /// This struct is used to specify that an API endpoint does not require
 /// authentication. It can be accessed without any token.
@@ -26,7 +30,9 @@ impl RequiresRequestHeaders for NoAuthentication {
 
 impl Sealed for NoAuthentication {}
 
-impl HasAuthentication for NoAuthentication {}
+impl HasAuthentication for NoAuthentication {
+	const REQUIRES_AUTHENTICATION: bool = false;
+}
 
 /// This enum represents the different types of authentication that can be used
 /// for an API endpoint.
@@ -102,7 +108,12 @@ where
 
 impl<E> Sealed for AppAuthentication<E> where E: ApiEndpoint {}
 
-impl<E> HasAuthentication for AppAuthentication<E> where E: ApiEndpoint {}
+impl<E> HasAuthentication for AppAuthentication<E>
+where
+	E: ApiEndpoint,
+{
+	const REQUIRES_AUTHENTICATION: bool = true;
+}
 
 impl<E> Debug for AppAuthentication<E>
 where

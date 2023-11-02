@@ -22,6 +22,7 @@ jsonwebtoken = { workspace = true, features = ["default"] }
 leptos = { workspace = true, features = ["ssr"] }
 leptos_axum = { workspace = true, features = ["default"] }
 macros = { workspace = true, features = [] }
+matchit = { workspace = true, features = ["default"] }
 models = { workspace = true, features = [] }
 opentelemetry-otlp = { workspace = true, features = ["default"] }
 opentelemetry_sdk = { workspace = true, features = ["default"] }
