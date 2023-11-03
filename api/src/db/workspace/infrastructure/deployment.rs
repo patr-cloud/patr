@@ -5,7 +5,7 @@ use crate::prelude::*;
 pub async fn initialize_deployment_tables(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-
+	info!("Setting up deployment tables");
 	query!(
 		r#"
 		CREATE TYPE DEPLOYMENT_STATUS AS ENUM(
@@ -142,16 +142,17 @@ pub async fn initialize_deployment_tables(
 	Ok(())
 }
 
-/// Initializes the deployment constraints
+/// Initializes the deployment indexes
 #[instrument(skip(connection))]
-pub async fn initialize_deployment_constraints(
+pub async fn initialize_deployment_indexes(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-
+	info!("Setting up deployment indexes");
 	query!(
 		r#"
 		ALTER TABLE deployment_machine_type
-			ADD CONSTRAINT deployment_machine_type_pk PRIMARY KEY(id);
+		ADD CONSTRAINT deployment_machine_type_pk
+		PRIMARY KEY(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -161,84 +162,8 @@ pub async fn initialize_deployment_constraints(
 		r#"
 		ALTER TABLE deployment
 			ADD CONSTRAINT deployment_pk PRIMARY KEY(id),
-			ADD CONSTRAINT deployment_chk_name_is_trimmed CHECK(
-				name = TRIM(name)
-			),
-			ADD CONSTRAINT deployment_chk_image_name_is_valid CHECK(
-				image_name ~ '^(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?)(((\/)(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?))*)?$'
-			),
-			ADD CONSTRAINT deployment_fk_region 
-				FOREIGN KEY(region) 
-					REFERENCES region(id),
-			ADD CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK(
-				min_horizontal_scale >= 0 AND min_horizontal_scale <= 256
-			),
-			ADD CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK(
-				max_horizontal_scale >= 0 AND max_horizontal_scale <= 256
-			),
-			ADD CONSTRAINT deployment_fk_machine_type
-				FOREIGN KEY(machine_type)
-					REFERENCES deployment_machine_type(id),
-			ADD CONSTRAINT deployment_fk_repository_id_workspace_id
-				FOREIGN KEY(repository_id, workspace_id)
-					REFERENCES docker_registry_repository(id, workspace_id),
 			ADD CONSTRAINT deployment_uq_id_workspace_id
-				UNIQUE(id, workspace_id),
-			ADD CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
-				(
-					registry = 'registry.patr.cloud' AND
-					image_name IS NULL AND
-					repository_id IS NOT NULL
-				) OR (
-					registry != 'registry.patr.cloud' AND
-					image_name IS NOT NULL AND
-					repository_id IS NULL
-				)
-			),
-			ADD CONSTRAINT deployment_chk_image_tag_is_valid CHECK(
-				image_tag != ''
-			),
-			ADD CONSTRAINT deployment_chk_startup_probe_is_valid CHECK(
-				(
-					startup_probe_port IS NULL AND
-					startup_probe_path IS NULL AND
-					startup_probe_port_type IS NULL
-				) OR (
-					startup_probe_port IS NOT NULL AND
-					startup_probe_path IS NOT NULL AND
-					startup_probe_port_type IS NOT NULL
-				)
-			),
-			ADD CONSTRAINT deployment_chk_liveness_probe_is_valid CHECK(
-				(
-					liveness_probe_port IS NULL AND
-					liveness_probe_path IS NULL AND
-					liveness_probe_port_type IS NULL
-				) OR (
-					liveness_probe_port IS NOT NULL AND
-					liveness_probe_path IS NOT NULL AND
-					liveness_probe_port_type IS NOT NULL
-				)
-			),
-			ADD CONSTRAINT deployment_chk_startup_probe_port_type_is_http CHECK(
-				startup_probe_port_type = 'http'
-			),
-			ADD CONSTRAINT deployment_chk_liveness_probe_port_type_is_http CHECK(
-				liveness_probe_port_type = 'http'
-			),
-			ADD CONSTRAINT deployment_fk_deployment_id_startup_port_startup_port_type
-				FOREIGN KEY (id, startup_probe_port, startup_probe_port_type)
-					REFERENCES deployment_exposed_port(deployment_id, port, port_type)
-					DEFERRABLE INITIALLY IMMEDIATE,
-			ADD CONSTRAINT deployment_fk_deployment_id_liveness_port_liveness_port_type
-				FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type)
-					REFERENCES deployment_exposed_port(deployment_id, port, port_type)
-					DEFERRABLE INITIALLY IMMEDIATE,
-			ADD CONSTRAINT deployment_fk_id_workspace_id
-				FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id),
-			ADD CONSTRAINT deployment_fk_current_live_digest
-				FOREIGN KEY(id, current_live_digest) REFERENCES
-					deployment_deploy_history(deployment_id, image_digest);
+				UNIQUE(id, workspace_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -247,22 +172,8 @@ pub async fn initialize_deployment_constraints(
 	query!(
 		r#"
 		ALTER TABLE deployment_environment_variable
-			ADD CONSTRAINT deployment_environment_variable_pk
-				PRIMARY KEY(deployment_id, name),
-			ADD CONSTRAINT deployment_environment_variable_fk_deployment_id
-				FOREIGN KEY(deployment_id) REFERENCES deployment(id),
-			ADD CONSTRAINT deployment_environment_variable_fk_secret_id
-				FOREIGN KEY(secret_id) REFERENCES secret(id),
-			ADD CONSTRAINT deployment_env_var_chk_value_secret_id_either_not_null
-				CHECK(
-					(
-						value IS NOT NULL AND
-						secret_id IS NULL
-					) OR (
-						value IS NULL AND
-						secret_id IS NOT NULL
-					)
-				);
+		ADD CONSTRAINT deployment_environment_variable_pk
+		PRIMARY KEY(deployment_id, name);
 		"#
 	)
 	.execute(&mut *connection)
@@ -271,13 +182,6 @@ pub async fn initialize_deployment_constraints(
 	query!(
 		r#"
 		ALTER TABLE deployment_exposed_port
-			ADD CONSTRAINT deployment_exposed_port_fk_deployment_id
-				FOREIGN KEY(deployment_id)
-					REFERENCES deployment(id),
-			ADD CONSTRAINT
-				deployment_exposed_port_chk_port_u16 CHECK(
-					port > 0 AND port <= 65535
-				),
 			ADD CONSTRAINT deployment_exposed_port_pk
 				PRIMARY KEY(deployment_id, port),
 			ADD CONSTRAINT deployment_exposed_port_uq_deployment_id_port_port_type
@@ -290,15 +194,8 @@ pub async fn initialize_deployment_constraints(
 	query!(
 		r#"
 		ALTER TABLE deployment_config_mounts
-			ADD CONSTRAINT deployment_config_mounts_chk_path_valid
-				CHECK(path ~ '^[a-zA-Z0-9_\-\.\(\)]+$'),
-			ADD CONSTRAINT deployment_config_mounts_fk_deployment_id
-				FOREIGN KEY(deployment_id)
-					REFERENCES deployment(id),
-			ADD CONSTRAINT deployment_config_mounts_pk PRIMARY KEY(
-				deployment_id,
-				path
-			);
+		ADD CONSTRAINT deployment_config_mounts_pk
+		PRIMARY KEY(deployment_id, path);
 		"#
 	)
 	.execute(&mut *connection)
@@ -307,14 +204,8 @@ pub async fn initialize_deployment_constraints(
 	query!(
 		r#"
 		ALTER TABLE deployment_deploy_history
-			ADD CONSTRAINT deployment_image_digest_fk_deployment_id
-				FOREIGN KEY(deployment_id)
-					REFERENCES deployment(id),
-			ADD CONSTRAINT deployment_image_digest_fk_repository_id
-				FOREIGN KEY(repository_id)
-					REFERENCES docker_registry_repository(id),
-			ADD CONSTRAINT deployment_image_digest_pk
-				PRIMARY KEY(deployment_id, image_digest);
+		ADD CONSTRAINT deployment_image_digest_pk
+		PRIMARY KEY(deployment_id, image_digest);
 		"#
 	)
 	.execute(&mut *connection)
@@ -324,11 +215,6 @@ pub async fn initialize_deployment_constraints(
 		r#"
 		ALTER TABLE deployment_volume
 			ADD CONSTRAINT deployment_volume_pk PRIMARY KEY(id),
-			ADD CONSTRAINT deployment_volume_fk_deployment_id
-				FOREIGN KEY(deployment_id)
-					REFERENCES deployment(id),
-			ADD CONSTRAINT
-				deployment_volume_chk_size_unsigned CHECK(volume_size > 0),
 			ADD CONSTRAINT deployment_volume_name_unique_deployment_id
 				UNIQUE(deployment_id, name),
 			ADD CONSTRAINT deployment_volume_path_unique_deployment_id
@@ -382,6 +268,166 @@ pub async fn initialize_deployment_constraints(
 			deployment(workspace_id, name)
 		WHERE
 			deleted IS NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+/// Initializes the deployment constraints
+#[instrument(skip(connection))]
+pub async fn initialize_deployment_constraints(
+	connection: &mut DatabaseConnection,
+) -> Result<(), sqlx::Error> {
+	info!("Setting up deployment constraints");
+	query!(
+		r#"
+		ALTER TABLE deployment
+			ADD CONSTRAINT deployment_chk_name_is_trimmed CHECK(
+				name = TRIM(name)
+			),
+			ADD CONSTRAINT deployment_chk_image_name_is_valid CHECK(
+				image_name ~ '^(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?)(((\/)(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?))*)?$'
+			),
+			ADD CONSTRAINT deployment_fk_region 
+				FOREIGN KEY(region) REFERENCES region(id),
+			ADD CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK(
+				min_horizontal_scale >= 0 AND min_horizontal_scale <= 256
+			),
+			ADD CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK(
+				max_horizontal_scale >= 0 AND max_horizontal_scale <= 256
+			),
+			ADD CONSTRAINT deployment_fk_machine_type
+				FOREIGN KEY(machine_type) REFERENCES deployment_machine_type(id),
+			ADD CONSTRAINT deployment_fk_repository_id_workspace_id
+				FOREIGN KEY(repository_id, workspace_id)
+					REFERENCES docker_registry_repository(id, workspace_id),
+			ADD CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
+				(
+					registry = 'registry.patr.cloud' AND
+					image_name IS NULL AND
+					repository_id IS NOT NULL
+				) OR (
+					registry != 'registry.patr.cloud' AND
+					image_name IS NOT NULL AND
+					repository_id IS NULL
+				)
+			),
+			ADD CONSTRAINT deployment_chk_image_tag_is_valid CHECK(
+				image_tag != ''
+			),
+			ADD CONSTRAINT deployment_chk_startup_probe_is_valid CHECK(
+				(
+					startup_probe_port IS NULL AND
+					startup_probe_path IS NULL AND
+					startup_probe_port_type IS NULL
+				) OR (
+					startup_probe_port IS NOT NULL AND
+					startup_probe_path IS NOT NULL AND
+					startup_probe_port_type IS NOT NULL
+				)
+			),
+			ADD CONSTRAINT deployment_chk_liveness_probe_is_valid CHECK(
+				(
+					liveness_probe_port IS NULL AND
+					liveness_probe_path IS NULL AND
+					liveness_probe_port_type IS NULL
+				) OR (
+					liveness_probe_port IS NOT NULL AND
+					liveness_probe_path IS NOT NULL AND
+					liveness_probe_port_type IS NOT NULL
+				)
+			),
+			ADD CONSTRAINT deployment_chk_startup_probe_port_type_is_http CHECK(
+				startup_probe_port_type = 'http'
+			),
+			ADD CONSTRAINT deployment_chk_liveness_probe_port_type_is_http CHECK(
+				liveness_probe_port_type = 'http'
+			),
+			ADD CONSTRAINT deployment_fk_deployment_id_startup_port_startup_port_type
+				FOREIGN KEY (id, startup_probe_port, startup_probe_port_type)
+					REFERENCES deployment_exposed_port(deployment_id, port, port_type)
+						DEFERRABLE INITIALLY IMMEDIATE,
+			ADD CONSTRAINT deployment_fk_deployment_id_liveness_port_liveness_port_type
+				FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type)
+					REFERENCES deployment_exposed_port(deployment_id, port, port_type)
+						DEFERRABLE INITIALLY IMMEDIATE,
+			ADD CONSTRAINT deployment_fk_id_workspace_id
+				FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id),
+			ADD CONSTRAINT deployment_fk_current_live_digest
+				FOREIGN KEY(id, current_live_digest) REFERENCES
+					deployment_deploy_history(deployment_id, image_digest);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_environment_variable
+			ADD CONSTRAINT deployment_environment_variable_fk_deployment_id
+				FOREIGN KEY(deployment_id) REFERENCES deployment(id),
+			ADD CONSTRAINT deployment_environment_variable_fk_secret_id
+				FOREIGN KEY(secret_id) REFERENCES secret(id),
+			ADD CONSTRAINT deployment_env_var_chk_value_secret_id_either_not_null CHECK(
+				(
+					value IS NOT NULL AND
+					secret_id IS NULL
+				) OR (
+					value IS NULL AND
+					secret_id IS NOT NULL
+				)
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_exposed_port
+			ADD CONSTRAINT deployment_exposed_port_fk_deployment_id
+				FOREIGN KEY(deployment_id) REFERENCES deployment(id),
+			ADD CONSTRAINT deployment_exposed_port_chk_port_u16 CHECK(
+				port > 0 AND port <= 65535
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_config_mounts
+			ADD CONSTRAINT deployment_config_mounts_chk_path_valid
+				CHECK(path ~ '^[a-zA-Z0-9_\-\.\(\)]+$'),
+			ADD CONSTRAINT deployment_config_mounts_fk_deployment_id
+				FOREIGN KEY(deployment_id) REFERENCES deployment(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_deploy_history
+			ADD CONSTRAINT deployment_image_digest_fk_deployment_id
+				FOREIGN KEY(deployment_id) REFERENCES deployment(id),
+			ADD CONSTRAINT deployment_image_digest_fk_repository_id
+				FOREIGN KEY(repository_id) REFERENCES docker_registry_repository(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_volume
+			ADD CONSTRAINT deployment_volume_fk_deployment_id
+				FOREIGN KEY(deployment_id) REFERENCES deployment(id),
+			ADD CONSTRAINT deployment_volume_chk_size_unsigned CHECK(volume_size > 0);
 		"#
 	)
 	.execute(&mut *connection)

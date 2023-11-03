@@ -61,10 +61,15 @@ pub async fn initialize(app: &AppState) -> Result<(), ErrorType> {
 		db::initialize_workspace_tables(&mut transaction).await?;
 		db::initialize_rbac_tables(&mut transaction).await?;
 
+		db::initialize_rbac_indexes(&mut transaction).await?;
+		db::initialize_workspace_indexes(&mut transaction).await?;
+		db::initialize_user_indexes(&mut transaction).await?;
+		db::initialize_meta_indexes(&mut transaction).await?;
+
 		db::initialize_rbac_constraints(&mut transaction).await?;
 		db::initialize_workspace_constraints(&mut transaction).await?;
 		db::initialize_user_constraints(&mut transaction).await?;
-		db::initialize_meta_constraints(&mut transaction).await?;
+		db::initialize_meta_indexes(&mut transaction).await?;
 
 		// Set the database schema version
 		query!(

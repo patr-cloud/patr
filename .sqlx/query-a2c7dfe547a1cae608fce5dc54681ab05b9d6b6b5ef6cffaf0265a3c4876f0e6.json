@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE managed_url ADD CONSTRAINT managed_url_pk PRIMARY KEY(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "a2c7dfe547a1cae608fce5dc54681ab05b9d6b6b5ef6cffaf0265a3c4876f0e6"
+}

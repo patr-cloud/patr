@@ -5,7 +5,7 @@ use crate::prelude::*;
 pub async fn initialize_managed_url_tables(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-
+	info!("Setting up managed_url tables");
 	query!(
 		r#"
 		CREATE TYPE MANAGED_URL_TYPE AS ENUM(
@@ -46,18 +46,48 @@ pub async fn initialize_managed_url_tables(
 	Ok(())
 }
 
+/// Initializes the managed URL indexes
+#[instrument(skip(connection))]
+pub async fn initialize_managed_url_indexes(
+	connection: &mut DatabaseConnection,
+) -> Result<(), sqlx::Error> {
+	info!("Setting up managed_url tables indexes");
+	query!(
+		r#"
+		ALTER TABLE managed_url
+		ADD CONSTRAINT managed_url_pk
+		PRIMARY KEY(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			managed_url_uq_sub_domain_domain_id_path
+		ON
+			managed_url(sub_domain, domain_id, path)
+		WHERE
+			deleted IS NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+
 /// Initializes the managed URL constraints
 #[instrument(skip(connection))]
 pub async fn initialize_managed_url_constraints(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Finishing up managed_url tables initialization");
-	/* TODO remove some of these unnecessarry foreign key constraints after
-	 * the permission checks are moved to the code */
+	info!("Setting up managed_url tables constraints");
 	query!(
 		r#"
 		ALTER TABLE managed_url
-			ADD CONSTRAINT managed_url_pk PRIMARY KEY(id),
 			ADD CONSTRAINT managed_url_chk_sub_domain_valid CHECK(
 				sub_domain ~ '^(([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])$' OR
 				sub_domain = '@'
@@ -103,34 +133,17 @@ pub async fn initialize_managed_url_constraints(
 			ADD CONSTRAINT managed_url_fk_domain_id
 				FOREIGN KEY(domain_id) REFERENCES workspace_domain(id),
 			ADD CONSTRAINT managed_url_fk_domain_id_workspace_id
-				FOREIGN KEY(domain_id, workspace_id)
-					REFERENCES resource(id, owner_id),
+				FOREIGN KEY(domain_id, workspace_id) REFERENCES resource(id, owner_id),
 			ADD CONSTRAINT managed_url_fk_deployment_id_port
 				FOREIGN KEY(deployment_id, port)
 					REFERENCES deployment_exposed_port(deployment_id, port)
-					DEFERRABLE INITIALLY IMMEDIATE,
+						DEFERRABLE INITIALLY IMMEDIATE,
 			ADD CONSTRAINT managed_url_fk_deployment_id_workspace_id
-				FOREIGN KEY(deployment_id, workspace_id)
-					REFERENCES deployment(id, workspace_id),
+				FOREIGN KEY(deployment_id, workspace_id) REFERENCES deployment(id, workspace_id),
 			ADD CONSTRAINT managed_url_fk_static_site_id_workspace_id
-				FOREIGN KEY(static_site_id, workspace_id)
-					REFERENCES static_site(id, workspace_id),
+				FOREIGN KEY(static_site_id, workspace_id) REFERENCES static_site(id, workspace_id),
 			ADD CONSTRAINT managed_url_fk_id_workspace_id
-				FOREIGN KEY(id, workspace_id)
-					REFERENCES resource(id, owner_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE UNIQUE INDEX
-			managed_url_uq_sub_domain_domain_id_path
-		ON
-			managed_url(sub_domain, domain_id, path)
-		WHERE
-			deleted IS NULL;
+				FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
 		"#
 	)
 	.execute(&mut *connection)

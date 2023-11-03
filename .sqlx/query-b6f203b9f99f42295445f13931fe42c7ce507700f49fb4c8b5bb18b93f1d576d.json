@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE static_site_upload_history ADD CONSTRAINT static_site_upload_history_fk_static_site_id FOREIGN KEY(static_site_id) REFERENCES static_site(id), ADD CONSTRAINT static_site_upload_history_fk_uploaded_by FOREIGN KEY(uploaded_by) REFERENCES \"user\"(id), ADD CONSTRAINT static_site_upload_history_fk_upload_id_resource_id FOREIGN KEY(upload_id) REFERENCES resource(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "b6f203b9f99f42295445f13931fe42c7ce507700f49fb4c8b5bb18b93f1d576d"
+}

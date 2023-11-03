@@ -5,7 +5,7 @@ use crate::prelude::*;
 pub async fn initialize_region_tables(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Initializing region tables");
+	info!("Setting up region tables");
 	query!(
 		r#"
 		CREATE TYPE INFRASTRUCTURE_CLOUD_PROVIDER AS ENUM(
@@ -55,17 +55,50 @@ pub async fn initialize_region_tables(
 	Ok(())
 }
 
+/// Initializes the region indexes
+#[instrument(skip(connection))]
+pub async fn initialize_region_indexes(
+	connection: &mut DatabaseConnection,
+) -> Result<(), sqlx::Error> {
+	info!("Setting up region indexes");
+	query!(
+		r#"
+		ALTER TABLE region
+		ADD CONSTRAINT region_pk
+		PRIMARY KEY(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			region_uq_workspace_id_name
+		ON
+			region(workspace_id, name)
+		WHERE
+			deleted IS NULL AND
+			workspace_id IS NOT NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
 /// Initializes the region constraints
 #[instrument(skip(connection))]
 pub async fn initialize_region_constraints(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
+	info!("Setting up region constraints");
 	query!(
 		r#"
 		ALTER TABLE region
-			ADD CONSTRAINT region_pk PRIMARY KEY(id),
 			ADD CONSTRAINT region_fk_workspace_id
-				REFERENCES workspace(id),
+				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
 			ADD CONSTRAINT region_chk_status CHECK(
 				(
 					status = 'creating'
@@ -91,22 +124,8 @@ pub async fn initialize_region_constraints(
 				)
 			),
 			ADD CONSTRAINT region_fk_id_workspace_id
-			FOREIGN KEY (id, workspace_id) 
-				REFERENCES resource(id, owner_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE UNIQUE INDEX
-			region_uq_workspace_id_name
-		ON
-			region(workspace_id, name)
-		WHERE
-			deleted IS NULL AND
-			workspace_id IS NOT NULL;
+				FOREIGN KEY (id, workspace_id) 
+					REFERENCES resource(id, owner_id);
 		"#
 	)
 	.execute(&mut *connection)

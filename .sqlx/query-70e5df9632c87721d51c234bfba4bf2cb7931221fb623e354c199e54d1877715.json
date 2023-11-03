@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE phone_number_country_code ADD CONSTRAINT phone_number_country_code_pk PRIMARY KEY(country_code);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "70e5df9632c87721d51c234bfba4bf2cb7931221fb623e354c199e54d1877715"
+}

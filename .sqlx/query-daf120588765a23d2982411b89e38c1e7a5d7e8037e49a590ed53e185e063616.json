@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE workspace_user ADD CONSTRAINT workspace_user_fk_user_id FOREIGN KEY(user_id) REFERENCES \"user\"(id), ADD CONSTRAINT workspace_user_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id), ADD CONSTRAINT workspace_user_fk_role_id FOREIGN KEY(role_id) REFERENCES role(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "daf120588765a23d2982411b89e38c1e7a5d7e8037e49a590ed53e185e063616"
+}

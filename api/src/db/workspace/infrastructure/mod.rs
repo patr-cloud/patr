@@ -12,10 +12,12 @@ pub use self::{
 	static_site::*,
 };
 
+/// Initialize all infrastructure-related tables
+#[instrument(skip(connection))]
 pub async fn initialize_infrastructure_tables(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Initializing deployment tables");
+	info!("Setting up workspace tables");
 	deployment::initialize_deployment_tables(connection).await?;
 	managed_database::initialize_managed_database_tables(connection).await?;
 	managed_url::initialize_managed_url_tables(connection).await?;
@@ -24,10 +26,26 @@ pub async fn initialize_infrastructure_tables(
 	Ok(())
 }
 
+/// Initialize all infrastructure-related indexes
+#[instrument(skip(connection))]
+pub async fn initialize_infrastructure_indexes(
+	connection: &mut DatabaseConnection,
+) -> Result<(), sqlx::Error> {
+	info!("Setting up deployment indexes");
+	deployment::initialize_deployment_indexes(connection).await?;
+	managed_database::initialize_managed_database_indexes(connection).await?;
+	managed_url::initialize_managed_url_indexes(connection).await?;
+	static_site::initialize_static_site_indexes(connection).await?;
+
+	Ok(())
+}
+
+/// Initialize all infrastructure-related constraints
+#[instrument(skip(connection))]
 pub async fn initialize_infrastructure_constraints(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Finishing up deployment tables initialization");
+	info!("Setting up deployment constraints");
 	deployment::initialize_deployment_constraints(connection).await?;
 	managed_database::initialize_managed_database_constraints(connection).await?;
 	managed_url::initialize_managed_url_constraints(connection).await?;

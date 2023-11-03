@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE patr_controlled_domain ADD CONSTRAINT patr_controlled_domain_pk PRIMARY KEY(domain_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "4c3db398073d5fb230a5265cdad11dc56c25ef5d4e24460119b54b34e80d85e0"
+}

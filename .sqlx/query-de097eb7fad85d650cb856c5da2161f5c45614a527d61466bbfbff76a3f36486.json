@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE resource ADD CONSTRAINT resource_pk PRIMARY KEY(id), ADD CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "de097eb7fad85d650cb856c5da2161f5c45614a527d61466bbfbff76a3f36486"
+}

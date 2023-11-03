@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE deployment_environment_variable ADD CONSTRAINT deployment_environment_variable_pk PRIMARY KEY(deployment_id, name);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "046401b4922964c6bc0356d3d689d8f49bbf302faabd3b8d9853fd4141859d39"
+}

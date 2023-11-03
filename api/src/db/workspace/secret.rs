@@ -5,7 +5,7 @@ use crate::prelude::*;
 pub async fn initialize_secret_tables(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Initializing secret tables");
+	info!("Setting up secret tables");
 	query!(
 		r#"
 		CREATE TABLE secret(
@@ -22,22 +22,17 @@ pub async fn initialize_secret_tables(
 	Ok(())
 }
 
-/// Initializes the secret constraints
+/// Initializes the secret indexes
 #[instrument(skip(connection))]
-pub async fn initialize_secret_constraints(
+pub async fn initialize_secret_indexes(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Finishing up secret tables initialization");
-	// TODO create all the necessary indexes
-
+	info!("Setting up secret indexes");
 	query!(
 		r#"
 		ALTER TABLE secret
-			ADD CONSTRAINT secret_pk PRIMARY KEY(id),
-			ADD CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)),
-			ADD CONSTRAINT secret_fk_id_workspace_id
-				FOREIGN KEY(id, workspace_id) 
-					REFERENCES resource(id, owner_id);
+		ADD CONSTRAINT secret_pk
+		PRIMARY KEY(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -51,6 +46,26 @@ pub async fn initialize_secret_constraints(
 			secret(workspace_id, name)
 		WHERE
 			deleted IS NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+/// Initializes the secret constraints
+#[instrument(skip(connection))]
+pub async fn initialize_secret_constraints(
+	connection: &mut DatabaseConnection,
+) -> Result<(), sqlx::Error> {
+	info!("Setting up secret constraints");
+	query!(
+		r#"
+		ALTER TABLE secret
+			ADD CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)),
+			ADD CONSTRAINT secret_fk_id_workspace_id
+				FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
 		"#
 	)
 	.execute(&mut *connection)

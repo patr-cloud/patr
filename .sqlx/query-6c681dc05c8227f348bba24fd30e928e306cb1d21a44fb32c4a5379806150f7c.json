@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE web_login ADD CONSTRAINT web_login_pk PRIMARY KEY(login_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "6c681dc05c8227f348bba24fd30e928e306cb1d21a44fb32c4a5379806150f7c"
+}

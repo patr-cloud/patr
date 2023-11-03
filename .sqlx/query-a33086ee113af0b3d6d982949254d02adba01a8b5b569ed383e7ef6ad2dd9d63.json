@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE resource ADD CONSTRAINT resource_fk_resource_type_id FOREIGN KEY(resource_type_id) REFERENCES resource_type(id), ADD CONSTRAINT resource_fk_owner_id FOREIGN KEY(owner_id) REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "a33086ee113af0b3d6d982949254d02adba01a8b5b569ed383e7ef6ad2dd9d63"
+}

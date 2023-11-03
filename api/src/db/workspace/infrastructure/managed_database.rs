@@ -5,7 +5,7 @@ use crate::prelude::*;
 pub async fn initialize_managed_database_tables(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-
+	info!("Setting up managed database tables");
 	query!(
 		r#"
 		CREATE TYPE MANAGED_DATABASE_ENGINE AS ENUM(
@@ -83,20 +83,17 @@ pub async fn initialize_managed_database_tables(
 	Ok(())
 }
 
-/// Initializes the managed database constraints
+/// Initializes the managed database indexes
 #[instrument(skip(connection))]
-pub async fn initialize_managed_database_constraints(
+pub async fn initialize_managed_database_indexes(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-
+	info!("Setting up managed database indexes");
 	query!(
 		r#"
 		ALTER TABLE managed_database_plan
-			ADD CONSTRAINT managed_database_plan_pk PRIMARY KEY(id),
-			ADD CONSTRAINT managed_database_plan_chk_cpu_positive CHECK(cpu > 0),
-			ADD CONSTRAINT managed_database_plan_chk_ram_positive CHECK(ram > 0),
-			ADD CONSTRAINT managed_database_plan_chk_volume_positive
-				CHECK(volume > 0);
+		ADD CONSTRAINT managed_database_plan_pk
+		PRIMARY KEY(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -105,19 +102,8 @@ pub async fn initialize_managed_database_constraints(
 	query!(
 		r#"
 		ALTER TABLE managed_database
-			ADD CONSTRAINT managed_database_pk PRIMARY KEY(id),
-			ADD CONSTRAINT managed_database_chk_name_is_trimmed CHECK(
-				name = TRIM(name)
-			),
-			ADD CONSTRAINT managed_database_fk_workspace_id
-				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
-			ADD CONSTRAINT managed_database_fk_region
-				FOREIGN KEY(region) REFERENCES region(id),
-			ADD CONSTRAINT managed_database_fk_managed_database_plan_id
-				FOREIGN KEY(database_plan_id)
-					REFERENCES managed_database_plan(id),
-			ADD CONSTRAINT managed_database_fk_id_workspace_id
-				FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
+		ADD CONSTRAINT managed_database_pk
+		PRIMARY KEY(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -131,6 +117,45 @@ pub async fn initialize_managed_database_constraints(
 			managed_database(workspace_id, name)
 		WHERE
 			deleted IS NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+/// Initializes the managed database constraints
+#[instrument(skip(connection))]
+pub async fn initialize_managed_database_constraints(
+	connection: &mut DatabaseConnection,
+) -> Result<(), sqlx::Error> {
+	info!("Setting up managed database constraints");
+	query!(
+		r#"
+		ALTER TABLE managed_database_plan
+			ADD CONSTRAINT managed_database_plan_chk_cpu_positive CHECK(cpu > 0),
+			ADD CONSTRAINT managed_database_plan_chk_ram_positive CHECK(ram > 0),
+			ADD CONSTRAINT managed_database_plan_chk_volume_positive CHECK(volume > 0);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE managed_database
+			ADD CONSTRAINT managed_database_chk_name_is_trimmed CHECK(
+				name = TRIM(name)
+			),
+			ADD CONSTRAINT managed_database_fk_workspace_id
+				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
+			ADD CONSTRAINT managed_database_fk_region
+				FOREIGN KEY(region) REFERENCES region(id),
+			ADD CONSTRAINT managed_database_fk_managed_database_plan_id
+				FOREIGN KEY(database_plan_id) REFERENCES managed_database_plan(id),
+			ADD CONSTRAINT managed_database_fk_id_workspace_id
+				FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
 		"#
 	)
 	.execute(&mut *connection)

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE container_registry_repository_blob ADD CONSTRAINT container_registry_repository_blob_pk PRIMARY KEY(blob_digest);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "f8abfbec8c2f967c39c1b73b98d6fea872a925b75829e49d53bc8371ece31dae"
+}

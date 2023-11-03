@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE static_site ADD CONSTRAINT static_site_pk PRIMARY KEY(id), ADD CONSTRAINT static_site_uq_id_workspace_id UNIQUE(id, workspace_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "d1088978ea8136d8a3a7db5a901978072298502a2bdc16aeda62c56bd8e0b6d4"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE user_controlled_domain ADD CONSTRAINT User_controlled_domain_pk PRIMARY KEY(domain_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "3763e3da8aab1db74f923016e9eccc98793ae3549ef82a8b41ce863222e6a4eb"
+}

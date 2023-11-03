@@ -5,7 +5,7 @@ use crate::prelude::*;
 pub async fn initialize_static_site_tables(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Initializing static site tables");
+	info!("Setting up static site tables");
 	query!(
 		r#"
 		CREATE TABLE static_site(
@@ -39,26 +39,17 @@ pub async fn initialize_static_site_tables(
 	Ok(())
 }
 
-/// Initializes the static site constraints
+/// Initializes the static site indexes
 #[instrument(skip(connection))]
-pub async fn initialize_static_site_constraints(
+pub async fn initialize_static_site_indexes(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Finishing up static site tables initialization");
+	info!("Setting up static site indexes");
 	query!(
 		r#"
 		ALTER TABLE static_site
 			ADD CONSTRAINT static_site_pk PRIMARY KEY(id),
-			ADD CONSTRAINT static_site_chk_name_is_trimmed CHECK(
-				name = TRIM(name)
-			),
-			ADD CONSTRAINT static_site_uq_id_workspace_id
-				UNIQUE(id, workspace_id),
-			ADD CONSTRAINT static_site_fk_id_workspace_id
-				FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id),
-			ADD CONSTRAINT static_site_fk_current_live_upload
-				FOREIGN KEY(id, current_live_upload) REFERENCES
-					static_site_upload_history(static_site_id, upload_id);
+			ADD CONSTRAINT static_site_uq_id_workspace_id UNIQUE(id, workspace_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -68,16 +59,8 @@ pub async fn initialize_static_site_constraints(
 		r#"
 		ALTER TABLE static_site_upload_history
 			ADD CONSTRAINT static_site_upload_history_pk PRIMARY KEY(upload_id),
-			ADD CONSTRAINT static_site_upload_history_fk_static_site_id
-				FOREIGN KEY(static_site_id)
-					REFERENCES static_site(id),
-			ADD CONSTRAINT static_site_upload_history_fk_uploaded_by
-				FOREIGN KEY(uploaded_by)
-					REFERENCES "user"(id),
 			ADD CONSTRAINT static_site_upload_history_uq_upload_id_static_site_id
-				UNIQUE(upload_id, static_site_id),
-			ADD CONSTRAINT static_site_upload_history_fk_upload_id_resource_id
-				FOREIGN KEY(upload_id) REFERENCES resource(id);
+				UNIQUE(upload_id, static_site_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -91,6 +74,45 @@ pub async fn initialize_static_site_constraints(
 			static_site(workspace_id, name)
 		WHERE
 			deleted IS NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+/// Initializes the static site constraints
+#[instrument(skip(connection))]
+pub async fn initialize_static_site_constraints(
+	connection: &mut DatabaseConnection,
+) -> Result<(), sqlx::Error> {
+	info!("Setting up static site constraints");
+	query!(
+		r#"
+		ALTER TABLE static_site
+			ADD CONSTRAINT static_site_chk_name_is_trimmed CHECK(
+				name = TRIM(name)
+			),
+			ADD CONSTRAINT static_site_fk_id_workspace_id
+				FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id),
+			ADD CONSTRAINT static_site_fk_current_live_upload
+				FOREIGN KEY(id, current_live_upload)
+					REFERENCES static_site_upload_history(static_site_id, upload_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE static_site_upload_history
+			ADD CONSTRAINT static_site_upload_history_fk_static_site_id
+				FOREIGN KEY(static_site_id) REFERENCES static_site(id),
+			ADD CONSTRAINT static_site_upload_history_fk_uploaded_by
+				FOREIGN KEY(uploaded_by) REFERENCES "user"(id),
+			ADD CONSTRAINT static_site_upload_history_fk_upload_id_resource_id
+				FOREIGN KEY(upload_id) REFERENCES resource(id);
 		"#
 	)
 	.execute(&mut *connection)

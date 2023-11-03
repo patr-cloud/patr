@@ -5,7 +5,7 @@ use crate::prelude::*;
 pub async fn initialize_meta_tables(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Initializing meta tables");
+	info!("Setting up meta tables");
 	query!(
 		r#"
 		CREATE TABLE meta_data(
@@ -19,11 +19,20 @@ pub async fn initialize_meta_tables(
 	Ok(())
 }
 
-/// Finishes all the meta tables
+/// Initializes the meta table indexes
+#[instrument(skip(_connection))]
+pub async fn initialize_meta_indexes(
+	_connection: &mut DatabaseConnection,
+) -> Result<(), sqlx::Error> {
+	info!("Setting up meta tables indexes");
+	Ok(())
+}
+
+/// Initializes the meta tables constraints
 #[instrument(skip(_connection))]
 pub async fn initialize_meta_constraints(
 	_connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Finishing up meta tables initialization");
+	info!("Setting up meta tables constraints");
 	Ok(())
 }

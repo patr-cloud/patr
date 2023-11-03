@@ -5,6 +5,7 @@ use crate::prelude::*;
 pub async fn initialize_user_data_tables(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
+	info!("Setting up user tables");
 	query!(
 		r#"
 		CREATE TABLE "user"(
@@ -33,16 +34,50 @@ pub async fn initialize_user_data_tables(
 	Ok(())
 }
 
-/// Initializes the user data constraints
+/// Initializes the user data indexes
 #[instrument(skip(connection))]
-pub async fn initialize_user_data_constraints(
+pub async fn initialize_user_data_indexes(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
+	info!("Setting up user data indexes");
 	query!(
 		r#"
 		ALTER TABLE "user"
 			ADD CONSTRAINT user_pk PRIMARY KEY(id),
 			ADD CONSTRAINT user_uq_username UNIQUE(username),
+			ADD CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id
+				UNIQUE(recovery_email_local, recovery_email_domain_id),
+			ADD CONSTRAINT user_uq_recovery_phone_country_code_recovery_phone_number
+				UNIQUE(recovery_phone_country_code, recovery_phone_number);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			user_idx_created
+		ON
+			"user"
+		(created);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+/// Initializes the user data constraints
+#[instrument(skip(connection))]
+pub async fn initialize_user_data_constraints(
+	connection: &mut DatabaseConnection,
+) -> Result<(), sqlx::Error> {
+	info!("Setting up user data constraints");
+	query!(
+		r#"
+		ALTER TABLE "user"
 			ADD CONSTRAINT user_chk_username_is_valid CHECK(
 				/* Username is a-z, 0-9, _, cannot begin or end with a . or - */
 				username ~ '^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$' AND
@@ -56,10 +91,6 @@ pub async fn initialize_user_data_constraints(
 			ADD CONSTRAINT user_chk_recovery_phone_country_code_is_upper_case CHECK(
 				recovery_phone_country_code = UPPER(recovery_phone_country_code)
 			),
-			ADD CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id
-				UNIQUE(recovery_email_local, recovery_email_domain_id),
-			ADD CONSTRAINT user_uq_recovery_phone_country_code_recovery_phone_number
-				UNIQUE(recovery_phone_country_code, recovery_phone_number),
 			ADD CONSTRAINT user_chk_rcvry_eml_or_rcvry_phn_present CHECK(
 				(
 					recovery_email_local IS NOT NULL AND
@@ -70,43 +101,6 @@ pub async fn initialize_user_data_constraints(
 					recovery_phone_number IS NOT NULL
 				)
 			);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE INDEX
-			user_idx_created
-		ON
-			"user"
-		(created);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE INDEX
-			user_idx_created
-		ON
-			"user"
-		(created);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE password_reset_request
-			ADD CONSTRAINT password_reset_request_pk PRIMARY KEY(user_id),
-			ADD CONSTRAINT password_reset_request_fk_user_id
-				FOREIGN KEY(user_id) REFERENCES "user"(id),
-			ADD CONSTRAINT password_reset_request_atmpts_non_negative
-				CHECK(attempts >= 0);
 		"#
 	)
 	.execute(&mut *connection)

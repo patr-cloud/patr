@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE role_resource_permissions_include ADD CONSTRAINT role_resource_permissions_include_pk PRIMARY KEY(role_id, permission_id, resource_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "102810248b559a1318189ee5e43a2e31720e1c5773be55e5baa0dbb723317a27"
+}

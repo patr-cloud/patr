@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE user_api_token_resource_permissions_exclude ADD CONSTRAINT user_api_token_resource_permissions_exclude_pk PRIMARY KEY(token_id, workspace_id, permission_id, resource_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "c51392daa68fd32a270504b309da85b165b08e4ec6662674d62c432fd9a44553"
+}

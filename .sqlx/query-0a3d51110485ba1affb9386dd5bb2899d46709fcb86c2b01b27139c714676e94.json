@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE REGION_STATUS AS ENUM( 'creating', 'active', 'errored', 'deleted', 'disconnected', 'coming_soon' );",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "0a3d51110485ba1affb9386dd5bb2899d46709fcb86c2b01b27139c714676e94"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE secret ADD CONSTRAINT secret_pk PRIMARY KEY(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "395355c405744d8eae1e64d224d6e669f4dc5a145713989c78fe601c21982ffc"
+}
