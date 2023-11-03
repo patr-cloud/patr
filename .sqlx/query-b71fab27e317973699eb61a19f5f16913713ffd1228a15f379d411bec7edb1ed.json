@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE role_resource_permissions_type ADD CONSTRAINT role_resource_permissions_type_fk_role_id FOREIGN KEY(role_id) REFERENCES role(id), ADD CONSTRAINT role_resource_permissions_type_fk_permission_id FOREIGN KEY(permission_id) REFERENCES permission(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "b71fab27e317973699eb61a19f5f16913713ffd1228a15f379d411bec7edb1ed"
+}

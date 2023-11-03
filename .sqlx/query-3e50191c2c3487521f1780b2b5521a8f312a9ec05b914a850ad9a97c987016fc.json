@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE deployment_deploy_history ADD CONSTRAINT deployment_image_digest_pk PRIMARY KEY(deployment_id, image_digest);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "3e50191c2c3487521f1780b2b5521a8f312a9ec05b914a850ad9a97c987016fc"
+}

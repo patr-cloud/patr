@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE patr_domain_dns_record ADD CONSTRAINT patr_domain_dns_record_pk PRIMARY KEY(id), ADD CONSTRAINT patr_domain_dns_record_uq_domain_id_name_type_value_priority UNIQUE(domain_id, name, type, value, priority);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "ab7e92a30dbc4441abacb8bef80d2437a3cc1c2e470188fe1cf44579a74b3068"
+}

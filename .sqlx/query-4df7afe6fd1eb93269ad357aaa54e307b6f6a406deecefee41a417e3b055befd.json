@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE business_email ADD CONSTRAINT business_email_pk PRIMARY KEY(local, domain_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "4df7afe6fd1eb93269ad357aaa54e307b6f6a406deecefee41a417e3b055befd"
+}

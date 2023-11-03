@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE deployment_config_mounts ADD CONSTRAINT deployment_config_mounts_chk_path_valid CHECK(path ~ '^[a-zA-Z0-9_\\-\\.\\(\\)]+$'), ADD CONSTRAINT deployment_config_mounts_fk_deployment_id FOREIGN KEY(deployment_id) REFERENCES deployment(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "57090466f6e76533322b079e1e6122a75a3c90511a473e34d51f5f2eace3be88"
+}

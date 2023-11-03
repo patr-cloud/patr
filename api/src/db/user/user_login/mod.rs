@@ -9,6 +9,7 @@ use crate::prelude::*;
 pub async fn initialize_user_login_tables(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
+	info!("Setting up user login tables");
 	query!(
 		r#"
 		CREATE TYPE USER_LOGIN_TYPE AS ENUM(
@@ -39,21 +40,42 @@ pub async fn initialize_user_login_tables(
 	Ok(())
 }
 
+/// Initializes the user login indexes
+#[instrument(skip(connection))]
+pub async fn initialize_user_login_indexes(
+	connection: &mut DatabaseConnection,
+) -> Result<(), sqlx::Error> {
+	info!("Setting up user login indexes");
+	query!(
+		r#"
+		ALTER TABLE user_login
+			ADD CONSTRAINT user_login_pk PRIMARY KEY(login_id),
+			ADD CONSTRAINT user_login_uq_login_id_user_id UNIQUE(login_id, user_id),
+			ADD CONSTRAINT user_login_uq_login_id_user_id_login_type UNIQUE(
+				login_id, user_id, login_type
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	web_login::initialize_web_login_indexes(&mut *connection).await?;
+	api_token::initialize_api_token_indexes(&mut *connection).await?;
+
+	Ok(())
+}
+
 /// Initializes the user login constraints
 #[instrument(skip(connection))]
 pub async fn initialize_user_login_constraints(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
+	info!("Setting up user login constraints");
 	query!(
 		r#"
 		ALTER TABLE user_login
-			ADD CONSTRAINT user_login_pk PRIMARY KEY(login_id),
-			ADD CONSTRAINT user_login_fk_user_id
-				FOREIGN KEY(user_id) REFERENCES "user"(id),
-			ADD CONSTRAINT user_login_uq_login_id_user_id UNIQUE(login_id, user_id),
-			ADD CONSTRAINT user_login_uq_login_id_user_id_login_type UNIQUE(
-				login_id, user_id, login_type
-			);
+		ADD CONSTRAINT user_login_fk_user_id
+		FOREIGN KEY(user_id) REFERENCES "user"(id);
 		"#
 	)
 	.execute(&mut *connection)

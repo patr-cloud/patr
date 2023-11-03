@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE user_api_token_workspace_super_admin ADD CONSTRAINT user_api_token_workspace_super_admin_pk PRIMARY KEY(token_id, user_id, workspace_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "a8741ce0d5658663cb19b1e905d85c8d1c344a15cf3b1526c0461aa393e2ace2"
+}

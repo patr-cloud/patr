@@ -5,6 +5,7 @@ use crate::prelude::*;
 pub async fn initialize_user_phone_tables(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
+	info!("Setting up user phone tables");
 	query!(
 		r#"
 		CREATE TABLE phone_number_country_code(
@@ -46,18 +47,17 @@ pub async fn initialize_user_phone_tables(
 	Ok(())
 }
 
-/// Initializes the user phone constraints
+/// Initializes the user phone indexes
 #[instrument(skip(connection))]
-pub async fn initialize_user_phone_constraints(
+pub async fn initialize_user_phone_indexes(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
+	info!("Setting up user phone indexes");
 	query!(
 		r#"
 		ALTER TABLE phone_number_country_code
-			ADD CONSTRAINT phone_number_country_code_pk PRIMARY KEY(country_code),
-			ADD CONSTRAINT phone_number_country_code_chk_country_code_is_upper_case CHECK(
-				country_code = UPPER(country_code)
-			);
+		ADD CONSTRAINT phone_number_country_code_pk
+		PRIMARY KEY(country_code);
 		"#
 	)
 	.execute(&mut *connection)
@@ -79,19 +79,6 @@ pub async fn initialize_user_phone_constraints(
 		r#"
 		ALTER TABLE user_phone_number
 			ADD CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number),
-			ADD CONSTRAINT user_phone_number_fk_user_id
-				FOREIGN KEY(user_id) REFERENCES "user"(id)
-					DEFERRABLE INITIALLY IMMEDIATE,
-			ADD CONSTRAINT user_phone_number_fk_country_code
-				FOREIGN KEY(country_code) REFERENCES phone_number_country_code(country_code),
-			ADD CONSTRAINT user_phone_number_chk_country_code_is_upper_case CHECK(
-				country_code = UPPER(country_code)
-			),
-			ADD CONSTRAINT user_phone_number_chk_number_valid CHECK(
-				LENGTH(number) >= 7 AND
-				LENGTH(number) <= 15 AND
-				CAST(number AS BIGINT) > 0
-			),
 			ADD CONSTRAINT user_phone_number_uq_user_id_country_code_number UNIQUE(
 				user_id, country_code, number
 			);
@@ -115,18 +102,65 @@ pub async fn initialize_user_phone_constraints(
 	query!(
 		r#"
 		ALTER TABLE user_unverified_phone_number
-			ADD CONSTRAINT user_univerified_phone_number_pk
-				PRIMARY KEY(country_code, phone_number),
+			ADD CONSTRAINT user_unverified_phone_number_pk PRIMARY KEY(country_code, phone_number),
+			ADD CONSTRAINT user_unverified_phone_number_uq_country_code_phone_number UNIQUE(
+				user_id, country_code, phone_number
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+/// Initializes the user phone constraints
+#[instrument(skip(connection))]
+pub async fn initialize_user_phone_constraints(
+	connection: &mut DatabaseConnection,
+) -> Result<(), sqlx::Error> {
+	info!("Setting up user phone constraints");
+	query!(
+		r#"
+		ALTER TABLE phone_number_country_code
+		ADD CONSTRAINT phone_number_country_code_chk_country_code_is_upper_case CHECK(
+			country_code = UPPER(country_code)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_phone_number
+			ADD CONSTRAINT user_phone_number_fk_user_id
+				FOREIGN KEY(user_id) REFERENCES "user"(id) DEFERRABLE INITIALLY IMMEDIATE,
+			ADD CONSTRAINT user_phone_number_fk_country_code
+				FOREIGN KEY(country_code) REFERENCES phone_number_country_code(country_code),
+			ADD CONSTRAINT user_phone_number_chk_country_code_is_upper_case CHECK(
+				country_code = UPPER(country_code)
+			),
+			ADD CONSTRAINT user_phone_number_chk_number_valid CHECK(
+				LENGTH(number) >= 7 AND
+				LENGTH(number) <= 15 AND
+				CAST(number AS BIGINT) > 0
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_unverified_phone_number
 			ADD CONSTRAINT user_unverified_phone_number_fk_country_code
 				FOREIGN KEY(country_code) REFERENCES phone_number_country_code(country_code),
 			ADD CONSTRAINT user_unverified_phone_number_chk_country_code_is_upper_case CHECK(
 				country_code = UPPER(country_code)
 			),
 			ADD CONSTRAINT user_unverified_phone_number_fk_user_id
-				FOREIGN KEY(user_id) REFERENCES "user"(id),
-			ADD CONSTRAINT user_univerified_phone_number_uq_country_code_phone_number UNIQUE(
-				user_id, country_code, phone_number
-			);
+				FOREIGN KEY(user_id) REFERENCES "user"(id);
 		"#
 	)
 	.execute(&mut *connection)

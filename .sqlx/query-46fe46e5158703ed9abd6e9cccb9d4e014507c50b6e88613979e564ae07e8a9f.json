@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE domain( id UUID NOT NULL, name TEXT NOT NULL, type RESOURCE_OWNER_TYPE NOT NULL, tld TEXT NOT NULL, deleted TIMESTAMPTZ );",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "46fe46e5158703ed9abd6e9cccb9d4e014507c50b6e88613979e564ae07e8a9f"
+}

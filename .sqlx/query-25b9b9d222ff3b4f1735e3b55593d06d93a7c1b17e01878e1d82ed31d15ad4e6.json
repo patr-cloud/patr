@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE role ADD CONSTRAINT role_pk PRIMARY KEY(id), ADD CONSTRAINT role_uq_name_owner_id UNIQUE(name, owner_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "25b9b9d222ff3b4f1735e3b55593d06d93a7c1b17e01878e1d82ed31d15ad4e6"
+}

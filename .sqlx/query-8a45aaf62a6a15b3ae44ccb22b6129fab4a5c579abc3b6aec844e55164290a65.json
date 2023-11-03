@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE secret( id UUID NOT NULL, name CITEXT NOT NULL, workspace_id UUID NOT NULL, deleted TIMESTAMPTZ );",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "8a45aaf62a6a15b3ae44ccb22b6129fab4a5c579abc3b6aec844e55164290a65"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE container_registry_repository_tag ADD CONSTRAINT container_registry_repository_tag_pk PRIMARY KEY(repository_id, tag);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "6390a1d767758f8f97e3095f4034ff92c78f5755f54e39f0a4de2f248644efd2"
+}

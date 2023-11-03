@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE managed_database ADD CONSTRAINT managed_database_pk PRIMARY KEY(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "436b5cb3f2e770cd6b31ebbf0354912d7a84e14525a0d8505094781044f4f709"
+}

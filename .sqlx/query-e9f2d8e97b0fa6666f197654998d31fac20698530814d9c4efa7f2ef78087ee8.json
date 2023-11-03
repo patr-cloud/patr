@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE deployment ADD CONSTRAINT deployment_pk PRIMARY KEY(id), ADD CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "e9f2d8e97b0fa6666f197654998d31fac20698530814d9c4efa7f2ef78087ee8"
+}

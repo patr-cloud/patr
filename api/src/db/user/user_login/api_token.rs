@@ -5,7 +5,7 @@ use crate::prelude::*;
 pub async fn initialize_api_token_tables(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	// tables are initialized in post due to workspace dependency
+	info!("Setting up API token tables");
 	query!(
 		r#"
 		CREATE TYPE TOKEN_PERMISSION_TYPE AS ENUM(
@@ -109,8 +109,7 @@ pub async fn initialize_api_token_tables(
 			workspace_id UUID NOT NULL,
 			permission_id UUID NOT NULL,
 			resource_id UUID NOT NULL,
-			permission_type PERMISSION_TYPE NOT NULL
-				GENERATED ALWAYS AS ('exclude') STORED
+			permission_type PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('exclude') STORED
 		);
 		"#
 	)
@@ -120,21 +119,18 @@ pub async fn initialize_api_token_tables(
 	Ok(())
 }
 
-/// Initializes the API token constraints
+/// Initializes the API token indexes
 #[instrument(skip(connection))]
-pub async fn initialize_api_token_constraints(
+pub async fn initialize_api_token_indexes(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
+	info!("Setting up API token indexes");
 	query!(
 		r#"
 		ALTER TABLE user_api_token
 			ADD CONSTRAINT user_api_token_pk PRIMARY KEY(token_id),
 			ADD CONSTRAINT user_api_token_token_id_user_id_uk UNIQUE(
 				token_id, user_id
-			),
-			ADD CONSTRAINT user_api_token_token_id_user_id_login_type_fk
-				FOREIGN KEY(token_id, user_id, login_type) REFERENCES user_login(
-					login_id, user_id, login_type
 			);
 		"#
 	)
@@ -165,9 +161,7 @@ pub async fn initialize_api_token_constraints(
 				token_id,
 				workspace_id,
 				token_permission_type
-			),
-			ADD CONSTRAINT user_api_token_workspace_permission_type_fk_token
-				FOREIGN KEY(token_id) REFERENCES user_api_token(token_id);
+			);
 		"#
 	)
 	.execute(&mut *connection)
@@ -176,29 +170,8 @@ pub async fn initialize_api_token_constraints(
 	query!(
 		r#"
 		ALTER TABLE user_api_token_workspace_super_admin
-			ADD CONSTRAINT user_api_token_workspace_super_admin_pk PRIMARY KEY(
-				token_id,
-				user_id,
-				workspace_id
-			),
-			ADD CONSTRAINT user_api_token_workspace_super_admin_fk_type FOREIGN KEY(
-				token_id,
-				workspace_id,
-				token_permission_type
-			) REFERENCES user_api_token_workspace_permission_type(
-				token_id,
-				workspace_id,
-				token_permission_type
-			),
-			ADD CONSTRAINT user_api_token_workspace_super_admin_fk_token
-				FOREIGN KEY(token_id, user_id) REFERENCES user_api_token(
-					token_id,
-					user_id
-				),
-			ADD CONSTRAINT user_api_token_workspace_super_admin_fk_workspace
-				FOREIGN KEY(workspace_id, user_id) REFERENCES workspace(
-					id, super_admin_id
-				);
+		ADD CONSTRAINT user_api_token_workspace_super_admin_pk
+		PRIMARY KEY(token_id, user_id, workspace_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -217,17 +190,7 @@ pub async fn initialize_api_token_constraints(
 				workspace_id,
 				permission_id,
 				resource_permission_type
-			),
-			ADD CONSTRAINT user_api_token_resource_permisssions_type_fk_type
-				FOREIGN KEY(token_id, workspace_id, token_permission_type)
-					REFERENCES user_api_token_workspace_permission_type(
-						token_id,
-						workspace_id,
-						token_permission_type
-					),
-			ADD CONSTRAINT
-				user_api_token_resource_permisssions_type_fk_permission_id
-					FOREIGN KEY(permission_id) REFERENCES permission(id);
+			);
 		"#
 	)
 	.execute(&mut *connection)
@@ -236,25 +199,8 @@ pub async fn initialize_api_token_constraints(
 	query!(
 		r#"
 		ALTER TABLE user_api_token_resource_permissions_include
-			ADD CONSTRAINT user_api_token_resource_permissions_include_pk
-				PRIMARY KEY(token_id, workspace_id, permission_id, resource_id),
-			ADD CONSTRAINT user_api_token_resource_permissions_include_fk_parent
-				FOREIGN KEY(
-					token_id,
-					workspace_id,
-					permission_id,
-					permission_type
-				) REFERENCES user_api_token_resource_permissions_type(
-					token_id,
-					workspace_id,
-					permission_id,
-					resource_permission_type
-				),
-			ADD CONSTRAINT user_api_token_resource_permissions_include_fk_resource
-				FOREIGN KEY(resource_id, workspace_id) REFERENCES resource(
-					id,
-					owner_id
-				);
+		ADD CONSTRAINT user_api_token_resource_permissions_include_pk
+		PRIMARY KEY(token_id, workspace_id, permission_id, resource_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -263,25 +209,145 @@ pub async fn initialize_api_token_constraints(
 	query!(
 		r#"
 		ALTER TABLE user_api_token_resource_permissions_exclude
-			ADD CONSTRAINT user_api_token_resource_permissions_exclude_pk
-				PRIMARY KEY(token_id, workspace_id, permission_id, resource_id),
-			ADD CONSTRAINT user_api_token_resource_permissions_exclude_fk_parent
-				FOREIGN KEY(
-					token_id,
-					workspace_id,
-					permission_id,
-					permission_type
-				) REFERENCES user_api_token_resource_permissions_type(
-					token_id,
-					workspace_id,
-					permission_id,
-					resource_permission_type
-				),
-			ADD CONSTRAINT user_api_token_resource_permissions_exclude_fk_resource
-				FOREIGN KEY(resource_id, workspace_id) REFERENCES resource(
-					id,
-					owner_id
-				);
+		ADD CONSTRAINT user_api_token_resource_permissions_exclude_pk
+		PRIMARY KEY(token_id, workspace_id, permission_id, resource_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+
+/// Initializes the API token constraints
+#[instrument(skip(connection))]
+pub async fn initialize_api_token_constraints(
+	connection: &mut DatabaseConnection,
+) -> Result<(), sqlx::Error> {
+	info!("Setting up API token constraints");
+	query!(
+		r#"
+		ALTER TABLE user_api_token
+		ADD CONSTRAINT user_api_token_token_id_user_id_login_type_fk
+		FOREIGN KEY(token_id, user_id, login_type) REFERENCES user_login(
+			login_id, user_id, login_type
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_api_token_workspace_permission_type
+		ADD CONSTRAINT user_api_token_workspace_permission_type_fk_token
+		FOREIGN KEY(token_id) REFERENCES user_api_token(token_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_api_token_workspace_super_admin
+			ADD CONSTRAINT user_api_token_workspace_super_admin_fk_type FOREIGN KEY(
+				token_id,
+				workspace_id,
+				token_permission_type
+			) REFERENCES user_api_token_workspace_permission_type(
+				token_id,
+				workspace_id,
+				token_permission_type
+			),
+			ADD CONSTRAINT user_api_token_workspace_super_admin_fk_token FOREIGN KEY(
+				token_id,
+				user_id
+			) REFERENCES user_api_token(
+				token_id,
+				user_id
+			),
+			ADD CONSTRAINT user_api_token_workspace_super_admin_fk_workspace FOREIGN KEY(
+				workspace_id,
+				user_id
+			) REFERENCES workspace(
+				id,
+				super_admin_id
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_api_token_resource_permissions_type
+			ADD CONSTRAINT user_api_token_resource_permisssions_type_fk_type FOREIGN KEY(
+				token_id,
+				workspace_id,
+				token_permission_type
+			) REFERENCES user_api_token_workspace_permission_type(
+				token_id,
+				workspace_id,
+				token_permission_type
+			),
+			ADD CONSTRAINT user_api_token_resource_permisssions_type_fk_permission_id FOREIGN KEY(
+				permission_id
+			) REFERENCES permission(
+				id
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_api_token_resource_permissions_include
+			ADD CONSTRAINT user_api_token_resource_permissions_include_fk_parent FOREIGN KEY(
+				token_id,
+				workspace_id,
+				permission_id,
+				permission_type
+			) REFERENCES user_api_token_resource_permissions_type(
+				token_id,
+				workspace_id,
+				permission_id,
+				resource_permission_type
+			),
+			ADD CONSTRAINT user_api_token_resource_permissions_include_fk_resource FOREIGN KEY(
+				resource_id,
+				workspace_id
+			) REFERENCES resource(
+				id,
+				owner_id
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_api_token_resource_permissions_exclude
+			ADD CONSTRAINT user_api_token_resource_permissions_exclude_fk_parent FOREIGN KEY(
+				token_id,
+				workspace_id,
+				permission_id,
+				permission_type
+			) REFERENCES user_api_token_resource_permissions_type(
+				token_id,
+				workspace_id,
+				permission_id,
+				resource_permission_type
+			),
+			ADD CONSTRAINT user_api_token_resource_permissions_exclude_fk_resource FOREIGN KEY(
+				resource_id,
+				workspace_id
+			) REFERENCES resource(
+				id,
+				owner_id
+			);
 		"#
 	)
 	.execute(&mut *connection)

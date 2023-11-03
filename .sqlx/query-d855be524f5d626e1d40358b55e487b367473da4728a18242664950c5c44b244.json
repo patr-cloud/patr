@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX workspace_domain_idx_is_verified ON workspace_domain (is_verified);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "d855be524f5d626e1d40358b55e487b367473da4728a18242664950c5c44b244"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE deployment_deploy_history ADD CONSTRAINT deployment_image_digest_fk_deployment_id FOREIGN KEY(deployment_id) REFERENCES deployment(id), ADD CONSTRAINT deployment_image_digest_fk_repository_id FOREIGN KEY(repository_id) REFERENCES docker_registry_repository(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "cb4c6498b2230f4836b44eb48c118a3fc49cfb16b91ea264a4226815663ff1f4"
+}

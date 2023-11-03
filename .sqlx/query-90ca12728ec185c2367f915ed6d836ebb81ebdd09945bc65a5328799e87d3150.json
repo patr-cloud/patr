@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE static_site_upload_history ADD CONSTRAINT static_site_upload_history_pk PRIMARY KEY(upload_id), ADD CONSTRAINT static_site_upload_history_uq_upload_id_static_site_id UNIQUE(upload_id, static_site_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "90ca12728ec185c2367f915ed6d836ebb81ebdd09945bc65a5328799e87d3150"
+}

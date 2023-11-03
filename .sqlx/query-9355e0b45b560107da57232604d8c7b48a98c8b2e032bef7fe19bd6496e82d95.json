@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE UNIQUE INDEX region_uq_workspace_id_name ON region(workspace_id, name) WHERE deleted IS NULL AND workspace_id IS NOT NULL;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "9355e0b45b560107da57232604d8c7b48a98c8b2e032bef7fe19bd6496e82d95"
+}

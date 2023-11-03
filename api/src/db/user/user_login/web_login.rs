@@ -5,6 +5,7 @@ use crate::prelude::*;
 pub async fn initialize_web_login_tables(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
+	info!("Setting up web login tables");
 	query!(
 		r#"
 		CREATE TABLE web_login(
@@ -33,17 +34,17 @@ pub async fn initialize_web_login_tables(
 	Ok(())
 }
 
-/// Initializes the web login constraints
+/// Initializes the web login indexes
 #[instrument(skip(connection))]
-pub async fn initialize_web_login_constraints(
+pub async fn initialize_web_login_indexes(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
+	info!("Setting up web login indexes");
 	query!(
 		r#"
 		ALTER TABLE web_login
-			ADD CONSTRAINT web_login_pk PRIMARY KEY(login_id),
-			ADD CONSTRAINT web_login_fk FOREIGN KEY(login_id, user_id, login_type)
-				REFERENCES user_login(login_id, user_id, login_type);
+		ADD CONSTRAINT web_login_pk
+		PRIMARY KEY(login_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -70,5 +71,33 @@ pub async fn initialize_web_login_constraints(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	Ok(())
+}
+
+/// Initializes the web login constraints
+#[instrument(skip(connection))]
+pub async fn initialize_web_login_constraints(
+	connection: &mut DatabaseConnection,
+) -> Result<(), sqlx::Error> {
+	info!("Setting up web login constraints");
+	query!(
+		r#"
+		ALTER TABLE web_login
+		ADD CONSTRAINT web_login_fk
+		FOREIGN KEY(
+			login_id,
+			user_id,
+			login_type
+		) REFERENCES user_login(
+			login_id,
+			user_id,
+			login_type
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }

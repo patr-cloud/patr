@@ -5,7 +5,7 @@ use crate::prelude::*;
 pub async fn initialize_rbac_tables(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Initializing rbac tables");
+	info!("Setting up rbac tables");
 
 	// Resource types, like application, deployment, VM, etc
 	query!(
@@ -115,12 +115,12 @@ pub async fn initialize_rbac_tables(
 	Ok(())
 }
 
-/// Initializes the rbac constraints
+/// Initializes the rbac indexes
 #[instrument(skip(connection))]
-pub async fn initialize_rbac_constraints(
+pub async fn initialize_rbac_indexes(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Finishing up rbac tables initialization");
+	info!("Setting up rbac table indexes");
 
 	// Resource types, like application, deployment, VM, etc
 	query!(
@@ -137,11 +137,6 @@ pub async fn initialize_rbac_constraints(
 		r#"
 		ALTER TABLE resource
 			ADD CONSTRAINT resource_pk PRIMARY KEY(id),
-			ADD CONSTRAINT resource_fk_resource_type_id
-				FOREIGN KEY(resource_type_id) REFERENCES resource_type(id),
-			ADD CONSTRAINT resource_fk_owner_id
-				FOREIGN KEY(owner_id) REFERENCES workspace(id)
-					DEFERRABLE INITIALLY IMMEDIATE,
 			ADD CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id);
 		"#
 	)
@@ -165,7 +160,6 @@ pub async fn initialize_rbac_constraints(
 		r#"
 		ALTER TABLE role
 			ADD CONSTRAINT role_pk PRIMARY KEY(id),
-			ADD CONSTRAINT role_fk_owner_id FOREIGN KEY(owner_id) REFERENCES workspace(id),
 			ADD CONSTRAINT role_uq_name_owner_id UNIQUE(name, owner_id);
 		"#
 	)
@@ -186,17 +180,8 @@ pub async fn initialize_rbac_constraints(
 	query!(
 		r#"
 		ALTER TABLE workspace_user
-			ADD CONSTRAINT workspace_user_pk PRIMARY KEY(
-				user_id,
-				workspace_id,
-				role_id
-			),
-			ADD CONSTRAINT workspace_user_fk_user_id
-				FOREIGN KEY(user_id) REFERENCES "user"(id),
-			ADD CONSTRAINT workspace_user_fk_workspace_id
-				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
-			ADD CONSTRAINT workspace_user_fk_role_id
-				FOREIGN KEY(role_id) REFERENCES role(id);
+		ADD CONSTRAINT workspace_user_pk
+		PRIMARY KEY(user_id, workspace_id, role_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -248,7 +233,96 @@ pub async fn initialize_rbac_constraints(
 				role_id,
 				permission_id,
 				permission_type
-			),
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE role_resource_permissions_include
+		ADD CONSTRAINT role_resource_permissions_include_pk
+		PRIMARY KEY(role_id, permission_id, resource_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE role_resource_permissions_exclude
+		ADD CONSTRAINT role_resource_permissions_exclude_pk
+		PRIMARY KEY(role_id,permission_id,resource_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+/// Initializes the rbac constraints
+#[instrument(skip(connection))]
+pub async fn initialize_rbac_constraints(
+	connection: &mut DatabaseConnection,
+) -> Result<(), sqlx::Error> {
+	info!("Setting up rbac table constraints");
+
+	query!(
+		r#"
+		ALTER TABLE resource
+			ADD CONSTRAINT resource_fk_resource_type_id
+				FOREIGN KEY(resource_type_id) REFERENCES resource_type(id),
+			ADD CONSTRAINT resource_fk_owner_id
+				FOREIGN KEY(owner_id) REFERENCES workspace(id)
+					DEFERRABLE INITIALLY IMMEDIATE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			resource_idx_owner_id
+		ON
+			resource
+		(owner_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Roles belong to an workspace
+	query!(
+		r#"
+		ALTER TABLE role
+		ADD CONSTRAINT role_fk_owner_id
+		FOREIGN KEY(owner_id) REFERENCES workspace(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Users belong to an workspace through a role
+	query!(
+		r#"
+		ALTER TABLE workspace_user
+			ADD CONSTRAINT workspace_user_fk_user_id
+				FOREIGN KEY(user_id) REFERENCES "user"(id),
+			ADD CONSTRAINT workspace_user_fk_workspace_id
+				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
+			ADD CONSTRAINT workspace_user_fk_role_id
+				FOREIGN KEY(role_id) REFERENCES role(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE role_resource_permissions_type
 			ADD CONSTRAINT role_resource_permissions_type_fk_role_id
 				FOREIGN KEY(role_id) REFERENCES role(id),
 			ADD CONSTRAINT role_resource_permissions_type_fk_permission_id
@@ -261,11 +335,6 @@ pub async fn initialize_rbac_constraints(
 	query!(
 		r#"
 		ALTER TABLE role_resource_permissions_include
-			ADD CONSTRAINT role_resource_permissions_include_pk PRIMARY KEY(
-				role_id,
-				permission_id,
-				resource_id
-			),
 			ADD CONSTRAINT role_resource_permissions_include_fk_parent FOREIGN KEY(
 				role_id,
 				permission_id,
@@ -285,11 +354,6 @@ pub async fn initialize_rbac_constraints(
 	query!(
 		r#"
 		ALTER TABLE role_resource_permissions_exclude
-			ADD CONSTRAINT role_resource_permissions_exclude_pk PRIMARY KEY(
-				role_id,
-				permission_id,
-				resource_id
-			),
 			ADD CONSTRAINT role_resource_permissions_exclude_fk_parent
 				FOREIGN KEY(role_id, permission_id, permission_type)
 					REFERENCES role_resource_permissions_type(
@@ -303,5 +367,6 @@ pub async fn initialize_rbac_constraints(
 	)
 	.execute(&mut *connection)
 	.await?;
+
 	Ok(())
 }

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE managed_database_plan ADD CONSTRAINT managed_database_plan_chk_cpu_positive CHECK(cpu > 0), ADD CONSTRAINT managed_database_plan_chk_ram_positive CHECK(ram > 0), ADD CONSTRAINT managed_database_plan_chk_volume_positive CHECK(volume > 0);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "4eec6ab4838892cdfe66111bc7eed62a68f7bd9b7ee61ee0fbcb0f0863738044"
+}

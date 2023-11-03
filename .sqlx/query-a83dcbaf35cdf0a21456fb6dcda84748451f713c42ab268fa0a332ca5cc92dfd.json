@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE workspace ADD CONSTRAINT workspace_fk_id FOREIGN KEY(id) REFERENCES resource(id) DEFERRABLE INITIALLY IMMEDIATE, ADD CONSTRAINT workspace_fk_super_admin_id FOREIGN KEY(super_admin_id) REFERENCES \"user\"(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "a83dcbaf35cdf0a21456fb6dcda84748451f713c42ab268fa0a332ca5cc92dfd"
+}

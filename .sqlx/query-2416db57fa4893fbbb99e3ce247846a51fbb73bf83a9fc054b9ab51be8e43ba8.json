@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE UNIQUE INDEX secret_uq_workspace_id_name ON secret(workspace_id, name) WHERE deleted IS NULL;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "2416db57fa4893fbbb99e3ce247846a51fbb73bf83a9fc054b9ab51be8e43ba8"
+}

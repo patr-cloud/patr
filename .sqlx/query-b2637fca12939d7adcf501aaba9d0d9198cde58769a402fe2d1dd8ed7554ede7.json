@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE workspace ADD CONSTRAINT workspace_pk PRIMARY KEY(id), ADD CONSTRAINT workspace_uq_id_super_admin_id UNIQUE(id, super_admin_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "b2637fca12939d7adcf501aaba9d0d9198cde58769a402fe2d1dd8ed7554ede7"
+}
