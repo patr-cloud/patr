@@ -6,7 +6,7 @@ use super::ManagedUrlType;
 
 macros::declare_api_endpoint!(
     /// Route to update a managed URL configurations
-    UpdateManagedUrl,
+    UpdateManagedURL,
     POST "/workspace/:workspace_id/infrastructure/managed-url/:managed_url_id" {
         /// The workspace ID of the user
         pub workspace_id: Uuid,

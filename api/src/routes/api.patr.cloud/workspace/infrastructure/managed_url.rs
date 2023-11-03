@@ -1,25 +1,25 @@
-use crate::{prelude::*, service};
+use crate::prelude::*;
 use axum::{http::StatusCode, Router};
 
 use models::{
 	api::workspace::infrastructure::managed_url::*,
 	ApiRequest,
-	ErrorType, prelude::WithId,
+	ErrorType,
 };
 
 #[instrument(skip(state))]
 pub fn setup_routes(state: &AppState) -> Router {
 	Router::new()
-		.mount_endpoint(create_managed_url, state)
-		.mount_endpoint(delete_managed_url, state)
-		.mount_endpoint(list_managed_url, state)
-		.mount_endpoint(update_managed_url, state)
-		.mount_endpoint(verify_configuration, state)
+		.mount_auth_endpoint(create_managed_url, state)
+		.mount_auth_endpoint(delete_managed_url, state)
+		.mount_auth_endpoint(list_managed_url, state)
+		.mount_auth_endpoint(update_managed_url, state)
+		.mount_auth_endpoint(verify_configuration, state)
 		.with_state(state.clone())
 }
 
 async fn create_managed_url(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -30,8 +30,9 @@ async fn create_managed_url(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, CreateManagedUrlRequest>,
-) -> Result<AppResponse<CreateManagedUrlResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, CreateManagedUrlRequest>,
+) -> Result<AppResponse<CreateManagedUrlRequest>, ErrorType> {
 	
 	info!("Starting: Create managed URL");
 
@@ -48,7 +49,7 @@ async fn create_managed_url(
 }
 
 async fn delete_managed_url(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -59,8 +60,9 @@ async fn delete_managed_url(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, DeleteManagedUrlRequest>,
-) -> Result<AppResponse<DeleteManagedUrlResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, DeleteManagedUrlRequest>,
+) -> Result<AppResponse<DeleteManagedUrlRequest>, ErrorType> {
 	
 	info!("Starting: Delete managed URL");
 
@@ -75,7 +77,7 @@ async fn delete_managed_url(
 }
 
 async fn list_managed_url(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -86,8 +88,9 @@ async fn list_managed_url(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, ListManagedUrlRequest>,
-) -> Result<AppResponse<ListManagedUrlResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, ListManagedUrlRequest>,
+) -> Result<AppResponse<ListManagedUrlRequest>, ErrorType> {
 	
 	info!("Starting: List managed URL");
 
@@ -104,7 +107,7 @@ async fn list_managed_url(
 }
 
 async fn update_managed_url(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -115,8 +118,9 @@ async fn update_managed_url(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, UpdateManagedUrlRequest>,
-) -> Result<AppResponse<UpdateManagedUrlResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, UpdateManagedUrlRequest>,
+) -> Result<AppResponse<UpdateManagedUrlRequest>, ErrorType> {
 	
 	info!("Starting: Update managed URL");
 
@@ -131,7 +135,7 @@ async fn update_managed_url(
 }
 
 async fn verify_configuration(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -142,8 +146,9 @@ async fn verify_configuration(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, VerifyManagedUrlConfigurationRequest>,
-) -> Result<AppResponse<VerifyManagedUrlConfigurationResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, VerifyManagedUrlConfigurationRequest>,
+) -> Result<AppResponse<VerifyManagedUrlConfigurationRequest>, ErrorType> {
 	
 	info!("Starting: Verify configuration of managed URL");
 

@@ -4,17 +4,17 @@ use axum::{http::StatusCode, Router};
 use models::{
 	api::workspace::infrastructure::database::*,
 	ApiRequest,
-	ErrorType, prelude::WithId,
+	ErrorType,
 };
 
 #[instrument(skip(state))]
 pub fn setup_routes(state: &AppState) -> Router {
 	Router::new()
 		.mount_endpoint(all_database_plan, state)
-		.mount_endpoint(create_database, state)
-		.mount_endpoint(delete_database, state)
-		.mount_endpoint(get_database, state)
-		.mount_endpoint(list_database, state)
+		.mount_auth_endpoint(create_database, state)
+		.mount_auth_endpoint(delete_database, state)
+		.mount_auth_endpoint(get_database, state)
+		.mount_auth_endpoint(list_database, state)
 		.with_state(state.clone())
 }
 
@@ -31,7 +31,7 @@ async fn all_database_plan(
 		client_ip: _,
 		config,
 	}: AppRequest<'_, AllDatabasePlanRequest>,
-) -> Result<AppResponse<AllDatabasePlanResponse>, ErrorType> {
+) -> Result<AppResponse<AllDatabasePlanRequest>, ErrorType> {
 	
 	info!("Starting: Get database plans");
 
@@ -48,7 +48,7 @@ async fn all_database_plan(
 }
 
 async fn create_database(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -59,8 +59,9 @@ async fn create_database(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, CreateDatabaseRequest>,
-) -> Result<AppResponse<CreateDatabaseResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, CreateDatabaseRequest>,
+) -> Result<AppResponse<CreateDatabaseRequest>, ErrorType> {
 	
 	info!("Starting: Create database");
 
@@ -77,7 +78,7 @@ async fn create_database(
 }
 
 async fn delete_database(
-    AppRequest {
+    AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -88,8 +89,9 @@ async fn delete_database(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'a, DeleteDatabaseRequest>,
-) -> Result<AppResponse<DeleteDatabaseResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, DeleteDatabaseRequest>,
+) -> Result<AppResponse<DeleteDatabaseRequest>, ErrorType> {
 
 	info!("Starting: Delete database");
 
@@ -104,7 +106,7 @@ async fn delete_database(
 }
 
 async fn get_database(
-    AppRequest {
+    AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -115,8 +117,9 @@ async fn get_database(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'a, GetDatabaseRequest>,
-) -> Result<AppResponse<GetDatabaseResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, GetDatabaseRequest>,
+) -> Result<AppResponse<GetDatabaseRequest>, ErrorType> {
 
 	info!("Starting: Get database");
 
@@ -133,7 +136,7 @@ async fn get_database(
 }
 
 async fn list_database(
-    AppRequest {
+    AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -144,8 +147,9 @@ async fn list_database(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'a, ListDatabaseRequest>,
-) -> Result<AppResponse<ListDatabaseResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, ListDatabaseRequest>,
+) -> Result<AppResponse<ListDatabaseRequest>, ErrorType> {
 
 	info!("Starting: List database");
 

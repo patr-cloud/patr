@@ -4,27 +4,27 @@ use axum::{http::StatusCode, Router};
 use models::{
 	api::workspace::infrastructure::deployment::*,
 	ApiRequest,
-	ErrorType, prelude::WithId,
+	ErrorType,
 };
 
 #[instrument(skip(state))]
 pub fn setup_routes(state: &AppState) -> Router {
 	Router::new()
 		.mount_endpoint(machine_type, state)
-		.mount_endpoint(list_deployments, state)
-		.mount_endpoint(list_deployment_history, state)
-		.mount_endpoint(create_deployment, state)
-		.mount_endpoint(get_deployment_info, state)
-		.mount_endpoint(start_deployment, state)
-		.mount_endpoint(stop_deployment, state)
-		.mount_endpoint(revert_deployment, state)
-		.mount_endpoint(get_deployment_logs, state)
-		.mount_endpoint(delete_deployment, state)
-		.mount_endpoint(update_deployment, state)
-		.mount_endpoint(list_linked_urls, state)
-		.mount_endpoint(get_deployment_metrics, state)
-		.mount_endpoint(get_build_logs, state)
-		.mount_endpoint(get_build_events, state)
+		.mount_auth_endpoint(list_deployment, state)
+		.mount_auth_endpoint(list_deployment_history, state)
+		.mount_auth_endpoint(create_deployment, state)
+		.mount_auth_endpoint(get_deployment_info, state)
+		.mount_auth_endpoint(start_deployment, state)
+		.mount_auth_endpoint(stop_deployment, state)
+		.mount_auth_endpoint(revert_deployment, state)
+		.mount_auth_endpoint(get_deployment_log, state)
+		.mount_auth_endpoint(delete_deployment, state)
+		.mount_auth_endpoint(update_deployment, state)
+		.mount_auth_endpoint(list_linked_url, state)
+		.mount_auth_endpoint(get_deployment_metric, state)
+		.mount_auth_endpoint(get_build_log, state)
+		.mount_auth_endpoint(get_build_event, state)
 		.with_state(state.clone())
 }
 
@@ -41,7 +41,7 @@ async fn machine_type(
 		client_ip: _,
 		config,
 	}: AppRequest<'_, ListAllDeploymentMachineTypesRequest>,
-) -> Result<AppResponse<ListAllDeploymentMachineTypesResponse>, ErrorType> {
+) -> Result<AppResponse<ListAllDeploymentMachineTypesRequest>, ErrorType> {
 	
 	info!("Starting: List deployments");
 
@@ -57,8 +57,8 @@ async fn machine_type(
         .into_result() 
 }
 
-async fn list_deployments(
-	AppRequest {
+async fn list_deployment(
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -69,8 +69,9 @@ async fn list_deployments(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, ListDeploymentsRequest>,
-) -> Result<AppResponse<ListDeploymentsResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, ListDeploymentsRequest>,
+) -> Result<AppResponse<ListDeploymentsRequest>, ErrorType> {
 	
 	info!("Starting: List deployments");
 
@@ -87,7 +88,7 @@ async fn list_deployments(
 }
 
 async fn list_deployment_history(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -98,8 +99,9 @@ async fn list_deployment_history(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, ListDeploymentHistoryRequest>,
-) -> Result<AppResponse<ListDeploymentHistoryResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, ListDeploymentHistoryRequest>,
+) -> Result<AppResponse<ListDeploymentHistoryRequest>, ErrorType> {
 	
 	info!("Starting: List deployment history");
 
@@ -116,7 +118,7 @@ async fn list_deployment_history(
 }
 
 async fn create_deployment(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -127,15 +129,16 @@ async fn create_deployment(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, CreateDeploymentRequest>,
-) -> Result<AppResponse<CreateDeploymentResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, CreateDeploymentRequest>,
+) -> Result<AppResponse<CreateDeploymentRequest>, ErrorType> {
 	
 	info!("Starting: Create deployment");
 
 	// LOGIC
 
     AppResponse::builder()
-        .body(CreateDatabaseResponse {
+        .body(CreateDeploymentResponse {
             id: todo!(),
         })
         .headers(())
@@ -145,7 +148,7 @@ async fn create_deployment(
 }
 
 async fn get_deployment_info(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -156,8 +159,9 @@ async fn get_deployment_info(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, GetDeploymentInfoRequest>,
-) -> Result<AppResponse<GetDeploymentInfoResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, GetDeploymentInfoRequest>,
+) -> Result<AppResponse<GetDeploymentInfoRequest>, ErrorType> {
 	
 	info!("Starting: Get deployment info");
 
@@ -175,7 +179,7 @@ async fn get_deployment_info(
 }
 
 async fn start_deployment(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -186,8 +190,9 @@ async fn start_deployment(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, StartDeploymentRequest>,
-) -> Result<AppResponse<StartDeploymentResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, StartDeploymentRequest>,
+) -> Result<AppResponse<StartDeploymentRequest>, ErrorType> {
 	
 	info!("Starting: Start deployment");
 
@@ -202,7 +207,7 @@ async fn start_deployment(
 }
 
 async fn stop_deployment(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -213,8 +218,9 @@ async fn stop_deployment(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, StopDeploymentRequest>,
-) -> Result<AppResponse<StopDeploymentResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, StopDeploymentRequest>,
+) -> Result<AppResponse<StopDeploymentRequest>, ErrorType> {
 	
 	info!("Starting: Stop deployment");
 
@@ -229,7 +235,7 @@ async fn stop_deployment(
 }
 
 async fn revert_deployment(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -240,8 +246,9 @@ async fn revert_deployment(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, RevertDeploymentRequest>,
-) -> Result<AppResponse<RevertDeploymentResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, RevertDeploymentRequest>,
+) -> Result<AppResponse<RevertDeploymentRequest>, ErrorType> {
 	
 	info!("Starting: Revert deployment");
 
@@ -255,8 +262,8 @@ async fn revert_deployment(
         .into_result() 
 }
 
-async fn get_deployment_logs(
-	AppRequest {
+async fn get_deployment_log(
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -267,8 +274,9 @@ async fn get_deployment_logs(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, GetDeploymentLogsRequest>,
-) -> Result<AppResponse<GetDeploymentLogsResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, GetDeploymentLogsRequest>,
+) -> Result<AppResponse<GetDeploymentLogsRequest>, ErrorType> {
 	
 	info!("Starting: Get deployment logs");
 
@@ -285,7 +293,7 @@ async fn get_deployment_logs(
 }
 
 async fn delete_deployment(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -296,8 +304,9 @@ async fn delete_deployment(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, DeleteDeploymentRequest>,
-) -> Result<AppResponse<DeleteDeploymentResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, DeleteDeploymentRequest>,
+) -> Result<AppResponse<DeleteDeploymentRequest>, ErrorType> {
 	
 	info!("Starting: Delete deployment");
 
@@ -311,8 +320,8 @@ async fn delete_deployment(
         .into_result() 
 }
 
-async fn list_linked_urls(
-	AppRequest {
+async fn update_deployment(
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -323,8 +332,37 @@ async fn list_linked_urls(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, ListLinkedURLsRequest>,
-) -> Result<AppResponse<ListLinkedURLsResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, UpdateDeploymentRequest>,
+) -> Result<AppResponse<UpdateDeploymentRequest>, ErrorType> {
+	
+	info!("Starting: List linked URLs");
+
+	// LOGIC
+
+    AppResponse::builder()
+        .body(UpdateDeploymentResponse)
+        .headers(())
+        .status_code(StatusCode::OK)
+        .build()
+        .into_result() 
+}
+
+async fn list_linked_url(
+	AuthenticatedAppRequest {
+		request: ApiRequest {
+			path,
+			query: _,
+			headers,
+			body,
+		},
+		database,
+		redis: _,
+		client_ip: _,
+		config,
+    	user_data,
+	}: AuthenticatedAppRequest<'_, ListLinkedURLsRequest>,
+) -> Result<AppResponse<ListLinkedURLsRequest>, ErrorType> {
 	
 	info!("Starting: List linked URLs");
 
@@ -340,8 +378,8 @@ async fn list_linked_urls(
         .into_result() 
 }
 
-async fn get_deployment_metrics(
-	AppRequest {
+async fn get_deployment_metric(
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -352,8 +390,9 @@ async fn get_deployment_metrics(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, GetDeploymentMetricsRequest>,
-) -> Result<AppResponse<GetDeploymentMetricsResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, GetDeploymentMetricsRequest>,
+) -> Result<AppResponse<GetDeploymentMetricsRequest>, ErrorType> {
 	
 	info!("Starting: Get deployment metrics");
 
@@ -369,8 +408,8 @@ async fn get_deployment_metrics(
         .into_result() 
 }
 
-async fn get_build_logs(
-	AppRequest {
+async fn get_build_log(
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -381,8 +420,9 @@ async fn get_build_logs(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, GetDeploymentBuildLogsRequest>,
-) -> Result<AppResponse<GetDeploymentBuildLogsResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, GetDeploymentBuildLogsRequest>,
+) -> Result<AppResponse<GetDeploymentBuildLogsRequest>, ErrorType> {
 	
 	info!("Starting: Get deployment build logs");
 
@@ -398,8 +438,8 @@ async fn get_build_logs(
         .into_result() 
 }
 
-async fn get_build_events(
-	AppRequest {
+async fn get_build_event(
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -410,8 +450,9 @@ async fn get_build_events(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, GetDeploymentEventsRequest>,
-) -> Result<AppResponse<GetDeploymentEventsResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, GetDeploymentEventsRequest>,
+) -> Result<AppResponse<GetDeploymentEventsRequest>, ErrorType> {
 	
 	info!("Starting: Get deployment build events");
 

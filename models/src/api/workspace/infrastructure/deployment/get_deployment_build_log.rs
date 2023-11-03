@@ -6,7 +6,7 @@ use super::{BuildLog, Interval};
 
 macros::declare_api_endpoint!(
     /// Route to get build logs of a deployment
-	GetDeploymentBuildLogs,
+	GetDeploymentBuildLog,
 	GET "/workspace/:workspace_id/infrastructure/deployment/:deployment_id/build-logs" {
         /// The workspace ID of the user
         pub workspace_id: Uuid,

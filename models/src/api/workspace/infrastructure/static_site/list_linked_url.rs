@@ -5,7 +5,7 @@ use crate::{
 
 macros::declare_api_endpoint!(
     /// Route to get all the linked URLs with a static site
-    ListLinkedUrl,
+    ListLinkedURL,
     GET "/workspace/:workspace_id/infrastructure/static-site/:static_site_id/managed-urls" {
         /// The workspace ID of the user
         pub workspace_id: Uuid,

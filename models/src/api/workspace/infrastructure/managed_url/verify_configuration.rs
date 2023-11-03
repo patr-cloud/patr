@@ -5,7 +5,7 @@ use crate::{
 
 macros::declare_api_endpoint!(
     /// Route to verify a managed URL configuration
-    VerifyManagedUrlConfiguration,
+    VerifyManagedURLConfiguration,
     POST "/workspace/:workspace_id/infrastructure/managed-url/:managed_url_id/verify-configuration" {
         /// The workspace ID of the user
         pub workspace_id: Uuid,

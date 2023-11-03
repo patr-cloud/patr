@@ -5,14 +5,14 @@ use time::OffsetDateTime;
 
 mod create_deployment;
 mod delete_deployment;
-mod get_deployment_build_logs;
-mod get_deployment_events;
+mod get_deployment_build_log;
+mod get_deployment_event;
 mod get_deployment_info;
-mod get_deployment_logs;
-mod get_deployment_metrics;
+mod get_deployment_log;
+mod get_deployment_metric;
 mod list_deployment_history;
-mod list_deployments;
-mod list_linked_urls;
+mod list_deployment;
+mod list_linked_url;
 mod revert_deployment;
 mod start_deployment;
 mod stop_deployment;
@@ -22,14 +22,14 @@ mod list_all_deployment_machine_type;
 pub use self::{
 	create_deployment::*,
 	delete_deployment::*,
-	get_deployment_build_logs::*,
-	get_deployment_events::*,
+	get_deployment_build_log::*,
+	get_deployment_event::*,
 	get_deployment_info::*,
-	get_deployment_logs::*,
-	get_deployment_metrics::*,
+	get_deployment_log::*,
+	get_deployment_metric::*,
 	list_deployment_history::*,
-	list_deployments::*,
-	list_linked_urls::*,
+	list_deployment::*,
+	list_linked_url::*,
 	revert_deployment::*,
 	start_deployment::*,
 	stop_deployment::*,
