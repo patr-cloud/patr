@@ -85,18 +85,6 @@ pub async fn initialize_workspace_indexes(
 
 	query!(
 		r#"
-		CREATE INDEX
-			workspace_idx_active
-		ON
-			workspace
-		(active);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
 		CREATE UNIQUE INDEX
 			workspace_uq_name
 		ON
@@ -130,43 +118,6 @@ pub async fn initialize_workspace_constraints(
 				DEFERRABLE INITIALLY IMMEDIATE,
 			ADD CONSTRAINT workspace_fk_super_admin_id
 				FOREIGN KEY(super_admin_id) REFERENCES "user"(id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE INDEX
-			workspace_idx_super_admin_id
-		ON
-			workspace
-		(super_admin_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE INDEX
-			workspace_idx_active
-		ON
-			workspace
-		(active);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE UNIQUE INDEX
-			workspace_uq_name
-		ON
-			workspace(name)
-		WHERE
-			deleted IS NULL;
 		"#
 	)
 	.execute(&mut *connection)
