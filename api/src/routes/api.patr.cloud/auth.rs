@@ -28,7 +28,7 @@ async fn login(
 		client_ip: _,
 		config,
 	}: AppRequest<'_, LoginRequest>,
-) -> Result<AppResponse<LoginResponse>, ErrorType> {
+) -> Result<AppResponse<LoginRequest>, ErrorType> {
 	let user_data = query!(
 		r#"
 		SELECT

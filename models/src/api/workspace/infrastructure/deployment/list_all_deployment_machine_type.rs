@@ -13,7 +13,7 @@ pub struct DeploymentMachineType {
 
 macros::declare_api_endpoint!(
     /// Route to list all machine types for deployment
-    ListAllDeploymentMachineTypes,
+    ListAllDeploymentMachineType,
     GET "/workspace/infrastructure/machine-type",
     response = {
         /// The list of machine types available for deployment containing:

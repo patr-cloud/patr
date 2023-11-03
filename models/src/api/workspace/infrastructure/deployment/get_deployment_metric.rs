@@ -7,7 +7,7 @@ use super::{DeploymentMetrics, Interval, Step};
 macros::declare_api_endpoint!(
     /// Route to get monitoring metrics like CPU, RAM and Disk usage 
     /// for a deployment
-	GetDeploymentMetrics,
+	GetDeploymentMetric,
 	GET "/workspace/:workspace_id/infrastructure/deployment/:deployment_id/metrics" {
         /// The workspace ID of the user
         pub workspace_id: Uuid,

@@ -5,7 +5,7 @@ use crate::{
 
 macros::declare_api_endpoint!(
     /// Route to get all linked URLs for a deployment
-    ListLinkedURLs,
+    ListLinkedURL,
 	GET "/workspace/:workspace_id/infrastructure/deployment/:deployment_id/managed-urls" {
         /// The workspace ID of the user
         pub workspace_id: Uuid,
