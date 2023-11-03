@@ -1,31 +1,31 @@
-use crate::{prelude::*, service};
+use crate::prelude::*;
 use axum::{http::StatusCode, Router};
 
 use models::{
 	api::workspace::infrastructure::static_site::*,
 	ApiRequest,
-	ErrorType, prelude::WithId,
+	ErrorType,
 };
 
 #[instrument(skip(state))]
 pub fn setup_routes(state: &AppState) -> Router {
 	Router::new()
-		.mount_endpoint(create_static_site, state)
-		.mount_endpoint(delete_static_site, state)
-		.mount_endpoint(get_static_site_info, state)
-		.mount_endpoint(list_static_site, state)
-		.mount_endpoint(list_upload_history, state)
-		.mount_endpoint(revert_static_site, state)
-		.mount_endpoint(start_static_site, state)
-		.mount_endpoint(stop_static_site, state)
-		.mount_endpoint(update_static_site, state)
-		.mount_endpoint(upload_static_site, state)
-		.mount_endpoint(list_linked_url, state)
+		.mount_auth_endpoint(create_static_site, state)
+		.mount_auth_endpoint(delete_static_site, state)
+		.mount_auth_endpoint(get_static_site_info, state)
+		.mount_auth_endpoint(list_static_site, state)
+		.mount_auth_endpoint(list_upload_history, state)
+		.mount_auth_endpoint(revert_static_site, state)
+		.mount_auth_endpoint(start_static_site, state)
+		.mount_auth_endpoint(stop_static_site, state)
+		.mount_auth_endpoint(update_static_site, state)
+		.mount_auth_endpoint(upload_static_site, state)
+		.mount_auth_endpoint(list_linked_url, state)
 		.with_state(state.clone())
 }
 
 async fn create_static_site(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -36,8 +36,9 @@ async fn create_static_site(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, CreateStaticSiteRequest>,
-) -> Result<AppResponse<CreateStaticSiteResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, CreateStaticSiteRequest>,
+) -> Result<AppResponse<CreateStaticSiteRequest>, ErrorType> {
 	
 	info!("Starting: Create static site");
 
@@ -54,7 +55,7 @@ async fn create_static_site(
 }
 
 async fn delete_static_site(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -65,8 +66,9 @@ async fn delete_static_site(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, DeleteStaticSiteRequest>,
-) -> Result<AppResponse<DeleteStaticSiteResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, DeleteStaticSiteRequest>,
+) -> Result<AppResponse<DeleteStaticSiteRequest>, ErrorType> {
 	
 	info!("Starting: Delete static site");
 
@@ -81,7 +83,7 @@ async fn delete_static_site(
 }
 
 async fn get_static_site_info(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -92,8 +94,9 @@ async fn get_static_site_info(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, GetStaticSiteInfoRequest>,
-) -> Result<AppResponse<GetStaticSiteInfoResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, GetStaticSiteInfoRequest>,
+) -> Result<AppResponse<GetStaticSiteInfoRequest>, ErrorType> {
 	
 	info!("Starting: Get static site info");
 
@@ -111,7 +114,7 @@ async fn get_static_site_info(
 }
 
 async fn list_static_site(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -122,8 +125,9 @@ async fn list_static_site(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, ListStaticSiteRequest>,
-) -> Result<AppResponse<ListStaticSiteResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, ListStaticSiteRequest>,
+) -> Result<AppResponse<ListStaticSiteRequest>, ErrorType> {
 	
 	info!("Starting: List static site");
 
@@ -140,7 +144,7 @@ async fn list_static_site(
 }
 
 async fn list_upload_history(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -151,8 +155,9 @@ async fn list_upload_history(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, ListStaticSiteUploadHistoryRequest>,
-) -> Result<AppResponse<ListStaticSiteUploadHistoryResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, ListStaticSiteUploadHistoryRequest>,
+) -> Result<AppResponse<ListStaticSiteUploadHistoryRequest>, ErrorType> {
 	
 	info!("Starting: List static site upload history");
 
@@ -169,7 +174,7 @@ async fn list_upload_history(
 }
 
 async fn revert_static_site(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -180,8 +185,9 @@ async fn revert_static_site(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, RevertStaticSiteRequest>,
-) -> Result<AppResponse<RevertStaticSiteResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, RevertStaticSiteRequest>,
+) -> Result<AppResponse<RevertStaticSiteRequest>, ErrorType> {
 	
 	info!("Starting: Revert static site");
 
@@ -196,7 +202,7 @@ async fn revert_static_site(
 }
 
 async fn start_static_site(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -207,8 +213,9 @@ async fn start_static_site(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, StartStaticSiteRequest>,
-) -> Result<AppResponse<StartStaticSiteResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, StartStaticSiteRequest>,
+) -> Result<AppResponse<StartStaticSiteRequest>, ErrorType> {
 	
 	info!("Starting: Start static site");
 
@@ -223,7 +230,7 @@ async fn start_static_site(
 }
 
 async fn stop_static_site(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -234,8 +241,9 @@ async fn stop_static_site(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, StopStaticSiteRequest>,
-) -> Result<AppResponse<StopStaticSiteResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, StopStaticSiteRequest>,
+) -> Result<AppResponse<StopStaticSiteRequest>, ErrorType> {
 	
 	info!("Starting: Stop static site");
 
@@ -250,7 +258,7 @@ async fn stop_static_site(
 }
 
 async fn update_static_site(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -261,8 +269,9 @@ async fn update_static_site(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, UpdateStaticSiteRequest>,
-) -> Result<AppResponse<UpdateStaticSiteResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, UpdateStaticSiteRequest>,
+) -> Result<AppResponse<UpdateStaticSiteRequest>, ErrorType> {
 	
 	info!("Starting: Update static site");
 
@@ -277,7 +286,7 @@ async fn update_static_site(
 }
 
 async fn upload_static_site(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -288,8 +297,9 @@ async fn upload_static_site(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, UploadStaticSiteRequest>,
-) -> Result<AppResponse<UploadStaticSiteResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, UploadStaticSiteRequest>,
+) -> Result<AppResponse<UploadStaticSiteRequest>, ErrorType> {
 	
 	info!("Starting: Upload static site");
 
@@ -306,7 +316,7 @@ async fn upload_static_site(
 }
 
 async fn list_linked_url(
-	AppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -317,8 +327,9 @@ async fn list_linked_url(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, ListLinkedUrlRequest>,
-) -> Result<AppResponse<ListLinkedUrlResponse>, ErrorType> {
+    	user_data,
+	}: AuthenticatedAppRequest<'_, ListLinkedUrlRequest>,
+) -> Result<AppResponse<ListLinkedUrlRequest>, ErrorType> {
 	
 	info!("Starting: List linked URL");
 

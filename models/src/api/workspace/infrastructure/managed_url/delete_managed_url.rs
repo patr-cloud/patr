@@ -5,7 +5,7 @@ use crate::{
 
 macros::declare_api_endpoint!(
     /// Route to delete a managed URL
-    DeleteManagedUrl,
+    DeleteManagedURL,
     DELETE "/workspace/:workspace_id/infrastructure/managed-url/:managed_url_id" {
         /// The workspace ID of the user
         pub workspace_id: Uuid,

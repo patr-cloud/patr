@@ -5,7 +5,7 @@ use crate::{
 
 macros::declare_api_endpoint!(
     /// Route to get events of a deployments like pod messages, activities, etc
-	GetDeploymentEvents,
+	GetDeploymentEvent,
 	GET "/workspace/:workspace_id/infrastructure/deployment/:deployment_id/events" {
         /// The workspace ID of the user
         pub workspace_id: Uuid,

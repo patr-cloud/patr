@@ -8,7 +8,7 @@ use super::DeploymentLogs;
 
 macros::declare_api_endpoint!(
     /// Route to get the running logs of a deployment
-	GetDeploymentLogs,
+	GetDeploymentLog,
 	GET "/workspace/:workspace_id/infrastructure/deployment/:deployment_id/logs" {
         /// The workspace ID of the user
         pub workspace_id: Uuid,
