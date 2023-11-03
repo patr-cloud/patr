@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE deployment_machine_type ADD CONSTRAINT deployment_machine_type_pk PRIMARY KEY(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "e4a0ccea2878b9c0946859938ce48264f83ad7c8e01b1e5876445222779f45de"
+}

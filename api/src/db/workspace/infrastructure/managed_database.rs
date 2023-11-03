@@ -42,7 +42,7 @@ pub async fn initialize_managed_database_tables(
 			id 		UUID NOT NULL,
 			cpu 	INTEGER NOT NULL, /* Multiples of 1 vCPU */
 			ram 	INTEGER NOT NULL, /* Multiples of 1 GB RAM */
-			volume 	INTEGER NOT NULL, /* Multiples of 1 GB storage space */
+			volume 	INTEGER NOT NULL /* Multiples of 1 GB storage space */
 		);
 		"#
 	)
@@ -93,7 +93,7 @@ pub async fn initialize_managed_database_constraints(
 		r#"
 		ALTER TABLE managed_database_plan
 			ADD CONSTRAINT managed_database_plan_pk PRIMARY KEY(id),
-			ADD managed_database_plan_chk_cpu_positive CHECK(cpu > 0),
+			ADD CONSTRAINT managed_database_plan_chk_cpu_positive CHECK(cpu > 0),
 			ADD CONSTRAINT managed_database_plan_chk_ram_positive CHECK(ram > 0),
 			ADD CONSTRAINT managed_database_plan_chk_volume_positive
 				CHECK(volume > 0);

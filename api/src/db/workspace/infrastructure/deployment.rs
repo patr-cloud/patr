@@ -247,11 +247,10 @@ pub async fn initialize_deployment_constraints(
 	query!(
 		r#"
 		ALTER TABLE deployment_environment_variable
-			ADD CONSTRAINT CONSTRAINT deployment_environment_variable_fk_deployment_id
-				FOREIGN KEY(deployment_id)
-					REFERENCES deployment(id),
 			ADD CONSTRAINT deployment_environment_variable_pk
 				PRIMARY KEY(deployment_id, name),
+			ADD CONSTRAINT deployment_environment_variable_fk_deployment_id
+				FOREIGN KEY(deployment_id) REFERENCES deployment(id),
 			ADD CONSTRAINT deployment_environment_variable_fk_secret_id
 				FOREIGN KEY(secret_id) REFERENCES secret(id),
 			ADD CONSTRAINT deployment_env_var_chk_value_secret_id_either_not_null

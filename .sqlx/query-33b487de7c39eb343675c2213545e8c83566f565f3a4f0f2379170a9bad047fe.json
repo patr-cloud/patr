@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE EXPOSED_PORT_TYPE AS ENUM( 'http' );",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "33b487de7c39eb343675c2213545e8c83566f565f3a4f0f2379170a9bad047fe"
+}

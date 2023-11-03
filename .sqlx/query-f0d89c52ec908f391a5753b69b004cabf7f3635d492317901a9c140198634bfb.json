@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE UNIQUE INDEX deployment_uq_workspace_id_name ON deployment(workspace_id, name) WHERE deleted IS NULL;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "f0d89c52ec908f391a5753b69b004cabf7f3635d492317901a9c140198634bfb"
+}
