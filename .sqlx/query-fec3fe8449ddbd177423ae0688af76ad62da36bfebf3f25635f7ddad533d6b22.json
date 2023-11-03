@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE UNIQUE INDEX managed_url_uq_sub_domain_domain_id_path ON managed_url(sub_domain, domain_id, path) WHERE deleted IS NULL;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "fec3fe8449ddbd177423ae0688af76ad62da36bfebf3f25635f7ddad533d6b22"
+}

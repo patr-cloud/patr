@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX deployment_idx_name ON deployment (name);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "b9d97701e22c7948c38793c3124de8a5e0224d85d918ea202ecc90bb1236a829"
+}

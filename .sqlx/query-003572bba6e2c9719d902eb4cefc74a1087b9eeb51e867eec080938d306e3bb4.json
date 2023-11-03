@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX deployment_idx_registry_image_name_image_tag ON deployment (registry, image_name, image_tag);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "003572bba6e2c9719d902eb4cefc74a1087b9eeb51e867eec080938d306e3bb4"
+}

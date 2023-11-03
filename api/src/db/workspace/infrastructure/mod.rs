@@ -17,7 +17,7 @@ pub async fn initialize_infrastructure_tables(
 ) -> Result<(), sqlx::Error> {
 	info!("Initializing deployment tables");
 	deployment::initialize_deployment_tables(connection).await?;
-	managed_database::initialize_database_tables(connection).await?;
+	managed_database::initialize_managed_database_tables(connection).await?;
 	managed_url::initialize_managed_url_tables(connection).await?;
 	static_site::initialize_static_site_tables(connection).await?;
 
@@ -29,7 +29,7 @@ pub async fn initialize_infrastructure_constraints(
 ) -> Result<(), sqlx::Error> {
 	info!("Finishing up deployment tables initialization");
 	deployment::initialize_deployment_constraints(connection).await?;
-	managed_database::initialize_database_constraints(connection).await?;
+	managed_database::initialize_managed_database_constraints(connection).await?;
 	managed_url::initialize_managed_url_constraints(connection).await?;
 	static_site::initialize_static_site_constraints(connection).await?;
 
