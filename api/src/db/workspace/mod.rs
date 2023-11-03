@@ -54,12 +54,12 @@ pub async fn initialize_workspace_tables(
 	Ok(())
 }
 
-/// Initializes all workspace-related indexes
+/// Initializes all workspace-related indices
 #[instrument(skip(connection))]
-pub async fn initialize_workspace_indexes(
+pub async fn initialize_workspace_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up workspace indexes");
+	info!("Setting up workspace indices");
 	query!(
 		r#"
 		ALTER TABLE workspace
@@ -96,11 +96,11 @@ pub async fn initialize_workspace_indexes(
 	.execute(&mut *connection)
 	.await?;
 
-	domain::initialize_domain_indexes(connection).await?;
-	container_registry::initialize_container_registry_indexes(connection).await?;
-	secret::initialize_secret_indexes(connection).await?;
-	region::initialize_region_indexes(connection).await?;
-	infrastructure::initialize_infrastructure_indexes(connection).await?;
+	domain::initialize_domain_indices(connection).await?;
+	container_registry::initialize_container_registry_indices(connection).await?;
+	secret::initialize_secret_indices(connection).await?;
+	region::initialize_region_indices(connection).await?;
+	infrastructure::initialize_infrastructure_indices(connection).await?;
 
 	Ok(())
 }

@@ -142,12 +142,12 @@ pub async fn initialize_deployment_tables(
 	Ok(())
 }
 
-/// Initializes the deployment indexes
+/// Initializes the deployment indices
 #[instrument(skip(connection))]
-pub async fn initialize_deployment_indexes(
+pub async fn initialize_deployment_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up deployment indexes");
+	info!("Setting up deployment indices");
 	query!(
 		r#"
 		ALTER TABLE deployment_machine_type

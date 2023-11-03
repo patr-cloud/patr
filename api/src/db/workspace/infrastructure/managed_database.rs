@@ -83,12 +83,12 @@ pub async fn initialize_managed_database_tables(
 	Ok(())
 }
 
-/// Initializes the managed database indexes
+/// Initializes the managed database indices
 #[instrument(skip(connection))]
-pub async fn initialize_managed_database_indexes(
+pub async fn initialize_managed_database_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up managed database indexes");
+	info!("Setting up managed database indices");
 	query!(
 		r#"
 		ALTER TABLE managed_database_plan

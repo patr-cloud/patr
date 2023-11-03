@@ -55,12 +55,12 @@ pub async fn initialize_region_tables(
 	Ok(())
 }
 
-/// Initializes the region indexes
+/// Initializes the region indices
 #[instrument(skip(connection))]
-pub async fn initialize_region_indexes(
+pub async fn initialize_region_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up region indexes");
+	info!("Setting up region indices");
 	query!(
 		r#"
 		ALTER TABLE region

@@ -19,12 +19,12 @@ pub async fn initialize_meta_tables(
 	Ok(())
 }
 
-/// Initializes the meta table indexes
+/// Initializes the meta table indices
 #[instrument(skip(_connection))]
-pub async fn initialize_meta_indexes(
+pub async fn initialize_meta_indices(
 	_connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up meta tables indexes");
+	info!("Setting up meta tables indices");
 	Ok(())
 }
 

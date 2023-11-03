@@ -35,12 +35,12 @@ pub async fn initialize_web_login_tables(
 	Ok(())
 }
 
-/// Initializes the web login indexes
+/// Initializes the web login indices
 #[instrument(skip(connection))]
-pub async fn initialize_web_login_indexes(
+pub async fn initialize_web_login_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up web login indexes");
+	info!("Setting up web login indices");
 	query!(
 		r#"
 		ALTER TABLE web_login

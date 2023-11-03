@@ -31,12 +31,12 @@ pub async fn initialize_user_sign_up_tables(
 	Ok(())
 }
 
-/// Initializes the user sign up indexes
+/// Initializes the user sign up indices
 #[instrument(skip(connection))]
-pub async fn initialize_user_sign_up_indexes(
+pub async fn initialize_user_sign_up_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up user sign up indexes");
+	info!("Setting up user sign up indices");
 	query!(
 		r#"
 		ALTER TABLE user_to_sign_up

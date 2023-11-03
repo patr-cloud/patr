@@ -119,12 +119,12 @@ pub async fn initialize_api_token_tables(
 	Ok(())
 }
 
-/// Initializes the API token indexes
+/// Initializes the API token indices
 #[instrument(skip(connection))]
-pub async fn initialize_api_token_indexes(
+pub async fn initialize_api_token_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up API token indexes");
+	info!("Setting up API token indices");
 	query!(
 		r#"
 		ALTER TABLE user_api_token

@@ -23,17 +23,17 @@ pub async fn initialize_user_tables(
 	Ok(())
 }
 
-/// Initializes all user indexes
+/// Initializes all user indices
 #[instrument(skip(connection))]
-pub async fn initialize_user_indexes(
+pub async fn initialize_user_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up user indexes");
-	user_data::initialize_user_data_indexes(&mut *connection).await?;
-	user_email::initialize_user_email_indexes(&mut *connection).await?;
-	user_phone::initialize_user_phone_indexes(&mut *connection).await?;
-	user_login::initialize_user_login_indexes(&mut *connection).await?;
-	sign_up::initialize_user_sign_up_indexes(&mut *connection).await?;
+	info!("Setting up user indices");
+	user_data::initialize_user_data_indices(&mut *connection).await?;
+	user_email::initialize_user_email_indices(&mut *connection).await?;
+	user_phone::initialize_user_phone_indices(&mut *connection).await?;
+	user_login::initialize_user_login_indices(&mut *connection).await?;
+	sign_up::initialize_user_sign_up_indices(&mut *connection).await?;
 
 	Ok(())
 }

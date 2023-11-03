@@ -46,12 +46,12 @@ pub async fn initialize_managed_url_tables(
 	Ok(())
 }
 
-/// Initializes the managed URL indexes
+/// Initializes the managed URL indices
 #[instrument(skip(connection))]
-pub async fn initialize_managed_url_indexes(
+pub async fn initialize_managed_url_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up managed_url tables indexes");
+	info!("Setting up managed_url tables indices");
 	query!(
 		r#"
 		ALTER TABLE managed_url

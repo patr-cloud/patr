@@ -81,12 +81,12 @@ pub async fn initialize_container_registry_tables(
 	Ok(())
 }
 
-/// Initializes all container registry related indexes
+/// Initializes all container registry related indices
 #[instrument(skip(connection))]
-pub async fn initialize_container_registry_indexes(
+pub async fn initialize_container_registry_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up container registry indexes");
+	info!("Setting up container registry indices");
 	query!(
 		r#"
 		ALTER TABLE container_registry_repository_blob
