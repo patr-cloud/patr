@@ -11,6 +11,7 @@ pub async fn initialize_web_login_tables(
 		CREATE TABLE web_login(
 			login_id UUID NOT NULL,
 			original_login_id UUID, /* In case this login was magically swapped, what's the original one */
+			user_id UUID NOT NULL,
 
 			refresh_token TEXT NOT NULL,
 			token_expiry TIMESTAMPTZ NOT NULL,
@@ -45,17 +46,6 @@ pub async fn initialize_web_login_indexes(
 		ALTER TABLE web_login
 		ADD CONSTRAINT web_login_pk
 		PRIMARY KEY(login_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE INDEX
-			web_login_idx_user_id
-		ON
-			web_login(user_id);
 		"#
 	)
 	.execute(&mut *connection)

@@ -213,17 +213,6 @@ pub async fn initialize_rbac_indexes(
 
 	query!(
 		r#"
-		CREATE TYPE PERMISSION_TYPE AS ENUM(
-			'include',
-			'exclude'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
 		ALTER TABLE role_resource_permissions_type
 			ADD CONSTRAINT role_resource_permissions_type_pk PRIMARY KEY(
 				role_id,
@@ -277,18 +266,6 @@ pub async fn initialize_rbac_constraints(
 			ADD CONSTRAINT resource_fk_owner_id
 				FOREIGN KEY(owner_id) REFERENCES workspace(id)
 					DEFERRABLE INITIALLY IMMEDIATE;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE INDEX
-			resource_idx_owner_id
-		ON
-			resource
-		(owner_id);
 		"#
 	)
 	.execute(&mut *connection)

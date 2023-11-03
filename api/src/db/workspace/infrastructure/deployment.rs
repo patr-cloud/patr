@@ -303,7 +303,7 @@ pub async fn initialize_deployment_constraints(
 				FOREIGN KEY(machine_type) REFERENCES deployment_machine_type(id),
 			ADD CONSTRAINT deployment_fk_repository_id_workspace_id
 				FOREIGN KEY(repository_id, workspace_id)
-					REFERENCES docker_registry_repository(id, workspace_id),
+					REFERENCES container_registry_repository(id, workspace_id),
 			ADD CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
 					registry = 'registry.patr.cloud' AND
@@ -416,7 +416,7 @@ pub async fn initialize_deployment_constraints(
 			ADD CONSTRAINT deployment_image_digest_fk_deployment_id
 				FOREIGN KEY(deployment_id) REFERENCES deployment(id),
 			ADD CONSTRAINT deployment_image_digest_fk_repository_id
-				FOREIGN KEY(repository_id) REFERENCES docker_registry_repository(id);
+				FOREIGN KEY(repository_id) REFERENCES container_registry_repository(id);
 		"#
 	)
 	.execute(&mut *connection)
