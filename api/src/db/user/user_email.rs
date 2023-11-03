@@ -47,12 +47,12 @@ pub async fn initialize_user_email_tables(
 	Ok(())
 }
 
-/// Initializes the user email indexes
+/// Initializes the user email indices
 #[instrument(skip(connection))]
-pub async fn initialize_user_email_indexes(
+pub async fn initialize_user_email_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up user email indexes");
+	info!("Setting up user email indices");
 	query!(
 		r#"
 		ALTER TABLE personal_email

@@ -26,16 +26,16 @@ pub async fn initialize_infrastructure_tables(
 	Ok(())
 }
 
-/// Initialize all infrastructure-related indexes
+/// Initialize all infrastructure-related indices
 #[instrument(skip(connection))]
-pub async fn initialize_infrastructure_indexes(
+pub async fn initialize_infrastructure_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up deployment indexes");
-	deployment::initialize_deployment_indexes(connection).await?;
-	managed_database::initialize_managed_database_indexes(connection).await?;
-	managed_url::initialize_managed_url_indexes(connection).await?;
-	static_site::initialize_static_site_indexes(connection).await?;
+	info!("Setting up deployment indices");
+	deployment::initialize_deployment_indices(connection).await?;
+	managed_database::initialize_managed_database_indices(connection).await?;
+	managed_url::initialize_managed_url_indices(connection).await?;
+	static_site::initialize_static_site_indices(connection).await?;
 
 	Ok(())
 }

@@ -126,12 +126,12 @@ pub async fn initialize_domain_tables(
 	Ok(())
 }
 
-/// Initializes the domain indexes
+/// Initializes the domain indices
 #[instrument(skip(connection))]
-pub async fn initialize_domain_indexes(
+pub async fn initialize_domain_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up domain tables indexes");
+	info!("Setting up domain tables indices");
 	query!(
 		r#"
 		ALTER TABLE domain_tld

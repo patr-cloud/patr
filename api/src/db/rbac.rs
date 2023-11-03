@@ -115,12 +115,12 @@ pub async fn initialize_rbac_tables(
 	Ok(())
 }
 
-/// Initializes the rbac indexes
+/// Initializes the rbac indices
 #[instrument(skip(connection))]
-pub async fn initialize_rbac_indexes(
+pub async fn initialize_rbac_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up rbac table indexes");
+	info!("Setting up rbac table indices");
 
 	// Resource types, like application, deployment, VM, etc
 	query!(

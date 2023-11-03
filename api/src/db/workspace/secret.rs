@@ -22,12 +22,12 @@ pub async fn initialize_secret_tables(
 	Ok(())
 }
 
-/// Initializes the secret indexes
+/// Initializes the secret indices
 #[instrument(skip(connection))]
-pub async fn initialize_secret_indexes(
+pub async fn initialize_secret_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up secret indexes");
+	info!("Setting up secret indices");
 	query!(
 		r#"
 		ALTER TABLE secret

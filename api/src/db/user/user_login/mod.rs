@@ -40,12 +40,12 @@ pub async fn initialize_user_login_tables(
 	Ok(())
 }
 
-/// Initializes the user login indexes
+/// Initializes the user login indices
 #[instrument(skip(connection))]
-pub async fn initialize_user_login_indexes(
+pub async fn initialize_user_login_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up user login indexes");
+	info!("Setting up user login indices");
 	query!(
 		r#"
 		ALTER TABLE user_login
@@ -59,8 +59,8 @@ pub async fn initialize_user_login_indexes(
 	.execute(&mut *connection)
 	.await?;
 
-	web_login::initialize_web_login_indexes(&mut *connection).await?;
-	api_token::initialize_api_token_indexes(&mut *connection).await?;
+	web_login::initialize_web_login_indices(&mut *connection).await?;
+	api_token::initialize_api_token_indices(&mut *connection).await?;
 
 	Ok(())
 }

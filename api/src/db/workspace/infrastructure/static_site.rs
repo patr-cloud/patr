@@ -39,12 +39,12 @@ pub async fn initialize_static_site_tables(
 	Ok(())
 }
 
-/// Initializes the static site indexes
+/// Initializes the static site indices
 #[instrument(skip(connection))]
-pub async fn initialize_static_site_indexes(
+pub async fn initialize_static_site_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up static site indexes");
+	info!("Setting up static site indices");
 	query!(
 		r#"
 		ALTER TABLE static_site

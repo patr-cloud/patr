@@ -34,12 +34,12 @@ pub async fn initialize_user_data_tables(
 	Ok(())
 }
 
-/// Initializes the user data indexes
+/// Initializes the user data indices
 #[instrument(skip(connection))]
-pub async fn initialize_user_data_indexes(
+pub async fn initialize_user_data_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up user data indexes");
+	info!("Setting up user data indices");
 	query!(
 		r#"
 		ALTER TABLE "user"

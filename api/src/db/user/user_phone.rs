@@ -47,12 +47,12 @@ pub async fn initialize_user_phone_tables(
 	Ok(())
 }
 
-/// Initializes the user phone indexes
+/// Initializes the user phone indices
 #[instrument(skip(connection))]
-pub async fn initialize_user_phone_indexes(
+pub async fn initialize_user_phone_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up user phone indexes");
+	info!("Setting up user phone indices");
 	query!(
 		r#"
 		ALTER TABLE phone_number_country_code
