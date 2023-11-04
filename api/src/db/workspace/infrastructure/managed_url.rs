@@ -78,7 +78,6 @@ pub async fn initialize_managed_url_indices(
 	Ok(())
 }
 
-
 /// Initializes the managed URL constraints
 #[instrument(skip(connection))]
 pub async fn initialize_managed_url_constraints(
@@ -151,4 +150,3 @@ pub async fn initialize_managed_url_constraints(
 
 	Ok(())
 }
-

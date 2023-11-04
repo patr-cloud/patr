@@ -1,5 +1,5 @@
-use crate::prelude::*;
 use super::UserWebLogin;
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// List all web logins for the current user.

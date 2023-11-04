@@ -35,7 +35,10 @@ impl FromRequestParts<()> for ClientIP {
 					.next()
 					.and_then(|ip| IpAddr::from_str(ip.trim()).ok())
 			});
-		let ip = ConnectInfo::<SocketAddr>::from_request_parts(parts, &()).await.unwrap().ip();
+		let ip = ConnectInfo::<SocketAddr>::from_request_parts(parts, &())
+			.await
+			.unwrap()
+			.ip();
 
 		Ok(Self(cf_connecting_ip.or(x_forwarded_for).unwrap_or(ip)))
 	}

@@ -6,13 +6,7 @@ mod infrastructure;
 mod region;
 mod secret;
 
-pub use self::{
-	container_registry::*,
-	domain::*,
-	infrastructure::*,
-	region::*,
-	secret::*,
-};
+pub use self::{container_registry::*, domain::*, infrastructure::*, region::*, secret::*};
 
 /// Initializes all workspace-related tables
 #[instrument(skip(connection))]

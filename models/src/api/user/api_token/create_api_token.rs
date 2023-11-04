@@ -1,6 +1,5 @@
-use crate::prelude::*;
-
 use super::UserApiToken;
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Create a new API token for the user with the given permissions.
