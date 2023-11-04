@@ -26,6 +26,9 @@ pub enum ErrorType {
 	WrongParameters,
 	/// The API token provided is invalid
 	MalformedApiToken,
+	/// The API token provided is not allowed to access the API from the IP
+	/// address it is being accessed from
+	DisallowedIpAddressForApiToken,
 	/// The access token (JWT) provided is malformed
 	MalformedAccessToken,
 	/// The authentication token provided is not authorized to perform the
@@ -52,6 +55,7 @@ impl ErrorType {
 			Self::MfaRequired => StatusCode::UNAUTHORIZED,
 			Self::WrongParameters => StatusCode::BAD_REQUEST,
 			Self::MalformedApiToken => StatusCode::BAD_REQUEST,
+			Self::DisallowedIpAddressForApiToken => StatusCode::UNAUTHORIZED,
 			Self::MalformedAccessToken => StatusCode::BAD_REQUEST,
 			Self::Unauthorized => StatusCode::UNAUTHORIZED,
 			Self::AuthorizationTokenInvalid => StatusCode::UNAUTHORIZED,
@@ -70,6 +74,9 @@ impl ErrorType {
 			Self::MfaOtpInvalid => "Invalid two factor authentication code",
 			Self::WrongParameters => "The parameters sent with that request is invalid",
 			Self::MalformedApiToken => "The API token provided is not a valid token",
+			Self::DisallowedIpAddressForApiToken => {
+				"The API token provided is not allowed from this IP address"
+			}
 			Self::MalformedAccessToken => "Your access token is invalid. Please login in again",
 			Self::Unauthorized => "You are not authorized to perform that action",
 			Self::AuthorizationTokenInvalid => "Your access token has expired. Please login again",
@@ -113,6 +120,7 @@ impl Clone for ErrorType {
 			Self::MfaOtpInvalid => Self::MfaOtpInvalid,
 			Self::WrongParameters => Self::WrongParameters,
 			Self::MalformedApiToken => Self::MalformedApiToken,
+			Self::DisallowedIpAddressForApiToken => Self::DisallowedIpAddressForApiToken,
 			Self::MalformedAccessToken => Self::MalformedAccessToken,
 			Self::Unauthorized => Self::Unauthorized,
 			Self::AuthorizationTokenInvalid => Self::AuthorizationTokenInvalid,

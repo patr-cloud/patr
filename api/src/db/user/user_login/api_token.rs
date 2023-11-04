@@ -219,7 +219,6 @@ pub async fn initialize_api_token_indices(
 	Ok(())
 }
 
-
 /// Initializes the API token constraints
 #[instrument(skip(connection))]
 pub async fn initialize_api_token_constraints(

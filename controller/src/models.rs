@@ -11,4 +11,5 @@ use serde::{Deserialize, Serialize};
 	version = "v1alpha1",
 	namespaced
 )]
-pub struct PatrDeploymentSpec {}
+pub struct PatrDeploymentSpec {
+}

@@ -74,7 +74,6 @@ pub async fn initialize_user_sign_up_indices(
 	Ok(())
 }
 
-
 /// Initializes the user sign up constraints
 #[instrument(skip(connection))]
 pub async fn initialize_user_sign_up_constraints(

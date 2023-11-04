@@ -1,4 +1,4 @@
-use crate::{prelude::*, api::user::UserPhoneNumber};
+use crate::{api::user::UserPhoneNumber, prelude::*};
 
 macros::declare_api_endpoint!(
 	/// Verify the recovery phone number for the currently authenticated user. This endpoint is

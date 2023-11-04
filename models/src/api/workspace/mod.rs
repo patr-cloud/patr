@@ -5,7 +5,7 @@ use crate::prelude::*;
 /// All the routes that corresponds to Patr's in-build container registry
 pub mod container_registry;
 // pub mod domain;
-// pub mod infrastructure;
+pub mod infrastructure;
 // pub mod rbac;
 // pub mod region;
 // pub mod secret;

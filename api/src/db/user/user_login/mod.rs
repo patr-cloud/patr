@@ -1,7 +1,6 @@
 mod api_token;
 mod web_login;
 
-pub use self::{api_token::*, web_login::*};
 use crate::prelude::*;
 
 /// Initializes the user login tables

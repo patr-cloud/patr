@@ -32,7 +32,7 @@ use kube::{
 };
 use models::{
 	api::{
-		workspace::infrastructure::deployment::{Deployment, ExposedPortType},
+		workspace::infrastructure::deployment::{Deployment, ExposedPortType, DeploymentRunningDetails},
 		WithId,
 	},
 	utils::Uuid,
@@ -103,9 +103,10 @@ async fn reconcile(
 	let deployment: WithId<Deployment> = {
 		WithId {
 			id: Uuid::nil(),
-			data: Deployment::default(),
+			data: todo!(),
 		}
 	};
+	let running_details: DeploymentRunningDetails = todo!();
 
 	let namespace = deployment_object
 		.metadata
@@ -123,12 +124,12 @@ async fn reconcile(
 	trace!("Computing hash of config map data");
 
 	let mut hasher = Sha512::default();
-	if let Some(configs) = &kubernetes_config_map.binary_data {
-		configs.iter().for_each(|(key, value)| {
-			hasher.update(key.as_bytes());
-			hasher.update(&value.0);
-		});
-	}
+	// if let Some(configs) = &kubernetes_config_map.binary_data {
+	// 	configs.iter().for_each(|(key, value)| {
+	// 		hasher.update(key.as_bytes());
+	// 		hasher.update(&value.0);
+	// 	});
+	// }
 
 	let config_map_hash = hex::encode(hasher.finalize());
 	trace!(
@@ -147,8 +148,7 @@ async fn reconcile(
 					..ObjectMeta::default()
 				},
 				binary_data: Some(
-					deployment
-						.running_details
+					running_details
 						.config_mounts
 						.iter()
 						.map(|(path, data)| (path.to_string(), ByteString(data.clone().into())))
@@ -342,7 +342,7 @@ async fn reconcile(
 							})
 							.collect::<Vec<_>>(),
 					),
-					selector: Some(labels.clone()),
+					selector: Some(todo!()),
 					cluster_ip: if running_details.volumes.is_empty() {
 						None
 					} else {
@@ -714,63 +714,63 @@ async fn reconcile(
 	// 		.await?;
 	// }
 
-	let annotations = [(
-		"kubernetes.io/ingress.class".to_string(),
-		"nginx".to_string(),
-	)]
-	.into();
+	// let annotations = [(
+	// 	"kubernetes.io/ingress.class".to_string(),
+	// 	"nginx".to_string(),
+	// )]
+	// .into();
 
-	// Create the ingress defined above
-	trace!("creating ingress");
-	Api::<Ingress>::namespaced(ctx.client.clone(), namespace)
-		.patch(
-			&format!("ingress-{}", deployment.id),
-			&PatchParams::apply(&format!("ingress-{}", deployment.id)),
-			&Patch::Apply(Ingress {
-				metadata: ObjectMeta {
-					name: Some(format!("ingress-{}", deployment.id)),
-					annotations: Some(annotations),
-					..ObjectMeta::default()
-				},
-				spec: Some(IngressSpec {
-					rules: Some(
-						running_details
-							.ports
-							.iter()
-							.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
-							.map(|(port, _)| IngressRule {
-								host: Some(format!(
-									"{}-{}.{}.{}",
-									port,
-									deployment.id,
-									deployed_region.id,
-									config.cloudflare.onpatr_domain
-								)),
-								http: Some(HTTPIngressRuleValue {
-									paths: vec![HTTPIngressPath {
-										backend: IngressBackend {
-											service: Some(IngressServiceBackend {
-												name: format!("service-{}", deployment.id),
-												port: Some(ServiceBackendPort {
-													number: Some(port.value() as i32),
-													..ServiceBackendPort::default()
-												}),
-											}),
-											..Default::default()
-										},
-										path: Some("/".to_string()),
-										path_type: "Prefix".to_string(),
-									}],
-								}),
-							})
-							.collect(),
-					),
-					..IngressSpec::default()
-				}),
-				..Ingress::default()
-			}),
-		)
-		.await?;
+	// // Create the ingress defined above
+	// trace!("creating ingress");
+	// Api::<Ingress>::namespaced(ctx.client.clone(), namespace)
+	// 	.patch(
+	// 		&format!("ingress-{}", deployment.id),
+	// 		&PatchParams::apply(&format!("ingress-{}", deployment.id)),
+	// 		&Patch::Apply(Ingress {
+	// 			metadata: ObjectMeta {
+	// 				name: Some(format!("ingress-{}", deployment.id)),
+	// 				annotations: Some(annotations),
+	// 				..ObjectMeta::default()
+	// 			},
+	// 			spec: Some(IngressSpec {
+	// 				rules: Some(
+	// 					running_details
+	// 						.ports
+	// 						.iter()
+	// 						.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
+	// 						.map(|(port, _)| IngressRule {
+	// 							host: Some(format!(
+	// 								"{}-{}.{}.{}",
+	// 								port,
+	// 								deployment.id,
+	// 								deployed_region.id,
+	// 								config.cloudflare.onpatr_domain
+	// 							)),
+	// 							http: Some(HTTPIngressRuleValue {
+	// 								paths: vec![HTTPIngressPath {
+	// 									backend: IngressBackend {
+	// 										service: Some(IngressServiceBackend {
+	// 											name: format!("service-{}", deployment.id),
+	// 											port: Some(ServiceBackendPort {
+	// 												number: Some(port.value() as i32),
+	// 												..ServiceBackendPort::default()
+	// 											}),
+	// 										}),
+	// 										..Default::default()
+	// 									},
+	// 									path: Some("/".to_string()),
+	// 									path_type: "Prefix".to_string(),
+	// 								}],
+	// 							}),
+	// 						})
+	// 						.collect(),
+	// 				),
+	// 				..IngressSpec::default()
+	// 			}),
+	// 			..Ingress::default()
+	// 		}),
+	// 	)
+	// 	.await?;
 
 	Ok(Action::requeue(Duration::from_secs(3600)))
 }

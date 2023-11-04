@@ -21,4 +21,3 @@ macros::declare_api_endpoint!(
 		pub token: String,
 	}
 );
-
