@@ -38,6 +38,17 @@ pub use self::{
 };
 use crate::prelude::*;
 
+/// Information of all the different deployment plans currently supported
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DeploymentMachineType {
+	/// The number of CPU nodes
+	pub cpu_count: i16,
+	/// The number of memory nodes
+	pub memory_count: i32,
+}
+
+
 /// Deployment information
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]

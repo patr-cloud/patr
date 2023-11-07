@@ -6,16 +6,27 @@ mod create_database;
 mod delete_database;
 mod get_database;
 mod list_database;
-mod all_database_plan;
+mod list_all_database_machine_type;
 
 pub use self::{
 	create_database::*,
 	delete_database::*,
 	get_database::*,
 	list_database::*,
-	all_database_plan::*,
+	list_all_database_machine_type::*,
 };
 
+/// Information of all the different database plans currently supported
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DatabasePlan {
+	/// The number of CPU nodes
+	pub cpu_count: i32,
+	/// The number of memory nodes
+	pub memory_count: i32,
+	/// The size of the volume
+	pub volume: i32,
+}
 /// Information for the user to connect to the database instance
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
