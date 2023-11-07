@@ -8,7 +8,7 @@
 /// states, and mounting of endpoints are done here
 pub mod app;
 /// This module contains the database connection logic, as well as all the
-/// SeaORM entities.
+/// ORM entities.
 pub mod db;
 /// This module contains the models used by the API. These are the structs that
 /// are used for encoding and decoding things that are not a part of the API
