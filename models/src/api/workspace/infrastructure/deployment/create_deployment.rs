@@ -16,8 +16,8 @@ macros::declare_api_endpoint!(
 		pub authorization: BearerToken
 	},
 	authentication = {
-		AppAuthentication::<Self>::WorkspaceMembershipAuthenticator { 
-			extract_workspace_id: |req| req.path.workspace_id 
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
+			extract_resource_id: |req| req.path.workspace_id
 		}
 	},
 	request = {
