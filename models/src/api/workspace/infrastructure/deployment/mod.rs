@@ -5,8 +5,6 @@ use time::OffsetDateTime;
 
 mod create_deployment;
 mod delete_deployment;
-mod get_deployment_build_log;
-mod get_deployment_event;
 mod get_deployment_info;
 mod get_deployment_log;
 mod get_deployment_metric;
@@ -22,8 +20,6 @@ mod list_all_deployment_machine_type;
 pub use self::{
 	create_deployment::*,
 	delete_deployment::*,
-	get_deployment_build_log::*,
-	get_deployment_event::*,
 	get_deployment_info::*,
 	get_deployment_log::*,
 	get_deployment_metric::*,
@@ -304,74 +300,6 @@ impl Display for DeploymentStatus {
 }
 
 impl FromStr for DeploymentStatus {
-	type Err = String;
-
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		let s = s.to_lowercase();
-		match s.as_str() {
-			"created" => Ok(Self::Created),
-			"pushed" => Ok(Self::Pushed),
-			"deploying" => Ok(Self::Deploying),
-			"running" => Ok(Self::Running),
-			"stopped" => Ok(Self::Stopped),
-			"errored" => Ok(Self::Errored),
-			"deleted" => Ok(Self::Deleted),
-			_ => Err(s),
-		}
-	}
-}
-
-#[cfg(feature = "server")]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
-#[serde(rename_all = "camelCase")]
-#[sqlx(type_name = "DEPLOYMENT_STATUS", rename_all = "lowercase")]
-pub enum StatefulSetStatus {
-	Created,
-	Pushed,
-	Deploying,
-	Running,
-	Stopped,
-	Errored,
-	Deleted,
-}
-
-/// All the possible StatefulSet status a StatefulSet can be 
-/// in during its life cycle
-#[cfg(not(feature = "server"))]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum StatefulSetStatus {
-	/// StatefulSet has been created
-	Created,
-	/// Image of a StatefulSet has been pushed
-	Pushed,
-	/// StatefulSet is deploying
-	Deploying,
-	/// StatefulSet is running
-	Running,
-	/// StatefulSet has stopped
-	Stopped,
-	/// StatefulSet has errored and stopped
-	Errored,
-	/// StatefulSet has been deleted
-	Deleted,
-}
-
-impl Display for StatefulSetStatus {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Self::Created => write!(f, "created"),
-			Self::Pushed => write!(f, "pushed"),
-			Self::Deploying => write!(f, "deploying"),
-			Self::Running => write!(f, "running"),
-			Self::Stopped => write!(f, "stopped"),
-			Self::Errored => write!(f, "errored"),
-			Self::Deleted => write!(f, "deleted"),
-		}
-	}
-}
-
-impl FromStr for StatefulSetStatus {
 	type Err = String;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
