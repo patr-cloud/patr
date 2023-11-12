@@ -121,3 +121,16 @@ where
 		self.0.encode_by_ref(buf)
 	}
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<'a, Db> sqlx::Decode<'a, Db> for Uuid
+where
+	Db: sqlx::Database,
+	uuid::Uuid: sqlx::Decode<'a, Db>,
+{
+	fn decode(
+		value: <Db as sqlx::database::HasValueRef<'a>>::ValueRef,
+	) -> Result<Self, sqlx::error::BoxDynError> {
+		Ok(Self(uuid::Uuid::decode(value)?))
+	}
+}

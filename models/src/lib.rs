@@ -65,7 +65,7 @@ mod endpoint;
 /// the error variant
 mod error;
 /// Contains the struct used to represent a request being made to the API. This
-/// struct will contain the path, query, headers, body and it's necesssary
+/// struct will contain the path, query, headers, body and it's necessary
 /// parameters and fields to make the request. The generated
 /// [`request::ApiRequest`] can be used to make requests to the API.
 mod request;

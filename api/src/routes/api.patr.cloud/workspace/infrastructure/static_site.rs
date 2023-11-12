@@ -4,7 +4,7 @@ use models::{api::workspace::infrastructure::static_site::*, ApiRequest, ErrorTy
 use crate::prelude::*;
 
 #[instrument(skip(state))]
-pub fn setup_routes(state: &AppState) -> Router {
+pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
 		.mount_auth_endpoint(create_static_site, state)
 		.mount_auth_endpoint(delete_static_site, state)
@@ -308,14 +308,14 @@ async fn list_linked_url(
 		client_ip: _,
 		config,
 		user_data,
-	}: AuthenticatedAppRequest<'_, ListLinkedUrlRequest>,
-) -> Result<AppResponse<ListLinkedUrlRequest>, ErrorType> {
+	}: AuthenticatedAppRequest<'_, ListLinkedURLRequest>,
+) -> Result<AppResponse<ListLinkedURLRequest>, ErrorType> {
 	info!("Starting: List linked URL");
 
 	// LOGIC
 
 	AppResponse::builder()
-		.body(ListLinkedUrlResponse { urls: todo!() })
+		.body(ListLinkedURLResponse { urls: todo!() })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
