@@ -4,7 +4,7 @@ use models::{api::workspace::infrastructure::managed_url::*, ApiRequest, ErrorTy
 use crate::prelude::*;
 
 #[instrument(skip(state))]
-pub fn setup_routes(state: &AppState) -> Router {
+pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
 		.mount_auth_endpoint(create_managed_url, state)
 		.mount_auth_endpoint(delete_managed_url, state)
@@ -27,14 +27,14 @@ async fn create_managed_url(
 		client_ip: _,
 		config,
 		user_data,
-	}: AuthenticatedAppRequest<'_, CreateManagedUrlRequest>,
-) -> Result<AppResponse<CreateManagedUrlRequest>, ErrorType> {
+	}: AuthenticatedAppRequest<'_, CreateManagedURLRequest>,
+) -> Result<AppResponse<CreateManagedURLRequest>, ErrorType> {
 	info!("Starting: Create managed URL");
 
 	// LOGIC
 
 	AppResponse::builder()
-		.body(CreateManagedUrlResponse { id: todo!() })
+		.body(CreateManagedURLResponse { id: todo!() })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
@@ -54,14 +54,14 @@ async fn delete_managed_url(
 		client_ip: _,
 		config,
 		user_data,
-	}: AuthenticatedAppRequest<'_, DeleteManagedUrlRequest>,
-) -> Result<AppResponse<DeleteManagedUrlRequest>, ErrorType> {
+	}: AuthenticatedAppRequest<'_, DeleteManagedURLRequest>,
+) -> Result<AppResponse<DeleteManagedURLRequest>, ErrorType> {
 	info!("Starting: Delete managed URL");
 
 	// LOGIC
 
 	AppResponse::builder()
-		.body(DeleteManagedUrlResponse)
+		.body(DeleteManagedURLResponse)
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
@@ -81,14 +81,14 @@ async fn list_managed_url(
 		client_ip: _,
 		config,
 		user_data,
-	}: AuthenticatedAppRequest<'_, ListManagedUrlRequest>,
-) -> Result<AppResponse<ListManagedUrlRequest>, ErrorType> {
+	}: AuthenticatedAppRequest<'_, ListManagedURLRequest>,
+) -> Result<AppResponse<ListManagedURLRequest>, ErrorType> {
 	info!("Starting: List managed URL");
 
 	// LOGIC
 
 	AppResponse::builder()
-		.body(ListManagedUrlResponse { urls: todo!() })
+		.body(ListManagedURLResponse { urls: todo!() })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
@@ -108,14 +108,14 @@ async fn update_managed_url(
 		client_ip: _,
 		config,
 		user_data,
-	}: AuthenticatedAppRequest<'_, UpdateManagedUrlRequest>,
-) -> Result<AppResponse<UpdateManagedUrlRequest>, ErrorType> {
+	}: AuthenticatedAppRequest<'_, UpdateManagedURLRequest>,
+) -> Result<AppResponse<UpdateManagedURLRequest>, ErrorType> {
 	info!("Starting: Update managed URL");
 
 	// LOGIC
 
 	AppResponse::builder()
-		.body(UpdateManagedUrlResponse)
+		.body(UpdateManagedURLResponse)
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
@@ -135,14 +135,14 @@ async fn verify_configuration(
 		client_ip: _,
 		config,
 		user_data,
-	}: AuthenticatedAppRequest<'_, VerifyManagedUrlConfigurationRequest>,
-) -> Result<AppResponse<VerifyManagedUrlConfigurationRequest>, ErrorType> {
+	}: AuthenticatedAppRequest<'_, VerifyManagedURLConfigurationRequest>,
+) -> Result<AppResponse<VerifyManagedURLConfigurationRequest>, ErrorType> {
 	info!("Starting: Verify configuration of managed URL");
 
 	// LOGIC
 
 	AppResponse::builder()
-		.body(VerifyManagedUrlConfigurationResponse {
+		.body(VerifyManagedURLConfigurationResponse {
 			configured: todo!(),
 		})
 		.headers(())

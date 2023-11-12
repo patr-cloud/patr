@@ -4,7 +4,7 @@ use models::{api::workspace::infrastructure::database::*, ApiRequest, ErrorType}
 use crate::prelude::*;
 
 #[instrument(skip(state))]
-pub fn setup_routes(state: &AppState) -> Router {
+pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
 		.mount_endpoint(all_database_plan, state)
 		.mount_auth_endpoint(create_database, state)
@@ -26,14 +26,14 @@ async fn all_database_plan(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, AllDatabasePlanRequest>,
-) -> Result<AppResponse<AllDatabasePlanRequest>, ErrorType> {
+	}: AppRequest<'_, ListAllDatabaseMachineTypeRequest>,
+) -> Result<AppResponse<ListAllDatabaseMachineTypeRequest>, ErrorType> {
 	info!("Starting: Get database plans");
 
 	// LOGIC
 
 	AppResponse::builder()
-		.body(AllDatabasePlanResponse { plans: todo!() })
+		.body(ListAllDatabaseMachineTypeResponse { plans: todo!() })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()

@@ -4,7 +4,7 @@ use models::{api::workspace::infrastructure::deployment::*, ApiRequest, ErrorTyp
 use crate::prelude::*;
 
 #[instrument(skip(state))]
-pub fn setup_routes(state: &AppState) -> Router {
+pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
 		.mount_endpoint(machine_type, state)
 		.mount_auth_endpoint(list_deployment, state)
@@ -19,8 +19,6 @@ pub fn setup_routes(state: &AppState) -> Router {
 		.mount_auth_endpoint(update_deployment, state)
 		.mount_auth_endpoint(list_linked_url, state)
 		.mount_auth_endpoint(get_deployment_metric, state)
-		.mount_auth_endpoint(get_build_log, state)
-		.mount_auth_endpoint(get_build_event, state)
 		.with_state(state.clone())
 }
 
@@ -36,14 +34,14 @@ async fn machine_type(
 		redis: _,
 		client_ip: _,
 		config,
-	}: AppRequest<'_, ListAllDeploymentMachineTypesRequest>,
-) -> Result<AppResponse<ListAllDeploymentMachineTypesRequest>, ErrorType> {
+	}: AppRequest<'_, ListAllDeploymentMachineTypeRequest>,
+) -> Result<AppResponse<ListAllDeploymentMachineTypeRequest>, ErrorType> {
 	info!("Starting: List deployments");
 
 	// LOGIC
 
 	AppResponse::builder()
-		.body(ListAllDeploymentMachineTypesResponse {
+		.body(ListAllDeploymentMachineTypeResponse {
 			machine_types: todo!(),
 		})
 		.headers(())
@@ -65,14 +63,14 @@ async fn list_deployment(
 		client_ip: _,
 		config,
 		user_data,
-	}: AuthenticatedAppRequest<'_, ListDeploymentsRequest>,
-) -> Result<AppResponse<ListDeploymentsRequest>, ErrorType> {
+	}: AuthenticatedAppRequest<'_, ListDeploymentRequest>,
+) -> Result<AppResponse<ListDeploymentRequest>, ErrorType> {
 	info!("Starting: List deployments");
 
 	// LOGIC
 
 	AppResponse::builder()
-		.body(ListDeploymentsResponse {
+		.body(ListDeploymentResponse {
 			deployments: todo!(),
 		})
 		.headers(())
@@ -259,14 +257,14 @@ async fn get_deployment_log(
 		client_ip: _,
 		config,
 		user_data,
-	}: AuthenticatedAppRequest<'_, GetDeploymentLogsRequest>,
-) -> Result<AppResponse<GetDeploymentLogsRequest>, ErrorType> {
+	}: AuthenticatedAppRequest<'_, GetDeploymentLogRequest>,
+) -> Result<AppResponse<GetDeploymentLogRequest>, ErrorType> {
 	info!("Starting: Get deployment logs");
 
 	// LOGIC
 
 	AppResponse::builder()
-		.body(GetDeploymentLogsResponse { logs: todo!() })
+		.body(GetDeploymentLogResponse { logs: todo!() })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
@@ -340,14 +338,14 @@ async fn list_linked_url(
 		client_ip: _,
 		config,
 		user_data,
-	}: AuthenticatedAppRequest<'_, ListLinkedURLsRequest>,
-) -> Result<AppResponse<ListLinkedURLsRequest>, ErrorType> {
+	}: AuthenticatedAppRequest<'_, ListLinkedURLRequest>,
+) -> Result<AppResponse<ListLinkedURLRequest>, ErrorType> {
 	info!("Starting: List linked URLs");
 
 	// LOGIC
 
 	AppResponse::builder()
-		.body(ListLinkedURLsResponse { urls: todo!() })
+		.body(ListLinkedURLResponse { urls: todo!() })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
@@ -367,14 +365,14 @@ async fn get_deployment_metric(
 		client_ip: _,
 		config,
 		user_data,
-	}: AuthenticatedAppRequest<'_, GetDeploymentMetricsRequest>,
-) -> Result<AppResponse<GetDeploymentMetricsRequest>, ErrorType> {
+	}: AuthenticatedAppRequest<'_, GetDeploymentMetricRequest>,
+) -> Result<AppResponse<GetDeploymentMetricRequest>, ErrorType> {
 	info!("Starting: Get deployment metrics");
 
 	// LOGIC
 
 	AppResponse::builder()
-		.body(GetDeploymentMetricsResponse { metrics: todo!() })
+		.body(GetDeploymentMetricResponse { metrics: todo!() })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT workspace_user.workspace_id as \"workspace_id: Uuid\", role_resource_permissions_type.permission_id as \"permission_id: Uuid\" FROM role_resource_permissions_type JOIN workspace_user ON workspace_user.role_id = role_resource_permissions_type.role_id WHERE workspace_user.user_id = $1 AND role_resource_permissions_type.permission_type = 'exclude' AND NOT EXISTS ( SELECT 1 FROM role_resource_permissions_exclude WHERE role_resource_permissions_exclude.role_id = role_resource_permissions_type.role_id AND role_resource_permissions_exclude.permission_id = role_resource_permissions_type.permission_id );",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "workspace_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "permission_id: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "f542fb018e204e89986a28a0702fd56692ec02a0f9ff5de0a74c7d7abbe10e20"
+}
