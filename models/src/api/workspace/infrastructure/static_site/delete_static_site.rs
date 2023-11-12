@@ -1,82 +1,26 @@
-use axum_extra::routing::TypedPath;
-use reqwest::Method;
-use serde::{Deserialize, Serialize};
+use crate::{
+	prelude::*,
+	utils::{Uuid, BearerToken},
+}; 
 
-use crate::{utils::Uuid, ApiRequest};
-
-#[derive(
-	Eq,
-	Ord,
-	Hash,
-	Debug,
-	Clone,
-	Default,
-	TypedPath,
-	PartialEq,
-	Serialize,
-	PartialOrd,
-	Deserialize,
-)]
-#[typed_path(
-	"/workspace/:workspace_id/infrastructure/static-site/:static_site_id/"
-)]
-pub struct DeleteStaticSitePath {
-	pub workspace_id: Uuid,
-	pub static_site_id: Uuid,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct DeleteStaticSiteRequest {}
-
-impl ApiRequest for DeleteStaticSiteRequest {
-	const METHOD: Method = Method::DELETE;
-	const IS_PROTECTED: bool = true;
-
-	type RequestPath = DeleteStaticSitePath;
-	type RequestQuery = ();
-	type RequestBody = ();
-	type Response = ();
-}
-
-#[cfg(test)]
-mod test {
-	use serde_test::{assert_tokens, Token};
-
-	use super::DeleteStaticSiteRequest;
-	use crate::{ApiRequest, ApiResponse};
-
-	#[test]
-	fn assert_request_types() {
-		assert_tokens(
-			&DeleteStaticSiteRequest {},
-			&[
-				Token::Struct {
-					name: "DeleteStaticSiteRequest",
-					len: 0,
-				},
-				Token::StructEnd,
-			],
-		)
+macros::declare_api_endpoint!(
+	/// Route to delete a static site
+	/// This route will permenantly delete the static site including it's history 
+	/// and the current index.html file
+	DeleteStaticSite,
+	DELETE "/workspace/:workspace_id/infrastructure/static-site/:static_site_id" {
+		/// The workspace ID of the user
+		pub workspace_id: Uuid,
+		/// The static site ID to be deleted
+		pub static_site_id: Uuid
+	},
+	request_headers = {
+		/// Token used to authorize user
+		pub authorization: BearerToken
+	},
+	authentication = {
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
+			extract_resource_id: |req| req.path.static_site_id
+		}
 	}
-
-	#[test]
-	fn assert_response_types() {
-		crate::assert_types::<<DeleteStaticSiteRequest as ApiRequest>::Response>(
-			(),
-		);
-	}
-
-	#[test]
-	fn assert_success_response_types() {
-		assert_tokens(
-			&ApiResponse::success(()),
-			&[
-				Token::Map { len: None },
-				Token::Str("success"),
-				Token::Bool(true),
-				Token::MapEnd,
-			],
-		)
-	}
-}
+);
