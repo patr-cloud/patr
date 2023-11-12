@@ -1,8 +1,8 @@
+use super::StaticSite;
 use crate::{
 	prelude::*,
-	utils::{Uuid, BearerToken},
+	utils::{BearerToken, Uuid},
 };
-use super::StaticSite; 
 
 macros::declare_api_endpoint!(
 	/// Route to list all static site in a workspace
@@ -16,7 +16,7 @@ macros::declare_api_endpoint!(
 		pub authorization: BearerToken
 	},
 	authentication = {
-		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.workspace_id
 		}
 	},
@@ -25,7 +25,7 @@ macros::declare_api_endpoint!(
 		/// The list of static site in the workspace
 		/// The list contains:
 		/// name - The name of the static site
-		/// status - The status of the static site 
+		/// status - The status of the static site
 		///         (Created, Pushed, Deploying, Running, Stopped, Errored,Deleted)
 		/// current_live_upload - The index.html that is currently live
 		pub static_sites: Vec<WithId<StaticSite>>

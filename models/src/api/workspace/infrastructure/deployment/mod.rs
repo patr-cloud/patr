@@ -1,5 +1,6 @@
 use std::{collections::BTreeMap, fmt::Display, str::FromStr};
 
+use schemars::JsonSchema;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use time::OffsetDateTime;
 
@@ -8,14 +9,14 @@ mod delete_deployment;
 mod get_deployment_info;
 mod get_deployment_log;
 mod get_deployment_metric;
-mod list_deployment_history;
+mod list_all_deployment_machine_type;
 mod list_deployment;
+mod list_deployment_history;
 mod list_linked_url;
 mod revert_deployment;
 mod start_deployment;
 mod stop_deployment;
 mod update_deployment;
-mod list_all_deployment_machine_type;
 
 pub use self::{
 	create_deployment::*,
@@ -23,19 +24,19 @@ pub use self::{
 	get_deployment_info::*,
 	get_deployment_log::*,
 	get_deployment_metric::*,
-	list_deployment_history::*,
+	list_all_deployment_machine_type::*,
 	list_deployment::*,
+	list_deployment_history::*,
 	list_linked_url::*,
 	revert_deployment::*,
 	start_deployment::*,
 	stop_deployment::*,
 	update_deployment::*,
-	list_all_deployment_machine_type::*,
 };
 use crate::prelude::*;
 
 /// Information of all the different deployment plans currently supported
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentMachineType {
 	/// The number of CPU nodes
@@ -44,9 +45,8 @@ pub struct DeploymentMachineType {
 	pub memory_count: i32,
 }
 
-
 /// Deployment information
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Deployment {
 	/// Name of the deployment
@@ -55,7 +55,7 @@ pub struct Deployment {
 	/// Can either be patr registry or docker registry
 	#[serde(flatten)]
 	pub registry: DeploymentRegistry,
-	/// The image tag 
+	/// The image tag
 	/// Example: 'latest', 'stable'
 	pub image_tag: String,
 	/// The status of the deployment
@@ -65,7 +65,7 @@ pub struct Deployment {
 	/// The deployment machine type ID
 	/// Machine type can be classified by CPU and Memory nodes
 	pub machine_type: Uuid,
-	/// The current image digest the deployment is running 
+	/// The current image digest the deployment is running
 	pub current_live_digest: Option<String>,
 }
 
@@ -80,14 +80,15 @@ pub struct DeploymentDeployHistory {
 }
 
 /// Deployment running details
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentRunningDetails {
 	/// if the deployment should deploy as soon as a new image digest is pushed
 	pub deploy_on_push: bool,
 	/// The minimum number node a deployment should maintain
 	pub min_horizontal_scale: u16,
-	/// The maximum number of node deployment can scale up to at peak resource requirement
+	/// The maximum number of node deployment can scale up to at peak resource
+	/// requirement
 	pub max_horizontal_scale: u16,
 	/// List of deployment port number of its type
 	pub ports: BTreeMap<StringifiedU16, ExposedPortType>,
@@ -106,7 +107,7 @@ pub struct DeploymentRunningDetails {
 }
 
 /// Deployment volume detail
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentVolume {
 	/// The path of the volume attached
@@ -117,7 +118,7 @@ pub struct DeploymentVolume {
 
 /// The type of environment variable
 /// The keys can either have a string as a value or a secret
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(untagged)]
 pub enum EnvironmentVariableValue {
 	/// String
@@ -131,7 +132,7 @@ pub enum EnvironmentVariableValue {
 }
 
 #[cfg(feature = "server")]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::Type, JsonSchema)]
 #[serde(tag = "type", rename_all = "camelCase")]
 #[sqlx(type_name = "EXPOSED_PORT_TYPE", rename_all = "lowercase")]
 pub enum ExposedPortType {
@@ -140,9 +141,9 @@ pub enum ExposedPortType {
 	Http,
 }
 
-/// The type of exposed port 
+/// The type of exposed port
 #[cfg(not(feature = "server"))]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum ExposedPortType {
 	/// TCP
@@ -154,7 +155,7 @@ pub enum ExposedPortType {
 }
 
 /// The deployment startup/liveness probe
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentProbe {
 	/// The port the probe will be using
@@ -164,7 +165,7 @@ pub struct DeploymentProbe {
 }
 
 /// Patr registry
-#[derive(Debug, Copy, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, JsonSchema)]
 pub struct PatrRegistry;
 
 struct PatrRegistryVisitor;
@@ -181,10 +182,7 @@ impl<'de> Deserialize<'de> for PatrRegistry {
 impl<'de> Visitor<'de> for PatrRegistryVisitor {
 	type Value = PatrRegistry;
 
-	fn expecting(
-		&self,
-		formatter: &mut std::fmt::Formatter,
-	) -> std::fmt::Result {
+	fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
 		formatter.write_str(&format!(
 			"a constant `{}` value",
 			constants::CONTAINER_REGISTRY_URL
@@ -216,7 +214,7 @@ impl Serialize for PatrRegistry {
 }
 
 /// Deployment registry
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(untagged)]
 pub enum DeploymentRegistry {
 	/// Patr registry offered by patr
@@ -263,10 +261,10 @@ pub enum DeploymentStatus {
 	Deleted,
 }
 
-/// All the possible deployment status a deployment can be 
+/// All the possible deployment status a deployment can be
 /// in during its life cycle
 #[cfg(not(feature = "server"))]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum DeploymentStatus {
 	/// Deployment has been created
@@ -337,7 +335,7 @@ pub struct Metric {
 	pub cpu_usage: String,
 	/// The memory usage of a pod
 	pub memory_usage: String,
-	/// The network transmit of a pod 
+	/// The network transmit of a pod
 	pub network_usage_tx: String,
 	/// The network recieve of a pod
 	pub network_usage_rx: String,
@@ -858,8 +856,8 @@ impl FromStr for Interval {
 
 // 	#[test]
 // 	fn assert_patr_registry_types() {
-// 		assert_tokens(&PatrRegistry, &[Token::Str(constants::CONTAINER_REGISTRY_URL)])
-// 	}
+// 		assert_tokens(&PatrRegistry,
+// &[Token::Str(constants::CONTAINER_REGISTRY_URL)]) 	}
 
 // 	#[test]
 // 	fn assert_exposed_port_type_types() {

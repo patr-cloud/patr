@@ -1,5 +1,6 @@
 use std::{borrow::Cow, fmt::Display};
 
+use schemars::JsonSchema;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use time::{Duration, OffsetDateTime};
 
@@ -9,7 +10,7 @@ use time::{Duration, OffsetDateTime};
 /// be used instead of [`uuid::Uuid`]. Ideally, this is the struct that should
 /// be imported and [`uuid`] should not be added as a dependency at all. This
 /// would prevent wrong UUIDs from being sent or received.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default, JsonSchema)]
 pub struct Uuid(uuid::Uuid);
 
 impl Uuid {

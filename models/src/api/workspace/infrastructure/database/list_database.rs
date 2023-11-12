@@ -1,8 +1,5 @@
-use crate::{
-	prelude::*,
-	utils::BearerToken
-};
 use super::Database;
+use crate::{prelude::*, utils::BearerToken};
 
 macros::declare_api_endpoint!(
 	/// Route to get list of all database in a workspace
@@ -16,7 +13,7 @@ macros::declare_api_endpoint!(
 		pub authorization: BearerToken
 	},
 	authentication = {
-		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.workspace_id
 		}
 	},

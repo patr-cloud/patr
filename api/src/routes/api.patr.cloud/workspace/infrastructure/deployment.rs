@@ -1,11 +1,7 @@
-use crate::prelude::*;
 use axum::{http::StatusCode, Router};
+use models::{api::workspace::infrastructure::deployment::*, ApiRequest, ErrorType};
 
-use models::{
-	api::workspace::infrastructure::deployment::*,
-	ApiRequest,
-	ErrorType,
-};
+use crate::prelude::*;
 
 #[instrument(skip(state))]
 pub fn setup_routes(state: &AppState) -> Router {
@@ -42,19 +38,18 @@ async fn machine_type(
 		config,
 	}: AppRequest<'_, ListAllDeploymentMachineTypesRequest>,
 ) -> Result<AppResponse<ListAllDeploymentMachineTypesRequest>, ErrorType> {
-	
 	info!("Starting: List deployments");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(ListAllDeploymentMachineTypesResponse {
-            machine_types: todo!(),
-        })
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(ListAllDeploymentMachineTypesResponse {
+			machine_types: todo!(),
+		})
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn list_deployment(
@@ -69,22 +64,21 @@ async fn list_deployment(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, ListDeploymentsRequest>,
 ) -> Result<AppResponse<ListDeploymentsRequest>, ErrorType> {
-	
 	info!("Starting: List deployments");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(ListDeploymentsResponse {
-            deployments: todo!(),
-        })
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(ListDeploymentsResponse {
+			deployments: todo!(),
+		})
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn list_deployment_history(
@@ -99,22 +93,19 @@ async fn list_deployment_history(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, ListDeploymentHistoryRequest>,
 ) -> Result<AppResponse<ListDeploymentHistoryRequest>, ErrorType> {
-	
 	info!("Starting: List deployment history");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(ListDeploymentHistoryResponse {
-            deploys: todo!(),
-        })
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(ListDeploymentHistoryResponse { deploys: todo!() })
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn create_deployment(
@@ -129,22 +120,19 @@ async fn create_deployment(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, CreateDeploymentRequest>,
 ) -> Result<AppResponse<CreateDeploymentRequest>, ErrorType> {
-	
 	info!("Starting: Create deployment");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(CreateDeploymentResponse {
-            id: todo!(),
-        })
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(CreateDeploymentResponse { id: todo!() })
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn get_deployment_info(
@@ -159,23 +147,22 @@ async fn get_deployment_info(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, GetDeploymentInfoRequest>,
 ) -> Result<AppResponse<GetDeploymentInfoRequest>, ErrorType> {
-	
 	info!("Starting: Get deployment info");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(GetDeploymentInfoResponse {
-            deployment: todo!(),
-            running_details: todo!()
-        })
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(GetDeploymentInfoResponse {
+			deployment: todo!(),
+			running_details: todo!(),
+		})
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn start_deployment(
@@ -190,20 +177,19 @@ async fn start_deployment(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, StartDeploymentRequest>,
 ) -> Result<AppResponse<StartDeploymentRequest>, ErrorType> {
-	
 	info!("Starting: Start deployment");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(StartDeploymentResponse)
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(StartDeploymentResponse)
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn stop_deployment(
@@ -218,20 +204,19 @@ async fn stop_deployment(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, StopDeploymentRequest>,
 ) -> Result<AppResponse<StopDeploymentRequest>, ErrorType> {
-	
 	info!("Starting: Stop deployment");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(StopDeploymentResponse)
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(StopDeploymentResponse)
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn revert_deployment(
@@ -246,20 +231,19 @@ async fn revert_deployment(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, RevertDeploymentRequest>,
 ) -> Result<AppResponse<RevertDeploymentRequest>, ErrorType> {
-	
 	info!("Starting: Revert deployment");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(RevertDeploymentResponse)
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(RevertDeploymentResponse)
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn get_deployment_log(
@@ -274,22 +258,19 @@ async fn get_deployment_log(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, GetDeploymentLogsRequest>,
 ) -> Result<AppResponse<GetDeploymentLogsRequest>, ErrorType> {
-	
 	info!("Starting: Get deployment logs");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(GetDeploymentLogsResponse {
-            logs: todo!(),
-        })
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(GetDeploymentLogsResponse { logs: todo!() })
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn delete_deployment(
@@ -304,20 +285,19 @@ async fn delete_deployment(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, DeleteDeploymentRequest>,
 ) -> Result<AppResponse<DeleteDeploymentRequest>, ErrorType> {
-	
 	info!("Starting: Delete deployment");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(DeleteDeploymentResponse)
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(DeleteDeploymentResponse)
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn update_deployment(
@@ -332,20 +312,19 @@ async fn update_deployment(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, UpdateDeploymentRequest>,
 ) -> Result<AppResponse<UpdateDeploymentRequest>, ErrorType> {
-	
 	info!("Starting: List linked URLs");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(UpdateDeploymentResponse)
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(UpdateDeploymentResponse)
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn list_linked_url(
@@ -360,22 +339,19 @@ async fn list_linked_url(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, ListLinkedURLsRequest>,
 ) -> Result<AppResponse<ListLinkedURLsRequest>, ErrorType> {
-	
 	info!("Starting: List linked URLs");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(ListLinkedURLsResponse {
-            urls: todo!(),
-        })
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(ListLinkedURLsResponse { urls: todo!() })
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn get_deployment_metric(
@@ -390,20 +366,17 @@ async fn get_deployment_metric(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, GetDeploymentMetricsRequest>,
 ) -> Result<AppResponse<GetDeploymentMetricsRequest>, ErrorType> {
-	
 	info!("Starting: Get deployment metrics");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(GetDeploymentMetricsResponse {
-            metrics: todo!(),
-        })
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(GetDeploymentMetricsResponse { metrics: todo!() })
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }

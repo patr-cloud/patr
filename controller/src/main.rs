@@ -21,11 +21,14 @@ pub mod prelude {
 /// All app state that is shared across the entire application. Used to share
 /// ApiTokens, backend connections, etc.
 mod app;
+/// The client used to communicate with the Patr API.
+mod client;
+/// All the constants used by the controller.
+mod constants;
 /// All functions and business login to run a deployment controller and keep it
 /// in sync with the Patr API data.
 mod deployment;
 /// All models used by the controller, including CRDs, requests, responses, etc.
-#[allow(clippy::missing_docs_in_private_items)]
 mod models;
 
 #[tokio::main]

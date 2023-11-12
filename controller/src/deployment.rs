@@ -1,27 +1,18 @@
-use std::{sync::Arc, time::Duration};
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use futures::{future, FutureExt, StreamExt};
 use k8s_openapi::{
 	api::{
 		apps::v1::{Deployment as KubeDeployment, StatefulSet},
 		autoscaling::v2::HorizontalPodAutoscaler,
-		core::v1::{ConfigMap, PersistentVolumeClaim, Service, ServicePort, ServiceSpec},
-		networking::v1::{
-			HTTPIngressPath,
-			HTTPIngressRuleValue,
-			Ingress,
-			IngressBackend,
-			IngressRule,
-			IngressServiceBackend,
-			IngressSpec,
-			ServiceBackendPort,
-		},
+		core::v1::{ConfigMap, PersistentVolumeClaim, Service},
+		networking::v1::Ingress,
 	},
-	apimachinery::pkg::util::intstr::IntOrString,
+	apimachinery::pkg::api::resource::Quantity,
 	ByteString,
 };
 use kube::{
-	api::{Patch, PatchParams, Resource},
+	api::{Patch, PatchParams, Resource, DeleteParams, PropagationPolicy},
 	core::ObjectMeta,
 	runtime::{
 		controller::{Action, Controller},
@@ -31,16 +22,16 @@ use kube::{
 	Client,
 };
 use models::{
-	api::{
-		workspace::infrastructure::deployment::{Deployment, ExposedPortType, DeploymentRunningDetails},
-		WithId,
+	api::workspace::infrastructure::deployment::{
+		ListAllDeploymentMachineTypePath,
+		ListAllDeploymentMachineTypeRequest,
 	},
-	utils::Uuid,
+	ApiRequest,
 };
 use sha2::{Digest, Sha512};
 use tokio::signal;
 
-use crate::{app::AppError, prelude::*};
+use crate::{app::AppError, client::make_request, constants, prelude::*};
 
 /// Starts the deployment controller. This function will ideally run forever,
 /// only exiting when a ctrl-c signal is received.
@@ -100,14 +91,6 @@ async fn reconcile(
 	deployment_object: Arc<PatrDeployment>,
 	ctx: Arc<AppState>,
 ) -> Result<Action, AppError> {
-	let deployment: WithId<Deployment> = {
-		WithId {
-			id: Uuid::nil(),
-			data: todo!(),
-		}
-	};
-	let running_details: DeploymentRunningDetails = todo!();
-
 	let namespace = deployment_object
 		.metadata
 		.namespace
@@ -119,36 +102,40 @@ async fn reconcile(
 		AppError::InternalError("Deployment does not have a controller owner reference".to_string())
 	})?;
 
-	info!("Reconciling deployment with id: {}", deployment.id);
+	let spec = &deployment_object.spec;
+
+	info!("Reconciling deployment with id: {}", spec.deployment.id);
 
 	trace!("Computing hash of config map data");
 
 	let mut hasher = Sha512::default();
-	// if let Some(configs) = &kubernetes_config_map.binary_data {
-	// 	configs.iter().for_each(|(key, value)| {
-	// 		hasher.update(key.as_bytes());
-	// 		hasher.update(&value.0);
-	// 	});
-	// }
+
+	spec.running_details
+		.config_mounts
+		.iter()
+		.for_each(|(key, value)| {
+			hasher.update(key.as_bytes());
+			hasher.update(value);
+		});
 
 	let config_map_hash = hex::encode(hasher.finalize());
 	trace!(
 		"Patching ConfigMap for deployment with id: {}",
-		deployment.id
+		spec.deployment.id
 	);
 
 	Api::<ConfigMap>::namespaced(ctx.client.clone(), namespace)
 		.patch(
-			&format!("config-mount-{}", deployment.id),
-			&PatchParams::apply(&format!("config-mount-{}", deployment.id)),
+			&format!("config-mount-{}", spec.deployment.id),
+			&PatchParams::apply(&format!("config-mount-{}", spec.deployment.id)),
 			&Patch::Apply(ConfigMap {
 				metadata: ObjectMeta {
-					name: Some(format!("config-mount-{}", deployment.id)),
+					name: Some(format!("config-mount-{}", spec.deployment.id)),
 					owner_references: Some(vec![owner_reference.clone()]),
 					..ObjectMeta::default()
 				},
 				binary_data: Some(
-					running_details
+					spec.running_details
 						.config_mounts
 						.iter()
 						.map(|(path, data)| (path.to_string(), ByteString(data.clone().into())))
@@ -159,98 +146,91 @@ async fn reconcile(
 		)
 		.await?;
 
-	// // get this from machine type
-	// let (cpu_count, memory_count) = deployment::MACHINE_TYPES
-	// 	.get()
-	// 	.unwrap()
-	// 	.get(&deployment.machine_type)
-	// 	.unwrap_or(&(1, 2));
-	// let machine_type = [
-	// 	(
-	// 		"memory".to_string(),
-	// 		Quantity(format!("{:.1}G", (*memory_count as f64) / 4f64)),
-	// 	),
-	// 	(
-	// 		"cpu".to_string(),
-	// 		Quantity(format!("{:.1}", *cpu_count as f64)),
-	// 	),
-	// ]
-	// .into_iter()
-	// .collect::<BTreeMap<_, _>>();
+	let machine_type = make_request(
+		ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
+			.path(ListAllDeploymentMachineTypePath)
+			.headers(())
+			.query(())
+			.body(ListAllDeploymentMachineTypeRequest)
+			.build(),
+	)
+	.await?
+	.body
+	.machine_types
+	.into_iter()
+	.find(|machine_type| machine_type.id == spec.deployment.machine_type)
+	.ok_or_else(|| AppError::InternalError("invalid machine type".to_string()))?;
 
-	// trace!("Deploying deployment: {}", deployment.id,);
+	let machine_type = [
+		(
+			"memory".to_string(),
+			Quantity(format!("{:.1}G", (machine_type.memory_count as f64) / 4f64)),
+		),
+		(
+			"cpu".to_string(),
+			Quantity(format!("{:.1}", machine_type.cpu_count as f64)),
+		),
+	]
+	.into_iter()
+	.collect::<BTreeMap<_, _>>();
 
-	// let labels = [
-	// 	(
-	// 		request_keys::DEPLOYMENT_ID.to_string(),
-	// 		deployment.id.to_string(),
-	// 	),
-	// 	(
-	// 		request_keys::WORKSPACE_ID.to_string(),
-	// 		workspace_id.to_string(),
-	// 	),
-	// 	(
-	// 		request_keys::REGION.to_string(),
-	// 		deployment.region.to_string(),
-	// 	),
-	// 	("app.kubernetes.io/name".to_string(), "vault".to_string()),
-	// ]
-	// .into_iter()
-	// .collect::<BTreeMap<_, _>>();
+	trace!("Deploying deployment: {}", spec.deployment.id);
 
-	// trace!("generating deployment configuration", request_id);
+	let labels = [
+		(
+			constants::DEPLOYMENT_ID.to_string(),
+			spec.deployment.id.to_string(),
+		),
+		(constants::WORKSPACE_ID.to_string(), namespace.to_string()),
+		(
+			constants::REGION.to_string(),
+			spec.deployment.region.to_string(),
+		),
+		("app.kubernetes.io/name".to_string(), "vault".to_string()),
+	]
+	.into_iter()
+	.collect::<BTreeMap<_, _>>();
 
-	// let annotations = [
-	// 	(
-	// 		"vault.security.banzaicloud.io/vault-addr".to_string(),
-	// 		if deployed_region.is_byoc_region() {
-	// 			config.vault.base_url()
-	// 		} else {
-	// 			config.vault.upstream_base_url()
-	// 		},
-	// 	),
-	// 	(
-	// 		"vault.security.banzaicloud.io/vault-skip-verify".to_string(),
-	// 		"false".to_string(),
-	// 	),
-	// 	(
-	// 		"vault.security.banzaicloud.io/vault-agent".to_string(),
-	// 		"false".to_string(),
-	// 	),
-	// ]
-	// .into_iter()
-	// .chain(
-	// 	if deployed_region.is_byoc_region() {
-	// 		itertools::Either::Left([])
-	// 	} else {
-	// 		itertools::Either::Right([
-	// 			(
-	// 				"vault.security.banzaicloud.io/vault-role".to_string(),
-	// 				"vault".to_string(),
-	// 			),
-	// 			(
-	// 				"vault.security.banzaicloud.io/vault-path".to_string(),
-	// 				"kubernetes".to_string(),
-	// 			),
-	// 		])
-	// 	}
-	// 	.into_iter(),
-	// )
-	// .collect();
+	trace!("generating deployment configuration");
 
-	// if !deployment_volumes.is_empty() {
-	// 	// Deleting STS using orphan flag to update the volumes
-	// 	trace!("request_id: {} deleting sts without deleting the pod");
-	// 	Api::<StatefulSet>::namespaced(kubernetes_client.clone(),
-	// workspace_id.as_str()) 		.delete_opt(
-	// 			&format!("sts-{}", deployment.id),
-	// 			&DeleteParams {
-	// 				propagation_policy: Some(PropagationPolicy::Orphan),
-	// 				..DeleteParams::default()
-	// 			},
-	// 		)
-	// 		.await?;
-	// }
+	let annotations = [
+		(
+			"vault.security.banzaicloud.io/vault-addr".to_string(),
+			"https://secrets.patr.cloud".to_string(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-skip-verify".to_string(),
+			"false".to_string(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-agent".to_string(),
+			"false".to_string(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-role".to_string(),
+			"vault".to_string(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-path".to_string(),
+			"kubernetes".to_string(),
+		),
+	]
+	.into_iter()
+	.collect();
+
+	if !spec.running_details.volumes.is_empty() {
+		// Deleting stateful set using orphan flag to update the volumes
+		trace!("deleting stateful set without deleting the pod");
+		Api::<StatefulSet>::namespaced(ctx.client.clone(), namespace)
+			.delete(
+				&format!("sts-{}", spec.deployment.id),
+				&DeleteParams {
+					propagation_policy: Some(PropagationPolicy::Orphan),
+					..DeleteParams::default()
+				},
+			)
+			.await?;
+	}
 
 	// let mut volume_mounts: Vec<VolumeMount> = Vec::new();
 	// let mut volumes: Vec<Volume> = Vec::new();
@@ -317,43 +297,43 @@ async fn reconcile(
 	// 	});
 	// }
 
-	trace!("Creating deployment service");
+	// trace!("Creating deployment service");
 
-	Api::<Service>::namespaced(ctx.client.clone(), namespace)
-		.patch(
-			&format!("service-{}", deployment.id),
-			&PatchParams::apply(&format!("service-{}", deployment.id)),
-			&Patch::Apply(Service {
-				metadata: ObjectMeta {
-					name: Some(format!("service-{}", deployment.id)),
-					owner_references: Some(vec![owner_reference.clone()]),
-					..ObjectMeta::default()
-				},
-				spec: Some(ServiceSpec {
-					ports: Some(
-						running_details
-							.ports
-							.keys()
-							.map(|port| ServicePort {
-								port: port.value() as i32,
-								target_port: Some(IntOrString::Int(port.value() as i32)),
-								name: Some(format!("port-{}", port)),
-								..ServicePort::default()
-							})
-							.collect::<Vec<_>>(),
-					),
-					selector: Some(todo!()),
-					cluster_ip: if running_details.volumes.is_empty() {
-						None
-					} else {
-						Some("None".to_string())
-					},
-					..ServiceSpec::default()
-				}),
-				..Service::default()
-			}),
-		)
-		.await?;
+	// Api::<Service>::namespaced(ctx.client.clone(), namespace)
+	// 	.patch(
+	// 		&format!("service-{}", deployment.id),
+	// 		&PatchParams::apply(&format!("service-{}", deployment.id)),
+	// 		&Patch::Apply(Service {
+	// 			metadata: ObjectMeta {
+	// 				name: Some(format!("service-{}", deployment.id)),
+	// 				owner_references: Some(vec![owner_reference.clone()]),
+	// 				..ObjectMeta::default()
+	// 			},
+	// 			spec: Some(ServiceSpec {
+	// 				ports: Some(
+	// 					running_details
+	// 						.ports
+	// 						.keys()
+	// 						.map(|port| ServicePort {
+	// 							port: port.value() as i32,
+	// 							target_port: Some(IntOrString::Int(port.value() as i32)),
+	// 							name: Some(format!("port-{}", port)),
+	// 							..ServicePort::default()
+	// 						})
+	// 						.collect::<Vec<_>>(),
+	// 				),
+	// 				selector: Some(todo!()),
+	// 				cluster_ip: if running_details.volumes.is_empty() {
+	// 					None
+	// 				} else {
+	// 					Some("None".to_string())
+	// 				},
+	// 				..ServiceSpec::default()
+	// 			}),
+	// 			..Service::default()
+	// 		}),
+	// 	)
+	// 	.await?;
 
 	// let metadata = ObjectMeta {
 	// 	name: Some(format!(

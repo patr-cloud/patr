@@ -1,8 +1,8 @@
+use super::DeploymentDeployHistory;
 use crate::{
 	prelude::*,
-	utils::{Uuid, BearerToken},
+	utils::{BearerToken, Uuid},
 };
-use super::DeploymentDeployHistory;
 
 macros::declare_api_endpoint!(
 	/// Route to get list of deployment history for a deployment
@@ -18,7 +18,7 @@ macros::declare_api_endpoint!(
 		pub authorization: BearerToken
 	},
 	authentication = {
-		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.deployment_id
 		}
 	},

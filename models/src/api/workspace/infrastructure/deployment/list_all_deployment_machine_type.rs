@@ -1,5 +1,5 @@
-use crate::prelude::*;
 use super::DeploymentMachineType;
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to list all machine types for deployment

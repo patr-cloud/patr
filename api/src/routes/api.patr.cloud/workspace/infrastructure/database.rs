@@ -1,11 +1,7 @@
-use crate::prelude::*;
 use axum::{http::StatusCode, Router};
+use models::{api::workspace::infrastructure::database::*, ApiRequest, ErrorType};
 
-use models::{
-	api::workspace::infrastructure::database::*,
-	ApiRequest,
-	ErrorType,
-};
+use crate::prelude::*;
 
 #[instrument(skip(state))]
 pub fn setup_routes(state: &AppState) -> Router {
@@ -32,19 +28,16 @@ async fn all_database_plan(
 		config,
 	}: AppRequest<'_, AllDatabasePlanRequest>,
 ) -> Result<AppResponse<AllDatabasePlanRequest>, ErrorType> {
-	
 	info!("Starting: Get database plans");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(AllDatabasePlanResponse {
-            plans: todo!(),
-        })
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(AllDatabasePlanResponse { plans: todo!() })
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn create_database(
@@ -59,26 +52,23 @@ async fn create_database(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, CreateDatabaseRequest>,
 ) -> Result<AppResponse<CreateDatabaseRequest>, ErrorType> {
-	
 	info!("Starting: Create database");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(CreateDatabaseResponse {
-            id: todo!(),
-        })
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(CreateDatabaseResponse { id: todo!() })
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn delete_database(
-    AuthenticatedAppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -89,24 +79,23 @@ async fn delete_database(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, DeleteDatabaseRequest>,
 ) -> Result<AppResponse<DeleteDatabaseRequest>, ErrorType> {
-
 	info!("Starting: Delete database");
 
 	// LOGIC
 
 	AppResponse::builder()
-        .body(DeleteDatabaseResponse)
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+		.body(DeleteDatabaseResponse)
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn get_database(
-    AuthenticatedAppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -117,26 +106,23 @@ async fn get_database(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, GetDatabaseRequest>,
 ) -> Result<AppResponse<GetDatabaseRequest>, ErrorType> {
-
 	info!("Starting: Get database");
 
 	// LOGIC
 
 	AppResponse::builder()
-        .body(GetDatabaseResponse{
-			database: todo!()
-		})
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result()
+		.body(GetDatabaseResponse { database: todo!() })
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn list_database(
-    AuthenticatedAppRequest {
+	AuthenticatedAppRequest {
 		request: ApiRequest {
 			path,
 			query: _,
@@ -147,20 +133,17 @@ async fn list_database(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, ListDatabaseRequest>,
 ) -> Result<AppResponse<ListDatabaseRequest>, ErrorType> {
-
 	info!("Starting: List database");
 
 	// LOGIC
 
 	AppResponse::builder()
-        .body(ListDatabaseResponse{
-			database: todo!()
-		})
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result()
+		.body(ListDatabaseResponse { database: todo!() })
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }

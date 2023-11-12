@@ -4,11 +4,12 @@ use std::{
 };
 
 use base64::prelude::*;
+use schemars::JsonSchema;
 use serde::{de::Error, Serialize};
 
 /// A wrapper around a `Vec<u8>` that implements `Display` and `Serialize` to
 /// encode the data as base64. Mostly used for config mount values.
-#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
 pub struct Base64String {
 	/// The data that is being wrapped.
 	data: Vec<u8>,

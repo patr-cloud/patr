@@ -1,8 +1,8 @@
+use super::{StaticSite, StaticSiteDetails};
 use crate::{
 	prelude::*,
-	utils::{Uuid, BearerToken},
-}; 
-use super::{StaticSiteDetails, StaticSite};
+	utils::{BearerToken, Uuid},
+};
 
 macros::declare_api_endpoint!(
 	/// Route to get information of a static site
@@ -19,14 +19,14 @@ macros::declare_api_endpoint!(
 		pub authorization: BearerToken
 	},
 	authentication = {
-		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.static_site_id
 		}
 	},
 	response = {
 		/// The static site details which contains:
 		/// name - The name of the static site
-		/// status - The status of the static site 
+		/// status - The status of the static site
 		///         (Created, Pushed, Deploying, Running, Stopped, Errored,Deleted)
 		/// current_live_upload - The index.html that is currently live
 		pub static_site: WithId<StaticSite>,

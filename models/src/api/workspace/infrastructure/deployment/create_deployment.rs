@@ -1,8 +1,8 @@
+use super::{DeploymentRegistry, DeploymentRunningDetails};
 use crate::{
 	prelude::*,
-	utils::{Uuid, BearerToken},
+	utils::{BearerToken, Uuid},
 };
-use super::{DeploymentRegistry, DeploymentRunningDetails};
 
 macros::declare_api_endpoint!(
 	/// Route to create a new deployment
@@ -16,7 +16,7 @@ macros::declare_api_endpoint!(
 		pub authorization: BearerToken
 	},
 	authentication = {
-		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.workspace_id
 		}
 	},

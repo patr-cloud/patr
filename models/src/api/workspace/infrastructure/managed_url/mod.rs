@@ -28,7 +28,7 @@ pub struct ManagedUrl {
 	/// Type of URL
 	#[serde(flatten)]
 	pub url_type: ManagedUrlType,
-	/// Verify if the URL is 
+	/// Verify if the URL is
 	pub is_configured: bool,
 }
 
@@ -38,25 +38,25 @@ pub struct ManagedUrl {
 pub enum ManagedUrlType {
 	/// URL is pointing to a deployment
 	#[serde(rename_all = "camelCase")]
-	ProxyDeployment { 
+	ProxyDeployment {
 		/// Deployment ID of the deployment to point to
-		deployment_id: Uuid, 
+		deployment_id: Uuid,
 		/// Deployment port of the deployment to point to
-		port: u16 
+		port: u16,
 	},
 	/// URL is pointing to a static site
 	#[serde(rename_all = "camelCase")]
-	ProxyStaticSite { 
+	ProxyStaticSite {
 		/// Static site ID of the static site to point to
-		static_site_id: Uuid 
+		static_site_id: Uuid,
 	},
 	/// URL is a proxy
 	#[serde(rename_all = "camelCase")]
-	ProxyUrl { 
+	ProxyUrl {
 		/// The URL of the proxy
-		url: String, 
+		url: String,
 		/// If the URL is a http only
-		http_only: bool 
+		http_only: bool,
 	},
 	/// URL is a redirect to another site
 	#[serde(rename_all = "camelCase")]

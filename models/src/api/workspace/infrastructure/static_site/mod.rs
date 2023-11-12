@@ -47,7 +47,7 @@ pub struct StaticSite {
 	pub status: DeploymentStatus,
 	/// The current index.html file running
 	pub current_live_upload: Option<Uuid>, /* add more details about the
-											* static site */
+	                                        * static site */
 }
 
 /// Static site details

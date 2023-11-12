@@ -1,8 +1,8 @@
+use super::{Deployment, DeploymentRunningDetails};
 use crate::{
 	prelude::*,
-	utils::{Uuid, BearerToken},
+	utils::{BearerToken, Uuid},
 };
-use super::{Deployment, DeploymentRunningDetails};
 
 macros::declare_api_endpoint!(
 	/// Route to get all the deployment information of a deployment
@@ -18,7 +18,7 @@ macros::declare_api_endpoint!(
 		pub authorization: BearerToken
 	},
 	authentication = {
-		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.deployment_id
 		}
 	},
@@ -31,7 +31,7 @@ macros::declare_api_endpoint!(
 		/// machine_type - The deployment machine type corresponding to CPU and RAM
 		/// current_live_digest - The current live digest running
 		pub deployment: WithId<Deployment>,
-		/// The deployment details which contains information 
+		/// The deployment details which contains information
 		/// related to configuration containing:
 		/// deploy_on_push - Is automatic update on new image push enabled
 		/// min_horizontal_scale - The minimum number of pods to run

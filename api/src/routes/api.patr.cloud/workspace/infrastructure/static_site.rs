@@ -1,11 +1,7 @@
-use crate::prelude::*;
 use axum::{http::StatusCode, Router};
+use models::{api::workspace::infrastructure::static_site::*, ApiRequest, ErrorType};
 
-use models::{
-	api::workspace::infrastructure::static_site::*,
-	ApiRequest,
-	ErrorType,
-};
+use crate::prelude::*;
 
 #[instrument(skip(state))]
 pub fn setup_routes(state: &AppState) -> Router {
@@ -36,22 +32,19 @@ async fn create_static_site(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, CreateStaticSiteRequest>,
 ) -> Result<AppResponse<CreateStaticSiteRequest>, ErrorType> {
-	
 	info!("Starting: Create static site");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(CreateStaticSiteResponse {
-            id: todo!(),
-        })
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(CreateStaticSiteResponse { id: todo!() })
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn delete_static_site(
@@ -66,20 +59,19 @@ async fn delete_static_site(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, DeleteStaticSiteRequest>,
 ) -> Result<AppResponse<DeleteStaticSiteRequest>, ErrorType> {
-	
 	info!("Starting: Delete static site");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(DeleteStaticSiteResponse)
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(DeleteStaticSiteResponse)
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn get_static_site_info(
@@ -94,23 +86,22 @@ async fn get_static_site_info(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, GetStaticSiteInfoRequest>,
 ) -> Result<AppResponse<GetStaticSiteInfoRequest>, ErrorType> {
-	
 	info!("Starting: Get static site info");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(GetStaticSiteInfoResponse {
-            static_site: todo!(),
-            static_site_details: todo!()
-        })
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(GetStaticSiteInfoResponse {
+			static_site: todo!(),
+			static_site_details: todo!(),
+		})
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn list_static_site(
@@ -125,22 +116,21 @@ async fn list_static_site(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, ListStaticSiteRequest>,
 ) -> Result<AppResponse<ListStaticSiteRequest>, ErrorType> {
-	
 	info!("Starting: List static site");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(ListStaticSiteResponse {
-            static_sites: todo!(),
-        })
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(ListStaticSiteResponse {
+			static_sites: todo!(),
+		})
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn list_upload_history(
@@ -155,22 +145,19 @@ async fn list_upload_history(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, ListStaticSiteUploadHistoryRequest>,
 ) -> Result<AppResponse<ListStaticSiteUploadHistoryRequest>, ErrorType> {
-	
 	info!("Starting: List static site upload history");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(ListStaticSiteUploadHistoryResponse {
-            uploads: todo!(),
-        })
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(ListStaticSiteUploadHistoryResponse { uploads: todo!() })
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn revert_static_site(
@@ -185,20 +172,19 @@ async fn revert_static_site(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, RevertStaticSiteRequest>,
 ) -> Result<AppResponse<RevertStaticSiteRequest>, ErrorType> {
-	
 	info!("Starting: Revert static site");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(RevertStaticSiteResponse)
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(RevertStaticSiteResponse)
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn start_static_site(
@@ -213,20 +199,19 @@ async fn start_static_site(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, StartStaticSiteRequest>,
 ) -> Result<AppResponse<StartStaticSiteRequest>, ErrorType> {
-	
 	info!("Starting: Start static site");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(StartStaticSiteResponse)
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(StartStaticSiteResponse)
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn stop_static_site(
@@ -241,20 +226,19 @@ async fn stop_static_site(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, StopStaticSiteRequest>,
 ) -> Result<AppResponse<StopStaticSiteRequest>, ErrorType> {
-	
 	info!("Starting: Stop static site");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(StopStaticSiteResponse)
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(StopStaticSiteResponse)
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn update_static_site(
@@ -269,20 +253,19 @@ async fn update_static_site(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, UpdateStaticSiteRequest>,
 ) -> Result<AppResponse<UpdateStaticSiteRequest>, ErrorType> {
-	
 	info!("Starting: Update static site");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(UpdateStaticSiteResponse)
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(UpdateStaticSiteResponse)
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn upload_static_site(
@@ -297,22 +280,19 @@ async fn upload_static_site(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, UploadStaticSiteRequest>,
 ) -> Result<AppResponse<UploadStaticSiteRequest>, ErrorType> {
-	
 	info!("Starting: Upload static site");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(UploadStaticSiteResponse {
-            upload_id: todo!(),
-        })
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(UploadStaticSiteResponse { upload_id: todo!() })
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }
 
 async fn list_linked_url(
@@ -327,20 +307,17 @@ async fn list_linked_url(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, ListLinkedUrlRequest>,
 ) -> Result<AppResponse<ListLinkedUrlRequest>, ErrorType> {
-	
 	info!("Starting: List linked URL");
 
 	// LOGIC
 
-    AppResponse::builder()
-        .body(ListLinkedUrlResponse {
-            urls: todo!(),
-        })
-        .headers(())
-        .status_code(StatusCode::OK)
-        .build()
-        .into_result() 
+	AppResponse::builder()
+		.body(ListLinkedUrlResponse { urls: todo!() })
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
 }

@@ -5,15 +5,15 @@ use crate::prelude::Uuid;
 mod create_database;
 mod delete_database;
 mod get_database;
-mod list_database;
 mod list_all_database_machine_type;
+mod list_database;
 
 pub use self::{
 	create_database::*,
 	delete_database::*,
 	get_database::*,
-	list_database::*,
 	list_all_database_machine_type::*,
+	list_database::*,
 };
 
 /// Information of all the different database plans currently supported
@@ -87,6 +87,7 @@ pub struct Database {
 	pub region: Uuid,
 	/// The current status of the database
 	pub status: DatabaseStatus,
-	/// The connection configuration for the user to connect to the database instance
+	/// The connection configuration for the user to connect to the database
+	/// instance
 	pub public_connection: DatabaseConnection,
 }
