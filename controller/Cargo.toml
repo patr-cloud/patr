@@ -17,6 +17,7 @@ kube = { workspace = true, features = [
     "runtime",
     "derive",
 ] }
+reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 models = { workspace = true, features = [] }
 schemars = { workspace = true, features = ["default"] }
 serde = { workspace = true, features = ["default", "derive"] }

@@ -1,8 +1,8 @@
+use super::StaticSiteDetails;
 use crate::{
 	prelude::*,
-	utils::{Uuid, BearerToken},
-}; 
-use super::StaticSiteDetails;
+	utils::{BearerToken, Uuid},
+};
 
 macros::declare_api_endpoint!(
 	/// Definition of a route to create a new static site
@@ -17,7 +17,7 @@ macros::declare_api_endpoint!(
 		pub authorization: BearerToken
 	},
 	authentication = {
-		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.workspace_id
 		}
 	},

@@ -1,4 +1,8 @@
 use kube::CustomResource;
+use models::{
+	api::workspace::infrastructure::deployment::{Deployment, DeploymentRunningDetails},
+	prelude::WithId,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -12,4 +16,12 @@ use serde::{Deserialize, Serialize};
 	namespaced
 )]
 pub struct PatrDeploymentSpec {
+	/// The deployment data with the ID. For more information, see the
+	/// documentation of [`Deployment`].
+	#[schemars(flatten)]
+	pub deployment: WithId<Deployment>,
+	/// The running details of the deployment. For more information, see the
+	/// documentation of [`DeploymentRunningDetails`].
+	#[schemars(flatten)]
+	pub running_details: DeploymentRunningDetails,
 }

@@ -1,6 +1,6 @@
 use crate::{
 	prelude::*,
-	utils::{Uuid, BearerToken},
+	utils::{BearerToken, Uuid},
 };
 
 macros::declare_api_endpoint!(
@@ -13,7 +13,7 @@ macros::declare_api_endpoint!(
 		pub deployment_id: Uuid,
 	},
 	authentication = {
-		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.deployment_id
 		}
 	},

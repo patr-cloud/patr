@@ -17,6 +17,7 @@ ipnetwork = { workspace = true, features = ["default"] }
 macros = { workspace = true, features = [] }
 preprocess = { workspace = true, features = [] }
 reqwest = { workspace = true, features = ["default", "rustls-tls", "json"] }
+schemars = { workspace = true, features = ["default", "uuid1"] }
 serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
 serde_test = { workspace = true, features = [] }

@@ -1,8 +1,5 @@
-use crate::{
-	prelude::*,
-	utils::BearerToken
-};
 use super::DatabasePlan;
+use crate::{prelude::*, utils::BearerToken};
 
 macros::declare_api_endpoint!(
 	/// Route to get database information

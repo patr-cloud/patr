@@ -7,7 +7,8 @@ use crate::prelude::*;
 /// All the routes that corresponds to Patr's in-build container registry
 pub mod container_registry;
 // pub mod domain;
-/// This module contains all the models that corresponds to Patr's main infrastructure
+/// This module contains all the models that corresponds to Patr's main
+/// infrastructure
 pub mod infrastructure;
 // pub mod rbac;
 // pub mod region;

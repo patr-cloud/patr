@@ -1,7 +1,4 @@
-use crate::{
-	prelude::*,
-	utils::BearerToken
-};
+use crate::{prelude::*, utils::BearerToken};
 
 macros::declare_api_endpoint!(
 	/// Route to delete a database
@@ -17,8 +14,8 @@ macros::declare_api_endpoint!(
 		pub authorization: BearerToken
 	},
 	authentication = {
-		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
-			extract_resource_id: |req| req.path.database_id 
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
+			extract_resource_id: |req| req.path.database_id
 		}
 	}
 );

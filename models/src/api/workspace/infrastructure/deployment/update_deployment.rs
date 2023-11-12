@@ -1,13 +1,9 @@
+use std::collections::BTreeMap;
+
+use super::{DeploymentProbe, DeploymentVolume, EnvironmentVariableValue, ExposedPortType};
 use crate::{
 	prelude::*,
-	utils::{Base64String, StringifiedU16, Uuid, BearerToken},
-}; 
-use std::collections::BTreeMap;
-use super::{
-	DeploymentProbe,
-	DeploymentVolume,
-	EnvironmentVariableValue,
-	ExposedPortType,
+	utils::{Base64String, BearerToken, StringifiedU16, Uuid},
 };
 
 macros::declare_api_endpoint!(
@@ -24,7 +20,7 @@ macros::declare_api_endpoint!(
 		pub authorization: BearerToken
 	},
 	authentication = {
-		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.deployment_id
 		}
 	},
@@ -33,7 +29,7 @@ macros::declare_api_endpoint!(
 		pub name: Option<String>,
 		/// To update the machine type
 		pub machine_type: Option<Uuid>,
-		/// To update the automatic restart of deployment with new image once pushed 
+		/// To update the automatic restart of deployment with new image once pushed
 		pub deploy_on_push: Option<bool>,
 		/// To update the minimum number of node
 		pub min_horizontal_scale: Option<u16>,

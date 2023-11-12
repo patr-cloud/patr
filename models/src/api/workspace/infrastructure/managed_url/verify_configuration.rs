@@ -1,7 +1,7 @@
 use crate::{
 	prelude::*,
-	utils::{Uuid,BearerToken},
-}; 
+	utils::{BearerToken, Uuid},
+};
 
 macros::declare_api_endpoint!(
 	/// Route to verify a managed URL configuration
@@ -17,7 +17,7 @@ macros::declare_api_endpoint!(
 		pub authorization: BearerToken
 	},
 	authentication = {
-		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.managed_url_id
 		}
 	},

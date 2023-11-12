@@ -1,10 +1,10 @@
 use time::OffsetDateTime;
 
+use super::DeploymentLogs;
 use crate::{
 	prelude::*,
-	utils::{Uuid, BearerToken},
+	utils::{BearerToken, Uuid},
 };
-use super::DeploymentLogs;
 
 macros::declare_api_endpoint!(
 	/// Route to get the running logs of a deployment
@@ -16,7 +16,7 @@ macros::declare_api_endpoint!(
 		pub deployment_id: Uuid,
 	},
 	authentication = {
-		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.deployment_id
 		}
 	},

@@ -1,11 +1,11 @@
+use super::{DeploymentMetrics, Interval, Step};
 use crate::{
 	prelude::*,
-	utils::{Uuid, BearerToken},
+	utils::{BearerToken, Uuid},
 };
-use super::{DeploymentMetrics, Interval, Step};
 
 macros::declare_api_endpoint!(
-	/// Route to get monitoring metrics like CPU, RAM and Disk usage 
+	/// Route to get monitoring metrics like CPU, RAM and Disk usage
 	/// for a deployment
 	GetDeploymentMetric,
 	GET "/workspace/:workspace_id/infrastructure/deployment/:deployment_id/metrics" {
@@ -19,7 +19,7 @@ macros::declare_api_endpoint!(
 		pub authorization: BearerToken
 	},
 	authentication = {
-		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.deployment_id
 		}
 	},

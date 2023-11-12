@@ -67,3 +67,9 @@ pub enum AppError {
 	#[error("internal error: {0}")]
 	InternalError(String),
 }
+
+impl From<ErrorType> for AppError {
+	fn from(err: ErrorType) -> Self {
+		Self::Patr(err)
+	}
+}

@@ -11,6 +11,7 @@ mod get_version;
 
 use std::ops::Deref;
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 pub use self::get_version::*;
@@ -22,7 +23,7 @@ use crate::prelude::*;
 /// that the `Deployment` struct should not contain the ID field, or it will
 /// panic. The struct contained in the `WithId` struct can be reused in multiple
 /// places.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd, Hash, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct WithId<T> {
 	/// The ID of the object. For example, in case of a deployment, this would

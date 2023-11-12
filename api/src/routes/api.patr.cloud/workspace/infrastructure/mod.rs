@@ -1,9 +1,7 @@
 use axum::{http::StatusCode, Router};
+use models::{ApiRequest, ErrorType};
+
 use crate::prelude::*;
-use models::{
-	ApiRequest,
-	ErrorType,
-};
 
 mod database;
 mod deployment;

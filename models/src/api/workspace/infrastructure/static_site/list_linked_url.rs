@@ -1,7 +1,8 @@
 use crate::{
+	api::workspace::infrastructure::managed_url::ManagedUrl,
 	prelude::*,
-	utils::{Uuid, BearerToken}, api::workspace::infrastructure::managed_url::ManagedUrl,
-}; 
+	utils::{BearerToken, Uuid},
+};
 
 macros::declare_api_endpoint!(
 	/// Route to get all the linked URLs with a static site
@@ -17,7 +18,7 @@ macros::declare_api_endpoint!(
 		pub authorization: BearerToken
 	},
 	authentication = {
-		AppAuthentication::<Self>::ResourcePermissionAuthenticator { 
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.static_site_id
 		}
 	},
